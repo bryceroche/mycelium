@@ -40,6 +40,8 @@ class StepSignatureDB:
             self._direct_conn = sqlite3.connect(db_path, check_same_thread=False, timeout=30.0)
             self._direct_conn.row_factory = sqlite3.Row
             self._direct_conn.execute("PRAGMA foreign_keys = ON")
+            self._direct_conn.execute("PRAGMA journal_mode = WAL")  # Enable WAL for concurrent access
+            self._direct_conn.execute("PRAGMA busy_timeout = 30000")  # 30s timeout for locks
             self._db = None
             self._db_path = db_path
         else:
