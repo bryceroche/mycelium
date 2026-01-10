@@ -507,10 +507,13 @@ As the system runs in production, three metrics indicate health and growth:
 | Metric | What It Measures | Healthy Range |
 |--------|------------------|---------------|
 | **Signatures per problem** | Decomposition granularity | 5-10 steps |
+| **Signature hits per problem** | How many steps matched a signature | ~3 for L5 |
 | **Injections per problem** | DSL coverage (sig had good DSL) | 2-5 injections |
 | **Success rate per signature** | DSL quality | ≥70% for reliable sigs |
 
 **Signatures per problem** reflects decomposition behavior. Too few (1-2) means problems aren't being broken down; too many (15+) means over-decomposition creating noise.
+
+**Signature hits per problem** measures how well the signature library covers new problems. For Level 5 problems with a moderately mature database, expect ~3 signature hits per problem—roughly 5 DAG steps where 3 match existing signatures with high-confidence DSL. This ratio improves as the library matures; early runs may see 1-2 hits, while a mature library approaches 4-5.
 
 **Injections per problem** shows how much the signature library is actually being used. Low injection rates indicate either (a) signatures don't match new problems, or (b) DSL quality is poor so lift-gating blocks injection.
 
