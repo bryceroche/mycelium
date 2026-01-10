@@ -829,3 +829,5 @@ What did the cold start say to the empty database? "Don't worry, we'll *grow* on
 ---
 
 *This paper was written with zero hallucinogens, despite the mushroom theme.*
+
+*I soloed this entire project with Claude, which makes me think the singularity is near. Maybe 6 or 7 months away. ;)*
