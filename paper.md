@@ -314,6 +314,7 @@ This lightweight stack enables rapid iteration: SQLite for portability, Groq for
 - **Embeddings**: all-MiniLM-L6-v2 (384d)
 - **Evaluation**: LLM judge for semantic answer equivalence
 - **Reproducibility**: Fixed random seeds for problem selection
+- **Fair comparison**: Baseline (direct LLM) and Mycelium run on identical problem sets using the same seed
 
 ### Reproducibility
 
@@ -797,6 +798,8 @@ Mycelium demonstrates that LLMs can build persistent, reusable knowledge structu
 ## Acknowledgments
 
 This project was developed in collaboration with Claude (Anthropic), which contributed to architecture design, implementation (matching pipeline, signature clustering, execution optimization), and codebase refactoring. The development involved extensive human-AI pair programming, demonstrating a productive collaboration model where the human provides vision and direction while the AI contributes implementation capacity and systematic analysis.
+
+**A note on abstraction:** Delegating implementation to Claude freed me to think at a higher level of abstraction about the problem. Instead of getting lost in debugging SQLite queries or regex parsing, I could focus on *"should signatures boost their neighbors?"* and *"what makes a step DSL-hostile?"* The cognitive load shifted from syntax to semantics, from code to architecture. This is perhaps the real unlock of AI pair programming—not just faster coding, but thinking at a higher altitude.
 
 ---
 

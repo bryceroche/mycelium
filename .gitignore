@@ -49,5 +49,6 @@ Thumbs.db
 uv.lock
 notes/
 *.db
+!mycelium.db
 *.db-shm
 *.db-wal
