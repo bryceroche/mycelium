@@ -48,3 +48,6 @@ Thumbs.db
 .uv/
 uv.lock
 notes/
+*.db
+*.db-shm
+*.db-wal
