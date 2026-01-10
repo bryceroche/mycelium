@@ -585,12 +585,14 @@ class Solver:
         # First, check signature confidence before executing
         embedding = self.embedder.embed(step.task)
 
+        # Pass depth as origin_depth so new signatures know their decomposition level
         signature, is_new = self.step_db.find_or_create(
             step_text=step.task,
             embedding=embedding,
             min_similarity=self.min_step_similarity,
             parent_problem=problem[:MAX_PARENT_PROBLEM_LENGTH],
             match_mode=self.match_mode if self.match_mode != "baseline" else "cosine",
+            origin_depth=depth,
         )
 
         # Compute confidence (signature similarity)
@@ -713,12 +715,14 @@ Provide the combined result. End with RESULT: <your answer>"""
         embedding = self.embedder.embed(step.task)
 
         # Find or create signature for this step type
+        # Pass decomposition_depth so new signatures know their origin level
         signature, is_new = self.step_db.find_or_create(
             step_text=step.task,
             embedding=embedding,
             min_similarity=self.min_step_similarity,
             parent_problem=problem[:MAX_PARENT_PROBLEM_LENGTH],
             match_mode=self.match_mode if self.match_mode != "baseline" else "cosine",
+            origin_depth=decomposition_depth,
         )
 
         logger.debug(

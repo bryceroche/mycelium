@@ -72,6 +72,7 @@ class StepSignatureDB:
         min_similarity: float = 0.5,
         parent_problem: str = "",
         match_mode: MatchMode = "cosine",
+        origin_depth: int = 0,
     ) -> tuple[StepSignature, bool]:
         """Find a matching signature or create a new one.
 
@@ -88,6 +89,7 @@ class StepSignatureDB:
             min_similarity: Minimum similarity threshold for matching
             parent_problem: The parent problem this step came from
             match_mode: Matching algorithm to use
+            origin_depth: Decomposition depth at which this step was created
 
         Returns:
             Tuple of (signature, is_new) where is_new=True if newly created
@@ -99,7 +101,7 @@ class StepSignatureDB:
         for attempt in range(max_retries):
             try:
                 return self._find_or_create_atomic(
-                    step_text, embedding, min_similarity, parent_problem, match_mode
+                    step_text, embedding, min_similarity, parent_problem, match_mode, origin_depth
                 )
             except Exception as e:
                 if "database is locked" in str(e) and attempt < max_retries - 1:
@@ -114,6 +116,7 @@ class StepSignatureDB:
         min_similarity: float,
         parent_problem: str,
         match_mode: MatchMode,
+        origin_depth: int = 0,
     ) -> tuple[StepSignature, bool]:
         """Internal atomic find-or-create with transaction locking."""
         with self._connection() as conn:
@@ -159,7 +162,7 @@ class StepSignatureDB:
                     return best_match, False
 
                 # Create new signature (inline to use same transaction)
-                sig = self._create_signature_atomic(conn, step_text, embedding, parent_problem)
+                sig = self._create_signature_atomic(conn, step_text, embedding, parent_problem, origin_depth)
                 conn.commit()
                 return sig, True
 
@@ -173,10 +176,18 @@ class StepSignatureDB:
         step_text: str,
         embedding: np.ndarray,
         parent_problem: str = "",
+        origin_depth: int = 0,
     ) -> StepSignature:
         """Create a new signature within an existing transaction.
 
         Used by find_or_create to maintain atomicity.
+
+        Args:
+            conn: Database connection
+            step_text: The step description text
+            embedding: Embedding vector for the step
+            parent_problem: The parent problem this step came from
+            origin_depth: Decomposition depth at which this step was created
         """
         sig_id = str(uuid.uuid4())
         now = datetime.utcnow().isoformat()
@@ -184,11 +195,15 @@ class StepSignatureDB:
         step_type = self._infer_step_type(step_text)
         dsl_script = self._get_default_dsl_script(step_type)
 
+        # Signatures created at depth > 0 are from decomposition, likely atomic
+        is_atomic = 1 if origin_depth > 0 else 0
+
         cursor = conn.execute(
             """INSERT INTO step_signatures
                (signature_id, centroid, step_type, description, method_name,
-                method_template, example_count, created_at, dsl_script)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                method_template, example_count, created_at, dsl_script,
+                origin_depth, is_atomic)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 sig_id,
                 pack_embedding(embedding),
@@ -199,6 +214,8 @@ class StepSignatureDB:
                 1,
                 now,
                 dsl_script,
+                origin_depth,
+                is_atomic,
             ),
         )
         row_id = cursor.lastrowid
@@ -225,6 +242,8 @@ class StepSignatureDB:
             cohesion=None,
             created_at=now,
             dsl_script=dsl_script,
+            origin_depth=origin_depth,
+            is_atomic=bool(is_atomic),
         )
 
     def _compute_score(
@@ -1070,6 +1089,8 @@ class StepSignatureDB:
         dsl_script = row["dsl_script"] if "dsl_script" in row_keys else None
         dsl_version = row["dsl_version"] if "dsl_version" in row_keys else 1
         dsl_version_uses = row["dsl_version_uses"] if "dsl_version_uses" in row_keys else 0
+        origin_depth = row["origin_depth"] if "origin_depth" in row_keys else 0
+        is_atomic = bool(row["is_atomic"]) if "is_atomic" in row_keys else False
 
         return StepSignature(
             id=row["id"],
@@ -1093,6 +1114,8 @@ class StepSignatureDB:
             is_canonical=bool(row["is_canonical"]),
             canonical_parent_id=row["canonical_parent_id"],
             variant_count=row["variant_count"],
+            origin_depth=origin_depth or 0,
+            is_atomic=is_atomic,
             created_at=row["created_at"],
             last_used_at=row["last_used_at"],
             io_schema=io_schema,
