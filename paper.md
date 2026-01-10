@@ -469,6 +469,24 @@ With the context fix in place, decomposition becomes an advantage:
 
 The 2-point advantage (82% vs 80%) will grow as the signature library matures across more problem types.
 
+### Key Metrics to Watch
+
+As the system runs in production, three metrics indicate health and growth:
+
+| Metric | What It Measures | Healthy Range |
+|--------|------------------|---------------|
+| **Signatures per problem** | Decomposition granularity | 5-10 steps |
+| **Injections per problem** | DSL coverage (sig had good DSL) | 2-5 injections |
+| **Success rate per signature** | DSL quality | ≥70% for reliable sigs |
+
+**Signatures per problem** reflects decomposition behavior. Too few (1-2) means problems aren't being broken down; too many (15+) means over-decomposition creating noise.
+
+**Injections per problem** shows how much the signature library is actually being used. Low injection rates indicate either (a) signatures don't match new problems, or (b) DSL quality is poor so lift-gating blocks injection.
+
+**Success rate per signature** is the ground truth. Signatures with <70% success remain in probation; those with ≥70% become reliable and inject their DSL. Monitoring the distribution of success rates reveals whether the library is maturing.
+
+**Expect the database to grow** as new problem types are encountered. Early runs create many signatures; later runs increasingly match existing ones. A healthy system shows signature creation rate declining over time while match rate increases.
+
 ---
 
 ## 6. Beyond Mathematics
@@ -498,6 +516,7 @@ Just as mycelium networks in nature decompose organic matter across ecosystems�
 - Contrastive learning for better signature separation
 - Cross-problem dependency tracking
 - Distributed signature sharing across deployments
+- **Signature chaining**: Learn common sequences of signatures that co-occur. If "isolate variable" frequently precedes "substitute value" which precedes "simplify expression," the system could recognize and execute the entire chain as a unit. This transforms atomic signatures into reusable *solution pipelines*—multi-step recipes that reduce LLM calls and enable higher-level pattern matching across problem types.
 
 ---
 
