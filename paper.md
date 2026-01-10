@@ -428,13 +428,34 @@ A diagnostic snapshot reveals where the system stands:
 
 These 7 step types account for ~345 uses at <35% success. The pattern: geometry and linear algebra DSLs are failing—these domains require more sophisticated parameter extraction than simple arithmetic.
 
-**Resolution:** These step types were switched to `guidance` mode (LLM reasoning with method template injection, no DSL execution). The DSL scripts were too simplistic for their step type breadth:
-- `area_triangle` used `0.5 * base * height` but problems often provide coordinates, not base/height
-- `compute_magnitude` used a generator expression unsupported by the math DSL evaluator
-- `compute_angle` used `180 - a - b` (third angle formula) but matched diverse angle computations
-- `express_relation` used `a / b` for complex algebraic relationships
+### DSL-Hostile Embedding Spaces
 
-For these broad step types, LLM flexibility beats brittle arithmetic. DSL works best for narrow, well-defined operations like `compute_percentage` or `solve_quadratic`.
+Some step types cluster steps that *sound* similar but require fundamentally different computation. These "DSL-hostile" embedding spaces look uniform to the classifier but contain high variance in actual solution methods.
+
+| Step Type | Failed DSL | Why It Fails |
+|-----------|------------|--------------|
+| `area_triangle` | `0.5 * base * height` | Problems provide coordinates, angles, or side lengths—rarely base and height directly. Requires Heron's formula, coordinate geometry, or trigonometry depending on input format. |
+| `compute_magnitude` | `sqrt(sum(c**2))` | Generator expressions unsupported by AST evaluator. Even with fix, vectors come as strings like "[3, 4]" requiring parsing. |
+| `vector_operation` | `Matrix(v1).dot(v2)` | "Vector operation" covers dot product, cross product, addition, scaling, projection—no single formula fits. Input format varies wildly. |
+| `compute_angle` | `180 - a - b` | Only works for "find third angle in triangle." Step type matches angle bisectors, arc measures, rotation angles, phase shifts—completely different operations. |
+| `matrix_operation` | `Matrix(m).det()` | Covers determinant, inverse, multiplication, eigenvalues, row reduction. The step type is a category, not an operation. |
+| `express_relation` | `a / b` | Semantic step: "express X in terms of Y" requires symbolic manipulation, not arithmetic. The relation *is* the answer, not a computation. |
+| `apply_amgm` | `sqrt(a * b)` | AM-GM is an *inequality* technique for finding extrema. Computing GM is a tiny part; the reasoning about when equality holds is what matters. |
+
+**The Core Problem:** These step types are *semantic categories* (geometry, linear algebra, optimization) rather than *computational operations* (add, multiply, solve quadratic). DSL excels at the latter but fails at the former.
+
+**Resolution:** Switch to `guidance` mode—LLM reasoning with method template injection, no DSL execution. The method template provides strategy ("use Heron's formula when given three sides") while the LLM handles the actual computation.
+
+**DSL-Friendly vs DSL-Hostile:**
+
+| DSL-Friendly | DSL-Hostile |
+|--------------|-------------|
+| `compute_percentage` | `area_triangle` |
+| `solve_quadratic` | `compute_angle` |
+| `compute_sum` | `express_relation` |
+| `evaluate_expression` | `apply_amgm` |
+
+The distinction: DSL-friendly types have **one canonical formula** with **predictable input format**. DSL-hostile types are **semantic umbrellas** covering diverse operations.
 
 ### DSL Input Mapping: From 0% to 64% Confidence
 
