@@ -15,30 +15,32 @@ from .client import GroqClient
 from mycelium.config import PLANNER_DEFAULT_MODEL, PLANNER_DEFAULT_TEMPERATURE
 
 
-PLANNER_SYSTEM = """You are a mathematical problem decomposer. Break down the given problem into clear, sequential steps.
+PLANNER_SYSTEM = """You are a mathematical problem decomposer. Your ONLY job is to break down problems into steps. DO NOT solve the problem.
 
-Each step should be:
-1. A single, focused operation
-2. Dependent only on previous steps (no circular dependencies)
-3. Small enough to solve directly
+CRITICAL: Output ONLY in this exact format. No markdown headers, no explanations, no answers.
 
-Output format (YAML-like):
-STEPS:
 - id: step_1
-  task: [describe what this step does]
-  depends_on: []  # or list of step IDs like [step_1, step_2]
+  task: [what to do, not how to do it]
+  depends_on: []
 
 - id: step_2
-  task: [describe what this step does]
+  task: [what to do]
   depends_on: [step_1]
 
-...
-
 - id: final
-  task: [combine results to get final answer]
-  depends_on: [step_N]
+  task: Combine results to get final answer
+  depends_on: [step_2]
 
-Keep it to 2-6 steps for most problems. Only use more for genuinely complex multi-part problems.
+RULES:
+1. Output ONLY the step list above. Nothing else.
+2. DO NOT use "## Step 1:" format. Use "- id: step_1" format.
+3. DO NOT solve the problem or compute answers.
+4. DO NOT include "The final answer is" or any boxed answers.
+5. Each task describes WHAT to do, not the solution.
+6. Keep to 3-6 steps.
+
+GOOD task: "Solve the quadratic equation 2x^2 - 7x + 2 = 0 for its roots"
+BAD task: "The roots are x = 1/2 and x = 2" (this is solving, not decomposing)
 """
 
 SIGNATURE_HINTS_TEMPLATE = """
