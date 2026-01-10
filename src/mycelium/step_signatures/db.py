@@ -71,9 +71,16 @@ class StepSignatureDB:
         embedding: np.ndarray,
         min_similarity: float = 0.5,
         parent_problem: str = "",
-        match_mode: MatchMode = "auto",
+        match_mode: MatchMode = "cosine",
     ) -> tuple[StepSignature, bool]:
         """Find a matching signature or create a new one.
+
+        Uses BEGIN IMMEDIATE to prevent race conditions when multiple
+        workers try to create signatures for the same step pattern.
+
+        Note: Default match_mode is "cosine" for predictable matching.
+        The "auto" mode uses interference scoring which can produce low
+        scores (0.1) for new signatures due to amplitude defaults.
 
         Args:
             step_text: The step description text
@@ -85,24 +92,140 @@ class StepSignatureDB:
         Returns:
             Tuple of (signature, is_new) where is_new=True if newly created
         """
-        # Find best matching signature
-        matches = self._find_similar(
-            embedding, threshold=min_similarity, limit=1, match_mode=match_mode
+        import time
+        max_retries = 10
+        retry_delay = 0.05  # 50ms base delay
+
+        for attempt in range(max_retries):
+            try:
+                return self._find_or_create_atomic(
+                    step_text, embedding, min_similarity, parent_problem, match_mode
+                )
+            except Exception as e:
+                if "database is locked" in str(e) and attempt < max_retries - 1:
+                    time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
+                    continue
+                raise
+
+    def _find_or_create_atomic(
+        self,
+        step_text: str,
+        embedding: np.ndarray,
+        min_similarity: float,
+        parent_problem: str,
+        match_mode: MatchMode,
+    ) -> tuple[StepSignature, bool]:
+        """Internal atomic find-or-create with transaction locking."""
+        with self._connection() as conn:
+            # Acquire write lock to prevent race conditions
+            # BEGIN IMMEDIATE acquires a RESERVED lock, blocking other writers
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                # Find best matching signature (inline to use same transaction)
+                cursor = conn.execute("SELECT * FROM step_signatures")
+                rows = cursor.fetchall()
+
+                best_match = None
+                best_score = 0.0
+
+                for row in rows:
+                    centroid = unpack_embedding(row["centroid"])
+                    if centroid is None:
+                        continue
+
+                    sig = self._row_to_signature(row)
+                    score = self._compute_score(embedding, centroid, sig, match_mode)
+
+                    # Adaptive threshold based on cohesion
+                    cohesion = row["cohesion"] or 0.5
+                    adaptive_thresh = self._adaptive_threshold(min_similarity, cohesion)
+
+                    # Further adjust for match modes that produce lower scores
+                    if match_mode in ("interference", "resonance"):
+                        adaptive_thresh *= 0.5
+
+                    if score >= adaptive_thresh and score > best_score:
+                        best_match = sig
+                        best_score = score
+
+                if best_match:
+                    # Update last_used_at
+                    now = datetime.utcnow().isoformat()
+                    conn.execute(
+                        "UPDATE step_signatures SET last_used_at = ? WHERE id = ?",
+                        (now, best_match.id),
+                    )
+                    conn.commit()
+                    return best_match, False
+
+                # Create new signature (inline to use same transaction)
+                sig = self._create_signature_atomic(conn, step_text, embedding, parent_problem)
+                conn.commit()
+                return sig, True
+
+            except Exception:
+                conn.rollback()
+                raise
+
+    def _create_signature_atomic(
+        self,
+        conn,
+        step_text: str,
+        embedding: np.ndarray,
+        parent_problem: str = "",
+    ) -> StepSignature:
+        """Create a new signature within an existing transaction.
+
+        Used by find_or_create to maintain atomicity.
+        """
+        sig_id = str(uuid.uuid4())
+        now = datetime.utcnow().isoformat()
+
+        step_type = self._infer_step_type(step_text)
+        dsl_script = self._get_default_dsl_script(step_type)
+
+        cursor = conn.execute(
+            """INSERT INTO step_signatures
+               (signature_id, centroid, step_type, description, method_name,
+                method_template, example_count, created_at, dsl_script)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                sig_id,
+                pack_embedding(embedding),
+                step_type,
+                step_text[:200],
+                step_type,
+                f"Solve: {step_text[:100]}",
+                1,
+                now,
+                dsl_script,
+            ),
+        )
+        row_id = cursor.lastrowid
+
+        # Also add as first example
+        conn.execute(
+            """INSERT INTO step_examples
+               (signature_id, step_text, embedding, parent_problem, created_at)
+               VALUES (?, ?, ?, ?, ?)""",
+            (row_id, step_text, pack_embedding(embedding), parent_problem, now),
         )
 
-        if matches:
-            sig, similarity = matches[0]
-            # Update last_used_at
-            self._update_last_used(sig.id)
-            return sig, False
-
-        # Create new signature
-        sig = self._create_signature(
-            step_text=step_text,
-            embedding=embedding,
-            parent_problem=parent_problem,
+        return StepSignature(
+            id=row_id,
+            signature_id=sig_id,
+            centroid=embedding,
+            step_type=step_type,
+            description=step_text[:200],
+            method_name=step_type,
+            method_template=f"Solve: {step_text[:100]}",
+            example_count=1,
+            uses=0,
+            successes=0,
+            cohesion=None,
+            created_at=now,
+            dsl_script=dsl_script,
         )
-        return sig, True
 
     def _compute_score(
         self,
