@@ -513,7 +513,7 @@ As the system runs in production, three metrics indicate health and growth:
 
 **Signatures per problem** reflects decomposition behavior. Too few (1-2) means problems aren't being broken down; too many (15+) means over-decomposition creating noise.
 
-**Signature hits per problem** measures how well the signature library covers new problems. For Level 5 problems with a moderately mature database, expect ~3 signature hits per problem—roughly 5 DAG steps where 3 match existing signatures with high-confidence DSL. This ratio improves as the library matures; early runs may see 1-2 hits, while a mature library approaches 4-5.
+**Signature hits per problem** measures how well the signature library covers new problems. For Level 5 problems with a moderately mature database, expect ~3 signature hits per problem—roughly 5 DAG steps where 3 match existing signatures with high-confidence DSL. This ratio improves as the library matures; early runs may see 1-2 hits, while a mature library approaches 4-5. *Current benchmark: 1,189 signatures across 56 step types yields 3.5 signature hits per problem (avg 5 tasks) on L5.*
 
 **Injections per problem** shows how much the signature library is actually being used. Low injection rates indicate either (a) signatures don't match new problems, or (b) DSL quality is poor so lift-gating blocks injection.
 
