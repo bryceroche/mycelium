@@ -181,6 +181,9 @@ from mycelium.config import (
     CLIENT_DEFAULT_TEMPERATURE,
     PIPELINE_MIN_SIMILARITY,
     DSL_PROBATION_ENABLED,
+    RECURSIVE_DECOMPOSITION_ENABLED,
+    RECURSIVE_MAX_DEPTH,
+    RECURSIVE_CONFIDENCE_THRESHOLD,
 )
 from .step_signatures import (
     StepSignatureDB,
@@ -448,8 +451,9 @@ class Solver:
 
             # Execute steps with error handling - return_exceptions=True prevents
             # one failing step from cancelling others in the same level
+            # Use recursive execution to decompose-until-confident
             level_results = await asyncio.gather(
-                *[self._execute_step_with_signature(step, context, problem) for step in level],
+                *[self._execute_step_recursive(step, context, problem, depth=0) for step in level],
                 return_exceptions=True,
             )
 
@@ -534,6 +538,130 @@ class Solver:
             intermediate_merges=intermediate_merges,
             errors=errors,
         )
+
+    async def _execute_step_recursive(
+        self,
+        step: Step,
+        context: dict,
+        problem: str,
+        depth: int = 0,
+    ) -> StepResult:
+        """Execute a step, recursively decomposing if confidence is low.
+
+        This implements the "decompose until confident" strategy:
+        1. Try to match step against signature library
+        2. If confidence < threshold, decompose step into sub-steps
+        3. Execute sub-steps and combine results
+        4. Recursion bounded by RECURSIVE_MAX_DEPTH
+
+        Args:
+            step: The step to execute
+            context: Results from prior steps
+            problem: The original problem (for context)
+            depth: Current recursion depth
+        """
+        # First, check signature confidence before executing
+        embedding = self.embedder.embed(step.task)
+
+        signature, is_new = self.step_db.find_or_create(
+            step_text=step.task,
+            embedding=embedding,
+            min_similarity=self.min_step_similarity,
+            parent_problem=problem[:MAX_PARENT_PROBLEM_LENGTH],
+            match_mode=self.match_mode if self.match_mode != "baseline" else "cosine",
+        )
+
+        # Compute confidence (signature similarity)
+        confidence = self._get_similarity(embedding, signature) if signature.centroid is not None else 0.0
+
+        # Should we re-decompose?
+        should_redecompose = (
+            RECURSIVE_DECOMPOSITION_ENABLED
+            and depth < RECURSIVE_MAX_DEPTH
+            and confidence < RECURSIVE_CONFIDENCE_THRESHOLD
+            and not is_new  # Don't re-decompose brand new signatures
+            and signature.step_type not in ("general_step", "solve_problem")  # Avoid infinite loops
+        )
+
+        if should_redecompose:
+            logger.info(
+                "[recursive] Re-decomposing step '%s' (confidence=%.2f < %.2f, depth=%d)",
+                step.task[:50], confidence, RECURSIVE_CONFIDENCE_THRESHOLD, depth
+            )
+
+            # Decompose this step as a sub-problem
+            sub_plan = await self.planner.decompose(
+                f"Solve this step: {step.task}\n\nContext from original problem:\n{problem[:500]}",
+                signature_hints=self.step_db.get_signature_hints(limit=10) if self.use_hints else None,
+            )
+
+            # Execute sub-steps recursively
+            sub_context = dict(context)  # Copy parent context
+            sub_results = []
+
+            for level in sub_plan.get_execution_order():
+                level_results = await asyncio.gather(
+                    *[self._execute_step_recursive(sub_step, sub_context, problem, depth + 1)
+                      for sub_step in level],
+                    return_exceptions=True,
+                )
+
+                for sub_step, result in zip(level, level_results):
+                    if isinstance(result, BaseException):
+                        result = StepResult(
+                            step_id=sub_step.id,
+                            task=sub_step.task,
+                            result=f"Sub-step failed: {result}",
+                            success=False,
+                        )
+                    sub_results.append(result)
+                    sub_context[sub_step.id] = result.result
+
+            # Combine sub-results into single result for this step
+            combined_result = await self._combine_sub_results(step.task, sub_results)
+
+            return StepResult(
+                step_id=step.id,
+                task=step.task,
+                result=combined_result,
+                embedding=embedding,
+                signature_matched=signature,
+                signature_similarity=confidence,
+                is_new_signature=is_new,
+                was_injected=False,  # Re-decomposed, not injected
+            )
+
+        # Confidence is good enough, execute normally
+        return await self._execute_step_with_signature(step, context, problem)
+
+    async def _combine_sub_results(self, task: str, sub_results: list[StepResult]) -> str:
+        """Combine sub-step results into a single result."""
+        if not sub_results:
+            return "No sub-results"
+
+        # If only one sub-result, return it directly
+        if len(sub_results) == 1:
+            return sub_results[0].result
+
+        # Combine multiple sub-results
+        results_str = "\n".join(
+            f"- {r.step_id}: {r.result}" for r in sub_results
+        )
+
+        prompt = f"""Combine these sub-step results into a single answer for the task: "{task}"
+
+Sub-step results:
+{results_str}
+
+Provide the combined result. End with RESULT: <your answer>"""
+
+        messages = [
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": "Combine the results."},
+        ]
+
+        response = await self.solver_client.generate(messages, temperature=self.temperature)
+        return extract_result(response)
 
     async def _execute_step_with_signature(
         self,

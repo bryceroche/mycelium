@@ -31,3 +31,9 @@ SOLVER_DEFAULT_MODEL = "llama-3.3-70b-versatile"
 
 # Pipeline Parameters
 PIPELINE_MIN_SIMILARITY = 0.60  # Raised from 0.50 to reduce false matches
+
+# Recursive Decomposition (decompose-until-confident)
+# When a step has low confidence, decompose it further into sub-steps
+RECURSIVE_DECOMPOSITION_ENABLED = True
+RECURSIVE_MAX_DEPTH = 2  # Maximum levels of re-decomposition
+RECURSIVE_CONFIDENCE_THRESHOLD = 0.5  # Re-decompose if signature confidence below this

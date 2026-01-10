@@ -1,4 +1,6 @@
-# Mycelium: Decomposing Problems into Reusable Atomic Signatures
+# Mycelium: Decomposition Is All You Need
+
+*Decomposing Problems into Reusable Atomic Signatures*
 
 **Author:** Bryce Roche, bryceroche@fungifactor.com, github.com/bryceroche/mycelium
 
@@ -476,57 +478,68 @@ Some step types cluster steps that *sound* similar but require fundamentally dif
 
 The distinction: DSL-friendly types have **one canonical formula** with **predictable input format**. DSL-hostile types are **semantic umbrellas** covering diverse operations.
 
-### Two Approaches to DSL-Hostile Types
+### Decompose Until Confident
 
-We considered two strategies for handling DSL-hostile step types:
+Rather than hardcoding which step types are "DSL-hostile," we implemented a dynamic strategy: **decompose until confident**.
 
-**Approach 1: Guidance Mode (Current)**
+**The Algorithm:**
 
-Switch DSL-hostile types to `guidance` mode—LLM reasoning with method template injection, no DSL execution. Simple to implement, works today.
-
-```
-Step → Match signature → Inject method template → LLM reasons → Result
-```
-
-Pros: Simple, reliable, leverages LLM flexibility
-Cons: Every execution requires LLM call (~500ms), no determinism
-
-**Approach 2: Two-Stage Normalize→Compute (Future)**
-
-Add a normalization layer that converts varied input formats to DSL-expected format:
-
-```
-Step → [Normalize input format] → Standard params → [DSL compute] → Result
-```
-
-For `area_triangle`:
 ```python
-if input_format == "coordinates":
-    base, height = distance_formula(coords)  # deterministic
-elif input_format == "three_sides":
-    return herons_formula(a, b, c)  # DSL
-else:
-    return 0.5 * base * height  # DSL
+def execute_step_recursive(step, depth=0):
+    signature, confidence = match_signature(step)
+
+    if confidence < THRESHOLD and depth < MAX_DEPTH:
+        # Low confidence → decompose further
+        sub_steps = planner.decompose(step.task)
+        sub_results = [execute_step_recursive(s, depth+1) for s in sub_steps]
+        return combine(sub_results)
+    else:
+        # High confidence → execute directly
+        return execute_via_dsl_or_llm(step, signature)
 ```
 
-Pros: Preserves DSL speed benefits, deterministic
-Cons: Requires format detection logic per step type, more complexity
+**Configuration:**
+- `RECURSIVE_CONFIDENCE_THRESHOLD = 0.5` — re-decompose if below this
+- `RECURSIVE_MAX_DEPTH = 2` — prevent infinite decomposition
 
-**Approach 2b: Decomposition as Normalization**
-
-Instead of normalizing inputs, decompose further so each sub-step has predictable format:
+**Example Execution:**
 
 ```
-"Find area of triangle at (0,0), (3,0), (0,4)"
-    ↓ decompose
-Step 1: "Calculate length AB" → DSL: sqrt((x2-x1)² + (y2-y1)²)
-Step 2: "Calculate length BC" → DSL: same
-Step 3: "Compute area from base=3, height=4" → DSL: 0.5 * base * height
+Step: "Find area of triangle at (0,0), (3,0), (0,4)"
+      ↓ match signature
+Signature: area_triangle (confidence: 0.42) ← below threshold!
+      ↓ re-decompose
+Sub-steps:
+  1. "Calculate distance from (0,0) to (3,0)" → confidence: 0.91 ✓
+  2. "Calculate distance from (3,0) to (0,4)" → confidence: 0.89 ✓
+  3. "Compute area with base=3, height=4"     → confidence: 0.94 ✓
+      ↓ execute sub-steps via DSL
+Combined result: 6
 ```
 
-The insight: **decomposition IS normalization**. A good planner breaks complex steps into atomic operations with predictable inputs. This pushes the "normalization" work into planning (already uses LLM) and keeps DSL execution purely arithmetic.
+**Why This Works:**
 
-**Current choice:** Approach 1 (guidance mode) for simplicity. Approach 2b (finer decomposition) is the better long-term solution—it keeps DSL benefits while handling format variance through the existing planning mechanism.
+1. **Self-adapting granularity**: The system automatically finds the right decomposition depth
+2. **No hardcoded lists**: DSL-hostile types get decomposed; DSL-friendly types execute directly
+3. **Library-aware**: As the signature library grows, fewer re-decompositions needed
+4. **Preserves DSL benefits**: Sub-steps often match high-confidence atomic signatures
+
+**The Insight:** Confidence score is a signal for "do I understand this step well enough?" Low confidence means the step type is too broad—decompose until you reach steps the library truly knows.
+
+**Tradeoffs:**
+- Extra LLM calls for decomposition (mitigated by max depth)
+- More steps = more error compounding (mitigated by higher per-step confidence)
+- Latency increases with depth (acceptable for accuracy gains)
+
+**Alternative Approaches Considered:**
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| **Guidance mode** | Simple, no extra LLM calls | No determinism, slower |
+| **Normalize→Compute** | Preserves DSL speed | Requires format detection per type |
+| **Decompose until confident** ✓ | Self-adapting, uses existing planner | Extra decomposition calls |
+
+We chose recursive decomposition because it leverages existing infrastructure (the planner) and automatically adapts to the signature library's coverage.
 
 ### DSL Input Mapping: From 0% to 64% Confidence
 
