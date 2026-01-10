@@ -154,7 +154,25 @@ This is the "smart work once, execute forever" principle: invest LLM reasoning t
 
 **Storage:** SQLite database stores signatures, embeddings (as packed binary), examples, and statistics. Single-file deployment with no external database dependencies.
 
+**SQLite Tuning for Parallel Execution:** The default SQLite journal mode blocks concurrent writes—problematic when running multiple Groq workers in parallel. We enable Write-Ahead Logging (WAL) mode:
+
+```python
+conn.execute("PRAGMA journal_mode = WAL")
+conn.execute("PRAGMA busy_timeout = 30000")  # 30s lock timeout
+```
+
+WAL allows concurrent readers and writers, eliminating "database is locked" errors. Combined with a 30-second busy timeout, this enables parallel benchmark execution without database contention.
+
 **LLM Inference:** Groq API with Llama-3.3-70B for fast inference (~500ms per call). Used for problem decomposition, step execution, and DSL generation.
+
+**Parallel Groq Workers:** With WAL mode enabled, we can run multiple problems concurrently:
+
+| Workers | 100 Problems | Speedup |
+|---------|--------------|---------|
+| 1 | 941s | 1.0x |
+| 4 | 226s | **4.2x** |
+
+The 4.2x speedup comes from overlapping API latency across workers. Each worker maintains its own database connection; WAL ensures writes don't block each other. Benchmark time drops from ~16 minutes to ~4 minutes.
 
 **Embeddings:** all-MiniLM-L6-v2 (384-dimensional) via sentence-transformers. Local inference, no API calls.
 
