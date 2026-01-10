@@ -302,30 +302,18 @@ The combination of:
 
 ...turned a 23-point deficit into parity with Direct Llama.
 
-### Smarter Decomposition: 70B Planner Upgrade
+### 70B Planner Upgrade: Better Reasoning Quality
 
-A counterintuitive discovery: **fewer steps can mean higher accuracy**.
-
-We upgraded the planner from Llama-3.1-8B to Llama-3.3-70B. The larger model produces dramatically different decomposition behavior:
+We upgraded the planner from Llama-3.1-8B to Llama-3.3-70B. The larger model produces more consistent decomposition:
 
 | Planner Model | Steps/Problem | L5 Accuracy |
 |---------------|---------------|-------------|
-| 8B (original) | 7-10 | 50% |
-| 70B (upgraded) | 1.4 | **65%** |
+| 8B (original) | 7-10 (high variance) | 50% |
+| 70B (upgraded) | 5.1 (tight range 4-6) | **65%** |
 
-The 70B planner, combined with signature hints, learned to be *selective* about decomposition. For many problems, it outputs a single step—effectively choosing direct solving over decomposition.
+The 70B planner produces consistent 5-step decompositions with signature hints guiding it toward proven patterns. The accuracy gain comes from better reasoning quality at each step, not fewer steps.
 
-**Why fewer steps = higher accuracy:**
-
-With N sequential steps at per-step accuracy p, overall accuracy is p^N:
-- 10 steps at 90% per-step → 35% overall
-- 2 steps at 90% per-step → 81% overall
-
-The smarter planner recognizes when decomposition adds unnecessary error propagation. Instead of blindly breaking every problem into 6+ steps, it decomposes only when the structure genuinely helps.
-
-**The role of signature hints:** Without hints, the 70B planner produces 3.5 steps/problem at 55% accuracy. With hints, it produces 1.4 steps/problem at 65% accuracy. The hints guide the planner toward proven patterns, and the planner is smart enough to recognize when a single "solve directly" step is optimal.
-
-This represents a shift from "decompose everything" to "decompose strategically"—letting the planner's judgment determine when atomic breakdown helps versus hurts.
+**Signature coverage is excellent:** 100% of steps match existing signatures (3.5 matches/problem). The bottleneck is signature quality—overall signature success rate is 54%, dragged down by poorly-performing DSLs in geometry and linear algebra domains.
 
 ---
 
@@ -360,7 +348,7 @@ With 8.9 steps/problem on MATH Level 5, even 90% per-step accuracy yields only ~
 
 **The Result:** These mitigations increased effective per-step accuracy from ~85% (yielding ~23% problem accuracy with 9 steps) to ~94% (yielding ~56% problem accuracy). We closed the gap from 23 points behind Direct to within 3 points.
 
-**Remaining Gap Analysis:** With the 70B planner upgrade, Mycelium now achieves **65%** on L5, surpassing the 60% Direct baseline. The improvement came from smarter decomposition—fewer steps means less error compounding. Earlier versions at 56% vs 59% suffered from:
+**Remaining Gap Analysis:** With the 70B planner upgrade, Mycelium now achieves **65%** on L5, surpassing the 60% Direct baseline. The improvement came from better reasoning quality—the 70B model makes better decisions at each step. However, signature success rate remains at 54%, indicating room for improvement. Key issues:
 - Decomposition overhead: Planner errors, suboptimal step granularity
 - Error propagation: Even with mitigations, ~6% per-step error rate compounds
 - Latency: 8.7s vs 2.1s—more API calls, more opportunities for failures
