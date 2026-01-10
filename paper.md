@@ -430,7 +430,7 @@ These 7 step types account for ~345 uses at <35% success. Fixing them could sign
 
 ### DSL Input Mapping: From 0% to 64% Confidence
 
-A subtle bug caused DSL execution to fail silently on most signatures. Analysis revealed:
+Early versions had a subtle bug where DSL execution failed silently on most signatures. Analysis revealed:
 
 **The Problem:**
 - DSL params expect names like `base`, `exponent`
