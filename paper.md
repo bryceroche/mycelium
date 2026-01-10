@@ -426,7 +426,15 @@ A diagnostic snapshot reveals where the system stands:
 | express_relation | 55 | 21.8% | Rewrite DSL |
 | apply_amgm | 72 | 33.3% | Rewrite DSL |
 
-These 7 step types account for ~345 uses at <35% success. Fixing them could significantly boost overall accuracy. The pattern: geometry and linear algebra DSLs are failing—these domains require more sophisticated parameter extraction than simple arithmetic.
+These 7 step types account for ~345 uses at <35% success. The pattern: geometry and linear algebra DSLs are failing—these domains require more sophisticated parameter extraction than simple arithmetic.
+
+**Resolution:** These step types were switched to `guidance` mode (LLM reasoning with method template injection, no DSL execution). The DSL scripts were too simplistic for their step type breadth:
+- `area_triangle` used `0.5 * base * height` but problems often provide coordinates, not base/height
+- `compute_magnitude` used a generator expression unsupported by the math DSL evaluator
+- `compute_angle` used `180 - a - b` (third angle formula) but matched diverse angle computations
+- `express_relation` used `a / b` for complex algebraic relationships
+
+For these broad step types, LLM flexibility beats brittle arithmetic. DSL works best for narrow, well-defined operations like `compute_percentage` or `solve_quadratic`.
 
 ### DSL Input Mapping: From 0% to 64% Confidence
 
