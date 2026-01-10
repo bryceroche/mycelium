@@ -227,6 +227,22 @@ When a step matches a signature, this template is injected into the LLM prompt a
 - **SymPy**: Symbolic algebra—`solve(Eq(a*x + b, 0), x)`
 - **Custom**: Registered operators—`apply_quadratic_formula(a, b, c)`
 
+**Real DSL Examples from Signature Database:**
+
+| Step Type | DSL Script | Fallback Guidance |
+|-----------|------------|-------------------|
+| cylinder_volume | `pi * r**2 * h` | V = πr²h |
+| normalize_vector | `v / sqrt(sum(x**2 for x in v))` | Divide vector by magnitude |
+| add_fractions | `a/b + c/d` | Find common denominator |
+| gcd_lcm_relation | `a * b == gcd * lcm` | a × b = gcd × lcm |
+| sum_ratio_parts | `sum(parts)` | Add all ratio parts |
+| expand_square | `y**2 + 2*a*y + a**2` | (y+a)² expansion |
+| rotation_matrix | `rotation_matrix(theta)` | [[cos θ, -sin θ], [sin θ, cos θ]] |
+| simplify_expr | `simplify(expression)` | Combine like terms |
+| define_sides | *(guidance only)* | Let sides be a, b, c with constraints |
+
+The last row shows a **guidance-only** signature: no executable DSL, just method template injection. Some steps are inherently semantic and benefit from LLM flexibility.
+
 **Parameter Matching:** The LLM generates parameter aliases during DSL creation (e.g., `percentage` → `pct`, `percent`). At runtime, alias matching maps context values to DSL parameters without additional LLM calls.
 
 **Example Evolution:**
@@ -244,6 +260,8 @@ When a step matches a signature, this template is injected into the LLM prompt a
 ```
 
 This is the "smart work once, execute forever" principle: invest LLM reasoning to generate the DSL once, then execute deterministically for all future matches.
+
+**Bulk DSL Generation with Claude Opus 4.5:** Rather than waiting for signatures to prove reliable organically, we batch-processed all ~1,300 signatures in the database through Claude Opus 4.5 to generate custom DSL scripts. For each signature, Claude analyzed the step type, example problems, and success patterns to write precise executable code. This one-time investment (~$15 in API costs) equipped 84% of typed signatures with deterministic DSL—turning months of organic learning into a single afternoon of batch processing. The remaining 16% are guidance-only signatures where LLM flexibility outperforms rigid formulas.
 
 ### 3.9 Infrastructure
 
