@@ -688,22 +688,29 @@ def execute_dsl_with_confidence(
 LLM_SCRIPT_REWRITE_PROMPT = """Rewrite this DSL script to use ONLY the available context variable names.
 
 Original script: {script}
+DSL parameters and their meanings: {params}
 
-Available context variables and their values:
+Available context variables:
 {context}
 
-Task: Rewrite the script replacing semantic variable names with the appropriate context variable names.
-The rewritten script must be a valid Python expression that can be evaluated.
+Task: Match each DSL parameter to the most semantically appropriate context variable, then rewrite the script.
+The rewritten script must be a valid Python expression using ONLY the context variable names.
 
 Example:
 Original: "base * height / 2"
-Context: {{"step_1": 10, "step_2": 5}}
-Rewritten: "step_1 * step_2 / 2"
+Params: ["base", "height"]
+Context:
+  step_1 (Calculate the width of the rectangle): 10
+  step_2 (Calculate the height of the rectangle): 5
+Rewritten: step_1 * step_2 / 2
 
 Example:
-Original: "solve(equation, x)"
-Context: {{"step_1": "x**2 - 4", "step_2": "x"}}
-Rewritten: "solve(step_1, x)"
+Original: "price * quantity"
+Params: ["price", "quantity"]
+Context:
+  step_1 (Find the unit price): 25
+  step_2 (Count the number of items): 4
+Rewritten: step_1 * step_2
 
 Return ONLY the rewritten script, nothing else:"""
 
@@ -712,6 +719,7 @@ async def llm_rewrite_script(
     dsl_spec: DSLSpec,
     context: dict[str, Any],
     client,  # GroqClient
+    step_descriptions: Optional[dict[str, str]] = None,
 ) -> Optional[str]:
     """Use LLM to rewrite DSL script using actual context variable names.
 
@@ -719,6 +727,7 @@ async def llm_rewrite_script(
         dsl_spec: The DSL specification with script to rewrite
         context: Runtime context with available values
         client: GroqClient instance for LLM calls
+        step_descriptions: Optional dict mapping step_id -> task description
 
     Returns:
         Rewritten script string, or None if rewriting failed
@@ -726,14 +735,23 @@ async def llm_rewrite_script(
     if not context:
         return None
 
-    # Format context for prompt (truncate large values)
-    context_str = json.dumps({
-        k: (v if not isinstance(v, str) or len(str(v)) < 100 else str(v)[:100] + "...")
-        for k, v in context.items()
-    }, indent=2)
+    # Format context with descriptions if available
+    context_lines = []
+    for k, v in context.items():
+        val_str = str(v) if not isinstance(v, str) or len(str(v)) < 100 else str(v)[:100] + "..."
+        if step_descriptions and k in step_descriptions:
+            desc = step_descriptions[k][:80]  # Truncate long descriptions
+            context_lines.append(f"  {k} ({desc}): {val_str}")
+        else:
+            context_lines.append(f"  {k}: {val_str}")
+    context_str = "\n".join(context_lines)
+
+    # Format params with any aliases
+    params_info = dsl_spec.params if dsl_spec.params else ["(no explicit params)"]
 
     prompt = LLM_SCRIPT_REWRITE_PROMPT.format(
         script=dsl_spec.script[:300],
+        params=params_info,
         context=context_str
     )
 
@@ -763,6 +781,7 @@ async def execute_dsl_with_llm_matching(
     client,  # GroqClient for LLM script rewriting
     min_confidence: float = 0.7,
     llm_threshold: float = 0.3,
+    step_descriptions: Optional[dict[str, str]] = None,
 ) -> tuple[Optional[Any], bool, float]:
     """Execute DSL with LLM-based script rewriting fallback.
 
@@ -775,6 +794,7 @@ async def execute_dsl_with_llm_matching(
         client: GroqClient for LLM calls when needed
         min_confidence: Minimum confidence to execute (default 0.7)
         llm_threshold: Below this confidence, try LLM script rewriting (default 0.3)
+        step_descriptions: Optional dict mapping step_id -> task description for better LLM matching
 
     Returns:
         (result, success, confidence) tuple
@@ -789,7 +809,7 @@ async def execute_dsl_with_llm_matching(
     if confidence < llm_threshold and client:
         logger.info("[dsl] Low confidence (%.2f), trying LLM script rewriting", confidence)
         try:
-            rewritten_script = await llm_rewrite_script(spec, inputs, client)
+            rewritten_script = await llm_rewrite_script(spec, inputs, client, step_descriptions)
             if rewritten_script:
                 # Create new DSLSpec with rewritten script and no params
                 # (since the script now uses actual context variable names)

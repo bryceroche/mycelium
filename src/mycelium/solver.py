@@ -460,6 +460,7 @@ class Solver:
         # Execute steps in order
         step_results = []
         context = {}
+        step_descriptions = {}  # Track what each step computes for better DSL param matching
         completed_steps: set[str] = set()
         execution_phases: dict[str, float] = {}
         steps_with_injection = 0
@@ -478,7 +479,7 @@ class Solver:
             # one failing step from cancelling others in the same level
             # Use recursive execution to decompose-until-confident
             level_results = await asyncio.gather(
-                *[self._execute_step_recursive(step, context, problem, depth=0) for step in level],
+                *[self._execute_step_recursive(step, context, step_descriptions, problem, depth=0) for step in level],
                 return_exceptions=True,
             )
 
@@ -503,6 +504,7 @@ class Solver:
 
                 step_results.append(result)
                 context[step.id] = result.result
+                step_descriptions[step.id] = step.task  # Track what this step computed
                 completed_steps.add(step.id)
 
                 if result.signature_used:
@@ -568,6 +570,7 @@ class Solver:
         self,
         step: Step,
         context: dict,
+        step_descriptions: dict,
         problem: str,
         depth: int = 0,
     ) -> StepResult:
@@ -582,6 +585,7 @@ class Solver:
         Args:
             step: The step to execute
             context: Results from prior steps
+            step_descriptions: Map of step_id -> task description for DSL param matching
             problem: The original problem (for context)
             depth: Current recursion depth
         """
@@ -624,11 +628,12 @@ class Solver:
 
             # Execute sub-steps recursively
             sub_context = dict(context)  # Copy parent context
+            sub_step_descriptions = {}  # Track sub-step descriptions
             sub_results = []
 
             for level in sub_plan.get_execution_order():
                 level_results = await asyncio.gather(
-                    *[self._execute_step_recursive(sub_step, sub_context, problem, depth + 1)
+                    *[self._execute_step_recursive(sub_step, sub_context, sub_step_descriptions, problem, depth + 1)
                       for sub_step in level],
                     return_exceptions=True,
                 )
@@ -643,6 +648,7 @@ class Solver:
                         )
                     sub_results.append(result)
                     sub_context[sub_step.id] = result.result
+                    sub_step_descriptions[sub_step.id] = sub_step.task  # Track description
 
             # Combine sub-results into single result for this step
             combined_result = await self._combine_sub_results(step.task, sub_results)
@@ -659,7 +665,7 @@ class Solver:
             )
 
         # Confidence is good enough, execute normally
-        return await self._execute_step_with_signature(step, context, problem)
+        return await self._execute_step_with_signature(step, context, step_descriptions, problem)
 
     async def _combine_sub_results(self, task: str, sub_results: list[StepResult]) -> str:
         """Combine sub-step results into a single result."""
@@ -694,6 +700,7 @@ Provide the combined result. End with RESULT: <your answer>"""
         self,
         step: Step,
         context: dict,
+        step_descriptions: dict,
         problem: str,
         decomposition_depth: int = 0,
     ) -> StepResult:
@@ -706,6 +713,7 @@ Provide the combined result. End with RESULT: <your answer>"""
         Args:
             step: The step to execute
             context: Results from previous steps
+            step_descriptions: Map of step_id -> task description for DSL param matching
             problem: The original problem text
             decomposition_depth: Current recursion depth (for preventing infinite loops)
 
@@ -817,6 +825,7 @@ Provide the combined result. End with RESULT: <your answer>"""
                     client=self.solver_client,
                     min_confidence=DSL_MIN_CONFIDENCE,
                     llm_threshold=DSL_LLM_THRESHOLD,
+                    step_descriptions=step_descriptions,
                 )
                 if dsl_success:
                     result = str(dsl_result)
@@ -1002,6 +1011,7 @@ Provide the combined result. End with RESULT: <your answer>"""
 
         # Execute sub-steps in dependency order
         sub_context = dict(context)  # Copy context
+        sub_step_descriptions = {}  # Track sub-step descriptions for DSL param matching
         sub_results = []
 
         # Clean up dependencies - only allow references to sibling sub-steps
@@ -1040,11 +1050,13 @@ Provide the combined result. End with RESULT: <your answer>"""
                 sub_result = await self._execute_step_with_signature(
                     step=sub_step,
                     context=sub_context,
+                    step_descriptions=sub_step_descriptions,
                     problem=problem,
                     decomposition_depth=decomposition_depth + 1,
                 )
                 sub_results.append(sub_result)
                 sub_context[sub_step.id] = sub_result.result
+                sub_step_descriptions[sub_step.id] = sub_step.task  # Track description
                 executed.add(sub_step.id)
                 remaining.remove(sub_step)
 

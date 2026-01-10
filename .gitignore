@@ -52,3 +52,4 @@ notes/
 !mycelium.db
 *.db-shm
 *.db-wal
+scripts/claude_custom_dsls*.json
