@@ -92,6 +92,8 @@ MIT
 
 Bryce Roche — [github.com/bryceroche/mycelium](https://github.com/bryceroche/mycelium)
 
+Built with [Claude Code](https://claude.ai/claude-code) (Anthropic)
+
 ---
 
 *Like mycelium networks that decompose organic matter and share nutrients across forests, this system decomposes complex problems into atomic patterns and distributes solutions through a shared database.*
