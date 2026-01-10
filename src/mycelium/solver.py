@@ -198,6 +198,8 @@ from mycelium.config import (
     CLIENT_DEFAULT_TEMPERATURE,
     PIPELINE_MIN_SIMILARITY,
     DSL_PROBATION_ENABLED,
+    DSL_MIN_CONFIDENCE,
+    DSL_LLM_THRESHOLD,
     RECURSIVE_DECOMPOSITION_ENABLED,
     RECURSIVE_MAX_DEPTH,
     RECURSIVE_CONFIDENCE_THRESHOLD,
@@ -208,6 +210,7 @@ from .step_signatures import (
     StepIOSchema,
     try_execute_formula,
     execute_dsl_with_confidence,
+    execute_dsl_with_llm_matching,
 )
 from .answer_norm import answers_equivalent_llm
 from .phase_constraints import (
@@ -807,10 +810,13 @@ Provide the combined result. End with RESULT: <your answer>"""
                 dsl_skipped_reason = avoid_reason
                 logger.debug("[council] DSL skipped (%s): step=%s", avoid_reason, step.id)
             else:
-                # Use confidence-based DSL execution (min 0.3 confidence)
-                # 0.3 allows positional matching up to 5 params (0.8^5 = 0.33)
-                dsl_result, dsl_success, dsl_confidence = execute_dsl_with_confidence(
-                    signature.dsl_script, numeric_inputs, min_confidence=0.3
+                # Use LLM-assisted DSL execution with param matching
+                # Config controls aggressive (data collection) vs conservative (benchmark) mode
+                dsl_result, dsl_success, dsl_confidence = await execute_dsl_with_llm_matching(
+                    signature.dsl_script, numeric_inputs,
+                    client=self.solver_client,
+                    min_confidence=DSL_MIN_CONFIDENCE,
+                    llm_threshold=DSL_LLM_THRESHOLD,
                 )
                 if dsl_success:
                     result = str(dsl_result)

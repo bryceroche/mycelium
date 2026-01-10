@@ -610,6 +610,23 @@ Early versions had a subtle bug where DSL execution failed silently on most sign
 
 **Result:** DSL injections per problem increased from ~1 to ~5. The "Calculate 2^10" step now executes via DSL in <1ms instead of requiring an LLM call.
 
+**LLM Script Rewriter:** When heuristic matching fails entirely (confidence near 0), we invoke Llama-70B to *rewrite the DSL script* using actual context variable names. The LLM sees:
+
+```
+Original script: base * height / 2
+Available context variables: {"step_1": 10, "step_2": 5}
+Task: Rewrite the script using ONLY the context variable names.
+```
+
+The LLM returns `step_1 * step_2 / 2`, which can then be executed directly with the context values. This is more robust than parameter mapping because it:
+1. Handles complex expressions with multiple variable references
+2. Works even when DSL params don't semantically match context keys
+3. Produces executable code rather than a mapping that might fail
+
+This adds ~500ms per step but converts a 0% confidence failure into successful DSL execution. The trade-off: one extra LLM call to avoid falling back to full LLM reasoning (which is slower and less deterministic).
+
+**Aggressive Injection Mode:** By default, the system tries DSL injection on *every* signature hit, even with low heuristic confidence. This "exploration mode" collects data on which DSLs work vs fail, enabling lift-based learning. For benchmarking (maximum accuracy), set `DSL_AGGRESSIVE_INJECTION = False` to only inject when confidence exceeds threshold.
+
 ### Embedding-Based Conceptual Detection
 
 The lift analysis revealed that keywords like "ratio" and "proportion" predict poor DSL performance. But keyword matching is brittle—it catches "calculate the ratio" but misses semantically equivalent phrasings like "find the proportion" or "determine the relative amounts."

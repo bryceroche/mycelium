@@ -2,6 +2,7 @@
 
 import json
 import math
+import sqlite3
 import uuid
 from contextlib import contextmanager
 from datetime import datetime
@@ -198,27 +199,38 @@ class StepSignatureDB:
         # Signatures created at depth > 0 are from decomposition, likely atomic
         is_atomic = 1 if origin_depth > 0 else 0
 
-        cursor = conn.execute(
-            """INSERT INTO step_signatures
-               (signature_id, centroid, step_type, description, method_name,
-                method_template, example_count, created_at, dsl_script,
-                origin_depth, is_atomic)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                sig_id,
-                pack_embedding(embedding),
-                step_type,
-                step_text[:200],
-                step_type,
-                f"Solve: {step_text[:100]}",
-                1,
-                now,
-                dsl_script,
-                origin_depth,
-                is_atomic,
-            ),
-        )
-        row_id = cursor.lastrowid
+        centroid_packed = pack_embedding(embedding)
+        try:
+            cursor = conn.execute(
+                """INSERT INTO step_signatures
+                   (signature_id, centroid, step_type, description, method_name,
+                    method_template, example_count, created_at, dsl_script,
+                    origin_depth, is_atomic)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    sig_id,
+                    centroid_packed,
+                    step_type,
+                    step_text[:200],
+                    step_type,
+                    f"Solve: {step_text[:100]}",
+                    1,
+                    now,
+                    dsl_script,
+                    origin_depth,
+                    is_atomic,
+                ),
+            )
+            row_id = cursor.lastrowid
+        except sqlite3.IntegrityError:
+            # Centroid collision - find existing signature
+            row = conn.execute(
+                "SELECT * FROM step_signatures WHERE centroid = ?",
+                (centroid_packed,)
+            ).fetchone()
+            if row:
+                return self._row_to_signature(row)
+            raise  # Re-raise if we can't find it
 
         # Also add as first example
         conn.execute(

@@ -34,6 +34,8 @@ from mycelium.step_signatures.dsl_executor import (
     try_execute_dsl,
     execute_dsl_from_json,
     execute_dsl_with_confidence,
+    execute_dsl_with_llm_matching,
+    llm_rewrite_script,
     register_operator,
 )
 
@@ -73,6 +75,8 @@ __all__ = [
     "try_execute_dsl",
     "execute_dsl_from_json",
     "execute_dsl_with_confidence",
+    "execute_dsl_with_llm_matching",
+    "llm_rewrite_script",
     "register_operator",
     "generate_dsl_for_signature",
     "maybe_generate_dsl",

@@ -39,6 +39,7 @@ class DSLLayer(Enum):
     SYMPY = "sympy"
     CUSTOM = "custom"
     GUIDANCE = "guidance"  # Fallback-only, no execution
+    NONE = "none"  # No DSL execution, use LLM fallback
 
 
 @dataclass
@@ -59,10 +60,18 @@ class DSLSpec:
         try:
             d = json.loads(json_str)
             layer = DSLLayer(d.get("type", "math"))
+            # Handle params as list or dict (extract keys if dict)
+            raw_params = d.get("params", [])
+            if isinstance(raw_params, dict):
+                params = list(raw_params.keys()) if raw_params else []
+            elif isinstance(raw_params, list):
+                params = raw_params
+            else:
+                params = []
             return cls(
                 layer=layer,
                 script=d.get("script", ""),
-                params=d.get("params", []),
+                params=params,
                 aliases=d.get("aliases", {}),
                 output_type=d.get("output_type", "numeric"),
                 fallback=d.get("fallback", "guidance"),
@@ -411,11 +420,17 @@ def _safe_eval_sympy(script: str, inputs: dict[str, Any]) -> Optional[Any]:
         }
         namespace.update(inputs)
 
-        # Add common symbols
-        namespace["x"] = sympy.Symbol("x")
-        namespace["y"] = sympy.Symbol("y")
-        namespace["z"] = sympy.Symbol("z")
-        namespace["n"] = sympy.Symbol("n")
+        # Add common symbols (all single letters plus common multi-letter)
+        for letter in "abcdefghijklmnopqrstuvwxyz":
+            namespace[letter] = sympy.Symbol(letter)
+        for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+            namespace[letter] = sympy.Symbol(letter)
+        # Common multi-letter symbols
+        for name in ["pi", "theta", "alpha", "beta", "gamma", "delta", "epsilon"]:
+            if hasattr(sympy, name):
+                namespace[name] = getattr(sympy, name)
+            else:
+                namespace[name] = sympy.Symbol(name)
 
         # Execute in restricted namespace
         result = eval(compile(tree, '<dsl>', 'eval'), {"__builtins__": {}}, namespace)
@@ -587,13 +602,17 @@ def try_execute_dsl(
         (result, success) tuple. If success=False, caller should fallback.
     """
     # Map inputs to param names using alias matching
-    mapped_inputs = dsl_spec.map_inputs(inputs)
-
-    # Check if we found all required params
-    missing = set(dsl_spec.params) - set(mapped_inputs.keys())
-    if missing:
-        logger.debug("DSL missing params after alias matching: %s (had keys: %s)", missing, list(inputs.keys()))
-        return None, False
+    if dsl_spec.params:
+        mapped_inputs = dsl_spec.map_inputs(inputs)
+        # Check if we found all required params
+        missing = set(dsl_spec.params) - set(mapped_inputs.keys())
+        if missing:
+            logger.debug("DSL missing params after alias matching: %s (had keys: %s)", missing, list(inputs.keys()))
+            return None, False
+    else:
+        # No explicit params - pass all inputs directly
+        # This allows scripts like "result = step_1 * 15" to work
+        mapped_inputs = inputs.copy()
 
     # GUIDANCE layer: immediately fall back to LLM guidance (no DSL execution)
     if dsl_spec.layer == DSLLayer.GUIDANCE:
@@ -663,3 +682,137 @@ def execute_dsl_with_confidence(
 
     result, success = try_execute_dsl(spec, inputs)
     return result, success, confidence
+
+
+# LLM-based script rewriter for DSL execution
+LLM_SCRIPT_REWRITE_PROMPT = """Rewrite this DSL script to use ONLY the available context variable names.
+
+Original script: {script}
+
+Available context variables and their values:
+{context}
+
+Task: Rewrite the script replacing semantic variable names with the appropriate context variable names.
+The rewritten script must be a valid Python expression that can be evaluated.
+
+Example:
+Original: "base * height / 2"
+Context: {{"step_1": 10, "step_2": 5}}
+Rewritten: "step_1 * step_2 / 2"
+
+Example:
+Original: "solve(equation, x)"
+Context: {{"step_1": "x**2 - 4", "step_2": "x"}}
+Rewritten: "solve(step_1, x)"
+
+Return ONLY the rewritten script, nothing else:"""
+
+
+async def llm_rewrite_script(
+    dsl_spec: DSLSpec,
+    context: dict[str, Any],
+    client,  # GroqClient
+) -> Optional[str]:
+    """Use LLM to rewrite DSL script using actual context variable names.
+
+    Args:
+        dsl_spec: The DSL specification with script to rewrite
+        context: Runtime context with available values
+        client: GroqClient instance for LLM calls
+
+    Returns:
+        Rewritten script string, or None if rewriting failed
+    """
+    if not context:
+        return None
+
+    # Format context for prompt (truncate large values)
+    context_str = json.dumps({
+        k: (v if not isinstance(v, str) or len(str(v)) < 100 else str(v)[:100] + "...")
+        for k, v in context.items()
+    }, indent=2)
+
+    prompt = LLM_SCRIPT_REWRITE_PROMPT.format(
+        script=dsl_spec.script[:300],
+        context=context_str
+    )
+
+    try:
+        messages = [{"role": "user", "content": prompt}]
+        response = await client.generate(messages, max_tokens=200, temperature=0.0)
+        # Clean up response
+        rewritten = response.strip()
+        # Handle markdown code blocks
+        if rewritten.startswith("```"):
+            lines = rewritten.split("\n")
+            rewritten = "\n".join(lines[1:-1] if lines[-1] == "```" else lines[1:])
+            rewritten = rewritten.strip()
+        # Remove language hints
+        if rewritten.startswith("python"):
+            rewritten = rewritten[6:].strip()
+        logger.info("[dsl] LLM rewrote script: '%s' -> '%s'", dsl_spec.script[:50], rewritten[:50])
+        return rewritten
+    except Exception as e:
+        logger.warning("[dsl] LLM script rewrite failed: %s", e)
+        return None
+
+
+async def execute_dsl_with_llm_matching(
+    dsl_json: str,
+    inputs: dict[str, Any],
+    client,  # GroqClient for LLM script rewriting
+    min_confidence: float = 0.7,
+    llm_threshold: float = 0.3,
+) -> tuple[Optional[Any], bool, float]:
+    """Execute DSL with LLM-based script rewriting fallback.
+
+    If heuristic confidence is below llm_threshold, use LLM to rewrite the script
+    using actual context variable names.
+
+    Args:
+        dsl_json: JSON-encoded DSL specification
+        inputs: Input values from context
+        client: GroqClient for LLM calls when needed
+        min_confidence: Minimum confidence to execute (default 0.7)
+        llm_threshold: Below this confidence, try LLM script rewriting (default 0.3)
+
+    Returns:
+        (result, success, confidence) tuple
+    """
+    spec = DSLSpec.from_json(dsl_json)
+    if not spec:
+        return None, False, 0.0
+
+    confidence = spec.compute_confidence(inputs)
+
+    # If confidence is low, try LLM script rewriting
+    if confidence < llm_threshold and client:
+        logger.info("[dsl] Low confidence (%.2f), trying LLM script rewriting", confidence)
+        try:
+            rewritten_script = await llm_rewrite_script(spec, inputs, client)
+            if rewritten_script:
+                # Create new DSLSpec with rewritten script and no params
+                # (since the script now uses actual context variable names)
+                rewritten_spec = DSLSpec(
+                    layer=spec.layer,
+                    script=rewritten_script,
+                    params=[],  # No params - script uses context var names directly
+                    aliases={},
+                    output_type=spec.output_type,
+                    fallback=spec.fallback,
+                )
+                # Execute with all inputs (script uses context var names)
+                result, success = try_execute_dsl(rewritten_spec, inputs)
+                logger.info("[dsl] Execution after rewrite: success=%s result=%s script=%s",
+                           success, result, rewritten_script[:50])
+                if success:
+                    return result, True, 1.0  # High confidence since LLM rewrote
+        except Exception as e:
+            logger.debug("[dsl] LLM script rewriting error: %s", e)
+
+    # Fall back to standard execution if confidence is sufficient
+    if confidence >= min_confidence:
+        result, success = try_execute_dsl(spec, inputs)
+        return result, success, confidence
+
+    return None, False, confidence
