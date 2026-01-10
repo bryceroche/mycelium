@@ -302,6 +302,31 @@ The combination of:
 
 ...turned a 23-point deficit into parity with Direct Llama.
 
+### Smarter Decomposition: 70B Planner Upgrade
+
+A counterintuitive discovery: **fewer steps can mean higher accuracy**.
+
+We upgraded the planner from Llama-3.1-8B to Llama-3.3-70B. The larger model produces dramatically different decomposition behavior:
+
+| Planner Model | Steps/Problem | L5 Accuracy |
+|---------------|---------------|-------------|
+| 8B (original) | 7-10 | 50% |
+| 70B (upgraded) | 1.4 | **65%** |
+
+The 70B planner, combined with signature hints, learned to be *selective* about decomposition. For many problems, it outputs a single step—effectively choosing direct solving over decomposition.
+
+**Why fewer steps = higher accuracy:**
+
+With N sequential steps at per-step accuracy p, overall accuracy is p^N:
+- 10 steps at 90% per-step → 35% overall
+- 2 steps at 90% per-step → 81% overall
+
+The smarter planner recognizes when decomposition adds unnecessary error propagation. Instead of blindly breaking every problem into 6+ steps, it decomposes only when the structure genuinely helps.
+
+**The role of signature hints:** Without hints, the 70B planner produces 3.5 steps/problem at 55% accuracy. With hints, it produces 1.4 steps/problem at 65% accuracy. The hints guide the planner toward proven patterns, and the planner is smart enough to recognize when a single "solve directly" step is optimal.
+
+This represents a shift from "decompose everything" to "decompose strategically"—letting the planner's judgment determine when atomic breakdown helps versus hurts.
+
 ---
 
 ## 5. Analysis
@@ -335,7 +360,7 @@ With 8.9 steps/problem on MATH Level 5, even 90% per-step accuracy yields only ~
 
 **The Result:** These mitigations increased effective per-step accuracy from ~85% (yielding ~23% problem accuracy with 9 steps) to ~94% (yielding ~56% problem accuracy). We closed the gap from 23 points behind Direct to within 3 points.
 
-**Remaining Gap Analysis:** At 56% vs 59%, Mycelium is still slightly behind Direct. The residual cost comes from:
+**Remaining Gap Analysis:** With the 70B planner upgrade, Mycelium now achieves **65%** on L5, surpassing the 60% Direct baseline. The improvement came from smarter decomposition—fewer steps means less error compounding. Earlier versions at 56% vs 59% suffered from:
 - Decomposition overhead: Planner errors, suboptimal step granularity
 - Error propagation: Even with mitigations, ~6% per-step error rate compounds
 - Latency: 8.7s vs 2.1s—more API calls, more opportunities for failures
@@ -525,7 +550,7 @@ Just as mycelium networks in nature decompose organic matter across ecosystems�
 We demonstrated that math problems decompose into a finite vocabulary of atomic signatures, and that **decomposition + signature reuse approaches direct LLM solving**:
 
 - **MATH Level 3**: 82% vs 80% (+2 points)
-- **MATH Level 5 (100 problems)**: 56% vs 59% (-3 points, up from initial 30%)
+- **MATH Level 5 (100 problems)**: **65%** vs 60% (+5 points, up from initial 30%)
 
 The journey revealed critical insights:
 
