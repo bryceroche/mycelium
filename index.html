@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FungiFactor - Decompose Problems Like Nature Does</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --text: #e6edf3;
+            --muted: #8b949e;
+            --accent: #7c6f64;
+            --highlight: #d4a574;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 4rem 2rem;
+        }
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+        .mushroom { font-size: 4rem; margin-bottom: 1rem; }
+        .tagline {
+            font-size: 1.4rem;
+            color: var(--muted);
+            margin-bottom: 3rem;
+        }
+        .bio-box {
+            background: linear-gradient(135deg, #1a1f25 0%, #151a20 100%);
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .bio-box p {
+            color: var(--highlight);
+            font-style: italic;
+            font-size: 1.1rem;
+        }
+        h2 {
+            font-size: 1.5rem;
+            margin: 2rem 0 1rem;
+            color: var(--highlight);
+        }
+        p { margin-bottom: 1rem; color: var(--muted); }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        .feature {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+        .feature h3 {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+        .feature p { font-size: 0.9rem; margin: 0; }
+        .cta {
+            display: inline-block;
+            background: var(--highlight);
+            color: var(--bg);
+            padding: 0.8rem 1.5rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 1rem;
+            transition: opacity 0.2s;
+        }
+        .cta:hover { opacity: 0.9; }
+        .stats {
+            display: flex;
+            gap: 3rem;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+        .stat h4 {
+            font-size: 2rem;
+            color: var(--highlight);
+        }
+        .stat p { font-size: 0.9rem; margin: 0; }
+        footer {
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 1px solid #30363d;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+        code {
+            background: #161b22;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="mushroom">🍄</div>
+        <h1>FungiFactor</h1>
+        <p class="tagline">Decompose problems like nature does.</p>
+
+        <div class="bio-box">
+            <p>Mycelium is the underground root network of fungi—threadlike filaments that decompose organic matter into simple molecules and distribute nutrients across entire forests. We apply this principle to AI reasoning.</p>
+        </div>
+
+        <h2>The Idea</h2>
+        <p>Just as composite numbers factor into primes, complex problems factor into reusable atomic patterns. FungiFactor (powered by Mycelium) maintains a signature database—a "table of primes" for reasoning—that grows smarter with every problem solved.</p>
+
+        <div class="feature-grid">
+            <div class="feature">
+                <h3>🧬 Decompose</h3>
+                <p>Break complex problems into atomic steps using DAG-based planning</p>
+            </div>
+            <div class="feature">
+                <h3>🔍 Match</h3>
+                <p>Find similar solved patterns via cosine similarity on embeddings</p>
+            </div>
+            <div class="feature">
+                <h3>⚡ Execute</h3>
+                <p>Run proven solutions instantly—DSL for speed, LLM for flexibility</p>
+            </div>
+            <div class="feature">
+                <h3>🌱 Learn</h3>
+                <p>Store new patterns. The network grows. Future problems get faster.</p>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat">
+                <h4>82%</h4>
+                <p>accuracy (vs 80% direct)</p>
+            </div>
+            <div class="stat">
+                <h4>88.6%</h4>
+                <p>signature match rate</p>
+            </div>
+            <div class="stat">
+                <h4>4.4x</h4>
+                <p>step reuse ratio</p>
+            </div>
+            <div class="stat">
+                <h4>&lt;1ms</h4>
+                <p>DSL execution</p>
+            </div>
+        </div>
+
+        <h2>Beyond Math</h2>
+        <p>While we validated on mathematical reasoning, the architecture is domain-agnostic. Code patterns, legal precedents, diagnostic workflows, research methodologies—any domain with reusable sub-problems can grow its own signature network.</p>
+
+        <a href="https://github.com/bryceroche/mycelium" class="cta">View on GitHub →</a>
+
+        <footer>
+            <p>Built by Bryce Roche • Developed with Claude (Anthropic)</p>
+            <p style="margin-top: 0.5rem;">Why did the signature database throw a party? Because it's a <em>fungi</em> to be around.</p>
+        </footer>
+    </div>
+</body>
+</html>
