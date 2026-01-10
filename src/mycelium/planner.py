@@ -250,14 +250,16 @@ class Planner:
         for line in response.split("\n"):
             line = line.strip()
 
-            # New step
-            if line.startswith("- id:"):
+            # New step - flexible matching for various formats
+            # Matches: "- id: step_1", "-id: step_1", "id: step_1", "- id:step_1"
+            id_match = re.match(r'^-?\s*id\s*:\s*(.+)$', line, re.IGNORECASE)
+            if id_match:
                 if current_step:
                     # Validate before appending
                     if not current_step.task:
                         parse_warnings.append(f"Step '{current_step.id}' has empty task")
                     steps.append(current_step)
-                step_id = line.split(":", 1)[1].strip()
+                step_id = id_match.group(1).strip()
                 if not step_id:
                     parse_warnings.append("Found step with empty ID, using 'unnamed'")
                     step_id = f"unnamed_{len(steps)}"
@@ -266,12 +268,12 @@ class Planner:
                     step_id = "".join(c if c.isalnum() or c == "_" else "_" for c in step_id)
                 current_step = Step(id=step_id, task="", depends_on=[])
 
-            # Task description
-            elif line.startswith("task:") and current_step:
+            # Task description - flexible matching
+            elif re.match(r'^\s*task\s*:', line, re.IGNORECASE) and current_step:
                 current_step.task = line.split(":", 1)[1].strip()
 
-            # Dependencies
-            elif line.startswith("depends_on:") and current_step:
+            # Dependencies - flexible matching
+            elif re.match(r'^\s*depends_on\s*:', line, re.IGNORECASE) and current_step:
                 deps_str = line.split(":", 1)[1].strip()
                 # Parse list like [step_1, step_2] or []
                 deps_str = deps_str.strip("[]")
@@ -291,6 +293,7 @@ class Planner:
         # Ensure we have at least one step
         if not steps:
             logger.warning("No steps parsed from planner response, using fallback single step")
+            logger.warning(f"[planner] Raw LLM response that failed parsing:\n{response}")
             steps = [Step(id="solve", task="Solve the problem directly", depends_on=[])]
 
         # Validate the resulting plan structure
