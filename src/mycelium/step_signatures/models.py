@@ -105,6 +105,10 @@ class StepSignature:
     canonical_parent_id: Optional[int] = None  # If variant, points to canonical parent
     variant_count: int = 0  # Number of variants derived from this signature (if canonical)
 
+    # Decomposition tracking
+    origin_depth: int = 0  # Decomposition depth at which this signature was created
+    is_atomic: bool = False  # True if this signature represents an atomic operation
+
     # Metadata
     created_at: Optional[str] = None
     last_used_at: Optional[str] = None

@@ -96,6 +96,12 @@ def init_db(conn) -> None:
     if "dsl_version_uses" not in columns:
         conn.execute("ALTER TABLE step_signatures ADD COLUMN dsl_version_uses INTEGER DEFAULT 0")
 
+    if "origin_depth" not in columns:
+        conn.execute("ALTER TABLE step_signatures ADD COLUMN origin_depth INTEGER DEFAULT 0")
+
+    if "is_atomic" not in columns:
+        conn.execute("ALTER TABLE step_signatures ADD COLUMN is_atomic INTEGER DEFAULT 0")
+
     conn.commit()
 
 STEP_SCHEMA = SQLITE_SCHEMA

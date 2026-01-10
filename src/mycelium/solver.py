@@ -5,13 +5,23 @@ Enhanced Flow:
                                       ↓
                           Step → embed → find matching StepSignature cluster
                                       ↓
-                          [Match?] → Inject method for that step type
+                          [Match?] → Try DSL execution
+                                      ↓
+                          [DSL low confidence?] → DECOMPOSE FURTHER (recursive)
+                                      ↓
+                          [DSL high confidence?] → Execute deterministically
                           [No match?] → Solve step, create new signature cluster
                                       ↓
                           Track success → update cluster stats
 
 Key improvement: Signatures are stored at the STEP level, not whole-problem level.
 This enables reuse of solution methods across different problems that share step types.
+
+Recursive Decomposition:
+    When a DSL has low confidence (can't map parameters reliably), we decompose
+    the step into smaller sub-steps until we reach truly atomic operations that
+    DSLs can handle. This is the key to self-improvement - complex steps that
+    fail get broken down into simpler patterns that can be learned.
 """
 
 import asyncio
@@ -23,6 +33,13 @@ from enum import Enum
 from typing import Optional
 
 import numpy as np
+
+from .step_decomposer import (
+    StepDecomposer,
+    DecomposedStep,
+    MAX_DECOMPOSITION_DEPTH,
+    DECOMPOSITION_CONFIDENCE_THRESHOLD,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -239,6 +256,11 @@ class StepResult:
     output_valid: bool = True
     output_validation_msg: str = ""
     used_io_schema: bool = False
+
+    # Decomposition tracking
+    decomposed: bool = False
+    decomposition_depth: int = 0
+    sub_step_results: list["StepResult"] = field(default_factory=list)
 
 
 @dataclass
@@ -668,8 +690,19 @@ Provide the combined result. End with RESULT: <your answer>"""
         step: Step,
         context: dict,
         problem: str,
+        decomposition_depth: int = 0,
     ) -> StepResult:
         """Execute a step with signature lookup and potential injection.
+
+        Supports recursive decomposition: when DSL confidence is low, the step
+        is broken into sub-steps and solved recursively until atomic operations
+        are reached.
+
+        Args:
+            step: The step to execute
+            context: Results from previous steps
+            problem: The original problem text
+            decomposition_depth: Current recursion depth (for preventing infinite loops)
 
         Supports three modes:
         - I/O schema mode: Use structured inputs and output format from schema
@@ -781,8 +814,32 @@ Provide the combined result. End with RESULT: <your answer>"""
                     was_injected = True
                     similarity = self._get_similarity(embedding, signature)
                     logger.debug("[council] DSL executed: step=%s result=%s confidence=%.2f", step.id, result, dsl_confidence)
-                elif dsl_confidence < 0.5:
-                    logger.debug("[council] DSL skipped (low confidence %.2f): step=%s", dsl_confidence, step.id)
+                elif dsl_confidence < DECOMPOSITION_CONFIDENCE_THRESHOLD:
+                    # LOW CONFIDENCE: Trigger recursive decomposition
+                    # Instead of LLM fallback, break step into smaller sub-steps
+                    if decomposition_depth < MAX_DECOMPOSITION_DEPTH:
+                        logger.info(
+                            "[council] DSL low confidence (%.2f) - decomposing step=%s at depth=%d",
+                            dsl_confidence, step.id, decomposition_depth
+                        )
+                        decomposed_result = await self._decompose_and_solve_step(
+                            step=step,
+                            context=context,
+                            problem=problem,
+                            embedding=embedding,
+                            signature=signature,
+                            is_new=is_new,
+                            decomposition_depth=decomposition_depth,
+                        )
+                        if decomposed_result is not None:
+                            return decomposed_result
+                        # If decomposition failed, fall through to LLM
+                        logger.debug("[council] Decomposition failed, falling back to LLM: step=%s", step.id)
+                    else:
+                        logger.debug(
+                            "[council] DSL skipped (low confidence %.2f, max depth): step=%s",
+                            dsl_confidence, step.id
+                        )
 
         # FORMULA MODE: AST-based formula execution
         if mode_enabled("formula") and not direct_execution and io_schema.formula and numeric_inputs:
@@ -880,6 +937,124 @@ Provide the combined result. End with RESULT: <your answer>"""
             output_valid=output_valid,
             output_validation_msg=output_validation_msg,
             used_io_schema=bool(io_schema.inputs),
+        )
+
+    async def _decompose_and_solve_step(
+        self,
+        step: Step,
+        context: dict,
+        problem: str,
+        embedding: np.ndarray,
+        signature: "StepSignature",
+        is_new: bool,
+        decomposition_depth: int,
+    ) -> Optional[StepResult]:
+        """Decompose a complex step into sub-steps and solve recursively.
+
+        This is triggered when DSL confidence is too low, indicating the step
+        is too complex for deterministic execution. We break it into smaller
+        sub-steps until we reach atomic operations.
+
+        Args:
+            step: The step to decompose
+            context: Results from previous steps
+            problem: The original problem text
+            embedding: The step's embedding vector
+            signature: The matched signature (for stats tracking)
+            is_new: Whether this is a new signature
+            decomposition_depth: Current recursion depth
+
+        Returns:
+            StepResult if decomposition succeeded, None otherwise
+        """
+        from .planner import Step as PlannerStep
+
+        # Create decomposer (lazy - only when needed)
+        if not hasattr(self, '_step_decomposer'):
+            self._step_decomposer = StepDecomposer()
+
+        # Decompose the step
+        decomposed = await self._step_decomposer.decompose_step(
+            step=step,
+            context=context,
+            depth=decomposition_depth,
+        )
+
+        # If couldn't decompose (atomic or error), return None to fall back to LLM
+        if decomposed.is_atomic or len(decomposed.sub_steps) == 0:
+            logger.debug("[council] Step is atomic, cannot decompose further: step=%s", step.id)
+            return None
+
+        logger.info(
+            "[council] Decomposed step=%s into %d sub-steps at depth=%d",
+            step.id, len(decomposed.sub_steps), decomposition_depth
+        )
+
+        # Execute sub-steps in dependency order
+        sub_context = dict(context)  # Copy context
+        sub_results = []
+
+        # Simple topological sort based on depends_on
+        executed = set()
+        remaining = list(decomposed.sub_steps)
+
+        while remaining:
+            # Find steps whose dependencies are satisfied
+            ready = [
+                s for s in remaining
+                if all(d in executed or d in context for d in s.depends_on)
+            ]
+
+            if not ready:
+                # Circular dependency or missing dep
+                logger.warning("[council] Cannot schedule remaining sub-steps: %s",
+                             [s.id for s in remaining])
+                break
+
+            # Execute ready steps (could parallelize, but sequential for simplicity)
+            for sub_step in ready:
+                sub_result = await self._execute_step_with_signature(
+                    step=sub_step,
+                    context=sub_context,
+                    problem=problem,
+                    decomposition_depth=decomposition_depth + 1,
+                )
+                sub_results.append(sub_result)
+                sub_context[sub_step.id] = sub_result.result
+                executed.add(sub_step.id)
+                remaining.remove(sub_step)
+
+        if not sub_results:
+            logger.warning("[council] No sub-steps executed for step=%s", step.id)
+            return None
+
+        # Aggregate sub-results
+        if len(sub_results) == 1:
+            aggregated_result = sub_results[-1].result
+        else:
+            # Use the result of the last step (usually "combine results")
+            aggregated_result = sub_results[-1].result
+
+        # Track that we used decomposition
+        logger.info(
+            "[council] Decomposition complete: step=%s sub_steps=%d result=%s",
+            step.id, len(sub_results), aggregated_result[:50] if aggregated_result else "None"
+        )
+
+        # Return aggregated result
+        return StepResult(
+            step_id=step.id,
+            task=step.task,
+            result=aggregated_result,
+            embedding=embedding,
+            signature_matched=signature,
+            signature_used=None,  # Not directly injected
+            signature_similarity=0.0,
+            is_new_signature=is_new,
+            was_injected=False,  # Decomposition, not injection
+            decomposed=True,  # Mark as decomposed
+            decomposition_depth=decomposition_depth + 1,
+            sub_step_results=sub_results,  # Track all sub-step results
         )
 
     def _get_similarity(self, embedding: np.ndarray, signature: StepSignature) -> float:
