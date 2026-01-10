@@ -21,12 +21,14 @@ from .config import (
     PLANNER_DEFAULT_TEMPERATURE,
     RECURSIVE_MAX_DEPTH,
     RECURSIVE_CONFIDENCE_THRESHOLD,
+    RECURSIVE_DECOMPOSITION_ENABLED,
 )
 
 logger = logging.getLogger(__name__)
 
 # Use config values for consistency
-MAX_DECOMPOSITION_DEPTH = RECURSIVE_MAX_DEPTH
+# If decomposition is disabled (aggressive injection mode), set depth to 0 to prevent any decomposition
+MAX_DECOMPOSITION_DEPTH = RECURSIVE_MAX_DEPTH if RECURSIVE_DECOMPOSITION_ENABLED else 0
 DECOMPOSITION_CONFIDENCE_THRESHOLD = RECURSIVE_CONFIDENCE_THRESHOLD
 
 STEP_DECOMPOSER_SYSTEM = """You are a mathematical step decomposer. Given a complex step that couldn't be executed directly, break it into simpler atomic sub-steps.

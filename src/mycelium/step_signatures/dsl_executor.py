@@ -730,10 +730,12 @@ async def llm_rewrite_script(
         step_descriptions: Optional dict mapping step_id -> task description
 
     Returns:
-        Rewritten script string, or None if rewriting failed
+        Rewritten script string, or original script if rewriting not possible
     """
     if not context:
-        return None
+        # Return original script - let positional fallback try
+        logger.debug("[dsl] No context for rewrite, returning original script")
+        return dsl_spec.script
 
     # Format context with descriptions if available
     context_lines = []
@@ -771,8 +773,8 @@ async def llm_rewrite_script(
         logger.info("[dsl] LLM rewrote script: '%s' -> '%s'", dsl_spec.script[:50], rewritten[:50])
         return rewritten
     except Exception as e:
-        logger.warning("[dsl] LLM script rewrite failed: %s", e)
-        return None
+        logger.warning("[dsl] LLM script rewrite failed: %s, using original", e)
+        return dsl_spec.script  # Return original - let positional fallback try
 
 
 async def execute_dsl_with_llm_matching(
@@ -811,22 +813,26 @@ async def execute_dsl_with_llm_matching(
         try:
             rewritten_script = await llm_rewrite_script(spec, inputs, client, step_descriptions)
             if rewritten_script:
-                # Create new DSLSpec with rewritten script and no params
-                # (since the script now uses actual context variable names)
+                # Check if script was actually rewritten or returned original
+                is_rewritten = (rewritten_script != spec.script)
+
+                # Create new DSLSpec with rewritten script
+                # If rewritten: no params needed (script uses context var names)
+                # If original: keep params for positional fallback matching
                 rewritten_spec = DSLSpec(
                     layer=spec.layer,
                     script=rewritten_script,
-                    params=[],  # No params - script uses context var names directly
-                    aliases={},
+                    params=[] if is_rewritten else spec.params,
+                    aliases={} if is_rewritten else spec.aliases,
                     output_type=spec.output_type,
                     fallback=spec.fallback,
                 )
-                # Execute with all inputs (script uses context var names)
+                # Execute with all inputs
                 result, success = try_execute_dsl(rewritten_spec, inputs)
-                logger.info("[dsl] Execution after rewrite: success=%s result=%s script=%s",
-                           success, result, rewritten_script[:50])
+                logger.info("[dsl] Execution after rewrite: success=%s result=%s script=%s rewritten=%s",
+                           success, result, rewritten_script[:50], is_rewritten)
                 if success:
-                    return result, True, 1.0  # High confidence since LLM rewrote
+                    return result, True, 1.0 if is_rewritten else confidence
         except Exception as e:
             logger.debug("[dsl] LLM script rewriting error: %s", e)
 

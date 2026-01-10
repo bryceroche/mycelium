@@ -41,7 +41,8 @@ PIPELINE_MIN_SIMILARITY = 0.60  # Raised from 0.50 to reduce false matches
 
 # Recursive Decomposition (decompose-until-confident)
 # When a step has low confidence, decompose it further into sub-steps
-RECURSIVE_DECOMPOSITION_ENABLED = True
+# Disabled in aggressive injection mode to maximize DSL execution attempts
+RECURSIVE_DECOMPOSITION_ENABLED = not DSL_AGGRESSIVE_INJECTION
 RECURSIVE_MAX_DEPTH = 2  # Maximum levels of re-decomposition
 RECURSIVE_CONFIDENCE_THRESHOLD = 0.5  # Re-decompose if signature confidence below this
 RECURSIVE_MAX_TOTAL_STEPS = 50  # Hard limit on total sub-steps per problem to prevent runaway
