@@ -102,11 +102,104 @@ Tight clusters (cohesion > 0.5) get stricter thresholds; loose clusters get leni
 
 Matched signatures execute via formula evaluation, procedural guidance, or hints. Unmatched steps use pure LLM reasoning. After solving, new patterns create signatures; signatures with >=3 uses and >=70% success become "reliable" and inject their templates.
 
-### 3.6 Cold Start
+### 3.6 Recursive Decomposition
+
+When a DSL has low confidence for a step, that's a signal the step is too complex. Rather than falling back to pure LLM reasoning, we **decompose further** until reaching truly atomic operations.
+
+**The Algorithm:**
+
+```
+StepDecomposer (step_decomposer.py)
+├── decompose_step(step, context, depth) → DecomposedStep
+│   ├── Calls LLM to break step into 2-4 sub-steps
+│   ├── Returns sub-steps with dependency graph
+│   └── Respects MAX_DECOMPOSITION_DEPTH = 3
+│
+Solver._execute_step_with_signature(step, depth)
+├── Find/create signature for step
+├── If DSL confidence < 0.5 AND depth < max:
+│   └── Call _decompose_and_solve_step()
+│       ├── Decompose via StepDecomposer
+│       ├── Execute sub-steps recursively (depth + 1)
+│       └── Aggregate results
+└── Else: execute via DSL or LLM fallback
+```
+
+**Atomic Signature Tracking:**
+
+Signatures created during decomposition are marked with their origin depth:
+
+```python
+signature = db.find_or_create(
+    step_text=step.task,
+    embedding=embedding,
+    origin_depth=decomposition_depth,  # Track provenance
+)
+# Signatures with origin_depth > 0 are marked is_atomic=True
+```
+
+**Example Execution:**
+
+```
+Problem: "What is 15% of 240?"
+
+Step 1: "Convert 15% to decimal"
+        ↓ DSL confidence: 0.0 (new signature)
+        ↓ DECOMPOSE at depth=0
+
+  Sub-step 1.1: "Identify the percentage value"
+                ↓ DSL confidence: 0.0
+                ↓ DECOMPOSE at depth=1
+
+    Sub-step 1.1.1: "Extract number 15"
+                    ↓ Depth=2, DECOMPOSE
+
+      Sub-step 1.1.1.1: "Parse integer"
+                        ↓ Depth=3 (MAX), LLM fallback
+                        ↓ Result: 15
+
+  Sub-step 1.2: "Divide by 100"
+                ↓ confidence: 0.91 ✓
+                ↓ Execute DSL: 15 / 100 = 0.15
+
+Step 2: "Multiply 0.15 × 240"
+        ↓ confidence: 0.94 ✓
+        ↓ Execute DSL: 36
+
+Answer: 36 ✓
+```
+
+**The Self-Improvement Loop:**
+
+```
+Complex Step (low confidence)
+    ↓ decompose
+Sub-steps (still low confidence)
+    ↓ decompose
+Atomic sub-steps (LLM fallback at max depth)
+    ↓ success recorded
+New atomic signatures created (is_atomic=True)
+    ↓ next time same pattern appears
+Match atomic signature → DSL execution (no decomposition)
+```
+
+Each problem that triggers deep decomposition *teaches* the system new atomic patterns. Over time, decomposition becomes rarer as the atomic vocabulary grows.
+
+**Configuration:**
+- `MAX_DECOMPOSITION_DEPTH = 3` — prevent infinite recursion
+- `DECOMPOSITION_CONFIDENCE_THRESHOLD = 0.5` — trigger below this
+
+**Why This Works:**
+1. **Self-adapting**: The system finds the right granularity automatically
+2. **No hardcoding**: DSL-hostile types get decomposed; DSL-friendly execute directly
+3. **Builds vocabulary**: Atomic signatures accumulate, improving future coverage
+4. **Depth tracking**: Signatures know if they're atomic (origin_depth > 0)
+
+### 3.7 Cold Start
 
 With an empty database, no signatures exist to match against so every step is novel and solved from scratch by the LLM. The system bootstraps by storing successful solutions as new signatures. Initially, success rate is 0% for new signatures so we need to boost new signature injection to sample their success rates. As signatures accumulate and prove reliable, injection rates climb. We observe a characteristic warm-up period of ~50-100 problems before meaningful reuse emerges. This cold start cost is amortized over the system's lifetime as the signature library matures.
 
-### 3.7 From Method Template to DSL
+### 3.8 From Method Template to DSL
 
 Each signature stores a **method_template**—a natural language instruction describing how to solve that type of step. For example:
 
@@ -152,7 +245,7 @@ When a step matches a signature, this template is injected into the LLM prompt a
 
 This is the "smart work once, execute forever" principle: invest LLM reasoning to generate the DSL once, then execute deterministically for all future matches.
 
-### 3.8 Infrastructure
+### 3.9 Infrastructure
 
 **Storage:** SQLite database stores signatures, embeddings (as packed binary), examples, and statistics. Single-file deployment with no external database dependencies.
 
@@ -477,69 +570,6 @@ Some step types cluster steps that *sound* similar but require fundamentally dif
 | `evaluate_expression` | `apply_amgm` |
 
 The distinction: DSL-friendly types have **one canonical formula** with **predictable input format**. DSL-hostile types are **semantic umbrellas** covering diverse operations.
-
-### Decompose Until Confident
-
-Rather than hardcoding which step types are "DSL-hostile," we implemented a dynamic strategy: **decompose until confident**.
-
-**The Algorithm:**
-
-```python
-def execute_step_recursive(step, depth=0):
-    signature, confidence = match_signature(step)
-
-    if confidence < THRESHOLD and depth < MAX_DEPTH:
-        # Low confidence → decompose further
-        sub_steps = planner.decompose(step.task)
-        sub_results = [execute_step_recursive(s, depth+1) for s in sub_steps]
-        return combine(sub_results)
-    else:
-        # High confidence → execute directly
-        return execute_via_dsl_or_llm(step, signature)
-```
-
-**Configuration:**
-- `RECURSIVE_CONFIDENCE_THRESHOLD = 0.5` — re-decompose if below this
-- `RECURSIVE_MAX_DEPTH = 2` — prevent infinite decomposition
-
-**Example Execution:**
-
-```
-Step: "Find area of triangle at (0,0), (3,0), (0,4)"
-      ↓ match signature
-Signature: area_triangle (confidence: 0.42) ← below threshold!
-      ↓ re-decompose
-Sub-steps:
-  1. "Calculate distance from (0,0) to (3,0)" → confidence: 0.91 ✓
-  2. "Calculate distance from (3,0) to (0,4)" → confidence: 0.89 ✓
-  3. "Compute area with base=3, height=4"     → confidence: 0.94 ✓
-      ↓ execute sub-steps via DSL
-Combined result: 6
-```
-
-**Why This Works:**
-
-1. **Self-adapting granularity**: The system automatically finds the right decomposition depth
-2. **No hardcoded lists**: DSL-hostile types get decomposed; DSL-friendly types execute directly
-3. **Library-aware**: As the signature library grows, fewer re-decompositions needed
-4. **Preserves DSL benefits**: Sub-steps often match high-confidence atomic signatures
-
-**The Insight:** Confidence score is a signal for "do I understand this step well enough?" Low confidence means the step type is too broad—decompose until you reach steps the library truly knows.
-
-**Tradeoffs:**
-- Extra LLM calls for decomposition (mitigated by max depth)
-- More steps = more error compounding (mitigated by higher per-step confidence)
-- Latency increases with depth (acceptable for accuracy gains)
-
-**Alternative Approaches Considered:**
-
-| Approach | Pros | Cons |
-|----------|------|------|
-| **Guidance mode** | Simple, no extra LLM calls | No determinism, slower |
-| **Normalize→Compute** | Preserves DSL speed | Requires format detection per type |
-| **Decompose until confident** ✓ | Self-adapting, uses existing planner | Extra decomposition calls |
-
-We chose recursive decomposition because it leverages existing infrastructure (the planner) and automatically adapts to the signature library's coverage.
 
 ### DSL Input Mapping: From 0% to 64% Confidence
 
