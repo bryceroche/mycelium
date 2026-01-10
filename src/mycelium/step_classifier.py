@@ -97,7 +97,7 @@ class StepClassifier:
 
     def __init__(
         self,
-        model: str = "llama-3.1-8b-instant",  # Fast/cheap model for classification
+        model: str = "llama-3.3-70b-versatile",  # Use same model as solver
         use_llm: bool = True,
         cache_size: int = 1024,
     ):

@@ -642,10 +642,10 @@ class Solver:
                 dsl_skipped_reason = avoid_reason
                 logger.debug("[council] DSL skipped (%s): step=%s", avoid_reason, step.id)
             else:
-                # Use confidence-based DSL execution (min 0.5 confidence)
-                # 0.5 allows positional matching (2 params = 0.8^2 = 0.64)
+                # Use confidence-based DSL execution (min 0.3 confidence)
+                # 0.3 allows positional matching up to 5 params (0.8^5 = 0.33)
                 dsl_result, dsl_success, dsl_confidence = execute_dsl_with_confidence(
-                    signature.dsl_script, numeric_inputs, min_confidence=0.5
+                    signature.dsl_script, numeric_inputs, min_confidence=0.3
                 )
                 if dsl_success:
                     result = str(dsl_result)
