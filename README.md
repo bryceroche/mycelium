@@ -19,27 +19,52 @@ On MATH benchmark problems:
 
 | Level | Direct LLM | Mycelium |
 |-------|-----------|----------|
-| Level 3 (Medium) | 80% | **82%** |
-| Level 5 (Hardest) | 60% | **60%** |
+| Level 3 (Medium) | 80% | **82%** (+2) |
+| Level 5 (Hardest) | 60% | **65%** (+5) |
 
 Key metrics:
-- **88.6%** signature match rate
+- **100%** signature match rate
 - **4.4x** step reuse ratio (299 step instances → 68 unique signatures)
-- **~0ms** DSL execution vs ~500ms LLM calls
-
-## Key Insights
-
-1. **Context matters**: Every step receives the original problem, not just dependency outputs
-2. **Selective DSL**: Only typed signatures (compute_sum, solve_quadratic) get deterministic execution—general reasoning needs LLM flexibility
-3. **Lift-based gating**: Same DSL can help (+55% lift) or hurt (-40% lift) depending on semantic context; tracked per-signature with automatic fallback
+- **<1ms** DSL execution vs ~500ms LLM calls
 
 ## Quick Start
 
 ```bash
+# Clone and setup
+git clone https://github.com/bryceroche/mycelium.git
+cd mycelium
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+
+# Set API key (get free key at console.groq.com)
 export GROQ_API_KEY=your_key
+
+# Test it works
 python -m mycelium.solver "What is 15% of 80?"
 ```
+
+## Reproduce Our Results
+
+```bash
+# Run Level 3 benchmark (50 problems, ~5 min)
+python scripts/pipeline_runner.py --dataset math --level 3 --problems 50
+
+# Run Level 5 benchmark (100 problems, ~15 min)
+python scripts/pipeline_runner.py --dataset math --level 5 --problems 100
+
+# Results saved to results/pipeline_results.json
+```
+
+**Expected output:**
+```
+Level 3: ~82% accuracy (41/50)
+Level 5: ~65% accuracy (65/100)
+```
+
+**Requirements:**
+- Python 3.11+
+- ~2GB disk (for sentence-transformers model)
+- Groq API key (free tier: 30 req/min, sufficient for benchmarks)
 
 ## Stack
 
@@ -78,10 +103,13 @@ Three DSL layers:
 
 ```bash
 # Run tests
-uv run pytest
+pytest
 
-# Run benchmark
-uv run python scripts/run_benchmark.py --level 3 --n 50
+# Run benchmark with options
+python scripts/pipeline_runner.py --dataset math --level 5 --problems 20 --workers 4
+
+# Check signature database stats
+python -c "from mycelium.step_signatures import StepSignatureDB; print(StepSignatureDB().get_stats())"
 ```
 
 ## License
