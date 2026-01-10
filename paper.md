@@ -363,6 +363,25 @@ Across 50 problems, 299 step instances matched against 68 unique signatures—a 
 
 The discovery rate drops as the library matures. In our 100-problem run (before the context fix), we created 109 new signatures while achieving 86.4% match rate. The signature library is converging toward a finite vocabulary—supporting the "finite primes" hypothesis.
 
+### Signature Deduplication: A Lesson in Database Hygiene
+
+Analysis of our signature database revealed significant redundancy: **43% of stored signatures were duplicates** with identical centroids. The raw count showed 1,189 signatures, but only 675 were unique.
+
+| Step Type | Duplicates | Root Cause |
+|-----------|------------|------------|
+| `solve_equation` | 357 | High-volume type, race conditions |
+| `setup_equation` | 19 | Similar phrasing variations |
+| `count_items` | 18 | Parallel worker collisions |
+
+**Root cause:** When multiple workers process problems simultaneously, they may each create a new signature for the same step pattern before the first write commits. The `find_or_create` logic races against itself.
+
+**Impact:** Low apparent reuse rates. With 357 duplicates of `solve_equation`, each copy averaged only 1.1 uses instead of the combined ~400 uses going to one signature. This fragmentation:
+- Obscures true reuse metrics
+- Dilutes success rate statistics
+- Wastes storage and lookup time
+
+**Fix:** Periodic consolidation merges signatures with identical (step_type, centroid) pairs, combining their usage statistics. After deduplication, the 675 unique signatures show healthier reuse patterns with 6.7 uses per signature on average.
+
 ### The DSL Selective Injection Principle
 
 A key insight: **DSL helps typed signatures but hurts general reasoning steps**.
@@ -569,7 +588,7 @@ As the system runs in production, three metrics indicate health and growth:
 
 **Signatures per problem** reflects decomposition behavior. Too few (1-2) means problems aren't being broken down; too many (15+) means over-decomposition creating noise.
 
-**Signature hits per problem** measures how well the signature library covers new problems. For Level 5 problems with a moderately mature database, expect ~3 signature hits per problem—roughly 5 DAG steps where 3 match existing signatures with high-confidence DSL. This ratio improves as the library matures; early runs may see 1-2 hits, while a mature library approaches 4-5. *Current benchmark: 1,189 signatures across 56 step types yields 3.5 signature hits per problem (avg 5 tasks) on L5.*
+**Signature hits per problem** measures how well the signature library covers new problems. For Level 5 problems with a moderately mature database, expect ~3 signature hits per problem—roughly 5 DAG steps where 3 match existing signatures with high-confidence DSL. This ratio improves as the library matures; early runs may see 1-2 hits, while a mature library approaches 4-5. *Current benchmark: ~675 unique signatures across 56 step types yields 3.5 signature hits per problem on L5.*
 
 **Injections per problem** shows how much the signature library is actually being used. Low injection rates indicate either (a) signatures don't match new problems, or (b) DSL quality is poor so lift-gating blocks injection.
 
