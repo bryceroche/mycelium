@@ -641,6 +641,31 @@ New signatures face a chicken-and-egg problem: can't prove effectiveness without
 - High-performing signatures (≥80% success) continue injection
 - Low-performing signatures fall back to LLM
 
+### Exploration Phase: Let the System Breathe
+
+During early runs, accuracy will be lower than baseline LLM performance. This is expected and acceptable.
+
+**The Problem:** With a fresh signature library, most steps create new signatures with 0% DSL confidence. The system correctly identifies these as unproven and falls back to LLM reasoning. But this means DSLs never get tried, so they never accumulate the usage data needed to prove themselves.
+
+**The Philosophy:** Let the system make mistakes. Trial new DSLs aggressively, even if it temporarily hurts accuracy. The goal is *learning*, not immediate performance.
+
+| Phase | Injections/Problem | Accuracy | Goal |
+|-------|-------------------|----------|------|
+| Exploration | 0.6 | 44% | Build signature library |
+| Maturation | 2-3 | 55%+ | Prove DSL effectiveness |
+| Steady State | 4-5 | 65%+ | Maximize reuse |
+
+**Current state (after 100 L5 problems):**
+- 1152 unique signatures
+- 337 atomic signatures (from recursive decomposition)
+- Only 0.6 injections/problem (most DSLs untested)
+- 100% signature match rate (coverage is good)
+- 24% match hinted signatures (top reliable ones)
+
+The bottleneck isn't signature matching—it's DSL confidence. As signatures accumulate uses and prove themselves, injection rates will climb and accuracy will follow.
+
+**Key insight:** A run with 44% accuracy that creates 300 new atomic signatures is more valuable than a run with 56% accuracy that creates none. We're building the library now; we'll harvest the benefits later.
+
 ### One Model Architecture: Quality Over Cost
 
 We use Llama-3.3-70B for all LLM tasks: decomposition, step solving, and DSL generation. Why not use smaller models where possible?
