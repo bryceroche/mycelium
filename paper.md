@@ -401,6 +401,33 @@ After a cold-start period (10 uses), signatures with negative lift automatically
 
 **Implications for Step Type Design:** Finer-grained step types (e.g., `simple_addition` vs `ratio_analysis`) would enable more precise DSL matching. Our current 40+ step types represent a first approximation; the lift data suggests further subdivision would improve accuracy.
 
+### Current System Health
+
+A diagnostic snapshot reveals where the system stands:
+
+| Metric | Value |
+|--------|-------|
+| Steps/problem | 5.1 (range 4-6) |
+| Signature matches/problem | 3.5 (100% match rate) |
+| DSL injections/problem | 1.1 (31% of matches) |
+| Signature success rate | 54.1% ← the bottleneck |
+
+**Good news:** Signature coverage is excellent (100% match rate). The bottleneck is DSL quality, not matching.
+
+**Problem DSLs** — High usage, low success:
+
+| Step Type | Uses | Success | Action |
+|-----------|------|---------|--------|
+| area_triangle | 58 | 6.9% | Rewrite DSL |
+| compute_magnitude | 37 | 10.8% | Rewrite DSL |
+| vector_operation | 27 | 18.5% | Rewrite DSL |
+| compute_angle | 72 | 20.8% | Rewrite DSL |
+| matrix_operation | 24 | 20.8% | Rewrite DSL |
+| express_relation | 55 | 21.8% | Rewrite DSL |
+| apply_amgm | 72 | 33.3% | Rewrite DSL |
+
+These 7 step types account for ~345 uses at <35% success. Fixing them could significantly boost overall accuracy. The pattern: geometry and linear algebra DSLs are failing—these domains require more sophisticated parameter extraction than simple arithmetic.
+
 ### DSL Input Mapping: From 0% to 64% Confidence
 
 A subtle bug caused DSL execution to fail silently on most signatures. Analysis revealed:
