@@ -16,15 +16,18 @@ from typing import Optional
 
 from .client import GroqClient
 from .planner import Step, DAGPlan
-from .config import PLANNER_DEFAULT_MODEL, PLANNER_DEFAULT_TEMPERATURE
+from .config import (
+    PLANNER_DEFAULT_MODEL,
+    PLANNER_DEFAULT_TEMPERATURE,
+    RECURSIVE_MAX_DEPTH,
+    RECURSIVE_CONFIDENCE_THRESHOLD,
+)
 
 logger = logging.getLogger(__name__)
 
-# Maximum recursion depth for step decomposition
-MAX_DECOMPOSITION_DEPTH = 3
-
-# Confidence threshold below which we trigger decomposition
-DECOMPOSITION_CONFIDENCE_THRESHOLD = 0.5
+# Use config values for consistency
+MAX_DECOMPOSITION_DEPTH = RECURSIVE_MAX_DEPTH
+DECOMPOSITION_CONFIDENCE_THRESHOLD = RECURSIVE_CONFIDENCE_THRESHOLD
 
 STEP_DECOMPOSER_SYSTEM = """You are a mathematical step decomposer. Given a complex step that couldn't be executed directly, break it into simpler atomic sub-steps.
 

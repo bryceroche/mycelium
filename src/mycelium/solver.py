@@ -998,6 +998,12 @@ Provide the combined result. End with RESULT: <your answer>"""
         sub_context = dict(context)  # Copy context
         sub_results = []
 
+        # Clean up dependencies - only allow references to sibling sub-steps
+        valid_ids = {s.id for s in decomposed.sub_steps}
+        for sub_step in decomposed.sub_steps:
+            # Filter dependencies to only valid sibling IDs
+            sub_step.depends_on = [d for d in sub_step.depends_on if d in valid_ids]
+
         # Simple topological sort based on depends_on
         executed = set()
         remaining = list(decomposed.sub_steps)
@@ -1010,10 +1016,18 @@ Provide the combined result. End with RESULT: <your answer>"""
             ]
 
             if not ready:
-                # Circular dependency or missing dep
-                logger.warning("[council] Cannot schedule remaining sub-steps: %s",
-                             [s.id for s in remaining])
-                break
+                # Fallback: if first iteration and nothing ready, force first sub-step
+                # (LLM may have output bad dependencies)
+                if not executed and remaining:
+                    first_step = remaining[0]
+                    first_step.depends_on = []  # Clear bad dependencies
+                    ready = [first_step]
+                    logger.debug("[council] Forcing first sub-step with no deps: %s", first_step.id)
+                else:
+                    # Circular dependency or missing dep
+                    logger.warning("[council] Cannot schedule remaining sub-steps: %s",
+                                 [s.id for s in remaining])
+                    break
 
             # Execute ready steps (could parallelize, but sequential for simplicity)
             for sub_step in ready:
