@@ -483,6 +483,24 @@ New signatures face a chicken-and-egg problem: can't prove effectiveness without
 - High-performing signatures (≥80% success) continue injection
 - Low-performing signatures fall back to LLM
 
+### One Model Architecture: Quality Over Cost
+
+We use Llama-3.3-70B for all LLM tasks: decomposition, step solving, and DSL generation. Why not use smaller models where possible?
+
+**The DSL argument:** DSLs are cached forever and reused across thousands of problems. A bad DSL—one that mishandles edge cases or encodes incorrect logic—produces systematic errors that compound over time. The cost difference between 8B and 70B for DSL generation is negligible when amortized across thousands of future executions.
+
+| Task | Frequency | Impact of Mistake | Model Choice |
+|------|-----------|-------------------|--------------|
+| Decomposition | Every problem | Medium (wrong steps) | 70B |
+| Step solving | Every step | Medium (wrong answer) | 70B |
+| DSL generation | Rare (new sigs only) | **HIGH** (cached forever) | 70B |
+
+**The simplicity argument:** A single model simplifies the codebase, deployment, and debugging. No routing logic to maintain, no model-specific prompt tuning, no version mismatches. The complexity cost of a multi-model architecture outweighs the marginal cost savings.
+
+**The quality-everywhere argument:** If 70B produces better decompositions (1.4 steps vs 7-10) and better DSLs, the accuracy gains compound. Each component benefits from the larger model's better reasoning. Trying to save costs on one component can degrade the entire pipeline.
+
+**When multi-model makes sense:** If DSL generation were frequent (every problem), the cost argument would change. But with a maturing signature library, DSL generation becomes increasingly rare—most steps match existing signatures. The "smart model for everything" approach optimizes for the steady state where generation is rare but execution is frequent.
+
 ### Why Mycelium Wins
 
 With the context fix in place, decomposition becomes an advantage:
