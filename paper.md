@@ -26,8 +26,8 @@ Yet **while complete problems are unique, their constituent steps are highly reu
 2. **Signature Database**: Vector store of solution patterns with centroid-based clustering
 3. **Cosine Similarity Matching**: Embedding-based retrieval for step-level pattern matching
 4. **Hybrid Execution**: Routing to formula evaluation, procedure guidance, or LLM
-5. **Two Operating Modes**: *Learning mode* explores new signatures and collects success statistics; *Execution mode* uses proven signatures for deterministic execution on high-confidence steps, with LLM procedural guidance for the remainder
-6. **Self-Improving System**: Learning loop that grows the signature library
+5. **Signature Refinement Loop**: Frontier LLM decomposes low-performing signatures into precise child signatures; parents become routers—this is how the system learns
+6. **Two Operating Modes**: *Learning mode* explores new signatures and collects success statistics; *Execution mode* uses proven signatures for deterministic execution
 
 ### Open Source & Reproducibility
 
@@ -323,6 +323,58 @@ Cache hit rates exceed 60% in typical runs—steps like "solve for x" appear rep
 - **Git**: Version control with hooks for automated beads sync
 
 This lightweight stack enables rapid iteration: SQLite for portability, Groq for speed, and Claude + tmux for parallelized AI-assisted development.
+
+### 3.10 Signature Refinement Loop
+
+Low-performing signatures reveal opportunities for improvement. We propose an automated refinement loop that **requires a frontier LLM** (e.g., Claude Opus) to perform the sophisticated analysis and code generation:
+
+**The Loop:**
+
+```
+1. IDENTIFY: Query signatures with success_rate < threshold
+   → "area_triangle" at 15% success, 200 uses
+
+2. ANALYZE (Frontier LLM): Examine failure cases and identify patterns
+   → "Failures occur when inputs are coordinates vs. side lengths vs. angles"
+
+3. DECOMPOSE (Frontier LLM): Design finer-grained sub-signatures
+   → area_triangle_coordinates (Shoelace formula)
+   → area_triangle_sides (Heron's formula)
+   → area_triangle_angle (½ab·sin(C))
+
+4. GENERATE DSL (Frontier LLM): Write precise DSL for each child
+   → Each sub-signature gets a single-purpose, tested DSL script
+
+5. REDIRECT (Frontier LLM): Configure parent as router to children
+   → Parent signature stores pointers to sub-signatures
+   → LLM writes routing logic based on input type detection
+
+6. VALIDATE: Test on held-out examples
+   → Keep if success_rate improves; discard if not
+```
+
+**Why a Frontier LLM is Required:**
+
+Steps 2-5 require sophisticated reasoning that only frontier models can reliably perform:
+- **Pattern recognition** across failure cases to identify root causes
+- **Domain expertise** to know Heron's formula vs. Shoelace vs. trigonometric approaches
+- **Code generation** to write correct, tested DSL scripts
+- **Routing logic** to classify input types and direct to appropriate children
+
+A weaker model would hallucinate formulas or mis-classify input patterns. The refinement loop is where frontier LLM capability pays dividends—each refinement improves thousands of future executions.
+
+*Practical note:* The LLM may initially resist this task ("I can help you think through approaches...") or produce overly cautious responses. Insist on concrete outputs: specific sub-signature names, actual DSL code, explicit routing conditions. The model is capable; it just needs clear direction that you want executable artifacts, not suggestions.
+
+**The Compound Effect:**
+
+Each refinement cycle:
+- Converts low-performing signatures into high-performing sub-signatures
+- Increases overall DSL injection rate
+- Moves the system toward fully deterministic execution
+
+The parent becomes a router; the atomic children get precise DSLs. This is the "learning" in self-improving: not just accumulating signatures, but actively refining them based on observed performance.
+
+**Summary:** Signatures with low-success DSLs get decomposed into child signatures with new, precise DSLs. The parent signatures become routers that direct incoming traffic to the appropriate child. The result: what was one failing signature becomes multiple succeeding ones.
 
 ---
 
@@ -836,60 +888,6 @@ Just as mycelium networks in nature decompose organic matter across ecosystems�
 - ~~Poor DSL quality from Llama~~ → Fixed by having Claude generate all DSL scripts
 
 **Future Directions:**
-
-### Signature Refinement Loop
-
-Low-performing signatures reveal opportunities for improvement. We propose an automated refinement loop that **requires a frontier LLM** (e.g., Claude Opus) to perform the sophisticated analysis and code generation:
-
-**The Loop:**
-
-```
-1. IDENTIFY: Query signatures with success_rate < threshold
-   → "area_triangle" at 15% success, 200 uses
-
-2. ANALYZE (Frontier LLM): Examine failure cases and identify patterns
-   → "Failures occur when inputs are coordinates vs. side lengths vs. angles"
-
-3. DECOMPOSE (Frontier LLM): Design finer-grained sub-signatures
-   → area_triangle_coordinates (Shoelace formula)
-   → area_triangle_sides (Heron's formula)
-   → area_triangle_angle (½ab·sin(C))
-
-4. GENERATE DSL (Frontier LLM): Write precise DSL for each child
-   → Each sub-signature gets a single-purpose, tested DSL script
-
-5. REDIRECT (Frontier LLM): Configure parent as router to children
-   → Parent signature stores pointers to sub-signatures
-   → LLM writes routing logic based on input type detection
-
-6. VALIDATE: Test on held-out examples
-   → Keep if success_rate improves; discard if not
-```
-
-**Why a Frontier LLM is Required:**
-
-Steps 2-5 require sophisticated reasoning that only frontier models can reliably perform:
-- **Pattern recognition** across failure cases to identify root causes
-- **Domain expertise** to know Heron's formula vs. Shoelace vs. trigonometric approaches
-- **Code generation** to write correct, tested DSL scripts
-- **Routing logic** to classify input types and direct to appropriate children
-
-A weaker model would hallucinate formulas or mis-classify input patterns. The refinement loop is where frontier LLM capability pays dividends—each refinement improves thousands of future executions.
-
-*Practical note:* The LLM may initially resist this task ("I can help you think through approaches...") or produce overly cautious responses. Insist on concrete outputs: specific sub-signature names, actual DSL code, explicit routing conditions. The model is capable; it just needs clear direction that you want executable artifacts, not suggestions.
-
-**The Compound Effect:**
-
-Each refinement cycle:
-- Converts low-performing signatures into high-performing sub-signatures
-- Increases overall DSL injection rate
-- Moves the system toward fully deterministic execution
-
-The parent becomes a router; the atomic children get precise DSLs. This is the "learning" in self-improving: not just accumulating signatures, but actively refining them based on observed performance.
-
-**Summary:** Signatures with low-success DSLs get decomposed into child signatures with new, precise DSLs. The parent signatures become routers that direct incoming traffic to the appropriate child. The result: what was one failing signature becomes multiple succeeding ones.
-
-**Other Future Directions:**
 - **100% deterministic execution**: Improving signature coverage and DSL quality to achieve fully deterministic DAG execution without LLM calls
 - Expand to other problem domains (coding, reasoning benchmarks)
 - Contrastive learning for better signature separation
