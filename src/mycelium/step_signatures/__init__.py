@@ -44,6 +44,13 @@ from mycelium.step_signatures.dsl_generator import (
     maybe_generate_dsl,
 )
 
+from mycelium.step_signatures.refinement import (
+    SignatureRefiner,
+    RefinementResult,
+    RefinementReport,
+    run_refinement_loop,
+)
+
 from mycelium.data_layer.schema import STEP_SCHEMA as STEP_SCHEMA_SQL
 
 from mycelium.config import (
@@ -89,4 +96,8 @@ __all__ = [
     "RELIABILITY_MIN_USES",
     "RELIABILITY_MIN_SUCCESS_RATE",
     "DEFAULT_INJECTION_THRESHOLD",
+    "SignatureRefiner",
+    "RefinementResult",
+    "RefinementReport",
+    "run_refinement_loop",
 ]
