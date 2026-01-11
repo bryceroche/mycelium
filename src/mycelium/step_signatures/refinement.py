@@ -69,6 +69,10 @@ UMBRELLA_CANDIDATES = {
     "substitute_value",
     "setup_equation",
     "solve_system",
+    "compute_volume",
+    "compute_sqrt",
+    "count_items",
+    "common_difference",
 }
 
 # Step types that should use guidance-only (no DSL appropriate)
@@ -77,14 +81,13 @@ GUIDANCE_ONLY_TYPES = {
     "setup_equation",      # Requires understanding problem structure
     "define_variables",    # Conceptual, not computational
     "express_relation",    # Conceptual
+    "apply_amgm",          # Inequality reasoning, needs LLM
 }
 
 # Step types with fixable DSLs (formula is just wrong/incomplete)
 FIXABLE_DSL_TYPES = {
     "compute_sum",
     "compute_product",
-    "compute_sqrt",
-    "compute_volume",
     "compute_quotient",
     "compute_difference",
 }
@@ -379,6 +382,118 @@ class SignatureRefiner:
                     "description": "Compute decimal approximation of sqrt",
                     "condition": "decimal answer needed",
                     "dsl": {"type": "math", "script": "sqrt(n)", "params": ["n"], "fallback": "guidance"}
+                },
+            ],
+            "general_step": [
+                {
+                    "step_type": "extract_value",
+                    "description": "Extract a numeric value from problem text",
+                    "condition": "extracting given values",
+                    "dsl": {"type": "guidance", "script": "Identify and extract the numeric value", "params": [], "fallback": "guidance"}
+                },
+                {
+                    "step_type": "apply_formula",
+                    "description": "Apply a known formula with given values",
+                    "condition": "applying a formula",
+                    "dsl": {"type": "sympy", "script": "formula.subs(substitutions)", "params": ["formula", "substitutions"], "fallback": "guidance"}
+                },
+                {
+                    "step_type": "compare_values",
+                    "description": "Compare two values and determine relationship",
+                    "condition": "comparing quantities",
+                    "dsl": {"type": "math", "script": "a - b", "params": ["a", "b"], "fallback": "guidance"}
+                },
+                {
+                    "step_type": "unit_conversion",
+                    "description": "Convert between units",
+                    "condition": "unit conversion needed",
+                    "dsl": {"type": "math", "script": "value * conversion_factor", "params": ["value", "conversion_factor"], "fallback": "guidance"}
+                },
+            ],
+            "solve_equation": [
+                {
+                    "step_type": "solve_linear_single",
+                    "description": "Solve ax + b = c for x",
+                    "condition": "linear equation with one variable",
+                    "dsl": {"type": "math", "script": "(c - b) / a", "params": ["a", "b", "c"], "fallback": "guidance"}
+                },
+                {
+                    "step_type": "solve_quadratic_formula",
+                    "description": "Solve ax^2 + bx + c = 0 using quadratic formula",
+                    "condition": "quadratic equation",
+                    "dsl": {"type": "sympy", "script": "solve(a*x**2 + b*x + c, x)", "params": ["a", "b", "c"], "fallback": "guidance"}
+                },
+                {
+                    "step_type": "solve_proportion",
+                    "description": "Solve a/b = c/d for one variable",
+                    "condition": "proportion or ratio equation",
+                    "dsl": {"type": "math", "script": "(a * d) / b", "params": ["a", "b", "d"], "fallback": "guidance"}
+                },
+                {
+                    "step_type": "isolate_variable",
+                    "description": "Isolate a variable from a formula",
+                    "condition": "rearranging formula for a variable",
+                    "dsl": {"type": "sympy", "script": "solve(equation, target_var)", "params": ["equation", "target_var"], "fallback": "guidance"}
+                },
+            ],
+            "simplify_expression": [
+                {
+                    "step_type": "simplify_fraction",
+                    "description": "Reduce a fraction to lowest terms using GCD",
+                    "condition": "fraction to reduce",
+                    "dsl": {"type": "math", "script": "numerator // gcd(numerator, denominator)", "params": ["numerator", "denominator"], "fallback": "guidance"}
+                },
+                {
+                    "step_type": "combine_like_terms",
+                    "description": "Combine like terms in an algebraic expression",
+                    "condition": "polynomial with like terms",
+                    "dsl": {"type": "sympy", "script": "simplify(expand(expr))", "params": ["expr"], "fallback": "guidance"}
+                },
+                {
+                    "step_type": "simplify_radical",
+                    "description": "Simplify radical expressions (square roots, etc.)",
+                    "condition": "expression with radicals",
+                    "dsl": {"type": "sympy", "script": "simplify(sqrt(n))", "params": ["n"], "fallback": "guidance"}
+                },
+                {
+                    "step_type": "factor_common",
+                    "description": "Factor out common terms from expression",
+                    "condition": "expression with common factors",
+                    "dsl": {"type": "sympy", "script": "factor(expr)", "params": ["expr"], "fallback": "guidance"}
+                },
+            ],
+            "count_items": [
+                {
+                    "step_type": "count_simple",
+                    "description": "Count items in a set or list",
+                    "condition": "simple counting",
+                    "dsl": {"type": "math", "script": "n", "params": ["n"], "fallback": "guidance"}
+                },
+                {
+                    "step_type": "count_with_condition",
+                    "description": "Count items satisfying a condition",
+                    "condition": "conditional counting",
+                    "dsl": {"type": "guidance", "script": "Count items where condition holds", "params": [], "fallback": "guidance"}
+                },
+                {
+                    "step_type": "count_complement",
+                    "description": "Count by subtracting from total",
+                    "condition": "easier to count what's excluded",
+                    "dsl": {"type": "math", "script": "total - excluded", "params": ["total", "excluded"], "fallback": "guidance"}
+                },
+            ],
+            "common_difference": [
+                {
+                    "step_type": "diff_arithmetic_seq",
+                    "description": "Find common difference d = a2 - a1",
+                    "condition": "arithmetic sequence given",
+                    "dsl": {"type": "math", "script": "a2 - a1", "params": ["a1", "a2"], "fallback": "guidance"}
+                },
+                {
+                    "step_type": "diff_from_formula",
+                    "description": "Find difference from nth term formula",
+                    "condition": "formula for nth term given",
+                    "dsl": {"type": "math", "script": "(an - a1) / (n - 1)", "params": ["a1", "an", "n"], "fallback": "guidance"}
                 },
             ],
         }
