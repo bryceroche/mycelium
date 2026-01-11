@@ -283,10 +283,10 @@ _FUNCTIONS: dict[str, Callable] = {
     "floor": math.floor,
     "ceil": math.ceil,
     "trunc": math.trunc,
-    # Combinatorics
-    "factorial": math.factorial,
-    "gcd": math.gcd,
-    "lcm": lambda a, b: abs(a * b) // math.gcd(int(a), int(b)) if a and b else 0,
+    # Combinatorics (convert floats to ints for integer-only functions)
+    "factorial": lambda n: math.factorial(int(n)),
+    "gcd": lambda a, b: math.gcd(int(a), int(b)),
+    "lcm": lambda a, b: abs(int(a) * int(b)) // math.gcd(int(a), int(b)) if a and b else 0,
     # Hyperbolic (occasionally needed)
     "sinh": math.sinh,
     "cosh": math.cosh,
