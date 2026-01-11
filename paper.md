@@ -122,11 +122,6 @@ A failed DSL execution provides good signal that updates the lift statistics tha
 
 **Injection Rate vs Accuracy Trade-off:**
 
-| Mode | Injection Rate | Accuracy | Purpose |
-|------|---------------|----------|---------|
-| Training (aggressive) | ~29% | ~58% | Maximize signal collection |
-| Benchmark (conservative) | ~29% | ~58% | Maximize accuracy using learned data |
-
 In training mode, we deliberately inject DSLs that the lift data suggests will fail. This "exploration" fills gaps in our knowledge—maybe the negative lift was from a bug we've since fixed, or from a different problem context. Only by trying again do we update our beliefs.
 
 **The Self-Improving Loop:**
