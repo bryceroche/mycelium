@@ -65,6 +65,52 @@ logger = logging.getLogger(__name__)
 # Minimum uses before calculating lift (cold start period)
 MIN_USES_FOR_LIFT = 5
 
+# =============================================================================
+# DSL-Hostile Embedding Detector
+# =============================================================================
+# Some regions of embedding space are inherently DSL-hostile - steps that
+# sound similar but require fundamentally different computation.
+# We detect these by comparing to a centroid of known hostile signatures.
+
+_hostile_centroid: Optional[np.ndarray] = None
+_hostile_threshold: float = 0.42
+
+def _load_hostile_centroid() -> Optional[np.ndarray]:
+    """Load pre-computed hostile centroid from file."""
+    global _hostile_centroid, _hostile_threshold
+    if _hostile_centroid is not None:
+        return _hostile_centroid
+
+    import json
+    import os
+
+    centroid_path = os.path.join(os.path.dirname(__file__), 'dsl_hostile_centroid.json')
+    if os.path.exists(centroid_path):
+        try:
+            with open(centroid_path) as f:
+                data = json.load(f)
+            _hostile_centroid = np.array(data['hostile_centroid'])
+            _hostile_threshold = data.get('threshold', 0.42)
+            logger.info(f"[solver] Loaded hostile centroid (threshold={_hostile_threshold})")
+        except Exception as e:
+            logger.warning(f"[solver] Failed to load hostile centroid: {e}")
+    return _hostile_centroid
+
+def is_dsl_hostile_embedding(step_embedding: np.ndarray) -> tuple[bool, float]:
+    """Check if step embedding is in DSL-hostile region.
+
+    Returns:
+        (is_hostile, similarity): Whether hostile and similarity score.
+    """
+    centroid = _load_hostile_centroid()
+    if centroid is None:
+        return False, 0.0
+
+    step_norm = step_embedding / (np.linalg.norm(step_embedding) + 1e-9)
+    similarity = float(np.dot(centroid, step_norm))
+
+    return similarity > _hostile_threshold, similarity
+
 # Lift threshold: below this, signature is considered "harmful" for DSL
 NEGATIVE_LIFT_THRESHOLD = -0.05  # -5% lift = avoid
 PROBATION_USES = 10  # Uses needed to exit probation
@@ -108,6 +154,11 @@ def should_avoid_dsl_for_signature(
     # Failed injections teach us to avoid bad DSLs in benchmark mode
     if TRAINING_MODE:
         return False, "training_mode"
+
+    # Check hostile embedding region first (fast check)
+    is_hostile, hostile_sim = is_dsl_hostile_embedding(step_embedding)
+    if is_hostile:
+        return True, f"hostile_embedding(sim={hostile_sim:.2f})"
 
     # Check lift for this specific signature
     lift, has_data = get_signature_lift(signature)
