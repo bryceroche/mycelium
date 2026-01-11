@@ -59,9 +59,9 @@ RELIABILITY_MIN_SUCCESS_RATE = 0.70
 
 # Exploration Parameters
 EXPLORATION_MIN_LIFT = 0.0
-EXPLORATION_MIN_CONFIDENCE = 0.5
+EXPLORATION_MIN_CONFIDENCE = 0.0 if _is_training else 0.5  # Lower in training to explore more
 USAGE_CONFIDENCE_DECAY = 5.0
-COLD_START_GUARANTEED_USES = 10
+COLD_START_GUARANTEED_USES = 100 if _is_training else 10  # More bootstrap in training
 PROBATION_INJECTION_RATE = 0.3
 AVOID_CACHE_TTL = 300.0  # Rebuild negative-lift cache every 5 min
 
@@ -72,7 +72,7 @@ RECURSIVE_MAX_TOTAL_STEPS = 50
 
 # DSL Execution
 DSL_TIMEOUT_SEC = 1.0
-DSL_SEMANTIC_MIN_CONFIDENCE = 0.5
+DSL_SEMANTIC_MIN_CONFIDENCE = 0.3 if _is_training else 0.5  # Lower in training to try more
 
 # LLM Client
 CLIENT_DEFAULT_TIMEOUT = 120.0

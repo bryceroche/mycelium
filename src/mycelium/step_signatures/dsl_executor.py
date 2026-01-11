@@ -287,10 +287,22 @@ _FUNCTIONS: dict[str, Callable] = {
     "factorial": lambda n: math.factorial(int(n)),
     "gcd": lambda a, b: math.gcd(int(a), int(b)),
     "lcm": lambda a, b: abs(int(a) * int(b)) // math.gcd(int(a), int(b)) if a and b else 0,
+    "C": lambda n, r: math.comb(int(n), int(r)),  # Combinations
+    "P": lambda n, r: math.perm(int(n), int(r)),  # Permutations
+    "comb": lambda n, r: math.comb(int(n), int(r)),
+    "perm": lambda n, r: math.perm(int(n), int(r)),
+    "choose": lambda n, r: math.comb(int(n), int(r)),  # Alias
     # Hyperbolic (occasionally needed)
     "sinh": math.sinh,
     "cosh": math.cosh,
     "tanh": math.tanh,
+    # Modular arithmetic
+    "mod": lambda a, b: int(a) % int(b),
+    "divmod": lambda a, b: (int(a) // int(b), int(a) % int(b)),
+    # Integer operations
+    "int": lambda x: int(x),
+    "float": lambda x: float(x),
+    "isqrt": lambda n: int(math.sqrt(int(n))),  # Integer square root
 }
 
 # Allowed constants
@@ -666,12 +678,168 @@ def _evaluate_polynomial(coeffs: list[float], x: float) -> float:
     return result
 
 
+def _euclidean_gcd(a: int, b: int) -> int:
+    """Euclidean algorithm for GCD."""
+    a, b = int(abs(a)), int(abs(b))
+    while b:
+        a, b = b, a % b
+    return a
+
+
+def _modinv(a: int, m: int) -> Optional[int]:
+    """Modular multiplicative inverse of a mod m using extended Euclidean algorithm."""
+    a, m = int(a), int(m)
+    if m == 1:
+        return 0
+    m0, x0, x1 = m, 0, 1
+    while a > 1:
+        q = a // m
+        m, a = a % m, m
+        x0, x1 = x1 - q * x0, x0
+    return x1 + m0 if x1 < 0 else x1
+
+
+def _divisors(n: int) -> list[int]:
+    """Find all divisors of n."""
+    n = int(abs(n))
+    if n == 0:
+        return []
+    divs = []
+    for i in range(1, int(n**0.5) + 1):
+        if n % i == 0:
+            divs.append(i)
+            if i != n // i:
+                divs.append(n // i)
+    return sorted(divs)
+
+
+def _prime_factors(n: int) -> list[int]:
+    """Find prime factorization of n."""
+    n = int(abs(n))
+    factors = []
+    d = 2
+    while d * d <= n:
+        while n % d == 0:
+            factors.append(d)
+            n //= d
+        d += 1
+    if n > 1:
+        factors.append(n)
+    return factors
+
+
+def _is_prime(n: int) -> bool:
+    """Check if n is prime."""
+    n = int(n)
+    if n < 2:
+        return False
+    if n == 2:
+        return True
+    if n % 2 == 0:
+        return False
+    for i in range(3, int(n**0.5) + 1, 2):
+        if n % i == 0:
+            return False
+    return True
+
+
+def _mod_pow(base: int, exp: int, mod: int) -> int:
+    """Modular exponentiation: base^exp mod mod."""
+    base, exp, mod = int(base), int(exp), int(mod)
+    result = 1
+    base = base % mod
+    while exp > 0:
+        if exp % 2 == 1:
+            result = (result * base) % mod
+        exp = exp >> 1
+        base = (base * base) % mod
+    return result
+
+
+def _binomial(n: int, k: int) -> int:
+    """Binomial coefficient C(n, k)."""
+    n, k = int(n), int(k)
+    if k < 0 or k > n:
+        return 0
+    if k == 0 or k == n:
+        return 1
+    k = min(k, n - k)
+    result = 1
+    for i in range(k):
+        result = result * (n - i) // (i + 1)
+    return result
+
+
+def _permutations(n: int, r: int) -> int:
+    """Permutations P(n, r) = n! / (n-r)!"""
+    n, r = int(n), int(r)
+    if r < 0 or r > n:
+        return 0
+    result = 1
+    for i in range(n, n - r, -1):
+        result *= i
+    return result
+
+
+def _combinations(n: int, r: int) -> int:
+    """Combinations C(n, r) = n! / (r! * (n-r)!)"""
+    return _binomial(n, r)
+
+
+def _day_of_week(year: int, month: int, day: int) -> int:
+    """Zeller's formula: 0=Saturday, 1=Sunday, ..., 6=Friday."""
+    year, month, day = int(year), int(month), int(day)
+    if month < 3:
+        month += 12
+        year -= 1
+    k = year % 100
+    j = year // 100
+    h = (day + (13 * (month + 1)) // 5 + k + k // 4 + j // 4 - 2 * j) % 7
+    return h
+
+
+def _triangular_number(n: int) -> int:
+    """nth triangular number: 1 + 2 + ... + n = n(n+1)/2."""
+    n = int(n)
+    return n * (n + 1) // 2
+
+
+def _fibonacci(n: int) -> int:
+    """nth Fibonacci number (0-indexed: F(0)=0, F(1)=1)."""
+    n = int(n)
+    if n < 0:
+        return 0
+    if n <= 1:
+        return n
+    a, b = 0, 1
+    for _ in range(2, n + 1):
+        a, b = b, a + b
+    return b
+
+
 # Register built-in custom operators
 register_operator("extract_coefficient", _extract_coefficient)
 register_operator("apply_quadratic_formula", _apply_quadratic_formula)
 register_operator("complete_square", _complete_square)
 register_operator("solve_linear", _solve_linear)
 register_operator("evaluate_polynomial", _evaluate_polynomial)
+# Number theory operators
+register_operator("euclidean_gcd", _euclidean_gcd)
+register_operator("modinv", _modinv)
+register_operator("divisors", _divisors)
+register_operator("prime_factors", _prime_factors)
+register_operator("is_prime", _is_prime)
+register_operator("mod_pow", _mod_pow)
+# Combinatorics operators
+register_operator("binomial", _binomial)
+register_operator("permutations", _permutations)
+register_operator("combinations", _combinations)
+register_operator("C", _combinations)  # Alias
+register_operator("P", _permutations)  # Alias
+# Misc operators
+register_operator("day_of_week", _day_of_week)
+register_operator("triangular_number", _triangular_number)
+register_operator("fibonacci", _fibonacci)
 
 
 def try_execute_dsl_custom(script: str, inputs: dict[str, Any]) -> Optional[Any]:
