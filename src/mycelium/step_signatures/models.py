@@ -109,6 +109,13 @@ class StepSignature:
     origin_depth: int = 0  # Decomposition depth at which this signature was created
     is_atomic: bool = False  # True if this signature represents an atomic operation
 
+    # Parent→Child routing for semantic umbrella signatures
+    # When a "semantic umbrella" (e.g., compute_probability) matches, route to atomic children
+    # Format: JSON array of {id: int, step_type: str, condition: str}
+    # condition describes when to use this child (e.g., "input has coordinates", "given side lengths")
+    child_signatures: Optional[str] = None  # JSON array of child routing specs
+    is_semantic_umbrella: bool = False  # True if this routes to children instead of executing
+
     # Metadata
     created_at: Optional[str] = None
     last_used_at: Optional[str] = None

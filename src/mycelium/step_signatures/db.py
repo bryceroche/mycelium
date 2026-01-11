@@ -1103,6 +1103,8 @@ class StepSignatureDB:
         dsl_version_uses = row["dsl_version_uses"] if "dsl_version_uses" in row_keys else 0
         origin_depth = row["origin_depth"] if "origin_depth" in row_keys else 0
         is_atomic = bool(row["is_atomic"]) if "is_atomic" in row_keys else False
+        child_signatures = row["child_signatures"] if "child_signatures" in row_keys else None
+        is_semantic_umbrella = bool(row["is_semantic_umbrella"]) if "is_semantic_umbrella" in row_keys else False
 
         return StepSignature(
             id=row["id"],
@@ -1128,6 +1130,8 @@ class StepSignatureDB:
             variant_count=row["variant_count"],
             origin_depth=origin_depth or 0,
             is_atomic=is_atomic,
+            child_signatures=child_signatures,
+            is_semantic_umbrella=is_semantic_umbrella,
             created_at=row["created_at"],
             last_used_at=row["last_used_at"],
             io_schema=io_schema,
@@ -1524,6 +1528,135 @@ class StepSignatureDB:
             )
 
         return self.get_signature(survivor_id)
+
+    # =========================================================================
+    # Semantic Umbrella: Parent→Child Routing for Decomposition
+    # =========================================================================
+
+    def mark_as_semantic_umbrella(
+        self,
+        signature_id: int,
+        child_specs: list[dict],
+    ) -> bool:
+        """Mark a signature as a semantic umbrella with child routing.
+
+        A semantic umbrella is a high-level pattern (e.g., compute_probability)
+        that routes to more specific atomic children based on conditions.
+
+        Args:
+            signature_id: ID of the parent signature
+            child_specs: List of child routing specs, each containing:
+                - id: int - child signature ID
+                - step_type: str - child step type
+                - condition: str - when to use this child
+
+        Returns:
+            True if successful, False otherwise
+        """
+        child_json = json.dumps(child_specs)
+
+        with self._connection() as conn:
+            conn.execute(
+                """UPDATE step_signatures
+                   SET is_semantic_umbrella = 1,
+                       child_signatures = ?,
+                       dsl_script = NULL
+                   WHERE id = ?""",
+                (child_json, signature_id),
+            )
+
+        return True
+
+    def get_child_signatures(self, signature_id: int) -> list[dict]:
+        """Get child routing specs for a semantic umbrella.
+
+        Returns:
+            List of child specs: [{id, step_type, condition}, ...]
+        """
+        sig = self.get_signature(signature_id)
+        if sig is None or not sig.child_signatures:
+            return []
+
+        try:
+            return json.loads(sig.child_signatures)
+        except json.JSONDecodeError:
+            return []
+
+    def create_child_signature(
+        self,
+        parent_id: int,
+        step_type: str,
+        description: str,
+        dsl_script: str,
+        condition: str,
+    ) -> Optional[StepSignature]:
+        """Create an atomic child signature for a semantic umbrella.
+
+        The child inherits the parent's centroid (for embedding match)
+        but has its own specific DSL for execution.
+
+        Args:
+            parent_id: ID of the parent umbrella signature
+            step_type: Specific step type for the child
+            description: Description of when this child applies
+            dsl_script: DSL for deterministic execution
+            condition: Human-readable condition for routing
+
+        Returns:
+            The created child signature, or None if parent not found
+        """
+        parent = self.get_signature(parent_id)
+        if parent is None:
+            return None
+
+        sig_id = str(uuid.uuid4())
+        now = datetime.utcnow().isoformat()
+
+        # Child uses slightly perturbed centroid to be unique in DB
+        # but close enough to parent to match on same queries
+        # Add tiny random noise (~0.1% of vector magnitude)
+        child_centroid = parent.centroid.copy()
+        noise = np.random.randn(*child_centroid.shape) * 0.001
+        child_centroid = child_centroid + noise
+        # Renormalize to unit length
+        child_centroid = child_centroid / np.linalg.norm(child_centroid)
+
+        with self._connection() as conn:
+            cursor = conn.execute(
+                """INSERT INTO step_signatures
+                   (signature_id, centroid, step_type, description, method_name,
+                    method_template, example_count, created_at, dsl_script,
+                    origin_depth, is_atomic, canonical_parent_id)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    sig_id,
+                    pack_embedding(child_centroid),
+                    step_type,
+                    description,
+                    step_type,
+                    f"Atomic: {description}",
+                    0,
+                    now,
+                    dsl_script,
+                    (parent.origin_depth or 0) + 1,
+                    1,  # is_atomic = True
+                    parent_id,
+                ),
+            )
+            row_id = cursor.lastrowid
+
+        child = self.get_signature(row_id)
+
+        # Update parent's child_signatures list
+        existing_children = self.get_child_signatures(parent_id)
+        existing_children.append({
+            "id": row_id,
+            "step_type": step_type,
+            "condition": condition,
+        })
+        self.mark_as_semantic_umbrella(parent_id, existing_children)
+
+        return child
 
     def merge_similar_signatures(
         self,

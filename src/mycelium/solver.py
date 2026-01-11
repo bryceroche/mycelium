@@ -752,6 +752,19 @@ Provide the combined result. End with RESULT: <your answer>"""
         else:
             ctx_str += "This is the first step."
 
+        # Check if this is a semantic umbrella that should route to child
+        if signature.is_semantic_umbrella and signature.child_signatures:
+            routed_child = await self._route_to_child_signature(
+                parent=signature,
+                step=step,
+                context=context,
+                step_descriptions=step_descriptions,
+                problem=problem,
+                embedding=embedding,
+            )
+            if routed_child is not None:
+                return routed_child
+
         # Get I/O schema and determine execution mode
         io_schema = signature.get_io_schema()
         similarity = 0.0
@@ -1104,6 +1117,149 @@ Provide the combined result. End with RESULT: <your answer>"""
             decomposition_depth=decomposition_depth + 1,
             sub_step_results=sub_results,  # Track all sub-step results
         )
+
+    async def _route_to_child_signature(
+        self,
+        parent: StepSignature,
+        step: Step,
+        context: dict,
+        step_descriptions: dict,
+        problem: str,
+        embedding: np.ndarray,
+    ) -> Optional[StepResult]:
+        """Route a semantic umbrella to the appropriate child signature.
+
+        When a step matches a semantic umbrella (e.g., compute_probability),
+        we use LLM to select which specific child pattern applies (e.g.,
+        prob_single_draw, prob_conditional, etc.) and execute that child's DSL.
+
+        Args:
+            parent: The semantic umbrella signature that was matched
+            step: The step being executed
+            context: Results from previous steps
+            step_descriptions: Map of step_id -> task description
+            problem: The original problem text
+            embedding: The step's embedding vector
+
+        Returns:
+            StepResult if routing succeeded, None to fall back to parent execution
+        """
+        import json
+
+        try:
+            child_specs = json.loads(parent.child_signatures)
+        except (json.JSONDecodeError, TypeError):
+            logger.warning("[routing] Invalid child_signatures JSON for sig=%d", parent.id)
+            return None
+
+        if not child_specs:
+            return None
+
+        # Build routing prompt with child options
+        options = "\n".join(
+            f"{i+1}. {spec['step_type']}: {spec['condition']}"
+            for i, spec in enumerate(child_specs)
+        )
+
+        ctx_str = f"Problem: {problem[:200]}\n\n"
+        if context:
+            ctx_str += "Previous results:\n"
+            for dep_id, result in list(context.items())[-3:]:  # Last 3 results
+                ctx_str += f"- {dep_id}: {result}\n"
+
+        routing_prompt = f"""You are routing a math step to the correct solution pattern.
+
+Step to solve: {step.task}
+
+Context:
+{ctx_str}
+
+Available patterns:
+{options}
+
+Which pattern number (1-{len(child_specs)}) best matches this step? Reply with ONLY the number."""
+
+        messages = [
+            {"role": "system", "content": routing_prompt},
+            {"role": "user", "content": "Select pattern number:"},
+        ]
+
+        try:
+            response = await self.solver_client.generate(messages, temperature=0.0)
+            # Extract number from response
+            match = re.search(r'(\d+)', response.strip())
+            if not match:
+                logger.debug("[routing] Could not parse pattern number from: %s", response)
+                return None
+
+            choice = int(match.group(1)) - 1
+            if choice < 0 or choice >= len(child_specs):
+                logger.debug("[routing] Invalid pattern choice: %d", choice + 1)
+                return None
+
+            selected_spec = child_specs[choice]
+            child_sig = self.step_db.get_signature(selected_spec['id'])
+
+            if child_sig is None:
+                logger.warning("[routing] Child signature not found: id=%d", selected_spec['id'])
+                return None
+
+            logger.info(
+                "[routing] Umbrella '%s' -> child '%s' for step='%s'",
+                parent.step_type, child_sig.step_type, step.task[:40]
+            )
+
+            # Execute the child's DSL
+            if child_sig.dsl_script:
+                # Extract numeric inputs from context and step task
+                numeric_inputs = {}
+                for key, value in context.items():
+                    try:
+                        val_str = str(value).strip()
+                        cleaned = val_str.replace(',', '').replace('$', '').strip()
+                        numeric_inputs[key] = float(cleaned)
+                    except (ValueError, TypeError):
+                        pass
+
+                # Extract from step task
+                task_numbers = re.findall(r'(?<![a-zA-Z])(\d+\.?\d*)(?![a-zA-Z])', step.task)
+                for i, num_str in enumerate(task_numbers):
+                    try:
+                        numeric_inputs[f"task_num_{i}"] = float(num_str)
+                    except ValueError:
+                        pass
+
+                # Execute child DSL
+                dsl_result, dsl_success, dsl_confidence = await execute_dsl_with_llm_matching(
+                    child_sig.dsl_script,
+                    numeric_inputs,
+                    client=self.solver_client,
+                    min_confidence=DSL_MIN_CONFIDENCE,
+                    llm_threshold=DSL_LLM_THRESHOLD,
+                    step_descriptions=step_descriptions,
+                    step_task=step.task,
+                )
+
+                if dsl_success:
+                    logger.debug("[routing] Child DSL executed: result=%s conf=%.2f", dsl_result, dsl_confidence)
+                    return StepResult(
+                        step_id=step.id,
+                        task=step.task,
+                        result=str(dsl_result),
+                        embedding=embedding,
+                        signature_matched=parent,
+                        signature_used=child_sig,
+                        signature_similarity=self._get_similarity(embedding, parent),
+                        is_new_signature=False,
+                        was_injected=True,
+                    )
+                else:
+                    logger.debug("[routing] Child DSL failed (conf=%.2f), falling back", dsl_confidence)
+
+        except Exception as e:
+            logger.error("[routing] Failed to route: %s", e)
+
+        return None
 
     def _get_similarity(self, embedding: np.ndarray, signature: StepSignature) -> float:
         """Compute cosine similarity between an embedding and a signature's centroid.

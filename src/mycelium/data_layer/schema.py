@@ -38,7 +38,9 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     plan_validation_accuracy REAL,
     dsl_script TEXT,
     dsl_version INTEGER DEFAULT 1,
-    dsl_version_uses INTEGER DEFAULT 0
+    dsl_version_uses INTEGER DEFAULT 0,
+    child_signatures TEXT,
+    is_semantic_umbrella INTEGER DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_step_sig_id ON step_signatures(signature_id);
@@ -102,6 +104,12 @@ def init_db(conn) -> None:
 
     if "is_atomic" not in columns:
         conn.execute("ALTER TABLE step_signatures ADD COLUMN is_atomic INTEGER DEFAULT 0")
+
+    if "child_signatures" not in columns:
+        conn.execute("ALTER TABLE step_signatures ADD COLUMN child_signatures TEXT")
+
+    if "is_semantic_umbrella" not in columns:
+        conn.execute("ALTER TABLE step_signatures ADD COLUMN is_semantic_umbrella INTEGER DEFAULT 0")
 
     # Add unique index on centroid to prevent duplicate signatures
     try:
