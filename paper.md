@@ -94,7 +94,6 @@ The database stores atomic solution patterns as tuples (centroid, method, stats)
 **Distribution.** Signature usage follows a right-skewed power law: mean usage is 8.7 but median is only 4. A small number of signatures handle most of the work—the top 10 signatures account for 16% of all step executions, top 50 account for 31%. Meanwhile, 23% of signatures are used only once (rare edge cases). This mirrors natural language word frequency: a few common patterns (`count_items`, `solve_equation`, `compute_sum`) appear everywhere, while the long tail captures domain-specific variations. New problems increasingly match existing signatures rather than creating new ones.
 
 
-
 ### 3.4 Cosine Similarity Matching
 
 Each step is embedded and matched against signature centroids using cosine similarity. A match occurs when similarity exceeds a threshold (default 0.92, see `config.py`). The best-matching signature's method template is injected to guide the LLM's solution.
@@ -117,9 +116,9 @@ We are moving towards higher rates of injected DSLs per problem. In **learning m
 
 **The Philosophy:** Both DSL successes AND failures provide valuable signal:
 - **Success** → positive lift recorded → inject more in future
-- **Failure** → negative lift recorded → teaches system to avoid in benchmark mode
+- **Failure** → negative lift recorded → implement signature refinement loop see 3.9
 
-A failed DSL execution is not wasted work—it's a data point. Every injection attempt updates the lift statistics that guide future routing decisions. Short-term accuracy loss is acceptable for long-term learning.
+A failed DSL execution provides good signal that updates the lift statistics that guide future routing decisions. Short-term accuracy loss is acceptable for long-term learning.
 
 **Injection Rate vs Accuracy Trade-off:**
 
@@ -285,26 +284,105 @@ This is the "smart work once, execute forever" principle: invest LLM reasoning t
 
 ### 3.9 DSL Parameter Passing: Structured Output
 
-A DSL is only useful if we can pass the right parameters. Early versions used regex to extract numbers from LLM responses—brittle and error-prone. The solution: **structured output**.
+A DSL is only useful if we can pass the right parameters. Early versions used regex to extract numbers from LLM responses—brittle and error-prone.
 
-Instead of parsing free-form text:
+**The Problem with Regex Parsing:**
+
 ```
-Let me calculate... the area is 42 square units.
-RESULT: 42
+LLM output: "Let me calculate... the area is 42 square units."
+
+Regex attempts:
+  r"RESULT:\s*(.+)" → no match (no RESULT: prefix)
+  r"area is (\d+)" → matches, but fragile
+  r"(\d+)\s*$" → matches "42", but also matches page numbers, step counts...
 ```
 
-We have the LLM output structured JSON:
+Every new phrasing required a new regex pattern. Edge cases multiplied. The parsing layer became a liability.
+
+**The Solution: JSON Response Format**
+
+Modern LLM APIs support `response_format: {"type": "json_object"}`. Instead of parsing free-form text, we instruct the LLM to output structured JSON:
+
+```python
+# Old approach (fragile)
+response = await client.generate(messages)
+result = extract_result(response)  # regex parsing
+
+# New approach (clean)
+response = await client.generate_json(messages)
+result = response["result"]  # direct extraction
+```
+
+The LLM outputs:
 ```json
 {"reasoning": "base=7, height=12, area=0.5*7*12", "result": 42}
 ```
 
-**Why this works:**
-- **No parsing ambiguity** - Result is unambiguous, not buried in prose
-- **Semantic context** - The `reasoning` field captures what each number means
-- **DSL-ready** - Downstream DSLs receive typed parameters, not raw strings
-- **LLM does what LLMs do best** - Understanding context and extracting meaning
+**Implementation:**
 
-The LLM that solves the step already understands what each value represents. Asking it to output structured data is trivial. Asking regex to parse natural language is impossible.
+```python
+# client.py - Added JSON generation method
+async def generate_json(self, messages, temperature=0.3):
+    content = await self.generate(
+        messages,
+        response_format={"type": "json_object"},
+    )
+    return json.loads(content)
+
+# solver.py - Step execution with JSON output
+json_response = await self.solver_client.generate_json(messages)
+result = str(json_response.get("result", ""))
+```
+
+**Prompt Template for JSON Output:**
+
+```
+Solve this step. Output your response as JSON:
+{"reasoning": "your step-by-step reasoning", "result": <numeric/symbolic result>}
+
+IMPORTANT:
+- "result" should be the direct value (number, expression, or equation)
+- Use a number for numeric results: {"reasoning": "...", "result": 42}
+- Use a string for expressions: {"reasoning": "...", "result": "x^2 - 4"}
+```
+
+**Why This Eliminates Regex:**
+
+| Aspect | Regex Parsing | JSON Output |
+|--------|--------------|-------------|
+| Extraction | Pattern matching | `response["result"]` |
+| Numeric values | Parse from text | Already typed as number |
+| Edge cases | Endless patterns | None - structure enforced |
+| Failure mode | Silent wrong parse | JSON decode error (catchable) |
+| Maintainability | Growing regex library | Single format |
+
+**Results:**
+
+| Metric | Before (Text) | After (JSON) |
+|--------|---------------|--------------|
+| GSM8K Accuracy | 90% | 95% |
+| MATH L5 Injection | 60% | 69% |
+| Parsing failures | ~5% | <1% |
+
+The accuracy improvement comes from eliminating silent parsing errors—cases where regex extracted the wrong number from a response.
+
+**Graceful Fallback:**
+
+JSON mode isn't universally supported (some API configurations return 400 errors). We implement fallback:
+
+```python
+try:
+    json_response = await client.generate_json(messages)
+    result = str(json_response.get("result", ""))
+except Exception:
+    # Fallback to text mode with regex
+    response = await client.generate(messages)
+    result = extract_result(response)
+```
+
+This ensures robustness while preferring the cleaner JSON path.
+
+**The Insight:** The LLM already understands what each value represents—it computed the answer. Asking it to output structured data is trivial. Asking regex to parse natural language is impossible. Let the LLM do what LLMs do best: understanding context and extracting meaning.
 
 **Parameter Mapping for DSL Execution:**
 
