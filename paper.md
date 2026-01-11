@@ -155,6 +155,7 @@ Each problem that triggers deep decomposition *teaches* the system new atomic pa
 With an empty database, no signatures exist to match against so every step is novel and solved from scratch by the LLM. The system bootstraps by storing successful solutions as new signatures. Initially, we need to boost new signature injection to sample their success rates. As signatures accumulate and prove reliable, injection rates climb. We observe a characteristic warm-up period of ~50-100 problems before meaningful reuse emerges. 
 
 ### 3.8 Parameter Matching
+
 **Parameter Matching:** The LLM generates parameter aliases during DSL creation (e.g., `percentage` → `pct`, `percent`). At runtime, alias matching maps context values to DSL parameters without additional LLM calls.
 
 **Example Evolution:**
@@ -168,89 +169,18 @@ With an empty database, no signatures exist to match against so every step is no
 
 This is the "smart work once, execute forever" principle: invest LLM reasoning to generate the DSL once, then execute deterministically for all future matches.
 
-**Bulk DSL Generation with Claude Opus 4.5:** Rather than waiting for signatures to prove reliable organically, we batch-processed all ~1,300 signatures in the database through Claude Opus 4.5 to generate custom DSL scripts. For each signature, Claude analyzed the step type, example problems, and success patterns to write precise executable code. This one-time investment (~$15 in API costs) equipped 84% of typed signatures with deterministic DSL—turning months of organic learning into a single afternoon of batch processing. The remaining 16% are guidance-only signatures where LLM flexibility outperforms rigid formulas.
+**Bulk DSL Generation with Frontier LLM:**  DSL creation is challenging to nail and should be done with a frontier LLM not a 70b parameter model.  We batch-processed all ~2.2k signatures in the database through Claude Opus 4.5 to generate custom DSL scripts. For each signature, Claude analyzed the step type, example problems, and success patterns to write precise executable code. The remaining 16% signatures are guidance-only signatures where LLM flexibility outperforms rigid formulas.  
 
 ### 3.9 DSL Parameter Passing: Structured Output
 
-A DSL is only useful if we can pass the right parameters. Early versions used regex to extract numbers from LLM responses—brittle and error-prone.
-
-**The Problem with Regex Parsing:**
-
-```
-LLM output: "Let me calculate... the area is 42 square units."
-
-Regex attempts:
-  r"RESULT:\s*(.+)" → no match (no RESULT: prefix)
-  r"area is (\d+)" → matches, but fragile
-  r"(\d+)\s*$" → matches "42", but also matches page numbers, step counts...
-```
-
-Every new phrasing required a new regex pattern. Edge cases multiplied. The parsing layer became a liability.
-
-**The Solution: JSON Response Format**
+**Our Solution: JSON Response Format**
 
 Modern LLM APIs support `response_format: {"type": "json_object"}`. Instead of parsing free-form text, we instruct the LLM to output structured JSON:
-
-```python
-# Old approach (fragile)
-response = await client.generate(messages)
-result = extract_result(response)  # regex parsing
-
-# New approach (clean)
-response = await client.generate_json(messages)
-result = response["result"]  # direct extraction
-```
 
 The LLM outputs:
 ```json
 {"reasoning": "base=7, height=12, area=0.5*7*12", "result": 42}
 ```
-
-**Implementation:**
-
-```python
-# client.py - Added JSON generation method
-async def generate_json(self, messages, temperature=0.3):
-    content = await self.generate(
-        messages,
-        response_format={"type": "json_object"},
-    )
-    return json.loads(content)
-
-# solver.py - Step execution with JSON output
-json_response = await self.solver_client.generate_json(messages)
-result = str(json_response.get("result", ""))
-```
-
-**Prompt Template for JSON Output:**
-
-```
-Solve this step. Output your response as JSON:
-{"reasoning": "your step-by-step reasoning", "result": <numeric/symbolic result>}
-
-IMPORTANT:
-- "result" should be the direct value (number, expression, or equation)
-- Use a number for numeric results: {"reasoning": "...", "result": 42}
-- Use a string for expressions: {"reasoning": "...", "result": "x^2 - 4"}
-```
-
-**Why This Eliminates Regex:**
-
-| Aspect | Regex Parsing | JSON Output |
-|--------|--------------|-------------|
-| Extraction | Pattern matching | `response["result"]` |
-| Numeric values | Parse from text | Already typed as number |
-| Edge cases | Endless patterns | None - structure enforced |
-| Failure mode | Silent wrong parse | JSON decode error (catchable) |
-| Maintainability | Growing regex library | Single format |
-
-**Results:**
-
-| Metric | Before (Text) | After (JSON) |
-|--------|---------------|--------------|
-| GSM8K Accuracy | 90% | 95% |
-| MATH L5 Injection | 60% | 69% |
-| Parsing failures | ~5% | <1% |
 
 The accuracy improvement comes from eliminating silent parsing errors—cases where regex extracted the wrong number from a response.
 
