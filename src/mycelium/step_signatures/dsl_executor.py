@@ -24,6 +24,7 @@ import json
 import logging
 import math
 import operator
+import re
 import signal
 from contextlib import contextmanager
 from dataclasses import dataclass, field
