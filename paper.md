@@ -1106,6 +1106,8 @@ This project was developed through extensive human-AI pair programming: I provid
 
 **A note on abstraction:** Delegating implementation to Claude freed me to think at a higher level of abstraction. Instead of getting lost in debugging SQLite queries or regex parsing, I could focus on *"should signatures boost their neighbors?"* and *"what makes a step DSL-hostile?"* The cognitive load shifted from syntax to semantics, from code to architecture. This is perhaps the real unlock of AI pair programming—not just faster coding, but thinking at a higher altitude.
 
+**On the power of good metaphors:** Throughout development, Claude and I would debate implementation details—*should we cache embeddings? how do we handle DSL failures? when do we merge clusters?*—and I found that most answers came easily once I asked: *"What would prime factorization do?"* The analogy was so strong that it became a decision-making heuristic. Primes don't cache; they just exist. Factorization doesn't fail; it's just incomplete. You don't merge primes; they're already irreducible. The metaphor wasn't decoration—it was load-bearing architecture.
+
 ---
 
 ## References
