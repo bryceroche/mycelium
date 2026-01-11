@@ -231,11 +231,13 @@ Total setup time: ~5 minutes. Run `pip install -r requirements.txt`, add a Groq 
 
 ### How We Got Here
 
-Early experiments showed a "decomposition tax"—Mycelium initially *underperformed* direct LLM prompting. Investigation revealed two bugs:
+Early experiments showed a "decomposition tax"—Mycelium initially *underperformed* direct LLM prompting. Investigation revealed three issues:
 
 1. **Context loss:** Non-first steps only received dependency results, losing the original problem's constraints and meaning. Fix: pass full problem context to every step.
 
 2. **DSL parameter mapping:** DSL scripts couldn't find inputs when parameter names (`base`, `height`) didn't match context keys (`step_1`, `task_num_0`). Fix: LLM-based script rewriting.
+
+3. **Embedding granularity:** 384-dim embeddings collapsed semantically-similar-but-operationally-different steps into the same signature. Steps like "calculate percentage of X" and "calculate X percent increase" matched the same signature but needed different DSLs. Fix: upgrade to 768-dim embeddings (all-mpnet-base-v2) for better signature separation.
 
 ### The Self-Improving Loop
 
@@ -243,25 +245,6 @@ The key insight: **failures are learning signals**. When a DSL execution fails:
 1. Negative lift is recorded for that signature
 2. Future runs skip DSL for signatures with negative lift
 3. System automatically routes to LLM reasoning where DSL hurts
-
-Over time, this feedback loop:
-- Identifies which DSLs work (positive lift → keep injecting)
-- Identifies which DSLs hurt (negative lift → skip to LLM)
-- Builds a library of new signatures for future reuse
-
-### DSL Execution: When It Helps vs. Hurts
-
-Not all steps benefit from DSL. Analysis revealed:
-
-| Step Type | DSL Benefit |
-|-----------|-------------|
-| Arithmetic (`a + b * c`) | Strong positive |
-| Unit conversion | Strong positive |
-| Percentage calculation | Moderate positive |
-| Ratio/proportion reasoning | **Negative** (skip DSL) |
-| Symbolic equation solving | **Negative** (skip DSL) |
-
-Lift-based gating automatically learns these patterns. No manual rules needed.
 
 ---
 
