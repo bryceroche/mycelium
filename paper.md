@@ -29,6 +29,26 @@ Yet **while complete problems are unique, their constituent steps are highly reu
 5. **Two Operating Modes**: *Learning mode* explores new signatures and collects success statistics; *Execution mode* uses proven signatures for deterministic execution on high-confidence steps, with LLM procedural guidance for the remainder
 6. **Self-Improving System**: Learning loop that grows the signature library
 
+### Open Source & Reproducibility
+
+All code, data, and pre-trained signatures are available at **github.com/bryceroche/mycelium** (MIT license).
+
+**What we're sharing:**
+- Complete source code with documented architecture
+- **Pre-built signature database** with 675+ math signatures and DSL scripts—skip cold start entirely
+- Benchmark scripts to reproduce our 91% accuracy results
+- SQLite database file ready to use (no setup required)
+
+**5-minute replication:**
+```bash
+git clone https://github.com/bryceroche/mycelium
+pip install -r requirements.txt
+export GROQ_API_KEY=your_key
+python -m mycelium.solver "What is 15% of 80?"
+```
+
+The signature database represents months of accumulated learning on mathematical reasoning. By sharing it, new users start with a mature library rather than cold-starting from zero. This is the key advantage of decomposition: **knowledge compounds and transfers**.
+
 ---
 
 ## 2. Related Work
