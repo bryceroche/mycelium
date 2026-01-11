@@ -81,7 +81,7 @@ The database stores atomic solution patterns as tuples (centroid, method, stats)
 
 **Cluster Consolidation.** Over time, near-duplicate signatures may emerge—steps phrased differently but semantically equivalent. We periodically merge similar signatures:
 
-1. Find pairs with high cosine similarity (≥0.90) between centroids
+1. Find pairs with high cosine similarity (≥0.95) between centroids
 2. Merge: combine statistics, compute weighted-average centroid, reassign examples
 
 The survivor is the signature with more examples (more established). The result is a cleaner library with fewer redundant patterns and stronger per-signature statistics.

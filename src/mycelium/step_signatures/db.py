@@ -1379,7 +1379,7 @@ class StepSignatureDB:
 
     def find_merge_candidates(
         self,
-        similarity_threshold: float = 0.90,
+        similarity_threshold: float = 0.95,
         min_uses: int = 3,
     ) -> list[tuple[StepSignature, StepSignature, float]]:
         """Find pairs of signatures that are candidates for merging.
@@ -1652,7 +1652,7 @@ class StepSignatureDB:
 
     def merge_similar_signatures(
         self,
-        similarity_threshold: float = 0.90,
+        similarity_threshold: float = 0.95,
         min_uses: int = 3,
         max_merges: int = 10,
     ) -> list[dict]:
