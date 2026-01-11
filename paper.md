@@ -1112,7 +1112,7 @@ This project was developed through extensive human-AI pair programming: I provid
 
 **A note on abstraction:** Delegating implementation to Claude freed me to think at a higher level of abstraction. Instead of getting lost in debugging SQLite queries or regex parsing, I could focus on *"should signatures boost their neighbors?"* and *"what makes a step DSL-hostile?"* The cognitive load shifted from syntax to semantics, from code to architecture. This is perhaps the real unlock of AI pair programming—not just faster coding, but thinking at a higher altitude.
 
-**On the primes analogy:** Claude and I would go back and forth on implementation details, and honestly, most of my answers came from the same place: *"What would primes do?"* Should signatures boost their neighbors? No—primes don't do that. Should we merge similar clusters? No—primes are already irreducible. The analogy was so tight that it made most decisions obvious.
+**On the primes analogy:** Claude and I would go back and forth on implementation details, and honestly, most of my answers came from the same place: *"What would primes do?"* Is a failing DSL still useful? No—if it doesn't factor cleanly, decompose further. When do we stop decomposing? When you hit an atomic operation that can't be broken down. The analogy was so tight that it made most decisions obvious.
 
 ---
 
