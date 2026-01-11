@@ -1,0 +1,2024 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Mycelium: Decomposition Is All You Need</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Mycelium: Decomposition Is All You Need</h1>
+</header>
+<h1 id="mycelium-decomposition-is-all-you-need">Mycelium: Decomposition
+Is All You Need</h1>
+<p><em>Decomposing Problems into Reusable Atomic Signatures</em></p>
+<p><strong>Author:</strong> Bryce Roche, bryceroche@fungifactor.com,
+github.com/bryceroche/mycelium</p>
+<hr />
+<h2 id="abstract">Abstract</h2>
+<p>Every composite number factors uniquely into primes. We hypothesize
+that math problems similarly decompose into a finite set of atomic
+<em>signatures</em>—reusable solution patterns.
+<strong>Mycelium</strong> builds a “table of primes” for mathematical
+reasoning: a signature database that grows as problems are solved.</p>
+<p>The system decomposes problems into DAG-structured steps, matches
+each against known signatures via cosine similarity, and executes stored
+routines (formula, procedure, or LLM guidance). Novel steps are solved
+and stored as new signatures. The library grows; future problems get
+faster.</p>
+<hr />
+<h2 id="introduction">1. Introduction</h2>
+<p>Large language models solve math problems through chain-of-thought
+reasoning, but each problem is solved from scratch—no persistent memory,
+no reuse of successful patterns.</p>
+<p>Yet <strong>while complete problems are unique, their constituent
+steps are highly reusable</strong>. The step “solve for x in 2x + 3 = 7”
+appears across countless problems. Like mycelium networks that decompose
+organic matter into simple molecules and share nutrients across forests,
+we decompose complex problems into atomic patterns and distribute
+solutions through a shared database.</p>
+<h3 id="contributions">Contributions</h3>
+<ol type="1">
+<li><strong>Problem Decomposition</strong>: DAG-based decomposition into
+reusable atomic signatures</li>
+<li><strong>Signature Database</strong>: Vector store of solution
+patterns with centroid-based clustering</li>
+<li><strong>Cosine Similarity Matching</strong>: Embedding-based
+retrieval for step-level pattern matching</li>
+<li><strong>Hybrid Execution</strong>: Routing to formula evaluation,
+procedure guidance, or LLM</li>
+<li><strong>Signature Refinement Loop</strong>: Frontier LLM decomposes
+low-performing signatures into precise child signatures; parents become
+routers—this is how the system learns</li>
+<li><strong>Two Operating Modes</strong>: <em>Learning mode</em>
+explores new signatures and collects success statistics; <em>Execution
+mode</em> uses proven signatures for deterministic execution</li>
+</ol>
+<h3 id="open-source-reproducibility">Open Source &amp;
+Reproducibility</h3>
+<p>All code, data, and pre-trained signatures are available at
+<strong>github.com/bryceroche/mycelium</strong> (MIT license).</p>
+<p><strong>What we’re sharing:</strong> - Complete source code with
+documented architecture - <strong>Pre-built signature database</strong>
+with 675+ math signatures and DSL scripts—skip cold start entirely -
+Benchmark scripts to reproduce our results - SQLite database file ready
+to use (no setup required)</p>
+<p><strong>5-minute replication:</strong></p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/bryceroche/mycelium</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install <span class="at">-r</span> requirements.txt</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">GROQ_API_KEY</span><span class="op">=</span>your_key</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> mycelium.solver <span class="st">&quot;What is 15% of 80?&quot;</span></span></code></pre></div>
+<p>The signature database represents months of accumulated learning on
+mathematical reasoning. By sharing it, new users start with a mature
+library rather than cold-starting from zero. This is the key advantage
+of decomposition: <strong>knowledge compounds and
+transfers</strong>.</p>
+<hr />
+<h2 id="related-work">2. Related Work</h2>
+<p><strong>Mathematical Reasoning with LLMs.</strong> Chain-of-thought
+prompting (Wei et al., 2022) and program-aided reasoning (Gao et al.,
+2023) solve problems independently without knowledge reuse.</p>
+<p><strong>Retrieval-Augmented Generation.</strong> RAG systems retrieve
+context before generation (Lewis et al., 2020). We extend this to
+<em>step-level</em> retrieval.</p>
+<p><strong>Case-Based Reasoning.</strong> Classical AI reused solutions
+from similar cases (Kolodner, 1992). Our signature database is a neural
+implementation with learned embeddings.</p>
+<hr />
+<h2 id="method">3. Method</h2>
+<h3 id="overview">3.1 Overview</h3>
+<p>Given problem P, Mycelium: (1) decomposes into a DAG of steps, (2)
+matches each step against the signature database, (3) executes via
+stored routines or LLM, (4) synthesizes results, and (5) updates the
+database with new patterns.</p>
+<h3 id="problem-decomposition">3.2 Problem Decomposition</h3>
+<p>An LLM decomposes problem P into a DAG where each step has a task
+description and dependencies. Steps execute in topological order with
+independent steps parallelized.</p>
+<p><strong>Signature-Guided Hints.</strong> Naive decomposition creates
+steps that may not match existing signatures—wasting the library. We
+inject the top 15 reliable signatures into the planner prompt:</p>
+<pre><code>## Available Atomic Operations
+- solve_quadratic: Solve ax² + bx + c = 0
+- compute_percentage: Calculate X% of Y
+- simplify_fraction: Reduce to lowest terms
+...
+Prefer these known patterns when they fit.</code></pre>
+<p>This guides the LLM to decompose into steps that align with proven
+patterns, improving signature reuse without constraining novel
+decompositions.</p>
+<h3 id="signature-database">3.3 Signature Database</h3>
+<p>The database stores atomic solution patterns as tuples (centroid,
+method, stats). Centroids update incrementally as new examples join
+clusters.</p>
+<p><strong>Cluster Consolidation.</strong> Over time, near-duplicate
+signatures may emerge—steps phrased differently but semantically
+equivalent. Rather than boosting neighbors on successful solves (which
+risks feedback loops), we periodically merge similar signatures:</p>
+<ol type="1">
+<li>Find pairs with high cosine similarity (≥0.90) between
+centroids</li>
+<li>Verify similar success rates (within 15%)—ensures both patterns
+actually work</li>
+<li>Merge: combine statistics, compute weighted-average centroid,
+reassign examples</li>
+</ol>
+<p>The survivor is the signature with more examples (more established).
+This consolidation is conservative: only merge when embeddings
+<em>and</em> outcomes align. The result is a cleaner library with fewer
+redundant patterns and stronger per-signature statistics.</p>
+<h3 id="cosine-similarity-matching">3.4 Cosine Similarity Matching</h3>
+<p>Each step is embedded and matched against signature centroids using
+cosine similarity. A match occurs when similarity exceeds a threshold
+(default 0.87). The best-matching signature’s method template is
+injected to guide the LLM’s solution.</p>
+<p><strong>Why Cosine Similarity?</strong> We evaluated several matching
+strategies:</p>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 41%" />
+<col style="width: 32%" />
+</colgroup>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+<th>Tradeoff</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Cosine similarity</strong></td>
+<td>Angle between vectors, scale-invariant</td>
+<td>Simple, fast, interpretable</td>
+</tr>
+<tr>
+<td>Euclidean distance</td>
+<td>L2 norm in embedding space</td>
+<td>Sensitive to magnitude</td>
+</tr>
+<tr>
+<td>Interference</td>
+<td>Cosine × amplitude × Gaussian decay</td>
+<td>More expressive, harder to tune</td>
+</tr>
+<tr>
+<td>Essence</td>
+<td>Weighted top-k dimensions</td>
+<td>Loses semantic nuance</td>
+</tr>
+</tbody>
+</table>
+<p>Cosine similarity emerged as the best default: it’s robust to
+embedding magnitude variations, computationally cheap (single dot
+product), and produces interpretable 0-1 scores. More complex methods
+(interference, essence) are supported but didn’t improve accuracy enough
+to justify added complexity.</p>
+<p><strong>Adaptive Thresholds.</strong> Fixed thresholds fail when
+cluster tightness varies. We adjust based on cohesion:</p>
+<pre><code>threshold = base + (cohesion - 0.5) × 0.2</code></pre>
+<p>Tight clusters (cohesion &gt; 0.5) get stricter thresholds; loose
+clusters get lenient ones. This prevents false matches in well-defined
+clusters while allowing exploration in sparse regions.</p>
+<h3 id="execution-and-learning">3.5 Execution and Learning</h3>
+<p>Matched signatures execute via formula evaluation, procedural
+guidance, or hints. Unmatched steps use pure LLM reasoning. After
+solving, new patterns create signatures; signatures with &gt;=3 uses and
+&gt;=70% success become “reliable” and inject their templates.</p>
+<h3 id="recursive-decomposition">3.6 Recursive Decomposition</h3>
+<p>When a DSL has low confidence for a step, that’s a signal the step is
+too complex. Rather than falling back to pure LLM reasoning, we
+<strong>decompose further</strong> until reaching truly atomic
+operations.</p>
+<p><strong>The Algorithm:</strong></p>
+<ol type="1">
+<li><p><strong>StepDecomposer</strong>
+(<code>step_decomposer.py</code>):
+<code>decompose_step(step, context, depth)</code> returns a
+<code>DecomposedStep</code> by calling the LLM to break the step into
+2-4 sub-steps with a dependency graph. Respects
+<code>MAX_DECOMPOSITION_DEPTH = 3</code>.</p></li>
+<li><p><strong>Solver</strong>
+(<code>_execute_step_with_signature</code>): Finds or creates a
+signature for the step. If DSL confidence &lt; 0.5 and depth &lt; max,
+calls <code>_decompose_and_solve_step()</code> which decomposes via
+StepDecomposer, executes sub-steps recursively at depth+1, and
+aggregates results. Otherwise, executes via DSL or LLM
+fallback.</p></li>
+</ol>
+<p><strong>Atomic Signature Tracking:</strong></p>
+<p>Signatures created during decomposition are marked with their origin
+depth:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>signature <span class="op">=</span> db.find_or_create(</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    step_text<span class="op">=</span>step.task,</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    embedding<span class="op">=</span>embedding,</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    origin_depth<span class="op">=</span>decomposition_depth,  <span class="co"># Track provenance</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Signatures with origin_depth &gt; 0 are marked is_atomic=True</span></span></code></pre></div>
+<p><strong>Example Execution:</strong></p>
+<pre><code>Problem: &quot;What is 15% of 240?&quot;
+
+Step 1: &quot;Convert 15% to decimal&quot;
+        ↓ DSL confidence: 0.0 (new signature)
+        ↓ DECOMPOSE at depth=0
+
+  Sub-step 1.1: &quot;Identify the percentage value&quot;
+                ↓ DSL confidence: 0.0
+                ↓ DECOMPOSE at depth=1
+
+    Sub-step 1.1.1: &quot;Extract number 15&quot;
+                    ↓ Depth=2, DECOMPOSE
+
+      Sub-step 1.1.1.1: &quot;Parse integer&quot;
+                        ↓ Depth=3 (MAX), LLM fallback
+                        ↓ Result: 15
+
+  Sub-step 1.2: &quot;Divide by 100&quot;
+                ↓ confidence: 0.91 ✓
+                ↓ Execute DSL: 15 / 100 = 0.15
+
+Step 2: &quot;Multiply 0.15 × 240&quot;
+        ↓ confidence: 0.94 ✓
+        ↓ Execute DSL: 36
+
+Answer: 36 ✓</code></pre>
+<p><strong>The Self-Improvement Loop:</strong></p>
+<ol type="1">
+<li>Complex step has low DSL confidence</li>
+<li>System decomposes into sub-steps</li>
+<li>Sub-steps still have low confidence → decompose again</li>
+<li>At max depth, LLM fallback executes and success is recorded</li>
+<li>New atomic signatures created (marked
+<code>is_atomic=True</code>)</li>
+<li>Next time same pattern appears → match atomic signature → DSL
+execution (no decomposition needed)</li>
+</ol>
+<p>Each problem that triggers deep decomposition <em>teaches</em> the
+system new atomic patterns. Over time, decomposition becomes rarer as
+the atomic vocabulary grows.</p>
+<p><strong>Configuration:</strong> -
+<code>MAX_DECOMPOSITION_DEPTH = 3</code> — prevent infinite recursion -
+<code>DECOMPOSITION_CONFIDENCE_THRESHOLD = 0.5</code> — trigger below
+this</p>
+<p><strong>Why This Works:</strong> 1. <strong>Self-adapting</strong>:
+The system finds the right granularity automatically 2. <strong>No
+hardcoding</strong>: DSL-hostile types get decomposed; DSL-friendly
+execute directly 3. <strong>Builds vocabulary</strong>: Atomic
+signatures accumulate, improving future coverage 4. <strong>Depth
+tracking</strong>: Signatures know if they’re atomic (origin_depth &gt;
+0)</p>
+<h3 id="cold-start">3.7 Cold Start</h3>
+<p>With an empty database, no signatures exist to match against so every
+step is novel and solved from scratch by the LLM. The system bootstraps
+by storing successful solutions as new signatures. Initially, success
+rate is 0% for new signatures so we need to boost new signature
+injection to sample their success rates. As signatures accumulate and
+prove reliable, injection rates climb. We observe a characteristic
+warm-up period of ~50-100 problems before meaningful reuse emerges. This
+cold start cost is amortized over the system’s lifetime as the signature
+library matures.</p>
+<h3 id="from-method-template-to-dsl">3.8 From Method Template to
+DSL</h3>
+<p>Each signature stores a <strong>method_template</strong>—a natural
+language instruction describing how to solve that type of step. For
+example:</p>
+<blockquote>
+<p><em>“To solve a linear equation ax + b = c: subtract b from both
+sides, then divide by a.”</em></p>
+</blockquote>
+<p>When a step matches a signature, this template is injected into the
+LLM prompt as guidance. The LLM still performs the reasoning, but with a
+proven strategy.</p>
+<p><strong>The Problem:</strong> Every use requires an LLM call, even
+for simple arithmetic the LLM has solved correctly hundreds of
+times.</p>
+<p><strong>The Solution:</strong> Once a signature proves reliable (≥5
+uses, ≥80% success rate), we generate a <strong>DSL script</strong> that
+executes deterministically—no LLM needed.</p>
+<p><strong>Execution Priority:</strong> 1. <strong>DSL
+execution</strong> (if available): Direct computation, ~0ms 2.
+<strong>Method template injection</strong> (fallback): LLM with
+guidance, ~500ms</p>
+<p><strong>DSL Generation Flow:</strong> 1. New signature created with
+method_template only 2. Signature accumulates uses via LLM execution 3.
+Once reliable, LLM analyzes successful examples and generates custom DSL
+4. DSL stored on signature, used for all future matches 5. Falls back to
+method_template if DSL execution fails</p>
+<p><strong>Three DSL Layers:</strong> - <strong>Math</strong>: Safe
+arithmetic—<code>(a + b) / 2</code>, <code>sqrt(x)</code>,
+<code>abs(y)</code> - <strong>SymPy</strong>: Symbolic
+algebra—<code>solve(Eq(a*x + b, 0), x)</code> - <strong>Custom</strong>:
+Registered operators—<code>apply_quadratic_formula(a, b, c)</code></p>
+<p><strong>Real DSL Examples from Signature Database:</strong></p>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 28%" />
+<col style="width: 45%" />
+</colgroup>
+<thead>
+<tr>
+<th>Step Type</th>
+<th>DSL Script</th>
+<th>Fallback Guidance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>cylinder_volume</td>
+<td><code>pi * r**2 * h</code></td>
+<td>V = πr²h</td>
+</tr>
+<tr>
+<td>normalize_vector</td>
+<td><code>v / sqrt(sum(x**2 for x in v))</code></td>
+<td>Divide vector by magnitude</td>
+</tr>
+<tr>
+<td>add_fractions</td>
+<td><code>a/b + c/d</code></td>
+<td>Find common denominator</td>
+</tr>
+<tr>
+<td>gcd_lcm_relation</td>
+<td><code>a * b == gcd * lcm</code></td>
+<td>a × b = gcd × lcm</td>
+</tr>
+<tr>
+<td>sum_ratio_parts</td>
+<td><code>sum(parts)</code></td>
+<td>Add all ratio parts</td>
+</tr>
+<tr>
+<td>expand_square</td>
+<td><code>y**2 + 2*a*y + a**2</code></td>
+<td>(y+a)² expansion</td>
+</tr>
+<tr>
+<td>rotation_matrix</td>
+<td><code>rotation_matrix(theta)</code></td>
+<td>[[cos θ, -sin θ], [sin θ, cos θ]]</td>
+</tr>
+<tr>
+<td>simplify_expr</td>
+<td><code>simplify(expression)</code></td>
+<td>Combine like terms</td>
+</tr>
+<tr>
+<td>define_sides</td>
+<td><em>(guidance only)</em></td>
+<td>Let sides be a, b, c with constraints</td>
+</tr>
+</tbody>
+</table>
+<p>The last row shows a <strong>guidance-only</strong> signature: no
+executable DSL, just method template injection. Some steps are
+inherently semantic and benefit from LLM flexibility.</p>
+<p><strong>Parameter Matching:</strong> The LLM generates parameter
+aliases during DSL creation (e.g., <code>percentage</code> →
+<code>pct</code>, <code>percent</code>). At runtime, alias matching maps
+context values to DSL parameters without additional LLM calls.</p>
+<p><strong>Example Evolution:</strong></p>
+<p><em>Initial (method_template only):</em></p>
+<pre><code>&quot;To calculate a percentage of a value: multiply the value by the percentage, then divide by 100.&quot;</code></pre>
+<p><em>After proving reliable (DSL added):</em></p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;type&quot;</span><span class="fu">:</span> <span class="st">&quot;math&quot;</span><span class="fu">,</span> <span class="dt">&quot;script&quot;</span><span class="fu">:</span> <span class="st">&quot;(percentage / 100) * base&quot;</span><span class="fu">,</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a> <span class="dt">&quot;params&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;percentage&quot;</span><span class="ot">,</span> <span class="st">&quot;base&quot;</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a> <span class="dt">&quot;aliases&quot;</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">&quot;percentage&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;pct&quot;</span><span class="ot">,</span> <span class="st">&quot;percent&quot;</span><span class="ot">]</span><span class="fu">,</span> <span class="dt">&quot;base&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;value&quot;</span><span class="ot">,</span> <span class="st">&quot;total&quot;</span><span class="ot">]</span><span class="fu">}}</span></span></code></pre></div>
+<p>This is the “smart work once, execute forever” principle: invest LLM
+reasoning to generate the DSL once, then execute deterministically for
+all future matches.</p>
+<p><strong>Bulk DSL Generation with Claude Opus 4.5:</strong> Rather
+than waiting for signatures to prove reliable organically, we
+batch-processed all ~1,300 signatures in the database through Claude
+Opus 4.5 to generate custom DSL scripts. For each signature, Claude
+analyzed the step type, example problems, and success patterns to write
+precise executable code. This one-time investment (~$15 in API costs)
+equipped 84% of typed signatures with deterministic DSL—turning months
+of organic learning into a single afternoon of batch processing. The
+remaining 16% are guidance-only signatures where LLM flexibility
+outperforms rigid formulas.</p>
+<h3 id="infrastructure">3.9 Infrastructure</h3>
+<p><strong>Storage:</strong> SQLite database stores signatures,
+embeddings (as packed binary), examples, and statistics. Single-file
+deployment with no external database dependencies.</p>
+<p><strong>SQLite Tuning for Parallel Execution:</strong> The default
+SQLite journal mode blocks concurrent writes—problematic when running
+multiple Groq workers in parallel. We enable Write-Ahead Logging (WAL)
+mode:</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>conn.execute(<span class="st">&quot;PRAGMA journal_mode = WAL&quot;</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>conn.execute(<span class="st">&quot;PRAGMA busy_timeout = 30000&quot;</span>)  <span class="co"># 30s lock timeout</span></span></code></pre></div>
+<p>WAL allows concurrent readers and writers, eliminating “database is
+locked” errors. Combined with a 30-second busy timeout, this enables
+parallel benchmark execution without database contention.</p>
+<p><strong>LLM Inference:</strong> Groq API with Llama-3.3-70B for fast
+inference (~500ms per call). Used for problem decomposition, step
+execution, and DSL generation.</p>
+<p><strong>Parallel Groq Workers:</strong> With WAL mode enabled, we can
+run multiple problems concurrently:</p>
+<table>
+<thead>
+<tr>
+<th>Workers</th>
+<th>100 Problems</th>
+<th>Speedup</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>941s</td>
+<td>1.0x</td>
+</tr>
+<tr>
+<td>4</td>
+<td>226s</td>
+<td><strong>4.2x</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The 4.2x speedup comes from overlapping API latency across workers.
+Each worker maintains its own database connection; WAL ensures writes
+don’t block each other. Benchmark time drops from ~16 minutes to ~4
+minutes.</p>
+<p><strong>Embeddings:</strong> all-MiniLM-L6-v2 (384-dimensional) via
+sentence-transformers. Local inference, no API calls.</p>
+<p><strong>LRU Caching (future work):</strong> Two-layer caching
+eliminates redundant computation: - <em>Embedding cache</em> (1000
+entries): Identical step text returns cached vector instantly -
+<em>Classification cache</em> (1024 entries): Step type lookups skip
+pattern matching on cache hit</p>
+<p>Cache hit rates exceed 60% in typical runs—steps like “solve for x”
+appear repeatedly across problems. Combined with DSL execution, a
+fully-cached step resolves in &lt;1ms (vs ~500ms for LLM).</p>
+<p><strong>Development:</strong> - <strong>Claude Code</strong>
+(Anthropic): AI pair programming for architecture design and
+implementation - <strong>Beads</strong>: Git-native issue tracking for
+task management (<code>.beads/</code> directory) -
+<strong>tmux</strong>: Parallel development sessions—multiple Claude
+instances working on different components - <strong>Git</strong>:
+Version control with hooks for automated beads sync</p>
+<p>This lightweight stack enables rapid iteration: SQLite for
+portability, Groq for speed, and Claude + tmux for parallelized
+AI-assisted development.</p>
+<h3 id="signature-refinement-loop">3.10 Signature Refinement Loop</h3>
+<p>Low-performing signatures reveal opportunities for improvement. We
+propose an automated refinement loop that <strong>requires a frontier
+LLM</strong> (e.g., Claude Opus) to perform the sophisticated analysis
+and code generation:</p>
+<p><strong>The Loop:</strong></p>
+<pre><code>1. IDENTIFY: Query signatures with success_rate &lt; threshold
+   → &quot;area_triangle&quot; at 15% success, 200 uses
+
+2. ANALYZE (Frontier LLM): Examine failure cases and identify patterns
+   → &quot;Failures occur when inputs are coordinates vs. side lengths vs. angles&quot;
+
+3. DECOMPOSE (Frontier LLM): Design finer-grained sub-signatures
+   → area_triangle_coordinates (Shoelace formula)
+   → area_triangle_sides (Heron&#39;s formula)
+   → area_triangle_angle (½ab·sin(C))
+
+4. GENERATE DSL (Frontier LLM): Write precise DSL for each child
+   → Each sub-signature gets a single-purpose, tested DSL script
+
+5. REDIRECT (Frontier LLM): Configure parent as router to children
+   → Parent signature stores pointers to sub-signatures
+   → LLM writes routing logic based on input type detection
+
+6. VALIDATE: Test on held-out examples
+   → Keep if success_rate improves; discard if not</code></pre>
+<p><strong>Why a Frontier LLM is Required:</strong></p>
+<p>Steps 2-5 require sophisticated reasoning that only frontier models
+can reliably perform: - <strong>Pattern recognition</strong> across
+failure cases to identify root causes - <strong>Domain
+expertise</strong> to know Heron’s formula vs. Shoelace
+vs. trigonometric approaches - <strong>Code generation</strong> to write
+correct, tested DSL scripts - <strong>Routing logic</strong> to classify
+input types and direct to appropriate children</p>
+<p>A weaker model would hallucinate formulas or mis-classify input
+patterns. The refinement loop is where frontier LLM capability pays
+dividends—each refinement improves thousands of future executions.</p>
+<p><em>Practical note:</em> The LLM may initially resist this task (“I
+can help you think through approaches…”) or produce overly cautious
+responses. Insist on concrete outputs: specific sub-signature names,
+actual DSL code, explicit routing conditions. The model is capable; it
+just needs clear direction that you want executable artifacts, not
+suggestions.</p>
+<p><strong>The Compound Effect:</strong></p>
+<p>Each refinement cycle: - Converts low-performing signatures into
+high-performing sub-signatures - Increases overall DSL injection rate -
+Moves the system toward fully deterministic execution</p>
+<p>The parent becomes a router; the atomic children get precise DSLs.
+This is the “learning” in self-improving: not just accumulating
+signatures, but actively refining them based on observed
+performance.</p>
+<p><strong>Summary:</strong> Signatures with low-success DSLs get
+decomposed into child signatures with new, precise DSLs. The parent
+signatures become routers that direct incoming traffic to the
+appropriate child. The result: what was one failing signature becomes
+multiple succeeding ones.</p>
+<hr />
+<h2 id="experiments">4. Experiments</h2>
+<h3 id="setup">Setup</h3>
+<ul>
+<li><strong>Dataset</strong>: MATH Level 3 problems (algebra,
+precalculus, geometry, number theory)</li>
+<li><strong>Model</strong>: Llama-3.3-70B via Groq API</li>
+<li><strong>Embeddings</strong>: all-MiniLM-L6-v2 (384d)</li>
+<li><strong>Evaluation</strong>: LLM judge for semantic answer
+equivalence</li>
+<li><strong>Reproducibility</strong>: Fixed random seeds for problem
+selection</li>
+<li><strong>Fair comparison</strong>: Baseline (direct LLM) and Mycelium
+run on identical problem sets using the same seed</li>
+</ul>
+<h3 id="reproducibility">Reproducibility</h3>
+<p>Results are trivial to verify. The entire stack is accessible:</p>
+<ul>
+<li><strong>Code</strong>: Open source under MIT license at
+github.com/bryceroche/mycelium</li>
+<li><strong>LLM Inference</strong>: Groq API (free tier available)</li>
+<li><strong>Database</strong>: SQLite (single file, no setup)</li>
+<li><strong>Embeddings</strong>: Local sentence-transformers (no API
+keys)</li>
+</ul>
+<p>Total setup time: ~5 minutes. Run
+<code>pip install -r requirements.txt</code>, add a Groq API key, and
+execute the benchmark. No cloud infrastructure, no GPU cluster, no
+waiting for API quotas.</p>
+<h3 id="main-results">Main Results</h3>
+<p><em>[Results pending - benchmarks in progress]</em></p>
+<h3 id="how-we-got-here">How We Got Here</h3>
+<p>Early experiments showed a “decomposition tax”—Mycelium initially
+<em>underperformed</em> direct LLM prompting. Investigation revealed two
+bugs:</p>
+<ol type="1">
+<li><p><strong>Context loss:</strong> Non-first steps only received
+dependency results, losing the original problem’s constraints and
+meaning. Fix: pass full problem context to every step.</p></li>
+<li><p><strong>DSL parameter mapping:</strong> DSL scripts couldn’t find
+inputs when parameter names (<code>base</code>, <code>height</code>)
+didn’t match context keys (<code>step_1</code>,
+<code>task_num_0</code>). Fix: LLM-based script rewriting.</p></li>
+</ol>
+<h3 id="the-self-improving-loop">The Self-Improving Loop</h3>
+<p>The key insight: <strong>failures are learning signals</strong>. When
+a DSL execution fails: 1. Negative lift is recorded for that signature
+2. Future runs skip DSL for signatures with negative lift 3. System
+automatically routes to LLM reasoning where DSL hurts</p>
+<p>Over time, this feedback loop: - Identifies which DSLs work (positive
+lift → keep injecting) - Identifies which DSLs hurt (negative lift →
+skip to LLM) - Builds a library of new signatures for future reuse</p>
+<h3 id="dsl-execution-when-it-helps-vs.-hurts">DSL Execution: When It
+Helps vs. Hurts</h3>
+<p>Not all steps benefit from DSL. Analysis revealed:</p>
+<table>
+<thead>
+<tr>
+<th>Step Type</th>
+<th>DSL Benefit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Arithmetic (<code>a + b * c</code>)</td>
+<td>Strong positive</td>
+</tr>
+<tr>
+<td>Unit conversion</td>
+<td>Strong positive</td>
+</tr>
+<tr>
+<td>Percentage calculation</td>
+<td>Moderate positive</td>
+</tr>
+<tr>
+<td>Ratio/proportion reasoning</td>
+<td><strong>Negative</strong> (skip DSL)</td>
+</tr>
+<tr>
+<td>Symbolic equation solving</td>
+<td><strong>Negative</strong> (skip DSL)</td>
+</tr>
+</tbody>
+</table>
+<p>Lift-based gating automatically learns these patterns. No manual
+rules needed.</p>
+<hr />
+<h2 id="analysis">5. Analysis</h2>
+<h3 id="the-decomposition-tax-error-compounding-in-dag-execution">The
+Decomposition Tax: Error Compounding in DAG Execution</h3>
+<p>Decomposition introduces a fundamental challenge: <strong>every step
+must succeed for the final answer to be correct</strong>. In a DAG with
+N sequential steps, errors compound multiplicatively. This explains why
+naive decomposition can hurt performance—the “decomposition tax.”</p>
+<p><strong>Our Mitigations:</strong></p>
+<ol type="1">
+<li><p><strong>Context Propagation:</strong> Pass the full problem to
+every step, preventing information loss that caused cascading
+failures.</p></li>
+<li><p><strong>DSL Execution:</strong> Deterministic execution
+eliminates LLM error on typed steps.</p></li>
+<li><p><strong>LLM Script Rewriting:</strong> When DSL parameter names
+don’t match context keys, LLM rewrites the script using actual variable
+names.</p></li>
+<li><p><strong>Lift-Based Gating:</strong> Automatically skip DSL for
+signatures where it hurts accuracy.</p></li>
+</ol>
+<h3 id="step-level-reusability">Step-Level Reusability</h3>
+<p>Decomposition unlocks reuse that monolithic approaches cannot access.
+The signature library converges toward a stable vocabulary where new
+problems reuse existing patterns.</p>
+<h3 id="signature-convergence">Signature Convergence</h3>
+<p>The signature library converges toward a finite vocabulary—supporting
+the hypothesis that mathematical reasoning decomposes into a bounded set
+of atomic operations.</p>
+<h3 id="signature-deduplication-a-lesson-in-database-hygiene">Signature
+Deduplication: A Lesson in Database Hygiene</h3>
+<p>Analysis of our signature database revealed significant redundancy:
+<strong>43% of stored signatures were duplicates</strong> with identical
+centroids. The raw count showed 1,189 signatures, but only 675 were
+unique.</p>
+<table>
+<thead>
+<tr>
+<th>Step Type</th>
+<th>Duplicates</th>
+<th>Root Cause</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>solve_equation</code></td>
+<td>357</td>
+<td>High-volume type, race conditions</td>
+</tr>
+<tr>
+<td><code>setup_equation</code></td>
+<td>19</td>
+<td>Similar phrasing variations</td>
+</tr>
+<tr>
+<td><code>count_items</code></td>
+<td>18</td>
+<td>Parallel worker collisions</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Root cause:</strong> When multiple workers process problems
+simultaneously, they may each create a new signature for the same step
+pattern before the first write commits. The <code>find_or_create</code>
+logic races against itself.</p>
+<p><strong>Impact:</strong> Low apparent reuse rates. With 357
+duplicates of <code>solve_equation</code>, each copy averaged only 1.1
+uses instead of the combined ~400 uses going to one signature. This
+fragmentation: - Obscures true reuse metrics - Dilutes success rate
+statistics - Wastes storage and lookup time</p>
+<p><strong>Fix:</strong> Periodic consolidation merges signatures with
+identical (step_type, centroid) pairs, combining their usage statistics.
+After deduplication, the 675 unique signatures show healthier reuse
+patterns with 6.7 uses per signature on average.</p>
+<h3 id="the-dsl-selective-injection-principle">The DSL Selective
+Injection Principle</h3>
+<p>A key insight: <strong>DSL helps typed signatures but hurts general
+reasoning steps</strong>.</p>
+<p>When we added DSL to <em>every</em> signature (including
+<code>general_step</code>), accuracy dropped:</p>
+<pre><code>DSL on typed signatures only:  63.3%
+DSL on all signatures:         36.7%</code></pre>
+<p><strong>Root cause:</strong> General steps
+(<code>general_step</code>) require flexible LLM thinking—problem
+interpretation, setup, multi-step reasoning. Adding DSL interferes with
+this flexibility.</p>
+<p><strong>The solution:</strong> Only typed signatures (compute_sum,
+solve_quadratic, etc.) receive DSL. General steps use pure LLM
+reasoning. Our step type classifier makes this distinction automatically
+via linguistic pattern matching, categorizing steps into 40+ specific
+types.</p>
+<h3 id="dsl-lift-analysis-same-script-different-outcomes">DSL Lift
+Analysis: Same Script, Different Outcomes</h3>
+<p>A deeper analysis revealed a surprising pattern: <strong>identical
+DSL scripts produce wildly different outcomes depending on semantic
+context</strong>.</p>
+<table>
+<colgroup>
+<col style="width: 29%" />
+<col style="width: 29%" />
+<col style="width: 24%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr>
+<th>Step Type</th>
+<th>DSL Script</th>
+<th>Context</th>
+<th>Lift</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>compute_sum</td>
+<td><code>a + b</code></td>
+<td>“Calculate total cups”</td>
+<td><strong>+55.6%</strong></td>
+</tr>
+<tr>
+<td>compute_sum</td>
+<td><code>a + b</code></td>
+<td>“Total parts in ratio”</td>
+<td><strong>-40.0%</strong></td>
+</tr>
+<tr>
+<td>compute_difference</td>
+<td><code>a - b</code></td>
+<td>“Common difference in sequence”</td>
+<td><strong>-27.4%</strong></td>
+</tr>
+<tr>
+<td>simplify_expression</td>
+<td><code>simplify(expr)</code></td>
+<td>“Simplify the equation”</td>
+<td><strong>+54.5%</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>The Pattern:</strong> Simple arithmetic contexts benefit from
+DSL (+55% lift), while conceptual/abstract contexts are harmed (-40%
+lift). The step type <code>compute_sum</code> is too coarse—it covers
+both “add two numbers” and “analyze ratio components.”</p>
+<p><strong>Lift-Based Gating.</strong> We track success rates for
+injected vs non-injected executions per signature:</p>
+<pre><code>lift = injected_success_rate - baseline_success_rate</code></pre>
+<p>After a cold-start period (10 uses), signatures with negative lift
+automatically fall back to LLM reasoning. This self-correcting mechanism
+ensures DSL injection only occurs when it demonstrably helps.</p>
+<p><strong>Implications for Step Type Design:</strong> Finer-grained
+step types (e.g., <code>simple_addition</code> vs
+<code>ratio_analysis</code>) would enable more precise DSL matching. Our
+current 40+ step types represent a first approximation; the lift data
+suggests further subdivision would improve accuracy.</p>
+<h3 id="current-system-health">Current System Health</h3>
+<p>Key metrics to monitor:</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>What It Measures</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Steps/problem</td>
+<td>Decomposition granularity</td>
+</tr>
+<tr>
+<td>Signature match rate</td>
+<td>Library coverage</td>
+</tr>
+<tr>
+<td>DSL injections/problem</td>
+<td>Deterministic execution rate</td>
+</tr>
+<tr>
+<td>Problem accuracy</td>
+<td>End-to-end performance</td>
+</tr>
+</tbody>
+</table>
+<p>The lift-based gating automatically routes each step to its optimal
+execution path.</p>
+<h3 id="dsl-hostile-embedding-spaces">DSL-Hostile Embedding Spaces</h3>
+<p>Some step types cluster steps that <em>sound</em> similar but require
+fundamentally different computation. These “DSL-hostile” embedding
+spaces look uniform to the classifier but contain high variance in
+actual solution methods.</p>
+<table>
+<colgroup>
+<col style="width: 29%" />
+<col style="width: 32%" />
+<col style="width: 37%" />
+</colgroup>
+<thead>
+<tr>
+<th>Step Type</th>
+<th>Failed DSL</th>
+<th>Why It Fails</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>area_triangle</code></td>
+<td><code>0.5 * base * height</code></td>
+<td>Problems provide coordinates, angles, or side lengths—rarely base
+and height directly. Requires Heron’s formula, coordinate geometry, or
+trigonometry depending on input format.</td>
+</tr>
+<tr>
+<td><code>compute_magnitude</code></td>
+<td><code>sqrt(sum(c**2))</code></td>
+<td>Generator expressions unsupported by AST evaluator. Even with fix,
+vectors come as strings like “[3, 4]” requiring parsing.</td>
+</tr>
+<tr>
+<td><code>vector_operation</code></td>
+<td><code>Matrix(v1).dot(v2)</code></td>
+<td>“Vector operation” covers dot product, cross product, addition,
+scaling, projection—no single formula fits. Input format varies
+wildly.</td>
+</tr>
+<tr>
+<td><code>compute_angle</code></td>
+<td><code>180 - a - b</code></td>
+<td>Only works for “find third angle in triangle.” Step type matches
+angle bisectors, arc measures, rotation angles, phase shifts—completely
+different operations.</td>
+</tr>
+<tr>
+<td><code>matrix_operation</code></td>
+<td><code>Matrix(m).det()</code></td>
+<td>Covers determinant, inverse, multiplication, eigenvalues, row
+reduction. The step type is a category, not an operation.</td>
+</tr>
+<tr>
+<td><code>express_relation</code></td>
+<td><code>a / b</code></td>
+<td>Semantic step: “express X in terms of Y” requires symbolic
+manipulation, not arithmetic. The relation <em>is</em> the answer, not a
+computation.</td>
+</tr>
+<tr>
+<td><code>apply_amgm</code></td>
+<td><code>sqrt(a * b)</code></td>
+<td>AM-GM is an <em>inequality</em> technique for finding extrema.
+Computing GM is a tiny part; the reasoning about when equality holds is
+what matters.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The Core Problem:</strong> These step types are <em>semantic
+categories</em> (geometry, linear algebra, optimization) rather than
+<em>computational operations</em> (add, multiply, solve quadratic). DSL
+excels at the latter but fails at the former.</p>
+<p><strong>Resolution:</strong> Switch to <code>guidance</code> mode—LLM
+reasoning with method template injection, no DSL execution. The method
+template provides strategy (“use Heron’s formula when given three
+sides”) while the LLM handles the actual computation.</p>
+<p><strong>DSL-Friendly vs DSL-Hostile:</strong></p>
+<table>
+<thead>
+<tr>
+<th>DSL-Friendly</th>
+<th>DSL-Hostile</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>compute_percentage</code></td>
+<td><code>area_triangle</code></td>
+</tr>
+<tr>
+<td><code>solve_quadratic</code></td>
+<td><code>compute_angle</code></td>
+</tr>
+<tr>
+<td><code>compute_sum</code></td>
+<td><code>express_relation</code></td>
+</tr>
+<tr>
+<td><code>evaluate_expression</code></td>
+<td><code>apply_amgm</code></td>
+</tr>
+</tbody>
+</table>
+<p>The distinction: DSL-friendly types have <strong>one canonical
+formula</strong> with <strong>predictable input format</strong>.
+DSL-hostile types are <strong>semantic umbrellas</strong> covering
+diverse operations.</p>
+<h3 id="dsl-input-mapping-from-0-to-64-confidence">DSL Input Mapping:
+From 0% to 64% Confidence</h3>
+<p>Early versions had a subtle bug where DSL execution failed silently
+on most signatures. Analysis revealed:</p>
+<p><strong>The Problem:</strong> - DSL params expect names like
+<code>base</code>, <code>exponent</code> - Step context only contains
+prior step results: <code>{"step_1": "1024"}</code> - No
+<code>io_schema</code> to map between them →
+<code>numeric_inputs = {}</code> - Result: 0% confidence, DSL never
+executes</p>
+<p><strong>The Fix (three parts):</strong></p>
+<ol type="1">
+<li><p><strong>Extract from step task</strong>: Parse numbers from the
+task itself. “Calculate 2^10” →
+<code>{task_num_0: 2, task_num_1: 10}</code></p></li>
+<li><p><strong>Positional fallback</strong>: When param names don’t
+match context keys, map by position. <code>["base", "exponent"]</code> +
+<code>{task_num_0: 2, task_num_1: 10}</code> →
+<code>{base: 2, exponent: 10}</code></p></li>
+<li><p><strong>Adjusted threshold</strong>: Positional matching incurs a
+20% penalty per param (0.8^n). Two params = 0.64 confidence. Lowered
+threshold from 0.7 to 0.5.</p></li>
+</ol>
+<p><strong>Result:</strong> DSL injections per problem increased from ~1
+to ~5. The “Calculate 2^10” step now executes via DSL in &lt;1ms instead
+of requiring an LLM call.</p>
+<h3 id="llm-script-rewriter-bridging-the-semantic-gap">LLM Script
+Rewriter: Bridging the Semantic Gap</h3>
+<p>The fundamental challenge with DSL execution is the <strong>semantic
+gap</strong> between script variable names and runtime context keys. A
+DSL script written as <code>base * height / 2</code> contains meaningful
+semantic names, but at runtime the context only contains generic
+identifiers like <code>{"step_1": 10, "step_2": 5}</code>. Heuristic
+matching (substring, alias lookup, positional) fails when there’s no
+linguistic overlap.</p>
+<p><strong>The Problem in Practice:</strong></p>
+<pre><code>DSL Script: (percentage / 100) * base
+Context: {&quot;step_1&quot;: 15, &quot;step_2&quot;: 240}
+Heuristic confidence: 0.0 (no matches)
+Result: DSL cannot execute</code></pre>
+<p>The LLM that generated this DSL knows <code>percentage</code> means
+“the percentage value” and <code>base</code> means “the value to
+calculate percentage of.” But at runtime, we’ve lost that semantic
+information—we only have <code>step_1</code> and
+<code>step_2</code>.</p>
+<p><strong>The Solution: LLM Script Rewriting</strong></p>
+<p>Instead of trying to map parameter names to context keys (which
+requires understanding semantic equivalence), we ask the LLM to
+<strong>rewrite the entire script</strong> using the actual context
+variable names:</p>
+<pre><code>Prompt:
+  Original script: base * height / 2
+  Available context: {&quot;step_1&quot;: 10, &quot;step_2&quot;: 5}
+  Task: Rewrite using ONLY context variable names.
+
+LLM Response: step_1 * step_2 / 2</code></pre>
+<p>The rewritten script can be executed directly with the context
+dictionary—no mapping required.</p>
+<p><strong>Implementation:</strong></p>
+<div class="sourceCode" id="cb14"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> llm_rewrite_script(dsl_spec, context, client):</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>    prompt <span class="op">=</span> <span class="ss">f&quot;&quot;&quot;Rewrite this DSL script to use ONLY the available context variable names.</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="ss">    Original script: </span><span class="sc">{</span>dsl_spec<span class="sc">.</span>script<span class="sc">}</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="ss">    Available context variables and their values:</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="ss">    </span><span class="sc">{</span>json<span class="sc">.</span>dumps(context, indent<span class="op">=</span><span class="dv">2</span>)<span class="sc">}</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a><span class="ss">    Return ONLY the rewritten script, nothing else:&quot;&quot;&quot;</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>    response <span class="op">=</span> <span class="cf">await</span> client.generate([{<span class="st">&quot;role&quot;</span>: <span class="st">&quot;user&quot;</span>, <span class="st">&quot;content&quot;</span>: prompt}],</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>                                      max_tokens<span class="op">=</span><span class="dv">200</span>, temperature<span class="op">=</span><span class="fl">0.0</span>)</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> response.strip()</span></code></pre></div>
+<p><strong>The Execution Flow:</strong></p>
+<p><code>execute_dsl_with_llm_matching(dsl_json, inputs, client)</code>:
+1. Parse DSL spec 2. Compute heuristic confidence 3. If confidence &lt;
+llm_threshold: call <code>llm_rewrite_script()</code>, create new
+DSLSpec with rewritten script, execute with full context, return result
+with confidence=1.0 4. Else: execute with heuristic param mapping</p>
+<p><strong>Why Rewriting Beats Mapping:</strong></p>
+<table>
+<colgroup>
+<col style="width: 45%" />
+<col style="width: 27%" />
+<col style="width: 27%" />
+</colgroup>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Pros</th>
+<th>Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Param Mapping</strong></td>
+<td>Preserves original script</td>
+<td>Fails when names don’t overlap</td>
+</tr>
+<tr>
+<td><strong>Script Rewriting</strong></td>
+<td>Works regardless of naming</td>
+<td>Requires LLM call; may mismap</td>
+</tr>
+</tbody>
+</table>
+<p>Script rewriting is more robust because it: 1. Handles complex
+expressions with multiple variable references 2. Works even when param
+names have zero semantic overlap with context keys 3. Produces
+executable code rather than a mapping that might leave params unresolved
+4. Leverages LLM’s semantic understanding of what each variable
+represents</p>
+<p><strong>Real Examples from Benchmark Runs:</strong></p>
+<table>
+<colgroup>
+<col style="width: 32%" />
+<col style="width: 17%" />
+<col style="width: 34%" />
+<col style="width: 15%" />
+</colgroup>
+<thead>
+<tr>
+<th>Original Script</th>
+<th>Context</th>
+<th>Rewritten Script</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>speed * 3</code></td>
+<td><code>{"step_1": 45}</code></td>
+<td><code>step_1 * 3</code></td>
+<td>135.0 ✓</td>
+</tr>
+<tr>
+<td><code>total_hours - regular_hours</code></td>
+<td><code>{"step_1": 400, "step_2": 360}</code></td>
+<td><code>step_1 - step_2</code></td>
+<td>40.0 ✓</td>
+</tr>
+<tr>
+<td><code>sqrt((x2-x1)**2 + (y2-y1)**2)</code></td>
+<td><code>{"step_1": 3, "step_2": 4}</code></td>
+<td><code>sqrt((step_2-step_1)**2 + ...)</code></td>
+<td>5.0 ✓</td>
+</tr>
+<tr>
+<td><code>base * height / 2</code></td>
+<td><code>{"step_1": 10, "step_2": 5}</code></td>
+<td><code>step_1 * step_2 / 2</code></td>
+<td>25.0 ✓</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Failure Modes:</strong></p>
+<p>The rewriter can fail when: 1. <strong>Ambiguous context</strong>:
+<code>{"step_1": 10, "step_2": 10}</code> — both values identical, LLM
+guesses wrong mapping 2. <strong>Missing values</strong>: Context
+doesn’t contain values the script needs 3. <strong>Type
+mismatches</strong>: Context has strings where script expects
+numbers</p>
+<p>In these cases, the system falls back to full LLM reasoning (no DSL
+execution).</p>
+<p><strong>Performance Characteristics:</strong></p>
+<table>
+<colgroup>
+<col style="width: 18%" />
+<col style="width: 37%" />
+<col style="width: 44%" />
+</colgroup>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Heuristic Only</th>
+<th>With LLM Rewriter</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DSL injection rate</td>
+<td>~15% of matches</td>
+<td>~60% of matches</td>
+</tr>
+<tr>
+<td>Latency per injection</td>
+<td>~1ms</td>
+<td>~500ms</td>
+</tr>
+<tr>
+<td>Overall accuracy</td>
+<td>Lower (more fallbacks)</td>
+<td>Higher (more DSL executions)</td>
+</tr>
+</tbody>
+</table>
+<p>The trade-off: one extra LLM call (~500ms) to enable DSL execution
+that would otherwise fail. This is still faster than full LLM reasoning
+(~1-2s) and produces deterministic results.</p>
+<p><strong>Aggressive Injection Mode:</strong></p>
+<p>By default, the system tries LLM script rewriting on <em>every</em>
+signature hit where heuristic confidence is low. This “exploration mode”
+(<code>DSL_AGGRESSIVE_INJECTION = True</code>) collects data on which
+DSLs work vs fail, enabling lift-based learning:</p>
+<div class="sourceCode" id="cb15"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># config.py</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>DSL_AGGRESSIVE_INJECTION <span class="op">=</span> <span class="va">True</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>DSL_MIN_CONFIDENCE <span class="op">=</span> <span class="fl">0.0</span> <span class="cf">if</span> DSL_AGGRESSIVE_INJECTION <span class="cf">else</span> <span class="fl">0.3</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>DSL_LLM_THRESHOLD <span class="op">=</span> <span class="fl">1.0</span> <span class="cf">if</span> DSL_AGGRESSIVE_INJECTION <span class="cf">else</span> <span class="fl">0.5</span></span></code></pre></div>
+<p>For benchmarking (maximum accuracy without exploration overhead), set
+<code>DSL_AGGRESSIVE_INJECTION = False</code> to only invoke the
+rewriter when heuristic confidence is moderate (0.3-0.5).</p>
+<p><strong>Benchmarking with Decomposition Disabled:</strong></p>
+<p>When <code>DSL_AGGRESSIVE_INJECTION = True</code>, recursive
+decomposition is automatically disabled
+(<code>RECURSIVE_DECOMPOSITION_ENABLED = False</code>). This “mandatory
+injection” mode:</p>
+<ol type="1">
+<li>Tries DSL execution on every signature hit</li>
+<li>Falls back to LLM reasoning (not decomposition) when DSL fails</li>
+<li>Produces faster runs (no decomposition overhead) but lower
+accuracy</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Decomposition</th>
+<th>Injection Rate</th>
+<th>Accuracy</th>
+<th>Time/Problem</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Conservative</td>
+<td>Enabled</td>
+<td>~60%</td>
+<td>90%</td>
+<td>~13s</td>
+</tr>
+<tr>
+<td>Aggressive</td>
+<td>Disabled</td>
+<td>~50%</td>
+<td>70%</td>
+<td>~7s</td>
+</tr>
+</tbody>
+</table>
+<p>The accuracy drop comes from losing the “decompose until confident”
+strategy—when a DSL fails, aggressive mode falls back to LLM reasoning
+rather than breaking the step into smaller pieces. However, aggressive
+mode is valuable for <strong>data collection</strong>: every DSL attempt
+generates lift data that improves future runs.</p>
+<p><strong>Injection Rate Ceiling:</strong> The ~50% injection rate is
+the practical maximum. The remaining steps have truly empty context
+(first steps with no numbers in task text). DSL cannot execute without
+inputs—these steps require LLM reasoning.</p>
+<p><strong>The Learning Loop:</strong> Problem arrives → step matches
+signature with DSL → heuristic confidence low → LLM rewrites script →
+rewritten script executes → success/failure recorded. Over time,
+signatures with consistent rewrite failures get negative lift and fall
+back to pure LLM. System learns which DSLs benefit from rewriting vs
+which should skip DSL entirely.</p>
+<p>This creates a self-improving system: aggressive exploration in early
+runs builds data about which DSLs work with rewriting, and lift-based
+gating automatically disables problematic DSLs in later runs.</p>
+<h3 id="llm-script-rewriting-a-cautionary-tale">LLM Script Rewriting: A
+Cautionary Tale</h3>
+<p><strong>The Benchmark Regression:</strong></p>
+<p>In a benchmark run with LLM script rewriting enabled, we observed a
+severe accuracy drop:</p>
+<table>
+<thead>
+<tr>
+<th>Configuration</th>
+<th>L5 Accuracy</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Previous (guidance mode)</td>
+<td>65%</td>
+<td>Baseline</td>
+</tr>
+<tr>
+<td>LLM script rewriting</td>
+<td><strong>45%</strong></td>
+<td>-20 points!</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Root Cause:</strong> The LLM was producing “successful” DSL
+executions with <strong>wrong parameter mappings</strong>. The scripts
+executed without error, but the answers were garbage:</p>
+<pre><code>DSL: area_ENG / area_ABC
+Context: {&quot;step_1&quot;: 25, &quot;step_2&quot;: 16, &quot;step_3&quot;: 9}
+
+LLM rewrites to: step_1 / step_1  → 1.0 ❌
+Should have been: step_2 / step_1 → 0.64 ✓</code></pre>
+<p>The LLM sees generic names like <code>step_1</code>,
+<code>step_2</code> and has no semantic context to determine which step
+computed which value. It guesses—and guesses wrong.</p>
+<p><strong>The Core Problem:</strong></p>
+<pre><code>DSL params:    area_ABC, area_DEF  (semantic meaning)
+Context keys:  step_1, step_2      (generic identifiers)</code></pre>
+<p>Without knowing that <code>step_1</code> computed “area of triangle
+ABC” and <code>step_2</code> computed “area of triangle DEF”, the LLM
+cannot reliably map parameters.</p>
+<h3 id="semantic-parameter-mapping">Semantic Parameter Mapping</h3>
+<p><strong>The Solution:</strong> Instead of LLM guessing, use
+<strong>semantic matching</strong> based on step task descriptions.</p>
+<p>When each step executes, we track: - <strong>Value:</strong> The
+numeric result (e.g., <code>25.0</code>) - <strong>Meaning:</strong>
+What it represents (e.g., “area of triangle ABC”) -
+<strong>Type:</strong> Category (e.g., “area”, “length”, “count”)</p>
+<p>This enables deterministic parameter mapping:</p>
+<pre><code>DSL param: area_ABC
+Step 1 meaning: &quot;area of triangle ABC&quot;
+Match by string similarity → area_ABC = step_1.value ✓</code></pre>
+<p><strong>Implementation:</strong></p>
+<div class="sourceCode" id="cb19"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> StepResult:</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>    step_id: <span class="bu">str</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>    result: <span class="bu">str</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Semantic context</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>    semantic_meaning: <span class="bu">str</span>  <span class="co"># &quot;area of triangle ABC&quot;</span></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>    semantic_type: <span class="bu">str</span>     <span class="co"># &quot;area&quot;</span></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>    numeric_value: <span class="bu">float</span>   <span class="co"># 25.0</span></span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> semantic_rewrite_script(dsl_spec, context, step_descriptions):</span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>    <span class="co">&quot;&quot;&quot;Map DSL params to context by semantic similarity.&quot;&quot;&quot;</span></span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>    param_mapping <span class="op">=</span> {}</span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> param <span class="kw">in</span> dsl_spec.params:</span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> ctx_key, desc <span class="kw">in</span> step_descriptions.items():</span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> param_matches_description(param, desc):</span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a>                param_mapping[param] <span class="op">=</span> ctx_key</span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a>                <span class="cf">break</span></span>
+<span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> rewrite_script(dsl_spec.script, param_mapping)</span></code></pre></div>
+<p><strong>Matching Rules:</strong></p>
+<ol type="1">
+<li><strong>Exact match:</strong> <code>area_ABC</code> in “Calculate
+the area of triangle ABC” → 0.95 confidence</li>
+<li><strong>Token overlap:</strong> <code>base</code> shares tokens with
+“Find the base of the rectangle” → 0.7 confidence</li>
+<li><strong>Suffix match:</strong> <code>_ABC</code> matches description
+containing “ABC” → 0.8 confidence</li>
+</ol>
+<p><strong>Results:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Accuracy</th>
+<th>Deterministic</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LLM rewriting</td>
+<td>45%</td>
+<td>No</td>
+<td>+500ms</td>
+</tr>
+<tr>
+<td><strong>Semantic matching</strong></td>
+<td>TBD</td>
+<td><strong>Yes</strong></td>
+<td>+0ms</td>
+</tr>
+</tbody>
+</table>
+<p>Semantic matching is: - <strong>Deterministic:</strong> Same inputs
+always produce same mapping - <strong>Fast:</strong> No LLM call needed
+- <strong>Explainable:</strong> Can log exactly why each param was
+mapped - <strong>Testable:</strong> Unit test each mapping rule</p>
+<p><strong>The Lesson:</strong> We were using an LLM to avoid using an
+LLM—and the LLM parameter mapping was worse than just letting the LLM
+solve the problem directly. The irony is palpable. Semantic matching
+provides the reliability that LLM guessing cannot.</p>
+<h3 id="embedding-based-conceptual-detection">Embedding-Based Conceptual
+Detection</h3>
+<p>The lift analysis revealed that keywords like “ratio” and
+“proportion” predict poor DSL performance. But keyword matching is
+brittle—it catches “calculate the ratio” but misses semantically
+equivalent phrasings like “find the proportion” or “determine the
+relative amounts.”</p>
+<p><strong>The Solution:</strong> Replace keyword matching with
+embedding similarity. We define 8 <em>conceptual
+exemplars</em>—representative phrases where DSL historically hurts:</p>
+<div class="sourceCode" id="cb20"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>CONCEPTUAL_EXEMPLARS <span class="op">=</span> [</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Calculate the total number of parts in a ratio of 3:5&quot;</span>,</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Find the proportion of red to blue marbles&quot;</span>,</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Determine the ratio between the two quantities&quot;</span>,</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Express the relationship as a ratio&quot;</span>,</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Find the rate of change between the values&quot;</span>,</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Calculate how much faster one is than the other&quot;</span>,</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Express the answer in terms of the original variable&quot;</span>,</span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Interpret the result in the context of the problem&quot;</span>,</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>]</span></code></pre></div>
+<p>At runtime, we compute cosine similarity between the step embedding
+and each exemplar. If max similarity exceeds 0.7, DSL is skipped:</p>
+<div class="sourceCode" id="cb21"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>is_conceptual, max_sim <span class="op">=</span> is_conceptual_context_embedding(step_embedding, embedder)</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> is_conceptual:  <span class="co"># max_sim &gt;= 0.7</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>    skip_dsl <span class="op">=</span> <span class="va">True</span>  <span class="co"># Use LLM reasoning instead</span></span></code></pre></div>
+<p><strong>Results:</strong> Testing shows clean semantic
+separation:</p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Similarity</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>“Calculate the total cups of flour”</td>
+<td>0.42</td>
+<td><strong>USE DSL</strong></td>
+</tr>
+<tr>
+<td>“Find the sum of these two numbers”</td>
+<td>0.34</td>
+<td><strong>USE DSL</strong></td>
+</tr>
+<tr>
+<td>“Calculate total parts in ratio 3:5”</td>
+<td>0.95</td>
+<td><strong>SKIP DSL</strong></td>
+</tr>
+<tr>
+<td>“Determine the proportion of red to blue”</td>
+<td>0.79</td>
+<td><strong>SKIP DSL</strong></td>
+</tr>
+<tr>
+<td>“Express the answer in terms of x”</td>
+<td>0.73</td>
+<td><strong>SKIP DSL</strong></td>
+</tr>
+<tr>
+<td>“Apply the quadratic formula”</td>
+<td>0.39</td>
+<td><strong>USE DSL</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The embedding approach captures semantic similarity that keyword
+matching cannot. “Parts in a ratio” matches our exemplars even though it
+doesn’t contain the exact word “proportion.”</p>
+<p><strong>Why This Works:</strong> The all-MiniLM-L6-v2 embedding model
+encodes semantic meaning, not just lexical overlap. Steps requiring
+conceptual reasoning cluster together in embedding space, making
+similarity-based detection robust to paraphrasing.</p>
+<p>This is another example of <em>learning once, applying forever</em>:
+we identified problematic contexts through lift analysis, encoded them
+as exemplar embeddings, and now automatically detect semantically
+similar contexts without maintaining a fragile keyword list.</p>
+<h3 id="rich-typed-step-outputs-unlocking-symbolic-dsl">Rich Typed Step
+Outputs: Unlocking Symbolic DSL</h3>
+<p><strong>The Problem:</strong> Complex DSL scripts like
+<code>solve(equation, x)</code> need <strong>structured symbolic
+inputs</strong>, not just numbers from prior steps.</p>
+<p>Consider this problem flow:</p>
+<pre><code>Problem: &quot;Find k where x² + kx + 4 = 0 has exactly one solution&quot;
+
+Step 1: &quot;Write discriminant condition&quot; → &quot;k² - 16 = 0&quot;
+Step 2: &quot;Solve for k&quot; → DSL: solve(discriminant, k)
+                              ↑
+                              We have &quot;k² - 16 = 0&quot; as TEXT
+                              DSL needs sympy.Eq(k**2 - 16, 0)</code></pre>
+<p>Traditional step outputs are strings: <code>"42"</code> or
+<code>"k² - 16 = 0"</code>. DSL scripts operating on symbolic
+expressions need the <em>structure</em>, not just the string
+representation.</p>
+<p><strong>The Solution: StepOutput with Type Information</strong></p>
+<div class="sourceCode" id="cb23"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> StepOutput:</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>    raw: <span class="bu">str</span>                    <span class="co"># Original: &quot;k² - 16 = 0&quot;</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>    value_type: <span class="bu">str</span>             <span class="co"># &quot;number&quot; | &quot;equation&quot; | &quot;expression&quot; | &quot;list&quot; | &quot;text&quot;</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>    numeric: Optional[<span class="bu">float</span>]    <span class="co"># 42.0 if it&#39;s a number</span></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>    sympy_expr: Optional[<span class="bu">str</span>]   <span class="co"># &quot;Eq(k**2 - 16, 0)&quot; for equations</span></span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>    variables: <span class="bu">list</span>[<span class="bu">str</span>]        <span class="co"># [&quot;k&quot;] - symbols in expression</span></span></code></pre></div>
+<p><strong>Type Detection:</strong></p>
+<pre><code>&quot;42&quot;              → number    (numeric=42.0)
+&quot;x^2 - 16 = 0&quot;    → equation  (sympy_expr=&quot;Eq(x**2 - 16, 0)&quot;)
+&quot;3x + 2y - 5&quot;     → expression (sympy_expr=&quot;3*x + 2*y - 5&quot;)
+&quot;[1, 2, 3]&quot;       → list
+&quot;The answer is&quot;   → text</code></pre>
+<p><strong>DSL Execution with Types:</strong></p>
+<div class="sourceCode" id="cb25"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Old (broken):</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>context <span class="op">=</span> {<span class="st">&quot;step_1&quot;</span>: <span class="st">&quot;k² - 16 = 0&quot;</span>}  <span class="co"># Just a string</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>solve(context[<span class="st">&quot;step_1&quot;</span>], k)  <span class="co"># Fails - can&#39;t solve a string</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a><span class="co"># New (works):</span></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>context <span class="op">=</span> {<span class="st">&quot;step_1&quot;</span>: StepOutput(</span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>    raw<span class="op">=</span><span class="st">&quot;k² - 16 = 0&quot;</span>,</span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>    value_type<span class="op">=</span><span class="st">&quot;equation&quot;</span>,</span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>    sympy_expr<span class="op">=</span><span class="st">&quot;Eq(k**2 - 16, 0)&quot;</span></span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>)}</span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a>solve(parse_expr(context[<span class="st">&quot;step_1&quot;</span>].sympy_expr), k)  <span class="co"># Works!</span></span></code></pre></div>
+<p><strong>Why This Matters:</strong></p>
+<p>The 5-7 wrong answers on MATH L5 problems with 0-1 injections share a
+pattern: they require symbolic manipulation (solving equations,
+simplifying expressions) but the DSL received strings instead of
+parseable symbolic forms.</p>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 23%" />
+</colgroup>
+<thead>
+<tr>
+<th>Problem Type</th>
+<th>Old Context</th>
+<th>New Context</th>
+<th>DSL Works?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Arithmetic</td>
+<td><code>"42"</code></td>
+<td><code>numeric=42.0</code></td>
+<td>✓ Both work</td>
+</tr>
+<tr>
+<td>Equation solving</td>
+<td><code>"x² - 4 = 0"</code></td>
+<td><code>sympy_expr="Eq(x**2-4,0)"</code></td>
+<td>✓ New works</td>
+</tr>
+<tr>
+<td>Expression simplify</td>
+<td><code>"3x + 2x"</code></td>
+<td><code>sympy_expr="3*x + 2*x"</code></td>
+<td>✓ New works</td>
+</tr>
+<tr>
+<td>System of equations</td>
+<td>Multiple strings</td>
+<td>List of Eq()</td>
+<td>✓ New works</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Implementation Path:</strong></p>
+<ol type="1">
+<li><strong>detect_output_type()</strong> - Parse step result strings
+into StepOutput</li>
+<li><strong>DSL executor</strong> - Use
+<code>output.for_dsl(prefer_type="symbolic")</code> for sympy
+operations</li>
+<li><strong>Context passing</strong> - Replace string context with
+StepOutput objects</li>
+</ol>
+<p>This converts the ~35% of DSL failures caused by type mismatches into
+successes, potentially increasing injection rate from 34% to 50%+ on
+symbolic problems.</p>
+<h3 id="cold-start-bootstrap">Cold Start Bootstrap</h3>
+<p>New signatures face a chicken-and-egg problem: can’t prove
+effectiveness without being used, but the system won’t use unproven
+signatures. We guarantee injection for the first <strong>10
+uses</strong> to sample success rate. After bootstrap: - High-performing
+signatures (≥80% success) continue injection - Low-performing signatures
+fall back to LLM</p>
+<h3 id="exploration-phase-let-the-system-breathe">Exploration Phase: Let
+the System Breathe</h3>
+<p>During early runs, accuracy will be lower than baseline LLM
+performance. This is expected and acceptable.</p>
+<p><strong>The Problem:</strong> With a fresh signature library, most
+steps create new signatures with 0% DSL confidence. The system correctly
+identifies these as unproven and falls back to LLM reasoning. But this
+means DSLs never get tried, so they never accumulate the usage data
+needed to prove themselves.</p>
+<p><strong>The Philosophy:</strong> Let the system make mistakes. Trial
+new DSLs aggressively, even if it temporarily hurts accuracy. The goal
+is <em>learning</em>, not immediate performance.</p>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Injections/Problem</th>
+<th>Accuracy</th>
+<th>Goal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Exploration</td>
+<td>0.6</td>
+<td>44%</td>
+<td>Build signature library</td>
+</tr>
+<tr>
+<td>Maturation</td>
+<td>2-3</td>
+<td>55%+</td>
+<td>Prove DSL effectiveness</td>
+</tr>
+<tr>
+<td>Steady State</td>
+<td>4-5</td>
+<td>65%+</td>
+<td>Maximize reuse</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Current state (after 100 L5 problems):</strong> - 1152 unique
+signatures - 337 atomic signatures (from recursive decomposition) - Only
+0.6 injections/problem (most DSLs untested) - 100% signature match rate
+(coverage is good) - 24% match hinted signatures (top reliable ones)</p>
+<p>The bottleneck isn’t signature matching—it’s DSL confidence. As
+signatures accumulate uses and prove themselves, injection rates will
+climb and accuracy will follow.</p>
+<p><strong>Key insight:</strong> A run with 44% accuracy that creates
+300 new atomic signatures is more valuable than a run with 56% accuracy
+that creates none. We’re building the library now; we’ll harvest the
+benefits later.</p>
+<h3 id="one-model-architecture-quality-over-cost">One Model
+Architecture: Quality Over Cost</h3>
+<p>We use Llama-3.3-70B for all LLM tasks: decomposition, step solving,
+and DSL generation. Why not use smaller models where possible?</p>
+<p><strong>The DSL argument:</strong> DSLs are cached forever and reused
+across thousands of problems. A bad DSL—one that mishandles edge cases
+or encodes incorrect logic—produces systematic errors that compound over
+time. The cost difference between 8B and 70B for DSL generation is
+negligible when amortized across thousands of future executions.</p>
+<table>
+<colgroup>
+<col style="width: 12%" />
+<col style="width: 22%" />
+<col style="width: 38%" />
+<col style="width: 28%" />
+</colgroup>
+<thead>
+<tr>
+<th>Task</th>
+<th>Frequency</th>
+<th>Impact of Mistake</th>
+<th>Model Choice</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Decomposition</td>
+<td>Every problem</td>
+<td>Medium (wrong steps)</td>
+<td>70B</td>
+</tr>
+<tr>
+<td>Step solving</td>
+<td>Every step</td>
+<td>Medium (wrong answer)</td>
+<td>70B</td>
+</tr>
+<tr>
+<td>DSL generation</td>
+<td>Rare (new sigs only)</td>
+<td><strong>HIGH</strong> (cached forever)</td>
+<td>70B</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The simplicity argument:</strong> A single model simplifies
+the codebase, deployment, and debugging. No routing logic to maintain,
+no model-specific prompt tuning, no version mismatches. The complexity
+cost of a multi-model architecture outweighs the marginal cost
+savings.</p>
+<p><strong>The quality-everywhere argument:</strong> If 70B produces
+better decompositions (1.4 steps vs 7-10) and better DSLs, the accuracy
+gains compound. Each component benefits from the larger model’s better
+reasoning. Trying to save costs on one component can degrade the entire
+pipeline.</p>
+<p><strong>When multi-model makes sense:</strong> If DSL generation were
+frequent (every problem), the cost argument would change. But with a
+maturing signature library, DSL generation becomes increasingly
+rare—most steps match existing signatures. The “smart model for
+everything” approach optimizes for the steady state where generation is
+rare but execution is frequent.</p>
+<h3 id="why-mycelium-wins">Why Mycelium Wins</h3>
+<p>With the context fix in place, decomposition becomes an
+advantage:</p>
+<ol type="1">
+<li><strong>Structured reasoning</strong>: Complex problems benefit from
+explicit step breakdown</li>
+<li><strong>Pattern reuse</strong>: Most steps match known
+signatures</li>
+<li><strong>DSL acceleration</strong>: Typed operations execute in ~0ms
+vs ~500ms</li>
+<li><strong>Compound learning</strong>: Each problem improves the
+library for future problems</li>
+</ol>
+<p>The advantage will grow as the signature library matures across more
+problem types.</p>
+<h3 id="key-metrics-to-watch">Key Metrics to Watch</h3>
+<p>As the system runs in production, three metrics indicate health and
+growth:</p>
+<table>
+<colgroup>
+<col style="width: 19%" />
+<col style="width: 43%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr>
+<th>Metric</th>
+<th>What It Measures</th>
+<th>Healthy Range</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Signatures per problem</strong></td>
+<td>Decomposition granularity</td>
+<td>5-10 steps</td>
+</tr>
+<tr>
+<td><strong>Signature hits per problem</strong></td>
+<td>How many steps matched a signature</td>
+<td>~3 for L5</td>
+</tr>
+<tr>
+<td><strong>Injections per problem</strong></td>
+<td>DSL coverage (sig had good DSL)</td>
+<td>2-5 injections</td>
+</tr>
+<tr>
+<td><strong>Success rate per signature</strong></td>
+<td>DSL quality</td>
+<td>≥70% for reliable sigs</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Signatures per problem</strong> reflects decomposition
+behavior. Too few (1-2) means problems aren’t being broken down; too
+many (15+) means over-decomposition creating noise.</p>
+<p><strong>Signature hits per problem</strong> measures how well the
+signature library covers new problems. For Level 5 problems with a
+moderately mature database, expect ~3 signature hits per problem—roughly
+5 DAG steps where 3 match existing signatures with high-confidence DSL.
+This ratio improves as the library matures; early runs may see 1-2 hits,
+while a mature library approaches 4-5. <em>Current benchmark: ~675
+unique signatures across 56 step types yields 3.5 signature hits per
+problem on L5.</em></p>
+<p><strong>Injections per problem</strong> shows how much the signature
+library is actually being used. Low injection rates indicate either (a)
+signatures don’t match new problems, or (b) DSL quality is poor so
+lift-gating blocks injection.</p>
+<p><strong>Success rate per signature</strong> is the ground truth.
+Signatures with &lt;70% success remain in probation; those with ≥70%
+become reliable and inject their DSL. Monitoring the distribution of
+success rates reveals whether the library is maturing.</p>
+<p><strong>Expect the database to grow</strong> as new problem types are
+encountered. Early runs create many signatures; later runs increasingly
+match existing ones. A healthy system shows signature creation rate
+declining over time while match rate increases.</p>
+<hr />
+<h2 id="beyond-mathematics">6. Beyond Mathematics</h2>
+<p>The decomposition-and-reuse paradigm extends far beyond mathematical
+reasoning. Any domain where complex problems decompose into recurring
+sub-problems can benefit from signature-based learning.</p>
+<p><strong>The Core Insight.</strong> Mycelium’s contribution isn’t
+math-specific—it’s a framework for <em>learning the atoms of any
+reasoning domain</em>. The signature database is a vocabulary; the
+matching system is grammar; the execution layer is fluency. What varies
+by domain is the embedding model, the success criteria, and the DSL
+primitives. The architecture remains constant.</p>
+<p>Just as mycelium networks in nature decompose organic matter across
+ecosystems—from forest floors to grasslands—this computational mycelium
+can decompose problems across domains. The signature library is not a
+static knowledge base but a living network that grows, consolidates, and
+adapts as it encounters new problem types.</p>
+<hr />
+<h2 id="limitations-and-future-work">7. Limitations and Future Work</h2>
+<p><strong>Current Limitations:</strong> - Decomposition quality depends
+on LLM planner capabilities</p>
+<p><strong>Addressed in This Work:</strong> - <del>Context loss in step
+isolation</del> → Fixed by passing original problem to all steps -
+<del>DSL hurting general reasoning</del> → Fixed by selective injection
+(typed only) - <del>Same DSL hurting some contexts</del> → Fixed by
+lift-based gating (auto-disable negative-lift signatures) - <del>DSL
+parameter mapping failures</del> → Fixed by extracting numbers from step
+task + positional fallback - <del>Poor DSL quality from Llama</del> →
+Fixed by having Claude generate all DSL scripts</p>
+<p><strong>Future Directions:</strong> - <strong>100% deterministic
+execution</strong>: Improving signature coverage and DSL quality to
+achieve fully deterministic DAG execution without LLM calls - Expand to
+other problem domains (coding, reasoning benchmarks) - Contrastive
+learning for better signature separation - Cross-problem dependency
+tracking - Distributed signature sharing across deployments -
+<strong>Signature chaining</strong>: Learn common sequences of
+signatures that co-occur. If “isolate variable” frequently precedes
+“substitute value” which precedes “simplify expression,” the system
+could recognize and execute the entire chain as a unit. This transforms
+atomic signatures into reusable <em>solution pipelines</em>—multi-step
+recipes that reduce LLM calls and enable higher-level pattern matching
+across problem types.</p>
+<hr />
+<h2 id="conclusion">8. Conclusion</h2>
+<p>We demonstrated that math problems decompose into a finite vocabulary
+of atomic signatures, and that <strong>decomposition + signature reuse
+can improve LLM performance</strong>.</p>
+<p>The key insight: <strong>the same LLM performs better when its
+reasoning is decomposed and cached</strong>. The signature library acts
+as external memory that compounds knowledge across problems.</p>
+<p>Critical learnings:</p>
+<ol type="1">
+<li><p><strong>Context propagation</strong>: Every step needs the full
+problem, not just dependency results.</p></li>
+<li><p><strong>LLM Script Rewriting</strong>: DSL scripts use semantic
+names (<code>base</code>, <code>height</code>) but runtime context has
+generic keys (<code>step_1</code>, <code>step_2</code>). LLM rewrites
+scripts using actual variable names—bridging the semantic gap.</p></li>
+<li><p><strong>Lift-based gating</strong>: DSL helps arithmetic but
+hurts conceptual reasoning. Tracking success rates per-signature enables
+automatic routing—DSL where it helps, LLM where it doesn’t.</p></li>
+<li><p><strong>Self-improving system</strong>: Every problem generates
+lift data. Failed DSL executions teach the system where not to inject.
+The signature library matures over time.</p></li>
+</ol>
+<p>The “decomposition tax” was a bug, not a fundamental limitation. With
+proper context propagation and adaptive DSL routing, decomposition
+unlocks pattern reuse and knowledge accumulation unavailable to
+monolithic solving.</p>
+<p>Mycelium demonstrates that LLMs can build persistent, reusable
+knowledge structures—moving beyond solving each problem from scratch
+toward genuine compound learning.</p>
+<hr />
+<h2 id="acknowledgments">Acknowledgments</h2>
+<p>This project was developed in collaboration with Claude (Anthropic),
+which contributed to architecture design, implementation (matching
+pipeline, signature clustering, execution optimization), and codebase
+refactoring. The development involved extensive human-AI pair
+programming, demonstrating a productive collaboration model where the
+human provides vision and direction while the AI contributes
+implementation capacity and systematic analysis.</p>
+<p><strong>A note on abstraction:</strong> Delegating implementation to
+Claude freed me to think at a higher level of abstraction about the
+problem. Instead of getting lost in debugging SQLite queries or regex
+parsing, I could focus on <em>“should signatures boost their
+neighbors?”</em> and <em>“what makes a step DSL-hostile?”</em> The
+cognitive load shifted from syntax to semantics, from code to
+architecture. This is perhaps the real unlock of AI pair programming—not
+just faster coding, but thinking at a higher altitude.</p>
+<hr />
+<h2 id="references">References</h2>
+<ol type="1">
+<li>Wei, J., et al. (2022). Chain-of-thought prompting elicits reasoning
+in large language models. <em>NeurIPS</em>.</li>
+<li>Gao, L., et al. (2023). PAL: Program-aided language models.
+<em>ICML</em>.</li>
+<li>Lewis, P., et al. (2020). Retrieval-augmented generation for
+knowledge-intensive NLP tasks. <em>NeurIPS</em>.</li>
+<li>Hendrycks, D., et al. (2021). Measuring mathematical problem solving
+with the MATH dataset. <em>NeurIPS</em>.</li>
+<li>Kolodner, J. L. (1992). An introduction to case-based reasoning.
+<em>Artificial Intelligence Review</em>.</li>
+</ol>
+<hr />
+<h2 id="appendix-a-fun-gi-facts">Appendix A: Fun-gi Facts</h2>
+<p>Why did the signature database throw a party? Because it’s a
+<em>fungi</em> to be around.</p>
+<p>Why do mycelium networks make great researchers? They really know how
+to <em>break things down</em>.</p>
+<p>What did the signature say when it got merged? “I guess we’re
+<em>spore-adic</em> duplicates.”</p>
+<p>Why did the LLM join the mycelium project? It wanted to be part of
+something <em>bigger than its elf</em>.</p>
+<p>What’s a mushroom’s favorite type of math?
+<em>Decom-position</em>.</p>
+<p>Why don’t signatures ever get lonely? Because they’re all
+<em>connected underground</em>.</p>
+<p>What did the cold start say to the empty database? “Don’t worry,
+we’ll <em>grow</em> on you.”</p>
+<hr />
+<p><em>This paper was written with zero hallucinogens, despite the
+mushroom theme.</em></p>
+<p><em>I soloed this entire project with Claude, which makes me think
+the singularity is near. Maybe 6 or 7 months away. ;)</em></p>
+</body>
+</html>

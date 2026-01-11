@@ -34,7 +34,7 @@ All code, data, and pre-trained signatures are available at **github.com/brycero
 
 **What we're sharing:**
 - Complete source code with documented architecture
-- **Pre-built signature database** with 1k+ math signatures and DSL scripts — skip cold start entirely
+- **Pre-built signature database** with 2.1k+ math signatures and DSL scripts — skip cold start entirely
 - Benchmark scripts to reproduce our results
 - SQLite database file ready to use (no setup required)
 

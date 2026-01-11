@@ -163,9 +163,18 @@ def has_mathematical_content(raw: str) -> bool:
 
 
 def try_parse_numeric(raw: str) -> Optional[float]:
-    """Try to parse as a number."""
+    """Try to parse as a number.
+
+    Also extracts numbers from text like "The answer is 25" or "result: 42".
+    """
     # Clean common formatting
     cleaned = raw.replace(',', '').replace('$', '').replace('%', '').strip()
+
+    # Try direct parse first (fast path)
+    try:
+        return float(cleaned)
+    except ValueError:
+        pass
 
     # Handle fractions like "3/4" FIRST (before expression check)
     # Must check before general expression detection
@@ -202,10 +211,22 @@ def try_parse_numeric(raw: str) -> Optional[float]:
     if re.search(r'sqrt|π|\\pi|\bpi\b', cleaned, re.IGNORECASE):
         return None
 
-    try:
-        return float(cleaned)
-    except ValueError:
-        return None
+    # Try to extract number from text like "The answer is 25" or "result: 42"
+    # Look for patterns: "is X", "= X", ": X", or just the last number
+    answer_patterns = [
+        r'(?:answer|result|value|equals?|is)\s*[=:]?\s*(-?\d+\.?\d*)',  # "answer is 25"
+        r'=\s*(-?\d+\.?\d*)\s*$',  # "x = 25" at end
+        r'(-?\d+\.?\d*)\s*$',  # last number in string
+    ]
+    for pattern in answer_patterns:
+        match = re.search(pattern, cleaned, re.IGNORECASE)
+        if match:
+            try:
+                return float(match.group(1))
+            except ValueError:
+                continue
+
+    return None
 
 
 def try_parse_equation(raw: str) -> tuple[Optional[str], list[str]]:
