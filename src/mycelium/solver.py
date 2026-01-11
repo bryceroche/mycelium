@@ -40,6 +40,7 @@ from .step_decomposer import (
     MAX_DECOMPOSITION_DEPTH,
     DECOMPOSITION_CONFIDENCE_THRESHOLD,
 )
+from .semantic_extractor import extract_semantic_info
 
 logger = logging.getLogger(__name__)
 
@@ -265,6 +266,11 @@ class StepResult:
     decomposition_depth: int = 0
     sub_step_results: list["StepResult"] = field(default_factory=list)
 
+    # Semantic context (for DSL parameter mapping)
+    semantic_meaning: str = ""  # What result represents: "area of triangle ABC"
+    semantic_type: str = ""     # Category: "area", "length", "count", "ratio"
+    numeric_value: Optional[float] = None  # Parsed numeric value
+
 
 @dataclass
 class SolverResult:
@@ -461,6 +467,7 @@ class Solver:
         step_results = []
         context = {}
         step_descriptions = {}  # Track what each step computes for better DSL param matching
+        rich_context = {}  # Semantic context for DSL parameter mapping
         completed_steps: set[str] = set()
         execution_phases: dict[str, float] = {}
         steps_with_injection = 0
@@ -505,6 +512,13 @@ class Solver:
                 step_results.append(result)
                 context[step.id] = result.result
                 step_descriptions[step.id] = step.task  # Track what this step computed
+                # Store semantic info for DSL parameter mapping
+                rich_context[step.id] = {
+                    "value": result.numeric_value,
+                    "meaning": result.semantic_meaning,
+                    "type": result.semantic_type,
+                    "raw": result.result,
+                }
                 completed_steps.add(step.id)
 
                 if result.signature_used:
@@ -968,6 +982,9 @@ Provide the combined result. End with RESULT: <your answer>"""
             io_schema.validate_output(result) if io_schema else (True, "")
         )
 
+        # Extract semantic info for DSL parameter mapping
+        semantic_info = extract_semantic_info(step.task, result)
+
         return StepResult(
             step_id=step.id,
             task=step.task,
@@ -981,6 +998,10 @@ Provide the combined result. End with RESULT: <your answer>"""
             output_valid=output_valid,
             output_validation_msg=output_validation_msg,
             used_io_schema=bool(io_schema.inputs),
+            # Semantic context for downstream DSL mapping
+            semantic_meaning=semantic_info.meaning,
+            semantic_type=semantic_info.semantic_type,
+            numeric_value=semantic_info.value,
         )
 
     async def _decompose_and_solve_step(

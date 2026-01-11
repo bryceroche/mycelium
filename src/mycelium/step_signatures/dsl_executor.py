@@ -684,7 +684,98 @@ def execute_dsl_with_confidence(
     return result, success, confidence
 
 
-# LLM-based script rewriter for DSL execution
+# =============================================================================
+# Semantic Parameter Mapping (replaces LLM guessing)
+# =============================================================================
+
+def semantic_rewrite_script(
+    dsl_spec: "DSLSpec",
+    context: dict[str, Any],
+    step_descriptions: Optional[dict[str, str]] = None,
+) -> tuple[Optional[str], float]:
+    """Rewrite DSL script using semantic matching instead of LLM guessing.
+
+    Maps DSL parameters to context variables by comparing semantic meaning:
+    - DSL param: "area_ABC"
+    - Step description: "Calculate the area of triangle ABC"
+    - Match by string similarity → area_ABC = step_1
+
+    Args:
+        dsl_spec: The DSL specification with script to rewrite
+        context: Runtime context with available values
+        step_descriptions: Dict mapping step_id -> task description
+
+    Returns:
+        (rewritten_script, confidence) or (None, 0.0) if no good mapping
+    """
+    if not dsl_spec.params or not context or not step_descriptions:
+        return None, 0.0
+
+    # Build param -> context_key mapping
+    param_mapping: dict[str, str] = {}
+    total_score = 0.0
+
+    for param in dsl_spec.params:
+        best_match = None
+        best_score = 0.0
+        param_lower = param.lower().replace("_", " ")
+
+        for ctx_key, ctx_value in context.items():
+            if ctx_key not in step_descriptions:
+                continue
+
+            desc = step_descriptions[ctx_key].lower()
+            score = 0.0
+
+            # Score 1: Exact param name in description
+            if param_lower in desc:
+                score = 0.95
+
+            # Score 2: Param tokens overlap with description tokens
+            param_tokens = set(param_lower.split())
+            desc_tokens = set(desc.replace("_", " ").split())
+            overlap = param_tokens & desc_tokens
+            if overlap and score < 0.9:
+                score = max(score, 0.5 + 0.4 * len(overlap) / max(len(param_tokens), 1))
+
+            # Score 3: Param suffix matches (e.g., "area_ABC" matches "...ABC...")
+            if "_" in param:
+                suffix = param.split("_")[-1].lower()
+                if suffix in desc and len(suffix) > 1:
+                    score = max(score, 0.8)
+
+            if score > best_score:
+                best_score = score
+                best_match = ctx_key
+
+        if best_match and best_score >= 0.5:
+            param_mapping[param] = best_match
+            total_score += best_score
+        else:
+            # Can't map this param semantically
+            logger.debug("[dsl_semantic] No semantic match for param '%s'", param)
+            return None, 0.0
+
+    if len(param_mapping) != len(dsl_spec.params):
+        return None, 0.0
+
+    # Rewrite script by replacing params with context keys
+    rewritten = dsl_spec.script
+    for param, ctx_key in param_mapping.items():
+        # Replace param name with context key
+        rewritten = re.sub(rf'\b{re.escape(param)}\b', ctx_key, rewritten)
+
+    avg_confidence = total_score / len(dsl_spec.params) if dsl_spec.params else 0.0
+
+    logger.info(
+        "[dsl_semantic] Semantic rewrite: '%s' -> '%s' (confidence=%.2f, mappings=%s)",
+        dsl_spec.script[:50], rewritten[:50], avg_confidence, param_mapping
+    )
+
+    return rewritten, avg_confidence
+
+
+# LLM-based script rewriter for DSL execution (DEPRECATED - use semantic_rewrite_script)
 LLM_SCRIPT_REWRITE_PROMPT = """Rewrite this DSL script to use ONLY the available context variable names.
 
 Original script: {script}
@@ -814,38 +905,40 @@ async def execute_dsl_with_llm_matching(
 
     confidence = spec.compute_confidence(inputs)
 
-    # If confidence is low, try LLM script rewriting
-    if confidence < llm_threshold and client:
-        logger.info("[dsl] Low confidence (%.2f), trying LLM script rewriting", confidence)
-        try:
-            rewritten_script = await llm_rewrite_script(spec, inputs, client, step_descriptions, step_task)
-            if rewritten_script:
-                # Check if script was actually rewritten or returned original
-                is_rewritten = (rewritten_script != spec.script)
+    # PRIORITY 1: If confidence is low, try SEMANTIC matching (deterministic, reliable)
+    if confidence < llm_threshold and step_descriptions:
+        rewritten_script, semantic_confidence = semantic_rewrite_script(spec, inputs, step_descriptions)
+        if rewritten_script and semantic_confidence >= 0.5:
+            # Create new DSLSpec with semantically rewritten script
+            rewritten_spec = DSLSpec(
+                layer=spec.layer,
+                script=rewritten_script,
+                params=[],  # Script now uses context var names directly
+                aliases={},
+                output_type=spec.output_type,
+                fallback=spec.fallback,
+            )
+            result, success = try_execute_dsl(rewritten_spec, inputs)
+            if success:
+                logger.info("[dsl] Semantic rewrite succeeded: result=%s confidence=%.2f", result, semantic_confidence)
+                return result, True, semantic_confidence
+            else:
+                logger.debug("[dsl] Semantic rewrite produced invalid script")
 
-                # Create new DSLSpec with rewritten script
-                # If rewritten: no params needed (script uses context var names)
-                # If original: keep params for positional fallback matching
-                rewritten_spec = DSLSpec(
-                    layer=spec.layer,
-                    script=rewritten_script,
-                    params=[] if is_rewritten else spec.params,
-                    aliases={} if is_rewritten else spec.aliases,
-                    output_type=spec.output_type,
-                    fallback=spec.fallback,
-                )
-                # Execute with all inputs
-                result, success = try_execute_dsl(rewritten_spec, inputs)
-                logger.info("[dsl] Execution after rewrite: success=%s result=%s script=%s rewritten=%s",
-                           success, result, rewritten_script[:50], is_rewritten)
-                if success:
-                    return result, True, 1.0 if is_rewritten else confidence
-        except Exception as e:
-            logger.debug("[dsl] LLM script rewriting error: %s", e)
-
-    # Fall back to standard execution if confidence is sufficient
+    # PRIORITY 2: Standard execution if confidence is sufficient
     if confidence >= min_confidence:
         result, success = try_execute_dsl(spec, inputs)
         return result, success, confidence
+
+    # PRIORITY 3: LLM rewriting as last resort (DISABLED - produces garbage)
+    # The LLM rewriting was causing the 45% accuracy regression by producing
+    # incorrect parameter mappings like "area_ENG / area_ABC" -> "step_1 / step_1"
+    # Uncomment below to re-enable if semantic matching isn't sufficient:
+    #
+    # if confidence < llm_threshold and client:
+    #     logger.info("[dsl] Low confidence (%.2f), trying LLM script rewriting", confidence)
+    #     try:
+    #         rewritten_script = await llm_rewrite_script(spec, inputs, client, step_descriptions, step_task)
+    #         ... (rest of LLM logic)
 
     return None, False, confidence

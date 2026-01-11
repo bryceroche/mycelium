@@ -738,6 +738,99 @@ System learns which DSLs benefit from rewriting
 
 This creates a self-improving system: aggressive exploration in early runs builds data about which DSLs work with rewriting, and lift-based gating automatically disables problematic DSLs in later runs.
 
+### LLM Script Rewriting: A Cautionary Tale
+
+**The Benchmark Regression:**
+
+In a benchmark run with LLM script rewriting enabled, we observed a severe accuracy drop:
+
+| Configuration | L5 Accuracy | Notes |
+|---------------|-------------|-------|
+| Previous (guidance mode) | 65% | Baseline |
+| LLM script rewriting | **45%** | -20 points! |
+
+**Root Cause:** The LLM was producing "successful" DSL executions with **wrong parameter mappings**. The scripts executed without error, but the answers were garbage:
+
+```
+DSL: area_ENG / area_ABC
+Context: {"step_1": 25, "step_2": 16, "step_3": 9}
+
+LLM rewrites to: step_1 / step_1  → 1.0 ❌
+Should have been: step_2 / step_1 → 0.64 ✓
+```
+
+The LLM sees generic names like `step_1`, `step_2` and has no semantic context to determine which step computed which value. It guesses—and guesses wrong.
+
+**The Core Problem:**
+
+```
+DSL params:    area_ABC, area_DEF  (semantic meaning)
+Context keys:  step_1, step_2      (generic identifiers)
+```
+
+Without knowing that `step_1` computed "area of triangle ABC" and `step_2` computed "area of triangle DEF", the LLM cannot reliably map parameters.
+
+### Semantic Parameter Mapping
+
+**The Solution:** Instead of LLM guessing, use **semantic matching** based on step task descriptions.
+
+When each step executes, we track:
+- **Value:** The numeric result (e.g., `25.0`)
+- **Meaning:** What it represents (e.g., "area of triangle ABC")
+- **Type:** Category (e.g., "area", "length", "count")
+
+This enables deterministic parameter mapping:
+
+```
+DSL param: area_ABC
+Step 1 meaning: "area of triangle ABC"
+Match by string similarity → area_ABC = step_1.value ✓
+```
+
+**Implementation:**
+
+```python
+@dataclass
+class StepResult:
+    step_id: str
+    result: str
+    # Semantic context
+    semantic_meaning: str  # "area of triangle ABC"
+    semantic_type: str     # "area"
+    numeric_value: float   # 25.0
+
+def semantic_rewrite_script(dsl_spec, context, step_descriptions):
+    """Map DSL params to context by semantic similarity."""
+    param_mapping = {}
+    for param in dsl_spec.params:
+        for ctx_key, desc in step_descriptions.items():
+            if param_matches_description(param, desc):
+                param_mapping[param] = ctx_key
+                break
+    return rewrite_script(dsl_spec.script, param_mapping)
+```
+
+**Matching Rules:**
+
+1. **Exact match:** `area_ABC` in "Calculate the area of triangle ABC" → 0.95 confidence
+2. **Token overlap:** `base` shares tokens with "Find the base of the rectangle" → 0.7 confidence
+3. **Suffix match:** `_ABC` matches description containing "ABC" → 0.8 confidence
+
+**Results:**
+
+| Approach | Accuracy | Deterministic | Latency |
+|----------|----------|---------------|---------|
+| LLM rewriting | 45% | No | +500ms |
+| **Semantic matching** | TBD | **Yes** | +0ms |
+
+Semantic matching is:
+- **Deterministic:** Same inputs always produce same mapping
+- **Fast:** No LLM call needed
+- **Explainable:** Can log exactly why each param was mapped
+- **Testable:** Unit test each mapping rule
+
+**The Lesson:** Using an LLM to avoid using an LLM produced worse results than just using the LLM for reasoning. Semantic matching provides the reliability that LLM guessing cannot.
+
 ### Embedding-Based Conceptual Detection
 
 The lift analysis revealed that keywords like "ratio" and "proportion" predict poor DSL performance. But keyword matching is brittle—it catches "calculate the ratio" but misses semantically equivalent phrasings like "find the proportion" or "determine the relative amounts."
