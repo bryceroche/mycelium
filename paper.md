@@ -89,9 +89,11 @@ An LLM decomposes problems into a DAG where each step has a task description and
 
 The database stores atomic solution patterns as tuples (centroid, method, stats). Centroids update incrementally as new examples join clusters.
 
-**Convergence** After training on MATH500, the library contains ~2.2k signatures with matching rates converging on 100%.  Math500 L5 problems have ~5 DAG steps with ~3.5 injectable steps per problem.  94 distinct step types account for nearly all decomposed steps. High-frequency patterns like `count_items` (1,300 uses), `solve_equation` (963 uses) and `compute_sum` (728 uses)  appear across problem categories. New problems increasingly match existing signatures rather than creating new ones.
+**Convergence.** After training on MATH500, the library contains ~2.2k signatures with matching rates converging on 100%. MATH500 L5 problems have ~5 DAG steps with ~3.5 injectable steps per problem. Non-injected steps with negative lift are solved from scratch by LLM and tracked for lift data. 94 distinct step types account for nearly all decomposed steps.
 
-Non-injected steps with negative lift are solved from scratch by LLM and tracked for lift data.
+**Distribution.** Signature usage follows a right-skewed power law: mean usage is 8.7 but median is only 4. A small number of signatures handle most of the work—the top 10 signatures account for 16% of all step executions, top 50 account for 31%. Meanwhile, 23% of signatures are used only once (rare edge cases). This mirrors natural language word frequency: a few common patterns (`count_items`, `solve_equation`, `compute_sum`) appear everywhere, while the long tail captures domain-specific variations. New problems increasingly match existing signatures rather than creating new ones.
+
+
 
 ### 3.4 Cosine Similarity Matching
 
