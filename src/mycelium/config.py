@@ -74,6 +74,11 @@ RECURSIVE_MAX_TOTAL_STEPS = 50
 DSL_TIMEOUT_SEC = 1.0
 DSL_SEMANTIC_MIN_CONFIDENCE = 0.3 if _is_training else 0.5  # Lower in training to try more
 
+# Database
+# Use different DB for embedding experiments to avoid conflicts
+DB_PATH = "mycelium_768.db"  # 768-dim embeddings (experiment branch)
+# DB_PATH = "mycelium.db"    # 384-dim embeddings (main branch)
+
 # LLM Client
 CLIENT_DEFAULT_TIMEOUT = 120.0
 CLIENT_DEFAULT_TEMPERATURE = 0.3

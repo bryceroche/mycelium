@@ -12,8 +12,12 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# Default model - small but effective for semantic similarity
-DEFAULT_MODEL = "all-MiniLM-L6-v2"  # 384 dimensions, fast
+# Default model - higher dimensionality for better signature granularity
+# Options:
+#   "all-MiniLM-L6-v2"   - 384 dims, fast (original)
+#   "all-mpnet-base-v2"  - 768 dims, better quality (current)
+#   "e5-large-v2"        - 1024 dims, best quality, slower
+DEFAULT_MODEL = "all-mpnet-base-v2"  # 768 dimensions, better separation
 
 
 class Embedder:

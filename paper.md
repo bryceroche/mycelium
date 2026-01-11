@@ -171,64 +171,15 @@ This is the "smart work once, execute forever" principle: invest LLM reasoning t
 
 **Bulk DSL Generation with Frontier LLM:**  DSL creation is challenging to nail and should be done with a frontier LLM not a 70b parameter model.  We batch-processed all ~2.2k signatures in the database through Claude Opus 4.5 to generate custom DSL scripts. For each signature, Claude analyzed the step type, example problems, and success patterns to write precise executable code. The remaining 16% signatures are guidance-only signatures where LLM flexibility outperforms rigid formulas.  
 
-### 3.9 DSL Parameter Passing: Structured Output
+### 3.9 DSL Parameter Passing
 
-**Our Solution: JSON Response Format**
+DSL scripts use semantic parameter names like "base" and "height", but at runtime the context only contains generic step identifiers like "step_1" and "step_2". Bridging this gap is the parameter mapping problem.
 
-Modern LLM APIs support `response_format: {"type": "json_object"}`. Instead of parsing free-form text, we instruct the LLM to output structured JSON:
+**Structured LLM Output.** We use the LLM's JSON response mode to get clean, parseable results from each step. Instead of extracting answers from free-form text, the LLM returns structured output with explicit result fields. This eliminates regex parsing and edge cases.
 
-The LLM outputs:
-```json
-{"reasoning": "base=7, height=12, area=0.5*7*12", "result": 42}
-```
+**Context Building.** As steps execute, their results accumulate in a context dictionary keyed by step identifier. When a DSL needs to execute, it has access to all prior step results but must figure out which result maps to which parameter.
 
-The accuracy improvement comes from eliminating silent parsing errors—cases where regex extracted the wrong number from a response.
-
-**Graceful Fallback:**
-
-JSON mode isn't universally supported (some API configurations return 400 errors). We implement fallback:
-
-```python
-try:
-    json_response = await client.generate_json(messages)
-    result = str(json_response.get("result", ""))
-except Exception:
-    # Fallback to text mode with regex
-    response = await client.generate(messages)
-    result = extract_result(response)
-```
-
-This ensures robustness while preferring the cleaner JSON path.
-
-**The Insight:** The LLM already understands what each value represents—it computed the answer. Asking it to output structured data is trivial. Asking regex to parse natural language is impossible. Let the LLM do what LLMs do best: understanding context and extracting meaning.
-
-**Parameter Mapping for DSL Execution:**
-
-When a step matches a signature with a DSL like `(base * height) / 2`, we need to map prior step results to DSL parameters. The flow:
-
-```
-Step 1 executes → {"result": 7}   → stored as step_1
-Step 2 executes → {"result": 12}  → stored as step_2
-Step 3 matches DSL: (base * height) / 2
-```
-
-The DSL executor builds a context dict from prior results:
-```python
-context = {"step_1": 7, "step_2": 12}
-```
-
-Then the LLM rewrites the DSL script to use positional references:
-```python
-# Original DSL script (semantic names)
-"(base * height) / 2"
-
-# LLM-rewritten script (positional refs)
-"(step_1 * step_2) / 2"
-
-# Executes with context → 42
-```
-
-This "LLM script rewriting" approach works because the LLM sees both the step descriptions and the context keys—it knows `step_1` is the base and `step_2` is the height from the problem context. No brittle parameter name matching required.
+**LLM Script Rewriting.** Rather than brittle string matching between parameter names and context keys, we ask the LLM to rewrite the DSL script using the actual context variable names. The LLM sees both the step descriptions (which explain what each step computed) and the available context keys. It understands from context which step computed which value and rewrites the script accordingly. The rewritten script executes directly against the context dictionary.
 
 ### 3.10 Infrastructure
 
@@ -247,20 +198,9 @@ WAL allows concurrent readers and writers, eliminating "database is locked" erro
 
 **Parallel Groq Workers:** With WAL mode enabled, we can run multiple problems concurrently:
 
-| Workers | 100 Problems | Speedup |
-|---------|--------------|---------|
-| 1 | 941s | 1.0x |
-| 4 | 226s | **4.2x** |
-
-The 4.2x speedup comes from overlapping API latency across workers. Each worker maintains its own database connection; WAL ensures writes don't block each other. Benchmark time drops from ~16 minutes to ~4 minutes.
-
 **Embeddings:** all-MiniLM-L6-v2 (384-dimensional) via sentence-transformers. Local inference, no API calls.
-
-**LRU Caching (future work):** Two-layer caching eliminates redundant computation:
-- *Embedding cache* (1000 entries): Identical step text returns cached vector instantly
-- *Classification cache* (1024 entries): Step type lookups skip pattern matching on cache hit
-
-Cache hit rates exceed 60% in typical runs—steps like "solve for x" appear repeatedly across problems. Combined with DSL execution, a fully-cached step resolves in <1ms (vs ~500ms for LLM).
+Git Branch: Double embedding dimensions to provide more semantic granularity and more unique signatures.
+LRU Caching (future work)
 
 **Development:**
 - **Claude Code** (Anthropic): AI pair programming for architecture design and implementation
@@ -270,46 +210,7 @@ Cache hit rates exceed 60% in typical runs—steps like "solve for x" appear rep
 
 This lightweight stack enables rapid iteration: SQLite for portability, Groq for speed, and Claude + tmux for parallelized AI-assisted development.
 
-### 3.11 Signature Refinement Loop
 
-Low-performing signatures reveal opportunities for improvement. We propose an automated refinement loop that **requires a frontier LLM** (e.g., Claude Opus) to perform the sophisticated analysis and code generation:
-
-**The Loop:**
-
-```
-1. IDENTIFY: Query signatures with success_rate < threshold
-   → "area_triangle" at 15% success, 200 uses
-
-2. ANALYZE (Frontier LLM): Examine failure cases and identify patterns
-   → "Failures occur when inputs are coordinates vs. side lengths vs. angles"
-
-3. DECOMPOSE (Frontier LLM): Design finer-grained sub-signatures
-   → area_triangle_coordinates (Shoelace formula)
-   → area_triangle_sides (Heron's formula)
-   → area_triangle_angle (½ab·sin(C))
-
-4. GENERATE DSL (Frontier LLM): Write precise DSL for each child
-   → Each sub-signature gets a single-purpose, tested DSL script
-
-5. REDIRECT (Frontier LLM): Configure parent as router to children
-   → Parent signature stores pointers to sub-signatures
-   → LLM writes routing logic based on input type detection
-
-6. VALIDATE: Test on held-out examples
-   → Keep if success_rate improves; discard if not
-```
-
-**Why a Frontier LLM is Required:**
-
-Steps 2-5 require sophisticated reasoning that only frontier models can reliably perform:
-- **Pattern recognition** across failure cases to identify root causes
-- **Domain expertise** to know Heron's formula vs. Shoelace vs. trigonometric approaches
-- **Code generation** to write correct, tested DSL scripts
-- **Routing logic** to classify input types and direct to appropriate children
-
-A weaker model would hallucinate formulas or mis-classify input patterns. The refinement loop is where frontier LLM capability pays dividends—each refinement improves thousands of future executions.
-
-*Practical note:* The LLM may initially resist this task ("I can help you think through approaches...") or produce overly cautious responses. Insist on concrete outputs: specific sub-signature names, actual DSL code, explicit routing conditions. The model is capable; it just needs clear direction that you want executable artifacts, not suggestions.
 
 **The Compound Effect:**
 

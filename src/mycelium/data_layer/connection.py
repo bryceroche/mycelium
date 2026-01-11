@@ -15,8 +15,14 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-EMBEDDING_DIM = 384
-DEFAULT_DB_PATH = os.getenv("MYCELIUM_DB_PATH", "mycelium.db")
+# Import config for DB path - allows branch-specific databases
+try:
+    from mycelium.config import DB_PATH as CONFIG_DB_PATH
+except ImportError:
+    CONFIG_DB_PATH = "mycelium.db"
+
+EMBEDDING_DIM = 768  # Updated for all-mpnet-base-v2 (was 384 for MiniLM)
+DEFAULT_DB_PATH = os.getenv("MYCELIUM_DB_PATH", CONFIG_DB_PATH)
 
 
 class ConnectionManager:
