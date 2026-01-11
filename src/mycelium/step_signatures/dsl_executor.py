@@ -840,6 +840,17 @@ register_operator("P", _permutations)  # Alias
 register_operator("day_of_week", _day_of_week)
 register_operator("triangular_number", _triangular_number)
 register_operator("fibonacci", _fibonacci)
+# Python built-ins (for compatibility with auto-generated DSLs)
+register_operator("len", len)
+register_operator("sum", sum)
+register_operator("list", list)
+register_operator("set", lambda *args: set(args) if len(args) != 1 or not hasattr(args[0], '__iter__') else set(args[0]))
+register_operator("sorted", sorted)
+register_operator("int", int)
+register_operator("float", float)
+register_operator("abs", abs)
+register_operator("min", min)
+register_operator("max", max)
 
 
 def try_execute_dsl_custom(script: str, inputs: dict[str, Any]) -> Optional[Any]:
