@@ -836,7 +836,51 @@ Just as mycelium networks in nature decompose organic matter across ecosystems�
 - ~~Poor DSL quality from Llama~~ → Fixed by having Claude generate all DSL scripts
 
 **Future Directions:**
-- **100% deterministic execution**: Currently ~50% of steps execute via DSL; improving signature coverage and DSL quality to achieve fully deterministic DAG execution without LLM calls
+
+### Signature Refinement Loop
+
+Low-performing signatures reveal opportunities for improvement. We propose an automated refinement loop using a frontier LLM (e.g., Claude):
+
+**The Loop:**
+
+```
+1. IDENTIFY: Query signatures with success_rate < threshold
+   → "area_triangle" at 15% success, 200 uses
+
+2. ANALYZE: LLM examines failure cases
+   → "Failures occur when inputs are coordinates vs. side lengths vs. angles"
+
+3. DECOMPOSE: Split into finer-grained sub-signatures
+   → area_triangle_coordinates (Shoelace formula)
+   → area_triangle_sides (Heron's formula)
+   → area_triangle_angle (½ab·sin(C))
+
+4. REDIRECT: Add routing from parent to children
+   → Parent signature stores pointers to sub-signatures
+   → Incoming matches route to appropriate child based on input type
+
+5. GENERATE DSL: Build new DSL for each sub-signature
+   → Each child gets a precise, single-purpose DSL
+
+6. VALIDATE: Test on held-out examples
+   → Promote if success_rate improves; rollback if not
+```
+
+**Why This Works:**
+
+The original `area_triangle` signature was a "DSL-hostile embedding space"—semantically similar steps requiring different computations. Decomposition creates homogeneous clusters where a single DSL formula succeeds consistently.
+
+**The Compound Effect:**
+
+Each refinement cycle:
+- Converts low-performing signatures into high-performing sub-signatures
+- Increases overall DSL injection rate
+- Moves the system toward fully deterministic execution
+
+This is the "learning" in self-improving: not just accumulating signatures, but actively refining them based on observed performance.
+
+**Other Future Directions:**
+- **100% deterministic execution**: Improving signature coverage and DSL quality to achieve fully deterministic DAG execution without LLM calls
 - Expand to other problem domains (coding, reasoning benchmarks)
 - Contrastive learning for better signature separation
 - Cross-problem dependency tracking
