@@ -79,13 +79,12 @@ An LLM decomposes problems into a DAG where each step has a task description and
 
 The database stores atomic solution patterns as tuples (centroid, method, stats). Centroids update incrementally as new examples join clusters.
 
-**Cluster Consolidation.** Over time, near-duplicate signatures may emerge — steps phrased differently but semantically equivalent. Rather than boosting neighbors on successful solves (which risks feedback loops), we periodically merge similar signatures:
+**Cluster Consolidation.** Over time, near-duplicate signatures may emerge—steps phrased differently but semantically equivalent. We periodically merge similar signatures:
 
-1. Find pairs with high cosine similarity (≥0.90) between centroids (config.py)
-2. Verify similar success rates (within 15%)—ensures both patterns actually work
-3. Merge: combine statistics, compute weighted-average centroid, reassign examples
+1. Find pairs with high cosine similarity (≥0.90) between centroids
+2. Merge: combine statistics, compute weighted-average centroid, reassign examples
 
-The survivor is the signature with more examples (more established). This consolidation is conservative: only merge when embeddings *and* outcomes align. The result is a cleaner library with fewer redundant patterns and stronger per-signature statistics.
+The survivor is the signature with more examples (more established). The result is a cleaner library with fewer redundant patterns and stronger per-signature statistics.
 
 ### 3.4 Cosine Similarity Matching
 

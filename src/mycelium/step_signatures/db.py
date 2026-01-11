@@ -1380,19 +1380,16 @@ class StepSignatureDB:
     def find_merge_candidates(
         self,
         similarity_threshold: float = 0.90,
-        success_rate_tolerance: float = 0.15,
         min_uses: int = 3,
     ) -> list[tuple[StepSignature, StepSignature, float]]:
         """Find pairs of signatures that are candidates for merging.
 
         Signatures are merge candidates if:
         1. Their centroids have cosine similarity >= threshold
-        2. Their success rates are within tolerance of each other
-        3. Both have at least min_uses (enough data to trust stats)
+        2. Both have at least min_uses (enough data to trust stats)
 
         Args:
             similarity_threshold: Minimum cosine similarity between centroids
-            success_rate_tolerance: Max difference in success rates (0-1)
             min_uses: Minimum uses required for both signatures
 
         Returns:
@@ -1424,11 +1421,6 @@ class StepSignatureDB:
                 # Check embedding similarity
                 similarity = cosine_similarity(centroid_a, centroid_b)
                 if similarity < similarity_threshold:
-                    continue
-
-                # Check success rate similarity
-                rate_diff = abs(sig_a.success_rate - sig_b.success_rate)
-                if rate_diff > success_rate_tolerance:
                     continue
 
                 candidates.append((sig_a, sig_b, similarity))
@@ -1661,18 +1653,16 @@ class StepSignatureDB:
     def merge_similar_signatures(
         self,
         similarity_threshold: float = 0.90,
-        success_rate_tolerance: float = 0.15,
         min_uses: int = 3,
         max_merges: int = 10,
     ) -> list[dict]:
         """Find and merge similar signatures.
 
         Runs periodic cluster consolidation to merge near-duplicate signatures
-        that have similar embeddings AND similar success rates.
+        that have similar embeddings.
 
         Args:
             similarity_threshold: Minimum cosine similarity (default 0.90)
-            success_rate_tolerance: Max success rate difference (default 0.15)
             min_uses: Minimum uses for both signatures (default 3)
             max_merges: Maximum merges per call (default 10)
 
@@ -1681,7 +1671,6 @@ class StepSignatureDB:
         """
         candidates = self.find_merge_candidates(
             similarity_threshold=similarity_threshold,
-            success_rate_tolerance=success_rate_tolerance,
             min_uses=min_uses,
         )
 
