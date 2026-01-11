@@ -832,6 +832,81 @@ The embedding approach captures semantic similarity that keyword matching cannot
 
 This is another example of *learning once, applying forever*: we identified problematic contexts through lift analysis, encoded them as exemplar embeddings, and now automatically detect semantically similar contexts without maintaining a fragile keyword list.
 
+### Rich Typed Step Outputs: Unlocking Symbolic DSL
+
+**The Problem:** Complex DSL scripts like `solve(equation, x)` need **structured symbolic inputs**, not just numbers from prior steps.
+
+Consider this problem flow:
+
+```
+Problem: "Find k where x² + kx + 4 = 0 has exactly one solution"
+
+Step 1: "Write discriminant condition" → "k² - 16 = 0"
+Step 2: "Solve for k" → DSL: solve(discriminant, k)
+                              ↑
+                              We have "k² - 16 = 0" as TEXT
+                              DSL needs sympy.Eq(k**2 - 16, 0)
+```
+
+Traditional step outputs are strings: `"42"` or `"k² - 16 = 0"`. DSL scripts operating on symbolic expressions need the *structure*, not just the string representation.
+
+**The Solution: StepOutput with Type Information**
+
+```python
+@dataclass
+class StepOutput:
+    raw: str                    # Original: "k² - 16 = 0"
+    value_type: str             # "number" | "equation" | "expression" | "list" | "text"
+    numeric: Optional[float]    # 42.0 if it's a number
+    sympy_expr: Optional[str]   # "Eq(k**2 - 16, 0)" for equations
+    variables: list[str]        # ["k"] - symbols in expression
+```
+
+**Type Detection:**
+
+```
+"42"              → number    (numeric=42.0)
+"x^2 - 16 = 0"    → equation  (sympy_expr="Eq(x**2 - 16, 0)")
+"3x + 2y - 5"     → expression (sympy_expr="3*x + 2*y - 5")
+"[1, 2, 3]"       → list
+"The answer is"   → text
+```
+
+**DSL Execution with Types:**
+
+```python
+# Old (broken):
+context = {"step_1": "k² - 16 = 0"}  # Just a string
+solve(context["step_1"], k)  # Fails - can't solve a string
+
+# New (works):
+context = {"step_1": StepOutput(
+    raw="k² - 16 = 0",
+    value_type="equation",
+    sympy_expr="Eq(k**2 - 16, 0)"
+)}
+solve(parse_expr(context["step_1"].sympy_expr), k)  # Works!
+```
+
+**Why This Matters:**
+
+The 5-7 wrong answers on MATH L5 problems with 0-1 injections share a pattern: they require symbolic manipulation (solving equations, simplifying expressions) but the DSL received strings instead of parseable symbolic forms.
+
+| Problem Type | Old Context | New Context | DSL Works? |
+|-------------|-------------|-------------|------------|
+| Arithmetic | `"42"` | `numeric=42.0` | ✓ Both work |
+| Equation solving | `"x² - 4 = 0"` | `sympy_expr="Eq(x**2-4,0)"` | ✓ New works |
+| Expression simplify | `"3x + 2x"` | `sympy_expr="3*x + 2*x"` | ✓ New works |
+| System of equations | Multiple strings | List of Eq() | ✓ New works |
+
+**Implementation Path:**
+
+1. **detect_output_type()** - Parse step result strings into StepOutput
+2. **DSL executor** - Use `output.for_dsl(prefer_type="symbolic")` for sympy operations
+3. **Context passing** - Replace string context with StepOutput objects
+
+This converts the ~35% of DSL failures caused by type mismatches into successes, potentially increasing injection rate from 34% to 50%+ on symbolic problems.
+
 ### Cold Start Bootstrap
 
 New signatures face a chicken-and-egg problem: can't prove effectiveness without being used, but the system won't use unproven signatures. We guarantee injection for the first **10 uses** to sample success rate. After bootstrap:

@@ -41,6 +41,7 @@ from .step_decomposer import (
     DECOMPOSITION_CONFIDENCE_THRESHOLD,
 )
 from .semantic_extractor import extract_semantic_info
+from .step_output import StepOutput, detect_output_type
 
 logger = logging.getLogger(__name__)
 
@@ -466,6 +467,7 @@ class Solver:
         # Execute steps in order
         step_results = []
         context = {}
+        typed_context: dict[str, StepOutput] = {}  # Rich typed outputs for DSL
         step_descriptions = {}  # Track what each step computes for better DSL param matching
         rich_context = {}  # Semantic context for DSL parameter mapping
         completed_steps: set[str] = set()
@@ -511,6 +513,8 @@ class Solver:
 
                 step_results.append(result)
                 context[step.id] = result.result
+                # Create rich typed output for DSL execution
+                typed_context[step.id] = detect_output_type(result.result)
                 step_descriptions[step.id] = step.task  # Track what this step computed
                 # Store semantic info for DSL parameter mapping
                 rich_context[step.id] = {
@@ -797,23 +801,35 @@ Provide the combined result. End with RESULT: <your answer>"""
 
         formatted_inputs = io_schema.format_inputs(context) if io_schema.inputs else ctx_str
 
-        # Extract numeric inputs for DSL/formula execution
+        # Extract inputs for DSL/formula execution using rich typed detection
         # If io_schema exists, use its structured extraction
-        # Otherwise, parse all numeric values from context AND step task
+        # Otherwise, use StepOutput type detection for better parsing
         if io_schema and io_schema.inputs:
             numeric_inputs = io_schema.extract_numeric_inputs(context)
         else:
-            # Fallback: extract numbers from context values + step task
+            # Use StepOutput type detection for reliable value extraction
             numeric_inputs = {}
+            sympy_inputs = {}  # Store symbolic expressions for SYMPY layer
 
-            # First, extract from prior step results
+            # Extract from prior step results using typed detection
             for key, value in context.items():
-                try:
-                    val_str = str(value).strip()
-                    cleaned = val_str.replace(',', '').replace('$', '').strip()
-                    numeric_inputs[key] = float(cleaned)
-                except (ValueError, TypeError):
-                    pass
+                typed = detect_output_type(str(value))
+                if typed.is_numeric():
+                    numeric_inputs[key] = typed.numeric
+                if typed.is_symbolic():
+                    # Store sympy-ready expressions for symbolic DSL operations
+                    sympy_inputs[key] = typed.sympy_expr
+                    # Also store variables found (e.g., ['x', 'y'])
+                    if typed.variables:
+                        sympy_inputs[f"{key}_vars"] = typed.variables
+
+            # Merge sympy_inputs into numeric_inputs (DSL executor will pick appropriate)
+            # Use suffix to distinguish: step_1_sympy for symbolic, step_1 for numeric
+            for key, expr in sympy_inputs.items():
+                if not key.endswith("_vars"):
+                    numeric_inputs[f"{key}_sympy"] = expr
+                else:
+                    numeric_inputs[key] = expr
 
             # Also extract numbers from the step task itself
             # This handles cases like "Calculate 2^10" -> [2, 10]
@@ -1232,15 +1248,19 @@ Which pattern number (1-{len(child_specs)}) best matches this step? Reply with O
 
             # Execute the child's DSL
             if child_sig.dsl_script:
-                # Extract numeric inputs from context and step task
+                # Extract inputs using StepOutput type detection
                 numeric_inputs = {}
+                sympy_inputs = {}
                 for key, value in context.items():
-                    try:
-                        val_str = str(value).strip()
-                        cleaned = val_str.replace(',', '').replace('$', '').strip()
-                        numeric_inputs[key] = float(cleaned)
-                    except (ValueError, TypeError):
-                        pass
+                    typed = detect_output_type(str(value))
+                    if typed.is_numeric():
+                        numeric_inputs[key] = typed.numeric
+                    if typed.is_symbolic():
+                        sympy_inputs[key] = typed.sympy_expr
+
+                # Merge sympy inputs with suffix
+                for key, expr in sympy_inputs.items():
+                    numeric_inputs[f"{key}_sympy"] = expr
 
                 # Extract from step task
                 task_numbers = re.findall(r'(?<![a-zA-Z])(\d+\.?\d*)(?![a-zA-Z])', step.task)
