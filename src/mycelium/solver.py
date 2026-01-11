@@ -375,6 +375,7 @@ class Solver:
         match_mode: str = "auto",  # Signature matching mode
         injection_mode: str = "all",  # Injection strategy: none, dsl, formula, procedure, guidance, all
         use_hints: bool = True,  # Enable signature-guided decomposition hints
+        use_json_output: bool = True,  # Use structured JSON output from LLM
     ):
         self.step_db = step_db or StepSignatureDB()
         self.solver_client = GroqClient(model=solver_model)
@@ -388,6 +389,7 @@ class Solver:
         self.match_mode = match_mode
         self.injection_mode = injection_mode  # none, dsl, formula, procedure, guidance, all
         self.use_hints = use_hints
+        self.use_json_output = use_json_output  # Use structured JSON output
 
     async def solve(
         self,
@@ -704,6 +706,29 @@ class Solver:
             f"- {r.step_id}: {r.result}" for r in sub_results
         )
 
+        if self.use_json_output:
+            prompt = f"""Combine these sub-step results into a single answer for the task: "{task}"
+
+Sub-step results:
+{results_str}
+
+Output as JSON: {{"reasoning": "how you combined", "result": <combined answer>}}"""
+
+            messages = [
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": "Combine the results."},
+            ]
+            try:
+                json_response = await self.solver_client.generate_json(
+                    messages, temperature=self.temperature
+                )
+                result = json_response.get("result", "")
+                if result:
+                    return str(result)
+            except Exception:
+                pass  # Fall through to text mode
+
+        # Text mode
         prompt = f"""Combine these sub-step results into a single answer for the task: "{task}"
 
 Sub-step results:
@@ -968,35 +993,90 @@ Provide the combined result. End with RESULT: <your answer>"""
         if not direct_execution:
             exec_mode = io_schema.execution_mode if should_inject and io_schema else "plain"
             logger.debug(
-                "[council] LLM execution: step=%s mode=%s injected=%s",
-                step.id, exec_mode, was_injected
+                "[council] LLM execution: step=%s mode=%s injected=%s json=%s",
+                step.id, exec_mode, was_injected, self.use_json_output
             )
-            messages = [
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": f"Execute: {step.task}"},
-            ]
-            try:
-                response = await self.solver_client.generate(messages, temperature=self.temperature)
-                result = extract_result(response)
-            except asyncio.CancelledError:
-                raise
-            except Exception as e:
-                logger.error(
-                    "API call failed for step: step_id=%s, task='%s', error=%s",
-                    step.id,
-                    step.task[:MAX_STEP_TASK_LOG_LENGTH],
-                    e,
-                    exc_info=True,
-                )
-                return StepResult(
-                    step_id=step.id,
-                    task=step.task,
-                    result=f"API error: {type(e).__name__}: {e}",
-                    success=False,
-                    embedding=embedding,
-                    signature_matched=signature,
-                    is_new_signature=is_new,
-                )
+
+            # Use JSON output mode for cleaner parsing
+            if self.use_json_output:
+                # Select JSON prompt template based on injection mode
+                if mode_enabled("guidance") and should_inject and io_schema.method_template_v2:
+                    json_prompt = get_registry().format(
+                        "step_solver_json_with_guidance",
+                        formatted_inputs=formatted_inputs,
+                        task=step.task,
+                        guidance=io_schema.method_template_v2,
+                    )
+                elif mode_enabled("procedure") and should_inject and io_schema.procedure:
+                    json_prompt = get_registry().format(
+                        "step_solver_json_with_procedure",
+                        formatted_inputs=formatted_inputs,
+                        task=step.task,
+                        procedure_steps=io_schema.format_procedure(),
+                    )
+                else:
+                    json_prompt = get_registry().format(
+                        "step_solver_json",
+                        context=ctx_str,
+                        task=step.task,
+                    )
+
+                messages = [
+                    {"role": "system", "content": json_prompt},
+                    {"role": "user", "content": f"Execute: {step.task}"},
+                ]
+                try:
+                    json_response = await self.solver_client.generate_json(
+                        messages, temperature=self.temperature
+                    )
+                    # Extract result directly from JSON - no parsing needed!
+                    result = str(json_response.get("result", ""))
+                    if not result:
+                        # Fallback: try "answer" key (for synthesis)
+                        result = str(json_response.get("answer", ""))
+                    logger.debug("[council] JSON result extracted: step=%s result=%s", step.id, result)
+                except (asyncio.CancelledError, KeyboardInterrupt):
+                    raise
+                except Exception as e:
+                    logger.warning(
+                        "[council] JSON mode failed, falling back to text: step=%s error=%s",
+                        step.id, e
+                    )
+                    # Fallback to text mode
+                    messages = [
+                        {"role": "system", "content": prompt},
+                        {"role": "user", "content": f"Execute: {step.task}"},
+                    ]
+                    response = await self.solver_client.generate(messages, temperature=self.temperature)
+                    result = extract_result(response)
+            else:
+                # Original text-based execution
+                messages = [
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": f"Execute: {step.task}"},
+                ]
+                try:
+                    response = await self.solver_client.generate(messages, temperature=self.temperature)
+                    result = extract_result(response)
+                except asyncio.CancelledError:
+                    raise
+                except Exception as e:
+                    logger.error(
+                        "API call failed for step: step_id=%s, task='%s', error=%s",
+                        step.id,
+                        step.task[:MAX_STEP_TASK_LOG_LENGTH],
+                        e,
+                        exc_info=True,
+                    )
+                    return StepResult(
+                        step_id=step.id,
+                        task=step.task,
+                        result=f"API error: {type(e).__name__}: {e}",
+                        success=False,
+                        embedding=embedding,
+                        signature_matched=signature,
+                        is_new_signature=is_new,
+                    )
 
         # Validate output
         output_valid, output_validation_msg = (
@@ -1418,6 +1498,29 @@ Which pattern number (1-{len(child_specs)}) best matches this step? Reply with O
             for r in step_results
         )
 
+        if self.use_json_output:
+            # Use JSON synthesis
+            prompt = get_registry().format(
+                "final_synthesizer_json",
+                problem=problem,
+                step_results=results_str
+            )
+            messages = [
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": "Give the final answer."},
+            ]
+            try:
+                json_response = await self.solver_client.generate_json(
+                    messages, temperature=self.temperature
+                )
+                answer = json_response.get("answer", "")
+                if answer:
+                    return str(answer)
+            except Exception as e:
+                logger.warning("[council] JSON synthesis failed, falling back: %s", e)
+                # Fall through to text mode
+
+        # Text mode fallback
         prompt = get_registry().format("final_synthesizer", problem=problem, step_results=results_str)
 
         messages = [

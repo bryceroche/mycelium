@@ -356,6 +356,93 @@ Be precise with mathematical notation.""",
             description="Generic math problem solver",
         ))
 
+        # ============================================================
+        # JSON OUTPUT TEMPLATES - For structured output mode
+        # ============================================================
+
+        self.register(PromptTemplate(
+            name="step_solver_json",
+            template="""You are solving ONE step of a multi-step math problem.
+
+**Context (original problem + previous results):**
+{context}
+
+**Your task for this step:**
+{task}
+
+Solve ONLY this step. Output your response as JSON:
+{{"reasoning": "your step-by-step reasoning", "result": <the numeric/symbolic result>}}
+
+IMPORTANT:
+- "result" should be the direct value (number, expression, or equation)
+- Use a number for numeric results: {{"reasoning": "...", "result": 42}}
+- Use a string for expressions: {{"reasoning": "...", "result": "x^2 - 4"}}
+""",
+            description="Solve a step with JSON output",
+        ))
+
+        self.register(PromptTemplate(
+            name="step_solver_json_with_guidance",
+            template="""You are solving ONE step of a multi-step math problem.
+
+**Inputs:**
+{formatted_inputs}
+
+**Task:** {task}
+
+**Approach:** {guidance}
+
+Apply this approach. Output your response as JSON:
+{{"reasoning": "your step-by-step reasoning", "result": <the numeric/symbolic result>}}
+
+IMPORTANT:
+- "result" should be the direct value (number, expression, or equation)
+- Use a number for numeric results: {{"reasoning": "...", "result": 42}}
+- Use a string for expressions: {{"reasoning": "...", "result": "x^2 - 4"}}
+""",
+            description="Solve a step with guidance and JSON output",
+        ))
+
+        self.register(PromptTemplate(
+            name="step_solver_json_with_procedure",
+            template="""You are solving ONE step of a multi-step math problem.
+
+**Inputs:**
+{formatted_inputs}
+
+**Task:** {task}
+
+**Follow this procedure:**
+{procedure_steps}
+
+Execute each step in order. Output your response as JSON:
+{{"reasoning": "your step-by-step reasoning", "result": <the numeric/symbolic result>}}
+
+IMPORTANT:
+- "result" should be the direct value (number, expression, or equation)
+- Use a number for numeric results: {{"reasoning": "...", "result": 42}}
+- Use a string for expressions: {{"reasoning": "...", "result": "x^2 - 4"}}
+""",
+            description="Solve a step with procedure and JSON output",
+        ))
+
+        self.register(PromptTemplate(
+            name="final_synthesizer_json",
+            template="""You are synthesizing the final answer from completed steps.
+
+Problem: {problem}
+
+Step results:
+{step_results}
+
+Combine these results to give the final answer.
+Output as JSON: {{"reasoning": "how you combined the results", "answer": <final answer>}}
+
+Use a number for numeric answers, string otherwise.
+""",
+            description="Synthesize final answer with JSON output",
+        ))
+
 
 # Convenience function to get the global registry
 def get_registry() -> PromptRegistry:

@@ -122,6 +122,7 @@ class GroqClient:
         messages: list[dict],
         temperature: float = CLIENT_DEFAULT_TEMPERATURE,
         max_tokens: int = 2048,
+        response_format: Optional[dict] = None,
     ) -> str:
         """Generate a completion from the model.
 
@@ -129,6 +130,7 @@ class GroqClient:
             messages: List of message dicts with 'role' and 'content'
             temperature: Sampling temperature (0.0-1.0)
             max_tokens: Maximum tokens to generate
+            response_format: Optional format spec, e.g. {"type": "json_object"}
 
         Returns:
             Generated text content
@@ -136,21 +138,25 @@ class GroqClient:
         Raises:
             httpx.HTTPStatusError: After max retries exhausted
         """
-        logger.debug(f"[groq] model={self.model} temp={temperature} max_tokens={max_tokens}")
+        logger.debug(f"[groq] model={self.model} temp={temperature} max_tokens={max_tokens} format={response_format}")
 
         client = await self._get_client()
         last_exception: Optional[Exception] = None
 
         for attempt in range(MAX_RETRIES + 1):
             try:
+                request_body = {
+                    "model": self.model,
+                    "messages": messages,
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                }
+                if response_format:
+                    request_body["response_format"] = response_format
+
                 response = await client.post(
                     f"{self.base_url}/chat/completions",
-                    json={
-                        "model": self.model,
-                        "messages": messages,
-                        "temperature": temperature,
-                        "max_tokens": max_tokens,
-                    },
+                    json=request_body,
                 )
                 response.raise_for_status()
                 data = response.json()
@@ -222,6 +228,39 @@ class GroqClient:
         delay = BASE_DELAY * (2 ** attempt)
         jitter = random.uniform(0, delay * 0.1)
         return min(delay + jitter, MAX_DELAY)
+
+
+    async def generate_json(
+        self,
+        messages: list[dict],
+        temperature: float = CLIENT_DEFAULT_TEMPERATURE,
+        max_tokens: int = 2048,
+    ) -> dict:
+        """Generate a JSON response from the model.
+
+        Automatically uses response_format={"type": "json_object"} and
+        parses the response as JSON.
+
+        Args:
+            messages: List of message dicts with 'role' and 'content'
+            temperature: Sampling temperature (0.0-1.0)
+            max_tokens: Maximum tokens to generate
+
+        Returns:
+            Parsed JSON dict
+
+        Raises:
+            json.JSONDecodeError: If response is not valid JSON
+            httpx.HTTPStatusError: After max retries exhausted
+        """
+        import json
+        content = await self.generate(
+            messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            response_format={"type": "json_object"},
+        )
+        return json.loads(content)
 
 
 # Convenience function

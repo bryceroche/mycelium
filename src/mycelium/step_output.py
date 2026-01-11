@@ -189,16 +189,6 @@ def try_parse_numeric(raw: str) -> Optional[float]:
             except ValueError:
                 pass  # Not a simple fraction, continue with other checks
 
-    # Skip if it looks like an expression (but not simple operators)
-    if any(c in cleaned for c in ['+', '*', '^', '=']) and not cleaned.startswith('-'):
-        # But allow negative numbers
-        if not re.match(r'^-?\d+\.?\d*$', cleaned):
-            return None
-    # Also check for subtraction (but allow negative numbers)
-    if '-' in cleaned and not cleaned.startswith('-'):
-        if not re.match(r'^-?\d+\.?\d*$', cleaned):
-            return None
-
     # Handle LaTeX fractions: \frac{6}{23}
     frac_match = re.match(r'\\frac\{(\d+)\}\{(\d+)\}', cleaned)
     if frac_match:
@@ -212,17 +202,34 @@ def try_parse_numeric(raw: str) -> Optional[float]:
         return None
 
     # Try to extract number from text like "The answer is 25" or "result: 42"
-    # Look for patterns: "is X", "= X", ": X", or just the last number
+    # Aggressive extraction - try many patterns
     answer_patterns = [
-        r'(?:answer|result|value|equals?|is)\s*[=:]?\s*(-?\d+\.?\d*)',  # "answer is 25"
-        r'=\s*(-?\d+\.?\d*)\s*$',  # "x = 25" at end
-        r'(-?\d+\.?\d*)\s*$',  # last number in string
+        # Explicit answer markers
+        r'(?:answer|result|value|total|sum|product|equals?|is)\s*[=:]?\s*(-?\d+\.?\d*)',
+        r'(?:therefore|thus|so|hence)\s*[,:]?\s*(-?\d+\.?\d*)',
+        # Boxed answers (LaTeX)
+        r'\\boxed\{(-?\d+\.?\d*)\}',
+        r'\\box\{(-?\d+\.?\d*)\}',
+        # Final answer patterns
+        r'final\s+(?:answer|result)\s*[=:]?\s*(-?\d+\.?\d*)',
+        r'the\s+(?:answer|result|total|sum)\s+is\s+(-?\d+\.?\d*)',
+        # Equation results
+        r'[a-zA-Z_]\s*=\s*(-?\d+\.?\d*)\s*$',  # "x = 25" at end
+        r'=\s*(-?\d+\.?\d*)\s*$',  # "= 25" at end
+        # Step output formats
+        r'step\s*\d*\s*[=:]\s*(-?\d+\.?\d*)',
+        r'output\s*[=:]\s*(-?\d+\.?\d*)',
+        # General: last number in string (fallback)
+        r'(-?\d+\.?\d*)\s*$',
     ]
     for pattern in answer_patterns:
         match = re.search(pattern, cleaned, re.IGNORECASE)
         if match:
             try:
-                return float(match.group(1))
+                val = float(match.group(1))
+                # Sanity check - avoid extracting year-like numbers from text
+                if val != 0 or '0' in match.group(1):
+                    return val
             except ValueError:
                 continue
 

@@ -136,28 +136,41 @@ class DSLSpec:
 
         Matching strategy:
         1. First try name-based matching (exact, substring, alias)
-        2. If no matches found, fall back to positional matching
+        2. For unfound params, fall back to positional matching from remaining keys
+        3. Aggressively match step_N keys to params by position
 
         Returns dict with param names as keys and context values as values.
         """
         result = {}
         context_keys = list(context.keys())
+        used_keys = set()
 
         # First pass: name-based matching
         for param in self.params:
             matched_key = self.match_param(param, context_keys)
             if matched_key:
                 result[param] = context[matched_key]
+                used_keys.add(matched_key)
                 context_keys.remove(matched_key)  # Don't reuse
 
-        # Fallback: positional matching if name matching found nothing
-        # This handles cases like DSL params ["a", "b"] with context {"step_1": 10, "step_2": 20}
+        # Second pass: positional matching for unfound params
+        # Sort remaining keys (step_1, step_2, etc. will be in order)
+        remaining_keys = sorted([k for k in context.keys() if k not in used_keys])
+        unfound_params = [p for p in self.params if p not in result]
+
+        for i, param in enumerate(unfound_params):
+            if i < len(remaining_keys):
+                result[param] = context[remaining_keys[i]]
+
+        # If still no matches and we have generic params (a, b, c, x, y, z, n, m)
+        # Try aggressive positional matching
         if not result and self.params and context:
-            # Sort context keys to ensure consistent ordering
-            sorted_keys = sorted(context.keys())
-            for i, param in enumerate(self.params):
-                if i < len(sorted_keys):
-                    result[param] = context[sorted_keys[i]]
+            generic_params = {'a', 'b', 'c', 'x', 'y', 'z', 'n', 'm', 'r', 'k', 'i', 'j'}
+            if all(p.lower() in generic_params for p in self.params):
+                sorted_keys = sorted(context.keys())
+                for i, param in enumerate(self.params):
+                    if i < len(sorted_keys):
+                        result[param] = context[sorted_keys[i]]
 
         return result
 
@@ -498,6 +511,8 @@ def _parse_to_sympy(value: str, sympy) -> Any:
     - "x^2 - 4 = 0" → Eq(x**2 - 4, 0)
     - "x^2 + 2x - 3" → x**2 + 2*x - 3
     - "42" → 42 (number)
+    - "The equation x^2 - 4 = 0" → Eq(x**2 - 4, 0) (extract from text)
+    - "\frac{x}{2} = 3" → Eq(x/2, 3) (LaTeX)
     - Plain text → original string (unchanged)
     """
     import re
@@ -513,6 +528,24 @@ def _parse_to_sympy(value: str, sympy) -> Any:
     except ValueError:
         pass
 
+    # Pre-process: Extract equation from text like "The equation is x^2 = 4"
+    # Look for patterns with = sign surrounded by math-like content
+    eq_patterns = [
+        r'(?:equation|expression|formula)[:\s]+([^,\.]+=[^,\.]+)',
+        r'([a-zA-Z0-9\^\*\+\-\s\(\)]+\s*=\s*[a-zA-Z0-9\^\*\+\-\s\(\)]+)',
+    ]
+    for pattern in eq_patterns:
+        match = re.search(pattern, cleaned, re.IGNORECASE)
+        if match:
+            cleaned = match.group(1).strip()
+            break
+
+    # Convert LaTeX fractions: \frac{a}{b} → (a)/(b)
+    cleaned = re.sub(r'\\frac\{([^}]+)\}\{([^}]+)\}', r'(\1)/(\2)', cleaned)
+    # Remove other LaTeX commands
+    cleaned = re.sub(r'\\[a-zA-Z]+', '', cleaned)
+    cleaned = cleaned.replace('{', '(').replace('}', ')')
+
     # Normalize notation: ^ to **, implicit multiplication
     normalized = cleaned.replace('^', '**')
     # Add implicit multiplication: 2x → 2*x, x( → x*(
@@ -521,7 +554,7 @@ def _parse_to_sympy(value: str, sympy) -> Any:
     normalized = re.sub(r'(\d)\(', r'\1*(', normalized)
     normalized = re.sub(r'\)(\d)', r')*\1', normalized)
     normalized = re.sub(r'\)\(', r')*(', normalized)
-    normalized = re.sub(r'([a-zA-Z])\(', r'\1*(', normalized)
+    normalized = re.sub(r'([a-zA-Z])\((?![a-zA-Z])', r'\1*(', normalized)  # Avoid sin(, cos(
 
     # Check for equation (contains =)
     if '=' in normalized and '==' not in normalized:
@@ -536,7 +569,14 @@ def _parse_to_sympy(value: str, sympy) -> Any:
 
     # Try to parse as expression
     try:
-        return sympy.sympify(normalized)
+        expr = sympy.sympify(normalized)
+        # Only wrap in Eq(expr, 0) if it's a multi-term expression (not a single symbol)
+        # Single symbols like 'x' should stay as Symbol, not become Eq(x, 0)
+        if (expr.free_symbols and
+            not isinstance(expr, (int, float, sympy.Number, sympy.Symbol)) and
+            len(str(expr)) > 2):  # Multi-term expression
+            return sympy.Eq(expr, 0)
+        return expr
     except Exception:
         pass
 
