@@ -11,6 +11,9 @@ import httpx
 from mycelium.config import (
     CLIENT_DEFAULT_TIMEOUT,
     CLIENT_DEFAULT_TEMPERATURE,
+    CLIENT_CONNECT_TIMEOUT,
+    CLIENT_BASE_RETRY_DELAY,
+    CLIENT_MAX_RETRY_DELAY,
     SOLVER_DEFAULT_MODEL,
 )
 
@@ -18,14 +21,14 @@ logger = logging.getLogger(__name__)
 
 # Retry configuration
 MAX_RETRIES = 3
-BASE_DELAY = 1.0  # seconds
-MAX_DELAY = 30.0  # seconds
+BASE_DELAY = CLIENT_BASE_RETRY_DELAY
+MAX_DELAY = CLIENT_MAX_RETRY_DELAY
 RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
 # Connection pool defaults
 DEFAULT_MAX_CONNECTIONS = 10  # Max concurrent connections
 DEFAULT_MAX_KEEPALIVE = 5  # Max idle connections to keep alive
-DEFAULT_CONNECT_TIMEOUT = 10.0  # Connection timeout in seconds
+DEFAULT_CONNECT_TIMEOUT = CLIENT_CONNECT_TIMEOUT
 
 # Default model - our flagship (imported from config)
 DEFAULT_MODEL = SOLVER_DEFAULT_MODEL

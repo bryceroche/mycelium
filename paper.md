@@ -678,16 +678,27 @@ The system supports two modes, configured in `config.py`:
 ACTIVE_MODE = Mode.TRAINING   # or Mode.BENCHMARK
 ```
 
-| Setting | Training Mode | Benchmark Mode |
-|---------|---------------|----------------|
-| Match threshold | 0.92 | 0.95 |
-| DSL injection | Try everything | Only high-confidence |
-| Decomposition | Disabled | Enabled |
-| Purpose | Collect data | Max accuracy |
+| Setting | Training | Benchmark |
+|---------|----------|-----------|
+| `MIN_MATCH_THRESHOLD` | 0.92 | 0.95 |
+| `DSL_MIN_CONFIDENCE` | 0.0 | 0.3 |
+| `EXPLORATION_RATE` | 1.0 | 0.5 |
+| `RECURSIVE_DECOMPOSITION_ENABLED` | False | True |
+| `DSL_PROBATION_ENABLED` | False | True |
 
-**Training mode** tries DSL execution on every signature hit, collecting success/failure data. Lower match threshold (0.92) explores more signatures.
+**Training mode:**
+- Lower match threshold (0.92) to explore more signatures
+- Try DSL on every signature hit (`DSL_MIN_CONFIDENCE = 0.0`)
+- Collect success/failure data for lift-based learning
+- Decomposition disabled to maximize DSL attempts
 
-**Benchmark mode** uses conservative thresholds (0.95), only executes proven DSLs, and enables recursive decomposition for higher accuracy.
+**Benchmark mode:**
+- Higher match threshold (0.95) for conservative matching
+- Only execute high-confidence DSLs (`DSL_MIN_CONFIDENCE = 0.3`)
+- Enable recursive decomposition for complex steps
+- Use proven patterns via probation gating
+
+All thresholds are centralized in `config.py` for easy tuning.
 
 **Injection Rate Ceiling:** The ~50% injection rate is the practical maximum. The remaining steps have truly empty context (first steps with no numbers in task text). DSL cannot execute without inputs—these steps require LLM reasoning.
 

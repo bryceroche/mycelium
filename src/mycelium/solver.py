@@ -67,16 +67,12 @@ MIN_USES_FOR_LIFT = 5
 
 # Lift threshold: below this, signature is considered "harmful" for DSL
 NEGATIVE_LIFT_THRESHOLD = -0.05  # -5% lift = avoid
-
-# Probation: after DSL improvement, inject randomly to sample new lift
-PROBATION_INJECTION_RATE = 0.3  # 30% chance to inject during probation
 PROBATION_USES = 10  # Uses needed to exit probation
 
 # Cache for negative-lift signature embeddings (rebuilt periodically)
 _avoid_embeddings_cache: Optional[np.ndarray] = None
 _avoid_signature_ids: list[str] = []
 _avoid_cache_time: float = 0.0
-AVOID_CACHE_TTL = 300.0  # Rebuild cache every 5 minutes
 
 
 def get_signature_lift(signature: "StepSignature") -> tuple[float, bool]:
@@ -139,7 +135,7 @@ def should_avoid_dsl_for_signature(
         similarities = np.dot(avoid_norms, step_norm)
         max_sim = float(np.max(similarities))
 
-        if max_sim >= 0.85:  # High similarity to known negative-lift signature
+        if max_sim >= NEGATIVE_LIFT_SIMILARITY:
             return True, f"similar_to_negative_lift(sim={max_sim:.2f})"
 
     return False, "ok"
@@ -211,6 +207,9 @@ from mycelium.config import (
     RECURSIVE_MAX_DEPTH,
     RECURSIVE_CONFIDENCE_THRESHOLD,
     TRAINING_MODE,
+    PROBATION_INJECTION_RATE,
+    AVOID_CACHE_TTL,
+    NEGATIVE_LIFT_SIMILARITY,
 )
 from .step_signatures import (
     StepSignatureDB,
