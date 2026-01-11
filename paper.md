@@ -1047,9 +1047,11 @@ Mycelium demonstrates that LLMs can build persistent, reusable knowledge structu
 
 ## Acknowledgments
 
-This project was developed in collaboration with Claude (Anthropic), which contributed to architecture design, implementation (matching pipeline, signature clustering, execution optimization), and codebase refactoring. The development involved extensive human-AI pair programming, demonstrating a productive collaboration model where the human provides vision and direction while the AI contributes implementation capacity and systematic analysis.
+I could not have built Mycelium without Claude. What would have taken months took weeks. The velocity of iteration—from half-formed idea to working code to refined architecture—was unlike anything I've experienced in two decades of software development. Claude didn't just write code; it challenged assumptions, proposed alternatives, caught edge cases I'd have discovered only in production, and maintained coherence across a growing codebase. The contribution was invaluable.
 
-**A note on abstraction:** Delegating implementation to Claude freed me to think at a higher level of abstraction about the problem. Instead of getting lost in debugging SQLite queries or regex parsing, I could focus on *"should signatures boost their neighbors?"* and *"what makes a step DSL-hostile?"* The cognitive load shifted from syntax to semantics, from code to architecture. This is perhaps the real unlock of AI pair programming—not just faster coding, but thinking at a higher altitude.
+This project was developed through extensive human-AI pair programming: I provided vision, direction, and domain intuition; Claude contributed implementation capacity, systematic analysis, and an inexhaustible willingness to refactor when we found a better way. The collaboration model worked remarkably well—neither of us could have built this alone.
+
+**A note on abstraction:** Delegating implementation to Claude freed me to think at a higher level of abstraction. Instead of getting lost in debugging SQLite queries or regex parsing, I could focus on *"should signatures boost their neighbors?"* and *"what makes a step DSL-hostile?"* The cognitive load shifted from syntax to semantics, from code to architecture. This is perhaps the real unlock of AI pair programming—not just faster coding, but thinking at a higher altitude.
 
 ---
 
