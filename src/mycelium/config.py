@@ -27,7 +27,8 @@ COLD_START_GUARANTEED_USES = 10  # Reduced from 15 to faster lift-gating
 # DSL Probation Mode
 # When True: randomly sample new/improved DSLs to gather lift data
 # When False: skip all probation sampling (use for max benchmark scores)
-DSL_PROBATION_ENABLED = True
+# Disabled by default in aggressive mode for max injection
+DSL_PROBATION_ENABLED = not DSL_AGGRESSIVE_INJECTION
 
 # DSL confidence thresholds (based on aggressive mode)
 DSL_MIN_CONFIDENCE = 0.0 if DSL_AGGRESSIVE_INJECTION else 0.3  # Min confidence to execute DSL

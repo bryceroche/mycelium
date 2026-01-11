@@ -262,10 +262,14 @@ _FUNCTIONS: dict[str, Callable] = {
     "max": max,
     "round": round,
     "pow": pow,
+    "sum": lambda *args: sum(args),  # Vararg sum for DSL like sum(a, b, c)
+    "len": lambda *args: len(args),  # Count arguments
     # Roots and exponents
     "sqrt": math.sqrt,
+    "cbrt": lambda x: x ** (1/3),  # Cube root
     "log": math.log,
     "log10": math.log10,
+    "log2": math.log2,
     "exp": math.exp,
     # Trigonometry
     "sin": math.sin,
@@ -274,12 +278,15 @@ _FUNCTIONS: dict[str, Callable] = {
     "asin": math.asin,
     "acos": math.acos,
     "atan": math.atan,
+    "atan2": math.atan2,
     # Rounding
     "floor": math.floor,
     "ceil": math.ceil,
+    "trunc": math.trunc,
     # Combinatorics
     "factorial": math.factorial,
     "gcd": math.gcd,
+    "lcm": lambda a, b: abs(a * b) // math.gcd(int(a), int(b)) if a and b else 0,
     # Hyperbolic (occasionally needed)
     "sinh": math.sinh,
     "cosh": math.cosh,
