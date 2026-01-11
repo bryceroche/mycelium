@@ -1112,7 +1112,7 @@ This project was developed through extensive human-AI pair programming: I provid
 
 **A note on abstraction:** Delegating implementation to Claude freed me to think at a higher level of abstraction. Instead of getting lost in debugging SQLite queries or regex parsing, I could focus on *"should signatures boost their neighbors?"* and *"what makes a step DSL-hostile?"* The cognitive load shifted from syntax to semantics, from code to architecture. This is perhaps the real unlock of AI pair programming—not just faster coding, but thinking at a higher altitude.
 
-**On the primes analogy:** Claude and I would go back and forth on implementation details, and honestly, most of my answers came from the same place: *"What would primes do?"* Is a failing DSL still useful? No—if it doesn't factor cleanly, decompose further. When do we stop decomposing? When you hit an atomic operation that can't be broken down. Are DSL failures bad? No—they're signal. A negative-lift signature is telling you it's not atomic yet; lean into that and decompose it. The analogy was so tight that it made most decisions obvious.
+**On the primes analogy:** Claude and I would go back and forth on implementation details, questions would come up, and my answers were largely guided by primes. The analogy was so strong that it made many decisions easy. Leaning into failing DSLs is scary when you're trying for SOTA results on a benchmark, but knowing that failing DSLs either need to be rewritten or decomposed further gave resolution about direction. During training, DSL failures provide good signal. A negative-lift signature is telling you it's not atomic yet and you need to decompose further.
 
 ---
 
@@ -1125,25 +1125,3 @@ This project was developed through extensive human-AI pair programming: I provid
 5. Kolodner, J. L. (1992). An introduction to case-based reasoning. *Artificial Intelligence Review*.
 
 ---
-
-## Appendix A: Fun-gi Facts
-
-Why did the signature database throw a party? Because it's a *fungi* to be around.
-
-Why do mycelium networks make great researchers? They really know how to *break things down*.
-
-What did the signature say when it got merged? "I guess we're *spore-adic* duplicates."
-
-Why did the LLM join the mycelium project? It wanted to be part of something *bigger than its elf*.
-
-What's a mushroom's favorite type of math? *Decom-position*.
-
-Why don't signatures ever get lonely? Because they're all *connected underground*.
-
-What did the cold start say to the empty database? "Don't worry, we'll *grow* on you."
-
----
-
-*This paper was written with zero hallucinogens, despite the mushroom theme.*
-
-*I soloed this entire project with Claude, which makes me think the singularity is near. Maybe 6 or 7 months away. ;)*
