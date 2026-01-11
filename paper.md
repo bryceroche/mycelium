@@ -6,6 +6,10 @@
 
 ---
 
+*Mycelium is the underground root network of fungi. It decomposes organic matter into simple molecules and distributes nutrients across entire forests. This project does the same for math problems—decomposing them into atomic patterns and sharing solutions through a growing signature database.*
+
+---
+
 ## Abstract
 
 Every composite number factors uniquely into primes. We hypothesize that math problems similarly decompose into a finite set of atomic *signatures*—reusable solution patterns. **Mycelium** builds a "table of primes" for mathematical reasoning: a signature database that grows as problems are solved.
