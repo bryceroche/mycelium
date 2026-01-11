@@ -175,11 +175,13 @@ This is the "smart work once, execute forever" principle: invest LLM reasoning t
 
 DSL scripts use semantic parameter names like "base" and "height", but at runtime the context only contains generic step identifiers like "step_1" and "step_2". Bridging this gap is the parameter mapping problem.
 
-**Structured LLM Output.** We use the LLM's JSON response mode to get clean, parseable results from each step. Instead of extracting answers from free-form text, the LLM returns structured output with explicit result fields. This eliminates regex parsing and edge cases.
+**Structured LLM Output.** We use the LLM's JSON response mode to get clean, parseable results from each step. Instead of extracting answers from free-form text with regex, the LLM returns structured output with explicit result fields. This eliminates parsing errors where regex might extract the wrong number from a response. When JSON mode isn't available, we fall back gracefully to text parsing.
 
-**Context Building.** As steps execute, their results accumulate in a context dictionary keyed by step identifier. When a DSL needs to execute, it has access to all prior step results but must figure out which result maps to which parameter.
+**Context Building.** As steps execute, their results accumulate in a context dictionary keyed by step identifier. When a DSL needs to execute, it has access to all prior step results but must determine which result maps to which parameter.
 
-**LLM Script Rewriting.** Rather than brittle string matching between parameter names and context keys, we ask the LLM to rewrite the DSL script using the actual context variable names. The LLM sees both the step descriptions (which explain what each step computed) and the available context keys. It understands from context which step computed which value and rewrites the script accordingly. The rewritten script executes directly against the context dictionary.
+**LLM Script Rewriting.** Rather than brittle string matching between parameter names and context keys, we ask the LLM to rewrite the DSL script using the actual context variable names. The LLM sees both the step descriptions (which explain what each step computed) and the available context keys. It understands from context that step_1 computed the base and step_2 computed the height, so it rewrites the formula accordingly. The rewritten script executes directly against the context dictionary.
+
+**The Insight.** The LLM already understands what each value represents—it computed the answer. Asking it to output structured data or rewrite a script is trivial. Asking regex to parse natural language or match semantic parameters is brittle. Let the LLM handle the semantic reasoning; let deterministic code handle the execution.
 
 ### 3.10 Infrastructure
 
@@ -187,19 +189,15 @@ DSL scripts use semantic parameter names like "base" and "height", but at runtim
 
 **SQLite Tuning for Parallel Execution:** The default SQLite journal mode blocks concurrent writes—problematic when running multiple Groq workers in parallel. We enable Write-Ahead Logging (WAL) mode:
 
-```python
-conn.execute("PRAGMA journal_mode = WAL")
-conn.execute("PRAGMA busy_timeout = 30000")  # 30s lock timeout
-```
-
 WAL allows concurrent readers and writers, eliminating "database is locked" errors. Combined with a 30-second busy timeout, this enables parallel benchmark execution without database contention.
 
 **LLM Inference:** Groq API with Llama-3.3-70B for fast inference (~500ms per call). Used for problem decomposition, step execution, and DSL generation.
 
 **Parallel Groq Workers:** With WAL mode enabled, we can run multiple problems concurrently:
+Each worker maintains its own database connection; WAL ensures writes don't block each other. 
 
-**Embeddings:** all-MiniLM-L6-v2 (384-dimensional) via sentence-transformers. Local inference, no API calls.
-Git Branch: Double embedding dimensions to provide more semantic granularity and more unique signatures.
+**Embeddings:** all-MiniLM-L6-v2 (384-dimensional) via sentence-transformers. 
+We are currently trialing a new embedding model with double the dimensions (768) to improve retrieval quality.  
 LRU Caching (future work)
 
 **Development:**
@@ -210,7 +208,46 @@ LRU Caching (future work)
 
 This lightweight stack enables rapid iteration: SQLite for portability, Groq for speed, and Claude + tmux for parallelized AI-assisted development.
 
+### 3.11 Signature Refinement Loop
 
+Low-performing signatures reveal opportunities for improvement. We propose an automated refinement loop that **requires a frontier LLM** (e.g., Claude Opus) to perform the sophisticated analysis and code generation:
+
+**The Loop:**
+
+```
+1. IDENTIFY: Query signatures with success_rate < threshold
+   → "area_triangle" at 15% success, 200 uses
+
+2. ANALYZE (Frontier LLM): Examine failure cases and identify patterns
+   → "Failures occur when inputs are coordinates vs. side lengths vs. angles"
+
+3. DECOMPOSE (Frontier LLM): Design finer-grained sub-signatures
+   → area_triangle_coordinates (Shoelace formula)
+   → area_triangle_sides (Heron's formula)
+   → area_triangle_angle (½ab·sin(C))
+
+4. GENERATE DSL (Frontier LLM): Write precise DSL for each child
+   → Each sub-signature gets a single-purpose, tested DSL script
+
+5. REDIRECT (Frontier LLM): Configure parent as router to children
+   → Parent signature stores pointers to sub-signatures
+   → LLM writes routing logic based on input type detection
+
+6. VALIDATE: Test on held-out examples
+   → Keep if success_rate improves; discard if not
+```
+
+**Why a Frontier LLM is Required:**
+
+Steps 2-5 require sophisticated reasoning that only frontier models can reliably perform:
+- **Pattern recognition** across failure cases to identify root causes
+- **Domain expertise** to know Heron's formula vs. Shoelace vs. trigonometric approaches
+- **Code generation** to write correct, tested DSL scripts
+- **Routing logic** to classify input types and direct to appropriate children
+
+A weaker model would hallucinate formulas or mis-classify input patterns. The refinement loop is where frontier LLM capability pays dividends—each refinement improves thousands of future executions.
+
+*Practical note:* The LLM may initially resist this task ("I can help you think through approaches...") or produce overly cautious responses. Insist on concrete outputs: specific sub-signature names, actual DSL code, explicit routing conditions. The model is capable; it just needs clear direction that you want executable artifacts, not suggestions.
 
 **The Compound Effect:**
 

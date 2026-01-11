@@ -769,7 +769,7 @@
     -0.027982188388705254,
     -0.018733087927103043
   ],
-  "threshold": 0.5,
+  "threshold": 0.4,
   "num_hostile_sigs": 89,
-  "description": "Steps with similarity > threshold to this centroid should skip DSL (768-dim)"
+  "description": "Steps with similarity > threshold to this centroid should skip DSL (768-dim, conservative)"
 }
