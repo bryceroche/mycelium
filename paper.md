@@ -89,7 +89,9 @@ An LLM decomposes problems into a DAG where each step has a task description and
 
 The database stores atomic solution patterns as tuples (centroid, method, stats). Centroids update incrementally as new examples join clusters.
 
-**Saturation.** After training on MATH500, the library contains ~2.2k signatures with matching rates climbing to 88% covering ~12,700 step executions—an average of 8+ reuses per signature. The vocabulary is finite: 94 distinct step types account for nearly all decomposed steps. High-frequency patterns like `solve_equation` (963 uses), `compute_sum` (728 uses), and `count_items` (1,300 uses) appear across problem categories. New problems increasingly match existing signatures rather than creating new ones—evidence that math problems share a common atomic vocabulary.
+**Convergence** After training on MATH500, the library contains ~2.2k signatures with matching rates converging on 100%.  Math500 L5 problems have ~5 DAG steps with ~3.5 injectable steps per problem.  94 distinct step types account for nearly all decomposed steps. High-frequency patterns like `count_items` (1,300 uses), `solve_equation` (963 uses) and `compute_sum` (728 uses)  appear across problem categories. New problems increasingly match existing signatures rather than creating new ones.
+
+Non-injected steps with negative lift are solved from scratch by LLM and tracked for lift data.
 
 ### 3.4 Cosine Similarity Matching
 
@@ -211,11 +213,11 @@ Each problem that triggers deep decomposition *teaches* the system new atomic pa
 3. **Builds vocabulary**: Atomic signatures accumulate, improving future coverage
 4. **Depth tracking**: Signatures know if they're atomic (origin_depth > 0)
 
-### 3.6 Cold Start
+### 3.7 Cold Start
 
 With an empty database, no signatures exist to match against so every step is novel and solved from scratch by the LLM. The system bootstraps by storing successful solutions as new signatures. Initially, success rate is 0% for new signatures so we need to boost new signature injection to sample their success rates. As signatures accumulate and prove reliable, injection rates climb. We observe a characteristic warm-up period of ~50-100 problems before meaningful reuse emerges. This cold start cost is amortized over the system's lifetime as the signature library matures.
 
-### 3.7 From Method Template to DSL
+### 3.8 From Method Template to DSL
 
 Each signature stores a **method_template**—a natural language instruction describing how to solve that type of step. For example:
 
@@ -279,7 +281,41 @@ This is the "smart work once, execute forever" principle: invest LLM reasoning t
 
 **Bulk DSL Generation with Claude Opus 4.5:** Rather than waiting for signatures to prove reliable organically, we batch-processed all ~1,300 signatures in the database through Claude Opus 4.5 to generate custom DSL scripts. For each signature, Claude analyzed the step type, example problems, and success patterns to write precise executable code. This one-time investment (~$15 in API costs) equipped 84% of typed signatures with deterministic DSL—turning months of organic learning into a single afternoon of batch processing. The remaining 16% are guidance-only signatures where LLM flexibility outperforms rigid formulas.
 
-### 3.8 Infrastructure
+### 3.9 DSL Parameter Passing: Structured Output
+
+A DSL is only useful if we can pass the right parameters. Early versions used regex to extract numbers from LLM responses—brittle and error-prone. The solution: **structured output**.
+
+Instead of parsing free-form text:
+```
+Let me calculate... the area is 42 square units.
+RESULT: 42
+```
+
+We have the LLM output structured JSON:
+```json
+{"reasoning": "base=7, height=12, area=0.5*7*12", "result": 42}
+```
+
+**Why this works:**
+- **No parsing ambiguity** - Result is unambiguous, not buried in prose
+- **Semantic context** - The `reasoning` field captures what each number means
+- **DSL-ready** - Downstream DSLs receive typed parameters, not raw strings
+- **LLM does what LLMs do best** - Understanding context and extracting meaning
+
+The LLM that solves the step already understands what each value represents. Asking it to output structured data is trivial. Asking regex to parse natural language is impossible.
+
+**Parameter Mapping for DSL Execution:**
+
+When a step matches a signature with a DSL like `(base * height) / 2`, we need to map prior step results to parameter names. The structured output from each step includes semantic type information:
+
+```json
+{"result": 7, "semantic_type": "length", "meaning": "base of triangle"}
+{"result": 12, "semantic_type": "length", "meaning": "height of triangle"}
+```
+
+The DSL executor matches parameters by semantic type and meaning, not by regex pattern matching. This enables reliable parameter passing even when step phrasing varies.
+
+### 3.10 Infrastructure
 
 **Storage:** SQLite database stores signatures, embeddings (as packed binary), examples, and statistics. Single-file deployment with no external database dependencies.
 
@@ -319,7 +355,7 @@ Cache hit rates exceed 60% in typical runs—steps like "solve for x" appear rep
 
 This lightweight stack enables rapid iteration: SQLite for portability, Groq for speed, and Claude + tmux for parallelized AI-assisted development.
 
-### 3.9 Signature Refinement Loop
+### 3.11 Signature Refinement Loop
 
 Low-performing signatures reveal opportunities for improvement. We propose an automated refinement loop that **requires a frontier LLM** (e.g., Claude Opus) to perform the sophisticated analysis and code generation:
 
