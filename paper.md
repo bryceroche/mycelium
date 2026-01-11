@@ -924,28 +924,73 @@ New signatures face a chicken-and-egg problem: can't prove effectiveness without
 
 ### Exploration Phase: Let the System Breathe
 
-During early runs, accuracy will be lower than baseline LLM performance. This is expected and acceptable.
+When entering a new domain, the system needs room to explore and fail. **We deliberately accept lower accuracy in exchange for signal collection.**
 
-**The Problem:** With a fresh signature library, most steps create new signatures with 0% DSL confidence. The system correctly identifies these as unproven and falls back to LLM reasoning. But this means DSLs never get tried, so they never accumulate the usage data needed to prove themselves.
+**The Core Philosophy: Signal Over Accuracy**
 
-**The Philosophy:** Let the system make mistakes. Trial new DSLs aggressively, even if it temporarily hurts accuracy. The goal is *learning*, not immediate performance.
+In learning mode (`DSL_AGGRESSIVE_INJECTION = True`), we mandate DSL injection on every signature hit, regardless of historical lift data. Both outcomes provide value:
 
-| Phase | Injections/Problem | Accuracy | Goal |
-|-------|-------------------|----------|------|
-| Exploration | 0.6 | 44% | Build signature library |
-| Maturation | 2-3 | 55%+ | Prove DSL effectiveness |
-| Steady State | 4-5 | 65%+ | Maximize reuse |
+- **DSL succeeds** → positive lift recorded → reinforces this DSL
+- **DSL fails** → negative lift recorded → teaches system to refine or avoid
 
-**Current state (after 100 L5 problems):**
-- 1152 unique signatures
-- 337 atomic signatures (from recursive decomposition)
-- Only 0.6 injections/problem (most DSLs untested)
-- 100% signature match rate (coverage is good)
-- 24% match hinted signatures (top reliable ones)
+A failed DSL execution is not wasted work—it's a data point. The system learns from mistakes. Short-term accuracy loss is the price of long-term improvement.
 
-The bottleneck isn't signature matching—it's DSL confidence. As signatures accumulate uses and prove themselves, injection rates will climb and accuracy will follow.
+**Why We Don't Avoid Low-Success DSLs**
 
-**Key insight:** A run with 44% accuracy that creates 300 new atomic signatures is more valuable than a run with 56% accuracy that creates none. We're building the library now; we'll harvest the benefits later.
+Traditional ML would gate on success rate: "this DSL only works 30% of the time, skip it." We reject this approach because:
+
+1. **30% success is still signal** - those successes executed in ~1ms instead of ~500ms LLM calls
+2. **Failures reveal patterns** - maybe the DSL fails on ratio problems but succeeds on simple arithmetic
+3. **Refinement needs data** - to decompose a bad DSL into better children, we need to know *when* and *why* it fails
+4. **Context matters** - the same DSL might have -40% lift in one semantic context and +55% in another
+
+Instead of avoidance, we use the **refinement loop**: low-performing DSLs get decomposed into finer-grained child signatures with more precise DSLs.
+
+**The Breathing Room Principle**
+
+When entering a new problem domain:
+
+```
+Week 1-2: Exploration
+  - Run aggressive injection mode
+  - Accept 40-50% accuracy (vs 70%+ baseline)
+  - Collect 100+ problem runs worth of lift data
+  - Create hundreds of new signatures
+
+Week 3-4: Refinement
+  - Analyze low-lift signatures
+  - Run refinement loop to decompose into children
+  - Generate precise DSLs for child signatures
+  - Parent signatures become routers
+
+Week 5+: Harvest
+  - Switch to benchmark mode
+  - Lift-based gating routes traffic optimally
+  - Accuracy exceeds baseline
+  - Execution time drops (more DSL, less LLM)
+```
+
+**Current State (after 200+ L5 MATH problems):**
+
+| Metric | Value |
+|--------|-------|
+| Total signatures | 2,150+ |
+| Signature match rate | 100% |
+| Injection rate | ~50% per run |
+| DSL types | math (71%), sympy (19%), custom (7%), guidance (3%) |
+| New signatures per 30 problems | ~15-20 |
+
+**Key Insight:** A run with 45% accuracy that collects lift data on 70 DSL executions is more valuable than a run with 60% accuracy that avoids DSLs entirely. We're building the knowledge base now; we harvest the benefits when we flip to benchmark mode.
+
+**The Payoff**
+
+After sufficient exploration, switching to benchmark mode (`DSL_AGGRESSIVE_INJECTION = False`) enables:
+- Lift-based routing skips known-bad DSLs
+- Proven DSLs execute deterministically
+- Accuracy exceeds baseline LLM
+- Latency drops significantly
+
+The breathing room we give the system during exploration directly translates to performance gains in production.
 
 ### One Model Architecture: Quality Over Cost
 
