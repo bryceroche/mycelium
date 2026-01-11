@@ -10,6 +10,7 @@ from typing import Optional, Literal
 
 import numpy as np
 
+from mycelium import config
 from mycelium.data_layer import get_db
 from mycelium.data_layer.schema import init_db
 from mycelium.step_signatures.models import StepSignature
@@ -1379,7 +1380,7 @@ class StepSignatureDB:
 
     def find_merge_candidates(
         self,
-        similarity_threshold: float = 0.95,
+        similarity_threshold: float = config.MERGE_SIMILARITY_THRESHOLD,
         min_uses: int = 3,
     ) -> list[tuple[StepSignature, StepSignature, float]]:
         """Find pairs of signatures that are candidates for merging.
@@ -1652,7 +1653,7 @@ class StepSignatureDB:
 
     def merge_similar_signatures(
         self,
-        similarity_threshold: float = 0.95,
+        similarity_threshold: float = config.MERGE_SIMILARITY_THRESHOLD,
         min_uses: int = 3,
         max_merges: int = 10,
     ) -> list[dict]:
