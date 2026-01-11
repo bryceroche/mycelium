@@ -51,6 +51,12 @@ python -m mycelium "What is 15% of 80?"
 
 # Run MATH benchmark (Level 5, 20 problems)
 python scripts/pipeline_runner.py --dataset math --levels 5 --problems 20 --workers 4
+
+# Run in benchmark mode (conservative, max accuracy)
+python scripts/pipeline_runner.py --dataset math --levels 5 --problems 20 --mode benchmark
+
+# Run in training mode (explore signatures, collect data)
+python scripts/pipeline_runner.py --dataset math --levels 5 --problems 20 --mode training
 ```
 
 ---

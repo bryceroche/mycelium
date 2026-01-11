@@ -484,10 +484,11 @@ def main():
         help="Disable signature-guided decomposition hints",
     )
     parser.add_argument(
-        "--no-probation",
-        action="store_true",
-        default=False,
-        help="Disable DSL probation sampling (use for max benchmark scores)",
+        "--mode",
+        type=str,
+        default=None,
+        choices=["training", "benchmark"],
+        help="Operating mode: training (explore, collect data) or benchmark (conservative, max accuracy)",
     )
     parser.add_argument(
         "--db",
@@ -499,10 +500,32 @@ def main():
     args = parser.parse_args()
 
     # Apply runtime config overrides
-    if args.no_probation:
-        import mycelium.config as config
-        config.DSL_PROBATION_ENABLED = False
-        logger.info("DSL probation disabled (benchmark mode)")
+    import mycelium.config as config
+    from mycelium.config import Mode
+
+    if args.mode:
+        if args.mode == "training":
+            config.ACTIVE_MODE = Mode.TRAINING
+            config.TRAINING_MODE = True
+            config.MIN_MATCH_THRESHOLD = 0.92
+            config.DSL_MIN_CONFIDENCE = 0.0
+            config.DSL_LLM_THRESHOLD = 1.0
+            config.EXPLORATION_RATE = 1.0
+            config.EXPLORATION_UNPROVEN_RATE = 1.0
+            config.DSL_PROBATION_ENABLED = False
+            config.RECURSIVE_DECOMPOSITION_ENABLED = False
+            logger.info("Mode: TRAINING (explore signatures, collect data)")
+        else:  # benchmark
+            config.ACTIVE_MODE = Mode.BENCHMARK
+            config.TRAINING_MODE = False
+            config.MIN_MATCH_THRESHOLD = 0.95
+            config.DSL_MIN_CONFIDENCE = 0.3
+            config.DSL_LLM_THRESHOLD = 0.5
+            config.EXPLORATION_RATE = 0.5
+            config.EXPLORATION_UNPROVEN_RATE = 0.3
+            config.DSL_PROBATION_ENABLED = True
+            config.RECURSIVE_DECOMPOSITION_ENABLED = True
+            logger.info("Mode: BENCHMARK (conservative matching, max accuracy)")
 
     run_pipeline(
         num_problems=args.problems,
