@@ -108,6 +108,11 @@ def should_avoid_dsl_for_signature(
     Returns:
         (should_avoid, reason): Whether to skip DSL and why.
     """
+    # In aggressive mode, never avoid - we want all signal (success AND failure)
+    # Failed injections teach us to avoid bad DSLs in benchmark mode
+    if DSL_AGGRESSIVE_INJECTION:
+        return False, "aggressive_mode"
+
     # Check lift for this specific signature
     lift, has_data = get_signature_lift(signature)
 
@@ -205,6 +210,7 @@ from mycelium.config import (
     RECURSIVE_DECOMPOSITION_ENABLED,
     RECURSIVE_MAX_DEPTH,
     RECURSIVE_CONFIDENCE_THRESHOLD,
+    DSL_AGGRESSIVE_INJECTION,
 )
 from .step_signatures import (
     StepSignatureDB,
