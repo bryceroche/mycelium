@@ -201,19 +201,18 @@ LRU Caching (future work)
 
 This lightweight stack enables rapid iteration: SQLite for portability, Groq for speed, and Claude + tmux for parallelized AI-assisted development.
 
-
 ---
 
 ## 4. Experiments
 
 ### Setup
 
-- **Dataset**: MATH Level 3 problems (algebra, precalculus, geometry, number theory)
+- **Dataset**: MATH Level 3-5 problems (algebra, precalculus, geometry, number theory)
 - **Model**: Llama-3.3-70B via Groq API
-- **Embeddings**: all-MiniLM-L6-v2 (384d)
-- **Evaluation**: LLM judge for semantic answer equivalence
-- **Reproducibility**: Fixed random seeds for problem selection
-- **Fair comparison**: Baseline (direct LLM) and Mycelium run on identical problem sets using the same seed
+- **Embeddings**: changed from all-MiniLM-L6-v2 (384d) to all-mpnet-base-v2 — 768d for more signature granularity
+- **Evaluation**: LLM judge for semantic answer equivalence (applied equally to baseline and mycelium)
+- **Reproducibility**: Random seeds for problem selection
+- **Fair comparison**: Baseline (direct LLM) and Mycelium run same problems with same seed using same LLM judge
 
 ### Reproducibility
 
