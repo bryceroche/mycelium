@@ -36,7 +36,7 @@ All code, data, and pre-trained signatures are available at **github.com/brycero
 **What we're sharing:**
 - Complete source code with documented architecture
 - **Pre-built signature database** with 675+ math signatures and DSL scripts—skip cold start entirely
-- Benchmark scripts to reproduce our 91% accuracy results
+- Benchmark scripts to reproduce our results
 - SQLite database file ready to use (no setup required)
 
 **5-minute replication:**
@@ -348,20 +348,9 @@ Results are trivial to verify. The entire stack is accessible:
 
 Total setup time: ~5 minutes. Run `pip install -r requirements.txt`, add a Groq API key, and execute the benchmark. No cloud infrastructure, no GPU cluster, no waiting for API quotas.
 
-### Main Results: GSM8K Level 3
+### Main Results
 
-We evaluated Mycelium on 100 GSM8K Level 3 (medium difficulty) problems:
-
-| Metric | Value |
-|--------|-------|
-| **Accuracy** | **91%** (91/100) |
-| Signature Match Rate | 100% |
-| DSL Injections | 143/463 steps (31%) |
-| New Signatures Created | 114 |
-| Avg Steps/Problem | 4.6 |
-| Avg Time/Problem | 6.5s |
-
-**Context:** GPT-4 achieves ~92% on GSM8K. Llama-3.3-70B (our base model) achieves ~80-85% with direct prompting. **Mycelium extracts GPT-4-level performance from Llama-70B** through decomposition and signature reuse.
+*[Results pending - benchmarks in progress]*
 
 ### How We Got Here
 
@@ -371,8 +360,6 @@ Early experiments showed a "decomposition tax"—Mycelium initially *underperfor
 
 2. **DSL parameter mapping:** DSL scripts couldn't find inputs when parameter names (`base`, `height`) didn't match context keys (`step_1`, `task_num_0`). Fix: LLM-based script rewriting.
 
-After fixes, Mycelium went from 56% to 91% accuracy—a 35-point improvement.
-
 ### The Self-Improving Loop
 
 The key insight: **failures are learning signals**. When a DSL execution fails:
@@ -380,10 +367,10 @@ The key insight: **failures are learning signals**. When a DSL execution fails:
 2. Future runs skip DSL for signatures with negative lift
 3. System automatically routes to LLM reasoning where DSL hurts
 
-Over 100 problems, this feedback loop:
-- Identified which DSLs work (positive lift → keep injecting)
-- Identified which DSLs hurt (negative lift → skip to LLM)
-- Built a library of 114 new signatures for future reuse
+Over time, this feedback loop:
+- Identifies which DSLs work (positive lift → keep injecting)
+- Identifies which DSLs hurt (negative lift → skip to LLM)
+- Builds a library of new signatures for future reuse
 
 ### DSL Execution: When It Helps vs. Hurts
 
@@ -405,29 +392,25 @@ Lift-based gating automatically learns these patterns. No manual rules needed.
 
 ### The Decomposition Tax: Error Compounding in DAG Execution
 
-Decomposition introduces a fundamental challenge: **every step must succeed for the final answer to be correct**. In a DAG with N sequential steps, errors compound multiplicatively.
-
-With 4.6 steps/problem on GSM8K Level 3, even 90% per-step accuracy yields only ~81% problem accuracy. This explains why naive decomposition can hurt performance—the "decomposition tax."
+Decomposition introduces a fundamental challenge: **every step must succeed for the final answer to be correct**. In a DAG with N sequential steps, errors compound multiplicatively. This explains why naive decomposition can hurt performance—the "decomposition tax."
 
 **Our Mitigations:**
 
 1. **Context Propagation:** Pass the full problem to every step, preventing information loss that caused cascading failures.
 
-2. **DSL Execution:** Deterministic execution eliminates LLM error on typed steps. 31% of steps achieve near-perfect accuracy via DSL.
+2. **DSL Execution:** Deterministic execution eliminates LLM error on typed steps.
 
 3. **LLM Script Rewriting:** When DSL parameter names don't match context keys, LLM rewrites the script using actual variable names.
 
 4. **Lift-Based Gating:** Automatically skip DSL for signatures where it hurts accuracy.
 
-**The Result:** 91% accuracy with 4.6 steps implies ~98% per-step accuracy—well above the ~94% needed to overcome decomposition tax.
-
 ### Step-Level Reusability
 
-Across 100 problems, 463 step instances matched against existing signatures—**100% match rate**. This confirms decomposition unlocks reuse that monolithic approaches cannot access. The signature library has converged toward a stable vocabulary where new problems reuse existing patterns.
+Decomposition unlocks reuse that monolithic approaches cannot access. The signature library converges toward a stable vocabulary where new problems reuse existing patterns.
 
 ### Signature Convergence
 
-In our 100-problem run, only 114 new signatures were created despite 463 total steps. The signature library is converging toward a finite vocabulary—supporting the hypothesis that mathematical reasoning decomposes into a bounded set of atomic operations.
+The signature library converges toward a finite vocabulary—supporting the hypothesis that mathematical reasoning decomposes into a bounded set of atomic operations.
 
 ### Signature Deduplication: A Lesson in Database Hygiene
 
@@ -488,16 +471,16 @@ After a cold-start period (10 uses), signatures with negative lift automatically
 
 ### Current System Health
 
-A diagnostic snapshot from our 100-problem L3 benchmark:
+Key metrics to monitor:
 
-| Metric | Value |
-|--------|-------|
-| Steps/problem | 4.6 |
-| Signature match rate | 100% |
-| DSL injections/problem | 1.4 (31% of steps) |
-| Problem accuracy | **91%** |
+| Metric | What It Measures |
+|--------|------------------|
+| Steps/problem | Decomposition granularity |
+| Signature match rate | Library coverage |
+| DSL injections/problem | Deterministic execution rate |
+| Problem accuracy | End-to-end performance |
 
-**Good news:** Signature coverage is excellent (100% match rate). DSL injection rate is reasonable given that many steps require LLM reasoning. The lift-based gating automatically routes each step to its optimal execution path.
+The lift-based gating automatically routes each step to its optimal execution path.
 
 ### DSL-Hostile Embedding Spaces
 
@@ -801,11 +784,11 @@ We use Llama-3.3-70B for all LLM tasks: decomposition, step solving, and DSL gen
 With the context fix in place, decomposition becomes an advantage:
 
 1. **Structured reasoning**: Complex problems benefit from explicit step breakdown
-2. **Pattern reuse**: 88.6% of steps match known signatures
+2. **Pattern reuse**: Most steps match known signatures
 3. **DSL acceleration**: Typed operations execute in ~0ms vs ~500ms
 4. **Compound learning**: Each problem improves the library for future problems
 
-The 2-point advantage (82% vs 80%) will grow as the signature library matures across more problem types.
+The advantage will grow as the signature library matures across more problem types.
 
 ### Key Metrics to Watch
 
@@ -864,15 +847,13 @@ Just as mycelium networks in nature decompose organic matter across ecosystems�
 
 ## 8. Conclusion
 
-We demonstrated that math problems decompose into a finite vocabulary of atomic signatures, and that **decomposition + signature reuse can match frontier model performance**:
-
-- **GSM8K Level 3**: **91%** accuracy (100 problems) — matching GPT-4 (~92%) from Llama-70B (~80-85% direct)
+We demonstrated that math problems decompose into a finite vocabulary of atomic signatures, and that **decomposition + signature reuse can improve LLM performance**.
 
 The key insight: **the same LLM performs better when its reasoning is decomposed and cached**. The signature library acts as external memory that compounds knowledge across problems.
 
 Critical learnings:
 
-1. **Context propagation**: Every step needs the full problem, not just dependency results. This single fix improved accuracy from 56% to 91%.
+1. **Context propagation**: Every step needs the full problem, not just dependency results.
 
 2. **LLM Script Rewriting**: DSL scripts use semantic names (`base`, `height`) but runtime context has generic keys (`step_1`, `step_2`). LLM rewrites scripts using actual variable names—bridging the semantic gap.
 

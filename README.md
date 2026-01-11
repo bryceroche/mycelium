@@ -13,20 +13,6 @@ Every composite number factors uniquely into primes. Math problems similarly dec
 
 The library grows; future problems get faster.
 
-## Results
-
-On MATH benchmark problems:
-
-| Level | Direct LLM | Mycelium |
-|-------|-----------|----------|
-| Level 3 (Medium) | 80% | **82%** (+2) |
-| Level 5 (Hardest) | 60% | **65%** (+5) |
-
-Key metrics:
-- **100%** signature match rate
-- **4.4x** step reuse ratio (299 step instances → 68 unique signatures)
-- **<1ms** DSL execution vs ~500ms LLM calls
-
 ## Quick Start
 
 ```bash
@@ -43,22 +29,11 @@ export GROQ_API_KEY=your_key
 python -m mycelium.solver "What is 15% of 80?"
 ```
 
-## Reproduce Our Results
+## Run Benchmarks
 
 ```bash
-# Run Level 3 benchmark (50 problems, ~5 min)
+# Run benchmark (results saved to results/)
 python scripts/pipeline_runner.py --dataset math --level 3 --problems 50
-
-# Run Level 5 benchmark (100 problems, ~15 min)
-python scripts/pipeline_runner.py --dataset math --level 5 --problems 100
-
-# Results saved to results/pipeline_results.json
-```
-
-**Expected output:**
-```
-Level 3: ~82% accuracy (41/50)
-Level 5: ~65% accuracy (65/100)
 ```
 
 **Requirements:**
