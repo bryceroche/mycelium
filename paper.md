@@ -34,17 +34,25 @@ All code, data, and pre-trained signatures are available at **github.com/brycero
 
 **What we're sharing:**
 - Complete source code with documented architecture
-- **Pre-built signature database** with 2.1k+ math signatures and DSL scripts — skip cold start entirely
+- **Pre-built signature database** with 2.1k+ math signatures and DSL scripts — skip cold start entirely for Math500 problems
 - Benchmark scripts to reproduce our results
 - SQLite database file ready to use (no setup required)
+- Groq API key required (this is the only external dependency)
 
 **5-minute replication:**
+
 ```bash
 git clone https://github.com/bryceroche/mycelium
 pip install -r requirements.txt
 export GROQ_API_KEY=your_key
-python -m mycelium.solver "What is 15% of 80?"
+
+# Solve a single problem
+python -m mycelium "What is 15% of 80?"
+
+# Run MATH benchmark (Level 5, 20 problems)
+python scripts/pipeline_runner.py --dataset math --levels 5 --problems 20 --workers 4
 ```
+
 ---
 
 ## 2. Related Work
