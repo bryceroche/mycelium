@@ -95,13 +95,9 @@ threshold = base + (cohesion - 0.5) × 0.2
 
 Tight clusters (cohesion > 0.5) get stricter thresholds; loose clusters get lenient ones. This prevents false matches in well-defined clusters while allowing exploration in sparse regions.
 
-### 3.5 Execution and Learning
+### 3.5 Recursive Decomposition
 
-We are moving towards higher rates of injected DSLs per problem, however sometimes we fall back to pure LLM reasoning.  After solving, new patterns create signatures; signatures with >=3 uses and >=70% success become "reliable" and inject their templates.
-
-### 3.6 Recursive Decomposition
-
-When a DSL has low confidence for a step, that's a signal the step is too complex. Rather than falling back to pure LLM reasoning, we **decompose further** until reaching truly atomic operations.
+When a DSL has low confidence for a step, that's a signal the step is too complex. Rather than falling back to pure LLM reasoning, we **decompose further** until reaching truly atomic operations.  We are moving towards higher rates of injected DSLs per problem, however sometimes we fall back to pure LLM reasoning.  After solving, new patterns create signatures; signatures with >=3 uses and >=70% success become "reliable" and inject their templates.
 
 **The Algorithm:**
 
@@ -174,11 +170,11 @@ Each problem that triggers deep decomposition *teaches* the system new atomic pa
 3. **Builds vocabulary**: Atomic signatures accumulate, improving future coverage
 4. **Depth tracking**: Signatures know if they're atomic (origin_depth > 0)
 
-### 3.7 Cold Start
+### 3.6 Cold Start
 
 With an empty database, no signatures exist to match against so every step is novel and solved from scratch by the LLM. The system bootstraps by storing successful solutions as new signatures. Initially, success rate is 0% for new signatures so we need to boost new signature injection to sample their success rates. As signatures accumulate and prove reliable, injection rates climb. We observe a characteristic warm-up period of ~50-100 problems before meaningful reuse emerges. This cold start cost is amortized over the system's lifetime as the signature library matures.
 
-### 3.8 From Method Template to DSL
+### 3.7 From Method Template to DSL
 
 Each signature stores a **method_template**—a natural language instruction describing how to solve that type of step. For example:
 
@@ -242,7 +238,7 @@ This is the "smart work once, execute forever" principle: invest LLM reasoning t
 
 **Bulk DSL Generation with Claude Opus 4.5:** Rather than waiting for signatures to prove reliable organically, we batch-processed all ~1,300 signatures in the database through Claude Opus 4.5 to generate custom DSL scripts. For each signature, Claude analyzed the step type, example problems, and success patterns to write precise executable code. This one-time investment (~$15 in API costs) equipped 84% of typed signatures with deterministic DSL—turning months of organic learning into a single afternoon of batch processing. The remaining 16% are guidance-only signatures where LLM flexibility outperforms rigid formulas.
 
-### 3.9 Infrastructure
+### 3.8 Infrastructure
 
 **Storage:** SQLite database stores signatures, embeddings (as packed binary), examples, and statistics. Single-file deployment with no external database dependencies.
 
@@ -282,7 +278,7 @@ Cache hit rates exceed 60% in typical runs—steps like "solve for x" appear rep
 
 This lightweight stack enables rapid iteration: SQLite for portability, Groq for speed, and Claude + tmux for parallelized AI-assisted development.
 
-### 3.10 Signature Refinement Loop
+### 3.9 Signature Refinement Loop
 
 Low-performing signatures reveal opportunities for improvement. We propose an automated refinement loop that **requires a frontier LLM** (e.g., Claude Opus) to perform the sophisticated analysis and code generation:
 
