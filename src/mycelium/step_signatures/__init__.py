@@ -54,7 +54,7 @@ from mycelium.step_signatures.refinement import (
 from mycelium.data_layer.schema import STEP_SCHEMA as STEP_SCHEMA_SQL
 
 from mycelium.config import (
-    EXACT_MATCH_THRESHOLD,
+    MIN_MATCH_THRESHOLD,
     VARIANT_THRESHOLD,
     RELIABILITY_MIN_USES,
     RELIABILITY_MIN_SUCCESS_RATE,
@@ -91,7 +91,7 @@ __all__ = [
     "unpack_embedding",
     "cosine_similarity",
     "STEP_SCHEMA_SQL",
-    "EXACT_MATCH_THRESHOLD",
+    "MIN_MATCH_THRESHOLD",
     "VARIANT_THRESHOLD",
     "RELIABILITY_MIN_USES",
     "RELIABILITY_MIN_SUCCESS_RATE",

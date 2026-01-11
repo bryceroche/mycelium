@@ -18,7 +18,7 @@ _is_training = ACTIVE_MODE == Mode.TRAINING
 TRAINING_MODE = _is_training  # Exported for other modules
 
 # Similarity Thresholds
-EXACT_MATCH_THRESHOLD = 0.92 if _is_training else 0.95  # Higher in benchmark mode
+MIN_MATCH_THRESHOLD = 0.92 if _is_training else 0.95  # Higher in benchmark mode
 VARIANT_THRESHOLD = 0.70
 DEFAULT_INJECTION_THRESHOLD = 0.60
 MERGE_SIMILARITY_THRESHOLD = 0.95

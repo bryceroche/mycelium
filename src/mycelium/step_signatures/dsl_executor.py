@@ -300,6 +300,85 @@ _CONSTANTS = {
 }
 
 
+def _extract_numeric_value(value: Any) -> Optional[float]:
+    """Extract numeric value from various input types.
+
+    Handles:
+    - int/float: return directly
+    - "42" or "3.14": parse directly
+    - "The value is 16": extract 16
+    - "Answer = 25": extract 25
+    - "3/4": compute 0.75
+    """
+    # Already numeric
+    if isinstance(value, (int, float)):
+        return float(value)
+
+    if not isinstance(value, str):
+        return None
+
+    raw = value.strip()
+    if not raw:
+        return None
+
+    # Clean common formatting
+    cleaned = raw.replace(',', '').replace('$', '').replace('%', '')
+
+    # Try direct parse first (fast path)
+    try:
+        return float(cleaned)
+    except ValueError:
+        pass
+
+    # Handle fractions like "3/4"
+    if '/' in cleaned and cleaned.count('/') == 1:
+        parts = cleaned.split('/')
+        if len(parts) == 2:
+            try:
+                num = float(parts[0].strip())
+                denom = float(parts[1].strip())
+                if denom != 0:
+                    return num / denom
+            except ValueError:
+                pass
+
+    # Skip if it looks like an expression with operators
+    if any(c in cleaned for c in ['+', '*', '^', '=']):
+        if not re.match(r'^-?\d+\.?\d*$', cleaned):
+            # But continue to try extraction below
+            pass
+
+    # Try to extract number from text patterns
+    answer_patterns = [
+        r'(?:answer|result|value|equals?|is|=)\s*[=:]?\s*(-?\d+\.?\d*)',  # "answer is 25"
+        r'=\s*(-?\d+\.?\d*)\s*$',  # "x = 25" at end
+        r':\s*(-?\d+\.?\d*)\s*$',  # "result: 42" at end
+        r'\b(-?\d+\.?\d*)\s*$',  # last number in string
+    ]
+    for pattern in answer_patterns:
+        match = re.search(pattern, raw, re.IGNORECASE)
+        if match:
+            try:
+                return float(match.group(1))
+            except ValueError:
+                continue
+
+    return None
+
+
+def _prepare_math_inputs(inputs: dict[str, Any]) -> dict[str, float]:
+    """Convert input values to floats for math DSL execution.
+
+    Extracts numeric values from text context values.
+    """
+    result = {}
+    for key, value in inputs.items():
+        extracted = _extract_numeric_value(value)
+        if extracted is not None:
+            result[key] = extracted
+    return result
+
+
 def _safe_eval_math(script: str, inputs: dict[str, float]) -> Optional[float]:
     """AST-based safe math evaluator. No eval() used."""
 
@@ -357,9 +436,18 @@ def _safe_eval_math(script: str, inputs: dict[str, float]) -> Optional[float]:
         return None
 
 
-def try_execute_dsl_math(script: str, inputs: dict[str, float]) -> Optional[float]:
-    """Execute basic math DSL script."""
-    return _safe_eval_math(script, inputs)
+def try_execute_dsl_math(script: str, inputs: dict[str, Any]) -> Optional[float]:
+    """Execute basic math DSL script.
+
+    Automatically extracts numeric values from text inputs like "The value is 16".
+    """
+    # Prepare inputs: extract numeric values from text
+    prepared = _prepare_math_inputs(inputs)
+    if not prepared and inputs:
+        # No numeric values could be extracted
+        logger.debug("Math DSL: no numeric values extracted from inputs: %s", list(inputs.keys()))
+        return None
+    return _safe_eval_math(script, prepared)
 
 
 # =============================================================================
