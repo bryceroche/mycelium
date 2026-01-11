@@ -142,72 +142,24 @@ Each problem that triggers deep decomposition *teaches* the system new atomic pa
 
 **Configuration:**
 - `MAX_DECOMPOSITION_DEPTH = 3` — prevent infinite recursion
-- `DECOMPOSITION_CONFIDENCE_THRESHOLD = 0.5` — trigger below this
+- `DECOMPOSITION_CONFIDENCE_THRESHOLD = 0.5` When the signature DSL has confidence below 50%, we decompose it.
 
 **Why This Works:**
 1. **Self-adapting**: The system finds the right granularity automatically
-2. **No hardcoding**: DSL-hostile types get decomposed; DSL-friendly execute directly
+2. **No hardcoding**: DSL-hostile signatures get decomposed; DSL-friendly execute directly
 3. **Builds vocabulary**: Atomic signatures accumulate, improving future coverage
 4. **Depth tracking**: Signatures know if they're atomic (origin_depth > 0)
 
 ### 3.7 Cold Start
 
-With an empty database, no signatures exist to match against so every step is novel and solved from scratch by the LLM. The system bootstraps by storing successful solutions as new signatures. Initially, success rate is 0% for new signatures so we need to boost new signature injection to sample their success rates. As signatures accumulate and prove reliable, injection rates climb. We observe a characteristic warm-up period of ~50-100 problems before meaningful reuse emerges. This cold start cost is amortized over the system's lifetime as the signature library matures.
+With an empty database, no signatures exist to match against so every step is novel and solved from scratch by the LLM. The system bootstraps by storing successful solutions as new signatures. Initially, we need to boost new signature injection to sample their success rates. As signatures accumulate and prove reliable, injection rates climb. We observe a characteristic warm-up period of ~50-100 problems before meaningful reuse emerges. 
 
-### 3.8 From Method Template to DSL
-
-Each signature stores a **method_template**—a natural language instruction describing how to solve that type of step. For example:
-
-> *"To solve a linear equation ax + b = c: subtract b from both sides, then divide by a."*
-
-When a step matches a signature, this template is injected into the LLM prompt as guidance. The LLM still performs the reasoning, but with a proven strategy.
-
-**The Problem:** Every use requires an LLM call, even for simple arithmetic the LLM has solved correctly hundreds of times.
-
-**The Solution:** Once a signature proves reliable (≥5 uses, ≥80% success rate), we generate a **DSL script** that executes deterministically—no LLM needed.
-
-**Execution Priority:**
-1. **DSL execution** (if available): Direct computation, ~0ms
-2. **Method template injection** (fallback): LLM with guidance, ~500ms
-
-**DSL Generation Flow:**
-1. New signature created with method_template only
-2. Signature accumulates uses via LLM execution
-3. Once reliable, LLM analyzes successful examples and generates custom DSL
-4. DSL stored on signature, used for all future matches
-5. Falls back to method_template if DSL execution fails
-
-**Three DSL Layers:**
-- **Math**: Safe arithmetic—`(a + b) / 2`, `sqrt(x)`, `abs(y)`
-- **SymPy**: Symbolic algebra—`solve(Eq(a*x + b, 0), x)`
-- **Custom**: Registered operators—`apply_quadratic_formula(a, b, c)`
-
-**Real DSL Examples from Signature Database:**
-
-| Step Type | DSL Script | Fallback Guidance |
-|-----------|------------|-------------------|
-| cylinder_volume | `pi * r**2 * h` | V = πr²h |
-| normalize_vector | `v / sqrt(sum(x**2 for x in v))` | Divide vector by magnitude |
-| add_fractions | `a/b + c/d` | Find common denominator |
-| gcd_lcm_relation | `a * b == gcd * lcm` | a × b = gcd × lcm |
-| sum_ratio_parts | `sum(parts)` | Add all ratio parts |
-| expand_square | `y**2 + 2*a*y + a**2` | (y+a)² expansion |
-| rotation_matrix | `rotation_matrix(theta)` | [[cos θ, -sin θ], [sin θ, cos θ]] |
-| simplify_expr | `simplify(expression)` | Combine like terms |
-| define_sides | *(guidance only)* | Let sides be a, b, c with constraints |
-
-The last row shows a **guidance-only** signature: no executable DSL, just method template injection. Some steps are inherently semantic and benefit from LLM flexibility.
-
+### 3.8 Parameter Matching
 **Parameter Matching:** The LLM generates parameter aliases during DSL creation (e.g., `percentage` → `pct`, `percent`). At runtime, alias matching maps context values to DSL parameters without additional LLM calls.
 
 **Example Evolution:**
 
-*Initial (method_template only):*
-```
-"To calculate a percentage of a value: multiply the value by the percentage, then divide by 100."
-```
-
-*After proving reliable (DSL added):*
+*Example DSL:*
 ```json
 {"type": "math", "script": "(percentage / 100) * base",
  "params": ["percentage", "base"],
@@ -322,14 +274,31 @@ This ensures robustness while preferring the cleaner JSON path.
 
 **Parameter Mapping for DSL Execution:**
 
-When a step matches a signature with a DSL like `(base * height) / 2`, we need to map prior step results to parameter names. The structured output from each step includes semantic type information:
+When a step matches a signature with a DSL like `(base * height) / 2`, we need to map prior step results to DSL parameters. The flow:
 
-```json
-{"result": 7, "semantic_type": "length", "meaning": "base of triangle"}
-{"result": 12, "semantic_type": "length", "meaning": "height of triangle"}
+```
+Step 1 executes → {"result": 7}   → stored as step_1
+Step 2 executes → {"result": 12}  → stored as step_2
+Step 3 matches DSL: (base * height) / 2
 ```
 
-The DSL executor matches parameters by semantic type and meaning, not by regex pattern matching. This enables reliable parameter passing even when step phrasing varies.
+The DSL executor builds a context dict from prior results:
+```python
+context = {"step_1": 7, "step_2": 12}
+```
+
+Then the LLM rewrites the DSL script to use positional references:
+```python
+# Original DSL script (semantic names)
+"(base * height) / 2"
+
+# LLM-rewritten script (positional refs)
+"(step_1 * step_2) / 2"
+
+# Executes with context → 42
+```
+
+This "LLM script rewriting" approach works because the LLM sees both the step descriptions and the context keys—it knows `step_1` is the base and `step_2` is the height from the problem context. No brittle parameter name matching required.
 
 ### 3.10 Infrastructure
 
