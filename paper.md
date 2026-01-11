@@ -1,4 +1,4 @@
-# Mycelium: Decomposition Is All You Need
+# Guided by Primes
 
 *Decomposing Problems into Reusable Atomic Signatures*
 
@@ -95,13 +95,42 @@ threshold = base + (cohesion - 0.5) × 0.2
 
 Tight clusters (cohesion > 0.5) get stricter thresholds; loose clusters get lenient ones. This prevents false matches in well-defined clusters while allowing exploration in sparse regions.
 
-### 3.5 Recursive Decomposition
+### 3.5 Execution and Learning: Signal Over Accuracy
 
-When a DSL has low confidence for a step, that's a signal the step is too complex. Rather than falling back to pure LLM reasoning, we **decompose further** until reaching truly atomic operations.  We are moving towards higher rates of injected DSLs per problem, however sometimes we fall back to pure LLM reasoning.  After solving, new patterns create signatures; signatures with >=3 uses and >=70% success become "reliable" and inject their templates.
+We are moving towards higher rates of injected DSLs per problem. In **learning mode**, we mandate DSL injection on every signature hit, even when we expect it might fail.
+
+**The Philosophy:** Both DSL successes AND failures provide valuable signal:
+- **Success** → positive lift recorded → inject more in future
+- **Failure** → negative lift recorded → teaches system to avoid in benchmark mode
+
+A failed DSL execution is not wasted work—it's a data point. Every injection attempt updates the lift statistics that guide future routing decisions. Short-term accuracy loss is acceptable for long-term learning.
+
+**Injection Rate vs Accuracy Trade-off:**
+
+| Mode | Injection Rate | Accuracy | Purpose |
+|------|---------------|----------|---------|
+| Learning (aggressive) | ~70% | ~47% | Maximize signal collection |
+| Benchmark (conservative) | ~30% | ~60% | Maximize accuracy using learned data |
+
+In learning mode, we deliberately inject DSLs that the lift data suggests will fail. This "exploration" fills gaps in our knowledge—maybe the negative lift was from a bug we've since fixed, or from a different problem context. Only by trying again do we update our beliefs.
+
+**The Self-Improving Loop:**
+1. Problem arrives → step matches signature with DSL
+2. Learning mode: inject regardless of lift history
+3. DSL executes → success/failure recorded
+4. Lift statistics updated for this signature
+5. Over time, patterns emerge: which DSLs help vs hurt
+6. Benchmark mode uses this data to skip known-bad DSLs
+
+This creates a system that improves over time: aggressive exploration in early runs builds data about which DSLs work, and lift-based gating automatically optimizes routing in later runs.
+
+### 3.6 Recursive Decomposition
+
+When a DSL has low confidence for a step, that's a signal the step is too complex. Rather than falling back to pure LLM reasoning, we **decompose further** until reaching truly atomic operations.  See 3.9 for Refinement loop
 
 **The Algorithm:**
 
-1. **StepDecomposer** (`step_decomposer.py`): `decompose_step(step, context, depth)` returns a `DecomposedStep` by calling the LLM to break the step into 2-4 sub-steps with a dependency graph. Respects `MAX_DECOMPOSITION_DEPTH = 3`.
+1. **StepDecomposer** (`step_decomposer.py`): `decompose_step(step, context, depth)` returns a `DecomposedStep` by calling the LLM to break the step into ~5 sub-steps with a dependency graph. Respects `MAX_DECOMPOSITION_DEPTH = 3`.
 
 2. **Solver** (`_execute_step_with_signature`): Finds or creates a signature for the step. If DSL confidence < 0.5 and depth < max, calls `_decompose_and_solve_step()` which decomposes via StepDecomposer, executes sub-steps recursively at depth+1, and aggregates results. Otherwise, executes via DSL or LLM fallback.
 
