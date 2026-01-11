@@ -887,6 +887,8 @@ Each refinement cycle:
 
 The parent becomes a router; the atomic children get precise DSLs. This is the "learning" in self-improving: not just accumulating signatures, but actively refining them based on observed performance.
 
+**Summary:** Signatures with low-success DSLs get decomposed into child signatures with new, precise DSLs. The parent signatures become routers that direct incoming traffic to the appropriate child. The result: what was one failing signature becomes multiple succeeding ones.
+
 **Other Future Directions:**
 - **100% deterministic execution**: Improving signature coverage and DSL quality to achieve fully deterministic DAG execution without LLM calls
 - Expand to other problem domains (coding, reasoning benchmarks)
