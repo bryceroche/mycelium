@@ -6,7 +6,7 @@
 DSL_AGGRESSIVE_INJECTION = True
 
 # Similarity Thresholds
-EXACT_MATCH_THRESHOLD = 0.87
+EXACT_MATCH_THRESHOLD = 0.92
 VARIANT_THRESHOLD = 0.70
 DEFAULT_INJECTION_THRESHOLD = 0.60  # Raised from 0.50 to reduce false matches
 MERGE_SIMILARITY_THRESHOLD = 0.95  # Merge signatures with cosine similarity >= this

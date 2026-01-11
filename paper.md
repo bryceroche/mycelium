@@ -88,7 +88,7 @@ The survivor is the signature with more examples (more established). The result 
 
 ### 3.4 Cosine Similarity Matching
 
-Each step is embedded and matched against signature centroids using cosine similarity. A match occurs when similarity exceeds a threshold (default 0.87) (config.py). The best-matching signature's method template is injected to guide the LLM's solution.
+Each step is embedded and matched against signature centroids using cosine similarity. A match occurs when similarity exceeds a threshold (default 0.92, see `config.py`). The best-matching signature's method template is injected to guide the LLM's solution.
 
 **Why Cosine Similarity?** We evaluated several matching strategies:
 
