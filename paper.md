@@ -917,7 +917,7 @@ When entering a new domain, the system needs room to explore and fail. **We deli
 
 **The Core Philosophy: Signal Over Accuracy**
 
-In learning mode (`DSL_AGGRESSIVE_INJECTION = True`), we mandate DSL injection on every signature hit, regardless of historical lift data. Both outcomes provide value:
+In training mode (`ACTIVE_MODE = Mode.TRAINING`), we mandate DSL injection on every signature hit, regardless of historical lift data. Both outcomes provide value:
 
 - **DSL succeeds** → positive lift recorded → reinforces this DSL
 - **DSL fails** → negative lift recorded → teaches system to refine or avoid
@@ -973,7 +973,7 @@ Week 5+: Harvest
 
 **The Payoff**
 
-After sufficient exploration, switching to benchmark mode (`DSL_AGGRESSIVE_INJECTION = False`) enables:
+After sufficient exploration, switching to benchmark mode (`ACTIVE_MODE = Mode.BENCHMARK`) enables:
 - Lift-based routing skips known-bad DSLs
 - Proven DSLs execute deterministically
 - Accuracy exceeds baseline LLM
