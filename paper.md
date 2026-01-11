@@ -129,22 +129,9 @@ When a DSL has low confidence for a step, that's a signal the step is too comple
 
 **The Algorithm:**
 
-```
-StepDecomposer (step_decomposer.py)
-├── decompose_step(step, context, depth) → DecomposedStep
-│   ├── Calls LLM to break step into 2-4 sub-steps
-│   ├── Returns sub-steps with dependency graph
-│   └── Respects MAX_DECOMPOSITION_DEPTH = 3
-│
-Solver._execute_step_with_signature(step, depth)
-├── Find/create signature for step
-├── If DSL confidence < 0.5 AND depth < max:
-│   └── Call _decompose_and_solve_step()
-│       ├── Decompose via StepDecomposer
-│       ├── Execute sub-steps recursively (depth + 1)
-│       └── Aggregate results
-└── Else: execute via DSL or LLM fallback
-```
+1. **StepDecomposer** (`step_decomposer.py`): `decompose_step(step, context, depth)` returns a `DecomposedStep` by calling the LLM to break the step into 2-4 sub-steps with a dependency graph. Respects `MAX_DECOMPOSITION_DEPTH = 3`.
+
+2. **Solver** (`_execute_step_with_signature`): Finds or creates a signature for the step. If DSL confidence < 0.5 and depth < max, calls `_decompose_and_solve_step()` which decomposes via StepDecomposer, executes sub-steps recursively at depth+1, and aggregates results. Otherwise, executes via DSL or LLM fallback.
 
 **Atomic Signature Tracking:**
 
@@ -192,17 +179,12 @@ Answer: 36 ✓
 
 **The Self-Improvement Loop:**
 
-```
-Complex Step (low confidence)
-    ↓ decompose
-Sub-steps (still low confidence)
-    ↓ decompose
-Atomic sub-steps (LLM fallback at max depth)
-    ↓ success recorded
-New atomic signatures created (is_atomic=True)
-    ↓ next time same pattern appears
-Match atomic signature → DSL execution (no decomposition)
-```
+1. Complex step has low DSL confidence
+2. System decomposes into sub-steps
+3. Sub-steps still have low confidence → decompose again
+4. At max depth, LLM fallback executes and success is recorded
+5. New atomic signatures created (marked `is_atomic=True`)
+6. Next time same pattern appears → match atomic signature → DSL execution (no decomposition needed)
 
 Each problem that triggers deep decomposition *teaches* the system new atomic patterns. Over time, decomposition becomes rarer as the atomic vocabulary grows.
 
@@ -632,20 +614,11 @@ async def llm_rewrite_script(dsl_spec, context, client):
 
 **The Execution Flow:**
 
-```
-execute_dsl_with_llm_matching(dsl_json, inputs, client)
-│
-├── Parse DSL spec
-├── Compute heuristic confidence
-│
-├── IF confidence < llm_threshold (default 1.0 for data collection):
-│   ├── Call llm_rewrite_script()
-│   ├── Create new DSLSpec with rewritten script (no params)
-│   ├── Execute rewritten script with full context
-│   └── Return result with confidence=1.0
-│
-└── ELSE: Execute with heuristic param mapping
-```
+`execute_dsl_with_llm_matching(dsl_json, inputs, client)`:
+1. Parse DSL spec
+2. Compute heuristic confidence
+3. If confidence < llm_threshold: call `llm_rewrite_script()`, create new DSLSpec with rewritten script, execute with full context, return result with confidence=1.0
+4. Else: execute with heuristic param mapping
 
 **Why Rewriting Beats Mapping:**
 
@@ -718,23 +691,7 @@ The accuracy drop comes from losing the "decompose until confident" strategy—w
 
 **Injection Rate Ceiling:** The ~50% injection rate is the practical maximum. The remaining steps have truly empty context (first steps with no numbers in task text). DSL cannot execute without inputs—these steps require LLM reasoning.
 
-**The Learning Loop:**
-
-```
-Problem arrives
-    ↓
-Step matches signature with DSL
-    ↓
-Heuristic confidence low → LLM rewrites script
-    ↓
-Rewritten script executes → success/failure recorded
-    ↓
-Over time: signatures with consistent rewrite failures
-           get negative lift → fall back to pure LLM
-    ↓
-System learns which DSLs benefit from rewriting
-           vs which should skip DSL entirely
-```
+**The Learning Loop:** Problem arrives → step matches signature with DSL → heuristic confidence low → LLM rewrites script → rewritten script executes → success/failure recorded. Over time, signatures with consistent rewrite failures get negative lift and fall back to pure LLM. System learns which DSLs benefit from rewriting vs which should skip DSL entirely.
 
 This creates a self-improving system: aggressive exploration in early runs builds data about which DSLs work with rewriting, and lift-based gating automatically disables problematic DSLs in later runs.
 
@@ -829,7 +786,7 @@ Semantic matching is:
 - **Explainable:** Can log exactly why each param was mapped
 - **Testable:** Unit test each mapping rule
 
-**The Lesson:** Using an LLM to avoid using an LLM produced worse results than just using the LLM for reasoning. Semantic matching provides the reliability that LLM guessing cannot.
+**The Lesson:** We were using an LLM to avoid using an LLM—and the LLM parameter mapping was worse than just letting the LLM solve the problem directly. The irony is palpable. Semantic matching provides the reliability that LLM guessing cannot.
 
 ### Embedding-Based Conceptual Detection
 
