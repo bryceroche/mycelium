@@ -720,6 +720,7 @@ async def llm_rewrite_script(
     context: dict[str, Any],
     client,  # GroqClient
     step_descriptions: Optional[dict[str, str]] = None,
+    current_step_task: Optional[str] = None,
 ) -> Optional[str]:
     """Use LLM to rewrite DSL script using actual context variable names.
 
@@ -728,6 +729,7 @@ async def llm_rewrite_script(
         context: Runtime context with available values
         client: GroqClient instance for LLM calls
         step_descriptions: Optional dict mapping step_id -> task description
+        current_step_task: Optional current step task for additional context
 
     Returns:
         Rewritten script string, or original script if rewriting not possible
@@ -751,11 +753,14 @@ async def llm_rewrite_script(
     # Format params with any aliases
     params_info = dsl_spec.params if dsl_spec.params else ["(no explicit params)"]
 
+    # Include current step task for additional context
+    task_context = f"\nCurrent step task: {current_step_task[:200]}\n" if current_step_task else ""
+
     prompt = LLM_SCRIPT_REWRITE_PROMPT.format(
         script=dsl_spec.script[:300],
         params=params_info,
         context=context_str
-    )
+    ) + task_context
 
     try:
         messages = [{"role": "user", "content": prompt}]
@@ -784,6 +789,7 @@ async def execute_dsl_with_llm_matching(
     min_confidence: float = 0.7,
     llm_threshold: float = 0.3,
     step_descriptions: Optional[dict[str, str]] = None,
+    step_task: Optional[str] = None,
 ) -> tuple[Optional[Any], bool, float]:
     """Execute DSL with LLM-based script rewriting fallback.
 
@@ -797,6 +803,7 @@ async def execute_dsl_with_llm_matching(
         min_confidence: Minimum confidence to execute (default 0.7)
         llm_threshold: Below this confidence, try LLM script rewriting (default 0.3)
         step_descriptions: Optional dict mapping step_id -> task description for better LLM matching
+        step_task: Optional current step task for additional context
 
     Returns:
         (result, success, confidence) tuple
@@ -811,7 +818,7 @@ async def execute_dsl_with_llm_matching(
     if confidence < llm_threshold and client:
         logger.info("[dsl] Low confidence (%.2f), trying LLM script rewriting", confidence)
         try:
-            rewritten_script = await llm_rewrite_script(spec, inputs, client, step_descriptions)
+            rewritten_script = await llm_rewrite_script(spec, inputs, client, step_descriptions, step_task)
             if rewritten_script:
                 # Check if script was actually rewritten or returned original
                 is_rewritten = (rewritten_script != spec.script)

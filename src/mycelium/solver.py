@@ -797,6 +797,17 @@ Provide the combined result. End with RESULT: <your answer>"""
                 except ValueError:
                     pass
 
+            # For first steps (no context), also extract from original problem
+            # This enables DSL injection even when no prior steps exist
+            if not context:
+                problem_numbers = re.findall(r'(?<![a-zA-Z])(\d+\.?\d*)(?![a-zA-Z])', problem)
+                for i, num_str in enumerate(problem_numbers):
+                    try:
+                        # Use problem_num_X prefix to distinguish from task numbers
+                        numeric_inputs[f"problem_num_{i}"] = float(num_str)
+                    except ValueError:
+                        pass
+
         # =================================================================
         # Route by injection_mode: controls which strategies are enabled
         # Priority when all enabled: dsl → formula → procedure → guidance → plain
@@ -826,6 +837,7 @@ Provide the combined result. End with RESULT: <your answer>"""
                     min_confidence=DSL_MIN_CONFIDENCE,
                     llm_threshold=DSL_LLM_THRESHOLD,
                     step_descriptions=step_descriptions,
+                    step_task=step.task,
                 )
                 if dsl_success:
                     result = str(dsl_result)
