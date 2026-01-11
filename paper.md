@@ -669,33 +669,25 @@ In these cases, the system falls back to full LLM reasoning (no DSL execution).
 
 The trade-off: one extra LLM call (~500ms) to enable DSL execution that would otherwise fail. This is still faster than full LLM reasoning (~1-2s) and produces deterministic results.
 
-**Aggressive Injection Mode:**
+**Two Operating Modes:**
 
-By default, the system tries LLM script rewriting on *every* signature hit where heuristic confidence is low. This "exploration mode" (`DSL_AGGRESSIVE_INJECTION = True`) collects data on which DSLs work vs fail, enabling lift-based learning:
+The system supports two modes, configured in `config.py`:
 
 ```python
 # config.py
-DSL_AGGRESSIVE_INJECTION = True
-DSL_MIN_CONFIDENCE = 0.0 if DSL_AGGRESSIVE_INJECTION else 0.3
-DSL_LLM_THRESHOLD = 1.0 if DSL_AGGRESSIVE_INJECTION else 0.5
+ACTIVE_MODE = Mode.TRAINING   # or Mode.BENCHMARK
 ```
 
-For benchmarking (maximum accuracy without exploration overhead), set `DSL_AGGRESSIVE_INJECTION = False` to only invoke the rewriter when heuristic confidence is moderate (0.3-0.5).
+| Setting | Training Mode | Benchmark Mode |
+|---------|---------------|----------------|
+| Match threshold | 0.92 | 0.95 |
+| DSL injection | Try everything | Only high-confidence |
+| Decomposition | Disabled | Enabled |
+| Purpose | Collect data | Max accuracy |
 
-**Benchmarking with Decomposition Disabled:**
+**Training mode** tries DSL execution on every signature hit, collecting success/failure data. Lower match threshold (0.92) explores more signatures.
 
-When `DSL_AGGRESSIVE_INJECTION = True`, recursive decomposition is automatically disabled (`RECURSIVE_DECOMPOSITION_ENABLED = False`). This "mandatory injection" mode:
-
-1. Tries DSL execution on every signature hit
-2. Falls back to LLM reasoning (not decomposition) when DSL fails
-3. Produces faster runs (no decomposition overhead) but lower accuracy
-
-| Mode | Decomposition | Injection Rate | Accuracy | Time/Problem |
-|------|---------------|----------------|----------|--------------|
-| Conservative | Enabled | ~60% | 90% | ~13s |
-| Aggressive | Disabled | ~50% | 70% | ~7s |
-
-The accuracy drop comes from losing the "decompose until confident" strategy—when a DSL fails, aggressive mode falls back to LLM reasoning rather than breaking the step into smaller pieces. However, aggressive mode is valuable for **data collection**: every DSL attempt generates lift data that improves future runs.
+**Benchmark mode** uses conservative thresholds (0.95), only executes proven DSLs, and enables recursive decomposition for higher accuracy.
 
 **Injection Rate Ceiling:** The ~50% injection rate is the practical maximum. The remaining steps have truly empty context (first steps with no numbers in task text). DSL cannot execute without inputs—these steps require LLM reasoning.
 

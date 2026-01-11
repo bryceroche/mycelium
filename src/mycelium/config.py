@@ -1,39 +1,52 @@
 """Mycelium configuration constants."""
 
-# DSL Injection Mode (for data collection vs benchmarking)
-# When True: Always try DSL injection on every signature hit (data collection mode)
-# When False: Only inject when confidence is high (benchmark mode)
-DSL_AGGRESSIVE_INJECTION = True
+from enum import Enum
+
+
+class Mode(Enum):
+    TRAINING = "training"    # Explore signatures, collect data, lower thresholds
+    BENCHMARK = "benchmark"  # Conservative matching, proven patterns only
+
+
+# === ACTIVE MODE ===
+# Toggle this to switch between training and benchmark modes
+ACTIVE_MODE = Mode.TRAINING
+
+
+# === Mode-dependent settings ===
+_is_training = ACTIVE_MODE == Mode.TRAINING
+TRAINING_MODE = _is_training  # Exported for other modules
 
 # Similarity Thresholds
-EXACT_MATCH_THRESHOLD = 0.92
+EXACT_MATCH_THRESHOLD = 0.92 if _is_training else 0.95  # Higher in benchmark mode
 VARIANT_THRESHOLD = 0.70
-DEFAULT_INJECTION_THRESHOLD = 0.60  # Raised from 0.50 to reduce false matches
-MERGE_SIMILARITY_THRESHOLD = 0.95  # Merge signatures with cosine similarity >= this
+DEFAULT_INJECTION_THRESHOLD = 0.60
+MERGE_SIMILARITY_THRESHOLD = 0.95
+
+# Exploration Parameters
+EXPLORATION_RATE = 1.0 if _is_training else 0.5
+EXPLORATION_UNPROVEN_RATE = 1.0 if _is_training else 0.3
+EXPLORATION_MIN_LIFT = 0.0
+EXPLORATION_MIN_CONFIDENCE = 0.5
+USAGE_CONFIDENCE_DECAY = 5.0
+COLD_START_GUARANTEED_USES = 10
+
+# DSL Injection
+DSL_PROBATION_ENABLED = not _is_training  # Disabled in training to try everything
+DSL_MIN_CONFIDENCE = 0.0 if _is_training else 0.3
+DSL_LLM_THRESHOLD = 1.0 if _is_training else 0.5
+
+# Recursive Decomposition
+RECURSIVE_DECOMPOSITION_ENABLED = not _is_training  # Disabled in training mode
+RECURSIVE_MAX_DEPTH = 2
+RECURSIVE_CONFIDENCE_THRESHOLD = 0.5
+RECURSIVE_MAX_TOTAL_STEPS = 50
+
+# === Mode-independent settings ===
 
 # Reliability Thresholds
 RELIABILITY_MIN_USES = 3
 RELIABILITY_MIN_SUCCESS_RATE = 0.70
-
-# Exploration Parameters
-EXPLORATION_MIN_LIFT = 0.0
-EXPLORATION_MIN_CONFIDENCE = 0.5
-# In aggressive mode, always inject to maximize data collection
-# In normal mode, use conservative rates for baseline sampling
-EXPLORATION_RATE = 1.0 if DSL_AGGRESSIVE_INJECTION else 0.5
-EXPLORATION_UNPROVEN_RATE = 1.0 if DSL_AGGRESSIVE_INJECTION else 0.3
-USAGE_CONFIDENCE_DECAY = 5.0
-COLD_START_GUARANTEED_USES = 10  # Reduced from 15 to faster lift-gating
-
-# DSL Probation Mode
-# When True: randomly sample new/improved DSLs to gather lift data
-# When False: skip all probation sampling (use for max benchmark scores)
-# Disabled by default in aggressive mode for max injection
-DSL_PROBATION_ENABLED = not DSL_AGGRESSIVE_INJECTION
-
-# DSL confidence thresholds (based on aggressive mode)
-DSL_MIN_CONFIDENCE = 0.0 if DSL_AGGRESSIVE_INJECTION else 0.3  # Min confidence to execute DSL
-DSL_LLM_THRESHOLD = 1.0 if DSL_AGGRESSIVE_INJECTION else 0.5   # Use LLM param matching below this
 
 # LLM Client Parameters
 CLIENT_DEFAULT_TIMEOUT = 120.0
@@ -43,12 +56,4 @@ PLANNER_DEFAULT_MODEL = "llama-3.3-70b-versatile"
 SOLVER_DEFAULT_MODEL = "llama-3.3-70b-versatile"
 
 # Pipeline Parameters
-PIPELINE_MIN_SIMILARITY = 0.60  # Raised from 0.50 to reduce false matches
-
-# Recursive Decomposition (decompose-until-confident)
-# When a step has low confidence, decompose it further into sub-steps
-# Disabled in aggressive injection mode to maximize DSL execution attempts
-RECURSIVE_DECOMPOSITION_ENABLED = not DSL_AGGRESSIVE_INJECTION
-RECURSIVE_MAX_DEPTH = 2  # Maximum levels of re-decomposition
-RECURSIVE_CONFIDENCE_THRESHOLD = 0.5  # Re-decompose if signature confidence below this
-RECURSIVE_MAX_TOTAL_STEPS = 50  # Hard limit on total sub-steps per problem to prevent runaway
+PIPELINE_MIN_SIMILARITY = 0.60

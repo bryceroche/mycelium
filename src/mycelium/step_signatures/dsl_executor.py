@@ -391,6 +391,59 @@ _SYMPY_ALLOWED_METHODS = {
 }
 
 
+def _parse_to_sympy(value: str, sympy) -> Any:
+    """Parse a string into a sympy expression.
+
+    Handles:
+    - "x^2 - 4 = 0" → Eq(x**2 - 4, 0)
+    - "x^2 + 2x - 3" → x**2 + 2*x - 3
+    - "42" → 42 (number)
+    - Plain text → original string (unchanged)
+    """
+    import re
+
+    if not value or not value.strip():
+        return value
+
+    cleaned = value.strip()
+
+    # Try to parse as number first
+    try:
+        return float(cleaned)
+    except ValueError:
+        pass
+
+    # Normalize notation: ^ to **, implicit multiplication
+    normalized = cleaned.replace('^', '**')
+    # Add implicit multiplication: 2x → 2*x, x( → x*(
+    normalized = re.sub(r'(\d)([a-zA-Z])', r'\1*\2', normalized)
+    normalized = re.sub(r'([a-zA-Z])(\d)', r'\1*\2', normalized)
+    normalized = re.sub(r'(\d)\(', r'\1*(', normalized)
+    normalized = re.sub(r'\)(\d)', r')*\1', normalized)
+    normalized = re.sub(r'\)\(', r')*(', normalized)
+    normalized = re.sub(r'([a-zA-Z])\(', r'\1*(', normalized)
+
+    # Check for equation (contains =)
+    if '=' in normalized and '==' not in normalized:
+        parts = normalized.split('=')
+        if len(parts) == 2:
+            try:
+                lhs = sympy.sympify(parts[0].strip())
+                rhs = sympy.sympify(parts[1].strip())
+                return sympy.Eq(lhs, rhs)
+            except Exception:
+                pass
+
+    # Try to parse as expression
+    try:
+        return sympy.sympify(normalized)
+    except Exception:
+        pass
+
+    # Return original if parsing fails
+    return value
+
+
 def _safe_eval_sympy(script: str, inputs: dict[str, Any]) -> Optional[Any]:
     """AST-based safe SymPy evaluator."""
     try:
@@ -426,7 +479,15 @@ def _safe_eval_sympy(script: str, inputs: dict[str, Any]) -> Optional[Any]:
             for name in _SYMPY_ALLOWED
             if hasattr(sympy, name)
         }
-        namespace.update(inputs)
+
+        # Parse string inputs into sympy expressions
+        parsed_inputs = {}
+        for key, val in inputs.items():
+            if isinstance(val, str):
+                parsed_inputs[key] = _parse_to_sympy(val, sympy)
+            else:
+                parsed_inputs[key] = val
+        namespace.update(parsed_inputs)
 
         # Add common symbols (all single letters plus common multi-letter)
         for letter in "abcdefghijklmnopqrstuvwxyz":
