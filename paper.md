@@ -73,7 +73,7 @@ The database stores atomic solution patterns as tuples (centroid, method, stats)
 
 **Cluster Consolidation.** Over time, near-duplicate signatures may emerge—steps phrased differently but semantically equivalent. Rather than boosting neighbors on successful solves (which risks feedback loops), we periodically merge similar signatures:
 
-1. Find pairs with high cosine similarity (≥0.90) between centroids
+1. Find pairs with high cosine similarity (≥0.90) between centroids (config.py)
 2. Verify similar success rates (within 15%)—ensures both patterns actually work
 3. Merge: combine statistics, compute weighted-average centroid, reassign examples
 
@@ -81,18 +81,11 @@ The survivor is the signature with more examples (more established). This consol
 
 ### 3.4 Cosine Similarity Matching
 
-Each step is embedded and matched against signature centroids using cosine similarity. A match occurs when similarity exceeds a threshold (default 0.87). The best-matching signature's method template is injected to guide the LLM's solution.
+Each step is embedded and matched against signature centroids using cosine similarity. A match occurs when similarity exceeds a threshold (default 0.87) (config.py). The best-matching signature's method template is injected to guide the LLM's solution.
 
 **Why Cosine Similarity?** We evaluated several matching strategies:
 
-| Method | Description | Tradeoff |
-|--------|-------------|----------|
-| **Cosine similarity** | Angle between vectors, scale-invariant | Simple, fast, interpretable |
-| Euclidean distance | L2 norm in embedding space | Sensitive to magnitude |
-| Interference | Cosine × amplitude × Gaussian decay | More expressive, harder to tune |
-| Essence | Weighted top-k dimensions | Loses semantic nuance |
-
-Cosine similarity emerged as the best default: it's robust to embedding magnitude variations, computationally cheap (single dot product), and produces interpretable 0-1 scores. More complex methods (interference, essence) are supported but didn't improve accuracy enough to justify added complexity.
+Cosine similarity emerged as the best default: it's robust to embedding magnitude variations, computationally cheap (single dot product), and produces interpretable 0-1 scores. 
 
 **Adaptive Thresholds.** Fixed thresholds fail when cluster tightness varies. We adjust based on cohesion:
 
@@ -104,7 +97,7 @@ Tight clusters (cohesion > 0.5) get stricter thresholds; loose clusters get leni
 
 ### 3.5 Execution and Learning
 
-Matched signatures execute via formula evaluation, procedural guidance, or hints. Unmatched steps use pure LLM reasoning. After solving, new patterns create signatures; signatures with >=3 uses and >=70% success become "reliable" and inject their templates.
+We are moving towards higher rates of injected DSLs per problem, however sometimes we fall back to pure LLM reasoning.  After solving, new patterns create signatures; signatures with >=3 uses and >=70% success become "reliable" and inject their templates.
 
 ### 3.6 Recursive Decomposition
 
