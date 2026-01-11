@@ -124,13 +124,6 @@ A failed DSL execution provides good signal that updates the lift statistics tha
 
 In training mode, we deliberately inject DSLs that the lift data suggests will fail. This "exploration" fills gaps in our knowledge—maybe the negative lift was from a bug we've since fixed, or from a different problem context. Only by trying again do we update our beliefs.
 
-**The Self-Improving Loop:**
-1. Problem arrives → step matches signature with DSL
-2. Training mode: inject regardless of lift history
-3. DSL executes → success/failure recorded
-4. Lift statistics updated for this signature
-5. Over time, patterns emerge: which DSLs help vs hurt
-6. Benchmark mode uses this data to skip known-bad DSLs
 
 This creates a system that improves over time: aggressive exploration in early runs builds data about which DSLs work, and lift-based gating automatically optimizes routing in later runs.
 
@@ -138,64 +131,12 @@ This creates a system that improves over time: aggressive exploration in early r
 
 When a DSL has low confidence for a step, that's a signal the step is too complex. Rather than falling back to pure LLM reasoning, we **decompose further** until reaching truly atomic operations.  See 3.9 for Refinement loop
 
-**The Algorithm:**
+**The Self-Improvement Loop: Secondard processing**
 
-1. **StepDecomposer** (`step_decomposer.py`): `decompose_step(step, context, depth)` returns a `DecomposedStep` by calling the LLM to break the step into ~5 sub-steps with a dependency graph. Respects `MAX_DECOMPOSITION_DEPTH = 3`.
-
-2. **Solver** (`_execute_step_with_signature`): Finds or creates a signature for the step. If DSL confidence < 0.5 and depth < max, calls `_decompose_and_solve_step()` which decomposes via StepDecomposer, executes sub-steps recursively at depth+1, and aggregates results. Otherwise, executes via DSL or LLM fallback.
-
-**Atomic Signature Tracking:**
-
-Signatures created during decomposition are marked with their origin depth:
-
-```python
-signature = db.find_or_create(
-    step_text=step.task,
-    embedding=embedding,
-    origin_depth=decomposition_depth,  # Track provenance
-)
-# Signatures with origin_depth > 0 are marked is_atomic=True
-```
-
-**Example Execution:**
-
-```
-Problem: "What is 15% of 240?"
-
-Step 1: "Convert 15% to decimal"
-        ↓ DSL confidence: 0.0 (new signature)
-        ↓ DECOMPOSE at depth=0
-
-  Sub-step 1.1: "Identify the percentage value"
-                ↓ DSL confidence: 0.0
-                ↓ DECOMPOSE at depth=1
-
-    Sub-step 1.1.1: "Extract number 15"
-                    ↓ Depth=2, DECOMPOSE
-
-      Sub-step 1.1.1.1: "Parse integer"
-                        ↓ Depth=3 (MAX), LLM fallback
-                        ↓ Result: 15
-
-  Sub-step 1.2: "Divide by 100"
-                ↓ confidence: 0.91 ✓
-                ↓ Execute DSL: 15 / 100 = 0.15
-
-Step 2: "Multiply 0.15 × 240"
-        ↓ confidence: 0.94 ✓
-        ↓ Execute DSL: 36
-
-Answer: 36 ✓
-```
-
-**The Self-Improvement Loop:**
-
-1. Complex step has low DSL confidence
-2. System decomposes into sub-steps
-3. Sub-steps still have low confidence → decompose again
-4. At max depth, LLM fallback executes and success is recorded
-5. New atomic signatures created (marked `is_atomic=True`)
-6. Next time same pattern appears → match atomic signature → DSL execution (no decomposition needed)
+1. Signature has low DSL confidence
+2. System decomposes signature into sub-signatures
+3. Sub-signatures have new DSL created
+4. Parent signature DSL now routes to children signatures
 
 Each problem that triggers deep decomposition *teaches* the system new atomic patterns. Over time, decomposition becomes rarer as the atomic vocabulary grows.
 
