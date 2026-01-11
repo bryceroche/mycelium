@@ -69,7 +69,7 @@ python scripts/pipeline_runner.py --dataset math --levels 5 --problems 20 --work
 
 ### 3.1 Overview
 
-Given problem LLM decomposes into a DAG of steps, matches each step against the signature database, executes DSLs, and (5) updates the database with new patterns.
+Given problem LLM decomposes into a DAG of steps, matches each step against the signature database, executes DSLs, and updates the database with new patterns.
 
 ### 3.2 Problem Decomposition
 
@@ -79,7 +79,7 @@ An LLM decomposes problems into a DAG where each step has a task description and
 
 The database stores atomic solution patterns as tuples (centroid, method, stats). Centroids update incrementally as new examples join clusters.
 
-**Cluster Consolidation.** Over time, near-duplicate signatures may emerge—steps phrased differently but semantically equivalent. Rather than boosting neighbors on successful solves (which risks feedback loops), we periodically merge similar signatures:
+**Cluster Consolidation.** Over time, near-duplicate signatures may emerge — steps phrased differently but semantically equivalent. Rather than boosting neighbors on successful solves (which risks feedback loops), we periodically merge similar signatures:
 
 1. Find pairs with high cosine similarity (≥0.90) between centroids (config.py)
 2. Verify similar success rates (within 15%)—ensures both patterns actually work
@@ -794,8 +794,6 @@ Semantic matching is:
 - **Fast:** No LLM call needed
 - **Explainable:** Can log exactly why each param was mapped
 - **Testable:** Unit test each mapping rule
-
-**The Lesson:** We were using an LLM to avoid using an LLM—and the LLM parameter mapping was worse than just letting the LLM solve the problem directly. The irony is palpable. Semantic matching provides the reliability that LLM guessing cannot.
 
 ### Embedding-Based Conceptual Detection
 
