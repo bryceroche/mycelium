@@ -124,14 +124,14 @@ A failed DSL execution provides good signal that updates the lift statistics tha
 
 | Mode | Injection Rate | Accuracy | Purpose |
 |------|---------------|----------|---------|
-| Learning (aggressive) | ~70% | ~47% | Maximize signal collection |
-| Benchmark (conservative) | ~30% | ~60% | Maximize accuracy using learned data |
+| Training (aggressive) | ~29% | ~58% | Maximize signal collection |
+| Benchmark (conservative) | ~29% | ~58% | Maximize accuracy using learned data |
 
-In learning mode, we deliberately inject DSLs that the lift data suggests will fail. This "exploration" fills gaps in our knowledge—maybe the negative lift was from a bug we've since fixed, or from a different problem context. Only by trying again do we update our beliefs.
+In training mode, we deliberately inject DSLs that the lift data suggests will fail. This "exploration" fills gaps in our knowledge—maybe the negative lift was from a bug we've since fixed, or from a different problem context. Only by trying again do we update our beliefs.
 
 **The Self-Improving Loop:**
 1. Problem arrives → step matches signature with DSL
-2. Learning mode: inject regardless of lift history
+2. Training mode: inject regardless of lift history
 3. DSL executes → success/failure recorded
 4. Lift statistics updated for this signature
 5. Over time, patterns emerge: which DSLs help vs hurt
