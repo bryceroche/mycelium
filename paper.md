@@ -132,11 +132,13 @@ This creates a system that improves over time: aggressive exploration in early r
 When a DSL has low confidence for a step, that's a signal the step is too complex. Rather than falling back to pure LLM reasoning, we **decompose further** until reaching truly atomic operations.  See 3.9 for Refinement loop
 
 **The Self-Improvement Loop: Secondard processing**
-
+**This is key**
 1. Signature has low DSL confidence
 2. System decomposes signature into sub-signatures
 3. Sub-signatures have new DSL created
 4. Parent signature DSL now routes to children signatures
+
+**Summary:** Signatures with low-success DSLs get decomposed into child signatures with new, precise DSLs. The parent signatures become routers that direct incoming traffic to the appropriate child. The result: what was one failing signature becomes multiple succeeding ones.
 
 Each problem that triggers deep decomposition *teaches* the system new atomic patterns. Over time, decomposition becomes rarer as the atomic vocabulary grows.
 
@@ -157,15 +159,6 @@ With an empty database, no signatures exist to match against so every step is no
 ### 3.8 Parameter Matching
 
 **Parameter Matching:** The LLM generates parameter aliases during DSL creation (e.g., `percentage` → `pct`, `percent`). At runtime, alias matching maps context values to DSL parameters without additional LLM calls.
-
-**Example Evolution:**
-
-*Example DSL:*
-```json
-{"type": "math", "script": "(percentage / 100) * base",
- "params": ["percentage", "base"],
- "aliases": {"percentage": ["pct", "percent"], "base": ["value", "total"]}}
-```
 
 This is the "smart work once, execute forever" principle: invest LLM reasoning to generate the DSL once, then execute deterministically for all future matches.
 
@@ -208,57 +201,6 @@ LRU Caching (future work)
 
 This lightweight stack enables rapid iteration: SQLite for portability, Groq for speed, and Claude + tmux for parallelized AI-assisted development.
 
-### 3.11 Signature Refinement Loop
-
-Low-performing signatures reveal opportunities for improvement. We propose an automated refinement loop that **requires a frontier LLM** (e.g., Claude Opus) to perform the sophisticated analysis and code generation:
-
-**The Loop:**
-
-```
-1. IDENTIFY: Query signatures with success_rate < threshold
-   → "area_triangle" at 15% success, 200 uses
-
-2. ANALYZE (Frontier LLM): Examine failure cases and identify patterns
-   → "Failures occur when inputs are coordinates vs. side lengths vs. angles"
-
-3. DECOMPOSE (Frontier LLM): Design finer-grained sub-signatures
-   → area_triangle_coordinates (Shoelace formula)
-   → area_triangle_sides (Heron's formula)
-   → area_triangle_angle (½ab·sin(C))
-
-4. GENERATE DSL (Frontier LLM): Write precise DSL for each child
-   → Each sub-signature gets a single-purpose, tested DSL script
-
-5. REDIRECT (Frontier LLM): Configure parent as router to children
-   → Parent signature stores pointers to sub-signatures
-   → LLM writes routing logic based on input type detection
-
-6. VALIDATE: Test on held-out examples
-   → Keep if success_rate improves; discard if not
-```
-
-**Why a Frontier LLM is Required:**
-
-Steps 2-5 require sophisticated reasoning that only frontier models can reliably perform:
-- **Pattern recognition** across failure cases to identify root causes
-- **Domain expertise** to know Heron's formula vs. Shoelace vs. trigonometric approaches
-- **Code generation** to write correct, tested DSL scripts
-- **Routing logic** to classify input types and direct to appropriate children
-
-A weaker model would hallucinate formulas or mis-classify input patterns. The refinement loop is where frontier LLM capability pays dividends—each refinement improves thousands of future executions.
-
-*Practical note:* The LLM may initially resist this task ("I can help you think through approaches...") or produce overly cautious responses. Insist on concrete outputs: specific sub-signature names, actual DSL code, explicit routing conditions. The model is capable; it just needs clear direction that you want executable artifacts, not suggestions.
-
-**The Compound Effect:**
-
-Each refinement cycle:
-- Converts low-performing signatures into high-performing sub-signatures
-- Increases overall DSL injection rate
-- Moves the system toward fully deterministic execution
-
-The parent becomes a router; the atomic children get precise DSLs. This is the "learning" in self-improving: not just accumulating signatures, but actively refining them based on observed performance.
-
-**Summary:** Signatures with low-success DSLs get decomposed into child signatures with new, precise DSLs. The parent signatures become routers that direct incoming traffic to the appropriate child. The result: what was one failing signature becomes multiple succeeding ones.
 
 ---
 
