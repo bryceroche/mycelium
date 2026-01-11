@@ -10,7 +10,7 @@
 
 Every composite number factors uniquely into primes. We hypothesize that math problems similarly decompose into a finite set of atomic *signatures*—reusable solution patterns. **Mycelium** builds a "table of primes" for mathematical reasoning: a signature database that grows as problems are solved.
 
-The system decomposes problems into DAG-structured steps, matches each against known signatures via cosine similarity, and executes stored routines (formula, procedure, or LLM guidance). Novel steps are solved and stored as new signatures. The library grows; future problems get faster.
+An LLM decomposes problems into DAG-structured steps, matches each against known signatures via cosine similarity, and executes DSLs. Novel steps are solved and stored as new signatures. The library grows; future problems get faster.
 
 ---
 
@@ -22,12 +22,11 @@ Yet **while complete problems are unique, their constituent steps are highly reu
 
 ### Contributions
 
-1. **Problem Decomposition**: DAG-based decomposition into reusable atomic signatures
-2. **Signature Database**: Vector store of solution patterns with centroid-based clustering
+1. **Problem Decomposition**: LLM DAG-based decomposition into reusable atomic signatures
+2. **Signature Database**: Vector store of signatures with centroid-based clustering
 3. **Cosine Similarity Matching**: Embedding-based retrieval for step-level pattern matching
-4. **Hybrid Execution**: Routing to formula evaluation, procedure guidance, or LLM
+4. **DSL Execution**: LLM pass parameters to DSLs for execution
 5. **Signature Refinement Loop**: Frontier LLM decomposes low-performing signatures into precise child signatures; parents become routers—this is how the system learns
-6. **Two Operating Modes**: *Learning mode* explores new signatures and collects success statistics; *Execution mode* uses proven signatures for deterministic execution
 
 ### Open Source & Reproducibility
 
@@ -35,7 +34,7 @@ All code, data, and pre-trained signatures are available at **github.com/brycero
 
 **What we're sharing:**
 - Complete source code with documented architecture
-- **Pre-built signature database** with 675+ math signatures and DSL scripts—skip cold start entirely
+- **Pre-built signature database** with 1k+ math signatures and DSL scripts — skip cold start entirely
 - Benchmark scripts to reproduce our results
 - SQLite database file ready to use (no setup required)
 
@@ -46,9 +45,6 @@ pip install -r requirements.txt
 export GROQ_API_KEY=your_key
 python -m mycelium.solver "What is 15% of 80?"
 ```
-
-The signature database represents months of accumulated learning on mathematical reasoning. By sharing it, new users start with a mature library rather than cold-starting from zero. This is the key advantage of decomposition: **knowledge compounds and transfers**.
-
 ---
 
 ## 2. Related Work
@@ -65,24 +61,11 @@ The signature database represents months of accumulated learning on mathematical
 
 ### 3.1 Overview
 
-Given problem P, Mycelium: (1) decomposes into a DAG of steps, (2) matches each step against the signature database, (3) executes via stored routines or LLM, (4) synthesizes results, and (5) updates the database with new patterns.
+Given problem LLM decomposes into a DAG of steps, matches each step against the signature database, executes DSLs, and (5) updates the database with new patterns.
 
 ### 3.2 Problem Decomposition
 
-An LLM decomposes problem P into a DAG where each step has a task description and dependencies. Steps execute in topological order with independent steps parallelized.
-
-**Signature-Guided Hints.** Naive decomposition creates steps that may not match existing signatures—wasting the library. We inject the top 15 reliable signatures into the planner prompt:
-
-```
-## Available Atomic Operations
-- solve_quadratic: Solve ax² + bx + c = 0
-- compute_percentage: Calculate X% of Y
-- simplify_fraction: Reduce to lowest terms
-...
-Prefer these known patterns when they fit.
-```
-
-This guides the LLM to decompose into steps that align with proven patterns, improving signature reuse without constraining novel decompositions.
+An LLM decomposes problems into a DAG where each step has a task description and dependencies. 
 
 ### 3.3 Signature Database
 
