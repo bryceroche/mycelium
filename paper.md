@@ -89,6 +89,8 @@ An LLM decomposes problems into a DAG where each step has a task description and
 
 The database stores atomic solution patterns as tuples (centroid, method, stats). Centroids update incrementally as new examples join clusters.
 
+**Saturation.** After training on MATH500, the library contains ~1,500 active signatures covering ~12,700 step executions—an average of 8+ reuses per signature. The vocabulary is finite: 94 distinct step types account for nearly all decomposed steps. High-frequency patterns like `solve_equation` (963 uses), `compute_sum` (728 uses), and `count_items` (1,300 uses) appear across problem categories. New problems increasingly match existing signatures rather than creating new ones—evidence that math problems share a common atomic vocabulary.
+
 ### 3.4 Cosine Similarity Matching
 
 Each step is embedded and matched against signature centroids using cosine similarity. A match occurs when similarity exceeds a threshold (default 0.92, see `config.py`). The best-matching signature's method template is injected to guide the LLM's solution.
