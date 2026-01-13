@@ -8,8 +8,10 @@ Lazy NL approach:
 
 import json
 import logging
+import random
 import re
 import sqlite3
+import time
 import uuid
 from contextlib import contextmanager
 from datetime import datetime
@@ -129,17 +131,24 @@ class StepSignatureDB:
         Returns:
             Tuple of (signature, is_new) where is_new=True if newly created
         """
-        import time
         max_retries = 5
+        base_delay = 0.05
 
         for attempt in range(max_retries):
             try:
                 return self._find_or_create_atomic(
                     step_text, embedding, min_similarity, parent_problem, origin_depth
                 )
-            except Exception as e:
-                if "database is locked" in str(e) and attempt < max_retries - 1:
-                    time.sleep(0.05 * (attempt + 1))
+            except sqlite3.OperationalError as e:
+                if attempt < max_retries - 1:
+                    # Exponential backoff with jitter to avoid thundering herd
+                    delay = base_delay * (2 ** attempt)
+                    jitter = random.uniform(0, delay * 0.5)
+                    time.sleep(delay + jitter)
+                    logger.debug(
+                        "[db] Retry %d/%d after OperationalError: %s (delay=%.3fs)",
+                        attempt + 1, max_retries, str(e)[:50], delay + jitter
+                    )
                     continue
                 raise
 

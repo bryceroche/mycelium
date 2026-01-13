@@ -127,6 +127,18 @@ class Solver:
                 min_similarity=0.3,  # Only hints somewhat related to this problem
             )
             plan = await self.planner.decompose(problem, signature_hints=signature_hints)
+
+            # Validate DAG structure before execution
+            is_valid, errors = plan.validate()
+            if not is_valid:
+                return SolverResult(
+                    problem=problem,
+                    answer="",
+                    success=False,
+                    error=f"Invalid DAG: {'; '.join(errors)}",
+                    elapsed_ms=(time.time() - start_time) * 1000,
+                )
+
             if not plan.steps:
                 return SolverResult(
                     problem=problem,
