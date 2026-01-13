@@ -28,7 +28,6 @@ from mycelium.solver import Solver
 from mycelium.step_signatures import StepSignatureDB
 from mycelium.client import GroqClient
 from mycelium.answer_norm import answers_equivalent_llm
-from mycelium.config import MANDATE_DSL
 
 
 logging.basicConfig(
@@ -54,6 +53,7 @@ class ProblemResult:
     signatures_matched: int = 0
     signatures_new: int = 0
     steps_with_injection: int = 0
+    matched_and_injected: int = 0  # Matched existing sig AND DSL succeeded
     new_signatures_created: int = 0
     error: Optional[str] = None
 
@@ -212,12 +212,11 @@ async def solve_problem(
     db_path: str,
     injection_mode: str = "all",
     use_hints: bool = True,
-    mandate_dsl: bool = False,
 ) -> ProblemResult:
     """Solve a single problem with the given match mode."""
     try:
-        # V2 Solver: simplified API
-        solver = Solver(db_path=db_path, mandate_dsl=mandate_dsl)
+        # V2 Solver: simplified API (strict DAG mode - no LLM fallback)
+        solver = Solver(db_path=db_path)
 
         result = await solver.solve(problem=problem["problem"])
 
@@ -250,6 +249,7 @@ async def solve_problem(
             signatures_matched=result.signatures_matched,
             signatures_new=result.signatures_new,
             steps_with_injection=result.steps_with_injection,
+            matched_and_injected=result.matched_and_injected,
             new_signatures_created=0,  # V2 tracks this differently
         )
 
@@ -270,11 +270,11 @@ async def solve_problem(
 
 def run_problem_sync(args: tuple) -> dict:
     """Synchronous wrapper for process pool."""
-    problem, match_mode, db_path, injection_mode, use_hints, mandate_dsl = args
+    problem, match_mode, db_path, injection_mode, use_hints = args
     if match_mode == "direct":
         result = asyncio.run(solve_direct(problem))
     else:
-        result = asyncio.run(solve_problem(problem, match_mode, db_path, injection_mode, use_hints, mandate_dsl))
+        result = asyncio.run(solve_problem(problem, match_mode, db_path, injection_mode, use_hints))
     return asdict(result)
 
 
@@ -289,10 +289,9 @@ def run_pipeline(
     seed: int = None,
     use_hints: bool = True,
     db_path: str = "mycelium.db",
-    mandate_dsl: bool = False,
 ):
     """Run the evaluation pipeline."""
-    logger.info(f"Starting pipeline: {num_problems} problems, modes={modes}, workers={num_workers}, dataset={dataset}, injection={injection_mode}, seed={seed}, hints={use_hints}, db={db_path}, mandate_dsl={mandate_dsl}")
+    logger.info(f"Starting pipeline: {num_problems} problems, modes={modes}, workers={num_workers}, dataset={dataset}, injection={injection_mode}, seed={seed}, hints={use_hints}, db={db_path}")
 
     # Load problems
     problems = load_problems(num_problems, dataset=dataset, levels=levels, seed=seed)
@@ -305,7 +304,7 @@ def run_pipeline(
     tasks = []
     for mode in modes:
         for problem in problems:
-            tasks.append((problem, mode, db_path, injection_mode, use_hints, mandate_dsl))
+            tasks.append((problem, mode, db_path, injection_mode, use_hints))
 
     logger.info(f"Running {len(tasks)} total tasks ({len(problems)} problems x {len(modes)} modes)")
 
@@ -333,7 +332,9 @@ def run_pipeline(
         sigs_matched = sum(r.get("signatures_matched", 0) for r in mode_results)
         sigs_new = sum(r.get("signatures_new", 0) for r in mode_results)
         steps_injected = sum(r.get("steps_with_injection", 0) for r in mode_results)
+        matched_injected = sum(r.get("matched_and_injected", 0) for r in mode_results)
         match_rate = sigs_matched / total_steps if total_steps > 0 else 0.0
+        reuse_rate = matched_injected / total_steps if total_steps > 0 else 0.0
         avg_steps = total_steps / total if total > 0 else 0.0
 
         mode_stats[mode] = {
@@ -347,7 +348,9 @@ def run_pipeline(
             "signatures_matched": sigs_matched,
             "signatures_new": sigs_new,
             "steps_with_injection": steps_injected,
+            "matched_and_injected": matched_injected,
             "match_rate": match_rate,
+            "reuse_rate": reuse_rate,  # matched AND injected / total
         }
 
     # Aggregate by level (for MATH dataset)
@@ -411,11 +414,12 @@ def run_pipeline(
     for mode, stats in mode_stats.items():
         avg_steps = stats.get('avg_steps_per_problem', 0)
         match_rate = stats.get('match_rate', 0)
+        reuse_rate = stats.get('reuse_rate', 0)
         sigs_matched = stats.get('signatures_matched', 0)
+        matched_injected = stats.get('matched_and_injected', 0)
         sigs_new = stats.get('signatures_new', 0)
-        steps_injected = stats.get('steps_with_injection', 0)
         total_steps = stats.get('total_steps', 0)
-        print(f"  {mode:15s} {avg_steps:.1f} steps/prob, {match_rate:5.1%} matched ({sigs_matched}/{total_steps}), {sigs_new} new, {steps_injected} injected")
+        print(f"  {mode:15s} {avg_steps:.1f} steps/prob, {match_rate:5.1%} matched ({sigs_matched}/{total_steps}), {reuse_rate:5.1%} reused ({matched_injected}/{total_steps}), {sigs_new} new")
 
     if len(level_stats) > 1:
         print("\nResults by level:")
@@ -455,9 +459,9 @@ def main():
     parser.add_argument(
         "--dataset", "-d",
         type=str,
-        default="gsm8k",
+        default="math",
         choices=["gsm8k", "math"],
-        help="Dataset to use (default: gsm8k)",
+        help="Dataset to use (default: math)",
     )
     parser.add_argument(
         "--levels", "-l",
@@ -498,19 +502,6 @@ def main():
         default="mycelium.db",
         help="Path to signature database (default: mycelium.db)",
     )
-    parser.add_argument(
-        "--mandate-dsl",
-        action="store_true",
-        default=MANDATE_DSL,
-        help=f"Mandate DSL execution - fail steps if DSL fails (default: {MANDATE_DSL})",
-    )
-    parser.add_argument(
-        "--no-mandate-dsl",
-        action="store_false",
-        dest="mandate_dsl",
-        help="Allow LLM fallback when DSL fails",
-    )
-
     args = parser.parse_args()
 
     run_pipeline(
@@ -524,7 +515,6 @@ def main():
         seed=args.seed,
         use_hints=args.use_hints,
         db_path=args.db,
-        mandate_dsl=args.mandate_dsl,
     )
 
 

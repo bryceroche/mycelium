@@ -70,12 +70,40 @@ BAD task: "The roots are x = 1/2 and x = 2" (this is solving, not decomposing)
 SIGNATURE_HINTS_TEMPLATE = """
 ## Available Atomic Operations
 
-The system has learned these reusable step patterns. When possible, decompose into steps that match these operations:
+The system has learned these reusable step patterns. When decomposing, try to create steps that match these operations and EXTRACT the values they need:
 
 {hints}
 
-Prefer these known patterns when they fit the problem. Use "general reasoning" only when no pattern applies.
+IMPORTANT: When using these patterns, extract the required values into the step's `values` field with matching semantic names. This allows the system to execute the step automatically.
 """
+
+
+@dataclass
+class SignatureHint:
+    """Hint about an available signature for the decomposer.
+
+    Communicates what the signature does and what parameters it needs,
+    so the decomposer can create steps with appropriate extracted_values.
+    """
+    step_type: str
+    description: str
+    param_names: list[str] = field(default_factory=list)
+    param_descriptions: dict[str, str] = field(default_factory=dict)
+    clarifying_questions: list[str] = field(default_factory=list)
+
+    def to_hint_text(self) -> str:
+        """Format as hint text for the planner prompt."""
+        lines = [f"- **{self.step_type}**: {self.description}"]
+
+        if self.param_names:
+            params_str = ", ".join(self.param_names)
+            lines.append(f"  - Requires values: `{params_str}`")
+
+        if self.param_descriptions:
+            for param, desc in self.param_descriptions.items():
+                lines.append(f"  - `{param}`: {desc}")
+
+        return "\n".join(lines)
 
 
 @dataclass
@@ -314,14 +342,15 @@ class Planner:
     async def decompose(
         self,
         problem: str,
-        signature_hints: Optional[list[tuple[str, str]]] = None
+        signature_hints: Optional[list[SignatureHint]] = None
     ) -> DAGPlan:
         """Decompose a problem into a DAG of steps.
 
         Args:
             problem: The problem to decompose
-            signature_hints: Optional list of (step_type, description) tuples
-                            to guide decomposition toward known patterns
+            signature_hints: Optional list of SignatureHint objects that tell the
+                            decomposer what operations are available and what
+                            parameters each needs (from NL interface)
 
         Returns:
             DAGPlan with steps and dependencies
@@ -331,12 +360,9 @@ class Planner:
         # Build system prompt with optional signature hints
         system_prompt = PLANNER_SYSTEM
         if signature_hints:
-            hints_text = "\n".join(
-                f"- **{step_type}**: {desc}"
-                for step_type, desc in signature_hints
-            )
+            hints_text = "\n\n".join(hint.to_hint_text() for hint in signature_hints)
             system_prompt += SIGNATURE_HINTS_TEMPLATE.format(hints=hints_text)
-            logger.debug("[planner] Added %d signature hints", len(signature_hints))
+            logger.debug("[planner] Added %d signature hints with NL interface", len(signature_hints))
 
         messages = [
             {"role": "system", "content": system_prompt},

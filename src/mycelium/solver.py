@@ -23,18 +23,15 @@ import numpy as np
 
 from mycelium.config import (
     MIN_MATCH_THRESHOLD,
-    MANDATE_DSL,
     RECURSIVE_DECOMPOSITION_ENABLED,
     RECURSIVE_MAX_DEPTH,
     RECURSIVE_CONFIDENCE_THRESHOLD,
-    SELF_CONSISTENCY_ENABLED,
-    SELF_CONSISTENCY_SAMPLES,
-    SELF_CONSISTENCY_TEMPERATURE,
 )
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
 from mycelium.step_signatures.db import normalize_step_text
-from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl
+from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, llm_rewrite_script, try_execute_dsl_math
+from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.embedder import Embedder
 
 logger = logging.getLogger(__name__)
@@ -70,6 +67,7 @@ class SolverResult:
     signatures_matched: int = 0
     signatures_new: int = 0
     steps_with_injection: int = 0
+    matched_and_injected: int = 0  # Matched existing sig AND DSL succeeded
     error: Optional[str] = None
 
 
@@ -91,7 +89,6 @@ class Solver:
         solver_client=None,
         db_path: str = None,
         min_similarity: float = MIN_MATCH_THRESHOLD,
-        mandate_dsl: bool = None,
     ):
         """Initialize the solver.
 
@@ -99,8 +96,6 @@ class Solver:
             solver_client: LLM client for step execution (optional, creates default if None)
             db_path: Path to signature database
             min_similarity: Minimum cosine similarity for signature matching
-            mandate_dsl: If True, fail steps when DSL fails (no LLM fallback).
-                         Defaults to MANDATE_DSL config value.
         """
         from mycelium.client import get_client
 
@@ -109,7 +104,6 @@ class Solver:
         self.step_db = StepSignatureDB(db_path=db_path)
         self.embedder = Embedder.get_instance()
         self.min_similarity = min_similarity
-        self.mandate_dsl = mandate_dsl if mandate_dsl is not None else MANDATE_DSL
 
     async def solve(self, problem: str) -> SolverResult:
         """Solve a problem end-to-end.
@@ -124,8 +118,15 @@ class Solver:
         start_time = time.time()
 
         try:
-            # 1. Plan: Decompose into steps
-            plan = await self.planner.decompose(problem)
+            # 1. Plan: Decompose into steps (with signature hints for NL interface)
+            # Embed problem to filter hints by semantic similarity
+            problem_embedding = self.embedder.embed(problem)
+            signature_hints = self.step_db.get_signature_hints(
+                limit=15,
+                problem_embedding=problem_embedding,
+                min_similarity=0.3,  # Only hints somewhat related to this problem
+            )
+            plan = await self.planner.decompose(problem, signature_hints=signature_hints)
             if not plan.steps:
                 return SolverResult(
                     problem=problem,
@@ -138,9 +139,11 @@ class Solver:
             # 2. Execute steps in dependency order
             step_results = []
             context = {}  # step_id → result
+            step_descriptions = {}  # step_id → task description (for NL param matching)
             signatures_new = 0
             signatures_matched = 0
             steps_with_injection = 0
+            matched_and_injected = 0
 
             execution_order = self._get_execution_order(plan)
 
@@ -151,9 +154,15 @@ class Solver:
                     for dep in step.depends_on
                     if dep in context
                 }
+                # Build step descriptions for semantic param matching
+                step_desc_context = {
+                    dep: step_descriptions[dep]
+                    for dep in step.depends_on
+                    if dep in step_descriptions
+                }
 
                 # Execute step
-                result = await self._execute_step(step, problem, step_context)
+                result = await self._execute_step(step, problem, step_context, step_desc_context)
                 step_results.append(result)
 
                 # Track stats
@@ -161,19 +170,22 @@ class Solver:
                     signatures_new += 1
                 else:
                     signatures_matched += 1
+                    if result.was_injected:
+                        matched_and_injected += 1
                 if result.was_injected:
                     steps_with_injection += 1
 
-                # Store result for dependent steps
+                # Store result and description for dependent steps
                 context[step.id] = result.result
+                step_descriptions[step.id] = step.task
 
             # 3. Synthesize final answer
             final_answer = await self._synthesize(problem, step_results, context)
 
             elapsed_ms = (time.time() - start_time) * 1000
             logger.info(
-                "[solver] Solved in %.0fms: steps=%d new=%d matched=%d injected=%d",
-                elapsed_ms, len(step_results), signatures_new, signatures_matched, steps_with_injection
+                "[solver] Solved in %.0fms: steps=%d new=%d matched=%d matched+injected=%d",
+                elapsed_ms, len(step_results), signatures_new, signatures_matched, matched_and_injected
             )
 
             return SolverResult(
@@ -186,6 +198,7 @@ class Solver:
                 signatures_matched=signatures_matched,
                 signatures_new=signatures_new,
                 steps_with_injection=steps_with_injection,
+                matched_and_injected=matched_and_injected,
             )
 
         except Exception as e:
@@ -203,6 +216,7 @@ class Solver:
         step: Step,
         problem: str,
         context: dict[str, str],
+        step_descriptions: dict[str, str] = None,
         depth: int = 0,
     ) -> StepResult:
         """Execute a single step.
@@ -212,16 +226,24 @@ class Solver:
         1. Embed step text
         2. Find or create signature
         3. If umbrella, route to child signature
-        4. Try DSL if available
+        4. Try DSL if available (using NL interface for param matching)
         5. Fall back to LLM if needed
         6. Record usage
+
+        Args:
+            step: The step to execute
+            problem: Original problem text
+            context: step_id → result from previous steps
+            step_descriptions: step_id → task description (for NL param matching)
+            depth: Recursion depth for composite steps
         """
+        step_descriptions = step_descriptions or {}
         import time
         start_time = time.time()
 
         # 0. Handle composite steps (recursive DAG of DAGs)
         if step.is_composite:
-            return await self._execute_composite_step(step, problem, context, depth)
+            return await self._execute_composite_step(step, problem, context, step_descriptions, depth)
 
         # 1. Normalize and embed step (strip numbers for better matching)
         normalized_task = normalize_step_text(step.task)
@@ -233,6 +255,7 @@ class Solver:
             embedding=embedding,   # Use normalized embedding for matching
             min_similarity=self.min_similarity,
             parent_problem=problem,
+            origin_depth=depth,  # Track decomposition depth
         )
 
         logger.debug(
@@ -241,13 +264,23 @@ class Solver:
             signature.dsl_type
         )
 
-        # 2.5. Auto-decompose if mandate_dsl and signature is decompose-type
-        if (self.mandate_dsl and
-            signature.dsl_type == "decompose" and
-            not signature.is_semantic_umbrella):
+        # 2.5. Auto-decompose if signature needs children
+        # Case 1: decompose-type that isn't umbrella yet
+        # Case 2: umbrella (possibly auto-demoted) with no children
+        needs_decompose = False
+        if signature.dsl_type == "decompose" and not signature.is_semantic_umbrella:
+            needs_decompose = True
+            reason = "decompose type needs children"
+        elif signature.is_semantic_umbrella:
+            children = self.step_db.get_children(signature.id)
+            if not children:
+                needs_decompose = True
+                reason = "umbrella has no children (auto-demoted?)"
+
+        if needs_decompose:
             logger.info(
-                "[solver] Auto-decomposing '%s' (mandate_dsl + decompose type)",
-                signature.step_type
+                "[solver] Auto-decomposing '%s' (%s)",
+                signature.step_type, reason
             )
             await self._auto_decompose_signature(signature)
             # Refresh signature after decomposition
@@ -259,7 +292,7 @@ class Solver:
         routed_signature = signature
 
         if signature.is_semantic_umbrella:
-            child_result = await self._try_umbrella_routing(signature, step, problem, context)
+            child_result = await self._try_umbrella_routing(signature, step, problem, context, step_descriptions, embedding=embedding)
             if child_result is not None:
                 result, routed_signature, was_injected = child_result
                 logger.info(
@@ -269,32 +302,37 @@ class Solver:
 
         # 4. Try DSL execution if not already routed
         if result is None and routed_signature.dsl_script:
-            dsl_result = await self._try_dsl(routed_signature, step, context)
+            dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
             if dsl_result is not None:
                 result = dsl_result
                 was_injected = True
                 logger.debug("[solver] DSL executed: %s", result[:50] if result else "")
 
-        # 5. Fall back to LLM (unless DSL is mandated)
+        # 5. No LLM fallback - strict DAG execution
+        # Three outcomes: route to child, create child, or fail
         if result is None:
-            if self.mandate_dsl:
-                logger.warning(
-                    "[solver] DSL failed and MANDATE_DSL=True, step failed: %s",
-                    step.task[:50]
-                )
-                result = ""  # Empty result = failure
-            else:
-                result = await self._execute_with_llm(step, problem, context, routed_signature)
+            logger.warning(
+                "[solver] DSL failed, step failed (no LLM fallback): %s",
+                step.task[:50]
+            )
+            result = ""  # Empty result = failure
 
         # 6. Record usage (we don't know success yet, caller will update)
         # For now, assume success if we got a result
         success = bool(result)
-        self.step_db.record_usage(
+        uses = self.step_db.record_usage(
             signature_id=routed_signature.id,
             step_text=step.task,
             success=success,
             was_injected=was_injected,
         )
+
+        # 7. Regenerate DSL on mod 10 uses (continuous learning)
+        # Fire-and-forget: don't block the hot path
+        if uses > 0 and uses % 10 == 0:
+            asyncio.create_task(
+                self._regenerate_dsl_background(routed_signature.id, uses)
+            )
 
         elapsed_ms = (time.time() - start_time) * 1000
 
@@ -315,6 +353,7 @@ class Solver:
         step: Step,
         problem: str,
         context: dict[str, str],
+        step_descriptions: dict[str, str] = None,
         depth: int = 0,
     ) -> StepResult:
         """Execute a composite step by recursively executing its sub-plan.
@@ -324,7 +363,15 @@ class Solver:
         2. Use the sub-plan's final result as this step's result
 
         This enables unlimited recursive nesting: DAG of DAGs of DAGs...
+
+        Args:
+            step: The composite step to execute
+            problem: Original problem text
+            context: step_id → result from parent/sibling steps
+            step_descriptions: step_id → task description (for NL param matching)
+            depth: Recursion depth for nested composites
         """
+        step_descriptions = step_descriptions or {}
         import time
         start_time = time.time()
 
@@ -336,6 +383,7 @@ class Solver:
 
         # Execute sub-plan steps in dependency order
         sub_context = dict(context)  # Inherit parent context
+        sub_step_descriptions = dict(step_descriptions)  # Inherit parent descriptions
         sub_results = []
 
         sub_execution_order = self._get_execution_order(sub_plan)
@@ -353,14 +401,27 @@ class Solver:
                 if k not in step_context
             })
 
+            # Build step descriptions for semantic param matching
+            step_desc_context = {
+                dep: sub_step_descriptions[dep]
+                for dep in sub_step.depends_on
+                if dep in sub_step_descriptions
+            }
+            # Also include parent descriptions
+            step_desc_context.update({
+                k: v for k, v in step_descriptions.items()
+                if k not in step_desc_context
+            })
+
             # Recursively execute (handles nested composites)
             sub_result = await self._execute_step(
-                sub_step, problem, step_context, depth=depth + 1
+                sub_step, problem, step_context, step_desc_context, depth=depth + 1
             )
             sub_results.append(sub_result)
 
-            # Store result for dependent sub-steps
+            # Store result and description for dependent sub-steps
             sub_context[sub_step.id] = sub_result.result
+            sub_step_descriptions[sub_step.id] = sub_step.task
 
         # Aggregate sub-results into composite result
         # The final sub-step's result becomes this step's result
@@ -392,9 +453,13 @@ class Solver:
         step: Step,
         problem: str,
         context: dict[str, str],
+        step_descriptions: dict[str, str] = None,
         visited: Optional[set[int]] = None,
+        embedding: Optional[np.ndarray] = None,
     ) -> Optional[tuple[str, StepSignature, bool]]:
         """Try to route through umbrella to a child signature.
+
+        Uses embedding similarity for fast routing (~0ms) instead of LLM calls.
 
         Returns (result, child_signature, was_injected) or None if no match.
 
@@ -404,7 +469,10 @@ class Solver:
             problem: The original problem text
             context: Results from previous steps
             visited: Set of already-visited umbrella IDs (cycle detection)
+            embedding: Step embedding for similarity-based routing
         """
+        from mycelium.step_signatures.utils import cosine_similarity
+
         # Cycle detection: prevent infinite recursion on malformed DAG
         if visited is None:
             visited = set()
@@ -420,9 +488,38 @@ class Solver:
         if not children:
             return None
 
-        # Build routing prompt for LLM
-        conditions = [f"{i+1}. {cond}" for i, (_, cond) in enumerate(children)]
-        prompt = f"""Given this step: "{step.task}"
+        # Embedding-based routing: compare step embedding to child centroids
+        # This is ~0ms vs ~500ms for LLM routing
+        if embedding is not None:
+            best_child = None
+            best_sim = 0.0
+            best_condition = ""
+
+            for child_sig, condition in children:
+                if child_sig.centroid is not None:
+                    sim = cosine_similarity(embedding, child_sig.centroid)
+                    if sim > best_sim:
+                        best_sim = sim
+                        best_child = child_sig
+                        best_condition = condition
+
+            # Use embedding match if similarity is reasonable (> 0.5)
+            if best_child and best_sim > 0.5:
+                logger.debug(
+                    "[solver] Umbrella routing (embedding): '%s' → '%s' (sim=%.3f)",
+                    umbrella.step_type, best_child.step_type, best_sim
+                )
+                child_sig = best_child
+            else:
+                logger.debug(
+                    "[solver] Umbrella routing: no good embedding match (best=%.3f)",
+                    best_sim
+                )
+                return None
+        else:
+            # Fallback to LLM routing if no embedding available
+            conditions = [f"{i+1}. {cond}" for i, (_, cond) in enumerate(children)]
+            prompt = f"""Given this step: "{step.task}"
 
 Which of these sub-categories best matches?
 {chr(10).join(conditions)}
@@ -430,44 +527,44 @@ Which of these sub-categories best matches?
 
 Respond with ONLY the number (0-{len(children)})."""
 
-        messages = [{"role": "user", "content": prompt}]
-        response = await self.solver_client.generate(messages, temperature=0.0)
+            messages = [{"role": "user", "content": prompt}]
+            response = await self.solver_client.generate(messages, temperature=0.0)
 
-        # Parse response - robust regex extraction
-        choice = 0
-        match = re.search(r'\b([0-9]+)\b', response)
-        if match:
-            try:
-                choice = int(match.group(1))
-            except ValueError:
-                pass
+            # Parse response - robust regex extraction
+            choice = 0
+            match = re.search(r'\b([0-9]+)\b', response)
+            if match:
+                try:
+                    choice = int(match.group(1))
+                except ValueError:
+                    pass
 
-        if choice <= 0 or choice > len(children):
+            if choice <= 0 or choice > len(children):
+                logger.debug(
+                    "[solver] Umbrella routing: no valid choice from response '%s'",
+                    response[:50]
+                )
+                return None
+
+            child_sig, _ = children[choice - 1]
             logger.debug(
-                "[solver] Umbrella routing: no valid choice from response '%s'",
-                response[:50]
+                "[solver] Umbrella routing (LLM) selected child %d: %s",
+                choice, child_sig.step_type
             )
-            return None
 
-        child_sig, condition = children[choice - 1]
-        logger.debug(
-            "[solver] Umbrella routing selected child %d: %s",
-            choice, child_sig.step_type
-        )
-
-        # Recurse if child is also an umbrella (pass visited set)
+        # Recurse if child is also an umbrella (pass visited set and embedding)
         if child_sig.is_semantic_umbrella:
             return await self._try_umbrella_routing(
-                child_sig, step, problem, context, visited
+                child_sig, step, problem, context, step_descriptions, visited, embedding
             )
 
         # Try child's DSL
         if child_sig.dsl_script:
-            dsl_result = await self._try_dsl(child_sig, step, context)
+            dsl_result = await self._try_dsl(child_sig, step, context, step_descriptions)
             if dsl_result is not None:
                 return (dsl_result, child_sig, True)
 
-        # Return child for LLM fallback
+        # Return child for DSL execution (no LLM fallback)
         return (None, child_sig, False)
 
     async def _try_dsl(
@@ -475,11 +572,14 @@ Respond with ONLY the number (0-{len(children)})."""
         signature: StepSignature,
         step: Step,
         context: dict[str, str],
+        step_descriptions: dict[str, str] = None,
     ) -> Optional[str]:
         """Try to execute a DSL script.
 
         Uses step.extracted_values (from planner) and context for params.
+        Uses signature's param_descriptions + step_descriptions for semantic matching.
         """
+        step_descriptions = step_descriptions or {}
         if not signature.dsl_script:
             return None
 
@@ -518,6 +618,22 @@ Respond with ONLY the number (0-{len(children)})."""
                     except (ValueError, TypeError):
                         params[key] = value
 
+            # Use NL interface for semantic param mapping
+            # Match signature's param_descriptions against step_descriptions
+            if signature.param_descriptions and step_descriptions and dsl_spec.params:
+                nl_mapped = self._semantic_map_params(
+                    dsl_spec.params,
+                    signature.param_descriptions,
+                    context,
+                    step_descriptions,
+                )
+                if nl_mapped:
+                    logger.debug("[solver] NL interface mapped params: %s", nl_mapped)
+                    # Add NL-mapped params (don't override existing)
+                    for param, value in nl_mapped.items():
+                        if param not in params:
+                            params[param] = value
+
             # Fall back to extracting from step text if no params yet
             if not params:
                 params = self._extract_params(signature, step.task, context, dsl_spec)
@@ -539,10 +655,106 @@ Respond with ONLY the number (0-{len(children)})."""
                 logger.info("[solver] DSL injection success: %s → %s", step.task[:30], result)
                 return str(result)
 
+            # NOTE: LLM script rewriting is available but disabled by default
+            # It can help with param name mismatches but may produce wrong results
+            # when the matched signature's operation doesn't match the step's intent
+            # Uncomment to enable:
+            # if not success and params and dsl_spec.layer.value == "math":
+            #     rewritten_script = await llm_rewrite_script(dsl_spec, params, self.solver_client, current_step_task=step.task)
+            #     if rewritten_script and rewritten_script != dsl_spec.script:
+            #         rewritten_result = try_execute_dsl_math(rewritten_script, params)
+            #         if rewritten_result is not None:
+            #             return str(rewritten_result)
+
         except Exception as e:
             logger.debug("[solver] DSL execution failed: %s", e)
 
         return None
+
+    def _semantic_map_params(
+        self,
+        dsl_params: list[str],
+        param_descriptions: dict[str, str],
+        context: dict[str, str],
+        step_descriptions: dict[str, str],
+    ) -> dict:
+        """Map DSL params to context values using NL interface semantic matching.
+
+        Uses param_descriptions (from signature's NL interface) to find which
+        context step's description best matches each param's meaning.
+
+        Example:
+            param_descriptions = {"base": "The number being raised to a power"}
+            step_descriptions = {"step_1": "Calculate the base value"}
+            → "base" matches "step_1" because descriptions are similar
+
+        Args:
+            dsl_params: List of param names from DSL spec
+            param_descriptions: Param name → description from signature
+            context: step_id → result value
+            step_descriptions: step_id → task description
+
+        Returns:
+            Dict mapping param_name → value from context
+        """
+        mapped = {}
+        used_steps = set()
+
+        for param in dsl_params:
+            # Get param's semantic description
+            param_desc = param_descriptions.get(param, "").lower()
+            if not param_desc:
+                continue
+
+            best_match = None
+            best_score = 0.0
+            param_lower = param.lower().replace("_", " ")
+
+            for step_id, step_desc in step_descriptions.items():
+                if step_id in used_steps:
+                    continue
+                if step_id not in context:
+                    continue
+
+                step_desc_lower = step_desc.lower()
+                score = 0.0
+
+                # Score 1: Param description words appear in step description
+                param_words = set(param_desc.split())
+                step_words = set(step_desc_lower.split())
+                overlap = param_words & step_words
+                if overlap:
+                    # More overlap = better match
+                    score = len(overlap) / max(len(param_words), 1)
+
+                # Score 2: Param name appears in step description
+                if param_lower in step_desc_lower:
+                    score = max(score, 0.8)
+
+                # Score 3: Key semantic words match
+                semantic_keywords = {"calculate", "compute", "find", "determine", "get"}
+                if any(kw in step_desc_lower for kw in semantic_keywords):
+                    # Step is a computation - boost if param desc also mentions computation
+                    if any(kw in param_desc for kw in semantic_keywords):
+                        score += 0.1
+
+                if score > best_score:
+                    best_score = score
+                    best_match = step_id
+
+            if best_match and best_score >= 0.3:
+                # Get value from context
+                try:
+                    mapped[param] = float(context[best_match])
+                except (ValueError, TypeError):
+                    mapped[param] = context[best_match]
+                used_steps.add(best_match)
+                logger.debug(
+                    "[solver] NL mapped param '%s' (%s) → %s (score=%.2f)",
+                    param, param_desc[:30], best_match, best_score
+                )
+
+        return mapped
 
     def _extract_params(
         self,
@@ -590,104 +802,47 @@ Respond with ONLY the number (0-{len(children)})."""
 
         return params
 
-    async def _execute_with_llm(
-        self,
-        step: Step,
-        problem: str,
-        context: dict[str, str],
-        signature: StepSignature,
-    ) -> str:
-        """Execute step using LLM.
-
-        Uses signature description and examples if available.
-        """
-        # Build prompt
-        prompt_parts = [
-            "Execute this step and return ONLY the numeric or symbolic result.",
-            "",
-            f"Original problem: {problem}",
-            f"Step to execute: {step.task}",
-        ]
-
-        # Add context from previous steps
-        if context:
-            prompt_parts.append("")
-            prompt_parts.append("Results from previous steps:")
-            for step_id, result in context.items():
-                prompt_parts.append(f"  {step_id}: {result}")
-
-        # Add signature info if helpful
-        if signature.description and signature.description != step.task:
-            prompt_parts.append("")
-            prompt_parts.append(f"This is a '{signature.step_type}' operation: {signature.description}")
-
-        # Add examples if available
-        if signature.examples:
-            prompt_parts.append("")
-            prompt_parts.append("Similar examples:")
-            for ex in signature.examples[:2]:
-                prompt_parts.append(f"  Input: {ex.get('input', '')} → Result: {ex.get('result', '')}")
-
-        prompt_parts.append("")
-        prompt_parts.append("Return ONLY the final numeric or symbolic result, nothing else.")
-
-        prompt = "\n".join(prompt_parts)
-
-        # Execute with optional self-consistency
-        if SELF_CONSISTENCY_ENABLED:
-            result = await self._execute_with_self_consistency(prompt)
-        else:
-            messages = [{"role": "user", "content": prompt}]
-            response = await self.solver_client.generate(messages)
-            result = self._extract_result(response)
-
-        return result
-
-    async def _execute_with_self_consistency(self, prompt: str) -> str:
-        """Execute with self-consistency (multiple samples + voting)."""
-        from collections import Counter
-
-        messages = [{"role": "user", "content": prompt}]
-        results = []
-
-        # Sample N times in parallel
-        async def sample():
-            try:
-                response = await self.solver_client.generate(
-                    messages,
-                    temperature=SELF_CONSISTENCY_TEMPERATURE,
-                )
-                return self._extract_result(response)
-            except Exception as e:
-                logger.warning("[solver] Self-consistency sample failed: %s", e)
-                return ""
-
-        tasks = [sample() for _ in range(SELF_CONSISTENCY_SAMPLES)]
-        results = await asyncio.gather(*tasks)
-
-        # Filter empty results
-        valid_results = [r for r in results if r]
-        if not valid_results:
+    def _extract_json_result(self, response: str) -> str:
+        """Extract result from JSON response (may be embedded in text)."""
+        if not response:
             return ""
 
-        # Vote on most common result (normalize numbers)
-        normalized = []
-        for r in valid_results:
+        import json
+
+        # Try to find JSON object in response
+        # Look for {"result": ...} pattern
+        json_match = re.search(r'\{[^{}]*"result"[^{}]*\}', response)
+        if json_match:
             try:
-                normalized.append(str(float(r)))
-            except ValueError:
-                normalized.append(r.lower().strip())
+                data = json.loads(json_match.group())
+                result = data.get("result", "")
+                # Handle numeric results
+                if isinstance(result, (int, float)):
+                    # Format integers without decimal
+                    if isinstance(result, float) and result == int(result):
+                        return str(int(result))
+                    return str(result)
+                return str(result).strip()
+            except json.JSONDecodeError:
+                pass
 
-        vote_counts = Counter(normalized)
-        winner_norm, count = vote_counts.most_common(1)[0]
+        # Try to find {"answer": ...} pattern
+        json_match = re.search(r'\{[^{}]*"answer"[^{}]*\}', response)
+        if json_match:
+            try:
+                data = json.loads(json_match.group())
+                answer = data.get("answer", "")
+                if isinstance(answer, (int, float)):
+                    if isinstance(answer, float) and answer == int(answer):
+                        return str(int(answer))
+                    return str(answer)
+                return str(answer).strip()
+            except json.JSONDecodeError:
+                pass
 
-        # Return original form of winner
-        for orig, norm in zip(valid_results, normalized):
-            if norm == winner_norm:
-                logger.debug("[solver] Self-consistency: %s (votes=%d/%d)", orig, count, len(valid_results))
-                return orig
-
-        return valid_results[0]
+        # Fallback to regex extraction
+        logger.debug("[solver] JSON extraction failed, using regex")
+        return self._extract_result(response)
 
     def _extract_result(self, response: str) -> str:
         """Extract numeric/symbolic result from LLM response."""
@@ -721,7 +876,7 @@ Respond with ONLY the number (0-{len(children)})."""
         step_results: list[StepResult],
         context: dict[str, str],
     ) -> str:
-        """Synthesize final answer from step results."""
+        """Synthesize final answer from step results using JSON mode."""
         # If only one step, return its result
         if len(step_results) == 1:
             return step_results[0].result
@@ -739,14 +894,18 @@ Respond with ONLY the number (0-{len(children)})."""
             prompt_parts.append(f"  {result.step_id}: {result.task}")
             prompt_parts.append(f"    Result: {result.result}")
 
+        # Request JSON output (include "JSON" for Groq compatibility)
         prompt_parts.append("")
-        prompt_parts.append("Final answer (ONLY the numeric or symbolic result):")
+        prompt_parts.append('Respond with valid JSON: {"result": <final_answer>}')
 
         prompt = "\n".join(prompt_parts)
         messages = [{"role": "user", "content": prompt}]
 
-        response = await self.solver_client.generate(messages)
-        return self._extract_result(response)
+        response = await self.solver_client.generate(
+            messages,
+            response_format={"type": "json_object"},
+        )
+        return self._extract_json_result(response)
 
     def _get_execution_order(self, plan: DAGPlan) -> list[Step]:
         """Get steps in dependency-respecting execution order."""
@@ -825,7 +984,7 @@ Respond with ONLY the number (0-{len(children)})."""
     async def _auto_decompose_signature(self, signature) -> bool:
         """Auto-decompose a decompose-type signature into computable children.
 
-        Called when mandate_dsl=True and we encounter a decompose-type signature.
+        Called when we encounter a decompose-type signature that needs children.
         Creates children with actual DSLs and promotes parent to umbrella.
 
         Args:
@@ -871,6 +1030,22 @@ Respond with ONLY the number (0-{len(children)})."""
 
         logger.info("[solver] Auto-triggering umbrella learning for %d candidates", len(candidates))
         return await self.learn_umbrellas()
+
+    async def _regenerate_dsl_background(self, signature_id: int, uses: int) -> None:
+        """Background task to regenerate DSL without blocking hot path."""
+        try:
+            regenerated = await regenerate_dsl(
+                db=self.step_db,
+                client=self.solver_client,
+                signature_id=signature_id,
+            )
+            if regenerated:
+                logger.info(
+                    "[solver] Regenerated DSL for signature %d at %d uses",
+                    signature_id, uses
+                )
+        except Exception as e:
+            logger.warning("[solver] DSL regeneration failed: %s", e)
 
     async def learn_umbrellas(self) -> dict:
         """Learn umbrella structure from failing guidance signatures.

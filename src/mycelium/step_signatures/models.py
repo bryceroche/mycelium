@@ -42,7 +42,10 @@ class StepSignature:
     signature_id: str = ""
 
     # Embedding (768-dim MathBERT centroid)
+    # centroid = embedding_sum / embedding_count (running average)
     centroid: Optional[np.ndarray] = None
+    embedding_sum: Optional[np.ndarray] = None  # Running sum of all matched embeddings
+    embedding_count: int = 1  # Number of embeddings in sum
 
     # Identity
     step_type: str = ""  # e.g., "compute_power", "find_gcd"
@@ -65,6 +68,7 @@ class StepSignature:
 
     # Umbrella routing (DAG of DAGs)
     is_semantic_umbrella: bool = False  # True if routes to children
+    depth: int = 0  # Routing depth (0=root, increases with parent-child hops)
 
     # Metadata
     created_at: Optional[str] = None
@@ -162,7 +166,7 @@ class StepSignature:
             except json.JSONDecodeError:
                 pass
 
-        # Parse centroid
+        # Parse centroid and embedding_sum
         centroid = None
         if row.get("centroid"):
             try:
@@ -170,10 +174,21 @@ class StepSignature:
             except (json.JSONDecodeError, ValueError):
                 pass
 
+        embedding_sum = None
+        if row.get("embedding_sum"):
+            try:
+                embedding_sum = np.array(json.loads(row["embedding_sum"]))
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        embedding_count = row.get("embedding_count", 1) or 1
+
         return cls(
             id=row.get("id"),
             signature_id=row.get("signature_id", ""),
             centroid=centroid,
+            embedding_sum=embedding_sum,
+            embedding_count=embedding_count,
             step_type=row.get("step_type", ""),
             description=row.get("description", ""),
             clarifying_questions=clarifying_questions,
@@ -184,6 +199,7 @@ class StepSignature:
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
+            depth=row.get("depth", 0) or 0,
             created_at=row.get("created_at"),
             last_used_at=row.get("last_used_at"),
         )

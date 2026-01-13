@@ -22,7 +22,10 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     signature_id TEXT UNIQUE NOT NULL,
 
     -- Embedding (768-dim MathBERT)
-    centroid TEXT NOT NULL,
+    -- centroid = embedding_sum / embedding_count (computed on read)
+    centroid TEXT NOT NULL,           -- Current centroid (for index/queries)
+    embedding_sum TEXT,               -- Running sum of all matched embeddings
+    embedding_count INTEGER DEFAULT 1, -- Number of embeddings in sum
 
     -- Identity
     step_type TEXT NOT NULL,  -- e.g., "compute_power", "find_gcd"
@@ -45,6 +48,7 @@ CREATE TABLE IF NOT EXISTS step_signatures (
 
     -- Umbrella routing (DAG of DAGs)
     is_semantic_umbrella INTEGER DEFAULT 0,  -- 1 if routes to children
+    depth INTEGER DEFAULT 0,  -- Routing depth (0=root, increases with parent-child hops)
 
     -- Metadata
     created_at TEXT NOT NULL,
@@ -54,6 +58,7 @@ CREATE TABLE IF NOT EXISTS step_signatures (
 CREATE INDEX IF NOT EXISTS idx_sig_id ON step_signatures(signature_id);
 CREATE INDEX IF NOT EXISTS idx_sig_type ON step_signatures(step_type);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_sig_centroid ON step_signatures(centroid);
+CREATE INDEX IF NOT EXISTS idx_sig_depth ON step_signatures(depth);
 
 -- =============================================================================
 -- SIGNATURE RELATIONSHIPS: DAG of parent-child routing
@@ -124,6 +129,48 @@ def init_db(conn) -> None:
     """Initialize the V2 database schema."""
     conn.executescript(SQLITE_SCHEMA)
     conn.commit()
+    # Run migrations for existing DBs
+    migrate_db(conn)
+
+
+def migrate_db(conn) -> None:
+    """Run migrations to add new columns to existing databases.
+
+    This is safe to run multiple times - it only adds columns that don't exist.
+    """
+    # Check which columns exist
+    cursor = conn.execute("PRAGMA table_info(step_signatures)")
+    existing_cols = {row[1] for row in cursor.fetchall()}
+
+    migrations = []
+
+    # Add embedding_sum if missing
+    if "embedding_sum" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN embedding_sum TEXT"
+        )
+
+    # Add embedding_count if missing
+    if "embedding_count" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN embedding_count INTEGER DEFAULT 1"
+        )
+
+    # Add depth if missing
+    if "depth" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN depth INTEGER DEFAULT 0"
+        )
+
+    # Run migrations
+    for sql in migrations:
+        try:
+            conn.execute(sql)
+        except Exception:
+            pass  # Column might already exist in some edge cases
+
+    if migrations:
+        conn.commit()
 
 
 STEP_SCHEMA = SQLITE_SCHEMA
