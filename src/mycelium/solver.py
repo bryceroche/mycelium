@@ -165,6 +165,27 @@ class Solver:
                 result = await self._execute_step(step, problem, step_context, step_desc_context)
                 step_results.append(result)
 
+                # Abort DAG on step failure (prevent cascading empty strings)
+                if not result.success:
+                    logger.warning(
+                        "[solver] Step failed, aborting DAG: step=%s task='%s'",
+                        step.id, step.task[:50]
+                    )
+                    elapsed_ms = (time.time() - start_time) * 1000
+                    return SolverResult(
+                        problem=problem,
+                        answer="",
+                        success=False,
+                        error=f"Step {step.id} failed: {step.task[:100]}",
+                        steps=step_results,
+                        elapsed_ms=elapsed_ms,
+                        total_steps=len(step_results),
+                        signatures_matched=signatures_matched,
+                        signatures_new=signatures_new,
+                        steps_with_injection=steps_with_injection,
+                        matched_and_injected=matched_and_injected,
+                    )
+
                 # Track stats
                 if result.is_new_signature:
                     signatures_new += 1
@@ -426,7 +447,8 @@ class Solver:
         # Aggregate sub-results into composite result
         # The final sub-step's result becomes this step's result
         final_result = sub_results[-1].result if sub_results else ""
-        all_success = all(r.success for r in sub_results)
+        # Empty sub_results should be considered failure (not vacuous truth)
+        all_success = bool(sub_results) and all(r.success for r in sub_results)
 
         elapsed_ms = (time.time() - start_time) * 1000
 
