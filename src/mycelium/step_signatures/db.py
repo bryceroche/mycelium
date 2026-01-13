@@ -385,50 +385,55 @@ class StepSignatureDB:
             new_embedding: The new embedding to add to the running average
         """
         with self._connection() as conn:
-            # Get current sum and count
-            row = conn.execute(
-                "SELECT embedding_sum, embedding_count FROM step_signatures WHERE id = ?",
-                (signature_id,)
-            ).fetchone()
+            # Use BEGIN IMMEDIATE for atomic read-modify-write
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                # Fetch centroid too to avoid stale fallback race condition
+                row = conn.execute(
+                    "SELECT embedding_sum, embedding_count, centroid FROM step_signatures WHERE id = ?",
+                    (signature_id,)
+                ).fetchone()
 
-            if not row:
-                logger.warning("[db] Cannot update centroid: signature %d not found", signature_id)
-                return
+                if not row:
+                    logger.warning("[db] Cannot update centroid: signature %d not found", signature_id)
+                    conn.rollback()
+                    return
 
-            # Parse current sum (or initialize from None)
-            current_sum = None
-            if row["embedding_sum"]:
-                current_sum = unpack_embedding(row["embedding_sum"])
+                # Parse current sum (or initialize from fresh centroid)
+                if row["embedding_sum"]:
+                    current_sum = unpack_embedding(row["embedding_sum"])
+                    current_count = row["embedding_count"] or 1
+                else:
+                    # Initialize from fresh centroid if no sum yet (migration case)
+                    fresh_centroid = unpack_embedding(row["centroid"])
+                    current_sum = fresh_centroid.copy() if fresh_centroid is not None else new_embedding.copy()
+                    current_count = 1 if fresh_centroid is not None else 0
 
-            current_count = row["embedding_count"] or 1
+                # Update running sum and count
+                new_sum = current_sum + new_embedding
+                new_count = current_count + 1
 
-            # If no sum exists, initialize from new embedding
-            if current_sum is None:
-                current_sum = new_embedding.copy()
-                current_count = 0  # Will be incremented to 1
+                # Compute new centroid
+                new_centroid = new_sum / new_count
 
-            # Update running sum and count
-            new_sum = current_sum + new_embedding
-            new_count = current_count + 1
+                # Pack and store
+                new_sum_packed = pack_embedding(new_sum)
+                new_centroid_packed = pack_embedding(new_centroid)
 
-            # Compute new centroid
-            new_centroid = new_sum / new_count
-
-            # Pack and store
-            new_sum_packed = pack_embedding(new_sum)
-            new_centroid_packed = pack_embedding(new_centroid)
-
-            conn.execute(
-                """UPDATE step_signatures
-                   SET embedding_sum = ?, embedding_count = ?, centroid = ?
-                   WHERE id = ?""",
-                (new_sum_packed, new_count, new_centroid_packed, signature_id),
-            )
-
-            logger.debug(
-                "[db] Updated centroid for sig %d: count=%d",
-                signature_id, new_count
-            )
+                conn.execute(
+                    """UPDATE step_signatures
+                       SET embedding_sum = ?, embedding_count = ?, centroid = ?
+                       WHERE id = ?""",
+                    (new_sum_packed, new_count, new_centroid_packed, signature_id),
+                )
+                conn.commit()
+                logger.debug(
+                    "[db] Updated centroid for sig %d: count=%d",
+                    signature_id, new_count
+                )
+            except Exception:
+                conn.rollback()
+                raise
 
     # =========================================================================
     # Usage Recording
