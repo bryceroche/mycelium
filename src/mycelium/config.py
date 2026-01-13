@@ -49,8 +49,6 @@ DSL_VALUE_TYPE_THRESHOLD = 0.15  # Threshold for value type matching
 DSL_STEP_TYPE_ALIGNMENT_THRESHOLD = 0.20  # Threshold for step type alignment
 DSL_PARAM_MATCH_THRESHOLD = 0.50  # Min score to accept param match
 DSL_PARAM_EXACT_MATCH_SCORE = 0.95  # Score for exact param name match
-DSL_REWRITE_CONFIDENCE_THRESHOLD = 0.50  # Min confidence for rewritten scripts
-DSL_LLM_FALLBACK_THRESHOLD = 0.30  # Threshold for LLM fallback (when enabled)
 DSL_GENERATOR_MIN_SUCCESS_RATE = 0.80  # Min success rate for DSL generation
 
 # Negative example threshold

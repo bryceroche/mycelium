@@ -32,7 +32,7 @@ from mycelium.config import (
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
 from mycelium.step_signatures.db import normalize_step_text
-from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, llm_rewrite_script, try_execute_dsl_math
+from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.embedder import Embedder
 
@@ -731,17 +731,6 @@ Respond with ONLY the number (0-{len(children)})."""
                 logger.info("[solver] DSL injection success: %s → %s", step.task[:30], result)
                 return str(result)
 
-            # NOTE: LLM script rewriting is available but disabled by default
-            # It can help with param name mismatches but may produce wrong results
-            # when the matched signature's operation doesn't match the step's intent
-            # Uncomment to enable:
-            # if not success and params and dsl_spec.layer.value == "math":
-            #     rewritten_script = await llm_rewrite_script(dsl_spec, params, self.solver_client, current_step_task=step.task)
-            #     if rewritten_script and rewritten_script != dsl_spec.script:
-            #         rewritten_result = try_execute_dsl_math(rewritten_script, params)
-            #         if rewritten_result is not None:
-            #             return str(rewritten_result)
-
         except Exception as e:
             logger.debug("[solver] DSL execution failed: %s", e)
 
@@ -863,6 +852,20 @@ Respond with ONLY the number (0-{len(children)})."""
                     params[param_names[i]] = float(num)
                 except ValueError:
                     params[param_names[i]] = num
+            else:
+                # Capture extra numbers with generic keys (don't drop silently)
+                try:
+                    params[f"extra_{i}"] = float(num)
+                except ValueError:
+                    params[f"extra_{i}"] = num
+
+        # Log if we had more numbers than expected params
+        if len(numbers) > len(param_names):
+            logger.warning(
+                "[solver] Parameter extraction: %d numbers found but only %d params defined "
+                "(extras captured as extra_N keys)",
+                len(numbers), len(param_names)
+            )
 
         # Add context values (may contain results from previous steps)
         for key, value in context.items():
