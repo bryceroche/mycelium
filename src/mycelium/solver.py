@@ -26,6 +26,7 @@ from mycelium.config import (
     RECURSIVE_DECOMPOSITION_ENABLED,
     RECURSIVE_MAX_DEPTH,
     RECURSIVE_CONFIDENCE_THRESHOLD,
+    UMBRELLA_MAX_DEPTH,
 )
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
@@ -490,6 +491,7 @@ class Solver:
         step_descriptions: dict[str, str] = None,
         visited: Optional[set[int]] = None,
         embedding: Optional[np.ndarray] = None,
+        depth: int = 0,
     ) -> Optional[tuple[str, StepSignature, bool]]:
         """Try to route through umbrella to a child signature.
 
@@ -504,8 +506,17 @@ class Solver:
             context: Results from previous steps
             visited: Set of already-visited umbrella IDs (cycle detection)
             embedding: Step embedding for similarity-based routing
+            depth: Current recursion depth (for limiting chain length)
         """
         from mycelium.step_signatures.utils import cosine_similarity
+
+        # Depth limit: prevent unbounded recursion through long umbrella chains
+        if depth >= UMBRELLA_MAX_DEPTH:
+            logger.warning(
+                "[solver] Umbrella routing depth limit reached: depth=%d, umbrella=%s",
+                depth, umbrella.step_type
+            )
+            return None
 
         # Cycle detection: prevent infinite recursion on malformed DAG
         if visited is None:
@@ -586,10 +597,11 @@ Respond with ONLY the number (0-{len(children)})."""
                 choice, child_sig.step_type
             )
 
-        # Recurse if child is also an umbrella (pass visited set and embedding)
+        # Recurse if child is also an umbrella (pass visited set, embedding, and depth)
         if child_sig.is_semantic_umbrella:
             return await self._try_umbrella_routing(
-                child_sig, step, problem, context, step_descriptions, visited, embedding
+                child_sig, step, problem, context, step_descriptions, visited, embedding,
+                depth=depth + 1
             )
 
         # Try child's DSL
@@ -843,36 +855,52 @@ Respond with ONLY the number (0-{len(children)})."""
 
         import json
 
-        # Try to find JSON object in response
-        # Look for {"result": ...} pattern
-        json_match = re.search(r'\{[^{}]*"result"[^{}]*\}', response)
-        if json_match:
-            try:
-                data = json.loads(json_match.group())
-                result = data.get("result", "")
-                # Handle numeric results
-                if isinstance(result, (int, float)):
-                    # Format integers without decimal
-                    if isinstance(result, float) and result == int(result):
-                        return str(int(result))
-                    return str(result)
-                return str(result).strip()
-            except json.JSONDecodeError:
-                pass
+        def format_result(value):
+            """Format a result value for output."""
+            if isinstance(value, (int, float)):
+                if isinstance(value, float) and value == int(value):
+                    return str(int(value))
+                return str(value)
+            return str(value).strip()
 
-        # Try to find {"answer": ...} pattern
-        json_match = re.search(r'\{[^{}]*"answer"[^{}]*\}', response)
-        if json_match:
-            try:
-                data = json.loads(json_match.group())
-                answer = data.get("answer", "")
-                if isinstance(answer, (int, float)):
-                    if isinstance(answer, float) and answer == int(answer):
-                        return str(int(answer))
-                    return str(answer)
-                return str(answer).strip()
-            except json.JSONDecodeError:
-                pass
+        # Try parsing entire response as JSON first
+        try:
+            data = json.loads(response.strip())
+            if isinstance(data, dict):
+                if "result" in data:
+                    return format_result(data["result"])
+                if "answer" in data:
+                    return format_result(data["answer"])
+        except json.JSONDecodeError:
+            pass
+
+        # Find JSON objects with balanced braces (handles nested objects)
+        for key in ("result", "answer"):
+            pattern = f'"{key}"'
+            if pattern not in response:
+                continue
+
+            # Find all { positions and try parsing from each
+            for i, char in enumerate(response):
+                if char != '{':
+                    continue
+                # Try to find balanced closing brace
+                depth = 0
+                for j in range(i, len(response)):
+                    if response[j] == '{':
+                        depth += 1
+                    elif response[j] == '}':
+                        depth -= 1
+                        if depth == 0:
+                            # Found balanced braces, try parsing
+                            candidate = response[i:j+1]
+                            try:
+                                data = json.loads(candidate)
+                                if isinstance(data, dict) and key in data:
+                                    return format_result(data[key])
+                            except json.JSONDecodeError:
+                                pass
+                            break
 
         # Fallback to regex extraction
         logger.debug("[solver] JSON extraction failed, using regex")

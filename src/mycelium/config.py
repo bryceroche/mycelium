@@ -134,6 +134,7 @@ RECURSIVE_DECOMPOSITION_ENABLED = True  # Enable decomposition for complex steps
 RECURSIVE_MAX_DEPTH = 9  # Max routing depth: deep decomposition for complex problems
 RECURSIVE_CONFIDENCE_THRESHOLD = 0.8  # Route deeper when DSL confidence < this
 RECURSIVE_MAX_TOTAL_STEPS = 50
+UMBRELLA_MAX_DEPTH = 10  # Max depth for umbrella routing chains
 
 # =============================================================================
 # DATABASE
