@@ -191,8 +191,9 @@ class StepSignatureDB:
 
                     # Update centroid with new embedding (running average)
                     # Do this inline to stay within the transaction
+                    # IMPORTANT: Fetch centroid too to avoid stale fallback race condition
                     row = conn.execute(
-                        "SELECT embedding_sum, embedding_count FROM step_signatures WHERE id = ?",
+                        "SELECT embedding_sum, embedding_count, centroid FROM step_signatures WHERE id = ?",
                         (best_match.id,)
                     ).fetchone()
 
@@ -200,8 +201,10 @@ class StepSignatureDB:
                         current_sum = unpack_embedding(row["embedding_sum"])
                         current_count = row["embedding_count"] or 1
                     else:
-                        # Initialize from current centroid if no sum yet (migration case)
-                        current_sum = best_match.centroid.copy() if best_match.centroid is not None else embedding.copy()
+                        # Initialize from fresh centroid if no sum yet (migration case)
+                        # Use freshly-read centroid, not stale best_match.centroid
+                        fresh_centroid = unpack_embedding(row["centroid"]) if row else None
+                        current_sum = fresh_centroid.copy() if fresh_centroid is not None else embedding.copy()
                         current_count = 1
 
                     new_sum = current_sum + embedding
@@ -474,12 +477,13 @@ class StepSignatureDB:
             )
 
             # Only increment uses count here, NOT successes
-            # Successes are updated by update_problem_outcome() after grading
+            # Successes and last_used_at are updated by update_problem_outcome() after grading
+            # (last_used_at only updates on success to prevent stale signatures staying fresh)
             conn.execute(
                 """UPDATE step_signatures
-                   SET uses = uses + 1, last_used_at = ?
+                   SET uses = uses + 1
                    WHERE id = ?""",
-                (now, signature_id),
+                (signature_id,),
             )
 
             # Get current stats for auto-demotion check
@@ -579,15 +583,18 @@ class StepSignatureDB:
         if not signature_ids:
             return
 
+        now = datetime.now().isoformat()
+
         with self._connection() as conn:
             if problem_correct:
-                # Increment success count for all signatures used (full credit)
+                # Increment success count and update last_used_at for all signatures used
+                # (last_used_at only updates on success to properly penalize stale failures)
                 placeholders = ",".join("?" * len(signature_ids))
                 conn.execute(
                     f"""UPDATE step_signatures
-                       SET successes = successes + 1
+                       SET successes = successes + 1, last_used_at = ?
                        WHERE id IN ({placeholders})""",
-                    signature_ids,
+                    [now] + signature_ids,
                 )
                 logger.debug(
                     "[db] Problem correct: incremented successes for %d signatures",
