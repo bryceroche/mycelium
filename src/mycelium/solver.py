@@ -392,9 +392,9 @@ class Solver:
         )
 
         # 7. Regenerate DSL on mod 10 uses (continuous learning)
-        # Fire-and-forget: don't block the hot path
+        # Background task: don't block the hot path
         if uses > 0 and uses % 10 == 0:
-            asyncio.create_task(
+            self._create_background_task(
                 self._regenerate_dsl_background(routed_signature.id, uses)
             )
 
