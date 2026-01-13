@@ -578,8 +578,8 @@ class Solver:
                         best_child = child_sig
                         best_condition = condition
 
-            # Use embedding match if similarity is reasonable (> 0.5)
-            if best_child and best_sim > 0.5:
+            # Use embedding match if similarity is reasonable
+            if best_child and best_sim > UMBRELLA_ROUTING_THRESHOLD:
                 logger.debug(
                     "[solver] Umbrella routing (embedding): '%s' → '%s' (sim=%.3f)",
                     umbrella.step_type, best_child.step_type, best_sim
