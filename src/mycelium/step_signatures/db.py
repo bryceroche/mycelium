@@ -946,6 +946,29 @@ class StepSignatureDB:
         now = datetime.utcnow().isoformat()
 
         with self._connection() as conn:
+            # Cycle prevention: check if parent is already a descendant of child
+            # (adding parent -> child would create child -> ... -> parent -> child cycle)
+            cycle_check = conn.execute(
+                """
+                WITH RECURSIVE ancestors AS (
+                    SELECT parent_id FROM signature_relationships WHERE child_id = ?
+                    UNION ALL
+                    SELECT sr.parent_id
+                    FROM signature_relationships sr
+                    JOIN ancestors a ON sr.child_id = a.parent_id
+                )
+                SELECT 1 FROM ancestors WHERE parent_id = ? LIMIT 1
+                """,
+                (parent_id, child_id),
+            ).fetchone()
+
+            if cycle_check:
+                logger.warning(
+                    "[db] Rejecting cycle-creating relationship: %d -> %d (child is ancestor of parent)",
+                    parent_id, child_id
+                )
+                return False
+
             try:
                 # Get parent's depth to set child's depth
                 parent_row = conn.execute(
