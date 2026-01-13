@@ -12,7 +12,11 @@ This is the "smart work once, execute forever" approach:
 
 import json
 import logging
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mycelium.step_signatures.db import StepSignatureDB
+    from mycelium.client import GroqClient
 
 logger = logging.getLogger(__name__)
 
@@ -208,8 +212,8 @@ def _extract_json(text: str) -> Optional[str]:
 
 
 async def maybe_generate_dsl(
-    db,  # StepSignatureDB
-    client,  # GroqClient
+    db: "StepSignatureDB",
+    client: "GroqClient",
     signature_id: int,
     min_uses: int = 3,
     min_success_rate: float = 0.8,
@@ -258,6 +262,61 @@ async def maybe_generate_dsl(
     if dsl_script:
         db.update_dsl_script(signature_id, dsl_script)
         logger.info("Generated and saved DSL for signature %d", signature_id)
+        return True
+
+    return False
+
+
+async def regenerate_dsl(
+    db: "StepSignatureDB",
+    client: "GroqClient",
+    signature_id: int,
+) -> bool:
+    """Regenerate DSL for a signature using accumulated examples.
+
+    Unlike maybe_generate_dsl, this will regenerate even if DSL exists.
+    Called on mod 10 uses to refresh DSL based on learned patterns.
+
+    Args:
+        db: StepSignatureDB instance
+        client: LLM client for generation
+        signature_id: ID of signature to regenerate
+
+    Returns:
+        True if DSL was regenerated, False otherwise
+    """
+    sig = db.get_signature(signature_id)
+    if not sig:
+        return False
+
+    # Need examples to regenerate
+    examples = db.get_signature_examples(signature_id, limit=10)
+    if not examples:
+        logger.debug("[dsl_regen] No examples for signature %d", signature_id)
+        return False
+
+    # Only regenerate if we have successful examples
+    successful = [e for e in examples if e.get('success', False)]
+    if not successful:
+        logger.debug("[dsl_regen] No successful examples for signature %d", signature_id)
+        return False
+
+    # Generate new DSL
+    old_dsl = sig.dsl_script
+    dsl_script = await generate_dsl_for_signature(
+        client=client,
+        step_type=sig.step_type,
+        description=sig.description,
+        examples=examples,
+    )
+
+    if dsl_script:
+        db.update_dsl_script(signature_id, dsl_script)
+        logger.info(
+            "[dsl_regen] Regenerated DSL for signature %d (uses=%d): %s",
+            signature_id, sig.uses,
+            "new" if not old_dsl else "updated"
+        )
         return True
 
     return False

@@ -8,8 +8,10 @@ Lazy NL approach:
 
 import json
 import logging
+import random
 import re
 import sqlite3
+import time
 import uuid
 from contextlib import contextmanager
 from datetime import datetime
@@ -17,97 +19,36 @@ from typing import Optional, Literal
 
 import numpy as np
 
-logger = logging.getLogger(__name__)
+from mycelium.config import (
+    PARENT_CREDIT_DECAY,
+    PARENT_CREDIT_MAX_DEPTH,
+    PARENT_CREDIT_MIN,
+    AUTO_DEMOTE_ENABLED,
+    AUTO_DEMOTE_MAX_SUCCESS_RATE,
+    AUTO_DEMOTE_EXCLUDED_TYPES,
+    AUTO_DEMOTE_RAMP_DIVISOR,
+    AUTO_DEMOTE_MIN_USES_FLOOR,
+    AUTO_DEMOTE_MIN_USES_CAP,
+)
 
-
-# =============================================================================
-# DSL Templates for Auto-Assignment
-# =============================================================================
-
-DSL_TEMPLATES = {
-    "compute_sum": {"type": "math", "script": "a + b", "params": ["a", "b"], "purpose": "Add two numbers"},
-    "compute_product": {"type": "math", "script": "a * b", "params": ["a", "b"], "purpose": "Multiply two numbers"},
-    "compute_difference": {"type": "math", "script": "a - b", "params": ["a", "b"], "purpose": "Subtract b from a"},
-    "compute_quotient": {"type": "math", "script": "a / b", "params": ["a", "b"], "purpose": "Divide a by b"},
-    "compute_power": {"type": "math", "script": "base ** exponent", "params": ["base", "exponent"], "purpose": "Raise base to power"},
-    "compute_factorial": {"type": "math", "script": "factorial(n)", "params": ["n"], "purpose": "Calculate n!"},
-    "compute_sqrt": {"type": "math", "script": "sqrt(x)", "params": ["x"], "purpose": "Square root"},
-    "compute_modulo": {"type": "math", "script": "a % b", "params": ["a", "b"], "purpose": "Remainder"},
-    "compute_gcd": {"type": "math", "script": "gcd(a, b)", "params": ["a", "b"], "purpose": "Greatest common divisor"},
-    "compute_lcm": {"type": "math", "script": "lcm(a, b)", "params": ["a", "b"], "purpose": "Least common multiple"},
-    "compute_area": {"type": "math", "script": "length * width", "params": ["length", "width"], "purpose": "Calculate area"},
-    "compute_average": {"type": "math", "script": "(a + b) / 2", "params": ["a", "b"], "purpose": "Calculate average"},
-    "compute_probability": {"type": "decompose", "script": "compute_probability", "params": ["favorable", "total"], "purpose": "Calculate probability"},
-    "simplify_expression": {"type": "sympy", "script": "simplify(expr)", "params": ["expr"], "purpose": "Simplify expression"},
-    "solve_equation": {"type": "sympy", "script": "solve(equation, x)", "params": ["equation"], "purpose": "Solve equation"},
-    "factor_expression": {"type": "sympy", "script": "factor(expr)", "params": ["expr"], "purpose": "Factor expression"},
-    "evaluate_expression": {"type": "math", "script": "eval(expr)", "params": ["expr"], "purpose": "Evaluate expression"},
-    "compute_angle": {"type": "math", "script": "degrees", "params": ["degrees"], "purpose": "Angle calculation"},
-    "count_combinations": {"type": "math", "script": "factorial(n) / (factorial(r) * factorial(n - r))", "params": ["n", "r"], "purpose": "n choose r"},
-    "count_permutations": {"type": "math", "script": "factorial(n) / factorial(n - r)", "params": ["n", "r"], "purpose": "P(n,r)"},
-}
-
-# Patterns for inferring DSL from description
-DSL_INFERENCE_PATTERNS = [
-    (r"combine.*result|final.*answer|synthesize", {"type": "decompose", "script": "synthesize_results", "params": ["results"], "purpose": "Combine results"}),
-    (r"coordinate|point.*\(|define.*point", {"type": "sympy", "script": "Point(x, y)", "params": ["x", "y"], "purpose": "Coordinate point"}),
-    (r"substitut|plug.*in|replace.*with", {"type": "sympy", "script": "expr.subs(var, value)", "params": ["expr", "var", "value"], "purpose": "Substitution"}),
-    (r"find.*minimum|find.*maximum|minimize|maximize|min.*value|max.*value", {"type": "sympy", "script": "solve(diff(expr, x), x)", "params": ["expr"], "purpose": "Find min/max"}),
-    (r"define.*constraint|constraint|given.*condition", {"type": "decompose", "script": "extract_constraints", "params": ["problem"], "purpose": "Extract constraints"}),
-    (r"express.*in terms|write.*as|rewrite", {"type": "sympy", "script": "solve(eq, var)", "params": ["eq", "var"], "purpose": "Express in terms of"}),
-    (r"find.*equation|equation of|derive.*equation", {"type": "sympy", "script": "Eq(lhs, rhs)", "params": ["lhs", "rhs"], "purpose": "Find equation"}),
-    (r"identify|extract|determine.*value|find.*value", {"type": "decompose", "script": "extract_values", "params": ["text"], "purpose": "Extract values"}),
-    (r"magnitude|absolute|modulus", {"type": "sympy", "script": "Abs(z)", "params": ["z"], "purpose": "Magnitude"}),
-    (r"argument|angle.*of|arg\(", {"type": "sympy", "script": "arg(z)", "params": ["z"], "purpose": "Argument/angle"}),
-    (r"range|interval|bounds|between", {"type": "decompose", "script": "find_range", "params": ["expr", "var"], "purpose": "Find range"}),
-    (r"solve for|find.*n\b|find.*x\b", {"type": "sympy", "script": "solve(eq, var)", "params": ["eq", "var"], "purpose": "Solve for variable"}),
-    (r"critical point|derivative.*zero", {"type": "sympy", "script": "solve(diff(f, x), x)", "params": ["f"], "purpose": "Critical points"}),
-    (r"relationship|connection|relate", {"type": "decompose", "script": "find_relationship", "params": ["a", "b"], "purpose": "Find relationship"}),
-]
-
-
-def normalize_step_text(text: str) -> str:
-    """Normalize step text for embedding by replacing specific numbers with placeholders.
-
-    This helps match similar operations regardless of specific values:
-    - "Calculate 15 factorial" → "Calculate N factorial"
-    - "Raise 5 to power 3" → "Raise N to power N"
-    """
-    # Replace standalone numbers (not part of words) with N
-    # Keep decimal points for now
-    normalized = re.sub(r'\b\d+\.?\d*\b', 'N', text)
-    return normalized
-
-
-def infer_dsl_for_signature(step_type: str, description: str) -> tuple[Optional[str], str]:
-    """Infer DSL script and type for a new signature.
-
-    Returns (dsl_script_json, dsl_type) or (None, "math") if no DSL.
-    """
-    # Try template first
-    if step_type in DSL_TEMPLATES:
-        dsl = DSL_TEMPLATES[step_type]
-        return json.dumps(dsl), dsl["type"]
-
-    # Infer from description
-    desc_lower = description.lower()
-    for pattern, dsl in DSL_INFERENCE_PATTERNS:
-        if re.search(pattern, desc_lower):
-            return json.dumps(dsl), dsl["type"]
-
-    # Default fallback: guidance DSL
-    fallback = {
-        "type": "decompose",
-        "script": "reason_step",
-        "params": ["context"],
-        "purpose": f"Execute: {description[:50]}",
-    }
-    return json.dumps(fallback), "decompose"
+# Import from focused modules (scoring and DSL templates)
+from mycelium.step_signatures.scoring import (
+    compute_routing_score,
+    normalize_step_text,
+    increment_total_problems,
+)
+from mycelium.step_signatures.dsl_templates import (
+    DSL_TEMPLATES,
+    DSL_INFERENCE_PATTERNS,
+    infer_dsl_for_signature,
+)
 
 from mycelium.data_layer import get_db
 from mycelium.data_layer.schema import init_db
 from mycelium.step_signatures.models import StepSignature
 from mycelium.step_signatures.utils import cosine_similarity, pack_embedding, unpack_embedding
+
+logger = logging.getLogger(__name__)
 
 
 MatchMode = Literal["cosine", "auto"]
@@ -136,8 +77,15 @@ class StepSignatureDB:
         else:
             self._db = get_db()
             self._direct_conn = None
-            self._db_path = None
+            # Use default DB path from config when using global singleton
+            from mycelium.config import DB_PATH
+            self._db_path = DB_PATH
         self._init_schema()
+
+    @property
+    def db_path(self) -> str:
+        """Get the database path."""
+        return self._db_path
 
     @contextmanager
     def _connection(self):
@@ -183,17 +131,24 @@ class StepSignatureDB:
         Returns:
             Tuple of (signature, is_new) where is_new=True if newly created
         """
-        import time
         max_retries = 5
+        base_delay = 0.05
 
         for attempt in range(max_retries):
             try:
                 return self._find_or_create_atomic(
                     step_text, embedding, min_similarity, parent_problem, origin_depth
                 )
-            except Exception as e:
-                if "database is locked" in str(e) and attempt < max_retries - 1:
-                    time.sleep(0.05 * (attempt + 1))
+            except sqlite3.OperationalError as e:
+                if attempt < max_retries - 1:
+                    # Exponential backoff with jitter to avoid thundering herd
+                    delay = base_delay * (2 ** attempt)
+                    jitter = random.uniform(0, delay * 0.5)
+                    time.sleep(delay + jitter)
+                    logger.debug(
+                        "[db] Retry %d/%d after OperationalError: %s (delay=%.3fs)",
+                        attempt + 1, max_retries, str(e)[:50], delay + jitter
+                    )
                     continue
                 raise
 
@@ -221,23 +176,51 @@ class StepSignatureDB:
                     if centroid is None:
                         continue
 
-                    score = cosine_similarity(embedding, centroid)
+                    cosine_sim = cosine_similarity(embedding, centroid)
+                    uses = row["uses"] or 0
+                    successes = row["successes"] or 0
+                    last_used_at = row["last_used_at"]
+                    score = compute_routing_score(cosine_sim, uses, successes, last_used_at)
 
-                    if score >= min_similarity and score > best_score:
+                    if cosine_sim >= min_similarity and score > best_score:
                         best_match = self._row_to_signature(row)
                         best_score = score
 
                 if best_match:
-                    # Update last_used_at
                     now = datetime.utcnow().isoformat()
+
+                    # Update centroid with new embedding (running average)
+                    # Do this inline to stay within the transaction
+                    # IMPORTANT: Fetch centroid too to avoid stale fallback race condition
+                    row = conn.execute(
+                        "SELECT embedding_sum, embedding_count, centroid FROM step_signatures WHERE id = ?",
+                        (best_match.id,)
+                    ).fetchone()
+
+                    if row and row["embedding_sum"]:
+                        current_sum = unpack_embedding(row["embedding_sum"])
+                        current_count = row["embedding_count"] or 1
+                    else:
+                        # Initialize from fresh centroid if no sum yet (migration case)
+                        # Use freshly-read centroid, not stale best_match.centroid
+                        fresh_centroid = unpack_embedding(row["centroid"]) if row else None
+                        current_sum = fresh_centroid.copy() if fresh_centroid is not None else embedding.copy()
+                        current_count = 1
+
+                    new_sum = current_sum + embedding
+                    new_count = current_count + 1
+                    new_centroid = new_sum / new_count
+
                     conn.execute(
-                        "UPDATE step_signatures SET last_used_at = ? WHERE id = ?",
-                        (now, best_match.id),
+                        """UPDATE step_signatures
+                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, last_used_at = ?
+                           WHERE id = ?""",
+                        (pack_embedding(new_sum), new_count, pack_embedding(new_centroid), now, best_match.id),
                     )
                     conn.commit()
                     logger.debug(
-                        "[db] Matched signature: step='%s' sig='%s' score=%.3f",
-                        step_text[:40], best_match.step_type, best_score
+                        "[db] Matched signature: step='%s' sig='%s' score=%.3f count=%d",
+                        step_text[:40], best_match.step_type, best_score, new_count
                     )
                     return best_match, False
 
@@ -275,12 +258,15 @@ class StepSignatureDB:
         # Auto-assign DSL based on step_type and description
         dsl_script, dsl_type = infer_dsl_for_signature(step_type, step_text)
 
+        # Initialize embedding_sum = embedding, embedding_count = 1
+        embedding_sum_packed = centroid_packed  # Same as centroid initially
+
         try:
             cursor = conn.execute(
                 """INSERT INTO step_signatures
-                   (signature_id, centroid, step_type, description, dsl_script, dsl_type, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (sig_id, centroid_packed, step_type, step_text, dsl_script, dsl_type, now),
+                   (signature_id, centroid, embedding_sum, embedding_count, step_type, description, dsl_script, dsl_type, depth, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (sig_id, centroid_packed, embedding_sum_packed, 1, step_type, step_text, dsl_script, dsl_type, origin_depth, now),
             )
             row_id = cursor.lastrowid
         except sqlite3.IntegrityError:
@@ -316,6 +302,7 @@ class StepSignatureDB:
             examples=[],
             uses=0,
             successes=0,
+            depth=origin_depth,
             created_at=now,
         )
 
@@ -375,6 +362,80 @@ class StepSignatureDB:
             return row[0]
 
     # =========================================================================
+    # Centroid Management (Running Average Embeddings)
+    # =========================================================================
+
+    def update_centroid(
+        self,
+        signature_id: int,
+        new_embedding: np.ndarray,
+    ):
+        """Update signature centroid with a new embedding (running average).
+
+        This is called each time a step matches a signature. The centroid
+        becomes more stable and representative over time as more examples
+        are added.
+
+        Formula: new_sum = old_sum + new_embedding
+                 new_count = old_count + 1
+                 new_centroid = new_sum / new_count
+
+        Args:
+            signature_id: ID of the signature to update
+            new_embedding: The new embedding to add to the running average
+        """
+        with self._connection() as conn:
+            # Use BEGIN IMMEDIATE for atomic read-modify-write
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                # Fetch centroid too to avoid stale fallback race condition
+                row = conn.execute(
+                    "SELECT embedding_sum, embedding_count, centroid FROM step_signatures WHERE id = ?",
+                    (signature_id,)
+                ).fetchone()
+
+                if not row:
+                    logger.warning("[db] Cannot update centroid: signature %d not found", signature_id)
+                    conn.rollback()
+                    return
+
+                # Parse current sum (or initialize from fresh centroid)
+                if row["embedding_sum"]:
+                    current_sum = unpack_embedding(row["embedding_sum"])
+                    current_count = row["embedding_count"] or 1
+                else:
+                    # Initialize from fresh centroid if no sum yet (migration case)
+                    fresh_centroid = unpack_embedding(row["centroid"])
+                    current_sum = fresh_centroid.copy() if fresh_centroid is not None else new_embedding.copy()
+                    current_count = 1 if fresh_centroid is not None else 0
+
+                # Update running sum and count
+                new_sum = current_sum + new_embedding
+                new_count = current_count + 1
+
+                # Compute new centroid
+                new_centroid = new_sum / new_count
+
+                # Pack and store
+                new_sum_packed = pack_embedding(new_sum)
+                new_centroid_packed = pack_embedding(new_centroid)
+
+                conn.execute(
+                    """UPDATE step_signatures
+                       SET embedding_sum = ?, embedding_count = ?, centroid = ?
+                       WHERE id = ?""",
+                    (new_sum_packed, new_count, new_centroid_packed, signature_id),
+                )
+                conn.commit()
+                logger.debug(
+                    "[db] Updated centroid for sig %d: count=%d",
+                    signature_id, new_count
+                )
+            except Exception:
+                conn.rollback()
+                raise
+
+    # =========================================================================
     # Usage Recording
     # =========================================================================
 
@@ -382,35 +443,39 @@ class StepSignatureDB:
         self,
         signature_id: int,
         step_text: str,
-        success: bool,
+        step_completed: bool,
         was_injected: bool = False,
         params_extracted: dict = None,
-    ):
+    ) -> int:
         """Record usage of a signature (step-level, not problem-level).
 
-        Note: This tracks whether a step returned a result, not whether the
-        final problem answer was correct. Use update_problem_outcome() after
-        grading to track actual correctness.
+        Note: step_completed tracks whether the step returned a result, NOT
+        whether the final problem answer was correct. Use update_problem_outcome()
+        after grading to track actual problem correctness (which updates
+        step_signatures.successes).
 
         Args:
             signature_id: ID of the signature used
             step_text: The step text that was executed
-            success: Whether the step returned a result
+            step_completed: Whether the step returned a result (NOT problem correctness)
             was_injected: Whether DSL was injected
             params_extracted: Parameters that were extracted (for learning)
+
+        Returns:
+            New uses count (for triggering DSL regeneration on mod 10)
         """
         now = datetime.utcnow().isoformat()
 
         with self._connection() as conn:
-            # Insert usage log (success here = step returned result, not problem correct)
+            # Insert usage log (step_completed = step returned result, not problem correct)
             conn.execute(
                 """INSERT INTO step_usage_log
-                   (signature_id, step_text, success, was_injected, params_extracted, created_at)
+                   (signature_id, step_text, step_completed, was_injected, params_extracted, created_at)
                    VALUES (?, ?, ?, ?, ?, ?)""",
                 (
                     signature_id,
                     step_text,
-                    1 if success else 0,
+                    1 if step_completed else 0,
                     1 if was_injected else 0,
                     json.dumps(params_extracted) if params_extracted else None,
                     now,
@@ -418,45 +483,154 @@ class StepSignatureDB:
             )
 
             # Only increment uses count here, NOT successes
-            # Successes are updated by update_problem_outcome() after grading
+            # Successes and last_used_at are updated by update_problem_outcome() after grading
+            # (last_used_at only updates on success to prevent stale signatures staying fresh)
             conn.execute(
                 """UPDATE step_signatures
-                   SET uses = uses + 1, last_used_at = ?
+                   SET uses = uses + 1
                    WHERE id = ?""",
-                (now, signature_id),
+                (signature_id,),
             )
+
+            # Get current stats for auto-demotion check
+            cursor = conn.execute(
+                """SELECT uses, successes, dsl_type, is_semantic_umbrella
+                   FROM step_signatures WHERE id = ?""",
+                (signature_id,),
+            )
+            row = cursor.fetchone()
+            if not row:
+                return 0
+
+            uses, successes, dsl_type, is_umbrella = row
+
+            # Auto-demote failing DSLs to umbrellas
+            # Graduated threshold: min_uses = FLOOR + (sig_count // DIVISOR), capped
+            # Branch fast early (centroid averaging will stabilize good paths)
+            if AUTO_DEMOTE_ENABLED and not is_umbrella and dsl_type not in AUTO_DEMOTE_EXCLUDED_TYPES:
+                sig_count = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()[0]
+                min_uses = min(
+                    AUTO_DEMOTE_MIN_USES_FLOOR + sig_count // AUTO_DEMOTE_RAMP_DIVISOR,
+                    AUTO_DEMOTE_MIN_USES_CAP
+                )
+
+                if uses >= min_uses:
+                    success_rate = successes / uses if uses > 0 else 0
+                    if success_rate < AUTO_DEMOTE_MAX_SUCCESS_RATE:
+                        conn.execute(
+                            """UPDATE step_signatures
+                               SET is_semantic_umbrella = 1
+                               WHERE id = ?""",
+                            (signature_id,),
+                        )
+                        logger.info(
+                            "[db] Auto-demoted sig %d to umbrella (%.0f%% after %d uses, min=%d, %d sigs)",
+                            signature_id, success_rate * 100, uses, min_uses, sig_count
+                        )
+
+            return uses
+
+    def get_signature_examples(
+        self,
+        signature_id: int,
+        limit: int = 10,
+    ) -> list[dict]:
+        """Get usage examples for a signature (for DSL generation).
+
+        Uses step_examples table which has actual results (not just usage logs).
+
+        Args:
+            signature_id: ID of the signature
+            limit: Maximum number of examples to return
+
+        Returns:
+            List of example dicts with step_text, result, success
+        """
+        with self._connection() as conn:
+            cursor = conn.execute(
+                """SELECT step_text, result, success
+                   FROM step_examples
+                   WHERE signature_id = ?
+                   ORDER BY created_at DESC
+                   LIMIT ?""",
+                (signature_id, limit),
+            )
+            examples = []
+            for row in cursor.fetchall():
+                examples.append({
+                    'step_text': row[0],
+                    'result': row[1] if row[1] else '',
+                    'success': bool(row[2]),
+                })
+            return examples
 
     def update_problem_outcome(
         self,
         signature_ids: list[int],
         problem_correct: bool,
+        decay_factor: float = None,
     ):
         """Update signature success counts based on problem outcome.
 
         Call this after grading a problem to propagate correctness back to
-        all signatures that were used. This is how we track real lift.
+        all signatures that were used. Also propagates credit up to parent
+        umbrella signatures with decay.
 
         Args:
             signature_ids: IDs of signatures used in the solved problem
             problem_correct: Whether the final answer was correct
+            decay_factor: Credit decay per level (default from config)
         """
+        # Increment global problem counter (for traffic-based decay)
+        increment_total_problems(self.db_path)
+
+        if decay_factor is None:
+            decay_factor = PARENT_CREDIT_DECAY
         if not signature_ids:
             return
 
+        now = datetime.now().isoformat()
+
         with self._connection() as conn:
             if problem_correct:
-                # Increment success count for all signatures used
+                # Increment success count and update last_used_at for all signatures used
+                # (last_used_at only updates on success to properly penalize stale failures)
                 placeholders = ",".join("?" * len(signature_ids))
                 conn.execute(
                     f"""UPDATE step_signatures
-                       SET successes = successes + 1
+                       SET successes = successes + 1, last_used_at = ?
                        WHERE id IN ({placeholders})""",
-                    signature_ids,
+                    [now] + signature_ids,
                 )
                 logger.debug(
                     "[db] Problem correct: incremented successes for %d signatures",
                     len(signature_ids)
                 )
+
+                # Propagate credit to parent umbrellas with decay
+                # Track credits per parent to avoid double-counting
+                parent_credits: dict[int, float] = {}
+
+                for sig_id in signature_ids:
+                    self._collect_parent_credits(
+                        conn, sig_id, decay_factor, 1, parent_credits
+                    )
+
+                # Apply accumulated credits
+                for parent_id, credit in parent_credits.items():
+                    if credit >= PARENT_CREDIT_MIN:
+                        conn.execute(
+                            """UPDATE step_signatures
+                               SET successes = successes + ?
+                               WHERE id = ? AND is_semantic_umbrella = 1""",
+                            (credit, parent_id),
+                        )
+
+                if parent_credits:
+                    logger.debug(
+                        "[db] Propagated credit to %d parent umbrellas",
+                        len(parent_credits)
+                    )
             else:
                 # Problem failed - signatures don't get success credit
                 # This is how we detect negative lift
@@ -464,6 +638,52 @@ class StepSignatureDB:
                     "[db] Problem incorrect: %d signatures get no success credit",
                     len(signature_ids)
                 )
+
+    def _collect_parent_credits(
+        self,
+        conn,
+        signature_id: int,
+        decay_factor: float,
+        current_depth: int,
+        credits: dict[int, float],
+        max_depth: int = None,
+    ):
+        """Recursively collect credits for parent umbrellas.
+
+        Args:
+            conn: Database connection
+            signature_id: Current signature ID
+            decay_factor: Credit multiplier per level
+            current_depth: Current depth in traversal
+            credits: Dict accumulating {parent_id: total_credit}
+            max_depth: Max depth to traverse (default from config)
+        """
+        if max_depth is None:
+            max_depth = PARENT_CREDIT_MAX_DEPTH
+        if current_depth > max_depth:
+            return
+
+        # Get parent umbrella signatures
+        cursor = conn.execute(
+            """SELECT r.parent_id
+               FROM signature_relationships r
+               JOIN step_signatures s ON r.parent_id = s.id
+               WHERE r.child_id = ? AND s.is_semantic_umbrella = 1""",
+            (signature_id,)
+        )
+
+        for row in cursor.fetchall():
+            parent_id = row[0]
+            credit = decay_factor ** current_depth
+
+            # Accumulate (take max if parent reached via multiple paths)
+            if parent_id not in credits or credits[parent_id] < credit:
+                credits[parent_id] = credit
+
+            # Recurse to grandparents
+            self._collect_parent_credits(
+                conn, parent_id, decay_factor, current_depth + 1, credits, max_depth
+            )
 
     # =========================================================================
     # NL Interface Updates (for later learning)
@@ -596,6 +816,82 @@ class StepSignatureDB:
             )
             return [self._row_to_signature(row) for row in cursor.fetchall()]
 
+    def get_signature_hints(
+        self,
+        limit: int = 20,
+        problem_embedding: np.ndarray = None,
+        min_similarity: float = 0.3,
+    ) -> list:
+        """Get top signatures as hints for the decomposer.
+
+        Returns signatures with their NL interface info so the decomposer
+        knows what operations are available and what parameters they need.
+
+        Args:
+            limit: Maximum number of hints to return
+            problem_embedding: Optional embedding of the problem to filter hints
+                              by semantic similarity (quick win for relevance)
+            min_similarity: Minimum cosine similarity to include hint (default 0.3)
+
+        Returns:
+            List of SignatureHint objects
+        """
+        from mycelium.planner import SignatureHint
+        from mycelium.step_signatures.utils import cosine_similarity, unpack_embedding
+
+        # Get signatures with NL interface populated
+        with self._connection() as conn:
+            cursor = conn.execute(
+                """SELECT * FROM step_signatures
+                   WHERE dsl_type != 'decompose'
+                   AND (clarifying_questions IS NOT NULL AND clarifying_questions != '[]'
+                        OR param_descriptions IS NOT NULL AND param_descriptions != '{}')
+                   ORDER BY successes DESC, uses DESC
+                   LIMIT ?""",
+                (limit * 3,)  # Fetch more, filter by similarity
+            )
+            signatures = [self._row_to_signature(row) for row in cursor.fetchall()]
+
+        # If problem embedding provided, filter by similarity
+        if problem_embedding is not None:
+            scored = []
+            for sig in signatures:
+                if sig.centroid is not None:
+                    sim = cosine_similarity(problem_embedding, sig.centroid)
+                    if sim >= min_similarity:
+                        scored.append((sig, sim))
+            # Sort by similarity, take top N
+            scored.sort(key=lambda x: x[1], reverse=True)
+            signatures = [sig for sig, _ in scored[:limit]]
+            logger.debug(
+                "[db] Filtered hints by embedding: %d → %d (min_sim=%.2f)",
+                len(scored) + (limit * 3 - len(scored)), len(signatures), min_similarity
+            )
+
+        hints = []
+        for sig in signatures[:limit]:
+            # Get param names from DSL spec if available
+            param_names = []
+            if sig.dsl_script:
+                try:
+                    import json
+                    dsl_data = json.loads(sig.dsl_script) if sig.dsl_script.startswith('{') else {}
+                    param_names = dsl_data.get('params', [])
+                except (json.JSONDecodeError, TypeError):
+                    pass
+
+            hint = SignatureHint(
+                step_type=sig.step_type,
+                description=sig.description,
+                param_names=param_names,
+                param_descriptions=sig.param_descriptions or {},
+                clarifying_questions=sig.clarifying_questions or [],
+            )
+            hints.append(hint)
+
+        logger.debug("[db] Retrieved %d signature hints with NL interface for decomposer", len(hints))
+        return hints
+
     # =========================================================================
     # Umbrella Routing (DAG of DAGs)
     # =========================================================================
@@ -663,11 +959,46 @@ class StepSignatureDB:
         Returns:
             True if relationship was created, False if already exists
         """
+        # Prevent self-references
+        if parent_id == child_id:
+            logger.warning("[db] Rejecting self-reference: parent_id=%d == child_id=%d", parent_id, child_id)
+            return False
+
         from datetime import datetime
         now = datetime.utcnow().isoformat()
 
         with self._connection() as conn:
+            # Cycle prevention: check if parent is already a descendant of child
+            # (adding parent -> child would create child -> ... -> parent -> child cycle)
+            cycle_check = conn.execute(
+                """
+                WITH RECURSIVE ancestors AS (
+                    SELECT parent_id FROM signature_relationships WHERE child_id = ?
+                    UNION ALL
+                    SELECT sr.parent_id
+                    FROM signature_relationships sr
+                    JOIN ancestors a ON sr.child_id = a.parent_id
+                )
+                SELECT 1 FROM ancestors WHERE parent_id = ? LIMIT 1
+                """,
+                (parent_id, child_id),
+            ).fetchone()
+
+            if cycle_check:
+                logger.warning(
+                    "[db] Rejecting cycle-creating relationship: %d -> %d (child is ancestor of parent)",
+                    parent_id, child_id
+                )
+                return False
+
             try:
+                # Get parent's depth to set child's depth
+                parent_row = conn.execute(
+                    "SELECT depth FROM step_signatures WHERE id = ?",
+                    (parent_id,)
+                ).fetchone()
+                parent_depth = parent_row["depth"] if parent_row and parent_row["depth"] else 0
+
                 conn.execute(
                     """INSERT INTO signature_relationships
                        (parent_id, child_id, condition, routing_order, created_at)
@@ -679,9 +1010,15 @@ class StepSignatureDB:
                     "UPDATE step_signatures SET is_semantic_umbrella = 1 WHERE id = ?",
                     (parent_id,),
                 )
+                # Set child's depth = parent_depth + 1 (only if deeper than current)
+                child_depth = parent_depth + 1
+                conn.execute(
+                    "UPDATE step_signatures SET depth = MAX(depth, ?) WHERE id = ?",
+                    (child_depth, child_id),
+                )
                 logger.info(
-                    "[db] Added child relationship: parent=%d → child=%d (condition='%s')",
-                    parent_id, child_id, condition[:30]
+                    "[db] Added child relationship: parent=%d (depth=%d) → child=%d (depth=%d) (condition='%s')",
+                    parent_id, parent_depth, child_id, child_depth, condition[:30]
                 )
                 return True
             except Exception as e:
@@ -708,6 +1045,76 @@ class StepSignatureDB:
                 logger.info("[db] Promoted signature %d to umbrella", signature_id)
                 return True
             return False
+
+    def find_deeper_signature(
+        self,
+        embedding: np.ndarray,
+        min_depth: int,
+        min_similarity: float = 0.75,
+        exclude_ids: set[int] = None,
+    ) -> Optional[StepSignature]:
+        """Find existing signature at deeper depth for repointing.
+
+        When decomposing a parent into children, prefer repointing to existing
+        deeper signatures over creating new ones. This reduces fragmentation
+        and reuses learned knowledge.
+
+        Args:
+            embedding: Query embedding to match against
+            min_depth: Minimum depth required (parent_depth + 1)
+            min_similarity: Minimum cosine similarity threshold
+            exclude_ids: Signature IDs to exclude (e.g., parent itself)
+
+        Returns:
+            Best matching deeper signature, or None if no suitable match
+        """
+        from mycelium.step_signatures.utils import cosine_similarity, unpack_embedding
+
+        exclude_ids = exclude_ids or set()
+
+        with self._connection() as conn:
+            # Get signatures at required depth or deeper (not umbrellas - we want leaf executors)
+            cursor = conn.execute(
+                """SELECT * FROM step_signatures
+                   WHERE depth >= ?
+                   AND is_semantic_umbrella = 0""",
+                (min_depth,)
+            )
+            rows = cursor.fetchall()
+
+        best_match = None
+        best_score = 0.0
+
+        for row in rows:
+            sig_id = row["id"]
+            if sig_id in exclude_ids:
+                continue
+
+            centroid = unpack_embedding(row["centroid"])
+            if centroid is None:
+                continue
+
+            sim = cosine_similarity(embedding, centroid)
+            if sim < min_similarity:
+                continue
+
+            # Use routing score (similarity + success rate - staleness)
+            uses = row["uses"] or 0
+            successes = row["successes"] or 0
+            last_used_at = row["last_used_at"]
+            score = compute_routing_score(sim, uses, successes, last_used_at)
+
+            if score > best_score:
+                best_match = self._row_to_signature(row)
+                best_score = score
+
+        if best_match:
+            logger.info(
+                "[db] Found deeper signature for repoint: id=%d depth=%d sim=%.3f",
+                best_match.id, best_match.depth, best_score
+            )
+
+        return best_match
 
     def remove_child(self, parent_id: int, child_id: int) -> bool:
         """Remove a parent-child relationship.

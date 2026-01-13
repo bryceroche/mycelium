@@ -1057,6 +1057,10 @@ def try_execute_dsl_math(script: str, inputs: dict[str, Any]) -> Optional[float]
     """Execute basic math DSL script.
 
     Automatically extracts numeric values from text inputs like "The value is 16".
+
+    Special cases:
+    - sum_all(): Returns sum of all numeric inputs
+    - Single input with multi-param script: Returns the single value (identity)
     """
     # Prepare inputs: extract numeric values from text
     prepared = _prepare_math_inputs(inputs)
@@ -1064,6 +1068,17 @@ def try_execute_dsl_math(script: str, inputs: dict[str, Any]) -> Optional[float]
         # No numeric values could be extracted
         logger.debug("Math DSL: no numeric values extracted from inputs: %s", list(inputs.keys()))
         return None
+
+    # Special case: sum_all() - sum all available numeric inputs
+    if script.strip() == "sum_all()":
+        if not prepared:
+            return None
+        return sum(prepared.values())
+
+    # Note: We intentionally DON'T do identity fallback for multi-var scripts
+    # If a sum/product script has only 1 input, it's a semantic mismatch
+    # The correct fix is better signature matching, not wrong identity results
+
     return _safe_eval_math(script, prepared)
 
 
@@ -1255,6 +1270,31 @@ def try_execute_dsl_sympy(script: str, inputs: dict[str, Any]) -> Optional[Any]:
 # Layer 2: Custom Operators
 # =============================================================================
 
+# Import pure math functions from math_ops module
+from mycelium.step_signatures.math_ops import (
+    extract_coefficient,
+    apply_quadratic_formula,
+    complete_square,
+    solve_linear,
+    evaluate_polynomial,
+    euclidean_gcd,
+    modinv,
+    divisors,
+    prime_factors,
+    is_prime,
+    mod_pow,
+    int_to_base,
+    from_base,
+    base_multiply,
+    base_add,
+    binomial,
+    permutations,
+    combinations,
+    day_of_week,
+    triangular_number,
+    fibonacci,
+)
+
 # Registry for custom operators
 _CUSTOM_OPERATORS: dict[str, Callable] = {}
 
@@ -1264,275 +1304,35 @@ def register_operator(name: str, func: Callable) -> None:
     _CUSTOM_OPERATORS[name] = func
 
 
-def _extract_coefficient(expr: str, var: str = "x") -> Optional[float]:
-    """Extract coefficient of variable from expression."""
-    try:
-        import sympy
-        x = sympy.Symbol(var)
-        parsed = sympy.sympify(expr)
-        coeff = parsed.coeff(x)
-        return float(coeff) if coeff.is_number else None
-    except Exception:
-        return None
-
-
-def _apply_quadratic_formula(a: float, b: float, c: float) -> Optional[tuple[float, float]]:
-    """Apply quadratic formula to solve ax^2 + bx + c = 0."""
-    if a == 0:
-        return None  # Not quadratic
-    discriminant = b**2 - 4*a*c
-    if discriminant < 0:
-        return None  # No real roots
-    sqrt_d = math.sqrt(discriminant)
-    return ((-b + sqrt_d) / (2*a), (-b - sqrt_d) / (2*a))
-
-
-def _complete_square(a: float, b: float, c: float) -> Optional[str]:
-    """Complete the square for ax^2 + bx + c.
-
-    Returns string in form: a(x + h)^2 + k
-    """
-    if a == 0:
-        return None  # Not quadratic
-    h = -b / (2*a)
-    k = c - b**2 / (4*a)
-    return f"{a}*(x + {h})^2 + {k}"
-
-
-def _solve_linear(a: float, b: float) -> Optional[float]:
-    """Solve ax + b = 0 for x."""
-    if a == 0:
-        return None
-    return -b / a
-
-
-def _evaluate_polynomial(coeffs: list[float], x: float) -> float:
-    """Evaluate polynomial with coefficients [a_n, ..., a_1, a_0] at x."""
-    result = 0.0
-    for coeff in coeffs:
-        result = result * x + coeff
-    return result
-
-
-def _euclidean_gcd(a: int, b: int) -> int:
-    """Euclidean algorithm for GCD."""
-    a, b = int(abs(a)), int(abs(b))
-    while b:
-        a, b = b, a % b
-    return a
-
-
-def _modinv(a: int, m: int) -> Optional[int]:
-    """Modular multiplicative inverse of a mod m using extended Euclidean algorithm."""
-    a, m = int(a), int(m)
-    if m == 1:
-        return 0
-    m0, x0, x1 = m, 0, 1
-    while a > 1:
-        q = a // m
-        m, a = a % m, m
-        x0, x1 = x1 - q * x0, x0
-    return x1 + m0 if x1 < 0 else x1
-
-
-def _divisors(n: int) -> list[int]:
-    """Find all divisors of n."""
-    n = int(abs(n))
-    if n == 0:
-        return []
-    divs = []
-    for i in range(1, int(n**0.5) + 1):
-        if n % i == 0:
-            divs.append(i)
-            if i != n // i:
-                divs.append(n // i)
-    return sorted(divs)
-
-
-def _prime_factors(n: int) -> list[int]:
-    """Find prime factorization of n."""
-    n = int(abs(n))
-    factors = []
-    d = 2
-    while d * d <= n:
-        while n % d == 0:
-            factors.append(d)
-            n //= d
-        d += 1
-    if n > 1:
-        factors.append(n)
-    return factors
-
-
-def _is_prime(n: int) -> bool:
-    """Check if n is prime."""
-    n = int(n)
-    if n < 2:
-        return False
-    if n == 2:
-        return True
-    if n % 2 == 0:
-        return False
-    for i in range(3, int(n**0.5) + 1, 2):
-        if n % i == 0:
-            return False
-    return True
-
-
-def _mod_pow(base: int, exp: int, mod: int) -> int:
-    """Modular exponentiation: base^exp mod mod."""
-    base, exp, mod = int(base), int(exp), int(mod)
-    result = 1
-    base = base % mod
-    while exp > 0:
-        if exp % 2 == 1:
-            result = (result * base) % mod
-        exp = exp >> 1
-        base = (base * base) % mod
-    return result
-
-
-def _int_to_base(n: int, base: int) -> str:
-    """Convert integer n to string representation in given base."""
-    n, base = int(n), int(base)
-    if n == 0:
-        return "0"
-    if base < 2 or base > 36:
-        raise ValueError(f"Base must be 2-36, got {base}")
-
-    negative = n < 0
-    n = abs(n)
-    digits = []
-    while n:
-        remainder = n % base
-        if remainder < 10:
-            digits.append(str(remainder))
-        else:
-            digits.append(chr(ord('a') + remainder - 10))
-        n //= base
-
-    result = ''.join(reversed(digits))
-    return '-' + result if negative else result
-
-
-def _clean_base_input(s) -> str:
-    """Clean input for base conversion - handle floats like 2012.0."""
-    s_str = str(s)
-    if '.' in s_str:
-        return str(int(float(s)))
-    return s_str.strip()
-
-
-def _from_base(s, base: int) -> int:
-    """Convert string s from given base to integer."""
-    return int(_clean_base_input(s), int(base))
-
-
-def _base_multiply(a, b, base: int) -> str:
-    """Multiply two numbers in given base, return result in same base."""
-    a_dec = int(_clean_base_input(a), int(base))
-    b_dec = int(_clean_base_input(b), int(base))
-    product = a_dec * b_dec
-    return _int_to_base(product, int(base))
-
-
-def _base_add(a, b, base: int) -> str:
-    """Add two numbers in given base, return result in same base."""
-    a_dec = int(_clean_base_input(a), int(base))
-    b_dec = int(_clean_base_input(b), int(base))
-    return _int_to_base(a_dec + b_dec, int(base))
-
-
-def _binomial(n: int, k: int) -> int:
-    """Binomial coefficient C(n, k)."""
-    n, k = int(n), int(k)
-    if k < 0 or k > n:
-        return 0
-    if k == 0 or k == n:
-        return 1
-    k = min(k, n - k)
-    result = 1
-    for i in range(k):
-        result = result * (n - i) // (i + 1)
-    return result
-
-
-def _permutations(n: int, r: int) -> int:
-    """Permutations P(n, r) = n! / (n-r)!"""
-    n, r = int(n), int(r)
-    if r < 0 or r > n:
-        return 0
-    result = 1
-    for i in range(n, n - r, -1):
-        result *= i
-    return result
-
-
-def _combinations(n: int, r: int) -> int:
-    """Combinations C(n, r) = n! / (r! * (n-r)!)"""
-    return _binomial(n, r)
-
-
-def _day_of_week(year: int, month: int, day: int) -> int:
-    """Zeller's formula: 0=Saturday, 1=Sunday, ..., 6=Friday."""
-    year, month, day = int(year), int(month), int(day)
-    if month < 3:
-        month += 12
-        year -= 1
-    k = year % 100
-    j = year // 100
-    h = (day + (13 * (month + 1)) // 5 + k + k // 4 + j // 4 - 2 * j) % 7
-    return h
-
-
-def _triangular_number(n: int) -> int:
-    """nth triangular number: 1 + 2 + ... + n = n(n+1)/2."""
-    n = int(n)
-    return n * (n + 1) // 2
-
-
-def _fibonacci(n: int) -> int:
-    """nth Fibonacci number (0-indexed: F(0)=0, F(1)=1)."""
-    n = int(n)
-    if n < 0:
-        return 0
-    if n <= 1:
-        return n
-    a, b = 0, 1
-    for _ in range(2, n + 1):
-        a, b = b, a + b
-    return b
-
-
-# Register built-in custom operators
-register_operator("extract_coefficient", _extract_coefficient)
-register_operator("apply_quadratic_formula", _apply_quadratic_formula)
-register_operator("complete_square", _complete_square)
-register_operator("solve_linear", _solve_linear)
-register_operator("evaluate_polynomial", _evaluate_polynomial)
+# Register built-in custom operators (imported from math_ops)
+register_operator("extract_coefficient", extract_coefficient)
+register_operator("apply_quadratic_formula", apply_quadratic_formula)
+register_operator("complete_square", complete_square)
+register_operator("solve_linear", solve_linear)
+register_operator("evaluate_polynomial", evaluate_polynomial)
 # Number theory operators
-register_operator("euclidean_gcd", _euclidean_gcd)
-register_operator("modinv", _modinv)
-register_operator("divisors", _divisors)
-register_operator("prime_factors", _prime_factors)
-register_operator("is_prime", _is_prime)
-register_operator("mod_pow", _mod_pow)
+register_operator("euclidean_gcd", euclidean_gcd)
+register_operator("modinv", modinv)
+register_operator("divisors", divisors)
+register_operator("prime_factors", prime_factors)
+register_operator("is_prime", is_prime)
+register_operator("mod_pow", mod_pow)
 # Base conversion operators
-register_operator("int_to_base", _int_to_base)
-register_operator("to_base", _int_to_base)  # Alias
-register_operator("from_base", _from_base)
-register_operator("base_multiply", _base_multiply)
-register_operator("base_add", _base_add)
+register_operator("int_to_base", int_to_base)
+register_operator("to_base", int_to_base)  # Alias
+register_operator("from_base", from_base)
+register_operator("base_multiply", base_multiply)
+register_operator("base_add", base_add)
 # Combinatorics operators
-register_operator("binomial", _binomial)
-register_operator("permutations", _permutations)
-register_operator("combinations", _combinations)
-register_operator("C", _combinations)  # Alias
-register_operator("P", _permutations)  # Alias
+register_operator("binomial", binomial)
+register_operator("permutations", permutations)
+register_operator("combinations", combinations)
+register_operator("C", combinations)  # Alias
+register_operator("P", permutations)  # Alias
 # Misc operators
-register_operator("day_of_week", _day_of_week)
-register_operator("triangular_number", _triangular_number)
-register_operator("fibonacci", _fibonacci)
+register_operator("day_of_week", day_of_week)
+register_operator("triangular_number", triangular_number)
+register_operator("fibonacci", fibonacci)
 # Python built-ins (for compatibility with auto-generated DSLs)
 register_operator("len", len)
 register_operator("sum", sum)
@@ -1546,10 +1346,10 @@ register_operator("min", min)
 register_operator("max", max)
 
 # Add base conversion functions to _FUNCTIONS for math layer compatibility
-_FUNCTIONS["int_to_base"] = _int_to_base
-_FUNCTIONS["to_base"] = _int_to_base
-_FUNCTIONS["base_multiply"] = _base_multiply
-_FUNCTIONS["base_add"] = _base_add
+_FUNCTIONS["int_to_base"] = int_to_base
+_FUNCTIONS["to_base"] = int_to_base
+_FUNCTIONS["base_multiply"] = base_multiply
+_FUNCTIONS["base_add"] = base_add
 
 
 def try_execute_dsl_custom(script: str, inputs: dict[str, Any]) -> Optional[Any]:
@@ -2052,12 +1852,31 @@ def try_execute_dsl(
     if dsl_spec.layer in (DSLLayer.DECOMPOSE, DSLLayer.ROUTER, DSLLayer.NONE):
         return None, False
 
+    # Filter out empty/None values before validation
+    # This handles cascading failures where previous steps returned empty strings
+    filtered_inputs = {}
+    for k, v in mapped_inputs.items():
+        if v is None or v == "" or (isinstance(v, str) and not v.strip()):
+            continue
+        extracted = _extract_numeric_value(v)
+        if extracted is not None:
+            filtered_inputs[k] = extracted
+        else:
+            filtered_inputs[k] = v
+
+    if not filtered_inputs:
+        logger.debug("DSL has no valid inputs after filtering empty values")
+        return None, False
+
     # Validate input types and task/DSL semantic match before execution
-    valid, reason = _validate_param_types(dsl_spec, mapped_inputs, step_task)
+    valid, reason = _validate_param_types(dsl_spec, filtered_inputs, step_task)
     if not valid:
         logger.info("[dsl_debug] TYPE_MISMATCH %s | script='%s' | %s",
                     dsl_spec.layer.value, dsl_spec.script[:40], reason)
         return None, False
+
+    # Use filtered inputs for execution
+    mapped_inputs = filtered_inputs
 
     try:
         with _timeout(timeout_sec):
@@ -2346,194 +2165,3 @@ def semantic_rewrite_script(
     )
 
     return rewritten, avg_confidence
-
-
-# LLM-based script rewriter for DSL execution (DEPRECATED - use semantic_rewrite_script)
-LLM_SCRIPT_REWRITE_PROMPT = """Rewrite this DSL script to use ONLY the available context variable names.
-
-Original script: {script}
-DSL parameters and their meanings: {params}
-
-Available context variables:
-{context}
-
-Task: Match each DSL parameter to the most semantically appropriate context variable, then rewrite the script.
-The rewritten script must be a valid Python expression using ONLY the context variable names.
-
-Example:
-Original: "base * height / 2"
-Params: ["base", "height"]
-Context:
-  step_1 (Calculate the width of the rectangle): 10
-  step_2 (Calculate the height of the rectangle): 5
-Rewritten: step_1 * step_2 / 2
-
-Example:
-Original: "price * quantity"
-Params: ["price", "quantity"]
-Context:
-  step_1 (Find the unit price): 25
-  step_2 (Count the number of items): 4
-Rewritten: step_1 * step_2
-
-Return ONLY the rewritten script, nothing else:"""
-
-
-async def llm_rewrite_script(
-    dsl_spec: DSLSpec,
-    context: dict[str, Any],
-    client,  # GroqClient
-    step_descriptions: Optional[dict[str, str]] = None,
-    current_step_task: Optional[str] = None,
-) -> Optional[str]:
-    """Use LLM to rewrite DSL script using actual context variable names.
-
-    Args:
-        dsl_spec: The DSL specification with script to rewrite
-        context: Runtime context with available values
-        client: GroqClient instance for LLM calls
-        step_descriptions: Optional dict mapping step_id -> task description
-        current_step_task: Optional current step task for additional context
-
-    Returns:
-        Rewritten script string, or original script if rewriting not possible
-    """
-    if not context:
-        # Return original script - let positional fallback try
-        logger.debug("[dsl] No context for rewrite, returning original script")
-        return dsl_spec.script
-
-    # Format context with descriptions if available
-    context_lines = []
-    for k, v in context.items():
-        val_str = str(v) if not isinstance(v, str) or len(str(v)) < 100 else str(v)[:100] + "..."
-        if step_descriptions and k in step_descriptions:
-            desc = step_descriptions[k][:80]  # Truncate long descriptions
-            context_lines.append(f"  {k} ({desc}): {val_str}")
-        else:
-            context_lines.append(f"  {k}: {val_str}")
-    context_str = "\n".join(context_lines)
-
-    # Format params with any aliases
-    params_info = dsl_spec.params if dsl_spec.params else ["(no explicit params)"]
-
-    # Include current step task for additional context
-    task_context = f"\nCurrent step task: {current_step_task[:200]}\n" if current_step_task else ""
-
-    prompt = LLM_SCRIPT_REWRITE_PROMPT.format(
-        script=dsl_spec.script[:300],
-        params=params_info,
-        context=context_str
-    ) + task_context
-
-    try:
-        messages = [{"role": "user", "content": prompt}]
-        response = await client.generate(messages, max_tokens=200, temperature=0.0)
-        # Clean up response
-        rewritten = response.strip()
-        # Handle markdown code blocks
-        if rewritten.startswith("```"):
-            lines = rewritten.split("\n")
-            rewritten = "\n".join(lines[1:-1] if lines[-1] == "```" else lines[1:])
-            rewritten = rewritten.strip()
-        # Remove language hints
-        if rewritten.startswith("python"):
-            rewritten = rewritten[6:].strip()
-        logger.info("[dsl] LLM rewrote script: '%s' -> '%s'", dsl_spec.script[:50], rewritten[:50])
-        return rewritten
-    except Exception as e:
-        logger.warning("[dsl] LLM script rewrite failed: %s, using original", e)
-        return dsl_spec.script  # Return original - let positional fallback try
-
-
-async def execute_dsl_with_llm_matching(
-    dsl_json: str,
-    inputs: dict[str, Any],
-    client,  # GroqClient for LLM script rewriting
-    min_confidence: float = 0.7,
-    llm_threshold: float = 0.3,
-    step_descriptions: Optional[dict[str, str]] = None,
-    step_task: Optional[str] = None,
-    step_type: Optional[str] = None,
-) -> tuple[Optional[Any], bool, float]:
-    """Execute DSL with LLM-based script rewriting fallback.
-
-    If heuristic confidence is below llm_threshold, use LLM to rewrite the script
-    using actual context variable names.
-
-    Args:
-        dsl_json: JSON-encoded DSL specification
-        inputs: Input values from context
-        client: GroqClient for LLM calls when needed
-        min_confidence: Minimum confidence to execute (default 0.7)
-        llm_threshold: Below this confidence, try LLM script rewriting (default 0.3)
-        step_descriptions: Optional dict mapping step_id -> task description for better LLM matching
-        step_task: Optional current step task for additional context
-        step_type: Optional signature step_type for alignment validation
-
-    Returns:
-        (result, success, confidence) tuple
-    """
-    spec = DSLSpec.from_json(dsl_json)
-    if not spec:
-        return None, False, 0.0
-
-    # Early check: Ensure we have enough numeric inputs for the DSL params
-    # This prevents bad mappings like a=20, b=20 when b should be symbolic
-    if spec.params:
-        # Count how many inputs can actually be extracted as numeric
-        numeric_count = sum(1 for v in inputs.values() if _extract_numeric_value(v) is not None)
-        required_params = len(spec.params)
-        if numeric_count < required_params:
-            logger.debug(
-                "[dsl] Insufficient numeric inputs: have %d, need %d params for script '%s'",
-                numeric_count, required_params, spec.script[:40]
-            )
-            return None, False, 0.0
-
-    # Validate step_type alignment before attempting execution
-    if step_type and step_task:
-        valid, sim, reason = validate_step_type_alignment(step_type, step_task)
-        if not valid:
-            logger.info("[dsl] Step-type misaligned: %s", reason)
-            return None, False, 0.0
-
-    confidence = spec.compute_confidence(inputs)
-
-    # PRIORITY 1: If confidence is low, try SEMANTIC matching (deterministic, reliable)
-    if confidence < llm_threshold and step_descriptions:
-        rewritten_script, semantic_confidence = semantic_rewrite_script(spec, inputs, step_descriptions)
-        if rewritten_script and semantic_confidence >= 0.5:
-            # Create new DSLSpec with semantically rewritten script
-            rewritten_spec = DSLSpec(
-                layer=spec.layer,
-                script=rewritten_script,
-                params=[],  # Script now uses context var names directly
-                aliases={},
-                output_type=spec.output_type,
-                fallback=spec.fallback,
-            )
-            result, success = try_execute_dsl(rewritten_spec, inputs, step_task=step_task or "")
-            if success:
-                logger.info("[dsl] Semantic rewrite succeeded: result=%s confidence=%.2f", result, semantic_confidence)
-                return result, True, semantic_confidence
-            else:
-                logger.debug("[dsl] Semantic rewrite produced invalid script")
-
-    # PRIORITY 2: Standard execution if confidence is sufficient
-    if confidence >= min_confidence:
-        result, success = try_execute_dsl(spec, inputs, step_task=step_task or "")
-        return result, success, confidence
-
-    # PRIORITY 3: LLM rewriting as last resort (DISABLED - produces garbage)
-    # The LLM rewriting was causing the 45% accuracy regression by producing
-    # incorrect parameter mappings like "area_ENG / area_ABC" -> "step_1 / step_1"
-    # Uncomment below to re-enable if semantic matching isn't sufficient:
-    #
-    # if confidence < llm_threshold and client:
-    #     logger.info("[dsl] Low confidence (%.2f), trying LLM script rewriting", confidence)
-    #     try:
-    #         rewritten_script = await llm_rewrite_script(spec, inputs, client, step_descriptions, step_task)
-    #         ... (rest of LLM logic)
-
-    return None, False, confidence
