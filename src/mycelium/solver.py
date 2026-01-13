@@ -27,6 +27,7 @@ from mycelium.config import (
     RECURSIVE_MAX_DEPTH,
     RECURSIVE_CONFIDENCE_THRESHOLD,
     UMBRELLA_MAX_DEPTH,
+    UMBRELLA_ROUTING_THRESHOLD,
 )
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
@@ -105,6 +106,35 @@ class Solver:
         self.step_db = StepSignatureDB(db_path=db_path)
         self.embedder = Embedder.get_instance()
         self.min_similarity = min_similarity
+        self._background_tasks: set[asyncio.Task] = set()  # Track background tasks
+
+    def _create_background_task(self, coro) -> asyncio.Task:
+        """Create a background task with proper lifecycle management.
+
+        Tasks are tracked to prevent garbage collection and enable clean shutdown.
+        """
+        task = asyncio.create_task(coro)
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+        return task
+
+    async def wait_for_background_tasks(self, timeout: float = 5.0) -> int:
+        """Wait for pending background tasks to complete.
+
+        Call this for clean shutdown. Returns count of tasks that were pending.
+        """
+        if not self._background_tasks:
+            return 0
+        pending = len(self._background_tasks)
+        logger.debug("[solver] Waiting for %d background tasks", pending)
+        done, not_done = await asyncio.wait(
+            self._background_tasks,
+            timeout=timeout,
+            return_when=asyncio.ALL_COMPLETED,
+        )
+        if not_done:
+            logger.warning("[solver] %d background tasks did not complete in time", len(not_done))
+        return pending
 
     async def solve(self, problem: str) -> SolverResult:
         """Solve a problem end-to-end.
@@ -351,13 +381,13 @@ class Solver:
             )
             result = ""  # Empty result = failure
 
-        # 6. Record usage (we don't know success yet, caller will update)
-        # For now, assume success if we got a result
-        success = bool(result)
+        # 6. Record usage (step_completed = returned result, not problem correctness)
+        # Problem correctness is tracked separately via update_problem_outcome()
+        step_completed = bool(result)
         uses = self.step_db.record_usage(
             signature_id=routed_signature.id,
             step_text=step.task,
-            success=success,
+            step_completed=step_completed,
             was_injected=was_injected,
         )
 
@@ -374,7 +404,7 @@ class Solver:
             step_id=step.id,
             task=step.task,
             result=result or "",
-            success=success,
+            success=step_completed,
             signature_id=routed_signature.id,
             signature_type=routed_signature.step_type,
             is_new_signature=is_new,

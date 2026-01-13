@@ -135,6 +135,7 @@ RECURSIVE_MAX_DEPTH = 9  # Max routing depth: deep decomposition for complex pro
 RECURSIVE_CONFIDENCE_THRESHOLD = 0.8  # Route deeper when DSL confidence < this
 RECURSIVE_MAX_TOTAL_STEPS = 50
 UMBRELLA_MAX_DEPTH = 10  # Max depth for umbrella routing chains
+UMBRELLA_ROUTING_THRESHOLD = 0.5  # Min similarity for umbrella child routing (lower than global 0.85 since we're picking best among known children)
 
 # =============================================================================
 # DATABASE

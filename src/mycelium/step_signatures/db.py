@@ -443,20 +443,21 @@ class StepSignatureDB:
         self,
         signature_id: int,
         step_text: str,
-        success: bool,
+        step_completed: bool,
         was_injected: bool = False,
         params_extracted: dict = None,
     ) -> int:
         """Record usage of a signature (step-level, not problem-level).
 
-        Note: This tracks whether a step returned a result, not whether the
-        final problem answer was correct. Use update_problem_outcome() after
-        grading to track actual correctness.
+        Note: step_completed tracks whether the step returned a result, NOT
+        whether the final problem answer was correct. Use update_problem_outcome()
+        after grading to track actual problem correctness (which updates
+        step_signatures.successes).
 
         Args:
             signature_id: ID of the signature used
             step_text: The step text that was executed
-            success: Whether the step returned a result
+            step_completed: Whether the step returned a result (NOT problem correctness)
             was_injected: Whether DSL was injected
             params_extracted: Parameters that were extracted (for learning)
 
@@ -466,15 +467,15 @@ class StepSignatureDB:
         now = datetime.utcnow().isoformat()
 
         with self._connection() as conn:
-            # Insert usage log (success here = step returned result, not problem correct)
+            # Insert usage log (step_completed = step returned result, not problem correct)
             conn.execute(
                 """INSERT INTO step_usage_log
-                   (signature_id, step_text, success, was_injected, params_extracted, created_at)
+                   (signature_id, step_text, step_completed, was_injected, params_extracted, created_at)
                    VALUES (?, ?, ?, ?, ?, ?)""",
                 (
                     signature_id,
                     step_text,
-                    1 if success else 0,
+                    1 if step_completed else 0,
                     1 if was_injected else 0,
                     json.dumps(params_extracted) if params_extracted else None,
                     now,
