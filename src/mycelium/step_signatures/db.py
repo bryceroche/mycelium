@@ -942,6 +942,9 @@ class StepSignatureDB:
             # Auto-demote failing DSLs to umbrellas
             # Graduated threshold: min_uses = FLOOR + (sig_count // DIVISOR), capped
             # Branch fast early (centroid averaging will stabilize good paths)
+            # NOTE: Only demote if THIS step failed (step_completed=False)
+            # OR if we have enough history showing poor success_rate
+            # This prevents premature demotion before problem grading updates successes
             if AUTO_DEMOTE_ENABLED and not is_umbrella and dsl_type not in AUTO_DEMOTE_EXCLUDED_TYPES:
                 sig_count = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()[0]
                 min_uses = min(
@@ -951,7 +954,14 @@ class StepSignatureDB:
 
                 if uses >= min_uses:
                     success_rate = successes / uses if uses > 0 else 0
-                    if success_rate < AUTO_DEMOTE_MAX_SUCCESS_RATE:
+                    # Only demote if:
+                    # 1. This step failed (step_completed=False), OR
+                    # 2. We have graded history (successes > 0) showing poor success rate
+                    should_demote = (
+                        (not step_completed) or  # This step failed
+                        (successes > 0 and success_rate < AUTO_DEMOTE_MAX_SUCCESS_RATE)  # Historical failures
+                    )
+                    if should_demote:
                         # Promote to umbrella: clear DSL, set type to router
                         conn.execute(
                             """UPDATE step_signatures
@@ -962,8 +972,8 @@ class StepSignatureDB:
                             (signature_id,),
                         )
                         logger.info(
-                            "[db] Auto-demoted sig %d to umbrella/router (%.0f%% after %d uses, min=%d, %d sigs)",
-                            signature_id, success_rate * 100, uses, min_uses, sig_count
+                            "[db] Auto-demoted sig %d to umbrella/router (%.0f%% after %d uses, step_ok=%s, min=%d)",
+                            signature_id, success_rate * 100, uses, step_completed, min_uses
                         )
 
             return uses
