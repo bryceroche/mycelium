@@ -2,8 +2,13 @@
 
 Pure functions for computing routing scores and normalizing text.
 All configurable values come from config.py.
+
+MCTS-style UCB1 scoring enables exploration/exploitation balance:
+- Exploitation: prefer high-similarity, high-success-rate signatures
+- Exploration: give bonus to under-visited signatures (may find better paths)
 """
 
+import math
 import re
 import sqlite3
 import time
@@ -11,8 +16,6 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from mycelium.config import (
-    ROUTING_SIM_WEIGHT,
-    ROUTING_SUCCESS_WEIGHT,
     ROUTING_PRIOR_SUCCESSES,
     ROUTING_PRIOR_USES,
     STALENESS_DECAY_ENABLED,
@@ -25,6 +28,11 @@ from mycelium.config import (
     TRAFFIC_CACHE_TTL,
     TRAFFIC_GRACE_PROBLEMS,
     DB_PATH,
+    MCTS_ENABLED,
+    MCTS_EXPLORATION_C,
+    MCTS_SIMILARITY_WEIGHT,
+    MCTS_SUCCESS_WEIGHT,
+    MCTS_MIN_VISITS_FOR_UCB,
 )
 
 
@@ -225,7 +233,7 @@ def compute_routing_score(
         Routing score (higher = better match)
     """
     effective_rate = (successes + ROUTING_PRIOR_SUCCESSES) / (uses + ROUTING_PRIOR_USES)
-    base_score = ROUTING_SIM_WEIGHT * cosine_sim + ROUTING_SUCCESS_WEIGHT * effective_rate
+    base_score = MCTS_SIMILARITY_WEIGHT * cosine_sim + MCTS_SUCCESS_WEIGHT * effective_rate
 
     # Apply staleness penalty (time-based decay)
     staleness_penalty = compute_staleness_penalty(last_used_at)
@@ -234,3 +242,59 @@ def compute_routing_score(
     traffic_penalty = compute_traffic_penalty(uses, total_problems)
 
     return base_score - staleness_penalty - traffic_penalty
+
+
+def compute_ucb1_score(
+    cosine_sim: float,
+    uses: int,
+    successes: int,
+    parent_uses: int,
+    last_used_at: Optional[str] = None,
+) -> float:
+    """Compute MCTS-style UCB1 score for signature routing.
+
+    UCB1 (Upper Confidence Bound) balances exploitation vs exploration:
+    - Exploitation: prefer signatures with high similarity and success rate
+    - Exploration: give bonus to under-visited signatures
+
+    Formula: exploit_score + C * sqrt(ln(N) / n)
+    Where:
+    - exploit_score = similarity * success_rate (weighted)
+    - C = exploration constant
+    - N = parent visits (total opportunities at this routing level)
+    - n = child visits (this signature's uses)
+
+    Args:
+        cosine_sim: Cosine similarity between step and signature
+        uses: Number of times this signature was used (n)
+        successes: Number of successful uses
+        parent_uses: Total uses at parent level (N)
+        last_used_at: ISO timestamp of last use (for staleness decay)
+
+    Returns:
+        UCB1 score (higher = better choice)
+    """
+    if not MCTS_ENABLED:
+        # Fall back to greedy routing
+        return compute_routing_score(cosine_sim, uses, successes, last_used_at)
+
+    # Exploitation term: similarity weighted by success rate
+    effective_rate = (successes + ROUTING_PRIOR_SUCCESSES) / (uses + ROUTING_PRIOR_USES)
+    exploit_score = MCTS_SIMILARITY_WEIGHT * cosine_sim + MCTS_SUCCESS_WEIGHT * effective_rate
+
+    # Exploration term: UCB1 bonus for under-visited signatures
+    # sqrt(ln(N) / n) gives higher bonus to less-visited children
+    if uses >= MCTS_MIN_VISITS_FOR_UCB and parent_uses > 0:
+        # Standard UCB1 exploration bonus
+        exploration_bonus = MCTS_EXPLORATION_C * math.sqrt(math.log(parent_uses) / uses)
+    elif uses == 0:
+        # Unvisited signatures get maximum exploration bonus
+        exploration_bonus = MCTS_EXPLORATION_C * 2.0  # High bonus for unexplored
+    else:
+        # Very few visits: give moderate bonus
+        exploration_bonus = MCTS_EXPLORATION_C * 1.0
+
+    # Apply staleness penalty (time-based decay)
+    staleness_penalty = compute_staleness_penalty(last_used_at)
+
+    return exploit_score + exploration_bonus - staleness_penalty
