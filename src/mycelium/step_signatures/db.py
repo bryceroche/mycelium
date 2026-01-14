@@ -110,6 +110,7 @@ class StepSignatureDB:
         parent_problem: str = "",
         match_mode: MatchMode = "cosine",
         origin_depth: int = 0,
+        extracted_values: dict = None,
     ) -> tuple[StepSignature, bool]:
         """Find a matching signature or create a new one.
 
@@ -123,6 +124,7 @@ class StepSignatureDB:
             parent_problem: The parent problem this step came from
             match_mode: Matching algorithm (cosine or auto)
             origin_depth: Decomposition depth at which this step was created
+            extracted_values: Dict of semantic param names -> values from planner
 
         Returns:
             Tuple of (signature, is_new) where is_new=True if newly created
@@ -133,7 +135,8 @@ class StepSignatureDB:
         for attempt in range(max_retries):
             try:
                 return self._find_or_create_atomic(
-                    step_text, embedding, min_similarity, parent_problem, origin_depth
+                    step_text, embedding, min_similarity, parent_problem, origin_depth,
+                    extracted_values=extracted_values
                 )
             except sqlite3.OperationalError as e:
                 if attempt < max_retries - 1:
@@ -155,6 +158,7 @@ class StepSignatureDB:
         min_similarity: float,
         parent_problem: str,
         origin_depth: int = 0,
+        extracted_values: dict = None,
     ) -> tuple[StepSignature, bool]:
         """Internal atomic find-or-create with transaction locking."""
         with self._connection() as conn:
@@ -221,7 +225,10 @@ class StepSignatureDB:
                     return best_match, False
 
                 # Create new signature (Lazy NL: empty clarifying_questions, etc.)
-                sig = self._create_signature_atomic(conn, step_text, embedding, parent_problem, origin_depth)
+                sig = self._create_signature_atomic(
+                    conn, step_text, embedding, parent_problem, origin_depth,
+                    extracted_values=extracted_values
+                )
                 conn.commit()
                 logger.info(
                     "[db] Created new signature: step='%s' type='%s'",
@@ -240,10 +247,11 @@ class StepSignatureDB:
         embedding: np.ndarray,
         parent_problem: str = "",
         origin_depth: int = 0,
+        extracted_values: dict = None,
     ) -> StepSignature:
         """Create a new signature within an existing transaction.
 
-        Auto-assigns DSL based on step_type and description.
+        Auto-assigns DSL based on step_type, description, and extracted_values.
         """
         sig_id = str(uuid.uuid4())
         now = datetime.utcnow().isoformat()
@@ -251,8 +259,10 @@ class StepSignatureDB:
         step_type = self._infer_step_type(step_text)
         centroid_packed = pack_embedding(embedding)
 
-        # Auto-assign DSL based on step_type and description
-        dsl_script, dsl_type = infer_dsl_for_signature(step_type, step_text)
+        # Auto-assign DSL based on step_type, description, and planner's extracted_values
+        dsl_script, dsl_type = infer_dsl_for_signature(
+            step_type, step_text, extracted_values=extracted_values
+        )
 
         # Initialize embedding_sum = embedding, embedding_count = 1
         embedding_sum_packed = centroid_packed  # Same as centroid initially

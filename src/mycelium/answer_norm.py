@@ -50,17 +50,18 @@ async def answers_equivalent_llm(
 
     context = f"\nProblem context: {problem}" if problem else ""
 
-    prompt = f"""Are these two mathematical answers equivalent? Consider:
-- Different numeric formats (fractions, decimals, percentages)
-- Different notations (LaTeX, plain text)
-- Equivalent expressions (simplified vs unsimplified)
-- Units (if applicable)
+    prompt = f"""Are these two mathematical answers NUMERICALLY equivalent?
+
+STRICT RULES:
+- Numbers must evaluate to the SAME value (e.g., 0.5 = 1/2 = 50%)
+- Different numbers are NOT equivalent (e.g., 0.83 != 7)
+- Be strict: if in doubt, answer NO
 {context}
 
 Expected answer: {expected}
 Predicted answer: {predicted}
 
-Reply with only YES or NO."""
+Reply with ONLY 'YES' or 'NO'. Nothing else."""
 
     try:
         response = await ask_llama(prompt, temperature=0.0)

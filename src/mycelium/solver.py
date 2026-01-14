@@ -314,12 +314,14 @@ class Solver:
         embedding = self.embedder.embed(normalized_task)
 
         # 2. Find or create signature (use original text for description)
+        # Pass extracted_values from planner to enable DSL generation from structure
         signature, is_new = self.step_db.find_or_create(
             step_text=step.task,  # Keep original for description
             embedding=embedding,   # Use normalized embedding for matching
             min_similarity=self.min_similarity,
             parent_problem=problem,
             origin_depth=depth,  # Track decomposition depth
+            extracted_values=getattr(step, 'extracted_values', None),
         )
 
         logger.debug(
