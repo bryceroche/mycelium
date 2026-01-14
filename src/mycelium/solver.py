@@ -177,7 +177,7 @@ class Solver:
                 )
 
                 # Validate semantic coherence BEFORE execution
-                validation = validate_plan_coherence(plan, self.step_db, self.embedder)
+                validation = validate_plan_coherence(plan, self.embedder)
 
                 if validation.is_coherent:
                     logger.debug(
