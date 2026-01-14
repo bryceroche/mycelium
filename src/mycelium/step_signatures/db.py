@@ -195,17 +195,26 @@ class StepSignatureDB:
 
             if centroid_sum is not None and total_weight > 0:
                 new_centroid = centroid_sum / total_weight
-                conn.execute(
-                    """UPDATE step_signatures
-                       SET centroid = ?, embedding_sum = ?, embedding_count = ?
-                       WHERE id = ?""",
-                    (pack_embedding(new_centroid), pack_embedding(centroid_sum),
-                     total_weight, parent_id),
-                )
-                logger.debug(
-                    "[db] Propagated centroid to parent %d (weight=%d)",
-                    parent_id, total_weight
-                )
+                try:
+                    conn.execute(
+                        """UPDATE step_signatures
+                           SET centroid = ?, embedding_sum = ?, embedding_count = ?
+                           WHERE id = ?""",
+                        (pack_embedding(new_centroid), pack_embedding(centroid_sum),
+                         total_weight, parent_id),
+                    )
+                    logger.debug(
+                        "[db] Propagated centroid to parent %d (weight=%d)",
+                        parent_id, total_weight
+                    )
+                except sqlite3.IntegrityError:
+                    # Centroid collision with another signature - skip this update
+                    # This can happen when weighted average equals an existing centroid
+                    logger.debug(
+                        "[db] Skipped centroid propagation to parent %d (collision)",
+                        parent_id
+                    )
+                    continue
 
                 # Recurse to grandparents
                 self.propagate_centroid_to_parents(conn, parent_id, visited)
