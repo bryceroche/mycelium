@@ -202,9 +202,9 @@ def _classify_value_heuristic(value: Any) -> ValueType:
 
     s_lower = s.lower()
 
-    # Text indicators - definitely an expression/text (check early)
-    text_indicators = ['the ', 'is ', 'are ', 'if ', 'when ', 'let ', 'find ', 'solve ']
-    if any(ind in s_lower for ind in text_indicators):
+    # Text with common natural language patterns - likely expression/text
+    # Use simple heuristics; embedding fallback handles edge cases
+    if any(s_lower.startswith(w) for w in ['the ', 'a ', 'an ', 'if ', 'when ']):
         return ValueType.EXPRESSION
 
     # Contains '=' (equation) - definitely expression
@@ -263,55 +263,10 @@ def _classify_value_embedding(value: str) -> tuple[ValueType, float]:
 # =============================================================================
 # Validates that the signature's step_type semantically matches the actual task.
 # This catches cases where signature similarity is high but operation type differs.
-
-# Step type descriptions - maps step_type to semantic description
-STEP_TYPE_DESCRIPTIONS = {
-    # Arithmetic operations
-    "compute_sum": "add numbers together to get a total",
-    "compute_product": "multiply numbers together",
-    "compute_difference": "subtract one number from another",
-    "compute_quotient": "divide one number by another",
-    "compute_remainder": "find the remainder after division",
-    "compute_power": "raise a number to an exponent or power",
-    "compute_sqrt": "calculate the square root of a number",
-    "compute_square": "square a number (multiply by itself)",
-    "compute_factorial": "calculate factorial (n!)",
-
-    # Number theory
-    "compute_gcd": "find the greatest common divisor of numbers",
-    "compute_lcm": "find the least common multiple of numbers",
-    "check_divisibility": "check if one number divides another evenly",
-    "check_prime_number": "determine if a number is prime",
-
-    # Geometry
-    "compute_area": "calculate the area of a shape",
-    "area_triangle": "calculate the area of a triangle",
-    "area_rectangle": "calculate the area of a rectangle",
-    "area_circle": "calculate the area of a circle",
-    "compute_perimeter": "calculate the perimeter of a shape",
-    "compute_distance": "calculate distance between points",
-    "compute_length": "calculate the length of a segment",
-    "compute_angle": "calculate an angle measurement",
-    "compute_radius": "calculate the radius of a circle",
-
-    # Algebra
-    "simplify_expression": "simplify an algebraic expression",
-    "solve_equation": "solve an equation for a variable",
-    "substitute_values": "substitute known values into an expression",
-    "compute_derivative": "calculate the derivative of a function",
-
-    # Statistics/combinatorics
-    "compute_average": "calculate the mean or average",
-    "compute_probability": "calculate a probability",
-    "compute_percentage": "calculate a percentage",
-    "count_items": "count the number of items or possibilities",
-
-    # Sequences
-    "arithmetic_sequence": "work with arithmetic sequences",
-    "arith_seq_diff": "find common difference of arithmetic sequence",
-    "arith_sum": "calculate sum of arithmetic sequence",
-    "geometric_sequence": "work with geometric sequences",
-}
+#
+# Step type descriptions are inferred dynamically from step_type names
+# (e.g., "compute_gcd" -> "compute gcd operation") rather than hardcoded.
+# This scales automatically as new step_types are added to the signature database.
 
 # Cache for step_type embeddings
 _step_type_embedding_cache: dict[str, Any] = {}
@@ -321,12 +276,11 @@ _STEP_TYPE_ALIGNMENT_THRESHOLD = 0.20
 
 
 def _get_step_type_description(step_type: str) -> str:
-    """Get description for a step_type, inferring from name if not in mapping."""
-    if step_type in STEP_TYPE_DESCRIPTIONS:
-        return STEP_TYPE_DESCRIPTIONS[step_type]
+    """Infer description from step_type name dynamically.
 
-    # Infer from step_type name: convert snake_case to sentence
-    # e.g., "compute_logarithm" -> "compute logarithm"
+    Converts snake_case to human-readable sentence.
+    e.g., "compute_gcd" -> "compute gcd operation"
+    """
     description = step_type.replace("_", " ").lower()
     return f"{description} operation"
 
@@ -535,37 +489,13 @@ class DSLSpec:
         return self._purpose_embedding
 
     def _infer_purpose_from_script(self) -> str:
-        """Infer a purpose description from the DSL script."""
-        script_lower = self.script.lower()
+        """Infer a purpose description from the DSL script.
 
-        # Map common scripts to purposes
-        if 'sqrt' in script_lower:
-            return "compute square root of a number"
-        if '**' in script_lower or 'pow' in script_lower:
-            return "compute power or exponentiation"
-        if 'a + b' in script_lower:
-            return "add two numbers together"
-        if 'a - b' in script_lower:
-            return "subtract one number from another"
-        if 'a * b' in script_lower:
-            return "multiply two numbers"
-        if 'a / b' in script_lower:
-            return "divide one number by another"
-        if 'gcd' in script_lower:
-            return "find greatest common divisor"
-        if 'lcm' in script_lower:
-            return "find least common multiple"
-        if 'factor' in script_lower:
-            return "factor an expression"
-        if 'expand' in script_lower:
-            return "expand an algebraic expression"
-        if 'simplify' in script_lower:
-            return "simplify an expression"
-        if 'solve' in script_lower:
-            return "solve an equation for a variable"
-
-        # Default: use the script itself as a rough purpose
-        return f"execute mathematical operation: {self.script[:50]}"
+        Uses the script itself as the semantic description. The embedding
+        similarity will handle matching - no need for hardcoded mappings.
+        """
+        # The script IS the purpose - let embeddings find semantic matches
+        return f"compute: {self.script[:60]}"
 
     def get_param_role_embedding(self, param: str):
         """Get or compute embedding for a parameter's semantic role.
@@ -588,93 +518,23 @@ class DSLSpec:
         return embedding
 
     def _infer_param_role(self, param: str) -> str:
-        """Infer semantic role description for a parameter from its name and script context."""
-        param_lower = param.lower()
-        script_lower = self.script.lower()
+        """Infer semantic role description for a parameter.
 
-        # Power/exponent DSLs
-        if '**' in script_lower or 'pow' in script_lower:
-            if param_lower in ('exponent', 'exp', 'power', 'n'):
-                return "the exponent or power to raise the base to"
-            if param_lower in ('base', 'b', 'a'):
-                return "the base number to be raised to a power"
-
-        # Distance/geometry DSLs
-        if 'sqrt' in script_lower and ('**2' in script_lower or 'pow' in script_lower):
-            if param_lower in ('x1', 'x2', 'y1', 'y2'):
-                return "a coordinate value for distance calculation"
-            if param_lower in ('a', 'b'):
-                return "a length or distance component"
-
-        # Combinatorics
-        if 'factorial' in script_lower or 'comb' in script_lower or 'perm' in script_lower:
-            if param_lower == 'n':
-                return "total number of items to choose from"
-            if param_lower in ('r', 'k'):
-                return "number of items to select or arrange"
-
-        # Division
-        if '/' in script_lower:
-            if param_lower in ('numerator', 'dividend', 'a'):
-                return "the value being divided"
-            if param_lower in ('denominator', 'divisor', 'b'):
-                return "the value to divide by"
-
-        # Generic arithmetic
-        if param_lower in ('a', 'b'):
-            if '+' in script_lower:
-                return "a number to add"
-            if '-' in script_lower:
-                return "a number for subtraction"
-            if '*' in script_lower:
-                return "a number to multiply"
-
-        # Default based on param name patterns
-        role_patterns = {
-            'area': "an area measurement",
-            'length': "a length or distance measurement",
-            'height': "a height measurement",
-            'width': "a width measurement",
-            'radius': "a radius measurement",
-            'angle': "an angle measurement in degrees or radians",
-            'count': "a count or quantity of items",
-            'rate': "a rate or ratio value",
-            'price': "a price or monetary value",
-            'time': "a time duration or timestamp",
-            'prob': "a probability value between 0 and 1",
-        }
-
-        for pattern, role in role_patterns.items():
-            if pattern in param_lower:
-                return role
-
-        # Fallback: generic numeric input
-        return f"a numeric value for the {param} parameter"
+        Uses the param name itself as the semantic description. The embedding
+        similarity will handle matching - no need for hardcoded mappings.
+        Human-readable param names already contain semantic meaning.
+        """
+        # Convert snake_case to readable: "base_value" -> "base value"
+        readable = param.replace("_", " ").lower()
+        return f"the {readable} parameter"
 
     def get_dsl_type(self) -> str:
-        """Determine the DSL type category for threshold selection."""
-        script_lower = self.script.lower()
+        """Determine the DSL type category.
 
-        # Power/exponent operations
-        if '**' in script_lower or 'pow(' in script_lower or 'exponent' in script_lower:
-            return "power"
-
-        # Geometry/distance operations
-        if 'sqrt' in script_lower or 'distance' in script_lower or 'hypot' in script_lower:
-            return "geometry"
-
-        # Combinatorics
-        if any(kw in script_lower for kw in ['factorial', 'comb', 'perm', 'choose', 'binomial']):
-            return "combinatorics"
-
-        # Division/modulo
-        if '/' in script_lower or '%' in script_lower or 'mod' in script_lower:
-            return "division"
-
-        # Simple arithmetic (add, subtract, multiply)
-        if any(op in script_lower for op in ['+', '-', '*']) and '**' not in script_lower:
-            return "arithmetic"
-
+        Returns 'default' - all DSLs use the same thresholds.
+        Per-type thresholds were manual tuning that doesn't scale.
+        Let the system learn appropriate confidence from execution data.
+        """
         return "default"
 
     def match_param(self, param: str, context_keys: list[str]) -> Optional[str]:
@@ -745,11 +605,10 @@ class DSLSpec:
             if i < len(remaining_keys):
                 result[param] = context[remaining_keys[i]]
 
-        # If still no matches and we have generic params (a, b, c, x, y, z, n, m)
-        # Try aggressive positional matching
+        # If still no matches and we have short params (single letter or 2-3 chars)
+        # Try aggressive positional matching - these are likely generic math params
         if not result and self.params and context:
-            generic_params = {'a', 'b', 'c', 'x', 'y', 'z', 'n', 'm', 'r', 'k', 'i', 'j'}
-            if all(p.lower() in generic_params for p in self.params):
+            if all(len(p) <= 3 for p in self.params):
                 sorted_keys = sorted(context.keys())
                 for i, param in enumerate(self.params):
                     if i < len(sorted_keys):
@@ -1280,6 +1139,9 @@ from mycelium.step_signatures.math_ops import (
     euclidean_gcd,
     modinv,
     divisors,
+    divisor_count,
+    divisor_count_from_factors,
+    factorization_exponents,
     prime_factors,
     is_prime,
     mod_pow,
@@ -1314,6 +1176,11 @@ register_operator("evaluate_polynomial", evaluate_polynomial)
 register_operator("euclidean_gcd", euclidean_gcd)
 register_operator("modinv", modinv)
 register_operator("divisors", divisors)
+register_operator("divisor_count", divisor_count)
+register_operator("count_divisors", divisor_count)  # Alias
+register_operator("divisor_count_from_factors", divisor_count_from_factors)
+register_operator("count_divisors_from_factors", divisor_count_from_factors)  # Alias
+register_operator("factorization_exponents", factorization_exponents)
 register_operator("prime_factors", prime_factors)
 register_operator("is_prime", is_prime)
 register_operator("mod_pow", mod_pow)
@@ -1992,18 +1859,15 @@ def semantic_rewrite_script(
     if not dsl_spec.params or not context:
         return None, 0.0
 
-    # Generic params that should use positional/heuristic matching
-    GENERIC_PARAMS = {
-        # Single letters
-        'a', 'b', 'c', 'n', 'm', 'x', 'y', 'z', 'k', 'i', 'j', 'r',
-        # Common math terms
-        'expr', 'value', 'result', 'num', 'val',
-        # Arithmetic operations
-        'dividend', 'divisor', 'base', 'exp', 'exponent',
-        'numerator', 'denominator', 'factor',
-        # Function params
-        'f', 'var', 'equation', 'count',
-    }
+    def _is_generic_param(param: str) -> bool:
+        """Check if param is generic (should use positional fallback).
+
+        Generic params are short names that don't carry specific semantics.
+        Instead of hardcoding a list, use length as heuristic.
+        """
+        p = param.lower()
+        # Single letters or very short names (<=3 chars) are generic
+        return len(p) <= 3
 
     # Build param -> context_key mapping
     param_mapping: dict[str, str] = {}
@@ -2057,7 +1921,7 @@ def semantic_rewrite_script(
             param_mapping[param] = best_match
             used_keys.add(best_match)  # Mark key as used
             total_score += best_score
-        elif param.lower() in GENERIC_PARAMS:
+        elif _is_generic_param(param):
             # Generic param - save for positional fallback
             unmatched_params.append(param)
         else:
@@ -2066,58 +1930,25 @@ def semantic_rewrite_script(
             return None, 0.0
 
     # Positional fallback for generic params
+    # Map params to available context keys in order (no hardcoded preferences)
     if unmatched_params:
-        # Params that typically come from the task/problem (constants), not computed values
-        TASK_PREFERRED_PARAMS = {'divisor', 'denominator', 'modulus', 'base'}
+        # Gather all available keys, preferring step_N keys (computed values)
+        available_keys = [k for k in step_keys if k not in used_keys]
+        # Add task/problem num keys as fallback
+        num_keys = sorted([k for k in context.keys()
+                          if (k.startswith('task_num_') or k.startswith('problem_num_'))
+                          and k not in used_keys])
+        available_keys.extend(num_keys)
 
-        # Map generic params to step_N in order, ensuring no duplicates
-        available_step_keys = [k for k in step_keys if k not in used_keys]
-        task_num_keys = sorted([k for k in context.keys() if k.startswith('task_num_') and k not in used_keys],
-                               key=lambda x: int(x.split('_')[-1]) if x.split('_')[-1].isdigit() else 0)
-        problem_num_keys = sorted([k for k in context.keys() if k.startswith('problem_num_') and k not in used_keys],
-                                  key=lambda x: int(x.split('_')[-1]) if x.split('_')[-1].isdigit() else 0)
-
-        for i, param in enumerate(unmatched_params):
-            matched = False
-            param_lower = param.lower()
-
-            # For divisor-like params, prefer task_num (the value from the problem)
-            if param_lower in TASK_PREFERRED_PARAMS:
-                # Try last task_num (often the divisor/base mentioned at end of task)
-                for key in reversed(task_num_keys):
-                    if key not in used_keys:
-                        param_mapping[param] = key
-                        used_keys.add(key)
-                        total_score += 0.7
-                        logger.debug("[dsl_semantic] Task-preferred match: %s -> %s", param, key)
-                        matched = True
-                        break
-
-            # Otherwise, try step keys first (computed values)
-            if not matched:
-                for key in available_step_keys:
-                    if key not in used_keys:
-                        param_mapping[param] = key
-                        used_keys.add(key)
-                        total_score += 0.6
-                        logger.debug("[dsl_semantic] Positional match: %s -> %s", param, key)
-                        matched = True
-                        break
-
-            # Final fallback to num keys
-            if not matched:
-                num_keys = task_num_keys + problem_num_keys
-                for key in num_keys:
-                    if key not in used_keys:
-                        param_mapping[param] = key
-                        used_keys.add(key)
-                        total_score += 0.5
-                        logger.debug("[dsl_semantic] Num key match: %s -> %s", param, key)
-                        matched = True
-                        break
-
-            if not matched:
-                logger.debug("[dsl_semantic] No positional match for generic param '%s'", param)
+        for param in unmatched_params:
+            if available_keys:
+                key = available_keys.pop(0)
+                param_mapping[param] = key
+                used_keys.add(key)
+                total_score += 0.6
+                logger.debug("[dsl_semantic] Positional match: %s -> %s", param, key)
+            else:
+                logger.debug("[dsl_semantic] No positional match for param '%s'", param)
                 return None, 0.0
 
     if len(param_mapping) != len(dsl_spec.params):
@@ -2165,204 +1996,3 @@ def semantic_rewrite_script(
     )
 
     return rewritten, avg_confidence
-
-
-# LLM-based script rewriter for DSL execution
-LLM_SCRIPT_REWRITE_PROMPT = """Rewrite this DSL script to use the available context variable names.
-
-Current step task: {step_task}
-
-Original script: {script}
-Script operation: {purpose}
-
-Available context variables:
-{context}
-
-RULES:
-1. Map each DSL parameter to a DIFFERENT context variable (don't use same variable twice unless necessary)
-2. Choose variables that semantically match what the step is computing
-3. The rewritten script must be a valid Python expression
-4. If only one numeric variable is available and two are needed, the step may not be a sum - return original script
-
-Example 1:
-Step: "Calculate total area"
-Script: "a + b"
-Context:
-  length: 10
-  width: 5
-Rewritten: length + width
-
-Example 2:
-Step: "Calculate profit"
-Script: "a - b"
-Context:
-  revenue: 100
-  cost: 40
-Rewritten: revenue - cost
-
-Example 3 (identity - only one value):
-Step: "Calculate eggs per day"
-Script: "a + b"
-Context:
-  eggs_per_day: 16
-Rewritten: eggs_per_day
-
-Return ONLY the rewritten script, nothing else:"""
-
-
-async def llm_rewrite_script(
-    dsl_spec: DSLSpec,
-    context: dict[str, Any],
-    client,  # GroqClient
-    step_descriptions: Optional[dict[str, str]] = None,
-    current_step_task: Optional[str] = None,
-) -> Optional[str]:
-    """Use LLM to rewrite DSL script using actual context variable names.
-
-    Args:
-        dsl_spec: The DSL specification with script to rewrite
-        context: Runtime context with available values
-        client: GroqClient instance for LLM calls
-        step_descriptions: Optional dict mapping step_id -> task description
-        current_step_task: Optional current step task for additional context
-
-    Returns:
-        Rewritten script string, or original script if rewriting not possible
-    """
-    if not context:
-        # Return original script - let positional fallback try
-        logger.debug("[dsl] No context for rewrite, returning original script")
-        return dsl_spec.script
-
-    # Format context with descriptions if available
-    context_lines = []
-    for k, v in context.items():
-        val_str = str(v) if not isinstance(v, str) or len(str(v)) < 100 else str(v)[:100] + "..."
-        if step_descriptions and k in step_descriptions:
-            desc = step_descriptions[k][:80]  # Truncate long descriptions
-            context_lines.append(f"  {k} ({desc}): {val_str}")
-        else:
-            context_lines.append(f"  {k}: {val_str}")
-    context_str = "\n".join(context_lines)
-
-    # Get DSL purpose
-    purpose = dsl_spec.purpose if dsl_spec.purpose else "mathematical operation"
-
-    prompt = LLM_SCRIPT_REWRITE_PROMPT.format(
-        step_task=current_step_task[:200] if current_step_task else "Execute step",
-        script=dsl_spec.script[:300],
-        purpose=purpose,
-        context=context_str
-    )
-
-    try:
-        messages = [{"role": "user", "content": prompt}]
-        response = await client.generate(messages, max_tokens=200, temperature=0.0)
-        # Clean up response
-        rewritten = response.strip()
-        # Handle markdown code blocks
-        if rewritten.startswith("```"):
-            lines = rewritten.split("\n")
-            rewritten = "\n".join(lines[1:-1] if lines[-1] == "```" else lines[1:])
-            rewritten = rewritten.strip()
-        # Remove language hints
-        if rewritten.startswith("python"):
-            rewritten = rewritten[6:].strip()
-        logger.info("[dsl] LLM rewrote script: '%s' -> '%s'", dsl_spec.script[:50], rewritten[:50])
-        return rewritten
-    except Exception as e:
-        logger.warning("[dsl] LLM script rewrite failed: %s, using original", e)
-        return dsl_spec.script  # Return original - let positional fallback try
-
-
-async def execute_dsl_with_llm_matching(
-    dsl_json: str,
-    inputs: dict[str, Any],
-    client,  # GroqClient for LLM script rewriting
-    min_confidence: float = 0.7,
-    llm_threshold: float = 0.3,
-    step_descriptions: Optional[dict[str, str]] = None,
-    step_task: Optional[str] = None,
-    step_type: Optional[str] = None,
-) -> tuple[Optional[Any], bool, float]:
-    """Execute DSL with LLM-based script rewriting fallback.
-
-    If heuristic confidence is below llm_threshold, use LLM to rewrite the script
-    using actual context variable names.
-
-    Args:
-        dsl_json: JSON-encoded DSL specification
-        inputs: Input values from context
-        client: GroqClient for LLM calls when needed
-        min_confidence: Minimum confidence to execute (default 0.7)
-        llm_threshold: Below this confidence, try LLM script rewriting (default 0.3)
-        step_descriptions: Optional dict mapping step_id -> task description for better LLM matching
-        step_task: Optional current step task for additional context
-        step_type: Optional signature step_type for alignment validation
-
-    Returns:
-        (result, success, confidence) tuple
-    """
-    spec = DSLSpec.from_json(dsl_json)
-    if not spec:
-        return None, False, 0.0
-
-    # Early check: Ensure we have enough numeric inputs for the DSL params
-    # This prevents bad mappings like a=20, b=20 when b should be symbolic
-    if spec.params:
-        # Count how many inputs can actually be extracted as numeric
-        numeric_count = sum(1 for v in inputs.values() if _extract_numeric_value(v) is not None)
-        required_params = len(spec.params)
-        if numeric_count < required_params:
-            logger.debug(
-                "[dsl] Insufficient numeric inputs: have %d, need %d params for script '%s'",
-                numeric_count, required_params, spec.script[:40]
-            )
-            return None, False, 0.0
-
-    # Validate step_type alignment before attempting execution
-    if step_type and step_task:
-        valid, sim, reason = validate_step_type_alignment(step_type, step_task)
-        if not valid:
-            logger.info("[dsl] Step-type misaligned: %s", reason)
-            return None, False, 0.0
-
-    confidence = spec.compute_confidence(inputs)
-
-    # PRIORITY 1: If confidence is low, try SEMANTIC matching (deterministic, reliable)
-    if confidence < llm_threshold and step_descriptions:
-        rewritten_script, semantic_confidence = semantic_rewrite_script(spec, inputs, step_descriptions)
-        if rewritten_script and semantic_confidence >= 0.5:
-            # Create new DSLSpec with semantically rewritten script
-            rewritten_spec = DSLSpec(
-                layer=spec.layer,
-                script=rewritten_script,
-                params=[],  # Script now uses context var names directly
-                aliases={},
-                output_type=spec.output_type,
-                fallback=spec.fallback,
-            )
-            result, success = try_execute_dsl(rewritten_spec, inputs, step_task=step_task or "")
-            if success:
-                logger.info("[dsl] Semantic rewrite succeeded: result=%s confidence=%.2f", result, semantic_confidence)
-                return result, True, semantic_confidence
-            else:
-                logger.debug("[dsl] Semantic rewrite produced invalid script")
-
-    # PRIORITY 2: Standard execution if confidence is sufficient
-    if confidence >= min_confidence:
-        result, success = try_execute_dsl(spec, inputs, step_task=step_task or "")
-        return result, success, confidence
-
-    # PRIORITY 3: LLM rewriting as last resort (DISABLED - produces garbage)
-    # The LLM rewriting was causing the 45% accuracy regression by producing
-    # incorrect parameter mappings like "area_ENG / area_ABC" -> "step_1 / step_1"
-    # Uncomment below to re-enable if semantic matching isn't sufficient:
-    #
-    # if confidence < llm_threshold and client:
-    #     logger.info("[dsl] Low confidence (%.2f), trying LLM script rewriting", confidence)
-    #     try:
-    #         rewritten_script = await llm_rewrite_script(spec, inputs, client, step_descriptions, step_task)
-    #         ... (rest of LLM logic)
-
-    return None, False, confidence

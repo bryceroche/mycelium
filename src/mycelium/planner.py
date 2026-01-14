@@ -25,17 +25,10 @@ CRITICAL: Output ONLY in this exact format. No markdown headers, no explanations
     semantic_name: numeric_value
   depends_on: []
 
-- id: step_2
-  task: [what to do]
-  values:
-    input_value: "{step_1}"
-    other_value: 123
-  depends_on: [step_1]
-
 - id: final
   task: Combine results to get final answer
   values: {}
-  depends_on: [step_2]
+  depends_on: [step_1]
 
 RULES:
 1. Output ONLY the step list above. Nothing else.
@@ -43,9 +36,10 @@ RULES:
 3. DO NOT solve the problem or compute answers.
 4. DO NOT include "The final answer is" or any boxed answers.
 5. Each task describes WHAT to do, not the solution.
-6. Keep to 3-6 steps.
+6. PREFER FEWER STEPS: Use 1-2 steps for simple problems. Only use 3+ steps for genuinely complex problems.
 7. EXTRACT numeric values from the problem and assign semantic names.
 8. Use "{step_N}" to reference the result of a previous step.
+9. If an available operation can solve the problem directly, use just ONE step.
 
 EXAMPLE for "Earth's circumference is 40,000 km. How many trips for 1 billion meters?":
 
@@ -75,6 +69,20 @@ The system has learned these reusable step patterns. When decomposing, try to cr
 {hints}
 
 IMPORTANT: When using these patterns, extract the required values into the step's `values` field with matching semantic names. This allows the system to execute the step automatically.
+"""
+
+COHERENCE_FEEDBACK_TEMPLATE = """
+## Previous Decomposition Feedback
+
+Your previous decomposition had coherence issues. Please address these problems:
+
+{feedback}
+
+GUIDANCE:
+- Ensure each step's output can be used by the next step
+- Make sure step dependencies correctly reflect the data flow
+- Use semantic parameter names that clearly indicate what values are needed
+- Add intermediate steps if there are gaps in the computation chain
 """
 
 
@@ -342,7 +350,8 @@ class Planner:
     async def decompose(
         self,
         problem: str,
-        signature_hints: Optional[list[SignatureHint]] = None
+        signature_hints: Optional[list[SignatureHint]] = None,
+        coherence_feedback: Optional[str] = None,
     ) -> DAGPlan:
         """Decompose a problem into a DAG of steps.
 
@@ -351,6 +360,8 @@ class Planner:
             signature_hints: Optional list of SignatureHint objects that tell the
                             decomposer what operations are available and what
                             parameters each needs (from NL interface)
+            coherence_feedback: Optional feedback from semantic validation about
+                               issues with a previous decomposition attempt
 
         Returns:
             DAGPlan with steps and dependencies
@@ -363,6 +374,11 @@ class Planner:
             hints_text = "\n\n".join(hint.to_hint_text() for hint in signature_hints)
             system_prompt += SIGNATURE_HINTS_TEMPLATE.format(hints=hints_text)
             logger.debug("[planner] Added %d signature hints with NL interface", len(signature_hints))
+
+        # Add coherence feedback if this is a retry
+        if coherence_feedback:
+            system_prompt += COHERENCE_FEEDBACK_TEMPLATE.format(feedback=coherence_feedback)
+            logger.info("[planner] Added coherence feedback for retry")
 
         messages = [
             {"role": "system", "content": system_prompt},

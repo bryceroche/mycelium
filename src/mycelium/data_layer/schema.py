@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS step_usage_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     signature_id INTEGER NOT NULL REFERENCES step_signatures(id),
     step_text TEXT,
-    success INTEGER NOT NULL,
+    step_completed INTEGER NOT NULL,  -- Whether step returned result (NOT problem correctness)
     was_injected INTEGER DEFAULT 0,
     params_extracted TEXT,  -- JSON: what params were extracted
     created_at TEXT NOT NULL

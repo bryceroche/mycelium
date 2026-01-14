@@ -1,14 +1,32 @@
 """Mycelium configuration constants.
 
 Single operating mode: explore signatures, collect lift data, learn from failures.
+
+=============================================================================
+CORE PRINCIPLE: FAILURES ARE DATA
+=============================================================================
+The system learns by failing. Every DSL failure is recorded and used to:
+- Identify signatures that need decomposition (high variance = umbrella)
+- Find DSLs that need fixing (partial success = fixable)
+- Route future problems away from known-bad paths
+
+DO NOT mask failures with LLM fallback. Let DSLs fail, record the outcome,
+and let the refinement loop fix them. Short-term accuracy matters less than
+long-term learning.
+
+Config philosophy:
+- TRAINING_MODE=True: Collect ALL data, even from known-bad DSLs
+- All thresholds at 0.0: Let everything execute and fail naturally
+- No gates, no guards: Pure data collection mode
+=============================================================================
 """
 
 import os
 
-# For backwards compatibility
-# TRAINING_MODE = True means DSL avoidance is DISABLED (collect all data)
-# TRAINING_MODE = False means DSL avoidance is ENABLED (skip bad DSLs)
-TRAINING_MODE = True  # TRAINING: Disable DSL avoidance, collect all failure data
+# TRAINING_MODE = True: DSL avoidance DISABLED, collect all failure data
+# TRAINING_MODE = False: DSL avoidance ENABLED, skip known-bad DSLs
+# Keep True during data collection phase
+TRAINING_MODE = True
 
 # =============================================================================
 # SIGNATURE MATCHING
@@ -49,8 +67,6 @@ DSL_VALUE_TYPE_THRESHOLD = 0.15  # Threshold for value type matching
 DSL_STEP_TYPE_ALIGNMENT_THRESHOLD = 0.20  # Threshold for step type alignment
 DSL_PARAM_MATCH_THRESHOLD = 0.50  # Min score to accept param match
 DSL_PARAM_EXACT_MATCH_SCORE = 0.95  # Score for exact param name match
-DSL_REWRITE_CONFIDENCE_THRESHOLD = 0.50  # Min confidence for rewritten scripts
-DSL_LLM_FALLBACK_THRESHOLD = 0.30  # Threshold for LLM fallback (when enabled)
 DSL_GENERATOR_MIN_SUCCESS_RATE = 0.80  # Min success rate for DSL generation
 
 # Negative example threshold
@@ -134,6 +150,8 @@ RECURSIVE_DECOMPOSITION_ENABLED = True  # Enable decomposition for complex steps
 RECURSIVE_MAX_DEPTH = 9  # Max routing depth: deep decomposition for complex problems
 RECURSIVE_CONFIDENCE_THRESHOLD = 0.8  # Route deeper when DSL confidence < this
 RECURSIVE_MAX_TOTAL_STEPS = 50
+UMBRELLA_MAX_DEPTH = 10  # Max depth for umbrella routing chains
+UMBRELLA_ROUTING_THRESHOLD = 0.5  # Min similarity for umbrella child routing (lower than global 0.85 since we're picking best among known children)
 
 # =============================================================================
 # DATABASE
