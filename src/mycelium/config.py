@@ -62,6 +62,11 @@ DSL_THRESHOLDS_BY_TYPE = {
     "default": {"gate": 0.0, "param": 0.0},
 }
 
+# DSL Operation Inference threshold
+# Higher = more conservative, more "decompose" fallbacks, fewer wrong DSLs
+# Lower = more aggressive, more DSL attempts, more wrong matches
+DSL_OPERATION_INFERENCE_THRESHOLD = 0.6  # Raised from 0.35 to reject bad matches
+
 # DSL Executor thresholds
 DSL_VALUE_TYPE_THRESHOLD = 0.15  # Threshold for value type matching
 DSL_STEP_TYPE_ALIGNMENT_THRESHOLD = 0.20  # Threshold for step type alignment

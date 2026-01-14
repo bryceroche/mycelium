@@ -1,6 +1,9 @@
 # Mycelium
 
 **Decompose math problems into reusable atomic signatures.**
+**Please read the [CLAUDE.md](CLAUDE.md) for the latest thinking.**
+**Paper here: https://drive.google.com/file/d/1Gn8Efk4F2GW1bT3qGlHmKV-V_C6hIaLk/view**
+
 
 Problems decompose into DAG-structured steps. Each step matches against known signatures (cosine similarity) and executes via DSL (~0ms) instead of LLM (~500ms). Novel solutions become new signatures. The library grows; future problems get faster.
 
