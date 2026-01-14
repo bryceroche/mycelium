@@ -447,8 +447,10 @@ class Solver:
 
         # 4. Try DSL execution if not already routed
         # BUT: At shallow depths, force decomposition to build tree structure
+        # EXCEPTION: If planner provided dsl_hint, execute it directly (LLM knows what to do)
         sig_depth = routed_signature.depth or 0
-        force_decompose = should_force_decompose(sig_depth)
+        has_dsl_hint = getattr(step, 'dsl_hint', None) is not None
+        force_decompose = should_force_decompose(sig_depth) and not has_dsl_hint
 
         if result is None and routed_signature.dsl_script and not force_decompose:
             dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
