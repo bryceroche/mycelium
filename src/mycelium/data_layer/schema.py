@@ -62,12 +62,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_sig_centroid ON step_signatures(centroid);
 CREATE INDEX IF NOT EXISTS idx_sig_depth ON step_signatures(depth);
 
 -- =============================================================================
--- SIGNATURE RELATIONSHIPS: DAG of parent-child routing
+-- SIGNATURE RELATIONSHIPS: Tree structure for parent-child routing
 -- =============================================================================
--- Enables multi-layer umbrella routing:
+-- Enables multi-layer umbrella routing (TREE structure - single parent per child):
 --   A → B → C (A parent of B, B parent of C)
 --   A → B, A → C (A parent of multiple children)
---   B → D, C → D (D has multiple parents - true DAG)
+--   Each child has exactly ONE parent (enforced by UNIQUE(child_id))
 CREATE TABLE IF NOT EXISTS signature_relationships (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     parent_id INTEGER NOT NULL REFERENCES step_signatures(id) ON DELETE CASCADE,
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS signature_relationships (
     condition TEXT NOT NULL,           -- routing condition: "counting outcomes", "complement event"
     routing_order INTEGER DEFAULT 0,   -- priority for fallback (lower = higher priority)
     created_at TEXT NOT NULL,
-    UNIQUE(parent_id, child_id)
+    UNIQUE(child_id)  -- Tree structure: each child has exactly one parent
 );
 
 CREATE INDEX IF NOT EXISTS idx_sig_rel_parent ON signature_relationships(parent_id);
@@ -178,6 +178,61 @@ def migrate_db(conn) -> None:
 
     if migrations:
         conn.commit()
+
+    # Fix multi-parent children (tree structure enforcement)
+    # This cleans up any children that have multiple parents from old DAG schema
+    _fix_multi_parent_children(conn)
+
+
+def _fix_multi_parent_children(conn) -> None:
+    """Remove duplicate parent relationships to enforce tree structure.
+
+    Old schema allowed DAG (multiple parents per child). New schema enforces
+    tree (single parent). This migration keeps only the first parent for each child.
+    """
+    # Find children with multiple parents
+    cursor = conn.execute("""
+        SELECT child_id, COUNT(*) as parent_count
+        FROM signature_relationships
+        GROUP BY child_id
+        HAVING parent_count > 1
+    """)
+    multi_parent_children = cursor.fetchall()
+
+    if not multi_parent_children:
+        return
+
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.warning(
+        "[schema] Found %d children with multiple parents, fixing...",
+        len(multi_parent_children)
+    )
+
+    # For each child with multiple parents, keep only the first (by id)
+    for row in multi_parent_children:
+        child_id = row[0]
+        # Get all parent relationships for this child, ordered by id
+        cursor = conn.execute("""
+            SELECT id FROM signature_relationships
+            WHERE child_id = ?
+            ORDER BY id ASC
+        """, (child_id,))
+        rel_ids = [r[0] for r in cursor.fetchall()]
+
+        # Keep first, delete rest
+        if len(rel_ids) > 1:
+            ids_to_delete = rel_ids[1:]
+            conn.execute(
+                f"DELETE FROM signature_relationships WHERE id IN ({','.join('?' * len(ids_to_delete))})",
+                ids_to_delete
+            )
+            logger.info(
+                "[schema] Fixed child %d: kept parent rel %d, removed %d duplicates",
+                child_id, rel_ids[0], len(ids_to_delete)
+            )
+
+    conn.commit()
 
 
 STEP_SCHEMA = SQLITE_SCHEMA
