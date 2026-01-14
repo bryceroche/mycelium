@@ -202,9 +202,9 @@ def _classify_value_heuristic(value: Any) -> ValueType:
 
     s_lower = s.lower()
 
-    # Text indicators - definitely an expression/text (check early)
-    text_indicators = ['the ', 'is ', 'are ', 'if ', 'when ', 'let ', 'find ', 'solve ']
-    if any(ind in s_lower for ind in text_indicators):
+    # Text with common natural language patterns - likely expression/text
+    # Use simple heuristics; embedding fallback handles edge cases
+    if any(s_lower.startswith(w) for w in ['the ', 'a ', 'an ', 'if ', 'when ']):
         return ValueType.EXPRESSION
 
     # Contains '=' (equation) - definitely expression
@@ -263,55 +263,10 @@ def _classify_value_embedding(value: str) -> tuple[ValueType, float]:
 # =============================================================================
 # Validates that the signature's step_type semantically matches the actual task.
 # This catches cases where signature similarity is high but operation type differs.
-
-# Step type descriptions - maps step_type to semantic description
-STEP_TYPE_DESCRIPTIONS = {
-    # Arithmetic operations
-    "compute_sum": "add numbers together to get a total",
-    "compute_product": "multiply numbers together",
-    "compute_difference": "subtract one number from another",
-    "compute_quotient": "divide one number by another",
-    "compute_remainder": "find the remainder after division",
-    "compute_power": "raise a number to an exponent or power",
-    "compute_sqrt": "calculate the square root of a number",
-    "compute_square": "square a number (multiply by itself)",
-    "compute_factorial": "calculate factorial (n!)",
-
-    # Number theory
-    "compute_gcd": "find the greatest common divisor of numbers",
-    "compute_lcm": "find the least common multiple of numbers",
-    "check_divisibility": "check if one number divides another evenly",
-    "check_prime_number": "determine if a number is prime",
-
-    # Geometry
-    "compute_area": "calculate the area of a shape",
-    "area_triangle": "calculate the area of a triangle",
-    "area_rectangle": "calculate the area of a rectangle",
-    "area_circle": "calculate the area of a circle",
-    "compute_perimeter": "calculate the perimeter of a shape",
-    "compute_distance": "calculate distance between points",
-    "compute_length": "calculate the length of a segment",
-    "compute_angle": "calculate an angle measurement",
-    "compute_radius": "calculate the radius of a circle",
-
-    # Algebra
-    "simplify_expression": "simplify an algebraic expression",
-    "solve_equation": "solve an equation for a variable",
-    "substitute_values": "substitute known values into an expression",
-    "compute_derivative": "calculate the derivative of a function",
-
-    # Statistics/combinatorics
-    "compute_average": "calculate the mean or average",
-    "compute_probability": "calculate a probability",
-    "compute_percentage": "calculate a percentage",
-    "count_items": "count the number of items or possibilities",
-
-    # Sequences
-    "arithmetic_sequence": "work with arithmetic sequences",
-    "arith_seq_diff": "find common difference of arithmetic sequence",
-    "arith_sum": "calculate sum of arithmetic sequence",
-    "geometric_sequence": "work with geometric sequences",
-}
+#
+# Step type descriptions are inferred dynamically from step_type names
+# (e.g., "compute_gcd" -> "compute gcd operation") rather than hardcoded.
+# This scales automatically as new step_types are added to the signature database.
 
 # Cache for step_type embeddings
 _step_type_embedding_cache: dict[str, Any] = {}
@@ -321,12 +276,11 @@ _STEP_TYPE_ALIGNMENT_THRESHOLD = 0.20
 
 
 def _get_step_type_description(step_type: str) -> str:
-    """Get description for a step_type, inferring from name if not in mapping."""
-    if step_type in STEP_TYPE_DESCRIPTIONS:
-        return STEP_TYPE_DESCRIPTIONS[step_type]
+    """Infer description from step_type name dynamically.
 
-    # Infer from step_type name: convert snake_case to sentence
-    # e.g., "compute_logarithm" -> "compute logarithm"
+    Converts snake_case to human-readable sentence.
+    e.g., "compute_gcd" -> "compute gcd operation"
+    """
     description = step_type.replace("_", " ").lower()
     return f"{description} operation"
 
@@ -535,37 +489,13 @@ class DSLSpec:
         return self._purpose_embedding
 
     def _infer_purpose_from_script(self) -> str:
-        """Infer a purpose description from the DSL script."""
-        script_lower = self.script.lower()
+        """Infer a purpose description from the DSL script.
 
-        # Map common scripts to purposes
-        if 'sqrt' in script_lower:
-            return "compute square root of a number"
-        if '**' in script_lower or 'pow' in script_lower:
-            return "compute power or exponentiation"
-        if 'a + b' in script_lower:
-            return "add two numbers together"
-        if 'a - b' in script_lower:
-            return "subtract one number from another"
-        if 'a * b' in script_lower:
-            return "multiply two numbers"
-        if 'a / b' in script_lower:
-            return "divide one number by another"
-        if 'gcd' in script_lower:
-            return "find greatest common divisor"
-        if 'lcm' in script_lower:
-            return "find least common multiple"
-        if 'factor' in script_lower:
-            return "factor an expression"
-        if 'expand' in script_lower:
-            return "expand an algebraic expression"
-        if 'simplify' in script_lower:
-            return "simplify an expression"
-        if 'solve' in script_lower:
-            return "solve an equation for a variable"
-
-        # Default: use the script itself as a rough purpose
-        return f"execute mathematical operation: {self.script[:50]}"
+        Uses the script itself as the semantic description. The embedding
+        similarity will handle matching - no need for hardcoded mappings.
+        """
+        # The script IS the purpose - let embeddings find semantic matches
+        return f"compute: {self.script[:60]}"
 
     def get_param_role_embedding(self, param: str):
         """Get or compute embedding for a parameter's semantic role.
@@ -588,93 +518,23 @@ class DSLSpec:
         return embedding
 
     def _infer_param_role(self, param: str) -> str:
-        """Infer semantic role description for a parameter from its name and script context."""
-        param_lower = param.lower()
-        script_lower = self.script.lower()
+        """Infer semantic role description for a parameter.
 
-        # Power/exponent DSLs
-        if '**' in script_lower or 'pow' in script_lower:
-            if param_lower in ('exponent', 'exp', 'power', 'n'):
-                return "the exponent or power to raise the base to"
-            if param_lower in ('base', 'b', 'a'):
-                return "the base number to be raised to a power"
-
-        # Distance/geometry DSLs
-        if 'sqrt' in script_lower and ('**2' in script_lower or 'pow' in script_lower):
-            if param_lower in ('x1', 'x2', 'y1', 'y2'):
-                return "a coordinate value for distance calculation"
-            if param_lower in ('a', 'b'):
-                return "a length or distance component"
-
-        # Combinatorics
-        if 'factorial' in script_lower or 'comb' in script_lower or 'perm' in script_lower:
-            if param_lower == 'n':
-                return "total number of items to choose from"
-            if param_lower in ('r', 'k'):
-                return "number of items to select or arrange"
-
-        # Division
-        if '/' in script_lower:
-            if param_lower in ('numerator', 'dividend', 'a'):
-                return "the value being divided"
-            if param_lower in ('denominator', 'divisor', 'b'):
-                return "the value to divide by"
-
-        # Generic arithmetic
-        if param_lower in ('a', 'b'):
-            if '+' in script_lower:
-                return "a number to add"
-            if '-' in script_lower:
-                return "a number for subtraction"
-            if '*' in script_lower:
-                return "a number to multiply"
-
-        # Default based on param name patterns
-        role_patterns = {
-            'area': "an area measurement",
-            'length': "a length or distance measurement",
-            'height': "a height measurement",
-            'width': "a width measurement",
-            'radius': "a radius measurement",
-            'angle': "an angle measurement in degrees or radians",
-            'count': "a count or quantity of items",
-            'rate': "a rate or ratio value",
-            'price': "a price or monetary value",
-            'time': "a time duration or timestamp",
-            'prob': "a probability value between 0 and 1",
-        }
-
-        for pattern, role in role_patterns.items():
-            if pattern in param_lower:
-                return role
-
-        # Fallback: generic numeric input
-        return f"a numeric value for the {param} parameter"
+        Uses the param name itself as the semantic description. The embedding
+        similarity will handle matching - no need for hardcoded mappings.
+        Human-readable param names already contain semantic meaning.
+        """
+        # Convert snake_case to readable: "base_value" -> "base value"
+        readable = param.replace("_", " ").lower()
+        return f"the {readable} parameter"
 
     def get_dsl_type(self) -> str:
-        """Determine the DSL type category for threshold selection."""
-        script_lower = self.script.lower()
+        """Determine the DSL type category.
 
-        # Power/exponent operations
-        if '**' in script_lower or 'pow(' in script_lower or 'exponent' in script_lower:
-            return "power"
-
-        # Geometry/distance operations
-        if 'sqrt' in script_lower or 'distance' in script_lower or 'hypot' in script_lower:
-            return "geometry"
-
-        # Combinatorics
-        if any(kw in script_lower for kw in ['factorial', 'comb', 'perm', 'choose', 'binomial']):
-            return "combinatorics"
-
-        # Division/modulo
-        if '/' in script_lower or '%' in script_lower or 'mod' in script_lower:
-            return "division"
-
-        # Simple arithmetic (add, subtract, multiply)
-        if any(op in script_lower for op in ['+', '-', '*']) and '**' not in script_lower:
-            return "arithmetic"
-
+        Returns 'default' - all DSLs use the same thresholds.
+        Per-type thresholds were manual tuning that doesn't scale.
+        Let the system learn appropriate confidence from execution data.
+        """
         return "default"
 
     def match_param(self, param: str, context_keys: list[str]) -> Optional[str]:
@@ -745,11 +605,10 @@ class DSLSpec:
             if i < len(remaining_keys):
                 result[param] = context[remaining_keys[i]]
 
-        # If still no matches and we have generic params (a, b, c, x, y, z, n, m)
-        # Try aggressive positional matching
+        # If still no matches and we have short params (single letter or 2-3 chars)
+        # Try aggressive positional matching - these are likely generic math params
         if not result and self.params and context:
-            generic_params = {'a', 'b', 'c', 'x', 'y', 'z', 'n', 'm', 'r', 'k', 'i', 'j'}
-            if all(p.lower() in generic_params for p in self.params):
+            if all(len(p) <= 3 for p in self.params):
                 sorted_keys = sorted(context.keys())
                 for i, param in enumerate(self.params):
                     if i < len(sorted_keys):
@@ -1280,6 +1139,9 @@ from mycelium.step_signatures.math_ops import (
     euclidean_gcd,
     modinv,
     divisors,
+    divisor_count,
+    divisor_count_from_factors,
+    factorization_exponents,
     prime_factors,
     is_prime,
     mod_pow,
@@ -1314,6 +1176,11 @@ register_operator("evaluate_polynomial", evaluate_polynomial)
 register_operator("euclidean_gcd", euclidean_gcd)
 register_operator("modinv", modinv)
 register_operator("divisors", divisors)
+register_operator("divisor_count", divisor_count)
+register_operator("count_divisors", divisor_count)  # Alias
+register_operator("divisor_count_from_factors", divisor_count_from_factors)
+register_operator("count_divisors_from_factors", divisor_count_from_factors)  # Alias
+register_operator("factorization_exponents", factorization_exponents)
 register_operator("prime_factors", prime_factors)
 register_operator("is_prime", is_prime)
 register_operator("mod_pow", mod_pow)
@@ -1992,18 +1859,15 @@ def semantic_rewrite_script(
     if not dsl_spec.params or not context:
         return None, 0.0
 
-    # Generic params that should use positional/heuristic matching
-    GENERIC_PARAMS = {
-        # Single letters
-        'a', 'b', 'c', 'n', 'm', 'x', 'y', 'z', 'k', 'i', 'j', 'r',
-        # Common math terms
-        'expr', 'value', 'result', 'num', 'val',
-        # Arithmetic operations
-        'dividend', 'divisor', 'base', 'exp', 'exponent',
-        'numerator', 'denominator', 'factor',
-        # Function params
-        'f', 'var', 'equation', 'count',
-    }
+    def _is_generic_param(param: str) -> bool:
+        """Check if param is generic (should use positional fallback).
+
+        Generic params are short names that don't carry specific semantics.
+        Instead of hardcoding a list, use length as heuristic.
+        """
+        p = param.lower()
+        # Single letters or very short names (<=3 chars) are generic
+        return len(p) <= 3
 
     # Build param -> context_key mapping
     param_mapping: dict[str, str] = {}
@@ -2057,7 +1921,7 @@ def semantic_rewrite_script(
             param_mapping[param] = best_match
             used_keys.add(best_match)  # Mark key as used
             total_score += best_score
-        elif param.lower() in GENERIC_PARAMS:
+        elif _is_generic_param(param):
             # Generic param - save for positional fallback
             unmatched_params.append(param)
         else:
@@ -2066,58 +1930,25 @@ def semantic_rewrite_script(
             return None, 0.0
 
     # Positional fallback for generic params
+    # Map params to available context keys in order (no hardcoded preferences)
     if unmatched_params:
-        # Params that typically come from the task/problem (constants), not computed values
-        TASK_PREFERRED_PARAMS = {'divisor', 'denominator', 'modulus', 'base'}
+        # Gather all available keys, preferring step_N keys (computed values)
+        available_keys = [k for k in step_keys if k not in used_keys]
+        # Add task/problem num keys as fallback
+        num_keys = sorted([k for k in context.keys()
+                          if (k.startswith('task_num_') or k.startswith('problem_num_'))
+                          and k not in used_keys])
+        available_keys.extend(num_keys)
 
-        # Map generic params to step_N in order, ensuring no duplicates
-        available_step_keys = [k for k in step_keys if k not in used_keys]
-        task_num_keys = sorted([k for k in context.keys() if k.startswith('task_num_') and k not in used_keys],
-                               key=lambda x: int(x.split('_')[-1]) if x.split('_')[-1].isdigit() else 0)
-        problem_num_keys = sorted([k for k in context.keys() if k.startswith('problem_num_') and k not in used_keys],
-                                  key=lambda x: int(x.split('_')[-1]) if x.split('_')[-1].isdigit() else 0)
-
-        for i, param in enumerate(unmatched_params):
-            matched = False
-            param_lower = param.lower()
-
-            # For divisor-like params, prefer task_num (the value from the problem)
-            if param_lower in TASK_PREFERRED_PARAMS:
-                # Try last task_num (often the divisor/base mentioned at end of task)
-                for key in reversed(task_num_keys):
-                    if key not in used_keys:
-                        param_mapping[param] = key
-                        used_keys.add(key)
-                        total_score += 0.7
-                        logger.debug("[dsl_semantic] Task-preferred match: %s -> %s", param, key)
-                        matched = True
-                        break
-
-            # Otherwise, try step keys first (computed values)
-            if not matched:
-                for key in available_step_keys:
-                    if key not in used_keys:
-                        param_mapping[param] = key
-                        used_keys.add(key)
-                        total_score += 0.6
-                        logger.debug("[dsl_semantic] Positional match: %s -> %s", param, key)
-                        matched = True
-                        break
-
-            # Final fallback to num keys
-            if not matched:
-                num_keys = task_num_keys + problem_num_keys
-                for key in num_keys:
-                    if key not in used_keys:
-                        param_mapping[param] = key
-                        used_keys.add(key)
-                        total_score += 0.5
-                        logger.debug("[dsl_semantic] Num key match: %s -> %s", param, key)
-                        matched = True
-                        break
-
-            if not matched:
-                logger.debug("[dsl_semantic] No positional match for generic param '%s'", param)
+        for param in unmatched_params:
+            if available_keys:
+                key = available_keys.pop(0)
+                param_mapping[param] = key
+                used_keys.add(key)
+                total_score += 0.6
+                logger.debug("[dsl_semantic] Positional match: %s -> %s", param, key)
+            else:
+                logger.debug("[dsl_semantic] No positional match for param '%s'", param)
                 return None, 0.0
 
     if len(param_mapping) != len(dsl_spec.params):

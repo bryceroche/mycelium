@@ -37,11 +37,7 @@ from mycelium.step_signatures.scoring import (
     normalize_step_text,
     increment_total_problems,
 )
-from mycelium.step_signatures.dsl_templates import (
-    DSL_TEMPLATES,
-    DSL_INFERENCE_PATTERNS,
-    infer_dsl_for_signature,
-)
+from mycelium.step_signatures.dsl_templates import infer_dsl_for_signature
 
 from mycelium.data_layer import get_db
 from mycelium.data_layer.schema import init_db
