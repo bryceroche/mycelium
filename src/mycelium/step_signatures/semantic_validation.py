@@ -37,7 +37,6 @@ class PlanValidation:
 
 def validate_plan_coherence(
     plan,  # DAGPlan
-    signature_db=None,
     embedder=None,
 ) -> PlanValidation:
     """Validate that a plan's steps form a coherent chain.
@@ -49,7 +48,6 @@ def validate_plan_coherence(
 
     Args:
         plan: DAGPlan to validate
-        signature_db: Optional StepSignatureDB for richer validation
         embedder: Optional Embedder for semantic similarity
 
     Returns:

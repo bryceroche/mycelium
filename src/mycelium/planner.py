@@ -23,11 +23,13 @@ CRITICAL: Output ONLY in this exact format. No markdown headers, no explanations
   task: [what to do, not how to do it]
   values:
     semantic_name: numeric_value
+  dsl_hint: [operation: +, -, *, /]
   depends_on: []
 
 - id: final
   task: Combine results to get final answer
   values: {}
+  dsl_hint: +
   depends_on: [step_1]
 
 RULES:
@@ -40,6 +42,13 @@ RULES:
 7. EXTRACT numeric values from the problem and assign semantic names.
 8. Use "{step_N}" to reference the result of a previous step.
 9. If an available operation can solve the problem directly, use just ONE step.
+10. ALWAYS include dsl_hint with the math operation: + (add), - (subtract), * (multiply), / (divide)
+
+DSL_HINT GUIDE:
+- "total", "sum", "combined", "together" → dsl_hint: +
+- "difference", "remaining", "left", "fewer" → dsl_hint: -
+- "rate × quantity", "area", "per × count", "times" → dsl_hint: *
+- "split", "per", "ratio", "divided", "each" → dsl_hint: /
 
 EXAMPLE for "Earth's circumference is 40,000 km. How many trips for 1 billion meters?":
 
@@ -48,6 +57,7 @@ EXAMPLE for "Earth's circumference is 40,000 km. How many trips for 1 billion me
   values:
     distance_meters: 1000000000
     meters_per_km: 1000
+  dsl_hint: /
   depends_on: []
 
 - id: step_2
@@ -55,6 +65,7 @@ EXAMPLE for "Earth's circumference is 40,000 km. How many trips for 1 billion me
   values:
     total_km: "{step_1}"
     circumference_km: 40000
+  dsl_hint: /
   depends_on: [step_1]
 
 GOOD task: "Solve the quadratic equation 2x^2 - 7x + 2 = 0 for its roots"
@@ -92,15 +103,27 @@ class SignatureHint:
 
     Communicates what the signature does and what parameters it needs,
     so the decomposer can create steps with appropriate extracted_values.
+
+    For umbrella signatures (clusters), `children` contains the specific
+    operations available under this category.
     """
     step_type: str
     description: str
     param_names: list[str] = field(default_factory=list)
     param_descriptions: dict[str, str] = field(default_factory=dict)
     clarifying_questions: list[str] = field(default_factory=list)
+    is_cluster: bool = False  # True if this is an umbrella (category) signature
+    children: list["SignatureHint"] = field(default_factory=list)  # Child operations for clusters
 
     def to_hint_text(self) -> str:
         """Format as hint text for the planner prompt."""
+        if self.is_cluster and self.children:
+            # Format as cluster with children
+            lines = [f"- **{self.step_type}** (cluster): {self.description[:80]}"]
+            for child in self.children[:5]:  # Limit children shown
+                lines.append(f"    - {child.step_type}: {child.description[:60]}")
+            return "\n".join(lines)
+
         lines = [f"- **{self.step_type}**: {self.description}"]
 
         if self.param_names:
@@ -454,7 +477,7 @@ class Planner:
                 continue
 
             # Inside values block - parse indented key: value pairs
-            if parsing_values and current_step and stripped and not re.match(r'^-?\s*(id|task|depends_on)\s*:', stripped, re.IGNORECASE):
+            if parsing_values and current_step and stripped and not re.match(r'^-?\s*(id|task|depends_on|dsl_hint)\s*:', stripped, re.IGNORECASE):
                 # Parse key: value
                 if ":" in stripped:
                     key, val = stripped.split(":", 1)

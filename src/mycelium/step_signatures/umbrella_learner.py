@@ -276,7 +276,8 @@ class UmbrellaLearner:
                 )
             else:
                 # Fall back: find or create new signature
-                # Pass extracted_values from planner to enable DSL generation from structure
+                # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
+                # CRITICAL: Pass parent_id so new signatures are created under THIS signature, not root!
                 child_sig, is_new = self.db.find_or_create(
                     step_text=step.task,
                     embedding=embedding,
@@ -284,7 +285,30 @@ class UmbrellaLearner:
                     parent_problem=signature.description,
                     origin_depth=min_child_depth,  # Set proper depth for new sigs
                     extracted_values=getattr(step, 'extracted_values', None),
+                    dsl_hint=getattr(step, 'dsl_hint', None),  # LLM → signature communication
+                    parent_id=signature.id,  # Ensure children are created under decomposing signature
                 )
+
+                # If matched signature already has a parent, create a NEW one instead
+                # This ensures tree structure can grow deeper
+                if not is_new:
+                    existing_parent = self.db.get_parent(child_sig.id)
+                    if existing_parent is not None:
+                        logger.info(
+                            "[umbrella] Matched sig %d already has parent %d, creating new for parent %d",
+                            child_sig.id, existing_parent.id, signature.id
+                        )
+                        # Force create a new signature with THIS signature as parent
+                        child_sig = self.db.create_signature(
+                            step_text=step.task,
+                            embedding=embedding,
+                            parent_problem=signature.description,
+                            origin_depth=min_child_depth,
+                            extracted_values=getattr(step, 'extracted_values', None),
+                            dsl_hint=getattr(step, 'dsl_hint', None),
+                            parent_id=signature.id,  # Set parent to decomposing signature
+                        )
+                        is_new = True
 
             if is_new:
                 logger.info(

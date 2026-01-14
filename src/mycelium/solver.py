@@ -21,6 +21,8 @@ from typing import Optional
 
 import numpy as np
 
+import random
+
 from mycelium.config import (
     MIN_MATCH_THRESHOLD,
     RECURSIVE_DECOMPOSITION_ENABLED,
@@ -28,6 +30,10 @@ from mycelium.config import (
     RECURSIVE_CONFIDENCE_THRESHOLD,
     UMBRELLA_MAX_DEPTH,
     UMBRELLA_ROUTING_THRESHOLD,
+    DEPTH_DECOMPOSE_ENABLED,
+    DEPTH_FORCE_DECOMPOSE_DEPTH,
+    DEPTH_DECOMPOSE_DECAY_BASE,
+    DEPTH_DECOMPOSE_MIN_PROB,
 )
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures.semantic_validation import (
@@ -46,6 +52,94 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
+# BIG BANG Decomposition Strategy
+# =============================================================================
+
+# Cold start thresholds - aggressive decomposition until tree is built
+BIGBANG_SIGNATURE_THRESHOLD = 500  # Decompose aggressively until this many sigs
+BIGBANG_MIN_DEPTH = 3  # Always try to reach at least this depth during big bang
+BIGBANG_DECAY_PER_100_SIGS = 0.15  # Reduce decomposition probability as tree grows
+
+# Track signature count (updated by solver)
+_signature_count_cache = {"count": 0, "last_check": 0}
+
+
+def get_signature_count() -> int:
+    """Get current signature count (cached for performance)."""
+    import time
+    now = time.time()
+    # Cache for 1 second to avoid DB hits on every call
+    if now - _signature_count_cache["last_check"] > 1.0:
+        try:
+            import sqlite3
+            conn = sqlite3.connect("mycelium.db")
+            count = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()[0]
+            conn.close()
+            _signature_count_cache["count"] = count
+            _signature_count_cache["last_check"] = now
+        except:
+            pass  # Use cached value on error
+    return _signature_count_cache["count"]
+
+
+def should_force_decompose(depth: int) -> bool:
+    """BIG BANG decomposition strategy.
+
+    During cold start (few signatures), decompose AGGRESSIVELY at all depths.
+    As tree grows, decay decomposition probability.
+    Eventually stabilize to only decompose on failure.
+
+    This is exploration vs exploitation:
+    - Early: EXPLORE by decomposing everything to build tree
+    - Later: EXPLOIT by using existing tree structure
+
+    Args:
+        depth: Current signature depth in the hierarchy
+
+    Returns:
+        True if should force decompose, False if should try DSL execution
+    """
+    if not DEPTH_DECOMPOSE_ENABLED:
+        return False
+
+    sig_count = get_signature_count()
+
+    # === BIG BANG PHASE ===
+    # When tree is small, decompose aggressively to explode structure
+    if sig_count < BIGBANG_SIGNATURE_THRESHOLD:
+        # Always decompose if we haven't reached minimum depth
+        if depth < BIGBANG_MIN_DEPTH:
+            return True
+
+        # Beyond min depth, probabilistic based on how far into big bang we are
+        # Start at 100%, decay as we approach threshold
+        progress = sig_count / BIGBANG_SIGNATURE_THRESHOLD  # 0.0 to 1.0
+        base_prob = 1.0 - (progress * 0.7)  # 100% -> 30% as tree grows
+
+        # Also decay by depth
+        depth_factor = max(0.1, 1.0 - (depth - BIGBANG_MIN_DEPTH) * 0.2)
+        prob = base_prob * depth_factor
+
+        if random.random() < prob:
+            logger.debug(
+                "[bigbang] Decomposing: sigs=%d depth=%d prob=%.2f",
+                sig_count, depth, prob
+            )
+            return True
+
+    # === STABLE PHASE ===
+    # After big bang, only decompose at very shallow depths or on failure
+    if depth <= DEPTH_FORCE_DECOMPOSE_DEPTH:
+        return True
+
+    # Exponential decay for deeper depths
+    depth_beyond = depth - DEPTH_FORCE_DECOMPOSE_DEPTH
+    prob = max(DEPTH_DECOMPOSE_MIN_PROB, DEPTH_DECOMPOSE_DECAY_BASE ** depth_beyond)
+
+    return random.random() < prob
+
+
+# =============================================================================
 # Result Types
 # =============================================================================
 
@@ -60,6 +154,7 @@ class StepResult:
     signature_type: Optional[str] = None
     is_new_signature: bool = False
     was_injected: bool = False  # True if DSL was used
+    was_routed: bool = False  # True if routed through umbrella
     elapsed_ms: float = 0.0
 
 
@@ -75,7 +170,8 @@ class SolverResult:
     signatures_matched: int = 0
     signatures_new: int = 0
     steps_with_injection: int = 0
-    matched_and_injected: int = 0  # Matched existing sig AND DSL succeeded
+    steps_with_routing: int = 0  # Routed through umbrella (also counts as reuse)
+    matched_and_reused: int = 0  # Matched AND (DSL succeeded OR routed)
     error: Optional[str] = None
 
 
@@ -177,7 +273,7 @@ class Solver:
                 )
 
                 # Validate semantic coherence BEFORE execution
-                validation = validate_plan_coherence(plan, self.step_db, self.embedder)
+                validation = validate_plan_coherence(plan, self.embedder)
 
                 if validation.is_coherent:
                     logger.debug(
@@ -226,7 +322,8 @@ class Solver:
             signatures_new = 0
             signatures_matched = 0
             steps_with_injection = 0
-            matched_and_injected = 0
+            steps_with_routing = 0
+            matched_and_reused = 0  # Matched AND (DSL succeeded OR routed)
 
             execution_order = self._get_execution_order(plan)
 
@@ -266,7 +363,8 @@ class Solver:
                         signatures_matched=signatures_matched,
                         signatures_new=signatures_new,
                         steps_with_injection=steps_with_injection,
-                        matched_and_injected=matched_and_injected,
+                        steps_with_routing=steps_with_routing,
+                        matched_and_reused=matched_and_reused,
                     )
 
                 # Track stats
@@ -274,10 +372,13 @@ class Solver:
                     signatures_new += 1
                 else:
                     signatures_matched += 1
-                    if result.was_injected:
-                        matched_and_injected += 1
+                    # Reused = DSL succeeded OR routed through umbrella
+                    if result.was_injected or result.was_routed:
+                        matched_and_reused += 1
                 if result.was_injected:
                     steps_with_injection += 1
+                if result.was_routed:
+                    steps_with_routing += 1
 
                 # Store result and description for dependent steps
                 context[step.id] = result.result
@@ -288,8 +389,9 @@ class Solver:
 
             elapsed_ms = (time.time() - start_time) * 1000
             logger.info(
-                "[solver] Solved in %.0fms: steps=%d new=%d matched=%d matched+injected=%d",
-                elapsed_ms, len(step_results), signatures_new, signatures_matched, matched_and_injected
+                "[solver] Solved in %.0fms: steps=%d new=%d matched=%d reused=%d (dsl=%d, routed=%d)",
+                elapsed_ms, len(step_results), signatures_new, signatures_matched,
+                matched_and_reused, steps_with_injection, steps_with_routing
             )
 
             return SolverResult(
@@ -302,7 +404,8 @@ class Solver:
                 signatures_matched=signatures_matched,
                 signatures_new=signatures_new,
                 steps_with_injection=steps_with_injection,
-                matched_and_injected=matched_and_injected,
+                steps_with_routing=steps_with_routing,
+                matched_and_reused=matched_and_reused,
             )
 
         except Exception as e:
@@ -354,7 +457,7 @@ class Solver:
         embedding = self.embedder.embed(normalized_task)
 
         # 2. Find or create signature (use original text for description)
-        # Pass extracted_values from planner to enable DSL generation from structure
+        # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
         signature, is_new = self.step_db.find_or_create(
             step_text=step.task,  # Keep original for description
             embedding=embedding,   # Use normalized embedding for matching
@@ -362,6 +465,7 @@ class Solver:
             parent_problem=problem,
             origin_depth=depth,  # Track decomposition depth
             extracted_values=getattr(step, 'extracted_values', None),
+            dsl_hint=getattr(step, 'dsl_hint', None),  # LLM → signature communication
         )
 
         logger.debug(
@@ -395,24 +499,70 @@ class Solver:
         # 3. If umbrella, try routing to child signature
         result = None
         was_injected = False
+        was_routed = False  # Track if we routed through umbrella
         routed_signature = signature
 
         if signature.is_semantic_umbrella:
             child_result = await self._try_umbrella_routing(signature, step, problem, context, step_descriptions, embedding=embedding)
             if child_result is not None:
                 result, routed_signature, was_injected = child_result
+                was_routed = True  # Successfully routed through umbrella
                 logger.info(
                     "[solver] Umbrella routed: '%s' → '%s'",
                     signature.step_type, routed_signature.step_type
                 )
 
         # 4. Try DSL execution if not already routed
-        if result is None and routed_signature.dsl_script:
+        # Key: Use dsl_hint from planner (LLM writes the expression)
+        # Don't check routed_signature.dsl_script - umbrellas are pure routers with no DSL
+        # Also handles extraction-only steps (no dsl_hint but has extracted_values)
+        has_dsl_hint = getattr(step, 'dsl_hint', None) is not None
+        has_extracted_values = bool(getattr(step, 'extracted_values', None))
+        sig_depth = routed_signature.depth or 0
+        at_shallow_depth = should_force_decompose(sig_depth)
+
+        # Try DSL at all depths - if it works, use it
+        # Also try for extraction-only steps (no hint but has values)
+        if result is None and (has_dsl_hint or has_extracted_values):
             dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
             if dsl_result is not None:
                 result = dsl_result
                 was_injected = True
                 logger.debug("[solver] DSL executed: %s", result[:50] if result else "")
+
+        # 4.5. COLD START: Decompose at shallow depths EVEN ON SUCCESS
+        # This explodes out the network branching to build tree structure
+        # We keep the DSL result but also create children for future routing
+        if at_shallow_depth and not routed_signature.is_semantic_umbrella:
+            logger.info(
+                "[solver] Depth %d: COLD START decomposing '%s' (result=%s)",
+                sig_depth, routed_signature.step_type, "success" if result else "none"
+            )
+            await self._auto_decompose_signature(routed_signature)
+            routed_signature = self.step_db.get_signature(routed_signature.id)
+
+        # 4.6. If we don't have a result yet, try routing through umbrella
+        if result is None and routed_signature.is_semantic_umbrella:
+            child_result = await self._try_umbrella_routing(
+                routed_signature, step, problem, context, step_descriptions, embedding=embedding
+            )
+            if child_result is not None:
+                result, routed_signature, was_injected = child_result
+                was_routed = True
+                logger.info(
+                    "[solver] Routed through umbrella to: '%s'",
+                    routed_signature.step_type
+                )
+
+        # 4.7. Fallback: try DSL on umbrella itself (it may still have DSL from before promotion)
+        if result is None and signature.is_semantic_umbrella and (has_dsl_hint or has_extracted_values):
+            logger.debug("[solver] Trying umbrella's own DSL as fallback")
+            dsl_result = await self._try_dsl(signature, step, context, step_descriptions)
+            if dsl_result is not None:
+                result = dsl_result
+                was_injected = True
+                routed_signature = signature  # Use original umbrella signature
+                logger.info("[solver] Umbrella fallback DSL succeeded: %s", result[:30] if result else "")
 
         # 5. No LLM fallback - strict DAG execution
         # Three outcomes: route to child, create child, or fail
@@ -459,6 +609,7 @@ class Solver:
             signature_type=routed_signature.step_type,
             is_new_signature=is_new,
             was_injected=was_injected,
+            was_routed=was_routed,
             elapsed_ms=elapsed_ms,
         )
 
@@ -684,13 +835,17 @@ Respond with ONLY the number (0-{len(children)})."""
                 depth=depth + 1
             )
 
-        # Try child's DSL
-        if child_sig.dsl_script:
+        # Try child's DSL at all depths - if it works, use it
+        # Use dsl_hint from step, not child_sig.dsl_script (umbrellas have no DSL)
+        # Also handles extraction-only steps (no hint but has values)
+        has_dsl_hint = getattr(step, 'dsl_hint', None) is not None
+        has_extracted_values = bool(getattr(step, 'extracted_values', None))
+        if has_dsl_hint or has_extracted_values:
             dsl_result = await self._try_dsl(child_sig, step, context, step_descriptions)
             if dsl_result is not None:
                 return (dsl_result, child_sig, True)
 
-        # Return child for DSL execution (no LLM fallback)
+        # Return child for further processing (may need decomposition on failure)
         return (None, child_sig, False)
 
     async def _try_dsl(
@@ -702,234 +857,152 @@ Respond with ONLY the number (0-{len(children)})."""
     ) -> Optional[str]:
         """Try to execute a DSL script.
 
-        Uses step.extracted_values (from planner) and context for params.
-        Uses signature's param_descriptions + step_descriptions for semantic matching.
+        LLM writes the arithmetic expression using available param names.
+        No heuristic mapping - LLM always picks the right params for the task.
+
+        Also handles extraction-only steps (no dsl_hint, just extracted_values).
         """
-        step_descriptions = step_descriptions or {}
-        if not signature.dsl_script:
+        # Get operation hint from planner
+        dsl_hint = getattr(step, 'dsl_hint', None)
+        extracted_values = getattr(step, 'extracted_values', {}) or {}
+
+        # Handle extraction-only steps: no dsl_hint but has single extracted value
+        # These steps just extract a constant from the problem (e.g., "eggs per day = 16")
+        if not dsl_hint and extracted_values:
+            # Find first non-reference value
+            for key, val in extracted_values.items():
+                if isinstance(val, (int, float)):
+                    logger.info("[solver] Extraction-only step: %s = %s", key, val)
+                    return str(val)
+                elif isinstance(val, str) and not (val.startswith('{') and val.endswith('}')):
+                    # String value that's not a reference
+                    try:
+                        num_val = float(val)
+                        logger.info("[solver] Extraction-only step: %s = %s", key, num_val)
+                        return str(num_val)
+                    except ValueError:
+                        pass
+            logger.debug("[solver] No extractable value found in extracted_values")
             return None
 
+        if not dsl_hint:
+            # No hint from planner - can't execute DSL
+            logger.debug("[solver] No dsl_hint for step, skipping DSL")
+            return None
+
+        # Build available params from context + extracted values
+        params = {}
+
+        # Add extracted values (resolve references)
+        if hasattr(step, 'extracted_values') and step.extracted_values:
+            for key, val in step.extracted_values.items():
+                if isinstance(val, str) and val.startswith('{') and val.endswith('}'):
+                    ref_key = val[1:-1]
+                    if ref_key in context:
+                        try:
+                            params[key] = float(context[ref_key])
+                        except (ValueError, TypeError):
+                            params[key] = context[ref_key]
+                else:
+                    params[key] = val
+
+        # Add context values (results from previous steps)
+        for key, value in context.items():
+            if key not in params:
+                try:
+                    params[key] = float(value)
+                except (ValueError, TypeError):
+                    params[key] = value
+
+        if len(params) < 2:
+            logger.debug("[solver] Need at least 2 params for DSL, got %d", len(params))
+            return None
+
+        logger.debug("[solver] _try_dsl: hint=%s, params=%s", dsl_hint, list(params.keys()))
+
+        # LLM writes the expression with correct params
         try:
-            # Parse DSL spec from JSON
-            dsl_spec = DSLSpec.from_json(signature.dsl_script)
-            if not dsl_spec:
-                logger.debug("[solver] Failed to parse DSL spec")
-                return None
+            expr_result = await self._llm_write_expression(dsl_hint, params, step.task)
+            if expr_result:
+                script, used_params = expr_result
+                logger.debug("[solver] LLM wrote: %s (used: %s)", script, used_params)
 
-            # Build params from multiple sources:
-            # 1. Step's extracted_values (from planner) - these have semantic names
-            # 2. Context from previous steps
-            # 3. Numbers extracted from step text
-            params = {}
-
-            # Add step's extracted values (highest priority - planner knows the semantics)
-            if hasattr(step, 'extracted_values') and step.extracted_values:
-                for key, val in step.extracted_values.items():
-                    # Resolve references like "{step_1}" from context
-                    if isinstance(val, str) and val.startswith('{') and val.endswith('}'):
-                        ref_key = val[1:-1]  # Remove braces
-                        if ref_key in context:
-                            try:
-                                params[key] = float(context[ref_key])
-                            except (ValueError, TypeError):
-                                params[key] = context[ref_key]
-                    else:
-                        params[key] = val
-
-            # Add context values
-            for key, value in context.items():
-                if key not in params:  # Don't override extracted values
-                    try:
-                        params[key] = float(value)
-                    except (ValueError, TypeError):
-                        params[key] = value
-
-            # Use NL interface for semantic param mapping
-            # Match signature's param_descriptions against step_descriptions
-            if signature.param_descriptions and step_descriptions and dsl_spec.params:
-                nl_mapped = self._semantic_map_params(
-                    dsl_spec.params,
-                    signature.param_descriptions,
-                    context,
-                    step_descriptions,
+                dsl_spec = DSLSpec(
+                    layer=DSLSpec.from_json('{"type":"math"}').layer,
+                    script=script,
+                    params=used_params,
                 )
-                if nl_mapped:
-                    logger.debug("[solver] NL interface mapped params: %s", nl_mapped)
-                    # Add NL-mapped params (don't override existing)
-                    for param, value in nl_mapped.items():
-                        if param not in params:
-                            params[param] = value
 
-            # Fall back to extracting from step text if no params yet
-            if not params:
-                params = self._extract_params(signature, step.task, context, dsl_spec)
+                result, success = try_execute_dsl(dsl_spec, params, step_task=step.task)
+                logger.debug("[solver] DSL exec: result=%s, success=%s", result, success)
 
-            if not params:
-                logger.debug("[solver] No params extracted for DSL")
-                return None
-
-            logger.debug("[solver] DSL params: %s", params)
-
-            # Execute DSL
-            result, success = try_execute_dsl(
-                dsl_spec,
-                params,
-                step_task=step.task,
-            )
-
-            if success and result is not None:
-                logger.info("[solver] DSL injection success: %s → %s", step.task[:30], result)
-                return str(result)
+                if success and result is not None:
+                    logger.info("[solver] DSL success: %s → %s", step.task[:30], result)
+                    return str(result)
+            else:
+                logger.debug("[solver] LLM returned no expression")
 
         except Exception as e:
             logger.debug("[solver] DSL execution failed: %s", e)
 
         return None
 
-    def _semantic_map_params(
+    async def _llm_write_expression(
         self,
-        dsl_params: list[str],
-        param_descriptions: dict[str, str],
-        context: dict[str, str],
-        step_descriptions: dict[str, str],
-    ) -> dict:
-        """Map DSL params to context values using NL interface semantic matching.
-
-        Uses param_descriptions (from signature's NL interface) to find which
-        context step's description best matches each param's meaning.
-
-        Example:
-            param_descriptions = {"base": "The number being raised to a power"}
-            step_descriptions = {"step_1": "Calculate the base value"}
-            → "base" matches "step_1" because descriptions are similar
+        operation: str,
+        params: dict,
+        task: str,
+    ) -> Optional[tuple[str, list[str]]]:
+        """Ask LLM to write arithmetic expression using available params.
 
         Args:
-            dsl_params: List of param names from DSL spec
-            param_descriptions: Param name → description from signature
-            context: step_id → result value
-            step_descriptions: step_id → task description
+            operation: The operation hint (+, -, *, /)
+            params: Available param names and values
+            task: The step task description
 
         Returns:
-            Dict mapping param_name → value from context
+            (script, param_list) or None if failed
         """
-        mapped = {}
-        used_steps = set()
+        # Format available params
+        param_info = ", ".join(f"{k}={v}" for k, v in params.items() if not k.startswith('{'))
 
-        for param in dsl_params:
-            # Get param's semantic description
-            param_desc = param_descriptions.get(param, "").lower()
-            if not param_desc:
-                continue
+        prompt = f"""Write a simple arithmetic expression for this task.
 
-            best_match = None
-            best_score = 0.0
-            param_lower = param.lower().replace("_", " ")
+Task: {task}
+Operation: {operation}
+Available values: {param_info}
 
-            for step_id, step_desc in step_descriptions.items():
-                if step_id in used_steps:
-                    continue
-                if step_id not in context:
-                    continue
+Rules:
+- Use EXACTLY the variable names provided (e.g., step_1, eggs_per_day)
+- Write ONLY the expression, nothing else
+- Example: step_1 + step_2
+- Example: eggs_per_day * days
 
-                step_desc_lower = step_desc.lower()
-                score = 0.0
+Expression:"""
 
-                # Score 1: Param description words appear in step description
-                param_words = set(param_desc.split())
-                step_words = set(step_desc_lower.split())
-                overlap = param_words & step_words
-                if overlap:
-                    # More overlap = better match
-                    score = len(overlap) / max(len(param_words), 1)
-
-                # Score 2: Param name appears in step description
-                if param_lower in step_desc_lower:
-                    score = max(score, 0.8)
-
-                # Score 3: Key semantic words match
-                semantic_keywords = {"calculate", "compute", "find", "determine", "get"}
-                if any(kw in step_desc_lower for kw in semantic_keywords):
-                    # Step is a computation - boost if param desc also mentions computation
-                    if any(kw in param_desc for kw in semantic_keywords):
-                        score += 0.1
-
-                if score > best_score:
-                    best_score = score
-                    best_match = step_id
-
-            if best_match and best_score >= 0.3:
-                # Get value from context
-                try:
-                    mapped[param] = float(context[best_match])
-                except (ValueError, TypeError):
-                    mapped[param] = context[best_match]
-                used_steps.add(best_match)
-                logger.debug(
-                    "[solver] NL mapped param '%s' (%s) → %s (score=%.2f)",
-                    param, param_desc[:30], best_match, best_score
-                )
-
-        return mapped
-
-    def _extract_params(
-        self,
-        signature: StepSignature,
-        step_text: str,
-        context: dict[str, str],
-        dsl_spec: Optional[DSLSpec] = None,
-    ) -> dict:
-        """Extract DSL parameters from step text and context.
-
-        Uses DSL spec's param names if available, else param_descriptions.
-        """
-        params = {}
-
-        # Extract numbers from step text
-        numbers = re.findall(r'(?<![a-zA-Z])(\d+\.?\d*)(?![a-zA-Z])', step_text)
-
-        # Get param names from DSL spec, param_descriptions, or use generic
-        if dsl_spec and dsl_spec.params:
-            param_names = dsl_spec.params
-        elif signature.param_descriptions:
-            param_names = list(signature.param_descriptions.keys())
-        else:
-            param_names = [f"x{i}" for i in range(len(numbers))]
-
-        # Assign numbers in order to param names
-        for i, num in enumerate(numbers):
-            if i < len(param_names):
-                try:
-                    params[param_names[i]] = float(num)
-                except ValueError:
-                    params[param_names[i]] = num
-            else:
-                # Capture extra numbers with generic keys (don't drop silently)
-                try:
-                    params[f"extra_{i}"] = float(num)
-                except ValueError:
-                    params[f"extra_{i}"] = num
-
-        # Log if we had more numbers than expected params
-        if len(numbers) > len(param_names):
-            logger.warning(
-                "[solver] Parameter extraction: %d numbers found but only %d params defined "
-                "(extras captured as extra_N keys)",
-                len(numbers), len(param_names)
+        try:
+            from mycelium.client import get_client
+            client = get_client()
+            response = await client.generate(
+                [{"role": "user", "content": prompt}],
+                temperature=0.0,
+                max_tokens=50,
             )
 
-        # Add context values (may contain results from previous steps)
-        for key, value in context.items():
-            # Try to map context keys to param names
-            try:
-                numeric_val = float(value)
-                # Add with original key and prefixed
-                params[key] = numeric_val
-                params[f"ctx_{key}"] = numeric_val
-            except (ValueError, TypeError):
-                params[key] = str(value)
-                params[f"ctx_{key}"] = str(value)
+            # Parse response - should be just the expression
+            expr = response.strip().split('\n')[0].strip()
 
-        return params
+            # Extract param names used in expression
+            used_params = [k for k in params.keys() if k in expr and not k.startswith('{')]
+
+            if len(used_params) >= 2:
+                logger.debug("[solver] LLM expression: %s (params: %s)", expr, used_params)
+                return expr, used_params
+
+        except Exception as e:
+            logger.debug("[solver] LLM expression failed: %s", e)
+
+        return None
 
     def _extract_json_result(self, response: str) -> str:
         """Extract result from JSON response (may be embedded in text)."""

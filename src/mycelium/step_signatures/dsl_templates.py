@@ -15,7 +15,106 @@ import json
 import logging
 from typing import Optional
 
+from mycelium.config import (
+    DSL_OPERATION_INFERENCE_COLD_START,
+    DSL_OPERATION_INFERENCE_MATURE,
+    DSL_OPERATION_INFERENCE_RAMP_SIGS,
+)
+
 logger = logging.getLogger(__name__)
+
+
+def get_dsl_inference_threshold() -> float:
+    """Get cold-start aware DSL inference threshold.
+
+    Ramps from COLD_START to MATURE as executable DSL count grows:
+    - Few DSLs: low threshold → try more DSLs → bootstrap learning
+    - Many DSLs: high threshold → be selective → use proven paths
+
+    Only counts executable DSLs (not decompose umbrellas) since those
+    are the signatures that can actually succeed and provide learning signal.
+
+    Returns:
+        Threshold between COLD_START and MATURE based on executable DSL count
+    """
+    try:
+        from mycelium.data_layer import get_db
+        conn = get_db()
+        # Count only executable DSLs, not decompose umbrellas
+        row = conn.execute(
+            "SELECT COUNT(*) FROM step_signatures WHERE dsl_type != 'decompose'"
+        ).fetchone()
+        dsl_count = row[0] if row else 0
+    except Exception:
+        dsl_count = 0
+
+    # Linear ramp from cold_start to mature
+    if dsl_count >= DSL_OPERATION_INFERENCE_RAMP_SIGS:
+        threshold = DSL_OPERATION_INFERENCE_MATURE
+    else:
+        ramp = dsl_count / DSL_OPERATION_INFERENCE_RAMP_SIGS
+        threshold = DSL_OPERATION_INFERENCE_COLD_START + ramp * (
+            DSL_OPERATION_INFERENCE_MATURE - DSL_OPERATION_INFERENCE_COLD_START
+        )
+
+    logger.debug(
+        "[dsl_infer] Cold-start threshold: %.3f (exec_dsls=%d, ramp=%d)",
+        threshold, dsl_count, DSL_OPERATION_INFERENCE_RAMP_SIGS
+    )
+    return threshold
+
+
+def _build_dsl_from_hint(
+    dsl_hint: str,
+    extracted_values: dict,
+    description: str,
+) -> Optional[tuple[str, str]]:
+    """Build DSL directly from planner's operation hint.
+
+    This is the key bidirectional communication: the LLM tells us exactly
+    which operation to use, and we construct the DSL accordingly.
+
+    Args:
+        dsl_hint: Operation hint from planner (+, -, *, /)
+        extracted_values: Dict of semantic param names -> values
+        description: Step description for logging
+
+    Returns:
+        (dsl_script_json, dsl_type) or None if hint is invalid
+    """
+    # Normalize the hint
+    hint = dsl_hint.strip().lower()
+
+    # Map common hint variations to operators
+    HINT_TO_OP = {
+        "+": "+", "add": "+", "addition": "+", "sum": "+", "plus": "+",
+        "-": "-", "subtract": "-", "subtraction": "-", "minus": "-", "difference": "-",
+        "*": "*", "multiply": "*", "multiplication": "*", "times": "*", "product": "*",
+        "/": "/", "divide": "/", "division": "/", "quotient": "/", "ratio": "/",
+    }
+
+    operator = HINT_TO_OP.get(hint)
+    if not operator:
+        logger.debug("[dsl_infer] Unknown dsl_hint '%s', ignoring", dsl_hint)
+        return None
+
+    # Get param names from extracted_values
+    params = [k for k in extracted_values.keys() if not k.startswith("{")]
+    if len(params) < 2:
+        logger.debug("[dsl_infer] dsl_hint needs 2+ params, got %d", len(params))
+        return None
+
+    # Build script with first two params
+    p1, p2 = params[0], params[1]
+    script = f"{p1} {operator} {p2}"
+
+    dsl = {
+        "type": "math",
+        "script": script,
+        "params": [p1, p2],
+        "purpose": f"planner hint: {dsl_hint}",
+    }
+    return json.dumps(dsl), "math"
 
 
 def infer_dsl_for_signature(
@@ -23,10 +122,12 @@ def infer_dsl_for_signature(
     description: str,
     db=None,
     extracted_values: dict = None,
+    dsl_hint: str = None,
 ) -> tuple[Optional[str], str]:
     """Infer DSL script and type for a new signature.
 
     Priority order:
+    0. Use dsl_hint if provided by planner (LLM → signature communication)
     1. Generate from extracted_values (planner already knows the structure)
     2. Find similar successful DSLs from database
     3. Fall back to decompose for truly novel patterns
@@ -36,10 +137,19 @@ def infer_dsl_for_signature(
         description: The step description text
         db: Optional signature database for similarity lookup
         extracted_values: Dict of semantic param names -> values from planner
+        dsl_hint: Explicit operation hint from planner (+, -, *, /)
 
     Returns:
         Tuple of (dsl_script_json, dsl_type)
     """
+    # Priority 0: Use dsl_hint from planner (bidirectional LLM-signature communication)
+    # The LLM analyzed the problem and told us which operation to use
+    if dsl_hint and extracted_values:
+        dsl = _build_dsl_from_hint(dsl_hint, extracted_values, description)
+        if dsl:
+            logger.info("[dsl_infer] Using planner dsl_hint='%s' for '%s'", dsl_hint, step_type)
+            return dsl
+
     # Priority 1: Generate DSL from extracted_values structure
     # The planner already extracted semantic param names - use them!
     if extracted_values:
@@ -52,6 +162,45 @@ def infer_dsl_for_signature(
         similar_dsl = _find_similar_successful_dsl(step_type, description, db)
         if similar_dsl:
             return similar_dsl
+
+    # Priority 3: Combine/synthesis steps
+    # These steps combine or report previous results
+    desc_lower = description.lower()
+
+    # 3a: Addition for "combine" operations (adding multiple values together)
+    if any(phrase in desc_lower for phrase in [
+        "combine", "add together", "total of", "sum of",
+        "add up", "together",
+    ]):
+        combine_add = {
+            "type": "math",
+            "script": "a + b",
+            "params": ["a", "b"],
+            "aliases": {
+                "a": ["step_1", "first", "regular", "base"],
+                "b": ["step_2", "second", "overtime", "additional"],
+            },
+            "purpose": "combine by addition",
+        }
+        logger.info("[dsl_infer] Combine step detected, using addition DSL")
+        return json.dumps(combine_add), "math"
+
+    # 3b: Passthrough for final answer steps (just return the value)
+    if any(phrase in desc_lower for phrase in [
+        "final answer", "get the answer", "report the result",
+        "state the answer", "give the answer", "get the result",
+        "obtain the result", "return the result", "the result is",
+        "calculate the final", "determine the final",
+    ]):
+        passthrough = {
+            "type": "math",
+            "script": "result",  # Just return the input named "result"
+            "params": ["result"],
+            "aliases": {"result": ["step_1", "step_2", "step_3", "answer", "value", "total"]},
+            "purpose": "passthrough: return computed result",
+        }
+        logger.info("[dsl_infer] Synthesis step detected, using passthrough DSL")
+        return json.dumps(passthrough), "math"
 
     # Default fallback: decompose (let LLM handle novel patterns)
     # This is not a failure - it's how the system learns new patterns
@@ -72,7 +221,7 @@ def _infer_dsl_from_values(
     """Generate DSL from planner's extracted values using semantic similarity.
 
     Uses embedding similarity to match step description to operation prototypes.
-    No keyword matching - purely semantic inference.
+    Falls back to trying common operations when semantic matching fails.
 
     Args:
         step_type: The signature's step type
@@ -87,15 +236,17 @@ def _infer_dsl_from_values(
 
     # Filter out step references for param list (keep only numeric values as params)
     params = []
+    numeric_values = []
     for key, val in extracted_values.items():
         if isinstance(val, str) and val.startswith("{") and val.endswith("}"):
             # This is a step reference like "{step_1}" - still a valid param
             params.append(key)
         elif isinstance(val, (int, float)):
             params.append(key)
+            numeric_values.append(val)
         elif isinstance(val, str):
             try:
-                float(val)
+                numeric_values.append(float(val))
                 params.append(key)
             except ValueError:
                 pass
@@ -105,7 +256,19 @@ def _infer_dsl_from_values(
 
     # Use semantic similarity to infer operation
     # Pass param names - they carry semantic hints (dividend/divisor → divide)
-    op_info = _infer_operation_semantic(step_type, description, len(params), param_names=params)
+    # Use cold-start aware threshold (low when few sigs, high when mature)
+    threshold = get_dsl_inference_threshold()
+    op_info = _infer_operation_semantic(step_type, description, len(params), param_names=params, min_similarity=threshold)
+
+    # Fallback: if semantic matching fails but we have exactly 2 numeric values,
+    # try multiplication first (most common operation for rate * quantity patterns)
+    # This enables bootstrap learning - once one succeeds, future matches improve
+    if op_info is None and len(numeric_values) == 2 and len(params) == 2:
+        logger.info(
+            "[dsl_infer] Semantic match failed, trying multiplication fallback for 2 params: %s",
+            params
+        )
+        op_info = ("*", "multiplication fallback")
 
     if op_info is None:
         logger.debug(
@@ -264,7 +427,7 @@ def _infer_operation_semantic(
     description: str,
     num_params: int,
     param_names: list = None,
-    min_similarity: float = 0.35,
+    min_similarity: float = 0.5,
 ) -> Optional[tuple[str, str]]:
     """Infer math operation using dual-channel semantic embedding.
 
@@ -353,17 +516,32 @@ def _infer_operation_semantic(
         best_op = max(combined_sims, key=combined_sims.get)
         best_sim = combined_sims[best_op]
 
-        if best_sim >= min_similarity:
+        # Exotic operations (**, factorial, perm, etc.) require higher confidence
+        # Basic arithmetic (+, -, *, /) can use normal threshold
+        # This prevents embedding noise from matching "total eggs" to "power"
+        BASIC_OPS = {"+", "-", "*", "/"}
+        EXOTIC_THRESHOLD_BONUS = 0.25  # Require 25% higher similarity for exotic ops
+
+        effective_threshold = min_similarity
+        if best_op not in BASIC_OPS:
+            effective_threshold = min_similarity + EXOTIC_THRESHOLD_BONUS
             logger.debug(
-                "[dsl_infer] Semantic match: '%s' → '%s' (sim=%.3f, param_w=%.1f, top=%s)",
-                step_type, best_op, best_sim, param_weight,
+                "[dsl_infer] Exotic op '%s' requires higher threshold: %.3f",
+                best_op, effective_threshold
+            )
+
+        if best_sim >= effective_threshold:
+            logger.info(
+                "[dsl_infer] ACCEPTED: '%s' → '%s' (sim=%.3f, threshold=%.3f, top=%s)",
+                step_type, best_op, best_sim, min_similarity,
                 {k: f"{v:.2f}" for k, v in sorted(combined_sims.items(), key=lambda x: -x[1])[:4]}
             )
             return (best_op, _DESCRIPTION_ANCHORS.get(best_op, best_op))
 
-        logger.debug(
-            "[dsl_infer] No match above threshold: best=%s sim=%.3f < %.3f",
-            best_op, best_sim, min_similarity
+        # Log at INFO level so rejections are visible - this is learning data
+        logger.info(
+            "[dsl_infer] REJECTED: '%s' best_match='%s' sim=%.3f < threshold=%.3f → decompose",
+            step_type, best_op, best_sim, min_similarity
         )
         return None
 

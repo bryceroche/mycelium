@@ -62,6 +62,14 @@ DSL_THRESHOLDS_BY_TYPE = {
     "default": {"gate": 0.0, "param": 0.0},
 }
 
+# DSL Operation Inference threshold (cold-start aware)
+# Ramps from COLD_START to MATURE as signature count grows
+# Cold start: try more DSLs to bootstrap learning
+# Mature: be selective, use proven paths
+DSL_OPERATION_INFERENCE_COLD_START = 0.35  # Low threshold when DB is empty
+DSL_OPERATION_INFERENCE_MATURE = 0.60  # High threshold when DB is mature
+DSL_OPERATION_INFERENCE_RAMP_SIGS = 100  # Signatures needed to reach mature threshold
+
 # DSL Executor thresholds
 DSL_VALUE_TYPE_THRESHOLD = 0.15  # Threshold for value type matching
 DSL_STEP_TYPE_ALIGNMENT_THRESHOLD = 0.20  # Threshold for step type alignment
@@ -110,12 +118,17 @@ AUTO_DEMOTE_MIN_USES_FLOOR = 1   # Start at 1 (branch on first failure)
 AUTO_DEMOTE_MIN_USES_CAP = 5     # Never require more than 5 failures
 
 # =============================================================================
-# ROUTING SCORE FORMULA
+# MCTS ROUTING (UCB1-based exploration/exploitation)
 # =============================================================================
+# Uses UCB1 formula: score = exploit + C * sqrt(ln(N) / n)
+# Where exploit = similarity * success_rate, N = parent visits, n = child visits
+# This balances trying known-good paths vs exploring under-visited ones
 
-# Score = ROUTING_SIM_WEIGHT * cosine_sim + ROUTING_SUCCESS_WEIGHT * effective_rate
-ROUTING_SIM_WEIGHT = 0.85  # Weight for cosine similarity
-ROUTING_SUCCESS_WEIGHT = 0.15  # Weight for success rate
+MCTS_EXPLORATION_C = 1.0  # Exploration constant (higher = more exploration)
+                          # sqrt(2) ≈ 1.41 is theoretical optimal, 1.0 is more conservative
+MCTS_SIMILARITY_WEIGHT = 0.7  # Weight for semantic similarity in exploitation term
+MCTS_SUCCESS_WEIGHT = 0.3  # Weight for success rate in exploitation term
+MCTS_MIN_VISITS_FOR_UCB = 1  # Min visits before UCB exploration bonus applies
 
 # Bayesian prior for cold start (assume some successes before any data)
 ROUTING_PRIOR_SUCCESSES = 2
@@ -141,6 +154,28 @@ TRAFFIC_MIN_SHARE = 0.01  # Min traffic share before penalty (1% of total runs)
 TRAFFIC_DECAY_RATE = 0.10  # Penalty for very low traffic sigs
 TRAFFIC_CACHE_TTL = 60.0  # Cache total_problems for N seconds (avoid DB hits)
 TRAFFIC_GRACE_PROBLEMS = 50  # No penalty until system has run N problems
+
+# =============================================================================
+# DEPTH-AWARE DECOMPOSITION
+# =============================================================================
+# Force decomposition at shallow depths to build out the tree structure.
+# Shallow = routing/categorization, Deep = execution
+#
+# Decompose probability decays exponentially with depth:
+#   P(decompose) = 1.0 if depth <= FORCE_DECOMPOSE_DEPTH
+#   P(decompose) = DECAY_BASE ^ (depth - FORCE_DECOMPOSE_DEPTH) for deeper
+#
+# Example with FORCE_DECOMPOSE_DEPTH=5, DECAY_BASE=0.5:
+#   depth 0-5: 100% decompose (forced)
+#   depth 6: 50% decompose
+#   depth 7: 25% decompose
+#   depth 8: 12.5% decompose
+#   depth 9+: ~0% decompose (execute)
+
+DEPTH_DECOMPOSE_ENABLED = True  # Enable depth-aware forced decomposition
+DEPTH_FORCE_DECOMPOSE_DEPTH = 5  # Always decompose at depth 0-5
+DEPTH_DECOMPOSE_DECAY_BASE = 0.5  # Decay rate per depth beyond force threshold
+DEPTH_DECOMPOSE_MIN_PROB = 0.05  # Floor probability (never fully disable decompose option)
 
 # =============================================================================
 # DYNAMIC DEPTH ROUTING
