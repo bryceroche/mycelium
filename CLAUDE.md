@@ -134,12 +134,7 @@ SUBTRACTION_ANCHOR = "finding difference, taking away, how much more or less"
 
 **The DSL/signature system works. The planner decomposition doesn't match mathematical structure.**
 
-Symptoms:
-- 0% accuracy on Level 3 MATH despite DSLs executing correctly
-- Match rate improving (signatures learning), but wrong intermediate values
-- Failing signatures decompose (umbrella learner working), but children also fail
-
-Root cause: The planner creates steps that don't match the mathematical structure needed. For example, decomposing "find 5/8 equivalent fraction with sum 91" might produce:
+The planner creates steps that don't match the mathematical structure needed. For example, decomposing "find 5/8 equivalent fraction with sum 91" might produce:
 - Step 1: "Define the relationship" → computes 5+8=13
 - Step 2: "Calculate numerator and denominator" → also computes 13
 - Step 3: "Find difference" → fails (both inputs are 13)
@@ -150,7 +145,56 @@ Correct decomposition would be:
 3. Denominator: 8 × 7 = 56
 4. Difference: 56 - 35 = 21
 
-The signature/DSL system IS learning and matching better, but the upstream decomposition quality limits end-to-end accuracy. Next priority: improve planner's mathematical reasoning.
+## Solution: Signature-Guided Decomposition
+
+**Signatures already know what they need. Surface this to the planner BEFORE decomposition.**
+
+We have bi-directional NL communication:
+- **Signatures → Planner**: `clarifying_questions`, `param_descriptions`
+- **Planner → Signatures**: `extracted_values`, step descriptions
+
+Lean into this:
+
+### 1. Query Signatures Before Decomposing
+
+```
+Problem: "Find equivalent fraction 5/8 with sum 91"
+    ↓
+Query: "What signatures exist for fraction/ratio problems?"
+    ↓
+Signatures respond:
+  - "scale_ratio" needs {ratio_num, ratio_denom, scale_factor}
+  - "compute_sum" needs {addend_a, addend_b}
+    ↓
+Planner now knows: "I need to find a scale_factor first"
+```
+
+### 2. Semantic Coherence Checking
+
+Use embeddings to verify decomposition forms a coherent chain:
+
+```
+Step 1 output: "ratio_sum = 13"
+Step 2 needs: "numerator, denominator"
+    ↓
+Embed "ratio_sum" vs "numerator denominator"
+    ↓
+Low similarity → "Step 1 isn't producing what Step 2 needs"
+```
+
+### 3. NL Feedback Loop
+
+When signatures fail, they explain WHY:
+
+```
+Signature "compute_difference" fails:
+  → "I received two identical values (13, 13).
+     I need two DIFFERENT quantities to compute a difference."
+    ↓
+Feedback goes to planner for retry with specific guidance
+```
+
+The key insight: signatures already know what they need via `clarifying_questions`. We just need to surface this knowledge to the planner BEFORE it decomposes, not after.
 
 ## Key Rule
 
