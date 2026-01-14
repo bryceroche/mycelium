@@ -3,23 +3,14 @@
 Bryce is the user.  He likes to make edits to this file.  Please do not overwrite his edits.  
 This file is critically important to the project.  Please do not overwrite it.
 We want to treate this file as our source of truth.  Every bug fix, optimization or feature should be implemented with this file in mind.
+Please always keep this file in context window.
+
 
 Key Questions
 how do clusters form? Emerge naturally from umbrella promotions
-How do we route? MCTS with UCB1 selection (see below)
-Cluster Centroid - Average of all descendant leaf embeddings
+How do we route? MCTS, but learned from embeddings
+Cluster Centroid - Average of all descendant leaf embeddings 
 how does learning work at each level? Learn "these operation types cluster together"
-
-### MCTS Routing (UCB1)
-```
-UCB1_score = exploit + C * sqrt(ln(N) / n)
-```
-- **exploit** = similarity × success_rate (weighted)
-- **C** = exploration constant (config: MCTS_EXPLORATION_C)
-- **N** = parent's uses, **n** = child's uses
-
-Balances exploitation (use what works) vs exploration (try under-visited paths).
-Config: `MCTS_ENABLED`, `MCTS_EXPLORATION_C`, `MCTS_SIMILARITY_WEIGHT`, `MCTS_SUCCESS_WEIGHT`
 
 when to create a new root -- only one root.  Every problem goes through the first root signature.
 how deep should the hierarchy go?  unbounded UMBRELLA_MAX_DEPTH 
@@ -42,8 +33,8 @@ slow decay.  Calculate signature use count /  ((cache) count of total num proble
 
 ## Core Principle: Failures Are Valuable Data Points
 **Let signatures fail.** This is how the system learns.
-- Don't mask DSL failures with LLM execution
 - Record every failure—it feeds the refinement loop
+- Do not fallback to LLM reasoning
 - Failed signatures get decomposed
 - Success/failure stats drive routing decisions
 
