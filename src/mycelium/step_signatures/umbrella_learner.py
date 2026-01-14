@@ -287,6 +287,27 @@ class UmbrellaLearner:
                     dsl_hint=getattr(step, 'dsl_hint', None),  # LLM → signature communication
                 )
 
+                # If matched signature already has a parent, create a NEW one instead
+                # This ensures tree structure can grow deeper
+                if not is_new:
+                    existing_parent = self.db.get_parent(child_sig.id)
+                    if existing_parent is not None:
+                        logger.info(
+                            "[umbrella] Matched sig %d already has parent %d, creating new for parent %d",
+                            child_sig.id, existing_parent.id, signature.id
+                        )
+                        # Force create a new signature with THIS signature as parent
+                        child_sig = self.db.create_signature(
+                            step_text=step.task,
+                            embedding=embedding,
+                            parent_problem=signature.description,
+                            origin_depth=min_child_depth,
+                            extracted_values=getattr(step, 'extracted_values', None),
+                            dsl_hint=getattr(step, 'dsl_hint', None),
+                            parent_id=signature.id,  # Set parent to decomposing signature
+                        )
+                        is_new = True
+
             if is_new:
                 logger.info(
                     "[umbrella] Created child: '%s' (type=%s, dsl=%s, depth=%d)",

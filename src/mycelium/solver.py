@@ -474,27 +474,29 @@ class Solver:
                 was_injected = True
                 logger.debug("[solver] DSL executed: %s", result[:50] if result else "")
 
-        # 4.5. On DSL failure at shallow depths, decompose to build tree
-        # This only triggers when DSL failed (result is None) at shallow depths
-        if result is None and at_shallow_depth and not routed_signature.is_semantic_umbrella:
+        # 4.5. COLD START: Decompose at shallow depths EVEN ON SUCCESS
+        # This explodes out the network branching to build tree structure
+        # We keep the DSL result but also create children for future routing
+        if at_shallow_depth and not routed_signature.is_semantic_umbrella:
             logger.info(
-                "[solver] Depth %d: forcing decomposition for '%s'",
-                sig_depth, routed_signature.step_type
+                "[solver] Depth %d: COLD START decomposing '%s' (result=%s)",
+                sig_depth, routed_signature.step_type, "success" if result else "none"
             )
             await self._auto_decompose_signature(routed_signature)
-            # Refresh and try routing through the new umbrella
             routed_signature = self.step_db.get_signature(routed_signature.id)
-            if routed_signature.is_semantic_umbrella:
-                child_result = await self._try_umbrella_routing(
-                    routed_signature, step, problem, context, step_descriptions, embedding=embedding
+
+        # 4.6. If we don't have a result yet, try routing through umbrella
+        if result is None and routed_signature.is_semantic_umbrella:
+            child_result = await self._try_umbrella_routing(
+                routed_signature, step, problem, context, step_descriptions, embedding=embedding
+            )
+            if child_result is not None:
+                result, routed_signature, was_injected = child_result
+                was_routed = True
+                logger.info(
+                    "[solver] Routed through umbrella to: '%s'",
+                    routed_signature.step_type
                 )
-                if child_result is not None:
-                    result, routed_signature, was_injected = child_result
-                    was_routed = True  # Successfully routed after forced decomposition
-                    logger.info(
-                        "[solver] After forced decompose, routed to: '%s'",
-                        routed_signature.step_type
-                    )
 
         # 5. No LLM fallback - strict DAG execution
         # Three outcomes: route to child, create child, or fail

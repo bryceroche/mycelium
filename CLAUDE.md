@@ -7,11 +7,17 @@ We want to treate this file as our source of truth.
 Every bug fix, optimization or feature should be implemented with this file in mind.
 Please always keep this file in context window.
 
+
 With fresh DB:
- - Start with easy problems (GSM8K or MATH L1-L2)
+ - A SMOOTH and CONTINUOUS learning process is key 
+ - Start with EASY problems (GSM8K or MATH L1-L2)
  - Need some successes to learn from - failures alone don't teach what works
+ - System is designed to agressively BRANCH out early on tapering off later
+
 
 Key Questions
+are we going deep enough?  if we have low accuracy then the answer in NO
+
 how do clusters form? Emerge naturally from umbrella promotions
 How do we route? MCTS, but learned from embeddings
 Cluster Centroid - Average of all descendant leaf embeddings 
@@ -55,9 +61,7 @@ When a problem is solved correctly, success credit propagates up the signature D
 - Direct signatures get +1 success
 - Parent umbrellas get `decay^depth` credit (default 0.5 per level)
 - Max propagation depth is configurable (default 3 levels)
-
 This lets umbrella signatures accumulate credit from their children's successes, improving routing decisions.
-
 
 Brainstorming ideas
     rewrite DSL if centroid avg outside confidence bounds
