@@ -30,6 +30,12 @@ from mycelium.config import (
     UMBRELLA_ROUTING_THRESHOLD,
 )
 from mycelium.planner import Planner, Step, DAGPlan
+from mycelium.step_signatures.semantic_validation import (
+    validate_plan_coherence,
+    create_failure_feedback,
+    PlanValidation,
+    StepFailureFeedback,
+)
 from mycelium.step_signatures import StepSignatureDB, StepSignature
 from mycelium.step_signatures.db import normalize_step_text
 from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math
@@ -157,7 +163,41 @@ class Solver:
                 problem_embedding=problem_embedding,
                 min_similarity=0.3,  # Only hints somewhat related to this problem
             )
-            plan = await self.planner.decompose(problem, signature_hints=signature_hints)
+
+            # Decompose with retry on coherence failure
+            max_retries = 2
+            coherence_feedback = None
+            plan = None
+
+            for attempt in range(max_retries + 1):
+                plan = await self.planner.decompose(
+                    problem,
+                    signature_hints=signature_hints,
+                    coherence_feedback=coherence_feedback,
+                )
+
+                # Validate semantic coherence BEFORE execution
+                validation = validate_plan_coherence(plan, self.step_db, self.embedder)
+
+                if validation.is_coherent:
+                    logger.debug(
+                        "[solver] Plan coherence validated: score=%.2f",
+                        validation.overall_score
+                    )
+                    break
+                elif attempt < max_retries:
+                    # Retry with feedback
+                    coherence_feedback = validation.feedback_for_planner
+                    logger.info(
+                        "[solver] Plan coherence low (%.2f), retrying with feedback: %s",
+                        validation.overall_score, coherence_feedback[:100]
+                    )
+                else:
+                    # Accept low-coherence plan on final attempt
+                    logger.warning(
+                        "[solver] Proceeding with low-coherence plan (%.2f) after %d attempts",
+                        validation.overall_score, max_retries + 1
+                    )
 
             # Validate DAG structure before execution
             is_valid, errors = plan.validate()
@@ -377,9 +417,17 @@ class Solver:
         # 5. No LLM fallback - strict DAG execution
         # Three outcomes: route to child, create child, or fail
         if result is None:
+            # Capture failure feedback for learning
+            failure_feedback = create_failure_feedback(
+                step_id=step.id,
+                step_task=step.task,
+                failure_reason="DSL execution failed or no DSL available",
+                signature=routed_signature,
+                context=context,
+            )
             logger.warning(
-                "[solver] DSL failed, step failed (no LLM fallback): %s",
-                step.task[:50]
+                "[solver] DSL failed, step failed (no LLM fallback): %s\n  Hint: %s",
+                step.task[:50], failure_feedback.to_planner_hint()
             )
             result = ""  # Empty result = failure
 
