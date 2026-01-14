@@ -5,6 +5,17 @@ This file is critically important to the project.  Please do not overwrite it.
 We want to treate this file as our source of truth.  Every bug fix, optimization or feature should be implemented with this file in mind.
 Please always keep this file in context window.
 
+With fresh DB:
+  1. First problem → creates root signature
+  2. DSLs we have: basic arithmetic (add, multiply, divide, combine, passthrough)
+  3. Need some successes to learn from - failures alone don't teach what works
+
+  Recommendation:
+  - Start with easy problems (GSM8K or MATH L1-L2)
+  - Basic DSLs can solve simple arithmetic → builds successful signatures
+  - Success stats seed the MCTS routing (exploitation term needs wins)
+  - Then harder problems can route through proven paths or branch new ones
+
 
 Key Questions
 how do clusters form? Emerge naturally from umbrella promotions
