@@ -6,6 +6,13 @@ This module contains:
 - Custom DSL execution
 """
 
+__all__ = [
+    "register_operator",
+    "get_operator",
+    "list_operators",
+    "try_execute_dsl_custom",
+]
+
 import ast
 import logging
 from typing import Any, Callable, Optional

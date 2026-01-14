@@ -6,6 +6,20 @@ This module contains:
 - Allowed operators, functions, and constants
 """
 
+__all__ = [
+    # Operator/function registries
+    "BINOPS",
+    "UNARYOPS",
+    "FUNCTIONS",
+    "CONSTANTS",
+    # Value extraction
+    "extract_numeric_value",
+    "prepare_math_inputs",
+    # Execution
+    "try_execute_dsl_math",
+    "add_function",
+]
+
 import ast
 import logging
 import math

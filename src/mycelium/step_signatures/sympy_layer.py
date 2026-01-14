@@ -5,6 +5,13 @@ This module contains:
 - String to SymPy expression parser
 """
 
+__all__ = [
+    "SYMPY_ALLOWED",
+    "SYMPY_ALLOWED_METHODS",
+    "parse_to_sympy",
+    "try_execute_dsl_sympy",
+]
+
 import ast
 import logging
 import re
