@@ -703,19 +703,46 @@ Respond with ONLY the number (0-{len(children)})."""
     ) -> Optional[str]:
         """Try to execute a DSL script.
 
+        IMPORTANT: If step has fresh dsl_hint + extracted_values from planner,
+        build a NEW DSL on the fly. The signature's stored DSL has problem-specific
+        param names that won't match new problems.
+
         Uses step.extracted_values (from planner) and context for params.
         Uses signature's param_descriptions + step_descriptions for semantic matching.
         """
         step_descriptions = step_descriptions or {}
-        if not signature.dsl_script:
-            return None
 
-        try:
-            # Parse DSL spec from JSON
+        # Priority: Use fresh dsl_hint from planner if available
+        # This ensures we use param names that match THIS problem, not the original
+        dsl_hint = getattr(step, 'dsl_hint', None)
+        extracted_values = getattr(step, 'extracted_values', None)
+
+        if dsl_hint and extracted_values:
+            # Build fresh DSL from planner's analysis
+            from mycelium.step_signatures.dsl_templates import _build_dsl_from_hint
+            fresh_dsl = _build_dsl_from_hint(dsl_hint, extracted_values, step.task)
+            if fresh_dsl:
+                dsl_json, _ = fresh_dsl
+                dsl_spec = DSLSpec.from_json(dsl_json)
+                if dsl_spec:
+                    logger.debug("[solver] Using fresh DSL from dsl_hint='%s'", dsl_hint)
+                else:
+                    dsl_spec = None
+            else:
+                dsl_spec = None
+        else:
+            dsl_spec = None
+
+        # Fall back to signature's stored DSL
+        if dsl_spec is None:
+            if not signature.dsl_script:
+                return None
             dsl_spec = DSLSpec.from_json(signature.dsl_script)
             if not dsl_spec:
                 logger.debug("[solver] Failed to parse DSL spec")
                 return None
+
+        try:
 
             # Build params from multiple sources:
             # 1. Step's extracted_values (from planner) - these have semantic names
