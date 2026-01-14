@@ -8,8 +8,8 @@ bd ready        # See available work
 ```
 
 ## Design Philosophy: Build for Scale
-
 **The system must grow on its own.** Avoid patterns that require manual maintenance or LLM fallback:
+We want the system to be self-sufficient and scalable.  We do not want the system to rely on patches from Claude or rely on LLM Fallback.
 
 - **No hardcoded mappings** - If you're tempted to write a dict like `{"compute_gcd": "find greatest common divisor"}`, stop. Infer it dynamically from the data itself.
 - **No manual enumerations** - New step_types, operators, or patterns should work automatically without code changes.
@@ -48,18 +48,9 @@ The DB enforces this at write time. Don't try to work around it.
 The goal is NOT 100% accuracy on every run. The goal is collecting data that makes the system smarter over time. A failed DSL today becomes training data for a better DSL tomorrow.
 
 ## Learning Mechanisms
-
-### Centroid Averaging
-
-Signature centroids are running averages of all matched embeddings. Each time a step matches a signature, the centroid updates:
-
-```
-new_sum = old_sum + new_embedding
-new_count = old_count + 1
-new_centroid = new_sum / new_count
-```
-
-This makes centroids more stable and representative over time. High-traffic signatures become semantic attractors.
+Centroid Averaging
+Centroids are running averages: new_centroid = (old_sum + embedding) / new_count
+More matches → more stable centroid → high-traffic signatures become semantic attractors.
 
 ### Credit Propagation
 
@@ -130,71 +121,24 @@ ADDITION_ANCHOR = "combining quantities, finding total, summing values together"
 SUBTRACTION_ANCHOR = "finding difference, taking away, how much more or less"
 ```
 
-## Current Bottleneck: Planner Decomposition Quality
-
+## Addressing limitations of the Math Embedding Model and the Planner Decomposition Quality
 **The DSL/signature system works. The planner decomposition doesn't match mathematical structure.**
-
-The planner creates steps that don't match the mathematical structure needed. For example, decomposing "find 5/8 equivalent fraction with sum 91" might produce:
-- Step 1: "Define the relationship" → computes 5+8=13
-- Step 2: "Calculate numerator and denominator" → also computes 13
-- Step 3: "Find difference" → fails (both inputs are 13)
-
-Correct decomposition would be:
-1. Find multiplier: 91 / (5+8) = 7
-2. Numerator: 5 × 7 = 35
-3. Denominator: 8 × 7 = 56
-4. Difference: 56 - 35 = 21
-
+****
+The embedding model clusters by vocabulary not operational semantics.
 ## Solution: Signature-Guided Decomposition
-
 **Signatures already know what they need. Surface this to the planner BEFORE decomposition.**
-
 We have bi-directional NL communication:
 - **Signatures → Planner**: `clarifying_questions`, `param_descriptions`
 - **Planner → Signatures**: `extracted_values`, step descriptions
 
-Lean into this:
+Signature-Guided Planning
 
-### 1. Query Signatures Before Decomposing
+  1. Query before decompose — Ask signatures what params they need, so the planner knows what to extract upfront
+  2. Semantic coherence — Embed step outputs vs next step inputs; low similarity = broken chain
+  3. NL failure feedback — Failed signatures explain why ("got identical values, need different ones") → planner retries with guidance
 
-```
-Problem: "Find equivalent fraction 5/8 with sum 91"
-    ↓
-Query: "What signatures exist for fraction/ratio problems?"
-    ↓
-Signatures respond:
-  - "scale_ratio" needs {ratio_num, ratio_denom, scale_factor}
-  - "compute_sum" needs {addend_a, addend_b}
-    ↓
-Planner now knows: "I need to find a scale_factor first"
-```
+  Key insight: Signatures declare their needs via clarifying_questions. Surface this BEFORE decomposition, not after.
 
-### 2. Semantic Coherence Checking
-
-Use embeddings to verify decomposition forms a coherent chain:
-
-```
-Step 1 output: "ratio_sum = 13"
-Step 2 needs: "numerator, denominator"
-    ↓
-Embed "ratio_sum" vs "numerator denominator"
-    ↓
-Low similarity → "Step 1 isn't producing what Step 2 needs"
-```
-
-### 3. NL Feedback Loop
-
-When signatures fail, they explain WHY:
-
-```
-Signature "compute_difference" fails:
-  → "I received two identical values (13, 13).
-     I need two DIFFERENT quantities to compute a difference."
-    ↓
-Feedback goes to planner for retry with specific guidance
-```
-
-The key insight: signatures already know what they need via `clarifying_questions`. We just need to surface this knowledge to the planner BEFORE it decomposes, not after.
 
 ## Key Rule
 
