@@ -1,14 +1,32 @@
 """Mycelium configuration constants.
 
 Single operating mode: explore signatures, collect lift data, learn from failures.
+
+=============================================================================
+CORE PRINCIPLE: FAILURES ARE DATA
+=============================================================================
+The system learns by failing. Every DSL failure is recorded and used to:
+- Identify signatures that need decomposition (high variance = umbrella)
+- Find DSLs that need fixing (partial success = fixable)
+- Route future problems away from known-bad paths
+
+DO NOT mask failures with LLM fallback. Let DSLs fail, record the outcome,
+and let the refinement loop fix them. Short-term accuracy matters less than
+long-term learning.
+
+Config philosophy:
+- TRAINING_MODE=True: Collect ALL data, even from known-bad DSLs
+- All thresholds at 0.0: Let everything execute and fail naturally
+- No gates, no guards: Pure data collection mode
+=============================================================================
 """
 
 import os
 
-# For backwards compatibility
-# TRAINING_MODE = True means DSL avoidance is DISABLED (collect all data)
-# TRAINING_MODE = False means DSL avoidance is ENABLED (skip bad DSLs)
-TRAINING_MODE = True  # TRAINING: Disable DSL avoidance, collect all failure data
+# TRAINING_MODE = True: DSL avoidance DISABLED, collect all failure data
+# TRAINING_MODE = False: DSL avoidance ENABLED, skip known-bad DSLs
+# Keep True during data collection phase
+TRAINING_MODE = True
 
 # =============================================================================
 # SIGNATURE MATCHING

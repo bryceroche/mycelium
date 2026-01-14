@@ -18,6 +18,17 @@ bd ready        # See available work
 
 Think: *"Will this still work when we have 10,000 signatures?"* If not, find another way.
 
+## Core Principle: Failures Are Data
+
+**Let signatures fail.** This is how the system learns.
+
+- Don't mask DSL failures with LLM execution
+- Record every failure—it feeds the refinement loop
+- Failed signatures get demoted, decomposed, or fixed
+- Success/failure stats drive routing decisions
+
+The goal is NOT 100% accuracy on every run. The goal is collecting data that makes the system smarter over time. A failed DSL today becomes training data for a better DSL tomorrow.
+
 ## Key Rule
 
 **When you encounter a bug or feature idea, create a beads issue to track it.**
