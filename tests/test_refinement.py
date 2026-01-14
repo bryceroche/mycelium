@@ -7,6 +7,7 @@ schema. Tests mock these appropriately.
 """
 
 import pytest
+import numpy as np
 from unittest.mock import MagicMock, AsyncMock, patch
 from dataclasses import dataclass
 from typing import Optional
@@ -550,7 +551,6 @@ class TestFindSimilarSuccessfulSignature:
         sig = MockSignature(id=1, step_type="test", description="test")
 
         with patch('mycelium.embedder.Embedder') as MockEmbedder:
-            import numpy as np
             mock_embedder = MagicMock()
             mock_embedder.embed.return_value = np.array([0.1] * 768)
             MockEmbedder.get_instance.return_value = mock_embedder
