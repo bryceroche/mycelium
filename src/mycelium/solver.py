@@ -459,19 +459,24 @@ class Solver:
         # 4. Try DSL execution if not already routed
         # Key: Use dsl_hint from planner (LLM writes the expression)
         # Don't check routed_signature.dsl_script - umbrellas are pure routers with no DSL
+        # Also handles extraction-only steps (no dsl_hint but has extracted_values)
         has_dsl_hint = getattr(step, 'dsl_hint', None) is not None
+        has_extracted_values = bool(getattr(step, 'extracted_values', None))
         sig_depth = routed_signature.depth or 0
-        force_decompose = should_force_decompose(sig_depth) and not has_dsl_hint
+        at_shallow_depth = should_force_decompose(sig_depth)
 
-        if result is None and has_dsl_hint and not force_decompose:
+        # Try DSL at all depths - if it works, use it
+        # Also try for extraction-only steps (no hint but has values)
+        if result is None and (has_dsl_hint or has_extracted_values):
             dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
             if dsl_result is not None:
                 result = dsl_result
                 was_injected = True
                 logger.debug("[solver] DSL executed: %s", result[:50] if result else "")
 
-        # 4.5. Force decomposition at shallow depths - actually decompose, don't just skip
-        if result is None and force_decompose and not routed_signature.is_semantic_umbrella:
+        # 4.5. On DSL failure at shallow depths, decompose to build tree
+        # This only triggers when DSL failed (result is None) at shallow depths
+        if result is None and at_shallow_depth and not routed_signature.is_semantic_umbrella:
             logger.info(
                 "[solver] Depth %d: forcing decomposition for '%s'",
                 sig_depth, routed_signature.step_type
@@ -762,16 +767,17 @@ Respond with ONLY the number (0-{len(children)})."""
                 depth=depth + 1
             )
 
-        # Try child's DSL (but respect depth-aware decomposition)
+        # Try child's DSL at all depths - if it works, use it
         # Use dsl_hint from step, not child_sig.dsl_script (umbrellas have no DSL)
-        child_depth = child_sig.depth or 0
+        # Also handles extraction-only steps (no hint but has values)
         has_dsl_hint = getattr(step, 'dsl_hint', None) is not None
-        if has_dsl_hint and not should_force_decompose(child_depth):
+        has_extracted_values = bool(getattr(step, 'extracted_values', None))
+        if has_dsl_hint or has_extracted_values:
             dsl_result = await self._try_dsl(child_sig, step, context, step_descriptions)
             if dsl_result is not None:
                 return (dsl_result, child_sig, True)
 
-        # Return child for further processing (may need decomposition)
+        # Return child for further processing (may need decomposition on failure)
         return (None, child_sig, False)
 
     async def _try_dsl(
@@ -785,9 +791,32 @@ Respond with ONLY the number (0-{len(children)})."""
 
         LLM writes the arithmetic expression using available param names.
         No heuristic mapping - LLM always picks the right params for the task.
+
+        Also handles extraction-only steps (no dsl_hint, just extracted_values).
         """
         # Get operation hint from planner
         dsl_hint = getattr(step, 'dsl_hint', None)
+        extracted_values = getattr(step, 'extracted_values', {}) or {}
+
+        # Handle extraction-only steps: no dsl_hint but has single extracted value
+        # These steps just extract a constant from the problem (e.g., "eggs per day = 16")
+        if not dsl_hint and extracted_values:
+            # Find first non-reference value
+            for key, val in extracted_values.items():
+                if isinstance(val, (int, float)):
+                    logger.info("[solver] Extraction-only step: %s = %s", key, val)
+                    return str(val)
+                elif isinstance(val, str) and not (val.startswith('{') and val.endswith('}')):
+                    # String value that's not a reference
+                    try:
+                        num_val = float(val)
+                        logger.info("[solver] Extraction-only step: %s = %s", key, num_val)
+                        return str(num_val)
+                    except ValueError:
+                        pass
+            logger.debug("[solver] No extractable value found in extracted_values")
+            return None
+
         if not dsl_hint:
             # No hint from planner - can't execute DSL
             logger.debug("[solver] No dsl_hint for step, skipping DSL")
