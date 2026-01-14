@@ -130,6 +130,28 @@ ADDITION_ANCHOR = "combining quantities, finding total, summing values together"
 SUBTRACTION_ANCHOR = "finding difference, taking away, how much more or less"
 ```
 
+## Current Bottleneck: Planner Decomposition Quality
+
+**The DSL/signature system works. The planner decomposition doesn't match mathematical structure.**
+
+Symptoms:
+- 0% accuracy on Level 3 MATH despite DSLs executing correctly
+- Match rate improving (signatures learning), but wrong intermediate values
+- Failing signatures decompose (umbrella learner working), but children also fail
+
+Root cause: The planner creates steps that don't match the mathematical structure needed. For example, decomposing "find 5/8 equivalent fraction with sum 91" might produce:
+- Step 1: "Define the relationship" → computes 5+8=13
+- Step 2: "Calculate numerator and denominator" → also computes 13
+- Step 3: "Find difference" → fails (both inputs are 13)
+
+Correct decomposition would be:
+1. Find multiplier: 91 / (5+8) = 7
+2. Numerator: 5 × 7 = 35
+3. Denominator: 8 × 7 = 56
+4. Difference: 56 - 35 = 21
+
+The signature/DSL system IS learning and matching better, but the upstream decomposition quality limits end-to-end accuracy. Next priority: improve planner's mathematical reasoning.
+
 ## Key Rule
 
 **When you encounter a bug or feature idea, create a beads issue to track it.**
