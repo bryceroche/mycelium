@@ -747,13 +747,14 @@ Respond with ONLY the number (0-{len(children)})."""
                 depth=depth + 1
             )
 
-        # Try child's DSL
-        if child_sig.dsl_script:
+        # Try child's DSL (but respect depth-aware decomposition)
+        child_depth = child_sig.depth or 0
+        if child_sig.dsl_script and not should_force_decompose(child_depth):
             dsl_result = await self._try_dsl(child_sig, step, context, step_descriptions)
             if dsl_result is not None:
                 return (dsl_result, child_sig, True)
 
-        # Return child for DSL execution (no LLM fallback)
+        # Return child for further processing (may need decomposition)
         return (None, child_sig, False)
 
     async def _try_dsl(
