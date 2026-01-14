@@ -36,7 +36,7 @@ This structure enables:
 
 The DB enforces this at write time. Don't try to work around it.
 
-## Core Principle: Failures Are Data
+## Core Principle: Failures Are Valuable Data Points
 
 **Let signatures fail.** This is how the system learns.
 
@@ -53,9 +53,7 @@ Centroids are running averages: new_centroid = (old_sum + embedding) / new_count
 More matches → more stable centroid → high-traffic signatures become semantic attractors.
 
 ### Credit Propagation
-
 When a problem is solved correctly, success credit propagates up the signature DAG to parent umbrellas with decay:
-
 - Direct signatures get +1 success
 - Parent umbrellas get `decay^depth` credit (default 0.5 per level)
 - Max propagation depth is configurable (default 3 levels)
@@ -63,9 +61,8 @@ When a problem is solved correctly, success credit propagates up the signature D
 This lets umbrella signatures accumulate credit from their children's successes, improving routing decisions.
 
 ### Depth-Based Branching
-
+We want the system to prefer routing to existing signatures first and then only create new ones when necessary.
 Shallow nodes (low depth) are more likely to **create new children** when decomposed. Deep nodes are more likely to **repoint to existing signatures**.
-
 Why this works:
 - Shallow = high uncertainty, worth exploring new branches
 - Deep = should be converging on known patterns
