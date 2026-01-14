@@ -147,149 +147,116 @@ def _infer_dsl_from_values(
     return None
 
 
-# Operation prototypes for semantic matching
-# Each tuple: (operator, prototype_text, min_params)
-# Prototypes include common param names to help semantic matching when params are in query
-_OPERATION_PROTOTYPES = [
-    # Two-param arithmetic - include typical param names for each operation
-    ("+", "compute sum addition add plus total addend augend summand combine", 2),
-    ("-", "compute difference subtraction subtract minus minuend subtrahend take away reduce", 2),
-    ("*", "compute product multiplication multiply times multiplicand multiplier", 2),
-    ("/", "compute quotient division divide ratio dividend divisor", 2),
-    ("**", "compute power exponentiation exponent squared cubed base raise", 2),
-    ("%", "compute remainder modulo mod modulus", 2),
-    # Special two-param functions
-    ("gcd", "compute gcd greatest common divisor", 2),
-    ("lcm", "compute lcm least common multiple", 2),
-    ("comb", "compute combinations choose binomial coefficient", 2),
-    ("perm", "compute permutations arrangements ordering", 2),
-    # Single-param functions - be specific to avoid overmatch
-    ("sqrt", "compute square root sqrt radical", 1),
-    ("factorial", "compute factorial exclamation permutation single", 1),
-    ("abs", "compute absolute value magnitude abs", 1),
+# Operation anchors for semantic matching
+# Each tuple: (operator, anchor_description, min_params)
+# Anchors are SEMANTIC descriptions, not keyword lists - embeddings handle similarity
+#
+# KNOWN LIMITATION: MathBERT embeddings don't discriminate well between basic
+# arithmetic operations (+, -, *, /). Similarity scores cluster within ~0.1 range.
+# The dual-channel approach (param anchors + description anchors) helps but isn't
+# perfect. Consider using a different embedding model if better discrimination needed.
+#
+# Two-tier operation anchors:
+# 1. PARAM anchors - what param names would you expect for this operation?
+# 2. DESCRIPTION anchors - what does this operation do semantically?
+# We compare query against BOTH and combine signals
+
+_PARAM_ANCHORS = {
+    # Param names that semantically indicate each operation
+    # Be careful not to overlap param names between operations
+    "+": "addend augend summand first second amount value number",
+    "-": "minuend subtrahend larger smaller difference",
+    "*": "factor multiplicand multiplier width height length breadth dimensions sides area product",
+    "/": "dividend divisor numerator denominator ratio rate quotient per",
+    "**": "base exponent power index",
+    "%": "modulus remainder mod leftover",
+    "gcd": "gcd numbers integers a b first second",  # avoid 'divisor' - conflicts with /
+    "lcm": "lcm numbers integers a b first second",  # avoid 'multiple' ambiguity
+    "comb": "n k choose combinations binomial",
+    "perm": "n k permutations arrangements",
+    "sqrt": "radicand square root",
+    "factorial": "factorial exclamation",
+    "abs": "absolute magnitude",
+}
+
+_DESCRIPTION_ANCHORS = {
+    # Semantic description of what the operation does
+    "+": "adding summing combining accumulating total plus",
+    "-": "subtracting taking away how much more difference minus less",
+    "*": "multiplying computing area product times scale",
+    "/": "dividing quotient ratio splitting per evenly",
+    "**": "power exponent raising squared cubed exponential",
+    "%": "remainder leftover modulo after division",
+    "gcd": "greatest common divisor largest shared factor",
+    "lcm": "least common multiple smallest shared",
+    "comb": "combinations choosing selecting ways",
+    "perm": "permutations arranging ordering",
+    "sqrt": "square root of a number",
+    "factorial": "factorial n! product of integers",
+    "abs": "absolute value magnitude",
+}
+
+# Combined anchors for each operation (will be embedded once)
+_OPERATION_ANCHORS = [
+    # Each operation has params + description combined for richer embedding
+    ("+", f"{_PARAM_ANCHORS['+']} {_DESCRIPTION_ANCHORS['+']}", 2),
+    ("-", f"{_PARAM_ANCHORS['-']} {_DESCRIPTION_ANCHORS['-']}", 2),
+    ("*", f"{_PARAM_ANCHORS['*']} {_DESCRIPTION_ANCHORS['*']}", 2),
+    ("/", f"{_PARAM_ANCHORS['/']} {_DESCRIPTION_ANCHORS['/']}", 2),
+    ("**", f"{_PARAM_ANCHORS['**']} {_DESCRIPTION_ANCHORS['**']}", 2),
+    ("%", f"{_PARAM_ANCHORS['%']} {_DESCRIPTION_ANCHORS['%']}", 2),
+    ("gcd", f"{_PARAM_ANCHORS['gcd']} {_DESCRIPTION_ANCHORS['gcd']}", 2),
+    ("lcm", f"{_PARAM_ANCHORS['lcm']} {_DESCRIPTION_ANCHORS['lcm']}", 2),
+    ("comb", f"{_PARAM_ANCHORS['comb']} {_DESCRIPTION_ANCHORS['comb']}", 2),
+    ("perm", f"{_PARAM_ANCHORS['perm']} {_DESCRIPTION_ANCHORS['perm']}", 2),
+    ("sqrt", f"{_PARAM_ANCHORS['sqrt']} {_DESCRIPTION_ANCHORS['sqrt']}", 1),
+    ("factorial", f"{_PARAM_ANCHORS['factorial']} {_DESCRIPTION_ANCHORS['factorial']}", 1),
+    ("abs", f"{_PARAM_ANCHORS['abs']} {_DESCRIPTION_ANCHORS['abs']}", 1),
 ]
 
-# Cache for prototype embeddings
-_prototype_embeddings = None
+# Cache for anchor embeddings (separate param and description caches)
+_param_anchor_embeddings = None
+_desc_anchor_embeddings = None
 
 
-def _get_prototype_embeddings():
-    """Lazily compute and cache prototype embeddings."""
-    global _prototype_embeddings
-    if _prototype_embeddings is not None:
-        return _prototype_embeddings
+def _get_param_anchor_embeddings():
+    """Get embeddings for param name anchors."""
+    global _param_anchor_embeddings
+    if _param_anchor_embeddings is not None:
+        return _param_anchor_embeddings
 
     try:
         from mycelium.embedder import Embedder
         embedder = Embedder.get_instance()
 
-        _prototype_embeddings = []
-        for operator, prototype_text, min_params in _OPERATION_PROTOTYPES:
-            emb = embedder.embed(prototype_text)
-            _prototype_embeddings.append((operator, emb, min_params, prototype_text))
+        _param_anchor_embeddings = {}
+        for op, anchor_text in _PARAM_ANCHORS.items():
+            _param_anchor_embeddings[op] = embedder.embed(anchor_text)
 
-        return _prototype_embeddings
+        return _param_anchor_embeddings
     except Exception as e:
-        logger.warning("[dsl_infer] Failed to compute prototype embeddings: %s", e)
-        return []
+        logger.warning("[dsl_infer] Failed to compute param anchor embeddings: %s", e)
+        return {}
 
 
-# Param name patterns that strongly indicate specific operations
-# These are checked before embedding similarity for reliable matching
-_PARAM_OPERATION_HINTS = {
-    # Division indicators
-    "dividend": "/",
-    "divisor": "/",
-    "numerator": "/",
-    "denominator": "/",
-    # Subtraction indicators
-    "minuend": "-",
-    "subtrahend": "-",
-    # Addition indicators
-    "addend": "+",
-    "augend": "+",
-    "summand": "+",
-    # Multiplication indicators
-    "multiplicand": "*",
-    "multiplier": "*",
-    "factor": "*",  # "factor_a" → multiplication
-}
+def _get_desc_anchor_embeddings():
+    """Get embeddings for description anchors."""
+    global _desc_anchor_embeddings
+    if _desc_anchor_embeddings is not None:
+        return _desc_anchor_embeddings
 
-# Step type patterns that indicate specific operations
-# Checked after param hints, before embedding
-_STEP_TYPE_HINTS = {
-    # Addition
-    "sum": "+",
-    "add": "+",
-    "total": "+",
-    "combine": "+",
-    # Subtraction
-    "difference": "-",
-    "subtract": "-",
-    "minus": "-",
-    # Multiplication
-    "product": "*",
-    "multiply": "*",
-    "times": "*",
-    "area": "*",  # compute_area → multiplication
-    # Division
-    "quotient": "/",
-    "divide": "/",
-    "ratio": "/",
-    # Power
-    "power": "**",
-    "exponent": "**",
-    "square": "**",
-    # Modulo
-    "remainder": "%",
-    "modulo": "%",
-    "mod": "%",
-}
+    try:
+        from mycelium.embedder import Embedder
+        embedder = Embedder.get_instance()
 
+        _desc_anchor_embeddings = {}
+        for op, anchor_text in _DESCRIPTION_ANCHORS.items():
+            _desc_anchor_embeddings[op] = embedder.embed(anchor_text)
 
-def _check_param_hints(param_names: list) -> Optional[tuple[str, str]]:
-    """Check if param names indicate a specific operation.
-
-    Returns (operator, operation_name) if strong signal found.
-    """
-    if not param_names:
-        return None
-
-    # Check each param name for operation hints
-    op_votes = {}
-    for param in param_names:
-        param_lower = param.lower()
-        for hint, op in _PARAM_OPERATION_HINTS.items():
-            if hint in param_lower:
-                op_votes[op] = op_votes.get(op, 0) + 1
-
-    # If we have a clear winner with at least one strong hint
-    if op_votes:
-        best_op = max(op_votes, key=op_votes.get)
-        if op_votes[best_op] >= 1:
-            op_names = {"+": "addition", "-": "subtraction", "*": "multiplication", "/": "division", "**": "power", "%": "modulo"}
-            return (best_op, op_names.get(best_op, best_op))
-
-    return None
-
-
-def _check_step_type_hints(step_type: str) -> Optional[tuple[str, str]]:
-    """Check if step_type contains operation hints.
-
-    Returns (operator, operation_name) if clear signal found.
-    """
-    if not step_type:
-        return None
-
-    step_lower = step_type.lower().replace("_", " ")
-
-    # Check for operation hints in step_type
-    for hint, op in _STEP_TYPE_HINTS.items():
-        if hint in step_lower:
-            op_names = {"+": "addition", "-": "subtraction", "*": "multiplication", "/": "division", "**": "power", "%": "modulo"}
-            return (op, op_names.get(op, op))
-
-    return None
+        return _desc_anchor_embeddings
+    except Exception as e:
+        logger.warning("[dsl_infer] Failed to compute desc anchor embeddings: %s", e)
+        return {}
 
 
 def _infer_operation_semantic(
@@ -299,89 +266,104 @@ def _infer_operation_semantic(
     param_names: list = None,
     min_similarity: float = 0.35,
 ) -> Optional[tuple[str, str]]:
-    """Infer math operation using hints + semantic similarity.
+    """Infer math operation using dual-channel semantic embedding.
 
-    Priority:
-    1. Param name hints (dividend/divisor → division)
-    2. Step type hints (compute_product → multiplication)
-    3. Embedding similarity to operation prototypes
+    Uses TWO embedding comparisons:
+    1. Param names → param anchors (strong signal when semantic names used)
+    2. Step type + description → description anchors (semantic intent)
+
+    Combines both with weighting: params are weighted higher when semantic,
+    lower when generic (single letters like 'a', 'b').
+
+    All matching is embedding-based - no keyword matching.
 
     Args:
         step_type: The signature's step type
         description: The step description
         num_params: Number of available parameters
-        param_names: List of parameter names (carry semantic hints)
+        param_names: List of parameter names
         min_similarity: Minimum similarity to accept a match
 
     Returns:
         (operator, operation_name) or None
     """
-    # Priority 1: Check param name hints (most reliable signal)
-    hint_result = _check_param_hints(param_names)
-    if hint_result:
-        logger.debug(
-            "[dsl_infer] Param hint match: params=%s → '%s'",
-            param_names, hint_result[0]
-        )
-        return hint_result
-
-    # Priority 2: Check step_type hints
-    step_hint = _check_step_type_hints(step_type)
-    if step_hint:
-        logger.debug(
-            "[dsl_infer] Step type hint match: '%s' → '%s'",
-            step_type, step_hint[0]
-        )
-        return step_hint
-
-    # Priority 3: Embedding similarity (fallback for unknown patterns)
     try:
         from mycelium.embedder import Embedder
         import numpy as np
 
         embedder = Embedder.get_instance()
-        prototypes = _get_prototype_embeddings()
+        param_anchors = _get_param_anchor_embeddings()
+        desc_anchors = _get_desc_anchor_embeddings()
 
-        if not prototypes:
+        if not param_anchors or not desc_anchors:
             return None
 
-        # Build query from step_type + param names
-        step_type_readable = step_type.replace("_", " ")
+        # Determine if param names are semantic (meaningful) or generic (a, b, x, y)
+        semantic_params = False
+        if param_names:
+            avg_len = sum(len(p) for p in param_names) / len(param_names)
+            semantic_params = avg_len > 3  # Names like "dividend" vs "a"
+
+        # Channel 1: Param names similarity (if we have params)
+        param_sims = {}
         if param_names:
             param_text = " ".join(p.replace("_", " ") for p in param_names)
-            query_text = f"{step_type_readable} {param_text}"
-        else:
-            query_text = step_type_readable
-        query_emb = embedder.embed(query_text)
+            param_emb = embedder.embed(param_text)
 
-        # Find best matching prototype
-        best_match = None
-        best_sim = 0.0
+            for op, anchor_emb in param_anchors.items():
+                sim = float(np.dot(param_emb, anchor_emb) / (
+                    np.linalg.norm(param_emb) * np.linalg.norm(anchor_emb)
+                ))
+                param_sims[op] = sim
 
-        for operator, proto_emb, min_params_req, proto_text in prototypes:
-            # Skip if not enough params
+        # Channel 2: Description similarity (step_type + description)
+        desc_sims = {}
+        desc_text = step_type.replace("_", " ") if step_type else ""
+        if description:
+            desc_text += " " + description[:100]
+        if desc_text.strip():
+            desc_emb = embedder.embed(desc_text)
+
+            for op, anchor_emb in desc_anchors.items():
+                sim = float(np.dot(desc_emb, anchor_emb) / (
+                    np.linalg.norm(desc_emb) * np.linalg.norm(anchor_emb)
+                ))
+                desc_sims[op] = sim
+
+        # Combine channels with weighting
+        # Semantic params (dividend, factor) are strong signals: weight 0.7
+        # Generic params (a, b) are weak signals: weight 0.3
+        param_weight = 0.7 if semantic_params else 0.3
+        desc_weight = 1.0 - param_weight
+
+        combined_sims = {}
+        for op in param_anchors.keys():
+            min_params_req = 2 if op not in ("sqrt", "factorial", "abs") else 1
             if num_params < min_params_req:
                 continue
 
-            # Compute cosine similarity
-            sim = float(np.dot(query_emb, proto_emb) / (
-                np.linalg.norm(query_emb) * np.linalg.norm(proto_emb)
-            ))
+            p_sim = param_sims.get(op, 0.0)
+            d_sim = desc_sims.get(op, 0.0)
+            combined_sims[op] = param_weight * p_sim + desc_weight * d_sim
 
-            if sim > best_sim:
-                best_sim = sim
-                best_match = (operator, proto_text.split(",")[0].strip())
+        if not combined_sims:
+            return None
 
-        if best_match and best_sim >= min_similarity:
+        # Find best match
+        best_op = max(combined_sims, key=combined_sims.get)
+        best_sim = combined_sims[best_op]
+
+        if best_sim >= min_similarity:
             logger.debug(
-                "[dsl_infer] Semantic match: '%s' → '%s' (sim=%.3f)",
-                step_type, best_match[0], best_sim
+                "[dsl_infer] Semantic match: '%s' → '%s' (sim=%.3f, param_w=%.1f, top=%s)",
+                step_type, best_op, best_sim, param_weight,
+                {k: f"{v:.2f}" for k, v in sorted(combined_sims.items(), key=lambda x: -x[1])[:4]}
             )
-            return best_match
+            return (best_op, _DESCRIPTION_ANCHORS.get(best_op, best_op))
 
         logger.debug(
-            "[dsl_infer] No semantic match above threshold: best_sim=%.3f < %.3f",
-            best_sim, min_similarity
+            "[dsl_infer] No match above threshold: best=%s sim=%.3f < %.3f",
+            best_op, best_sim, min_similarity
         )
         return None
 

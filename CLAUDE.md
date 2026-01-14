@@ -100,6 +100,36 @@ This solves the cold-start problem:
 
 The planner extracts values with semantic names (`total_distance`, `speed`, `time`). These names ARE the DSL—just connect them with the right operator.
 
+## Semantic Embedding First
+
+**Always prefer embedding similarity over keyword matching.**
+
+Bad (keyword-based):
+```python
+if "sum" in step_type or "add" in step_type:
+    return "+"
+```
+
+Good (embedding-based):
+```python
+# Embed the step description, compare to operation anchors
+sim_add = cosine_similarity(step_emb, addition_anchor)
+sim_sub = cosine_similarity(step_emb, subtraction_anchor)
+return max(operations, key=lambda op: similarities[op])
+```
+
+Why this matters:
+- Keywords don't generalize ("calculate total" ≠ "compute sum" but same meaning)
+- Embeddings capture semantic equivalence
+- New patterns work without code changes
+- Scales with the embedding model's knowledge
+
+Use rich anchor texts that describe the operation semantically:
+```python
+ADDITION_ANCHOR = "combining quantities, finding total, summing values together"
+SUBTRACTION_ANCHOR = "finding difference, taking away, how much more or less"
+```
+
 ## Key Rule
 
 **When you encounter a bug or feature idea, create a beads issue to track it.**
