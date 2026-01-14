@@ -8,6 +8,26 @@ This module contains:
 - Param type and result validation
 """
 
+__all__ = [
+    # Negative param cache
+    "record_negative_param_mapping",
+    "check_negative_param_mapping",
+    # Algebraic manipulation
+    "is_algebraic_manipulation",
+    # Value classification
+    "classify_value_heuristic",
+    "classify_value_embedding",
+    "is_numeric_input",
+    # Step-type alignment
+    "validate_step_type_alignment",
+    # DSL validation
+    "validate_dsl_task_match",
+    "validate_param_mapping_semantic",
+    "validate_param_types",
+    "validate_result_bounds",
+    "is_valid_dsl_result",
+]
+
 import logging
 import re
 from typing import Any, Optional, TYPE_CHECKING
