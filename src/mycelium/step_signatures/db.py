@@ -37,11 +37,7 @@ from mycelium.step_signatures.scoring import (
     normalize_step_text,
     increment_total_problems,
 )
-from mycelium.step_signatures.dsl_templates import (
-    DSL_TEMPLATES,
-    DSL_INFERENCE_PATTERNS,
-    infer_dsl_for_signature,
-)
+from mycelium.step_signatures.dsl_templates import infer_dsl_for_signature
 
 from mycelium.data_layer import get_db
 from mycelium.data_layer.schema import init_db
@@ -114,6 +110,7 @@ class StepSignatureDB:
         parent_problem: str = "",
         match_mode: MatchMode = "cosine",
         origin_depth: int = 0,
+        extracted_values: dict = None,
     ) -> tuple[StepSignature, bool]:
         """Find a matching signature or create a new one.
 
@@ -127,6 +124,7 @@ class StepSignatureDB:
             parent_problem: The parent problem this step came from
             match_mode: Matching algorithm (cosine or auto)
             origin_depth: Decomposition depth at which this step was created
+            extracted_values: Dict of semantic param names -> values from planner
 
         Returns:
             Tuple of (signature, is_new) where is_new=True if newly created
@@ -137,7 +135,8 @@ class StepSignatureDB:
         for attempt in range(max_retries):
             try:
                 return self._find_or_create_atomic(
-                    step_text, embedding, min_similarity, parent_problem, origin_depth
+                    step_text, embedding, min_similarity, parent_problem, origin_depth,
+                    extracted_values=extracted_values
                 )
             except sqlite3.OperationalError as e:
                 if attempt < max_retries - 1:
@@ -159,6 +158,7 @@ class StepSignatureDB:
         min_similarity: float,
         parent_problem: str,
         origin_depth: int = 0,
+        extracted_values: dict = None,
     ) -> tuple[StepSignature, bool]:
         """Internal atomic find-or-create with transaction locking."""
         with self._connection() as conn:
@@ -191,8 +191,9 @@ class StepSignatureDB:
 
                     # Update centroid with new embedding (running average)
                     # Do this inline to stay within the transaction
+                    # IMPORTANT: Fetch centroid too to avoid stale fallback race condition
                     row = conn.execute(
-                        "SELECT embedding_sum, embedding_count FROM step_signatures WHERE id = ?",
+                        "SELECT embedding_sum, embedding_count, centroid FROM step_signatures WHERE id = ?",
                         (best_match.id,)
                     ).fetchone()
 
@@ -200,8 +201,10 @@ class StepSignatureDB:
                         current_sum = unpack_embedding(row["embedding_sum"])
                         current_count = row["embedding_count"] or 1
                     else:
-                        # Initialize from current centroid if no sum yet (migration case)
-                        current_sum = best_match.centroid.copy() if best_match.centroid is not None else embedding.copy()
+                        # Initialize from fresh centroid if no sum yet (migration case)
+                        # Use freshly-read centroid, not stale best_match.centroid
+                        fresh_centroid = unpack_embedding(row["centroid"]) if row else None
+                        current_sum = fresh_centroid.copy() if fresh_centroid is not None else embedding.copy()
                         current_count = 1
 
                     new_sum = current_sum + embedding
@@ -222,7 +225,10 @@ class StepSignatureDB:
                     return best_match, False
 
                 # Create new signature (Lazy NL: empty clarifying_questions, etc.)
-                sig = self._create_signature_atomic(conn, step_text, embedding, parent_problem, origin_depth)
+                sig = self._create_signature_atomic(
+                    conn, step_text, embedding, parent_problem, origin_depth,
+                    extracted_values=extracted_values
+                )
                 conn.commit()
                 logger.info(
                     "[db] Created new signature: step='%s' type='%s'",
@@ -241,10 +247,11 @@ class StepSignatureDB:
         embedding: np.ndarray,
         parent_problem: str = "",
         origin_depth: int = 0,
+        extracted_values: dict = None,
     ) -> StepSignature:
         """Create a new signature within an existing transaction.
 
-        Auto-assigns DSL based on step_type and description.
+        Auto-assigns DSL based on step_type, description, and extracted_values.
         """
         sig_id = str(uuid.uuid4())
         now = datetime.utcnow().isoformat()
@@ -252,18 +259,41 @@ class StepSignatureDB:
         step_type = self._infer_step_type(step_text)
         centroid_packed = pack_embedding(embedding)
 
-        # Auto-assign DSL based on step_type and description
-        dsl_script, dsl_type = infer_dsl_for_signature(step_type, step_text)
+        # Auto-assign DSL based on step_type, description, and planner's extracted_values
+        dsl_script, dsl_type = infer_dsl_for_signature(
+            step_type, step_text, extracted_values=extracted_values
+        )
+
+        # Auto-generate NL interface from extracted_values if we created a math DSL
+        # The param names ARE the semantic descriptions - use them!
+        clarifying_questions = []
+        param_descriptions = {}
+        if extracted_values and dsl_type == "math":
+            for param_name, value in extracted_values.items():
+                # Convert param_name to readable question/description
+                readable = param_name.replace("_", " ")
+                clarifying_questions.append(f"What is the {readable}?")
+                param_descriptions[param_name] = f"The {readable} value"
+            logger.debug(
+                "[db] Auto-generated NL interface from extracted_values: %d questions",
+                len(clarifying_questions)
+            )
 
         # Initialize embedding_sum = embedding, embedding_count = 1
         embedding_sum_packed = centroid_packed  # Same as centroid initially
 
+        # Serialize NL interface
+        clarifying_json = json.dumps(clarifying_questions)
+        params_json = json.dumps(param_descriptions)
+
         try:
             cursor = conn.execute(
                 """INSERT INTO step_signatures
-                   (signature_id, centroid, embedding_sum, embedding_count, step_type, description, dsl_script, dsl_type, depth, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (sig_id, centroid_packed, embedding_sum_packed, 1, step_type, step_text, dsl_script, dsl_type, origin_depth, now),
+                   (signature_id, centroid, embedding_sum, embedding_count, step_type, description,
+                    dsl_script, dsl_type, clarifying_questions, param_descriptions, depth, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (sig_id, centroid_packed, embedding_sum_packed, 1, step_type, step_text,
+                 dsl_script, dsl_type, clarifying_json, params_json, origin_depth, now),
             )
             row_id = cursor.lastrowid
         except sqlite3.IntegrityError:
@@ -292,8 +322,8 @@ class StepSignatureDB:
             centroid=embedding,
             step_type=step_type,
             description=step_text,
-            clarifying_questions=[],
-            param_descriptions={},
+            clarifying_questions=clarifying_questions,
+            param_descriptions=param_descriptions,
             dsl_script=dsl_script,
             dsl_type=dsl_type,
             examples=[],
@@ -382,50 +412,55 @@ class StepSignatureDB:
             new_embedding: The new embedding to add to the running average
         """
         with self._connection() as conn:
-            # Get current sum and count
-            row = conn.execute(
-                "SELECT embedding_sum, embedding_count FROM step_signatures WHERE id = ?",
-                (signature_id,)
-            ).fetchone()
+            # Use BEGIN IMMEDIATE for atomic read-modify-write
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                # Fetch centroid too to avoid stale fallback race condition
+                row = conn.execute(
+                    "SELECT embedding_sum, embedding_count, centroid FROM step_signatures WHERE id = ?",
+                    (signature_id,)
+                ).fetchone()
 
-            if not row:
-                logger.warning("[db] Cannot update centroid: signature %d not found", signature_id)
-                return
+                if not row:
+                    logger.warning("[db] Cannot update centroid: signature %d not found", signature_id)
+                    conn.rollback()
+                    return
 
-            # Parse current sum (or initialize from None)
-            current_sum = None
-            if row["embedding_sum"]:
-                current_sum = unpack_embedding(row["embedding_sum"])
+                # Parse current sum (or initialize from fresh centroid)
+                if row["embedding_sum"]:
+                    current_sum = unpack_embedding(row["embedding_sum"])
+                    current_count = row["embedding_count"] or 1
+                else:
+                    # Initialize from fresh centroid if no sum yet (migration case)
+                    fresh_centroid = unpack_embedding(row["centroid"])
+                    current_sum = fresh_centroid.copy() if fresh_centroid is not None else new_embedding.copy()
+                    current_count = 1 if fresh_centroid is not None else 0
 
-            current_count = row["embedding_count"] or 1
+                # Update running sum and count
+                new_sum = current_sum + new_embedding
+                new_count = current_count + 1
 
-            # If no sum exists, initialize from new embedding
-            if current_sum is None:
-                current_sum = new_embedding.copy()
-                current_count = 0  # Will be incremented to 1
+                # Compute new centroid
+                new_centroid = new_sum / new_count
 
-            # Update running sum and count
-            new_sum = current_sum + new_embedding
-            new_count = current_count + 1
+                # Pack and store
+                new_sum_packed = pack_embedding(new_sum)
+                new_centroid_packed = pack_embedding(new_centroid)
 
-            # Compute new centroid
-            new_centroid = new_sum / new_count
-
-            # Pack and store
-            new_sum_packed = pack_embedding(new_sum)
-            new_centroid_packed = pack_embedding(new_centroid)
-
-            conn.execute(
-                """UPDATE step_signatures
-                   SET embedding_sum = ?, embedding_count = ?, centroid = ?
-                   WHERE id = ?""",
-                (new_sum_packed, new_count, new_centroid_packed, signature_id),
-            )
-
-            logger.debug(
-                "[db] Updated centroid for sig %d: count=%d",
-                signature_id, new_count
-            )
+                conn.execute(
+                    """UPDATE step_signatures
+                       SET embedding_sum = ?, embedding_count = ?, centroid = ?
+                       WHERE id = ?""",
+                    (new_sum_packed, new_count, new_centroid_packed, signature_id),
+                )
+                conn.commit()
+                logger.debug(
+                    "[db] Updated centroid for sig %d: count=%d",
+                    signature_id, new_count
+                )
+            except Exception:
+                conn.rollback()
+                raise
 
     # =========================================================================
     # Usage Recording
@@ -435,20 +470,21 @@ class StepSignatureDB:
         self,
         signature_id: int,
         step_text: str,
-        success: bool,
+        step_completed: bool,
         was_injected: bool = False,
         params_extracted: dict = None,
     ) -> int:
         """Record usage of a signature (step-level, not problem-level).
 
-        Note: This tracks whether a step returned a result, not whether the
-        final problem answer was correct. Use update_problem_outcome() after
-        grading to track actual correctness.
+        Note: step_completed tracks whether the step returned a result, NOT
+        whether the final problem answer was correct. Use update_problem_outcome()
+        after grading to track actual problem correctness (which updates
+        step_signatures.successes).
 
         Args:
             signature_id: ID of the signature used
             step_text: The step text that was executed
-            success: Whether the step returned a result
+            step_completed: Whether the step returned a result (NOT problem correctness)
             was_injected: Whether DSL was injected
             params_extracted: Parameters that were extracted (for learning)
 
@@ -458,15 +494,15 @@ class StepSignatureDB:
         now = datetime.utcnow().isoformat()
 
         with self._connection() as conn:
-            # Insert usage log (success here = step returned result, not problem correct)
+            # Insert usage log (step_completed = step returned result, not problem correct)
             conn.execute(
                 """INSERT INTO step_usage_log
-                   (signature_id, step_text, success, was_injected, params_extracted, created_at)
+                   (signature_id, step_text, step_completed, was_injected, params_extracted, created_at)
                    VALUES (?, ?, ?, ?, ?, ?)""",
                 (
                     signature_id,
                     step_text,
-                    1 if success else 0,
+                    1 if step_completed else 0,
                     1 if was_injected else 0,
                     json.dumps(params_extracted) if params_extracted else None,
                     now,
@@ -474,12 +510,13 @@ class StepSignatureDB:
             )
 
             # Only increment uses count here, NOT successes
-            # Successes are updated by update_problem_outcome() after grading
+            # Successes and last_used_at are updated by update_problem_outcome() after grading
+            # (last_used_at only updates on success to prevent stale signatures staying fresh)
             conn.execute(
                 """UPDATE step_signatures
-                   SET uses = uses + 1, last_used_at = ?
+                   SET uses = uses + 1
                    WHERE id = ?""",
-                (now, signature_id),
+                (signature_id,),
             )
 
             # Get current stats for auto-demotion check
@@ -579,15 +616,18 @@ class StepSignatureDB:
         if not signature_ids:
             return
 
+        now = datetime.now().isoformat()
+
         with self._connection() as conn:
             if problem_correct:
-                # Increment success count for all signatures used (full credit)
+                # Increment success count and update last_used_at for all signatures used
+                # (last_used_at only updates on success to properly penalize stale failures)
                 placeholders = ",".join("?" * len(signature_ids))
                 conn.execute(
                     f"""UPDATE step_signatures
-                       SET successes = successes + 1
+                       SET successes = successes + 1, last_used_at = ?
                        WHERE id IN ({placeholders})""",
-                    signature_ids,
+                    [now] + signature_ids,
                 )
                 logger.debug(
                     "[db] Problem correct: incremented successes for %d signatures",

@@ -26,11 +26,19 @@ from mycelium.config import (
     RECURSIVE_DECOMPOSITION_ENABLED,
     RECURSIVE_MAX_DEPTH,
     RECURSIVE_CONFIDENCE_THRESHOLD,
+    UMBRELLA_MAX_DEPTH,
+    UMBRELLA_ROUTING_THRESHOLD,
 )
 from mycelium.planner import Planner, Step, DAGPlan
+from mycelium.step_signatures.semantic_validation import (
+    validate_plan_coherence,
+    create_failure_feedback,
+    PlanValidation,
+    StepFailureFeedback,
+)
 from mycelium.step_signatures import StepSignatureDB, StepSignature
 from mycelium.step_signatures.db import normalize_step_text
-from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, llm_rewrite_script, try_execute_dsl_math
+from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.embedder import Embedder
 
@@ -104,6 +112,35 @@ class Solver:
         self.step_db = StepSignatureDB(db_path=db_path)
         self.embedder = Embedder.get_instance()
         self.min_similarity = min_similarity
+        self._background_tasks: set[asyncio.Task] = set()  # Track background tasks
+
+    def _create_background_task(self, coro) -> asyncio.Task:
+        """Create a background task with proper lifecycle management.
+
+        Tasks are tracked to prevent garbage collection and enable clean shutdown.
+        """
+        task = asyncio.create_task(coro)
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+        return task
+
+    async def wait_for_background_tasks(self, timeout: float = 5.0) -> int:
+        """Wait for pending background tasks to complete.
+
+        Call this for clean shutdown. Returns count of tasks that were pending.
+        """
+        if not self._background_tasks:
+            return 0
+        pending = len(self._background_tasks)
+        logger.debug("[solver] Waiting for %d background tasks", pending)
+        done, not_done = await asyncio.wait(
+            self._background_tasks,
+            timeout=timeout,
+            return_when=asyncio.ALL_COMPLETED,
+        )
+        if not_done:
+            logger.warning("[solver] %d background tasks did not complete in time", len(not_done))
+        return pending
 
     async def solve(self, problem: str) -> SolverResult:
         """Solve a problem end-to-end.
@@ -126,7 +163,41 @@ class Solver:
                 problem_embedding=problem_embedding,
                 min_similarity=0.3,  # Only hints somewhat related to this problem
             )
-            plan = await self.planner.decompose(problem, signature_hints=signature_hints)
+
+            # Decompose with retry on coherence failure
+            max_retries = 2
+            coherence_feedback = None
+            plan = None
+
+            for attempt in range(max_retries + 1):
+                plan = await self.planner.decompose(
+                    problem,
+                    signature_hints=signature_hints,
+                    coherence_feedback=coherence_feedback,
+                )
+
+                # Validate semantic coherence BEFORE execution
+                validation = validate_plan_coherence(plan, self.step_db, self.embedder)
+
+                if validation.is_coherent:
+                    logger.debug(
+                        "[solver] Plan coherence validated: score=%.2f",
+                        validation.overall_score
+                    )
+                    break
+                elif attempt < max_retries:
+                    # Retry with feedback
+                    coherence_feedback = validation.feedback_for_planner
+                    logger.info(
+                        "[solver] Plan coherence low (%.2f), retrying with feedback: %s",
+                        validation.overall_score, coherence_feedback[:100]
+                    )
+                else:
+                    # Accept low-coherence plan on final attempt
+                    logger.warning(
+                        "[solver] Proceeding with low-coherence plan (%.2f) after %d attempts",
+                        validation.overall_score, max_retries + 1
+                    )
 
             # Validate DAG structure before execution
             is_valid, errors = plan.validate()
@@ -283,12 +354,14 @@ class Solver:
         embedding = self.embedder.embed(normalized_task)
 
         # 2. Find or create signature (use original text for description)
+        # Pass extracted_values from planner to enable DSL generation from structure
         signature, is_new = self.step_db.find_or_create(
             step_text=step.task,  # Keep original for description
             embedding=embedding,   # Use normalized embedding for matching
             min_similarity=self.min_similarity,
             parent_problem=problem,
             origin_depth=depth,  # Track decomposition depth
+            extracted_values=getattr(step, 'extracted_values', None),
         )
 
         logger.debug(
@@ -344,26 +417,34 @@ class Solver:
         # 5. No LLM fallback - strict DAG execution
         # Three outcomes: route to child, create child, or fail
         if result is None:
+            # Capture failure feedback for learning
+            failure_feedback = create_failure_feedback(
+                step_id=step.id,
+                step_task=step.task,
+                failure_reason="DSL execution failed or no DSL available",
+                signature=routed_signature,
+                context=context,
+            )
             logger.warning(
-                "[solver] DSL failed, step failed (no LLM fallback): %s",
-                step.task[:50]
+                "[solver] DSL failed, step failed (no LLM fallback): %s\n  Hint: %s",
+                step.task[:50], failure_feedback.to_planner_hint()
             )
             result = ""  # Empty result = failure
 
-        # 6. Record usage (we don't know success yet, caller will update)
-        # For now, assume success if we got a result
-        success = bool(result)
+        # 6. Record usage (step_completed = returned result, not problem correctness)
+        # Problem correctness is tracked separately via update_problem_outcome()
+        step_completed = bool(result)
         uses = self.step_db.record_usage(
             signature_id=routed_signature.id,
             step_text=step.task,
-            success=success,
+            step_completed=step_completed,
             was_injected=was_injected,
         )
 
         # 7. Regenerate DSL on mod 10 uses (continuous learning)
-        # Fire-and-forget: don't block the hot path
+        # Background task: don't block the hot path
         if uses > 0 and uses % 10 == 0:
-            asyncio.create_task(
+            self._create_background_task(
                 self._regenerate_dsl_background(routed_signature.id, uses)
             )
 
@@ -373,7 +454,7 @@ class Solver:
             step_id=step.id,
             task=step.task,
             result=result or "",
-            success=success,
+            success=step_completed,
             signature_id=routed_signature.id,
             signature_type=routed_signature.step_type,
             is_new_signature=is_new,
@@ -490,6 +571,7 @@ class Solver:
         step_descriptions: dict[str, str] = None,
         visited: Optional[set[int]] = None,
         embedding: Optional[np.ndarray] = None,
+        depth: int = 0,
     ) -> Optional[tuple[str, StepSignature, bool]]:
         """Try to route through umbrella to a child signature.
 
@@ -504,8 +586,17 @@ class Solver:
             context: Results from previous steps
             visited: Set of already-visited umbrella IDs (cycle detection)
             embedding: Step embedding for similarity-based routing
+            depth: Current recursion depth (for limiting chain length)
         """
         from mycelium.step_signatures.utils import cosine_similarity
+
+        # Depth limit: prevent unbounded recursion through long umbrella chains
+        if depth >= UMBRELLA_MAX_DEPTH:
+            logger.warning(
+                "[solver] Umbrella routing depth limit reached: depth=%d, umbrella=%s",
+                depth, umbrella.step_type
+            )
+            return None
 
         # Cycle detection: prevent infinite recursion on malformed DAG
         if visited is None:
@@ -537,8 +628,8 @@ class Solver:
                         best_child = child_sig
                         best_condition = condition
 
-            # Use embedding match if similarity is reasonable (> 0.5)
-            if best_child and best_sim > 0.5:
+            # Use embedding match if similarity is reasonable
+            if best_child and best_sim > UMBRELLA_ROUTING_THRESHOLD:
                 logger.debug(
                     "[solver] Umbrella routing (embedding): '%s' → '%s' (sim=%.3f)",
                     umbrella.step_type, best_child.step_type, best_sim
@@ -586,10 +677,11 @@ Respond with ONLY the number (0-{len(children)})."""
                 choice, child_sig.step_type
             )
 
-        # Recurse if child is also an umbrella (pass visited set and embedding)
+        # Recurse if child is also an umbrella (pass visited set, embedding, and depth)
         if child_sig.is_semantic_umbrella:
             return await self._try_umbrella_routing(
-                child_sig, step, problem, context, step_descriptions, visited, embedding
+                child_sig, step, problem, context, step_descriptions, visited, embedding,
+                depth=depth + 1
             )
 
         # Try child's DSL
@@ -688,17 +780,6 @@ Respond with ONLY the number (0-{len(children)})."""
             if success and result is not None:
                 logger.info("[solver] DSL injection success: %s → %s", step.task[:30], result)
                 return str(result)
-
-            # NOTE: LLM script rewriting is available but disabled by default
-            # It can help with param name mismatches but may produce wrong results
-            # when the matched signature's operation doesn't match the step's intent
-            # Uncomment to enable:
-            # if not success and params and dsl_spec.layer.value == "math":
-            #     rewritten_script = await llm_rewrite_script(dsl_spec, params, self.solver_client, current_step_task=step.task)
-            #     if rewritten_script and rewritten_script != dsl_spec.script:
-            #         rewritten_result = try_execute_dsl_math(rewritten_script, params)
-            #         if rewritten_result is not None:
-            #             return str(rewritten_result)
 
         except Exception as e:
             logger.debug("[solver] DSL execution failed: %s", e)
@@ -821,6 +902,20 @@ Respond with ONLY the number (0-{len(children)})."""
                     params[param_names[i]] = float(num)
                 except ValueError:
                     params[param_names[i]] = num
+            else:
+                # Capture extra numbers with generic keys (don't drop silently)
+                try:
+                    params[f"extra_{i}"] = float(num)
+                except ValueError:
+                    params[f"extra_{i}"] = num
+
+        # Log if we had more numbers than expected params
+        if len(numbers) > len(param_names):
+            logger.warning(
+                "[solver] Parameter extraction: %d numbers found but only %d params defined "
+                "(extras captured as extra_N keys)",
+                len(numbers), len(param_names)
+            )
 
         # Add context values (may contain results from previous steps)
         for key, value in context.items():
@@ -843,36 +938,52 @@ Respond with ONLY the number (0-{len(children)})."""
 
         import json
 
-        # Try to find JSON object in response
-        # Look for {"result": ...} pattern
-        json_match = re.search(r'\{[^{}]*"result"[^{}]*\}', response)
-        if json_match:
-            try:
-                data = json.loads(json_match.group())
-                result = data.get("result", "")
-                # Handle numeric results
-                if isinstance(result, (int, float)):
-                    # Format integers without decimal
-                    if isinstance(result, float) and result == int(result):
-                        return str(int(result))
-                    return str(result)
-                return str(result).strip()
-            except json.JSONDecodeError:
-                pass
+        def format_result(value):
+            """Format a result value for output."""
+            if isinstance(value, (int, float)):
+                if isinstance(value, float) and value == int(value):
+                    return str(int(value))
+                return str(value)
+            return str(value).strip()
 
-        # Try to find {"answer": ...} pattern
-        json_match = re.search(r'\{[^{}]*"answer"[^{}]*\}', response)
-        if json_match:
-            try:
-                data = json.loads(json_match.group())
-                answer = data.get("answer", "")
-                if isinstance(answer, (int, float)):
-                    if isinstance(answer, float) and answer == int(answer):
-                        return str(int(answer))
-                    return str(answer)
-                return str(answer).strip()
-            except json.JSONDecodeError:
-                pass
+        # Try parsing entire response as JSON first
+        try:
+            data = json.loads(response.strip())
+            if isinstance(data, dict):
+                if "result" in data:
+                    return format_result(data["result"])
+                if "answer" in data:
+                    return format_result(data["answer"])
+        except json.JSONDecodeError:
+            pass
+
+        # Find JSON objects with balanced braces (handles nested objects)
+        for key in ("result", "answer"):
+            pattern = f'"{key}"'
+            if pattern not in response:
+                continue
+
+            # Find all { positions and try parsing from each
+            for i, char in enumerate(response):
+                if char != '{':
+                    continue
+                # Try to find balanced closing brace
+                depth = 0
+                for j in range(i, len(response)):
+                    if response[j] == '{':
+                        depth += 1
+                    elif response[j] == '}':
+                        depth -= 1
+                        if depth == 0:
+                            # Found balanced braces, try parsing
+                            candidate = response[i:j+1]
+                            try:
+                                data = json.loads(candidate)
+                                if isinstance(data, dict) and key in data:
+                                    return format_result(data[key])
+                            except json.JSONDecodeError:
+                                pass
+                            break
 
         # Fallback to regex extraction
         logger.debug("[solver] JSON extraction failed, using regex")

@@ -101,6 +101,118 @@ def divisors(n: int) -> list[int]:
     return sorted(divs)
 
 
+def divisor_count(n: int) -> int:
+    """Count the number of divisors of n.
+
+    For n = p1^a1 * p2^a2 * ... * pk^ak,
+    count = (a1+1) * (a2+1) * ... * (ak+1)
+    """
+    n = int(abs(n))
+    if n == 0:
+        return 0
+    if n == 1:
+        return 1
+
+    # Use the formula based on prime factorization
+    count = 1
+    d = 2
+    while d * d <= n:
+        exp = 0
+        while n % d == 0:
+            exp += 1
+            n //= d
+        if exp > 0:
+            count *= (exp + 1)
+        d += 1
+    if n > 1:  # Remaining prime factor
+        count *= 2
+    return count
+
+
+def factorization_exponents(n: int) -> dict[int, int]:
+    """Get prime factorization as {prime: exponent} dict.
+
+    Example: factorization_exponents(196) -> {2: 2, 7: 2}
+    """
+    n = int(abs(n))
+    exponents = {}
+    d = 2
+    while d * d <= n:
+        exp = 0
+        while n % d == 0:
+            exp += 1
+            n //= d
+        if exp > 0:
+            exponents[d] = exp
+        d += 1
+    if n > 1:
+        exponents[n] = 1
+    return exponents
+
+
+def divisor_count_from_factors(factors) -> int:
+    """Count divisors from a list of prime factors.
+
+    Takes a list like [2, 2, 7, 7] (from prime_factors) and returns
+    the divisor count using the formula (a1+1)(a2+1)...(ak+1).
+
+    Example: divisor_count_from_factors([2, 2, 7, 7]) -> 9
+    (2^2 * 7^2 has (2+1)(2+1) = 9 divisors)
+
+    Also handles:
+    - String representation like '[2, 2, 7, 7]'
+    - Dict representation like {2: 2, 7: 2}
+    """
+    # Handle string input (from step context)
+    if isinstance(factors, str):
+        factors = factors.strip()
+        # Try to parse as list
+        if factors.startswith('[') and factors.endswith(']'):
+            import ast
+            try:
+                factors = ast.literal_eval(factors)
+            except (ValueError, SyntaxError):
+                return 0
+        # Try to parse as dict
+        elif factors.startswith('{') and factors.endswith('}'):
+            import ast
+            try:
+                exponents = ast.literal_eval(factors)
+                if isinstance(exponents, dict):
+                    count = 1
+                    for exp in exponents.values():
+                        count *= (int(exp) + 1)
+                    return count
+            except (ValueError, SyntaxError):
+                return 0
+        else:
+            return 0
+
+    # Handle dict input (from factorization_exponents)
+    if isinstance(factors, dict):
+        count = 1
+        for exp in factors.values():
+            count *= (int(exp) + 1)
+        return count
+
+    # Handle list input (from prime_factors)
+    if not isinstance(factors, (list, tuple)):
+        return 0
+
+    if not factors:
+        return 1  # Empty factorization = 1 (divisors of 1)
+
+    # Count occurrences of each prime
+    from collections import Counter
+    exponents = Counter(factors)
+
+    # Apply formula: (a1+1)(a2+1)...(ak+1)
+    count = 1
+    for exp in exponents.values():
+        count *= (exp + 1)
+    return count
+
+
 def prime_factors(n: int) -> list[int]:
     """Find prime factorization of n."""
     n = int(abs(n))

@@ -4,6 +4,20 @@
 
 Problems decompose into DAG-structured steps. Each step matches against known signatures (cosine similarity) and executes via DSL (~0ms) instead of LLM (~500ms). Novel solutions become new signatures. The library grows; future problems get faster.
 
+============================================================
+PIPELINE RESULTS
+============================================================
+Dataset: math
+Total time: 497.0s (8.3 min)
+Problems: 100 L5 MATH
+
+Results by mode:
+auto            92.0% (92/100)  avg 9167ms
+
+Signature matching stats:
+1.8 steps/prob, 28.1% matched (50/178), 31 new signatures
+============================================================
+
 ## Quick Start (~5 min)
 
 ```bash
