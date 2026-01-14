@@ -554,6 +554,16 @@ class Solver:
                     routed_signature.step_type
                 )
 
+        # 4.7. Fallback: try DSL on umbrella itself (it may still have DSL from before promotion)
+        if result is None and signature.is_semantic_umbrella and (has_dsl_hint or has_extracted_values):
+            logger.debug("[solver] Trying umbrella's own DSL as fallback")
+            dsl_result = await self._try_dsl(signature, step, context, step_descriptions)
+            if dsl_result is not None:
+                result = dsl_result
+                was_injected = True
+                routed_signature = signature  # Use original umbrella signature
+                logger.info("[solver] Umbrella fallback DSL succeeded: %s", result[:30] if result else "")
+
         # 5. No LLM fallback - strict DAG execution
         # Three outcomes: route to child, create child, or fail
         if result is None:
