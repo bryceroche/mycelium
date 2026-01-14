@@ -289,12 +289,13 @@ class UmbrellaLearner:
                     parent_id=signature.id,  # Ensure children are created under decomposing signature
                 )
 
-            # If signature already has a parent (matched OR repointed), create a NEW one instead
+            # If signature already has a DIFFERENT parent (matched OR repointed), create a NEW one instead
             # This ensures tree structure can grow deeper
             # NOTE: This check is OUTSIDE the else block so it also handles repointed signatures!
+            # NOTE: If already a child of THIS signature, reuse it (don't create duplicate)
             if not is_new:
                 existing_parent = self.db.get_parent(child_sig.id)
-                if existing_parent is not None:
+                if existing_parent is not None and existing_parent.id != signature.id:
                     logger.info(
                         "[umbrella] Sig %d already has parent %d, creating new for parent %d (repoint=%s)",
                         child_sig.id, existing_parent.id, signature.id, is_repoint
