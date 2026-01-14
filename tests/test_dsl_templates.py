@@ -23,7 +23,8 @@ import mycelium.step_signatures.dsl_templates as dsl_templates
 
 @pytest.fixture(autouse=True)
 def reset_anchor_caches():
-    """Reset global anchor embedding caches before each test."""
+    """Reset global anchor embedding caches and seed RNG before each test."""
+    np.random.seed(42)  # Deterministic embeddings in mock fixtures
     dsl_templates._param_anchor_embeddings = None
     dsl_templates._desc_anchor_embeddings = None
     yield
