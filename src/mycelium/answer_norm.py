@@ -40,6 +40,10 @@ async def answers_equivalent_llm(
     """
     from mycelium.client import ask_llama
 
+    # Empty prediction is always wrong (don't let LLM give false positives)
+    if not predicted or not predicted.strip():
+        return False
+
     # Quick string equality check first (avoid LLM call if obvious match)
     if predicted.strip().lower() == expected.strip().lower():
         return True
