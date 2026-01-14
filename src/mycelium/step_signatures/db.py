@@ -312,6 +312,7 @@ class StepSignatureDB:
         origin_depth: int = 0,
         extracted_values: dict = None,
         dsl_hint: str = None,
+        parent_id: int = None,
     ) -> tuple[StepSignature, bool]:
         """Find a matching signature or create a new one.
 
@@ -327,6 +328,7 @@ class StepSignatureDB:
             dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication
             origin_depth: Decomposition depth at which this step was created
             extracted_values: Dict of semantic param names -> values from planner
+            parent_id: Explicit parent ID for new signatures (overrides routing)
 
         Returns:
             Tuple of (signature, is_new) where is_new=True if newly created
@@ -338,7 +340,7 @@ class StepSignatureDB:
             try:
                 return self._find_or_create_atomic(
                     step_text, embedding, min_similarity, parent_problem, origin_depth,
-                    extracted_values=extracted_values, dsl_hint=dsl_hint
+                    extracted_values=extracted_values, dsl_hint=dsl_hint, parent_id=parent_id
                 )
             except sqlite3.OperationalError as e:
                 if attempt < max_retries - 1:
@@ -405,6 +407,7 @@ class StepSignatureDB:
         origin_depth: int = 0,
         extracted_values: dict = None,
         dsl_hint: str = None,
+        parent_id: int = None,
     ) -> tuple[StepSignature, bool]:
         """Internal atomic find-or-create with hierarchical routing.
 
@@ -412,10 +415,11 @@ class StepSignatureDB:
         1. If DB is empty → create root signature
         2. Route from root → best matching child → recurse until leaf
         3. If leaf matches above threshold → update centroid and return
-        4. If no match → create new child under where routing stopped
+        4. If no match → create new child under where routing stopped (or explicit parent_id)
 
         Args:
             dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication
+            parent_id: Explicit parent ID for new signatures (overrides routing)
         """
         with self._connection() as conn:
             conn.execute("BEGIN IMMEDIATE")
@@ -480,11 +484,13 @@ class StepSignatureDB:
                     )
                     return best_match, False
 
-                # No match found - create new child under parent_for_new
+                # No match found - create new child
+                # Use explicit parent_id if provided (e.g., from decomposition), else use routing result
+                actual_parent_id = parent_id if parent_id is not None else (parent_for_new.id if parent_for_new else None)
                 sig = self._create_signature_atomic(
                     conn, step_text, embedding, parent_problem, origin_depth,
                     extracted_values=extracted_values, dsl_hint=dsl_hint,
-                    parent_id=parent_for_new.id if parent_for_new else None
+                    parent_id=actual_parent_id
                 )
 
                 # Propagate new child's centroid up to parent umbrellas
@@ -492,10 +498,10 @@ class StepSignatureDB:
                     self.propagate_centroid_to_parents(conn, sig.id)
 
                 conn.commit()
+                parent_desc = f"id={parent_id}" if parent_id is not None else (parent_for_new.step_type if parent_for_new else "root")
                 logger.info(
                     "[db] Created new signature (child of %s): step='%s' type='%s'",
-                    parent_for_new.step_type if parent_for_new else "root",
-                    step_text[:40], sig.step_type
+                    parent_desc, step_text[:40], sig.step_type
                 )
                 return sig, True
 

@@ -277,6 +277,7 @@ class UmbrellaLearner:
             else:
                 # Fall back: find or create new signature
                 # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
+                # CRITICAL: Pass parent_id so new signatures are created under THIS signature, not root!
                 child_sig, is_new = self.db.find_or_create(
                     step_text=step.task,
                     embedding=embedding,
@@ -285,6 +286,7 @@ class UmbrellaLearner:
                     origin_depth=min_child_depth,  # Set proper depth for new sigs
                     extracted_values=getattr(step, 'extracted_values', None),
                     dsl_hint=getattr(step, 'dsl_hint', None),  # LLM → signature communication
+                    parent_id=signature.id,  # Ensure children are created under decomposing signature
                 )
 
                 # If matched signature already has a parent, create a NEW one instead
