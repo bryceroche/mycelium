@@ -69,15 +69,10 @@ def _infer_dsl_from_values(
     description: str,
     extracted_values: dict,
 ) -> Optional[tuple[str, str]]:
-    """Generate DSL from planner's extracted values.
+    """Generate DSL from planner's extracted values using semantic similarity.
 
-    The planner extracts values with semantic names. These names encode
-    the mathematical structure - we just need to connect them with operators.
-
-    Examples:
-        {"base": 2, "exponent": 10} -> "base ** exponent"
-        {"dividend": 100, "divisor": 5} -> "dividend / divisor"
-        {"total_km": "{step_1}", "circumference_km": 40000} -> "total_km / circumference_km"
+    Uses embedding similarity to match step description to operation prototypes.
+    No keyword matching - purely semantic inference.
 
     Args:
         step_type: The signature's step type
@@ -108,128 +103,291 @@ def _infer_dsl_from_values(
     if not params:
         return None
 
-    # Infer operation from step_type and description
-    step_lower = step_type.lower()
-    desc_lower = description.lower()
+    # Use semantic similarity to infer operation
+    # Pass param names - they carry semantic hints (dividend/divisor → divide)
+    op_info = _infer_operation_semantic(step_type, description, len(params), param_names=params)
 
-    # Two-param operations
+    if op_info is None:
+        logger.debug(
+            "[dsl_infer] Could not infer DSL from values: step_type=%s, params=%s",
+            step_type, params
+        )
+        return None
+
+    operator, op_name = op_info
+
+    # Build script based on operator and params
     if len(params) >= 2:
         p1, p2 = params[0], params[1]
-
-        # PRIORITY 1: Step type is the strongest signal (from planner)
-        # Check step_type first before falling back to description keywords
-        if "sum" in step_lower or "add" in step_lower:
-            script = f"{p1} + {p2}"
-            return _make_dsl_json(script, params, f"add {p1} and {p2}"), "math"
-
-        if "subtract" in step_lower or "difference" in step_lower:
-            script = f"{p1} - {p2}"
-            return _make_dsl_json(script, params, f"subtract {p2} from {p1}"), "math"
-
-        if "product" in step_lower or "multiply" in step_lower:
-            script = f"{p1} * {p2}"
-            return _make_dsl_json(script, params, f"multiply {p1} and {p2}"), "math"
-
-        if "divide" in step_lower or "quotient" in step_lower or "ratio" in step_lower:
-            script = f"{p1} / {p2}"
-            return _make_dsl_json(script, params, f"divide {p1} by {p2}"), "math"
-
-        # PRIORITY 2: Description keywords (less reliable, check more carefully)
-        # Division patterns (high confidence keywords)
-        if any(kw in desc_lower for kw in ["divide", "divided by", "quotient", "per "]):
-            script = f"{p1} / {p2}"
-            return _make_dsl_json(script, params, f"divide {p1} by {p2}"), "math"
-
-        # Subtraction patterns (check before addition - "left", "remaining" are strong signals)
-        if any(kw in desc_lower for kw in ["subtract", "minus", "remaining", " left", "difference"]):
-            script = f"{p1} - {p2}"
-            return _make_dsl_json(script, params, f"subtract {p2} from {p1}"), "math"
-
-        # Multiplication patterns (avoid "total" - too ambiguous)
-        if any(kw in desc_lower for kw in ["multiply", "product", "times", " x "]):
-            script = f"{p1} * {p2}"
-            return _make_dsl_json(script, params, f"multiply {p1} and {p2}"), "math"
-
-        # Addition patterns
-        if any(kw in desc_lower for kw in ["add", "sum", "plus", "combine", "together", "and"]):
-            script = f"{p1} + {p2}"
-            return _make_dsl_json(script, params, f"add {p1} and {p2}"), "math"
-
-        # "total" with "used" or "spent" context → addition (consuming resources)
-        if "total" in desc_lower and any(kw in desc_lower for kw in ["used", "spent", "consumed"]):
-            script = f"{p1} + {p2}"
-            return _make_dsl_json(script, params, f"add {p1} and {p2}"), "math"
-
-        # "total" with "earn" or "make" context → multiplication (computing amounts)
-        if "total" in desc_lower and any(kw in desc_lower for kw in ["earn", "make", "cost", "price"]):
-            script = f"{p1} * {p2}"
-            return _make_dsl_json(script, params, f"multiply {p1} and {p2}"), "math"
-
-        # Power/exponent patterns
-        if any(kw in step_lower or kw in desc_lower for kw in [
-            "power", "exponent", "raise", "squared", "cubed"
-        ]):
-            # Try to identify which param is base vs exponent
-            base_param = None
-            exp_param = None
-            for p in params:
-                p_lower = p.lower()
-                if any(kw in p_lower for kw in ["base", "number"]):
-                    base_param = p
-                elif any(kw in p_lower for kw in ["exp", "power", "n"]):
-                    exp_param = p
-            if base_param and exp_param:
-                script = f"{base_param} ** {exp_param}"
-            else:
-                script = f"{p1} ** {p2}"
-            return _make_dsl_json(script, params, f"raise to power"), "math"
-
-        # Modulo patterns
-        if any(kw in step_lower or kw in desc_lower for kw in [
-            "modulo", "remainder", "mod "
-        ]):
-            script = f"{p1} % {p2}"
-            return _make_dsl_json(script, params, f"compute {p1} mod {p2}"), "math"
-
-        # GCD patterns
-        if any(kw in step_lower or kw in desc_lower for kw in ["gcd", "greatest common"]):
+        if operator in ("+", "-", "*", "/", "**", "%"):
+            script = f"{p1} {operator} {p2}"
+        elif operator == "gcd":
             script = f"gcd({p1}, {p2})"
-            return _make_dsl_json(script, params, f"compute GCD"), "math"
-
-        # LCM patterns
-        if any(kw in step_lower or kw in desc_lower for kw in ["lcm", "least common"]):
+        elif operator == "lcm":
             script = f"lcm({p1}, {p2})"
-            return _make_dsl_json(script, params, f"compute LCM"), "math"
-
-        # Combination/permutation patterns
-        if any(kw in step_lower or kw in desc_lower for kw in ["combination", "choose", "c("]):
+        elif operator == "comb":
             script = f"comb({p1}, {p2})"
-            return _make_dsl_json(script, params, f"compute combinations"), "math"
-
-        if any(kw in step_lower or kw in desc_lower for kw in ["permutation", "perm", "p("]):
+        elif operator == "perm":
             script = f"perm({p1}, {p2})"
-            return _make_dsl_json(script, params, f"compute permutations"), "math"
-
-    # Single-param operations
-    if len(params) >= 1:
+        else:
+            script = f"{p1} {operator} {p2}"
+        return _make_dsl_json(script, params, op_name), "math"
+    elif len(params) == 1:
         p1 = params[0]
-
-        # Square root
-        if any(kw in step_lower or kw in desc_lower for kw in ["sqrt", "square root"]):
+        if operator == "sqrt":
             script = f"sqrt({p1})"
-            return _make_dsl_json(script, params[:1], f"compute square root"), "math"
-
-        # Factorial
-        if "factorial" in step_lower or "factorial" in desc_lower:
+        elif operator == "factorial":
             script = f"factorial({p1})"
-            return _make_dsl_json(script, params[:1], f"compute factorial"), "math"
+        elif operator == "abs":
+            script = f"abs({p1})"
+        else:
+            return None
+        return _make_dsl_json(script, params[:1], op_name), "math"
 
-    # Couldn't infer operation - let other methods try
-    logger.debug(
-        "[dsl_infer] Could not infer DSL from values: step_type=%s, params=%s",
-        step_type, params
-    )
     return None
+
+
+# Operation prototypes for semantic matching
+# Each tuple: (operator, prototype_text, min_params)
+# Prototypes include common param names to help semantic matching when params are in query
+_OPERATION_PROTOTYPES = [
+    # Two-param arithmetic - include typical param names for each operation
+    ("+", "compute sum addition add plus total addend augend summand combine", 2),
+    ("-", "compute difference subtraction subtract minus minuend subtrahend take away reduce", 2),
+    ("*", "compute product multiplication multiply times multiplicand multiplier", 2),
+    ("/", "compute quotient division divide ratio dividend divisor", 2),
+    ("**", "compute power exponentiation exponent squared cubed base raise", 2),
+    ("%", "compute remainder modulo mod modulus", 2),
+    # Special two-param functions
+    ("gcd", "compute gcd greatest common divisor", 2),
+    ("lcm", "compute lcm least common multiple", 2),
+    ("comb", "compute combinations choose binomial coefficient", 2),
+    ("perm", "compute permutations arrangements ordering", 2),
+    # Single-param functions - be specific to avoid overmatch
+    ("sqrt", "compute square root sqrt radical", 1),
+    ("factorial", "compute factorial exclamation permutation single", 1),
+    ("abs", "compute absolute value magnitude abs", 1),
+]
+
+# Cache for prototype embeddings
+_prototype_embeddings = None
+
+
+def _get_prototype_embeddings():
+    """Lazily compute and cache prototype embeddings."""
+    global _prototype_embeddings
+    if _prototype_embeddings is not None:
+        return _prototype_embeddings
+
+    try:
+        from mycelium.embedder import Embedder
+        embedder = Embedder.get_instance()
+
+        _prototype_embeddings = []
+        for operator, prototype_text, min_params in _OPERATION_PROTOTYPES:
+            emb = embedder.embed(prototype_text)
+            _prototype_embeddings.append((operator, emb, min_params, prototype_text))
+
+        return _prototype_embeddings
+    except Exception as e:
+        logger.warning("[dsl_infer] Failed to compute prototype embeddings: %s", e)
+        return []
+
+
+# Param name patterns that strongly indicate specific operations
+# These are checked before embedding similarity for reliable matching
+_PARAM_OPERATION_HINTS = {
+    # Division indicators
+    "dividend": "/",
+    "divisor": "/",
+    "numerator": "/",
+    "denominator": "/",
+    # Subtraction indicators
+    "minuend": "-",
+    "subtrahend": "-",
+    # Addition indicators
+    "addend": "+",
+    "augend": "+",
+    "summand": "+",
+    # Multiplication indicators
+    "multiplicand": "*",
+    "multiplier": "*",
+    "factor": "*",  # "factor_a" → multiplication
+}
+
+# Step type patterns that indicate specific operations
+# Checked after param hints, before embedding
+_STEP_TYPE_HINTS = {
+    # Addition
+    "sum": "+",
+    "add": "+",
+    "total": "+",
+    "combine": "+",
+    # Subtraction
+    "difference": "-",
+    "subtract": "-",
+    "minus": "-",
+    # Multiplication
+    "product": "*",
+    "multiply": "*",
+    "times": "*",
+    "area": "*",  # compute_area → multiplication
+    # Division
+    "quotient": "/",
+    "divide": "/",
+    "ratio": "/",
+    # Power
+    "power": "**",
+    "exponent": "**",
+    "square": "**",
+    # Modulo
+    "remainder": "%",
+    "modulo": "%",
+    "mod": "%",
+}
+
+
+def _check_param_hints(param_names: list) -> Optional[tuple[str, str]]:
+    """Check if param names indicate a specific operation.
+
+    Returns (operator, operation_name) if strong signal found.
+    """
+    if not param_names:
+        return None
+
+    # Check each param name for operation hints
+    op_votes = {}
+    for param in param_names:
+        param_lower = param.lower()
+        for hint, op in _PARAM_OPERATION_HINTS.items():
+            if hint in param_lower:
+                op_votes[op] = op_votes.get(op, 0) + 1
+
+    # If we have a clear winner with at least one strong hint
+    if op_votes:
+        best_op = max(op_votes, key=op_votes.get)
+        if op_votes[best_op] >= 1:
+            op_names = {"+": "addition", "-": "subtraction", "*": "multiplication", "/": "division", "**": "power", "%": "modulo"}
+            return (best_op, op_names.get(best_op, best_op))
+
+    return None
+
+
+def _check_step_type_hints(step_type: str) -> Optional[tuple[str, str]]:
+    """Check if step_type contains operation hints.
+
+    Returns (operator, operation_name) if clear signal found.
+    """
+    if not step_type:
+        return None
+
+    step_lower = step_type.lower().replace("_", " ")
+
+    # Check for operation hints in step_type
+    for hint, op in _STEP_TYPE_HINTS.items():
+        if hint in step_lower:
+            op_names = {"+": "addition", "-": "subtraction", "*": "multiplication", "/": "division", "**": "power", "%": "modulo"}
+            return (op, op_names.get(op, op))
+
+    return None
+
+
+def _infer_operation_semantic(
+    step_type: str,
+    description: str,
+    num_params: int,
+    param_names: list = None,
+    min_similarity: float = 0.35,
+) -> Optional[tuple[str, str]]:
+    """Infer math operation using hints + semantic similarity.
+
+    Priority:
+    1. Param name hints (dividend/divisor → division)
+    2. Step type hints (compute_product → multiplication)
+    3. Embedding similarity to operation prototypes
+
+    Args:
+        step_type: The signature's step type
+        description: The step description
+        num_params: Number of available parameters
+        param_names: List of parameter names (carry semantic hints)
+        min_similarity: Minimum similarity to accept a match
+
+    Returns:
+        (operator, operation_name) or None
+    """
+    # Priority 1: Check param name hints (most reliable signal)
+    hint_result = _check_param_hints(param_names)
+    if hint_result:
+        logger.debug(
+            "[dsl_infer] Param hint match: params=%s → '%s'",
+            param_names, hint_result[0]
+        )
+        return hint_result
+
+    # Priority 2: Check step_type hints
+    step_hint = _check_step_type_hints(step_type)
+    if step_hint:
+        logger.debug(
+            "[dsl_infer] Step type hint match: '%s' → '%s'",
+            step_type, step_hint[0]
+        )
+        return step_hint
+
+    # Priority 3: Embedding similarity (fallback for unknown patterns)
+    try:
+        from mycelium.embedder import Embedder
+        import numpy as np
+
+        embedder = Embedder.get_instance()
+        prototypes = _get_prototype_embeddings()
+
+        if not prototypes:
+            return None
+
+        # Build query from step_type + param names
+        step_type_readable = step_type.replace("_", " ")
+        if param_names:
+            param_text = " ".join(p.replace("_", " ") for p in param_names)
+            query_text = f"{step_type_readable} {param_text}"
+        else:
+            query_text = step_type_readable
+        query_emb = embedder.embed(query_text)
+
+        # Find best matching prototype
+        best_match = None
+        best_sim = 0.0
+
+        for operator, proto_emb, min_params_req, proto_text in prototypes:
+            # Skip if not enough params
+            if num_params < min_params_req:
+                continue
+
+            # Compute cosine similarity
+            sim = float(np.dot(query_emb, proto_emb) / (
+                np.linalg.norm(query_emb) * np.linalg.norm(proto_emb)
+            ))
+
+            if sim > best_sim:
+                best_sim = sim
+                best_match = (operator, proto_text.split(",")[0].strip())
+
+        if best_match and best_sim >= min_similarity:
+            logger.debug(
+                "[dsl_infer] Semantic match: '%s' → '%s' (sim=%.3f)",
+                step_type, best_match[0], best_sim
+            )
+            return best_match
+
+        logger.debug(
+            "[dsl_infer] No semantic match above threshold: best_sim=%.3f < %.3f",
+            best_sim, min_similarity
+        )
+        return None
+
+    except Exception as e:
+        logger.warning("[dsl_infer] Semantic inference failed: %s", e)
+        return None
 
 
 def _make_dsl_json(script: str, params: list, purpose: str) -> str:
