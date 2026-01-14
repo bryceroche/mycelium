@@ -1,7 +1,7 @@
 """Tests for UmbrellaLearner auto-decomposition system."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 import numpy as np
 
 from mycelium.step_signatures.umbrella_learner import (
@@ -370,12 +370,6 @@ class TestDecomposeSignature:
     async def test_repoints_to_existing_deeper_sig(self, learner, mock_db, mock_planner):
         sig = self._make_sig(1, depth=0)
         mock_planner.decompose.return_value = DAGPlan(
-            steps=[Step(id="s1", task="Some step")],
-            problem="test"
-        )
-
-        # Wait, this would be single step - let's use 2
-        mock_planner.decompose.return_value = DAGPlan(
             steps=[
                 Step(id="s1", task="Step one"),
                 Step(id="s2", task="Step two"),
@@ -477,3 +471,4 @@ class TestLearnFromFailures:
         assert result["candidates"] == 1
         assert result["decomposed"] == 0
         assert result["children_created"] == 0
+
