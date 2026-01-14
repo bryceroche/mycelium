@@ -98,6 +98,7 @@ class StepResult:
     signature_type: Optional[str] = None
     is_new_signature: bool = False
     was_injected: bool = False  # True if DSL was used
+    was_routed: bool = False  # True if routed through umbrella
     elapsed_ms: float = 0.0
 
 
@@ -113,7 +114,8 @@ class SolverResult:
     signatures_matched: int = 0
     signatures_new: int = 0
     steps_with_injection: int = 0
-    matched_and_injected: int = 0  # Matched existing sig AND DSL succeeded
+    steps_with_routing: int = 0  # Routed through umbrella (also counts as reuse)
+    matched_and_reused: int = 0  # Matched AND (DSL succeeded OR routed)
     error: Optional[str] = None
 
 
@@ -264,7 +266,8 @@ class Solver:
             signatures_new = 0
             signatures_matched = 0
             steps_with_injection = 0
-            matched_and_injected = 0
+            steps_with_routing = 0
+            matched_and_reused = 0  # Matched AND (DSL succeeded OR routed)
 
             execution_order = self._get_execution_order(plan)
 
@@ -304,7 +307,8 @@ class Solver:
                         signatures_matched=signatures_matched,
                         signatures_new=signatures_new,
                         steps_with_injection=steps_with_injection,
-                        matched_and_injected=matched_and_injected,
+                        steps_with_routing=steps_with_routing,
+                        matched_and_reused=matched_and_reused,
                     )
 
                 # Track stats
@@ -312,10 +316,13 @@ class Solver:
                     signatures_new += 1
                 else:
                     signatures_matched += 1
-                    if result.was_injected:
-                        matched_and_injected += 1
+                    # Reused = DSL succeeded OR routed through umbrella
+                    if result.was_injected or result.was_routed:
+                        matched_and_reused += 1
                 if result.was_injected:
                     steps_with_injection += 1
+                if result.was_routed:
+                    steps_with_routing += 1
 
                 # Store result and description for dependent steps
                 context[step.id] = result.result
@@ -326,8 +333,9 @@ class Solver:
 
             elapsed_ms = (time.time() - start_time) * 1000
             logger.info(
-                "[solver] Solved in %.0fms: steps=%d new=%d matched=%d matched+injected=%d",
-                elapsed_ms, len(step_results), signatures_new, signatures_matched, matched_and_injected
+                "[solver] Solved in %.0fms: steps=%d new=%d matched=%d reused=%d (dsl=%d, routed=%d)",
+                elapsed_ms, len(step_results), signatures_new, signatures_matched,
+                matched_and_reused, steps_with_injection, steps_with_routing
             )
 
             return SolverResult(
@@ -340,7 +348,8 @@ class Solver:
                 signatures_matched=signatures_matched,
                 signatures_new=signatures_new,
                 steps_with_injection=steps_with_injection,
-                matched_and_injected=matched_and_injected,
+                steps_with_routing=steps_with_routing,
+                matched_and_reused=matched_and_reused,
             )
 
         except Exception as e:
@@ -434,12 +443,14 @@ class Solver:
         # 3. If umbrella, try routing to child signature
         result = None
         was_injected = False
+        was_routed = False  # Track if we routed through umbrella
         routed_signature = signature
 
         if signature.is_semantic_umbrella:
             child_result = await self._try_umbrella_routing(signature, step, problem, context, step_descriptions, embedding=embedding)
             if child_result is not None:
                 result, routed_signature, was_injected = child_result
+                was_routed = True  # Successfully routed through umbrella
                 logger.info(
                     "[solver] Umbrella routed: '%s' → '%s'",
                     signature.step_type, routed_signature.step_type
@@ -474,6 +485,7 @@ class Solver:
                 )
                 if child_result is not None:
                     result, routed_signature, was_injected = child_result
+                    was_routed = True  # Successfully routed after forced decomposition
                     logger.info(
                         "[solver] After forced decompose, routed to: '%s'",
                         routed_signature.step_type
@@ -524,6 +536,7 @@ class Solver:
             signature_type=routed_signature.step_type,
             is_new_signature=is_new,
             was_injected=was_injected,
+            was_routed=was_routed,
             elapsed_ms=elapsed_ms,
         )
 
