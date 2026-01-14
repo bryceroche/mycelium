@@ -2,8 +2,7 @@
 
 import pytest
 import numpy as np
-from unittest.mock import Mock, MagicMock
-from dataclasses import dataclass
+from unittest.mock import Mock, patch
 
 from mycelium.planner import Step, DAGPlan
 from mycelium.step_signatures.semantic_validation import (
@@ -146,11 +145,15 @@ class TestValidatePlanCoherence:
             Step(id="step1", task="Do something"),
         ])
 
-        # Pass None and mock the import to fail
-        result = validate_plan_coherence(plan, embedder=None)
+        # Mock Embedder.get_instance to raise an exception
+        with patch("mycelium.embedder.Embedder") as mock_embedder_class:
+            mock_embedder_class.get_instance.side_effect = RuntimeError("No embedder available")
+            result = validate_plan_coherence(plan, embedder=None)
 
-        # Should either work with default embedder or skip gracefully
-        assert isinstance(result, PlanValidation)
+        # Should skip validation gracefully
+        assert result.is_coherent is True
+        assert result.overall_score == 1.0
+        assert "validation skipped" in result.feedback_for_planner
 
     def test_extracted_values_tracked(self):
         plan = make_plan(steps=[
@@ -221,14 +224,24 @@ class TestValidateStepInputs:
             "step1": ("Find the prime factorization", []),
         }
 
-        # Create embedder with controlled similarity
-        embedder = MockEmbedder()
+        # Create embedder that returns orthogonal vectors for these texts
+        class OrthogonalEmbedder:
+            def embed(self, text: str) -> np.ndarray:
+                if "weather" in text.lower():
+                    vec = np.zeros(384)
+                    vec[0] = 1.0  # Point along x-axis
+                else:
+                    vec = np.zeros(384)
+                    vec[1] = 1.0  # Point along y-axis (orthogonal)
+                return vec
 
+        embedder = OrthogonalEmbedder()
         result = _validate_step_inputs(step, available_outputs, embedder)
 
-        # The mock embedder creates random embeddings, so similarity varies
-        # Just verify the function runs without error
-        assert result.step_id == "step2"
+        # Orthogonal vectors have 0 similarity, which is < 0.3 threshold
+        assert result.coherence_score == 0.0
+        assert any("Weak connection" in issue for issue in result.issues)
+        assert len(result.suggestions) > 0
 
 
 class TestGeneratePlannerFeedback:
