@@ -276,12 +276,14 @@ class UmbrellaLearner:
                 )
             else:
                 # Fall back: find or create new signature
+                # Pass extracted_values from planner to enable DSL generation from structure
                 child_sig, is_new = self.db.find_or_create(
                     step_text=step.task,
                     embedding=embedding,
                     min_similarity=0.85,
                     parent_problem=signature.description,
                     origin_depth=min_child_depth,  # Set proper depth for new sigs
+                    extracted_values=getattr(step, 'extracted_values', None),
                 )
 
             if is_new:
