@@ -156,6 +156,28 @@ TRAFFIC_CACHE_TTL = 60.0  # Cache total_problems for N seconds (avoid DB hits)
 TRAFFIC_GRACE_PROBLEMS = 50  # No penalty until system has run N problems
 
 # =============================================================================
+# DEPTH-AWARE DECOMPOSITION
+# =============================================================================
+# Force decomposition at shallow depths to build out the tree structure.
+# Shallow = routing/categorization, Deep = execution
+#
+# Decompose probability decays exponentially with depth:
+#   P(decompose) = 1.0 if depth <= FORCE_DECOMPOSE_DEPTH
+#   P(decompose) = DECAY_BASE ^ (depth - FORCE_DECOMPOSE_DEPTH) for deeper
+#
+# Example with FORCE_DECOMPOSE_DEPTH=5, DECAY_BASE=0.5:
+#   depth 0-5: 100% decompose (forced)
+#   depth 6: 50% decompose
+#   depth 7: 25% decompose
+#   depth 8: 12.5% decompose
+#   depth 9+: ~0% decompose (execute)
+
+DEPTH_DECOMPOSE_ENABLED = True  # Enable depth-aware forced decomposition
+DEPTH_FORCE_DECOMPOSE_DEPTH = 5  # Always decompose at depth 0-5
+DEPTH_DECOMPOSE_DECAY_BASE = 0.5  # Decay rate per depth beyond force threshold
+DEPTH_DECOMPOSE_MIN_PROB = 0.05  # Floor probability (never fully disable decompose option)
+
+# =============================================================================
 # DYNAMIC DEPTH ROUTING
 # =============================================================================
 
