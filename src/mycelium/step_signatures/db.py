@@ -353,6 +353,49 @@ class StepSignatureDB:
                     continue
                 raise
 
+    def create_signature(
+        self,
+        step_text: str,
+        embedding: np.ndarray,
+        parent_problem: str = "",
+        origin_depth: int = 0,
+        extracted_values: dict = None,
+        dsl_hint: str = None,
+        parent_id: int = None,
+    ) -> StepSignature:
+        """Force create a new signature (no matching, always creates new).
+
+        Use this when you need a distinct child signature even if similar ones exist.
+
+        Args:
+            step_text: The step description text
+            embedding: Embedding vector for the step
+            parent_problem: The parent problem this step came from
+            origin_depth: Decomposition depth for this signature
+            extracted_values: Dict of semantic param names -> values from planner
+            dsl_hint: Explicit operation hint from planner (+, -, *, /)
+            parent_id: ID of parent signature. If None, defaults to root.
+
+        Returns:
+            The newly created StepSignature
+        """
+        with self._connection() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                sig = self._create_signature_atomic(
+                    conn, step_text, embedding, parent_problem, origin_depth,
+                    extracted_values=extracted_values, parent_id=parent_id, dsl_hint=dsl_hint
+                )
+                conn.commit()
+                logger.info(
+                    "[db] Force-created signature: step='%s' type='%s' depth=%d",
+                    step_text[:40], sig.step_type, origin_depth
+                )
+                return sig
+            except Exception:
+                conn.rollback()
+                raise
+
     def _find_or_create_atomic(
         self,
         step_text: str,
