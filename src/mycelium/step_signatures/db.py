@@ -134,90 +134,89 @@ class StepSignatureDB:
         child_id: int,
         visited: set[int] = None,
     ):
-        """Propagate centroid changes up to parent umbrellas.
+        """Propagate centroid changes up to parent umbrella (tree structure).
 
-        When a child's centroid is updated, this recomputes parent centroids
-        as the average of their children's centroids, recursively up the tree.
+        When a child's centroid is updated, this recomputes the parent's centroid
+        as the average of its children's centroids, recursively up the tree.
 
-        This ensures umbrella centroids always represent the average of all
-        descendant leaf embeddings.
+        Tree structure: each child has exactly one parent.
 
         Args:
             conn: Database connection (within transaction)
             child_id: ID of the signature whose centroid was updated
-            visited: Set of already-visited parent IDs (cycle prevention)
+            visited: Set of already-visited parent IDs (prevents infinite loops)
         """
         if visited is None:
             visited = set()
 
-        # Get parents of this child
+        # Get parent of this child (single parent in tree structure)
         cursor = conn.execute(
-            """SELECT DISTINCT parent_id FROM signature_relationships
-               WHERE child_id = ?""",
+            "SELECT parent_id FROM signature_relationships WHERE child_id = ?",
             (child_id,)
         )
-        parent_ids = [row[0] for row in cursor.fetchall()]
+        row = cursor.fetchone()
+        if not row:
+            return  # No parent (root node)
 
-        for parent_id in parent_ids:
-            if parent_id in visited:
+        parent_id = row[0]
+        if parent_id in visited:
+            return
+        visited.add(parent_id)
+
+        # Get all children of this parent
+        cursor = conn.execute(
+            """SELECT s.centroid, s.embedding_count
+               FROM signature_relationships r
+               JOIN step_signatures s ON r.child_id = s.id
+               WHERE r.parent_id = ?""",
+            (parent_id,)
+        )
+        children_data = cursor.fetchall()
+
+        if not children_data:
+            return
+
+        # Compute parent centroid as weighted average of children
+        # Weight by embedding_count (more examples = more weight)
+        total_weight = 0
+        centroid_sum = None
+
+        for child_row in children_data:
+            child_centroid = unpack_embedding(child_row[0])
+            child_count = child_row[1] or 1
+            if child_centroid is None:
                 continue
-            visited.add(parent_id)
 
-            # Get all children of this parent
-            cursor = conn.execute(
-                """SELECT s.centroid, s.embedding_count
-                   FROM signature_relationships r
-                   JOIN step_signatures s ON r.child_id = s.id
-                   WHERE r.parent_id = ?""",
-                (parent_id,)
-            )
-            children_data = cursor.fetchall()
+            if centroid_sum is None:
+                centroid_sum = child_centroid * child_count
+            else:
+                centroid_sum = centroid_sum + (child_centroid * child_count)
+            total_weight += child_count
 
-            if not children_data:
-                continue
+        if centroid_sum is not None and total_weight > 0:
+            new_centroid = centroid_sum / total_weight
+            try:
+                conn.execute(
+                    """UPDATE step_signatures
+                       SET centroid = ?, embedding_sum = ?, embedding_count = ?
+                       WHERE id = ?""",
+                    (pack_embedding(new_centroid), pack_embedding(centroid_sum),
+                     total_weight, parent_id),
+                )
+                logger.debug(
+                    "[db] Propagated centroid to parent %d (weight=%d)",
+                    parent_id, total_weight
+                )
+            except sqlite3.IntegrityError:
+                # Centroid collision with another signature - skip this update
+                logger.debug(
+                    "[db] Skipped centroid propagation to parent %d (collision)",
+                    parent_id
+                )
+                return
 
-            # Compute parent centroid as weighted average of children
-            # Weight by embedding_count (more examples = more weight)
-            total_weight = 0
-            centroid_sum = None
-
-            for row in children_data:
-                child_centroid = unpack_embedding(row[0])
-                child_count = row[1] or 1
-                if child_centroid is None:
-                    continue
-
-                if centroid_sum is None:
-                    centroid_sum = child_centroid * child_count
-                else:
-                    centroid_sum = centroid_sum + (child_centroid * child_count)
-                total_weight += child_count
-
-            if centroid_sum is not None and total_weight > 0:
-                new_centroid = centroid_sum / total_weight
-                try:
-                    conn.execute(
-                        """UPDATE step_signatures
-                           SET centroid = ?, embedding_sum = ?, embedding_count = ?
-                           WHERE id = ?""",
-                        (pack_embedding(new_centroid), pack_embedding(centroid_sum),
-                         total_weight, parent_id),
-                    )
-                    logger.debug(
-                        "[db] Propagated centroid to parent %d (weight=%d)",
-                        parent_id, total_weight
-                    )
-                except sqlite3.IntegrityError:
-                    # Centroid collision with another signature - skip this update
-                    # This can happen when weighted average equals an existing centroid
-                    logger.debug(
-                        "[db] Skipped centroid propagation to parent %d (collision)",
-                        parent_id
-                    )
-                    continue
-
-                # Recurse to grandparents
-                self.propagate_centroid_to_parents(conn, parent_id, visited)
+            # Recurse to grandparent
+            self.propagate_centroid_to_parents(conn, parent_id, visited)
 
     def route_through_hierarchy(
         self,
@@ -953,14 +952,17 @@ class StepSignatureDB:
                 if uses >= min_uses:
                     success_rate = successes / uses if uses > 0 else 0
                     if success_rate < AUTO_DEMOTE_MAX_SUCCESS_RATE:
+                        # Promote to umbrella: clear DSL, set type to router
                         conn.execute(
                             """UPDATE step_signatures
-                               SET is_semantic_umbrella = 1
+                               SET is_semantic_umbrella = 1,
+                                   dsl_type = 'router',
+                                   dsl_script = NULL
                                WHERE id = ?""",
                             (signature_id,),
                         )
                         logger.info(
-                            "[db] Auto-demoted sig %d to umbrella (%.0f%% after %d uses, min=%d, %d sigs)",
+                            "[db] Auto-demoted sig %d to umbrella/router (%.0f%% after %d uses, min=%d, %d sigs)",
                             signature_id, success_rate * 100, uses, min_uses, sig_count
                         )
 
@@ -1084,12 +1086,12 @@ class StepSignatureDB:
         credits: dict[int, float],
         max_depth: int = None,
     ):
-        """Recursively collect credits for parent umbrellas.
+        """Recursively collect credits for parent umbrellas (tree structure).
 
         Args:
             conn: Database connection
             signature_id: Current signature ID
-            decay_factor: Credit multiplier per level
+            decay_factor: Credit multiplier per level (e.g., 0.7^depth)
             current_depth: Current depth in traversal
             credits: Dict accumulating {parent_id: total_credit}
             max_depth: Max depth to traverse (default from config)
@@ -1099,27 +1101,26 @@ class StepSignatureDB:
         if current_depth > max_depth:
             return
 
-        # Get parent umbrella signatures
-        cursor = conn.execute(
+        # Get parent umbrella (single parent in tree structure)
+        row = conn.execute(
             """SELECT r.parent_id
                FROM signature_relationships r
                JOIN step_signatures s ON r.parent_id = s.id
                WHERE r.child_id = ? AND s.is_semantic_umbrella = 1""",
             (signature_id,)
+        ).fetchone()
+
+        if not row:
+            return
+
+        parent_id = row[0]
+        credit = decay_factor ** current_depth
+        credits[parent_id] = credit
+
+        # Recurse to grandparent
+        self._collect_parent_credits(
+            conn, parent_id, decay_factor, current_depth + 1, credits, max_depth
         )
-
-        for row in cursor.fetchall():
-            parent_id = row[0]
-            credit = decay_factor ** current_depth
-
-            # Accumulate (take max if parent reached via multiple paths)
-            if parent_id not in credits or credits[parent_id] < credit:
-                credits[parent_id] = credit
-
-            # Recurse to grandparents
-            self._collect_parent_credits(
-                conn, parent_id, decay_factor, current_depth + 1, credits, max_depth
-            )
 
     # =========================================================================
     # NL Interface Updates (for later learning)
@@ -1430,14 +1431,14 @@ class StepSignatureDB:
                 results.append((sig, condition))
             return results
 
-    def get_parents(self, child_id: int) -> list[StepSignature]:
-        """Get parent signatures for a child (DAG traversal).
+    def get_parent(self, child_id: int) -> Optional[StepSignature]:
+        """Get the parent signature for a child (tree structure - single parent).
 
         Args:
             child_id: ID of the child signature
 
         Returns:
-            List of parent signatures
+            Parent signature or None if no parent (root node)
         """
         with self._connection() as conn:
             cursor = conn.execute(
@@ -1447,7 +1448,8 @@ class StepSignatureDB:
                    WHERE r.child_id = ?""",
                 (child_id,)
             )
-            return [self._row_to_signature(dict(row)) for row in cursor.fetchall()]
+            row = cursor.fetchone()
+            return self._row_to_signature(dict(row)) if row else None
 
     def add_child(
         self,
@@ -1456,7 +1458,7 @@ class StepSignatureDB:
         condition: str,
         routing_order: int = 0,
     ) -> bool:
-        """Add a parent-child relationship.
+        """Add a parent-child relationship (tree structure - single parent per child).
 
         Args:
             parent_id: ID of the parent signature
@@ -1465,7 +1467,7 @@ class StepSignatureDB:
             routing_order: Priority (lower = higher priority)
 
         Returns:
-            True if relationship was created, False if already exists
+            True if relationship was created, False if child already has a parent
         """
         # Prevent self-references
         if parent_id == child_id:
@@ -1476,8 +1478,23 @@ class StepSignatureDB:
         now = datetime.utcnow().isoformat()
 
         with self._connection() as conn:
+            # Check if child already has a parent (tree structure - single parent)
+            existing = conn.execute(
+                "SELECT parent_id FROM signature_relationships WHERE child_id = ?",
+                (child_id,)
+            ).fetchone()
+
+            if existing:
+                if existing["parent_id"] == parent_id:
+                    logger.debug("[db] Relationship already exists: parent=%d → child=%d", parent_id, child_id)
+                else:
+                    logger.warning(
+                        "[db] Child %d already has parent %d, rejecting new parent %d (tree structure)",
+                        child_id, existing["parent_id"], parent_id
+                    )
+                return False
+
             # Cycle prevention: check if parent is already a descendant of child
-            # (adding parent -> child would create child -> ... -> parent -> child cycle)
             cycle_check = conn.execute(
                 """
                 WITH RECURSIVE ancestors AS (
@@ -1499,44 +1516,44 @@ class StepSignatureDB:
                 )
                 return False
 
-            try:
-                # Get parent's depth to set child's depth
-                parent_row = conn.execute(
-                    "SELECT depth FROM step_signatures WHERE id = ?",
-                    (parent_id,)
-                ).fetchone()
-                parent_depth = parent_row["depth"] if parent_row and parent_row["depth"] else 0
+            # Get parent's depth to set child's depth
+            parent_row = conn.execute(
+                "SELECT depth FROM step_signatures WHERE id = ?",
+                (parent_id,)
+            ).fetchone()
+            parent_depth = parent_row["depth"] if parent_row and parent_row["depth"] else 0
 
-                conn.execute(
-                    """INSERT INTO signature_relationships
-                       (parent_id, child_id, condition, routing_order, created_at)
-                       VALUES (?, ?, ?, ?, ?)""",
-                    (parent_id, child_id, condition, routing_order, now),
-                )
-                # Mark parent as umbrella
-                conn.execute(
-                    "UPDATE step_signatures SET is_semantic_umbrella = 1 WHERE id = ?",
-                    (parent_id,),
-                )
-                # Set child's depth = parent_depth + 1 (only if deeper than current)
-                child_depth = parent_depth + 1
-                conn.execute(
-                    "UPDATE step_signatures SET depth = MAX(depth, ?) WHERE id = ?",
-                    (child_depth, child_id),
-                )
-                logger.info(
-                    "[db] Added child relationship: parent=%d (depth=%d) → child=%d (depth=%d) (condition='%s')",
-                    parent_id, parent_depth, child_id, child_depth, condition[:30]
-                )
-                return True
-            except Exception as e:
-                if "UNIQUE constraint" in str(e):
-                    logger.debug("[db] Relationship already exists: parent=%d → child=%d", parent_id, child_id)
-                    return False
-                raise
+            conn.execute(
+                """INSERT INTO signature_relationships
+                   (parent_id, child_id, condition, routing_order, created_at)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (parent_id, child_id, condition, routing_order, now),
+            )
+            # Mark parent as umbrella (pure router - no DSL)
+            conn.execute(
+                """UPDATE step_signatures
+                   SET is_semantic_umbrella = 1, dsl_type = 'router', dsl_script = NULL
+                   WHERE id = ?""",
+                (parent_id,),
+            )
+            # Set child's depth = parent_depth + 1
+            child_depth = parent_depth + 1
+            conn.execute(
+                "UPDATE step_signatures SET depth = ? WHERE id = ?",
+                (child_depth, child_id),
+            )
+            logger.info(
+                "[db] Added child: parent=%d (depth=%d) → child=%d (depth=%d) (condition='%s')",
+                parent_id, parent_depth, child_id, child_depth, condition[:30]
+            )
+            return True
 
     def promote_to_umbrella(self, signature_id: int) -> bool:
-        """Mark a signature as a semantic umbrella.
+        """Mark a signature as a semantic umbrella (pure router, no DSL).
+
+        Umbrellas are routers that dispatch to child signatures based on
+        semantic similarity. They don't execute DSLs directly - their job
+        is to route problems to the right specialized child.
 
         Args:
             signature_id: ID of the signature to promote
@@ -1545,12 +1562,17 @@ class StepSignatureDB:
             True if updated, False if signature not found
         """
         with self._connection() as conn:
+            # Clear DSL and set type to router - umbrellas don't execute, they route
             cursor = conn.execute(
-                "UPDATE step_signatures SET is_semantic_umbrella = 1 WHERE id = ?",
+                """UPDATE step_signatures
+                   SET is_semantic_umbrella = 1,
+                       dsl_type = 'router',
+                       dsl_script = NULL
+                   WHERE id = ?""",
                 (signature_id,),
             )
             if cursor.rowcount > 0:
-                logger.info("[db] Promoted signature %d to umbrella", signature_id)
+                logger.info("[db] Promoted signature %d to umbrella (DSL cleared, type=router)", signature_id)
                 return True
             return False
 
