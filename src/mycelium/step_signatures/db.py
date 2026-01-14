@@ -264,15 +264,36 @@ class StepSignatureDB:
             step_type, step_text, extracted_values=extracted_values
         )
 
+        # Auto-generate NL interface from extracted_values if we created a math DSL
+        # The param names ARE the semantic descriptions - use them!
+        clarifying_questions = []
+        param_descriptions = {}
+        if extracted_values and dsl_type == "math":
+            for param_name, value in extracted_values.items():
+                # Convert param_name to readable question/description
+                readable = param_name.replace("_", " ")
+                clarifying_questions.append(f"What is the {readable}?")
+                param_descriptions[param_name] = f"The {readable} value"
+            logger.debug(
+                "[db] Auto-generated NL interface from extracted_values: %d questions",
+                len(clarifying_questions)
+            )
+
         # Initialize embedding_sum = embedding, embedding_count = 1
         embedding_sum_packed = centroid_packed  # Same as centroid initially
+
+        # Serialize NL interface
+        clarifying_json = json.dumps(clarifying_questions)
+        params_json = json.dumps(param_descriptions)
 
         try:
             cursor = conn.execute(
                 """INSERT INTO step_signatures
-                   (signature_id, centroid, embedding_sum, embedding_count, step_type, description, dsl_script, dsl_type, depth, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (sig_id, centroid_packed, embedding_sum_packed, 1, step_type, step_text, dsl_script, dsl_type, origin_depth, now),
+                   (signature_id, centroid, embedding_sum, embedding_count, step_type, description,
+                    dsl_script, dsl_type, clarifying_questions, param_descriptions, depth, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (sig_id, centroid_packed, embedding_sum_packed, 1, step_type, step_text,
+                 dsl_script, dsl_type, clarifying_json, params_json, origin_depth, now),
             )
             row_id = cursor.lastrowid
         except sqlite3.IntegrityError:
@@ -301,8 +322,8 @@ class StepSignatureDB:
             centroid=embedding,
             step_type=step_type,
             description=step_text,
-            clarifying_questions=[],
-            param_descriptions={},
+            clarifying_questions=clarifying_questions,
+            param_descriptions=param_descriptions,
             dsl_script=dsl_script,
             dsl_type=dsl_type,
             examples=[],
