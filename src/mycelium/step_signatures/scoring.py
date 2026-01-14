@@ -28,7 +28,6 @@ from mycelium.config import (
     TRAFFIC_CACHE_TTL,
     TRAFFIC_GRACE_PROBLEMS,
     DB_PATH,
-    MCTS_ENABLED,
     MCTS_EXPLORATION_C,
     MCTS_SIMILARITY_WEIGHT,
     MCTS_SUCCESS_WEIGHT,
@@ -251,7 +250,7 @@ def compute_ucb1_score(
     parent_uses: int,
     last_used_at: Optional[str] = None,
 ) -> float:
-    """Compute MCTS-style UCB1 score for signature routing.
+    """Compute MCTS UCB1 score for signature routing.
 
     UCB1 (Upper Confidence Bound) balances exploitation vs exploration:
     - Exploitation: prefer signatures with high similarity and success rate
@@ -274,10 +273,6 @@ def compute_ucb1_score(
     Returns:
         UCB1 score (higher = better choice)
     """
-    if not MCTS_ENABLED:
-        # Fall back to greedy routing
-        return compute_routing_score(cosine_sim, uses, successes, last_used_at)
-
     # Exploitation term: similarity weighted by success rate
     effective_rate = (successes + ROUTING_PRIOR_SUCCESSES) / (uses + ROUTING_PRIOR_USES)
     exploit_score = MCTS_SIMILARITY_WEIGHT * cosine_sim + MCTS_SUCCESS_WEIGHT * effective_rate

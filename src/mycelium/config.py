@@ -121,7 +121,6 @@ AUTO_DEMOTE_MIN_USES_CAP = 5     # Never require more than 5 failures
 # Where exploit = similarity * success_rate, N = parent visits, n = child visits
 # This balances trying known-good paths vs exploring under-visited ones
 
-MCTS_ENABLED = True  # Use MCTS-style UCB1 routing (vs pure greedy)
 MCTS_EXPLORATION_C = 1.0  # Exploration constant (higher = more exploration)
                           # sqrt(2) ≈ 1.41 is theoretical optimal, 1.0 is more conservative
 MCTS_SIMILARITY_WEIGHT = 0.7  # Weight for semantic similarity in exploitation term
