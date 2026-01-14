@@ -63,23 +63,44 @@ When a problem is solved correctly, success credit propagates up the signature D
 This lets umbrella signatures accumulate credit from their children's successes, improving routing decisions.
 
 
-## Addressing limitations of the Math Embedding Model and the Planner Decomposition Quality
-**The DSL/signature system works. The planner decomposition doesn't match mathematical structure.**
-****
-The embedding model clusters by vocabulary not operational semantics.
-## Solution: Signature-Guided Decomposition
-**Signatures already know what they need. Surface this to the planner BEFORE decomposition.**
-We have bi-directional NL communication:
-- **Signatures → Planner**: `clarifying_questions`, `param_descriptions`
-- **Planner → Signatures**: `extracted_values`, step descriptions
+## Embedding Model Limitations & Signature-Guided Learning
 
-Signature-Guided Planning
+**Known limitation:** MathBERT embeddings cluster by vocabulary, not operational semantics. Generic anchors like "permutations arrangements" don't match well to domain phrases like "choices for the gold medal" (similarity ~0.35).
 
-  1. Query before decompose — Ask signatures what params they need, so the planner knows what to extract upfront
-  2. Semantic coherence — Embed step outputs vs next step inputs; low similarity = broken chain
-  3. NL failure feedback — Failed signatures explain why ("got identical values, need different ones") → planner retries with guidance
+**Solution: Let successful signatures become the anchors.**
 
-  Key insight: Signatures declare their needs via clarifying_questions. Surface this BEFORE decomposition, not after.
+### The Cold-Start Challenge
+- Generic operation anchors have weak discrimination
+- Novel problem phrasings don't match any anchor above threshold
+- Result: `decompose` fallback → fail → record failure data
+
+### Signature-Guided Learning (How the system compounds)
+1. **High threshold rejects bad matches** (`DSL_OPERATION_INFERENCE_THRESHOLD = 0.6`)
+   - Uncertain matches → `decompose` type → fail cleanly
+   - No wrong DSLs polluting the system
+
+2. **Failures are learning data**
+   - Failed signatures get recorded with their embeddings
+   - Stats accumulate (uses, successes, failure patterns)
+   - System learns what DOESN'T work
+
+3. **Successful signatures become domain anchors**
+   - When a permutation problem finally succeeds, its signature has embedding for "choices for medal"
+   - Future "medal selection" problems match THIS signature, not generic anchors
+   - The solved problem's vocabulary becomes the new anchor
+
+4. **Bi-directional NL refinement**
+   - **Signatures → Planner**: `clarifying_questions`, `param_descriptions`
+   - **Planner → Signatures**: `extracted_values`, step descriptions
+   - Each successful solve teaches both sides what to look for
+
+### Why This Works
+- First solve of a problem type is hard (generic anchors don't match)
+- Second solve is easier (matches the first solve's signature)
+- 100th solve is trivial (strong centroid from many examples)
+- **Each solved problem makes similar problems easier**
+
+Key insight: Don't enrich generic anchors with domain vocabulary. Let the system LEARN domain vocabulary from successful solves. This scales automatically.
 
 
 ### Depth-Based Branching

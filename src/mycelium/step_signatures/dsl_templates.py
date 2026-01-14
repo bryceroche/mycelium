@@ -55,6 +55,45 @@ def infer_dsl_for_signature(
         if similar_dsl:
             return similar_dsl
 
+    # Priority 3: Combine/synthesis steps
+    # These steps combine or report previous results
+    desc_lower = description.lower()
+
+    # 3a: Addition for "combine" operations (adding multiple values together)
+    if any(phrase in desc_lower for phrase in [
+        "combine", "add together", "total of", "sum of",
+        "add up", "together",
+    ]):
+        combine_add = {
+            "type": "math",
+            "script": "a + b",
+            "params": ["a", "b"],
+            "aliases": {
+                "a": ["step_1", "first", "regular", "base"],
+                "b": ["step_2", "second", "overtime", "additional"],
+            },
+            "purpose": "combine by addition",
+        }
+        logger.info("[dsl_infer] Combine step detected, using addition DSL")
+        return json.dumps(combine_add), "math"
+
+    # 3b: Passthrough for final answer steps (just return the value)
+    if any(phrase in desc_lower for phrase in [
+        "final answer", "get the answer", "report the result",
+        "state the answer", "give the answer", "get the result",
+        "obtain the result", "return the result", "the result is",
+        "calculate the final", "determine the final",
+    ]):
+        passthrough = {
+            "type": "math",
+            "script": "result",  # Just return the input named "result"
+            "params": ["result"],
+            "aliases": {"result": ["step_1", "step_2", "step_3", "answer", "value", "total"]},
+            "purpose": "passthrough: return computed result",
+        }
+        logger.info("[dsl_infer] Synthesis step detected, using passthrough DSL")
+        return json.dumps(passthrough), "math"
+
     # Default fallback: decompose (let LLM handle novel patterns)
     # This is not a failure - it's how the system learns new patterns
     fallback = {
@@ -74,7 +113,7 @@ def _infer_dsl_from_values(
     """Generate DSL from planner's extracted values using semantic similarity.
 
     Uses embedding similarity to match step description to operation prototypes.
-    No keyword matching - purely semantic inference.
+    Falls back to trying common operations when semantic matching fails.
 
     Args:
         step_type: The signature's step type
@@ -89,15 +128,17 @@ def _infer_dsl_from_values(
 
     # Filter out step references for param list (keep only numeric values as params)
     params = []
+    numeric_values = []
     for key, val in extracted_values.items():
         if isinstance(val, str) and val.startswith("{") and val.endswith("}"):
             # This is a step reference like "{step_1}" - still a valid param
             params.append(key)
         elif isinstance(val, (int, float)):
             params.append(key)
+            numeric_values.append(val)
         elif isinstance(val, str):
             try:
-                float(val)
+                numeric_values.append(float(val))
                 params.append(key)
             except ValueError:
                 pass
@@ -108,6 +149,16 @@ def _infer_dsl_from_values(
     # Use semantic similarity to infer operation
     # Pass param names - they carry semantic hints (dividend/divisor → divide)
     op_info = _infer_operation_semantic(step_type, description, len(params), param_names=params)
+
+    # Fallback: if semantic matching fails but we have exactly 2 numeric values,
+    # try multiplication first (most common operation for rate * quantity patterns)
+    # This enables bootstrap learning - once one succeeds, future matches improve
+    if op_info is None and len(numeric_values) == 2 and len(params) == 2:
+        logger.info(
+            "[dsl_infer] Semantic match failed, trying multiplication fallback for 2 params: %s",
+            params
+        )
+        op_info = ("*", "multiplication fallback")
 
     if op_info is None:
         logger.debug(
