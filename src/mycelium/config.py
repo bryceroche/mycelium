@@ -62,10 +62,13 @@ DSL_THRESHOLDS_BY_TYPE = {
     "default": {"gate": 0.0, "param": 0.0},
 }
 
-# DSL Operation Inference threshold
-# Higher = more conservative, more "decompose" fallbacks, fewer wrong DSLs
-# Lower = more aggressive, more DSL attempts, more wrong matches
-DSL_OPERATION_INFERENCE_THRESHOLD = 0.6  # Raised from 0.35 to reject bad matches
+# DSL Operation Inference threshold (cold-start aware)
+# Ramps from COLD_START to MATURE as signature count grows
+# Cold start: try more DSLs to bootstrap learning
+# Mature: be selective, use proven paths
+DSL_OPERATION_INFERENCE_COLD_START = 0.35  # Low threshold when DB is empty
+DSL_OPERATION_INFERENCE_MATURE = 0.60  # High threshold when DB is mature
+DSL_OPERATION_INFERENCE_RAMP_SIGS = 100  # Signatures needed to reach mature threshold
 
 # DSL Executor thresholds
 DSL_VALUE_TYPE_THRESHOLD = 0.15  # Threshold for value type matching

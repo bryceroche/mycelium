@@ -15,9 +15,47 @@ import json
 import logging
 from typing import Optional
 
-from mycelium.config import DSL_OPERATION_INFERENCE_THRESHOLD
+from mycelium.config import (
+    DSL_OPERATION_INFERENCE_COLD_START,
+    DSL_OPERATION_INFERENCE_MATURE,
+    DSL_OPERATION_INFERENCE_RAMP_SIGS,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def get_dsl_inference_threshold() -> float:
+    """Get cold-start aware DSL inference threshold.
+
+    Ramps from COLD_START to MATURE as signature count grows:
+    - Few signatures: low threshold → try more DSLs → bootstrap learning
+    - Many signatures: high threshold → be selective → use proven paths
+
+    Returns:
+        Threshold between COLD_START and MATURE based on signature count
+    """
+    try:
+        from mycelium.data_layer import get_db
+        conn = get_db()
+        row = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()
+        sig_count = row[0] if row else 0
+    except Exception:
+        sig_count = 0
+
+    # Linear ramp from cold_start to mature
+    if sig_count >= DSL_OPERATION_INFERENCE_RAMP_SIGS:
+        threshold = DSL_OPERATION_INFERENCE_MATURE
+    else:
+        ramp = sig_count / DSL_OPERATION_INFERENCE_RAMP_SIGS
+        threshold = DSL_OPERATION_INFERENCE_COLD_START + ramp * (
+            DSL_OPERATION_INFERENCE_MATURE - DSL_OPERATION_INFERENCE_COLD_START
+        )
+
+    logger.debug(
+        "[dsl_infer] Cold-start threshold: %.3f (sigs=%d, ramp=%d)",
+        threshold, sig_count, DSL_OPERATION_INFERENCE_RAMP_SIGS
+    )
+    return threshold
 
 
 def infer_dsl_for_signature(
@@ -148,7 +186,9 @@ def _infer_dsl_from_values(
 
     # Use semantic similarity to infer operation
     # Pass param names - they carry semantic hints (dividend/divisor → divide)
-    op_info = _infer_operation_semantic(step_type, description, len(params), param_names=params)
+    # Use cold-start aware threshold (low when few sigs, high when mature)
+    threshold = get_dsl_inference_threshold()
+    op_info = _infer_operation_semantic(step_type, description, len(params), param_names=params, min_similarity=threshold)
 
     # Fallback: if semantic matching fails but we have exactly 2 numeric values,
     # try multiplication first (most common operation for rate * quantity patterns)
@@ -317,7 +357,7 @@ def _infer_operation_semantic(
     description: str,
     num_params: int,
     param_names: list = None,
-    min_similarity: float = DSL_OPERATION_INFERENCE_THRESHOLD,
+    min_similarity: float = 0.5,
 ) -> Optional[tuple[str, str]]:
     """Infer math operation using dual-channel semantic embedding.
 
