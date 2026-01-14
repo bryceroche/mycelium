@@ -1199,28 +1199,56 @@ Expression:"""
 
         return candidates
 
-    async def _auto_decompose_signature(self, signature) -> bool:
+    async def _auto_decompose_signature(self, signature, recursion_depth: int = 0) -> bool:
         """Auto-decompose a decompose-type signature into computable children.
 
         Called when we encounter a decompose-type signature that needs children.
         Creates children with actual DSLs and promotes parent to umbrella.
 
+        During BIG BANG phase, recursively decomposes children to explode tree structure.
+
         Args:
             signature: The decompose-type signature to decompose
+            recursion_depth: Current recursion depth (to prevent runaway)
 
         Returns:
             True if decomposition succeeded, False otherwise
         """
         from mycelium.step_signatures.umbrella_learner import UmbrellaLearner
 
+        # Hard limit on recursion to prevent runaway
+        MAX_DECOMPOSE_RECURSION = 5
+        if recursion_depth >= MAX_DECOMPOSE_RECURSION:
+            logger.debug(
+                "[solver] Decomposition recursion limit reached: depth=%d",
+                recursion_depth
+            )
+            return False
+
         learner = UmbrellaLearner(self.step_db)
         try:
             child_ids = await learner.decompose_signature(signature)
             if child_ids:
                 logger.info(
-                    "[solver] Auto-decomposed '%s' into %d children",
-                    signature.step_type, len(child_ids)
+                    "[solver] Auto-decomposed '%s' into %d children (recursion=%d)",
+                    signature.step_type, len(child_ids), recursion_depth
                 )
+
+                # BIG BANG: Recursively decompose children at shallow depth
+                # This explodes the tree structure during cold start
+                for child_id in child_ids:
+                    child_sig = self.step_db.get_signature(child_id)
+                    if child_sig and not child_sig.is_semantic_umbrella:
+                        child_depth = child_sig.depth or 0
+                        if should_force_decompose(child_depth):
+                            logger.debug(
+                                "[solver] BIG BANG recursive decompose: '%s' at depth %d",
+                                child_sig.step_type, child_depth
+                            )
+                            await self._auto_decompose_signature(
+                                child_sig, recursion_depth + 1
+                            )
+
                 return True
             else:
                 logger.warning(
