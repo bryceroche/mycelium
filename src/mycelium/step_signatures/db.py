@@ -1009,8 +1009,7 @@ class StepSignatureDB:
                         conn.execute(
                             """UPDATE step_signatures
                                SET is_semantic_umbrella = 1,
-                                   dsl_type = 'router',
-                                   dsl_script = NULL
+                                   dsl_type = 'router'
                                WHERE id = ?""",
                             (signature_id,),
                         )
@@ -1582,10 +1581,10 @@ class StepSignatureDB:
                    VALUES (?, ?, ?, ?, ?)""",
                 (parent_id, child_id, condition, routing_order, now),
             )
-            # Mark parent as umbrella (pure router - no DSL)
+            # Mark parent as umbrella (keep DSL as fallback if routing fails)
             conn.execute(
                 """UPDATE step_signatures
-                   SET is_semantic_umbrella = 1, dsl_type = 'router', dsl_script = NULL
+                   SET is_semantic_umbrella = 1, dsl_type = 'router'
                    WHERE id = ?""",
                 (parent_id,),
             )
@@ -1619,13 +1618,12 @@ class StepSignatureDB:
             cursor = conn.execute(
                 """UPDATE step_signatures
                    SET is_semantic_umbrella = 1,
-                       dsl_type = 'router',
-                       dsl_script = NULL
+                       dsl_type = 'router'
                    WHERE id = ?""",
                 (signature_id,),
             )
             if cursor.rowcount > 0:
-                logger.info("[db] Promoted signature %d to umbrella (DSL cleared, type=router)", signature_id)
+                logger.info("[db] Promoted signature %d to umbrella (DSL kept as fallback)", signature_id)
                 return True
             return False
 
