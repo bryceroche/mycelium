@@ -312,6 +312,7 @@ class StepSignatureDB:
         match_mode: MatchMode = "cosine",
         origin_depth: int = 0,
         extracted_values: dict = None,
+        dsl_hint: str = None,
     ) -> tuple[StepSignature, bool]:
         """Find a matching signature or create a new one.
 
@@ -324,6 +325,7 @@ class StepSignatureDB:
             min_similarity: Minimum cosine similarity for matching
             parent_problem: The parent problem this step came from
             match_mode: Matching algorithm (cosine or auto)
+            dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication
             origin_depth: Decomposition depth at which this step was created
             extracted_values: Dict of semantic param names -> values from planner
 
@@ -337,7 +339,7 @@ class StepSignatureDB:
             try:
                 return self._find_or_create_atomic(
                     step_text, embedding, min_similarity, parent_problem, origin_depth,
-                    extracted_values=extracted_values
+                    extracted_values=extracted_values, dsl_hint=dsl_hint
                 )
             except sqlite3.OperationalError as e:
                 if attempt < max_retries - 1:
@@ -360,6 +362,7 @@ class StepSignatureDB:
         parent_problem: str,
         origin_depth: int = 0,
         extracted_values: dict = None,
+        dsl_hint: str = None,
     ) -> tuple[StepSignature, bool]:
         """Internal atomic find-or-create with hierarchical routing.
 
@@ -368,6 +371,9 @@ class StepSignatureDB:
         2. Route from root → best matching child → recurse until leaf
         3. If leaf matches above threshold → update centroid and return
         4. If no match → create new child under where routing stopped
+
+        Args:
+            dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication
         """
         with self._connection() as conn:
             conn.execute("BEGIN IMMEDIATE")
@@ -381,7 +387,7 @@ class StepSignatureDB:
                     # Empty DB - create root signature
                     sig = self._create_signature_atomic(
                         conn, step_text, embedding, parent_problem, origin_depth,
-                        extracted_values=extracted_values
+                        extracted_values=extracted_values, dsl_hint=dsl_hint
                     )
                     conn.commit()
                     logger.info(
@@ -435,7 +441,7 @@ class StepSignatureDB:
                 # No match found - create new child under parent_for_new
                 sig = self._create_signature_atomic(
                     conn, step_text, embedding, parent_problem, origin_depth,
-                    extracted_values=extracted_values,
+                    extracted_values=extracted_values, dsl_hint=dsl_hint,
                     parent_id=parent_for_new.id if parent_for_new else None
                 )
 
@@ -582,10 +588,11 @@ class StepSignatureDB:
         origin_depth: int = 0,
         extracted_values: dict = None,
         parent_id: int = None,
+        dsl_hint: str = None,
     ) -> StepSignature:
         """Create a new signature within an existing transaction.
 
-        Auto-assigns DSL based on step_type, description, and extracted_values.
+        Auto-assigns DSL based on step_type, description, extracted_values, and dsl_hint.
 
         Hierarchical routing:
         - First signature becomes THE root (is_root=1, is_semantic_umbrella=1)
@@ -593,6 +600,7 @@ class StepSignatureDB:
 
         Args:
             parent_id: ID of parent signature. If None, defaults to root.
+            dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication.
         """
         sig_id = str(uuid.uuid4())
         now = datetime.utcnow().isoformat()
@@ -614,9 +622,10 @@ class StepSignatureDB:
         step_type = self._infer_step_type(step_text)
         centroid_packed = pack_embedding(embedding)
 
-        # Auto-assign DSL based on step_type, description, and planner's extracted_values
+        # Auto-assign DSL based on step_type, description, planner's extracted_values, and dsl_hint
+        # dsl_hint enables bidirectional LLM-signature communication
         dsl_script, dsl_type = infer_dsl_for_signature(
-            step_type, step_text, extracted_values=extracted_values
+            step_type, step_text, extracted_values=extracted_values, dsl_hint=dsl_hint
         )
 
         # Auto-generate NL interface from extracted_values if we created a math DSL

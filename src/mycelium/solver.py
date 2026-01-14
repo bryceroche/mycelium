@@ -354,7 +354,7 @@ class Solver:
         embedding = self.embedder.embed(normalized_task)
 
         # 2. Find or create signature (use original text for description)
-        # Pass extracted_values from planner to enable DSL generation from structure
+        # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
         signature, is_new = self.step_db.find_or_create(
             step_text=step.task,  # Keep original for description
             embedding=embedding,   # Use normalized embedding for matching
@@ -362,6 +362,7 @@ class Solver:
             parent_problem=problem,
             origin_depth=depth,  # Track decomposition depth
             extracted_values=getattr(step, 'extracted_values', None),
+            dsl_hint=getattr(step, 'dsl_hint', None),  # LLM → signature communication
         )
 
         logger.debug(
