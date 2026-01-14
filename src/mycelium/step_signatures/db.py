@@ -867,13 +867,17 @@ class StepSignatureDB:
         from mycelium.step_signatures.utils import cosine_similarity, unpack_embedding
 
         # Get signatures with NL interface populated
+        # Include decompose signatures - their NL interface guides decomposition
+        # even before they have executable DSLs. This enables signature-guided learning.
         with self._connection() as conn:
             cursor = conn.execute(
                 """SELECT * FROM step_signatures
-                   WHERE dsl_type != 'decompose'
-                   AND (clarifying_questions IS NOT NULL AND clarifying_questions != '[]'
-                        OR param_descriptions IS NOT NULL AND param_descriptions != '{}')
-                   ORDER BY successes DESC, uses DESC
+                   WHERE (clarifying_questions IS NOT NULL AND clarifying_questions != '[]'
+                          OR param_descriptions IS NOT NULL AND param_descriptions != '{}')
+                   ORDER BY
+                       CASE WHEN dsl_type != 'decompose' THEN 0 ELSE 1 END,
+                       successes DESC,
+                       uses DESC
                    LIMIT ?""",
                 (limit * 3,)  # Fetch more, filter by similarity
             )
