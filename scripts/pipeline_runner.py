@@ -53,7 +53,8 @@ class ProblemResult:
     signatures_matched: int = 0
     signatures_new: int = 0
     steps_with_injection: int = 0
-    matched_and_injected: int = 0  # Matched existing sig AND DSL succeeded
+    steps_with_routing: int = 0  # Routed through umbrella
+    matched_and_reused: int = 0  # Matched AND (DSL succeeded OR routed)
     new_signatures_created: int = 0
     error: Optional[str] = None
 
@@ -249,7 +250,8 @@ async def solve_problem(
             signatures_matched=result.signatures_matched,
             signatures_new=result.signatures_new,
             steps_with_injection=result.steps_with_injection,
-            matched_and_injected=result.matched_and_injected,
+            steps_with_routing=result.steps_with_routing,
+            matched_and_reused=result.matched_and_reused,
             new_signatures_created=0,  # V2 tracks this differently
         )
 
@@ -332,9 +334,10 @@ def run_pipeline(
         sigs_matched = sum(r.get("signatures_matched", 0) for r in mode_results)
         sigs_new = sum(r.get("signatures_new", 0) for r in mode_results)
         steps_injected = sum(r.get("steps_with_injection", 0) for r in mode_results)
-        matched_injected = sum(r.get("matched_and_injected", 0) for r in mode_results)
+        steps_routed = sum(r.get("steps_with_routing", 0) for r in mode_results)
+        matched_reused = sum(r.get("matched_and_reused", 0) for r in mode_results)
         match_rate = sigs_matched / total_steps if total_steps > 0 else 0.0
-        reuse_rate = matched_injected / total_steps if total_steps > 0 else 0.0
+        reuse_rate = matched_reused / total_steps if total_steps > 0 else 0.0
         avg_steps = total_steps / total if total > 0 else 0.0
 
         mode_stats[mode] = {
@@ -348,9 +351,10 @@ def run_pipeline(
             "signatures_matched": sigs_matched,
             "signatures_new": sigs_new,
             "steps_with_injection": steps_injected,
-            "matched_and_injected": matched_injected,
+            "steps_with_routing": steps_routed,
+            "matched_and_reused": matched_reused,
             "match_rate": match_rate,
-            "reuse_rate": reuse_rate,  # matched AND injected / total
+            "reuse_rate": reuse_rate,  # matched AND (injected OR routed) / total
         }
 
     # Aggregate by level (for MATH dataset)
@@ -416,10 +420,13 @@ def run_pipeline(
         match_rate = stats.get('match_rate', 0)
         reuse_rate = stats.get('reuse_rate', 0)
         sigs_matched = stats.get('signatures_matched', 0)
-        matched_injected = stats.get('matched_and_injected', 0)
+        matched_reused = stats.get('matched_and_reused', 0)
+        steps_injected = stats.get('steps_with_injection', 0)
+        steps_routed = stats.get('steps_with_routing', 0)
         sigs_new = stats.get('signatures_new', 0)
         total_steps = stats.get('total_steps', 0)
-        print(f"  {mode:15s} {avg_steps:.1f} steps/prob, {match_rate:5.1%} matched ({sigs_matched}/{total_steps}), {reuse_rate:5.1%} reused ({matched_injected}/{total_steps}), {sigs_new} new")
+        print(f"  {mode:15s} {avg_steps:.1f} steps/prob, {match_rate:5.1%} matched ({sigs_matched}/{total_steps}), {reuse_rate:5.1%} reused ({matched_reused}/{total_steps}), {sigs_new} new")
+        print(f"                  (reuse breakdown: {steps_injected} dsl, {steps_routed} routed)")
 
     if len(level_stats) > 1:
         print("\nResults by level:")
