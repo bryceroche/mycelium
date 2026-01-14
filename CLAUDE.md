@@ -63,6 +63,7 @@ When a problem is solved correctly, success credit propagates up the signature D
 - Max propagation depth is configurable (default 3 levels)
 This lets umbrella signatures accumulate credit from their children's successes, improving routing decisions.
 
+
 Brainstorming ideas
     rewrite DSL if centroid avg outside confidence bounds
     Umbrella signature routing should not require an LLM call
@@ -124,3 +125,8 @@ Don't fix and forget - always track issues in beads.
 5. `bd sync` to sync changes
 
 See `AGENTS.md` for detailed guidance.
+
+
+
+
+

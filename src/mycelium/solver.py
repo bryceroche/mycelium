@@ -52,14 +52,46 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# Depth-Aware Decomposition
+# BIG BANG Decomposition Strategy
 # =============================================================================
 
-def should_force_decompose(depth: int) -> bool:
-    """Check if we should force decomposition at this depth.
+# Cold start thresholds - aggressive decomposition until tree is built
+BIGBANG_SIGNATURE_THRESHOLD = 500  # Decompose aggressively until this many sigs
+BIGBANG_MIN_DEPTH = 3  # Always try to reach at least this depth during big bang
+BIGBANG_DECAY_PER_100_SIGS = 0.15  # Reduce decomposition probability as tree grows
 
-    Shallow depths (0-5) always decompose to build tree structure.
-    Deeper depths have exponentially decaying probability.
+# Track signature count (updated by solver)
+_signature_count_cache = {"count": 0, "last_check": 0}
+
+
+def get_signature_count() -> int:
+    """Get current signature count (cached for performance)."""
+    import time
+    now = time.time()
+    # Cache for 1 second to avoid DB hits on every call
+    if now - _signature_count_cache["last_check"] > 1.0:
+        try:
+            import sqlite3
+            conn = sqlite3.connect("mycelium.db")
+            count = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()[0]
+            conn.close()
+            _signature_count_cache["count"] = count
+            _signature_count_cache["last_check"] = now
+        except:
+            pass  # Use cached value on error
+    return _signature_count_cache["count"]
+
+
+def should_force_decompose(depth: int) -> bool:
+    """BIG BANG decomposition strategy.
+
+    During cold start (few signatures), decompose AGGRESSIVELY at all depths.
+    As tree grows, decay decomposition probability.
+    Eventually stabilize to only decompose on failure.
+
+    This is exploration vs exploitation:
+    - Early: EXPLORE by decomposing everything to build tree
+    - Later: EXPLOIT by using existing tree structure
 
     Args:
         depth: Current signature depth in the hierarchy
@@ -70,16 +102,40 @@ def should_force_decompose(depth: int) -> bool:
     if not DEPTH_DECOMPOSE_ENABLED:
         return False
 
-    # Always decompose at shallow depths
+    sig_count = get_signature_count()
+
+    # === BIG BANG PHASE ===
+    # When tree is small, decompose aggressively to explode structure
+    if sig_count < BIGBANG_SIGNATURE_THRESHOLD:
+        # Always decompose if we haven't reached minimum depth
+        if depth < BIGBANG_MIN_DEPTH:
+            return True
+
+        # Beyond min depth, probabilistic based on how far into big bang we are
+        # Start at 100%, decay as we approach threshold
+        progress = sig_count / BIGBANG_SIGNATURE_THRESHOLD  # 0.0 to 1.0
+        base_prob = 1.0 - (progress * 0.7)  # 100% -> 30% as tree grows
+
+        # Also decay by depth
+        depth_factor = max(0.1, 1.0 - (depth - BIGBANG_MIN_DEPTH) * 0.2)
+        prob = base_prob * depth_factor
+
+        if random.random() < prob:
+            logger.debug(
+                "[bigbang] Decomposing: sigs=%d depth=%d prob=%.2f",
+                sig_count, depth, prob
+            )
+            return True
+
+    # === STABLE PHASE ===
+    # After big bang, only decompose at very shallow depths or on failure
     if depth <= DEPTH_FORCE_DECOMPOSE_DEPTH:
         return True
 
-    # Exponential decay beyond force threshold
-    # P = DECAY_BASE ^ (depth - FORCE_DEPTH)
+    # Exponential decay for deeper depths
     depth_beyond = depth - DEPTH_FORCE_DECOMPOSE_DEPTH
     prob = max(DEPTH_DECOMPOSE_MIN_PROB, DEPTH_DECOMPOSE_DECAY_BASE ** depth_beyond)
 
-    # Probabilistic decomposition
     return random.random() < prob
 
 
