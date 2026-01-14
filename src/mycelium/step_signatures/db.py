@@ -34,6 +34,7 @@ from mycelium.config import (
 # Import from focused modules (scoring and DSL templates)
 from mycelium.step_signatures.scoring import (
     compute_routing_score,
+    compute_ucb1_score,
     normalize_step_text,
     increment_total_problems,
 )
@@ -451,7 +452,10 @@ class StepSignatureDB:
         embedding: np.ndarray,
         min_similarity: float,
     ) -> tuple[Optional[StepSignature], Optional[StepSignature], float]:
-        """Route through hierarchy within a transaction.
+        """Route through hierarchy using MCTS-style UCB1 selection.
+
+        Uses UCB1 scoring to balance exploitation (high-similarity, high-success)
+        with exploration (under-visited signatures that might be better).
 
         Returns:
             (best_match, parent_for_new, best_similarity)
@@ -501,7 +505,10 @@ class StepSignatureDB:
                 sim = cosine_similarity(embedding, current.centroid) if current.centroid is not None else 0.0
                 return current, current, sim
 
-            # Find best matching child
+            # MCTS UCB1 Selection: balance exploitation vs exploration
+            # parent_uses = current node's uses (N in UCB1 formula)
+            parent_uses = current.uses or 1
+
             best_child = None
             best_child_sim = 0.0
             best_child_score = 0.0
@@ -511,8 +518,13 @@ class StepSignatureDB:
                     continue
                 child_sim = cosine_similarity(embedding, child.centroid)
                 if child_sim >= min_similarity:
-                    score = compute_routing_score(
-                        child_sim, child.uses, child.successes, child.last_used_at
+                    # UCB1 score: exploit (sim * success_rate) + explore (bonus for under-visited)
+                    score = compute_ucb1_score(
+                        child_sim,
+                        child.uses,
+                        child.successes,
+                        parent_uses,
+                        child.last_used_at
                     )
                     if score > best_child_score:
                         best_child = child
@@ -525,15 +537,25 @@ class StepSignatureDB:
                 # Return best child below threshold as "best effort" (or None)
                 best_below = None
                 best_below_sim = 0.0
+                best_below_score = 0.0
                 for child in children:
                     if child.centroid is not None:
                         child_sim = cosine_similarity(embedding, child.centroid)
-                        if child_sim > best_below_sim:
+                        # Still use UCB1 for below-threshold exploration
+                        score = compute_ucb1_score(
+                            child_sim,
+                            child.uses,
+                            child.successes,
+                            parent_uses,
+                            child.last_used_at
+                        )
+                        if score > best_below_score:
                             best_below = child
                             best_below_sim = child_sim
+                            best_below_score = score
                 return best_below, parent_for_new, best_below_sim
 
-            # Move to best child
+            # Move to best child (selected by UCB1)
             parent_for_new = current  # Current umbrella is parent if we create here
             current = best_child
             depth += 1

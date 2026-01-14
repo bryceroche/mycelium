@@ -115,12 +115,18 @@ AUTO_DEMOTE_MIN_USES_FLOOR = 1   # Start at 1 (branch on first failure)
 AUTO_DEMOTE_MIN_USES_CAP = 5     # Never require more than 5 failures
 
 # =============================================================================
-# ROUTING SCORE FORMULA
+# MCTS ROUTING (UCB1-based exploration/exploitation)
 # =============================================================================
+# Uses UCB1 formula: score = exploit + C * sqrt(ln(N) / n)
+# Where exploit = similarity * success_rate, N = parent visits, n = child visits
+# This balances trying known-good paths vs exploring under-visited ones
 
-# Score = ROUTING_SIM_WEIGHT * cosine_sim + ROUTING_SUCCESS_WEIGHT * effective_rate
-ROUTING_SIM_WEIGHT = 0.85  # Weight for cosine similarity
-ROUTING_SUCCESS_WEIGHT = 0.15  # Weight for success rate
+MCTS_ENABLED = True  # Use MCTS-style UCB1 routing (vs pure greedy)
+MCTS_EXPLORATION_C = 1.0  # Exploration constant (higher = more exploration)
+                          # sqrt(2) ≈ 1.41 is theoretical optimal, 1.0 is more conservative
+MCTS_SIMILARITY_WEIGHT = 0.7  # Weight for semantic similarity in exploitation term
+MCTS_SUCCESS_WEIGHT = 0.3  # Weight for success rate in exploitation term
+MCTS_MIN_VISITS_FOR_UCB = 1  # Min visits before UCB exploration bonus applies
 
 # Bayesian prior for cold start (assume some successes before any data)
 ROUTING_PRIOR_SUCCESSES = 2
