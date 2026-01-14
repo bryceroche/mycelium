@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS step_signatures (
 
     -- Umbrella routing (DAG of DAGs)
     is_semantic_umbrella INTEGER DEFAULT 0,  -- 1 if routes to children
+    is_root INTEGER DEFAULT 0,  -- 1 if this is THE root signature (single entry point)
     depth INTEGER DEFAULT 0,  -- Routing depth (0=root, increases with parent-child hops)
 
     -- Metadata
@@ -160,6 +161,12 @@ def migrate_db(conn) -> None:
     if "depth" not in existing_cols:
         migrations.append(
             "ALTER TABLE step_signatures ADD COLUMN depth INTEGER DEFAULT 0"
+        )
+
+    # Add is_root if missing
+    if "is_root" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN is_root INTEGER DEFAULT 0"
         )
 
     # Run migrations
