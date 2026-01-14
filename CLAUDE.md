@@ -7,7 +7,8 @@ bd prime        # Load context from beads
 bd ready        # See available work
 ```
 
-Please allow Bryce to make edites to this file and the Readme.md file - dont overwrite his edits pls.
+Bryce is the user.  He likes to make edits to this file.  Please do not overwrite his edits.  
+
 
 ## Design Philosophy: Build for Scale
 **The system must grow on its own.** Avoid patterns that require manual maintenance or LLM fallback:
@@ -160,6 +161,28 @@ Use rich anchor texts that describe the operation semantically:
 ADDITION_ANCHOR = "combining quantities, finding total, summing values together"
 SUBTRACTION_ANCHOR = "finding difference, taking away, how much more or less"
 ```
+
+Key Questions
+how do clusters form? Emerge naturally from umbrella promotions
+How do we route? Like a decision tree, but learned from embeddings
+Cluster Centroid - Average of all descendant leaf embeddings 
+how does learning work at each level? Learn "these operation types cluster together"
+
+slow decay with if unused cache total num problems and compare to each sig to see it's % use.  this should be a SLOW decay not a fast one.
+
+
+when to create a new root -- only one root.  Every problem goes through the first root signature.
+how deep should the hierarchy go?  unbounded UMBRELLA_MAX_DEPTH 
+should routing ever skip leves.  No it should not
+how do hints work in hierarchical world?  surface clusters as operational types available.
+
+
+The Meta-Insight
+  The same pattern applies at every level:
+  - Problem decomposition: Break into sub-problems
+  - Signature organization: Break into sub-clusters
+  - Routing: Decompose the search space
+  It's turtles all the way down. 🐢
 
 
 ## Key Rule
