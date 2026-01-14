@@ -99,6 +99,197 @@ class StepSignatureDB:
             init_db(conn)
 
     # =========================================================================
+    # Root Management (Single Entry Point)
+    # =========================================================================
+
+    def get_root(self) -> Optional[StepSignature]:
+        """Get the root signature (single entry point for all routing).
+
+        The root is created automatically when the first signature is added.
+        All problems route through the root first.
+
+        Returns:
+            The root signature, or None if database is empty
+        """
+        with self._connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM step_signatures WHERE is_root = 1 LIMIT 1"
+            ).fetchone()
+            if row:
+                return self._row_to_signature(row)
+            return None
+
+    def has_root(self) -> bool:
+        """Check if a root signature exists."""
+        with self._connection() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM step_signatures WHERE is_root = 1 LIMIT 1"
+            ).fetchone()
+            return row is not None
+
+    def propagate_centroid_to_parents(
+        self,
+        conn,
+        child_id: int,
+        visited: set[int] = None,
+    ):
+        """Propagate centroid changes up to parent umbrellas.
+
+        When a child's centroid is updated, this recomputes parent centroids
+        as the average of their children's centroids, recursively up the tree.
+
+        This ensures umbrella centroids always represent the average of all
+        descendant leaf embeddings.
+
+        Args:
+            conn: Database connection (within transaction)
+            child_id: ID of the signature whose centroid was updated
+            visited: Set of already-visited parent IDs (cycle prevention)
+        """
+        if visited is None:
+            visited = set()
+
+        # Get parents of this child
+        cursor = conn.execute(
+            """SELECT DISTINCT parent_id FROM signature_relationships
+               WHERE child_id = ?""",
+            (child_id,)
+        )
+        parent_ids = [row[0] for row in cursor.fetchall()]
+
+        for parent_id in parent_ids:
+            if parent_id in visited:
+                continue
+            visited.add(parent_id)
+
+            # Get all children of this parent
+            cursor = conn.execute(
+                """SELECT s.centroid, s.embedding_count
+                   FROM signature_relationships r
+                   JOIN step_signatures s ON r.child_id = s.id
+                   WHERE r.parent_id = ?""",
+                (parent_id,)
+            )
+            children_data = cursor.fetchall()
+
+            if not children_data:
+                continue
+
+            # Compute parent centroid as weighted average of children
+            # Weight by embedding_count (more examples = more weight)
+            total_weight = 0
+            centroid_sum = None
+
+            for row in children_data:
+                child_centroid = unpack_embedding(row[0])
+                child_count = row[1] or 1
+                if child_centroid is None:
+                    continue
+
+                if centroid_sum is None:
+                    centroid_sum = child_centroid * child_count
+                else:
+                    centroid_sum = centroid_sum + (child_centroid * child_count)
+                total_weight += child_count
+
+            if centroid_sum is not None and total_weight > 0:
+                new_centroid = centroid_sum / total_weight
+                conn.execute(
+                    """UPDATE step_signatures
+                       SET centroid = ?, embedding_sum = ?, embedding_count = ?
+                       WHERE id = ?""",
+                    (pack_embedding(new_centroid), pack_embedding(centroid_sum),
+                     total_weight, parent_id),
+                )
+                logger.debug(
+                    "[db] Propagated centroid to parent %d (weight=%d)",
+                    parent_id, total_weight
+                )
+
+                # Recurse to grandparents
+                self.propagate_centroid_to_parents(conn, parent_id, visited)
+
+    def route_through_hierarchy(
+        self,
+        embedding: np.ndarray,
+        min_similarity: float = 0.85,
+        max_depth: int = None,
+    ) -> tuple[Optional[StepSignature], list[StepSignature]]:
+        """Route an embedding through the signature hierarchy.
+
+        Starting from the root, traverse down through umbrella signatures
+        by picking the best-matching child at each level until reaching
+        a leaf signature or no match is found.
+
+        Args:
+            embedding: The query embedding to route
+            min_similarity: Minimum similarity threshold to follow a route
+            max_depth: Maximum depth to traverse (default from config)
+
+        Returns:
+            Tuple of (best_leaf_signature, path_taken) where:
+            - best_leaf_signature: The leaf signature matched, or None if no match
+            - path_taken: List of signatures traversed from root to leaf
+        """
+        from mycelium.config import UMBRELLA_MAX_DEPTH
+
+        if max_depth is None:
+            max_depth = UMBRELLA_MAX_DEPTH
+
+        root = self.get_root()
+        if root is None:
+            return None, []
+
+        path = [root]
+        current = root
+        depth = 0
+
+        while depth < max_depth:
+            # If current is not an umbrella, it's a leaf - we're done
+            if not current.is_semantic_umbrella:
+                return current, path
+
+            # Get children of current umbrella
+            children = self.get_children(current.id)
+            if not children:
+                # Umbrella with no children - treat as leaf
+                return current, path
+
+            # Find best matching child
+            best_child = None
+            best_score = 0.0
+
+            for child_sig, _condition in children:
+                if child_sig.centroid is None:
+                    continue
+                sim = cosine_similarity(embedding, child_sig.centroid)
+                if sim >= min_similarity:
+                    # Use routing score for tiebreaking
+                    score = compute_routing_score(
+                        sim, child_sig.uses, child_sig.successes, child_sig.last_used_at
+                    )
+                    if score > best_score:
+                        best_child = child_sig
+                        best_score = score
+
+            if best_child is None:
+                # No child matches - return current as "best effort"
+                # (caller will decide whether to create new child)
+                return current, path
+
+            # Move to best child
+            path.append(best_child)
+            current = best_child
+            depth += 1
+
+        # Hit max depth - return current node
+        logger.warning(
+            "[db] Hit max routing depth %d at sig %d",
+            max_depth, current.id
+        )
+        return current, path
+
+    # =========================================================================
     # Core: Find or Create
     # =========================================================================
 
@@ -160,38 +351,43 @@ class StepSignatureDB:
         origin_depth: int = 0,
         extracted_values: dict = None,
     ) -> tuple[StepSignature, bool]:
-        """Internal atomic find-or-create with transaction locking."""
+        """Internal atomic find-or-create with hierarchical routing.
+
+        Routes through the signature hierarchy starting from root:
+        1. If DB is empty → create root signature
+        2. Route from root → best matching child → recurse until leaf
+        3. If leaf matches above threshold → update centroid and return
+        4. If no match → create new child under where routing stopped
+        """
         with self._connection() as conn:
             conn.execute("BEGIN IMMEDIATE")
             try:
-                # Find best matching signature
-                cursor = conn.execute("SELECT * FROM step_signatures")
-                rows = cursor.fetchall()
+                # Check if DB is empty (need to create root)
+                root_row = conn.execute(
+                    "SELECT id FROM step_signatures WHERE is_root = 1 LIMIT 1"
+                ).fetchone()
 
-                best_match = None
-                best_score = 0.0
+                if root_row is None:
+                    # Empty DB - create root signature
+                    sig = self._create_signature_atomic(
+                        conn, step_text, embedding, parent_problem, origin_depth,
+                        extracted_values=extracted_values
+                    )
+                    conn.commit()
+                    logger.info(
+                        "[db] Created ROOT signature: step='%s' type='%s'",
+                        step_text[:40], sig.step_type
+                    )
+                    return sig, True
 
-                for row in rows:
-                    centroid = unpack_embedding(row["centroid"])
-                    if centroid is None:
-                        continue
+                # Route through hierarchy to find best match
+                best_match, parent_for_new, best_sim = self._route_hierarchical(
+                    conn, embedding, min_similarity
+                )
 
-                    cosine_sim = cosine_similarity(embedding, centroid)
-                    uses = row["uses"] or 0
-                    successes = row["successes"] or 0
-                    last_used_at = row["last_used_at"]
-                    score = compute_routing_score(cosine_sim, uses, successes, last_used_at)
-
-                    if cosine_sim >= min_similarity and score > best_score:
-                        best_match = self._row_to_signature(row)
-                        best_score = score
-
-                if best_match:
+                if best_match is not None and best_sim >= min_similarity:
+                    # Found a match - update centroid
                     now = datetime.utcnow().isoformat()
-
-                    # Update centroid with new embedding (running average)
-                    # Do this inline to stay within the transaction
-                    # IMPORTANT: Fetch centroid too to avoid stale fallback race condition
                     row = conn.execute(
                         "SELECT embedding_sum, embedding_count, centroid FROM step_signatures WHERE id = ?",
                         (best_match.id,)
@@ -201,8 +397,6 @@ class StepSignatureDB:
                         current_sum = unpack_embedding(row["embedding_sum"])
                         current_count = row["embedding_count"] or 1
                     else:
-                        # Initialize from fresh centroid if no sum yet (migration case)
-                        # Use freshly-read centroid, not stale best_match.centroid
                         fresh_centroid = unpack_embedding(row["centroid"]) if row else None
                         current_sum = fresh_centroid.copy() if fresh_centroid is not None else embedding.copy()
                         current_count = 1
@@ -217,21 +411,32 @@ class StepSignatureDB:
                            WHERE id = ?""",
                         (pack_embedding(new_sum), new_count, pack_embedding(new_centroid), now, best_match.id),
                     )
+
+                    # Propagate centroid change up to parent umbrellas
+                    self.propagate_centroid_to_parents(conn, best_match.id)
+
                     conn.commit()
                     logger.debug(
-                        "[db] Matched signature: step='%s' sig='%s' score=%.3f count=%d",
-                        step_text[:40], best_match.step_type, best_score, new_count
+                        "[db] Matched signature (hierarchical): step='%s' sig='%s' sim=%.3f count=%d",
+                        step_text[:40], best_match.step_type, best_sim, new_count
                     )
                     return best_match, False
 
-                # Create new signature (Lazy NL: empty clarifying_questions, etc.)
+                # No match found - create new child under parent_for_new
                 sig = self._create_signature_atomic(
                     conn, step_text, embedding, parent_problem, origin_depth,
-                    extracted_values=extracted_values
+                    extracted_values=extracted_values,
+                    parent_id=parent_for_new.id if parent_for_new else None
                 )
+
+                # Propagate new child's centroid up to parent umbrellas
+                if sig.id is not None:
+                    self.propagate_centroid_to_parents(conn, sig.id)
+
                 conn.commit()
                 logger.info(
-                    "[db] Created new signature: step='%s' type='%s'",
+                    "[db] Created new signature (child of %s): step='%s' type='%s'",
+                    parent_for_new.step_type if parent_for_new else "root",
                     step_text[:40], sig.step_type
                 )
                 return sig, True
@@ -239,6 +444,103 @@ class StepSignatureDB:
             except Exception:
                 conn.rollback()
                 raise
+
+    def _route_hierarchical(
+        self,
+        conn,
+        embedding: np.ndarray,
+        min_similarity: float,
+    ) -> tuple[Optional[StepSignature], Optional[StepSignature], float]:
+        """Route through hierarchy within a transaction.
+
+        Returns:
+            (best_match, parent_for_new, best_similarity)
+            - best_match: Leaf signature if found above threshold
+            - parent_for_new: Umbrella where routing stopped (for creating new child)
+            - best_similarity: Similarity of best_match
+        """
+        from mycelium.config import UMBRELLA_MAX_DEPTH
+
+        # Start at root
+        root_row = conn.execute(
+            "SELECT * FROM step_signatures WHERE is_root = 1 LIMIT 1"
+        ).fetchone()
+
+        if root_row is None:
+            return None, None, 0.0
+
+        current = self._row_to_signature(root_row)
+        parent_for_new = current  # Track where to create new child
+        depth = 0
+
+        while depth < UMBRELLA_MAX_DEPTH:
+            # Check similarity to current node
+            if current.centroid is not None:
+                sim = cosine_similarity(embedding, current.centroid)
+                # If current is a leaf and matches, return it
+                if not current.is_semantic_umbrella and sim >= min_similarity:
+                    return current, parent_for_new, sim
+
+            # If current is not an umbrella, it's a leaf - return similarity result
+            if not current.is_semantic_umbrella:
+                sim = cosine_similarity(embedding, current.centroid) if current.centroid is not None else 0.0
+                return current, parent_for_new, sim
+
+            # Get children of current umbrella
+            cursor = conn.execute(
+                """SELECT s.* FROM signature_relationships r
+                   JOIN step_signatures s ON r.child_id = s.id
+                   WHERE r.parent_id = ?
+                   ORDER BY r.routing_order ASC""",
+                (current.id,)
+            )
+            children = [self._row_to_signature(row) for row in cursor.fetchall()]
+
+            if not children:
+                # Umbrella with no children - return current as best match
+                sim = cosine_similarity(embedding, current.centroid) if current.centroid is not None else 0.0
+                return current, current, sim
+
+            # Find best matching child
+            best_child = None
+            best_child_sim = 0.0
+            best_child_score = 0.0
+
+            for child in children:
+                if child.centroid is None:
+                    continue
+                child_sim = cosine_similarity(embedding, child.centroid)
+                if child_sim >= min_similarity:
+                    score = compute_routing_score(
+                        child_sim, child.uses, child.successes, child.last_used_at
+                    )
+                    if score > best_child_score:
+                        best_child = child
+                        best_child_sim = child_sim
+                        best_child_score = score
+
+            if best_child is None:
+                # No child matches above threshold - current is where we'd add new child
+                parent_for_new = current
+                # Return best child below threshold as "best effort" (or None)
+                best_below = None
+                best_below_sim = 0.0
+                for child in children:
+                    if child.centroid is not None:
+                        child_sim = cosine_similarity(embedding, child.centroid)
+                        if child_sim > best_below_sim:
+                            best_below = child
+                            best_below_sim = child_sim
+                return best_below, parent_for_new, best_below_sim
+
+            # Move to best child
+            parent_for_new = current  # Current umbrella is parent if we create here
+            current = best_child
+            depth += 1
+
+        # Hit max depth
+        sim = cosine_similarity(embedding, current.centroid) if current.centroid is not None else 0.0
+        return current, parent_for_new, sim
 
     def _create_signature_atomic(
         self,
@@ -248,13 +550,35 @@ class StepSignatureDB:
         parent_problem: str = "",
         origin_depth: int = 0,
         extracted_values: dict = None,
+        parent_id: int = None,
     ) -> StepSignature:
         """Create a new signature within an existing transaction.
 
         Auto-assigns DSL based on step_type, description, and extracted_values.
+
+        Hierarchical routing:
+        - First signature becomes THE root (is_root=1, is_semantic_umbrella=1)
+        - Subsequent signatures become children of specified parent (or root if not specified)
+
+        Args:
+            parent_id: ID of parent signature. If None, defaults to root.
         """
         sig_id = str(uuid.uuid4())
         now = datetime.utcnow().isoformat()
+
+        # Check if this will be the root (first signature in DB)
+        root_row = conn.execute(
+            "SELECT id FROM step_signatures WHERE is_root = 1 LIMIT 1"
+        ).fetchone()
+        is_first_signature = root_row is None
+
+        # Determine actual parent: use specified parent_id, or fall back to root
+        if parent_id is not None:
+            actual_parent_id = parent_id
+        elif root_row is not None:
+            actual_parent_id = root_row[0]
+        else:
+            actual_parent_id = None  # Creating the root
 
         step_type = self._infer_step_type(step_text)
         centroid_packed = pack_embedding(embedding)
@@ -286,16 +610,56 @@ class StepSignatureDB:
         clarifying_json = json.dumps(clarifying_questions)
         params_json = json.dumps(param_descriptions)
 
+        # Set flags based on whether this is the root
+        is_root_flag = 1 if is_first_signature else 0
+        # Root is an umbrella (routes to children), others start as leaves
+        is_umbrella = 1 if is_first_signature else 0
+
+        # Calculate depth based on parent
+        if is_first_signature:
+            actual_depth = 0  # Root is depth 0
+        elif actual_parent_id is not None:
+            # Get parent's depth
+            parent_row = conn.execute(
+                "SELECT depth FROM step_signatures WHERE id = ?",
+                (actual_parent_id,)
+            ).fetchone()
+            parent_depth = parent_row["depth"] if parent_row and parent_row["depth"] else 0
+            actual_depth = parent_depth + 1
+        else:
+            actual_depth = 1  # Fallback
+
         try:
             cursor = conn.execute(
                 """INSERT INTO step_signatures
                    (signature_id, centroid, embedding_sum, embedding_count, step_type, description,
-                    dsl_script, dsl_type, clarifying_questions, param_descriptions, depth, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    dsl_script, dsl_type, clarifying_questions, param_descriptions, depth,
+                    is_root, is_semantic_umbrella, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (sig_id, centroid_packed, embedding_sum_packed, 1, step_type, step_text,
-                 dsl_script, dsl_type, clarifying_json, params_json, origin_depth, now),
+                 dsl_script, dsl_type, clarifying_json, params_json, actual_depth,
+                 is_root_flag, is_umbrella, now),
             )
             row_id = cursor.lastrowid
+
+            # If not root, add as child of the appropriate parent
+            if not is_first_signature and actual_parent_id is not None:
+                # Add parent-child relationship
+                conn.execute(
+                    """INSERT OR IGNORE INTO signature_relationships
+                       (parent_id, child_id, condition, routing_order, created_at)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (actual_parent_id, row_id, step_type, 0, now),
+                )
+                # Mark parent as umbrella (it now has children)
+                conn.execute(
+                    "UPDATE step_signatures SET is_semantic_umbrella = 1 WHERE id = ?",
+                    (actual_parent_id,),
+                )
+                logger.debug(
+                    "[db] Added as child: parent_id=%d (depth=%d) -> child_id=%d (depth=%d) (condition='%s')",
+                    actual_parent_id, actual_depth - 1, row_id, actual_depth, step_type
+                )
         except sqlite3.IntegrityError:
             # Centroid collision - find existing signature
             row = conn.execute(
@@ -314,7 +678,10 @@ class StepSignatureDB:
             (row_id, step_text, pack_embedding(embedding), parent_problem, now),
         )
 
-        logger.debug("[db] Auto-assigned DSL type=%s for step_type=%s", dsl_type, step_type)
+        if is_first_signature:
+            logger.info("[db] Created ROOT signature: type=%s (first in DB)", step_type)
+        else:
+            logger.debug("[db] Auto-assigned DSL type=%s for step_type=%s", dsl_type, step_type)
 
         return StepSignature(
             id=row_id,
@@ -329,7 +696,9 @@ class StepSignatureDB:
             examples=[],
             uses=0,
             successes=0,
-            depth=origin_depth,
+            depth=actual_depth,
+            is_root=is_first_signature,
+            is_semantic_umbrella=is_first_signature,
             created_at=now,
         )
 
@@ -849,79 +1218,147 @@ class StepSignatureDB:
         problem_embedding: np.ndarray = None,
         min_similarity: float = 0.3,
     ) -> list:
-        """Get top signatures as hints for the decomposer.
+        """Get hierarchical signature hints for the decomposer.
 
-        Returns signatures with their NL interface info so the decomposer
-        knows what operations are available and what parameters they need.
+        Returns a mix of:
+        1. Cluster hints (umbrellas with children) - shows operation categories
+        2. Leaf hints (specific operations) - shows concrete patterns
+
+        This gives the planner a hierarchical view of available operations.
 
         Args:
-            limit: Maximum number of hints to return
-            problem_embedding: Optional embedding of the problem to filter hints
-                              by semantic similarity (quick win for relevance)
+            limit: Maximum number of top-level hints to return
+            problem_embedding: Optional embedding to filter by semantic similarity
             min_similarity: Minimum cosine similarity to include hint (default 0.3)
 
         Returns:
-            List of SignatureHint objects
+            List of SignatureHint objects (some with children for clusters)
         """
         from mycelium.planner import SignatureHint
-        from mycelium.step_signatures.utils import cosine_similarity, unpack_embedding
-
-        # Get signatures with NL interface populated
-        # Include decompose signatures - their NL interface guides decomposition
-        # even before they have executable DSLs. This enables signature-guided learning.
-        with self._connection() as conn:
-            cursor = conn.execute(
-                """SELECT * FROM step_signatures
-                   WHERE (clarifying_questions IS NOT NULL AND clarifying_questions != '[]'
-                          OR param_descriptions IS NOT NULL AND param_descriptions != '{}')
-                   ORDER BY
-                       CASE WHEN dsl_type != 'decompose' THEN 0 ELSE 1 END,
-                       successes DESC,
-                       uses DESC
-                   LIMIT ?""",
-                (limit * 3,)  # Fetch more, filter by similarity
-            )
-            signatures = [self._row_to_signature(row) for row in cursor.fetchall()]
-
-        # If problem embedding provided, filter by similarity
-        if problem_embedding is not None:
-            scored = []
-            for sig in signatures:
-                if sig.centroid is not None:
-                    sim = cosine_similarity(problem_embedding, sig.centroid)
-                    if sim >= min_similarity:
-                        scored.append((sig, sim))
-            # Sort by similarity, take top N
-            scored.sort(key=lambda x: x[1], reverse=True)
-            signatures = [sig for sig, _ in scored[:limit]]
-            logger.debug(
-                "[db] Filtered hints by embedding: %d → %d (min_sim=%.2f)",
-                len(scored) + (limit * 3 - len(scored)), len(signatures), min_similarity
-            )
 
         hints = []
-        for sig in signatures[:limit]:
-            # Get param names from DSL spec if available
-            param_names = []
-            if sig.dsl_script:
-                try:
-                    import json
-                    dsl_data = json.loads(sig.dsl_script) if sig.dsl_script.startswith('{') else {}
-                    param_names = dsl_data.get('params', [])
-                except (json.JSONDecodeError, TypeError):
-                    pass
+        seen_ids = set()
 
-            hint = SignatureHint(
-                step_type=sig.step_type,
-                description=sig.description,
-                param_names=param_names,
-                param_descriptions=sig.param_descriptions or {},
-                clarifying_questions=sig.clarifying_questions or [],
-            )
-            hints.append(hint)
+        with self._connection() as conn:
+            # First, get level-1 clusters (umbrellas that are children of root)
+            root = self.get_root()
+            if root is not None:
+                # Get root's children (level-1 clusters)
+                cursor = conn.execute(
+                    """SELECT s.* FROM signature_relationships r
+                       JOIN step_signatures s ON r.child_id = s.id
+                       WHERE r.parent_id = ?
+                       ORDER BY s.successes DESC, s.uses DESC
+                       LIMIT ?""",
+                    (root.id, limit)
+                )
+                level1_sigs = [self._row_to_signature(row) for row in cursor.fetchall()]
 
-        logger.debug("[db] Retrieved %d signature hints with NL interface for decomposer", len(hints))
+                # Filter by embedding similarity if provided
+                if problem_embedding is not None:
+                    scored = []
+                    for sig in level1_sigs:
+                        if sig.centroid is not None:
+                            sim = cosine_similarity(problem_embedding, sig.centroid)
+                            if sim >= min_similarity:
+                                scored.append((sig, sim))
+                    scored.sort(key=lambda x: x[1], reverse=True)
+                    level1_sigs = [sig for sig, _ in scored]
+
+                # Build cluster hints
+                for sig in level1_sigs:
+                    seen_ids.add(sig.id)
+
+                    # Get children of this cluster
+                    child_hints = []
+                    if sig.is_semantic_umbrella:
+                        child_cursor = conn.execute(
+                            """SELECT s.* FROM signature_relationships r
+                               JOIN step_signatures s ON r.child_id = s.id
+                               WHERE r.parent_id = ?
+                               ORDER BY s.successes DESC
+                               LIMIT 5""",
+                            (sig.id,)
+                        )
+                        for child_row in child_cursor.fetchall():
+                            child_sig = self._row_to_signature(child_row)
+                            seen_ids.add(child_sig.id)
+                            child_hints.append(SignatureHint(
+                                step_type=child_sig.step_type,
+                                description=child_sig.description,
+                                param_names=self._extract_param_names(child_sig),
+                                param_descriptions=child_sig.param_descriptions or {},
+                                clarifying_questions=child_sig.clarifying_questions or [],
+                                is_cluster=False,
+                                children=[],
+                            ))
+
+                    hint = SignatureHint(
+                        step_type=sig.step_type,
+                        description=sig.description,
+                        param_names=self._extract_param_names(sig),
+                        param_descriptions=sig.param_descriptions or {},
+                        clarifying_questions=sig.clarifying_questions or [],
+                        is_cluster=sig.is_semantic_umbrella and len(child_hints) > 0,
+                        children=child_hints,
+                    )
+                    hints.append(hint)
+
+            # Fill remaining slots with high-quality leaf signatures not already included
+            remaining = limit - len(hints)
+            if remaining > 0:
+                placeholders = ",".join("?" * len(seen_ids)) if seen_ids else "0"
+                cursor = conn.execute(
+                    f"""SELECT * FROM step_signatures
+                       WHERE id NOT IN ({placeholders})
+                       AND (clarifying_questions IS NOT NULL AND clarifying_questions != '[]'
+                            OR param_descriptions IS NOT NULL AND param_descriptions != '{{}}')
+                       AND is_semantic_umbrella = 0
+                       ORDER BY successes DESC, uses DESC
+                       LIMIT ?""",
+                    list(seen_ids) + [remaining * 2]
+                )
+                leaf_sigs = [self._row_to_signature(row) for row in cursor.fetchall()]
+
+                # Filter by embedding if provided
+                if problem_embedding is not None:
+                    scored = []
+                    for sig in leaf_sigs:
+                        if sig.centroid is not None:
+                            sim = cosine_similarity(problem_embedding, sig.centroid)
+                            if sim >= min_similarity:
+                                scored.append((sig, sim))
+                    scored.sort(key=lambda x: x[1], reverse=True)
+                    leaf_sigs = [sig for sig, _ in scored[:remaining]]
+                else:
+                    leaf_sigs = leaf_sigs[:remaining]
+
+                for sig in leaf_sigs:
+                    hints.append(SignatureHint(
+                        step_type=sig.step_type,
+                        description=sig.description,
+                        param_names=self._extract_param_names(sig),
+                        param_descriptions=sig.param_descriptions or {},
+                        clarifying_questions=sig.clarifying_questions or [],
+                        is_cluster=False,
+                        children=[],
+                    ))
+
+        logger.debug(
+            "[db] Retrieved %d hierarchical hints (%d clusters)",
+            len(hints), sum(1 for h in hints if h.is_cluster)
+        )
         return hints
+
+    def _extract_param_names(self, sig) -> list[str]:
+        """Extract parameter names from a signature's DSL spec."""
+        if not sig.dsl_script:
+            return []
+        try:
+            dsl_data = json.loads(sig.dsl_script) if sig.dsl_script.startswith('{') else {}
+            return dsl_data.get('params', [])
+        except (json.JSONDecodeError, TypeError):
+            return []
 
     # =========================================================================
     # Umbrella Routing (DAG of DAGs)

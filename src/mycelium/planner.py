@@ -92,15 +92,27 @@ class SignatureHint:
 
     Communicates what the signature does and what parameters it needs,
     so the decomposer can create steps with appropriate extracted_values.
+
+    For umbrella signatures (clusters), `children` contains the specific
+    operations available under this category.
     """
     step_type: str
     description: str
     param_names: list[str] = field(default_factory=list)
     param_descriptions: dict[str, str] = field(default_factory=dict)
     clarifying_questions: list[str] = field(default_factory=list)
+    is_cluster: bool = False  # True if this is an umbrella (category) signature
+    children: list["SignatureHint"] = field(default_factory=list)  # Child operations for clusters
 
     def to_hint_text(self) -> str:
         """Format as hint text for the planner prompt."""
+        if self.is_cluster and self.children:
+            # Format as cluster with children
+            lines = [f"- **{self.step_type}** (cluster): {self.description[:80]}"]
+            for child in self.children[:5]:  # Limit children shown
+                lines.append(f"    - {child.step_type}: {child.description[:60]}")
+            return "\n".join(lines)
+
         lines = [f"- **{self.step_type}**: {self.description}"]
 
         if self.param_names:

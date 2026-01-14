@@ -68,6 +68,7 @@ class StepSignature:
 
     # Umbrella routing (DAG of DAGs)
     is_semantic_umbrella: bool = False  # True if routes to children
+    is_root: bool = False  # True if this is THE root signature (single entry point)
     depth: int = 0  # Routing depth (0=root, increases with parent-child hops)
 
     # Metadata
@@ -199,6 +200,7 @@ class StepSignature:
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
+            is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,
             created_at=row.get("created_at"),
             last_used_at=row.get("last_used_at"),
