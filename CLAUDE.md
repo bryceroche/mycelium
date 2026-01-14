@@ -7,6 +7,8 @@ bd prime        # Load context from beads
 bd ready        # See available work
 ```
 
+Please allow Bryce to make edites to this file and the Readme.md file - dont overwrite his edits pls.
+
 ## Design Philosophy: Build for Scale
 **The system must grow on its own.** Avoid patterns that require manual maintenance or LLM fallback:
 We want the system to be self-sufficient and scalable.  We do not want the system to rely on patches from Claude or rely on LLM Fallback.
