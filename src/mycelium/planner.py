@@ -25,17 +25,10 @@ CRITICAL: Output ONLY in this exact format. No markdown headers, no explanations
     semantic_name: numeric_value
   depends_on: []
 
-- id: step_2
-  task: [what to do]
-  values:
-    input_value: "{step_1}"
-    other_value: 123
-  depends_on: [step_1]
-
 - id: final
   task: Combine results to get final answer
   values: {}
-  depends_on: [step_2]
+  depends_on: [step_1]
 
 RULES:
 1. Output ONLY the step list above. Nothing else.
@@ -43,9 +36,10 @@ RULES:
 3. DO NOT solve the problem or compute answers.
 4. DO NOT include "The final answer is" or any boxed answers.
 5. Each task describes WHAT to do, not the solution.
-6. Keep to 3-6 steps.
+6. PREFER FEWER STEPS: Use 1-2 steps for simple problems. Only use 3+ steps for genuinely complex problems.
 7. EXTRACT numeric values from the problem and assign semantic names.
 8. Use "{step_N}" to reference the result of a previous step.
+9. If an available operation can solve the problem directly, use just ONE step.
 
 EXAMPLE for "Earth's circumference is 40,000 km. How many trips for 1 billion meters?":
 
