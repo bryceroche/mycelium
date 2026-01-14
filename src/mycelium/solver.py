@@ -21,6 +21,8 @@ from typing import Optional
 
 import numpy as np
 
+import random
+
 from mycelium.config import (
     MIN_MATCH_THRESHOLD,
     RECURSIVE_DECOMPOSITION_ENABLED,
@@ -28,6 +30,10 @@ from mycelium.config import (
     RECURSIVE_CONFIDENCE_THRESHOLD,
     UMBRELLA_MAX_DEPTH,
     UMBRELLA_ROUTING_THRESHOLD,
+    DEPTH_DECOMPOSE_ENABLED,
+    DEPTH_FORCE_DECOMPOSE_DEPTH,
+    DEPTH_DECOMPOSE_DECAY_BASE,
+    DEPTH_DECOMPOSE_MIN_PROB,
 )
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures.semantic_validation import (
@@ -43,6 +49,38 @@ from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.embedder import Embedder
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Depth-Aware Decomposition
+# =============================================================================
+
+def should_force_decompose(depth: int) -> bool:
+    """Check if we should force decomposition at this depth.
+
+    Shallow depths (0-5) always decompose to build tree structure.
+    Deeper depths have exponentially decaying probability.
+
+    Args:
+        depth: Current signature depth in the hierarchy
+
+    Returns:
+        True if should force decompose, False if should try DSL execution
+    """
+    if not DEPTH_DECOMPOSE_ENABLED:
+        return False
+
+    # Always decompose at shallow depths
+    if depth <= DEPTH_FORCE_DECOMPOSE_DEPTH:
+        return True
+
+    # Exponential decay beyond force threshold
+    # P = DECAY_BASE ^ (depth - FORCE_DEPTH)
+    depth_beyond = depth - DEPTH_FORCE_DECOMPOSE_DEPTH
+    prob = max(DEPTH_DECOMPOSE_MIN_PROB, DEPTH_DECOMPOSE_DECAY_BASE ** depth_beyond)
+
+    # Probabilistic decomposition
+    return random.random() < prob
 
 
 # =============================================================================
@@ -408,12 +446,36 @@ class Solver:
                 )
 
         # 4. Try DSL execution if not already routed
-        if result is None and routed_signature.dsl_script:
+        # BUT: At shallow depths, force decomposition to build tree structure
+        sig_depth = routed_signature.depth or 0
+        force_decompose = should_force_decompose(sig_depth)
+
+        if result is None and routed_signature.dsl_script and not force_decompose:
             dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
             if dsl_result is not None:
                 result = dsl_result
                 was_injected = True
                 logger.debug("[solver] DSL executed: %s", result[:50] if result else "")
+
+        # 4.5. Force decomposition at shallow depths - actually decompose, don't just skip
+        if result is None and force_decompose and not routed_signature.is_semantic_umbrella:
+            logger.info(
+                "[solver] Depth %d: forcing decomposition for '%s'",
+                sig_depth, routed_signature.step_type
+            )
+            await self._auto_decompose_signature(routed_signature)
+            # Refresh and try routing through the new umbrella
+            routed_signature = self.step_db.get_signature(routed_signature.id)
+            if routed_signature.is_semantic_umbrella:
+                child_result = await self._try_umbrella_routing(
+                    routed_signature, step, problem, context, step_descriptions, embedding=embedding
+                )
+                if child_result is not None:
+                    result, routed_signature, was_injected = child_result
+                    logger.info(
+                        "[solver] After forced decompose, routed to: '%s'",
+                        routed_signature.step_type
+                    )
 
         # 5. No LLM fallback - strict DAG execution
         # Three outcomes: route to child, create child, or fail
