@@ -52,8 +52,9 @@ notes/
 !mycelium_768.db
 *.db-shm
 *.db-wal
-scripts/claude_custom_dsls*.json
-scripts/math_L*_cache.json
+# Generated JSON files
+scripts/*.json
+src/mycelium/*.json
 mycelium_768.db
 paper.docx
 paper.html
