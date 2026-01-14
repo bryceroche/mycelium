@@ -15,6 +15,8 @@ import json
 import logging
 from typing import Optional
 
+from mycelium.config import DSL_OPERATION_INFERENCE_THRESHOLD
+
 logger = logging.getLogger(__name__)
 
 
@@ -264,7 +266,7 @@ def _infer_operation_semantic(
     description: str,
     num_params: int,
     param_names: list = None,
-    min_similarity: float = 0.35,
+    min_similarity: float = DSL_OPERATION_INFERENCE_THRESHOLD,
 ) -> Optional[tuple[str, str]]:
     """Infer math operation using dual-channel semantic embedding.
 
@@ -354,16 +356,17 @@ def _infer_operation_semantic(
         best_sim = combined_sims[best_op]
 
         if best_sim >= min_similarity:
-            logger.debug(
-                "[dsl_infer] Semantic match: '%s' → '%s' (sim=%.3f, param_w=%.1f, top=%s)",
-                step_type, best_op, best_sim, param_weight,
+            logger.info(
+                "[dsl_infer] ACCEPTED: '%s' → '%s' (sim=%.3f, threshold=%.3f, top=%s)",
+                step_type, best_op, best_sim, min_similarity,
                 {k: f"{v:.2f}" for k, v in sorted(combined_sims.items(), key=lambda x: -x[1])[:4]}
             )
             return (best_op, _DESCRIPTION_ANCHORS.get(best_op, best_op))
 
-        logger.debug(
-            "[dsl_infer] No match above threshold: best=%s sim=%.3f < %.3f",
-            best_op, best_sim, min_similarity
+        # Log at INFO level so rejections are visible - this is learning data
+        logger.info(
+            "[dsl_infer] REJECTED: '%s' best_match='%s' sim=%.3f < threshold=%.3f → decompose",
+            step_type, best_op, best_sim, min_similarity
         )
         return None
 

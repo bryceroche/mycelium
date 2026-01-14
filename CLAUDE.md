@@ -62,6 +62,26 @@ When a problem is solved correctly, success credit propagates up the signature D
 
 This lets umbrella signatures accumulate credit from their children's successes, improving routing decisions.
 
+
+## Addressing limitations of the Math Embedding Model and the Planner Decomposition Quality
+**The DSL/signature system works. The planner decomposition doesn't match mathematical structure.**
+****
+The embedding model clusters by vocabulary not operational semantics.
+## Solution: Signature-Guided Decomposition
+**Signatures already know what they need. Surface this to the planner BEFORE decomposition.**
+We have bi-directional NL communication:
+- **Signatures → Planner**: `clarifying_questions`, `param_descriptions`
+- **Planner → Signatures**: `extracted_values`, step descriptions
+
+Signature-Guided Planning
+
+  1. Query before decompose — Ask signatures what params they need, so the planner knows what to extract upfront
+  2. Semantic coherence — Embed step outputs vs next step inputs; low similarity = broken chain
+  3. NL failure feedback — Failed signatures explain why ("got identical values, need different ones") → planner retries with guidance
+
+  Key insight: Signatures declare their needs via clarifying_questions. Surface this BEFORE decomposition, not after.
+
+
 ### Depth-Based Branching
 We want the system to prefer routing to existing signatures first and then only create new ones when necessary.
 Shallow nodes (low depth) are more likely to **create new children** when decomposed. Deep nodes are more likely to **repoint to existing signatures**.
@@ -119,24 +139,6 @@ Use rich anchor texts that describe the operation semantically:
 ADDITION_ANCHOR = "combining quantities, finding total, summing values together"
 SUBTRACTION_ANCHOR = "finding difference, taking away, how much more or less"
 ```
-
-## Addressing limitations of the Math Embedding Model and the Planner Decomposition Quality
-**The DSL/signature system works. The planner decomposition doesn't match mathematical structure.**
-****
-The embedding model clusters by vocabulary not operational semantics.
-## Solution: Signature-Guided Decomposition
-**Signatures already know what they need. Surface this to the planner BEFORE decomposition.**
-We have bi-directional NL communication:
-- **Signatures → Planner**: `clarifying_questions`, `param_descriptions`
-- **Planner → Signatures**: `extracted_values`, step descriptions
-
-Signature-Guided Planning
-
-  1. Query before decompose — Ask signatures what params they need, so the planner knows what to extract upfront
-  2. Semantic coherence — Embed step outputs vs next step inputs; low similarity = broken chain
-  3. NL failure feedback — Failed signatures explain why ("got identical values, need different ones") → planner retries with guidance
-
-  Key insight: Signatures declare their needs via clarifying_questions. Surface this BEFORE decomposition, not after.
 
 
 ## Key Rule
