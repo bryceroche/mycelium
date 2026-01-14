@@ -27,35 +27,94 @@ logger = logging.getLogger(__name__)
 def get_dsl_inference_threshold() -> float:
     """Get cold-start aware DSL inference threshold.
 
-    Ramps from COLD_START to MATURE as signature count grows:
-    - Few signatures: low threshold → try more DSLs → bootstrap learning
-    - Many signatures: high threshold → be selective → use proven paths
+    Ramps from COLD_START to MATURE as executable DSL count grows:
+    - Few DSLs: low threshold → try more DSLs → bootstrap learning
+    - Many DSLs: high threshold → be selective → use proven paths
+
+    Only counts executable DSLs (not decompose umbrellas) since those
+    are the signatures that can actually succeed and provide learning signal.
 
     Returns:
-        Threshold between COLD_START and MATURE based on signature count
+        Threshold between COLD_START and MATURE based on executable DSL count
     """
     try:
         from mycelium.data_layer import get_db
         conn = get_db()
-        row = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()
-        sig_count = row[0] if row else 0
+        # Count only executable DSLs, not decompose umbrellas
+        row = conn.execute(
+            "SELECT COUNT(*) FROM step_signatures WHERE dsl_type != 'decompose'"
+        ).fetchone()
+        dsl_count = row[0] if row else 0
     except Exception:
-        sig_count = 0
+        dsl_count = 0
 
     # Linear ramp from cold_start to mature
-    if sig_count >= DSL_OPERATION_INFERENCE_RAMP_SIGS:
+    if dsl_count >= DSL_OPERATION_INFERENCE_RAMP_SIGS:
         threshold = DSL_OPERATION_INFERENCE_MATURE
     else:
-        ramp = sig_count / DSL_OPERATION_INFERENCE_RAMP_SIGS
+        ramp = dsl_count / DSL_OPERATION_INFERENCE_RAMP_SIGS
         threshold = DSL_OPERATION_INFERENCE_COLD_START + ramp * (
             DSL_OPERATION_INFERENCE_MATURE - DSL_OPERATION_INFERENCE_COLD_START
         )
 
     logger.debug(
-        "[dsl_infer] Cold-start threshold: %.3f (sigs=%d, ramp=%d)",
-        threshold, sig_count, DSL_OPERATION_INFERENCE_RAMP_SIGS
+        "[dsl_infer] Cold-start threshold: %.3f (exec_dsls=%d, ramp=%d)",
+        threshold, dsl_count, DSL_OPERATION_INFERENCE_RAMP_SIGS
     )
     return threshold
+
+
+def _build_dsl_from_hint(
+    dsl_hint: str,
+    extracted_values: dict,
+    description: str,
+) -> Optional[tuple[str, str]]:
+    """Build DSL directly from planner's operation hint.
+
+    This is the key bidirectional communication: the LLM tells us exactly
+    which operation to use, and we construct the DSL accordingly.
+
+    Args:
+        dsl_hint: Operation hint from planner (+, -, *, /)
+        extracted_values: Dict of semantic param names -> values
+        description: Step description for logging
+
+    Returns:
+        (dsl_script_json, dsl_type) or None if hint is invalid
+    """
+    # Normalize the hint
+    hint = dsl_hint.strip().lower()
+
+    # Map common hint variations to operators
+    HINT_TO_OP = {
+        "+": "+", "add": "+", "addition": "+", "sum": "+", "plus": "+",
+        "-": "-", "subtract": "-", "subtraction": "-", "minus": "-", "difference": "-",
+        "*": "*", "multiply": "*", "multiplication": "*", "times": "*", "product": "*",
+        "/": "/", "divide": "/", "division": "/", "quotient": "/", "ratio": "/",
+    }
+
+    operator = HINT_TO_OP.get(hint)
+    if not operator:
+        logger.debug("[dsl_infer] Unknown dsl_hint '%s', ignoring", dsl_hint)
+        return None
+
+    # Get param names from extracted_values
+    params = [k for k in extracted_values.keys() if not k.startswith("{")]
+    if len(params) < 2:
+        logger.debug("[dsl_infer] dsl_hint needs 2+ params, got %d", len(params))
+        return None
+
+    # Build script with first two params
+    p1, p2 = params[0], params[1]
+    script = f"{p1} {operator} {p2}"
+
+    dsl = {
+        "type": "math",
+        "script": script,
+        "params": [p1, p2],
+        "purpose": f"planner hint: {dsl_hint}",
+    }
+    return json.dumps(dsl), "math"
 
 
 def infer_dsl_for_signature(
@@ -63,10 +122,12 @@ def infer_dsl_for_signature(
     description: str,
     db=None,
     extracted_values: dict = None,
+    dsl_hint: str = None,
 ) -> tuple[Optional[str], str]:
     """Infer DSL script and type for a new signature.
 
     Priority order:
+    0. Use dsl_hint if provided by planner (LLM → signature communication)
     1. Generate from extracted_values (planner already knows the structure)
     2. Find similar successful DSLs from database
     3. Fall back to decompose for truly novel patterns
@@ -76,10 +137,19 @@ def infer_dsl_for_signature(
         description: The step description text
         db: Optional signature database for similarity lookup
         extracted_values: Dict of semantic param names -> values from planner
+        dsl_hint: Explicit operation hint from planner (+, -, *, /)
 
     Returns:
         Tuple of (dsl_script_json, dsl_type)
     """
+    # Priority 0: Use dsl_hint from planner (bidirectional LLM-signature communication)
+    # The LLM analyzed the problem and told us which operation to use
+    if dsl_hint and extracted_values:
+        dsl = _build_dsl_from_hint(dsl_hint, extracted_values, description)
+        if dsl:
+            logger.info("[dsl_infer] Using planner dsl_hint='%s' for '%s'", dsl_hint, step_type)
+            return dsl
+
     # Priority 1: Generate DSL from extracted_values structure
     # The planner already extracted semantic param names - use them!
     if extracted_values:
@@ -446,7 +516,21 @@ def _infer_operation_semantic(
         best_op = max(combined_sims, key=combined_sims.get)
         best_sim = combined_sims[best_op]
 
-        if best_sim >= min_similarity:
+        # Exotic operations (**, factorial, perm, etc.) require higher confidence
+        # Basic arithmetic (+, -, *, /) can use normal threshold
+        # This prevents embedding noise from matching "total eggs" to "power"
+        BASIC_OPS = {"+", "-", "*", "/"}
+        EXOTIC_THRESHOLD_BONUS = 0.25  # Require 25% higher similarity for exotic ops
+
+        effective_threshold = min_similarity
+        if best_op not in BASIC_OPS:
+            effective_threshold = min_similarity + EXOTIC_THRESHOLD_BONUS
+            logger.debug(
+                "[dsl_infer] Exotic op '%s' requires higher threshold: %.3f",
+                best_op, effective_threshold
+            )
+
+        if best_sim >= effective_threshold:
             logger.info(
                 "[dsl_infer] ACCEPTED: '%s' → '%s' (sim=%.3f, threshold=%.3f, top=%s)",
                 step_type, best_op, best_sim, min_similarity,

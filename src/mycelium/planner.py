@@ -23,11 +23,13 @@ CRITICAL: Output ONLY in this exact format. No markdown headers, no explanations
   task: [what to do, not how to do it]
   values:
     semantic_name: numeric_value
+  dsl_hint: [operation: +, -, *, /]
   depends_on: []
 
 - id: final
   task: Combine results to get final answer
   values: {}
+  dsl_hint: +
   depends_on: [step_1]
 
 RULES:
@@ -40,6 +42,13 @@ RULES:
 7. EXTRACT numeric values from the problem and assign semantic names.
 8. Use "{step_N}" to reference the result of a previous step.
 9. If an available operation can solve the problem directly, use just ONE step.
+10. ALWAYS include dsl_hint with the math operation: + (add), - (subtract), * (multiply), / (divide)
+
+DSL_HINT GUIDE:
+- "total", "sum", "combined", "together" → dsl_hint: +
+- "difference", "remaining", "left", "fewer" → dsl_hint: -
+- "rate × quantity", "area", "per × count", "times" → dsl_hint: *
+- "split", "per", "ratio", "divided", "each" → dsl_hint: /
 
 EXAMPLE for "Earth's circumference is 40,000 km. How many trips for 1 billion meters?":
 
@@ -48,6 +57,7 @@ EXAMPLE for "Earth's circumference is 40,000 km. How many trips for 1 billion me
   values:
     distance_meters: 1000000000
     meters_per_km: 1000
+  dsl_hint: /
   depends_on: []
 
 - id: step_2
@@ -55,6 +65,7 @@ EXAMPLE for "Earth's circumference is 40,000 km. How many trips for 1 billion me
   values:
     total_km: "{step_1}"
     circumference_km: 40000
+  dsl_hint: /
   depends_on: [step_1]
 
 GOOD task: "Solve the quadratic equation 2x^2 - 7x + 2 = 0 for its roots"
@@ -466,7 +477,7 @@ class Planner:
                 continue
 
             # Inside values block - parse indented key: value pairs
-            if parsing_values and current_step and stripped and not re.match(r'^-?\s*(id|task|depends_on)\s*:', stripped, re.IGNORECASE):
+            if parsing_values and current_step and stripped and not re.match(r'^-?\s*(id|task|depends_on|dsl_hint)\s*:', stripped, re.IGNORECASE):
                 # Parse key: value
                 if ":" in stripped:
                     key, val = stripped.split(":", 1)
