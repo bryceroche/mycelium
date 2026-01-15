@@ -165,6 +165,14 @@ def init_db(conn) -> None:
     """Initialize the V2 database schema."""
     conn.executescript(SQLITE_SCHEMA)
     conn.commit()
+
+    # WAL checkpoint on startup - merge WAL back into main DB file
+    # Prevents WAL file from growing unbounded between restarts
+    try:
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    except Exception as e:
+        logger.warning("[schema] WAL checkpoint failed: %s", e)
+
     # Run migrations for existing DBs
     migrate_db(conn)
 
