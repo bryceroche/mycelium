@@ -175,6 +175,11 @@ class UmbrellaLearner:
                     if depth == 0:
                         return text[start:i+1]
 
+        # Log the failure with a preview of the text
+        logger.warning(
+            "[umbrella] Failed to extract JSON from response (len=%d): %s",
+            len(text), text[:200] if text else "(empty)"
+        )
         return None
 
     def get_decomposition_candidates(self) -> list[StepSignature]:
