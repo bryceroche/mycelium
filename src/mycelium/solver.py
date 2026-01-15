@@ -41,7 +41,7 @@ from mycelium.config import (
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
 from mycelium.step_signatures.db import normalize_step_text
-from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math, validate_extracted_values
+from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.embedder import Embedder
 
@@ -872,21 +872,6 @@ Respond with ONLY the number (0-{len(children)})."""
         # Get operation hint from planner
         dsl_hint = getattr(step, 'dsl_hint', None)
         extracted_values = getattr(step, 'extracted_values', {}) or {}
-
-        # Validate extracted values using signature's NL context (bidirectional communication)
-        # This catches semantic mismatches like "overtime_hours" pointing to a "pay calculation" step
-        if extracted_values and signature.param_descriptions and step_descriptions:
-            validated_extractions, rejected = validate_extracted_values(
-                extracted_values,
-                step_descriptions,
-                signature.param_descriptions,
-            )
-            if rejected:
-                logger.info(
-                    "[solver] Extraction validation rejected %d params: %s",
-                    len(rejected), rejected
-                )
-            extracted_values = validated_extractions
 
         # Handle extraction-only steps: no dsl_hint but has single extracted value
         # These steps just extract a constant from the problem (e.g., "eggs per day = 16")
