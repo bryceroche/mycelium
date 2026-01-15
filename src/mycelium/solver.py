@@ -73,7 +73,8 @@ def get_signature_count() -> int:
     if now - _signature_count_cache["last_check"] > 1.0:
         try:
             import sqlite3
-            conn = sqlite3.connect("mycelium.db")
+            conn = sqlite3.connect("mycelium.db", timeout=30.0)
+            conn.execute("PRAGMA busy_timeout = 30000")
             count = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()[0]
             conn.close()
             _signature_count_cache["count"] = count

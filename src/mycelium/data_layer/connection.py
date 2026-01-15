@@ -61,6 +61,9 @@ class ConnectionManager:
                 self._db_path, check_same_thread=False, timeout=30.0
             )
             self._local.conn.row_factory = sqlite3.Row
+            # Enable WAL mode for better concurrent access
+            self._local.conn.execute("PRAGMA journal_mode = WAL")
+            self._local.conn.execute("PRAGMA busy_timeout = 30000")
             self._local.conn.execute("PRAGMA foreign_keys = ON")
         return self._local.conn
 

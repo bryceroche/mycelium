@@ -60,8 +60,9 @@ def get_total_problems_solved(db_path: str = DB_PATH) -> int:
 
     # Query DB for fresh value
     try:
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(db_path, timeout=30.0)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA busy_timeout = 30000")
         row = conn.execute(
             "SELECT value FROM db_metadata WHERE key = 'total_problems_solved'"
         ).fetchone()
@@ -84,8 +85,9 @@ def increment_total_problems(db_path: str = DB_PATH) -> int:
     Called once per problem completion. Also updates the cache.
     """
     try:
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(db_path, timeout=30.0)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA busy_timeout = 30000")
         now_iso = datetime.now(timezone.utc).isoformat()
 
         # Upsert the counter
