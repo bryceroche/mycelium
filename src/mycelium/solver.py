@@ -996,40 +996,13 @@ class Solver:
                 )
                 return None
         else:
-            # Fallback to LLM routing if no embedding available
-            conditions = [f"{i+1}. {cond}" for i, (_, cond) in enumerate(children)]
-            prompt = f"""Given this step: "{step.task}"
-
-Which of these sub-categories best matches?
-{chr(10).join(conditions)}
-0. None of the above
-
-Respond with ONLY the number (0-{len(children)})."""
-
-            messages = [{"role": "user", "content": prompt}]
-            response = await self.solver_client.generate(messages, temperature=0.0)
-
-            # Parse response - robust regex extraction
-            choice = 0
-            match = re.search(r'\b([0-9]+)\b', response)
-            if match:
-                try:
-                    choice = int(match.group(1))
-                except ValueError:
-                    logger.debug("[solver] Failed to parse routing choice: %s", match.group(1))
-
-            if choice <= 0 or choice > len(children):
-                logger.debug(
-                    "[solver] Umbrella routing: no valid choice from response '%s'",
-                    response[:50]
-                )
-                return None
-
-            child_sig, _ = children[choice - 1]
+            # No embedding available - cannot route without LLM
+            # Per CLAUDE.md: "Only call LLM on leaf nodes" + "Umbrella = Router"
+            # Return None to trigger decomposition/failure (failures are valuable data)
             logger.debug(
-                "[solver] Umbrella routing (LLM) selected child %d: %s",
-                choice, child_sig.step_type
+                "[solver] Umbrella routing: no embedding available, cannot route"
             )
+            return None
 
         # Recurse if child is also an umbrella (pass visited set, embedding, and depth)
         if child_sig.is_semantic_umbrella:
