@@ -407,6 +407,9 @@ class StepSignatureDB:
                     conn, step_text, embedding, parent_problem, origin_depth,
                     extracted_values=extracted_values, parent_id=parent_id, dsl_hint=dsl_hint
                 )
+                # Propagate new child's centroid up to parent umbrellas
+                if sig.id is not None:
+                    self.propagate_centroid_to_parents(conn, sig.id)
                 conn.commit()
                 logger.info(
                     "[db] Force-created signature: step='%s' type='%s' depth=%d",
