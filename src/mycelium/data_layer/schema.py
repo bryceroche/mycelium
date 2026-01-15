@@ -51,6 +51,10 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     is_root INTEGER DEFAULT 0,  -- 1 if this is THE root signature (single entry point)
     depth INTEGER DEFAULT 0,  -- Routing depth (0=root, increases with parent-child hops)
 
+    -- Lifecycle
+    is_archived INTEGER DEFAULT 0,  -- 1 if soft-deleted due to decay
+    last_rewrite_at TEXT,  -- When DSL was last rewritten
+
     -- Metadata
     created_at TEXT NOT NULL,
     last_used_at TEXT
@@ -167,6 +171,18 @@ def migrate_db(conn) -> None:
     if "is_root" not in existing_cols:
         migrations.append(
             "ALTER TABLE step_signatures ADD COLUMN is_root INTEGER DEFAULT 0"
+        )
+
+    # Add is_archived if missing (decay lifecycle)
+    if "is_archived" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN is_archived INTEGER DEFAULT 0"
+        )
+
+    # Add last_rewrite_at if missing (DSL rewriter)
+    if "last_rewrite_at" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN last_rewrite_at TEXT"
         )
 
     # Run migrations

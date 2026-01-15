@@ -159,6 +159,29 @@ TRAFFIC_CACHE_TTL = 60.0  # Cache total_problems for N seconds (avoid DB hits)
 TRAFFIC_GRACE_PROBLEMS = 50  # No penalty until system has run N problems
 
 # =============================================================================
+# DECAY LIFECYCLE
+# =============================================================================
+# Slow decay system for signature lifecycle management.
+# Signatures that don't pull their weight gradually fade out.
+# Per CLAUDE.md: "slow decay: sig_uses / total_problems"
+
+DECAY_ENABLED = True  # Enable decay lifecycle management
+DECAY_CHECK_INTERVAL_SEC = 300  # Check decay every 5 minutes
+DECAY_MIN_AGE_DAYS = 7  # Don't decay signatures younger than N days
+
+# Thresholds (as fraction of TRAFFIC_MIN_SHARE)
+DECAY_ARCHIVE_THRESHOLD = 0.05  # Archive if < 5% of min threshold
+DECAY_DEMOTE_THRESHOLD = 0.20  # Demote umbrella if < 20% of min threshold
+DECAY_WARNING_THRESHOLD = 0.50  # Warn if < 50% of min threshold
+DECAY_RECOVERY_THRESHOLD = 0.80  # Recovered if back to 80% of min threshold
+
+# Grace periods
+DECAY_ARCHIVE_GRACE_DAYS = 30  # Wait 30 days before archiving
+
+# Limits
+DECAY_MAX_ACTIONS_PER_RUN = 10  # Max signatures to act on per cycle
+
+# =============================================================================
 # DEPTH-AWARE DECOMPOSITION
 # =============================================================================
 # Force decomposition at shallow depths to build out the tree structure.

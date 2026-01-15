@@ -1478,3 +1478,33 @@ Expression:"""
 
         learner = UmbrellaLearner(self.step_db)
         return await learner.learn_from_failures()
+
+    def run_decay_cycle(self, force: bool = False) -> dict:
+        """Run signature decay lifecycle management.
+
+        Per CLAUDE.md: "slow decay: sig_uses / total_problems"
+
+        This analyzes all signatures and:
+        - Warns about signatures with declining traffic
+        - Demotes umbrellas with no healthy children
+        - Archives signatures that have been critical for too long
+        - Tracks recovery when archived signatures revive
+
+        Args:
+            force: Run even if not enough time has passed since last run
+
+        Returns:
+            Dict with decay statistics (healthy, warning, critical, archived counts)
+        """
+        from mycelium.step_signatures.decay import run_decay_cycle
+
+        report = run_decay_cycle(force=force)
+        return {
+            "total_signatures": report.total_signatures,
+            "healthy": report.healthy_count,
+            "warning": report.warning_count,
+            "critical": report.critical_count,
+            "archived": report.archived_count,
+            "recovering": report.recovering_count,
+            "actions_taken": len(report.actions_taken),
+        }
