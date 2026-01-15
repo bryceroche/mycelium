@@ -33,6 +33,7 @@ from mycelium.config import (
     EMBEDDING_CACHE_WARM_ON_START,
     EMBEDDING_CACHE_TTL_DAYS,
 )
+from mycelium.data_layer.connection import configure_connection
 
 logger = logging.getLogger(__name__)
 
@@ -285,8 +286,7 @@ class DiskCache:
     def _init_db(self) -> None:
         """Initialize the cache database."""
         conn = sqlite3.connect(str(self.db_path), timeout=30.0)
-        conn.execute("PRAGMA journal_mode = WAL")
-        conn.execute("PRAGMA busy_timeout = 30000")
+        configure_connection(conn, enable_foreign_keys=False)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS embedding_cache (
                 text_hash TEXT PRIMARY KEY,
@@ -307,8 +307,7 @@ class DiskCache:
     def _connection(self):
         """Get DB connection."""
         conn = sqlite3.connect(str(self.db_path), timeout=30.0)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA busy_timeout = 30000")
+        configure_connection(conn, enable_foreign_keys=False)
         return conn
 
     def get(self, text: str) -> Optional[np.ndarray]:
@@ -743,7 +742,7 @@ class EmbeddingCache:
 
         try:
             conn = sqlite3.connect(db_path, timeout=30.0)
-            conn.row_factory = sqlite3.Row
+            configure_connection(conn, enable_foreign_keys=False)
 
             # Get all signature descriptions and their centroids
             rows = conn.execute("""
