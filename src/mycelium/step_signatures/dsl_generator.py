@@ -16,7 +16,7 @@ from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from mycelium.step_signatures.db import StepSignatureDB
-    from mycelium.client import GroqClient
+    from mycelium.client import LLMClient
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +86,7 @@ Generate the DSL JSON (or {"type": "none"} if not suitable for DSL):
 
 
 async def generate_dsl_for_signature(
-    client,  # GroqClient or similar
+    client,  # LLMClient or similar
     step_type: str,
     description: str,
     examples: list[dict],
@@ -218,7 +218,7 @@ def _extract_json(text: str) -> Optional[str]:
 
 async def maybe_generate_dsl(
     db: "StepSignatureDB",
-    client: "GroqClient",
+    client: "LLMClient",
     signature_id: int,
     min_uses: int = 3,
     min_success_rate: float = 0.8,
@@ -274,7 +274,7 @@ async def maybe_generate_dsl(
 
 async def regenerate_dsl(
     db: "StepSignatureDB",
-    client: "GroqClient",
+    client: "LLMClient",
     signature_id: int,
 ) -> bool:
     """Regenerate DSL for a signature using accumulated examples.

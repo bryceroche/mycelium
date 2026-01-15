@@ -187,7 +187,7 @@ DEPTH_DECOMPOSE_MIN_PROB = 0.05  # Floor probability (never fully disable decomp
 # BIG BANG EXPANSION: Recursive decomposition during cold start
 # When enabled: aggressively decompose signatures to rapidly build tree structure
 # When disabled: only decompose on explicit failure, use existing tree
-BIG_BANG_EXPANSION_ENABLED = False  # Toggle off to disable aggressive decomposition
+BIG_BANG_EXPANSION_ENABLED = True  # Toggle on for aggressive cold-start decomposition
 
 RECURSIVE_DECOMPOSITION_ENABLED = True  # Enable decomposition for complex steps
 RECURSIVE_MAX_DEPTH = 9  # Max routing depth: deep decomposition for complex problems
@@ -208,11 +208,8 @@ UMBRELLA_ROUTING_THRESHOLD = 0.5  # Min similarity for umbrella child routing (l
 DB_PATH = "mycelium.db"  # 768-dim MathBERT embeddings
 
 # =============================================================================
-# LLM CLIENT
+# LLM CLIENT (OpenAI gpt-4.1-nano)
 # =============================================================================
-
-# Provider: "groq" or "openai"
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq")  # "groq" or "openai"
 
 CLIENT_DEFAULT_TIMEOUT = 120.0
 CLIENT_DEFAULT_TEMPERATURE = 0.0  # Zero for deterministic responses
@@ -221,13 +218,10 @@ CLIENT_BASE_RETRY_DELAY = 1.0
 CLIENT_MAX_RETRY_DELAY = 30.0
 PLANNER_DEFAULT_TEMPERATURE = 0.0  # Zero for deterministic decomposition
 
-# Model names per provider
-GROQ_DEFAULT_MODEL = "llama-3.3-70b-versatile"
-OPENAI_DEFAULT_MODEL = "gpt-4o-mini"
-
-# Active model (based on provider)
-PLANNER_DEFAULT_MODEL = OPENAI_DEFAULT_MODEL if LLM_PROVIDER == "openai" else GROQ_DEFAULT_MODEL
-SOLVER_DEFAULT_MODEL = OPENAI_DEFAULT_MODEL if LLM_PROVIDER == "openai" else GROQ_DEFAULT_MODEL
+# Model - OpenAI gpt-4.1-nano only
+DEFAULT_MODEL = "gpt-4.1-nano"
+PLANNER_DEFAULT_MODEL = DEFAULT_MODEL
+SOLVER_DEFAULT_MODEL = DEFAULT_MODEL
 
 # =============================================================================
 # SELF-CONSISTENCY (Reliability through sampling)
