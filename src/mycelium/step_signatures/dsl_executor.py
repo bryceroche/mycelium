@@ -128,9 +128,9 @@ def try_execute_dsl(
         # This allows scripts like "result = step_1 * 15" to work
         mapped_inputs = inputs.copy()
 
-    # DECOMPOSE/ROUTER/NONE layers: immediately fall back to LLM (no DSL execution)
+    # DECOMPOSE/ROUTER layers: immediately fall back to LLM (no DSL execution)
     # ROUTER delegates to children at a higher level, not here
-    if dsl_spec.layer in (DSLLayer.DECOMPOSE, DSLLayer.ROUTER, DSLLayer.NONE):
+    if dsl_spec.layer in (DSLLayer.DECOMPOSE, DSLLayer.ROUTER):
         return None, False
 
     # Filter out empty/None values before validation
