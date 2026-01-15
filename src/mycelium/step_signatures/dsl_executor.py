@@ -140,11 +140,11 @@ def try_execute_dsl(
             if result is not None:
                 # Basic sanity check: reject False (sympy failure) and astronomically large numbers
                 if result is False:
-                    logger.debug("[dsl_debug] Rejecting False result (sympy failure)")
+                    logger.warning("[dsl_debug] Rejecting False result (sympy failure)")
                     return None, False
                 try:
                     if isinstance(result, (int, float)) and abs(result) > 1e15:
-                        logger.info("[dsl_debug] Rejecting huge result: %s", result)
+                        logger.warning("[dsl_debug] Rejecting huge result: %s", result)
                         return None, False
                 except (TypeError, OverflowError) as e:
                     logger.debug("[dsl_debug] Result size check skipped (non-comparable type): %s", e)
@@ -154,7 +154,7 @@ def try_execute_dsl(
                     {k: str(v)[:30] for k, v in mapped_inputs.items()}, result
                 )
                 return result, True
-            logger.debug(
+            logger.warning(
                 "[dsl_debug] FAIL %s | script='%s' | inputs=%s | result=None",
                 dsl_spec.layer.value, dsl_spec.script[:60],
                 {k: str(v)[:30] for k, v in mapped_inputs.items()}
@@ -165,8 +165,8 @@ def try_execute_dsl(
         logger.warning("[dsl_debug] TIMEOUT | script='%s'", dsl_spec.script[:60])
         return None, False
     except Exception as e:
-        logger.debug("[dsl_debug] ERROR %s | script='%s' | error=%s",
-                     dsl_spec.layer.value, dsl_spec.script[:60], e)
+        logger.warning("[dsl_debug] ERROR %s | script='%s' | error=%s",
+                       dsl_spec.layer.value, dsl_spec.script[:60], e)
         return None, False
 
 
