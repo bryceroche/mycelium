@@ -283,7 +283,8 @@ class TestDecomposeSignature:
         mock_db.promote_to_umbrella.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_single_step_plan_marks_atomic(self, learner, mock_db, mock_planner):
+    async def test_single_step_plan_returns_empty(self, learner, mock_db, mock_planner):
+        """Single-step plan can't be decomposed further - returns empty list."""
         sig = self._make_sig(1)
         mock_planner.decompose.return_value = DAGPlan(
             steps=[Step(id="s1", task="Single step")],
@@ -292,10 +293,10 @@ class TestDecomposeSignature:
 
         result = await learner.decompose_signature(sig)
 
+        # Cannot decompose into 1 step, so returns empty
         assert result == []
-        mock_db.update_signature.assert_called_once()
-        call_kwargs = mock_db.update_signature.call_args[1]
-        assert call_kwargs["dsl_type"] == "atomic"
+        # Should NOT call update_signature (no longer marks as atomic)
+        mock_db.update_signature.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_creates_children_from_plan(self, learner, mock_db, mock_planner):
@@ -334,6 +335,8 @@ class TestDecomposeSignature:
         )
 
         mock_db.find_deeper_signature.return_value = None
+        # Must mock get_parent to return None, otherwise MagicMock triggers force-create path
+        mock_db.get_parent.return_value = None
 
         # First find_or_create returns the parent itself (self-reference)
         # Second returns a different signature
