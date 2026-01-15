@@ -243,6 +243,13 @@ def migrate_db(conn) -> None:
             logger.warning("[schema] Index migration failed for '%s': %s", sql[:50], e)
     conn.commit()
 
+    # Update query planner statistics for better query plans
+    try:
+        conn.execute("ANALYZE")
+        conn.commit()
+    except Exception as e:
+        logger.warning("[schema] ANALYZE failed: %s", e)
+
     # Fix multi-parent children (tree structure enforcement)
     # This cleans up any children that have multiple parents from old DAG schema
     _fix_multi_parent_children(conn)

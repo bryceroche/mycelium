@@ -2399,12 +2399,16 @@ class StepSignatureDB:
             return False
 
     def get_umbrella_signatures(self) -> list[StepSignature]:
-        """Get all signatures that are semantic umbrellas."""
+        """Get all signatures that are semantic umbrellas (fast variant)."""
         with self._connection() as conn:
-            cursor = conn.execute(
-                "SELECT * FROM step_signatures WHERE is_semantic_umbrella = 1"
-            )
-            return [self._row_to_signature(dict(row)) for row in cursor.fetchall()]
+            cursor = conn.execute("""
+                SELECT id, signature_id, centroid, embedding_count, step_type,
+                       description, param_descriptions, dsl_script, dsl_type,
+                       uses, successes, is_semantic_umbrella, is_root, depth,
+                       created_at, last_used_at
+                FROM step_signatures WHERE is_semantic_umbrella = 1
+            """)
+            return [self._row_to_signature_fast(row) for row in cursor.fetchall()]
 
     def clear_all_data(self) -> dict:
         """Clear all signature data for a fresh start.
