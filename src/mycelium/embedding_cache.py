@@ -457,7 +457,8 @@ class DiskCache:
             row = conn.execute("SELECT COUNT(*) as cnt FROM embedding_cache").fetchone()
             conn.close()
             return row["cnt"]
-        except sqlite3.Error:
+        except sqlite3.Error as e:
+            logger.warning("[embedding_cache] Failed to get disk count: %s", e)
             return 0
 
     def prune_old(self, ttl_days: int = 30) -> int:

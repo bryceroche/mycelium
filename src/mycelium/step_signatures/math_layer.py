@@ -149,7 +149,7 @@ def extract_numeric_value(value: Any) -> Optional[float]:
     try:
         return float(cleaned)
     except ValueError:
-        pass
+        logger.debug("[math] Direct parse failed for: %s", cleaned[:30])
 
     # Handle fractions like "3/4"
     if '/' in cleaned and cleaned.count('/') == 1:
@@ -161,7 +161,7 @@ def extract_numeric_value(value: Any) -> Optional[float]:
                 if denom != 0:
                     return num / denom
             except ValueError:
-                pass
+                logger.debug("[math] Fraction parse failed for: %s", cleaned[:30])
 
     # Skip if it looks like an expression with operators
     if any(c in cleaned for c in ['+', '*', '^', '=']):
@@ -182,6 +182,7 @@ def extract_numeric_value(value: Any) -> Optional[float]:
             try:
                 return float(match.group(1))
             except ValueError:
+                logger.debug("[math] Pattern match parse failed: %s", match.group(1)[:30])
                 continue
 
     return None

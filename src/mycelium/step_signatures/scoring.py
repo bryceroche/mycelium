@@ -8,10 +8,13 @@ MCTS-style UCB1 scoring enables exploration/exploitation balance:
 - Exploration: give bonus to under-visited signatures (may find better paths)
 """
 
+import logging
 import math
 import re
 import sqlite3
 import time
+
+logger = logging.getLogger(__name__)
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -85,7 +88,8 @@ def get_total_problems_solved(db_path: str = DB_PATH) -> int:
         conn.close()
 
         value = int(row["value"]) if row else 0
-    except (sqlite3.Error, ValueError, TypeError):
+    except (sqlite3.Error, ValueError, TypeError) as e:
+        logger.warning("[scoring] Failed to get total problems: %s", e)
         value = 0
 
     # Update cache
@@ -129,7 +133,8 @@ def increment_total_problems(db_path: str = DB_PATH) -> int:
         _total_problems_cache["expires_at"] = time.time() + TRAFFIC_CACHE_TTL
 
         return new_value
-    except (sqlite3.Error, ValueError, TypeError):
+    except (sqlite3.Error, ValueError, TypeError) as e:
+        logger.warning("[scoring] Failed to increment total problems: %s", e)
         return 0
 
 
@@ -195,10 +200,11 @@ def compute_staleness_penalty(last_used_at: Optional[str]) -> float:
         # Calculate penalty: rate * days, capped at max
         penalty = (days_since_use - STALENESS_GRACE_DAYS) * STALENESS_DECAY_RATE
         return min(penalty, STALENESS_MAX_PENALTY)
-    except (ValueError, TypeError, AttributeError):
+    except (ValueError, TypeError, AttributeError) as e:
         # ValueError: invalid timestamp format
         # TypeError: wrong type passed to fromisoformat
         # AttributeError: non-string passed (no .replace method)
+        logger.debug("[scoring] Failed to compute staleness penalty: %s", e)
         return 0.0
 
 

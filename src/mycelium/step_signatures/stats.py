@@ -475,8 +475,8 @@ class StepStatsCollector:
                 if params:
                     try:
                         param_count = len(json.loads(params))
-                    except (json.JSONDecodeError, TypeError):
-                        pass
+                    except (json.JSONDecodeError, TypeError) as e:
+                        logger.debug("[stats] Failed to parse params_extracted: %s", e)
 
                 results.append(
                     StepExecution(

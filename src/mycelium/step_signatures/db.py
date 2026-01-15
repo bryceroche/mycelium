@@ -1762,7 +1762,8 @@ class StepSignatureDB:
         try:
             dsl_data = json.loads(sig.dsl_script) if sig.dsl_script.startswith('{') else {}
             return dsl_data.get('params', [])
-        except (json.JSONDecodeError, TypeError):
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.debug("[db] Failed to parse DSL params for sig %d: %s", sig.id, e)
             return []
 
     # =========================================================================
