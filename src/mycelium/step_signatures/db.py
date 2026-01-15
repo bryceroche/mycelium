@@ -9,6 +9,7 @@ Lazy NL approach:
 import asyncio
 import json
 import logging
+import math
 import random
 import re
 import sqlite3
@@ -792,6 +793,7 @@ class StepSignatureDB:
 
         step_type = self._infer_step_type(step_text)
         centroid_packed = pack_embedding(embedding)
+        centroid_bucket = compute_centroid_bucket(embedding)
 
         # Auto-assign DSL based on step_type, description, planner's extracted_values, and dsl_hint
         # dsl_hint enables bidirectional LLM-signature communication
@@ -843,11 +845,11 @@ class StepSignatureDB:
         try:
             cursor = conn.execute(
                 """INSERT INTO step_signatures
-                   (signature_id, centroid, embedding_sum, embedding_count, step_type, description,
+                   (signature_id, centroid, centroid_bucket, embedding_sum, embedding_count, step_type, description,
                     dsl_script, dsl_type, clarifying_questions, param_descriptions, depth,
                     is_root, is_semantic_umbrella, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (sig_id, centroid_packed, embedding_sum_packed, 1, step_type, step_text,
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (sig_id, centroid_packed, centroid_bucket, embedding_sum_packed, 1, step_type, step_text,
                  dsl_script, dsl_type, clarifying_json, params_json, actual_depth,
                  is_root_flag, is_umbrella, now),
             )
@@ -1127,6 +1129,9 @@ class StepSignatureDB:
         its own transaction. Use this within code that already has an open
         transaction.
 
+        Includes bounded drift monitoring: logs warning if centroid drift exceeds
+        confidence bounds (more examples = tighter bounds).
+
         Formula: new_sum = old_sum + new_embedding
                  new_count = old_count + 1
                  new_centroid = new_sum / new_count
@@ -1141,7 +1146,7 @@ class StepSignatureDB:
             New embedding count, or None if signature not found
         """
         row = conn.execute(
-            "SELECT embedding_sum, embedding_count, centroid FROM step_signatures WHERE id = ?",
+            "SELECT embedding_sum, embedding_count, centroid, centroid_bucket FROM step_signatures WHERE id = ?",
             (signature_id,)
         ).fetchone()
 
@@ -1149,7 +1154,7 @@ class StepSignatureDB:
             logger.warning("[db] Cannot update centroid: signature %d not found", signature_id)
             return None
 
-        # Parse current sum (or initialize from fresh centroid)
+        # Parse current state
         if row["embedding_sum"]:
             current_sum = unpack_embedding(row["embedding_sum"])
             current_count = row["embedding_count"] or 1
@@ -1159,6 +1164,9 @@ class StepSignatureDB:
             current_sum = fresh_centroid.copy() if fresh_centroid is not None else new_embedding.copy()
             current_count = 1
 
+        old_centroid = unpack_embedding(row["centroid"])
+        old_bucket = row["centroid_bucket"]
+
         # Update running sum and count
         new_sum = current_sum + new_embedding
         new_count = current_count + 1
@@ -1166,24 +1174,63 @@ class StepSignatureDB:
         # Compute new centroid
         new_centroid = new_sum / new_count
 
+        # Check drift bounds (monitoring - don't reject, just warn)
+        if old_centroid is not None:
+            drift = 1.0 - cosine_similarity(old_centroid, new_centroid)
+            # Adaptive threshold: tighter bounds with more examples
+            # max_drift * decay^log2(count) - e.g., at count=8: 0.15 * 0.9^3 = 0.109
+            import math
+            adaptive_threshold = CENTROID_MAX_DRIFT * (CENTROID_DRIFT_DECAY ** math.log2(max(1, current_count)))
+            if drift > adaptive_threshold:
+                logger.warning(
+                    "[db] Centroid drift %.4f exceeds bound %.4f for sig %d (count=%d)",
+                    drift, adaptive_threshold, signature_id, current_count
+                )
+
+        # Compute new bucket and check if it changed
+        new_bucket = compute_centroid_bucket(new_centroid)
+        bucket_changed = new_bucket != old_bucket
+
         # Pack and store
         new_sum_packed = pack_embedding(new_sum)
         new_centroid_packed = pack_embedding(new_centroid)
 
         if update_last_used:
             now = datetime.utcnow().isoformat()
-            conn.execute(
-                """UPDATE step_signatures
-                   SET embedding_sum = ?, embedding_count = ?, centroid = ?, last_used_at = ?
-                   WHERE id = ?""",
-                (new_sum_packed, new_count, new_centroid_packed, now, signature_id),
-            )
+            if bucket_changed:
+                conn.execute(
+                    """UPDATE step_signatures
+                       SET embedding_sum = ?, embedding_count = ?, centroid = ?, centroid_bucket = ?, last_used_at = ?
+                       WHERE id = ?""",
+                    (new_sum_packed, new_count, new_centroid_packed, new_bucket, now, signature_id),
+                )
+            else:
+                conn.execute(
+                    """UPDATE step_signatures
+                       SET embedding_sum = ?, embedding_count = ?, centroid = ?, last_used_at = ?
+                       WHERE id = ?""",
+                    (new_sum_packed, new_count, new_centroid_packed, now, signature_id),
+                )
         else:
-            conn.execute(
-                """UPDATE step_signatures
-                   SET embedding_sum = ?, embedding_count = ?, centroid = ?
-                   WHERE id = ?""",
-                (new_sum_packed, new_count, new_centroid_packed, signature_id),
+            if bucket_changed:
+                conn.execute(
+                    """UPDATE step_signatures
+                       SET embedding_sum = ?, embedding_count = ?, centroid = ?, centroid_bucket = ?
+                       WHERE id = ?""",
+                    (new_sum_packed, new_count, new_centroid_packed, new_bucket, signature_id),
+                )
+            else:
+                conn.execute(
+                    """UPDATE step_signatures
+                       SET embedding_sum = ?, embedding_count = ?, centroid = ?
+                       WHERE id = ?""",
+                    (new_sum_packed, new_count, new_centroid_packed, signature_id),
+                )
+
+        if bucket_changed:
+            logger.debug(
+                "[db] Centroid bucket changed for sig %d: %s -> %s",
+                signature_id, old_bucket, new_bucket
             )
 
         # Invalidate caches since centroid changed
