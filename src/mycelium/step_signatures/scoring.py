@@ -205,6 +205,8 @@ def compute_traffic_penalty(uses: int, total_problems: Optional[int] = None) -> 
 
     # Linear penalty based on how far below threshold
     # At 0 traffic: full penalty. At threshold: 0 penalty.
+    if TRAFFIC_MIN_SHARE <= 0:
+        return 0.0  # Can't calculate deficit if threshold is 0
     deficit_ratio = 1.0 - (traffic_share / TRAFFIC_MIN_SHARE)
     return TRAFFIC_DECAY_RATE * deficit_ratio
 
@@ -231,7 +233,8 @@ def compute_routing_score(
     Returns:
         Routing score (higher = better match)
     """
-    effective_rate = (successes + ROUTING_PRIOR_SUCCESSES) / (uses + ROUTING_PRIOR_USES)
+    denominator = uses + ROUTING_PRIOR_USES
+    effective_rate = (successes + ROUTING_PRIOR_SUCCESSES) / denominator if denominator > 0 else 0.5
     base_score = MCTS_SIMILARITY_WEIGHT * cosine_sim + MCTS_SUCCESS_WEIGHT * effective_rate
 
     # Apply staleness penalty (time-based decay)
@@ -274,7 +277,8 @@ def compute_ucb1_score(
         UCB1 score (higher = better choice)
     """
     # Exploitation term: similarity weighted by success rate
-    effective_rate = (successes + ROUTING_PRIOR_SUCCESSES) / (uses + ROUTING_PRIOR_USES)
+    denominator = uses + ROUTING_PRIOR_USES
+    effective_rate = (successes + ROUTING_PRIOR_SUCCESSES) / denominator if denominator > 0 else 0.5
     exploit_score = MCTS_SIMILARITY_WEIGHT * cosine_sim + MCTS_SUCCESS_WEIGHT * effective_rate
 
     # Exploration term: UCB1 bonus for under-visited signatures
