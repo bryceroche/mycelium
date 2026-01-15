@@ -202,6 +202,19 @@ UMBRELLA_MAX_DEPTH = max(1, min(int(_UMBRELLA_MAX_DEPTH_RAW or 10), _UMBRELLA_HA
 UMBRELLA_ROUTING_THRESHOLD = 0.5  # Min similarity for umbrella child routing (lower than global 0.85 since we're picking best among known children)
 
 # =============================================================================
+# ZERO-LLM ROUTING (Skip planner for mature signatures)
+# =============================================================================
+# When enabled, the solver will attempt to route problems directly through
+# the signature tree without calling the planner. Only works for mature
+# signatures with high success rates and working DSL scripts.
+
+ZERO_LLM_ROUTING_ENABLED = True  # Master switch for zero-LLM routing
+ZERO_LLM_MIN_SIMILARITY = 0.90  # High similarity required (stricter than normal 0.85)
+ZERO_LLM_MIN_SUCCESS_RATE = 0.70  # Signature must have >= 70% success rate
+ZERO_LLM_MIN_USES = 5  # Need enough data to trust the signature
+ZERO_LLM_REQUIRE_DSL = True  # Signature must have a working DSL script
+
+# =============================================================================
 # DATABASE
 # =============================================================================
 

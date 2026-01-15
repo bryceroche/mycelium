@@ -8,9 +8,8 @@ Every bug fix, optimization or feature should be implemented with this file in m
 Please always keep this file in context window.
 
 
-**signature = node**
 **Only call LLM on leaf nodes**
-node types
+signature types
  - root (the one parent)
  - umbrella (routers)
  - leaf (executors)
@@ -28,10 +27,10 @@ With fresh DB:
 
 
 Key Questions
-are we going deep enough?  if we have low accuracy then the answer in NO
+are we going deep enough?  if we have low accuracy then the answer is NO
 
 how do clusters form? Emerge naturally from umbrella promotions
-How do we route? MCTS, but learned from embeddings
+How do we route? MCTS but learned from embeddings
 Cluster Centroid - Average of all descendant leaf embeddings 
 how does learning work at each level? Learn "these operation types cluster together"
 

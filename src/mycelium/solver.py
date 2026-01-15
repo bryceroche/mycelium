@@ -37,6 +37,11 @@ from mycelium.config import (
     DEPTH_DECOMPOSE_DECAY_BASE,
     DEPTH_DECOMPOSE_MIN_PROB,
     BIG_BANG_EXPANSION_ENABLED,
+    ZERO_LLM_ROUTING_ENABLED,
+    ZERO_LLM_MIN_SIMILARITY,
+    ZERO_LLM_MIN_SUCCESS_RATE,
+    ZERO_LLM_MIN_USES,
+    ZERO_LLM_REQUIRE_DSL,
 )
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
@@ -259,6 +264,155 @@ class Solver:
             logger.warning("[solver] %d background tasks did not complete in time", len(not_done))
         return pending
 
+    def _try_zero_llm_solve(
+        self,
+        problem: str,
+        problem_embedding: np.ndarray,
+    ) -> Optional[SolverResult]:
+        """Attempt to solve without any LLM calls using mature signature tree.
+
+        This is the "fast path" for problems that match mature signatures.
+        Routes the problem embedding through the hierarchy and executes
+        DSL directly if a high-confidence match is found.
+
+        Args:
+            problem: The problem text
+            problem_embedding: Pre-computed embedding of the problem
+
+        Returns:
+            SolverResult if successful, None to fall back to planner
+        """
+        import time
+        start_time = time.time()
+
+        if not ZERO_LLM_ROUTING_ENABLED:
+            return None
+
+        # Route problem through signature hierarchy
+        matched_sig, path = self.step_db.route_through_hierarchy(
+            embedding=problem_embedding,
+            min_similarity=ZERO_LLM_MIN_SIMILARITY,
+        )
+
+        if matched_sig is None:
+            logger.debug("[zero-llm] No signature matched at threshold %.2f", ZERO_LLM_MIN_SIMILARITY)
+            return None
+
+        # Check if signature is mature enough
+        if matched_sig.uses < ZERO_LLM_MIN_USES:
+            logger.debug(
+                "[zero-llm] Signature %s has only %d uses (need %d)",
+                matched_sig.step_type, matched_sig.uses, ZERO_LLM_MIN_USES
+            )
+            return None
+
+        success_rate = matched_sig.successes / matched_sig.uses if matched_sig.uses > 0 else 0
+        if success_rate < ZERO_LLM_MIN_SUCCESS_RATE:
+            logger.debug(
+                "[zero-llm] Signature %s has %.1f%% success rate (need %.1f%%)",
+                matched_sig.step_type, success_rate * 100, ZERO_LLM_MIN_SUCCESS_RATE * 100
+            )
+            return None
+
+        # Check if signature is a leaf with DSL (not an umbrella that needs decomposition)
+        if matched_sig.is_semantic_umbrella:
+            logger.debug("[zero-llm] Matched signature %s is umbrella, need to decompose", matched_sig.step_type)
+            return None
+
+        if ZERO_LLM_REQUIRE_DSL and not matched_sig.dsl_script:
+            logger.debug("[zero-llm] Signature %s has no DSL script", matched_sig.step_type)
+            return None
+
+        # Extract numeric values from problem text for DSL execution
+        values = self._extract_values_from_problem(problem)
+        if not values:
+            logger.debug("[zero-llm] Could not extract values from problem")
+            return None
+
+        # Try to execute DSL with extracted values
+        try:
+            dsl_spec = DSLSpec.from_json(f'{{"type":"{matched_sig.dsl_type or "math"}","script":"{matched_sig.dsl_script}"}}')
+            result, success = try_execute_dsl(dsl_spec, values, step_task=problem)
+
+            if success and result is not None:
+                elapsed_ms = (time.time() - start_time) * 1000
+                logger.info(
+                    "[zero-llm] SUCCESS: '%s' → %s (sig=%s, path_len=%d, %.1fms)",
+                    problem[:50], result, matched_sig.step_type, len(path), elapsed_ms
+                )
+
+                # Record usage for learning
+                self.step_db.record_usage(
+                    matched_sig.id,
+                    step_text=problem,
+                    step_completed=True,
+                    was_injected=True,
+                )
+
+                return SolverResult(
+                    problem=problem,
+                    answer=str(result),
+                    success=True,
+                    steps=[StepResult(
+                        step_id="zero_llm",
+                        task=problem,
+                        result=str(result),
+                        success=True,
+                        signature_id=matched_sig.id,
+                        signature_type=matched_sig.step_type,
+                        is_new_signature=False,
+                        was_injected=True,
+                        elapsed_ms=elapsed_ms,
+                    )],
+                    elapsed_ms=elapsed_ms,
+                    total_steps=1,
+                    signatures_matched=1,
+                    steps_with_injection=1,
+                    matched_and_reused=1,
+                )
+
+        except Exception as e:
+            logger.debug("[zero-llm] DSL execution failed: %s", e)
+
+        return None
+
+    def _extract_values_from_problem(self, problem: str) -> dict:
+        """Extract numeric values from problem text for DSL execution.
+
+        Uses simple heuristics to find numbers and assign them as params.
+        For more complex extraction, falls back to planner.
+
+        Args:
+            problem: The problem text
+
+        Returns:
+            Dict of param names to values (e.g., {"value_1": 10, "value_2": 5})
+        """
+        import re
+
+        # Find all numbers in the problem
+        # Match integers and decimals, including negative numbers
+        numbers = re.findall(r'-?\d+\.?\d*', problem)
+
+        if not numbers:
+            return {}
+
+        # Convert to floats and assign generic param names
+        values = {}
+        for i, num_str in enumerate(numbers):
+            try:
+                num = float(num_str)
+                # Use int if it's a whole number
+                if num == int(num):
+                    num = int(num)
+                values[f"value_{i+1}"] = num
+                # Also add step_N alias for compatibility
+                values[f"step_{i+1}"] = num
+            except ValueError:
+                continue
+
+        return values
+
     async def solve(self, problem: str) -> SolverResult:
         """Solve a problem end-to-end.
 
@@ -272,9 +426,15 @@ class Solver:
         start_time = time.time()
 
         try:
-            # 1. Plan: Decompose into steps (with signature hints for NL interface)
-            # Embed problem to filter hints by semantic similarity
+            # 0. Embed problem (used for both zero-LLM and planner hints)
             problem_embedding = self.embedder.embed(problem)
+
+            # 0.5. Try zero-LLM solve first (skip planner for mature signatures)
+            zero_llm_result = self._try_zero_llm_solve(problem, problem_embedding)
+            if zero_llm_result is not None:
+                return zero_llm_result
+
+            # 1. Plan: Decompose into steps (with signature hints for NL interface)
             signature_hints = self.step_db.get_signature_hints(
                 limit=15,
                 problem_embedding=problem_embedding,
