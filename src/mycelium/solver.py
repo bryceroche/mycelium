@@ -25,6 +25,8 @@ import random
 
 from mycelium.config import (
     MIN_MATCH_THRESHOLD,
+    MIN_MATCH_THRESHOLD_COLD_START,
+    MIN_MATCH_RAMP_SIGNATURES,
     RECURSIVE_DECOMPOSITION_ENABLED,
     RECURSIVE_MAX_DEPTH,
     RECURSIVE_CONFIDENCE_THRESHOLD,
@@ -82,6 +84,25 @@ def get_signature_count() -> int:
         except Exception:
             pass  # Use cached value on error
     return _signature_count_cache["count"]
+
+
+def get_adaptive_match_threshold() -> float:
+    """Get cold-start aware match threshold.
+
+    During cold start (few signatures), use HIGHER threshold to create more signatures.
+    As DB matures, lower threshold to reduce fragmentation.
+
+    This implements the "aggressive branching during cold start" principle from CLAUDE.md.
+    """
+    sig_count = get_signature_count()
+
+    if sig_count >= MIN_MATCH_RAMP_SIGNATURES:
+        return MIN_MATCH_THRESHOLD  # Mature: use lower threshold
+
+    # Linear interpolation from cold start to mature threshold
+    progress = sig_count / MIN_MATCH_RAMP_SIGNATURES  # 0.0 to 1.0
+    threshold = MIN_MATCH_THRESHOLD_COLD_START - (progress * (MIN_MATCH_THRESHOLD_COLD_START - MIN_MATCH_THRESHOLD))
+    return threshold
 
 
 def should_force_decompose(depth: int) -> bool:
@@ -464,10 +485,12 @@ class Solver:
 
         # 2. Find or create signature (use original text for description)
         # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
+        # Use adaptive threshold: higher during cold start (more signatures), lower when mature
+        adaptive_threshold = get_adaptive_match_threshold()
         signature, is_new = self.step_db.find_or_create(
             step_text=step.task,  # Keep original for description
             embedding=embedding,   # Use normalized embedding for matching
-            min_similarity=self.min_similarity,
+            min_similarity=adaptive_threshold,
             parent_problem=problem,
             origin_depth=depth,  # Track decomposition depth
             extracted_values=getattr(step, 'extracted_values', None),
@@ -475,9 +498,9 @@ class Solver:
         )
 
         logger.debug(
-            "[solver] Step '%s' → signature '%s' (new=%s, umbrella=%s, dsl_type=%s)",
+            "[solver] Step '%s' → signature '%s' (new=%s, umbrella=%s, dsl_type=%s, threshold=%.2f)",
             step.task[:40], signature.step_type, is_new, signature.is_semantic_umbrella,
-            signature.dsl_type
+            signature.dsl_type, adaptive_threshold
         )
 
         # 2.5. Auto-decompose if signature needs children
@@ -689,6 +712,25 @@ class Solver:
                 sub_step, problem, step_context, step_desc_context, depth=depth + 1
             )
             sub_results.append(sub_result)
+
+            # Abort composite on sub-step failure (prevent cascading empty strings)
+            if not sub_result.success:
+                logger.warning(
+                    "[solver] Composite sub-step failed, aborting: sub_step=%s task='%s'",
+                    sub_step.id, sub_step.task[:50]
+                )
+                elapsed_ms = (time.time() - start_time) * 1000
+                return StepResult(
+                    step_id=step.id,
+                    task=step.task,
+                    result="",  # Empty result = failure
+                    success=False,
+                    signature_id=None,
+                    signature_type=f"composite[{len(sub_results)}]",
+                    is_new_signature=False,
+                    was_injected=False,
+                    elapsed_ms=elapsed_ms,
+                )
 
             # Store result and description for dependent sub-steps
             sub_context[sub_step.id] = sub_result.result

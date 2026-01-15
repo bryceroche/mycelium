@@ -33,7 +33,10 @@ TRAINING_MODE = True
 # =============================================================================
 
 # Similarity Thresholds (adjusted for 768-dim MathBERT embeddings)
-MIN_MATCH_THRESHOLD = 0.85  # Lowered to reduce signature fragmentation
+# Cold-start aware: higher threshold early (more branching), lower later (consolidation)
+MIN_MATCH_THRESHOLD = 0.85  # Mature threshold - reduce signature fragmentation
+MIN_MATCH_THRESHOLD_COLD_START = 0.92  # Cold start threshold - create more signatures
+MIN_MATCH_RAMP_SIGNATURES = 50  # Signatures needed to reach mature threshold
 MERGE_SIMILARITY_THRESHOLD = 0.75
 VARIANT_THRESHOLD = 0.40
 DEFAULT_INJECTION_THRESHOLD = 0.90  # Only inject on high-confidence matches
