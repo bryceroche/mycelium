@@ -90,6 +90,9 @@ class StepSignatureDB:
         self._centroid_sig_ids: Optional[list[int]] = None
         self._centroid_rows: Optional[list] = None  # Cache rows for result building
 
+        # Cached root signature (never changes after creation)
+        self._cached_root: Optional[StepSignature] = None
+
         self._init_schema()
 
     @property
@@ -120,17 +123,23 @@ class StepSignatureDB:
         """Get the root signature (single entry point for all routing).
 
         The root is created automatically when the first signature is added.
-        All problems route through the root first.
+        All problems route through the root first. Result is cached since
+        root never changes after creation.
 
         Returns:
             The root signature, or None if database is empty
         """
+        # Return cached root if available
+        if self._cached_root is not None:
+            return self._cached_root
+
         with self._connection() as conn:
             row = conn.execute(
                 "SELECT * FROM step_signatures WHERE is_root = 1 LIMIT 1"
             ).fetchone()
             if row:
-                return self._row_to_signature(row)
+                self._cached_root = self._row_to_signature(row)
+                return self._cached_root
             return None
 
     def has_root(self) -> bool:
@@ -870,6 +879,10 @@ class StepSignatureDB:
         self._centroid_matrix = None
         self._centroid_sig_ids = None
         self._centroid_rows = None
+
+    def invalidate_root_cache(self):
+        """Invalidate cached root signature (call when DB is cleared)."""
+        self._cached_root = None
 
     def find_similar(
         self,
@@ -1964,6 +1977,10 @@ class StepSignatureDB:
             conn.execute("DELETE FROM step_usage_log")
             conn.execute("DELETE FROM step_examples")
             conn.execute("DELETE FROM step_signatures")
+
+            # Invalidate all caches
+            self.invalidate_centroid_matrix()
+            self.invalidate_root_cache()
 
             logger.warning(
                 "[db] Cleared all data: signatures=%d examples=%d usage_log=%d relationships=%d",
