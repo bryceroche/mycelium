@@ -235,6 +235,12 @@ class DecayManager:
                 CREATE INDEX IF NOT EXISTS idx_decay_history_sig_time
                 ON decay_history(signature_id, recorded_at)
             """)
+
+            # Index for status aggregation queries (e.g., count by status)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_decay_status
+                ON signature_decay(status)
+            """)
             conn.commit()
 
     def _get_total_problems(self) -> int:
