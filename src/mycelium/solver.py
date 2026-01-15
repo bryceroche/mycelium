@@ -78,7 +78,7 @@ def get_signature_count() -> int:
             conn.close()
             _signature_count_cache["count"] = count
             _signature_count_cache["last_check"] = now
-        except:
+        except Exception:
             pass  # Use cached value on error
     return _signature_count_cache["count"]
 
