@@ -82,19 +82,6 @@ The system has learned these reusable step patterns. When decomposing, try to cr
 IMPORTANT: When using these patterns, extract the required values into the step's `values` field with matching semantic names. This allows the system to execute the step automatically.
 """
 
-COHERENCE_FEEDBACK_TEMPLATE = """
-## Previous Decomposition Feedback
-
-Your previous decomposition had coherence issues. Please address these problems:
-
-{feedback}
-
-GUIDANCE:
-- Ensure each step's output can be used by the next step
-- Make sure step dependencies correctly reflect the data flow
-- Use semantic parameter names that clearly indicate what values are needed
-- Add intermediate steps if there are gaps in the computation chain
-"""
 
 
 @dataclass
@@ -374,7 +361,6 @@ class Planner:
         self,
         problem: str,
         signature_hints: Optional[list[SignatureHint]] = None,
-        coherence_feedback: Optional[str] = None,
     ) -> DAGPlan:
         """Decompose a problem into a DAG of steps.
 
@@ -383,8 +369,6 @@ class Planner:
             signature_hints: Optional list of SignatureHint objects that tell the
                             decomposer what operations are available and what
                             parameters each needs (from NL interface)
-            coherence_feedback: Optional feedback from semantic validation about
-                               issues with a previous decomposition attempt
 
         Returns:
             DAGPlan with steps and dependencies
@@ -397,11 +381,6 @@ class Planner:
             hints_text = "\n\n".join(hint.to_hint_text() for hint in signature_hints)
             system_prompt += SIGNATURE_HINTS_TEMPLATE.format(hints=hints_text)
             logger.debug("[planner] Added %d signature hints with NL interface", len(signature_hints))
-
-        # Add coherence feedback if this is a retry
-        if coherence_feedback:
-            system_prompt += COHERENCE_FEEDBACK_TEMPLATE.format(feedback=coherence_feedback)
-            logger.info("[planner] Added coherence feedback for retry")
 
         messages = [
             {"role": "system", "content": system_prompt},
