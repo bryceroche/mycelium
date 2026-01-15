@@ -4,10 +4,10 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 import numpy as np
 
-from mycelium.step_signatures.umbrella_learner import (
-    UmbrellaLearner,
-    MIN_USES_FOR_EVALUATION,
-    MAX_SUCCESS_RATE_FOR_DECOMPOSITION,
+from mycelium.step_signatures.umbrella_learner import UmbrellaLearner
+from mycelium.config import (
+    UMBRELLA_MIN_USES_FOR_EVALUATION,
+    UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION,
 )
 from mycelium.step_signatures.models import StepSignature
 from mycelium.planner import Step, DAGPlan
@@ -121,7 +121,7 @@ class TestGetDecompositionCandidates:
         assert candidates == []
 
     def test_filters_insufficient_uses(self, learner, mock_db):
-        # Signatures with uses < MIN_USES_FOR_EVALUATION should be excluded
+        # Signatures with uses < UMBRELLA_MIN_USES_FOR_EVALUATION should be excluded
         mock_db.get_all_signatures.return_value = [
             self._make_sig(1, "decompose", uses=1, successes=0),
             self._make_sig(2, "decompose", uses=2, successes=0),
@@ -130,9 +130,9 @@ class TestGetDecompositionCandidates:
         assert candidates == []
 
     def test_filters_high_success_rate(self, learner, mock_db):
-        # Signatures with success_rate > MAX_SUCCESS_RATE_FOR_DECOMPOSITION excluded
-        uses = MIN_USES_FOR_EVALUATION
-        high_successes = int(uses * (MAX_SUCCESS_RATE_FOR_DECOMPOSITION + 0.2)) + 1
+        # Signatures with success_rate > UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION excluded
+        uses = UMBRELLA_MIN_USES_FOR_EVALUATION
+        high_successes = int(uses * (UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION + 0.2)) + 1
         mock_db.get_all_signatures.return_value = [
             self._make_sig(1, "decompose", uses=uses, successes=high_successes),
         ]

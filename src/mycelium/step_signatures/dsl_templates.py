@@ -19,6 +19,8 @@ from mycelium.config import (
     DSL_OPERATION_INFERENCE_COLD_START,
     DSL_OPERATION_INFERENCE_MATURE,
     DSL_OPERATION_INFERENCE_RAMP_SIGS,
+    DSL_EXOTIC_THRESHOLD_BONUS,
+    DSL_EXOTIC_THRESHOLD_MAX,
 )
 
 logger = logging.getLogger(__name__)
@@ -505,13 +507,12 @@ def _infer_operation_semantic(
         # Exotic operations (**, factorial, perm, etc.) require higher confidence
         # Basic arithmetic (+, -, *, /) can use normal threshold
         # This prevents embedding noise from matching "total eggs" to "power"
+        # Thresholds imported from config: DSL_EXOTIC_THRESHOLD_BONUS, DSL_EXOTIC_THRESHOLD_MAX
         BASIC_OPS = {"+", "-", "*", "/"}
-        EXOTIC_THRESHOLD_BONUS = 0.05  # Require 5% higher similarity for exotic ops
-        EXOTIC_THRESHOLD_MAX = 0.92  # Cap exotic threshold to ensure it's achievable
 
         effective_threshold = min_similarity
         if best_op not in BASIC_OPS:
-            effective_threshold = min(min_similarity + EXOTIC_THRESHOLD_BONUS, EXOTIC_THRESHOLD_MAX)
+            effective_threshold = min(min_similarity + DSL_EXOTIC_THRESHOLD_BONUS, DSL_EXOTIC_THRESHOLD_MAX)
             logger.debug(
                 "[dsl_infer] Exotic op '%s' requires higher threshold: %.3f",
                 best_op, effective_threshold
