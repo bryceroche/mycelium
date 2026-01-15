@@ -312,10 +312,10 @@ class TestDecomposeSignature:
         # Mock find_deeper_signature to return None (no repoint)
         mock_db.find_deeper_signature.return_value = None
 
-        # Mock find_or_create to create new signatures
+        # Mock find_or_create_async to create new signatures
         child1 = self._make_sig(10)
         child2 = self._make_sig(11)
-        mock_db.find_or_create.side_effect = [(child1, True), (child2, True)]
+        mock_db.find_or_create_async = AsyncMock(side_effect=[(child1, True), (child2, True)])
 
         result = await learner.decompose_signature(sig)
 
@@ -338,10 +338,10 @@ class TestDecomposeSignature:
         # Must mock get_parent to return None, otherwise MagicMock triggers force-create path
         mock_db.get_parent.return_value = None
 
-        # First find_or_create returns the parent itself (self-reference)
+        # First find_or_create_async returns the parent itself (self-reference)
         # Second returns a different signature
         child2 = self._make_sig(2)
-        mock_db.find_or_create.side_effect = [(sig, False), (child2, True)]
+        mock_db.find_or_create_async = AsyncMock(side_effect=[(sig, False), (child2, True)])
 
         result = await learner.decompose_signature(sig)
 
@@ -362,7 +362,7 @@ class TestDecomposeSignature:
 
         mock_db.find_deeper_signature.return_value = None
         child1 = self._make_sig(10)
-        mock_db.find_or_create.return_value = (child1, True)
+        mock_db.find_or_create_async = AsyncMock(return_value=(child1, True))
 
         result = await learner.decompose_signature(sig)
 
@@ -387,7 +387,7 @@ class TestDecomposeSignature:
         result = await learner.decompose_signature(sig)
 
         # Should use existing sigs, not create new ones
-        mock_db.find_or_create.assert_not_called()
+        mock_db.find_or_create_async.assert_not_called()
         assert len(result) == 2
 
 
@@ -444,7 +444,7 @@ class TestLearnFromFailures:
 
         child1 = StepSignature(id=10, step_type="child_1")
         child2 = StepSignature(id=11, step_type="child_2")
-        mock_db.find_or_create.side_effect = [(child1, True), (child2, True)]
+        mock_db.find_or_create_async = AsyncMock(side_effect=[(child1, True), (child2, True)])
 
         result = await learner.learn_from_failures()
 
