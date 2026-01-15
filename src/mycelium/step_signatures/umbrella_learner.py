@@ -234,8 +234,8 @@ class UmbrellaLearner:
 
         if len(plan.steps) <= 1:
             # Mark as atomic to prevent repeated decomposition attempts
-            self.db.update_signature(
-                signature.id,
+            self.db.update_nl_interface(
+                signature_id=signature.id,
                 dsl_type="atomic",  # No longer "decompose" - won't be picked up again
             )
             logger.info(
