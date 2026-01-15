@@ -323,21 +323,23 @@ class UmbrellaLearner:
                     step.task[:40], child_sig.step_type, child_sig.dsl_type, min_child_depth
                 )
 
-                # Generate NL interface for new child so it can communicate params
-                try:
-                    nl_interface = await self.generate_nl_interface(step.task)
-                    if nl_interface["clarifying_questions"] or nl_interface["param_descriptions"]:
-                        self.db.update_nl_interface(
-                            signature_id=child_sig.id,
-                            clarifying_questions=nl_interface["clarifying_questions"],
-                            param_descriptions=nl_interface["param_descriptions"],
-                        )
-                        logger.info(
-                            "[umbrella] Added NL interface to child %d: %d questions",
-                            child_sig.id, len(nl_interface["clarifying_questions"])
-                        )
-                except Exception as e:
-                    logger.warning("[umbrella] NL interface generation failed for child %d: %s", child_sig.id, e)
+                # Generate NL interface for LEAF nodes only (not routers)
+                # Routers just route by embedding - no LLM call needed
+                if child_sig.dsl_type != "router":
+                    try:
+                        nl_interface = await self.generate_nl_interface(step.task)
+                        if nl_interface["clarifying_questions"] or nl_interface["param_descriptions"]:
+                            self.db.update_nl_interface(
+                                signature_id=child_sig.id,
+                                clarifying_questions=nl_interface["clarifying_questions"],
+                                param_descriptions=nl_interface["param_descriptions"],
+                            )
+                            logger.info(
+                                "[umbrella] Added NL interface to child %d: %d questions",
+                                child_sig.id, len(nl_interface["clarifying_questions"])
+                            )
+                    except Exception as e:
+                        logger.warning("[umbrella] NL interface generation failed for child %d: %s", child_sig.id, e)
 
             # Add relationship (skip if child matches parent - prevents self-references)
             if child_sig.id == signature.id:
