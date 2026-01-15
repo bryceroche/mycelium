@@ -15,7 +15,7 @@ Problems decompose into DAG-structured steps. MCTS routes each step through a tr
 git clone https://github.com/bryceroche/mycelium
 cd mycelium
 pip install -r requirements.txt
-gh release download --pattern "mycelium.db" --output mycelium.db
+gh release download v0.1.0 --pattern "*.db"
 export OPENAI_API_KEY=your_key
 python scripts/pipeline_runner.py --dataset math --levels 1 2 --problems 20 --workers 4
 
