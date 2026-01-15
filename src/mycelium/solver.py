@@ -25,6 +25,8 @@ import random
 
 from mycelium.config import (
     MIN_MATCH_THRESHOLD,
+    MIN_MATCH_THRESHOLD_COLD_START,
+    MIN_MATCH_RAMP_SIGNATURES,
     RECURSIVE_DECOMPOSITION_ENABLED,
     RECURSIVE_MAX_DEPTH,
     RECURSIVE_CONFIDENCE_THRESHOLD,
@@ -34,6 +36,7 @@ from mycelium.config import (
     DEPTH_FORCE_DECOMPOSE_DEPTH,
     DEPTH_DECOMPOSE_DECAY_BASE,
     DEPTH_DECOMPOSE_MIN_PROB,
+    BIG_BANG_EXPANSION_ENABLED,
 )
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures.semantic_validation import (
@@ -44,7 +47,7 @@ from mycelium.step_signatures.semantic_validation import (
 )
 from mycelium.step_signatures import StepSignatureDB, StepSignature
 from mycelium.step_signatures.db import normalize_step_text
-from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math
+from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math, validate_extracted_values
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.embedder import Embedder
 
@@ -72,14 +75,34 @@ def get_signature_count() -> int:
     if now - _signature_count_cache["last_check"] > 1.0:
         try:
             import sqlite3
-            conn = sqlite3.connect("mycelium.db")
+            conn = sqlite3.connect("mycelium.db", timeout=30.0)
+            conn.execute("PRAGMA busy_timeout = 30000")
             count = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()[0]
             conn.close()
             _signature_count_cache["count"] = count
             _signature_count_cache["last_check"] = now
-        except:
+        except Exception:
             pass  # Use cached value on error
     return _signature_count_cache["count"]
+
+
+def get_adaptive_match_threshold() -> float:
+    """Get cold-start aware match threshold.
+
+    During cold start (few signatures), use HIGHER threshold to create more signatures.
+    As DB matures, lower threshold to reduce fragmentation.
+
+    This implements the "aggressive branching during cold start" principle from CLAUDE.md.
+    """
+    sig_count = get_signature_count()
+
+    if sig_count >= MIN_MATCH_RAMP_SIGNATURES:
+        return MIN_MATCH_THRESHOLD  # Mature: use lower threshold
+
+    # Linear interpolation from cold start to mature threshold
+    progress = sig_count / MIN_MATCH_RAMP_SIGNATURES  # 0.0 to 1.0
+    threshold = MIN_MATCH_THRESHOLD_COLD_START - (progress * (MIN_MATCH_THRESHOLD_COLD_START - MIN_MATCH_THRESHOLD))
+    return threshold
 
 
 def should_force_decompose(depth: int) -> bool:
@@ -100,6 +123,10 @@ def should_force_decompose(depth: int) -> bool:
         True if should force decompose, False if should try DSL execution
     """
     if not DEPTH_DECOMPOSE_ENABLED:
+        return False
+
+    # BIG BANG toggle - when disabled, skip aggressive decomposition entirely
+    if not BIG_BANG_EXPANSION_ENABLED:
         return False
 
     sig_count = get_signature_count()
@@ -458,10 +485,12 @@ class Solver:
 
         # 2. Find or create signature (use original text for description)
         # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
+        # Use adaptive threshold: higher during cold start (more signatures), lower when mature
+        adaptive_threshold = get_adaptive_match_threshold()
         signature, is_new = self.step_db.find_or_create(
             step_text=step.task,  # Keep original for description
             embedding=embedding,   # Use normalized embedding for matching
-            min_similarity=self.min_similarity,
+            min_similarity=adaptive_threshold,
             parent_problem=problem,
             origin_depth=depth,  # Track decomposition depth
             extracted_values=getattr(step, 'extracted_values', None),
@@ -469,9 +498,9 @@ class Solver:
         )
 
         logger.debug(
-            "[solver] Step '%s' → signature '%s' (new=%s, umbrella=%s, dsl_type=%s)",
+            "[solver] Step '%s' → signature '%s' (new=%s, umbrella=%s, dsl_type=%s, threshold=%.2f)",
             step.task[:40], signature.step_type, is_new, signature.is_semantic_umbrella,
-            signature.dsl_type
+            signature.dsl_type, adaptive_threshold
         )
 
         # 2.5. Auto-decompose if signature needs children
@@ -684,6 +713,25 @@ class Solver:
             )
             sub_results.append(sub_result)
 
+            # Abort composite on sub-step failure (prevent cascading empty strings)
+            if not sub_result.success:
+                logger.warning(
+                    "[solver] Composite sub-step failed, aborting: sub_step=%s task='%s'",
+                    sub_step.id, sub_step.task[:50]
+                )
+                elapsed_ms = (time.time() - start_time) * 1000
+                return StepResult(
+                    step_id=step.id,
+                    task=step.task,
+                    result="",  # Empty result = failure
+                    success=False,
+                    signature_id=None,
+                    signature_type=f"composite[{len(sub_results)}]",
+                    is_new_signature=False,
+                    was_injected=False,
+                    elapsed_ms=elapsed_ms,
+                )
+
             # Store result and description for dependent sub-steps
             sub_context[sub_step.id] = sub_result.result
             sub_step_descriptions[sub_step.id] = sub_step.task
@@ -772,8 +820,10 @@ class Solver:
             best_condition = ""
 
             for child_sig, condition in children:
-                if child_sig.centroid is not None:
-                    sim = cosine_similarity(embedding, child_sig.centroid)
+                # Capture centroid once to avoid TOCTOU race condition
+                centroid = child_sig.centroid
+                if centroid is not None:
+                    sim = cosine_similarity(embedding, centroid)
                     if sim > best_sim:
                         best_sim = sim
                         best_child = child_sig
@@ -866,6 +916,21 @@ Respond with ONLY the number (0-{len(children)})."""
         dsl_hint = getattr(step, 'dsl_hint', None)
         extracted_values = getattr(step, 'extracted_values', {}) or {}
 
+        # Validate extracted values using signature's NL context (bidirectional communication)
+        # This catches semantic mismatches like "overtime_hours" pointing to a "pay calculation" step
+        if extracted_values and signature.param_descriptions and step_descriptions:
+            validated_extractions, rejected = validate_extracted_values(
+                extracted_values,
+                step_descriptions,
+                signature.param_descriptions,
+            )
+            if rejected:
+                logger.info(
+                    "[solver] Extraction validation rejected %d params: %s",
+                    len(rejected), rejected
+                )
+            extracted_values = validated_extractions
+
         # Handle extraction-only steps: no dsl_hint but has single extracted value
         # These steps just extract a constant from the problem (e.g., "eggs per day = 16")
         if not dsl_hint and extracted_values:
@@ -874,14 +939,14 @@ Respond with ONLY the number (0-{len(children)})."""
                 if isinstance(val, (int, float)):
                     logger.info("[solver] Extraction-only step: %s = %s", key, val)
                     return str(val)
-                elif isinstance(val, str) and not (val.startswith('{') and val.endswith('}')):
-                    # String value that's not a reference
+                elif isinstance(val, str) and val and not (val.startswith('{') and val.endswith('}')):
+                    # Non-empty string value that's not a reference
                     try:
                         num_val = float(val)
                         logger.info("[solver] Extraction-only step: %s = %s", key, num_val)
                         return str(num_val)
                     except ValueError:
-                        pass
+                        logger.debug("[solver] Non-numeric string value for %s: %s", key, val[:50])
             logger.debug("[solver] No extractable value found in extracted_values")
             return None
 
@@ -893,9 +958,10 @@ Respond with ONLY the number (0-{len(children)})."""
         # Build available params from context + extracted values
         params = {}
 
-        # Add extracted values (resolve references)
-        if hasattr(step, 'extracted_values') and step.extracted_values:
-            for key, val in step.extracted_values.items():
+        # Add validated extracted values (resolve references)
+        # Note: extracted_values was already validated above using signature's param_descriptions
+        if extracted_values:
+            for key, val in extracted_values.items():
                 if isinstance(val, str) and val.startswith('{') and val.endswith('}'):
                     ref_key = val[1:-1]
                     if ref_key in context:
@@ -1199,28 +1265,58 @@ Expression:"""
 
         return candidates
 
-    async def _auto_decompose_signature(self, signature) -> bool:
+    async def _auto_decompose_signature(self, signature, recursion_depth: int = 0) -> bool:
         """Auto-decompose a decompose-type signature into computable children.
 
         Called when we encounter a decompose-type signature that needs children.
         Creates children with actual DSLs and promotes parent to umbrella.
 
+        During BIG BANG phase, recursively decomposes children to explode tree structure.
+
         Args:
             signature: The decompose-type signature to decompose
+            recursion_depth: Current recursion depth (to prevent runaway)
 
         Returns:
             True if decomposition succeeded, False otherwise
         """
         from mycelium.step_signatures.umbrella_learner import UmbrellaLearner
 
+        # Hard limit on recursion to prevent runaway
+        MAX_DECOMPOSE_RECURSION = 5
+        if recursion_depth >= MAX_DECOMPOSE_RECURSION:
+            logger.debug(
+                "[solver] Decomposition recursion limit reached: depth=%d",
+                recursion_depth
+            )
+            return False
+
         learner = UmbrellaLearner(self.step_db)
         try:
             child_ids = await learner.decompose_signature(signature)
             if child_ids:
                 logger.info(
-                    "[solver] Auto-decomposed '%s' into %d children",
-                    signature.step_type, len(child_ids)
+                    "[solver] Auto-decomposed '%s' into %d children (recursion=%d)",
+                    signature.step_type, len(child_ids), recursion_depth
                 )
+
+                # BIG BANG: Recursively decompose children at shallow depth
+                # This explodes the tree structure during cold start
+                # Skip entirely when BIG_BANG_EXPANSION_ENABLED is False
+                if BIG_BANG_EXPANSION_ENABLED:
+                    for child_id in child_ids:
+                        child_sig = self.step_db.get_signature(child_id)
+                        if child_sig and not child_sig.is_semantic_umbrella:
+                            child_depth = child_sig.depth or 0
+                            if should_force_decompose(child_depth):
+                                logger.debug(
+                                    "[solver] BIG BANG recursive decompose: '%s' at depth %d",
+                                    child_sig.step_type, child_depth
+                                )
+                                await self._auto_decompose_signature(
+                                    child_sig, recursion_depth + 1
+                                )
+
                 return True
             else:
                 logger.warning(

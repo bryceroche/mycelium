@@ -144,7 +144,7 @@ class StepSignature:
 
     @classmethod
     def from_row(cls, row: dict) -> "StepSignature":
-        """Create from database row."""
+        """Create from database row (full parsing)."""
         # Parse JSON fields
         clarifying_questions = []
         if row.get("clarifying_questions"):
@@ -197,6 +197,44 @@ class StepSignature:
             dsl_script=row.get("dsl_script"),
             dsl_type=row.get("dsl_type", "math"),
             examples=examples,
+            uses=row.get("uses", 0),
+            successes=row.get("successes", 0),
+            is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
+            is_root=bool(row.get("is_root", 0)),
+            depth=row.get("depth", 0) or 0,
+            created_at=row.get("created_at"),
+            last_used_at=row.get("last_used_at"),
+        )
+
+    @classmethod
+    def from_row_fast(cls, row: dict) -> "StepSignature":
+        """Create from database row (skip expensive JSON parsing).
+
+        ~2x faster than from_row. Use when you only need basic fields.
+        Skips: centroid, embedding_sum, clarifying_questions, examples.
+        Parses: param_descriptions (needed for extraction validation).
+        """
+        # Parse param_descriptions (small, needed for extraction validation)
+        param_descriptions = {}
+        if row.get("param_descriptions"):
+            try:
+                param_descriptions = json.loads(row["param_descriptions"])
+            except json.JSONDecodeError:
+                pass
+
+        return cls(
+            id=row.get("id"),
+            signature_id=row.get("signature_id", ""),
+            centroid=None,  # Skip expensive parsing
+            embedding_sum=None,
+            embedding_count=row.get("embedding_count", 1) or 1,
+            step_type=row.get("step_type", ""),
+            description=row.get("description", ""),
+            clarifying_questions=[],  # Skip JSON parsing
+            param_descriptions=param_descriptions,  # Parse for extraction validation
+            dsl_script=row.get("dsl_script"),
+            dsl_type=row.get("dsl_type", "math"),
+            examples=[],  # Skip JSON parsing
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),

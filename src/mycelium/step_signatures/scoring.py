@@ -36,6 +36,22 @@ from mycelium.config import (
 
 
 # =============================================================================
+# UTC TIMESTAMP HELPER
+# =============================================================================
+
+def utc_now_iso() -> str:
+    """Generate ISO timestamp in UTC with 'Z' suffix.
+
+    Use this instead of datetime.utcnow().isoformat() for consistent
+    timezone-aware timestamps that work correctly with staleness calculations.
+
+    Returns:
+        ISO format timestamp with 'Z' suffix, e.g., '2024-01-15T12:30:45.123456Z'
+    """
+    return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+
+
+# =============================================================================
 # CACHED TOTAL PROBLEMS COUNTER
 # =============================================================================
 # Module-level cache to avoid DB hits on every routing decision
@@ -60,8 +76,9 @@ def get_total_problems_solved(db_path: str = DB_PATH) -> int:
 
     # Query DB for fresh value
     try:
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(db_path, timeout=30.0)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA busy_timeout = 30000")
         row = conn.execute(
             "SELECT value FROM db_metadata WHERE key = 'total_problems_solved'"
         ).fetchone()
@@ -84,8 +101,9 @@ def increment_total_problems(db_path: str = DB_PATH) -> int:
     Called once per problem completion. Also updates the cache.
     """
     try:
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(db_path, timeout=30.0)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA busy_timeout = 30000")
         now_iso = datetime.now(timezone.utc).isoformat()
 
         # Upsert the counter
@@ -147,7 +165,9 @@ def compute_staleness_penalty(last_used_at: Optional[str]) -> float:
     """Compute staleness penalty based on days since last use.
 
     Args:
-        last_used_at: ISO timestamp of last use, or None if never used
+        last_used_at: ISO timestamp of last use, or None if never used.
+                      Accepts UTC timestamps with 'Z' suffix, '+00:00' suffix,
+                      or naive timestamps (assumed UTC).
 
     Returns:
         Penalty to subtract from routing score (0.0 to STALENESS_MAX_PENALTY)
@@ -156,8 +176,15 @@ def compute_staleness_penalty(last_used_at: Optional[str]) -> float:
         return 0.0
 
     try:
-        # Parse ISO timestamp
-        last_used = datetime.fromisoformat(last_used_at.replace('Z', '+00:00'))
+        # Parse ISO timestamp - handle various UTC formats
+        # Replace 'Z' with '+00:00' for fromisoformat compatibility
+        ts = last_used_at.replace('Z', '+00:00')
+        last_used = datetime.fromisoformat(ts)
+
+        # If parsed timestamp is naive (no timezone), assume UTC
+        if last_used.tzinfo is None:
+            last_used = last_used.replace(tzinfo=timezone.utc)
+
         now = datetime.now(timezone.utc)
         days_since_use = (now - last_used).total_seconds() / 86400.0
 
@@ -168,7 +195,10 @@ def compute_staleness_penalty(last_used_at: Optional[str]) -> float:
         # Calculate penalty: rate * days, capped at max
         penalty = (days_since_use - STALENESS_GRACE_DAYS) * STALENESS_DECAY_RATE
         return min(penalty, STALENESS_MAX_PENALTY)
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, AttributeError):
+        # ValueError: invalid timestamp format
+        # TypeError: wrong type passed to fromisoformat
+        # AttributeError: non-string passed (no .replace method)
         return 0.0
 
 
@@ -194,6 +224,10 @@ def compute_traffic_penalty(uses: int, total_problems: Optional[int] = None) -> 
 
     # Grace period: don't penalize during cold start
     if total_problems < TRAFFIC_GRACE_PROBLEMS:
+        return 0.0
+
+    # Guard against invalid threshold config (would cause division issues)
+    if TRAFFIC_MIN_SHARE <= 0:
         return 0.0
 
     # Calculate traffic share
@@ -231,7 +265,8 @@ def compute_routing_score(
     Returns:
         Routing score (higher = better match)
     """
-    effective_rate = (successes + ROUTING_PRIOR_SUCCESSES) / (uses + ROUTING_PRIOR_USES)
+    denominator = uses + ROUTING_PRIOR_USES
+    effective_rate = (successes + ROUTING_PRIOR_SUCCESSES) / denominator if denominator > 0 else 0.5
     base_score = MCTS_SIMILARITY_WEIGHT * cosine_sim + MCTS_SUCCESS_WEIGHT * effective_rate
 
     # Apply staleness penalty (time-based decay)
@@ -274,7 +309,8 @@ def compute_ucb1_score(
         UCB1 score (higher = better choice)
     """
     # Exploitation term: similarity weighted by success rate
-    effective_rate = (successes + ROUTING_PRIOR_SUCCESSES) / (uses + ROUTING_PRIOR_USES)
+    denominator = uses + ROUTING_PRIOR_USES
+    effective_rate = (successes + ROUTING_PRIOR_SUCCESSES) / denominator if denominator > 0 else 0.5
     exploit_score = MCTS_SIMILARITY_WEIGHT * cosine_sim + MCTS_SUCCESS_WEIGHT * effective_rate
 
     # Exploration term: UCB1 bonus for under-visited signatures

@@ -16,6 +16,9 @@ from mycelium.step_signatures.utils import (
     pack_embedding,
     unpack_embedding,
     cosine_similarity,
+    get_cached_centroid,
+    invalidate_centroid_cache,
+    get_centroid_cache_stats,
 )
 
 from mycelium.step_signatures.db import StepSignatureDB
@@ -38,5 +41,8 @@ __all__ = [
     "pack_embedding",
     "unpack_embedding",
     "cosine_similarity",
+    "get_cached_centroid",
+    "invalidate_centroid_cache",
+    "get_centroid_cache_stats",
     "STEP_SCHEMA_SQL",
 ]

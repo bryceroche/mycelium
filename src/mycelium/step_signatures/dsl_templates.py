@@ -98,13 +98,13 @@ def _build_dsl_from_hint(
         logger.debug("[dsl_infer] Unknown dsl_hint '%s', ignoring", dsl_hint)
         return None
 
-    # Get param names from extracted_values
-    params = [k for k in extracted_values.keys() if not k.startswith("{")]
+    # Get param names from extracted_values (guard against non-string keys)
+    params = [k for k in extracted_values.keys() if isinstance(k, str) and not k.startswith("{")]
     if len(params) < 2:
         logger.debug("[dsl_infer] dsl_hint needs 2+ params, got %d", len(params))
         return None
 
-    # Build script with first two params
+    # Build script with first two params (guarded by len check above)
     p1, p2 = params[0], params[1]
     script = f"{p1} {operator} {p2}"
 
@@ -235,9 +235,12 @@ def _infer_dsl_from_values(
         return None
 
     # Filter out step references for param list (keep only numeric values as params)
+    # Guard against non-string keys which would cause AttributeError
     params = []
     numeric_values = []
     for key, val in extracted_values.items():
+        if not isinstance(key, str):
+            continue  # Skip non-string keys
         if isinstance(val, str) and val.startswith("{") and val.endswith("}"):
             # This is a step reference like "{step_1}" - still a valid param
             params.append(key)
@@ -520,11 +523,12 @@ def _infer_operation_semantic(
         # Basic arithmetic (+, -, *, /) can use normal threshold
         # This prevents embedding noise from matching "total eggs" to "power"
         BASIC_OPS = {"+", "-", "*", "/"}
-        EXOTIC_THRESHOLD_BONUS = 0.25  # Require 25% higher similarity for exotic ops
+        EXOTIC_THRESHOLD_BONUS = 0.05  # Require 5% higher similarity for exotic ops
+        EXOTIC_THRESHOLD_MAX = 0.92  # Cap exotic threshold to ensure it's achievable
 
         effective_threshold = min_similarity
         if best_op not in BASIC_OPS:
-            effective_threshold = min_similarity + EXOTIC_THRESHOLD_BONUS
+            effective_threshold = min(min_similarity + EXOTIC_THRESHOLD_BONUS, EXOTIC_THRESHOLD_MAX)
             logger.debug(
                 "[dsl_infer] Exotic op '%s' requires higher threshold: %.3f",
                 best_op, effective_threshold
@@ -541,7 +545,7 @@ def _infer_operation_semantic(
         # Log at INFO level so rejections are visible - this is learning data
         logger.info(
             "[dsl_infer] REJECTED: '%s' best_match='%s' sim=%.3f < threshold=%.3f → decompose",
-            step_type, best_op, best_sim, min_similarity
+            step_type, best_op, best_sim, effective_threshold
         )
         return None
 
@@ -622,11 +626,12 @@ def _find_similar_successful_dsl(
                 step_type, best_match.step_type, best_similarity
             )
             # Parse and return the DSL
-            try:
-                dsl_data = json.loads(best_match.dsl_script)
-                return best_match.dsl_script, dsl_data.get("type", "math")
-            except json.JSONDecodeError:
-                pass
+            if best_match.dsl_script:
+                try:
+                    dsl_data = json.loads(best_match.dsl_script)
+                    return best_match.dsl_script, dsl_data.get("type", "math")
+                except (json.JSONDecodeError, TypeError):
+                    pass
 
         return None
 

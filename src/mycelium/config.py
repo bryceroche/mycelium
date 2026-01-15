@@ -33,7 +33,10 @@ TRAINING_MODE = True
 # =============================================================================
 
 # Similarity Thresholds (adjusted for 768-dim MathBERT embeddings)
-MIN_MATCH_THRESHOLD = 0.85  # Lowered to reduce signature fragmentation
+# Cold-start aware: higher threshold early (more branching), lower later (consolidation)
+MIN_MATCH_THRESHOLD = 0.85  # Mature threshold - reduce signature fragmentation
+MIN_MATCH_THRESHOLD_COLD_START = 0.92  # Cold start threshold - create more signatures
+MIN_MATCH_RAMP_SIGNATURES = 50  # Signatures needed to reach mature threshold
 MERGE_SIMILARITY_THRESHOLD = 0.75
 VARIANT_THRESHOLD = 0.40
 DEFAULT_INJECTION_THRESHOLD = 0.90  # Only inject on high-confidence matches
@@ -181,11 +184,21 @@ DEPTH_DECOMPOSE_MIN_PROB = 0.05  # Floor probability (never fully disable decomp
 # DYNAMIC DEPTH ROUTING
 # =============================================================================
 
+# BIG BANG EXPANSION: Recursive decomposition during cold start
+# When enabled: aggressively decompose signatures to rapidly build tree structure
+# When disabled: only decompose on explicit failure, use existing tree
+BIG_BANG_EXPANSION_ENABLED = True  # Toggle on for aggressive cold-start decomposition
+
 RECURSIVE_DECOMPOSITION_ENABLED = True  # Enable decomposition for complex steps
 RECURSIVE_MAX_DEPTH = 9  # Max routing depth: deep decomposition for complex problems
 RECURSIVE_CONFIDENCE_THRESHOLD = 0.8  # Route deeper when DSL confidence < this
 RECURSIVE_MAX_TOTAL_STEPS = 50
-UMBRELLA_MAX_DEPTH = 10  # Max depth for umbrella routing chains
+
+# Umbrella routing depth limits
+_UMBRELLA_MAX_DEPTH_RAW = 10  # Configurable max depth for umbrella routing chains
+_UMBRELLA_HARD_CAP = 100  # Absolute maximum to prevent unbounded recursion
+# Validate and clamp: ensure positive integer, capped at hard limit
+UMBRELLA_MAX_DEPTH = max(1, min(int(_UMBRELLA_MAX_DEPTH_RAW or 10), _UMBRELLA_HARD_CAP))
 UMBRELLA_ROUTING_THRESHOLD = 0.5  # Min similarity for umbrella child routing (lower than global 0.85 since we're picking best among known children)
 
 # =============================================================================
@@ -195,11 +208,8 @@ UMBRELLA_ROUTING_THRESHOLD = 0.5  # Min similarity for umbrella child routing (l
 DB_PATH = "mycelium.db"  # 768-dim MathBERT embeddings
 
 # =============================================================================
-# LLM CLIENT
+# LLM CLIENT (OpenAI gpt-4.1-nano)
 # =============================================================================
-
-# Provider: "groq" or "openai"
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq")  # "groq" or "openai"
 
 CLIENT_DEFAULT_TIMEOUT = 120.0
 CLIENT_DEFAULT_TEMPERATURE = 0.0  # Zero for deterministic responses
@@ -208,13 +218,10 @@ CLIENT_BASE_RETRY_DELAY = 1.0
 CLIENT_MAX_RETRY_DELAY = 30.0
 PLANNER_DEFAULT_TEMPERATURE = 0.0  # Zero for deterministic decomposition
 
-# Model names per provider
-GROQ_DEFAULT_MODEL = "llama-3.3-70b-versatile"
-OPENAI_DEFAULT_MODEL = "gpt-4o-mini"
-
-# Active model (based on provider)
-PLANNER_DEFAULT_MODEL = OPENAI_DEFAULT_MODEL if LLM_PROVIDER == "openai" else GROQ_DEFAULT_MODEL
-SOLVER_DEFAULT_MODEL = OPENAI_DEFAULT_MODEL if LLM_PROVIDER == "openai" else GROQ_DEFAULT_MODEL
+# Model - OpenAI gpt-4.1-nano only
+DEFAULT_MODEL = "gpt-4.1-nano"
+PLANNER_DEFAULT_MODEL = DEFAULT_MODEL
+SOLVER_DEFAULT_MODEL = DEFAULT_MODEL
 
 # =============================================================================
 # SELF-CONSISTENCY (Reliability through sampling)

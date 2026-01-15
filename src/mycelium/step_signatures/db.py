@@ -43,7 +43,14 @@ from mycelium.step_signatures.dsl_templates import infer_dsl_for_signature
 from mycelium.data_layer import get_db
 from mycelium.data_layer.schema import init_db
 from mycelium.step_signatures.models import StepSignature
-from mycelium.step_signatures.utils import cosine_similarity, pack_embedding, unpack_embedding
+from mycelium.step_signatures.utils import (
+    cosine_similarity,
+    batch_cosine_similarity,
+    pack_embedding,
+    unpack_embedding,
+    get_cached_centroid,
+    invalidate_centroid_cache,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +84,12 @@ class StepSignatureDB:
             # Use default DB path from config when using global singleton
             from mycelium.config import DB_PATH
             self._db_path = DB_PATH
+
+        # Lazy-loaded centroid matrix for fast batch similarity
+        self._centroid_matrix: Optional[np.ndarray] = None
+        self._centroid_sig_ids: Optional[list[int]] = None
+        self._centroid_rows: Optional[list] = None  # Cache rows for result building
+
         self._init_schema()
 
     @property
@@ -203,6 +216,8 @@ class StepSignatureDB:
                     (pack_embedding(new_centroid), pack_embedding(centroid_sum),
                      total_weight, parent_id),
                 )
+                # Invalidate cache since centroid changed
+                invalidate_centroid_cache(parent_id)
                 logger.debug(
                     "[db] Propagated centroid to parent %d (weight=%d)",
                     parent_id, total_weight
@@ -242,8 +257,10 @@ class StepSignatureDB:
         """
         from mycelium.config import UMBRELLA_MAX_DEPTH
 
+        # Validate max_depth to prevent unbounded recursion
         if max_depth is None:
             max_depth = UMBRELLA_MAX_DEPTH
+        max_depth = max(1, min(int(max_depth), 100))  # Hard cap at 100
 
         root = self.get_root()
         if root is None:
@@ -269,9 +286,11 @@ class StepSignatureDB:
             best_score = 0.0
 
             for child_sig, _condition in children:
-                if child_sig.centroid is None:
+                # Capture centroid once to avoid TOCTOU race condition
+                centroid = child_sig.centroid
+                if centroid is None:
                     continue
-                sim = cosine_similarity(embedding, child_sig.centroid)
+                sim = cosine_similarity(embedding, centroid)
                 if sim >= min_similarity:
                     # Use routing score for tiebreaking
                     score = compute_routing_score(
@@ -528,6 +547,9 @@ class StepSignatureDB:
         """
         from mycelium.config import UMBRELLA_MAX_DEPTH
 
+        # Validate max depth to prevent unbounded recursion
+        max_depth = max(1, min(int(UMBRELLA_MAX_DEPTH or 10), 100))  # Hard cap at 100
+
         # Start at root
         root_row = conn.execute(
             "SELECT * FROM step_signatures WHERE is_root = 1 LIMIT 1"
@@ -540,10 +562,12 @@ class StepSignatureDB:
         parent_for_new = current  # Track where to create new child
         depth = 0
 
-        while depth < UMBRELLA_MAX_DEPTH:
+        while depth < max_depth:
             # Check similarity to current node
-            if current.centroid is not None:
-                sim = cosine_similarity(embedding, current.centroid)
+            # Capture centroid once to avoid TOCTOU race condition
+            current_centroid = current.centroid
+            if current_centroid is not None:
+                sim = cosine_similarity(embedding, current_centroid)
                 # If current is a leaf and matches, return it
                 if not current.is_semantic_umbrella and sim >= min_similarity:
                     return current, parent_for_new, sim
@@ -577,9 +601,11 @@ class StepSignatureDB:
             best_child_score = 0.0
 
             for child in children:
-                if child.centroid is None:
+                # Capture centroid once to avoid TOCTOU race condition
+                centroid = child.centroid
+                if centroid is None:
                     continue
-                child_sim = cosine_similarity(embedding, child.centroid)
+                child_sim = cosine_similarity(embedding, centroid)
                 if child_sim >= min_similarity:
                     # UCB1 score: exploit (sim * success_rate) + explore (bonus for under-visited)
                     score = compute_ucb1_score(
@@ -602,8 +628,10 @@ class StepSignatureDB:
                 best_below_sim = 0.0
                 best_below_score = 0.0
                 for child in children:
-                    if child.centroid is not None:
-                        child_sim = cosine_similarity(embedding, child.centroid)
+                    # Capture centroid once to avoid TOCTOU race condition
+                    centroid = child.centroid
+                    if centroid is not None:
+                        child_sim = cosine_similarity(embedding, centroid)
                         # Still use UCB1 for below-threshold exploration
                         score = compute_ucb1_score(
                             child_sim,
@@ -730,6 +758,18 @@ class StepSignatureDB:
             )
             row_id = cursor.lastrowid
 
+            # Defensive check: ensure we got a valid row ID
+            if not row_id:
+                # Fallback: query by signature_id which is unique
+                row = conn.execute(
+                    "SELECT id FROM step_signatures WHERE signature_id = ?",
+                    (sig_id,)
+                ).fetchone()
+                if row:
+                    row_id = row["id"]
+                else:
+                    raise RuntimeError(f"Failed to get row ID after INSERT for signature_id={sig_id}")
+
             # If not root, add as child of the appropriate parent
             if not is_first_signature and actual_parent_id is not None:
                 # Add parent-child relationship
@@ -771,6 +811,9 @@ class StepSignatureDB:
         else:
             logger.debug("[db] Auto-assigned DSL type=%s for step_type=%s", dsl_type, step_type)
 
+        # Invalidate centroid matrix cache since we added a new signature
+        self.invalidate_centroid_matrix()
+
         return StepSignature(
             id=row_id,
             signature_id=sig_id,
@@ -805,6 +848,47 @@ class StepSignatureDB:
                 return self._row_to_signature(row)
             return None
 
+    def _ensure_centroid_matrix(self):
+        """Build or refresh the cached centroid matrix for fast similarity search."""
+        if self._centroid_matrix is not None:
+            return  # Already loaded
+
+        with self._connection() as conn:
+            cursor = conn.execute("SELECT * FROM step_signatures")
+            rows = cursor.fetchall()
+
+        valid_rows = []
+        centroids = []
+        sig_ids = []
+        for row in rows:
+            if not row["centroid"]:
+                continue
+            centroid = get_cached_centroid(row["id"], row["centroid"])
+            if centroid is not None:
+                valid_rows.append(row)
+                centroids.append(centroid)
+                sig_ids.append(row["id"])
+
+        if centroids:
+            matrix = np.array(centroids, dtype=np.float32)
+            # Pre-normalize for faster similarity (just dot product needed)
+            norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+            norms = np.where(norms == 0, 1, norms)
+            self._centroid_matrix = matrix / norms  # Normalized!
+            self._centroid_sig_ids = sig_ids
+            self._centroid_rows = valid_rows
+            logger.debug("[db] Built pre-normalized centroid matrix: %d signatures", len(sig_ids))
+        else:
+            self._centroid_matrix = np.array([], dtype=np.float32).reshape(0, 768)
+            self._centroid_sig_ids = []
+            self._centroid_rows = []
+
+    def invalidate_centroid_matrix(self):
+        """Invalidate cached centroid matrix (call when signatures change)."""
+        self._centroid_matrix = None
+        self._centroid_sig_ids = None
+        self._centroid_rows = None
+
     def find_similar(
         self,
         embedding: np.ndarray,
@@ -821,29 +905,36 @@ class StepSignatureDB:
         Returns:
             List of (signature, similarity) tuples, sorted by similarity descending
         """
-        with self._connection() as conn:
-            cursor = conn.execute("SELECT * FROM step_signatures")
-            rows = cursor.fetchall()
+        self._ensure_centroid_matrix()
 
+        if len(self._centroid_matrix) == 0:
+            return []
+
+        # Batch cosine similarity (~50x faster than loop, pre-normalized matrix)
+        scores = batch_cosine_similarity(embedding, self._centroid_matrix, matrix_normalized=True)
+
+        # Get indices above threshold, sorted by score (descending)
+        above_threshold = np.where(scores >= threshold)[0]
+        if len(above_threshold) == 0:
+            return []
+
+        # Sort by score and take top limit (avoid converting all matches to Signature objects)
+        sorted_indices = above_threshold[np.argsort(scores[above_threshold])[::-1]][:limit]
+
+        # Only convert the top results to StepSignature objects (major speedup!)
+        # Use fast parsing - skip JSON fields we don't need for similarity results
         results = []
-        for row in rows:
-            centroid = unpack_embedding(row["centroid"])
-            if centroid is None:
-                continue
+        for i in sorted_indices:
+            sig = self._row_to_signature_fast(self._centroid_rows[i])
+            results.append((sig, float(scores[i])))
 
-            score = cosine_similarity(embedding, centroid)
-            if score >= threshold:
-                sig = self._row_to_signature(row)
-                results.append((sig, score))
-
-        results.sort(key=lambda x: x[1], reverse=True)
-        return results[:limit]
+        return results
 
     def count_signatures(self) -> int:
         """Get total number of signatures."""
         with self._connection() as conn:
             row = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()
-            return row[0]
+            return row[0] if row else 0
 
     # =========================================================================
     # Centroid Management (Running Average Embeddings)
@@ -889,9 +980,10 @@ class StepSignatureDB:
                     current_count = row["embedding_count"] or 1
                 else:
                     # Initialize from fresh centroid if no sum yet (migration case)
+                    # Use count=1 in both cases to avoid double-counting new_embedding
                     fresh_centroid = unpack_embedding(row["centroid"])
                     current_sum = fresh_centroid.copy() if fresh_centroid is not None else new_embedding.copy()
-                    current_count = 1 if fresh_centroid is not None else 0
+                    current_count = 1
 
                 # Update running sum and count
                 new_sum = current_sum + new_embedding
@@ -911,6 +1003,9 @@ class StepSignatureDB:
                     (new_sum_packed, new_count, new_centroid_packed, signature_id),
                 )
                 conn.commit()
+                # Invalidate caches since centroid changed
+                invalidate_centroid_cache(signature_id)
+                self.invalidate_centroid_matrix()
                 logger.debug(
                     "[db] Updated centroid for sig %d: count=%d",
                     signature_id, new_count
@@ -995,7 +1090,8 @@ class StepSignatureDB:
             # OR if we have enough history showing poor success_rate
             # This prevents premature demotion before problem grading updates successes
             if AUTO_DEMOTE_ENABLED and not is_umbrella and dsl_type not in AUTO_DEMOTE_EXCLUDED_TYPES:
-                sig_count = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()[0]
+                sig_count_row = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()
+                sig_count = sig_count_row[0] if sig_count_row else 0
                 min_uses = min(
                     AUTO_DEMOTE_MIN_USES_FLOOR + sig_count // AUTO_DEMOTE_RAMP_DIVISOR,
                     AUTO_DEMOTE_MIN_USES_CAP
@@ -1239,6 +1335,13 @@ class StepSignatureDB:
         """Convert a database row to a StepSignature object."""
         return StepSignature.from_row(dict(row))
 
+    def _row_to_signature_fast(self, row) -> StepSignature:
+        """Convert a database row to StepSignature (skip JSON parsing).
+
+        ~3x faster. Use when you only need basic fields.
+        """
+        return StepSignature.from_row_fast(dict(row))
+
     def _infer_step_type(self, step_text: str) -> str:
         """Infer a step type from step text.
 
@@ -1357,8 +1460,10 @@ class StepSignatureDB:
                 if problem_embedding is not None:
                     scored = []
                     for sig in level1_sigs:
-                        if sig.centroid is not None:
-                            sim = cosine_similarity(problem_embedding, sig.centroid)
+                        # Capture centroid once to avoid TOCTOU race condition
+                        centroid = sig.centroid
+                        if centroid is not None:
+                            sim = cosine_similarity(problem_embedding, centroid)
                             if sim >= min_similarity:
                                 scored.append((sig, sim))
                     scored.sort(key=lambda x: x[1], reverse=True)
@@ -1423,8 +1528,10 @@ class StepSignatureDB:
                 if problem_embedding is not None:
                     scored = []
                     for sig in leaf_sigs:
-                        if sig.centroid is not None:
-                            sim = cosine_similarity(problem_embedding, sig.centroid)
+                        # Capture centroid once to avoid TOCTOU race condition
+                        centroid = sig.centroid
+                        if centroid is not None:
+                            sim = cosine_similarity(problem_embedding, centroid)
                             if sim >= min_similarity:
                                 scored.append((sig, sim))
                     scored.sort(key=lambda x: x[1], reverse=True)
@@ -1677,7 +1784,10 @@ class StepSignatureDB:
             if sig_id in exclude_ids:
                 continue
 
-            centroid = unpack_embedding(row["centroid"])
+            if not row["centroid"]:
+                continue
+            # Use cached centroid to avoid repeated JSON parsing
+            centroid = get_cached_centroid(sig_id, row["centroid"])
             if centroid is None:
                 continue
 
@@ -1720,10 +1830,11 @@ class StepSignatureDB:
             )
             if cursor.rowcount > 0:
                 # Check if parent still has children
-                remaining = conn.execute(
+                remaining_row = conn.execute(
                     "SELECT COUNT(*) FROM signature_relationships WHERE parent_id = ?",
                     (parent_id,),
-                ).fetchone()[0]
+                ).fetchone()
+                remaining = remaining_row[0] if remaining_row else 0
                 if remaining == 0:
                     # Demote from umbrella
                     conn.execute(
@@ -1749,11 +1860,18 @@ class StepSignatureDB:
             Dict with counts of deleted rows
         """
         with self._connection() as conn:
-            # Get counts before deletion
-            sig_count = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()[0]
-            ex_count = conn.execute("SELECT COUNT(*) FROM step_examples").fetchone()[0]
-            log_count = conn.execute("SELECT COUNT(*) FROM step_usage_log").fetchone()[0]
-            rel_count = conn.execute("SELECT COUNT(*) FROM signature_relationships").fetchone()[0] if self._table_exists(conn, "signature_relationships") else 0
+            # Get counts before deletion (defensive None checks for race conditions)
+            sig_row = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()
+            sig_count = sig_row[0] if sig_row else 0
+            ex_row = conn.execute("SELECT COUNT(*) FROM step_examples").fetchone()
+            ex_count = ex_row[0] if ex_row else 0
+            log_row = conn.execute("SELECT COUNT(*) FROM step_usage_log").fetchone()
+            log_count = log_row[0] if log_row else 0
+            if self._table_exists(conn, "signature_relationships"):
+                rel_row = conn.execute("SELECT COUNT(*) FROM signature_relationships").fetchone()
+                rel_count = rel_row[0] if rel_row else 0
+            else:
+                rel_count = 0
 
             # Delete in order (relationships first due to FK constraints)
             if self._table_exists(conn, "signature_relationships"):
@@ -1802,8 +1920,10 @@ class StepSignatureDB:
         # Build list of (id, centroid) for comparison
         sig_data = []
         for s in sigs:
-            if s.centroid is not None:
-                sig_data.append((s.id, s.uses, s.successes, s.description, np.array(s.centroid)))
+            # Capture centroid once to avoid TOCTOU race condition
+            centroid = s.centroid
+            if centroid is not None:
+                sig_data.append((s.id, s.uses, s.successes, s.description, np.array(centroid)))
 
         # Find pairs to merge
         to_merge = []  # (keep_id, delete_id, similarity)

@@ -124,16 +124,19 @@ class MyceliumDB:
     def get_stats(self) -> dict:
         with self._db.connection() as conn:
             cursor = conn.cursor()
+            # Defensive None checks for race conditions
             cursor.execute("SELECT COUNT(*) FROM step_signatures")
-            sig_count = cursor.fetchone()[0]
+            sig_row = cursor.fetchone()
+            sig_count = sig_row[0] if sig_row else 0
 
             cursor.execute("SELECT COUNT(*) FROM step_examples")
-            example_count = cursor.fetchone()[0]
+            ex_row = cursor.fetchone()
+            example_count = ex_row[0] if ex_row else 0
 
             cursor.execute("SELECT SUM(uses), SUM(successes) FROM step_signatures")
             row = cursor.fetchone()
-            total_uses = row[0] or 0
-            total_successes = row[1] or 0
+            total_uses = (row[0] or 0) if row else 0
+            total_successes = (row[1] or 0) if row else 0
 
         return {
             "signatures": sig_count,

@@ -2,48 +2,31 @@
 
 **Decompose math problems into reusable atomic signatures.**
 **Please read the [CLAUDE.md](CLAUDE.md) for the latest thinking.**
-**Paper here: https://drive.google.com/file/d/1Gn8Efk4F2GW1bT3qGlHmKV-V_C6hIaLk/view**
+**The Paper is in the github repo**
 
 First solve of a problem type is hard. Second solve is easier. 100th solve is trivial.
 
-Problems decompose into DAG-structured steps. Each step matches against known signatures (cosine similarity) and executes via DSL (~0ms) instead of LLM (~500ms). Novel solutions become new signatures. The library grows; future problems get faster.
-
-
-PIPELINE RESULTS
-Dataset: math
-Total time: 497.0s (8.3 min)
-Problems: 100 L5 MATH
-
-Results by mode:
-auto            92.0% (92/100)  avg 9167ms
-
-Signature matching stats:
-1.8 steps/prob, 28.1% matched (50/178), 31 new signatures
+Problems decompose into DAG-structured steps. MCTS routes each step through a tree of signatures, recursively decomposing until a matching DSL executes. Novel solutions become new signatures. The tree grows; future problems route faster.
 
 
 ## Quick Start (~5 min)
 
 ```bash
-git clone https://github.com/bryceroche/mycelium.git && cd mycelium
-python -m venv .venv && source .venv/bin/activate
+git clone https://github.com/bryceroche/mycelium
+cd mycelium
 pip install -r requirements.txt
-gh release download v1.0-db
-export GROQ_API_KEY=your_key  # free at console.groq.com
+export OPENAI_API_KEY=your_key
+python scripts/pipeline_runner.py --dataset math --levels 1 2 --problems 20 --workers 4
 
-python scripts/pipeline_runner.py --dataset math --levels 5 --problems 20 --workers 2
 ```
 
-**Requirements:** Python 3.11+, ~2GB disk (MathBERT), Groq API key (free tier)
+**Requirements:** Python 3.11+, ~2GB disk MathBERT
 
 ## Stack
 
-- **LLM:** Llama-3.3-70B via Groq (free tier)
+- **LLM:** gpt-4.1-nano with OpenAI API
 - **DB:** SQLite + WAL mode
 - **Embeddings:** MathBERT 768-dim
-
-## Stats
-
-~4k signatures, ~5 DAG steps per L5 problem, ~3.5 injectable steps per problem.
 
 ## License
 
