@@ -90,6 +90,9 @@ class StepSignatureDB:
         self._centroid_sig_ids: Optional[list[int]] = None
         self._centroid_rows: Optional[list] = None  # Cache rows for result building
 
+        # Cached root signature (never changes after creation)
+        self._cached_root: Optional[StepSignature] = None
+
         self._init_schema()
 
     @property
@@ -120,17 +123,23 @@ class StepSignatureDB:
         """Get the root signature (single entry point for all routing).
 
         The root is created automatically when the first signature is added.
-        All problems route through the root first.
+        All problems route through the root first. Result is cached since
+        root never changes after creation.
 
         Returns:
             The root signature, or None if database is empty
         """
+        # Return cached root if available
+        if self._cached_root is not None:
+            return self._cached_root
+
         with self._connection() as conn:
             row = conn.execute(
                 "SELECT * FROM step_signatures WHERE is_root = 1 LIMIT 1"
             ).fetchone()
             if row:
-                return self._row_to_signature(row)
+                self._cached_root = self._row_to_signature(row)
+                return self._cached_root
             return None
 
     def has_root(self) -> bool:
@@ -407,6 +416,9 @@ class StepSignatureDB:
                     conn, step_text, embedding, parent_problem, origin_depth,
                     extracted_values=extracted_values, parent_id=parent_id, dsl_hint=dsl_hint
                 )
+                # Propagate new child's centroid up to parent umbrellas
+                if sig.id is not None:
+                    self.propagate_centroid_to_parents(conn, sig.id)
                 conn.commit()
                 logger.info(
                     "[db] Force-created signature: step='%s' type='%s' depth=%d",
@@ -467,30 +479,9 @@ class StepSignatureDB:
                 )
 
                 if best_match is not None and best_sim >= min_similarity:
-                    # Found a match - update centroid
-                    now = datetime.utcnow().isoformat()
-                    row = conn.execute(
-                        "SELECT embedding_sum, embedding_count, centroid FROM step_signatures WHERE id = ?",
-                        (best_match.id,)
-                    ).fetchone()
-
-                    if row and row["embedding_sum"]:
-                        current_sum = unpack_embedding(row["embedding_sum"])
-                        current_count = row["embedding_count"] or 1
-                    else:
-                        fresh_centroid = unpack_embedding(row["centroid"]) if row else None
-                        current_sum = fresh_centroid.copy() if fresh_centroid is not None else embedding.copy()
-                        current_count = 1
-
-                    new_sum = current_sum + embedding
-                    new_count = current_count + 1
-                    new_centroid = new_sum / new_count
-
-                    conn.execute(
-                        """UPDATE step_signatures
-                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, last_used_at = ?
-                           WHERE id = ?""",
-                        (pack_embedding(new_sum), new_count, pack_embedding(new_centroid), now, best_match.id),
+                    # Found a match - update centroid using shared helper
+                    new_count = self._update_centroid_atomic(
+                        conn, best_match.id, embedding, update_last_used=True
                     )
 
                     # Propagate centroid change up to parent umbrellas
@@ -499,7 +490,7 @@ class StepSignatureDB:
                     conn.commit()
                     logger.debug(
                         "[db] Matched signature (hierarchical): step='%s' sig='%s' sim=%.3f count=%d",
-                        step_text[:40], best_match.step_type, best_sim, new_count
+                        step_text[:40], best_match.step_type, best_sim, new_count or 0
                     )
                     return best_match, False
 
@@ -889,6 +880,10 @@ class StepSignatureDB:
         self._centroid_sig_ids = None
         self._centroid_rows = None
 
+    def invalidate_root_cache(self):
+        """Invalidate cached root signature (call when DB is cleared)."""
+        self._cached_root = None
+
     def find_similar(
         self,
         embedding: np.ndarray,
@@ -937,13 +932,167 @@ class StepSignatureDB:
             return row[0] if row else 0
 
     # =========================================================================
+    # DSL Rewriter Support
+    # =========================================================================
+
+    def get_total_signature_uses(self) -> int:
+        """Get total uses across all signatures."""
+        with self._connection() as conn:
+            row = conn.execute("SELECT SUM(uses) FROM step_signatures").fetchone()
+            return row[0] if row and row[0] else 0
+
+    def get_underperforming_signatures(
+        self,
+        min_uses: int = 10,
+        max_success_rate: float = 0.40,
+        limit: int = 20,
+    ) -> list:
+        """Find signatures with low success rate that need DSL rewriting.
+
+        Args:
+            min_uses: Minimum uses to be considered
+            max_success_rate: Maximum success rate to be considered underperforming
+            limit: Maximum results to return
+
+        Returns:
+            List of StepSignature objects
+        """
+        with self._connection() as conn:
+            # Only consider leaf nodes with math DSLs (not decompose/router)
+            rows = conn.execute(
+                """SELECT * FROM step_signatures
+                   WHERE uses >= ?
+                   AND dsl_type = 'math'
+                   AND is_semantic_umbrella = 0
+                   AND CAST(successes AS REAL) / uses <= ?
+                   ORDER BY uses DESC
+                   LIMIT ?""",
+                (min_uses, max_success_rate, limit)
+            ).fetchall()
+
+            return [self._row_to_signature(row) for row in rows]
+
+    def reset_signature_stats(self, signature_id: int) -> None:
+        """Reset uses and successes for a signature after DSL rewrite."""
+        with self._connection() as conn:
+            conn.execute(
+                "UPDATE step_signatures SET uses = 0, successes = 0 WHERE id = ?",
+                (signature_id,)
+            )
+            logger.debug("[db] Reset stats for signature %d", signature_id)
+
+    def mark_signature_rewritten(self, signature_id: int) -> None:
+        """Mark a signature as recently rewritten (for cooldown tracking)."""
+        from datetime import datetime
+        now = datetime.utcnow().isoformat()
+        with self._connection() as conn:
+            # Store in last_used_at for now (could add dedicated column later)
+            conn.execute(
+                "UPDATE step_signatures SET last_used_at = ? WHERE id = ?",
+                (now, signature_id)
+            )
+
+    def count_recently_rewritten(self, hours: int = 24) -> int:
+        """Count signatures rewritten within the given time period."""
+        from datetime import datetime, timedelta
+        cutoff = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
+        with self._connection() as conn:
+            # This is approximate - uses last_used_at as proxy
+            row = conn.execute(
+                """SELECT COUNT(*) FROM step_signatures
+                   WHERE last_used_at >= ?
+                   AND dsl_type = 'math'""",
+                (cutoff,)
+            ).fetchone()
+            return row[0] if row else 0
+
+    # =========================================================================
     # Centroid Management (Running Average Embeddings)
     # =========================================================================
+
+    def _update_centroid_atomic(
+        self,
+        conn,
+        signature_id: int,
+        new_embedding: np.ndarray,
+        update_last_used: bool = False,
+    ) -> Optional[int]:
+        """Update signature centroid within an existing transaction.
+
+        Internal helper that performs the centroid update without managing
+        its own transaction. Use this within code that already has an open
+        transaction.
+
+        Formula: new_sum = old_sum + new_embedding
+                 new_count = old_count + 1
+                 new_centroid = new_sum / new_count
+
+        Args:
+            conn: Database connection (within transaction)
+            signature_id: ID of the signature to update
+            new_embedding: The new embedding to add to the running average
+            update_last_used: If True, also update last_used_at timestamp
+
+        Returns:
+            New embedding count, or None if signature not found
+        """
+        row = conn.execute(
+            "SELECT embedding_sum, embedding_count, centroid FROM step_signatures WHERE id = ?",
+            (signature_id,)
+        ).fetchone()
+
+        if not row:
+            logger.warning("[db] Cannot update centroid: signature %d not found", signature_id)
+            return None
+
+        # Parse current sum (or initialize from fresh centroid)
+        if row["embedding_sum"]:
+            current_sum = unpack_embedding(row["embedding_sum"])
+            current_count = row["embedding_count"] or 1
+        else:
+            # Initialize from fresh centroid if no sum yet (migration case)
+            fresh_centroid = unpack_embedding(row["centroid"])
+            current_sum = fresh_centroid.copy() if fresh_centroid is not None else new_embedding.copy()
+            current_count = 1
+
+        # Update running sum and count
+        new_sum = current_sum + new_embedding
+        new_count = current_count + 1
+
+        # Compute new centroid
+        new_centroid = new_sum / new_count
+
+        # Pack and store
+        new_sum_packed = pack_embedding(new_sum)
+        new_centroid_packed = pack_embedding(new_centroid)
+
+        if update_last_used:
+            now = datetime.utcnow().isoformat()
+            conn.execute(
+                """UPDATE step_signatures
+                   SET embedding_sum = ?, embedding_count = ?, centroid = ?, last_used_at = ?
+                   WHERE id = ?""",
+                (new_sum_packed, new_count, new_centroid_packed, now, signature_id),
+            )
+        else:
+            conn.execute(
+                """UPDATE step_signatures
+                   SET embedding_sum = ?, embedding_count = ?, centroid = ?
+                   WHERE id = ?""",
+                (new_sum_packed, new_count, new_centroid_packed, signature_id),
+            )
+
+        # Invalidate caches since centroid changed
+        invalidate_centroid_cache(signature_id)
+        self.invalidate_centroid_matrix()
+
+        return new_count
 
     def update_centroid(
         self,
         signature_id: int,
         new_embedding: np.ndarray,
+        propagate_to_parents: bool = True,
     ):
         """Update signature centroid with a new embedding (running average).
 
@@ -958,54 +1107,23 @@ class StepSignatureDB:
         Args:
             signature_id: ID of the signature to update
             new_embedding: The new embedding to add to the running average
+            propagate_to_parents: If True, propagate centroid change up the tree
         """
         with self._connection() as conn:
             # Use BEGIN IMMEDIATE for atomic read-modify-write
             conn.execute("BEGIN IMMEDIATE")
             try:
-                # Fetch centroid too to avoid stale fallback race condition
-                row = conn.execute(
-                    "SELECT embedding_sum, embedding_count, centroid FROM step_signatures WHERE id = ?",
-                    (signature_id,)
-                ).fetchone()
+                new_count = self._update_centroid_atomic(conn, signature_id, new_embedding)
 
-                if not row:
-                    logger.warning("[db] Cannot update centroid: signature %d not found", signature_id)
+                if new_count is None:
                     conn.rollback()
                     return
 
-                # Parse current sum (or initialize from fresh centroid)
-                if row["embedding_sum"]:
-                    current_sum = unpack_embedding(row["embedding_sum"])
-                    current_count = row["embedding_count"] or 1
-                else:
-                    # Initialize from fresh centroid if no sum yet (migration case)
-                    # Use count=1 in both cases to avoid double-counting new_embedding
-                    fresh_centroid = unpack_embedding(row["centroid"])
-                    current_sum = fresh_centroid.copy() if fresh_centroid is not None else new_embedding.copy()
-                    current_count = 1
+                # Propagate centroid change up to parent umbrellas
+                if propagate_to_parents:
+                    self.propagate_centroid_to_parents(conn, signature_id)
 
-                # Update running sum and count
-                new_sum = current_sum + new_embedding
-                new_count = current_count + 1
-
-                # Compute new centroid
-                new_centroid = new_sum / new_count
-
-                # Pack and store
-                new_sum_packed = pack_embedding(new_sum)
-                new_centroid_packed = pack_embedding(new_centroid)
-
-                conn.execute(
-                    """UPDATE step_signatures
-                       SET embedding_sum = ?, embedding_count = ?, centroid = ?
-                       WHERE id = ?""",
-                    (new_sum_packed, new_count, new_centroid_packed, signature_id),
-                )
                 conn.commit()
-                # Invalidate caches since centroid changed
-                invalidate_centroid_cache(signature_id)
-                self.invalidate_centroid_matrix()
                 logger.debug(
                     "[db] Updated centroid for sig %d: count=%d",
                     signature_id, new_count
@@ -1309,6 +1427,9 @@ class StepSignatureDB:
             params.append(dsl_script)
 
         if dsl_type is not None:
+            # Only allow: decompose, math, router
+            if dsl_type not in ("decompose", "math", "router"):
+                raise ValueError(f"Invalid dsl_type '{dsl_type}'. Must be: decompose, math, or router")
             updates.append("dsl_type = ?")
             params.append(dsl_type)
 
@@ -1389,29 +1510,6 @@ class StepSignatureDB:
         """Get all signatures in the database."""
         with self._connection() as conn:
             cursor = conn.execute("SELECT * FROM step_signatures")
-            return [self._row_to_signature(row) for row in cursor.fetchall()]
-
-    def get_signatures_with_dsl(self) -> list[StepSignature]:
-        """Get all signatures that have DSL scripts."""
-        with self._connection() as conn:
-            cursor = conn.execute(
-                "SELECT * FROM step_signatures WHERE dsl_script IS NOT NULL AND dsl_script != ''"
-            )
-            return [self._row_to_signature(row) for row in cursor.fetchall()]
-
-    def get_signatures_needing_nl(self) -> list[StepSignature]:
-        """Get signatures that need NL interface filled in.
-
-        These are signatures with empty clarifying_questions that have been
-        used successfully multiple times.
-        """
-        with self._connection() as conn:
-            cursor = conn.execute(
-                """SELECT * FROM step_signatures
-                   WHERE (clarifying_questions IS NULL OR clarifying_questions = '[]')
-                   AND successes >= 3
-                   ORDER BY successes DESC"""
-            )
             return [self._row_to_signature(row) for row in cursor.fetchall()]
 
     def get_signature_hints(
@@ -1880,6 +1978,10 @@ class StepSignatureDB:
             conn.execute("DELETE FROM step_examples")
             conn.execute("DELETE FROM step_signatures")
 
+            # Invalidate all caches
+            self.invalidate_centroid_matrix()
+            self.invalidate_root_cache()
+
             logger.warning(
                 "[db] Cleared all data: signatures=%d examples=%d usage_log=%d relationships=%d",
                 sig_count, ex_count, log_count, rel_count
@@ -1898,100 +2000,3 @@ class StepSignatureDB:
             (table_name,)
         )
         return cursor.fetchone() is not None
-
-    # =========================================================================
-    # Duplicate Management
-    # =========================================================================
-
-    def merge_duplicates(self, threshold: float = 0.85, dry_run: bool = False) -> dict:
-        """Merge duplicate signatures above similarity threshold.
-
-        Keeps the signature with more uses, merges stats, deletes the other.
-
-        Args:
-            threshold: Minimum cosine similarity to consider as duplicate
-            dry_run: If True, just report what would be merged without doing it
-
-        Returns:
-            Dict with merge statistics
-        """
-        sigs = self.get_all_signatures()
-
-        # Build list of (id, centroid) for comparison
-        sig_data = []
-        for s in sigs:
-            # Capture centroid once to avoid TOCTOU race condition
-            centroid = s.centroid
-            if centroid is not None:
-                sig_data.append((s.id, s.uses, s.successes, s.description, np.array(centroid)))
-
-        # Find pairs to merge
-        to_merge = []  # (keep_id, delete_id, similarity)
-        merged_ids = set()
-
-        for i, (id1, uses1, succ1, desc1, c1) in enumerate(sig_data):
-            if id1 in merged_ids:
-                continue
-            for j, (id2, uses2, succ2, desc2, c2) in enumerate(sig_data[i+1:], i+1):
-                if id2 in merged_ids:
-                    continue
-                sim = cosine_similarity(c1, c2)
-                if sim >= threshold:
-                    # Keep the one with more uses
-                    if uses1 >= uses2:
-                        to_merge.append((id1, id2, sim, desc1, desc2))
-                        merged_ids.add(id2)
-                    else:
-                        to_merge.append((id2, id1, sim, desc2, desc1))
-                        merged_ids.add(id1)
-                        break  # id1 is being deleted, stop comparing it
-
-        if dry_run:
-            return {
-                "duplicates_found": len(to_merge),
-                "would_merge": [(keep, delete, f"{sim:.3f}", d1[:40], d2[:40])
-                               for keep, delete, sim, d1, d2 in to_merge],
-            }
-
-        # Perform merges
-        merged_count = 0
-        with self._connection() as conn:
-            for keep_id, delete_id, sim, _, _ in to_merge:
-                # Get stats from both
-                keep_row = conn.execute(
-                    "SELECT uses, successes FROM step_signatures WHERE id = ?", (keep_id,)
-                ).fetchone()
-                delete_row = conn.execute(
-                    "SELECT uses, successes FROM step_signatures WHERE id = ?", (delete_id,)
-                ).fetchone()
-
-                if keep_row and delete_row:
-                    # Merge stats
-                    new_uses = keep_row[0] + delete_row[0]
-                    new_successes = keep_row[1] + delete_row[1]
-
-                    conn.execute(
-                        "UPDATE step_signatures SET uses = ?, successes = ? WHERE id = ?",
-                        (new_uses, new_successes, keep_id),
-                    )
-
-                    # Update foreign key references to point to kept signature
-                    conn.execute(
-                        "UPDATE step_examples SET signature_id = ? WHERE signature_id = ?",
-                        (keep_id, delete_id),
-                    )
-                    conn.execute(
-                        "UPDATE step_usage_log SET signature_id = ? WHERE signature_id = ?",
-                        (keep_id, delete_id),
-                    )
-
-                    # Delete the duplicate
-                    conn.execute("DELETE FROM step_signatures WHERE id = ?", (delete_id,))
-                    merged_count += 1
-                    logger.info(f"[db] Merged sig {delete_id} into {keep_id} (sim={sim:.3f})")
-
-        return {
-            "duplicates_found": len(to_merge),
-            "merged": merged_count,
-            "remaining_signatures": len(sigs) - merged_count,
-        }

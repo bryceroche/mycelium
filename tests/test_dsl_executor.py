@@ -3,12 +3,12 @@
 import pytest
 from mycelium.step_signatures.dsl_executor import (
     try_execute_dsl_math,
-    try_execute_dsl_sympy,
-    _extract_numeric_value,
-    _prepare_math_inputs,
-    _is_valid_dsl_result,
     DSLSpec,
     DSLLayer,
+)
+from mycelium.step_signatures.math_layer import (
+    extract_numeric_value as _extract_numeric_value,
+    prepare_math_inputs as _prepare_math_inputs,
 )
 
 
@@ -54,35 +54,6 @@ class TestTryExecuteDslMath:
     def test_float_inputs(self):
         result = try_execute_dsl_math("a * b", {"a": 2.5, "b": 4.0})
         assert result == 10.0
-
-
-class TestTryExecuteDslSympy:
-    """Tests for sympy DSL execution."""
-
-    def test_simplify(self):
-        result = try_execute_dsl_sympy("simplify(expr)", {"expr": "x**2 - x**2"})
-        assert str(result) == "0"
-
-    def test_expand(self):
-        result = try_execute_dsl_sympy("expand(expr)", {"expr": "(x+1)**2"})
-        assert "x**2" in str(result)
-
-    def test_factor(self):
-        result = try_execute_dsl_sympy("factor(expr)", {"expr": "x**2 - 1"})
-        assert "x - 1" in str(result) or "x + 1" in str(result)
-
-    def test_solve(self):
-        result = try_execute_dsl_sympy("solve(expr, x)", {"expr": "x**2 - 4"})
-        # solve returns [-2, 2]
-        result_str = str(result)
-        assert "2" in result_str
-
-    def test_numeric_operations(self):
-        # Sympy keeps expressions symbolic, so a+b returns symbolic a+b
-        # For actual numeric result, we need to substitute
-        result = try_execute_dsl_sympy("a + b", {"a": 2, "b": 3})
-        # Result is symbolic "a + b", not numeric 5
-        assert result is not None
 
 
 class TestExtractNumericValue:
@@ -131,39 +102,6 @@ class TestPrepareMathInputs:
         assert "b" not in result
 
 
-class TestIsValidDslResult:
-    """Tests for DSL result validation."""
-
-    def test_valid_integer(self):
-        assert _is_valid_dsl_result(42) is True
-
-    def test_valid_float(self):
-        assert _is_valid_dsl_result(3.14) is True
-
-    def test_boolean_false_invalid(self):
-        # sympy sometimes returns False for failed operations
-        assert _is_valid_dsl_result(False) is False
-
-    def test_boolean_true_valid(self):
-        # True can be valid for predicate checks
-        assert _is_valid_dsl_result(True) is True
-
-    def test_none_passes_validation(self):
-        # None is not explicitly rejected (only False is)
-        # Caller handles None separately
-        assert _is_valid_dsl_result(None) is True
-
-    def test_astronomically_large_invalid(self):
-        # Results > 1e15 are likely param mapping errors
-        assert _is_valid_dsl_result(1e16) is False
-
-    def test_reasonable_large_valid(self):
-        assert _is_valid_dsl_result(1e9) is True
-
-    def test_string_result_valid(self):
-        assert _is_valid_dsl_result("x**2 + 1") is True
-
-
 class TestDSLSpec:
     """Tests for DSLSpec dataclass."""
 
@@ -175,12 +113,6 @@ class TestDSLSpec:
         assert spec.layer == DSLLayer.MATH
         assert spec.script == "a + b"
         assert spec.params == ["a", "b"]
-
-    def test_from_json_sympy(self):
-        json_str = '{"type": "sympy", "script": "simplify(expr)", "params": ["expr"]}'
-        spec = DSLSpec.from_json(json_str)
-        assert spec is not None
-        assert spec.layer == DSLLayer.SYMPY
 
     def test_from_json_invalid(self):
         spec = DSLSpec.from_json("not valid json")

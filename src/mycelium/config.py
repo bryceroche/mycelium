@@ -159,6 +159,41 @@ TRAFFIC_CACHE_TTL = 60.0  # Cache total_problems for N seconds (avoid DB hits)
 TRAFFIC_GRACE_PROBLEMS = 50  # No penalty until system has run N problems
 
 # =============================================================================
+# DECAY LIFECYCLE
+# =============================================================================
+# Slow decay system for signature lifecycle management.
+# Signatures that don't pull their weight gradually fade out.
+# Per CLAUDE.md: "slow decay: sig_uses / total_problems"
+
+DECAY_ENABLED = True  # Enable decay lifecycle management
+DECAY_CHECK_INTERVAL_SEC = 300  # Check decay every 5 minutes
+DECAY_MIN_AGE_DAYS = 7  # Don't decay signatures younger than N days
+
+# Thresholds (as fraction of TRAFFIC_MIN_SHARE)
+DECAY_ARCHIVE_THRESHOLD = 0.05  # Archive if < 5% of min threshold
+DECAY_DEMOTE_THRESHOLD = 0.20  # Demote umbrella if < 20% of min threshold
+DECAY_WARNING_THRESHOLD = 0.50  # Warn if < 50% of min threshold
+DECAY_RECOVERY_THRESHOLD = 0.80  # Recovered if back to 80% of min threshold
+
+# Grace periods
+DECAY_ARCHIVE_GRACE_DAYS = 30  # Wait 30 days before archiving
+
+# Limits
+DECAY_MAX_ACTIONS_PER_RUN = 10  # Max signatures to act on per cycle
+
+# =============================================================================
+# EMBEDDING CACHE
+# =============================================================================
+# Two-tier cache for MathBERT embeddings (expensive to compute ~50ms each).
+# L1: In-memory LRU, L2: Persistent SQLite disk cache.
+
+EMBEDDING_CACHE_ENABLED = True  # Enable embedding caching
+EMBEDDING_CACHE_MEMORY_SIZE = 10000  # Max entries in memory LRU cache
+EMBEDDING_CACHE_PERSIST = True  # Enable disk persistence (SQLite)
+EMBEDDING_CACHE_WARM_ON_START = True  # Pre-load from signatures on startup
+EMBEDDING_CACHE_TTL_DAYS = 30  # Prune disk entries older than N days
+
+# =============================================================================
 # DEPTH-AWARE DECOMPOSITION
 # =============================================================================
 # Force decomposition at shallow depths to build out the tree structure.
@@ -187,7 +222,7 @@ DEPTH_DECOMPOSE_MIN_PROB = 0.05  # Floor probability (never fully disable decomp
 # BIG BANG EXPANSION: Recursive decomposition during cold start
 # When enabled: aggressively decompose signatures to rapidly build tree structure
 # When disabled: only decompose on explicit failure, use existing tree
-BIG_BANG_EXPANSION_ENABLED = True  # Toggle on for aggressive cold-start decomposition
+BIG_BANG_EXPANSION_ENABLED = False  # Toggle on for aggressive cold-start decomposition
 
 RECURSIVE_DECOMPOSITION_ENABLED = True  # Enable decomposition for complex steps
 RECURSIVE_MAX_DEPTH = 9  # Max routing depth: deep decomposition for complex problems
@@ -200,6 +235,32 @@ _UMBRELLA_HARD_CAP = 100  # Absolute maximum to prevent unbounded recursion
 # Validate and clamp: ensure positive integer, capped at hard limit
 UMBRELLA_MAX_DEPTH = max(1, min(int(_UMBRELLA_MAX_DEPTH_RAW or 10), _UMBRELLA_HARD_CAP))
 UMBRELLA_ROUTING_THRESHOLD = 0.5  # Min similarity for umbrella child routing (lower than global 0.85 since we're picking best among known children)
+
+# =============================================================================
+# ZERO-LLM ROUTING (Skip planner for mature signatures)
+# =============================================================================
+# When enabled, the solver will attempt to route problems directly through
+# the signature tree without calling the planner. Only works for mature
+# signatures with high success rates and working DSL scripts.
+
+ZERO_LLM_ROUTING_ENABLED = True  # Master switch for zero-LLM routing
+ZERO_LLM_MIN_SIMILARITY = 0.90  # High similarity required (stricter than normal 0.85)
+ZERO_LLM_MIN_SUCCESS_RATE = 0.70  # Signature must have >= 70% success rate
+ZERO_LLM_MIN_USES = 5  # Need enough data to trust the signature
+ZERO_LLM_REQUIRE_DSL = True  # Signature must have a working DSL script
+
+# =============================================================================
+# DSL AUTO-REWRITER (Fix underperforming DSLs automatically)
+# =============================================================================
+# When a signature has low success rate but high traffic, the rewriter
+# uses LLM to generate an improved DSL script.
+# Per CLAUDE.md: "rewrite DSL if centroid avg outside confidence bounds"
+
+DSL_REWRITER_ENABLED = True  # Master switch for auto-rewriting
+DSL_REWRITER_MIN_USES = 10  # Need enough data to identify failure patterns
+DSL_REWRITER_MAX_SUCCESS_RATE = 0.40  # Rewrite if success rate below this
+DSL_REWRITER_MIN_TRAFFIC_SHARE = 0.005  # Only rewrite high-traffic sigs (0.5%)
+DSL_REWRITER_COOLDOWN_HOURS = 24  # Don't rewrite same sig within this period
 
 # =============================================================================
 # DATABASE

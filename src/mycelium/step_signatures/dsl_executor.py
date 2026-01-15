@@ -1,29 +1,21 @@
-"""DSL Executor: Layered execution engine for signature DSL scripts.
-
-Three execution layers:
-1. Math: Basic arithmetic, trig, log (extends existing _safe_eval_formula)
-2. SymPy: Symbolic algebra (solve, simplify, diff, integrate)
-3. Custom: Registered domain-specific operators
+"""DSL Executor: Math execution engine for signature DSL scripts.
 
 DSL scripts are JSON-encoded specifications:
 {
-    "type": "math|sympy|custom",
-    "script": "expression or operator call",
+    "type": "math",
+    "script": "expression",
     "params": ["required", "input", "names"],
     "aliases": {"param_name": ["alias1", "alias2"]},
-    "fallback": "decompose|formula|llm"
+    "fallback": "decompose"
 }
 
 Aliases enable fuzzy matching between param names and context keys.
 The LLM generates aliases once at signature creation time, then matching
 is fast dict lookups at runtime.
 
-This module is a facade that re-exports from focused submodules:
+This module re-exports from:
 - dsl_types: DSLLayer, DSLSpec, ValueType
-- dsl_validation: Semantic validation functions
 - math_layer: Math DSL execution
-- sympy_layer: SymPy DSL execution
-- custom_layer: Custom operator execution
 """
 
 import logging
@@ -47,28 +39,6 @@ from mycelium.step_signatures.dsl_types import (
     ValueType,
 )
 
-# Validation
-from mycelium.step_signatures.dsl_validation import (
-    # Negative param cache
-    record_negative_param_mapping,
-    check_negative_param_mapping,
-    # Algebraic manipulation
-    is_algebraic_manipulation,
-    # Value classification
-    classify_value_heuristic as _classify_value_heuristic,
-    classify_value_embedding as _classify_value_embedding,
-    is_numeric_input as _is_numeric_input,
-    # Step-type alignment
-    validate_step_type_alignment,
-    # DSL validation
-    validate_dsl_task_match as _validate_dsl_task_match,
-    validate_param_mapping_semantic as _validate_param_mapping_semantic,
-    validate_param_types as _validate_param_types,
-    validate_result_bounds as _validate_result_bounds,
-    is_valid_dsl_result as _is_valid_dsl_result,
-    # Extraction validation (bidirectional LLM-signature communication)
-    validate_extracted_values,
-)
 
 # Math layer
 from mycelium.step_signatures.math_layer import (
@@ -79,22 +49,6 @@ from mycelium.step_signatures.math_layer import (
     extract_numeric_value as _extract_numeric_value,
     prepare_math_inputs as _prepare_math_inputs,
     try_execute_dsl_math,
-)
-
-# SymPy layer
-from mycelium.step_signatures.sympy_layer import (
-    SYMPY_ALLOWED as _SYMPY_ALLOWED,
-    SYMPY_ALLOWED_METHODS as _SYMPY_ALLOWED_METHODS,
-    parse_to_sympy as _parse_to_sympy,
-    try_execute_dsl_sympy,
-)
-
-# Custom layer
-from mycelium.step_signatures.custom_layer import (
-    register_operator,
-    get_operator,
-    list_operators,
-    try_execute_dsl_custom,
 )
 
 # =============================================================================
@@ -151,9 +105,9 @@ def try_execute_dsl(
         # This allows scripts like "result = step_1 * 15" to work
         mapped_inputs = inputs.copy()
 
-    # DECOMPOSE/ROUTER/NONE layers: immediately fall back to LLM (no DSL execution)
+    # DECOMPOSE/ROUTER layers: immediately fall back to LLM (no DSL execution)
     # ROUTER delegates to children at a higher level, not here
-    if dsl_spec.layer in (DSLLayer.DECOMPOSE, DSLLayer.ROUTER, DSLLayer.NONE):
+    if dsl_spec.layer in (DSLLayer.DECOMPOSE, DSLLayer.ROUTER):
         return None, False
 
     # Filter out empty/None values before validation
@@ -172,35 +126,28 @@ def try_execute_dsl(
         logger.debug("DSL has no valid inputs after filtering empty values")
         return None, False
 
-    # Validate input types and task/DSL semantic match before execution
-    valid, reason = _validate_param_types(dsl_spec, filtered_inputs, step_task, _extract_numeric_value)
-    if not valid:
-        logger.info("[dsl_debug] TYPE_MISMATCH %s | script='%s' | %s",
-                    dsl_spec.layer.value, dsl_spec.script[:40], reason)
-        return None, False
-
-    # Use filtered inputs for execution
+    # Use filtered inputs for execution (no validation gates - let it fail and learn)
     mapped_inputs = filtered_inputs
 
     try:
         with _timeout(timeout_sec):
             if dsl_spec.layer == DSLLayer.MATH:
                 result = try_execute_dsl_math(dsl_spec.script, mapped_inputs)
-            elif dsl_spec.layer == DSLLayer.SYMPY:
-                result = try_execute_dsl_sympy(dsl_spec.script, mapped_inputs)
-            elif dsl_spec.layer == DSLLayer.CUSTOM:
-                result = try_execute_dsl_custom(dsl_spec.script, mapped_inputs)
             else:
+                # Only MATH layer supported for execution
                 return None, False
 
             if result is not None:
-                # Validate result before accepting (with operation-specific bounds)
-                if not _is_valid_dsl_result(result, dsl_spec, mapped_inputs):
-                    logger.info(
-                        "[dsl_debug] INVALID %s | script='%s' | result=%s (failed validation)",
-                        dsl_spec.layer.value, dsl_spec.script[:60], str(result)[:50]
-                    )
+                # Basic sanity check: reject False (sympy failure) and astronomically large numbers
+                if result is False:
+                    logger.debug("[dsl_debug] Rejecting False result (sympy failure)")
                     return None, False
+                try:
+                    if isinstance(result, (int, float)) and abs(result) > 1e15:
+                        logger.info("[dsl_debug] Rejecting huge result: %s", result)
+                        return None, False
+                except (TypeError, OverflowError):
+                    pass
                 logger.info(
                     "[dsl_debug] EXEC %s | script='%s' | inputs=%s | result=%s",
                     dsl_spec.layer.value, dsl_spec.script[:60],
@@ -391,41 +338,21 @@ def semantic_rewrite_script(
     if len(param_mapping) != len(dsl_spec.params):
         return None, 0.0
 
-    # Validate param mappings semantically using embeddings
-    # Each param's expected role must match the context it's mapped to
-    # Uses per-DSL-type thresholds (stricter for power, geometry, combinatorics)
-    valid, reason, similarities = _validate_param_mapping_semantic(
-        dsl_spec, param_mapping, step_descriptions
-    )
-    if not valid:
-        logger.info(
-            "[dsl_semantic] Param mapping rejected: %s (mappings=%s, sims=%s)",
-            reason, param_mapping, {k: f"{v:.2f}" for k, v in similarities.items()}
-        )
-        return None, 0.0
-
-    # Rewrite script by replacing params with context keys
+    # Rewrite script by replacing params with context keys (no validation gates - let it fail and learn)
     rewritten = dsl_spec.script
     for param, ctx_key in param_mapping.items():
-        # Replace param name with context key
         rewritten = re.sub(rf'\b{re.escape(param)}\b', ctx_key, rewritten)
 
     avg_confidence = total_score / len(dsl_spec.params) if dsl_spec.params else 0.0
 
-    # Log success with param similarities AND actual resolved values
-    sim_str = ", ".join(f"{k}={v:.2f}" for k, v in similarities.items()) if similarities else "no sims"
-
-    # Build detailed mapping showing param -> context_key -> actual_value
+    # Log mapping
     detailed_mapping = {
         param: f"{ctx_key}={context.get(ctx_key, '?')}"
         for param, ctx_key in param_mapping.items()
     }
-
     logger.info(
-        "[dsl_param_map] %s | mappings: %s | sims: {%s}",
-        dsl_spec.script[:40],
-        detailed_mapping,
-        sim_str,
+        "[dsl_param_map] %s | mappings: %s",
+        dsl_spec.script[:40], detailed_mapping
     )
     logger.info(
         "[dsl_semantic] '%s' -> '%s' (conf=%.2f)",

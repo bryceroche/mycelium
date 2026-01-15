@@ -83,34 +83,15 @@ class Embedder:
 # Convenience functions with caching
 # =============================================================================
 #
-# Design note: embed_text() returns tuple for LRU cache hashability (np.ndarray
-# is not hashable). Use get_embedding() for the typical use case - it calls
-# embed_text() internally and converts back to np.ndarray.
-
-
-@lru_cache(maxsize=1000)
-def embed_text(text: str, model_name: str = DEFAULT_MODEL) -> tuple[float, ...]:
-    """Embed text with caching.
-
-    Returns tuple (not ndarray) because LRU cache requires hashable return type.
-    For most use cases, prefer get_embedding() which returns np.ndarray.
-
-    Args:
-        text: Text to embed
-        model_name: Model to use for embedding
-
-    Returns:
-        Tuple of floats (embedding vector). Use get_embedding() for np.ndarray.
-    """
-    embedder = Embedder.get_instance(model_name)
-    return tuple(embedder.embed(text).tolist())
+# These functions use the two-tier embedding cache (memory LRU + disk SQLite)
+# for efficient caching across process restarts.
 
 
 def get_embedding(text: str, model_name: str = DEFAULT_MODEL) -> np.ndarray:
-    """Get embedding as numpy array (cached via embed_text).
+    """Get embedding with two-tier caching (memory + disk).
 
-    This is the recommended function for most use cases. It uses embed_text()
-    internally for caching and converts the result to np.ndarray.
+    This is the recommended function for most use cases. Uses the
+    EmbeddingCache for efficient caching across restarts.
 
     Args:
         text: Text to embed
@@ -119,4 +100,40 @@ def get_embedding(text: str, model_name: str = DEFAULT_MODEL) -> np.ndarray:
     Returns:
         Embedding vector as np.ndarray of shape (embedding_dim,)
     """
-    return np.array(embed_text(text, model_name), dtype=np.float32)
+    from mycelium.embedding_cache import cached_embed
+    embedder = Embedder.get_instance(model_name)
+    return cached_embed(text, embedder)
+
+
+def get_embeddings_batch(texts: list[str], model_name: str = DEFAULT_MODEL) -> dict[str, np.ndarray]:
+    """Get multiple embeddings with caching.
+
+    Args:
+        texts: List of texts to embed
+        model_name: Model to use for embedding
+
+    Returns:
+        Dict mapping text -> embedding vector
+    """
+    from mycelium.embedding_cache import cached_embed_batch
+    embedder = Embedder.get_instance(model_name)
+    return cached_embed_batch(texts, embedder)
+
+
+# Legacy function for backward compatibility
+@lru_cache(maxsize=1000)
+def embed_text(text: str, model_name: str = DEFAULT_MODEL) -> tuple[float, ...]:
+    """Embed text with simple LRU caching (legacy).
+
+    Prefer get_embedding() for better caching. This exists for
+    backward compatibility.
+
+    Args:
+        text: Text to embed
+        model_name: Model to use for embedding
+
+    Returns:
+        Tuple of floats (embedding vector).
+    """
+    embedder = Embedder.get_instance(model_name)
+    return tuple(embedder.embed(text).tolist())

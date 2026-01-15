@@ -1,8 +1,8 @@
 # Mycelium
 
 **Decompose math problems into reusable atomic signatures.**
-**Please read the [CLAUDE.md](CLAUDE.md) for the latest thinking.**
-**The Paper is in the github repo**
+
+**[Read the Paper](https://drive.google.com/file/d/1Gn8Efk4F2GW1bT3qGlHmKV-V_C6hIaLk/view)**
 
 First solve of a problem type is hard. Second solve is easier. 100th solve is trivial.
 
@@ -15,6 +15,7 @@ Problems decompose into DAG-structured steps. MCTS routes each step through a tr
 git clone https://github.com/bryceroche/mycelium
 cd mycelium
 pip install -r requirements.txt
+gh release download v0.1.0 --pattern "*.db"
 export OPENAI_API_KEY=your_key
 python scripts/pipeline_runner.py --dataset math --levels 1 2 --problems 20 --workers 4
 
@@ -22,14 +23,14 @@ python scripts/pipeline_runner.py --dataset math --levels 1 2 --problems 20 --wo
 
 **Requirements:** Python 3.11+, ~2GB disk MathBERT
 
+
 ## Stack
 
 - **LLM:** gpt-4.1-nano with OpenAI API
 - **DB:** SQLite + WAL mode
 - **Embeddings:** MathBERT 768-dim
 
+**Please read the [CLAUDE.md](CLAUDE.md) for the latest thinking.**
 ## License
-
 MIT — Bryce Roche ([github.com/bryceroche/mycelium](https://github.com/bryceroche/mycelium))
-
 Built with [Claude Code](https://claude.ai/claude-code)

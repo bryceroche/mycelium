@@ -37,17 +37,16 @@ from mycelium.config import (
     DEPTH_DECOMPOSE_DECAY_BASE,
     DEPTH_DECOMPOSE_MIN_PROB,
     BIG_BANG_EXPANSION_ENABLED,
+    ZERO_LLM_ROUTING_ENABLED,
+    ZERO_LLM_MIN_SIMILARITY,
+    ZERO_LLM_MIN_SUCCESS_RATE,
+    ZERO_LLM_MIN_USES,
+    ZERO_LLM_REQUIRE_DSL,
 )
 from mycelium.planner import Planner, Step, DAGPlan
-from mycelium.step_signatures.semantic_validation import (
-    validate_plan_coherence,
-    create_failure_feedback,
-    PlanValidation,
-    StepFailureFeedback,
-)
 from mycelium.step_signatures import StepSignatureDB, StepSignature
 from mycelium.step_signatures.db import normalize_step_text
-from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math, validate_extracted_values
+from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.embedder import Embedder
 
@@ -236,6 +235,8 @@ class Solver:
         self.embedder = Embedder.get_instance()
         self.min_similarity = min_similarity
         self._background_tasks: set[asyncio.Task] = set()  # Track background tasks
+        # Cache for DSL expressions: (operation, param_names) -> (expr, used_params)
+        self._dsl_expr_cache: dict[tuple[str, frozenset[str]], tuple[str, list[str]]] = {}
 
     def _create_background_task(self, coro) -> asyncio.Task:
         """Create a background task with proper lifecycle management.
@@ -265,6 +266,155 @@ class Solver:
             logger.warning("[solver] %d background tasks did not complete in time", len(not_done))
         return pending
 
+    def _try_zero_llm_solve(
+        self,
+        problem: str,
+        problem_embedding: np.ndarray,
+    ) -> Optional[SolverResult]:
+        """Attempt to solve without any LLM calls using mature signature tree.
+
+        This is the "fast path" for problems that match mature signatures.
+        Routes the problem embedding through the hierarchy and executes
+        DSL directly if a high-confidence match is found.
+
+        Args:
+            problem: The problem text
+            problem_embedding: Pre-computed embedding of the problem
+
+        Returns:
+            SolverResult if successful, None to fall back to planner
+        """
+        import time
+        start_time = time.time()
+
+        if not ZERO_LLM_ROUTING_ENABLED:
+            return None
+
+        # Route problem through signature hierarchy
+        matched_sig, path = self.step_db.route_through_hierarchy(
+            embedding=problem_embedding,
+            min_similarity=ZERO_LLM_MIN_SIMILARITY,
+        )
+
+        if matched_sig is None:
+            logger.debug("[zero-llm] No signature matched at threshold %.2f", ZERO_LLM_MIN_SIMILARITY)
+            return None
+
+        # Check if signature is mature enough
+        if matched_sig.uses < ZERO_LLM_MIN_USES:
+            logger.debug(
+                "[zero-llm] Signature %s has only %d uses (need %d)",
+                matched_sig.step_type, matched_sig.uses, ZERO_LLM_MIN_USES
+            )
+            return None
+
+        success_rate = matched_sig.successes / matched_sig.uses if matched_sig.uses > 0 else 0
+        if success_rate < ZERO_LLM_MIN_SUCCESS_RATE:
+            logger.debug(
+                "[zero-llm] Signature %s has %.1f%% success rate (need %.1f%%)",
+                matched_sig.step_type, success_rate * 100, ZERO_LLM_MIN_SUCCESS_RATE * 100
+            )
+            return None
+
+        # Check if signature is a leaf with DSL (not an umbrella that needs decomposition)
+        if matched_sig.is_semantic_umbrella:
+            logger.debug("[zero-llm] Matched signature %s is umbrella, need to decompose", matched_sig.step_type)
+            return None
+
+        if ZERO_LLM_REQUIRE_DSL and not matched_sig.dsl_script:
+            logger.debug("[zero-llm] Signature %s has no DSL script", matched_sig.step_type)
+            return None
+
+        # Extract numeric values from problem text for DSL execution
+        values = self._extract_values_from_problem(problem)
+        if not values:
+            logger.debug("[zero-llm] Could not extract values from problem")
+            return None
+
+        # Try to execute DSL with extracted values
+        try:
+            dsl_spec = DSLSpec.from_json(f'{{"type":"{matched_sig.dsl_type or "math"}","script":"{matched_sig.dsl_script}"}}')
+            result, success = try_execute_dsl(dsl_spec, values, step_task=problem)
+
+            if success and result is not None:
+                elapsed_ms = (time.time() - start_time) * 1000
+                logger.info(
+                    "[zero-llm] SUCCESS: '%s' → %s (sig=%s, path_len=%d, %.1fms)",
+                    problem[:50], result, matched_sig.step_type, len(path), elapsed_ms
+                )
+
+                # Record usage for learning
+                self.step_db.record_usage(
+                    matched_sig.id,
+                    step_text=problem,
+                    step_completed=True,
+                    was_injected=True,
+                )
+
+                return SolverResult(
+                    problem=problem,
+                    answer=str(result),
+                    success=True,
+                    steps=[StepResult(
+                        step_id="zero_llm",
+                        task=problem,
+                        result=str(result),
+                        success=True,
+                        signature_id=matched_sig.id,
+                        signature_type=matched_sig.step_type,
+                        is_new_signature=False,
+                        was_injected=True,
+                        elapsed_ms=elapsed_ms,
+                    )],
+                    elapsed_ms=elapsed_ms,
+                    total_steps=1,
+                    signatures_matched=1,
+                    steps_with_injection=1,
+                    matched_and_reused=1,
+                )
+
+        except Exception as e:
+            logger.debug("[zero-llm] DSL execution failed: %s", e)
+
+        return None
+
+    def _extract_values_from_problem(self, problem: str) -> dict:
+        """Extract numeric values from problem text for DSL execution.
+
+        Uses simple heuristics to find numbers and assign them as params.
+        For more complex extraction, falls back to planner.
+
+        Args:
+            problem: The problem text
+
+        Returns:
+            Dict of param names to values (e.g., {"value_1": 10, "value_2": 5})
+        """
+        import re
+
+        # Find all numbers in the problem
+        # Match integers and decimals, including negative numbers
+        numbers = re.findall(r'-?\d+\.?\d*', problem)
+
+        if not numbers:
+            return {}
+
+        # Convert to floats and assign generic param names
+        values = {}
+        for i, num_str in enumerate(numbers):
+            try:
+                num = float(num_str)
+                # Use int if it's a whole number
+                if num == int(num):
+                    num = int(num)
+                values[f"value_{i+1}"] = num
+                # Also add step_N alias for compatibility
+                values[f"step_{i+1}"] = num
+            except ValueError:
+                continue
+
+        return values
+
     async def solve(self, problem: str) -> SolverResult:
         """Solve a problem end-to-end.
 
@@ -278,49 +428,26 @@ class Solver:
         start_time = time.time()
 
         try:
-            # 1. Plan: Decompose into steps (with signature hints for NL interface)
-            # Embed problem to filter hints by semantic similarity
+            # 0. Embed problem (used for both zero-LLM and planner hints)
             problem_embedding = self.embedder.embed(problem)
+
+            # 0.5. Try zero-LLM solve first (skip planner for mature signatures)
+            zero_llm_result = self._try_zero_llm_solve(problem, problem_embedding)
+            if zero_llm_result is not None:
+                return zero_llm_result
+
+            # 1. Plan: Decompose into steps (with signature hints for NL interface)
             signature_hints = self.step_db.get_signature_hints(
-                limit=15,
+                limit=3,  # Reduced from 15 - most hints unused, saves ~1000 tokens
                 problem_embedding=problem_embedding,
-                min_similarity=0.3,  # Only hints somewhat related to this problem
+                min_similarity=0.5,  # Higher threshold = more relevant hints only
             )
 
-            # Decompose with retry on coherence failure
-            max_retries = 2
-            coherence_feedback = None
-            plan = None
-
-            for attempt in range(max_retries + 1):
-                plan = await self.planner.decompose(
-                    problem,
-                    signature_hints=signature_hints,
-                    coherence_feedback=coherence_feedback,
-                )
-
-                # Validate semantic coherence BEFORE execution
-                validation = validate_plan_coherence(plan, self.embedder)
-
-                if validation.is_coherent:
-                    logger.debug(
-                        "[solver] Plan coherence validated: score=%.2f",
-                        validation.overall_score
-                    )
-                    break
-                elif attempt < max_retries:
-                    # Retry with feedback
-                    coherence_feedback = validation.feedback_for_planner
-                    logger.info(
-                        "[solver] Plan coherence low (%.2f), retrying with feedback: %s",
-                        validation.overall_score, coherence_feedback[:100]
-                    )
-                else:
-                    # Accept low-coherence plan on final attempt
-                    logger.warning(
-                        "[solver] Proceeding with low-coherence plan (%.2f) after %d attempts",
-                        validation.overall_score, max_retries + 1
-                    )
+            # Decompose problem into steps
+            plan = await self.planner.decompose(
+                problem,
+                signature_hints=signature_hints,
+            )
 
             # Validate DAG structure before execution
             is_valid, errors = plan.validate()
@@ -341,6 +468,9 @@ class Solver:
                     error="Planning failed: no steps generated",
                     elapsed_ms=(time.time() - start_time) * 1000,
                 )
+
+            # Pre-warm DSL expression cache in parallel for independent steps
+            await self._prewarm_dsl_cache(plan.steps)
 
             # 2. Execute steps in dependency order
             step_results = []
@@ -593,20 +723,37 @@ class Solver:
                 routed_signature = signature  # Use original umbrella signature
                 logger.info("[solver] Umbrella fallback DSL succeeded: %s", result[:30] if result else "")
 
+        # 4.8. DECOMPOSE ON ROUTING FAILURE (per CLAUDE.md: "Attempt to route first - decompose on failure")
+        # If umbrella routing failed (no matching child), decompose to create children
+        if result is None and routed_signature.is_semantic_umbrella:
+            logger.info(
+                "[solver] Router umbrella '%s' failed to route, decomposing to create children",
+                routed_signature.step_type
+            )
+            await self._auto_decompose_signature(routed_signature)
+            routed_signature = self.step_db.get_signature(routed_signature.id)
+
+            # Try routing again with new children
+            if routed_signature.is_semantic_umbrella:
+                children = self.step_db.get_children(routed_signature.id)
+                if children:
+                    child_result = await self._try_umbrella_routing(
+                        routed_signature, step, problem, context, step_descriptions, embedding=embedding
+                    )
+                    if child_result is not None:
+                        result, routed_signature, was_injected = child_result
+                        was_routed = True
+                        logger.info(
+                            "[solver] Post-decompose routing succeeded: '%s'",
+                            routed_signature.step_type
+                        )
+
         # 5. No LLM fallback - strict DAG execution
         # Three outcomes: route to child, create child, or fail
         if result is None:
-            # Capture failure feedback for learning
-            failure_feedback = create_failure_feedback(
-                step_id=step.id,
-                step_task=step.task,
-                failure_reason="DSL execution failed or no DSL available",
-                signature=routed_signature,
-                context=context,
-            )
             logger.warning(
-                "[solver] DSL failed, step failed (no LLM fallback): %s\n  Hint: %s",
-                step.task[:50], failure_feedback.to_planner_hint()
+                "[solver] DSL failed, step failed (no LLM fallback): %s",
+                step.task[:50]
             )
             result = ""  # Empty result = failure
 
@@ -916,21 +1063,6 @@ Respond with ONLY the number (0-{len(children)})."""
         dsl_hint = getattr(step, 'dsl_hint', None)
         extracted_values = getattr(step, 'extracted_values', {}) or {}
 
-        # Validate extracted values using signature's NL context (bidirectional communication)
-        # This catches semantic mismatches like "overtime_hours" pointing to a "pay calculation" step
-        if extracted_values and signature.param_descriptions and step_descriptions:
-            validated_extractions, rejected = validate_extracted_values(
-                extracted_values,
-                step_descriptions,
-                signature.param_descriptions,
-            )
-            if rejected:
-                logger.info(
-                    "[solver] Extraction validation rejected %d params: %s",
-                    len(rejected), rejected
-                )
-            extracted_values = validated_extractions
-
         # Handle extraction-only steps: no dsl_hint but has single extracted value
         # These steps just extract a constant from the problem (e.g., "eggs per day = 16")
         if not dsl_hint and extracted_values:
@@ -1013,6 +1145,44 @@ Respond with ONLY the number (0-{len(children)})."""
 
         return None
 
+    async def _prewarm_dsl_cache(self, steps: list) -> None:
+        """Pre-warm DSL expression cache by parallelizing LLM calls for independent steps.
+
+        Steps whose extracted_values don't reference {step_N} can have their
+        expressions pre-computed in parallel, saving sequential LLM latency.
+        """
+        prewarm_tasks = []
+
+        for step in steps:
+            # Skip steps without dsl_hint
+            if not step.dsl_hint:
+                continue
+
+            # Check if step has independent params (no {step_N} references)
+            params = step.extracted_values or {}
+            has_step_refs = any(
+                isinstance(v, str) and v.startswith('{step_')
+                for v in params.values()
+            )
+
+            if has_step_refs:
+                continue  # Can't pre-compute, depends on prior results
+
+            # Check if already cached
+            param_names = frozenset(k for k in params.keys() if not k.startswith('{'))
+            cache_key = (step.dsl_hint.strip().lower(), param_names)
+            if cache_key in self._dsl_expr_cache:
+                continue  # Already cached
+
+            # Queue for parallel pre-warming
+            prewarm_tasks.append(
+                self._llm_write_expression(step.dsl_hint, params, step.task)
+            )
+
+        if prewarm_tasks:
+            logger.debug("[solver] Pre-warming DSL cache: %d parallel calls", len(prewarm_tasks))
+            await asyncio.gather(*prewarm_tasks, return_exceptions=True)
+
     async def _llm_write_expression(
         self,
         operation: str,
@@ -1029,6 +1199,16 @@ Respond with ONLY the number (0-{len(children)})."""
         Returns:
             (script, param_list) or None if failed
         """
+        # Cache key: (operation, frozenset of param names)
+        param_names = frozenset(k for k in params.keys() if not k.startswith('{'))
+        cache_key = (operation.strip().lower(), param_names)
+
+        # Check cache first - saves ~1-2s LLM call
+        if cache_key in self._dsl_expr_cache:
+            expr, used_params = self._dsl_expr_cache[cache_key]
+            logger.debug("[solver] DSL cache hit: %s -> %s", cache_key[0], expr)
+            return expr, used_params
+
         # Format available params
         param_info = ", ".join(f"{k}={v}" for k, v in params.items() if not k.startswith('{'))
 
@@ -1063,6 +1243,8 @@ Expression:"""
 
             if len(used_params) >= 2:
                 logger.debug("[solver] LLM expression: %s (params: %s)", expr, used_params)
+                # Cache for future use
+                self._dsl_expr_cache[cache_key] = (expr, used_params)
                 return expr, used_params
 
         except Exception as e:
@@ -1376,3 +1558,33 @@ Expression:"""
 
         learner = UmbrellaLearner(self.step_db)
         return await learner.learn_from_failures()
+
+    def run_decay_cycle(self, force: bool = False) -> dict:
+        """Run signature decay lifecycle management.
+
+        Per CLAUDE.md: "slow decay: sig_uses / total_problems"
+
+        This analyzes all signatures and:
+        - Warns about signatures with declining traffic
+        - Demotes umbrellas with no healthy children
+        - Archives signatures that have been critical for too long
+        - Tracks recovery when archived signatures revive
+
+        Args:
+            force: Run even if not enough time has passed since last run
+
+        Returns:
+            Dict with decay statistics (healthy, warning, critical, archived counts)
+        """
+        from mycelium.step_signatures.decay import run_decay_cycle
+
+        report = run_decay_cycle(force=force)
+        return {
+            "total_signatures": report.total_signatures,
+            "healthy": report.healthy_count,
+            "warning": report.warning_count,
+            "critical": report.critical_count,
+            "archived": report.archived_count,
+            "recovering": report.recovering_count,
+            "actions_taken": len(report.actions_taken),
+        }

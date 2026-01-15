@@ -51,6 +51,10 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     is_root INTEGER DEFAULT 0,  -- 1 if this is THE root signature (single entry point)
     depth INTEGER DEFAULT 0,  -- Routing depth (0=root, increases with parent-child hops)
 
+    -- Lifecycle
+    is_archived INTEGER DEFAULT 0,  -- 1 if soft-deleted due to decay
+    last_rewrite_at TEXT,  -- When DSL was last rewritten
+
     -- Metadata
     created_at TEXT NOT NULL,
     last_used_at TEXT
@@ -60,6 +64,9 @@ CREATE INDEX IF NOT EXISTS idx_sig_id ON step_signatures(signature_id);
 CREATE INDEX IF NOT EXISTS idx_sig_type ON step_signatures(step_type);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_sig_centroid ON step_signatures(centroid);
 CREATE INDEX IF NOT EXISTS idx_sig_depth ON step_signatures(depth);
+CREATE INDEX IF NOT EXISTS idx_sig_is_root ON step_signatures(is_root);
+CREATE INDEX IF NOT EXISTS idx_sig_dsl_type ON step_signatures(dsl_type);
+CREATE INDEX IF NOT EXISTS idx_sig_umbrella_archived ON step_signatures(is_semantic_umbrella, is_archived);
 
 -- =============================================================================
 -- SIGNATURE RELATIONSHIPS: Tree structure for parent-child routing
@@ -169,6 +176,18 @@ def migrate_db(conn) -> None:
             "ALTER TABLE step_signatures ADD COLUMN is_root INTEGER DEFAULT 0"
         )
 
+    # Add is_archived if missing (decay lifecycle)
+    if "is_archived" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN is_archived INTEGER DEFAULT 0"
+        )
+
+    # Add last_rewrite_at if missing (DSL rewriter)
+    if "last_rewrite_at" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN last_rewrite_at TEXT"
+        )
+
     # Run migrations
     for sql in migrations:
         try:
@@ -178,6 +197,19 @@ def migrate_db(conn) -> None:
 
     if migrations:
         conn.commit()
+
+    # Add new indexes (safe to run multiple times)
+    index_migrations = [
+        "CREATE INDEX IF NOT EXISTS idx_sig_is_root ON step_signatures(is_root)",
+        "CREATE INDEX IF NOT EXISTS idx_sig_dsl_type ON step_signatures(dsl_type)",
+        "CREATE INDEX IF NOT EXISTS idx_sig_umbrella_archived ON step_signatures(is_semantic_umbrella, is_archived)",
+    ]
+    for sql in index_migrations:
+        try:
+            conn.execute(sql)
+        except Exception:
+            pass
+    conn.commit()
 
     # Fix multi-parent children (tree structure enforcement)
     # This cleans up any children that have multiple parents from old DAG schema

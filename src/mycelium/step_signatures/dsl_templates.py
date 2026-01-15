@@ -362,24 +362,6 @@ _DESCRIPTION_ANCHORS = {
     "abs": "absolute value magnitude",
 }
 
-# Combined anchors for each operation (will be embedded once)
-_OPERATION_ANCHORS = [
-    # Each operation has params + description combined for richer embedding
-    ("+", f"{_PARAM_ANCHORS['+']} {_DESCRIPTION_ANCHORS['+']}", 2),
-    ("-", f"{_PARAM_ANCHORS['-']} {_DESCRIPTION_ANCHORS['-']}", 2),
-    ("*", f"{_PARAM_ANCHORS['*']} {_DESCRIPTION_ANCHORS['*']}", 2),
-    ("/", f"{_PARAM_ANCHORS['/']} {_DESCRIPTION_ANCHORS['/']}", 2),
-    ("**", f"{_PARAM_ANCHORS['**']} {_DESCRIPTION_ANCHORS['**']}", 2),
-    ("%", f"{_PARAM_ANCHORS['%']} {_DESCRIPTION_ANCHORS['%']}", 2),
-    ("gcd", f"{_PARAM_ANCHORS['gcd']} {_DESCRIPTION_ANCHORS['gcd']}", 2),
-    ("lcm", f"{_PARAM_ANCHORS['lcm']} {_DESCRIPTION_ANCHORS['lcm']}", 2),
-    ("comb", f"{_PARAM_ANCHORS['comb']} {_DESCRIPTION_ANCHORS['comb']}", 2),
-    ("perm", f"{_PARAM_ANCHORS['perm']} {_DESCRIPTION_ANCHORS['perm']}", 2),
-    ("sqrt", f"{_PARAM_ANCHORS['sqrt']} {_DESCRIPTION_ANCHORS['sqrt']}", 1),
-    ("factorial", f"{_PARAM_ANCHORS['factorial']} {_DESCRIPTION_ANCHORS['factorial']}", 1),
-    ("abs", f"{_PARAM_ANCHORS['abs']} {_DESCRIPTION_ANCHORS['abs']}", 1),
-]
-
 # Cache for anchor embeddings (separate param and description caches)
 _param_anchor_embeddings = None
 _desc_anchor_embeddings = None
@@ -629,7 +611,11 @@ def _find_similar_successful_dsl(
             if best_match.dsl_script:
                 try:
                     dsl_data = json.loads(best_match.dsl_script)
-                    return best_match.dsl_script, dsl_data.get("type", "math")
+                    dsl_type = dsl_data.get("type", "math")
+                    # Only allow valid leaf types
+                    if dsl_type not in ("math", "decompose"):
+                        dsl_type = "decompose"
+                    return best_match.dsl_script, dsl_type
                 except (json.JSONDecodeError, TypeError):
                     pass
 

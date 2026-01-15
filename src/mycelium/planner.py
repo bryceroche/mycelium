@@ -15,86 +15,44 @@ from .client import get_client
 from mycelium.config import PLANNER_DEFAULT_MODEL, PLANNER_DEFAULT_TEMPERATURE
 
 
-PLANNER_SYSTEM = """You are a mathematical problem decomposer. Your ONLY job is to break down problems into steps and extract numeric values. DO NOT solve the problem.
+PLANNER_SYSTEM = """You decompose math problems into steps. Extract values, don't solve.
 
-CRITICAL: Output ONLY in this exact format. No markdown headers, no explanations, no answers.
-
+FORMAT (output ONLY this, no markdown/explanations):
 - id: step_1
-  task: [what to do, not how to do it]
+  task: [what to do]
   values:
-    semantic_name: numeric_value
-  dsl_hint: [operation: +, -, *, /]
+    name: value
+  dsl_hint: +|-|*|/
   depends_on: []
-
-- id: final
-  task: Combine results to get final answer
-  values: {}
-  dsl_hint: +
-  depends_on: [step_1]
 
 RULES:
-1. Output ONLY the step list above. Nothing else.
-2. DO NOT use "## Step 1:" format. Use "- id: step_1" format.
-3. DO NOT solve the problem or compute answers.
-4. DO NOT include "The final answer is" or any boxed answers.
-5. Each task describes WHAT to do, not the solution.
-6. PREFER FEWER STEPS: Use 1-2 steps for simple problems. Only use 3+ steps for genuinely complex problems.
-7. EXTRACT numeric values from the problem and assign semantic names.
-8. Use "{step_N}" to reference the result of a previous step.
-9. If an available operation can solve the problem directly, use just ONE step.
-10. ALWAYS include dsl_hint with the math operation: + (add), - (subtract), * (multiply), / (divide)
+- FEWER STEPS preferred (1-2 for simple problems)
+- Extract numeric values with semantic names
+- Reference prior results as "{step_N}"
+- dsl_hint: + (sum/total), - (difference/remaining), * (rate×qty), / (split/per)
 
-DSL_HINT GUIDE:
-- "total", "sum", "combined", "together" → dsl_hint: +
-- "difference", "remaining", "left", "fewer" → dsl_hint: -
-- "rate × quantity", "area", "per × count", "times" → dsl_hint: *
-- "split", "per", "ratio", "divided", "each" → dsl_hint: /
-
-EXAMPLE for "Earth's circumference is 40,000 km. How many trips for 1 billion meters?":
-
+EXAMPLE "40,000 km circumference. Trips for 1 billion meters?":
 - id: step_1
-  task: Convert 1 billion meters to kilometers
+  task: Convert meters to km
   values:
-    distance_meters: 1000000000
-    meters_per_km: 1000
+    meters: 1000000000
+    per_km: 1000
   dsl_hint: /
   depends_on: []
-
 - id: step_2
-  task: Divide total distance by circumference
+  task: Divide by circumference
   values:
-    total_km: "{step_1}"
-    circumference_km: 40000
+    km: "{step_1}"
+    circ: 40000
   dsl_hint: /
   depends_on: [step_1]
-
-GOOD task: "Solve the quadratic equation 2x^2 - 7x + 2 = 0 for its roots"
-BAD task: "The roots are x = 1/2 and x = 2" (this is solving, not decomposing)
 """
 
 SIGNATURE_HINTS_TEMPLATE = """
-## Available Atomic Operations
-
-The system has learned these reusable step patterns. When decomposing, try to create steps that match these operations and EXTRACT the values they need:
-
+Known operations (extract values to match):
 {hints}
-
-IMPORTANT: When using these patterns, extract the required values into the step's `values` field with matching semantic names. This allows the system to execute the step automatically.
 """
 
-COHERENCE_FEEDBACK_TEMPLATE = """
-## Previous Decomposition Feedback
-
-Your previous decomposition had coherence issues. Please address these problems:
-
-{feedback}
-
-GUIDANCE:
-- Ensure each step's output can be used by the next step
-- Make sure step dependencies correctly reflect the data flow
-- Use semantic parameter names that clearly indicate what values are needed
-- Add intermediate steps if there are gaps in the computation chain
-"""
 
 
 @dataclass
@@ -116,25 +74,15 @@ class SignatureHint:
     children: list["SignatureHint"] = field(default_factory=list)  # Child operations for clusters
 
     def to_hint_text(self) -> str:
-        """Format as hint text for the planner prompt."""
+        """Format as compact hint text for the planner prompt."""
         if self.is_cluster and self.children:
-            # Format as cluster with children
-            lines = [f"- **{self.step_type}** (cluster): {self.description[:80]}"]
-            for child in self.children[:5]:  # Limit children shown
-                lines.append(f"    - {child.step_type}: {child.description[:60]}")
-            return "\n".join(lines)
+            # Compact cluster format
+            children_str = ", ".join(c.step_type for c in self.children[:3])
+            return f"- {self.step_type}: {self.description[:50]}... [{children_str}]"
 
-        lines = [f"- **{self.step_type}**: {self.description}"]
-
-        if self.param_names:
-            params_str = ", ".join(self.param_names)
-            lines.append(f"  - Requires values: `{params_str}`")
-
-        if self.param_descriptions:
-            for param, desc in self.param_descriptions.items():
-                lines.append(f"  - `{param}`: {desc}")
-
-        return "\n".join(lines)
+        # Compact single signature format
+        params_str = f" ({', '.join(self.param_names)})" if self.param_names else ""
+        return f"- {self.step_type}{params_str}: {self.description[:60]}"
 
 
 @dataclass
@@ -374,7 +322,6 @@ class Planner:
         self,
         problem: str,
         signature_hints: Optional[list[SignatureHint]] = None,
-        coherence_feedback: Optional[str] = None,
     ) -> DAGPlan:
         """Decompose a problem into a DAG of steps.
 
@@ -383,8 +330,6 @@ class Planner:
             signature_hints: Optional list of SignatureHint objects that tell the
                             decomposer what operations are available and what
                             parameters each needs (from NL interface)
-            coherence_feedback: Optional feedback from semantic validation about
-                               issues with a previous decomposition attempt
 
         Returns:
             DAGPlan with steps and dependencies
@@ -397,11 +342,6 @@ class Planner:
             hints_text = "\n\n".join(hint.to_hint_text() for hint in signature_hints)
             system_prompt += SIGNATURE_HINTS_TEMPLATE.format(hints=hints_text)
             logger.debug("[planner] Added %d signature hints with NL interface", len(signature_hints))
-
-        # Add coherence feedback if this is a retry
-        if coherence_feedback:
-            system_prompt += COHERENCE_FEEDBACK_TEMPLATE.format(feedback=coherence_feedback)
-            logger.info("[planner] Added coherence feedback for retry")
 
         messages = [
             {"role": "system", "content": system_prompt},

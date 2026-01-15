@@ -29,13 +29,16 @@ class ValueType(Enum):
 
 
 class DSLLayer(Enum):
-    """Execution layer for DSL scripts."""
+    """Execution layer for DSL scripts.
+
+    Only 3 types allowed:
+    - MATH: Leaf node that executes math DSL
+    - DECOMPOSE: Leaf node that calls LLM for decomposition
+    - ROUTER: Umbrella node that routes to children
+    """
     MATH = "math"
-    SYMPY = "sympy"
-    CUSTOM = "custom"
-    DECOMPOSE = "decompose"  # Needs decomposition into atomic steps
-    ROUTER = "router"  # Routing layer - delegates to children
-    NONE = "none"  # No DSL execution, use LLM fallback
+    DECOMPOSE = "decompose"
+    ROUTER = "router"
 
 
 @dataclass
