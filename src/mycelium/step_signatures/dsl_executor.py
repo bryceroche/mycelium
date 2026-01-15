@@ -32,6 +32,8 @@ import signal
 from contextlib import contextmanager
 from typing import Any, Optional
 
+from mycelium.config import DSL_TIMEOUT_SEC
+
 logger = logging.getLogger(__name__)
 
 # =============================================================================
@@ -122,7 +124,7 @@ def _timeout(seconds: float):
 def try_execute_dsl(
     dsl_spec: DSLSpec,
     inputs: dict[str, Any],
-    timeout_sec: float = 1.0,
+    timeout_sec: float = DSL_TIMEOUT_SEC,
     step_task: str = "",
 ) -> tuple[Optional[Any], bool]:
     """Execute a DSL script with given inputs.
