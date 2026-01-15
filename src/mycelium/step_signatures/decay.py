@@ -20,6 +20,7 @@ from datetime import datetime, timezone, timedelta
 from enum import Enum
 from typing import Optional
 
+from mycelium.data_layer import configure_connection
 from mycelium.config import (
     DB_PATH,
     TRAFFIC_MIN_SHARE,
@@ -185,9 +186,7 @@ class DecayManager:
     def _connection(self):
         """Get DB connection with proper settings."""
         conn = sqlite3.connect(self.db_path, timeout=30.0)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA busy_timeout = 30000")
-        conn.execute("PRAGMA journal_mode = WAL")
+        configure_connection(conn, enable_foreign_keys=False)
         return conn
 
     def _utc_now_iso(self) -> str:
