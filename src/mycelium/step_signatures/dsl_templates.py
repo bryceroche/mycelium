@@ -45,7 +45,8 @@ def get_dsl_inference_threshold() -> float:
             "SELECT COUNT(*) FROM step_signatures WHERE dsl_type != 'decompose'"
         ).fetchone()
         dsl_count = row[0] if row else 0
-    except Exception:
+    except Exception as e:
+        logger.warning("[dsl_templates] Failed to get DSL count: %s", e)
         dsl_count = 0
 
     # Linear ramp from cold_start to mature
@@ -252,7 +253,7 @@ def _infer_dsl_from_values(
                 numeric_values.append(float(val))
                 params.append(key)
             except ValueError:
-                pass
+                logger.debug("[dsl_templates] Non-numeric param %s: %s", key, str(val)[:30])
 
     if not params:
         return None
@@ -616,8 +617,8 @@ def _find_similar_successful_dsl(
                     if dsl_type not in ("math", "decompose"):
                         dsl_type = "decompose"
                     return best_match.dsl_script, dsl_type
-                except (json.JSONDecodeError, TypeError):
-                    pass
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.debug("[dsl_templates] Failed to parse DSL from similar sig: %s", e)
 
         return None
 

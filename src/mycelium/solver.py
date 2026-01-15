@@ -411,6 +411,7 @@ class Solver:
                 # Also add step_N alias for compatibility
                 values[f"step_{i+1}"] = num
             except ValueError:
+                logger.debug("[solver] Non-numeric result at index %d: %s", i, str(result)[:50])
                 continue
 
         return values
@@ -1015,7 +1016,7 @@ Respond with ONLY the number (0-{len(children)})."""
                 try:
                     choice = int(match.group(1))
                 except ValueError:
-                    pass
+                    logger.debug("[solver] Failed to parse routing choice: %s", match.group(1))
 
             if choice <= 0 or choice > len(children):
                 logger.debug(
@@ -1105,6 +1106,7 @@ Respond with ONLY the number (0-{len(children)})."""
                         try:
                             params[key] = float(context[ref_key])
                         except (ValueError, TypeError):
+                            logger.debug("[solver] Non-numeric ref %s=%s, keeping as-is", ref_key, str(context[ref_key])[:30])
                             params[key] = context[ref_key]
                 else:
                     params[key] = val
@@ -1115,6 +1117,7 @@ Respond with ONLY the number (0-{len(children)})."""
                 try:
                     params[key] = float(value)
                 except (ValueError, TypeError):
+                    logger.debug("[solver] Non-numeric context %s=%s, keeping as-is", key, str(value)[:30])
                     params[key] = value
 
         if len(params) < 2:
@@ -1281,7 +1284,7 @@ Expression:"""
                 if "answer" in data:
                     return format_result(data["answer"])
         except json.JSONDecodeError:
-            pass
+            logger.debug("[solver] Direct JSON parse failed, trying brace matching")
 
         # Find JSON objects with balanced braces (handles nested objects)
         for key in ("result", "answer"):
@@ -1308,7 +1311,7 @@ Expression:"""
                                 if isinstance(data, dict) and key in data:
                                     return format_result(data[key])
                             except json.JSONDecodeError:
-                                pass
+                                logger.debug("[solver] Brace-matched JSON parse failed at pos %d", i)
                             break
 
         # Fallback to regex extraction

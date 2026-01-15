@@ -12,8 +12,11 @@ The planner and signatures can now "talk" to each other through text.
 from dataclasses import dataclass, field
 from typing import Optional
 import json
+import logging
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -146,41 +149,42 @@ class StepSignature:
     def from_row(cls, row: dict) -> "StepSignature":
         """Create from database row (full parsing)."""
         # Parse JSON fields
+        sig_id = row.get("id", "?")
         clarifying_questions = []
         if row.get("clarifying_questions"):
             try:
                 clarifying_questions = json.loads(row["clarifying_questions"])
-            except json.JSONDecodeError:
-                pass
+            except json.JSONDecodeError as e:
+                logger.warning("[models] Invalid clarifying_questions JSON for sig %s: %s", sig_id, e)
 
         param_descriptions = {}
         if row.get("param_descriptions"):
             try:
                 param_descriptions = json.loads(row["param_descriptions"])
-            except json.JSONDecodeError:
-                pass
+            except json.JSONDecodeError as e:
+                logger.warning("[models] Invalid param_descriptions JSON for sig %s: %s", sig_id, e)
 
         examples = []
         if row.get("examples"):
             try:
                 examples = json.loads(row["examples"])
-            except json.JSONDecodeError:
-                pass
+            except json.JSONDecodeError as e:
+                logger.warning("[models] Invalid examples JSON for sig %s: %s", sig_id, e)
 
         # Parse centroid and embedding_sum
         centroid = None
         if row.get("centroid"):
             try:
                 centroid = np.array(json.loads(row["centroid"]))
-            except (json.JSONDecodeError, ValueError):
-                pass
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.warning("[models] Invalid centroid for sig %s: %s", sig_id, e)
 
         embedding_sum = None
         if row.get("embedding_sum"):
             try:
                 embedding_sum = np.array(json.loads(row["embedding_sum"]))
-            except (json.JSONDecodeError, ValueError):
-                pass
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.warning("[models] Invalid embedding_sum for sig %s: %s", sig_id, e)
 
         embedding_count = row.get("embedding_count", 1) or 1
 
@@ -219,8 +223,8 @@ class StepSignature:
         if row.get("param_descriptions"):
             try:
                 param_descriptions = json.loads(row["param_descriptions"])
-            except json.JSONDecodeError:
-                pass
+            except json.JSONDecodeError as e:
+                logger.warning("[models] Invalid param_descriptions JSON for sig %s: %s", row.get("id", "?"), e)
 
         return cls(
             id=row.get("id"),

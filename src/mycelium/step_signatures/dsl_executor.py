@@ -146,8 +146,8 @@ def try_execute_dsl(
                     if isinstance(result, (int, float)) and abs(result) > 1e15:
                         logger.info("[dsl_debug] Rejecting huge result: %s", result)
                         return None, False
-                except (TypeError, OverflowError):
-                    pass
+                except (TypeError, OverflowError) as e:
+                    logger.debug("[dsl_debug] Result size check skipped (non-comparable type): %s", e)
                 logger.info(
                     "[dsl_debug] EXEC %s | script='%s' | inputs=%s | result=%s",
                     dsl_spec.layer.value, dsl_spec.script[:60],
