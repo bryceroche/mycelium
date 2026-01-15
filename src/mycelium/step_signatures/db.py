@@ -31,6 +31,8 @@ from mycelium.config import (
     AUTO_DEMOTE_MIN_USES_FLOOR,
     AUTO_DEMOTE_MIN_USES_CAP,
     CENTROID_PROPAGATION_MAX_DEPTH,
+    CENTROID_MAX_DRIFT,
+    CENTROID_DRIFT_DECAY,
 )
 
 # Import from focused modules (scoring and DSL templates)
@@ -52,6 +54,7 @@ from mycelium.step_signatures.utils import (
     unpack_embedding,
     get_cached_centroid,
     invalidate_centroid_cache,
+    compute_centroid_bucket,
 )
 
 logger = logging.getLogger(__name__)

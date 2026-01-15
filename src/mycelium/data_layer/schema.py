@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     -- Embedding (768-dim MathBERT)
     -- centroid = embedding_sum / embedding_count (computed on read)
     centroid TEXT NOT NULL,           -- Current centroid (for index/queries)
+    centroid_bucket TEXT,             -- Quantized hash for coarse-grained uniqueness
     embedding_sum TEXT,               -- Running sum of all matched embeddings
     embedding_count INTEGER DEFAULT 1, -- Number of embeddings in sum
 
@@ -66,7 +67,8 @@ CREATE TABLE IF NOT EXISTS step_signatures (
 
 CREATE INDEX IF NOT EXISTS idx_sig_id ON step_signatures(signature_id);
 CREATE INDEX IF NOT EXISTS idx_sig_type ON step_signatures(step_type);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_sig_centroid ON step_signatures(centroid);
+CREATE INDEX IF NOT EXISTS idx_sig_centroid ON step_signatures(centroid);  -- Non-unique, for queries
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sig_centroid_bucket ON step_signatures(centroid_bucket);  -- Coarse uniqueness
 CREATE INDEX IF NOT EXISTS idx_sig_depth ON step_signatures(depth);
 CREATE INDEX IF NOT EXISTS idx_sig_is_root ON step_signatures(is_root);
 CREATE INDEX IF NOT EXISTS idx_sig_dsl_type ON step_signatures(dsl_type);
