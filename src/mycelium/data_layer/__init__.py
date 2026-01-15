@@ -2,6 +2,7 @@
 
 from mycelium.data_layer.connection import (
     ConnectionManager,
+    configure_connection,
     get_db,
     reset_db,
     EMBEDDING_DIM,
@@ -20,6 +21,7 @@ __all__ = [
     "get_db",
     "reset_db",
     "ConnectionManager",
+    "configure_connection",
     "EMBEDDING_DIM",
     "SQLITE_SCHEMA",
     "STEP_SCHEMA",

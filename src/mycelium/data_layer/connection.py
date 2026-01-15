@@ -25,6 +25,23 @@ EMBEDDING_DIM = 768  # Updated for all-mpnet-base-v2 (was 384 for MiniLM)
 DEFAULT_DB_PATH = os.getenv("MYCELIUM_DB_PATH", CONFIG_DB_PATH)
 
 
+def configure_connection(conn: sqlite3.Connection, enable_foreign_keys: bool = True) -> None:
+    """Configure SQLite connection with consistent PRAGMA settings.
+
+    Ensures WAL mode and timeout settings are consistent across all DB access.
+    Call this immediately after sqlite3.connect().
+
+    Args:
+        conn: SQLite connection to configure
+        enable_foreign_keys: Whether to enable foreign key constraints (default True)
+    """
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA busy_timeout = 30000")
+    if enable_foreign_keys:
+        conn.execute("PRAGMA foreign_keys = ON")
+
+
 class ConnectionManager:
     """SQLite connection manager with thread-local connections."""
 
@@ -60,11 +77,7 @@ class ConnectionManager:
             self._local.conn = sqlite3.connect(
                 self._db_path, check_same_thread=False, timeout=30.0
             )
-            self._local.conn.row_factory = sqlite3.Row
-            # Enable WAL mode for better concurrent access
-            self._local.conn.execute("PRAGMA journal_mode = WAL")
-            self._local.conn.execute("PRAGMA busy_timeout = 30000")
-            self._local.conn.execute("PRAGMA foreign_keys = ON")
+            configure_connection(self._local.conn, enable_foreign_keys=True)
         return self._local.conn
 
     @contextmanager

@@ -47,7 +47,7 @@ from mycelium.step_signatures.scoring import (
 )
 from mycelium.step_signatures.dsl_templates import infer_dsl_for_signature
 
-from mycelium.data_layer import get_db
+from mycelium.data_layer import get_db, configure_connection
 from mycelium.data_layer.schema import init_db
 from mycelium.step_signatures.models import StepSignature
 from mycelium.step_signatures.utils import (
@@ -81,9 +81,7 @@ class StepSignatureDB:
         """
         if db_path:
             self._direct_conn = sqlite3.connect(db_path, check_same_thread=False, timeout=30.0)
-            self._direct_conn.row_factory = sqlite3.Row
-            self._direct_conn.execute("PRAGMA journal_mode = WAL")
-            self._direct_conn.execute("PRAGMA busy_timeout = 30000")
+            configure_connection(self._direct_conn, enable_foreign_keys=False)
             self._db = None
             self._db_path = db_path
         else:

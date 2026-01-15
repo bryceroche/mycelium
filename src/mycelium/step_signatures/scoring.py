@@ -14,6 +14,8 @@ import re
 import sqlite3
 import time
 
+from mycelium.data_layer import configure_connection
+
 logger = logging.getLogger(__name__)
 from datetime import datetime, timezone
 from typing import Optional
@@ -80,8 +82,7 @@ def get_total_problems_solved(db_path: str = DB_PATH) -> int:
     # Query DB for fresh value
     try:
         conn = sqlite3.connect(db_path, timeout=30.0)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA busy_timeout = 30000")
+        configure_connection(conn, enable_foreign_keys=False)
         row = conn.execute(
             "SELECT value FROM db_metadata WHERE key = 'total_problems_solved'"
         ).fetchone()
@@ -106,8 +107,7 @@ def increment_total_problems(db_path: str = DB_PATH) -> int:
     """
     try:
         conn = sqlite3.connect(db_path, timeout=30.0)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA busy_timeout = 30000")
+        configure_connection(conn, enable_foreign_keys=False)
         now_iso = datetime.now(timezone.utc).isoformat()
 
         # Upsert the counter
