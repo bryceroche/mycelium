@@ -65,4 +65,5 @@ paper.pdf
 header_image.png
 Myceliumv3.txt
 logs/
+*.log
 paper.txt
