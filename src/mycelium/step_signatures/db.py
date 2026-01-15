@@ -646,7 +646,9 @@ class StepSignatureDB:
 
             # If current is not an umbrella, it's a leaf - return similarity result
             if not current.is_semantic_umbrella:
-                sim = cosine_similarity(embedding, current.centroid) if current.centroid is not None else 0.0
+                # Capture centroid once to avoid TOCTOU race condition
+                leaf_centroid = current.centroid
+                sim = cosine_similarity(embedding, leaf_centroid) if leaf_centroid is not None else 0.0
                 return current, parent_for_new, sim
 
             # Get children of current umbrella
@@ -661,7 +663,9 @@ class StepSignatureDB:
 
             if not children:
                 # Umbrella with no children - return current as best match
-                sim = cosine_similarity(embedding, current.centroid) if current.centroid is not None else 0.0
+                # Capture centroid once to avoid TOCTOU race condition
+                empty_umbrella_centroid = current.centroid
+                sim = cosine_similarity(embedding, empty_umbrella_centroid) if empty_umbrella_centroid is not None else 0.0
                 return current, current, sim
 
             # MCTS UCB1 Selection: balance exploitation vs exploration
@@ -724,7 +728,9 @@ class StepSignatureDB:
             depth += 1
 
         # Hit max depth
-        sim = cosine_similarity(embedding, current.centroid) if current.centroid is not None else 0.0
+        # Capture centroid once to avoid TOCTOU race condition
+        max_depth_centroid = current.centroid
+        sim = cosine_similarity(embedding, max_depth_centroid) if max_depth_centroid is not None else 0.0
         return current, parent_for_new, sim
 
     def _create_signature_atomic(
