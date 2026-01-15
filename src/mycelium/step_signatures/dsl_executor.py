@@ -64,6 +64,8 @@ from mycelium.step_signatures.dsl_validation import (
     validate_param_types as _validate_param_types,
     validate_result_bounds as _validate_result_bounds,
     is_valid_dsl_result as _is_valid_dsl_result,
+    # Extraction validation (bidirectional LLM-signature communication)
+    validate_extracted_values,
 )
 
 # Math layer
