@@ -15,6 +15,7 @@ Problems decompose into DAG-structured steps. MCTS routes each step through a tr
 git clone https://github.com/bryceroche/mycelium
 cd mycelium
 pip install -r requirements.txt
+gh release download --pattern "mycelium.db" --output mycelium.db
 export OPENAI_API_KEY=your_key
 python scripts/pipeline_runner.py --dataset math --levels 1 2 --problems 20 --workers 4
 
@@ -22,17 +23,6 @@ python scripts/pipeline_runner.py --dataset math --levels 1 2 --problems 20 --wo
 
 **Requirements:** Python 3.11+, ~2GB disk MathBERT
 
-## Pre-trained Database
-
-Download a pre-trained signature database to skip cold-start:
-
-```bash
-# Download from latest release
-gh release download --pattern "mycelium.db" --output mycelium.db
-# Or manually from: https://github.com/bryceroche/mycelium/releases
-```
-
-Current release: **4,537 signatures** trained on GSM8K problems.
 
 ## Stack
 
