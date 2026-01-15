@@ -25,6 +25,7 @@ from mycelium.planner import Planner
 from mycelium.step_signatures.db import StepSignatureDB
 from mycelium.step_signatures.models import StepSignature
 from mycelium.embedder import Embedder
+from mycelium.embedding_cache import cached_embed
 from mycelium.client import get_client
 
 logger = logging.getLogger(__name__)
@@ -258,8 +259,8 @@ class UmbrellaLearner:
             if "final" in step.task.lower() or "combine" in step.task.lower():
                 continue
 
-            # Embed the step
-            embedding = self.embedder.embed(step.task)
+            # Embed the step (use cached_embed to avoid redundant computation)
+            embedding = cached_embed(step.task, self.embedder)
 
             # First: try to repoint to existing deeper signature
             child_sig = self.db.find_deeper_signature(
