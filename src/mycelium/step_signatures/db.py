@@ -1386,6 +1386,161 @@ class StepSignatureDB:
 
             return uses
 
+    def record_failure(
+        self,
+        step_text: str,
+        failure_type: str,
+        error_message: str = None,
+        signature_id: int = None,
+        context: dict = None,
+    ) -> int:
+        """Record a step failure for pattern learning.
+
+        Per CLAUDE.md: "Failures Are Valuable Data Points"
+        - Record every failure—it feeds the refinement loop
+        - Failed signatures get decomposed
+        - Success/failure stats drive routing decisions
+
+        Args:
+            step_text: The step that failed
+            failure_type: Category of failure:
+                - 'dsl_error': DSL execution failed
+                - 'no_match': No signature matched
+                - 'llm_error': LLM call failed
+                - 'timeout': Operation timed out
+                - 'validation': Result validation failed
+                - 'routing': Umbrella routing failed
+            error_message: The actual error text
+            signature_id: ID of signature that failed (None if no match)
+            context: Additional context dict (params, expected, problem, etc.)
+
+        Returns:
+            ID of the failure record
+        """
+        now = datetime.utcnow().isoformat()
+
+        with self._connection() as conn:
+            cursor = conn.execute(
+                """INSERT INTO step_failures
+                   (signature_id, step_text, failure_type, error_message, context, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (
+                    signature_id,
+                    step_text,
+                    failure_type,
+                    error_message,
+                    json.dumps(context) if context else None,
+                    now,
+                ),
+            )
+            failure_id = cursor.lastrowid
+
+            logger.debug(
+                "[db] Recorded failure: type=%s sig=%s step='%s'",
+                failure_type, signature_id, step_text[:50]
+            )
+
+            return failure_id
+
+    def get_failure_patterns(
+        self,
+        signature_id: int = None,
+        failure_type: str = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        """Get failure patterns for analysis.
+
+        Used to:
+        1. Identify signatures that need decomposition
+        2. Feed planner hints about common failure patterns
+        3. Inform DSL rewriting decisions
+
+        Args:
+            signature_id: Filter by specific signature (None for all)
+            failure_type: Filter by failure type (None for all)
+            limit: Maximum records to return
+
+        Returns:
+            List of failure records with counts grouped by pattern
+        """
+        with self._connection() as conn:
+            if signature_id is not None:
+                cursor = conn.execute(
+                    """SELECT signature_id, failure_type, COUNT(*) as count,
+                              GROUP_CONCAT(DISTINCT error_message) as errors
+                       FROM step_failures
+                       WHERE signature_id = ?
+                       GROUP BY signature_id, failure_type
+                       ORDER BY count DESC
+                       LIMIT ?""",
+                    (signature_id, limit),
+                )
+            elif failure_type is not None:
+                cursor = conn.execute(
+                    """SELECT signature_id, failure_type, COUNT(*) as count,
+                              GROUP_CONCAT(DISTINCT error_message) as errors
+                       FROM step_failures
+                       WHERE failure_type = ?
+                       GROUP BY signature_id, failure_type
+                       ORDER BY count DESC
+                       LIMIT ?""",
+                    (failure_type, limit),
+                )
+            else:
+                cursor = conn.execute(
+                    """SELECT signature_id, failure_type, COUNT(*) as count,
+                              GROUP_CONCAT(DISTINCT error_message) as errors
+                       FROM step_failures
+                       GROUP BY signature_id, failure_type
+                       ORDER BY count DESC
+                       LIMIT ?""",
+                    (limit,),
+                )
+
+            return [
+                {
+                    "signature_id": row["signature_id"],
+                    "failure_type": row["failure_type"],
+                    "count": row["count"],
+                    "errors": row["errors"],
+                }
+                for row in cursor.fetchall()
+            ]
+
+    def get_signatures_needing_decomposition(
+        self,
+        min_failures: int = 3,
+        failure_types: list[str] = None,
+    ) -> list[int]:
+        """Get signatures with repeated failures that may need decomposition.
+
+        Per CLAUDE.md: "Failed signatures get decomposed"
+
+        Args:
+            min_failures: Minimum failure count to consider
+            failure_types: Filter by failure types (default: dsl_error, validation)
+
+        Returns:
+            List of signature IDs that should be considered for decomposition
+        """
+        if failure_types is None:
+            failure_types = ["dsl_error", "validation"]
+
+        placeholders = ",".join("?" * len(failure_types))
+
+        with self._connection() as conn:
+            cursor = conn.execute(
+                f"""SELECT signature_id, COUNT(*) as fail_count
+                    FROM step_failures
+                    WHERE signature_id IS NOT NULL
+                      AND failure_type IN ({placeholders})
+                    GROUP BY signature_id
+                    HAVING fail_count >= ?
+                    ORDER BY fail_count DESC""",
+                (*failure_types, min_failures),
+            )
+            return [row["signature_id"] for row in cursor.fetchall()]
+
     def get_signature_examples(
         self,
         signature_id: int,

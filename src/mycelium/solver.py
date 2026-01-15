@@ -766,6 +766,18 @@ class Solver:
                 "[solver] DSL failed, step failed (no LLM fallback): %s",
                 step.task[:50]
             )
+            # Record failure for pattern learning (per CLAUDE.md: failures are valuable data)
+            self.step_db.record_failure(
+                step_text=step.task,
+                failure_type="dsl_error",
+                error_message="DSL execution returned None",
+                signature_id=routed_signature.id if routed_signature else None,
+                context={
+                    "problem": problem[:200] if problem else None,
+                    "was_routed": was_routed,
+                    "is_new": is_new,
+                },
+            )
             result = ""  # Empty result = failure
 
         # 6. Record usage (step_completed = returned result, not problem correctness)
