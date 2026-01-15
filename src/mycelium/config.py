@@ -215,6 +215,19 @@ ZERO_LLM_MIN_USES = 5  # Need enough data to trust the signature
 ZERO_LLM_REQUIRE_DSL = True  # Signature must have a working DSL script
 
 # =============================================================================
+# DSL AUTO-REWRITER (Fix underperforming DSLs automatically)
+# =============================================================================
+# When a signature has low success rate but high traffic, the rewriter
+# uses LLM to generate an improved DSL script.
+# Per CLAUDE.md: "rewrite DSL if centroid avg outside confidence bounds"
+
+DSL_REWRITER_ENABLED = True  # Master switch for auto-rewriting
+DSL_REWRITER_MIN_USES = 10  # Need enough data to identify failure patterns
+DSL_REWRITER_MAX_SUCCESS_RATE = 0.40  # Rewrite if success rate below this
+DSL_REWRITER_MIN_TRAFFIC_SHARE = 0.005  # Only rewrite high-traffic sigs (0.5%)
+DSL_REWRITER_COOLDOWN_HOURS = 24  # Don't rewrite same sig within this period
+
+# =============================================================================
 # DATABASE
 # =============================================================================
 

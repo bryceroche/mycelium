@@ -919,6 +919,81 @@ class StepSignatureDB:
             return row[0] if row else 0
 
     # =========================================================================
+    # DSL Rewriter Support
+    # =========================================================================
+
+    def get_total_signature_uses(self) -> int:
+        """Get total uses across all signatures."""
+        with self._connection() as conn:
+            row = conn.execute("SELECT SUM(uses) FROM step_signatures").fetchone()
+            return row[0] if row and row[0] else 0
+
+    def get_underperforming_signatures(
+        self,
+        min_uses: int = 10,
+        max_success_rate: float = 0.40,
+        limit: int = 20,
+    ) -> list:
+        """Find signatures with low success rate that need DSL rewriting.
+
+        Args:
+            min_uses: Minimum uses to be considered
+            max_success_rate: Maximum success rate to be considered underperforming
+            limit: Maximum results to return
+
+        Returns:
+            List of StepSignature objects
+        """
+        with self._connection() as conn:
+            # Only consider leaf nodes with math DSLs (not decompose/router)
+            rows = conn.execute(
+                """SELECT * FROM step_signatures
+                   WHERE uses >= ?
+                   AND dsl_type = 'math'
+                   AND is_semantic_umbrella = 0
+                   AND CAST(successes AS REAL) / uses <= ?
+                   ORDER BY uses DESC
+                   LIMIT ?""",
+                (min_uses, max_success_rate, limit)
+            ).fetchall()
+
+            return [self._row_to_signature(row) for row in rows]
+
+    def reset_signature_stats(self, signature_id: int) -> None:
+        """Reset uses and successes for a signature after DSL rewrite."""
+        with self._connection() as conn:
+            conn.execute(
+                "UPDATE step_signatures SET uses = 0, successes = 0 WHERE id = ?",
+                (signature_id,)
+            )
+            logger.debug("[db] Reset stats for signature %d", signature_id)
+
+    def mark_signature_rewritten(self, signature_id: int) -> None:
+        """Mark a signature as recently rewritten (for cooldown tracking)."""
+        from datetime import datetime
+        now = datetime.utcnow().isoformat()
+        with self._connection() as conn:
+            # Store in last_used_at for now (could add dedicated column later)
+            conn.execute(
+                "UPDATE step_signatures SET last_used_at = ? WHERE id = ?",
+                (now, signature_id)
+            )
+
+    def count_recently_rewritten(self, hours: int = 24) -> int:
+        """Count signatures rewritten within the given time period."""
+        from datetime import datetime, timedelta
+        cutoff = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
+        with self._connection() as conn:
+            # This is approximate - uses last_used_at as proxy
+            row = conn.execute(
+                """SELECT COUNT(*) FROM step_signatures
+                   WHERE last_used_at >= ?
+                   AND dsl_type = 'math'""",
+                (cutoff,)
+            ).fetchone()
+            return row[0] if row else 0
+
+    # =========================================================================
     # Centroid Management (Running Average Embeddings)
     # =========================================================================
 

@@ -29,6 +29,24 @@ from mycelium.step_signatures.dsl_executor import (
     execute_dsl_with_confidence,
 )
 
+from mycelium.step_signatures.stats import (
+    StepExecution,
+    SignatureStats,
+    RoutingContext,
+    StepStatsCollector,
+    compute_routing_bonus,
+    should_prefer_decomposition,
+    get_signature_health,
+)
+
+from mycelium.step_signatures.dsl_rewriter import (
+    RewriteCandidate,
+    RewriteResult,
+    find_underperforming_signatures,
+    rewrite_underperforming_dsls,
+    get_rewrite_stats,
+)
+
 from mycelium.data_layer.schema import STEP_SCHEMA as STEP_SCHEMA_SQL
 
 __all__ = [
@@ -45,4 +63,18 @@ __all__ = [
     "invalidate_centroid_cache",
     "get_centroid_cache_stats",
     "STEP_SCHEMA_SQL",
+    # Stats module
+    "StepExecution",
+    "SignatureStats",
+    "RoutingContext",
+    "StepStatsCollector",
+    "compute_routing_bonus",
+    "should_prefer_decomposition",
+    "get_signature_health",
+    # DSL Rewriter
+    "RewriteCandidate",
+    "RewriteResult",
+    "find_underperforming_signatures",
+    "rewrite_underperforming_dsls",
+    "get_rewrite_stats",
 ]
