@@ -388,7 +388,21 @@ class StepSignatureDB:
 
         Returns:
             Tuple of (signature, is_new) where is_new=True if newly created
+
+        Warning:
+            This method uses blocking time.sleep() for retries. Use find_or_create_async()
+            in async contexts to avoid blocking the event loop.
         """
+        # Warn if called from async context - use find_or_create_async instead
+        try:
+            asyncio.get_running_loop()
+            logger.warning(
+                "[db] find_or_create() called from async context - "
+                "use find_or_create_async() to avoid blocking the event loop"
+            )
+        except RuntimeError:
+            pass  # No running loop, sync usage is fine
+
         max_retries = 5
         base_delay = 0.05
 
