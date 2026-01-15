@@ -8,6 +8,18 @@ Every bug fix, optimization or feature should be implemented with this file in m
 Please always keep this file in context window.
 
 
+**signature = node**
+**Only call LLM on leaf nodes**
+node types
+ - root (the one parent)
+ - umbrella (routers)
+ - leaf (executors)
+
+Leaf DSL Types
+ - decompose
+ - math
+
+
 With fresh DB:
  - A SMOOTH and CONTINUOUS learning process is key 
  - Start with EASY problems (GSM8K or MATH L1-L2)
@@ -29,7 +41,6 @@ should routing ever skip leves.  No it should not
 how do hints work in hierarchical world?  surface clusters as operational types available
 
 What's the root's initial state? First signature IS the root
-Threshold per level? Same threshold at all levels
 When does umbrella promotion happen? on failure
 How to migrate existing signatures?  start fresh
 
@@ -69,7 +80,7 @@ Brainstorming ideas
     Umbrella signature routing should not require an LLM call
     bi-directional natural language communication between signatures and decomposer is key (query each other)
     credit propagation guided by decay by depth function
-    cold-start aware thresholds (adaptive branching more agressive during cold start - big bang)
+    cold-start adaptive branching more agressive during cold start - big bang
     centroid averaging based off avg of children
     ? param validation with embedding
     mandate injection of DSL on sig hit

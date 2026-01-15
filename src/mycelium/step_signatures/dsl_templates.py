@@ -629,7 +629,11 @@ def _find_similar_successful_dsl(
             if best_match.dsl_script:
                 try:
                     dsl_data = json.loads(best_match.dsl_script)
-                    return best_match.dsl_script, dsl_data.get("type", "math")
+                    dsl_type = dsl_data.get("type", "math")
+                    # Only allow valid leaf types
+                    if dsl_type not in ("math", "decompose"):
+                        dsl_type = "decompose"
+                    return best_match.dsl_script, dsl_type
                 except (json.JSONDecodeError, TypeError):
                     pass
 
