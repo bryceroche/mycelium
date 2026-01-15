@@ -181,6 +181,11 @@ DEPTH_DECOMPOSE_MIN_PROB = 0.05  # Floor probability (never fully disable decomp
 # DYNAMIC DEPTH ROUTING
 # =============================================================================
 
+# BIG BANG EXPANSION: Recursive decomposition during cold start
+# When enabled: aggressively decompose signatures to rapidly build tree structure
+# When disabled: only decompose on explicit failure, use existing tree
+BIG_BANG_EXPANSION_ENABLED = False  # Toggle off to disable aggressive decomposition
+
 RECURSIVE_DECOMPOSITION_ENABLED = True  # Enable decomposition for complex steps
 RECURSIVE_MAX_DEPTH = 9  # Max routing depth: deep decomposition for complex problems
 RECURSIVE_CONFIDENCE_THRESHOLD = 0.8  # Route deeper when DSL confidence < this

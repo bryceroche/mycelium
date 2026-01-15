@@ -34,6 +34,7 @@ from mycelium.config import (
     DEPTH_FORCE_DECOMPOSE_DEPTH,
     DEPTH_DECOMPOSE_DECAY_BASE,
     DEPTH_DECOMPOSE_MIN_PROB,
+    BIG_BANG_EXPANSION_ENABLED,
 )
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures.semantic_validation import (
@@ -100,6 +101,10 @@ def should_force_decompose(depth: int) -> bool:
         True if should force decompose, False if should try DSL execution
     """
     if not DEPTH_DECOMPOSE_ENABLED:
+        return False
+
+    # BIG BANG toggle - when disabled, skip aggressive decomposition entirely
+    if not BIG_BANG_EXPANSION_ENABLED:
         return False
 
     sig_count = get_signature_count()
@@ -1236,18 +1241,20 @@ Expression:"""
 
                 # BIG BANG: Recursively decompose children at shallow depth
                 # This explodes the tree structure during cold start
-                for child_id in child_ids:
-                    child_sig = self.step_db.get_signature(child_id)
-                    if child_sig and not child_sig.is_semantic_umbrella:
-                        child_depth = child_sig.depth or 0
-                        if should_force_decompose(child_depth):
-                            logger.debug(
-                                "[solver] BIG BANG recursive decompose: '%s' at depth %d",
-                                child_sig.step_type, child_depth
-                            )
-                            await self._auto_decompose_signature(
-                                child_sig, recursion_depth + 1
-                            )
+                # Skip entirely when BIG_BANG_EXPANSION_ENABLED is False
+                if BIG_BANG_EXPANSION_ENABLED:
+                    for child_id in child_ids:
+                        child_sig = self.step_db.get_signature(child_id)
+                        if child_sig and not child_sig.is_semantic_umbrella:
+                            child_depth = child_sig.depth or 0
+                            if should_force_decompose(child_depth):
+                                logger.debug(
+                                    "[solver] BIG BANG recursive decompose: '%s' at depth %d",
+                                    child_sig.step_type, child_depth
+                                )
+                                await self._auto_decompose_signature(
+                                    child_sig, recursion_depth + 1
+                                )
 
                 return True
             else:
