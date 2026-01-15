@@ -2,7 +2,7 @@
 
 **Decompose math problems into reusable atomic signatures.**
 **Please read the [CLAUDE.md](CLAUDE.md) for the latest thinking.**
-**The Paper is in the github repo**
+**[Read the Paper](https://drive.google.com/file/d/1Gn8Efk4F2GW1bT3qGlHmKV-V_C6hIaLk/view)**
 
 First solve of a problem type is hard. Second solve is easier. 100th solve is trivial.
 
