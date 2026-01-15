@@ -21,6 +21,7 @@ from enum import Enum
 from typing import Optional
 
 from mycelium.data_layer import configure_connection
+from mycelium.step_signatures.utils import invalidate_centroid_cache
 from mycelium.config import (
     DB_PATH,
     TRAFFIC_MIN_SHARE,
@@ -514,6 +515,14 @@ class DecayManager:
                         "UPDATE step_signatures SET is_archived = 1 WHERE id = ?",
                         (action.signature_id,)
                     )
+                    # Invalidate centroid cache for archived sig and its parent
+                    invalidate_centroid_cache(action.signature_id)
+                    parent_row = conn.execute(
+                        "SELECT parent_id FROM signature_relationships WHERE child_id = ?",
+                        (action.signature_id,)
+                    ).fetchone()
+                    if parent_row:
+                        invalidate_centroid_cache(parent_row["parent_id"])
                     logger.info(
                         "[decay] Archived signature %d: %s",
                         action.signature_id, action.reason
@@ -727,6 +736,16 @@ class DecayManager:
                 """, (now, now, sig_id))
 
                 conn.commit()
+
+            # Invalidate centroid cache for restored sig and its parent
+            invalidate_centroid_cache(sig_id)
+            with self._connection() as conn:
+                parent_row = conn.execute(
+                    "SELECT parent_id FROM signature_relationships WHERE child_id = ?",
+                    (sig_id,)
+                ).fetchone()
+                if parent_row:
+                    invalidate_centroid_cache(parent_row["parent_id"])
 
             logger.info("[decay] Restored signature %d from archive", sig_id)
             return True
