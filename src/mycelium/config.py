@@ -190,7 +190,12 @@ RECURSIVE_DECOMPOSITION_ENABLED = True  # Enable decomposition for complex steps
 RECURSIVE_MAX_DEPTH = 9  # Max routing depth: deep decomposition for complex problems
 RECURSIVE_CONFIDENCE_THRESHOLD = 0.8  # Route deeper when DSL confidence < this
 RECURSIVE_MAX_TOTAL_STEPS = 50
-UMBRELLA_MAX_DEPTH = 10  # Max depth for umbrella routing chains
+
+# Umbrella routing depth limits
+_UMBRELLA_MAX_DEPTH_RAW = 10  # Configurable max depth for umbrella routing chains
+_UMBRELLA_HARD_CAP = 100  # Absolute maximum to prevent unbounded recursion
+# Validate and clamp: ensure positive integer, capped at hard limit
+UMBRELLA_MAX_DEPTH = max(1, min(int(_UMBRELLA_MAX_DEPTH_RAW or 10), _UMBRELLA_HARD_CAP))
 UMBRELLA_ROUTING_THRESHOLD = 0.5  # Min similarity for umbrella child routing (lower than global 0.85 since we're picking best among known children)
 
 # =============================================================================
