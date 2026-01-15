@@ -208,6 +208,11 @@ def _extract_json(text: str) -> Optional[str]:
                 if depth == 0:
                     return text[start:i+1]
 
+    # Log the failure with a preview of the text
+    logger.warning(
+        "[dsl_generator] Failed to extract JSON from response (len=%d): %s",
+        len(text), text[:200] if text else "(empty)"
+    )
     return None
 
 
