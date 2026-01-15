@@ -246,7 +246,7 @@ DSL_EXPR_CACHE_MAX_SIZE = 1000  # Max entries in DSL expression cache
 #   depth 8: 12.5% decompose
 #   depth 9+: ~0% decompose (execute)
 
-DEPTH_DECOMPOSE_ENABLED = True  # Enable depth-aware forced decomposition
+# Note: Smooth expansion is always enabled (no toggle) per CLAUDE.md
 DEPTH_FORCE_DECOMPOSE_DEPTH = 5  # Always decompose at depth 0-5
 DEPTH_DECOMPOSE_DECAY_BASE = 0.5  # Decay rate per depth beyond force threshold
 DEPTH_DECOMPOSE_MIN_PROB = 0.05  # Floor probability (never fully disable decompose option)
