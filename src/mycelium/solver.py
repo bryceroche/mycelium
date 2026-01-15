@@ -33,7 +33,6 @@ from mycelium.config import (
     RECURSIVE_CONFIDENCE_THRESHOLD,
     UMBRELLA_MAX_DEPTH,
     UMBRELLA_ROUTING_THRESHOLD,
-    DEPTH_DECOMPOSE_ENABLED,
     DEPTH_FORCE_DECOMPOSE_DEPTH,
     DEPTH_DECOMPOSE_DECAY_BASE,
     DEPTH_DECOMPOSE_MIN_PROB,
@@ -210,10 +209,8 @@ def should_force_decompose(depth: int) -> bool:
     Returns:
         True if should force decompose, False if should try DSL execution
     """
-    if not DEPTH_DECOMPOSE_ENABLED:
-        return False
-
-    # Get smooth expansion rate (no toggle needed)
+    # Smooth expansion is always enabled per CLAUDE.md (no toggle)
+    # Get smooth expansion rate
     expansion_rate = get_expansion_rate()
 
     # Shallow depths: always decompose (routing layer)
@@ -726,7 +723,7 @@ class Solver:
             needs_decompose = True
             reason = "decompose type needs children"
         elif signature.is_semantic_umbrella:
-            children = self.step_db.get_children(signature.id)
+            children = self.step_db.get_children(signature.id, for_routing=True)
             if not children:
                 needs_decompose = True
                 reason = "umbrella has no children (auto-demoted?)"
@@ -1061,8 +1058,9 @@ class Solver:
         visited.add(umbrella.id)
 
         # Use pre-fetched children if available, else fetch (avoids redundant query)
+        # Per CLAUDE.md: "Umbrella routing should not require LLM call" - fast mode
         if children is None:
-            children = self.step_db.get_children(umbrella.id)
+            children = self.step_db.get_children(umbrella.id, for_routing=True)
         if not children:
             return None
 
