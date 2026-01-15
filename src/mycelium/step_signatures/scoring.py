@@ -168,7 +168,10 @@ def compute_staleness_penalty(last_used_at: Optional[str]) -> float:
         # Calculate penalty: rate * days, capped at max
         penalty = (days_since_use - STALENESS_GRACE_DAYS) * STALENESS_DECAY_RATE
         return min(penalty, STALENESS_MAX_PENALTY)
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, AttributeError):
+        # ValueError: invalid timestamp format
+        # TypeError: wrong type passed to fromisoformat
+        # AttributeError: non-string passed (no .replace method)
         return 0.0
 
 
