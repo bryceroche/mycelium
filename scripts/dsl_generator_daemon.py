@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from mycelium.step_signatures import StepSignatureDB
 from mycelium.step_signatures.dsl_generator import generate_dsl_for_signature
-from mycelium.client import GroqClient
+from mycelium.client import LLMClient
 
 logging.basicConfig(
     level=logging.INFO,
@@ -95,7 +95,7 @@ def update_signature_dsl(db_path: str, signature_id: int, dsl_script: str):
 
 async def generate_dsl_batch(
     signatures: list[dict],
-    client: GroqClient,
+    client: LLMClient,
     db_path: str = "mycelium.db"
 ) -> int:
     """Generate DSL for a batch of signatures.
@@ -150,7 +150,7 @@ async def run_daemon(
     """Main daemon loop."""
     logger.info(f"DSL Generator started (interval={interval}s, batch_size={batch_size}, min_uses={min_uses})")
 
-    client = GroqClient()
+    client = LLMClient()
     total_generated = 0
     iterations = 0
 

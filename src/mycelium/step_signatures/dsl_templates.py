@@ -523,11 +523,12 @@ def _infer_operation_semantic(
         # Basic arithmetic (+, -, *, /) can use normal threshold
         # This prevents embedding noise from matching "total eggs" to "power"
         BASIC_OPS = {"+", "-", "*", "/"}
-        EXOTIC_THRESHOLD_BONUS = 0.25  # Require 25% higher similarity for exotic ops
+        EXOTIC_THRESHOLD_BONUS = 0.05  # Require 5% higher similarity for exotic ops
+        EXOTIC_THRESHOLD_MAX = 0.92  # Cap exotic threshold to ensure it's achievable
 
         effective_threshold = min_similarity
         if best_op not in BASIC_OPS:
-            effective_threshold = min_similarity + EXOTIC_THRESHOLD_BONUS
+            effective_threshold = min(min_similarity + EXOTIC_THRESHOLD_BONUS, EXOTIC_THRESHOLD_MAX)
             logger.debug(
                 "[dsl_infer] Exotic op '%s' requires higher threshold: %.3f",
                 best_op, effective_threshold
@@ -544,7 +545,7 @@ def _infer_operation_semantic(
         # Log at INFO level so rejections are visible - this is learning data
         logger.info(
             "[dsl_infer] REJECTED: '%s' best_match='%s' sim=%.3f < threshold=%.3f → decompose",
-            step_type, best_op, best_sim, min_similarity
+            step_type, best_op, best_sim, effective_threshold
         )
         return None
 

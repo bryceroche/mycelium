@@ -26,7 +26,7 @@ from datasets import load_dataset
 
 from mycelium.solver import Solver
 from mycelium.step_signatures import StepSignatureDB
-from mycelium.client import GroqClient
+from mycelium.client import LLMClient
 from mycelium.answer_norm import answers_equivalent_llm
 
 
@@ -166,7 +166,7 @@ async def solve_direct(problem: dict) -> ProblemResult:
     start = time.time()
 
     try:
-        async with GroqClient() as client:
+        async with LLMClient() as client:
             messages = [
                 {"role": "system", "content": "You are a math expert. Solve the problem step by step, then give your final answer in \\boxed{}."},
                 {"role": "user", "content": problem["problem"]},
