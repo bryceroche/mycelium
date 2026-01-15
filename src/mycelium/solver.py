@@ -235,6 +235,8 @@ class Solver:
         self.embedder = Embedder.get_instance()
         self.min_similarity = min_similarity
         self._background_tasks: set[asyncio.Task] = set()  # Track background tasks
+        # Cache for DSL expressions: (operation, param_names) -> (expr, used_params)
+        self._dsl_expr_cache: dict[tuple[str, frozenset[str]], tuple[str, list[str]]] = {}
 
     def _create_background_task(self, coro) -> asyncio.Task:
         """Create a background task with proper lifecycle management.
@@ -436,9 +438,9 @@ class Solver:
 
             # 1. Plan: Decompose into steps (with signature hints for NL interface)
             signature_hints = self.step_db.get_signature_hints(
-                limit=15,
+                limit=3,  # Reduced from 15 - most hints unused, saves ~1000 tokens
                 problem_embedding=problem_embedding,
-                min_similarity=0.3,  # Only hints somewhat related to this problem
+                min_similarity=0.5,  # Higher threshold = more relevant hints only
             )
 
             # Decompose problem into steps
@@ -466,6 +468,9 @@ class Solver:
                     error="Planning failed: no steps generated",
                     elapsed_ms=(time.time() - start_time) * 1000,
                 )
+
+            # Pre-warm DSL expression cache in parallel for independent steps
+            await self._prewarm_dsl_cache(plan.steps)
 
             # 2. Execute steps in dependency order
             step_results = []
@@ -1115,6 +1120,44 @@ Respond with ONLY the number (0-{len(children)})."""
 
         return None
 
+    async def _prewarm_dsl_cache(self, steps: list) -> None:
+        """Pre-warm DSL expression cache by parallelizing LLM calls for independent steps.
+
+        Steps whose extracted_values don't reference {step_N} can have their
+        expressions pre-computed in parallel, saving sequential LLM latency.
+        """
+        prewarm_tasks = []
+
+        for step in steps:
+            # Skip steps without dsl_hint
+            if not step.dsl_hint:
+                continue
+
+            # Check if step has independent params (no {step_N} references)
+            params = step.extracted_values or {}
+            has_step_refs = any(
+                isinstance(v, str) and v.startswith('{step_')
+                for v in params.values()
+            )
+
+            if has_step_refs:
+                continue  # Can't pre-compute, depends on prior results
+
+            # Check if already cached
+            param_names = frozenset(k for k in params.keys() if not k.startswith('{'))
+            cache_key = (step.dsl_hint.strip().lower(), param_names)
+            if cache_key in self._dsl_expr_cache:
+                continue  # Already cached
+
+            # Queue for parallel pre-warming
+            prewarm_tasks.append(
+                self._llm_write_expression(step.dsl_hint, params, step.task)
+            )
+
+        if prewarm_tasks:
+            logger.debug("[solver] Pre-warming DSL cache: %d parallel calls", len(prewarm_tasks))
+            await asyncio.gather(*prewarm_tasks, return_exceptions=True)
+
     async def _llm_write_expression(
         self,
         operation: str,
@@ -1131,6 +1174,16 @@ Respond with ONLY the number (0-{len(children)})."""
         Returns:
             (script, param_list) or None if failed
         """
+        # Cache key: (operation, frozenset of param names)
+        param_names = frozenset(k for k in params.keys() if not k.startswith('{'))
+        cache_key = (operation.strip().lower(), param_names)
+
+        # Check cache first - saves ~1-2s LLM call
+        if cache_key in self._dsl_expr_cache:
+            expr, used_params = self._dsl_expr_cache[cache_key]
+            logger.debug("[solver] DSL cache hit: %s -> %s", cache_key[0], expr)
+            return expr, used_params
+
         # Format available params
         param_info = ", ".join(f"{k}={v}" for k, v in params.items() if not k.startswith('{'))
 
@@ -1165,6 +1218,8 @@ Expression:"""
 
             if len(used_params) >= 2:
                 logger.debug("[solver] LLM expression: %s (params: %s)", expr, used_params)
+                # Cache for future use
+                self._dsl_expr_cache[cache_key] = (expr, used_params)
                 return expr, used_params
 
         except Exception as e:
