@@ -7,23 +7,23 @@ We want to treate this file as our source of truth.
 Every bug fix, optimization or feature should be implemented with this file in mind.
 Please always keep this file in the context window.
 
+## LLM Call Rule
+  **Only call LLM on leaf nodes**
+  ## Signature Types
+  1. **Root**: The one parent
+  2. **Umbrella**: Routers
+  3. **Leaf**: Executors
 
-**Only call LLM on leaf nodes**
-signature types
- - root (the one parent)
- - umbrella (routers)
- - leaf (executors)
+  ## Leaf DSL Types
+  1. decompose
+  2. math
+  ## With Fresh DB
+  A **smooth and continuous** learning process is key.
 
-Leaf DSL Types
- - decompose
- - math
+  Start with **easy** problems (GSM8K or MATH L1-L2).
+  Need some successes to learn from; failures alone don't teach what works.
+  System is designed to aggressively **branch out early**, tapering off later.
 
-
-With fresh DB:
- - A SMOOTH and CONTINUOUS learning process is key 
- - Start with EASY problems (GSM8K or MATH L1-L2)
- - Need some successes to learn from - failures alone don't teach what works
- - System is designed to agressively BRANCH out early on tapering off later
 
 ## With Fresh DB
 
@@ -55,29 +55,19 @@ With fresh DB:
   No.
   **How do hints work in hierarchical world?**
   Surface clusters as operational types available.
-
   ### Lifecycle
-
   **What's the root's initial state?**
   First signature IS the root.
-
   **When does umbrella promotion happen?**
   On failure.
-
   **How to migrate existing signatures?**
   Start fresh.
-
   ## The Meta Insight
-
   The same pattern applies at every level:
-
   1. **Problem decomposition**: Break into sub problems
   2. **Signature organization**: Break into sub clusters
   3. **Routing**: Decompose the search space
-
   It's turtles all the way down. 🐢
-
-
 
 slow decay.  Calculate signature use count /  ((cache) count of total num problems)   SLOW decay not a fast
 
