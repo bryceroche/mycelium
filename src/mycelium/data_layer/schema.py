@@ -126,6 +126,25 @@ CREATE TABLE IF NOT EXISTS step_usage_log (
 CREATE INDEX IF NOT EXISTS idx_usage_sig ON step_usage_log(signature_id);
 
 -- =============================================================================
+-- STEP FAILURES: Track failure patterns for learning (per CLAUDE.md)
+-- =============================================================================
+-- "Failures Are Valuable Data Points" - Record every failure for refinement loop
+-- Used to: identify signatures needing decomposition, feed planner hints
+CREATE TABLE IF NOT EXISTS step_failures (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    signature_id INTEGER REFERENCES step_signatures(id),  -- Nullable if no sig matched
+    step_text TEXT NOT NULL,                              -- The step that failed
+    failure_type TEXT NOT NULL,                           -- dsl_error, no_match, llm_error, timeout, validation
+    error_message TEXT,                                   -- Actual error text
+    context TEXT,                                         -- JSON: {params, expected, problem, etc.}
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_failures_sig ON step_failures(signature_id);
+CREATE INDEX IF NOT EXISTS idx_failures_type ON step_failures(failure_type);
+CREATE INDEX IF NOT EXISTS idx_failures_created ON step_failures(created_at);
+
+-- =============================================================================
 -- METADATA: Key-value store for DB-level settings
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS db_metadata (
