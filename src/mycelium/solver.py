@@ -455,7 +455,11 @@ class Solver:
             )
 
             # Validate DAG structure before execution
-            is_valid, errors = plan.validate()
+            # Skip validation for single-step plans (no dependencies to check, no cycles possible)
+            if len(plan.steps) <= 1:
+                is_valid, errors = True, []
+            else:
+                is_valid, errors = plan.validate()
             if not is_valid:
                 return SolverResult(
                     problem=problem,
@@ -643,6 +647,7 @@ class Solver:
         # Case 1: decompose-type that isn't umbrella yet
         # Case 2: umbrella (possibly auto-demoted) with no children
         needs_decompose = False
+        children = None  # Track fetched children to avoid redundant DB query
         if signature.dsl_type == "decompose" and not signature.is_semantic_umbrella:
             needs_decompose = True
             reason = "decompose type needs children"
@@ -658,8 +663,9 @@ class Solver:
                 signature.step_type, reason
             )
             await self._auto_decompose_signature(signature)
-            # Refresh signature after decomposition
+            # Refresh signature and children after decomposition
             signature = self.step_db.get_signature(signature.id)
+            children = None  # Will be re-fetched in _try_umbrella_routing
 
         # 3. If umbrella, try routing to child signature
         result = None
@@ -668,7 +674,7 @@ class Solver:
         routed_signature = signature
 
         if signature.is_semantic_umbrella:
-            child_result = await self._try_umbrella_routing(signature, step, problem, context, step_descriptions, embedding=embedding)
+            child_result = await self._try_umbrella_routing(signature, step, problem, context, step_descriptions, embedding=embedding, children=children)
             if child_result is not None:
                 result, routed_signature, was_injected = child_result
                 was_routed = True  # Successfully routed through umbrella
@@ -941,6 +947,7 @@ class Solver:
         visited: Optional[set[int]] = None,
         embedding: Optional[np.ndarray] = None,
         depth: int = 0,
+        children: Optional[list] = None,
     ) -> Optional[tuple[str, StepSignature, bool]]:
         """Try to route through umbrella to a child signature.
 
@@ -956,6 +963,7 @@ class Solver:
             visited: Set of already-visited umbrella IDs (cycle detection)
             embedding: Step embedding for similarity-based routing
             depth: Current recursion depth (for limiting chain length)
+            children: Pre-fetched children (avoids redundant DB query)
         """
         from mycelium.step_signatures.utils import cosine_similarity
 
@@ -978,7 +986,9 @@ class Solver:
             return None
         visited.add(umbrella.id)
 
-        children = self.step_db.get_children(umbrella.id)
+        # Use pre-fetched children if available, else fetch (avoids redundant query)
+        if children is None:
+            children = self.step_db.get_children(umbrella.id)
         if not children:
             return None
 
