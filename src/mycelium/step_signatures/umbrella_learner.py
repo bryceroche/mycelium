@@ -280,7 +280,7 @@ class UmbrellaLearner:
                 # Fall back: find or create new signature
                 # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
                 # CRITICAL: Pass parent_id so new signatures are created under THIS signature, not root!
-                child_sig, is_new = self.db.find_or_create(
+                child_sig, is_new = await self.db.find_or_create_async(
                     step_text=step.task,
                     embedding=embedding,
                     min_similarity=0.85,

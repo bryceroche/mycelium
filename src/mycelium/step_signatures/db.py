@@ -6,6 +6,7 @@ Lazy NL approach:
 - These get filled in later as the system learns
 """
 
+import asyncio
 import json
 import logging
 import random
@@ -29,6 +30,7 @@ from mycelium.config import (
     AUTO_DEMOTE_RAMP_DIVISOR,
     AUTO_DEMOTE_MIN_USES_FLOOR,
     AUTO_DEMOTE_MIN_USES_CAP,
+    CENTROID_PROPAGATION_MAX_DEPTH,
 )
 
 # Import from focused modules (scoring and DSL templates)
@@ -156,91 +158,117 @@ class StepSignatureDB:
         child_id: int,
         visited: set[int] = None,
     ):
-        """Propagate centroid changes up to parent umbrella (tree structure).
+        """Propagate centroid changes up to parent umbrellas (batch approach).
 
-        When a child's centroid is updated, this recomputes the parent's centroid
-        as the average of its children's centroids, recursively up the tree.
-
-        Tree structure: each child has exactly one parent.
+        Uses recursive CTE to fetch all ancestors up to CENTROID_PROPAGATION_MAX_DEPTH
+        in a single query, then batch-updates all centroids. Reduces N+1 queries to 3.
 
         Args:
             conn: Database connection (within transaction)
             child_id: ID of the signature whose centroid was updated
-            visited: Set of already-visited parent IDs (prevents infinite loops)
+            visited: Unused, kept for API compatibility
         """
-        if visited is None:
-            visited = set()
+        max_depth = CENTROID_PROPAGATION_MAX_DEPTH
 
-        # Get parent of this child (single parent in tree structure)
+        # 1. Batch-fetch all ancestors up to max_depth using recursive CTE
         cursor = conn.execute(
-            "SELECT parent_id FROM signature_relationships WHERE child_id = ?",
-            (child_id,)
+            """
+            WITH RECURSIVE ancestors AS (
+                SELECT parent_id, 1 as depth
+                FROM signature_relationships
+                WHERE child_id = ?
+
+                UNION ALL
+
+                SELECT r.parent_id, a.depth + 1
+                FROM signature_relationships r
+                JOIN ancestors a ON r.child_id = a.parent_id
+                WHERE a.depth < ?
+            )
+            SELECT DISTINCT parent_id, MIN(depth) as depth
+            FROM ancestors
+            GROUP BY parent_id
+            ORDER BY depth
+            """,
+            (child_id, max_depth),
         )
-        row = cursor.fetchone()
-        if not row:
-            return  # No parent (root node)
+        ancestors = cursor.fetchall()
 
-        parent_id = row[0]
-        if parent_id in visited:
-            return
-        visited.add(parent_id)
+        if not ancestors:
+            return  # No parents (root node)
 
-        # Get all children of this parent
+        ancestor_ids = [row[0] for row in ancestors]
+
+        # 2. Batch-fetch all children data for all ancestors in one query
+        placeholders = ",".join("?" * len(ancestor_ids))
         cursor = conn.execute(
-            """SELECT s.centroid, s.embedding_count
-               FROM signature_relationships r
-               JOIN step_signatures s ON r.child_id = s.id
-               WHERE r.parent_id = ?""",
-            (parent_id,)
+            f"""
+            SELECT r.parent_id, s.centroid, s.embedding_count
+            FROM signature_relationships r
+            JOIN step_signatures s ON r.child_id = s.id
+            WHERE r.parent_id IN ({placeholders})
+            """,
+            ancestor_ids,
         )
         children_data = cursor.fetchall()
 
-        if not children_data:
-            return
+        # Group children by parent_id
+        children_by_parent: dict[int, list[tuple]] = {}
+        for parent_id, centroid, count in children_data:
+            if parent_id not in children_by_parent:
+                children_by_parent[parent_id] = []
+            children_by_parent[parent_id].append((centroid, count))
 
-        # Compute parent centroid as weighted average of children
-        # Weight by embedding_count (more examples = more weight)
-        total_weight = 0
-        centroid_sum = None
-
-        for child_row in children_data:
-            child_centroid = unpack_embedding(child_row[0])
-            child_count = child_row[1] or 1
-            if child_centroid is None:
+        # 3. Compute new centroids for each ancestor (process in depth order)
+        updates = []
+        for parent_id, _ in ancestors:
+            children = children_by_parent.get(parent_id, [])
+            if not children:
                 continue
 
-            if centroid_sum is None:
-                centroid_sum = child_centroid * child_count
-            else:
-                centroid_sum = centroid_sum + (child_centroid * child_count)
-            total_weight += child_count
+            total_weight = 0
+            centroid_sum = None
 
-        if centroid_sum is not None and total_weight > 0:
-            new_centroid = centroid_sum / total_weight
+            for child_centroid_packed, child_count in children:
+                child_centroid = unpack_embedding(child_centroid_packed)
+                weight = child_count or 1
+                if child_centroid is None:
+                    continue
+
+                if centroid_sum is None:
+                    centroid_sum = child_centroid * weight
+                else:
+                    centroid_sum = centroid_sum + (child_centroid * weight)
+                total_weight += weight
+
+            if centroid_sum is not None and total_weight > 0:
+                new_centroid = centroid_sum / total_weight
+                updates.append((
+                    pack_embedding(new_centroid),
+                    pack_embedding(centroid_sum),
+                    total_weight,
+                    parent_id,
+                ))
+
+        # 4. Batch update all ancestors
+        for packed_centroid, packed_sum, weight, parent_id in updates:
             try:
                 conn.execute(
                     """UPDATE step_signatures
                        SET centroid = ?, embedding_sum = ?, embedding_count = ?
                        WHERE id = ?""",
-                    (pack_embedding(new_centroid), pack_embedding(centroid_sum),
-                     total_weight, parent_id),
+                    (packed_centroid, packed_sum, weight, parent_id),
                 )
-                # Invalidate cache since centroid changed
                 invalidate_centroid_cache(parent_id)
                 logger.debug(
                     "[db] Propagated centroid to parent %d (weight=%d)",
-                    parent_id, total_weight
+                    parent_id, weight
                 )
             except sqlite3.IntegrityError:
-                # Centroid collision with another signature - skip this update
                 logger.debug(
                     "[db] Skipped centroid propagation to parent %d (collision)",
                     parent_id
                 )
-                return
-
-            # Recurse to grandparent
-            self.propagate_centroid_to_parents(conn, parent_id, visited)
 
     def route_through_hierarchy(
         self,
@@ -376,6 +404,59 @@ class StepSignatureDB:
                     delay = base_delay * (2 ** attempt)
                     jitter = random.uniform(0, delay * 0.5)
                     time.sleep(delay + jitter)
+                    logger.debug(
+                        "[db] Retry %d/%d after OperationalError: %s (delay=%.3fs)",
+                        attempt + 1, max_retries, str(e)[:50], delay + jitter
+                    )
+                    continue
+                raise
+
+    async def find_or_create_async(
+        self,
+        step_text: str,
+        embedding: np.ndarray,
+        min_similarity: float = 0.85,
+        parent_problem: str = "",
+        match_mode: MatchMode = "cosine",
+        origin_depth: int = 0,
+        extracted_values: dict = None,
+        dsl_hint: str = None,
+        parent_id: int = None,
+    ) -> tuple[StepSignature, bool]:
+        """Async version of find_or_create with non-blocking retry sleep.
+
+        Use this from async contexts to avoid blocking the event loop during
+        database contention retries.
+
+        Args:
+            step_text: The step description text
+            embedding: Embedding vector for the step
+            min_similarity: Minimum cosine similarity for matching
+            parent_problem: The parent problem this step came from
+            match_mode: Matching algorithm (cosine or auto)
+            dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication
+            origin_depth: Decomposition depth at which this step was created
+            extracted_values: Dict of semantic param names -> values from planner
+            parent_id: Explicit parent ID for new signatures (overrides routing)
+
+        Returns:
+            Tuple of (signature, is_new) where is_new=True if newly created
+        """
+        max_retries = 5
+        base_delay = 0.05
+
+        for attempt in range(max_retries):
+            try:
+                return self._find_or_create_atomic(
+                    step_text, embedding, min_similarity, parent_problem, origin_depth,
+                    extracted_values=extracted_values, dsl_hint=dsl_hint, parent_id=parent_id
+                )
+            except sqlite3.OperationalError as e:
+                if attempt < max_retries - 1:
+                    # Exponential backoff with jitter to avoid thundering herd
+                    delay = base_delay * (2 ** attempt)
+                    jitter = random.uniform(0, delay * 0.5)
+                    await asyncio.sleep(delay + jitter)
                     logger.debug(
                         "[db] Retry %d/%d after OperationalError: %s (delay=%.3fs)",
                         attempt + 1, max_retries, str(e)[:50], delay + jitter

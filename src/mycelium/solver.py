@@ -617,7 +617,7 @@ class Solver:
         # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
         # Use adaptive threshold: higher during cold start (more signatures), lower when mature
         adaptive_threshold = get_adaptive_match_threshold()
-        signature, is_new = self.step_db.find_or_create(
+        signature, is_new = await self.step_db.find_or_create_async(
             step_text=step.task,  # Keep original for description
             embedding=embedding,   # Use normalized embedding for matching
             min_similarity=adaptive_threshold,
@@ -723,30 +723,35 @@ class Solver:
                 routed_signature = signature  # Use original umbrella signature
                 logger.info("[solver] Umbrella fallback DSL succeeded: %s", result[:30] if result else "")
 
-        # 4.8. DECOMPOSE ON ROUTING FAILURE (per CLAUDE.md: "Attempt to route first - decompose on failure")
-        # If umbrella routing failed (no matching child), decompose to create children
+        # 4.8. CREATE NEW CHILD ON ROUTING FAILURE (per CLAUDE.md: failing signatures decompose)
+        # If umbrella routing failed (no matching child), create new child for current step
+        # This grows the tree by adding specialized children to handle novel steps
         if result is None and routed_signature.is_semantic_umbrella:
             logger.info(
-                "[solver] Router umbrella '%s' failed to route, decomposing to create children",
-                routed_signature.step_type
+                "[solver] Router umbrella '%s' failed to route, creating new child for step '%s'",
+                routed_signature.step_type, step.task[:40]
             )
-            await self._auto_decompose_signature(routed_signature)
-            routed_signature = self.step_db.get_signature(routed_signature.id)
+            # Create new child signature directly under this umbrella
+            new_child = self.step_db.create_signature(
+                step_text=step.task,
+                embedding=embedding,
+                parent_id=routed_signature.id,
+                origin_depth=depth + 1,
+                extracted_values=getattr(step, 'extracted_values', None),
+                dsl_hint=getattr(step, 'dsl_hint', None),
+            )
+            logger.info(
+                "[solver] Created new child '%s' (id=%d) under umbrella '%s'",
+                new_child.step_type, new_child.id, routed_signature.step_type
+            )
 
-            # Try routing again with new children
-            if routed_signature.is_semantic_umbrella:
-                children = self.step_db.get_children(routed_signature.id)
-                if children:
-                    child_result = await self._try_umbrella_routing(
-                        routed_signature, step, problem, context, step_descriptions, embedding=embedding
-                    )
-                    if child_result is not None:
-                        result, routed_signature, was_injected = child_result
-                        was_routed = True
-                        logger.info(
-                            "[solver] Post-decompose routing succeeded: '%s'",
-                            routed_signature.step_type
-                        )
+            # Execute the new child's DSL
+            dsl_result = await self._try_dsl(new_child, step, context, step_descriptions)
+            if dsl_result is not None:
+                result = dsl_result
+                was_injected = True
+                routed_signature = new_child
+                logger.info("[solver] New child DSL succeeded: %s", result[:30] if result else "")
 
         # 5. No LLM fallback - strict DAG execution
         # Three outcomes: route to child, create child, or fail
