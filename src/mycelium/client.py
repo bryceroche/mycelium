@@ -209,8 +209,8 @@ class LLMClient:
             if retry_after:
                 try:
                     return min(float(retry_after), MAX_DELAY)
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    logger.warning("[client] Invalid Retry-After header '%s': %s", retry_after, e)
         delay = BASE_DELAY * (2 ** attempt)
         jitter = random.uniform(0, delay * 0.1)
         return min(delay + jitter, MAX_DELAY)
