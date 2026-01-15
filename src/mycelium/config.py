@@ -142,6 +142,9 @@ PARENT_CREDIT_DECAY = 0.7  # Credit multiplier per depth (0.7^1=0.7, 0.7^2=0.49,
 PARENT_CREDIT_MAX_DEPTH = 5  # Max depth to propagate (prevents infinite loops)
 PARENT_CREDIT_MIN = 0.1  # Minimum credit to apply (filter noise)
 
+# Centroid propagation (batch update parent centroids)
+CENTROID_PROPAGATION_MAX_DEPTH = 3  # Max levels to propagate centroid changes (perf optimization)
+
 # Staleness decay (deprioritize signatures that haven't been used recently)
 # Penalty = min(days_since_use * STALENESS_DECAY_RATE, STALENESS_MAX_PENALTY)
 STALENESS_DECAY_ENABLED = True  # Enable staleness penalty in routing
