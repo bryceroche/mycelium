@@ -210,11 +210,18 @@ class StepSignature:
     def from_row_fast(cls, row: dict) -> "StepSignature":
         """Create from database row (skip expensive JSON parsing).
 
-        ~3x faster than from_row. Use when you only need basic fields
-        like id, step_type, description, dsl_script, dsl_type, uses, successes.
-        Centroid and JSON fields (clarifying_questions, param_descriptions,
-        examples) are left as None/empty.
+        ~2x faster than from_row. Use when you only need basic fields.
+        Skips: centroid, embedding_sum, clarifying_questions, examples.
+        Parses: param_descriptions (needed for extraction validation).
         """
+        # Parse param_descriptions (small, needed for extraction validation)
+        param_descriptions = {}
+        if row.get("param_descriptions"):
+            try:
+                param_descriptions = json.loads(row["param_descriptions"])
+            except json.JSONDecodeError:
+                pass
+
         return cls(
             id=row.get("id"),
             signature_id=row.get("signature_id", ""),
@@ -224,7 +231,7 @@ class StepSignature:
             step_type=row.get("step_type", ""),
             description=row.get("description", ""),
             clarifying_questions=[],  # Skip JSON parsing
-            param_descriptions={},
+            param_descriptions=param_descriptions,  # Parse for extraction validation
             dsl_script=row.get("dsl_script"),
             dsl_type=row.get("dsl_type", "math"),
             examples=[],  # Skip JSON parsing
