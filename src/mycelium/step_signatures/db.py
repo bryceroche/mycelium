@@ -43,7 +43,14 @@ from mycelium.step_signatures.dsl_templates import infer_dsl_for_signature
 from mycelium.data_layer import get_db
 from mycelium.data_layer.schema import init_db
 from mycelium.step_signatures.models import StepSignature
-from mycelium.step_signatures.utils import cosine_similarity, pack_embedding, unpack_embedding
+from mycelium.step_signatures.utils import (
+    cosine_similarity,
+    batch_cosine_similarity,
+    pack_embedding,
+    unpack_embedding,
+    get_cached_centroid,
+    invalidate_centroid_cache,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +84,12 @@ class StepSignatureDB:
             # Use default DB path from config when using global singleton
             from mycelium.config import DB_PATH
             self._db_path = DB_PATH
+
+        # Lazy-loaded centroid matrix for fast batch similarity
+        self._centroid_matrix: Optional[np.ndarray] = None
+        self._centroid_sig_ids: Optional[list[int]] = None
+        self._centroid_rows: Optional[list] = None  # Cache rows for result building
+
         self._init_schema()
 
     @property
@@ -203,6 +216,8 @@ class StepSignatureDB:
                     (pack_embedding(new_centroid), pack_embedding(centroid_sum),
                      total_weight, parent_id),
                 )
+                # Invalidate cache since centroid changed
+                invalidate_centroid_cache(parent_id)
                 logger.debug(
                     "[db] Propagated centroid to parent %d (weight=%d)",
                     parent_id, total_weight
@@ -771,6 +786,9 @@ class StepSignatureDB:
         else:
             logger.debug("[db] Auto-assigned DSL type=%s for step_type=%s", dsl_type, step_type)
 
+        # Invalidate centroid matrix cache since we added a new signature
+        self.invalidate_centroid_matrix()
+
         return StepSignature(
             id=row_id,
             signature_id=sig_id,
@@ -805,6 +823,43 @@ class StepSignatureDB:
                 return self._row_to_signature(row)
             return None
 
+    def _ensure_centroid_matrix(self):
+        """Build or refresh the cached centroid matrix for fast similarity search."""
+        if self._centroid_matrix is not None:
+            return  # Already loaded
+
+        with self._connection() as conn:
+            cursor = conn.execute("SELECT * FROM step_signatures")
+            rows = cursor.fetchall()
+
+        valid_rows = []
+        centroids = []
+        sig_ids = []
+        for row in rows:
+            if not row["centroid"]:
+                continue
+            centroid = get_cached_centroid(row["id"], row["centroid"])
+            if centroid is not None:
+                valid_rows.append(row)
+                centroids.append(centroid)
+                sig_ids.append(row["id"])
+
+        if centroids:
+            self._centroid_matrix = np.array(centroids, dtype=np.float32)
+            self._centroid_sig_ids = sig_ids
+            self._centroid_rows = valid_rows
+            logger.debug("[db] Built centroid matrix: %d signatures", len(sig_ids))
+        else:
+            self._centroid_matrix = np.array([], dtype=np.float32).reshape(0, 768)
+            self._centroid_sig_ids = []
+            self._centroid_rows = []
+
+    def invalidate_centroid_matrix(self):
+        """Invalidate cached centroid matrix (call when signatures change)."""
+        self._centroid_matrix = None
+        self._centroid_sig_ids = None
+        self._centroid_rows = None
+
     def find_similar(
         self,
         embedding: np.ndarray,
@@ -821,23 +876,29 @@ class StepSignatureDB:
         Returns:
             List of (signature, similarity) tuples, sorted by similarity descending
         """
-        with self._connection() as conn:
-            cursor = conn.execute("SELECT * FROM step_signatures")
-            rows = cursor.fetchall()
+        self._ensure_centroid_matrix()
 
+        if len(self._centroid_matrix) == 0:
+            return []
+
+        # Batch cosine similarity (~50x faster than loop)
+        scores = batch_cosine_similarity(embedding, self._centroid_matrix)
+
+        # Get indices above threshold, sorted by score (descending)
+        above_threshold = np.where(scores >= threshold)[0]
+        if len(above_threshold) == 0:
+            return []
+
+        # Sort by score and take top limit (avoid converting all matches to Signature objects)
+        sorted_indices = above_threshold[np.argsort(scores[above_threshold])[::-1]][:limit]
+
+        # Only convert the top results to StepSignature objects (major speedup!)
         results = []
-        for row in rows:
-            centroid = unpack_embedding(row["centroid"])
-            if centroid is None:
-                continue
+        for i in sorted_indices:
+            sig = self._row_to_signature(self._centroid_rows[i])
+            results.append((sig, float(scores[i])))
 
-            score = cosine_similarity(embedding, centroid)
-            if score >= threshold:
-                sig = self._row_to_signature(row)
-                results.append((sig, score))
-
-        results.sort(key=lambda x: x[1], reverse=True)
-        return results[:limit]
+        return results
 
     def count_signatures(self) -> int:
         """Get total number of signatures."""
@@ -911,6 +972,9 @@ class StepSignatureDB:
                     (new_sum_packed, new_count, new_centroid_packed, signature_id),
                 )
                 conn.commit()
+                # Invalidate caches since centroid changed
+                invalidate_centroid_cache(signature_id)
+                self.invalidate_centroid_matrix()
                 logger.debug(
                     "[db] Updated centroid for sig %d: count=%d",
                     signature_id, new_count
@@ -1677,7 +1741,10 @@ class StepSignatureDB:
             if sig_id in exclude_ids:
                 continue
 
-            centroid = unpack_embedding(row["centroid"])
+            if not row["centroid"]:
+                continue
+            # Use cached centroid to avoid repeated JSON parsing
+            centroid = get_cached_centroid(sig_id, row["centroid"])
             if centroid is None:
                 continue
 
