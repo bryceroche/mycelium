@@ -107,8 +107,10 @@ def normalize_embedding(embedding: np.ndarray) -> np.ndarray:
     return embedding / norm
 
 
-def pack_embedding(embedding: Union[np.ndarray, list]) -> str:
+def pack_embedding(embedding: Optional[Union[np.ndarray, list]]) -> Optional[str]:
     """Pack a numpy array into JSON string for SQLite storage."""
+    if embedding is None:
+        return None
     if isinstance(embedding, np.ndarray):
         embedding = embedding.tolist()
     return json.dumps(embedding)
