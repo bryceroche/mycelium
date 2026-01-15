@@ -777,8 +777,10 @@ class Solver:
             best_condition = ""
 
             for child_sig, condition in children:
-                if child_sig.centroid is not None:
-                    sim = cosine_similarity(embedding, child_sig.centroid)
+                # Capture centroid once to avoid TOCTOU race condition
+                centroid = child_sig.centroid
+                if centroid is not None:
+                    sim = cosine_similarity(embedding, centroid)
                     if sim > best_sim:
                         best_sim = sim
                         best_child = child_sig
