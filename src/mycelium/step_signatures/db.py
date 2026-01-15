@@ -909,7 +909,7 @@ class StepSignatureDB:
         """Get total number of signatures."""
         with self._connection() as conn:
             row = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()
-            return row[0]
+            return row[0] if row else 0
 
     # =========================================================================
     # Centroid Management (Running Average Embeddings)
@@ -1064,7 +1064,8 @@ class StepSignatureDB:
             # OR if we have enough history showing poor success_rate
             # This prevents premature demotion before problem grading updates successes
             if AUTO_DEMOTE_ENABLED and not is_umbrella and dsl_type not in AUTO_DEMOTE_EXCLUDED_TYPES:
-                sig_count = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()[0]
+                sig_count_row = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()
+                sig_count = sig_count_row[0] if sig_count_row else 0
                 min_uses = min(
                     AUTO_DEMOTE_MIN_USES_FLOOR + sig_count // AUTO_DEMOTE_RAMP_DIVISOR,
                     AUTO_DEMOTE_MIN_USES_CAP
@@ -1799,10 +1800,11 @@ class StepSignatureDB:
             )
             if cursor.rowcount > 0:
                 # Check if parent still has children
-                remaining = conn.execute(
+                remaining_row = conn.execute(
                     "SELECT COUNT(*) FROM signature_relationships WHERE parent_id = ?",
                     (parent_id,),
-                ).fetchone()[0]
+                ).fetchone()
+                remaining = remaining_row[0] if remaining_row else 0
                 if remaining == 0:
                     # Demote from umbrella
                     conn.execute(
@@ -1828,11 +1830,18 @@ class StepSignatureDB:
             Dict with counts of deleted rows
         """
         with self._connection() as conn:
-            # Get counts before deletion
-            sig_count = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()[0]
-            ex_count = conn.execute("SELECT COUNT(*) FROM step_examples").fetchone()[0]
-            log_count = conn.execute("SELECT COUNT(*) FROM step_usage_log").fetchone()[0]
-            rel_count = conn.execute("SELECT COUNT(*) FROM signature_relationships").fetchone()[0] if self._table_exists(conn, "signature_relationships") else 0
+            # Get counts before deletion (defensive None checks for race conditions)
+            sig_row = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()
+            sig_count = sig_row[0] if sig_row else 0
+            ex_row = conn.execute("SELECT COUNT(*) FROM step_examples").fetchone()
+            ex_count = ex_row[0] if ex_row else 0
+            log_row = conn.execute("SELECT COUNT(*) FROM step_usage_log").fetchone()
+            log_count = log_row[0] if log_row else 0
+            if self._table_exists(conn, "signature_relationships"):
+                rel_row = conn.execute("SELECT COUNT(*) FROM signature_relationships").fetchone()
+                rel_count = rel_row[0] if rel_row else 0
+            else:
+                rel_count = 0
 
             # Delete in order (relationships first due to FK constraints)
             if self._table_exists(conn, "signature_relationships"):
