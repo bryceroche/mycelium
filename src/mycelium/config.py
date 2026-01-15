@@ -222,7 +222,7 @@ DEPTH_DECOMPOSE_MIN_PROB = 0.05  # Floor probability (never fully disable decomp
 # BIG BANG EXPANSION: Recursive decomposition during cold start
 # When enabled: aggressively decompose signatures to rapidly build tree structure
 # When disabled: only decompose on explicit failure, use existing tree
-BIG_BANG_EXPANSION_ENABLED = True  # Toggle on for aggressive cold-start decomposition
+BIG_BANG_EXPANSION_ENABLED = False  # Toggle on for aggressive cold-start decomposition
 
 RECURSIVE_DECOMPOSITION_ENABLED = True  # Enable decomposition for complex steps
 RECURSIVE_MAX_DEPTH = 9  # Max routing depth: deep decomposition for complex problems

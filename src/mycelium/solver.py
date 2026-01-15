@@ -723,6 +723,31 @@ class Solver:
                 routed_signature = signature  # Use original umbrella signature
                 logger.info("[solver] Umbrella fallback DSL succeeded: %s", result[:30] if result else "")
 
+        # 4.8. DECOMPOSE ON ROUTING FAILURE (per CLAUDE.md: "Attempt to route first - decompose on failure")
+        # If umbrella routing failed (no matching child), decompose to create children
+        if result is None and routed_signature.is_semantic_umbrella:
+            logger.info(
+                "[solver] Router umbrella '%s' failed to route, decomposing to create children",
+                routed_signature.step_type
+            )
+            await self._auto_decompose_signature(routed_signature)
+            routed_signature = self.step_db.get_signature(routed_signature.id)
+
+            # Try routing again with new children
+            if routed_signature.is_semantic_umbrella:
+                children = self.step_db.get_children(routed_signature.id)
+                if children:
+                    child_result = await self._try_umbrella_routing(
+                        routed_signature, step, problem, context, step_descriptions, embedding=embedding
+                    )
+                    if child_result is not None:
+                        result, routed_signature, was_injected = child_result
+                        was_routed = True
+                        logger.info(
+                            "[solver] Post-decompose routing succeeded: '%s'",
+                            routed_signature.step_type
+                        )
+
         # 5. No LLM fallback - strict DAG execution
         # Three outcomes: route to child, create child, or fail
         if result is None:
