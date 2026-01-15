@@ -47,6 +47,17 @@ from mycelium.step_signatures.dsl_rewriter import (
     get_rewrite_stats,
 )
 
+from mycelium.step_signatures.decay import (
+    DecayStatus,
+    DecayState,
+    DecayAction,
+    DecayReport,
+    DecayManager,
+    run_decay_cycle,
+    get_signature_decay_state,
+    get_decay_summary,
+)
+
 from mycelium.data_layer.schema import STEP_SCHEMA as STEP_SCHEMA_SQL
 
 __all__ = [
@@ -77,4 +88,13 @@ __all__ = [
     "find_underperforming_signatures",
     "rewrite_underperforming_dsls",
     "get_rewrite_stats",
+    # Decay Lifecycle
+    "DecayStatus",
+    "DecayState",
+    "DecayAction",
+    "DecayReport",
+    "DecayManager",
+    "run_decay_cycle",
+    "get_signature_decay_state",
+    "get_decay_summary",
 ]
