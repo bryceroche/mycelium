@@ -758,6 +758,18 @@ class StepSignatureDB:
             )
             row_id = cursor.lastrowid
 
+            # Defensive check: ensure we got a valid row ID
+            if not row_id:
+                # Fallback: query by signature_id which is unique
+                row = conn.execute(
+                    "SELECT id FROM step_signatures WHERE signature_id = ?",
+                    (sig_id,)
+                ).fetchone()
+                if row:
+                    row_id = row["id"]
+                else:
+                    raise RuntimeError(f"Failed to get row ID after INSERT for signature_id={sig_id}")
+
             # If not root, add as child of the appropriate parent
             if not is_first_signature and actual_parent_id is not None:
                 # Add parent-child relationship
