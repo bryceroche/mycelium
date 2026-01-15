@@ -248,6 +248,45 @@ class StepSignature:
             last_used_at=row.get("last_used_at"),
         )
 
+    @classmethod
+    def from_row_for_routing(cls, row: dict) -> "StepSignature":
+        """Create from database row optimized for routing (parse centroid only).
+
+        ~4x faster than from_row. Use for umbrella routing where we only need
+        centroid for similarity, uses/successes for UCB1, and is_semantic_umbrella
+        for recursion. Per CLAUDE.md: "Umbrella signature routing should not
+        require an LLM call" - routing is purely embedding-based.
+
+        Parses: centroid (REQUIRED for similarity)
+        Skips: clarifying_questions, param_descriptions, examples, embedding_sum
+        """
+        from mycelium.step_signatures.utils import get_cached_centroid
+
+        # Use cached centroid to avoid repeated JSON parsing
+        centroid = get_cached_centroid(row.get("id"), row.get("centroid"))
+
+        return cls(
+            id=row.get("id"),
+            signature_id=row.get("signature_id", ""),
+            centroid=centroid,
+            embedding_sum=None,  # Skip - not needed for routing
+            embedding_count=row.get("embedding_count", 1) or 1,
+            step_type=row.get("step_type", ""),
+            description=row.get("description", ""),
+            clarifying_questions=[],  # Skip JSON parsing
+            param_descriptions={},  # Skip JSON parsing
+            dsl_script=row.get("dsl_script"),
+            dsl_type=row.get("dsl_type", "math"),
+            examples=[],  # Skip JSON parsing
+            uses=row.get("uses", 0),
+            successes=row.get("successes", 0),
+            is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
+            is_root=bool(row.get("is_root", 0)),
+            depth=row.get("depth", 0) or 0,
+            created_at=row.get("created_at"),
+            last_used_at=row.get("last_used_at"),
+        )
+
 
 @dataclass
 class StepExample:

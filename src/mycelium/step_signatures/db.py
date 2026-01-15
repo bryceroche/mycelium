@@ -393,8 +393,8 @@ class StepSignatureDB:
             if not current.is_semantic_umbrella:
                 return current, path
 
-            # Get children of current umbrella
-            children = self.get_children(current.id)
+            # Get children of current umbrella (fast routing mode - skip JSON parsing)
+            children = self.get_children(current.id, for_routing=True)
             if not children:
                 # Umbrella with no children - treat as leaf
                 return current, path
@@ -1899,6 +1899,15 @@ class StepSignatureDB:
         """
         return StepSignature.from_row_fast(dict(row))
 
+    def _row_to_signature_for_routing(self, row) -> StepSignature:
+        """Convert a database row to StepSignature optimized for routing.
+
+        ~4x faster than full parsing. Parses centroid (required for similarity)
+        but skips all other JSON. Per CLAUDE.md: "Umbrella signature routing
+        should not require an LLM call" - routing is purely embedding-based.
+        """
+        return StepSignature.from_row_for_routing(dict(row))
+
     def _infer_step_type(self, step_text: str) -> str:
         """Infer a step type from step text.
 
@@ -2117,11 +2126,15 @@ class StepSignatureDB:
     # Umbrella Routing (DAG of DAGs)
     # =========================================================================
 
-    def get_children(self, parent_id: int) -> list[tuple[StepSignature, str]]:
+    def get_children(
+        self, parent_id: int, for_routing: bool = False
+    ) -> list[tuple[StepSignature, str]]:
         """Get child signatures for an umbrella parent.
 
         Args:
             parent_id: ID of the parent signature
+            for_routing: If True, use fast parsing (centroid only, skip JSON).
+                        Per CLAUDE.md: "Umbrella routing should not require LLM call"
 
         Returns:
             List of (child_signature, condition) tuples, ordered by routing_order
@@ -2136,10 +2149,14 @@ class StepSignatureDB:
                 (parent_id,)
             )
             results = []
+            row_converter = (
+                self._row_to_signature_for_routing if for_routing
+                else self._row_to_signature
+            )
             for row in cursor.fetchall():
                 row_dict = dict(row)
                 condition = row_dict.pop("condition")
-                sig = self._row_to_signature(row_dict)
+                sig = row_converter(row_dict)
                 results.append((sig, condition))
             return results
 
