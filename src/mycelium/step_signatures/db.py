@@ -257,8 +257,10 @@ class StepSignatureDB:
         """
         from mycelium.config import UMBRELLA_MAX_DEPTH
 
+        # Validate max_depth to prevent unbounded recursion
         if max_depth is None:
             max_depth = UMBRELLA_MAX_DEPTH
+        max_depth = max(1, min(int(max_depth), 100))  # Hard cap at 100
 
         root = self.get_root()
         if root is None:
@@ -545,6 +547,9 @@ class StepSignatureDB:
         """
         from mycelium.config import UMBRELLA_MAX_DEPTH
 
+        # Validate max depth to prevent unbounded recursion
+        max_depth = max(1, min(int(UMBRELLA_MAX_DEPTH or 10), 100))  # Hard cap at 100
+
         # Start at root
         root_row = conn.execute(
             "SELECT * FROM step_signatures WHERE is_root = 1 LIMIT 1"
@@ -557,7 +562,7 @@ class StepSignatureDB:
         parent_for_new = current  # Track where to create new child
         depth = 0
 
-        while depth < UMBRELLA_MAX_DEPTH:
+        while depth < max_depth:
             # Check similarity to current node
             # Capture centroid once to avoid TOCTOU race condition
             current_centroid = current.centroid
