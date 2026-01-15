@@ -1117,9 +1117,34 @@ class StepSignatureDB:
         # Only convert the top results to StepSignature objects (major speedup!)
         # Use fast parsing - skip JSON fields we don't need for similarity results
         results = []
-        for i in sorted_indices:
-            sig = self._row_to_signature_fast(self._centroid_rows[i])
-            results.append((sig, float(scores[i])))
+
+        if self._centroid_rows is not None:
+            # Fast path: rows cached in memory
+            for i in sorted_indices:
+                sig = self._row_to_signature_fast(self._centroid_rows[i])
+                results.append((sig, float(scores[i])))
+        else:
+            # Lazy path: rows not cached (loaded from disk), fetch by ID
+            # Only fetch the rows we need (typically 10 or fewer)
+            ids_to_fetch = [self._centroid_sig_ids[i] for i in sorted_indices]
+            if ids_to_fetch:
+                placeholders = ",".join("?" * len(ids_to_fetch))
+                with self._connection() as conn:
+                    cursor = conn.execute(
+                        f"""SELECT id, signature_id, centroid, embedding_count, step_type,
+                                   description, param_descriptions, dsl_script, dsl_type,
+                                   uses, successes, is_semantic_umbrella, is_root, depth,
+                                   created_at, last_used_at
+                            FROM step_signatures WHERE id IN ({placeholders})""",
+                        ids_to_fetch,
+                    )
+                    rows_by_id = {row["id"]: row for row in cursor.fetchall()}
+
+                for i in sorted_indices:
+                    sig_id = self._centroid_sig_ids[i]
+                    if sig_id in rows_by_id:
+                        sig = self._row_to_signature_fast(rows_by_id[sig_id])
+                        results.append((sig, float(scores[i])))
 
         return results
 

@@ -55,7 +55,6 @@ from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.embedder import Embedder
 from mycelium.embedding_cache import cached_embed
-from mycelium.data_layer.connection import configure_connection
 
 logger = logging.getLogger(__name__)
 
@@ -73,18 +72,20 @@ _signature_count_cache = {"count": 0, "last_check": 0}
 
 
 def get_signature_count() -> int:
-    """Get current signature count (cached for performance)."""
+    """Get current signature count (cached for performance).
+
+    Uses singleton ConnectionManager to avoid creating fresh connections.
+    """
     import time
+    from mycelium.data_layer import get_db
+
     now = time.time()
     # Cache for 1 second to avoid DB hits on every call
     if now - _signature_count_cache["last_check"] > 1.0:
         try:
-            import sqlite3
-            from mycelium.config import DB_PATH
-            conn = sqlite3.connect(DB_PATH, timeout=30.0)
-            configure_connection(conn, enable_foreign_keys=False)
-            count = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()[0]
-            conn.close()
+            db = get_db()
+            with db.connection() as conn:
+                count = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()[0]
             _signature_count_cache["count"] = count
             _signature_count_cache["last_check"] = now
         except Exception as e:
@@ -1446,15 +1447,15 @@ Expression:"""
 
         # Check which signatures might need decomposition
         # Use same thresholds as umbrella_learner for consistency
-        from mycelium.step_signatures.umbrella_learner import (
-            MIN_USES_FOR_EVALUATION,
-            MAX_SUCCESS_RATE_FOR_DECOMPOSITION,
+        from mycelium.config import (
+            UMBRELLA_MIN_USES_FOR_EVALUATION,
+            UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION,
         )
         candidates = []
         for sig_id in signature_ids:
             sig = self.step_db.get_signature(sig_id)
-            if sig and sig.dsl_type == "decompose" and sig.uses >= MIN_USES_FOR_EVALUATION:
-                if sig.success_rate <= MAX_SUCCESS_RATE_FOR_DECOMPOSITION and not sig.is_semantic_umbrella:
+            if sig and sig.dsl_type == "decompose" and sig.uses >= UMBRELLA_MIN_USES_FOR_EVALUATION:
+                if sig.success_rate <= UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION and not sig.is_semantic_umbrella:
                     candidates.append(sig_id)
                     logger.info(
                         "[solver] Signature '%s' (id=%d) needs decomposition: "
