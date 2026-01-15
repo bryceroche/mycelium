@@ -2105,6 +2105,9 @@ class StepSignatureDB:
                 "UPDATE step_signatures SET depth = ? WHERE id = ?",
                 (child_depth, child_id),
             )
+            # Invalidate parent's centroid cache (new child affects routing)
+            invalidate_centroid_cache(parent_id)
+            self.invalidate_centroid_matrix()
             logger.info(
                 "[db] Added child: parent=%d (depth=%d) → child=%d (depth=%d) (condition='%s')",
                 parent_id, parent_depth, child_id, child_depth, condition[:30]
@@ -2239,6 +2242,9 @@ class StepSignatureDB:
                         "UPDATE step_signatures SET is_semantic_umbrella = 0 WHERE id = ?",
                         (parent_id,),
                     )
+                # Invalidate parent's centroid cache (child removal affects routing)
+                invalidate_centroid_cache(parent_id)
+                self.invalidate_centroid_matrix()
                 logger.info("[db] Removed child relationship: parent=%d → child=%d", parent_id, child_id)
                 return True
             return False
