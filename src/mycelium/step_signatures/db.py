@@ -1179,7 +1179,6 @@ class StepSignatureDB:
             drift = 1.0 - cosine_similarity(old_centroid, new_centroid)
             # Adaptive threshold: tighter bounds with more examples
             # max_drift * decay^log2(count) - e.g., at count=8: 0.15 * 0.9^3 = 0.109
-            import math
             adaptive_threshold = CENTROID_MAX_DRIFT * (CENTROID_DRIFT_DECAY ** math.log2(max(1, current_count)))
             if drift > adaptive_threshold:
                 logger.warning(
