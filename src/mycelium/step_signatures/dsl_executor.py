@@ -1,28 +1,21 @@
-"""DSL Executor: Layered execution engine for signature DSL scripts.
-
-Three execution layers:
-1. Math: Basic arithmetic, trig, log (extends existing _safe_eval_formula)
-2. SymPy: Symbolic algebra (solve, simplify, diff, integrate)
-3. Custom: Registered domain-specific operators
+"""DSL Executor: Math execution engine for signature DSL scripts.
 
 DSL scripts are JSON-encoded specifications:
 {
-    "type": "math|sympy|custom",
-    "script": "expression or operator call",
+    "type": "math",
+    "script": "expression",
     "params": ["required", "input", "names"],
     "aliases": {"param_name": ["alias1", "alias2"]},
-    "fallback": "decompose|formula|llm"
+    "fallback": "decompose"
 }
 
 Aliases enable fuzzy matching between param names and context keys.
 The LLM generates aliases once at signature creation time, then matching
 is fast dict lookups at runtime.
 
-This module is a facade that re-exports from focused submodules:
+This module re-exports from:
 - dsl_types: DSLLayer, DSLSpec, ValueType
 - math_layer: Math DSL execution
-- sympy_layer: SymPy DSL execution
-- custom_layer: Custom operator execution
 """
 
 import logging
@@ -56,22 +49,6 @@ from mycelium.step_signatures.math_layer import (
     extract_numeric_value as _extract_numeric_value,
     prepare_math_inputs as _prepare_math_inputs,
     try_execute_dsl_math,
-)
-
-# SymPy layer
-from mycelium.step_signatures.sympy_layer import (
-    SYMPY_ALLOWED as _SYMPY_ALLOWED,
-    SYMPY_ALLOWED_METHODS as _SYMPY_ALLOWED_METHODS,
-    parse_to_sympy as _parse_to_sympy,
-    try_execute_dsl_sympy,
-)
-
-# Custom layer
-from mycelium.step_signatures.custom_layer import (
-    register_operator,
-    get_operator,
-    list_operators,
-    try_execute_dsl_custom,
 )
 
 # =============================================================================
@@ -156,11 +133,8 @@ def try_execute_dsl(
         with _timeout(timeout_sec):
             if dsl_spec.layer == DSLLayer.MATH:
                 result = try_execute_dsl_math(dsl_spec.script, mapped_inputs)
-            elif dsl_spec.layer == DSLLayer.SYMPY:
-                result = try_execute_dsl_sympy(dsl_spec.script, mapped_inputs)
-            elif dsl_spec.layer == DSLLayer.CUSTOM:
-                result = try_execute_dsl_custom(dsl_spec.script, mapped_inputs)
             else:
+                # Only MATH layer supported for execution
                 return None, False
 
             if result is not None:
