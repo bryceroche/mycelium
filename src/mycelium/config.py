@@ -255,14 +255,23 @@ DEPTH_DECOMPOSE_MIN_PROB = 0.05  # Floor probability (never fully disable decomp
 # DYNAMIC DEPTH ROUTING
 # =============================================================================
 
-# BIG BANG EXPANSION: Recursive decomposition during cold start
-# Per CLAUDE.md: "Cold-start adaptive branching more aggressive during cold start - big bang"
-# When enabled: aggressively decompose signatures to rapidly build tree structure
-# When disabled: only decompose on explicit failure, use existing tree
-BIG_BANG_EXPANSION_ENABLED = False  # Toggle on for aggressive cold-start decomposition
-BIG_BANG_SIGNATURE_THRESHOLD = 500  # Decompose aggressively until this many sigs
-BIG_BANG_MIN_DEPTH = 3  # Always try to reach at least this depth during big bang
-BIG_BANG_DECAY_PER_100_SIGS = 0.15  # Reduce decomposition probability as tree grows
+# =============================================================================
+# SMOOTH EXPANSION RATE (replaces BIG_BANG toggle)
+# =============================================================================
+# Per CLAUDE.md: "A SMOOTH and CONTINUOUS learning process is key"
+#
+# Formula: expansion_rate = (1 - accuracy) * (1 + k * exp(-sig_count / threshold))
+#
+# - Failure-driven: low accuracy → high expansion
+# - Cold-start boost: few signatures → extra multiplier
+# - Smooth taper: as system matures, expansion naturally decreases
+#
+# No toggle needed - the math handles the transition automatically.
+
+EXPANSION_COLD_START_BOOST = 1.0  # k: extra multiplier during cold start (1.0 = 2x at start)
+EXPANSION_SIG_THRESHOLD = 3000   # Signatures needed for cold-start boost to decay to ~37%
+EXPANSION_MIN_RATE = 0.05        # Floor: always some exploration (5%)
+EXPANSION_MAX_RATE = 1.0         # Cap: never exceed 100%
 
 RECURSIVE_DECOMPOSITION_ENABLED = True  # Enable decomposition for complex steps
 RECURSIVE_MAX_DEPTH = 9  # Max routing depth: deep decomposition for complex problems

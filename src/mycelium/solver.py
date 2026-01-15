@@ -37,10 +37,10 @@ from mycelium.config import (
     DEPTH_FORCE_DECOMPOSE_DEPTH,
     DEPTH_DECOMPOSE_DECAY_BASE,
     DEPTH_DECOMPOSE_MIN_PROB,
-    BIG_BANG_EXPANSION_ENABLED,
-    BIG_BANG_SIGNATURE_THRESHOLD,
-    BIG_BANG_MIN_DEPTH,
-    BIG_BANG_DECAY_PER_100_SIGS,
+    EXPANSION_COLD_START_BOOST,
+    EXPANSION_SIG_THRESHOLD,
+    EXPANSION_MIN_RATE,
+    EXPANSION_MAX_RATE,
     ZERO_LLM_ROUTING_ENABLED,
     ZERO_LLM_MIN_SIMILARITY,
     ZERO_LLM_MIN_SUCCESS_RATE,
@@ -60,15 +60,19 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# BIG BANG Decomposition Strategy
+# SMOOTH EXPANSION RATE
 # =============================================================================
-# Thresholds imported from config:
-# - BIG_BANG_SIGNATURE_THRESHOLD: Decompose aggressively until this many sigs
-# - BIG_BANG_MIN_DEPTH: Always try to reach at least this depth during big bang
-# - BIG_BANG_DECAY_PER_100_SIGS: Reduce decomposition probability as tree grows
+# Per CLAUDE.md: "A SMOOTH and CONTINUOUS learning process is key"
+#
+# Formula: expansion_rate = (1 - accuracy) * (1 + k * exp(-sig_count / threshold))
+#
+# - Failure-driven: low accuracy → high expansion
+# - Cold-start boost: few signatures → extra multiplier
+# - Smooth taper: as system matures, expansion naturally decreases
 
-# Track signature count (updated by solver)
+# Caches for smooth expansion calculation
 _signature_count_cache = {"count": 0, "last_check": 0}
+_accuracy_cache = {"accuracy": 0.0, "successes": 0, "total": 0, "last_update": 0}
 
 
 def get_signature_count() -> int:
@@ -112,10 +116,85 @@ def get_adaptive_match_threshold() -> float:
     return threshold
 
 
-def should_force_decompose(depth: int) -> bool:
-    """BIG BANG decomposition strategy.
+def update_accuracy(success: bool) -> float:
+    """Update rolling accuracy with a new result.
 
-    During cold start (few signatures), decompose AGGRESSIVELY at all depths.
+    Uses exponential moving average for smooth tracking.
+
+    Args:
+        success: Whether the problem was solved correctly
+
+    Returns:
+        Current accuracy estimate
+    """
+    import time
+    now = time.time()
+
+    # Update counts
+    _accuracy_cache["total"] += 1
+    if success:
+        _accuracy_cache["successes"] += 1
+
+    # Calculate accuracy with smoothing
+    # Use simple ratio but with a floor during cold start
+    total = _accuracy_cache["total"]
+    if total > 0:
+        raw_accuracy = _accuracy_cache["successes"] / total
+        # Apply smoothing: blend with prior (assume 20% baseline)
+        # This prevents wild swings early on
+        prior_weight = max(0, 10 - total) / 10  # Decays over first 10 problems
+        _accuracy_cache["accuracy"] = prior_weight * 0.2 + (1 - prior_weight) * raw_accuracy
+
+    _accuracy_cache["last_update"] = now
+    return _accuracy_cache["accuracy"]
+
+
+def get_accuracy() -> float:
+    """Get current accuracy estimate."""
+    return _accuracy_cache["accuracy"]
+
+
+def get_expansion_rate() -> float:
+    """Calculate smooth expansion rate based on accuracy and signature count.
+
+    Formula: expansion_rate = (1 - accuracy) * (1 + k * exp(-sig_count / threshold))
+
+    - Failure-driven: low accuracy → high expansion
+    - Cold-start boost: few signatures → extra multiplier
+    - Smooth taper: as system matures, expansion naturally decreases
+
+    Returns:
+        Expansion rate in [EXPANSION_MIN_RATE, EXPANSION_MAX_RATE]
+    """
+    import math
+
+    accuracy = get_accuracy()
+    sig_count = get_signature_count()
+
+    # Cold-start boost: decays exponentially as signatures grow
+    cold_start_boost = 1.0 + EXPANSION_COLD_START_BOOST * math.exp(-sig_count / EXPANSION_SIG_THRESHOLD)
+
+    # Failure-driven: expand more when accuracy is low
+    failure_rate = 1.0 - accuracy
+
+    # Combined expansion rate
+    expansion = failure_rate * cold_start_boost
+
+    # Clamp to configured bounds
+    expansion = max(EXPANSION_MIN_RATE, min(EXPANSION_MAX_RATE, expansion))
+
+    logger.debug(
+        "[expansion] rate=%.2f (accuracy=%.2f, sigs=%d, boost=%.2f)",
+        expansion, accuracy, sig_count, cold_start_boost
+    )
+
+    return expansion
+
+
+def should_force_decompose(depth: int) -> bool:
+    """Smooth expansion-based decomposition strategy.
+
+    Uses continuous expansion rate (no toggle) to decide decomposition.
     As tree grows, decay decomposition probability.
     Eventually stabilize to only decompose on failure.
 
