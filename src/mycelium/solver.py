@@ -52,6 +52,7 @@ from mycelium.step_signatures.db import normalize_step_text
 from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.embedder import Embedder
+from mycelium.embedding_cache import cached_embed
 
 logger = logging.getLogger(__name__)
 
@@ -432,7 +433,8 @@ class Solver:
 
         try:
             # 0. Embed problem (used for both zero-LLM and planner hints)
-            problem_embedding = self.embedder.embed(problem)
+            # Use cached_embed to avoid redundant computation
+            problem_embedding = cached_embed(problem, self.embedder)
 
             # 0.5. Try zero-LLM solve first (skip planner for mature signatures)
             zero_llm_result = self._try_zero_llm_solve(problem, problem_embedding)
@@ -613,8 +615,9 @@ class Solver:
             return await self._execute_composite_step(step, problem, context, step_descriptions, depth)
 
         # 1. Normalize and embed step (strip numbers for better matching)
+        # Use cached_embed to avoid redundant computation for repeated steps
         normalized_task = normalize_step_text(step.task)
-        embedding = self.embedder.embed(normalized_task)
+        embedding = cached_embed(normalized_task, self.embedder)
 
         # 2. Find or create signature (use original text for description)
         # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
