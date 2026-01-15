@@ -67,7 +67,7 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b) / (norm_a * norm_b))
 
 
-def batch_cosine_similarity(query: np.ndarray, matrix: np.ndarray) -> np.ndarray:
+def batch_cosine_similarity(query: np.ndarray, matrix: np.ndarray, matrix_normalized: bool = False) -> np.ndarray:
     """Compute cosine similarity between query and all rows in matrix.
 
     This is ~10-50x faster than looping for large matrices.
@@ -75,6 +75,7 @@ def batch_cosine_similarity(query: np.ndarray, matrix: np.ndarray) -> np.ndarray
     Args:
         query: (768,) query vector
         matrix: (n, 768) matrix of vectors to compare against
+        matrix_normalized: If True, skip matrix normalization (already pre-normalized)
 
     Returns:
         (n,) array of similarities
@@ -85,13 +86,25 @@ def batch_cosine_similarity(query: np.ndarray, matrix: np.ndarray) -> np.ndarray
         return np.zeros(matrix.shape[0])
     query_normalized = query / query_norm
 
+    if matrix_normalized:
+        # Matrix already normalized - just dot product (30% faster!)
+        return matrix @ query_normalized
+
     # Normalize matrix rows (avoid division by zero)
     norms = np.linalg.norm(matrix, axis=1, keepdims=True)
     norms = np.where(norms == 0, 1, norms)  # Avoid div by zero
-    matrix_normalized = matrix / norms
+    matrix_normalized_arr = matrix / norms
 
     # Batch dot product
-    return matrix_normalized @ query_normalized
+    return matrix_normalized_arr @ query_normalized
+
+
+def normalize_embedding(embedding: np.ndarray) -> np.ndarray:
+    """Normalize embedding to unit length for fast cosine similarity."""
+    norm = np.linalg.norm(embedding)
+    if norm == 0:
+        return embedding
+    return embedding / norm
 
 
 def pack_embedding(embedding: Union[np.ndarray, list]) -> str:
