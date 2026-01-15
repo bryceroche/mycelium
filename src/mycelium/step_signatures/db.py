@@ -845,10 +845,14 @@ class StepSignatureDB:
                 sig_ids.append(row["id"])
 
         if centroids:
-            self._centroid_matrix = np.array(centroids, dtype=np.float32)
+            matrix = np.array(centroids, dtype=np.float32)
+            # Pre-normalize for faster similarity (just dot product needed)
+            norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+            norms = np.where(norms == 0, 1, norms)
+            self._centroid_matrix = matrix / norms  # Normalized!
             self._centroid_sig_ids = sig_ids
             self._centroid_rows = valid_rows
-            logger.debug("[db] Built centroid matrix: %d signatures", len(sig_ids))
+            logger.debug("[db] Built pre-normalized centroid matrix: %d signatures", len(sig_ids))
         else:
             self._centroid_matrix = np.array([], dtype=np.float32).reshape(0, 768)
             self._centroid_sig_ids = []
@@ -881,8 +885,8 @@ class StepSignatureDB:
         if len(self._centroid_matrix) == 0:
             return []
 
-        # Batch cosine similarity (~50x faster than loop)
-        scores = batch_cosine_similarity(embedding, self._centroid_matrix)
+        # Batch cosine similarity (~50x faster than loop, pre-normalized matrix)
+        scores = batch_cosine_similarity(embedding, self._centroid_matrix, matrix_normalized=True)
 
         # Get indices above threshold, sorted by score (descending)
         above_threshold = np.where(scores >= threshold)[0]
@@ -893,9 +897,10 @@ class StepSignatureDB:
         sorted_indices = above_threshold[np.argsort(scores[above_threshold])[::-1]][:limit]
 
         # Only convert the top results to StepSignature objects (major speedup!)
+        # Use fast parsing - skip JSON fields we don't need for similarity results
         results = []
         for i in sorted_indices:
-            sig = self._row_to_signature(self._centroid_rows[i])
+            sig = self._row_to_signature_fast(self._centroid_rows[i])
             results.append((sig, float(scores[i])))
 
         return results
@@ -1302,6 +1307,13 @@ class StepSignatureDB:
     def _row_to_signature(self, row) -> StepSignature:
         """Convert a database row to a StepSignature object."""
         return StepSignature.from_row(dict(row))
+
+    def _row_to_signature_fast(self, row) -> StepSignature:
+        """Convert a database row to StepSignature (skip JSON parsing).
+
+        ~3x faster. Use when you only need basic fields.
+        """
+        return StepSignature.from_row_fast(dict(row))
 
     def _infer_step_type(self, step_text: str) -> str:
         """Infer a step type from step text.
