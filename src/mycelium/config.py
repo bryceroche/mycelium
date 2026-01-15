@@ -182,6 +182,18 @@ DECAY_ARCHIVE_GRACE_DAYS = 30  # Wait 30 days before archiving
 DECAY_MAX_ACTIONS_PER_RUN = 10  # Max signatures to act on per cycle
 
 # =============================================================================
+# EMBEDDING CACHE
+# =============================================================================
+# Two-tier cache for MathBERT embeddings (expensive to compute ~50ms each).
+# L1: In-memory LRU, L2: Persistent SQLite disk cache.
+
+EMBEDDING_CACHE_ENABLED = True  # Enable embedding caching
+EMBEDDING_CACHE_MEMORY_SIZE = 10000  # Max entries in memory LRU cache
+EMBEDDING_CACHE_PERSIST = True  # Enable disk persistence (SQLite)
+EMBEDDING_CACHE_WARM_ON_START = True  # Pre-load from signatures on startup
+EMBEDDING_CACHE_TTL_DAYS = 30  # Prune disk entries older than N days
+
+# =============================================================================
 # DEPTH-AWARE DECOMPOSITION
 # =============================================================================
 # Force decomposition at shallow depths to build out the tree structure.
