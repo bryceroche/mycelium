@@ -80,8 +80,8 @@ def get_signature_count() -> int:
             conn.close()
             _signature_count_cache["count"] = count
             _signature_count_cache["last_check"] = now
-        except Exception:
-            pass  # Use cached value on error
+        except Exception as e:
+            logger.warning("[solver] Failed to get signature count: %s", e)
     return _signature_count_cache["count"]
 
 

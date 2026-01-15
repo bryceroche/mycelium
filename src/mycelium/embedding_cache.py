@@ -765,8 +765,8 @@ class EmbeddingCache:
                         key = normalize_cache_key(desc)
                         self._memory.put(key, centroid)
                         count += 1
-                    except (json.JSONDecodeError, ValueError):
-                        pass
+                    except (json.JSONDecodeError, ValueError) as e:
+                        logger.warning("[embedding_cache] Failed to parse centroid JSON: %s", e)
 
             logger.info("[embedding_cache] Warmed %d embeddings into memory", count)
             return count

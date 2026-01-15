@@ -11,6 +11,10 @@ Signatures now speak natural language:
 The planner and signatures can now "talk" to each other through text.
 """
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 EMBEDDING_DIM = 768  # MathBERT dimension
 
 SQLITE_SCHEMA = """
@@ -192,8 +196,8 @@ def migrate_db(conn) -> None:
     for sql in migrations:
         try:
             conn.execute(sql)
-        except Exception:
-            pass  # Column might already exist in some edge cases
+        except Exception as e:
+            logger.warning("[schema] Migration failed for '%s': %s", sql[:50], e)
 
     if migrations:
         conn.commit()
@@ -207,8 +211,8 @@ def migrate_db(conn) -> None:
     for sql in index_migrations:
         try:
             conn.execute(sql)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("[schema] Index migration failed for '%s': %s", sql[:50], e)
     conn.commit()
 
     # Fix multi-parent children (tree structure enforcement)
