@@ -98,13 +98,13 @@ def _build_dsl_from_hint(
         logger.debug("[dsl_infer] Unknown dsl_hint '%s', ignoring", dsl_hint)
         return None
 
-    # Get param names from extracted_values
-    params = [k for k in extracted_values.keys() if not k.startswith("{")]
+    # Get param names from extracted_values (guard against non-string keys)
+    params = [k for k in extracted_values.keys() if isinstance(k, str) and not k.startswith("{")]
     if len(params) < 2:
         logger.debug("[dsl_infer] dsl_hint needs 2+ params, got %d", len(params))
         return None
 
-    # Build script with first two params
+    # Build script with first two params (guarded by len check above)
     p1, p2 = params[0], params[1]
     script = f"{p1} {operator} {p2}"
 
@@ -235,9 +235,12 @@ def _infer_dsl_from_values(
         return None
 
     # Filter out step references for param list (keep only numeric values as params)
+    # Guard against non-string keys which would cause AttributeError
     params = []
     numeric_values = []
     for key, val in extracted_values.items():
+        if not isinstance(key, str):
+            continue  # Skip non-string keys
         if isinstance(val, str) and val.startswith("{") and val.endswith("}"):
             # This is a step reference like "{step_1}" - still a valid param
             params.append(key)
