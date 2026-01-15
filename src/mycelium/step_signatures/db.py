@@ -467,30 +467,9 @@ class StepSignatureDB:
                 )
 
                 if best_match is not None and best_sim >= min_similarity:
-                    # Found a match - update centroid
-                    now = datetime.utcnow().isoformat()
-                    row = conn.execute(
-                        "SELECT embedding_sum, embedding_count, centroid FROM step_signatures WHERE id = ?",
-                        (best_match.id,)
-                    ).fetchone()
-
-                    if row and row["embedding_sum"]:
-                        current_sum = unpack_embedding(row["embedding_sum"])
-                        current_count = row["embedding_count"] or 1
-                    else:
-                        fresh_centroid = unpack_embedding(row["centroid"]) if row else None
-                        current_sum = fresh_centroid.copy() if fresh_centroid is not None else embedding.copy()
-                        current_count = 1
-
-                    new_sum = current_sum + embedding
-                    new_count = current_count + 1
-                    new_centroid = new_sum / new_count
-
-                    conn.execute(
-                        """UPDATE step_signatures
-                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, last_used_at = ?
-                           WHERE id = ?""",
-                        (pack_embedding(new_sum), new_count, pack_embedding(new_centroid), now, best_match.id),
+                    # Found a match - update centroid using shared helper
+                    new_count = self._update_centroid_atomic(
+                        conn, best_match.id, embedding, update_last_used=True
                     )
 
                     # Propagate centroid change up to parent umbrellas
@@ -499,7 +478,7 @@ class StepSignatureDB:
                     conn.commit()
                     logger.debug(
                         "[db] Matched signature (hierarchical): step='%s' sig='%s' sim=%.3f count=%d",
-                        step_text[:40], best_match.step_type, best_sim, new_count
+                        step_text[:40], best_match.step_type, best_sim, new_count or 0
                     )
                     return best_match, False
 
@@ -940,10 +919,89 @@ class StepSignatureDB:
     # Centroid Management (Running Average Embeddings)
     # =========================================================================
 
+    def _update_centroid_atomic(
+        self,
+        conn,
+        signature_id: int,
+        new_embedding: np.ndarray,
+        update_last_used: bool = False,
+    ) -> Optional[int]:
+        """Update signature centroid within an existing transaction.
+
+        Internal helper that performs the centroid update without managing
+        its own transaction. Use this within code that already has an open
+        transaction.
+
+        Formula: new_sum = old_sum + new_embedding
+                 new_count = old_count + 1
+                 new_centroid = new_sum / new_count
+
+        Args:
+            conn: Database connection (within transaction)
+            signature_id: ID of the signature to update
+            new_embedding: The new embedding to add to the running average
+            update_last_used: If True, also update last_used_at timestamp
+
+        Returns:
+            New embedding count, or None if signature not found
+        """
+        row = conn.execute(
+            "SELECT embedding_sum, embedding_count, centroid FROM step_signatures WHERE id = ?",
+            (signature_id,)
+        ).fetchone()
+
+        if not row:
+            logger.warning("[db] Cannot update centroid: signature %d not found", signature_id)
+            return None
+
+        # Parse current sum (or initialize from fresh centroid)
+        if row["embedding_sum"]:
+            current_sum = unpack_embedding(row["embedding_sum"])
+            current_count = row["embedding_count"] or 1
+        else:
+            # Initialize from fresh centroid if no sum yet (migration case)
+            fresh_centroid = unpack_embedding(row["centroid"])
+            current_sum = fresh_centroid.copy() if fresh_centroid is not None else new_embedding.copy()
+            current_count = 1
+
+        # Update running sum and count
+        new_sum = current_sum + new_embedding
+        new_count = current_count + 1
+
+        # Compute new centroid
+        new_centroid = new_sum / new_count
+
+        # Pack and store
+        new_sum_packed = pack_embedding(new_sum)
+        new_centroid_packed = pack_embedding(new_centroid)
+
+        if update_last_used:
+            now = datetime.utcnow().isoformat()
+            conn.execute(
+                """UPDATE step_signatures
+                   SET embedding_sum = ?, embedding_count = ?, centroid = ?, last_used_at = ?
+                   WHERE id = ?""",
+                (new_sum_packed, new_count, new_centroid_packed, now, signature_id),
+            )
+        else:
+            conn.execute(
+                """UPDATE step_signatures
+                   SET embedding_sum = ?, embedding_count = ?, centroid = ?
+                   WHERE id = ?""",
+                (new_sum_packed, new_count, new_centroid_packed, signature_id),
+            )
+
+        # Invalidate caches since centroid changed
+        invalidate_centroid_cache(signature_id)
+        self.invalidate_centroid_matrix()
+
+        return new_count
+
     def update_centroid(
         self,
         signature_id: int,
         new_embedding: np.ndarray,
+        propagate_to_parents: bool = True,
     ):
         """Update signature centroid with a new embedding (running average).
 
@@ -958,54 +1016,23 @@ class StepSignatureDB:
         Args:
             signature_id: ID of the signature to update
             new_embedding: The new embedding to add to the running average
+            propagate_to_parents: If True, propagate centroid change up the tree
         """
         with self._connection() as conn:
             # Use BEGIN IMMEDIATE for atomic read-modify-write
             conn.execute("BEGIN IMMEDIATE")
             try:
-                # Fetch centroid too to avoid stale fallback race condition
-                row = conn.execute(
-                    "SELECT embedding_sum, embedding_count, centroid FROM step_signatures WHERE id = ?",
-                    (signature_id,)
-                ).fetchone()
+                new_count = self._update_centroid_atomic(conn, signature_id, new_embedding)
 
-                if not row:
-                    logger.warning("[db] Cannot update centroid: signature %d not found", signature_id)
+                if new_count is None:
                     conn.rollback()
                     return
 
-                # Parse current sum (or initialize from fresh centroid)
-                if row["embedding_sum"]:
-                    current_sum = unpack_embedding(row["embedding_sum"])
-                    current_count = row["embedding_count"] or 1
-                else:
-                    # Initialize from fresh centroid if no sum yet (migration case)
-                    # Use count=1 in both cases to avoid double-counting new_embedding
-                    fresh_centroid = unpack_embedding(row["centroid"])
-                    current_sum = fresh_centroid.copy() if fresh_centroid is not None else new_embedding.copy()
-                    current_count = 1
+                # Propagate centroid change up to parent umbrellas
+                if propagate_to_parents:
+                    self.propagate_centroid_to_parents(conn, signature_id)
 
-                # Update running sum and count
-                new_sum = current_sum + new_embedding
-                new_count = current_count + 1
-
-                # Compute new centroid
-                new_centroid = new_sum / new_count
-
-                # Pack and store
-                new_sum_packed = pack_embedding(new_sum)
-                new_centroid_packed = pack_embedding(new_centroid)
-
-                conn.execute(
-                    """UPDATE step_signatures
-                       SET embedding_sum = ?, embedding_count = ?, centroid = ?
-                       WHERE id = ?""",
-                    (new_sum_packed, new_count, new_centroid_packed, signature_id),
-                )
                 conn.commit()
-                # Invalidate caches since centroid changed
-                invalidate_centroid_cache(signature_id)
-                self.invalidate_centroid_matrix()
                 logger.debug(
                     "[db] Updated centroid for sig %d: count=%d",
                     signature_id, new_count
@@ -1309,6 +1336,9 @@ class StepSignatureDB:
             params.append(dsl_script)
 
         if dsl_type is not None:
+            # Only allow: decompose, math, router
+            if dsl_type not in ("decompose", "math", "router"):
+                raise ValueError(f"Invalid dsl_type '{dsl_type}'. Must be: decompose, math, or router")
             updates.append("dsl_type = ?")
             params.append(dsl_type)
 
