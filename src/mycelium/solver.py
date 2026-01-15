@@ -16,6 +16,7 @@ Key difference from V1: Signatures speak natural language.
 import asyncio
 import logging
 import re
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -45,6 +46,7 @@ from mycelium.config import (
     ZERO_LLM_MIN_SUCCESS_RATE,
     ZERO_LLM_MIN_USES,
     ZERO_LLM_REQUIRE_DSL,
+    DSL_EXPR_CACHE_MAX_SIZE,
 )
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
@@ -53,6 +55,7 @@ from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.embedder import Embedder
 from mycelium.embedding_cache import cached_embed
+from mycelium.data_layer.connection import configure_connection
 
 logger = logging.getLogger(__name__)
 
@@ -77,8 +80,9 @@ def get_signature_count() -> int:
     if now - _signature_count_cache["last_check"] > 1.0:
         try:
             import sqlite3
-            conn = sqlite3.connect("mycelium.db", timeout=30.0)
-            conn.execute("PRAGMA busy_timeout = 30000")
+            from mycelium.config import DB_PATH
+            conn = sqlite3.connect(DB_PATH, timeout=30.0)
+            configure_connection(conn, enable_foreign_keys=False)
             count = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()[0]
             conn.close()
             _signature_count_cache["count"] = count
@@ -238,8 +242,9 @@ class Solver:
         self.embedder = Embedder.get_instance()
         self.min_similarity = min_similarity
         self._background_tasks: set[asyncio.Task] = set()  # Track background tasks
-        # Cache for DSL expressions: (operation, param_names) -> (expr, used_params)
-        self._dsl_expr_cache: dict[tuple[str, frozenset[str]], tuple[str, list[str]]] = {}
+        # LRU cache for DSL expressions: (operation, param_names) -> (expr, used_params)
+        # Bounded to DSL_EXPR_CACHE_MAX_SIZE to prevent memory growth
+        self._dsl_expr_cache: OrderedDict[tuple[str, frozenset[str]], tuple[str, list[str]]] = OrderedDict()
 
     def _create_background_task(self, coro) -> asyncio.Task:
         """Create a background task with proper lifecycle management.
@@ -1214,6 +1219,7 @@ class Solver:
         # Check cache first - saves ~1-2s LLM call
         if cache_key in self._dsl_expr_cache:
             expr, used_params = self._dsl_expr_cache[cache_key]
+            self._dsl_expr_cache.move_to_end(cache_key)  # LRU: mark as recently used
             logger.debug("[solver] DSL cache hit: %s -> %s", cache_key[0], expr)
             return expr, used_params
 
@@ -1251,8 +1257,11 @@ Expression:"""
 
             if len(used_params) >= 2:
                 logger.debug("[solver] LLM expression: %s (params: %s)", expr, used_params)
-                # Cache for future use
+                # Cache for future use (bounded LRU)
                 self._dsl_expr_cache[cache_key] = (expr, used_params)
+                # Evict oldest entries if over max size
+                while len(self._dsl_expr_cache) > DSL_EXPR_CACHE_MAX_SIZE:
+                    self._dsl_expr_cache.popitem(last=False)
                 return expr, used_params
 
         except Exception as e:

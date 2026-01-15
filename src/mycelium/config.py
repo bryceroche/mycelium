@@ -221,6 +221,15 @@ EMBEDDING_CACHE_WARM_ON_START = True  # Pre-load from signatures on startup
 EMBEDDING_CACHE_TTL_DAYS = 30  # Prune disk entries older than N days
 
 # =============================================================================
+# DSL EXPRESSION CACHE
+# =============================================================================
+# LRU cache for LLM-generated arithmetic expressions.
+# Key: (operation, param_names), Value: (expression, used_params)
+# Bounded to prevent memory growth over long runs.
+
+DSL_EXPR_CACHE_MAX_SIZE = 1000  # Max entries in DSL expression cache
+
+# =============================================================================
 # DEPTH-AWARE DECOMPOSITION
 # =============================================================================
 # Force decomposition at shallow depths to build out the tree structure.
