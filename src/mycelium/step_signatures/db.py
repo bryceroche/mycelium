@@ -284,9 +284,11 @@ class StepSignatureDB:
             best_score = 0.0
 
             for child_sig, _condition in children:
-                if child_sig.centroid is None:
+                # Capture centroid once to avoid TOCTOU race condition
+                centroid = child_sig.centroid
+                if centroid is None:
                     continue
-                sim = cosine_similarity(embedding, child_sig.centroid)
+                sim = cosine_similarity(embedding, centroid)
                 if sim >= min_similarity:
                     # Use routing score for tiebreaking
                     score = compute_routing_score(
@@ -557,8 +559,10 @@ class StepSignatureDB:
 
         while depth < UMBRELLA_MAX_DEPTH:
             # Check similarity to current node
-            if current.centroid is not None:
-                sim = cosine_similarity(embedding, current.centroid)
+            # Capture centroid once to avoid TOCTOU race condition
+            current_centroid = current.centroid
+            if current_centroid is not None:
+                sim = cosine_similarity(embedding, current_centroid)
                 # If current is a leaf and matches, return it
                 if not current.is_semantic_umbrella and sim >= min_similarity:
                     return current, parent_for_new, sim
@@ -592,9 +596,11 @@ class StepSignatureDB:
             best_child_score = 0.0
 
             for child in children:
-                if child.centroid is None:
+                # Capture centroid once to avoid TOCTOU race condition
+                centroid = child.centroid
+                if centroid is None:
                     continue
-                child_sim = cosine_similarity(embedding, child.centroid)
+                child_sim = cosine_similarity(embedding, centroid)
                 if child_sim >= min_similarity:
                     # UCB1 score: exploit (sim * success_rate) + explore (bonus for under-visited)
                     score = compute_ucb1_score(
@@ -617,8 +623,10 @@ class StepSignatureDB:
                 best_below_sim = 0.0
                 best_below_score = 0.0
                 for child in children:
-                    if child.centroid is not None:
-                        child_sim = cosine_similarity(embedding, child.centroid)
+                    # Capture centroid once to avoid TOCTOU race condition
+                    centroid = child.centroid
+                    if centroid is not None:
+                        child_sim = cosine_similarity(embedding, centroid)
                         # Still use UCB1 for below-threshold exploration
                         score = compute_ucb1_score(
                             child_sim,
@@ -955,9 +963,10 @@ class StepSignatureDB:
                     current_count = row["embedding_count"] or 1
                 else:
                     # Initialize from fresh centroid if no sum yet (migration case)
+                    # Use count=1 in both cases to avoid double-counting new_embedding
                     fresh_centroid = unpack_embedding(row["centroid"])
                     current_sum = fresh_centroid.copy() if fresh_centroid is not None else new_embedding.copy()
-                    current_count = 1 if fresh_centroid is not None else 0
+                    current_count = 1
 
                 # Update running sum and count
                 new_sum = current_sum + new_embedding
@@ -1434,8 +1443,10 @@ class StepSignatureDB:
                 if problem_embedding is not None:
                     scored = []
                     for sig in level1_sigs:
-                        if sig.centroid is not None:
-                            sim = cosine_similarity(problem_embedding, sig.centroid)
+                        # Capture centroid once to avoid TOCTOU race condition
+                        centroid = sig.centroid
+                        if centroid is not None:
+                            sim = cosine_similarity(problem_embedding, centroid)
                             if sim >= min_similarity:
                                 scored.append((sig, sim))
                     scored.sort(key=lambda x: x[1], reverse=True)
@@ -1500,8 +1511,10 @@ class StepSignatureDB:
                 if problem_embedding is not None:
                     scored = []
                     for sig in leaf_sigs:
-                        if sig.centroid is not None:
-                            sim = cosine_similarity(problem_embedding, sig.centroid)
+                        # Capture centroid once to avoid TOCTOU race condition
+                        centroid = sig.centroid
+                        if centroid is not None:
+                            sim = cosine_similarity(problem_embedding, centroid)
                             if sim >= min_similarity:
                                 scored.append((sig, sim))
                     scored.sort(key=lambda x: x[1], reverse=True)
@@ -1890,8 +1903,10 @@ class StepSignatureDB:
         # Build list of (id, centroid) for comparison
         sig_data = []
         for s in sigs:
-            if s.centroid is not None:
-                sig_data.append((s.id, s.uses, s.successes, s.description, np.array(s.centroid)))
+            # Capture centroid once to avoid TOCTOU race condition
+            centroid = s.centroid
+            if centroid is not None:
+                sig_data.append((s.id, s.uses, s.successes, s.description, np.array(centroid)))
 
         # Find pairs to merge
         to_merge = []  # (keep_id, delete_id, similarity)
