@@ -195,12 +195,14 @@ def should_force_decompose(depth: int) -> bool:
     """Smooth expansion-based decomposition strategy.
 
     Uses continuous expansion rate (no toggle) to decide decomposition.
-    As tree grows, decay decomposition probability.
-    Eventually stabilize to only decompose on failure.
+    Per CLAUDE.md: "A SMOOTH and CONTINUOUS learning process is key"
 
-    This is exploration vs exploitation:
-    - Early: EXPLORE by decomposing everything to build tree
-    - Later: EXPLOIT by using existing tree structure
+    The expansion rate is driven by:
+    - Accuracy: failing → expand more
+    - Signature count: cold start → extra boost
+
+    Depth also factors in: shallow depths always decompose (routing layer),
+    deeper depths respect the expansion rate (execution layer).
 
     Args:
         depth: Current signature depth in the hierarchy
@@ -211,45 +213,32 @@ def should_force_decompose(depth: int) -> bool:
     if not DEPTH_DECOMPOSE_ENABLED:
         return False
 
-    # BIG BANG toggle - when disabled, skip aggressive decomposition entirely
-    if not BIG_BANG_EXPANSION_ENABLED:
-        return False
+    # Get smooth expansion rate (no toggle needed)
+    expansion_rate = get_expansion_rate()
 
-    sig_count = get_signature_count()
-
-    # === BIG BANG PHASE ===
-    # When tree is small, decompose aggressively to explode structure
-    if sig_count < BIG_BANG_SIGNATURE_THRESHOLD:
-        # Always decompose if we haven't reached minimum depth
-        if depth < BIG_BANG_MIN_DEPTH:
-            return True
-
-        # Beyond min depth, probabilistic based on how far into big bang we are
-        # Start at 100%, decay as we approach threshold
-        progress = sig_count / BIG_BANG_SIGNATURE_THRESHOLD  # 0.0 to 1.0
-        base_prob = 1.0 - (progress * 0.7)  # 100% -> 30% as tree grows
-
-        # Also decay by depth
-        depth_factor = max(0.1, 1.0 - (depth - BIG_BANG_MIN_DEPTH) * 0.2)
-        prob = base_prob * depth_factor
-
-        if random.random() < prob:
-            logger.debug(
-                "[bigbang] Decomposing: sigs=%d depth=%d prob=%.2f",
-                sig_count, depth, prob
-            )
-            return True
-
-    # === STABLE PHASE ===
-    # After big bang, only decompose at very shallow depths or on failure
+    # Shallow depths: always decompose (routing layer)
     if depth <= DEPTH_FORCE_DECOMPOSE_DEPTH:
+        # Even at shallow depths, respect expansion rate somewhat
+        # High expansion (cold start) = always decompose
+        # Low expansion (mature) = sometimes skip
+        shallow_prob = 0.5 + (expansion_rate * 0.5)  # 50-100% at shallow
+        return random.random() < shallow_prob
+
+    # Deeper depths: expansion rate * depth decay
+    depth_beyond = depth - DEPTH_FORCE_DECOMPOSE_DEPTH
+    depth_factor = DEPTH_DECOMPOSE_DECAY_BASE ** depth_beyond  # Exponential decay
+
+    # Combined probability
+    prob = max(DEPTH_DECOMPOSE_MIN_PROB, expansion_rate * depth_factor)
+
+    if random.random() < prob:
+        logger.debug(
+            "[expansion] Decomposing: depth=%d prob=%.2f (expansion=%.2f, depth_factor=%.2f)",
+            depth, prob, expansion_rate, depth_factor
+        )
         return True
 
-    # Exponential decay for deeper depths
-    depth_beyond = depth - DEPTH_FORCE_DECOMPOSE_DEPTH
-    prob = max(DEPTH_DECOMPOSE_MIN_PROB, DEPTH_DECOMPOSE_DECAY_BASE ** depth_beyond)
-
-    return random.random() < prob
+    return False
 
 
 # =============================================================================
@@ -1516,6 +1505,14 @@ Expression:"""
         ]
         self.step_db.update_problem_outcome(signature_ids, correct)
 
+        # Update rolling accuracy for smooth expansion rate
+        current_accuracy = update_accuracy(correct)
+        expansion_rate = get_expansion_rate()
+        logger.info(
+            "[solver] Problem %s - accuracy=%.1f%%, expansion_rate=%.2f",
+            "correct" if correct else "failed", current_accuracy * 100, expansion_rate
+        )
+
         # Log step-level details on failure for debugging
         if not correct:
             logger.warning(
@@ -1579,22 +1576,21 @@ Expression:"""
                     signature.step_type, len(child_ids), recursion_depth
                 )
 
-                # BIG BANG: Recursively decompose children at shallow depth
-                # This explodes the tree structure during cold start
-                # Skip entirely when BIG_BANG_EXPANSION_ENABLED is False
-                if BIG_BANG_EXPANSION_ENABLED:
-                    for child_id in child_ids:
-                        child_sig = self.step_db.get_signature(child_id)
-                        if child_sig and not child_sig.is_semantic_umbrella:
-                            child_depth = child_sig.depth or 0
-                            if should_force_decompose(child_depth):
-                                logger.debug(
-                                    "[solver] BIG BANG recursive decompose: '%s' at depth %d",
-                                    child_sig.step_type, child_depth
-                                )
-                                await self._auto_decompose_signature(
-                                    child_sig, recursion_depth + 1
-                                )
+                # Recursive decomposition: controlled by smooth expansion rate
+                # High expansion (cold start/failing) = more recursive decomposition
+                # Low expansion (mature/succeeding) = less recursive decomposition
+                for child_id in child_ids:
+                    child_sig = self.step_db.get_signature(child_id)
+                    if child_sig and not child_sig.is_semantic_umbrella:
+                        child_depth = child_sig.depth or 0
+                        if should_force_decompose(child_depth):
+                            logger.debug(
+                                "[expansion] Recursive decompose: '%s' at depth %d",
+                                child_sig.step_type, child_depth
+                            )
+                            await self._auto_decompose_signature(
+                                child_sig, recursion_depth + 1
+                            )
 
                 return True
             else:
