@@ -22,6 +22,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
 
+from mycelium.data_layer import configure_connection
+
 logger = logging.getLogger(__name__)
 
 
@@ -170,8 +172,7 @@ class StepStatsCollector:
     def _get_connection(self) -> sqlite3.Connection:
         """Get a new database connection."""
         conn = sqlite3.connect(self.db_path, timeout=30.0)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA busy_timeout = 30000")
+        configure_connection(conn, enable_foreign_keys=False)
         return conn
 
     def _ensure_schema(self):
@@ -475,8 +476,8 @@ class StepStatsCollector:
                 if params:
                     try:
                         param_count = len(json.loads(params))
-                    except (json.JSONDecodeError, TypeError):
-                        pass
+                    except (json.JSONDecodeError, TypeError) as e:
+                        logger.debug("[stats] Failed to parse params_extracted: %s", e)
 
                 results.append(
                     StepExecution(

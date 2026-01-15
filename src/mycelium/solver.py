@@ -16,6 +16,7 @@ Key difference from V1: Signatures speak natural language.
 import asyncio
 import logging
 import re
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -36,12 +37,16 @@ from mycelium.config import (
     DEPTH_FORCE_DECOMPOSE_DEPTH,
     DEPTH_DECOMPOSE_DECAY_BASE,
     DEPTH_DECOMPOSE_MIN_PROB,
-    BIG_BANG_EXPANSION_ENABLED,
+    EXPANSION_COLD_START_BOOST,
+    EXPANSION_SIG_THRESHOLD,
+    EXPANSION_MIN_RATE,
+    EXPANSION_MAX_RATE,
     ZERO_LLM_ROUTING_ENABLED,
     ZERO_LLM_MIN_SIMILARITY,
     ZERO_LLM_MIN_SUCCESS_RATE,
     ZERO_LLM_MIN_USES,
     ZERO_LLM_REQUIRE_DSL,
+    DSL_EXPR_CACHE_MAX_SIZE,
 )
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
@@ -49,39 +54,46 @@ from mycelium.step_signatures.db import normalize_step_text
 from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.embedder import Embedder
+from mycelium.embedding_cache import cached_embed
 
 logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# BIG BANG Decomposition Strategy
+# SMOOTH EXPANSION RATE
 # =============================================================================
+# Per CLAUDE.md: "A SMOOTH and CONTINUOUS learning process is key"
+#
+# Formula: expansion_rate = (1 - accuracy) * (1 + k * exp(-sig_count / threshold))
+#
+# - Failure-driven: low accuracy → high expansion
+# - Cold-start boost: few signatures → extra multiplier
+# - Smooth taper: as system matures, expansion naturally decreases
 
-# Cold start thresholds - aggressive decomposition until tree is built
-BIGBANG_SIGNATURE_THRESHOLD = 500  # Decompose aggressively until this many sigs
-BIGBANG_MIN_DEPTH = 3  # Always try to reach at least this depth during big bang
-BIGBANG_DECAY_PER_100_SIGS = 0.15  # Reduce decomposition probability as tree grows
-
-# Track signature count (updated by solver)
+# Caches for smooth expansion calculation
 _signature_count_cache = {"count": 0, "last_check": 0}
+_accuracy_cache = {"accuracy": 0.0, "successes": 0, "total": 0, "last_update": 0}
 
 
 def get_signature_count() -> int:
-    """Get current signature count (cached for performance)."""
+    """Get current signature count (cached for performance).
+
+    Uses singleton ConnectionManager to avoid creating fresh connections.
+    """
     import time
+    from mycelium.data_layer import get_db
+
     now = time.time()
     # Cache for 1 second to avoid DB hits on every call
     if now - _signature_count_cache["last_check"] > 1.0:
         try:
-            import sqlite3
-            conn = sqlite3.connect("mycelium.db", timeout=30.0)
-            conn.execute("PRAGMA busy_timeout = 30000")
-            count = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()[0]
-            conn.close()
+            db = get_db()
+            with db.connection() as conn:
+                count = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()[0]
             _signature_count_cache["count"] = count
             _signature_count_cache["last_check"] = now
-        except Exception:
-            pass  # Use cached value on error
+        except Exception as e:
+            logger.warning("[solver] Failed to get signature count: %s", e)
     return _signature_count_cache["count"]
 
 
@@ -104,16 +116,93 @@ def get_adaptive_match_threshold() -> float:
     return threshold
 
 
+def update_accuracy(success: bool) -> float:
+    """Update rolling accuracy with a new result.
+
+    Uses exponential moving average for smooth tracking.
+
+    Args:
+        success: Whether the problem was solved correctly
+
+    Returns:
+        Current accuracy estimate
+    """
+    import time
+    now = time.time()
+
+    # Update counts
+    _accuracy_cache["total"] += 1
+    if success:
+        _accuracy_cache["successes"] += 1
+
+    # Calculate accuracy with smoothing
+    # Use simple ratio but with a floor during cold start
+    total = _accuracy_cache["total"]
+    if total > 0:
+        raw_accuracy = _accuracy_cache["successes"] / total
+        # Apply smoothing: blend with prior (assume 20% baseline)
+        # This prevents wild swings early on
+        prior_weight = max(0, 10 - total) / 10  # Decays over first 10 problems
+        _accuracy_cache["accuracy"] = prior_weight * 0.2 + (1 - prior_weight) * raw_accuracy
+
+    _accuracy_cache["last_update"] = now
+    return _accuracy_cache["accuracy"]
+
+
+def get_accuracy() -> float:
+    """Get current accuracy estimate."""
+    return _accuracy_cache["accuracy"]
+
+
+def get_expansion_rate() -> float:
+    """Calculate smooth expansion rate based on accuracy and signature count.
+
+    Formula: expansion_rate = (1 - accuracy) * (1 + k * exp(-sig_count / threshold))
+
+    - Failure-driven: low accuracy → high expansion
+    - Cold-start boost: few signatures → extra multiplier
+    - Smooth taper: as system matures, expansion naturally decreases
+
+    Returns:
+        Expansion rate in [EXPANSION_MIN_RATE, EXPANSION_MAX_RATE]
+    """
+    import math
+
+    accuracy = get_accuracy()
+    sig_count = get_signature_count()
+
+    # Cold-start boost: decays exponentially as signatures grow
+    cold_start_boost = 1.0 + EXPANSION_COLD_START_BOOST * math.exp(-sig_count / EXPANSION_SIG_THRESHOLD)
+
+    # Failure-driven: expand more when accuracy is low
+    failure_rate = 1.0 - accuracy
+
+    # Combined expansion rate
+    expansion = failure_rate * cold_start_boost
+
+    # Clamp to configured bounds
+    expansion = max(EXPANSION_MIN_RATE, min(EXPANSION_MAX_RATE, expansion))
+
+    logger.debug(
+        "[expansion] rate=%.2f (accuracy=%.2f, sigs=%d, boost=%.2f)",
+        expansion, accuracy, sig_count, cold_start_boost
+    )
+
+    return expansion
+
+
 def should_force_decompose(depth: int) -> bool:
-    """BIG BANG decomposition strategy.
+    """Smooth expansion-based decomposition strategy.
 
-    During cold start (few signatures), decompose AGGRESSIVELY at all depths.
-    As tree grows, decay decomposition probability.
-    Eventually stabilize to only decompose on failure.
+    Uses continuous expansion rate (no toggle) to decide decomposition.
+    Per CLAUDE.md: "A SMOOTH and CONTINUOUS learning process is key"
 
-    This is exploration vs exploitation:
-    - Early: EXPLORE by decomposing everything to build tree
-    - Later: EXPLOIT by using existing tree structure
+    The expansion rate is driven by:
+    - Accuracy: failing → expand more
+    - Signature count: cold start → extra boost
+
+    Depth also factors in: shallow depths always decompose (routing layer),
+    deeper depths respect the expansion rate (execution layer).
 
     Args:
         depth: Current signature depth in the hierarchy
@@ -124,45 +213,32 @@ def should_force_decompose(depth: int) -> bool:
     if not DEPTH_DECOMPOSE_ENABLED:
         return False
 
-    # BIG BANG toggle - when disabled, skip aggressive decomposition entirely
-    if not BIG_BANG_EXPANSION_ENABLED:
-        return False
+    # Get smooth expansion rate (no toggle needed)
+    expansion_rate = get_expansion_rate()
 
-    sig_count = get_signature_count()
-
-    # === BIG BANG PHASE ===
-    # When tree is small, decompose aggressively to explode structure
-    if sig_count < BIGBANG_SIGNATURE_THRESHOLD:
-        # Always decompose if we haven't reached minimum depth
-        if depth < BIGBANG_MIN_DEPTH:
-            return True
-
-        # Beyond min depth, probabilistic based on how far into big bang we are
-        # Start at 100%, decay as we approach threshold
-        progress = sig_count / BIGBANG_SIGNATURE_THRESHOLD  # 0.0 to 1.0
-        base_prob = 1.0 - (progress * 0.7)  # 100% -> 30% as tree grows
-
-        # Also decay by depth
-        depth_factor = max(0.1, 1.0 - (depth - BIGBANG_MIN_DEPTH) * 0.2)
-        prob = base_prob * depth_factor
-
-        if random.random() < prob:
-            logger.debug(
-                "[bigbang] Decomposing: sigs=%d depth=%d prob=%.2f",
-                sig_count, depth, prob
-            )
-            return True
-
-    # === STABLE PHASE ===
-    # After big bang, only decompose at very shallow depths or on failure
+    # Shallow depths: always decompose (routing layer)
     if depth <= DEPTH_FORCE_DECOMPOSE_DEPTH:
+        # Even at shallow depths, respect expansion rate somewhat
+        # High expansion (cold start) = always decompose
+        # Low expansion (mature) = sometimes skip
+        shallow_prob = 0.5 + (expansion_rate * 0.5)  # 50-100% at shallow
+        return random.random() < shallow_prob
+
+    # Deeper depths: expansion rate * depth decay
+    depth_beyond = depth - DEPTH_FORCE_DECOMPOSE_DEPTH
+    depth_factor = DEPTH_DECOMPOSE_DECAY_BASE ** depth_beyond  # Exponential decay
+
+    # Combined probability
+    prob = max(DEPTH_DECOMPOSE_MIN_PROB, expansion_rate * depth_factor)
+
+    if random.random() < prob:
+        logger.debug(
+            "[expansion] Decomposing: depth=%d prob=%.2f (expansion=%.2f, depth_factor=%.2f)",
+            depth, prob, expansion_rate, depth_factor
+        )
         return True
 
-    # Exponential decay for deeper depths
-    depth_beyond = depth - DEPTH_FORCE_DECOMPOSE_DEPTH
-    prob = max(DEPTH_DECOMPOSE_MIN_PROB, DEPTH_DECOMPOSE_DECAY_BASE ** depth_beyond)
-
-    return random.random() < prob
+    return False
 
 
 # =============================================================================
@@ -235,8 +311,9 @@ class Solver:
         self.embedder = Embedder.get_instance()
         self.min_similarity = min_similarity
         self._background_tasks: set[asyncio.Task] = set()  # Track background tasks
-        # Cache for DSL expressions: (operation, param_names) -> (expr, used_params)
-        self._dsl_expr_cache: dict[tuple[str, frozenset[str]], tuple[str, list[str]]] = {}
+        # LRU cache for DSL expressions: (operation, param_names) -> (expr, used_params)
+        # Bounded to DSL_EXPR_CACHE_MAX_SIZE to prevent memory growth
+        self._dsl_expr_cache: OrderedDict[tuple[str, frozenset[str]], tuple[str, list[str]]] = OrderedDict()
 
     def _create_background_task(self, coro) -> asyncio.Task:
         """Create a background task with proper lifecycle management.
@@ -411,6 +488,7 @@ class Solver:
                 # Also add step_N alias for compatibility
                 values[f"step_{i+1}"] = num
             except ValueError:
+                logger.debug("[solver] Non-numeric result at index %d: %s", i, str(result)[:50])
                 continue
 
         return values
@@ -429,7 +507,8 @@ class Solver:
 
         try:
             # 0. Embed problem (used for both zero-LLM and planner hints)
-            problem_embedding = self.embedder.embed(problem)
+            # Use cached_embed to avoid redundant computation
+            problem_embedding = cached_embed(problem, self.embedder)
 
             # 0.5. Try zero-LLM solve first (skip planner for mature signatures)
             zero_llm_result = self._try_zero_llm_solve(problem, problem_embedding)
@@ -450,7 +529,11 @@ class Solver:
             )
 
             # Validate DAG structure before execution
-            is_valid, errors = plan.validate()
+            # Skip validation for single-step plans (no dependencies to check, no cycles possible)
+            if len(plan.steps) <= 1:
+                is_valid, errors = True, []
+            else:
+                is_valid, errors = plan.validate()
             if not is_valid:
                 return SolverResult(
                     problem=problem,
@@ -610,14 +693,15 @@ class Solver:
             return await self._execute_composite_step(step, problem, context, step_descriptions, depth)
 
         # 1. Normalize and embed step (strip numbers for better matching)
+        # Use cached_embed to avoid redundant computation for repeated steps
         normalized_task = normalize_step_text(step.task)
-        embedding = self.embedder.embed(normalized_task)
+        embedding = cached_embed(normalized_task, self.embedder)
 
         # 2. Find or create signature (use original text for description)
         # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
         # Use adaptive threshold: higher during cold start (more signatures), lower when mature
         adaptive_threshold = get_adaptive_match_threshold()
-        signature, is_new = self.step_db.find_or_create(
+        signature, is_new = await self.step_db.find_or_create_async(
             step_text=step.task,  # Keep original for description
             embedding=embedding,   # Use normalized embedding for matching
             min_similarity=adaptive_threshold,
@@ -637,6 +721,7 @@ class Solver:
         # Case 1: decompose-type that isn't umbrella yet
         # Case 2: umbrella (possibly auto-demoted) with no children
         needs_decompose = False
+        children = None  # Track fetched children to avoid redundant DB query
         if signature.dsl_type == "decompose" and not signature.is_semantic_umbrella:
             needs_decompose = True
             reason = "decompose type needs children"
@@ -652,8 +737,9 @@ class Solver:
                 signature.step_type, reason
             )
             await self._auto_decompose_signature(signature)
-            # Refresh signature after decomposition
+            # Refresh signature and children after decomposition
             signature = self.step_db.get_signature(signature.id)
+            children = None  # Will be re-fetched in _try_umbrella_routing
 
         # 3. If umbrella, try routing to child signature
         result = None
@@ -662,7 +748,7 @@ class Solver:
         routed_signature = signature
 
         if signature.is_semantic_umbrella:
-            child_result = await self._try_umbrella_routing(signature, step, problem, context, step_descriptions, embedding=embedding)
+            child_result = await self._try_umbrella_routing(signature, step, problem, context, step_descriptions, embedding=embedding, children=children)
             if child_result is not None:
                 result, routed_signature, was_injected = child_result
                 was_routed = True  # Successfully routed through umbrella
@@ -723,30 +809,35 @@ class Solver:
                 routed_signature = signature  # Use original umbrella signature
                 logger.info("[solver] Umbrella fallback DSL succeeded: %s", result[:30] if result else "")
 
-        # 4.8. DECOMPOSE ON ROUTING FAILURE (per CLAUDE.md: "Attempt to route first - decompose on failure")
-        # If umbrella routing failed (no matching child), decompose to create children
+        # 4.8. CREATE NEW CHILD ON ROUTING FAILURE (per CLAUDE.md: failing signatures decompose)
+        # If umbrella routing failed (no matching child), create new child for current step
+        # This grows the tree by adding specialized children to handle novel steps
         if result is None and routed_signature.is_semantic_umbrella:
             logger.info(
-                "[solver] Router umbrella '%s' failed to route, decomposing to create children",
-                routed_signature.step_type
+                "[solver] Router umbrella '%s' failed to route, creating new child for step '%s'",
+                routed_signature.step_type, step.task[:40]
             )
-            await self._auto_decompose_signature(routed_signature)
-            routed_signature = self.step_db.get_signature(routed_signature.id)
+            # Create new child signature directly under this umbrella
+            new_child = self.step_db.create_signature(
+                step_text=step.task,
+                embedding=embedding,
+                parent_id=routed_signature.id,
+                origin_depth=depth + 1,
+                extracted_values=getattr(step, 'extracted_values', None),
+                dsl_hint=getattr(step, 'dsl_hint', None),
+            )
+            logger.info(
+                "[solver] Created new child '%s' (id=%d) under umbrella '%s'",
+                new_child.step_type, new_child.id, routed_signature.step_type
+            )
 
-            # Try routing again with new children
-            if routed_signature.is_semantic_umbrella:
-                children = self.step_db.get_children(routed_signature.id)
-                if children:
-                    child_result = await self._try_umbrella_routing(
-                        routed_signature, step, problem, context, step_descriptions, embedding=embedding
-                    )
-                    if child_result is not None:
-                        result, routed_signature, was_injected = child_result
-                        was_routed = True
-                        logger.info(
-                            "[solver] Post-decompose routing succeeded: '%s'",
-                            routed_signature.step_type
-                        )
+            # Execute the new child's DSL
+            dsl_result = await self._try_dsl(new_child, step, context, step_descriptions)
+            if dsl_result is not None:
+                result = dsl_result
+                was_injected = True
+                routed_signature = new_child
+                logger.info("[solver] New child DSL succeeded: %s", result[:30] if result else "")
 
         # 5. No LLM fallback - strict DAG execution
         # Three outcomes: route to child, create child, or fail
@@ -754,6 +845,18 @@ class Solver:
             logger.warning(
                 "[solver] DSL failed, step failed (no LLM fallback): %s",
                 step.task[:50]
+            )
+            # Record failure for pattern learning (per CLAUDE.md: failures are valuable data)
+            self.step_db.record_failure(
+                step_text=step.task,
+                failure_type="dsl_error",
+                error_message="DSL execution returned None",
+                signature_id=routed_signature.id if routed_signature else None,
+                context={
+                    "problem": problem[:200] if problem else None,
+                    "was_routed": was_routed,
+                    "is_new": is_new,
+                },
             )
             result = ""  # Empty result = failure
 
@@ -918,6 +1021,7 @@ class Solver:
         visited: Optional[set[int]] = None,
         embedding: Optional[np.ndarray] = None,
         depth: int = 0,
+        children: Optional[list] = None,
     ) -> Optional[tuple[str, StepSignature, bool]]:
         """Try to route through umbrella to a child signature.
 
@@ -933,6 +1037,7 @@ class Solver:
             visited: Set of already-visited umbrella IDs (cycle detection)
             embedding: Step embedding for similarity-based routing
             depth: Current recursion depth (for limiting chain length)
+            children: Pre-fetched children (avoids redundant DB query)
         """
         from mycelium.step_signatures.utils import cosine_similarity
 
@@ -955,7 +1060,9 @@ class Solver:
             return None
         visited.add(umbrella.id)
 
-        children = self.step_db.get_children(umbrella.id)
+        # Use pre-fetched children if available, else fetch (avoids redundant query)
+        if children is None:
+            children = self.step_db.get_children(umbrella.id)
         if not children:
             return None
 
@@ -990,40 +1097,13 @@ class Solver:
                 )
                 return None
         else:
-            # Fallback to LLM routing if no embedding available
-            conditions = [f"{i+1}. {cond}" for i, (_, cond) in enumerate(children)]
-            prompt = f"""Given this step: "{step.task}"
-
-Which of these sub-categories best matches?
-{chr(10).join(conditions)}
-0. None of the above
-
-Respond with ONLY the number (0-{len(children)})."""
-
-            messages = [{"role": "user", "content": prompt}]
-            response = await self.solver_client.generate(messages, temperature=0.0)
-
-            # Parse response - robust regex extraction
-            choice = 0
-            match = re.search(r'\b([0-9]+)\b', response)
-            if match:
-                try:
-                    choice = int(match.group(1))
-                except ValueError:
-                    pass
-
-            if choice <= 0 or choice > len(children):
-                logger.debug(
-                    "[solver] Umbrella routing: no valid choice from response '%s'",
-                    response[:50]
-                )
-                return None
-
-            child_sig, _ = children[choice - 1]
+            # No embedding available - cannot route without LLM
+            # Per CLAUDE.md: "Only call LLM on leaf nodes" + "Umbrella = Router"
+            # Return None to trigger decomposition/failure (failures are valuable data)
             logger.debug(
-                "[solver] Umbrella routing (LLM) selected child %d: %s",
-                choice, child_sig.step_type
+                "[solver] Umbrella routing: no embedding available, cannot route"
             )
+            return None
 
         # Recurse if child is also an umbrella (pass visited set, embedding, and depth)
         if child_sig.is_semantic_umbrella:
@@ -1100,6 +1180,7 @@ Respond with ONLY the number (0-{len(children)})."""
                         try:
                             params[key] = float(context[ref_key])
                         except (ValueError, TypeError):
+                            logger.debug("[solver] Non-numeric ref %s=%s, keeping as-is", ref_key, str(context[ref_key])[:30])
                             params[key] = context[ref_key]
                 else:
                     params[key] = val
@@ -1110,6 +1191,7 @@ Respond with ONLY the number (0-{len(children)})."""
                 try:
                     params[key] = float(value)
                 except (ValueError, TypeError):
+                    logger.debug("[solver] Non-numeric context %s=%s, keeping as-is", key, str(value)[:30])
                     params[key] = value
 
         if len(params) < 2:
@@ -1206,6 +1288,7 @@ Respond with ONLY the number (0-{len(children)})."""
         # Check cache first - saves ~1-2s LLM call
         if cache_key in self._dsl_expr_cache:
             expr, used_params = self._dsl_expr_cache[cache_key]
+            self._dsl_expr_cache.move_to_end(cache_key)  # LRU: mark as recently used
             logger.debug("[solver] DSL cache hit: %s -> %s", cache_key[0], expr)
             return expr, used_params
 
@@ -1243,8 +1326,11 @@ Expression:"""
 
             if len(used_params) >= 2:
                 logger.debug("[solver] LLM expression: %s (params: %s)", expr, used_params)
-                # Cache for future use
+                # Cache for future use (bounded LRU)
                 self._dsl_expr_cache[cache_key] = (expr, used_params)
+                # Evict oldest entries if over max size
+                while len(self._dsl_expr_cache) > DSL_EXPR_CACHE_MAX_SIZE:
+                    self._dsl_expr_cache.popitem(last=False)
                 return expr, used_params
 
         except Exception as e:
@@ -1276,7 +1362,7 @@ Expression:"""
                 if "answer" in data:
                     return format_result(data["answer"])
         except json.JSONDecodeError:
-            pass
+            logger.debug("[solver] Direct JSON parse failed, trying brace matching")
 
         # Find JSON objects with balanced braces (handles nested objects)
         for key in ("result", "answer"):
@@ -1303,7 +1389,7 @@ Expression:"""
                                 if isinstance(data, dict) and key in data:
                                     return format_result(data[key])
                             except json.JSONDecodeError:
-                                pass
+                                logger.debug("[solver] Brace-matched JSON parse failed at pos %d", i)
                             break
 
         # Fallback to regex extraction
@@ -1419,6 +1505,14 @@ Expression:"""
         ]
         self.step_db.update_problem_outcome(signature_ids, correct)
 
+        # Update rolling accuracy for smooth expansion rate
+        current_accuracy = update_accuracy(correct)
+        expansion_rate = get_expansion_rate()
+        logger.info(
+            "[solver] Problem %s - accuracy=%.1f%%, expansion_rate=%.2f",
+            "correct" if correct else "failed", current_accuracy * 100, expansion_rate
+        )
+
         # Log step-level details on failure for debugging
         if not correct:
             logger.warning(
@@ -1429,15 +1523,15 @@ Expression:"""
 
         # Check which signatures might need decomposition
         # Use same thresholds as umbrella_learner for consistency
-        from mycelium.step_signatures.umbrella_learner import (
-            MIN_USES_FOR_EVALUATION,
-            MAX_SUCCESS_RATE_FOR_DECOMPOSITION,
+        from mycelium.config import (
+            UMBRELLA_MIN_USES_FOR_EVALUATION,
+            UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION,
         )
         candidates = []
         for sig_id in signature_ids:
             sig = self.step_db.get_signature(sig_id)
-            if sig and sig.dsl_type == "decompose" and sig.uses >= MIN_USES_FOR_EVALUATION:
-                if sig.success_rate <= MAX_SUCCESS_RATE_FOR_DECOMPOSITION and not sig.is_semantic_umbrella:
+            if sig and sig.dsl_type == "decompose" and sig.uses >= UMBRELLA_MIN_USES_FOR_EVALUATION:
+                if sig.success_rate <= UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION and not sig.is_semantic_umbrella:
                     candidates.append(sig_id)
                     logger.info(
                         "[solver] Signature '%s' (id=%d) needs decomposition: "
@@ -1482,22 +1576,21 @@ Expression:"""
                     signature.step_type, len(child_ids), recursion_depth
                 )
 
-                # BIG BANG: Recursively decompose children at shallow depth
-                # This explodes the tree structure during cold start
-                # Skip entirely when BIG_BANG_EXPANSION_ENABLED is False
-                if BIG_BANG_EXPANSION_ENABLED:
-                    for child_id in child_ids:
-                        child_sig = self.step_db.get_signature(child_id)
-                        if child_sig and not child_sig.is_semantic_umbrella:
-                            child_depth = child_sig.depth or 0
-                            if should_force_decompose(child_depth):
-                                logger.debug(
-                                    "[solver] BIG BANG recursive decompose: '%s' at depth %d",
-                                    child_sig.step_type, child_depth
-                                )
-                                await self._auto_decompose_signature(
-                                    child_sig, recursion_depth + 1
-                                )
+                # Recursive decomposition: controlled by smooth expansion rate
+                # High expansion (cold start/failing) = more recursive decomposition
+                # Low expansion (mature/succeeding) = less recursive decomposition
+                for child_id in child_ids:
+                    child_sig = self.step_db.get_signature(child_id)
+                    if child_sig and not child_sig.is_semantic_umbrella:
+                        child_depth = child_sig.depth or 0
+                        if should_force_decompose(child_depth):
+                            logger.debug(
+                                "[expansion] Recursive decompose: '%s' at depth %d",
+                                child_sig.step_type, child_depth
+                            )
+                            await self._auto_decompose_signature(
+                                child_sig, recursion_depth + 1
+                            )
 
                 return True
             else:

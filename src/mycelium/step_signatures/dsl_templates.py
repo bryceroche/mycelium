@@ -19,6 +19,8 @@ from mycelium.config import (
     DSL_OPERATION_INFERENCE_COLD_START,
     DSL_OPERATION_INFERENCE_MATURE,
     DSL_OPERATION_INFERENCE_RAMP_SIGS,
+    DSL_EXOTIC_THRESHOLD_BONUS,
+    DSL_EXOTIC_THRESHOLD_MAX,
 )
 
 logger = logging.getLogger(__name__)
@@ -45,7 +47,8 @@ def get_dsl_inference_threshold() -> float:
             "SELECT COUNT(*) FROM step_signatures WHERE dsl_type != 'decompose'"
         ).fetchone()
         dsl_count = row[0] if row else 0
-    except Exception:
+    except Exception as e:
+        logger.warning("[dsl_templates] Failed to get DSL count: %s", e)
         dsl_count = 0
 
     # Linear ramp from cold_start to mature
@@ -252,7 +255,7 @@ def _infer_dsl_from_values(
                 numeric_values.append(float(val))
                 params.append(key)
             except ValueError:
-                pass
+                logger.debug("[dsl_templates] Non-numeric param %s: %s", key, str(val)[:30])
 
     if not params:
         return None
@@ -504,13 +507,12 @@ def _infer_operation_semantic(
         # Exotic operations (**, factorial, perm, etc.) require higher confidence
         # Basic arithmetic (+, -, *, /) can use normal threshold
         # This prevents embedding noise from matching "total eggs" to "power"
+        # Thresholds imported from config: DSL_EXOTIC_THRESHOLD_BONUS, DSL_EXOTIC_THRESHOLD_MAX
         BASIC_OPS = {"+", "-", "*", "/"}
-        EXOTIC_THRESHOLD_BONUS = 0.05  # Require 5% higher similarity for exotic ops
-        EXOTIC_THRESHOLD_MAX = 0.92  # Cap exotic threshold to ensure it's achievable
 
         effective_threshold = min_similarity
         if best_op not in BASIC_OPS:
-            effective_threshold = min(min_similarity + EXOTIC_THRESHOLD_BONUS, EXOTIC_THRESHOLD_MAX)
+            effective_threshold = min(min_similarity + DSL_EXOTIC_THRESHOLD_BONUS, DSL_EXOTIC_THRESHOLD_MAX)
             logger.debug(
                 "[dsl_infer] Exotic op '%s' requires higher threshold: %.3f",
                 best_op, effective_threshold
@@ -616,8 +618,8 @@ def _find_similar_successful_dsl(
                     if dsl_type not in ("math", "decompose"):
                         dsl_type = "decompose"
                     return best_match.dsl_script, dsl_type
-                except (json.JSONDecodeError, TypeError):
-                    pass
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.debug("[dsl_templates] Failed to parse DSL from similar sig: %s", e)
 
         return None
 

@@ -17,10 +17,15 @@ import json
 import logging
 from typing import Optional
 
+from mycelium.config import (
+    UMBRELLA_MIN_USES_FOR_EVALUATION,
+    UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION,
+)
 from mycelium.planner import Planner
 from mycelium.step_signatures.db import StepSignatureDB
 from mycelium.step_signatures.models import StepSignature
 from mycelium.embedder import Embedder
+from mycelium.embedding_cache import cached_embed
 from mycelium.client import get_client
 
 logger = logging.getLogger(__name__)
@@ -56,12 +61,9 @@ Example for "Add two quantities together":
 
 Now generate for the step above. Respond with ONLY valid JSON:'''
 
-# Thresholds for umbrella promotion
-# Smart decomposition: give signatures 3 chances, decompose if mostly failing
-MIN_USES_FOR_EVALUATION = 3  # Need 3 attempts before evaluating
-MAX_SUCCESS_RATE_FOR_DECOMPOSITION = 0.5  # Decompose if failing more than succeeding
-# Example: 2 failures out of 3 = 33% success → decompose
-# Example: 20 successes + 2 failures = 91% success → keep
+# Thresholds imported from config:
+# - UMBRELLA_MIN_USES_FOR_EVALUATION: Need N attempts before evaluating
+# - UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION: Decompose if failing more than succeeding
 
 
 class UmbrellaLearner:
@@ -187,8 +189,8 @@ class UmbrellaLearner:
 
         Criteria:
         - dsl_type = "decompose" (no actual computation)
-        - uses >= MIN_USES_FOR_EVALUATION (enough data)
-        - success_rate < MAX_SUCCESS_RATE_FOR_DECOMPOSITION (failing)
+        - uses >= UMBRELLA_MIN_USES_FOR_EVALUATION (enough data)
+        - success_rate < UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION (failing)
         - is_semantic_umbrella = False (not already decomposed)
         """
         all_sigs = self.db.get_all_signatures()
@@ -197,8 +199,8 @@ class UmbrellaLearner:
         for sig in all_sigs:
             if (
                 sig.dsl_type == "decompose"
-                and sig.uses >= MIN_USES_FOR_EVALUATION
-                and sig.success_rate <= MAX_SUCCESS_RATE_FOR_DECOMPOSITION
+                and sig.uses >= UMBRELLA_MIN_USES_FOR_EVALUATION
+                and sig.success_rate <= UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION
                 and not sig.is_semantic_umbrella
             ):
                 candidates.append(sig)
@@ -257,8 +259,8 @@ class UmbrellaLearner:
             if "final" in step.task.lower() or "combine" in step.task.lower():
                 continue
 
-            # Embed the step
-            embedding = self.embedder.embed(step.task)
+            # Embed the step (use cached_embed to avoid redundant computation)
+            embedding = cached_embed(step.task, self.embedder)
 
             # First: try to repoint to existing deeper signature
             child_sig = self.db.find_deeper_signature(
@@ -280,7 +282,7 @@ class UmbrellaLearner:
                 # Fall back: find or create new signature
                 # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
                 # CRITICAL: Pass parent_id so new signatures are created under THIS signature, not root!
-                child_sig, is_new = self.db.find_or_create(
+                child_sig, is_new = await self.db.find_or_create_async(
                     step_text=step.task,
                     embedding=embedding,
                     min_similarity=0.85,

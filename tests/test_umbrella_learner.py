@@ -4,10 +4,10 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 import numpy as np
 
-from mycelium.step_signatures.umbrella_learner import (
-    UmbrellaLearner,
-    MIN_USES_FOR_EVALUATION,
-    MAX_SUCCESS_RATE_FOR_DECOMPOSITION,
+from mycelium.step_signatures.umbrella_learner import UmbrellaLearner
+from mycelium.config import (
+    UMBRELLA_MIN_USES_FOR_EVALUATION,
+    UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION,
 )
 from mycelium.step_signatures.models import StepSignature
 from mycelium.planner import Step, DAGPlan
@@ -121,7 +121,7 @@ class TestGetDecompositionCandidates:
         assert candidates == []
 
     def test_filters_insufficient_uses(self, learner, mock_db):
-        # Signatures with uses < MIN_USES_FOR_EVALUATION should be excluded
+        # Signatures with uses < UMBRELLA_MIN_USES_FOR_EVALUATION should be excluded
         mock_db.get_all_signatures.return_value = [
             self._make_sig(1, "decompose", uses=1, successes=0),
             self._make_sig(2, "decompose", uses=2, successes=0),
@@ -130,9 +130,9 @@ class TestGetDecompositionCandidates:
         assert candidates == []
 
     def test_filters_high_success_rate(self, learner, mock_db):
-        # Signatures with success_rate > MAX_SUCCESS_RATE_FOR_DECOMPOSITION excluded
-        uses = MIN_USES_FOR_EVALUATION
-        high_successes = int(uses * (MAX_SUCCESS_RATE_FOR_DECOMPOSITION + 0.2)) + 1
+        # Signatures with success_rate > UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION excluded
+        uses = UMBRELLA_MIN_USES_FOR_EVALUATION
+        high_successes = int(uses * (UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION + 0.2)) + 1
         mock_db.get_all_signatures.return_value = [
             self._make_sig(1, "decompose", uses=uses, successes=high_successes),
         ]
@@ -312,10 +312,10 @@ class TestDecomposeSignature:
         # Mock find_deeper_signature to return None (no repoint)
         mock_db.find_deeper_signature.return_value = None
 
-        # Mock find_or_create to create new signatures
+        # Mock find_or_create_async to create new signatures
         child1 = self._make_sig(10)
         child2 = self._make_sig(11)
-        mock_db.find_or_create.side_effect = [(child1, True), (child2, True)]
+        mock_db.find_or_create_async = AsyncMock(side_effect=[(child1, True), (child2, True)])
 
         result = await learner.decompose_signature(sig)
 
@@ -338,10 +338,10 @@ class TestDecomposeSignature:
         # Must mock get_parent to return None, otherwise MagicMock triggers force-create path
         mock_db.get_parent.return_value = None
 
-        # First find_or_create returns the parent itself (self-reference)
+        # First find_or_create_async returns the parent itself (self-reference)
         # Second returns a different signature
         child2 = self._make_sig(2)
-        mock_db.find_or_create.side_effect = [(sig, False), (child2, True)]
+        mock_db.find_or_create_async = AsyncMock(side_effect=[(sig, False), (child2, True)])
 
         result = await learner.decompose_signature(sig)
 
@@ -362,7 +362,7 @@ class TestDecomposeSignature:
 
         mock_db.find_deeper_signature.return_value = None
         child1 = self._make_sig(10)
-        mock_db.find_or_create.return_value = (child1, True)
+        mock_db.find_or_create_async = AsyncMock(return_value=(child1, True))
 
         result = await learner.decompose_signature(sig)
 
@@ -387,7 +387,7 @@ class TestDecomposeSignature:
         result = await learner.decompose_signature(sig)
 
         # Should use existing sigs, not create new ones
-        mock_db.find_or_create.assert_not_called()
+        mock_db.find_or_create_async.assert_not_called()
         assert len(result) == 2
 
 
@@ -444,7 +444,7 @@ class TestLearnFromFailures:
 
         child1 = StepSignature(id=10, step_type="child_1")
         child2 = StepSignature(id=11, step_type="child_2")
-        mock_db.find_or_create.side_effect = [(child1, True), (child2, True)]
+        mock_db.find_or_create_async = AsyncMock(side_effect=[(child1, True), (child2, True)])
 
         result = await learner.learn_from_failures()
 

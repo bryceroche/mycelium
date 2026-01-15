@@ -1,5 +1,6 @@
 """Utility functions for step signatures."""
 
+import hashlib
 import json
 from functools import lru_cache
 from typing import Optional, Union
@@ -127,3 +128,56 @@ def unpack_embedding(data: str) -> Optional[np.ndarray]:
     if isinstance(data, np.ndarray):
         return data.astype(np.float32)
     return None
+
+
+# =============================================================================
+# CENTROID BUCKET: Coarse-grained uniqueness for embeddings
+# =============================================================================
+# Quantize embeddings to buckets so near-identical vectors hash to same bucket.
+# This provides DB-level uniqueness without exact TEXT matching issues.
+
+# Bucket precision: 1 decimal place means vectors within ~0.05 cosine distance
+# will likely share a bucket. This is intentionally coarse - fine-grained
+# dedup is handled by application-level similarity checks.
+BUCKET_DECIMAL_PLACES = 1
+
+
+def compute_centroid_bucket(embedding: np.ndarray) -> str:
+    """Compute a coarse hash bucket for an embedding.
+
+    Quantizes embedding to BUCKET_DECIMAL_PLACES precision, then hashes.
+    Two embeddings with high cosine similarity (>0.95) will likely share a bucket.
+
+    This enables DB-level UNIQUE constraint on centroid_bucket to prevent
+    gross duplicates, while allowing minor centroid drift within the bucket.
+
+    Args:
+        embedding: 768-dim embedding vector
+
+    Returns:
+        Hex string hash (16 chars) suitable for UNIQUE index
+    """
+    if embedding is None:
+        return None
+
+    # Normalize first (so direction matters, not magnitude)
+    norm = np.linalg.norm(embedding)
+    if norm > 0:
+        normalized = embedding / norm
+    else:
+        normalized = embedding
+
+    # Quantize to N decimal places
+    quantized = np.round(normalized, BUCKET_DECIMAL_PLACES)
+
+    # Hash the quantized values (use first 64 dims for speed - still unique enough)
+    # Converting to bytes is faster than JSON serialization
+    bucket_bytes = quantized[:64].astype(np.float32).tobytes()
+    bucket_hash = hashlib.md5(bucket_bytes).hexdigest()[:16]
+
+    return bucket_hash
+
+
+def embeddings_in_same_bucket(emb1: np.ndarray, emb2: np.ndarray) -> bool:
+    """Check if two embeddings would fall in the same bucket."""
+    return compute_centroid_bucket(emb1) == compute_centroid_bucket(emb2)

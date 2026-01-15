@@ -11,6 +11,10 @@ Signatures now speak natural language:
 The planner and signatures can now "talk" to each other through text.
 """
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 EMBEDDING_DIM = 768  # MathBERT dimension
 
 SQLITE_SCHEMA = """
@@ -24,6 +28,7 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     -- Embedding (768-dim MathBERT)
     -- centroid = embedding_sum / embedding_count (computed on read)
     centroid TEXT NOT NULL,           -- Current centroid (for index/queries)
+    centroid_bucket TEXT,             -- Quantized hash for coarse-grained uniqueness
     embedding_sum TEXT,               -- Running sum of all matched embeddings
     embedding_count INTEGER DEFAULT 1, -- Number of embeddings in sum
 
@@ -62,11 +67,13 @@ CREATE TABLE IF NOT EXISTS step_signatures (
 
 CREATE INDEX IF NOT EXISTS idx_sig_id ON step_signatures(signature_id);
 CREATE INDEX IF NOT EXISTS idx_sig_type ON step_signatures(step_type);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_sig_centroid ON step_signatures(centroid);
+CREATE INDEX IF NOT EXISTS idx_sig_centroid ON step_signatures(centroid);  -- Non-unique, for queries
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sig_centroid_bucket ON step_signatures(centroid_bucket);  -- Coarse uniqueness
 CREATE INDEX IF NOT EXISTS idx_sig_depth ON step_signatures(depth);
 CREATE INDEX IF NOT EXISTS idx_sig_is_root ON step_signatures(is_root);
 CREATE INDEX IF NOT EXISTS idx_sig_dsl_type ON step_signatures(dsl_type);
 CREATE INDEX IF NOT EXISTS idx_sig_umbrella_archived ON step_signatures(is_semantic_umbrella, is_archived);
+CREATE INDEX IF NOT EXISTS idx_sig_archived_created ON step_signatures(is_archived, created_at);
 
 -- =============================================================================
 -- SIGNATURE RELATIONSHIPS: Tree structure for parent-child routing
@@ -118,6 +125,27 @@ CREATE TABLE IF NOT EXISTS step_usage_log (
 );
 
 CREATE INDEX IF NOT EXISTS idx_usage_sig ON step_usage_log(signature_id);
+CREATE INDEX IF NOT EXISTS idx_usage_sig_created ON step_usage_log(signature_id, created_at);
+
+-- =============================================================================
+-- STEP FAILURES: Track failure patterns for learning (per CLAUDE.md)
+-- =============================================================================
+-- "Failures Are Valuable Data Points" - Record every failure for refinement loop
+-- Used to: identify signatures needing decomposition, feed planner hints
+CREATE TABLE IF NOT EXISTS step_failures (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    signature_id INTEGER REFERENCES step_signatures(id),  -- Nullable if no sig matched
+    step_text TEXT NOT NULL,                              -- The step that failed
+    failure_type TEXT NOT NULL,                           -- dsl_error, no_match, llm_error, timeout, validation
+    error_message TEXT,                                   -- Actual error text
+    context TEXT,                                         -- JSON: {params, expected, problem, etc.}
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_failures_sig ON step_failures(signature_id);
+CREATE INDEX IF NOT EXISTS idx_failures_type ON step_failures(failure_type);
+CREATE INDEX IF NOT EXISTS idx_failures_created ON step_failures(created_at);
+CREATE INDEX IF NOT EXISTS idx_failures_created_sig ON step_failures(created_at, signature_id);
 
 -- =============================================================================
 -- METADATA: Key-value store for DB-level settings
@@ -137,6 +165,14 @@ def init_db(conn) -> None:
     """Initialize the V2 database schema."""
     conn.executescript(SQLITE_SCHEMA)
     conn.commit()
+
+    # WAL checkpoint on startup - merge WAL back into main DB file
+    # Prevents WAL file from growing unbounded between restarts
+    try:
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    except Exception as e:
+        logger.warning("[schema] WAL checkpoint failed: %s", e)
+
     # Run migrations for existing DBs
     migrate_db(conn)
 
@@ -192,8 +228,8 @@ def migrate_db(conn) -> None:
     for sql in migrations:
         try:
             conn.execute(sql)
-        except Exception:
-            pass  # Column might already exist in some edge cases
+        except Exception as e:
+            logger.warning("[schema] Migration failed for '%s': %s", sql[:50], e)
 
     if migrations:
         conn.commit()
@@ -203,13 +239,24 @@ def migrate_db(conn) -> None:
         "CREATE INDEX IF NOT EXISTS idx_sig_is_root ON step_signatures(is_root)",
         "CREATE INDEX IF NOT EXISTS idx_sig_dsl_type ON step_signatures(dsl_type)",
         "CREATE INDEX IF NOT EXISTS idx_sig_umbrella_archived ON step_signatures(is_semantic_umbrella, is_archived)",
+        # Performance indexes (added for query optimization)
+        "CREATE INDEX IF NOT EXISTS idx_sig_archived_created ON step_signatures(is_archived, created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_usage_sig_created ON step_usage_log(signature_id, created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_failures_created_sig ON step_failures(created_at, signature_id)",
     ]
     for sql in index_migrations:
         try:
             conn.execute(sql)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("[schema] Index migration failed for '%s': %s", sql[:50], e)
     conn.commit()
+
+    # Update query planner statistics for better query plans
+    try:
+        conn.execute("ANALYZE")
+        conn.commit()
+    except Exception as e:
+        logger.warning("[schema] ANALYZE failed: %s", e)
 
     # Fix multi-parent children (tree structure enforcement)
     # This cleans up any children that have multiple parents from old DAG schema

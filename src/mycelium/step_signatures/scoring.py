@@ -8,10 +8,15 @@ MCTS-style UCB1 scoring enables exploration/exploitation balance:
 - Exploration: give bonus to under-visited signatures (may find better paths)
 """
 
+import logging
 import math
 import re
 import sqlite3
 import time
+
+from mycelium.data_layer import configure_connection
+
+logger = logging.getLogger(__name__)
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -77,15 +82,15 @@ def get_total_problems_solved(db_path: str = DB_PATH) -> int:
     # Query DB for fresh value
     try:
         conn = sqlite3.connect(db_path, timeout=30.0)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA busy_timeout = 30000")
+        configure_connection(conn, enable_foreign_keys=False)
         row = conn.execute(
             "SELECT value FROM db_metadata WHERE key = 'total_problems_solved'"
         ).fetchone()
         conn.close()
 
         value = int(row["value"]) if row else 0
-    except (sqlite3.Error, ValueError, TypeError):
+    except (sqlite3.Error, ValueError, TypeError) as e:
+        logger.warning("[scoring] Failed to get total problems: %s", e)
         value = 0
 
     # Update cache
@@ -102,8 +107,7 @@ def increment_total_problems(db_path: str = DB_PATH) -> int:
     """
     try:
         conn = sqlite3.connect(db_path, timeout=30.0)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA busy_timeout = 30000")
+        configure_connection(conn, enable_foreign_keys=False)
         now_iso = datetime.now(timezone.utc).isoformat()
 
         # Upsert the counter
@@ -129,7 +133,8 @@ def increment_total_problems(db_path: str = DB_PATH) -> int:
         _total_problems_cache["expires_at"] = time.time() + TRAFFIC_CACHE_TTL
 
         return new_value
-    except (sqlite3.Error, ValueError, TypeError):
+    except (sqlite3.Error, ValueError, TypeError) as e:
+        logger.warning("[scoring] Failed to increment total problems: %s", e)
         return 0
 
 
@@ -195,10 +200,11 @@ def compute_staleness_penalty(last_used_at: Optional[str]) -> float:
         # Calculate penalty: rate * days, capped at max
         penalty = (days_since_use - STALENESS_GRACE_DAYS) * STALENESS_DECAY_RATE
         return min(penalty, STALENESS_MAX_PENALTY)
-    except (ValueError, TypeError, AttributeError):
+    except (ValueError, TypeError, AttributeError) as e:
         # ValueError: invalid timestamp format
         # TypeError: wrong type passed to fromisoformat
         # AttributeError: non-string passed (no .replace method)
+        logger.debug("[scoring] Failed to compute staleness penalty: %s", e)
         return 0.0
 
 
