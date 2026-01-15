@@ -73,6 +73,12 @@ DSL_OPERATION_INFERENCE_COLD_START = 0.35  # Low threshold when DB is empty
 DSL_OPERATION_INFERENCE_MATURE = 0.60  # High threshold when DB is mature
 DSL_OPERATION_INFERENCE_RAMP_SIGS = 100  # Signatures needed to reach mature threshold
 
+# DSL exotic operation thresholds
+# Exotic operations (**, factorial, perm, etc.) require higher confidence than basic (+, -, *, /)
+# This prevents embedding noise from matching "total eggs" to "power"
+DSL_EXOTIC_THRESHOLD_BONUS = 0.05  # Require 5% higher similarity for exotic ops
+DSL_EXOTIC_THRESHOLD_MAX = 0.92  # Cap exotic threshold to ensure it's achievable
+
 # DSL Executor thresholds
 DSL_VALUE_TYPE_THRESHOLD = 0.15  # Threshold for value type matching
 DSL_STEP_TYPE_ALIGNMENT_THRESHOLD = 0.20  # Threshold for step type alignment
@@ -102,6 +108,17 @@ AVOID_CACHE_TTL = 300.0  # Rebuild negative-lift cache every 5 min
 
 RELIABILITY_MIN_USES = 3
 RELIABILITY_MIN_SUCCESS_RATE = 0.70
+
+# =============================================================================
+# UMBRELLA PROMOTION (failing signatures → decompose into children)
+# =============================================================================
+# Per CLAUDE.md: "Failing signatures get decomposed"
+# Smart decomposition: give signatures a few chances, decompose if mostly failing
+
+UMBRELLA_MIN_USES_FOR_EVALUATION = 3  # Need this many attempts before evaluating
+UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION = 0.5  # Decompose if failing more than succeeding
+# Example: 2 failures out of 3 = 33% success → decompose
+# Example: 20 successes + 2 failures = 91% success → keep
 
 # =============================================================================
 # AUTO-DEMOTION (complex DSLs → umbrellas)
@@ -230,9 +247,13 @@ DEPTH_DECOMPOSE_MIN_PROB = 0.05  # Floor probability (never fully disable decomp
 # =============================================================================
 
 # BIG BANG EXPANSION: Recursive decomposition during cold start
+# Per CLAUDE.md: "Cold-start adaptive branching more aggressive during cold start - big bang"
 # When enabled: aggressively decompose signatures to rapidly build tree structure
 # When disabled: only decompose on explicit failure, use existing tree
 BIG_BANG_EXPANSION_ENABLED = False  # Toggle on for aggressive cold-start decomposition
+BIG_BANG_SIGNATURE_THRESHOLD = 500  # Decompose aggressively until this many sigs
+BIG_BANG_MIN_DEPTH = 3  # Always try to reach at least this depth during big bang
+BIG_BANG_DECAY_PER_100_SIGS = 0.15  # Reduce decomposition probability as tree grows
 
 RECURSIVE_DECOMPOSITION_ENABLED = True  # Enable decomposition for complex steps
 RECURSIVE_MAX_DEPTH = 9  # Max routing depth: deep decomposition for complex problems
@@ -277,6 +298,10 @@ DSL_REWRITER_COOLDOWN_HOURS = 24  # Don't rewrite same sig within this period
 # =============================================================================
 
 DB_PATH = "mycelium.db"  # 768-dim MathBERT embeddings
+
+# Database retry settings (for sqlite3.OperationalError handling)
+DB_MAX_RETRIES = 5  # Max retry attempts for transient DB errors
+DB_BASE_RETRY_DELAY = 0.05  # Base delay in seconds (exponential backoff with jitter)
 
 # =============================================================================
 # LLM CLIENT (OpenAI gpt-4.1-nano)

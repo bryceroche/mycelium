@@ -34,6 +34,8 @@ from mycelium.config import (
     CENTROID_PROPAGATION_MAX_DEPTH,
     CENTROID_MAX_DRIFT,
     CENTROID_DRIFT_DECAY,
+    DB_MAX_RETRIES,
+    DB_BASE_RETRY_DELAY,
 )
 
 # Import from focused modules (scoring and DSL templates)
@@ -407,24 +409,21 @@ class StepSignatureDB:
         except RuntimeError:
             pass  # No running loop, sync usage is fine
 
-        max_retries = 5
-        base_delay = 0.05
-
-        for attempt in range(max_retries):
+        for attempt in range(DB_MAX_RETRIES):
             try:
                 return self._find_or_create_atomic(
                     step_text, embedding, min_similarity, parent_problem, origin_depth,
                     extracted_values=extracted_values, dsl_hint=dsl_hint, parent_id=parent_id
                 )
             except sqlite3.OperationalError as e:
-                if attempt < max_retries - 1:
+                if attempt < DB_MAX_RETRIES - 1:
                     # Exponential backoff with jitter to avoid thundering herd
-                    delay = base_delay * (2 ** attempt)
+                    delay = DB_BASE_RETRY_DELAY * (2 ** attempt)
                     jitter = random.uniform(0, delay * 0.5)
                     time.sleep(delay + jitter)
                     logger.debug(
                         "[db] Retry %d/%d after OperationalError: %s (delay=%.3fs)",
-                        attempt + 1, max_retries, str(e)[:50], delay + jitter
+                        attempt + 1, DB_MAX_RETRIES, str(e)[:50], delay + jitter
                     )
                     continue
                 raise
@@ -460,24 +459,21 @@ class StepSignatureDB:
         Returns:
             Tuple of (signature, is_new) where is_new=True if newly created
         """
-        max_retries = 5
-        base_delay = 0.05
-
-        for attempt in range(max_retries):
+        for attempt in range(DB_MAX_RETRIES):
             try:
                 return self._find_or_create_atomic(
                     step_text, embedding, min_similarity, parent_problem, origin_depth,
                     extracted_values=extracted_values, dsl_hint=dsl_hint, parent_id=parent_id
                 )
             except sqlite3.OperationalError as e:
-                if attempt < max_retries - 1:
+                if attempt < DB_MAX_RETRIES - 1:
                     # Exponential backoff with jitter to avoid thundering herd
-                    delay = base_delay * (2 ** attempt)
+                    delay = DB_BASE_RETRY_DELAY * (2 ** attempt)
                     jitter = random.uniform(0, delay * 0.5)
                     await asyncio.sleep(delay + jitter)
                     logger.debug(
                         "[db] Retry %d/%d after OperationalError: %s (delay=%.3fs)",
-                        attempt + 1, max_retries, str(e)[:50], delay + jitter
+                        attempt + 1, DB_MAX_RETRIES, str(e)[:50], delay + jitter
                     )
                     continue
                 raise

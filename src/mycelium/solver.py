@@ -37,6 +37,9 @@ from mycelium.config import (
     DEPTH_DECOMPOSE_DECAY_BASE,
     DEPTH_DECOMPOSE_MIN_PROB,
     BIG_BANG_EXPANSION_ENABLED,
+    BIG_BANG_SIGNATURE_THRESHOLD,
+    BIG_BANG_MIN_DEPTH,
+    BIG_BANG_DECAY_PER_100_SIGS,
     ZERO_LLM_ROUTING_ENABLED,
     ZERO_LLM_MIN_SIMILARITY,
     ZERO_LLM_MIN_SUCCESS_RATE,
@@ -56,11 +59,10 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 # BIG BANG Decomposition Strategy
 # =============================================================================
-
-# Cold start thresholds - aggressive decomposition until tree is built
-BIGBANG_SIGNATURE_THRESHOLD = 500  # Decompose aggressively until this many sigs
-BIGBANG_MIN_DEPTH = 3  # Always try to reach at least this depth during big bang
-BIGBANG_DECAY_PER_100_SIGS = 0.15  # Reduce decomposition probability as tree grows
+# Thresholds imported from config:
+# - BIG_BANG_SIGNATURE_THRESHOLD: Decompose aggressively until this many sigs
+# - BIG_BANG_MIN_DEPTH: Always try to reach at least this depth during big bang
+# - BIG_BANG_DECAY_PER_100_SIGS: Reduce decomposition probability as tree grows
 
 # Track signature count (updated by solver)
 _signature_count_cache = {"count": 0, "last_check": 0}
@@ -132,18 +134,18 @@ def should_force_decompose(depth: int) -> bool:
 
     # === BIG BANG PHASE ===
     # When tree is small, decompose aggressively to explode structure
-    if sig_count < BIGBANG_SIGNATURE_THRESHOLD:
+    if sig_count < BIG_BANG_SIGNATURE_THRESHOLD:
         # Always decompose if we haven't reached minimum depth
-        if depth < BIGBANG_MIN_DEPTH:
+        if depth < BIG_BANG_MIN_DEPTH:
             return True
 
         # Beyond min depth, probabilistic based on how far into big bang we are
         # Start at 100%, decay as we approach threshold
-        progress = sig_count / BIGBANG_SIGNATURE_THRESHOLD  # 0.0 to 1.0
+        progress = sig_count / BIG_BANG_SIGNATURE_THRESHOLD  # 0.0 to 1.0
         base_prob = 1.0 - (progress * 0.7)  # 100% -> 30% as tree grows
 
         # Also decay by depth
-        depth_factor = max(0.1, 1.0 - (depth - BIGBANG_MIN_DEPTH) * 0.2)
+        depth_factor = max(0.1, 1.0 - (depth - BIG_BANG_MIN_DEPTH) * 0.2)
         prob = base_prob * depth_factor
 
         if random.random() < prob:

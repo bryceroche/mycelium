@@ -17,6 +17,10 @@ import json
 import logging
 from typing import Optional
 
+from mycelium.config import (
+    UMBRELLA_MIN_USES_FOR_EVALUATION,
+    UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION,
+)
 from mycelium.planner import Planner
 from mycelium.step_signatures.db import StepSignatureDB
 from mycelium.step_signatures.models import StepSignature
@@ -56,12 +60,9 @@ Example for "Add two quantities together":
 
 Now generate for the step above. Respond with ONLY valid JSON:'''
 
-# Thresholds for umbrella promotion
-# Smart decomposition: give signatures 3 chances, decompose if mostly failing
-MIN_USES_FOR_EVALUATION = 3  # Need 3 attempts before evaluating
-MAX_SUCCESS_RATE_FOR_DECOMPOSITION = 0.5  # Decompose if failing more than succeeding
-# Example: 2 failures out of 3 = 33% success → decompose
-# Example: 20 successes + 2 failures = 91% success → keep
+# Thresholds imported from config:
+# - UMBRELLA_MIN_USES_FOR_EVALUATION: Need N attempts before evaluating
+# - UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION: Decompose if failing more than succeeding
 
 
 class UmbrellaLearner:
@@ -187,8 +188,8 @@ class UmbrellaLearner:
 
         Criteria:
         - dsl_type = "decompose" (no actual computation)
-        - uses >= MIN_USES_FOR_EVALUATION (enough data)
-        - success_rate < MAX_SUCCESS_RATE_FOR_DECOMPOSITION (failing)
+        - uses >= UMBRELLA_MIN_USES_FOR_EVALUATION (enough data)
+        - success_rate < UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION (failing)
         - is_semantic_umbrella = False (not already decomposed)
         """
         all_sigs = self.db.get_all_signatures()
@@ -197,8 +198,8 @@ class UmbrellaLearner:
         for sig in all_sigs:
             if (
                 sig.dsl_type == "decompose"
-                and sig.uses >= MIN_USES_FOR_EVALUATION
-                and sig.success_rate <= MAX_SUCCESS_RATE_FOR_DECOMPOSITION
+                and sig.uses >= UMBRELLA_MIN_USES_FOR_EVALUATION
+                and sig.success_rate <= UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION
                 and not sig.is_semantic_umbrella
             ):
                 candidates.append(sig)
