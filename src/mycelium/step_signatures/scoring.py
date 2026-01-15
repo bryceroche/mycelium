@@ -36,6 +36,22 @@ from mycelium.config import (
 
 
 # =============================================================================
+# UTC TIMESTAMP HELPER
+# =============================================================================
+
+def utc_now_iso() -> str:
+    """Generate ISO timestamp in UTC with 'Z' suffix.
+
+    Use this instead of datetime.utcnow().isoformat() for consistent
+    timezone-aware timestamps that work correctly with staleness calculations.
+
+    Returns:
+        ISO format timestamp with 'Z' suffix, e.g., '2024-01-15T12:30:45.123456Z'
+    """
+    return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+
+
+# =============================================================================
 # CACHED TOTAL PROBLEMS COUNTER
 # =============================================================================
 # Module-level cache to avoid DB hits on every routing decision
@@ -149,7 +165,9 @@ def compute_staleness_penalty(last_used_at: Optional[str]) -> float:
     """Compute staleness penalty based on days since last use.
 
     Args:
-        last_used_at: ISO timestamp of last use, or None if never used
+        last_used_at: ISO timestamp of last use, or None if never used.
+                      Accepts UTC timestamps with 'Z' suffix, '+00:00' suffix,
+                      or naive timestamps (assumed UTC).
 
     Returns:
         Penalty to subtract from routing score (0.0 to STALENESS_MAX_PENALTY)
@@ -158,8 +176,15 @@ def compute_staleness_penalty(last_used_at: Optional[str]) -> float:
         return 0.0
 
     try:
-        # Parse ISO timestamp
-        last_used = datetime.fromisoformat(last_used_at.replace('Z', '+00:00'))
+        # Parse ISO timestamp - handle various UTC formats
+        # Replace 'Z' with '+00:00' for fromisoformat compatibility
+        ts = last_used_at.replace('Z', '+00:00')
+        last_used = datetime.fromisoformat(ts)
+
+        # If parsed timestamp is naive (no timezone), assume UTC
+        if last_used.tzinfo is None:
+            last_used = last_used.replace(tzinfo=timezone.utc)
+
         now = datetime.now(timezone.utc)
         days_since_use = (now - last_used).total_seconds() / 86400.0
 
