@@ -1,8 +1,61 @@
 """Utility functions for step signatures."""
 
 import json
+from functools import lru_cache
 from typing import Optional, Union
 import numpy as np
+
+
+# Global centroid cache - keyed by signature_id
+# Using a simple dict with manual eviction for flexibility
+_centroid_cache: dict[int, np.ndarray] = {}
+_CENTROID_CACHE_MAX_SIZE = 10000
+
+# Preloaded centroid matrix for batch similarity (much faster)
+_centroid_matrix_cache: dict[str, tuple] = {}  # db_path -> (sig_ids, matrix, timestamp)
+
+
+def get_cached_centroid(sig_id: int, centroid_json: str) -> np.ndarray:
+    """Get centroid from cache or parse and cache it.
+
+    This avoids repeated JSON parsing of the same centroid.
+    ~10x faster for repeated lookups.
+    """
+    if sig_id in _centroid_cache:
+        return _centroid_cache[sig_id]
+
+    # Parse and cache
+    centroid = unpack_embedding(centroid_json)
+    if centroid is not None:
+        # Simple eviction: clear half when full
+        if len(_centroid_cache) >= _CENTROID_CACHE_MAX_SIZE:
+            # Keep most recent half (roughly)
+            keys_to_remove = list(_centroid_cache.keys())[:_CENTROID_CACHE_MAX_SIZE // 2]
+            for k in keys_to_remove:
+                del _centroid_cache[k]
+        _centroid_cache[sig_id] = centroid
+
+    return centroid
+
+
+def invalidate_centroid_cache(sig_id: int = None):
+    """Invalidate centroid cache entry or entire cache.
+
+    Call this when a centroid is updated.
+    """
+    global _centroid_cache
+    if sig_id is not None:
+        _centroid_cache.pop(sig_id, None)
+    else:
+        _centroid_cache.clear()
+
+
+def get_centroid_cache_stats() -> dict:
+    """Get cache statistics for monitoring."""
+    return {
+        "size": len(_centroid_cache),
+        "max_size": _CENTROID_CACHE_MAX_SIZE,
+    }
 
 
 def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
@@ -12,6 +65,33 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     if norm_a == 0 or norm_b == 0:
         return 0.0
     return float(np.dot(a, b) / (norm_a * norm_b))
+
+
+def batch_cosine_similarity(query: np.ndarray, matrix: np.ndarray) -> np.ndarray:
+    """Compute cosine similarity between query and all rows in matrix.
+
+    This is ~10-50x faster than looping for large matrices.
+
+    Args:
+        query: (768,) query vector
+        matrix: (n, 768) matrix of vectors to compare against
+
+    Returns:
+        (n,) array of similarities
+    """
+    # Normalize query
+    query_norm = np.linalg.norm(query)
+    if query_norm == 0:
+        return np.zeros(matrix.shape[0])
+    query_normalized = query / query_norm
+
+    # Normalize matrix rows (avoid division by zero)
+    norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+    norms = np.where(norms == 0, 1, norms)  # Avoid div by zero
+    matrix_normalized = matrix / norms
+
+    # Batch dot product
+    return matrix_normalized @ query_normalized
 
 
 def pack_embedding(embedding: Union[np.ndarray, list]) -> str:
