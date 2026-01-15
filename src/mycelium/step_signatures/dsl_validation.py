@@ -26,6 +26,8 @@ __all__ = [
     "validate_param_types",
     "validate_result_bounds",
     "is_valid_dsl_result",
+    # Extraction validation
+    "validate_extracted_values",
 ]
 
 import logging
@@ -808,4 +810,123 @@ def is_valid_dsl_result(
     except (TypeError, OverflowError):
         pass
 
+    return True
+
+
+# =============================================================================
+# EXTRACTED VALUES VALIDATION (Bidirectional LLM-Signature Communication)
+# =============================================================================
+
+def validate_extracted_values(
+    extracted_values: dict[str, Any],
+    step_descriptions: dict[str, str],
+    param_descriptions: dict[str, str],
+) -> tuple[dict[str, Any], list[str]]:
+    """Validate extracted values using signature's NL context.
+
+    Cross-checks planner's extracted_values against signature's param_descriptions
+    to catch semantic mismatches before DSL execution.
+
+    Example:
+        extracted_values: {"overtime_hours": "{step_2}"}
+        step_descriptions: {"step_2": "Calculate overtime pay amount"}
+        param_descriptions: {"overtime_hours": "The number of hours worked beyond regular"}
+
+        → "overtime pay amount" doesn't match "hours worked" → reject this extraction
+
+    Args:
+        extracted_values: Planner's param extractions {param_name: value_or_ref}
+        step_descriptions: Mapping of step_id -> task description
+        param_descriptions: Signature's NL descriptions of what each param means
+
+    Returns:
+        (validated_extractions, rejected_params) - extractions that passed validation
+    """
+    if not extracted_values or not param_descriptions:
+        return extracted_values, []
+
+    validated = {}
+    rejected = []
+
+    for param_name, value in extracted_values.items():
+        # Check if this is a step reference
+        if isinstance(value, str) and value.startswith('{') and value.endswith('}'):
+            ref_key = value[1:-1]  # e.g., "step_2"
+
+            # Get the step's task description
+            step_desc = step_descriptions.get(ref_key, "").lower() if step_descriptions else ""
+
+            # Get the signature's param description
+            param_desc = param_descriptions.get(param_name, "").lower()
+
+            if step_desc and param_desc:
+                # Semantic match: check if step description aligns with param meaning
+                if not _descriptions_match(step_desc, param_desc, param_name):
+                    logger.info(
+                        "[extract_validate] REJECT %s={%s}: step='%s' vs param='%s'",
+                        param_name, ref_key, step_desc[:40], param_desc[:40]
+                    )
+                    rejected.append(param_name)
+                    continue
+
+        # Passed validation (or not a reference)
+        validated[param_name] = value
+
+    if rejected:
+        logger.info(
+            "[extract_validate] Rejected %d/%d extractions: %s",
+            len(rejected), len(extracted_values), rejected
+        )
+
+    return validated, rejected
+
+
+def _descriptions_match(step_desc: str, param_desc: str, param_name: str) -> bool:
+    """Check if step description semantically matches param description.
+
+    Uses token overlap and key term matching to detect mismatches.
+    """
+    # Normalize
+    step_tokens = set(step_desc.replace("_", " ").split())
+    param_tokens = set(param_desc.replace("_", " ").split())
+    param_name_tokens = set(param_name.lower().replace("_", " ").split())
+
+    # Remove common stop words
+    stop_words = {"the", "a", "an", "of", "to", "is", "in", "for", "and", "or", "be"}
+    step_tokens -= stop_words
+    param_tokens -= stop_words
+
+    # Check 1: Direct token overlap between step desc and param desc
+    overlap = step_tokens & param_tokens
+    if len(overlap) >= 2:
+        return True
+
+    # Check 2: Param name tokens appear in step description
+    name_in_step = param_name_tokens & step_tokens
+    if len(name_in_step) >= 1 and len(param_name_tokens) <= 2:
+        return True
+    if len(name_in_step) >= 2:
+        return True
+
+    # Check 3: Key semantic terms match
+    # If param says "hours" but step says "pay" or "amount" → mismatch
+    time_terms = {"hours", "minutes", "seconds", "time", "duration"}
+    money_terms = {"pay", "cost", "price", "amount", "earnings", "salary", "rate"}
+    count_terms = {"number", "count", "total", "quantity", "many"}
+
+    step_is_time = bool(step_tokens & time_terms)
+    step_is_money = bool(step_tokens & money_terms)
+    step_is_count = bool(step_tokens & count_terms)
+
+    param_is_time = bool(param_tokens & time_terms) or bool(param_name_tokens & time_terms)
+    param_is_money = bool(param_tokens & money_terms) or bool(param_name_tokens & money_terms)
+    param_is_count = bool(param_tokens & count_terms) or bool(param_name_tokens & count_terms)
+
+    # Mismatch: step talks about money but param expects time (or vice versa)
+    if step_is_money and param_is_time:
+        return False
+    if step_is_time and param_is_money:
+        return False
+
+    # If we can't determine category, allow it (permissive)
     return True

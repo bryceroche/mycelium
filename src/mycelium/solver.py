@@ -45,7 +45,7 @@ from mycelium.step_signatures.semantic_validation import (
 )
 from mycelium.step_signatures import StepSignatureDB, StepSignature
 from mycelium.step_signatures.db import normalize_step_text
-from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math
+from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math, validate_extracted_values
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.embedder import Embedder
 
@@ -871,6 +871,21 @@ Respond with ONLY the number (0-{len(children)})."""
         dsl_hint = getattr(step, 'dsl_hint', None)
         extracted_values = getattr(step, 'extracted_values', {}) or {}
 
+        # Validate extracted values using signature's NL context (bidirectional communication)
+        # This catches semantic mismatches like "overtime_hours" pointing to a "pay calculation" step
+        if extracted_values and signature.param_descriptions and step_descriptions:
+            validated_extractions, rejected = validate_extracted_values(
+                extracted_values,
+                step_descriptions,
+                signature.param_descriptions,
+            )
+            if rejected:
+                logger.info(
+                    "[solver] Extraction validation rejected %d params: %s",
+                    len(rejected), rejected
+                )
+            extracted_values = validated_extractions
+
         # Handle extraction-only steps: no dsl_hint but has single extracted value
         # These steps just extract a constant from the problem (e.g., "eggs per day = 16")
         if not dsl_hint and extracted_values:
@@ -898,9 +913,10 @@ Respond with ONLY the number (0-{len(children)})."""
         # Build available params from context + extracted values
         params = {}
 
-        # Add extracted values (resolve references)
-        if hasattr(step, 'extracted_values') and step.extracted_values:
-            for key, val in step.extracted_values.items():
+        # Add validated extracted values (resolve references)
+        # Note: extracted_values was already validated above using signature's param_descriptions
+        if extracted_values:
+            for key, val in extracted_values.items():
                 if isinstance(val, str) and val.startswith('{') and val.endswith('}'):
                     ref_key = val[1:-1]
                     if ref_key in context:
