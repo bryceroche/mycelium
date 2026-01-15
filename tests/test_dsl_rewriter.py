@@ -42,10 +42,11 @@ class TestFindUnderperformingSignatures:
         )
 
         # Set up stats: 20 uses, 5 successes = 25% success rate
+        # Must also set is_semantic_umbrella = 0 since first sig is root by default
         with db._connection() as conn:
             conn.execute(
                 """UPDATE step_signatures
-                   SET uses = 20, successes = 5, dsl_type = 'math'
+                   SET uses = 20, successes = 5, dsl_type = 'math', is_semantic_umbrella = 0
                    WHERE id = ?""",
                 (sig.id,)
             )
@@ -252,10 +253,11 @@ class TestRewriteUnderperformingDsls:
         )
 
         old_dsl = '{"script": "a - b", "params": ["a", "b"], "type": "math"}'
+        # Must also set is_semantic_umbrella = 0 since first sig is root by default
         with db._connection() as conn:
             conn.execute(
                 """UPDATE step_signatures
-                   SET uses = 20, successes = 4, dsl_type = 'math', dsl_script = ?
+                   SET uses = 20, successes = 4, dsl_type = 'math', dsl_script = ?, is_semantic_umbrella = 0
                    WHERE id = ?""",
                 (old_dsl, sig.id)
             )
