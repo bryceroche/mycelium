@@ -7,6 +7,7 @@ We want to treate this file as our source of truth.
 Every bug fix, optimization or feature should be implemented with this file in mind.
 Please always keep this file in the context window.
 
+
 ## LLM Call Rule
   **Only call LLM on leaf nodes**
   ## Signature Types
