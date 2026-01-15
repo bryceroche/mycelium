@@ -29,8 +29,11 @@ class PlansDB:
 
     def _get_conn(self) -> sqlite3.Connection:
         if self._conn is None:
-            self._conn = sqlite3.connect(str(self.db_path))
+            self._conn = sqlite3.connect(str(self.db_path), timeout=30.0)
             self._conn.row_factory = sqlite3.Row
+            # Enable WAL mode for better concurrent access
+            self._conn.execute("PRAGMA journal_mode = WAL")
+            self._conn.execute("PRAGMA busy_timeout = 30000")
             init_db(self._conn)
         return self._conn
 
