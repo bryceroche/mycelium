@@ -199,6 +199,10 @@ def compute_traffic_penalty(uses: int, total_problems: Optional[int] = None) -> 
     if total_problems < TRAFFIC_GRACE_PROBLEMS:
         return 0.0
 
+    # Guard against invalid threshold config (would cause division issues)
+    if TRAFFIC_MIN_SHARE <= 0:
+        return 0.0
+
     # Calculate traffic share
     traffic_share = uses / total_problems if total_problems > 0 else 0.0
 
@@ -208,8 +212,6 @@ def compute_traffic_penalty(uses: int, total_problems: Optional[int] = None) -> 
 
     # Linear penalty based on how far below threshold
     # At 0 traffic: full penalty. At threshold: 0 penalty.
-    if TRAFFIC_MIN_SHARE <= 0:
-        return 0.0  # Can't calculate deficit if threshold is 0
     deficit_ratio = 1.0 - (traffic_share / TRAFFIC_MIN_SHARE)
     return TRAFFIC_DECAY_RATE * deficit_ratio
 
