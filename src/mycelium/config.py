@@ -138,12 +138,19 @@ ROUTING_PRIOR_SUCCESSES = 2
 ROUTING_PRIOR_USES = 4
 
 # Parent credit propagation (reward successful routers)
-PARENT_CREDIT_DECAY = 0.7  # Credit multiplier per depth (0.7^1=0.7, 0.7^2=0.49, 0.7^3=0.34...)
-PARENT_CREDIT_MAX_DEPTH = 5  # Max depth to propagate (prevents infinite loops)
+# Per CLAUDE.md: "Parent umbrellas get decay^depth credit (default 0.5 per level)"
+PARENT_CREDIT_DECAY = 0.5  # Credit multiplier per depth (0.5^1=0.5, 0.5^2=0.25, 0.5^3=0.125)
+PARENT_CREDIT_MAX_DEPTH = 3  # Max depth to propagate (per CLAUDE.md: "default 3 levels")
 PARENT_CREDIT_MIN = 0.1  # Minimum credit to apply (filter noise)
 
 # Centroid propagation (batch update parent centroids)
 CENTROID_PROPAGATION_MAX_DEPTH = 3  # Max levels to propagate centroid changes (perf optimization)
+
+# Centroid drift bounds (reject updates that would move centroid too far)
+# This prevents a signature from drifting outside its semantic confidence bounds.
+# Max drift decreases as embedding_count increases (more examples = more stable).
+CENTROID_MAX_DRIFT = 0.15  # Max cosine distance allowed for centroid drift
+CENTROID_DRIFT_DECAY = 0.9  # Drift threshold multiplier per log2(count) - tightens with more examples
 
 # Staleness decay (deprioritize signatures that haven't been used recently)
 # Penalty = min(days_since_use * STALENESS_DECAY_RATE, STALENESS_MAX_PENALTY)
