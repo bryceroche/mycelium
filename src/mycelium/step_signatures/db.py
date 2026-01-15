@@ -10,6 +10,7 @@ import asyncio
 import json
 import logging
 import math
+import os
 import random
 import re
 import sqlite3
@@ -20,6 +21,9 @@ from datetime import datetime
 from typing import Optional, Literal
 
 import numpy as np
+
+# Version for centroid matrix cache (increment to invalidate old caches)
+_CENTROID_CACHE_VERSION = 1
 
 from mycelium.config import (
     PARENT_CREDIT_DECAY,
@@ -105,6 +109,79 @@ class StepSignatureDB:
     def db_path(self) -> str:
         """Get the database path."""
         return self._db_path
+
+    @property
+    def _centroid_cache_path(self) -> str:
+        """Get the path for the centroid matrix cache file."""
+        return f"{self._db_path}.centroid_cache.npz"
+
+    def _load_centroid_matrix_from_cache(self) -> bool:
+        """Try to load centroid matrix from disk cache.
+
+        Returns True if cache was loaded successfully, False otherwise.
+        Cache is invalidated if signature count doesn't match.
+        """
+        cache_path = self._centroid_cache_path
+        if not os.path.exists(cache_path):
+            return False
+
+        try:
+            with np.load(cache_path, allow_pickle=False) as data:
+                version = int(data.get("version", 0))
+                if version != _CENTROID_CACHE_VERSION:
+                    logger.debug("[db] Centroid cache version mismatch, rebuilding")
+                    return False
+
+                cached_count = int(data["sig_count"])
+
+                # Quick staleness check: compare signature count
+                with self._connection() as conn:
+                    row = conn.execute("SELECT COUNT(*) FROM step_signatures WHERE centroid IS NOT NULL").fetchone()
+                    current_count = row[0] if row else 0
+
+                if cached_count != current_count:
+                    logger.debug("[db] Centroid cache stale (%d vs %d sigs), rebuilding", cached_count, current_count)
+                    return False
+
+                # Load the cached data
+                self._centroid_matrix = data["matrix"]
+                self._centroid_sig_ids = data["sig_ids"].tolist()
+                # Rows not cached - will be fetched lazily in find_similar
+                self._centroid_rows = None
+
+                logger.debug("[db] Loaded centroid matrix from cache: %d signatures", len(self._centroid_sig_ids))
+                return True
+
+        except Exception as e:
+            logger.warning("[db] Failed to load centroid cache: %s", e)
+            return False
+
+    def _save_centroid_matrix_to_cache(self):
+        """Save the centroid matrix to disk cache."""
+        if self._centroid_matrix is None or len(self._centroid_sig_ids) == 0:
+            return
+
+        try:
+            np.savez(
+                self._centroid_cache_path,
+                matrix=self._centroid_matrix,
+                sig_ids=np.array(self._centroid_sig_ids, dtype=np.int64),
+                sig_count=len(self._centroid_sig_ids),
+                version=_CENTROID_CACHE_VERSION,
+            )
+            logger.debug("[db] Saved centroid matrix to cache: %d signatures", len(self._centroid_sig_ids))
+        except Exception as e:
+            logger.warning("[db] Failed to save centroid cache: %s", e)
+
+    def _delete_centroid_cache(self):
+        """Delete the centroid matrix cache file."""
+        cache_path = self._centroid_cache_path
+        if os.path.exists(cache_path):
+            try:
+                os.remove(cache_path)
+                logger.debug("[db] Deleted centroid cache file")
+            except OSError as e:
+                logger.warning("[db] Failed to delete centroid cache: %s", e)
 
     @contextmanager
     def _connection(self):
@@ -940,12 +1017,29 @@ class StepSignatureDB:
             return None
 
     def _ensure_centroid_matrix(self):
-        """Build or refresh the cached centroid matrix for fast similarity search."""
+        """Build or refresh the cached centroid matrix for fast similarity search.
+
+        Tries to load from disk cache first for fast startup.
+        Falls back to building from DB if cache is missing or stale.
+        """
         if self._centroid_matrix is not None:
             return  # Already loaded
 
+        # Try loading from disk cache first (fast path)
+        if self._load_centroid_matrix_from_cache():
+            return  # Loaded successfully, rows will be fetched lazily
+
+        # Slow path: build from DB
+        # Select only columns needed for matrix building + from_row_fast()
+        # Skips: centroid_bucket, embedding_sum, clarifying_questions, examples, is_archived, last_rewrite_at
         with self._connection() as conn:
-            cursor = conn.execute("SELECT * FROM step_signatures")
+            cursor = conn.execute("""
+                SELECT id, signature_id, centroid, embedding_count, step_type,
+                       description, param_descriptions, dsl_script, dsl_type,
+                       uses, successes, is_semantic_umbrella, is_root, depth,
+                       created_at, last_used_at
+                FROM step_signatures
+            """)
             rows = cursor.fetchall()
 
         valid_rows = []
@@ -969,6 +1063,8 @@ class StepSignatureDB:
             self._centroid_sig_ids = sig_ids
             self._centroid_rows = valid_rows
             logger.debug("[db] Built pre-normalized centroid matrix: %d signatures", len(sig_ids))
+            # Save to disk cache for next startup
+            self._save_centroid_matrix_to_cache()
         else:
             self._centroid_matrix = np.array([], dtype=np.float32).reshape(0, 768)
             self._centroid_sig_ids = []
@@ -979,6 +1075,8 @@ class StepSignatureDB:
         self._centroid_matrix = None
         self._centroid_sig_ids = None
         self._centroid_rows = None
+        # Also delete disk cache so it rebuilds on next load
+        self._delete_centroid_cache()
 
     def invalidate_root_cache(self):
         """Invalidate cached root signature (call when DB is cleared)."""
@@ -1657,13 +1755,16 @@ class StepSignatureDB:
         credits: dict[int, float],
         max_depth: int = None,
     ):
-        """Recursively collect credits for parent umbrellas (tree structure).
+        """Collect credits for parent umbrellas using recursive CTE (single query).
+
+        Replaces recursive function calls with one SQL query that fetches
+        all ancestor umbrellas up to max_depth in a single round-trip.
 
         Args:
             conn: Database connection
             signature_id: Current signature ID
             decay_factor: Credit multiplier per level (e.g., 0.7^depth)
-            current_depth: Current depth in traversal
+            current_depth: Starting depth (usually 1)
             credits: Dict accumulating {parent_id: total_credit}
             max_depth: Max depth to traverse (default from config)
         """
@@ -1672,26 +1773,37 @@ class StepSignatureDB:
         if current_depth > max_depth:
             return
 
-        # Get parent umbrella (single parent in tree structure)
-        row = conn.execute(
-            """SELECT r.parent_id
-               FROM signature_relationships r
-               JOIN step_signatures s ON r.parent_id = s.id
-               WHERE r.child_id = ? AND s.is_semantic_umbrella = 1""",
-            (signature_id,)
-        ).fetchone()
+        # Fetch all ancestor umbrellas in ONE query using recursive CTE
+        cursor = conn.execute(
+            """WITH RECURSIVE ancestors AS (
+                -- Base case: direct parent
+                SELECT r.parent_id, 1 as depth
+                FROM signature_relationships r
+                JOIN step_signatures s ON r.parent_id = s.id
+                WHERE r.child_id = ? AND s.is_semantic_umbrella = 1
 
-        if not row:
-            return
+                UNION ALL
 
-        parent_id = row[0]
-        credit = decay_factor ** current_depth
-        credits[parent_id] = credit
-
-        # Recurse to grandparent
-        self._collect_parent_credits(
-            conn, parent_id, decay_factor, current_depth + 1, credits, max_depth
+                -- Recursive case: grandparents and beyond
+                SELECT r.parent_id, a.depth + 1
+                FROM signature_relationships r
+                JOIN step_signatures s ON r.parent_id = s.id
+                JOIN ancestors a ON r.child_id = a.parent_id
+                WHERE a.depth < ? AND s.is_semantic_umbrella = 1
+            )
+            SELECT parent_id, depth FROM ancestors
+            ORDER BY depth""",
+            (signature_id, max_depth),
         )
+
+        # Compute credits for each ancestor based on depth
+        for row in cursor:
+            parent_id = row[0]
+            depth = row[1] + current_depth - 1  # Adjust for starting depth
+            credit = decay_factor ** depth
+            # Take max credit if already seen (from multiple children)
+            if parent_id not in credits or credit > credits[parent_id]:
+                credits[parent_id] = credit
 
     # =========================================================================
     # NL Interface Updates (for later learning)
@@ -1806,10 +1918,22 @@ class StepSignatureDB:
     # =========================================================================
 
     def get_all_signatures(self) -> list[StepSignature]:
-        """Get all signatures in the database."""
+        """Get all signatures in the database (fast variant).
+
+        Uses selective columns and skips expensive JSON parsing.
+        For full signatures with all fields, use get_signature() by ID.
+        """
+        # Select only columns needed for from_row_fast()
+        # Skips: centroid_bucket, embedding_sum, clarifying_questions, examples, is_archived, last_rewrite_at
         with self._connection() as conn:
-            cursor = conn.execute("SELECT * FROM step_signatures")
-            return [self._row_to_signature(row) for row in cursor.fetchall()]
+            cursor = conn.execute("""
+                SELECT id, signature_id, centroid, embedding_count, step_type,
+                       description, param_descriptions, dsl_script, dsl_type,
+                       uses, successes, is_semantic_umbrella, is_root, depth,
+                       created_at, last_used_at
+                FROM step_signatures
+            """)
+            return [self._row_to_signature_fast(row) for row in cursor.fetchall()]
 
     def get_signature_hints(
         self,

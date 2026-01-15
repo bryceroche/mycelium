@@ -73,6 +73,7 @@ CREATE INDEX IF NOT EXISTS idx_sig_depth ON step_signatures(depth);
 CREATE INDEX IF NOT EXISTS idx_sig_is_root ON step_signatures(is_root);
 CREATE INDEX IF NOT EXISTS idx_sig_dsl_type ON step_signatures(dsl_type);
 CREATE INDEX IF NOT EXISTS idx_sig_umbrella_archived ON step_signatures(is_semantic_umbrella, is_archived);
+CREATE INDEX IF NOT EXISTS idx_sig_archived_created ON step_signatures(is_archived, created_at);
 
 -- =============================================================================
 -- SIGNATURE RELATIONSHIPS: Tree structure for parent-child routing
@@ -124,6 +125,7 @@ CREATE TABLE IF NOT EXISTS step_usage_log (
 );
 
 CREATE INDEX IF NOT EXISTS idx_usage_sig ON step_usage_log(signature_id);
+CREATE INDEX IF NOT EXISTS idx_usage_sig_created ON step_usage_log(signature_id, created_at);
 
 -- =============================================================================
 -- STEP FAILURES: Track failure patterns for learning (per CLAUDE.md)
@@ -143,6 +145,7 @@ CREATE TABLE IF NOT EXISTS step_failures (
 CREATE INDEX IF NOT EXISTS idx_failures_sig ON step_failures(signature_id);
 CREATE INDEX IF NOT EXISTS idx_failures_type ON step_failures(failure_type);
 CREATE INDEX IF NOT EXISTS idx_failures_created ON step_failures(created_at);
+CREATE INDEX IF NOT EXISTS idx_failures_created_sig ON step_failures(created_at, signature_id);
 
 -- =============================================================================
 -- METADATA: Key-value store for DB-level settings
@@ -228,6 +231,10 @@ def migrate_db(conn) -> None:
         "CREATE INDEX IF NOT EXISTS idx_sig_is_root ON step_signatures(is_root)",
         "CREATE INDEX IF NOT EXISTS idx_sig_dsl_type ON step_signatures(dsl_type)",
         "CREATE INDEX IF NOT EXISTS idx_sig_umbrella_archived ON step_signatures(is_semantic_umbrella, is_archived)",
+        # Performance indexes (added for query optimization)
+        "CREATE INDEX IF NOT EXISTS idx_sig_archived_created ON step_signatures(is_archived, created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_usage_sig_created ON step_usage_log(signature_id, created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_failures_created_sig ON step_failures(created_at, signature_id)",
     ]
     for sql in index_migrations:
         try:
