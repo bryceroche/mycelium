@@ -896,14 +896,14 @@ Respond with ONLY the number (0-{len(children)})."""
                 if isinstance(val, (int, float)):
                     logger.info("[solver] Extraction-only step: %s = %s", key, val)
                     return str(val)
-                elif isinstance(val, str) and not (val.startswith('{') and val.endswith('}')):
-                    # String value that's not a reference
+                elif isinstance(val, str) and val and not (val.startswith('{') and val.endswith('}')):
+                    # Non-empty string value that's not a reference
                     try:
                         num_val = float(val)
                         logger.info("[solver] Extraction-only step: %s = %s", key, num_val)
                         return str(num_val)
                     except ValueError:
-                        pass
+                        logger.debug("[solver] Non-numeric string value for %s: %s", key, val[:50])
             logger.debug("[solver] No extractable value found in extracted_values")
             return None
 

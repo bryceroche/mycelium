@@ -622,11 +622,12 @@ def _find_similar_successful_dsl(
                 step_type, best_match.step_type, best_similarity
             )
             # Parse and return the DSL
-            try:
-                dsl_data = json.loads(best_match.dsl_script)
-                return best_match.dsl_script, dsl_data.get("type", "math")
-            except json.JSONDecodeError:
-                pass
+            if best_match.dsl_script:
+                try:
+                    dsl_data = json.loads(best_match.dsl_script)
+                    return best_match.dsl_script, dsl_data.get("type", "math")
+                except (json.JSONDecodeError, TypeError):
+                    pass
 
         return None
 
