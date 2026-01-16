@@ -83,18 +83,27 @@ class DecayState:
         """How many days has this signature been in current status."""
         now = datetime.now(timezone.utc)
 
+        def parse_ts(ts_str: str) -> float:
+            """Parse timestamp and return days since then, or 0.0 on error."""
+            if not ts_str or not ts_str.strip():
+                return 0.0
+            try:
+                ts = datetime.fromisoformat(ts_str.replace('Z', '+00:00'))
+                # Ensure timezone-aware comparison
+                if ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=timezone.utc)
+                return (now - ts).total_seconds() / 86400.0
+            except (ValueError, TypeError):
+                return 0.0
+
         if self.status == DecayStatus.ARCHIVED and self.archived_at:
-            ts = datetime.fromisoformat(self.archived_at.replace('Z', '+00:00'))
-            return (now - ts).total_seconds() / 86400.0
+            return parse_ts(self.archived_at)
         elif self.status == DecayStatus.CRITICAL and self.entered_critical_at:
-            ts = datetime.fromisoformat(self.entered_critical_at.replace('Z', '+00:00'))
-            return (now - ts).total_seconds() / 86400.0
+            return parse_ts(self.entered_critical_at)
         elif self.status == DecayStatus.WARNING and self.entered_warning_at:
-            ts = datetime.fromisoformat(self.entered_warning_at.replace('Z', '+00:00'))
-            return (now - ts).total_seconds() / 86400.0
+            return parse_ts(self.entered_warning_at)
         elif self.last_healthy_at:
-            ts = datetime.fromisoformat(self.last_healthy_at.replace('Z', '+00:00'))
-            return (now - ts).total_seconds() / 86400.0
+            return parse_ts(self.last_healthy_at)
 
         return 0.0
 
