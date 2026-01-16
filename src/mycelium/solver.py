@@ -46,6 +46,10 @@ from mycelium.config import (
     ZERO_LLM_MIN_USES,
     ZERO_LLM_REQUIRE_DSL,
     DSL_EXPR_CACHE_MAX_SIZE,
+    ACCURACY_PRIOR_BASELINE,
+    ACCURACY_PRIOR_DECAY_COUNT,
+    HINT_LIMIT,
+    HINT_MIN_SIMILARITY,
 )
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
@@ -139,10 +143,10 @@ def update_accuracy(success: bool) -> float:
     total = _accuracy_cache["total"]
     if total > 0:
         raw_accuracy = _accuracy_cache["successes"] / total
-        # Apply smoothing: blend with prior (assume 20% baseline)
+        # Apply smoothing: blend with prior (configurable baseline)
         # This prevents wild swings early on
-        prior_weight = max(0, 10 - total) / 10  # Decays over first 10 problems
-        _accuracy_cache["accuracy"] = prior_weight * 0.2 + (1 - prior_weight) * raw_accuracy
+        prior_weight = max(0, ACCURACY_PRIOR_DECAY_COUNT - total) / ACCURACY_PRIOR_DECAY_COUNT
+        _accuracy_cache["accuracy"] = prior_weight * ACCURACY_PRIOR_BASELINE + (1 - prior_weight) * raw_accuracy
 
     _accuracy_cache["last_update"] = now
     return _accuracy_cache["accuracy"]
@@ -154,30 +158,46 @@ def get_accuracy() -> float:
 
 
 def get_expansion_rate() -> float:
-    """Calculate smooth expansion rate based on accuracy and signature count.
+    """Calculate smooth expansion rate based on accuracy, signature count, and training mode.
 
-    Formula: expansion_rate = (1 - accuracy) * (1 + k * exp(-sig_count / threshold))
+    Formula: expansion = (1 - accuracy^weight) * cold_boost * sig_limit_factor
 
     - Failure-driven: low accuracy → high expansion
     - Cold-start boost: few signatures → extra multiplier
-    - Smooth taper: as system matures, expansion naturally decreases
+    - Asymptotic limit: approaches 0 as signatures reach MAX_SIGNATURES
+    - Training mode: higher accuracy weight (more aggressive on failure)
 
     Returns:
         Expansion rate in [EXPANSION_MIN_RATE, EXPANSION_MAX_RATE]
     """
     import math
+    from mycelium.config import (
+        TRAINING_MODE,
+        MAX_SIGNATURES,
+        SIGNATURE_LIMIT_THRESHOLD,
+        SIGNATURE_LIMIT_STEEPNESS,
+        TRAINING_ACCURACY_WEIGHT,
+        INFERENCE_ACCURACY_WEIGHT,
+    )
 
     accuracy = get_accuracy()
     sig_count = get_signature_count()
 
-    # Cold-start boost: decays exponentially as signatures grow
+    # 1. Asymptotic signature limit: sigmoid decay as we approach MAX_SIGNATURES
+    # sig_limit_factor = 1 / (1 + exp((sig_count - threshold) / steepness))
+    # At sig_count=0: ~1.0, at threshold: ~0.5, at MAX: ~0.0
+    sig_limit_factor = 1.0 / (1.0 + math.exp((sig_count - SIGNATURE_LIMIT_THRESHOLD) / SIGNATURE_LIMIT_STEEPNESS))
+
+    # 2. Cold-start boost: decays exponentially as signatures grow
     cold_start_boost = 1.0 + EXPANSION_COLD_START_BOOST * math.exp(-sig_count / EXPANSION_SIG_THRESHOLD)
 
-    # Failure-driven: expand more when accuracy is low
-    failure_rate = 1.0 - accuracy
+    # 3. Failure-driven: expand more when accuracy is low
+    # Training mode: higher weight makes it more sensitive to low accuracy
+    accuracy_weight = TRAINING_ACCURACY_WEIGHT if TRAINING_MODE else INFERENCE_ACCURACY_WEIGHT
+    failure_rate = 1.0 - (accuracy ** accuracy_weight)
 
     # Combined expansion rate
-    expansion = failure_rate * cold_start_boost
+    expansion = failure_rate * cold_start_boost * sig_limit_factor
 
     # Clamp to configured bounds
     expansion = max(EXPANSION_MIN_RATE, min(EXPANSION_MAX_RATE, expansion))
@@ -509,9 +529,9 @@ class Solver:
 
             # 1. Plan: Decompose into steps (with signature hints for NL interface)
             signature_hints = self.step_db.get_signature_hints(
-                limit=3,  # Reduced from 15 - most hints unused, saves ~1000 tokens
+                limit=HINT_LIMIT,
                 problem_embedding=problem_embedding,
-                min_similarity=0.5,  # Higher threshold = more relevant hints only
+                min_similarity=HINT_MIN_SIMILARITY,
             )
 
             # Decompose problem into steps

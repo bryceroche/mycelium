@@ -25,8 +25,8 @@ import os
 
 # TRAINING_MODE = True: DSL avoidance DISABLED, collect all failure data
 # TRAINING_MODE = False: DSL avoidance ENABLED, skip known-bad DSLs
-# Keep True during data collection phase
-TRAINING_MODE = True
+# Set via environment variable or CLI: MYCELIUM_TRAINING_MODE=true/false
+TRAINING_MODE = os.getenv("MYCELIUM_TRAINING_MODE", "true").lower() in ("true", "1", "yes")
 
 # =============================================================================
 # SIGNATURE MATCHING
@@ -209,9 +209,20 @@ DECAY_ARCHIVE_GRACE_DAYS = 30  # Wait 30 days before archiving
 DECAY_MAX_ACTIONS_PER_RUN = 10  # Max signatures to act on per cycle
 
 # =============================================================================
+# EMBEDDING MODEL
+# =============================================================================
+# Supports multiple embedding backends:
+# - "tbs17/MathBERT": Local math-specific embeddings (768-dim, requires sentence-transformers)
+# - "gemini-embedding-001": Google Gemini API embeddings (768-dim, requires GOOGLE_API_KEY)
+# - "all-MiniLM-L6-v2": Local fast embeddings (384-dim)
+
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "gemini-embedding-001")  # Default to Gemini
+EMBEDDING_DIM = 768  # Dimension for current model (both MathBERT and Gemini are 768)
+
+# =============================================================================
 # EMBEDDING CACHE
 # =============================================================================
-# Two-tier cache for MathBERT embeddings (expensive to compute ~50ms each).
+# Two-tier cache for embeddings (expensive to compute).
 # L1: In-memory LRU, L2: Persistent SQLite disk cache.
 
 EMBEDDING_CACHE_ENABLED = True  # Enable embedding caching
@@ -260,18 +271,42 @@ DEPTH_DECOMPOSE_MIN_PROB = 0.05  # Floor probability (never fully disable decomp
 # =============================================================================
 # Per CLAUDE.md: "A SMOOTH and CONTINUOUS learning process is key"
 #
-# Formula: expansion_rate = (1 - accuracy) * (1 + k * exp(-sig_count / threshold))
+# Formula (training): expansion = (1 - accuracy^weight) * cold_boost * sig_limit_factor
+# Formula (inference): expansion = (1 - accuracy) * cold_boost * sig_limit_factor
 #
 # - Failure-driven: low accuracy → high expansion
 # - Cold-start boost: few signatures → extra multiplier
-# - Smooth taper: as system matures, expansion naturally decreases
+# - Asymptotic limit: as signatures approach MAX, creation rate → 0
+# - Training mode: weights accuracy higher (more aggressive branching on failure)
 #
 # No toggle needed - the math handles the transition automatically.
 
+# Asymptotic signature limit
+# Sigmoid function: creation_factor = 1 / (1 + exp((sig_count - threshold) / steepness))
+# Approaches 0 as sig_count → MAX_SIGNATURES
+MAX_SIGNATURES = 10000           # Hard cap on signature count
+SIGNATURE_LIMIT_THRESHOLD = 8000 # Start heavy throttling at 80% of max
+SIGNATURE_LIMIT_STEEPNESS = 500  # Controls how fast throttling kicks in
+
+# Training vs Inference accuracy weighting
+# Training: weight > 1 makes expansion more sensitive to low accuracy
+# Inference: weight = 1 for linear relationship
+TRAINING_ACCURACY_WEIGHT = 2.0   # Square accuracy: (1 - acc^2) - more aggressive
+INFERENCE_ACCURACY_WEIGHT = 1.0  # Linear: (1 - acc) - normal
+
+# Cold-start boost (same as before)
 EXPANSION_COLD_START_BOOST = 1.0  # k: extra multiplier during cold start (1.0 = 2x at start)
 EXPANSION_SIG_THRESHOLD = 3000   # Signatures needed for cold-start boost to decay to ~37%
 EXPANSION_MIN_RATE = 0.05        # Floor: always some exploration (5%)
 EXPANSION_MAX_RATE = 1.0         # Cap: never exceed 100%
+
+# Accuracy smoothing (prevents wild swings early on)
+ACCURACY_PRIOR_BASELINE = 0.2    # Assumed baseline accuracy before any data
+ACCURACY_PRIOR_DECAY_COUNT = 10  # Problems before prior fully decays
+
+# Signature hints for NL interface
+HINT_LIMIT = 3                   # Number of hints to include (reduced from 15, saves ~1000 tokens)
+HINT_MIN_SIMILARITY = 0.5        # Minimum similarity for hints (higher = more relevant only)
 
 RECURSIVE_DECOMPOSITION_ENABLED = True  # Enable decomposition for complex steps
 RECURSIVE_MAX_DEPTH = 9  # Max routing depth: deep decomposition for complex problems
