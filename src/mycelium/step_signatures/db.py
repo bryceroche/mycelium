@@ -17,7 +17,7 @@ import sqlite3
 import time
 import uuid
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Optional, Literal
 
 import numpy as np
@@ -1018,7 +1018,7 @@ class StepSignatureDB:
             dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication.
         """
         sig_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         # Check if this will be the root (first signature in DB)
         root_row = conn.execute(
@@ -1384,8 +1384,7 @@ class StepSignatureDB:
 
     def mark_signature_rewritten(self, signature_id: int) -> None:
         """Mark a signature as recently rewritten (for cooldown tracking)."""
-        from datetime import datetime
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         with self._connection() as conn:
             # Store in last_used_at for now (could add dedicated column later)
             conn.execute(
@@ -1395,8 +1394,7 @@ class StepSignatureDB:
 
     def count_recently_rewritten(self, hours: int = 24) -> int:
         """Count signatures rewritten within the given time period."""
-        from datetime import datetime, timedelta
-        cutoff = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
         with self._connection() as conn:
             # This is approximate - uses last_used_at as proxy
             row = conn.execute(
@@ -1491,7 +1489,7 @@ class StepSignatureDB:
 
         # Try updating with new bucket if changed, fall back to keeping old bucket on collision
         if update_last_used:
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(timezone.utc).isoformat()
             if bucket_changed:
                 try:
                     conn.execute(
@@ -1629,7 +1627,7 @@ class StepSignatureDB:
         Returns:
             New uses count (for triggering DSL regeneration on mod 10)
         """
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         with self._connection() as conn:
             # Insert usage log (step_completed = step returned result, not problem correct)
@@ -1800,7 +1798,7 @@ class StepSignatureDB:
         Returns:
             ID of the failure record
         """
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         with self._connection() as conn:
             cursor = conn.execute(
@@ -2483,8 +2481,7 @@ class StepSignatureDB:
             logger.warning("[db] Rejecting self-reference: parent_id=%d == child_id=%d", parent_id, child_id)
             return False
 
-        from datetime import datetime
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         with self._connection() as conn:
             # Check if child already has a parent (tree structure - single parent)
@@ -2774,7 +2771,7 @@ class StepSignatureDB:
         step_type = normalize_step_text(description)[:50]
 
         with self._connection() as conn:
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(timezone.utc).isoformat()
             sig_id = f"umbrella_{uuid.uuid4().hex[:8]}"
             centroid_json = json.dumps(new_centroid.tolist())
             centroid_bucket = compute_centroid_bucket(new_centroid)
