@@ -76,6 +76,7 @@ logger = logging.getLogger(__name__)
 # Caches for smooth expansion calculation
 _signature_count_cache = {"count": 0, "last_check": 0}
 _accuracy_cache = {"accuracy": 0.0, "successes": 0, "total": 0, "last_update": 0}
+_reuse_cache = {"rate": 0.0, "matched": 0, "total_steps": 0}
 
 
 def get_signature_count() -> int:
@@ -157,17 +158,45 @@ def get_accuracy() -> float:
     return _accuracy_cache["accuracy"]
 
 
+def update_reuse_rate(matched: int, total_steps: int) -> float:
+    """Update reuse rate with results from a solved problem.
+
+    Reuse rate = signatures_matched / total_steps
+    Tracks how efficiently we're reusing existing signatures.
+
+    Args:
+        matched: Number of signatures matched in this problem
+        total_steps: Total steps in this problem
+
+    Returns:
+        Current reuse rate estimate
+    """
+    _reuse_cache["matched"] += matched
+    _reuse_cache["total_steps"] += total_steps
+
+    if _reuse_cache["total_steps"] > 0:
+        _reuse_cache["rate"] = _reuse_cache["matched"] / _reuse_cache["total_steps"]
+
+    return _reuse_cache["rate"]
+
+
+def get_reuse_rate() -> float:
+    """Get current reuse rate (signatures_matched / total_steps)."""
+    return _reuse_cache["rate"]
+
+
 def get_expansion_rate() -> float:
-    """Calculate smooth expansion rate based on accuracy using sigmoid function.
+    """Calculate self-tuning expansion rate based on accuracy AND reuse efficiency.
 
-    Formula: expansion = 1 / (1 + exp((accuracy - target) / steepness))
+    Two key metrics:
+    - Accuracy: "Are we solving problems?"
+    - Reuse rate: "Are we learning efficiently?"
 
-    - At accuracy=0: expansion ≈ 1 (full branching, we need to learn)
-    - At accuracy=target: expansion = 0.5 (moderate branching)
-    - At accuracy=1: expansion → 0 (we're doing well, minimal branching)
-
-    This makes the system self-regulating: poor performance drives expansion,
-    good performance slows it down. No arbitrary signature count limits needed.
+    | Accuracy | Reuse | Action |
+    |----------|-------|--------|
+    | Low      | Low   | Slow down - fragmenting, not learning |
+    | Low      | High  | Expand - existing sigs aren't enough |
+    | High     | Any   | Minimal - we're doing well |
 
     Returns:
         Expansion rate in [EXPANSION_MIN_RATE, EXPANSION_MAX_RATE]
@@ -176,18 +205,29 @@ def get_expansion_rate() -> float:
     from mycelium.config import (
         EXPANSION_ACCURACY_TARGET,
         EXPANSION_ACCURACY_STEEPNESS,
+        EXPANSION_REUSE_COLD_FLOOR,
     )
 
     accuracy = get_accuracy()
+    reuse_rate = get_reuse_rate()
     sig_count = get_signature_count()
 
-    # Accuracy-driven sigmoid: expand when accuracy is low, slow down when high
-    # expansion = 1 / (1 + exp((accuracy - target) / steepness))
+    # 1. Accuracy-driven sigmoid: base expansion from performance
     # At accuracy=0: ~1.0 (need to branch), at target: 0.5, at 1.0: ~0
-    expansion = 1.0 / (1.0 + math.exp((accuracy - EXPANSION_ACCURACY_TARGET) / EXPANSION_ACCURACY_STEEPNESS))
+    accuracy_factor = 1.0 / (1.0 + math.exp((accuracy - EXPANSION_ACCURACY_TARGET) / EXPANSION_ACCURACY_STEEPNESS))
+
+    # 2. Reuse modulation: if we're not reusing, slow down creation
+    # Low reuse = creating signatures but not matching them = fragmentation
+    # High reuse + low accuracy = matching but failing = need to branch
+    #
+    # At cold start (few sigs), ignore reuse (give it time to build up)
+    cold_floor = math.exp(-sig_count / EXPANSION_REUSE_COLD_FLOOR)  # ~1 at start, decays
+    effective_reuse = max(reuse_rate, cold_floor)
+
+    # 3. Combine: accuracy determines desire to expand, reuse gates it
+    expansion = accuracy_factor * effective_reuse
 
     # Cold-start boost: extra expansion when we have very few signatures
-    # This ensures we branch even with 0% accuracy from prior smoothing
     cold_start_boost = 1.0 + EXPANSION_COLD_START_BOOST * math.exp(-sig_count / EXPANSION_SIG_THRESHOLD)
     expansion = expansion * cold_start_boost
 
@@ -195,8 +235,8 @@ def get_expansion_rate() -> float:
     expansion = max(EXPANSION_MIN_RATE, min(EXPANSION_MAX_RATE, expansion))
 
     logger.debug(
-        "[expansion] rate=%.2f (accuracy=%.2f, sigs=%d, boost=%.2f)",
-        expansion, accuracy, sig_count, cold_start_boost
+        "[expansion] rate=%.2f (accuracy=%.2f, reuse=%.2f, sigs=%d, boost=%.2f)",
+        expansion, accuracy, reuse_rate, sig_count, cold_start_boost
     )
 
     return expansion
@@ -1551,12 +1591,13 @@ Expression:"""
         ]
         self.step_db.update_problem_outcome(signature_ids, correct)
 
-        # Update rolling accuracy for smooth expansion rate
+        # Update rolling accuracy and reuse rate for self-tuning expansion
         current_accuracy = update_accuracy(correct)
+        current_reuse = update_reuse_rate(result.signatures_matched, result.total_steps)
         expansion_rate = get_expansion_rate()
         logger.info(
-            "[solver] Problem %s - accuracy=%.1f%%, expansion_rate=%.2f",
-            "correct" if correct else "failed", current_accuracy * 100, expansion_rate
+            "[solver] Problem %s - accuracy=%.1f%%, reuse=%.1f%%, expansion=%.2f",
+            "correct" if correct else "failed", current_accuracy * 100, current_reuse * 100, expansion_rate
         )
 
         # Log step-level details on failure for debugging

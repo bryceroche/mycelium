@@ -281,13 +281,20 @@ DEPTH_DECOMPOSE_MIN_PROB = 0.05  # Floor probability (never fully disable decomp
 #
 # No toggle needed - the math handles the transition automatically.
 
-# Accuracy-driven expansion (self-regulating based on performance)
-# Sigmoid function: expansion = 1 / (1 + exp((accuracy - target) / steepness))
-# At accuracy=0: ~100% expansion (we need to learn)
-# At accuracy=target: 50% expansion
-# At accuracy=1: ~0% expansion (we're doing well)
-EXPANSION_ACCURACY_TARGET = 0.7   # Accuracy at which expansion drops to 50%
+# Self-tuning expansion (based on accuracy AND reuse efficiency)
+# Sigmoid function: expansion = accuracy_factor * reuse_factor
+#
+# Accuracy factor: 1 / (1 + exp((accuracy - target) / steepness))
+# - At accuracy=0: ~100% expansion (we need to learn)
+# - At accuracy=target: 50% expansion
+# - At accuracy=1: ~0% expansion (we're doing well)
+#
+# Reuse factor: max(reuse_rate, cold_floor)
+# - Low reuse = fragmenting, slow down creation
+# - High reuse + low accuracy = need more branches
+EXPANSION_ACCURACY_TARGET = 0.7      # Accuracy at which expansion drops to 50%
 EXPANSION_ACCURACY_STEEPNESS = 0.15  # Controls sigmoid sharpness (smaller = sharper cutoff)
+EXPANSION_REUSE_COLD_FLOOR = 100     # Signatures before reuse rate starts gating expansion
 
 # Cold-start boost (same as before)
 EXPANSION_COLD_START_BOOST = 1.0  # k: extra multiplier during cold start (1.0 = 2x at start)
