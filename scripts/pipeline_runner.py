@@ -226,13 +226,14 @@ async def solve_problem(
     db_path: str,
     injection_mode: str = "all",
     use_hints: bool = True,
+    compute_budget: float = 1.0,
 ) -> ProblemResult:
     """Solve a single problem with the given match mode."""
     try:
         # V2 Solver: simplified API (strict DAG mode - no LLM fallback)
         solver = Solver(db_path=db_path)
 
-        result = await solver.solve(problem=problem["problem"])
+        result = await solver.solve(problem=problem["problem"], compute_budget=compute_budget)
 
         # Check if answer matches ground truth
         is_correct = await answers_equivalent_llm(result.answer, problem["answer"])
@@ -299,11 +300,11 @@ async def solve_problem(
 
 def run_problem_sync(args: tuple) -> dict:
     """Synchronous wrapper for process pool."""
-    problem, match_mode, db_path, injection_mode, use_hints = args
+    problem, match_mode, db_path, injection_mode, use_hints, compute_budget = args
     if match_mode == "direct":
         result = asyncio.run(solve_direct(problem))
     else:
-        result = asyncio.run(solve_problem(problem, match_mode, db_path, injection_mode, use_hints))
+        result = asyncio.run(solve_problem(problem, match_mode, db_path, injection_mode, use_hints, compute_budget))
     return asdict(result)
 
 
@@ -318,9 +319,10 @@ def run_pipeline(
     seed: int = None,
     use_hints: bool = True,
     db_path: str = "mycelium.db",
+    compute_budget: float = 1.0,
 ):
     """Run the evaluation pipeline."""
-    logger.info(f"Starting pipeline: {num_problems} problems, modes={modes}, workers={num_workers}, dataset={dataset}, injection={injection_mode}, seed={seed}, hints={use_hints}, db={db_path}")
+    logger.info(f"Starting pipeline: {num_problems} problems, modes={modes}, workers={num_workers}, dataset={dataset}, injection={injection_mode}, seed={seed}, hints={use_hints}, db={db_path}, budget={compute_budget}")
 
     # Load problems
     problems = load_problems(num_problems, dataset=dataset, levels=levels, seed=seed)
@@ -333,7 +335,7 @@ def run_pipeline(
     tasks = []
     for mode in modes:
         for problem in problems:
-            tasks.append((problem, mode, db_path, injection_mode, use_hints))
+            tasks.append((problem, mode, db_path, injection_mode, use_hints, compute_budget))
 
     logger.info(f"Running {len(tasks)} total tasks ({len(problems)} problems x {len(modes)} modes)")
 
@@ -536,6 +538,12 @@ def main():
         default="mycelium.db",
         help="Path to signature database (default: mycelium.db)",
     )
+    parser.add_argument(
+        "--budget", "-b",
+        type=float,
+        default=1.0,
+        help="MCTS compute budget: 1.0=single-path, 2.0+=multi-path exploration (default: 1.0)",
+    )
     args = parser.parse_args()
 
     run_pipeline(
@@ -549,6 +557,7 @@ def main():
         seed=args.seed,
         use_hints=args.use_hints,
         db_path=args.db,
+        compute_budget=args.budget,
     )
 
 
