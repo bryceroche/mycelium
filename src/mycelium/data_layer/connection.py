@@ -166,33 +166,21 @@ class ConnectionManager:
 
 _db: Optional[ConnectionManager] = None
 
-# Check provider mode
-PROVIDER_MODE = os.getenv("MYCELIUM_PROVIDER", "local")
-
 
 def get_db():
     """Get the database connection manager.
 
-    Returns SQLiteConnectionManager for local mode,
-    CloudSQLProvider for GCP mode.
+    Always uses SQLite for simplicity. GCP mode only affects LLM/embeddings
+    (Vertex AI APIs), not the database.
     """
     global _db
     if _db is None:
-        if PROVIDER_MODE == "gcp":
-            from mycelium.providers.gcp import CloudSQLProvider
-            _db = CloudSQLProvider()
-            logger.info("[connection] Using GCP Cloud SQL provider")
-        else:
-            _db = ConnectionManager()
-            logger.info(f"[connection] Using SQLite: {_db.db_path}")
+        _db = ConnectionManager()
+        logger.info(f"[connection] Using SQLite: {_db.db_path}")
     return _db
 
 
 def reset_db():
     global _db
-    if PROVIDER_MODE == "gcp" and _db is not None:
-        _db.close()
-        _db = None
-    else:
-        ConnectionManager.reset()
-        _db = None
+    ConnectionManager.reset()
+    _db = None

@@ -23,7 +23,7 @@ class MyceliumDB:
 
     def _init_schema(self):
         with self._db.connection() as conn:
-            init_db(conn, is_postgresql=self._db.is_postgresql)
+            init_db(conn)
 
     def add_signature(
         self,

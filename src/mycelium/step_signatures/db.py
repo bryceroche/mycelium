@@ -241,10 +241,8 @@ class StepSignatureDB:
 
     def _init_schema(self):
         """Initialize database schema."""
-        # PostgreSQL schema is created separately via deploy/gcp/init_schema.sql
-        is_pg = self._db.is_postgresql if self._db else False
         with self._connection() as conn:
-            init_db(conn, is_postgresql=is_pg)
+            init_db(conn)
 
     # =========================================================================
     # Root Management (Single Entry Point)
@@ -1611,6 +1609,7 @@ class StepSignatureDB:
         step_completed: bool,
         was_injected: bool = False,
         params_extracted: dict = None,
+        difficulty: float = None,
     ) -> int:
         """Record usage of a signature (step-level, not problem-level).
 
@@ -1625,6 +1624,7 @@ class StepSignatureDB:
             step_completed: Whether the step returned a result (NOT problem correctness)
             was_injected: Whether DSL was injected
             params_extracted: Parameters that were extracted (for learning)
+            difficulty: Problem difficulty (0.0-1.0) for difficulty tracking
 
         Returns:
             New uses count (for triggering DSL regeneration on mod 10)
@@ -1656,6 +1656,10 @@ class StepSignatureDB:
                    WHERE id = ?""",
                 (signature_id,),
             )
+
+            # Update difficulty_stats if difficulty provided
+            if difficulty is not None:
+                self._update_difficulty_stats(conn, signature_id, difficulty, success=step_completed)
 
             # Get current stats for auto-demotion check
             cursor = conn.execute(
@@ -1707,6 +1711,63 @@ class StepSignatureDB:
                         )
 
             return uses
+
+    def _update_difficulty_stats(
+        self,
+        conn,
+        signature_id: int,
+        difficulty: float,
+        success: bool,
+    ):
+        """Update difficulty_stats for a signature.
+
+        Tracks usage and success by difficulty level for routing optimization.
+        Uses bucketed difficulty (rounded to 0.1) as keys.
+
+        Args:
+            conn: Database connection
+            signature_id: Signature ID
+            difficulty: Problem difficulty (0.0-1.0)
+            success: Whether the step succeeded
+        """
+        # Bucket difficulty to nearest 0.1
+        diff_key = str(round(difficulty, 1))
+
+        # Get current stats
+        row = conn.execute(
+            "SELECT difficulty_stats, max_difficulty_solved FROM step_signatures WHERE id = ?",
+            (signature_id,),
+        ).fetchone()
+
+        if not row:
+            return
+
+        # Parse existing stats
+        try:
+            stats = json.loads(row["difficulty_stats"]) if row["difficulty_stats"] else {}
+        except json.JSONDecodeError:
+            stats = {}
+
+        # Update stats for this difficulty bucket
+        if diff_key not in stats:
+            stats[diff_key] = {"uses": 0, "successes": 0}
+
+        stats[diff_key]["uses"] += 1
+        if success:
+            stats[diff_key]["successes"] += 1
+
+        # Update max_difficulty_solved if this is a new high
+        max_diff = row["max_difficulty_solved"] or 0.0
+        if success and difficulty > max_diff:
+            max_diff = difficulty
+
+        # Save updated stats
+        conn.execute(
+            """UPDATE step_signatures
+               SET difficulty_stats = ?, max_difficulty_solved = ?
+               WHERE id = ?""",
+            (json.dumps(stats), max_diff, signature_id),
+        )
 
     def record_failure(
         self,
