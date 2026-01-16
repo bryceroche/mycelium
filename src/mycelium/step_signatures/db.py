@@ -67,6 +67,52 @@ from mycelium.step_signatures.utils import (
 logger = logging.getLogger(__name__)
 
 
+# =============================================================================
+# ROUTING RESULT (for MCTS confidence scoring)
+# =============================================================================
+
+from dataclasses import dataclass, field
+
+
+@dataclass
+class RoutingResult:
+    """Result of routing an embedding through the signature hierarchy.
+
+    Includes confidence signals for MCTS multi-path exploration:
+    - confidence: Overall routing confidence (0-1), product of per-level confidences
+    - ucb1_gaps: Gap between top-2 UCB1 scores at each level (larger = more certain)
+    - alternatives: Top-k alternatives at each level (for multi-path exploration)
+
+    Usage:
+        result = db.route_through_hierarchy_v2(embedding)
+        if result.confidence < 0.5:
+            # Low confidence - consider exploring alternative paths
+            for level_alts in result.alternatives:
+                for alt_sig, alt_score in level_alts:
+                    # Try alternative path...
+    """
+    signature: Optional[StepSignature] = None  # Best matching signature (leaf)
+    path: list[StepSignature] = field(default_factory=list)  # Path from root to leaf
+    confidence: float = 1.0  # Overall confidence (0-1)
+    ucb1_gaps: list[float] = field(default_factory=list)  # Gap at each routing level
+    alternatives: list[list[tuple[StepSignature, float]]] = field(default_factory=list)  # Top-k alts per level
+
+    @property
+    def is_match(self) -> bool:
+        """Whether a signature was matched."""
+        return self.signature is not None
+
+    @property
+    def depth(self) -> int:
+        """Routing depth (number of hops from root)."""
+        return len(self.path)
+
+    @property
+    def min_gap(self) -> float:
+        """Minimum UCB1 gap across all levels (weakest link)."""
+        return min(self.ucb1_gaps) if self.ucb1_gaps else 0.0
+
+
 MatchMode = Literal["cosine", "auto"]
 
 
@@ -434,6 +480,132 @@ class StepSignatureDB:
             max_depth, current.id
         )
         return current, path
+
+    def route_with_confidence(
+        self,
+        embedding: np.ndarray,
+        min_similarity: float = 0.85,
+        max_depth: int = None,
+        top_k: int = 3,
+    ) -> RoutingResult:
+        """Route with confidence scoring for MCTS multi-path exploration.
+
+        Enhanced version of route_through_hierarchy that computes confidence
+        signals based on UCB1 score gaps between top-k children at each level.
+
+        Confidence interpretation:
+        - High confidence (>0.8): Clear winner, single path likely sufficient
+        - Medium confidence (0.5-0.8): Consider exploring 1-2 alternatives
+        - Low confidence (<0.5): High uncertainty, explore multiple paths
+
+        Args:
+            embedding: The query embedding to route
+            min_similarity: Minimum similarity threshold to follow a route
+            max_depth: Maximum depth to traverse (default from config)
+            top_k: Number of top alternatives to track at each level
+
+        Returns:
+            RoutingResult with signature, path, confidence, and alternatives
+        """
+        from mycelium.config import UMBRELLA_MAX_DEPTH
+
+        # Validate max_depth
+        if max_depth is None:
+            max_depth = UMBRELLA_MAX_DEPTH
+        max_depth = max(1, min(int(max_depth), 100))
+
+        root = self.get_root()
+        if root is None:
+            return RoutingResult(signature=None, path=[], confidence=0.0)
+
+        path = [root]
+        current = root
+        depth = 0
+        ucb1_gaps = []
+        alternatives = []
+        confidence_factors = []
+
+        while depth < max_depth:
+            # If current is not an umbrella, it's a leaf - we're done
+            if not current.is_semantic_umbrella:
+                break
+
+            # Get children of current umbrella
+            children = self.get_children(current.id, for_routing=True)
+            if not children:
+                # Umbrella with no children - treat as leaf
+                break
+
+            # Score all children with UCB1
+            parent_uses = current.uses or 1
+            scored_children = []
+
+            for child_sig, _condition in children:
+                centroid = child_sig.centroid
+                if centroid is None:
+                    continue
+                sim = cosine_similarity(embedding, centroid)
+                if sim >= min_similarity * 0.7:  # Lower threshold to capture alternatives
+                    ucb1 = compute_ucb1_score(
+                        cosine_sim=sim,
+                        uses=child_sig.uses,
+                        successes=child_sig.successes,
+                        parent_uses=parent_uses,
+                        last_used_at=child_sig.last_used_at,
+                    )
+                    scored_children.append((child_sig, ucb1, sim))
+
+            if not scored_children:
+                # No children match - return current as best effort
+                break
+
+            # Sort by UCB1 score (descending)
+            scored_children.sort(key=lambda x: x[1], reverse=True)
+
+            # Track top-k alternatives at this level
+            level_alts = [(sig, score) for sig, score, _sim in scored_children[:top_k]]
+            alternatives.append(level_alts)
+
+            # Compute confidence from UCB1 gap
+            best_score = scored_children[0][1]
+            if len(scored_children) > 1:
+                second_score = scored_children[1][1]
+                gap = best_score - second_score
+                # Normalize gap to 0-1 (empirically, gaps > 0.3 are very confident)
+                level_confidence = min(1.0, gap / 0.3)
+            else:
+                # Only one option - high confidence by default
+                gap = 1.0
+                level_confidence = 1.0
+
+            ucb1_gaps.append(gap)
+            confidence_factors.append(level_confidence)
+
+            # Check if best child meets similarity threshold
+            best_child, _best_ucb1, best_sim = scored_children[0]
+            if best_sim < min_similarity:
+                # Best child doesn't meet threshold - stop here
+                break
+
+            # Move to best child
+            path.append(best_child)
+            current = best_child
+            depth += 1
+
+        # Compute overall confidence as product of level confidences
+        # (weakest link determines overall confidence)
+        if confidence_factors:
+            overall_confidence = min(confidence_factors)  # Weakest link
+        else:
+            overall_confidence = 1.0 if current is not None else 0.0
+
+        return RoutingResult(
+            signature=current if not current.is_semantic_umbrella else None,
+            path=path,
+            confidence=overall_confidence,
+            ucb1_gaps=ucb1_gaps,
+            alternatives=alternatives,
+        )
 
     # =========================================================================
     # Core: Find or Create

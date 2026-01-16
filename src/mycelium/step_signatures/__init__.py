@@ -21,7 +21,7 @@ from mycelium.step_signatures.utils import (
     get_centroid_cache_stats,
 )
 
-from mycelium.step_signatures.db import StepSignatureDB
+from mycelium.step_signatures.db import StepSignatureDB, RoutingResult
 
 from mycelium.step_signatures.dsl_executor import (
     DSLSpec,
@@ -64,6 +64,7 @@ __all__ = [
     "StepSignature",
     "StepExample",
     "StepSignatureDB",
+    "RoutingResult",
     "DSLSpec",
     "try_execute_dsl",
     "execute_dsl_with_confidence",
