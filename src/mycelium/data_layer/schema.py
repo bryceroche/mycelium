@@ -162,7 +162,7 @@ def get_schema() -> str:
 
 
 def init_db(conn) -> None:
-    """Initialize the V2 database schema."""
+    """Initialize the V2 database schema (SQLite)."""
     conn.executescript(SQLITE_SCHEMA)
     conn.commit()
 
@@ -222,6 +222,18 @@ def migrate_db(conn) -> None:
     if "last_rewrite_at" not in existing_cols:
         migrations.append(
             "ALTER TABLE step_signatures ADD COLUMN last_rewrite_at TEXT"
+        )
+
+    # Add difficulty_stats if missing (universal tree)
+    if "difficulty_stats" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN difficulty_stats TEXT DEFAULT '{}'"
+        )
+
+    # Add max_difficulty_solved if missing (universal tree)
+    if "max_difficulty_solved" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN max_difficulty_solved REAL DEFAULT 0.0"
         )
 
     # Run migrations

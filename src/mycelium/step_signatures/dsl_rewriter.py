@@ -133,10 +133,14 @@ def _is_on_cooldown(sig) -> bool:
         return False
 
     try:
-        from datetime import datetime, timedelta
-        last_rewrite = datetime.fromisoformat(sig.last_rewrite_at)
+        from datetime import datetime, timedelta, timezone
+        last_rewrite_str = sig.last_rewrite_at.replace('Z', '+00:00')
+        last_rewrite = datetime.fromisoformat(last_rewrite_str)
+        # Ensure timezone-aware comparison
+        if last_rewrite.tzinfo is None:
+            last_rewrite = last_rewrite.replace(tzinfo=timezone.utc)
         cooldown = timedelta(hours=DSL_REWRITER_COOLDOWN_HOURS)
-        return datetime.utcnow() - last_rewrite < cooldown
+        return datetime.now(timezone.utc) - last_rewrite < cooldown
     except (ValueError, TypeError):
         return False
 

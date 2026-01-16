@@ -15,7 +15,7 @@ import re
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from typing import Optional
 
@@ -38,6 +38,17 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class StepTiming:
+    """Timing info for a single step."""
+    step_id: str
+    task: str
+    elapsed_ms: float
+    signature_type: str = ""
+    was_injected: bool = False
+    was_routed: bool = False
+
+
+@dataclass
 class ProblemResult:
     """Result from solving a single problem."""
     problem_id: str
@@ -57,6 +68,8 @@ class ProblemResult:
     matched_and_reused: int = 0  # Matched AND (DSL succeeded OR routed)
     new_signatures_created: int = 0
     error: Optional[str] = None
+    # Per-step timing breakdown
+    steps: list = field(default_factory=list)
 
 
 def extract_boxed_answer(solution: str) -> str:
@@ -213,13 +226,14 @@ async def solve_problem(
     db_path: str,
     injection_mode: str = "all",
     use_hints: bool = True,
+    compute_budget: float = 1.0,
 ) -> ProblemResult:
     """Solve a single problem with the given match mode."""
     try:
         # V2 Solver: simplified API (strict DAG mode - no LLM fallback)
         solver = Solver(db_path=db_path)
 
-        result = await solver.solve(problem=problem["problem"])
+        result = await solver.solve(problem=problem["problem"], compute_budget=compute_budget)
 
         # Check if answer matches ground truth
         is_correct = await answers_equivalent_llm(result.answer, problem["answer"])
@@ -237,6 +251,19 @@ async def solve_problem(
                     learn_result["decomposed"], learn_result["children_created"]
                 )
 
+        # Convert step results to timing info
+        step_timings = [
+            StepTiming(
+                step_id=s.step_id,
+                task=s.task[:50],
+                elapsed_ms=s.elapsed_ms,
+                signature_type=s.signature_type or "",
+                was_injected=s.was_injected,
+                was_routed=s.was_routed,
+            )
+            for s in result.steps
+        ]
+
         return ProblemResult(
             problem_id=problem["id"],
             problem=problem["problem"][:200],
@@ -253,6 +280,7 @@ async def solve_problem(
             steps_with_routing=result.steps_with_routing,
             matched_and_reused=result.matched_and_reused,
             new_signatures_created=0,  # V2 tracks this differently
+            steps=step_timings,
         )
 
     except Exception as e:
@@ -272,11 +300,11 @@ async def solve_problem(
 
 def run_problem_sync(args: tuple) -> dict:
     """Synchronous wrapper for process pool."""
-    problem, match_mode, db_path, injection_mode, use_hints = args
+    problem, match_mode, db_path, injection_mode, use_hints, compute_budget = args
     if match_mode == "direct":
         result = asyncio.run(solve_direct(problem))
     else:
-        result = asyncio.run(solve_problem(problem, match_mode, db_path, injection_mode, use_hints))
+        result = asyncio.run(solve_problem(problem, match_mode, db_path, injection_mode, use_hints, compute_budget))
     return asdict(result)
 
 
@@ -291,9 +319,10 @@ def run_pipeline(
     seed: int = None,
     use_hints: bool = True,
     db_path: str = "mycelium.db",
+    compute_budget: float = 1.0,
 ):
     """Run the evaluation pipeline."""
-    logger.info(f"Starting pipeline: {num_problems} problems, modes={modes}, workers={num_workers}, dataset={dataset}, injection={injection_mode}, seed={seed}, hints={use_hints}, db={db_path}")
+    logger.info(f"Starting pipeline: {num_problems} problems, modes={modes}, workers={num_workers}, dataset={dataset}, injection={injection_mode}, seed={seed}, hints={use_hints}, db={db_path}, budget={compute_budget}")
 
     # Load problems
     problems = load_problems(num_problems, dataset=dataset, levels=levels, seed=seed)
@@ -306,7 +335,7 @@ def run_pipeline(
     tasks = []
     for mode in modes:
         for problem in problems:
-            tasks.append((problem, mode, db_path, injection_mode, use_hints))
+            tasks.append((problem, mode, db_path, injection_mode, use_hints, compute_budget))
 
     logger.info(f"Running {len(tasks)} total tasks ({len(problems)} problems x {len(modes)} modes)")
 
@@ -509,6 +538,12 @@ def main():
         default="mycelium.db",
         help="Path to signature database (default: mycelium.db)",
     )
+    parser.add_argument(
+        "--budget", "-b",
+        type=float,
+        default=1.0,
+        help="MCTS compute budget: 1.0=single-path, 2.0+=multi-path exploration (default: 1.0)",
+    )
     args = parser.parse_args()
 
     run_pipeline(
@@ -522,6 +557,7 @@ def main():
         seed=args.seed,
         use_hints=args.use_hints,
         db_path=args.db,
+        compute_budget=args.budget,
     )
 
 

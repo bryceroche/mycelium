@@ -25,45 +25,24 @@ import os
 
 # TRAINING_MODE = True: DSL avoidance DISABLED, collect all failure data
 # TRAINING_MODE = False: DSL avoidance ENABLED, skip known-bad DSLs
-# Keep True during data collection phase
-TRAINING_MODE = True
+# Set via environment variable or CLI: MYCELIUM_TRAINING_MODE=true/false
+TRAINING_MODE = os.getenv("MYCELIUM_TRAINING_MODE", "true").lower() in ("true", "1", "yes")
 
 # =============================================================================
 # SIGNATURE MATCHING
 # =============================================================================
 
-# Similarity Thresholds (adjusted for 768-dim MathBERT embeddings)
+# Similarity Thresholds (adjusted for 768-dim embeddings)
 # Cold-start aware: higher threshold early (more branching), lower later (consolidation)
 MIN_MATCH_THRESHOLD = 0.85  # Mature threshold - reduce signature fragmentation
 MIN_MATCH_THRESHOLD_COLD_START = 0.92  # Cold start threshold - create more signatures
 MIN_MATCH_RAMP_SIGNATURES = 50  # Signatures needed to reach mature threshold
-MERGE_SIMILARITY_THRESHOLD = 0.75
-VARIANT_THRESHOLD = 0.40
-DEFAULT_INJECTION_THRESHOLD = 0.90  # Only inject on high-confidence matches
-PIPELINE_MIN_SIMILARITY = 0.85  # Match threshold for pipeline
-NEGATIVE_LIFT_SIMILARITY = 0.55
 
 # =============================================================================
-# DSL INJECTION
+# DSL EXECUTION
 # =============================================================================
 
-FORCE_INJECTION = True  # Always inject when signature matches (bypass lift checks)
-DSL_PROBATION_ENABLED = False  # Inject on every signature hit
-DSL_MIN_CONFIDENCE = 0.0  # Try DSL regardless of confidence
-DSL_TIMEOUT_SEC = 1.0
-DSL_SEMANTIC_MIN_CONFIDENCE = 0.0  # Disabled: let DSLs execute and fail naturally
-DSL_SEMANTIC_GATE_THRESHOLD = 0.0  # Disabled: semantic gate off (strict DAG mode)
-DSL_PARAM_SEMANTIC_THRESHOLD = 0.0  # Disabled: let param mapping try and fail
-
-# Per-DSL-type thresholds - ALL DISABLED (strict DAG mode - no LLM fallback)
-DSL_THRESHOLDS_BY_TYPE = {
-    "power": {"gate": 0.0, "param": 0.0},
-    "geometry": {"gate": 0.0, "param": 0.0},
-    "combinatorics": {"gate": 0.0, "param": 0.0},
-    "arithmetic": {"gate": 0.0, "param": 0.0},
-    "division": {"gate": 0.0, "param": 0.0},
-    "default": {"gate": 0.0, "param": 0.0},
-}
+DSL_TIMEOUT_SEC = 1.0  # Timeout for DSL script execution
 
 # DSL Operation Inference threshold (cold-start aware)
 # Ramps from COLD_START to MATURE as signature count grows
@@ -75,39 +54,8 @@ DSL_OPERATION_INFERENCE_RAMP_SIGS = 100  # Signatures needed to reach mature thr
 
 # DSL exotic operation thresholds
 # Exotic operations (**, factorial, perm, etc.) require higher confidence than basic (+, -, *, /)
-# This prevents embedding noise from matching "total eggs" to "power"
 DSL_EXOTIC_THRESHOLD_BONUS = 0.05  # Require 5% higher similarity for exotic ops
 DSL_EXOTIC_THRESHOLD_MAX = 0.92  # Cap exotic threshold to ensure it's achievable
-
-# DSL Executor thresholds
-DSL_VALUE_TYPE_THRESHOLD = 0.15  # Threshold for value type matching
-DSL_STEP_TYPE_ALIGNMENT_THRESHOLD = 0.20  # Threshold for step type alignment
-DSL_PARAM_MATCH_THRESHOLD = 0.50  # Min score to accept param match
-DSL_PARAM_EXACT_MATCH_SCORE = 0.95  # Score for exact param name match
-DSL_GENERATOR_MIN_SUCCESS_RATE = 0.80  # Min success rate for DSL generation
-
-# Negative example threshold
-NEGATIVE_EXAMPLE_THRESHOLD = 0.85  # Similarity threshold for negative examples
-
-# =============================================================================
-# EXPLORATION
-# =============================================================================
-
-EXPLORATION_RATE = 1.0  # Always explore
-EXPLORATION_UNPROVEN_RATE = 1.0  # Try unproven signatures
-EXPLORATION_MIN_LIFT = 0.0
-EXPLORATION_MIN_CONFIDENCE = 0.0
-USAGE_CONFIDENCE_DECAY = 5.0
-COLD_START_GUARANTEED_USES = 100  # Bootstrap new signatures
-PROBATION_INJECTION_RATE = 0.3
-AVOID_CACHE_TTL = 300.0  # Rebuild negative-lift cache every 5 min
-
-# =============================================================================
-# RELIABILITY THRESHOLDS
-# =============================================================================
-
-RELIABILITY_MIN_USES = 3
-RELIABILITY_MIN_SUCCESS_RATE = 0.70
 
 # =============================================================================
 # UMBRELLA PROMOTION (failing signatures → decompose into children)
@@ -149,6 +97,35 @@ MCTS_EXPLORATION_C = 1.0  # Exploration constant (higher = more exploration)
 MCTS_SIMILARITY_WEIGHT = 0.7  # Weight for semantic similarity in exploitation term
 MCTS_SUCCESS_WEIGHT = 0.3  # Weight for success rate in exploitation term
 MCTS_MIN_VISITS_FOR_UCB = 1  # Min visits before UCB exploration bonus applies
+
+# =============================================================================
+# ADAPTIVE MCTS (exploration weight and split threshold tied to accuracy)
+# =============================================================================
+# Per CLAUDE.md: "cold-start aware thresholds (adaptive branching more aggressive during cold start)"
+# Low accuracy → high exploration, lenient splits
+# High accuracy → low exploration, strict splits
+
+ADAPTIVE_ACCURACY_WINDOW_SIZE = 100  # Rolling window for accuracy calculation
+
+# Exploration weight (C) range: interpolates based on accuracy
+ADAPTIVE_EXPLORATION_C_MAX = 2.0  # Cold start: explore aggressively
+ADAPTIVE_EXPLORATION_C_MIN = 0.5  # Mature: mostly exploit
+
+# Split threshold (failure rate) range: interpolates based on accuracy
+ADAPTIVE_SPLIT_THRESHOLD_LENIENT = 0.7  # Cold start: tolerate 70% failure before split
+ADAPTIVE_SPLIT_THRESHOLD_STRICT = 0.4   # Mature: split at 40% failure
+
+# =============================================================================
+# MCTS COMPUTE BUDGET (multi-path exploration)
+# =============================================================================
+# Budget controls how many paths to explore during routing.
+# - 1.0 = single best path (default, backward compatible)
+# - 2.0 = explore up to 2 paths at low-confidence nodes
+# - 3.0+ = explore multiple paths (training mode)
+
+COMPUTE_BUDGET_DEFAULT = 1.0  # Default: single-pass (backward compatible)
+COMPUTE_BUDGET_TRAINING = 3.0  # Training: explore 3 paths for cluster splitting
+COMPUTE_BUDGET_CONFIDENCE_THRESHOLD = 0.5  # Explore alternatives when confidence < this
 
 # Bayesian prior for cold start (assume some successes before any data)
 ROUTING_PRIOR_SUCCESSES = 2
@@ -209,9 +186,23 @@ DECAY_ARCHIVE_GRACE_DAYS = 30  # Wait 30 days before archiving
 DECAY_MAX_ACTIONS_PER_RUN = 10  # Max signatures to act on per cycle
 
 # =============================================================================
+# EMBEDDING MODEL
+# =============================================================================
+# Supports multiple embedding backends:
+# - "text-embedding-3-large": OpenAI's best embeddings (up to 3072-dim, supports dimension reduction)
+# - "text-embedding-3-small": OpenAI's efficient embeddings (up to 1536-dim)
+# - "tbs17/MathBERT": Local math-specific embeddings (768-dim, requires sentence-transformers)
+# - "gemini-embedding-001": Google Gemini API embeddings (768-dim, requires GOOGLE_API_KEY)
+#
+# text-embedding-3-large is recommended for math - best quality, uses dimension reduction to 768
+
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-large")  # OpenAI's best
+EMBEDDING_DIM = 768  # Reduced from 3072 for compatibility with existing DB
+
+# =============================================================================
 # EMBEDDING CACHE
 # =============================================================================
-# Two-tier cache for MathBERT embeddings (expensive to compute ~50ms each).
+# Two-tier cache for embeddings (expensive to compute).
 # L1: In-memory LRU, L2: Persistent SQLite disk cache.
 
 EMBEDDING_CACHE_ENABLED = True  # Enable embedding caching
@@ -246,37 +237,30 @@ DSL_EXPR_CACHE_MAX_SIZE = 1000  # Max entries in DSL expression cache
 #   depth 8: 12.5% decompose
 #   depth 9+: ~0% decompose (execute)
 
-DEPTH_DECOMPOSE_ENABLED = True  # Enable depth-aware forced decomposition
+# Note: Smooth expansion is always enabled (no toggle) per CLAUDE.md
 DEPTH_FORCE_DECOMPOSE_DEPTH = 5  # Always decompose at depth 0-5
 DEPTH_DECOMPOSE_DECAY_BASE = 0.5  # Decay rate per depth beyond force threshold
 DEPTH_DECOMPOSE_MIN_PROB = 0.05  # Floor probability (never fully disable decompose option)
 
 # =============================================================================
-# DYNAMIC DEPTH ROUTING
+# EXPANSION COLD-START BOOST
 # =============================================================================
+# Extra expansion multiplier when bootstrapping (few signatures).
+# Decays as: cold_boost = 1 + exp(-sigs / COLD_START_HALFLIFE)
+#   0 sigs: 2x expansion
+#   3000 sigs: 1.37x (37% extra)
+#   6000+ sigs: ~1x (no boost, system mature)
+COLD_START_HALFLIFE = 3000  # Signatures at which cold boost decays to 37%
 
 # =============================================================================
-# SMOOTH EXPANSION RATE (replaces BIG_BANG toggle)
+# SIGNATURE HINTS
 # =============================================================================
-# Per CLAUDE.md: "A SMOOTH and CONTINUOUS learning process is key"
-#
-# Formula: expansion_rate = (1 - accuracy) * (1 + k * exp(-sig_count / threshold))
-#
-# - Failure-driven: low accuracy → high expansion
-# - Cold-start boost: few signatures → extra multiplier
-# - Smooth taper: as system matures, expansion naturally decreases
-#
-# No toggle needed - the math handles the transition automatically.
-
-EXPANSION_COLD_START_BOOST = 1.0  # k: extra multiplier during cold start (1.0 = 2x at start)
-EXPANSION_SIG_THRESHOLD = 3000   # Signatures needed for cold-start boost to decay to ~37%
-EXPANSION_MIN_RATE = 0.05        # Floor: always some exploration (5%)
-EXPANSION_MAX_RATE = 1.0         # Cap: never exceed 100%
+HINT_LIMIT = 3           # Max hints to include in prompts
+HINT_MIN_SIMILARITY = 0.5  # Min similarity for hints
 
 RECURSIVE_DECOMPOSITION_ENABLED = True  # Enable decomposition for complex steps
 RECURSIVE_MAX_DEPTH = 9  # Max routing depth: deep decomposition for complex problems
 RECURSIVE_CONFIDENCE_THRESHOLD = 0.8  # Route deeper when DSL confidence < this
-RECURSIVE_MAX_TOTAL_STEPS = 50
 
 # Umbrella routing depth limits
 _UMBRELLA_MAX_DEPTH_RAW = 10  # Configurable max depth for umbrella routing chains
@@ -284,6 +268,46 @@ _UMBRELLA_HARD_CAP = 100  # Absolute maximum to prevent unbounded recursion
 # Validate and clamp: ensure positive integer, capped at hard limit
 UMBRELLA_MAX_DEPTH = max(1, min(int(_UMBRELLA_MAX_DEPTH_RAW or 10), _UMBRELLA_HARD_CAP))
 UMBRELLA_ROUTING_THRESHOLD = 0.5  # Min similarity for umbrella child routing (lower than global 0.85 since we're picking best among known children)
+
+# =============================================================================
+# SCAFFOLD STRUCTURE (Pre-allocated tree depth for domain emergence)
+# =============================================================================
+# The universal tree pre-allocates placeholder umbrella DEPTH at startup.
+# This gives the tree vertical room to grow - domains emerge as traffic flows.
+#
+# NO HORIZONTAL PRE-ALLOCATION: We don't pre-create branches. Instead:
+#   - Create a deep chain of placeholder umbrellas (1 per level)
+#   - Branches fork DYNAMICALLY as different problem types arrive
+#   - Each problem that doesn't match existing path creates new branch
+#
+# Structure (initial):
+#   Level 0: ROOT
+#   Level 1: [placeholder]        <- single chain, forks on demand
+#   Level 2: [placeholder]
+#   ...
+#   Level N: [placeholder]
+#   Level N+1+: LEAF SIGNATURES   <- GSM8K problems land here
+#
+# Structure (after training):
+#   Level 0: ROOT
+#   Level 1: [arithmetic] [algebra] [geometry]...   <- forked from traffic
+#   Level 2: [addition] [subtraction]...
+#   ...
+
+SCAFFOLD_ENABLED = True  # Enable pre-allocated scaffold structure
+SCAFFOLD_LEVELS = 8  # Deep scaffold (8 levels before leaves)
+MIN_SIGNATURE_DEPTH = 8  # Minimum depth for leaf signatures (deep tree)
+MIN_FORK_DEPTH = 4  # Don't fork until this depth (top levels stay abstract)
+SCAFFOLD_FORK_THRESHOLD = 0.6  # Create new branch if best match below this (divergent problem)
+
+# NO HORIZONTAL SCALING: Initial scaffold is a single chain.
+# Branches fork DYNAMICALLY at runtime when problems diverge.
+#
+# Tree structure:
+#   Level 0: ROOT
+#   Level 1-3: Abstract routing (no forking, all problems flow through)
+#   Level 4-7: Domain emergence (arithmetic, algebra fork dynamically here)
+#   Level 8+: Leaf signatures (actual DSL executors)
 
 # =============================================================================
 # ZERO-LLM ROUTING (Skip planner for mature signatures)
@@ -322,8 +346,13 @@ DB_MAX_RETRIES = 5  # Max retry attempts for transient DB errors
 DB_BASE_RETRY_DELAY = 0.05  # Base delay in seconds (exponential backoff with jitter)
 
 # =============================================================================
-# LLM CLIENT (OpenAI gpt-4.1-nano)
+# LLM CLIENT
 # =============================================================================
+# Training mode uses beefy models for better decomposition and learning.
+# Inference mode uses lightweight models for fast, cost-effective execution.
+#
+# Training models (beefy): gpt-4o, claude-opus-4-20250514
+# Inference models (light): gpt-4o-mini, gpt-4.1-nano
 
 CLIENT_DEFAULT_TIMEOUT = 120.0
 CLIENT_DEFAULT_TEMPERATURE = 0.0  # Zero for deterministic responses
@@ -332,15 +361,13 @@ CLIENT_BASE_RETRY_DELAY = 1.0
 CLIENT_MAX_RETRY_DELAY = 30.0
 PLANNER_DEFAULT_TEMPERATURE = 0.0  # Zero for deterministic decomposition
 
-# Model - OpenAI gpt-4.1-nano only
-DEFAULT_MODEL = "gpt-4.1-nano"
+# Model configuration - set via TRAINING_MODE env var
+# TRAINING_MODE=true  -> use beefy models for learning
+# TRAINING_MODE=false -> use lightweight models for inference
+TRAINING_MODEL = os.getenv("TRAINING_MODEL", "gpt-4o")  # Beefy model for training
+INFERENCE_MODEL = os.getenv("INFERENCE_MODEL", "gpt-4o-mini")  # Light model for inference
+
+# Active model selection based on mode
+DEFAULT_MODEL = TRAINING_MODEL if TRAINING_MODE else INFERENCE_MODEL
 PLANNER_DEFAULT_MODEL = DEFAULT_MODEL
 SOLVER_DEFAULT_MODEL = DEFAULT_MODEL
-
-# =============================================================================
-# SELF-CONSISTENCY (Reliability through sampling)
-# =============================================================================
-
-SELF_CONSISTENCY_ENABLED = False  # Disabled for V2 simplicity (enable later)
-SELF_CONSISTENCY_SAMPLES = 3
-SELF_CONSISTENCY_TEMPERATURE = 0.5

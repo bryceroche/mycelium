@@ -33,20 +33,18 @@ from mycelium.config import (
     RECURSIVE_CONFIDENCE_THRESHOLD,
     UMBRELLA_MAX_DEPTH,
     UMBRELLA_ROUTING_THRESHOLD,
-    DEPTH_DECOMPOSE_ENABLED,
     DEPTH_FORCE_DECOMPOSE_DEPTH,
     DEPTH_DECOMPOSE_DECAY_BASE,
     DEPTH_DECOMPOSE_MIN_PROB,
-    EXPANSION_COLD_START_BOOST,
-    EXPANSION_SIG_THRESHOLD,
-    EXPANSION_MIN_RATE,
-    EXPANSION_MAX_RATE,
     ZERO_LLM_ROUTING_ENABLED,
     ZERO_LLM_MIN_SIMILARITY,
     ZERO_LLM_MIN_SUCCESS_RATE,
     ZERO_LLM_MIN_USES,
     ZERO_LLM_REQUIRE_DSL,
     DSL_EXPR_CACHE_MAX_SIZE,
+    COLD_START_HALFLIFE,
+    HINT_LIMIT,
+    HINT_MIN_SIMILARITY,
 )
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
@@ -55,6 +53,7 @@ from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.embedder import Embedder
 from mycelium.embedding_cache import cached_embed
+from mycelium.difficulty import estimate_difficulty
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +72,7 @@ logger = logging.getLogger(__name__)
 # Caches for smooth expansion calculation
 _signature_count_cache = {"count": 0, "last_check": 0}
 _accuracy_cache = {"accuracy": 0.0, "successes": 0, "total": 0, "last_update": 0}
+_reuse_cache = {"rate": 0.0, "matched": 0, "total_steps": 0}
 
 
 def get_signature_count() -> int:
@@ -120,6 +120,7 @@ def update_accuracy(success: bool) -> float:
     """Update rolling accuracy with a new result.
 
     Uses exponential moving average for smooth tracking.
+    Also records to AdaptiveExploration for MCTS parameter adaptation.
 
     Args:
         success: Whether the problem was solved correctly
@@ -130,19 +131,21 @@ def update_accuracy(success: bool) -> float:
     import time
     now = time.time()
 
+    # Record to AdaptiveExploration for MCTS parameter adaptation
+    from mycelium.mcts.adaptive import AdaptiveExploration
+    AdaptiveExploration.get_instance().record_result(success)
+
     # Update counts
     _accuracy_cache["total"] += 1
     if success:
         _accuracy_cache["successes"] += 1
 
-    # Calculate accuracy with smoothing
-    # Use simple ratio but with a floor during cold start
+    # Calculate accuracy with smoothing to prevent wild swings early on
+    # Blend with 20% prior baseline, decaying over first 10 problems
     total = _accuracy_cache["total"]
     if total > 0:
         raw_accuracy = _accuracy_cache["successes"] / total
-        # Apply smoothing: blend with prior (assume 20% baseline)
-        # This prevents wild swings early on
-        prior_weight = max(0, 10 - total) / 10  # Decays over first 10 problems
+        prior_weight = max(0, 10 - total) / 10
         _accuracy_cache["accuracy"] = prior_weight * 0.2 + (1 - prior_weight) * raw_accuracy
 
     _accuracy_cache["last_update"] = now
@@ -154,38 +157,73 @@ def get_accuracy() -> float:
     return _accuracy_cache["accuracy"]
 
 
-def get_expansion_rate() -> float:
-    """Calculate smooth expansion rate based on accuracy and signature count.
+def update_reuse_rate(matched: int, total_steps: int) -> float:
+    """Update reuse rate with results from a solved problem.
 
-    Formula: expansion_rate = (1 - accuracy) * (1 + k * exp(-sig_count / threshold))
+    Reuse rate = signatures_matched / total_steps
+    Tracks how efficiently we're reusing existing signatures.
 
-    - Failure-driven: low accuracy → high expansion
-    - Cold-start boost: few signatures → extra multiplier
-    - Smooth taper: as system matures, expansion naturally decreases
+    Args:
+        matched: Number of signatures matched in this problem
+        total_steps: Total steps in this problem
 
     Returns:
-        Expansion rate in [EXPANSION_MIN_RATE, EXPANSION_MAX_RATE]
+        Current reuse rate estimate
+    """
+    _reuse_cache["matched"] += matched
+    _reuse_cache["total_steps"] += total_steps
+
+    if _reuse_cache["total_steps"] > 0:
+        _reuse_cache["rate"] = _reuse_cache["matched"] / _reuse_cache["total_steps"]
+
+    return _reuse_cache["rate"]
+
+
+def get_reuse_rate() -> float:
+    """Get current reuse rate (signatures_matched / total_steps)."""
+    return _reuse_cache["rate"]
+
+
+def get_expansion_rate() -> float:
+    """Self-tuning expansion based on accuracy AND reuse efficiency.
+
+    | Accuracy | Reuse | Action |
+    |----------|-------|--------|
+    | Low      | Low   | Slow down - fragmenting, not learning |
+    | Low      | High  | Expand - existing sigs aren't enough |
+    | High     | Any   | Minimal - we're doing well |
+
+    Returns:
+        Expansion rate in [0.05, 1.0]
     """
     import math
 
     accuracy = get_accuracy()
+    reuse_rate = get_reuse_rate()
     sig_count = get_signature_count()
 
-    # Cold-start boost: decays exponentially as signatures grow
-    cold_start_boost = 1.0 + EXPANSION_COLD_START_BOOST * math.exp(-sig_count / EXPANSION_SIG_THRESHOLD)
+    # 1. Accuracy-driven sigmoid: base expansion from performance
+    # At accuracy=0: ~1.0, at 0.7: 0.5, at 1.0: ~0
+    accuracy_factor = 1.0 / (1.0 + math.exp((accuracy - 0.7) / 0.15))
 
-    # Failure-driven: expand more when accuracy is low
-    failure_rate = 1.0 - accuracy
+    # 2. Reuse modulation: low reuse = fragmenting, slow down
+    # At cold start (few sigs), ignore reuse (give it time to build up)
+    cold_floor = math.exp(-sig_count / 100)
+    effective_reuse = max(reuse_rate, cold_floor)
 
-    # Combined expansion rate
-    expansion = failure_rate * cold_start_boost
+    # 3. Combine: accuracy determines desire, reuse gates it
+    expansion = accuracy_factor * effective_reuse
 
-    # Clamp to configured bounds
-    expansion = max(EXPANSION_MIN_RATE, min(EXPANSION_MAX_RATE, expansion))
+    # 4. Cold-start boost for very few signatures
+    cold_boost = 1.0 + math.exp(-sig_count / COLD_START_HALFLIFE)
+    expansion = expansion * cold_boost
+
+    # Clamp to bounds
+    expansion = max(0.05, min(1.0, expansion))
 
     logger.debug(
-        "[expansion] rate=%.2f (accuracy=%.2f, sigs=%d, boost=%.2f)",
-        expansion, accuracy, sig_count, cold_start_boost
+        "[expansion] rate=%.2f (accuracy=%.2f, reuse=%.2f, sigs=%d)",
+        expansion, accuracy, reuse_rate, sig_count
     )
 
     return expansion
@@ -210,25 +248,18 @@ def should_force_decompose(depth: int) -> bool:
     Returns:
         True if should force decompose, False if should try DSL execution
     """
-    if not DEPTH_DECOMPOSE_ENABLED:
-        return False
-
-    # Get smooth expansion rate (no toggle needed)
+    # Smooth expansion is always enabled per CLAUDE.md (no toggle)
+    # Get smooth expansion rate
     expansion_rate = get_expansion_rate()
 
-    # Shallow depths: always decompose (routing layer)
-    if depth <= DEPTH_FORCE_DECOMPOSE_DEPTH:
-        # Even at shallow depths, respect expansion rate somewhat
-        # High expansion (cold start) = always decompose
-        # Low expansion (mature) = sometimes skip
-        shallow_prob = 0.5 + (expansion_rate * 0.5)  # 50-100% at shallow
-        return random.random() < shallow_prob
+    # Apply depth decay uniformly from depth 0
+    # This prevents cascade of decomposition at shallow depths
+    # depth_factor: 1.0 at depth 0, decays by DECAY_BASE per depth
+    depth_factor = DEPTH_DECOMPOSE_DECAY_BASE ** depth
 
-    # Deeper depths: expansion rate * depth decay
-    depth_beyond = depth - DEPTH_FORCE_DECOMPOSE_DEPTH
-    depth_factor = DEPTH_DECOMPOSE_DECAY_BASE ** depth_beyond  # Exponential decay
-
-    # Combined probability
+    # Combined probability: expansion_rate * depth_factor
+    # High expansion + shallow depth = higher prob
+    # Low expansion OR deep depth = lower prob
     prob = max(DEPTH_DECOMPOSE_MIN_PROB, expansion_rate * depth_factor)
 
     if random.random() < prob:
@@ -347,6 +378,7 @@ class Solver:
         self,
         problem: str,
         problem_embedding: np.ndarray,
+        difficulty: float = None,
     ) -> Optional[SolverResult]:
         """Attempt to solve without any LLM calls using mature signature tree.
 
@@ -357,6 +389,7 @@ class Solver:
         Args:
             problem: The problem text
             problem_embedding: Pre-computed embedding of the problem
+            difficulty: Problem difficulty for tracking (0.0-1.0)
 
         Returns:
             SolverResult if successful, None to fall back to planner
@@ -420,12 +453,13 @@ class Solver:
                     problem[:50], result, matched_sig.step_type, len(path), elapsed_ms
                 )
 
-                # Record usage for learning
+                # Record usage for learning (with difficulty for stats tracking)
                 self.step_db.record_usage(
                     matched_sig.id,
                     step_text=problem,
                     step_completed=True,
                     was_injected=True,
+                    difficulty=difficulty,
                 )
 
                 return SolverResult(
@@ -493,15 +527,25 @@ class Solver:
 
         return values
 
-    async def solve(self, problem: str) -> SolverResult:
+    async def solve(
+        self,
+        problem: str,
+        compute_budget: float = None,
+    ) -> SolverResult:
         """Solve a problem end-to-end.
 
         Args:
             problem: The problem text
+            compute_budget: MCTS exploration budget (default from config)
+                - 1.0 = single best path (backward compatible)
+                - 2.0+ = explore multiple paths at low-confidence nodes
 
         Returns:
             SolverResult with answer and step details
         """
+        from mycelium.config import COMPUTE_BUDGET_DEFAULT
+        if compute_budget is None:
+            compute_budget = COMPUTE_BUDGET_DEFAULT
         import time
         start_time = time.time()
 
@@ -510,16 +554,21 @@ class Solver:
             # Use cached_embed to avoid redundant computation
             problem_embedding = cached_embed(problem, self.embedder)
 
+            # 0.1. Estimate problem difficulty for adaptive behavior
+            # Difficulty affects: depth, credit multiplier, routing preferences
+            difficulty = estimate_difficulty(problem)
+            logger.debug("[solver] Estimated difficulty: %.2f for problem: %s", difficulty, problem[:50])
+
             # 0.5. Try zero-LLM solve first (skip planner for mature signatures)
-            zero_llm_result = self._try_zero_llm_solve(problem, problem_embedding)
+            zero_llm_result = self._try_zero_llm_solve(problem, problem_embedding, difficulty)
             if zero_llm_result is not None:
                 return zero_llm_result
 
             # 1. Plan: Decompose into steps (with signature hints for NL interface)
             signature_hints = self.step_db.get_signature_hints(
-                limit=3,  # Reduced from 15 - most hints unused, saves ~1000 tokens
+                limit=HINT_LIMIT,
                 problem_embedding=problem_embedding,
-                min_similarity=0.5,  # Higher threshold = more relevant hints only
+                min_similarity=HINT_MIN_SIMILARITY,
             )
 
             # Decompose problem into steps
@@ -555,8 +604,9 @@ class Solver:
             # Pre-warm DSL expression cache in parallel for independent steps
             await self._prewarm_dsl_cache(plan.steps)
 
-            # 2. Execute steps in dependency order
+            # 2. Execute steps in dependency order (parallel where possible)
             step_results = []
+            step_results_by_id = {}  # step_id → StepResult for ordering
             context = {}  # step_id → result
             step_descriptions = {}  # step_id → task description (for NL param matching)
             signatures_new = 0
@@ -565,32 +615,82 @@ class Solver:
             steps_with_routing = 0
             matched_and_reused = 0  # Matched AND (DSL succeeded OR routed)
 
-            execution_order = self._get_execution_order(plan)
+            completed_ids = set()
+            remaining_steps = list(plan.steps)
 
-            for step in execution_order:
-                # Build context from dependencies
-                step_context = {
-                    dep: context[dep]
-                    for dep in step.depends_on
-                    if dep in context
-                }
-                # Build step descriptions for semantic param matching
-                step_desc_context = {
-                    dep: step_descriptions[dep]
-                    for dep in step.depends_on
-                    if dep in step_descriptions
-                }
+            while remaining_steps:
+                # Find steps with all dependencies satisfied (ready to run)
+                ready_steps = [
+                    s for s in remaining_steps
+                    if all(dep in completed_ids for dep in s.depends_on)
+                ]
 
-                # Execute step
-                result = await self._execute_step(step, problem, step_context, step_desc_context)
-                step_results.append(result)
+                if not ready_steps:
+                    # No progress - cycle or missing dependency
+                    logger.warning("[solver] DAG stuck: %d steps remaining with unmet deps", len(remaining_steps))
+                    break
+
+                # Execute ready steps in parallel
+                async def execute_one(step):
+                    step_context = {
+                        dep: context[dep]
+                        for dep in step.depends_on
+                        if dep in context
+                    }
+                    step_desc_context = {
+                        dep: step_descriptions[dep]
+                        for dep in step.depends_on
+                        if dep in step_descriptions
+                    }
+                    return step, await self._execute_step(
+                        step, problem, step_context, step_desc_context,
+                        compute_budget=compute_budget,
+                        difficulty=difficulty,
+                    )
+
+                if len(ready_steps) > 1:
+                    logger.debug("[solver] Executing %d steps in parallel", len(ready_steps))
+
+                results = await asyncio.gather(*[execute_one(s) for s in ready_steps])
+
+                # Process results
+                failed_step = None
+                for step, result in results:
+                    step_results_by_id[step.id] = result
+                    completed_ids.add(step.id)
+                    remaining_steps.remove(step)
+
+                    # Track stats
+                    if result.is_new_signature:
+                        signatures_new += 1
+                    else:
+                        signatures_matched += 1
+                        if result.was_injected or result.was_routed:
+                            matched_and_reused += 1
+                    if result.was_injected:
+                        steps_with_injection += 1
+                    if result.was_routed:
+                        steps_with_routing += 1
+
+                    # Store result and description for dependent steps
+                    context[step.id] = result.result
+                    step_descriptions[step.id] = step.task
+
+                    # Track first failure
+                    if not result.success and failed_step is None:
+                        failed_step = (step, result)
 
                 # Abort DAG on step failure (prevent cascading empty strings)
-                if not result.success:
+                if failed_step:
+                    step, result = failed_step
                     logger.warning(
                         "[solver] Step failed, aborting DAG: step=%s task='%s'",
                         step.id, step.task[:50]
                     )
+                    # Build step_results in original order
+                    for s in plan.steps:
+                        if s.id in step_results_by_id:
+                            step_results.append(step_results_by_id[s.id])
                     elapsed_ms = (time.time() - start_time) * 1000
                     return SolverResult(
                         problem=problem,
@@ -607,22 +707,10 @@ class Solver:
                         matched_and_reused=matched_and_reused,
                     )
 
-                # Track stats
-                if result.is_new_signature:
-                    signatures_new += 1
-                else:
-                    signatures_matched += 1
-                    # Reused = DSL succeeded OR routed through umbrella
-                    if result.was_injected or result.was_routed:
-                        matched_and_reused += 1
-                if result.was_injected:
-                    steps_with_injection += 1
-                if result.was_routed:
-                    steps_with_routing += 1
-
-                # Store result and description for dependent steps
-                context[step.id] = result.result
-                step_descriptions[step.id] = step.task
+            # Build step_results in original order
+            for s in plan.steps:
+                if s.id in step_results_by_id:
+                    step_results.append(step_results_by_id[s.id])
 
             # 3. Synthesize final answer
             final_answer = await self._synthesize(problem, step_results, context)
@@ -665,6 +753,8 @@ class Solver:
         context: dict[str, str],
         step_descriptions: dict[str, str] = None,
         depth: int = 0,
+        compute_budget: float = 1.0,
+        difficulty: float = None,
     ) -> StepResult:
         """Execute a single step.
 
@@ -683,6 +773,7 @@ class Solver:
             context: step_id → result from previous steps
             step_descriptions: step_id → task description (for NL param matching)
             depth: Recursion depth for composite steps
+            compute_budget: MCTS exploration budget (>1 enables multi-path)
         """
         step_descriptions = step_descriptions or {}
         import time
@@ -690,7 +781,10 @@ class Solver:
 
         # 0. Handle composite steps (recursive DAG of DAGs)
         if step.is_composite:
-            return await self._execute_composite_step(step, problem, context, step_descriptions, depth)
+            return await self._execute_composite_step(
+                step, problem, context, step_descriptions, depth,
+                compute_budget=compute_budget,
+            )
 
         # 1. Normalize and embed step (strip numbers for better matching)
         # Use cached_embed to avoid redundant computation for repeated steps
@@ -726,17 +820,17 @@ class Solver:
             needs_decompose = True
             reason = "decompose type needs children"
         elif signature.is_semantic_umbrella:
-            children = self.step_db.get_children(signature.id)
+            children = self.step_db.get_children(signature.id, for_routing=True)
             if not children:
                 needs_decompose = True
                 reason = "umbrella has no children (auto-demoted?)"
 
         if needs_decompose:
             logger.info(
-                "[solver] Auto-decomposing '%s' (%s)",
-                signature.step_type, reason
+                "[solver] Auto-decomposing '%s' (%s, difficulty=%.2f)",
+                signature.step_type, reason, difficulty or 0.0
             )
-            await self._auto_decompose_signature(signature)
+            await self._auto_decompose_signature(signature, difficulty=difficulty)
             # Refresh signature and children after decomposition
             signature = self.step_db.get_signature(signature.id)
             children = None  # Will be re-fetched in _try_umbrella_routing
@@ -768,22 +862,41 @@ class Solver:
 
         # Try DSL at all depths - if it works, use it
         # Also try for extraction-only steps (no hint but has values)
+        explored_sigs = []  # Track all signatures explored (for backpropagation)
         if result is None and (has_dsl_hint or has_extracted_values):
-            dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
-            if dsl_result is not None:
-                result = dsl_result
-                was_injected = True
-                logger.debug("[solver] DSL executed: %s", result[:50] if result else "")
+            # Multi-path exploration when budget > 1.0
+            # Confidence check happens inside _explore_multiple_paths
+            if compute_budget > 1.0:
+                mp_result, mp_sig, explored_sigs, mp_injected = await self._explore_multiple_paths(
+                    step, problem, context, step_descriptions or {},
+                    embedding, compute_budget,
+                )
+                if mp_result is not None:
+                    result = mp_result
+                    routed_signature = mp_sig
+                    was_injected = mp_injected
+                    was_routed = True
+                    logger.info(
+                        "[solver] Multi-path found result via '%s' (explored %d sigs)",
+                        mp_sig.step_type, len(explored_sigs)
+                    )
+            else:
+                # Single-path: just try DSL on routed signature
+                dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
+                if dsl_result is not None:
+                    result = dsl_result
+                    was_injected = True
+                    logger.debug("[solver] DSL executed: %s", result[:50] if result else "")
 
-        # 4.5. COLD START: Decompose at shallow depths EVEN ON SUCCESS
-        # This explodes out the network branching to build tree structure
-        # We keep the DSL result but also create children for future routing
-        if at_shallow_depth and not routed_signature.is_semantic_umbrella:
+        # 4.5. COLD START: Decompose at shallow depths ONLY ON FAILURE
+        # If DSL succeeded, we have a working signature - no need to decompose
+        # Only decompose when DSL failed to explore alternative paths
+        if result is None and at_shallow_depth and not routed_signature.is_semantic_umbrella:
             logger.info(
-                "[solver] Depth %d: COLD START decomposing '%s' (result=%s)",
-                sig_depth, routed_signature.step_type, "success" if result else "none"
+                "[solver] Depth %d: decomposing '%s' (DSL failed, difficulty=%.2f)",
+                sig_depth, routed_signature.step_type, difficulty or 0.0
             )
-            await self._auto_decompose_signature(routed_signature)
+            await self._auto_decompose_signature(routed_signature, difficulty=difficulty)
             routed_signature = self.step_db.get_signature(routed_signature.id)
 
         # 4.6. If we don't have a result yet, try routing through umbrella
@@ -863,12 +976,36 @@ class Solver:
         # 6. Record usage (step_completed = returned result, not problem correctness)
         # Problem correctness is tracked separately via update_problem_outcome()
         step_completed = bool(result)
-        uses = self.step_db.record_usage(
-            signature_id=routed_signature.id,
-            step_text=step.task,
-            step_completed=step_completed,
-            was_injected=was_injected,
-        )
+
+        # 6.1. MCTS backpropagation: record usage for ALL explored signatures
+        # Key insight: This is how multi-path exploration teaches cluster splitting
+        # - Winning path signatures get step_completed=True
+        # - Losing path signatures get step_completed=False
+        if explored_sigs and len(explored_sigs) > 1:
+            winning_id = routed_signature.id if routed_signature else None
+            for sig in explored_sigs:
+                sig_completed = (sig.id == winning_id) and step_completed
+                self.step_db.record_usage(
+                    signature_id=sig.id,
+                    step_text=step.task,
+                    step_completed=sig_completed,
+                    was_injected=was_injected if sig.id == winning_id else False,
+                    difficulty=difficulty,
+                )
+            logger.debug(
+                "[solver] MCTS backprop: recorded %d explored sigs, winner=%s",
+                len(explored_sigs), winning_id
+            )
+            uses = routed_signature.uses + 1 if routed_signature else 0
+        else:
+            # Single-path: record normally
+            uses = self.step_db.record_usage(
+                signature_id=routed_signature.id,
+                step_text=step.task,
+                step_completed=step_completed,
+                was_injected=was_injected,
+                difficulty=difficulty,
+            )
 
         # 7. Regenerate DSL on mod 10 uses (continuous learning)
         # Background task: don't block the hot path
@@ -899,6 +1036,7 @@ class Solver:
         context: dict[str, str],
         step_descriptions: dict[str, str] = None,
         depth: int = 0,
+        compute_budget: float = 1.0,
     ) -> StepResult:
         """Execute a composite step by recursively executing its sub-plan.
 
@@ -914,6 +1052,7 @@ class Solver:
             context: step_id → result from parent/sibling steps
             step_descriptions: step_id → task description (for NL param matching)
             depth: Recursion depth for nested composites
+            compute_budget: MCTS exploration budget (>1 enables multi-path)
         """
         step_descriptions = step_descriptions or {}
         import time
@@ -959,7 +1098,8 @@ class Solver:
 
             # Recursively execute (handles nested composites)
             sub_result = await self._execute_step(
-                sub_step, problem, step_context, step_desc_context, depth=depth + 1
+                sub_step, problem, step_context, step_desc_context, depth=depth + 1,
+                compute_budget=compute_budget,
             )
             sub_results.append(sub_result)
 
@@ -1061,8 +1201,9 @@ class Solver:
         visited.add(umbrella.id)
 
         # Use pre-fetched children if available, else fetch (avoids redundant query)
+        # Per CLAUDE.md: "Umbrella routing should not require LLM call" - fast mode
         if children is None:
-            children = self.step_db.get_children(umbrella.id)
+            children = self.step_db.get_children(umbrella.id, for_routing=True)
         if not children:
             return None
 
@@ -1124,6 +1265,114 @@ class Solver:
 
         # Return child for further processing (may need decomposition on failure)
         return (None, child_sig, False)
+
+    async def _explore_multiple_paths(
+        self,
+        step: Step,
+        problem: str,
+        context: dict[str, str],
+        step_descriptions: dict[str, str],
+        embedding: np.ndarray,
+        compute_budget: float = 1.0,
+    ) -> tuple[Optional[str], StepSignature, list[StepSignature], bool]:
+        """MCTS multi-path exploration when confidence is low.
+
+        Uses route_with_confidence() to get alternatives, then explores
+        up to `compute_budget` paths in parallel. Returns best result.
+
+        Key for training: Exploring multiple paths reveals which routes
+        lead to different outcomes, helping split vocab-based clusters
+        into operation-based clusters.
+
+        Args:
+            step: The step being executed
+            problem: Original problem text
+            context: Results from previous steps
+            step_descriptions: Task descriptions for NL param matching
+            embedding: Step embedding for routing
+            compute_budget: Max paths to explore (1.0 = single path)
+
+        Returns:
+            Tuple of (result, best_signature, explored_sigs, was_injected)
+            - result: DSL execution result (or None if all failed)
+            - best_signature: The signature that produced the result
+            - explored_sigs: All signatures explored (for backpropagation)
+            - was_injected: Whether result came from DSL execution
+        """
+        from mycelium.config import COMPUTE_BUDGET_CONFIDENCE_THRESHOLD
+        from mycelium.step_signatures.db import RoutingResult
+
+        # Get routing result with confidence and alternatives
+        routing_result = self.step_db.route_with_confidence(
+            embedding,
+            min_similarity=get_adaptive_match_threshold(),
+            top_k=int(compute_budget) + 1,  # Get enough alternatives
+        )
+
+        explored_sigs = list(routing_result.path)  # Start with best path
+
+        # If high confidence or single-path mode, just use best path
+        if routing_result.confidence >= COMPUTE_BUDGET_CONFIDENCE_THRESHOLD or compute_budget <= 1.0:
+            if routing_result.signature is not None:
+                result = await self._try_dsl(
+                    routing_result.signature, step, context, step_descriptions
+                )
+                return (result, routing_result.signature, explored_sigs, result is not None)
+            return (None, routing_result.signature, explored_sigs, False)
+
+        # Low confidence + multi-path mode: explore alternatives
+        num_paths = min(int(compute_budget), len(routing_result.alternatives) + 1)
+        logger.info(
+            "[solver] Multi-path exploration: confidence=%.2f, exploring %d paths",
+            routing_result.confidence, num_paths
+        )
+
+        # Collect alternative leaf signatures to try
+        candidates = []
+
+        # Add best path's leaf if it's not an umbrella
+        if routing_result.signature and not routing_result.signature.is_semantic_umbrella:
+            candidates.append(routing_result.signature)
+
+        # Add alternatives from each level (flatten)
+        for level_alts in routing_result.alternatives:
+            for alt_sig, _score in level_alts:
+                if not alt_sig.is_semantic_umbrella and alt_sig not in candidates:
+                    candidates.append(alt_sig)
+                    explored_sigs.append(alt_sig)
+                    if len(candidates) >= num_paths:
+                        break
+            if len(candidates) >= num_paths:
+                break
+
+        if not candidates:
+            # No leaf candidates found
+            return (None, routing_result.signature, explored_sigs, False)
+
+        # Try DSL on each candidate in parallel
+        async def try_candidate(sig):
+            result = await self._try_dsl(sig, step, context, step_descriptions)
+            return (sig, result)
+
+        results = await asyncio.gather(*[try_candidate(sig) for sig in candidates])
+
+        # Find first success (or None if all failed)
+        best_sig = candidates[0]
+        best_result = None
+        for sig, result in results:
+            if result is not None:
+                best_sig = sig
+                best_result = result
+                logger.info(
+                    "[solver] Multi-path: found success via '%s'",
+                    sig.step_type
+                )
+                break
+
+        if best_result is None:
+            logger.debug("[solver] Multi-path: all %d paths failed DSL", len(candidates))
+
+        return (best_result, best_sig, explored_sigs, best_result is not None)
 
     async def _try_dsl(
         self,
@@ -1195,6 +1444,12 @@ class Solver:
                     params[key] = value
 
         if len(params) < 2:
+            # Single param = extraction step, just return the value
+            # This handles cases where planner provides dsl_hint but only 1 value
+            if len(params) == 1:
+                val = list(params.values())[0]
+                logger.info("[solver] Single-param extraction: %s", val)
+                return str(val)
             logger.debug("[solver] Need at least 2 params for DSL, got %d", len(params))
             return None
 
@@ -1485,15 +1740,22 @@ Expression:"""
         self,
         result: SolverResult,
         correct: bool,
+        difficulty: float = None,
     ) -> list[int]:
         """Propagate problem correctness to all signatures used.
 
         Call this after grading a problem to track real success rates.
         This enables negative lift detection for umbrella learning.
 
+        DIFFICULTY-WEIGHTED CREDIT: Harder problems provide more valuable signal.
+        - difficulty=0.0 (trivial) → 1.0x credit
+        - difficulty=0.5 (GSM8K) → 3.0x credit
+        - difficulty=1.0 (competition) → 5.0x credit
+
         Args:
             result: The SolverResult from solve()
             correct: Whether the final answer was correct
+            difficulty: Problem difficulty for weighted credit (0.0-1.0)
 
         Returns:
             List of signature IDs that may need decomposition (low confidence)
@@ -1503,14 +1765,15 @@ Expression:"""
             for step in result.steps
             if step.signature_id is not None
         ]
-        self.step_db.update_problem_outcome(signature_ids, correct)
+        self.step_db.update_problem_outcome(signature_ids, correct, difficulty=difficulty)
 
-        # Update rolling accuracy for smooth expansion rate
+        # Update rolling accuracy and reuse rate for self-tuning expansion
         current_accuracy = update_accuracy(correct)
+        current_reuse = update_reuse_rate(result.signatures_matched, result.total_steps)
         expansion_rate = get_expansion_rate()
         logger.info(
-            "[solver] Problem %s - accuracy=%.1f%%, expansion_rate=%.2f",
-            "correct" if correct else "failed", current_accuracy * 100, expansion_rate
+            "[solver] Problem %s - accuracy=%.1f%%, reuse=%.1f%%, expansion=%.2f",
+            "correct" if correct else "failed", current_accuracy * 100, current_reuse * 100, expansion_rate
         )
 
         # Log step-level details on failure for debugging
@@ -1541,29 +1804,37 @@ Expression:"""
 
         return candidates
 
-    async def _auto_decompose_signature(self, signature, recursion_depth: int = 0) -> bool:
+    async def _auto_decompose_signature(
+        self, signature, recursion_depth: int = 0, difficulty: float = None
+    ) -> bool:
         """Auto-decompose a decompose-type signature into computable children.
 
         Called when we encounter a decompose-type signature that needs children.
         Creates children with actual DSLs and promotes parent to umbrella.
 
         During BIG BANG phase, recursively decomposes children to explode tree structure.
+        Decomposition depth is now DIFFICULTY-AWARE:
+        - Harder problems (MATH L5) → deeper decomposition (up to 10 levels)
+        - Easier problems (GSM8K) → shallower decomposition (3-4 levels)
 
         Args:
             signature: The decompose-type signature to decompose
             recursion_depth: Current recursion depth (to prevent runaway)
+            difficulty: Problem difficulty (0.0-1.0) for adaptive depth
 
         Returns:
             True if decomposition succeeded, False otherwise
         """
         from mycelium.step_signatures.umbrella_learner import UmbrellaLearner
+        from mycelium.difficulty import get_recommended_depth
 
-        # Hard limit on recursion to prevent runaway
-        MAX_DECOMPOSE_RECURSION = 5
-        if recursion_depth >= MAX_DECOMPOSE_RECURSION:
+        # Difficulty-aware depth limit: harder problems need deeper decomposition
+        # Defaults to 5 if difficulty not provided (backward compatible)
+        max_depth = get_recommended_depth(difficulty) if difficulty is not None else 5
+        if recursion_depth >= max_depth:
             logger.debug(
-                "[solver] Decomposition recursion limit reached: depth=%d",
-                recursion_depth
+                "[solver] Decomposition depth limit reached: depth=%d, max=%d (difficulty=%.2f)",
+                recursion_depth, max_depth, difficulty or 0.0
             )
             return False
 
@@ -1585,11 +1856,11 @@ Expression:"""
                         child_depth = child_sig.depth or 0
                         if should_force_decompose(child_depth):
                             logger.debug(
-                                "[expansion] Recursive decompose: '%s' at depth %d",
-                                child_sig.step_type, child_depth
+                                "[expansion] Recursive decompose: '%s' at depth %d (difficulty=%.2f)",
+                                child_sig.step_type, child_depth, difficulty or 0.0
                             )
                             await self._auto_decompose_signature(
-                                child_sig, recursion_depth + 1
+                                child_sig, recursion_depth + 1, difficulty=difficulty
                             )
 
                 return True

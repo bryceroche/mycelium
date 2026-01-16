@@ -190,23 +190,35 @@ class UmbrellaLearner:
         Criteria:
         - dsl_type = "decompose" (no actual computation)
         - uses >= UMBRELLA_MIN_USES_FOR_EVALUATION (enough data)
-        - success_rate < UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION (failing)
+        - failure_rate > adaptive_split_threshold (failing)
         - is_semantic_umbrella = False (not already decomposed)
+
+        The split threshold is adaptive based on global accuracy:
+        - Low accuracy (cold start): lenient threshold (tolerate more failures)
+        - High accuracy (mature): strict threshold (split confidently)
         """
+        from mycelium.mcts.adaptive import AdaptiveExploration
+
         all_sigs = self.db.get_all_signatures()
+
+        # Get adaptive split threshold (failure rate)
+        adaptive = AdaptiveExploration.get_instance()
+        split_threshold = adaptive.split_threshold
+        # Convert failure threshold to max success rate
+        max_success_rate = 1.0 - split_threshold
 
         candidates = []
         for sig in all_sigs:
             if (
                 sig.dsl_type == "decompose"
                 and sig.uses >= UMBRELLA_MIN_USES_FOR_EVALUATION
-                and sig.success_rate <= UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION
+                and sig.success_rate <= max_success_rate
                 and not sig.is_semantic_umbrella
             ):
                 candidates.append(sig)
                 logger.debug(
-                    "[umbrella] Candidate: '%s' (uses=%d, success=%.1f%%)",
-                    sig.step_type, sig.uses, sig.success_rate * 100
+                    "[umbrella] Candidate: '%s' (uses=%d, success=%.1f%%, threshold=%.1f%%)",
+                    sig.step_type, sig.uses, sig.success_rate * 100, max_success_rate * 100
                 )
 
         return candidates
@@ -222,7 +234,7 @@ class UmbrellaLearner:
         """
         # Check if already an umbrella WITH children - skip decomposition
         if signature.is_semantic_umbrella:
-            existing_children = self.db.get_children(signature.id)
+            existing_children = self.db.get_children(signature.id, for_routing=True)
             if existing_children:
                 logger.warning(
                     "[umbrella] Signature %d is already an umbrella with %d children",

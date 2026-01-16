@@ -167,10 +167,16 @@ class ConnectionManager:
 _db: Optional[ConnectionManager] = None
 
 
-def get_db() -> ConnectionManager:
+def get_db():
+    """Get the database connection manager.
+
+    Always uses SQLite for simplicity. GCP mode only affects LLM/embeddings
+    (Vertex AI APIs), not the database.
+    """
     global _db
     if _db is None:
         _db = ConnectionManager()
+        logger.info(f"[connection] Using SQLite: {_db.db_path}")
     return _db
 
 

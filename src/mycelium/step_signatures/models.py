@@ -69,6 +69,11 @@ class StepSignature:
     uses: int = 0
     successes: int = 0
 
+    # Difficulty tracking (for universal tree)
+    # Format: {"0.2": {"uses": 10, "successes": 8}, "0.8": {"uses": 2, "successes": 0}}
+    difficulty_stats: dict[str, dict[str, int]] = field(default_factory=dict)
+    max_difficulty_solved: float = 0.0  # Highest difficulty this sig has succeeded on
+
     # Umbrella routing (DAG of DAGs)
     is_semantic_umbrella: bool = False  # True if routes to children
     is_root: bool = False  # True if this is THE root signature (single entry point)
@@ -85,6 +90,36 @@ class StepSignature:
     @property
     def has_dsl(self) -> bool:
         return bool(self.dsl_script)
+
+    def get_difficulty_success_rate(self, difficulty: float, tolerance: float = 0.15) -> float:
+        """Get success rate for problems at similar difficulty level.
+
+        Args:
+            difficulty: Target difficulty (0.0 to 1.0)
+            tolerance: How close difficulties must be to count
+
+        Returns:
+            Success rate for this difficulty range, or -1 if no data
+        """
+        total_uses = 0
+        total_successes = 0
+
+        for diff_str, stats in self.difficulty_stats.items():
+            try:
+                diff = float(diff_str)
+                if abs(diff - difficulty) <= tolerance:
+                    total_uses += stats.get("uses", 0)
+                    total_successes += stats.get("successes", 0)
+            except ValueError:
+                continue
+
+        if total_uses == 0:
+            return -1.0  # No data for this difficulty
+        return total_successes / total_uses
+
+    def difficulty_stats_json(self) -> str:
+        """Serialize difficulty_stats to JSON."""
+        return json.dumps(self.difficulty_stats)
 
     def get_clarifying_prompt(self) -> str:
         """Generate a prompt asking the LLM to extract parameters."""
@@ -171,6 +206,13 @@ class StepSignature:
             except json.JSONDecodeError as e:
                 logger.warning("[models] Invalid examples JSON for sig %s: %s", sig_id, e)
 
+        difficulty_stats = {}
+        if row.get("difficulty_stats"):
+            try:
+                difficulty_stats = json.loads(row["difficulty_stats"])
+            except json.JSONDecodeError as e:
+                logger.warning("[models] Invalid difficulty_stats JSON for sig %s: %s", sig_id, e)
+
         # Parse centroid and embedding_sum
         centroid = None
         if row.get("centroid"):
@@ -203,6 +245,8 @@ class StepSignature:
             examples=examples,
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
+            difficulty_stats=difficulty_stats,
+            max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,
@@ -241,6 +285,49 @@ class StepSignature:
             examples=[],  # Skip JSON parsing
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
+            difficulty_stats={},  # Skip JSON parsing
+            max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
+            is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
+            is_root=bool(row.get("is_root", 0)),
+            depth=row.get("depth", 0) or 0,
+            created_at=row.get("created_at"),
+            last_used_at=row.get("last_used_at"),
+        )
+
+    @classmethod
+    def from_row_for_routing(cls, row: dict) -> "StepSignature":
+        """Create from database row optimized for routing (parse centroid only).
+
+        ~4x faster than from_row. Use for umbrella routing where we only need
+        centroid for similarity, uses/successes for UCB1, and is_semantic_umbrella
+        for recursion. Per CLAUDE.md: "Umbrella signature routing should not
+        require an LLM call" - routing is purely embedding-based.
+
+        Parses: centroid (REQUIRED for similarity)
+        Skips: clarifying_questions, param_descriptions, examples, embedding_sum
+        """
+        from mycelium.step_signatures.utils import get_cached_centroid
+
+        # Use cached centroid to avoid repeated JSON parsing
+        centroid = get_cached_centroid(row.get("id"), row.get("centroid"))
+
+        return cls(
+            id=row.get("id"),
+            signature_id=row.get("signature_id", ""),
+            centroid=centroid,
+            embedding_sum=None,  # Skip - not needed for routing
+            embedding_count=row.get("embedding_count", 1) or 1,
+            step_type=row.get("step_type", ""),
+            description=row.get("description", ""),
+            clarifying_questions=[],  # Skip JSON parsing
+            param_descriptions={},  # Skip JSON parsing
+            dsl_script=row.get("dsl_script"),
+            dsl_type=row.get("dsl_type", "math"),
+            examples=[],  # Skip JSON parsing
+            uses=row.get("uses", 0),
+            successes=row.get("successes", 0),
+            difficulty_stats={},  # Skip JSON parsing
+            max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,

@@ -1,6 +1,6 @@
 """MyceliumDB: SQLite-backed database for step-level signatures."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 import uuid
 import os
@@ -34,7 +34,7 @@ class MyceliumDB:
         description: str = "",
     ) -> StepSignature:
         signature_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         with self._db.connection() as conn:
             cursor = conn.cursor()
@@ -107,7 +107,7 @@ class MyceliumDB:
         return self._row_to_signature(row)
 
     def update_stats(self, signature_id: str, success: bool) -> None:
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         with self._db.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
