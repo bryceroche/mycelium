@@ -33,7 +33,7 @@ GCP_REGION = os.getenv("GCP_REGION", "us-central1")
 # Training mode uses a beefier model for higher-quality signature generation
 # Once signatures are mature, zero-LLM routing bypasses the model anyway
 _TRAINING_MODE = os.getenv("TRAINING_MODE", "true").lower() == "true"
-VERTEX_AI_MODEL_TRAINING = os.getenv("VERTEX_AI_MODEL_TRAINING", "gemini-2.0-flash")
+VERTEX_AI_MODEL_TRAINING = os.getenv("VERTEX_AI_MODEL_TRAINING", "gemini-3.0-pro-preview-0827")
 VERTEX_AI_MODEL_INFERENCE = os.getenv("VERTEX_AI_MODEL_INFERENCE", "gemini-2.0-flash")
 VERTEX_AI_MODEL = VERTEX_AI_MODEL_TRAINING if _TRAINING_MODE else VERTEX_AI_MODEL_INFERENCE
 VERTEX_AI_EMBEDDING_MODEL = os.getenv("VERTEX_AI_EMBEDDING_MODEL", "gemini-embedding-001")  # 3072d
