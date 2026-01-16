@@ -412,6 +412,83 @@ class StepSignatureDB:
         )
         return True
 
+    def _create_scaffold_branch(
+        self,
+        conn,
+        parent_id: int,
+        embedding: np.ndarray,
+        depth: int,
+    ) -> Optional[StepSignature]:
+        """Create a new scaffold branch (fork) for a divergent problem type.
+
+        Called during routing when a problem doesn't match existing paths well.
+        Creates a new placeholder umbrella initialized with the problem's embedding.
+
+        Args:
+            conn: Database connection (within transaction)
+            parent_id: ID of parent umbrella to branch from
+            embedding: Embedding of the divergent problem
+            depth: Depth of the new branch
+
+        Returns:
+            The new branch signature, or None on failure
+        """
+        now = datetime.now(timezone.utc).isoformat()
+        branch_id = f"branch_L{depth}_{uuid.uuid4().hex[:8]}"
+        centroid_json = json.dumps(embedding.tolist())
+        centroid_bucket = compute_centroid_bucket(embedding)
+
+        try:
+            cursor = conn.execute(
+                """INSERT INTO step_signatures (
+                    signature_id, centroid, centroid_bucket, embedding_sum, embedding_count,
+                    step_type, description, dsl_type,
+                    is_semantic_umbrella, is_root, depth, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?, ?)""",
+                (
+                    branch_id,
+                    centroid_json,
+                    centroid_bucket,
+                    centroid_json,  # embedding_sum = centroid initially
+                    1,
+                    f"branch_L{depth}",
+                    f"Dynamic branch at level {depth}",
+                    "router",
+                    depth,
+                    now,
+                )
+            )
+            new_id = cursor.lastrowid
+
+            # Create parent-child relationship
+            conn.execute(
+                """INSERT INTO signature_relationships (parent_id, child_id, condition, created_at)
+                   VALUES (?, ?, ?, ?)""",
+                (parent_id, new_id, f"dynamic_fork_L{depth}", now)
+            )
+
+            # Invalidate caches
+            invalidate_centroid_cache(new_id)
+            self.invalidate_centroid_matrix()
+
+            # Return the new branch as a StepSignature
+            return StepSignature(
+                id=new_id,
+                signature_id=branch_id,
+                centroid=embedding,
+                embedding_count=1,
+                step_type=f"branch_L{depth}",
+                description=f"Dynamic branch at level {depth}",
+                dsl_type="router",
+                is_semantic_umbrella=True,
+                depth=depth,
+                created_at=now,
+            )
+
+        except sqlite3.IntegrityError as e:
+            logger.warning("[db] Failed to create scaffold branch: %s", e)
+            return None
+
     def propagate_centroid_to_parents(
         self,
         conn,
@@ -1016,7 +1093,7 @@ class StepSignatureDB:
             - parent_for_new: Umbrella where routing stopped (for creating new child)
             - best_similarity: Similarity of best_match
         """
-        from mycelium.config import UMBRELLA_MAX_DEPTH, SCAFFOLD_ENABLED, MIN_SIGNATURE_DEPTH
+        from mycelium.config import UMBRELLA_MAX_DEPTH, SCAFFOLD_ENABLED, MIN_SIGNATURE_DEPTH, SCAFFOLD_FORK_THRESHOLD
 
         # Validate max depth to prevent unbounded recursion
         max_depth = max(1, min(int(UMBRELLA_MAX_DEPTH or 10), 100))  # Hard cap at 100
@@ -1126,12 +1203,11 @@ class StepSignatureDB:
                 # No child matches above threshold
                 # SCAFFOLD: If we haven't reached MIN_SIGNATURE_DEPTH, keep routing
                 if SCAFFOLD_ENABLED and depth < MIN_SIGNATURE_DEPTH - 1:
-                    # Must continue deeper - pick best below-threshold or any placeholder
+                    # Find best below-threshold child
                     best_below = None
                     best_below_sim = 0.0
                     best_below_score = -float('inf')
 
-                    # First try children with centroids
                     for child, child_sim in children_with_centroids:
                         score = compute_ucb1_score(
                             child_sim, child.uses, child.successes,
@@ -1141,6 +1217,28 @@ class StepSignatureDB:
                             best_below = child
                             best_below_sim = child_sim
                             best_below_score = score
+
+                    # DYNAMIC FORKING: If best match is below fork threshold,
+                    # this problem diverges from existing paths - create new branch
+                    should_fork = (
+                        best_below_sim < SCAFFOLD_FORK_THRESHOLD or
+                        best_below is None
+                    )
+
+                    if should_fork:
+                        # Create new branch (fork) for this divergent problem type
+                        new_branch = self._create_scaffold_branch(
+                            conn, current.id, embedding, depth + 1
+                        )
+                        if new_branch:
+                            logger.info(
+                                "[db] FORK: Created new branch at depth %d (best_sim=%.2f < %.2f)",
+                                depth + 1, best_below_sim, SCAFFOLD_FORK_THRESHOLD
+                            )
+                            parent_for_new = current
+                            current = new_branch
+                            depth += 1
+                            continue
 
                     # If no children with centroids, use a placeholder
                     if best_below is None and null_centroid_children:
@@ -1152,12 +1250,12 @@ class StepSignatureDB:
                         best_below = placeholder
                         best_below_sim = 1.0
                         logger.info(
-                            "[db] Initializing scaffold placeholder (below threshold): id=%d depth=%d",
+                            "[db] Initializing scaffold placeholder: id=%d depth=%d",
                             placeholder.id, depth + 1
                         )
 
                     if best_below:
-                        # Continue routing deeper
+                        # Continue routing deeper through existing path
                         parent_for_new = current
                         current = best_below
                         depth += 1

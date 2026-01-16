@@ -270,23 +270,35 @@ UMBRELLA_MAX_DEPTH = max(1, min(int(_UMBRELLA_MAX_DEPTH_RAW or 10), _UMBRELLA_HA
 UMBRELLA_ROUTING_THRESHOLD = 0.5  # Min similarity for umbrella child routing (lower than global 0.85 since we're picking best among known children)
 
 # =============================================================================
-# SCAFFOLD STRUCTURE (Pre-allocated tree levels for domain emergence)
+# SCAFFOLD STRUCTURE (Pre-allocated tree depth for domain emergence)
 # =============================================================================
-# The universal tree pre-allocates placeholder umbrella levels at startup.
-# This gives the tree "room to grow" - domains emerge as traffic flows through.
+# The universal tree pre-allocates placeholder umbrella DEPTH at startup.
+# This gives the tree vertical room to grow - domains emerge as traffic flows.
 #
-# Structure:
+# NO HORIZONTAL PRE-ALLOCATION: We don't pre-create branches. Instead:
+#   - Create a deep chain of placeholder umbrellas (1 per level)
+#   - Branches fork DYNAMICALLY as different problem types arrive
+#   - Each problem that doesn't match existing path creates new branch
+#
+# Structure (initial):
 #   Level 0: ROOT
-#   Level 1-N: Placeholder umbrellas (SCAFFOLD_LEVELS)
-#   Level N+1+: Actual leaf signatures (MIN_SIGNATURE_DEPTH)
+#   Level 1: [placeholder]        <- single chain, forks on demand
+#   Level 2: [placeholder]
+#   ...
+#   Level N: [placeholder]
+#   Level N+1+: LEAF SIGNATURES   <- GSM8K problems land here
 #
-# GSM8K problems start at MIN_SIGNATURE_DEPTH, not at root. The levels above
-# are scaffolding that gets specialized via centroid averaging as problems route through.
+# Structure (after training):
+#   Level 0: ROOT
+#   Level 1: [arithmetic] [algebra] [geometry]...   <- forked from traffic
+#   Level 2: [addition] [subtraction]...
+#   ...
 
 SCAFFOLD_ENABLED = True  # Enable pre-allocated scaffold structure
-SCAFFOLD_LEVELS = 3  # Number of placeholder levels (domain/subdomain/operation)
-SCAFFOLD_BRANCHES_PER_LEVEL = 5  # Branches per level (5^3 = 125 placeholder slots)
-MIN_SIGNATURE_DEPTH = 3  # Minimum depth for leaf signatures (GSM8K starts here)
+SCAFFOLD_LEVELS = 6  # Deep scaffold (6 levels before leaves)
+SCAFFOLD_BRANCHES_PER_LEVEL = 1  # NO horizontal pre-allocation - branches fork dynamically
+MIN_SIGNATURE_DEPTH = 6  # Minimum depth for leaf signatures (deep tree)
+SCAFFOLD_FORK_THRESHOLD = 0.6  # Create new branch if best match below this (divergent problem)
 
 # =============================================================================
 # ZERO-LLM ROUTING (Skip planner for mature signatures)
