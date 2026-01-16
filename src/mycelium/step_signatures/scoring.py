@@ -290,6 +290,7 @@ def compute_ucb1_score(
     successes: int,
     parent_uses: int,
     last_used_at: Optional[str] = None,
+    exploration_c: Optional[float] = None,
 ) -> float:
     """Compute MCTS UCB1 score for signature routing.
 
@@ -300,7 +301,7 @@ def compute_ucb1_score(
     Formula: exploit_score + C * sqrt(ln(N) / n)
     Where:
     - exploit_score = similarity * success_rate (weighted)
-    - C = exploration constant
+    - C = exploration constant (adaptive or fixed)
     - N = parent visits (total opportunities at this routing level)
     - n = child visits (this signature's uses)
 
@@ -310,10 +311,16 @@ def compute_ucb1_score(
         successes: Number of successful uses
         parent_uses: Total uses at parent level (N)
         last_used_at: ISO timestamp of last use (for staleness decay)
+        exploration_c: Override exploration constant (None = use adaptive)
 
     Returns:
         UCB1 score (higher = better choice)
     """
+    # Get exploration constant: use adaptive if not overridden
+    if exploration_c is None:
+        from mycelium.mcts.adaptive import AdaptiveExploration
+        exploration_c = AdaptiveExploration.get_instance().exploration_weight
+
     # Exploitation term: similarity weighted by success rate
     denominator = uses + ROUTING_PRIOR_USES
     effective_rate = (successes + ROUTING_PRIOR_SUCCESSES) / denominator if denominator > 0 else 0.5
@@ -323,13 +330,13 @@ def compute_ucb1_score(
     # sqrt(ln(N) / n) gives higher bonus to less-visited children
     if uses >= MCTS_MIN_VISITS_FOR_UCB and parent_uses > 0:
         # Standard UCB1 exploration bonus
-        exploration_bonus = MCTS_EXPLORATION_C * math.sqrt(math.log(parent_uses) / uses)
+        exploration_bonus = exploration_c * math.sqrt(math.log(parent_uses) / uses)
     elif uses == 0:
         # Unvisited signatures get maximum exploration bonus
-        exploration_bonus = MCTS_EXPLORATION_C * 2.0  # High bonus for unexplored
+        exploration_bonus = exploration_c * 2.0  # High bonus for unexplored
     else:
         # Very few visits: give moderate bonus
-        exploration_bonus = MCTS_EXPLORATION_C * 1.0
+        exploration_bonus = exploration_c * 1.0
 
     # Apply staleness penalty (time-based decay)
     staleness_penalty = compute_staleness_penalty(last_used_at)

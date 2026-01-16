@@ -124,6 +124,7 @@ def update_accuracy(success: bool) -> float:
     """Update rolling accuracy with a new result.
 
     Uses exponential moving average for smooth tracking.
+    Also records to AdaptiveExploration for MCTS parameter adaptation.
 
     Args:
         success: Whether the problem was solved correctly
@@ -133,6 +134,10 @@ def update_accuracy(success: bool) -> float:
     """
     import time
     now = time.time()
+
+    # Record to AdaptiveExploration for MCTS parameter adaptation
+    from mycelium.mcts.adaptive import AdaptiveExploration
+    AdaptiveExploration.get_instance().record_result(success)
 
     # Update counts
     _accuracy_cache["total"] += 1

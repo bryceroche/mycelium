@@ -150,6 +150,23 @@ MCTS_SIMILARITY_WEIGHT = 0.7  # Weight for semantic similarity in exploitation t
 MCTS_SUCCESS_WEIGHT = 0.3  # Weight for success rate in exploitation term
 MCTS_MIN_VISITS_FOR_UCB = 1  # Min visits before UCB exploration bonus applies
 
+# =============================================================================
+# ADAPTIVE MCTS (exploration weight and split threshold tied to accuracy)
+# =============================================================================
+# Per CLAUDE.md: "cold-start aware thresholds (adaptive branching more aggressive during cold start)"
+# Low accuracy → high exploration, lenient splits
+# High accuracy → low exploration, strict splits
+
+ADAPTIVE_ACCURACY_WINDOW_SIZE = 100  # Rolling window for accuracy calculation
+
+# Exploration weight (C) range: interpolates based on accuracy
+ADAPTIVE_EXPLORATION_C_MAX = 2.0  # Cold start: explore aggressively
+ADAPTIVE_EXPLORATION_C_MIN = 0.5  # Mature: mostly exploit
+
+# Split threshold (failure rate) range: interpolates based on accuracy
+ADAPTIVE_SPLIT_THRESHOLD_LENIENT = 0.7  # Cold start: tolerate 70% failure before split
+ADAPTIVE_SPLIT_THRESHOLD_STRICT = 0.4   # Mature: split at 40% failure
+
 # Bayesian prior for cold start (assume some successes before any data)
 ROUTING_PRIOR_SUCCESSES = 2
 ROUTING_PRIOR_USES = 4
