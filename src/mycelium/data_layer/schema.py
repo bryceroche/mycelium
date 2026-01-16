@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS step_signatures (
 
     -- Embedding (768-dim MathBERT)
     -- centroid = embedding_sum / embedding_count (computed on read)
-    centroid TEXT NOT NULL,           -- Current centroid (for index/queries)
+    centroid TEXT,                    -- Current centroid (for index/queries), NULL for uninitialized scaffolds
     centroid_bucket TEXT,             -- Quantized hash for coarse-grained uniqueness
     embedding_sum TEXT,               -- Running sum of all matched embeddings
     embedding_count INTEGER DEFAULT 1, -- Number of embeddings in sum
