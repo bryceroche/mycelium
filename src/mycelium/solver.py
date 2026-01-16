@@ -523,15 +523,25 @@ class Solver:
 
         return values
 
-    async def solve(self, problem: str) -> SolverResult:
+    async def solve(
+        self,
+        problem: str,
+        compute_budget: float = None,
+    ) -> SolverResult:
         """Solve a problem end-to-end.
 
         Args:
             problem: The problem text
+            compute_budget: MCTS exploration budget (default from config)
+                - 1.0 = single best path (backward compatible)
+                - 2.0+ = explore multiple paths at low-confidence nodes
 
         Returns:
             SolverResult with answer and step details
         """
+        from mycelium.config import COMPUTE_BUDGET_DEFAULT
+        if compute_budget is None:
+            compute_budget = COMPUTE_BUDGET_DEFAULT
         import time
         start_time = time.time()
 
@@ -730,6 +740,7 @@ class Solver:
         context: dict[str, str],
         step_descriptions: dict[str, str] = None,
         depth: int = 0,
+        compute_budget: float = 1.0,
     ) -> StepResult:
         """Execute a single step.
 
@@ -748,6 +759,7 @@ class Solver:
             context: step_id → result from previous steps
             step_descriptions: step_id → task description (for NL param matching)
             depth: Recursion depth for composite steps
+            compute_budget: MCTS exploration budget (>1 enables multi-path)
         """
         step_descriptions = step_descriptions or {}
         import time

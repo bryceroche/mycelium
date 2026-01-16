@@ -167,6 +167,18 @@ ADAPTIVE_EXPLORATION_C_MIN = 0.5  # Mature: mostly exploit
 ADAPTIVE_SPLIT_THRESHOLD_LENIENT = 0.7  # Cold start: tolerate 70% failure before split
 ADAPTIVE_SPLIT_THRESHOLD_STRICT = 0.4   # Mature: split at 40% failure
 
+# =============================================================================
+# MCTS COMPUTE BUDGET (multi-path exploration)
+# =============================================================================
+# Budget controls how many paths to explore during routing.
+# - 1.0 = single best path (default, backward compatible)
+# - 2.0 = explore up to 2 paths at low-confidence nodes
+# - 3.0+ = explore multiple paths (training mode)
+
+COMPUTE_BUDGET_DEFAULT = 1.0  # Default: single-pass (backward compatible)
+COMPUTE_BUDGET_TRAINING = 3.0  # Training: explore 3 paths for cluster splitting
+COMPUTE_BUDGET_CONFIDENCE_THRESHOLD = 0.5  # Explore alternatives when confidence < this
+
 # Bayesian prior for cold start (assume some successes before any data)
 ROUTING_PRIOR_SUCCESSES = 2
 ROUTING_PRIOR_USES = 4
