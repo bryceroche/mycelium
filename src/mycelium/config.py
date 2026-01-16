@@ -281,18 +281,13 @@ DEPTH_DECOMPOSE_MIN_PROB = 0.05  # Floor probability (never fully disable decomp
 #
 # No toggle needed - the math handles the transition automatically.
 
-# Asymptotic signature limit
-# Sigmoid function: creation_factor = 1 / (1 + exp((sig_count - threshold) / steepness))
-# Approaches 0 as sig_count → MAX_SIGNATURES
-MAX_SIGNATURES = 10000           # Hard cap on signature count
-SIGNATURE_LIMIT_THRESHOLD = 8000 # Start heavy throttling at 80% of max
-SIGNATURE_LIMIT_STEEPNESS = 500  # Controls how fast throttling kicks in
-
-# Training vs Inference accuracy weighting
-# Training: weight > 1 makes expansion more sensitive to low accuracy
-# Inference: weight = 1 for linear relationship
-TRAINING_ACCURACY_WEIGHT = 2.0   # Square accuracy: (1 - acc^2) - more aggressive
-INFERENCE_ACCURACY_WEIGHT = 1.0  # Linear: (1 - acc) - normal
+# Accuracy-driven expansion (self-regulating based on performance)
+# Sigmoid function: expansion = 1 / (1 + exp((accuracy - target) / steepness))
+# At accuracy=0: ~100% expansion (we need to learn)
+# At accuracy=target: 50% expansion
+# At accuracy=1: ~0% expansion (we're doing well)
+EXPANSION_ACCURACY_TARGET = 0.7   # Accuracy at which expansion drops to 50%
+EXPANSION_ACCURACY_STEEPNESS = 0.15  # Controls sigmoid sharpness (smaller = sharper cutoff)
 
 # Cold-start boost (same as before)
 EXPANSION_COLD_START_BOOST = 1.0  # k: extra multiplier during cold start (1.0 = 2x at start)

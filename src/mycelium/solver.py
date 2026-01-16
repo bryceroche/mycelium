@@ -158,46 +158,38 @@ def get_accuracy() -> float:
 
 
 def get_expansion_rate() -> float:
-    """Calculate smooth expansion rate based on accuracy, signature count, and training mode.
+    """Calculate smooth expansion rate based on accuracy using sigmoid function.
 
-    Formula: expansion = (1 - accuracy^weight) * cold_boost * sig_limit_factor
+    Formula: expansion = 1 / (1 + exp((accuracy - target) / steepness))
 
-    - Failure-driven: low accuracy → high expansion
-    - Cold-start boost: few signatures → extra multiplier
-    - Asymptotic limit: approaches 0 as signatures reach MAX_SIGNATURES
-    - Training mode: higher accuracy weight (more aggressive on failure)
+    - At accuracy=0: expansion ≈ 1 (full branching, we need to learn)
+    - At accuracy=target: expansion = 0.5 (moderate branching)
+    - At accuracy=1: expansion → 0 (we're doing well, minimal branching)
+
+    This makes the system self-regulating: poor performance drives expansion,
+    good performance slows it down. No arbitrary signature count limits needed.
 
     Returns:
         Expansion rate in [EXPANSION_MIN_RATE, EXPANSION_MAX_RATE]
     """
     import math
     from mycelium.config import (
-        TRAINING_MODE,
-        MAX_SIGNATURES,
-        SIGNATURE_LIMIT_THRESHOLD,
-        SIGNATURE_LIMIT_STEEPNESS,
-        TRAINING_ACCURACY_WEIGHT,
-        INFERENCE_ACCURACY_WEIGHT,
+        EXPANSION_ACCURACY_TARGET,
+        EXPANSION_ACCURACY_STEEPNESS,
     )
 
     accuracy = get_accuracy()
     sig_count = get_signature_count()
 
-    # 1. Asymptotic signature limit: sigmoid decay as we approach MAX_SIGNATURES
-    # sig_limit_factor = 1 / (1 + exp((sig_count - threshold) / steepness))
-    # At sig_count=0: ~1.0, at threshold: ~0.5, at MAX: ~0.0
-    sig_limit_factor = 1.0 / (1.0 + math.exp((sig_count - SIGNATURE_LIMIT_THRESHOLD) / SIGNATURE_LIMIT_STEEPNESS))
+    # Accuracy-driven sigmoid: expand when accuracy is low, slow down when high
+    # expansion = 1 / (1 + exp((accuracy - target) / steepness))
+    # At accuracy=0: ~1.0 (need to branch), at target: 0.5, at 1.0: ~0
+    expansion = 1.0 / (1.0 + math.exp((accuracy - EXPANSION_ACCURACY_TARGET) / EXPANSION_ACCURACY_STEEPNESS))
 
-    # 2. Cold-start boost: decays exponentially as signatures grow
+    # Cold-start boost: extra expansion when we have very few signatures
+    # This ensures we branch even with 0% accuracy from prior smoothing
     cold_start_boost = 1.0 + EXPANSION_COLD_START_BOOST * math.exp(-sig_count / EXPANSION_SIG_THRESHOLD)
-
-    # 3. Failure-driven: expand more when accuracy is low
-    # Training mode: higher weight makes it more sensitive to low accuracy
-    accuracy_weight = TRAINING_ACCURACY_WEIGHT if TRAINING_MODE else INFERENCE_ACCURACY_WEIGHT
-    failure_rate = 1.0 - (accuracy ** accuracy_weight)
-
-    # Combined expansion rate
-    expansion = failure_rate * cold_start_boost * sig_limit_factor
+    expansion = expansion * cold_start_boost
 
     # Clamp to configured bounds
     expansion = max(EXPANSION_MIN_RATE, min(EXPANSION_MAX_RATE, expansion))
