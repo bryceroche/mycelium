@@ -280,6 +280,16 @@ DEPTH_DECOMPOSE_DECAY_BASE = 0.5  # Decay rate per depth beyond force threshold
 DEPTH_DECOMPOSE_MIN_PROB = 0.05  # Floor probability (never fully disable decompose option)
 
 # =============================================================================
+# EXPANSION COLD-START BOOST
+# =============================================================================
+# Extra expansion multiplier when bootstrapping (few signatures).
+# Decays as: cold_boost = 1 + exp(-sigs / COLD_START_HALFLIFE)
+#   0 sigs: 2x expansion
+#   3000 sigs: 1.37x (37% extra)
+#   6000+ sigs: ~1x (no boost, system mature)
+COLD_START_HALFLIFE = 3000  # Signatures at which cold boost decays to 37%
+
+# =============================================================================
 # SIGNATURE HINTS
 # =============================================================================
 HINT_LIMIT = 3           # Max hints to include in prompts

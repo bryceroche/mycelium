@@ -42,6 +42,7 @@ from mycelium.config import (
     ZERO_LLM_MIN_USES,
     ZERO_LLM_REQUIRE_DSL,
     DSL_EXPR_CACHE_MAX_SIZE,
+    COLD_START_HALFLIFE,
     HINT_LIMIT,
     HINT_MIN_SIMILARITY,
 )
@@ -213,7 +214,7 @@ def get_expansion_rate() -> float:
     expansion = accuracy_factor * effective_reuse
 
     # 4. Cold-start boost for very few signatures
-    cold_boost = 1.0 + math.exp(-sig_count / 3000)
+    cold_boost = 1.0 + math.exp(-sig_count / COLD_START_HALFLIFE)
     expansion = expansion * cold_boost
 
     # Clamp to bounds
