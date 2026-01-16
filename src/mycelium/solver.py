@@ -213,19 +213,14 @@ def should_force_decompose(depth: int) -> bool:
     # Get smooth expansion rate
     expansion_rate = get_expansion_rate()
 
-    # Shallow depths: always decompose (routing layer)
-    if depth <= DEPTH_FORCE_DECOMPOSE_DEPTH:
-        # Even at shallow depths, respect expansion rate somewhat
-        # High expansion (cold start) = always decompose
-        # Low expansion (mature) = sometimes skip
-        shallow_prob = 0.5 + (expansion_rate * 0.5)  # 50-100% at shallow
-        return random.random() < shallow_prob
+    # Apply depth decay uniformly from depth 0
+    # This prevents cascade of decomposition at shallow depths
+    # depth_factor: 1.0 at depth 0, decays by DECAY_BASE per depth
+    depth_factor = DEPTH_DECOMPOSE_DECAY_BASE ** depth
 
-    # Deeper depths: expansion rate * depth decay
-    depth_beyond = depth - DEPTH_FORCE_DECOMPOSE_DEPTH
-    depth_factor = DEPTH_DECOMPOSE_DECAY_BASE ** depth_beyond  # Exponential decay
-
-    # Combined probability
+    # Combined probability: expansion_rate * depth_factor
+    # High expansion + shallow depth = higher prob
+    # Low expansion OR deep depth = lower prob
     prob = max(DEPTH_DECOMPOSE_MIN_PROB, expansion_rate * depth_factor)
 
     if random.random() < prob:
@@ -1193,6 +1188,12 @@ class Solver:
                     params[key] = value
 
         if len(params) < 2:
+            # Single param = extraction step, just return the value
+            # This handles cases where planner provides dsl_hint but only 1 value
+            if len(params) == 1:
+                val = list(params.values())[0]
+                logger.info("[solver] Single-param extraction: %s", val)
+                return str(val)
             logger.debug("[solver] Need at least 2 params for DSL, got %d", len(params))
             return None
 
