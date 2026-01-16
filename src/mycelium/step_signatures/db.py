@@ -241,8 +241,10 @@ class StepSignatureDB:
 
     def _init_schema(self):
         """Initialize database schema."""
+        # PostgreSQL schema is created separately via deploy/gcp/init_schema.sql
+        is_pg = self._db.is_postgresql if self._db else False
         with self._connection() as conn:
-            init_db(conn)
+            init_db(conn, is_postgresql=is_pg)
 
     # =========================================================================
     # Root Management (Single Entry Point)

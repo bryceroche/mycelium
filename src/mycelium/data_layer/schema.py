@@ -161,8 +161,19 @@ def get_schema() -> str:
     return SQLITE_SCHEMA
 
 
-def init_db(conn) -> None:
-    """Initialize the V2 database schema."""
+def init_db(conn, is_postgresql: bool = False) -> None:
+    """Initialize the V2 database schema.
+
+    Args:
+        conn: Database connection
+        is_postgresql: If True, skip SQLite-specific operations (schema created separately)
+    """
+    # PostgreSQL: schema created via deploy/gcp/init_schema.sql
+    # Skip SQLite-specific executescript and PRAGMA commands
+    if is_postgresql:
+        logger.info("[schema] PostgreSQL detected, skipping SQLite schema init")
+        return
+
     conn.executescript(SQLITE_SCHEMA)
     conn.commit()
 

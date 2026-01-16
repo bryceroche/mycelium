@@ -189,7 +189,13 @@ class Embedder:
 
     def __init__(self, model_name: str = EMBEDDING_MODEL):
         self.model_name = model_name
-        if is_openai_model(model_name):
+        # Check for GCP provider mode
+        provider_mode = os.getenv("MYCELIUM_PROVIDER", "local")
+        if provider_mode == "gcp":
+            from mycelium.providers.gcp import VertexAIEmbeddingProvider
+            self._backend = VertexAIEmbeddingProvider()
+            logger.info(f"[embedder] Using Vertex AI embedding provider")
+        elif is_openai_model(model_name):
             self._backend = OpenAIEmbedder(model_name, dimensions=EMBEDDING_DIM)
         elif is_gemini_model(model_name):
             self._backend = GeminiEmbedder(model_name)

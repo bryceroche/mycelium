@@ -253,15 +253,22 @@ OpenAIClient = LLMClient
 GroqClient = LLMClient  # Alias for any old references
 
 
-def get_client(model: Optional[str] = None) -> LLMClient:
+def get_client(model: Optional[str] = None):
     """Factory function to get the LLM client.
 
+    Returns VertexAILLMProvider when MYCELIUM_PROVIDER=gcp,
+    otherwise returns OpenAI LLMClient.
+
     Args:
-        model: Optional model override (defaults to gpt-4.1-nano)
+        model: Optional model override (defaults to gpt-4.1-nano for OpenAI)
 
     Returns:
-        LLMClient configured for OpenAI
+        LLMClient or VertexAILLMProvider based on provider mode
     """
+    provider_mode = os.getenv("MYCELIUM_PROVIDER", "local")
+    if provider_mode == "gcp":
+        from mycelium.providers.gcp import VertexAILLMProvider
+        return VertexAILLMProvider()
     return LLMClient(model=model or DEFAULT_MODEL)
 
 

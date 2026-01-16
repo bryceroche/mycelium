@@ -1,0 +1,24 @@
+# Terraform state files (contain sensitive data)
+*.tfstate
+*.tfstate.*
+tfplan
+
+# Terraform provider plugins
+.terraform/
+
+# Lock file (regenerated on init)
+.terraform.lock.hcl
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Override files (local overrides)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Variable files (may contain secrets)
+*.tfvars
+*.tfvars.json
