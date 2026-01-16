@@ -851,12 +851,30 @@ class Solver:
 
         # Try DSL at all depths - if it works, use it
         # Also try for extraction-only steps (no hint but has values)
+        explored_sigs = []  # Track all signatures explored (for backpropagation)
         if result is None and (has_dsl_hint or has_extracted_values):
-            dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
-            if dsl_result is not None:
-                result = dsl_result
-                was_injected = True
-                logger.debug("[solver] DSL executed: %s", result[:50] if result else "")
+            # Multi-path exploration when budget > 1 and we have an umbrella to explore
+            if compute_budget > 1.0 and signature.is_semantic_umbrella:
+                mp_result, mp_sig, explored_sigs, mp_injected = await self._explore_multiple_paths(
+                    step, problem, context, step_descriptions or {},
+                    embedding, compute_budget,
+                )
+                if mp_result is not None:
+                    result = mp_result
+                    routed_signature = mp_sig
+                    was_injected = mp_injected
+                    was_routed = True
+                    logger.info(
+                        "[solver] Multi-path found result via '%s' (explored %d sigs)",
+                        mp_sig.step_type, len(explored_sigs)
+                    )
+            else:
+                # Single-path: just try DSL on routed signature
+                dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
+                if dsl_result is not None:
+                    result = dsl_result
+                    was_injected = True
+                    logger.debug("[solver] DSL executed: %s", result[:50] if result else "")
 
         # 4.5. COLD START: Decompose at shallow depths ONLY ON FAILURE
         # If DSL succeeded, we have a working signature - no need to decompose
@@ -946,12 +964,34 @@ class Solver:
         # 6. Record usage (step_completed = returned result, not problem correctness)
         # Problem correctness is tracked separately via update_problem_outcome()
         step_completed = bool(result)
-        uses = self.step_db.record_usage(
-            signature_id=routed_signature.id,
-            step_text=step.task,
-            step_completed=step_completed,
-            was_injected=was_injected,
-        )
+
+        # 6.1. MCTS backpropagation: record usage for ALL explored signatures
+        # Key insight: This is how multi-path exploration teaches cluster splitting
+        # - Winning path signatures get step_completed=True
+        # - Losing path signatures get step_completed=False
+        if explored_sigs and len(explored_sigs) > 1:
+            winning_id = routed_signature.id if routed_signature else None
+            for sig in explored_sigs:
+                sig_completed = (sig.id == winning_id) and step_completed
+                self.step_db.record_usage(
+                    signature_id=sig.id,
+                    step_text=step.task,
+                    step_completed=sig_completed,
+                    was_injected=was_injected if sig.id == winning_id else False,
+                )
+            logger.debug(
+                "[solver] MCTS backprop: recorded %d explored sigs, winner=%s",
+                len(explored_sigs), winning_id
+            )
+            uses = routed_signature.uses + 1 if routed_signature else 0
+        else:
+            # Single-path: record normally
+            uses = self.step_db.record_usage(
+                signature_id=routed_signature.id,
+                step_text=step.task,
+                step_completed=step_completed,
+                was_injected=was_injected,
+            )
 
         # 7. Regenerate DSL on mod 10 uses (continuous learning)
         # Background task: don't block the hot path
@@ -1211,6 +1251,114 @@ class Solver:
 
         # Return child for further processing (may need decomposition on failure)
         return (None, child_sig, False)
+
+    async def _explore_multiple_paths(
+        self,
+        step: Step,
+        problem: str,
+        context: dict[str, str],
+        step_descriptions: dict[str, str],
+        embedding: np.ndarray,
+        compute_budget: float = 1.0,
+    ) -> tuple[Optional[str], StepSignature, list[StepSignature], bool]:
+        """MCTS multi-path exploration when confidence is low.
+
+        Uses route_with_confidence() to get alternatives, then explores
+        up to `compute_budget` paths in parallel. Returns best result.
+
+        Key for training: Exploring multiple paths reveals which routes
+        lead to different outcomes, helping split vocab-based clusters
+        into operation-based clusters.
+
+        Args:
+            step: The step being executed
+            problem: Original problem text
+            context: Results from previous steps
+            step_descriptions: Task descriptions for NL param matching
+            embedding: Step embedding for routing
+            compute_budget: Max paths to explore (1.0 = single path)
+
+        Returns:
+            Tuple of (result, best_signature, explored_sigs, was_injected)
+            - result: DSL execution result (or None if all failed)
+            - best_signature: The signature that produced the result
+            - explored_sigs: All signatures explored (for backpropagation)
+            - was_injected: Whether result came from DSL execution
+        """
+        from mycelium.config import COMPUTE_BUDGET_CONFIDENCE_THRESHOLD
+        from mycelium.step_signatures.db import RoutingResult
+
+        # Get routing result with confidence and alternatives
+        routing_result = self.step_db.route_with_confidence(
+            embedding,
+            min_similarity=get_adaptive_match_threshold(),
+            top_k=int(compute_budget) + 1,  # Get enough alternatives
+        )
+
+        explored_sigs = list(routing_result.path)  # Start with best path
+
+        # If high confidence or single-path mode, just use best path
+        if routing_result.confidence >= COMPUTE_BUDGET_CONFIDENCE_THRESHOLD or compute_budget <= 1.0:
+            if routing_result.signature is not None:
+                result = await self._try_dsl(
+                    routing_result.signature, step, context, step_descriptions
+                )
+                return (result, routing_result.signature, explored_sigs, result is not None)
+            return (None, routing_result.signature, explored_sigs, False)
+
+        # Low confidence + multi-path mode: explore alternatives
+        num_paths = min(int(compute_budget), len(routing_result.alternatives) + 1)
+        logger.info(
+            "[solver] Multi-path exploration: confidence=%.2f, exploring %d paths",
+            routing_result.confidence, num_paths
+        )
+
+        # Collect alternative leaf signatures to try
+        candidates = []
+
+        # Add best path's leaf if it's not an umbrella
+        if routing_result.signature and not routing_result.signature.is_semantic_umbrella:
+            candidates.append(routing_result.signature)
+
+        # Add alternatives from each level (flatten)
+        for level_alts in routing_result.alternatives:
+            for alt_sig, _score in level_alts:
+                if not alt_sig.is_semantic_umbrella and alt_sig not in candidates:
+                    candidates.append(alt_sig)
+                    explored_sigs.append(alt_sig)
+                    if len(candidates) >= num_paths:
+                        break
+            if len(candidates) >= num_paths:
+                break
+
+        if not candidates:
+            # No leaf candidates found
+            return (None, routing_result.signature, explored_sigs, False)
+
+        # Try DSL on each candidate in parallel
+        async def try_candidate(sig):
+            result = await self._try_dsl(sig, step, context, step_descriptions)
+            return (sig, result)
+
+        results = await asyncio.gather(*[try_candidate(sig) for sig in candidates])
+
+        # Find first success (or None if all failed)
+        best_sig = candidates[0]
+        best_result = None
+        for sig, result in results:
+            if result is not None:
+                best_sig = sig
+                best_result = result
+                logger.info(
+                    "[solver] Multi-path: found success via '%s'",
+                    sig.step_type
+                )
+                break
+
+        if best_result is None:
+            logger.debug("[solver] Multi-path: all %d paths failed DSL", len(candidates))
+
+        return (best_result, best_sig, explored_sigs, best_result is not None)
 
     async def _try_dsl(
         self,
