@@ -853,8 +853,9 @@ class Solver:
         # Also try for extraction-only steps (no hint but has values)
         explored_sigs = []  # Track all signatures explored (for backpropagation)
         if result is None and (has_dsl_hint or has_extracted_values):
-            # Multi-path exploration when budget > 1 and we have an umbrella to explore
-            if compute_budget > 1.0 and signature.is_semantic_umbrella:
+            # Multi-path exploration when budget > 1.0
+            # Confidence check happens inside _explore_multiple_paths
+            if compute_budget > 1.0:
                 mp_result, mp_sig, explored_sigs, mp_injected = await self._explore_multiple_paths(
                     step, problem, context, step_descriptions or {},
                     embedding, compute_budget,

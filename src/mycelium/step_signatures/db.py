@@ -1128,14 +1128,20 @@ class StepSignatureDB:
                     "[db] Added as child: parent_id=%d (depth=%d) -> child_id=%d (depth=%d) (condition='%s')",
                     actual_parent_id, actual_depth - 1, row_id, actual_depth, step_type
                 )
-        except sqlite3.IntegrityError:
-            # Centroid collision - find existing signature
-            row = conn.execute(
-                "SELECT * FROM step_signatures WHERE centroid = ?",
-                (centroid_packed,)
-            ).fetchone()
-            if row:
-                return self._row_to_signature(row)
+        except sqlite3.IntegrityError as e:
+            # Centroid bucket collision - find existing signature by bucket hash
+            if "centroid_bucket" in str(e):
+                row = conn.execute(
+                    "SELECT * FROM step_signatures WHERE centroid_bucket = ?",
+                    (centroid_bucket,)
+                ).fetchone()
+                if row:
+                    logger.debug(
+                        "[db] Centroid bucket collision, reusing existing signature: id=%d type='%s'",
+                        row["id"], row["step_type"]
+                    )
+                    return self._row_to_signature(row)
+            # Unknown integrity error - re-raise
             raise
 
         # Also add as first example
@@ -1483,15 +1489,26 @@ class StepSignatureDB:
         new_sum_packed = pack_embedding(new_sum)
         new_centroid_packed = pack_embedding(new_centroid)
 
+        # Try updating with new bucket if changed, fall back to keeping old bucket on collision
         if update_last_used:
             now = datetime.utcnow().isoformat()
             if bucket_changed:
-                conn.execute(
-                    """UPDATE step_signatures
-                       SET embedding_sum = ?, embedding_count = ?, centroid = ?, centroid_bucket = ?, last_used_at = ?
-                       WHERE id = ?""",
-                    (new_sum_packed, new_count, new_centroid_packed, new_bucket, now, signature_id),
-                )
+                try:
+                    conn.execute(
+                        """UPDATE step_signatures
+                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, centroid_bucket = ?, last_used_at = ?
+                           WHERE id = ?""",
+                        (new_sum_packed, new_count, new_centroid_packed, new_bucket, now, signature_id),
+                    )
+                except sqlite3.IntegrityError:
+                    # New bucket collides with existing signature - keep old bucket
+                    logger.debug("[db] Bucket collision on update for sig %d, keeping old bucket", signature_id)
+                    conn.execute(
+                        """UPDATE step_signatures
+                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, last_used_at = ?
+                           WHERE id = ?""",
+                        (new_sum_packed, new_count, new_centroid_packed, now, signature_id),
+                    )
             else:
                 conn.execute(
                     """UPDATE step_signatures
@@ -1501,12 +1518,22 @@ class StepSignatureDB:
                 )
         else:
             if bucket_changed:
-                conn.execute(
-                    """UPDATE step_signatures
-                       SET embedding_sum = ?, embedding_count = ?, centroid = ?, centroid_bucket = ?
-                       WHERE id = ?""",
-                    (new_sum_packed, new_count, new_centroid_packed, new_bucket, signature_id),
-                )
+                try:
+                    conn.execute(
+                        """UPDATE step_signatures
+                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, centroid_bucket = ?
+                           WHERE id = ?""",
+                        (new_sum_packed, new_count, new_centroid_packed, new_bucket, signature_id),
+                    )
+                except sqlite3.IntegrityError:
+                    # New bucket collides with existing signature - keep old bucket
+                    logger.debug("[db] Bucket collision on update for sig %d, keeping old bucket", signature_id)
+                    conn.execute(
+                        """UPDATE step_signatures
+                           SET embedding_sum = ?, embedding_count = ?, centroid = ?
+                           WHERE id = ?""",
+                        (new_sum_packed, new_count, new_centroid_packed, signature_id),
+                    )
             else:
                 conn.execute(
                     """UPDATE step_signatures
