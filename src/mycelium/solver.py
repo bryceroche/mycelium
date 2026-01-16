@@ -547,8 +547,9 @@ class Solver:
             # Pre-warm DSL expression cache in parallel for independent steps
             await self._prewarm_dsl_cache(plan.steps)
 
-            # 2. Execute steps in dependency order
+            # 2. Execute steps in dependency order (parallel where possible)
             step_results = []
+            step_results_by_id = {}  # step_id → StepResult for ordering
             context = {}  # step_id → result
             step_descriptions = {}  # step_id → task description (for NL param matching)
             signatures_new = 0
@@ -557,32 +558,78 @@ class Solver:
             steps_with_routing = 0
             matched_and_reused = 0  # Matched AND (DSL succeeded OR routed)
 
-            execution_order = self._get_execution_order(plan)
+            completed_ids = set()
+            remaining_steps = list(plan.steps)
 
-            for step in execution_order:
-                # Build context from dependencies
-                step_context = {
-                    dep: context[dep]
-                    for dep in step.depends_on
-                    if dep in context
-                }
-                # Build step descriptions for semantic param matching
-                step_desc_context = {
-                    dep: step_descriptions[dep]
-                    for dep in step.depends_on
-                    if dep in step_descriptions
-                }
+            while remaining_steps:
+                # Find steps with all dependencies satisfied (ready to run)
+                ready_steps = [
+                    s for s in remaining_steps
+                    if all(dep in completed_ids for dep in s.depends_on)
+                ]
 
-                # Execute step
-                result = await self._execute_step(step, problem, step_context, step_desc_context)
-                step_results.append(result)
+                if not ready_steps:
+                    # No progress - cycle or missing dependency
+                    logger.warning("[solver] DAG stuck: %d steps remaining with unmet deps", len(remaining_steps))
+                    break
+
+                # Execute ready steps in parallel
+                async def execute_one(step):
+                    step_context = {
+                        dep: context[dep]
+                        for dep in step.depends_on
+                        if dep in context
+                    }
+                    step_desc_context = {
+                        dep: step_descriptions[dep]
+                        for dep in step.depends_on
+                        if dep in step_descriptions
+                    }
+                    return step, await self._execute_step(step, problem, step_context, step_desc_context)
+
+                if len(ready_steps) > 1:
+                    logger.debug("[solver] Executing %d steps in parallel", len(ready_steps))
+
+                results = await asyncio.gather(*[execute_one(s) for s in ready_steps])
+
+                # Process results
+                failed_step = None
+                for step, result in results:
+                    step_results_by_id[step.id] = result
+                    completed_ids.add(step.id)
+                    remaining_steps.remove(step)
+
+                    # Track stats
+                    if result.is_new_signature:
+                        signatures_new += 1
+                    else:
+                        signatures_matched += 1
+                        if result.was_injected or result.was_routed:
+                            matched_and_reused += 1
+                    if result.was_injected:
+                        steps_with_injection += 1
+                    if result.was_routed:
+                        steps_with_routing += 1
+
+                    # Store result and description for dependent steps
+                    context[step.id] = result.result
+                    step_descriptions[step.id] = step.task
+
+                    # Track first failure
+                    if not result.success and failed_step is None:
+                        failed_step = (step, result)
 
                 # Abort DAG on step failure (prevent cascading empty strings)
-                if not result.success:
+                if failed_step:
+                    step, result = failed_step
                     logger.warning(
                         "[solver] Step failed, aborting DAG: step=%s task='%s'",
                         step.id, step.task[:50]
                     )
+                    # Build step_results in original order
+                    for s in plan.steps:
+                        if s.id in step_results_by_id:
+                            step_results.append(step_results_by_id[s.id])
                     elapsed_ms = (time.time() - start_time) * 1000
                     return SolverResult(
                         problem=problem,
@@ -599,22 +646,10 @@ class Solver:
                         matched_and_reused=matched_and_reused,
                     )
 
-                # Track stats
-                if result.is_new_signature:
-                    signatures_new += 1
-                else:
-                    signatures_matched += 1
-                    # Reused = DSL succeeded OR routed through umbrella
-                    if result.was_injected or result.was_routed:
-                        matched_and_reused += 1
-                if result.was_injected:
-                    steps_with_injection += 1
-                if result.was_routed:
-                    steps_with_routing += 1
-
-                # Store result and description for dependent steps
-                context[step.id] = result.result
-                step_descriptions[step.id] = step.task
+            # Build step_results in original order
+            for s in plan.steps:
+                if s.id in step_results_by_id:
+                    step_results.append(step_results_by_id[s.id])
 
             # 3. Synthesize final answer
             final_answer = await self._synthesize(problem, step_results, context)
