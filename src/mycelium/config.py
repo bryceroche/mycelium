@@ -270,6 +270,25 @@ UMBRELLA_MAX_DEPTH = max(1, min(int(_UMBRELLA_MAX_DEPTH_RAW or 10), _UMBRELLA_HA
 UMBRELLA_ROUTING_THRESHOLD = 0.5  # Min similarity for umbrella child routing (lower than global 0.85 since we're picking best among known children)
 
 # =============================================================================
+# SCAFFOLD STRUCTURE (Pre-allocated tree levels for domain emergence)
+# =============================================================================
+# The universal tree pre-allocates placeholder umbrella levels at startup.
+# This gives the tree "room to grow" - domains emerge as traffic flows through.
+#
+# Structure:
+#   Level 0: ROOT
+#   Level 1-N: Placeholder umbrellas (SCAFFOLD_LEVELS)
+#   Level N+1+: Actual leaf signatures (MIN_SIGNATURE_DEPTH)
+#
+# GSM8K problems start at MIN_SIGNATURE_DEPTH, not at root. The levels above
+# are scaffolding that gets specialized via centroid averaging as problems route through.
+
+SCAFFOLD_ENABLED = True  # Enable pre-allocated scaffold structure
+SCAFFOLD_LEVELS = 3  # Number of placeholder levels (domain/subdomain/operation)
+SCAFFOLD_BRANCHES_PER_LEVEL = 5  # Branches per level (5^3 = 125 placeholder slots)
+MIN_SIGNATURE_DEPTH = 3  # Minimum depth for leaf signatures (GSM8K starts here)
+
+# =============================================================================
 # ZERO-LLM ROUTING (Skip planner for mature signatures)
 # =============================================================================
 # When enabled, the solver will attempt to route problems directly through

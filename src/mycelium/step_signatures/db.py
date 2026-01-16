@@ -240,9 +240,12 @@ class StepSignatureDB:
                 yield conn
 
     def _init_schema(self):
-        """Initialize database schema."""
+        """Initialize database schema and scaffold structure."""
         with self._connection() as conn:
             init_db(conn)
+
+        # Initialize scaffold structure if enabled (creates placeholder umbrellas)
+        self.initialize_scaffold()
 
     # =========================================================================
     # Root Management (Single Entry Point)
@@ -278,6 +281,136 @@ class StepSignatureDB:
                 "SELECT 1 FROM step_signatures WHERE is_root = 1 LIMIT 1"
             ).fetchone()
             return row is not None
+
+    def initialize_scaffold(self) -> bool:
+        """Initialize the pre-allocated scaffold structure for the universal tree.
+
+        Creates placeholder umbrella levels that give the tree "room to grow".
+        Domains emerge as problem traffic flows through and centroids specialize.
+
+        Structure created:
+            Level 0: ROOT (single entry point)
+            Level 1-N: Placeholder umbrellas (SCAFFOLD_LEVELS)
+            Level N+1+: Where actual leaf signatures will be created
+
+        The placeholders start with null centroids. As problems route through,
+        centroids get initialized and refined via averaging.
+
+        Returns:
+            True if scaffold was created, False if already exists or disabled
+        """
+        from mycelium.config import (
+            SCAFFOLD_ENABLED,
+            SCAFFOLD_LEVELS,
+            SCAFFOLD_BRANCHES_PER_LEVEL,
+        )
+
+        if not SCAFFOLD_ENABLED:
+            logger.debug("[db] Scaffold disabled, skipping initialization")
+            return False
+
+        # Check if scaffold already exists (has root with children)
+        if self.has_root():
+            root = self.get_root()
+            if root:
+                with self._connection() as conn:
+                    child_count = conn.execute(
+                        "SELECT COUNT(*) FROM signature_relationships WHERE parent_id = ?",
+                        (root.id,)
+                    ).fetchone()[0]
+                    if child_count > 0:
+                        logger.debug("[db] Scaffold already exists (%d root children)", child_count)
+                        return False
+
+        logger.info(
+            "[db] Initializing scaffold: %d levels, %d branches/level",
+            SCAFFOLD_LEVELS, SCAFFOLD_BRANCHES_PER_LEVEL
+        )
+
+        now = datetime.now(timezone.utc).isoformat()
+
+        with self._connection() as conn:
+            # Create root if it doesn't exist
+            root_row = conn.execute(
+                "SELECT id FROM step_signatures WHERE is_root = 1 LIMIT 1"
+            ).fetchone()
+
+            if root_row is None:
+                # Create the root signature
+                root_sig_id = f"root_{uuid.uuid4().hex[:8]}"
+                cursor = conn.execute(
+                    """INSERT INTO step_signatures (
+                        signature_id, centroid, centroid_bucket,
+                        step_type, description, dsl_type,
+                        is_semantic_umbrella, is_root, depth, created_at
+                    ) VALUES (?, NULL, NULL, ?, ?, ?, 1, 1, 0, ?)""",
+                    (root_sig_id, "root", "Universal math problem router", "router", now)
+                )
+                root_id = cursor.lastrowid
+                logger.info("[db] Created scaffold root: id=%d", root_id)
+            else:
+                root_id = root_row[0]
+                # Ensure root is an umbrella
+                conn.execute(
+                    "UPDATE step_signatures SET is_semantic_umbrella = 1, dsl_type = 'router' WHERE id = ?",
+                    (root_id,)
+                )
+
+            # Create placeholder umbrellas for each level
+            current_level_parents = [root_id]
+
+            for level in range(1, SCAFFOLD_LEVELS + 1):
+                next_level_parents = []
+
+                for parent_idx, parent_id in enumerate(current_level_parents):
+                    for branch in range(SCAFFOLD_BRANCHES_PER_LEVEL):
+                        # Create placeholder signature
+                        placeholder_id = f"scaffold_L{level}_{parent_idx}_{branch}_{uuid.uuid4().hex[:6]}"
+                        cursor = conn.execute(
+                            """INSERT INTO step_signatures (
+                                signature_id, centroid, centroid_bucket,
+                                step_type, description, dsl_type,
+                                is_semantic_umbrella, is_root, depth, created_at
+                            ) VALUES (?, NULL, NULL, ?, ?, ?, 1, 0, ?, ?)""",
+                            (
+                                placeholder_id,
+                                f"placeholder_L{level}_{branch}",
+                                f"Scaffold placeholder at level {level}",
+                                "router",
+                                level,
+                                now,
+                            )
+                        )
+                        child_id = cursor.lastrowid
+                        next_level_parents.append(child_id)
+
+                        # Create parent-child relationship
+                        conn.execute(
+                            """INSERT INTO signature_relationships (parent_id, child_id, condition, created_at)
+                               VALUES (?, ?, ?, ?)""",
+                            (parent_id, child_id, f"scaffold_level_{level}", now)
+                        )
+
+                logger.info(
+                    "[db] Created scaffold level %d: %d placeholders",
+                    level, len(next_level_parents)
+                )
+                current_level_parents = next_level_parents
+
+            conn.commit()
+
+        # Invalidate caches
+        self._cached_root = None
+        self.invalidate_centroid_matrix()
+
+        total_placeholders = sum(
+            SCAFFOLD_BRANCHES_PER_LEVEL ** i for i in range(1, SCAFFOLD_LEVELS + 1)
+        )
+        logger.info(
+            "[db] Scaffold initialized: %d total placeholders across %d levels",
+            total_placeholders, SCAFFOLD_LEVELS
+        )
+        return True
 
     def propagate_centroid_to_parents(
         self,
@@ -872,13 +1005,18 @@ class StepSignatureDB:
         Uses UCB1 scoring to balance exploitation (high-similarity, high-success)
         with exploration (under-visited signatures that might be better).
 
+        SCAFFOLD SUPPORT: Handles null-centroid placeholders by:
+        1. Picking least-used placeholder when all children have null centroids
+        2. Initializing placeholder centroid with first problem that routes through
+        3. Continuing to route until MIN_SIGNATURE_DEPTH for proper tree structure
+
         Returns:
             (best_match, parent_for_new, best_similarity)
             - best_match: Leaf signature if found above threshold
             - parent_for_new: Umbrella where routing stopped (for creating new child)
             - best_similarity: Similarity of best_match
         """
-        from mycelium.config import UMBRELLA_MAX_DEPTH
+        from mycelium.config import UMBRELLA_MAX_DEPTH, SCAFFOLD_ENABLED, MIN_SIGNATURE_DEPTH
 
         # Validate max depth to prevent unbounded recursion
         max_depth = max(1, min(int(UMBRELLA_MAX_DEPTH or 10), 100))  # Hard cap at 100
@@ -937,14 +1075,21 @@ class StepSignatureDB:
             best_child_sim = 0.0
             best_child_score = 0.0
 
+            # Separate children with centroids from null-centroid placeholders
+            children_with_centroids = []
+            null_centroid_children = []
+
             for child in children:
-                # Capture centroid once to avoid TOCTOU race condition
                 centroid = child.centroid
                 if centroid is None:
-                    continue
-                child_sim = cosine_similarity(embedding, centroid)
+                    null_centroid_children.append(child)
+                else:
+                    child_sim = cosine_similarity(embedding, centroid)
+                    children_with_centroids.append((child, child_sim))
+
+            # Try children with centroids first (standard UCB1 selection)
+            for child, child_sim in children_with_centroids:
                 if child_sim >= min_similarity:
-                    # UCB1 score: exploit (sim * success_rate) + explore (bonus for under-visited)
                     score = compute_ucb1_score(
                         child_sim,
                         child.uses,
@@ -957,30 +1102,83 @@ class StepSignatureDB:
                         best_child_sim = child_sim
                         best_child_score = score
 
+            # SCAFFOLD: If no match found but we have null-centroid placeholders,
+            # and we haven't reached MIN_SIGNATURE_DEPTH yet, route through one
+            if best_child is None and null_centroid_children and SCAFFOLD_ENABLED:
+                if depth < MIN_SIGNATURE_DEPTH - 1:
+                    # Pick least-used placeholder (exploration) or random if all equal
+                    null_centroid_children.sort(key=lambda c: c.uses or 0)
+                    placeholder = null_centroid_children[0]
+
+                    # Initialize placeholder's centroid with this embedding
+                    logger.info(
+                        "[db] Initializing scaffold placeholder: id=%d depth=%d",
+                        placeholder.id, depth + 1
+                    )
+                    self._update_centroid_atomic(conn, placeholder.id, embedding, update_last_used=False)
+
+                    # Update our local object to reflect the change
+                    placeholder.centroid = embedding
+                    best_child = placeholder
+                    best_child_sim = 1.0  # Perfect match since we just set it
+
             if best_child is None:
-                # No child matches above threshold - current is where we'd add new child
-                parent_for_new = current
-                # Return best child below threshold as "best effort" (or None)
-                best_below = None
-                best_below_sim = 0.0
-                best_below_score = 0.0
-                for child in children:
-                    # Capture centroid once to avoid TOCTOU race condition
-                    centroid = child.centroid
-                    if centroid is not None:
-                        child_sim = cosine_similarity(embedding, centroid)
-                        # Still use UCB1 for below-threshold exploration
+                # No child matches above threshold
+                # SCAFFOLD: If we haven't reached MIN_SIGNATURE_DEPTH, keep routing
+                if SCAFFOLD_ENABLED and depth < MIN_SIGNATURE_DEPTH - 1:
+                    # Must continue deeper - pick best below-threshold or any placeholder
+                    best_below = None
+                    best_below_sim = 0.0
+                    best_below_score = -float('inf')
+
+                    # First try children with centroids
+                    for child, child_sim in children_with_centroids:
                         score = compute_ucb1_score(
-                            child_sim,
-                            child.uses,
-                            child.successes,
-                            parent_uses,
-                            child.last_used_at
+                            child_sim, child.uses, child.successes,
+                            parent_uses, child.last_used_at
                         )
                         if score > best_below_score:
                             best_below = child
                             best_below_sim = child_sim
                             best_below_score = score
+
+                    # If no children with centroids, use a placeholder
+                    if best_below is None and null_centroid_children:
+                        null_centroid_children.sort(key=lambda c: c.uses or 0)
+                        placeholder = null_centroid_children[0]
+                        # Initialize centroid
+                        self._update_centroid_atomic(conn, placeholder.id, embedding, update_last_used=False)
+                        placeholder.centroid = embedding
+                        best_below = placeholder
+                        best_below_sim = 1.0
+                        logger.info(
+                            "[db] Initializing scaffold placeholder (below threshold): id=%d depth=%d",
+                            placeholder.id, depth + 1
+                        )
+
+                    if best_below:
+                        # Continue routing deeper
+                        parent_for_new = current
+                        current = best_below
+                        depth += 1
+                        continue
+
+                # Either scaffold disabled or we've reached MIN_SIGNATURE_DEPTH
+                # Return current as where we'd add new child
+                parent_for_new = current
+                # Return best child below threshold as "best effort" (or None)
+                best_below = None
+                best_below_sim = 0.0
+                best_below_score = 0.0
+                for child, child_sim in children_with_centroids:
+                    score = compute_ucb1_score(
+                        child_sim, child.uses, child.successes,
+                        parent_uses, child.last_used_at
+                    )
+                    if score > best_below_score:
+                        best_below = child
+                        best_below_sim = child_sim
+                        best_below_score = score
                 return best_below, parent_for_new, best_below_sim
 
             # Move to best child (selected by UCB1)
