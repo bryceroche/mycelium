@@ -1963,6 +1963,7 @@ class StepSignatureDB:
         signature_ids: list[int],
         problem_correct: bool,
         decay_factor: float = None,
+        difficulty: float = None,
     ):
         """Update signature success counts based on problem outcome.
 
@@ -1970,10 +1971,19 @@ class StepSignatureDB:
         all signatures that were used. Also propagates credit up to parent
         umbrella signatures with decay.
 
+        DIFFICULTY-WEIGHTED CREDIT: Harder problems provide more valuable signal.
+        - difficulty=0.0 (trivial) → 1.0x credit
+        - difficulty=0.5 (GSM8K) → 3.0x credit
+        - difficulty=1.0 (competition) → 5.0x credit
+
+        This ensures signatures that solve hard problems gain more confidence
+        than those solving easy problems (per CLAUDE.md universal tree design).
+
         Args:
             signature_ids: IDs of signatures used in the solved problem
             problem_correct: Whether the final answer was correct
             decay_factor: Credit decay per level (default from config)
+            difficulty: Problem difficulty for weighted credit (0.0-1.0)
         """
         # Increment global problem counter (for traffic-based decay)
         increment_total_problems(self.db_path)
@@ -1983,22 +1993,29 @@ class StepSignatureDB:
         if not signature_ids:
             return
 
+        # Calculate difficulty-weighted credit multiplier
+        # Harder problems → more credit (1.0x to 5.0x)
+        from mycelium.difficulty import get_credit_multiplier
+        credit_multiplier = get_credit_multiplier(difficulty) if difficulty is not None else 1.0
+        base_credit = credit_multiplier  # Base credit for direct signatures
+
         now = datetime.now().isoformat()
 
         with self._connection() as conn:
             if problem_correct:
-                # Increment success count and update last_used_at for all signatures used
+                # Increment success count with difficulty weighting
                 # (last_used_at only updates on success to properly penalize stale failures)
+                # Use weighted credit: harder problems count more
                 placeholders = ",".join("?" * len(signature_ids))
                 conn.execute(
                     f"""UPDATE step_signatures
-                       SET successes = successes + 1, last_used_at = ?
+                       SET successes = successes + ?, last_used_at = ?
                        WHERE id IN ({placeholders})""",
-                    [now] + signature_ids,
+                    [base_credit, now] + signature_ids,
                 )
                 logger.debug(
-                    "[db] Problem correct: incremented successes for %d signatures",
-                    len(signature_ids)
+                    "[db] Problem correct: credited %d signatures (%.1fx multiplier, diff=%.2f)",
+                    len(signature_ids), credit_multiplier, difficulty or 0.0
                 )
 
                 # Propagate credit to parent umbrellas with decay
@@ -2010,20 +2027,21 @@ class StepSignatureDB:
                         conn, sig_id, decay_factor, 1, parent_credits
                     )
 
-                # Apply accumulated credits
+                # Apply accumulated credits with difficulty weighting
                 for parent_id, credit in parent_credits.items():
-                    if credit >= PARENT_CREDIT_MIN:
+                    weighted_credit = credit * credit_multiplier
+                    if weighted_credit >= PARENT_CREDIT_MIN:
                         conn.execute(
                             """UPDATE step_signatures
                                SET successes = successes + ?
                                WHERE id = ? AND is_semantic_umbrella = 1""",
-                            (credit, parent_id),
+                            (weighted_credit, parent_id),
                         )
 
                 if parent_credits:
                     logger.debug(
-                        "[db] Propagated credit to %d parent umbrellas",
-                        len(parent_credits)
+                        "[db] Propagated weighted credit to %d parent umbrellas (%.1fx multiplier)",
+                        len(parent_credits), credit_multiplier
                     )
             else:
                 # Problem failed - signatures don't get success credit
@@ -2641,6 +2659,173 @@ class StepSignatureDB:
             )
 
         return best_match
+
+    def detect_upward_restructuring(
+        self,
+        embedding: np.ndarray,
+        difficulty: float,
+        min_similarity: float = 0.6,
+        difficulty_gap_threshold: float = 0.2,
+    ) -> Optional[tuple[StepSignature, float]]:
+        """Detect if a new problem should trigger upward restructuring.
+
+        Upward restructuring occurs when a new problem represents a HIGHER
+        abstraction than existing signatures. This happens when:
+        1. Problem is semantically similar to existing signatures
+        2. Problem difficulty significantly exceeds their max_difficulty_solved
+
+        Key insight from CLAUDE.md: "if we start with gsm8k and increase to
+        MATH L1-L2 that might represent a new node higher up in the tree"
+
+        When detected, the caller should:
+        1. Create a new umbrella signature at the higher abstraction level
+        2. Make the existing signature a child of the new umbrella
+        3. The new umbrella represents the harder class of problems
+
+        Args:
+            embedding: Query embedding of the new problem
+            difficulty: Estimated difficulty of the new problem (0.0-1.0)
+            min_similarity: Minimum similarity to consider signatures
+            difficulty_gap_threshold: Min gap between problem and sig difficulty
+
+        Returns:
+            Tuple of (matched_signature, difficulty_gap) if restructuring needed,
+            None otherwise.
+        """
+        from mycelium.step_signatures.utils import cosine_similarity
+
+        with self._connection() as conn:
+            # Find non-root signatures (we don't restructure above the root)
+            cursor = conn.execute(
+                """SELECT * FROM step_signatures
+                   WHERE is_root = 0
+                   AND is_archived = 0
+                   ORDER BY max_difficulty_solved DESC"""
+            )
+            rows = cursor.fetchall()
+
+        best_candidate = None
+        best_gap = 0.0
+
+        for row in rows:
+            sig_id = row["id"]
+            centroid = get_cached_centroid(sig_id, row.get("centroid"))
+            if centroid is None:
+                continue
+
+            sim = cosine_similarity(embedding, centroid)
+            if sim < min_similarity:
+                continue
+
+            # Check difficulty gap
+            max_diff = row.get("max_difficulty_solved") or 0.0
+            gap = difficulty - max_diff
+
+            if gap >= difficulty_gap_threshold and gap > best_gap:
+                best_candidate = StepSignature.from_row_fast(row)
+                best_gap = gap
+
+        if best_candidate:
+            logger.info(
+                "[db] Upward restructuring detected: sig=%d (%s) max_diff=%.2f, "
+                "problem_diff=%.2f, gap=%.2f",
+                best_candidate.id,
+                best_candidate.step_type[:30],
+                best_candidate.max_difficulty_solved,
+                difficulty,
+                best_gap,
+            )
+
+        return (best_candidate, best_gap) if best_candidate else None
+
+    def create_upward_umbrella(
+        self,
+        child_signature: StepSignature,
+        problem_embedding: np.ndarray,
+        difficulty: float,
+        description: str,
+    ) -> Optional[StepSignature]:
+        """Create a new umbrella above an existing signature for upward restructuring.
+
+        This is called when detect_upward_restructuring identifies that a new
+        problem represents a higher abstraction level than an existing signature.
+
+        The new umbrella:
+        1. Becomes the parent of the existing signature
+        2. Has a centroid averaged from the existing sig and new problem
+        3. Has a higher depth threshold for routing
+
+        Args:
+            child_signature: The existing signature to place under the new umbrella
+            problem_embedding: Embedding of the harder problem
+            difficulty: Difficulty of the harder problem
+            description: Description for the new umbrella
+
+        Returns:
+            The new umbrella signature, or None on failure
+        """
+        # Create averaged centroid from child + new problem
+        if child_signature.centroid is not None:
+            new_centroid = (child_signature.centroid + problem_embedding) / 2
+        else:
+            new_centroid = problem_embedding
+
+        # Generate step_type from description
+        step_type = normalize_step_text(description)[:50]
+
+        with self._connection() as conn:
+            now = datetime.utcnow().isoformat()
+            sig_id = f"umbrella_{uuid.uuid4().hex[:8]}"
+            centroid_json = json.dumps(new_centroid.tolist())
+            centroid_bucket = compute_centroid_bucket(new_centroid)
+
+            try:
+                cursor = conn.execute(
+                    """INSERT INTO step_signatures (
+                        signature_id, centroid, centroid_bucket, embedding_sum, embedding_count,
+                        step_type, description, dsl_type,
+                        is_semantic_umbrella, depth, max_difficulty_solved, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        sig_id,
+                        centroid_json,
+                        centroid_bucket,
+                        centroid_json,  # embedding_sum starts as centroid
+                        2,  # count: child centroid + new problem
+                        step_type,
+                        description,
+                        "router",  # umbrellas route, don't execute
+                        1,  # is_semantic_umbrella
+                        max(0, child_signature.depth - 1),  # one level above child
+                        difficulty,  # starts with the higher difficulty
+                        now,
+                    ),
+                )
+                new_id = cursor.lastrowid
+
+                # Create parent-child relationship
+                conn.execute(
+                    """INSERT INTO signature_relationships (parent_id, child_id, condition, created_at)
+                       VALUES (?, ?, ?, ?)""",
+                    (new_id, child_signature.id, f"difficulty <= {child_signature.max_difficulty_solved}", now),
+                )
+
+                # Invalidate caches
+                self.invalidate_centroid_matrix()
+
+                logger.info(
+                    "[db] Created upward umbrella: id=%d, child=%d, depth=%d, max_diff=%.2f",
+                    new_id, child_signature.id, max(0, child_signature.depth - 1), difficulty
+                )
+
+                # Fetch and return the new signature
+                cursor = conn.execute("SELECT * FROM step_signatures WHERE id = ?", (new_id,))
+                row = cursor.fetchone()
+                return StepSignature.from_row_fast(row) if row else None
+
+            except sqlite3.IntegrityError as e:
+                logger.warning("[db] Failed to create upward umbrella: %s", e)
+                return None
 
     def remove_child(self, parent_id: int, child_id: int) -> bool:
         """Remove a parent-child relationship.

@@ -53,6 +53,7 @@ from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.embedder import Embedder
 from mycelium.embedding_cache import cached_embed
+from mycelium.difficulty import estimate_difficulty
 
 logger = logging.getLogger(__name__)
 
@@ -377,6 +378,7 @@ class Solver:
         self,
         problem: str,
         problem_embedding: np.ndarray,
+        difficulty: float = None,
     ) -> Optional[SolverResult]:
         """Attempt to solve without any LLM calls using mature signature tree.
 
@@ -387,6 +389,7 @@ class Solver:
         Args:
             problem: The problem text
             problem_embedding: Pre-computed embedding of the problem
+            difficulty: Problem difficulty for tracking (0.0-1.0)
 
         Returns:
             SolverResult if successful, None to fall back to planner
@@ -450,12 +453,13 @@ class Solver:
                     problem[:50], result, matched_sig.step_type, len(path), elapsed_ms
                 )
 
-                # Record usage for learning
+                # Record usage for learning (with difficulty for stats tracking)
                 self.step_db.record_usage(
                     matched_sig.id,
                     step_text=problem,
                     step_completed=True,
                     was_injected=True,
+                    difficulty=difficulty,
                 )
 
                 return SolverResult(
@@ -550,8 +554,13 @@ class Solver:
             # Use cached_embed to avoid redundant computation
             problem_embedding = cached_embed(problem, self.embedder)
 
+            # 0.1. Estimate problem difficulty for adaptive behavior
+            # Difficulty affects: depth, credit multiplier, routing preferences
+            difficulty = estimate_difficulty(problem)
+            logger.debug("[solver] Estimated difficulty: %.2f for problem: %s", difficulty, problem[:50])
+
             # 0.5. Try zero-LLM solve first (skip planner for mature signatures)
-            zero_llm_result = self._try_zero_llm_solve(problem, problem_embedding)
+            zero_llm_result = self._try_zero_llm_solve(problem, problem_embedding, difficulty)
             if zero_llm_result is not None:
                 return zero_llm_result
 
@@ -636,6 +645,7 @@ class Solver:
                     return step, await self._execute_step(
                         step, problem, step_context, step_desc_context,
                         compute_budget=compute_budget,
+                        difficulty=difficulty,
                     )
 
                 if len(ready_steps) > 1:
@@ -744,6 +754,7 @@ class Solver:
         step_descriptions: dict[str, str] = None,
         depth: int = 0,
         compute_budget: float = 1.0,
+        difficulty: float = None,
     ) -> StepResult:
         """Execute a single step.
 
@@ -816,10 +827,10 @@ class Solver:
 
         if needs_decompose:
             logger.info(
-                "[solver] Auto-decomposing '%s' (%s)",
-                signature.step_type, reason
+                "[solver] Auto-decomposing '%s' (%s, difficulty=%.2f)",
+                signature.step_type, reason, difficulty or 0.0
             )
-            await self._auto_decompose_signature(signature)
+            await self._auto_decompose_signature(signature, difficulty=difficulty)
             # Refresh signature and children after decomposition
             signature = self.step_db.get_signature(signature.id)
             children = None  # Will be re-fetched in _try_umbrella_routing
@@ -882,10 +893,10 @@ class Solver:
         # Only decompose when DSL failed to explore alternative paths
         if result is None and at_shallow_depth and not routed_signature.is_semantic_umbrella:
             logger.info(
-                "[solver] Depth %d: decomposing '%s' (DSL failed)",
-                sig_depth, routed_signature.step_type
+                "[solver] Depth %d: decomposing '%s' (DSL failed, difficulty=%.2f)",
+                sig_depth, routed_signature.step_type, difficulty or 0.0
             )
-            await self._auto_decompose_signature(routed_signature)
+            await self._auto_decompose_signature(routed_signature, difficulty=difficulty)
             routed_signature = self.step_db.get_signature(routed_signature.id)
 
         # 4.6. If we don't have a result yet, try routing through umbrella
@@ -979,6 +990,7 @@ class Solver:
                     step_text=step.task,
                     step_completed=sig_completed,
                     was_injected=was_injected if sig.id == winning_id else False,
+                    difficulty=difficulty,
                 )
             logger.debug(
                 "[solver] MCTS backprop: recorded %d explored sigs, winner=%s",
@@ -992,6 +1004,7 @@ class Solver:
                 step_text=step.task,
                 step_completed=step_completed,
                 was_injected=was_injected,
+                difficulty=difficulty,
             )
 
         # 7. Regenerate DSL on mod 10 uses (continuous learning)
@@ -1727,15 +1740,22 @@ Expression:"""
         self,
         result: SolverResult,
         correct: bool,
+        difficulty: float = None,
     ) -> list[int]:
         """Propagate problem correctness to all signatures used.
 
         Call this after grading a problem to track real success rates.
         This enables negative lift detection for umbrella learning.
 
+        DIFFICULTY-WEIGHTED CREDIT: Harder problems provide more valuable signal.
+        - difficulty=0.0 (trivial) → 1.0x credit
+        - difficulty=0.5 (GSM8K) → 3.0x credit
+        - difficulty=1.0 (competition) → 5.0x credit
+
         Args:
             result: The SolverResult from solve()
             correct: Whether the final answer was correct
+            difficulty: Problem difficulty for weighted credit (0.0-1.0)
 
         Returns:
             List of signature IDs that may need decomposition (low confidence)
@@ -1745,7 +1765,7 @@ Expression:"""
             for step in result.steps
             if step.signature_id is not None
         ]
-        self.step_db.update_problem_outcome(signature_ids, correct)
+        self.step_db.update_problem_outcome(signature_ids, correct, difficulty=difficulty)
 
         # Update rolling accuracy and reuse rate for self-tuning expansion
         current_accuracy = update_accuracy(correct)
@@ -1784,29 +1804,37 @@ Expression:"""
 
         return candidates
 
-    async def _auto_decompose_signature(self, signature, recursion_depth: int = 0) -> bool:
+    async def _auto_decompose_signature(
+        self, signature, recursion_depth: int = 0, difficulty: float = None
+    ) -> bool:
         """Auto-decompose a decompose-type signature into computable children.
 
         Called when we encounter a decompose-type signature that needs children.
         Creates children with actual DSLs and promotes parent to umbrella.
 
         During BIG BANG phase, recursively decomposes children to explode tree structure.
+        Decomposition depth is now DIFFICULTY-AWARE:
+        - Harder problems (MATH L5) → deeper decomposition (up to 10 levels)
+        - Easier problems (GSM8K) → shallower decomposition (3-4 levels)
 
         Args:
             signature: The decompose-type signature to decompose
             recursion_depth: Current recursion depth (to prevent runaway)
+            difficulty: Problem difficulty (0.0-1.0) for adaptive depth
 
         Returns:
             True if decomposition succeeded, False otherwise
         """
         from mycelium.step_signatures.umbrella_learner import UmbrellaLearner
+        from mycelium.difficulty import get_recommended_depth
 
-        # Hard limit on recursion to prevent runaway
-        MAX_DECOMPOSE_RECURSION = 5
-        if recursion_depth >= MAX_DECOMPOSE_RECURSION:
+        # Difficulty-aware depth limit: harder problems need deeper decomposition
+        # Defaults to 5 if difficulty not provided (backward compatible)
+        max_depth = get_recommended_depth(difficulty) if difficulty is not None else 5
+        if recursion_depth >= max_depth:
             logger.debug(
-                "[solver] Decomposition recursion limit reached: depth=%d",
-                recursion_depth
+                "[solver] Decomposition depth limit reached: depth=%d, max=%d (difficulty=%.2f)",
+                recursion_depth, max_depth, difficulty or 0.0
             )
             return False
 
@@ -1828,11 +1856,11 @@ Expression:"""
                         child_depth = child_sig.depth or 0
                         if should_force_decompose(child_depth):
                             logger.debug(
-                                "[expansion] Recursive decompose: '%s' at depth %d",
-                                child_sig.step_type, child_depth
+                                "[expansion] Recursive decompose: '%s' at depth %d (difficulty=%.2f)",
+                                child_sig.step_type, child_depth, difficulty or 0.0
                             )
                             await self._auto_decompose_signature(
-                                child_sig, recursion_depth + 1
+                                child_sig, recursion_depth + 1, difficulty=difficulty
                             )
 
                 return True
