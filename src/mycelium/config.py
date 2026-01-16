@@ -295,10 +295,17 @@ UMBRELLA_ROUTING_THRESHOLD = 0.5  # Min similarity for umbrella child routing (l
 #   ...
 
 SCAFFOLD_ENABLED = True  # Enable pre-allocated scaffold structure
-SCAFFOLD_LEVELS = 6  # Deep scaffold (6 levels before leaves)
+SCAFFOLD_LEVELS = 8  # Deep scaffold (8 levels before leaves)
 SCAFFOLD_BRANCHES_PER_LEVEL = 1  # NO horizontal pre-allocation - branches fork dynamically
-MIN_SIGNATURE_DEPTH = 6  # Minimum depth for leaf signatures (deep tree)
+MIN_SIGNATURE_DEPTH = 8  # Minimum depth for leaf signatures (deep tree)
+MIN_FORK_DEPTH = 4  # Don't fork until this depth (top levels stay abstract)
 SCAFFOLD_FORK_THRESHOLD = 0.6  # Create new branch if best match below this (divergent problem)
+
+# Tree structure visualization:
+#   Level 0: ROOT
+#   Level 1-3: Abstract routing (no forking, problems flow through)
+#   Level 4-7: Domain emergence (arithmetic, algebra, etc. fork here)
+#   Level 8+: Leaf signatures (actual DSL executors)
 
 # =============================================================================
 # ZERO-LLM ROUTING (Skip planner for mature signatures)

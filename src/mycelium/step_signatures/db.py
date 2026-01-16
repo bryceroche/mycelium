@@ -1093,7 +1093,7 @@ class StepSignatureDB:
             - parent_for_new: Umbrella where routing stopped (for creating new child)
             - best_similarity: Similarity of best_match
         """
-        from mycelium.config import UMBRELLA_MAX_DEPTH, SCAFFOLD_ENABLED, MIN_SIGNATURE_DEPTH, SCAFFOLD_FORK_THRESHOLD
+        from mycelium.config import UMBRELLA_MAX_DEPTH, SCAFFOLD_ENABLED, MIN_SIGNATURE_DEPTH, SCAFFOLD_FORK_THRESHOLD, MIN_FORK_DEPTH
 
         # Validate max depth to prevent unbounded recursion
         max_depth = max(1, min(int(UMBRELLA_MAX_DEPTH or 10), 100))  # Hard cap at 100
@@ -1220,9 +1220,10 @@ class StepSignatureDB:
 
                     # DYNAMIC FORKING: If best match is below fork threshold,
                     # this problem diverges from existing paths - create new branch
+                    # BUT only fork if we're deep enough (top levels stay abstract)
                     should_fork = (
-                        best_below_sim < SCAFFOLD_FORK_THRESHOLD or
-                        best_below is None
+                        depth >= MIN_FORK_DEPTH and  # Don't fork in top abstract levels
+                        (best_below_sim < SCAFFOLD_FORK_THRESHOLD or best_below is None)
                     )
 
                     if should_fork:
