@@ -633,7 +633,10 @@ class Solver:
                         for dep in step.depends_on
                         if dep in step_descriptions
                     }
-                    return step, await self._execute_step(step, problem, step_context, step_desc_context)
+                    return step, await self._execute_step(
+                        step, problem, step_context, step_desc_context,
+                        compute_budget=compute_budget,
+                    )
 
                 if len(ready_steps) > 1:
                     logger.debug("[solver] Executing %d steps in parallel", len(ready_steps))
@@ -767,7 +770,10 @@ class Solver:
 
         # 0. Handle composite steps (recursive DAG of DAGs)
         if step.is_composite:
-            return await self._execute_composite_step(step, problem, context, step_descriptions, depth)
+            return await self._execute_composite_step(
+                step, problem, context, step_descriptions, depth,
+                compute_budget=compute_budget,
+            )
 
         # 1. Normalize and embed step (strip numbers for better matching)
         # Use cached_embed to avoid redundant computation for repeated steps
@@ -976,6 +982,7 @@ class Solver:
         context: dict[str, str],
         step_descriptions: dict[str, str] = None,
         depth: int = 0,
+        compute_budget: float = 1.0,
     ) -> StepResult:
         """Execute a composite step by recursively executing its sub-plan.
 
@@ -991,6 +998,7 @@ class Solver:
             context: step_id → result from parent/sibling steps
             step_descriptions: step_id → task description (for NL param matching)
             depth: Recursion depth for nested composites
+            compute_budget: MCTS exploration budget (>1 enables multi-path)
         """
         step_descriptions = step_descriptions or {}
         import time
@@ -1036,7 +1044,8 @@ class Solver:
 
             # Recursively execute (handles nested composites)
             sub_result = await self._execute_step(
-                sub_step, problem, step_context, step_desc_context, depth=depth + 1
+                sub_step, problem, step_context, step_desc_context, depth=depth + 1,
+                compute_budget=compute_budget,
             )
             sub_results.append(sub_result)
 
