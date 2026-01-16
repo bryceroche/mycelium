@@ -299,11 +299,7 @@ class StepSignatureDB:
         Returns:
             True if scaffold was created, False if already exists or disabled
         """
-        from mycelium.config import (
-            SCAFFOLD_ENABLED,
-            SCAFFOLD_LEVELS,
-            SCAFFOLD_BRANCHES_PER_LEVEL,
-        )
+        from mycelium.config import SCAFFOLD_ENABLED, SCAFFOLD_LEVELS
 
         if not SCAFFOLD_ENABLED:
             logger.debug("[db] Scaffold disabled, skipping initialization")
@@ -322,10 +318,7 @@ class StepSignatureDB:
                         logger.debug("[db] Scaffold already exists (%d root children)", child_count)
                         return False
 
-        logger.info(
-            "[db] Initializing scaffold: %d levels, %d branches/level",
-            SCAFFOLD_LEVELS, SCAFFOLD_BRANCHES_PER_LEVEL
-        )
+        logger.info("[db] Initializing scaffold: %d levels (single chain, no horizontal scaling)", SCAFFOLD_LEVELS)
 
         now = datetime.now(timezone.utc).isoformat()
 
@@ -356,46 +349,38 @@ class StepSignatureDB:
                     (root_id,)
                 )
 
-            # Create placeholder umbrellas for each level
-            current_level_parents = [root_id]
+            # Create single-chain scaffold: ROOT → L1 → L2 → ... → LN
+            # NO horizontal scaling - branches fork dynamically at runtime
+            current_parent_id = root_id
 
             for level in range(1, SCAFFOLD_LEVELS + 1):
-                next_level_parents = []
-
-                for parent_idx, parent_id in enumerate(current_level_parents):
-                    for branch in range(SCAFFOLD_BRANCHES_PER_LEVEL):
-                        # Create placeholder signature
-                        placeholder_id = f"scaffold_L{level}_{parent_idx}_{branch}_{uuid.uuid4().hex[:6]}"
-                        cursor = conn.execute(
-                            """INSERT INTO step_signatures (
-                                signature_id, centroid, centroid_bucket,
-                                step_type, description, dsl_type,
-                                is_semantic_umbrella, is_root, depth, created_at
-                            ) VALUES (?, NULL, NULL, ?, ?, ?, 1, 0, ?, ?)""",
-                            (
-                                placeholder_id,
-                                f"placeholder_L{level}_{branch}",
-                                f"Scaffold placeholder at level {level}",
-                                "router",
-                                level,
-                                now,
-                            )
-                        )
-                        child_id = cursor.lastrowid
-                        next_level_parents.append(child_id)
-
-                        # Create parent-child relationship
-                        conn.execute(
-                            """INSERT INTO signature_relationships (parent_id, child_id, condition, created_at)
-                               VALUES (?, ?, ?, ?)""",
-                            (parent_id, child_id, f"scaffold_level_{level}", now)
-                        )
-
-                logger.info(
-                    "[db] Created scaffold level %d: %d placeholders",
-                    level, len(next_level_parents)
+                placeholder_id = f"scaffold_L{level}_{uuid.uuid4().hex[:8]}"
+                cursor = conn.execute(
+                    """INSERT INTO step_signatures (
+                        signature_id, centroid, centroid_bucket,
+                        step_type, description, dsl_type,
+                        is_semantic_umbrella, is_root, depth, created_at
+                    ) VALUES (?, NULL, NULL, ?, ?, ?, 1, 0, ?, ?)""",
+                    (
+                        placeholder_id,
+                        f"abstract_L{level}",
+                        f"Abstract routing level {level}",
+                        "router",
+                        level,
+                        now,
+                    )
                 )
-                current_level_parents = next_level_parents
+                child_id = cursor.lastrowid
+
+                # Create parent-child relationship
+                conn.execute(
+                    """INSERT INTO signature_relationships (parent_id, child_id, condition, created_at)
+                       VALUES (?, ?, ?, ?)""",
+                    (current_parent_id, child_id, f"scaffold_chain_L{level}", now)
+                )
+
+                logger.debug("[db] Created scaffold level %d: id=%d", level, child_id)
+                current_parent_id = child_id
 
             conn.commit()
 
@@ -403,13 +388,7 @@ class StepSignatureDB:
         self._cached_root = None
         self.invalidate_centroid_matrix()
 
-        total_placeholders = sum(
-            SCAFFOLD_BRANCHES_PER_LEVEL ** i for i in range(1, SCAFFOLD_LEVELS + 1)
-        )
-        logger.info(
-            "[db] Scaffold initialized: %d total placeholders across %d levels",
-            total_placeholders, SCAFFOLD_LEVELS
-        )
+        logger.info("[db] Scaffold initialized: single chain of %d levels (branches fork dynamically)", SCAFFOLD_LEVELS)
         return True
 
     def _create_scaffold_branch(
