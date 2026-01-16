@@ -767,13 +767,13 @@ class Solver:
                 was_injected = True
                 logger.debug("[solver] DSL executed: %s", result[:50] if result else "")
 
-        # 4.5. COLD START: Decompose at shallow depths EVEN ON SUCCESS
-        # This explodes out the network branching to build tree structure
-        # We keep the DSL result but also create children for future routing
-        if at_shallow_depth and not routed_signature.is_semantic_umbrella:
+        # 4.5. COLD START: Decompose at shallow depths ONLY ON FAILURE
+        # If DSL succeeded, we have a working signature - no need to decompose
+        # Only decompose when DSL failed to explore alternative paths
+        if result is None and at_shallow_depth and not routed_signature.is_semantic_umbrella:
             logger.info(
-                "[solver] Depth %d: COLD START decomposing '%s' (result=%s)",
-                sig_depth, routed_signature.step_type, "success" if result else "none"
+                "[solver] Depth %d: decomposing '%s' (DSL failed)",
+                sig_depth, routed_signature.step_type
             )
             await self._auto_decompose_signature(routed_signature)
             routed_signature = self.step_db.get_signature(routed_signature.id)
