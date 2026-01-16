@@ -26,6 +26,7 @@ import numpy as np
 _CENTROID_CACHE_VERSION = 1
 
 from mycelium.config import (
+    EMBEDDING_DIM,
     PARENT_CREDIT_DECAY,
     PARENT_CREDIT_MAX_DEPTH,
     PARENT_CREDIT_MIN,
@@ -1520,7 +1521,7 @@ class StepSignatureDB:
             # Save to disk cache for next startup
             self._save_centroid_matrix_to_cache()
         else:
-            self._centroid_matrix = np.array([], dtype=np.float32).reshape(0, 768)
+            self._centroid_matrix = np.array([], dtype=np.float32).reshape(0, EMBEDDING_DIM)
             self._centroid_sig_ids = []
             self._centroid_rows = []
 

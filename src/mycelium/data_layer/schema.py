@@ -15,7 +15,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-EMBEDDING_DIM = 768  # MathBERT dimension
+EMBEDDING_DIM = 3072  # gemini-embedding-001 dimension
 
 SQLITE_SCHEMA = """
 -- =============================================================================
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     signature_id TEXT UNIQUE NOT NULL,
 
-    -- Embedding (768-dim MathBERT)
+    -- Embedding (3072-dim gemini-embedding-001)
     -- centroid = embedding_sum / embedding_count (computed on read)
     centroid TEXT,                    -- Current centroid (for index/queries), NULL for uninitialized scaffolds
     centroid_bucket TEXT,             -- Quantized hash for coarse-grained uniqueness

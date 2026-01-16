@@ -37,8 +37,8 @@ from mycelium.data_layer.connection import configure_connection
 
 logger = logging.getLogger(__name__)
 
-# Embedding dimension (MathBERT)
-EMBEDDING_DIM = 768
+# Embedding dimension (gemini-embedding-001)
+EMBEDDING_DIM = 3072
 
 
 # =============================================================================

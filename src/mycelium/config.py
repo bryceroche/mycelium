@@ -189,15 +189,14 @@ DECAY_MAX_ACTIONS_PER_RUN = 10  # Max signatures to act on per cycle
 # EMBEDDING MODEL
 # =============================================================================
 # Supports multiple embedding backends:
-# - "text-embedding-3-large": OpenAI's best embeddings (up to 3072-dim, supports dimension reduction)
-# - "text-embedding-3-small": OpenAI's efficient embeddings (up to 1536-dim)
-# - "tbs17/MathBERT": Local math-specific embeddings (768-dim, requires sentence-transformers)
-# - "gemini-embedding-001": Google Gemini API embeddings (768-dim, requires GOOGLE_API_KEY)
+# - "gemini-embedding-001": Google Vertex AI flagship (3072-dim, state-of-the-art)
+# - "text-embedding-3-large": OpenAI's best embeddings (up to 3072-dim)
+# - "text-embedding-004": Vertex AI legacy (768-dim)
 #
-# text-embedding-3-large is recommended for math - best quality, uses dimension reduction to 768
+# gemini-embedding-001 is recommended - state-of-the-art, tops MTEB leaderboard
 
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-large")  # OpenAI's best
-EMBEDDING_DIM = 768  # Reduced from 3072 for compatibility with existing DB
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "gemini-embedding-001")
+EMBEDDING_DIM = 3072  # gemini-embedding-001 full dimension
 
 # =============================================================================
 # EMBEDDING CACHE

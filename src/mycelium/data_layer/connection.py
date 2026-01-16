@@ -21,7 +21,7 @@ try:
 except ImportError:
     CONFIG_DB_PATH = "mycelium.db"
 
-EMBEDDING_DIM = 768  # Updated for all-mpnet-base-v2 (was 384 for MiniLM)
+EMBEDDING_DIM = 3072  # gemini-embedding-001 (state-of-the-art)
 DEFAULT_DB_PATH = os.getenv("MYCELIUM_DB_PATH", CONFIG_DB_PATH)
 
 
