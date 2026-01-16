@@ -32,38 +32,17 @@ TRAINING_MODE = os.getenv("MYCELIUM_TRAINING_MODE", "true").lower() in ("true", 
 # SIGNATURE MATCHING
 # =============================================================================
 
-# Similarity Thresholds (adjusted for 768-dim MathBERT embeddings)
+# Similarity Thresholds (adjusted for 768-dim embeddings)
 # Cold-start aware: higher threshold early (more branching), lower later (consolidation)
 MIN_MATCH_THRESHOLD = 0.85  # Mature threshold - reduce signature fragmentation
 MIN_MATCH_THRESHOLD_COLD_START = 0.92  # Cold start threshold - create more signatures
 MIN_MATCH_RAMP_SIGNATURES = 50  # Signatures needed to reach mature threshold
-MERGE_SIMILARITY_THRESHOLD = 0.75
-VARIANT_THRESHOLD = 0.40
-DEFAULT_INJECTION_THRESHOLD = 0.90  # Only inject on high-confidence matches
-PIPELINE_MIN_SIMILARITY = 0.85  # Match threshold for pipeline
-NEGATIVE_LIFT_SIMILARITY = 0.55
 
 # =============================================================================
-# DSL INJECTION
+# DSL EXECUTION
 # =============================================================================
 
-FORCE_INJECTION = True  # Always inject when signature matches (bypass lift checks)
-DSL_PROBATION_ENABLED = False  # Inject on every signature hit
-DSL_MIN_CONFIDENCE = 0.0  # Try DSL regardless of confidence
-DSL_TIMEOUT_SEC = 1.0
-DSL_SEMANTIC_MIN_CONFIDENCE = 0.0  # Disabled: let DSLs execute and fail naturally
-DSL_SEMANTIC_GATE_THRESHOLD = 0.0  # Disabled: semantic gate off (strict DAG mode)
-DSL_PARAM_SEMANTIC_THRESHOLD = 0.0  # Disabled: let param mapping try and fail
-
-# Per-DSL-type thresholds - ALL DISABLED (strict DAG mode - no LLM fallback)
-DSL_THRESHOLDS_BY_TYPE = {
-    "power": {"gate": 0.0, "param": 0.0},
-    "geometry": {"gate": 0.0, "param": 0.0},
-    "combinatorics": {"gate": 0.0, "param": 0.0},
-    "arithmetic": {"gate": 0.0, "param": 0.0},
-    "division": {"gate": 0.0, "param": 0.0},
-    "default": {"gate": 0.0, "param": 0.0},
-}
+DSL_TIMEOUT_SEC = 1.0  # Timeout for DSL script execution
 
 # DSL Operation Inference threshold (cold-start aware)
 # Ramps from COLD_START to MATURE as signature count grows
@@ -75,39 +54,8 @@ DSL_OPERATION_INFERENCE_RAMP_SIGS = 100  # Signatures needed to reach mature thr
 
 # DSL exotic operation thresholds
 # Exotic operations (**, factorial, perm, etc.) require higher confidence than basic (+, -, *, /)
-# This prevents embedding noise from matching "total eggs" to "power"
 DSL_EXOTIC_THRESHOLD_BONUS = 0.05  # Require 5% higher similarity for exotic ops
 DSL_EXOTIC_THRESHOLD_MAX = 0.92  # Cap exotic threshold to ensure it's achievable
-
-# DSL Executor thresholds
-DSL_VALUE_TYPE_THRESHOLD = 0.15  # Threshold for value type matching
-DSL_STEP_TYPE_ALIGNMENT_THRESHOLD = 0.20  # Threshold for step type alignment
-DSL_PARAM_MATCH_THRESHOLD = 0.50  # Min score to accept param match
-DSL_PARAM_EXACT_MATCH_SCORE = 0.95  # Score for exact param name match
-DSL_GENERATOR_MIN_SUCCESS_RATE = 0.80  # Min success rate for DSL generation
-
-# Negative example threshold
-NEGATIVE_EXAMPLE_THRESHOLD = 0.85  # Similarity threshold for negative examples
-
-# =============================================================================
-# EXPLORATION
-# =============================================================================
-
-EXPLORATION_RATE = 1.0  # Always explore
-EXPLORATION_UNPROVEN_RATE = 1.0  # Try unproven signatures
-EXPLORATION_MIN_LIFT = 0.0
-EXPLORATION_MIN_CONFIDENCE = 0.0
-USAGE_CONFIDENCE_DECAY = 5.0
-COLD_START_GUARANTEED_USES = 100  # Bootstrap new signatures
-PROBATION_INJECTION_RATE = 0.3
-AVOID_CACHE_TTL = 300.0  # Rebuild negative-lift cache every 5 min
-
-# =============================================================================
-# RELIABILITY THRESHOLDS
-# =============================================================================
-
-RELIABILITY_MIN_USES = 3
-RELIABILITY_MIN_SUCCESS_RATE = 0.70
 
 # =============================================================================
 # UMBRELLA PROMOTION (failing signatures → decompose into children)
@@ -313,7 +261,6 @@ HINT_MIN_SIMILARITY = 0.5  # Min similarity for hints
 RECURSIVE_DECOMPOSITION_ENABLED = True  # Enable decomposition for complex steps
 RECURSIVE_MAX_DEPTH = 9  # Max routing depth: deep decomposition for complex problems
 RECURSIVE_CONFIDENCE_THRESHOLD = 0.8  # Route deeper when DSL confidence < this
-RECURSIVE_MAX_TOTAL_STEPS = 50
 
 # Umbrella routing depth limits
 _UMBRELLA_MAX_DEPTH_RAW = 10  # Configurable max depth for umbrella routing chains
@@ -384,11 +331,3 @@ INFERENCE_MODEL = os.getenv("INFERENCE_MODEL", "gpt-4o-mini")  # Light model for
 DEFAULT_MODEL = TRAINING_MODEL if TRAINING_MODE else INFERENCE_MODEL
 PLANNER_DEFAULT_MODEL = DEFAULT_MODEL
 SOLVER_DEFAULT_MODEL = DEFAULT_MODEL
-
-# =============================================================================
-# SELF-CONSISTENCY (Reliability through sampling)
-# =============================================================================
-
-SELF_CONSISTENCY_ENABLED = False  # Disabled for V2 simplicity (enable later)
-SELF_CONSISTENCY_SAMPLES = 3
-SELF_CONSISTENCY_TEMPERATURE = 0.5
