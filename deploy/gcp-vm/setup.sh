@@ -77,6 +77,7 @@ deploy_code() {
         --zone="$ZONE" \
         --compress \
         "$REPO_ROOT/src" \
+        "$REPO_ROOT/scripts" \
         "$REPO_ROOT/pyproject.toml" \
         "$VM_NAME:/opt/mycelium/"
 
@@ -130,11 +131,7 @@ run_mycelium() {
     gcloud compute ssh "$VM_NAME" \
         --project="$PROJECT_ID" \
         --zone="$ZONE" \
-        --command='
-cd /opt/mycelium
-source venv/bin/activate
-python -m mycelium "$@"
-' -- "$@"
+        -- "cd /opt/mycelium && source venv/bin/activate && python -m mycelium $*"
 }
 
 delete_vm() {
