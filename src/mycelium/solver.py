@@ -36,18 +36,12 @@ from mycelium.config import (
     DEPTH_FORCE_DECOMPOSE_DEPTH,
     DEPTH_DECOMPOSE_DECAY_BASE,
     DEPTH_DECOMPOSE_MIN_PROB,
-    EXPANSION_COLD_START_BOOST,
-    EXPANSION_SIG_THRESHOLD,
-    EXPANSION_MIN_RATE,
-    EXPANSION_MAX_RATE,
     ZERO_LLM_ROUTING_ENABLED,
     ZERO_LLM_MIN_SIMILARITY,
     ZERO_LLM_MIN_SUCCESS_RATE,
     ZERO_LLM_MIN_USES,
     ZERO_LLM_REQUIRE_DSL,
     DSL_EXPR_CACHE_MAX_SIZE,
-    ACCURACY_PRIOR_BASELINE,
-    ACCURACY_PRIOR_DECAY_COUNT,
     HINT_LIMIT,
     HINT_MIN_SIMILARITY,
 )
@@ -144,15 +138,13 @@ def update_accuracy(success: bool) -> float:
     if success:
         _accuracy_cache["successes"] += 1
 
-    # Calculate accuracy with smoothing
-    # Use simple ratio but with a floor during cold start
+    # Calculate accuracy with smoothing to prevent wild swings early on
+    # Blend with 20% prior baseline, decaying over first 10 problems
     total = _accuracy_cache["total"]
     if total > 0:
         raw_accuracy = _accuracy_cache["successes"] / total
-        # Apply smoothing: blend with prior (configurable baseline)
-        # This prevents wild swings early on
-        prior_weight = max(0, ACCURACY_PRIOR_DECAY_COUNT - total) / ACCURACY_PRIOR_DECAY_COUNT
-        _accuracy_cache["accuracy"] = prior_weight * ACCURACY_PRIOR_BASELINE + (1 - prior_weight) * raw_accuracy
+        prior_weight = max(0, 10 - total) / 10
+        _accuracy_cache["accuracy"] = prior_weight * 0.2 + (1 - prior_weight) * raw_accuracy
 
     _accuracy_cache["last_update"] = now
     return _accuracy_cache["accuracy"]
@@ -191,11 +183,7 @@ def get_reuse_rate() -> float:
 
 
 def get_expansion_rate() -> float:
-    """Calculate self-tuning expansion rate based on accuracy AND reuse efficiency.
-
-    Two key metrics:
-    - Accuracy: "Are we solving problems?"
-    - Reuse rate: "Are we learning efficiently?"
+    """Self-tuning expansion based on accuracy AND reuse efficiency.
 
     | Accuracy | Reuse | Action |
     |----------|-------|--------|
@@ -204,44 +192,36 @@ def get_expansion_rate() -> float:
     | High     | Any   | Minimal - we're doing well |
 
     Returns:
-        Expansion rate in [EXPANSION_MIN_RATE, EXPANSION_MAX_RATE]
+        Expansion rate in [0.05, 1.0]
     """
     import math
-    from mycelium.config import (
-        EXPANSION_ACCURACY_TARGET,
-        EXPANSION_ACCURACY_STEEPNESS,
-        EXPANSION_REUSE_COLD_FLOOR,
-    )
 
     accuracy = get_accuracy()
     reuse_rate = get_reuse_rate()
     sig_count = get_signature_count()
 
     # 1. Accuracy-driven sigmoid: base expansion from performance
-    # At accuracy=0: ~1.0 (need to branch), at target: 0.5, at 1.0: ~0
-    accuracy_factor = 1.0 / (1.0 + math.exp((accuracy - EXPANSION_ACCURACY_TARGET) / EXPANSION_ACCURACY_STEEPNESS))
+    # At accuracy=0: ~1.0, at 0.7: 0.5, at 1.0: ~0
+    accuracy_factor = 1.0 / (1.0 + math.exp((accuracy - 0.7) / 0.15))
 
-    # 2. Reuse modulation: if we're not reusing, slow down creation
-    # Low reuse = creating signatures but not matching them = fragmentation
-    # High reuse + low accuracy = matching but failing = need to branch
-    #
+    # 2. Reuse modulation: low reuse = fragmenting, slow down
     # At cold start (few sigs), ignore reuse (give it time to build up)
-    cold_floor = math.exp(-sig_count / EXPANSION_REUSE_COLD_FLOOR)  # ~1 at start, decays
+    cold_floor = math.exp(-sig_count / 100)
     effective_reuse = max(reuse_rate, cold_floor)
 
-    # 3. Combine: accuracy determines desire to expand, reuse gates it
+    # 3. Combine: accuracy determines desire, reuse gates it
     expansion = accuracy_factor * effective_reuse
 
-    # Cold-start boost: extra expansion when we have very few signatures
-    cold_start_boost = 1.0 + EXPANSION_COLD_START_BOOST * math.exp(-sig_count / EXPANSION_SIG_THRESHOLD)
-    expansion = expansion * cold_start_boost
+    # 4. Cold-start boost for very few signatures
+    cold_boost = 1.0 + math.exp(-sig_count / 3000)
+    expansion = expansion * cold_boost
 
-    # Clamp to configured bounds
-    expansion = max(EXPANSION_MIN_RATE, min(EXPANSION_MAX_RATE, expansion))
+    # Clamp to bounds
+    expansion = max(0.05, min(1.0, expansion))
 
     logger.debug(
-        "[expansion] rate=%.2f (accuracy=%.2f, reuse=%.2f, sigs=%d, boost=%.2f)",
-        expansion, accuracy, reuse_rate, sig_count, cold_start_boost
+        "[expansion] rate=%.2f (accuracy=%.2f, reuse=%.2f, sigs=%d)",
+        expansion, accuracy, reuse_rate, sig_count
     )
 
     return expansion

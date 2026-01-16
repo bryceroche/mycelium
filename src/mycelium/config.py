@@ -280,52 +280,10 @@ DEPTH_DECOMPOSE_DECAY_BASE = 0.5  # Decay rate per depth beyond force threshold
 DEPTH_DECOMPOSE_MIN_PROB = 0.05  # Floor probability (never fully disable decompose option)
 
 # =============================================================================
-# DYNAMIC DEPTH ROUTING
+# SIGNATURE HINTS
 # =============================================================================
-
-# =============================================================================
-# SMOOTH EXPANSION RATE (replaces BIG_BANG toggle)
-# =============================================================================
-# Per CLAUDE.md: "A SMOOTH and CONTINUOUS learning process is key"
-#
-# Formula (training): expansion = (1 - accuracy^weight) * cold_boost * sig_limit_factor
-# Formula (inference): expansion = (1 - accuracy) * cold_boost * sig_limit_factor
-#
-# - Failure-driven: low accuracy → high expansion
-# - Cold-start boost: few signatures → extra multiplier
-# - Asymptotic limit: as signatures approach MAX, creation rate → 0
-# - Training mode: weights accuracy higher (more aggressive branching on failure)
-#
-# No toggle needed - the math handles the transition automatically.
-
-# Self-tuning expansion (based on accuracy AND reuse efficiency)
-# Sigmoid function: expansion = accuracy_factor * reuse_factor
-#
-# Accuracy factor: 1 / (1 + exp((accuracy - target) / steepness))
-# - At accuracy=0: ~100% expansion (we need to learn)
-# - At accuracy=target: 50% expansion
-# - At accuracy=1: ~0% expansion (we're doing well)
-#
-# Reuse factor: max(reuse_rate, cold_floor)
-# - Low reuse = fragmenting, slow down creation
-# - High reuse + low accuracy = need more branches
-EXPANSION_ACCURACY_TARGET = 0.7      # Accuracy at which expansion drops to 50%
-EXPANSION_ACCURACY_STEEPNESS = 0.15  # Controls sigmoid sharpness (smaller = sharper cutoff)
-EXPANSION_REUSE_COLD_FLOOR = 100     # Signatures before reuse rate starts gating expansion
-
-# Cold-start boost (same as before)
-EXPANSION_COLD_START_BOOST = 1.0  # k: extra multiplier during cold start (1.0 = 2x at start)
-EXPANSION_SIG_THRESHOLD = 3000   # Signatures needed for cold-start boost to decay to ~37%
-EXPANSION_MIN_RATE = 0.05        # Floor: always some exploration (5%)
-EXPANSION_MAX_RATE = 1.0         # Cap: never exceed 100%
-
-# Accuracy smoothing (prevents wild swings early on)
-ACCURACY_PRIOR_BASELINE = 0.2    # Assumed baseline accuracy before any data
-ACCURACY_PRIOR_DECAY_COUNT = 10  # Problems before prior fully decays
-
-# Signature hints for NL interface
-HINT_LIMIT = 3                   # Number of hints to include (reduced from 15, saves ~1000 tokens)
-HINT_MIN_SIMILARITY = 0.5        # Minimum similarity for hints (higher = more relevant only)
+HINT_LIMIT = 3           # Max hints to include in prompts
+HINT_MIN_SIMILARITY = 0.5  # Min similarity for hints
 
 RECURSIVE_DECOMPOSITION_ENABLED = True  # Enable decomposition for complex steps
 RECURSIVE_MAX_DEPTH = 9  # Max routing depth: deep decomposition for complex problems
