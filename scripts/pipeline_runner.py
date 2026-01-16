@@ -15,7 +15,7 @@ import re
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from typing import Optional
 
@@ -38,6 +38,17 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class StepTiming:
+    """Timing info for a single step."""
+    step_id: str
+    task: str
+    elapsed_ms: float
+    signature_type: str = ""
+    was_injected: bool = False
+    was_routed: bool = False
+
+
+@dataclass
 class ProblemResult:
     """Result from solving a single problem."""
     problem_id: str
@@ -57,6 +68,8 @@ class ProblemResult:
     matched_and_reused: int = 0  # Matched AND (DSL succeeded OR routed)
     new_signatures_created: int = 0
     error: Optional[str] = None
+    # Per-step timing breakdown
+    steps: list = field(default_factory=list)
 
 
 def extract_boxed_answer(solution: str) -> str:
@@ -237,6 +250,19 @@ async def solve_problem(
                     learn_result["decomposed"], learn_result["children_created"]
                 )
 
+        # Convert step results to timing info
+        step_timings = [
+            StepTiming(
+                step_id=s.step_id,
+                task=s.task[:50],
+                elapsed_ms=s.elapsed_ms,
+                signature_type=s.signature_type or "",
+                was_injected=s.was_injected,
+                was_routed=s.was_routed,
+            )
+            for s in result.steps
+        ]
+
         return ProblemResult(
             problem_id=problem["id"],
             problem=problem["problem"][:200],
@@ -253,6 +279,7 @@ async def solve_problem(
             steps_with_routing=result.steps_with_routing,
             matched_and_reused=result.matched_and_reused,
             new_signatures_created=0,  # V2 tracks this differently
+            steps=step_timings,
         )
 
     except Exception as e:
