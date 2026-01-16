@@ -255,7 +255,16 @@ def _safe_eval_math(script: str, inputs: dict[str, float]) -> Optional[float]:
             raise ValueError(f"Unsupported node: {type(node).__name__}")
 
     try:
-        tree = ast.parse(script, mode='eval')
+        # Strip assignment if LLM wrote "var = expr" instead of just "expr"
+        clean_script = script.strip()
+        if '=' in clean_script and '==' not in clean_script:
+            # Split on first = and take the right side
+            parts = clean_script.split('=', 1)
+            if len(parts) == 2:
+                clean_script = parts[1].strip()
+                logger.debug("Math eval: stripped assignment, using: %s", clean_script)
+
+        tree = ast.parse(clean_script, mode='eval')
         return _eval_node(tree)
     except Exception as e:
         logger.debug("Math eval failed: %s", e)
