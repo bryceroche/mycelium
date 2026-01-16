@@ -241,12 +241,15 @@ DECAY_MAX_ACTIONS_PER_RUN = 10  # Max signatures to act on per cycle
 # EMBEDDING MODEL
 # =============================================================================
 # Supports multiple embedding backends:
+# - "text-embedding-3-large": OpenAI's best embeddings (up to 3072-dim, supports dimension reduction)
+# - "text-embedding-3-small": OpenAI's efficient embeddings (up to 1536-dim)
 # - "tbs17/MathBERT": Local math-specific embeddings (768-dim, requires sentence-transformers)
 # - "gemini-embedding-001": Google Gemini API embeddings (768-dim, requires GOOGLE_API_KEY)
-# - "all-MiniLM-L6-v2": Local fast embeddings (384-dim)
+#
+# text-embedding-3-large is recommended for math - best quality, uses dimension reduction to 768
 
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "gemini-embedding-001")  # Default to Gemini
-EMBEDDING_DIM = 768  # Dimension for current model (both MathBERT and Gemini are 768)
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-large")  # OpenAI's best
+EMBEDDING_DIM = 768  # Reduced from 3072 for compatibility with existing DB
 
 # =============================================================================
 # EMBEDDING CACHE
@@ -356,8 +359,13 @@ DB_MAX_RETRIES = 5  # Max retry attempts for transient DB errors
 DB_BASE_RETRY_DELAY = 0.05  # Base delay in seconds (exponential backoff with jitter)
 
 # =============================================================================
-# LLM CLIENT (OpenAI gpt-4.1-nano)
+# LLM CLIENT
 # =============================================================================
+# Training mode uses beefy models for better decomposition and learning.
+# Inference mode uses lightweight models for fast, cost-effective execution.
+#
+# Training models (beefy): gpt-4o, claude-opus-4-20250514
+# Inference models (light): gpt-4o-mini, gpt-4.1-nano
 
 CLIENT_DEFAULT_TIMEOUT = 120.0
 CLIENT_DEFAULT_TEMPERATURE = 0.0  # Zero for deterministic responses
@@ -366,8 +374,14 @@ CLIENT_BASE_RETRY_DELAY = 1.0
 CLIENT_MAX_RETRY_DELAY = 30.0
 PLANNER_DEFAULT_TEMPERATURE = 0.0  # Zero for deterministic decomposition
 
-# Model - OpenAI gpt-4.1-nano only
-DEFAULT_MODEL = "gpt-4.1-nano"
+# Model configuration - set via TRAINING_MODE env var
+# TRAINING_MODE=true  -> use beefy models for learning
+# TRAINING_MODE=false -> use lightweight models for inference
+TRAINING_MODEL = os.getenv("TRAINING_MODEL", "gpt-4o")  # Beefy model for training
+INFERENCE_MODEL = os.getenv("INFERENCE_MODEL", "gpt-4o-mini")  # Light model for inference
+
+# Active model selection based on mode
+DEFAULT_MODEL = TRAINING_MODEL if TRAINING_MODE else INFERENCE_MODEL
 PLANNER_DEFAULT_MODEL = DEFAULT_MODEL
 SOLVER_DEFAULT_MODEL = DEFAULT_MODEL
 
