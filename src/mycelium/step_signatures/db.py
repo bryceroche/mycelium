@@ -162,6 +162,16 @@ class StepSignatureDB:
         """Get the database path."""
         return self._db_path
 
+    def close(self):
+        """Close the database, flushing any pending operations.
+
+        Ensures all batched centroid propagations are written before closing.
+        """
+        self.flush_pending_propagations()
+        if self._direct_conn:
+            self._direct_conn.close()
+            self._direct_conn = None
+
     @property
     def _centroid_cache_path(self) -> str:
         """Get the path for the centroid matrix cache file."""
@@ -1989,6 +1999,46 @@ class StepSignatureDB:
             "[db] Updated centroid for sig %d (operationally correct)",
             signature_id
         )
+
+    def record_operational_failure(
+        self,
+        signature_id: int,
+        embedding: np.ndarray,
+        produced_answer: str,
+        expected_answer: str,
+    ):
+        """Record an operational failure for a signature path.
+
+        Per CLAUDE.md: "Record every failure—it feeds the refinement loop"
+
+        This tracks when a signature produces a different answer than ground truth,
+        providing signal for potential cluster splitting. Over time, if a signature
+        accumulates many operational failures, it may need to be decomposed into
+        more specific sub-signatures.
+
+        Args:
+            signature_id: ID of the signature that failed operationally
+            embedding: The routing embedding (for future centroid analysis)
+            produced_answer: What the signature produced
+            expected_answer: The ground truth answer
+        """
+        with self._connection() as conn:
+            # Increment operational failure count
+            # This is separate from regular "uses" - tracks semantic mismatches
+            conn.execute(
+                """UPDATE step_signatures
+                   SET operational_failures = COALESCE(operational_failures, 0) + 1
+                   WHERE id = ?""",
+                (signature_id,)
+            )
+
+            # Log for analysis (could be expanded to store in separate table)
+            logger.debug(
+                "[db] Recorded operational failure for sig %d: produced=%s, expected=%s",
+                signature_id,
+                produced_answer[:30] if produced_answer else "None",
+                expected_answer[:30] if expected_answer else "None",
+            )
 
     # =========================================================================
     # Usage Recording

@@ -139,7 +139,7 @@ PARENT_CREDIT_MIN = 0.1  # Minimum credit to apply (filter noise)
 
 # Centroid propagation (batch update parent centroids)
 CENTROID_PROPAGATION_MAX_DEPTH = 3  # Max levels to propagate centroid changes (perf optimization)
-CENTROID_PROPAGATION_BATCH_SIZE = 10  # Accumulate N matches before propagating (perf: avoids per-match overhead)
+CENTROID_PROPAGATION_BATCH_SIZE = 5  # Accumulate N matches before propagating (perf vs freshness tradeoff)
 
 # Centroid drift bounds (reject updates that would move centroid too far)
 # This prevents a signature from drifting outside its semantic confidence bounds.
