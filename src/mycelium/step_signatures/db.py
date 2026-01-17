@@ -64,6 +64,13 @@ from mycelium.step_signatures.utils import (
     get_cached_centroid,
     invalidate_centroid_cache,
     compute_centroid_bucket,
+    # Signature lookup caches
+    get_cached_signature,
+    cache_signature,
+    get_cached_children,
+    cache_children,
+    invalidate_signature_cache,
+    invalidate_children_cache,
 )
 
 logger = logging.getLogger(__name__)
@@ -669,6 +676,7 @@ class StepSignatureDB:
                     (packed_centroid, packed_sum, weight, parent_id),
                 )
                 invalidate_centroid_cache(parent_id)
+                invalidate_signature_cache(parent_id)
                 logger.debug(
                     "[db] Propagated centroid to parent %d (weight=%d)",
                     parent_id, weight
@@ -1515,6 +1523,9 @@ class StepSignatureDB:
                     "UPDATE step_signatures SET is_semantic_umbrella = 1 WHERE id = ?",
                     (actual_parent_id,),
                 )
+                # Invalidate parent's children cache since we added a new child
+                invalidate_children_cache(actual_parent_id)
+                invalidate_signature_cache(actual_parent_id)
                 logger.debug(
                     "[db] Added as child: parent_id=%d (depth=%d) -> child_id=%d (depth=%d) (condition='%s')",
                     actual_parent_id, actual_depth - 1, row_id, actual_depth, step_type
@@ -1575,14 +1586,25 @@ class StepSignatureDB:
     # =========================================================================
 
     def get_signature(self, signature_id: int) -> Optional[StepSignature]:
-        """Get a signature by ID."""
+        """Get a signature by ID.
+
+        Uses LRU cache with TTL to skip DB for hot signatures.
+        """
+        # Check cache first
+        cached = get_cached_signature(signature_id)
+        if cached is not None:
+            return cached
+
+        # Cache miss - fetch from DB
         with self._connection() as conn:
             row = conn.execute(
                 "SELECT * FROM step_signatures WHERE id = ?",
                 (signature_id,)
             ).fetchone()
             if row:
-                return self._row_to_signature(row)
+                sig = self._row_to_signature(row)
+                cache_signature(signature_id, sig)
+                return sig
             return None
 
     def _ensure_centroid_matrix(self):
@@ -1979,6 +2001,7 @@ class StepSignatureDB:
                     self.propagate_centroid_to_parents(conn, signature_id)
 
                 conn.commit()
+                invalidate_signature_cache(signature_id)
                 logger.debug(
                     "[db] Updated centroid for sig %d: count=%d",
                     signature_id, new_count
@@ -2629,6 +2652,7 @@ class StepSignatureDB:
                 f"UPDATE step_signatures SET {', '.join(updates)} WHERE id = ?",
                 params,
             )
+            invalidate_signature_cache(signature_id)
 
     # =========================================================================
     # Helpers
@@ -2943,6 +2967,8 @@ class StepSignatureDB:
     ) -> list[tuple[StepSignature, str]]:
         """Get child signatures for an umbrella parent.
 
+        Uses LRU cache with TTL to skip DB for hot umbrella nodes during routing.
+
         Args:
             parent_id: ID of the parent signature
             for_routing: If True, use fast parsing (centroid only, skip JSON).
@@ -2951,6 +2977,12 @@ class StepSignatureDB:
         Returns:
             List of (child_signature, condition) tuples, ordered by routing_order
         """
+        # Check cache first
+        cached = get_cached_children(parent_id, for_routing)
+        if cached is not None:
+            return cached
+
+        # Cache miss - fetch from DB
         with self._connection() as conn:
             cursor = conn.execute(
                 """SELECT s.*, r.condition
@@ -2970,6 +3002,9 @@ class StepSignatureDB:
                 condition = row_dict.pop("condition")
                 sig = row_converter(row_dict)
                 results.append((sig, condition))
+
+            # Cache the result
+            cache_children(parent_id, results, for_routing)
             return results
 
     def get_parent(self, child_id: int) -> Optional[StepSignature]:
@@ -3082,8 +3117,11 @@ class StepSignatureDB:
                 "UPDATE step_signatures SET depth = ? WHERE id = ?",
                 (child_depth, child_id),
             )
-            # Invalidate parent's centroid cache (new child affects routing)
+            # Invalidate caches (new child affects routing and lookups)
             invalidate_centroid_cache(parent_id)
+            invalidate_children_cache(parent_id)
+            invalidate_signature_cache(parent_id)
+            invalidate_signature_cache(child_id)
             self.invalidate_centroid_matrix()
             logger.info(
                 "[db] Added child: parent=%d (depth=%d) → child=%d (depth=%d) (condition='%s')",
@@ -3114,6 +3152,7 @@ class StepSignatureDB:
                 (signature_id,),
             )
             if cursor.rowcount > 0:
+                invalidate_signature_cache(signature_id)
                 logger.info("[db] Promoted signature %d to umbrella (DSL kept as fallback)", signature_id)
                 return True
             return False
