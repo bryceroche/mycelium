@@ -368,9 +368,9 @@ class StepSignatureDB:
                     logger.info("[db] Created scaffold root: id=%d", root_id)
                 else:
                     root_id = root_row[0]
-                    # Ensure root is an umbrella
+                    # Ensure root is an umbrella - routers don't execute DSL
                     conn.execute(
-                        "UPDATE step_signatures SET is_semantic_umbrella = 1, dsl_type = 'router' WHERE id = ?",
+                        "UPDATE step_signatures SET is_semantic_umbrella = 1, dsl_type = 'router', dsl_script = NULL WHERE id = ?",
                         (root_id,)
                     )
 
@@ -1518,9 +1518,12 @@ class StepSignatureDB:
                        VALUES (?, ?, ?, ?, ?)""",
                     (actual_parent_id, row_id, step_type, 0, now),
                 )
-                # Mark parent as umbrella (it now has children)
+                # Mark parent as umbrella - routers don't execute DSL, they route
+                # Clear dsl_script to avoid mismatch between dsl_type='router' and script type='math'
                 conn.execute(
-                    "UPDATE step_signatures SET is_semantic_umbrella = 1 WHERE id = ?",
+                    """UPDATE step_signatures
+                       SET is_semantic_umbrella = 1, dsl_type = 'router', dsl_script = NULL
+                       WHERE id = ?""",
                     (actual_parent_id,),
                 )
                 # Invalidate parent's children cache since we added a new child
@@ -2187,10 +2190,12 @@ class StepSignatureDB:
                     )
                     if should_demote:
                         # Promote to umbrella: clear DSL, set type to router
+                        # Clear dsl_script to avoid type mismatch
                         conn.execute(
                             """UPDATE step_signatures
                                SET is_semantic_umbrella = 1,
-                                   dsl_type = 'router'
+                                   dsl_type = 'router',
+                                   dsl_script = NULL
                                WHERE id = ?""",
                             (signature_id,),
                         )
@@ -3104,10 +3109,11 @@ class StepSignatureDB:
                    VALUES (?, ?, ?, ?, ?)""",
                 (parent_id, child_id, condition, routing_order, now),
             )
-            # Mark parent as umbrella (keep DSL as fallback if routing fails)
+            # Mark parent as umbrella - routers don't execute DSL, they route
+            # Clear dsl_script to avoid mismatch between dsl_type='router' and script type='math'
             conn.execute(
                 """UPDATE step_signatures
-                   SET is_semantic_umbrella = 1, dsl_type = 'router'
+                   SET is_semantic_umbrella = 1, dsl_type = 'router', dsl_script = NULL
                    WHERE id = ?""",
                 (parent_id,),
             )
@@ -3144,16 +3150,18 @@ class StepSignatureDB:
         """
         with self._connection() as conn:
             # Clear DSL and set type to router - umbrellas don't execute, they route
+            # Clear dsl_script to avoid mismatch between dsl_type='router' and script type='math'
             cursor = conn.execute(
                 """UPDATE step_signatures
                    SET is_semantic_umbrella = 1,
-                       dsl_type = 'router'
+                       dsl_type = 'router',
+                       dsl_script = NULL
                    WHERE id = ?""",
                 (signature_id,),
             )
             if cursor.rowcount > 0:
                 invalidate_signature_cache(signature_id)
-                logger.info("[db] Promoted signature %d to umbrella (DSL kept as fallback)", signature_id)
+                logger.info("[db] Promoted signature %d to umbrella (router)", signature_id)
                 return True
             return False
 
