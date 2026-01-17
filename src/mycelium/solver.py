@@ -559,16 +559,20 @@ class Solver:
 
         Args:
             problem: The problem text
-            compute_budget: MCTS exploration budget (default from config)
+            compute_budget: MCTS exploration budget (None = adaptive based on difficulty)
+                - None = adaptive budget (harder problems get more exploration)
                 - 1.0 = single best path (backward compatible)
                 - 2.0+ = explore multiple paths at low-confidence nodes
 
         Returns:
             SolverResult with answer and step details
         """
-        from mycelium.config import COMPUTE_BUDGET_DEFAULT
-        if compute_budget is None:
-            compute_budget = COMPUTE_BUDGET_DEFAULT
+        from mycelium.config import COMPUTE_BUDGET_DEFAULT, TRAINING_MODE
+        from mycelium.difficulty import get_exploration_budget
+
+        # Track if caller explicitly set budget (vs adaptive)
+        explicit_budget = compute_budget is not None
+
         import time
         start_time = time.time()
 
@@ -581,6 +585,20 @@ class Solver:
             # Difficulty affects: depth, credit multiplier, routing preferences
             difficulty = estimate_difficulty(problem)
             logger.debug("[solver] Estimated difficulty: %.2f for problem: %s", difficulty, problem[:50])
+
+            # 0.2. Adaptive compute budget: scale by difficulty (if not explicitly set)
+            # Per CLAUDE.md: "Multi step simulated mcts rollouts"
+            # Harder problems get more exploration budget in training mode
+            if explicit_budget:
+                pass  # Use caller's value
+            elif TRAINING_MODE:
+                compute_budget = get_exploration_budget(difficulty, base_budget=COMPUTE_BUDGET_DEFAULT)
+                logger.debug(
+                    "[solver] Adaptive budget: %.1f (difficulty=%.2f)",
+                    compute_budget, difficulty
+                )
+            else:
+                compute_budget = COMPUTE_BUDGET_DEFAULT  # Inference: single path
 
             # 0.5. Try zero-LLM solve first (skip planner for mature signatures)
             zero_llm_result = self._try_zero_llm_solve(problem, problem_embedding, difficulty)
