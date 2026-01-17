@@ -221,6 +221,17 @@ EMBEDDING_CACHE_TTL_DAYS = 30  # Prune disk entries older than N days
 DSL_EXPR_CACHE_MAX_SIZE = 1000  # Max entries in DSL expression cache
 
 # =============================================================================
+# SIGNATURE LOOKUP CACHE
+# =============================================================================
+# LRU cache with TTL for hot signature lookups (get_signature, get_children).
+# Skips DB entirely for frequently accessed signatures during routing.
+# Invalidated on centroid/signature updates.
+
+SIGNATURE_CACHE_MAX_SIZE = 1000  # Max entries in signature lookup cache
+SIGNATURE_CACHE_TTL_SECONDS = 60.0  # TTL for cached entries (seconds)
+CHILDREN_CACHE_MAX_SIZE = 500  # Max entries for get_children cache
+
+# =============================================================================
 # DEPTH-AWARE DECOMPOSITION
 # =============================================================================
 # Force decomposition at shallow depths to build out the tree structure.

@@ -19,6 +19,14 @@ from mycelium.step_signatures.utils import (
     get_cached_centroid,
     invalidate_centroid_cache,
     get_centroid_cache_stats,
+    # Signature lookup caches
+    get_cached_signature,
+    cache_signature,
+    get_cached_children,
+    cache_children,
+    invalidate_signature_cache,
+    invalidate_children_cache,
+    get_signature_cache_stats,
 )
 
 from mycelium.step_signatures.db import StepSignatureDB, RoutingResult
@@ -74,6 +82,14 @@ __all__ = [
     "get_cached_centroid",
     "invalidate_centroid_cache",
     "get_centroid_cache_stats",
+    # Signature lookup caches
+    "get_cached_signature",
+    "cache_signature",
+    "get_cached_children",
+    "cache_children",
+    "invalidate_signature_cache",
+    "invalidate_children_cache",
+    "get_signature_cache_stats",
     "STEP_SCHEMA_SQL",
     # Stats module
     "StepExecution",

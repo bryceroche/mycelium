@@ -2,8 +2,11 @@
 
 import hashlib
 import json
+import time
+from collections import OrderedDict
+from dataclasses import dataclass
 from functools import lru_cache
-from typing import Optional, Union
+from typing import Optional, Union, TypeVar, Generic
 import numpy as np
 
 
@@ -11,6 +14,174 @@ import numpy as np
 # Using a simple dict with manual eviction for flexibility
 _centroid_cache: dict[int, np.ndarray] = {}
 _CENTROID_CACHE_MAX_SIZE = 10000
+
+
+# =============================================================================
+# LRU CACHE WITH TTL
+# =============================================================================
+# Generic LRU cache with time-to-live support for signature lookups.
+
+T = TypeVar("T")
+
+
+@dataclass
+class CacheEntry(Generic[T]):
+    """Cache entry with value and timestamp."""
+    value: T
+    timestamp: float
+
+
+class LRUCacheWithTTL(Generic[T]):
+    """LRU cache with TTL expiration.
+
+    Features:
+    - O(1) get/put via OrderedDict
+    - Automatic TTL expiration on access
+    - LRU eviction when max_size exceeded
+    - Manual invalidation by key or full clear
+    """
+
+    def __init__(self, max_size: int = 1000, ttl_seconds: float = 60.0):
+        self._cache: OrderedDict[str, CacheEntry[T]] = OrderedDict()
+        self._max_size = max_size
+        self._ttl_seconds = ttl_seconds
+        self._hits = 0
+        self._misses = 0
+
+    def get(self, key: str) -> Optional[T]:
+        """Get value if exists and not expired."""
+        if key not in self._cache:
+            self._misses += 1
+            return None
+
+        entry = self._cache[key]
+        now = time.monotonic()
+
+        # Check TTL
+        if now - entry.timestamp > self._ttl_seconds:
+            del self._cache[key]
+            self._misses += 1
+            return None
+
+        # Move to end (most recently used)
+        self._cache.move_to_end(key)
+        self._hits += 1
+        return entry.value
+
+    def put(self, key: str, value: T) -> None:
+        """Put value into cache."""
+        now = time.monotonic()
+
+        # Update existing or add new
+        if key in self._cache:
+            self._cache.move_to_end(key)
+        self._cache[key] = CacheEntry(value=value, timestamp=now)
+
+        # Evict oldest if over max size
+        while len(self._cache) > self._max_size:
+            self._cache.popitem(last=False)
+
+    def invalidate(self, key: str) -> None:
+        """Remove a specific key from cache."""
+        self._cache.pop(key, None)
+
+    def clear(self) -> None:
+        """Clear entire cache."""
+        self._cache.clear()
+
+    def stats(self) -> dict:
+        """Get cache statistics."""
+        total = self._hits + self._misses
+        return {
+            "size": len(self._cache),
+            "max_size": self._max_size,
+            "ttl_seconds": self._ttl_seconds,
+            "hits": self._hits,
+            "misses": self._misses,
+            "hit_rate": self._hits / total if total > 0 else 0.0,
+        }
+
+
+# =============================================================================
+# SIGNATURE LOOKUP CACHES
+# =============================================================================
+# Separate caches for get_signature and get_children to allow independent tuning.
+
+from mycelium.config import (
+    SIGNATURE_CACHE_MAX_SIZE,
+    SIGNATURE_CACHE_TTL_SECONDS,
+    CHILDREN_CACHE_MAX_SIZE,
+)
+
+# Cache for get_signature(id) -> StepSignature
+_signature_cache: LRUCacheWithTTL = LRUCacheWithTTL(
+    max_size=SIGNATURE_CACHE_MAX_SIZE,
+    ttl_seconds=SIGNATURE_CACHE_TTL_SECONDS,
+)
+
+# Cache for get_children(parent_id) -> list of children
+_children_cache: LRUCacheWithTTL = LRUCacheWithTTL(
+    max_size=CHILDREN_CACHE_MAX_SIZE,
+    ttl_seconds=SIGNATURE_CACHE_TTL_SECONDS,
+)
+
+
+def get_cached_signature(sig_id: int):
+    """Get signature from cache (returns None if not cached)."""
+    return _signature_cache.get(str(sig_id))
+
+
+def cache_signature(sig_id: int, signature) -> None:
+    """Cache a signature lookup result."""
+    _signature_cache.put(str(sig_id), signature)
+
+
+def get_cached_children(parent_id: int, for_routing: bool = False):
+    """Get children from cache (returns None if not cached)."""
+    key = f"{parent_id}:{for_routing}"
+    return _children_cache.get(key)
+
+
+def cache_children(parent_id: int, children: list, for_routing: bool = False) -> None:
+    """Cache a get_children result."""
+    key = f"{parent_id}:{for_routing}"
+    _children_cache.put(key, children)
+
+
+def invalidate_signature_cache(sig_id: int = None) -> None:
+    """Invalidate signature cache entry or entire cache.
+
+    Call this when a signature is updated.
+    Also invalidates children cache entries that might reference this signature.
+    """
+    if sig_id is not None:
+        _signature_cache.invalidate(str(sig_id))
+        # Also clear children cache since it may contain this signature
+        # (more aggressive but simpler than tracking reverse dependencies)
+        _children_cache.clear()
+    else:
+        _signature_cache.clear()
+        _children_cache.clear()
+
+
+def invalidate_children_cache(parent_id: int = None) -> None:
+    """Invalidate children cache for a specific parent or all.
+
+    Call this when children relationships change.
+    """
+    if parent_id is not None:
+        _children_cache.invalidate(f"{parent_id}:True")
+        _children_cache.invalidate(f"{parent_id}:False")
+    else:
+        _children_cache.clear()
+
+
+def get_signature_cache_stats() -> dict:
+    """Get statistics for signature lookup caches."""
+    return {
+        "signature_cache": _signature_cache.stats(),
+        "children_cache": _children_cache.stats(),
+    }
 
 # Preloaded centroid matrix for batch similarity (much faster)
 _centroid_matrix_cache: dict[str, tuple] = {}  # db_path -> (sig_ids, matrix, timestamp)
