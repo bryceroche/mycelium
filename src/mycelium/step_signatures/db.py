@@ -1314,8 +1314,9 @@ class StepSignatureDB:
                     # this problem diverges from existing paths - create new branch
                     # BUT only fork if we're deep enough (top levels stay abstract)
                     # Uses cold-start aware threshold: higher during cold start (more forking)
+                    # Note: depth + 1 because we're creating a child at the next level
                     should_fork = (
-                        depth >= MIN_FORK_DEPTH and  # Don't fork in top abstract levels
+                        (depth + 1) >= MIN_FORK_DEPTH and  # Don't fork in top abstract levels
                         (best_below_sim < fork_threshold or best_below is None)
                     )
 
