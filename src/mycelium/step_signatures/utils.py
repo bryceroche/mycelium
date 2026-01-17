@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import threading
 import time
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -43,6 +44,7 @@ class LRUCacheWithTTL(Generic[T]):
 
     def __init__(self, max_size: int = 1000, ttl_seconds: float = 60.0):
         self._cache: OrderedDict[str, CacheEntry[T]] = OrderedDict()
+        self._lock = threading.Lock()
         self._max_size = max_size
         self._ttl_seconds = ttl_seconds
         self._hits = 0
@@ -50,56 +52,61 @@ class LRUCacheWithTTL(Generic[T]):
 
     def get(self, key: str) -> Optional[T]:
         """Get value if exists and not expired."""
-        if key not in self._cache:
-            self._misses += 1
-            return None
+        with self._lock:
+            if key not in self._cache:
+                self._misses += 1
+                return None
 
-        entry = self._cache[key]
-        now = time.monotonic()
+            entry = self._cache[key]
+            now = time.monotonic()
 
-        # Check TTL
-        if now - entry.timestamp > self._ttl_seconds:
-            del self._cache[key]
-            self._misses += 1
-            return None
+            # Check TTL
+            if now - entry.timestamp > self._ttl_seconds:
+                del self._cache[key]
+                self._misses += 1
+                return None
 
-        # Move to end (most recently used)
-        self._cache.move_to_end(key)
-        self._hits += 1
-        return entry.value
+            # Move to end (most recently used)
+            self._cache.move_to_end(key)
+            self._hits += 1
+            return entry.value
 
     def put(self, key: str, value: T) -> None:
         """Put value into cache."""
-        now = time.monotonic()
+        with self._lock:
+            now = time.monotonic()
 
-        # Update existing or add new
-        if key in self._cache:
-            self._cache.move_to_end(key)
-        self._cache[key] = CacheEntry(value=value, timestamp=now)
+            # Update existing or add new
+            if key in self._cache:
+                self._cache.move_to_end(key)
+            self._cache[key] = CacheEntry(value=value, timestamp=now)
 
-        # Evict oldest if over max size
-        while len(self._cache) > self._max_size:
-            self._cache.popitem(last=False)
+            # Evict oldest if over max size
+            while len(self._cache) > self._max_size:
+                self._cache.popitem(last=False)
 
     def invalidate(self, key: str) -> None:
         """Remove a specific key from cache."""
-        self._cache.pop(key, None)
+        with self._lock:
+            self._cache.pop(key, None)
 
     def clear(self) -> None:
         """Clear entire cache."""
-        self._cache.clear()
+        with self._lock:
+            self._cache.clear()
 
     def stats(self) -> dict:
         """Get cache statistics."""
-        total = self._hits + self._misses
-        return {
-            "size": len(self._cache),
-            "max_size": self._max_size,
-            "ttl_seconds": self._ttl_seconds,
-            "hits": self._hits,
-            "misses": self._misses,
-            "hit_rate": self._hits / total if total > 0 else 0.0,
-        }
+        with self._lock:
+            total = self._hits + self._misses
+            return {
+                "size": len(self._cache),
+                "max_size": self._max_size,
+                "ttl_seconds": self._ttl_seconds,
+                "hits": self._hits,
+                "misses": self._misses,
+                "hit_rate": self._hits / total if total > 0 else 0.0,
+            }
 
 
 # =============================================================================
