@@ -2708,7 +2708,7 @@ class StepSignatureDB:
 
         This gives the planner a hierarchical view of available operations.
 
-        PERF: Uses selective columns and minimal JSON parsing (~3x faster).
+        PERF: Uses selective columns, batched queries, minimal JSON parsing (~3x faster).
         Only parses param_descriptions and clarifying_questions, skips examples/centroid.
 
         Args:
@@ -2720,6 +2720,7 @@ class StepSignatureDB:
             List of SignatureHint objects (some with children for clusters)
         """
         from mycelium.planner import SignatureHint
+        from mycelium.config import HINT_MAX_CHILDREN_PER_CLUSTER
 
         # Columns needed for hints (avoid SELECT * and full JSON parsing)
         HINT_COLUMNS = """s.id, s.step_type, s.description, s.param_descriptions,
@@ -2745,18 +2746,36 @@ class StepSignatureDB:
                 level1_rows = cursor.fetchall()
 
                 # Filter by embedding similarity if provided
-                if problem_embedding is not None:
-                    scored = []
-                    for row in level1_rows:
-                        centroid_packed = row["centroid"]
-                        if centroid_packed:
-                            centroid = unpack_embedding(centroid_packed)
-                            if centroid is not None:
-                                sim = cosine_similarity(problem_embedding, centroid)
-                                if sim >= min_similarity:
-                                    scored.append((row, sim))
-                    scored.sort(key=lambda x: x[1], reverse=True)
-                    level1_rows = [row for row, _ in scored]
+                level1_rows = self._filter_rows_by_similarity(
+                    level1_rows, problem_embedding, min_similarity
+                )
+
+                # Collect umbrella IDs for batched child query
+                umbrella_ids = [
+                    row["id"] for row in level1_rows
+                    if row["is_semantic_umbrella"]
+                ]
+
+                # Batch fetch all children for all umbrellas (avoids N+1 queries)
+                children_by_parent = {}
+                if umbrella_ids:
+                    placeholders = ",".join("?" * len(umbrella_ids))
+                    child_cursor = conn.execute(
+                        f"""SELECT r.parent_id, {HINT_COLUMNS}
+                           FROM signature_relationships r
+                           JOIN step_signatures s ON r.child_id = s.id
+                           WHERE r.parent_id IN ({placeholders})
+                           ORDER BY r.parent_id, s.successes DESC""",
+                        umbrella_ids
+                    )
+                    for child_row in child_cursor.fetchall():
+                        parent_id = child_row["parent_id"]
+                        if parent_id not in children_by_parent:
+                            children_by_parent[parent_id] = []
+                        # Limit children per cluster
+                        if len(children_by_parent[parent_id]) < HINT_MAX_CHILDREN_PER_CLUSTER:
+                            children_by_parent[parent_id].append(child_row)
+                            seen_ids.add(child_row["id"])
 
                 # Build cluster hints
                 for row in level1_rows:
@@ -2764,22 +2783,13 @@ class StepSignatureDB:
                     seen_ids.add(sig_id)
                     is_umbrella = bool(row["is_semantic_umbrella"])
 
-                    # Get children of this cluster (if umbrella)
+                    # Get pre-fetched children for this cluster
                     child_hints = []
-                    if is_umbrella:
-                        child_cursor = conn.execute(
-                            f"""SELECT {HINT_COLUMNS} FROM signature_relationships r
-                               JOIN step_signatures s ON r.child_id = s.id
-                               WHERE r.parent_id = ?
-                               ORDER BY s.successes DESC
-                               LIMIT 5""",
-                            (sig_id,)
-                        )
-                        for child_row in child_cursor.fetchall():
-                            seen_ids.add(child_row["id"])
-                            child_hints.append(self._row_to_hint(child_row, SignatureHint))
+                    if is_umbrella and sig_id in children_by_parent:
+                        for child_row in children_by_parent[sig_id]:
+                            child_hints.append(self._row_to_hint(child_row))
 
-                    hint = self._row_to_hint(row, SignatureHint)
+                    hint = self._row_to_hint(row)
                     hint.is_cluster = is_umbrella and len(child_hints) > 0
                     hint.children = child_hints
                     hints.append(hint)
@@ -2801,23 +2811,12 @@ class StepSignatureDB:
                 leaf_rows = cursor.fetchall()
 
                 # Filter by embedding if provided
-                if problem_embedding is not None:
-                    scored = []
-                    for row in leaf_rows:
-                        centroid_packed = row["centroid"]
-                        if centroid_packed:
-                            centroid = unpack_embedding(centroid_packed)
-                            if centroid is not None:
-                                sim = cosine_similarity(problem_embedding, centroid)
-                                if sim >= min_similarity:
-                                    scored.append((row, sim))
-                    scored.sort(key=lambda x: x[1], reverse=True)
-                    leaf_rows = [row for row, _ in scored[:remaining]]
-                else:
-                    leaf_rows = leaf_rows[:remaining]
+                leaf_rows = self._filter_rows_by_similarity(
+                    leaf_rows, problem_embedding, min_similarity, limit=remaining
+                )
 
                 for row in leaf_rows:
-                    hints.append(self._row_to_hint(row, SignatureHint))
+                    hints.append(self._row_to_hint(row))
 
         logger.debug(
             "[db] Retrieved %d hierarchical hints (%d clusters)",
@@ -2825,12 +2824,49 @@ class StepSignatureDB:
         )
         return hints
 
-    def _row_to_hint(self, row, SignatureHint) -> "SignatureHint":
+    def _filter_rows_by_similarity(
+        self,
+        rows: list,
+        problem_embedding: np.ndarray,
+        min_similarity: float,
+        limit: int = None,
+    ) -> list:
+        """Filter rows by centroid similarity to problem embedding.
+
+        Args:
+            rows: Database rows with 'centroid' column
+            problem_embedding: Embedding to compare against (None = no filtering)
+            min_similarity: Minimum cosine similarity threshold
+            limit: Optional max rows to return after filtering
+
+        Returns:
+            Filtered (and optionally limited) list of rows
+        """
+        if problem_embedding is None:
+            return rows[:limit] if limit else rows
+
+        scored = []
+        for row in rows:
+            centroid_packed = row["centroid"]
+            if centroid_packed:
+                centroid = unpack_embedding(centroid_packed)
+                if centroid is not None:
+                    sim = cosine_similarity(problem_embedding, centroid)
+                    if sim >= min_similarity:
+                        scored.append((row, sim))
+
+        scored.sort(key=lambda x: x[1], reverse=True)
+        filtered = [row for row, _ in scored]
+        return filtered[:limit] if limit else filtered
+
+    def _row_to_hint(self, row) -> "SignatureHint":
         """Convert a lightweight row to SignatureHint (minimal JSON parsing).
 
         Only parses param_descriptions and clarifying_questions.
         ~3x faster than full _row_to_signature().
         """
+        from mycelium.planner import SignatureHint
+
         # Parse only what we need
         param_descriptions = {}
         if row["param_descriptions"]:
