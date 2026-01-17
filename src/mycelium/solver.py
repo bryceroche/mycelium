@@ -25,6 +25,7 @@ import numpy as np
 import random
 
 from mycelium.config import (
+    DB_PATH,
     MIN_MATCH_THRESHOLD,
     MIN_MATCH_THRESHOLD_COLD_START,
     MIN_MATCH_RAMP_SIGNATURES,
@@ -51,6 +52,7 @@ from mycelium.step_signatures import StepSignatureDB, StepSignature
 from mycelium.step_signatures.db import normalize_step_text
 from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
+from mycelium.step_signatures.stats import record_step_stats
 from mycelium.embedder import Embedder
 from mycelium.embedding_cache import cached_embed, cached_embed_batch
 from mycelium.difficulty import estimate_difficulty
@@ -1029,6 +1031,18 @@ class Solver:
             )
 
         elapsed_ms = (time.time() - start_time) * 1000
+
+        # 8. Record step stats (feature-flagged, non-blocking)
+        record_step_stats(
+            db_path=DB_PATH,
+            step_text=step.task,
+            latency_ms=elapsed_ms,
+            signature_id=routed_signature.id if routed_signature else None,
+            routing_depth=routed_signature.depth if routed_signature else 0,
+            was_routed=was_routed,
+            success=step_completed,
+            used_dsl=was_injected,
+        )
 
         return StepResult(
             step_id=step.id,
