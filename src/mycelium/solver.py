@@ -1776,11 +1776,47 @@ Expression:"""
 
         return order
 
+    def _answers_match(self, answer1: str, answer2: str) -> bool:
+        """Check if two answers are equivalent (for operational equivalence).
+
+        Simple numeric comparison for now. Could be extended with LLM judge
+        for more complex equivalence checking.
+
+        Args:
+            answer1: First answer string
+            answer2: Second answer string (typically ground truth)
+
+        Returns:
+            True if answers are considered equivalent
+        """
+        if answer1 is None or answer2 is None:
+            return False
+
+        # Normalize: strip whitespace, lowercase
+        a1 = answer1.strip().lower()
+        a2 = answer2.strip().lower()
+
+        # Direct match
+        if a1 == a2:
+            return True
+
+        # Try numeric comparison (handles "42" vs "42.0" vs "42.00")
+        try:
+            n1 = float(a1.replace(",", ""))
+            n2 = float(a2.replace(",", ""))
+            # Use relative tolerance for floating point
+            return abs(n1 - n2) < 1e-9 or (n2 != 0 and abs((n1 - n2) / n2) < 1e-6)
+        except (ValueError, TypeError):
+            pass
+
+        return False
+
     def record_problem_outcome(
         self,
         result: SolverResult,
         correct: bool,
         difficulty: float = None,
+        ground_truth: str = None,
     ) -> list[int]:
         """Propagate problem correctness to all signatures used.
 
@@ -1796,6 +1832,7 @@ Expression:"""
             result: The SolverResult from solve()
             correct: Whether the final answer was correct
             difficulty: Problem difficulty for weighted credit (0.0-1.0)
+            ground_truth: The correct answer (for MCTS path outcome comparison)
 
         Returns:
             List of signature IDs that may need decomposition (low confidence)
@@ -1808,22 +1845,26 @@ Expression:"""
         self.step_db.update_problem_outcome(signature_ids, correct, difficulty=difficulty)
 
         # MCTS Training: Process path outcomes for operational equivalence learning
+        # Only in training mode - inference skips this overhead
         # Key insight: Ground truth lets us determine which paths are operationally
         # equivalent (produce correct answer) vs different (produce wrong answer)
-        if self._pending_path_outcomes:
-            # Build step_id -> winning result mapping
+        from mycelium.config import TRAINING_MODE
+        if TRAINING_MODE and self._pending_path_outcomes and ground_truth is not None:
+            # Build step_id -> winning result mapping (for logging only)
             step_results = {step.step_id: step.result for step in result.steps}
+            correct_paths = 0
+            incorrect_paths = 0
 
             for step_id, path_outcomes in self._pending_path_outcomes.items():
                 winning_result = step_results.get(step_id)
 
                 for outcome in path_outcomes:
-                    # A path is operationally correct if:
-                    # 1. The overall problem was correct, AND
-                    # 2. This path produced the same answer as the winning path
-                    path_correct = correct and (
+                    # A path is operationally correct if it produced the correct answer
+                    # Compare directly to ground_truth, not to winning_result
+                    # This catches cases where a non-winning path would have been correct
+                    path_correct = (
                         outcome.answer is not None and
-                        outcome.answer == winning_result
+                        self._answers_match(outcome.answer, ground_truth)
                     )
 
                     # Update centroid only for operationally correct paths
@@ -1835,26 +1876,39 @@ Expression:"""
                     )
 
                     if path_correct:
+                        correct_paths += 1
                         logger.debug(
                             "[solver] Path via sig %d was operationally correct for step '%s'",
                             outcome.signature_id, step_id
                         )
                     else:
+                        incorrect_paths += 1
+                        # Record failure for potential cluster splitting
+                        # Per CLAUDE.md: "Record every failure—it feeds the refinement loop"
+                        self.step_db.record_operational_failure(
+                            outcome.signature_id,
+                            outcome.embedding,
+                            outcome.answer,
+                            ground_truth,
+                        )
                         logger.debug(
                             "[solver] Path via sig %d was operationally different for step '%s' "
-                            "(problem_correct=%s, path_answer=%s, winning=%s)",
-                            outcome.signature_id, step_id, correct,
+                            "(path_answer=%s, ground_truth=%s, winning=%s)",
+                            outcome.signature_id, step_id,
                             outcome.answer[:20] if outcome.answer else "None",
+                            ground_truth[:20] if ground_truth else "None",
                             winning_result[:20] if winning_result else "None"
                         )
 
             # Clear pending path outcomes after processing
             logger.info(
-                "[solver] Processed %d path outcomes across %d steps for operational equivalence",
-                sum(len(outcomes) for outcomes in self._pending_path_outcomes.values()),
-                len(self._pending_path_outcomes)
+                "[solver] Processed %d path outcomes: %d correct, %d incorrect (ground_truth=%s)",
+                correct_paths + incorrect_paths, correct_paths, incorrect_paths,
+                ground_truth[:20] if ground_truth else "None"
             )
-            self._pending_path_outcomes.clear()
+
+        # Always clear pending outcomes (memory safety)
+        self._pending_path_outcomes.clear()
 
         # Update rolling accuracy and reuse rate for self-tuning expansion
         current_accuracy = update_accuracy(correct)

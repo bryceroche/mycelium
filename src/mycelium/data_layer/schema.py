@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     -- Statistics
     uses INTEGER DEFAULT 0,
     successes INTEGER DEFAULT 0,
+    operational_failures INTEGER DEFAULT 0,  -- MCTS: times produced wrong answer vs ground truth
 
     -- Umbrella routing (DAG of DAGs)
     is_semantic_umbrella INTEGER DEFAULT 0,  -- 1 if routes to children
@@ -234,6 +235,14 @@ def migrate_db(conn) -> None:
     if "max_difficulty_solved" not in existing_cols:
         migrations.append(
             "ALTER TABLE step_signatures ADD COLUMN max_difficulty_solved REAL DEFAULT 0.0"
+        )
+
+    # Add operational_failures if missing (MCTS operational equivalence learning)
+    # Tracks how many times a signature produced a different answer than ground truth
+    # Per CLAUDE.md: "Record every failure—it feeds the refinement loop"
+    if "operational_failures" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN operational_failures INTEGER DEFAULT 0"
         )
 
     # Run migrations
