@@ -1887,7 +1887,6 @@ Expression:"""
                         # Per CLAUDE.md: "Record every failure—it feeds the refinement loop"
                         self.step_db.record_operational_failure(
                             outcome.signature_id,
-                            outcome.embedding,
                             outcome.answer,
                             ground_truth,
                         )

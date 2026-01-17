@@ -2003,7 +2003,6 @@ class StepSignatureDB:
     def record_operational_failure(
         self,
         signature_id: int,
-        embedding: np.ndarray,
         produced_answer: str,
         expected_answer: str,
     ):
@@ -2018,7 +2017,6 @@ class StepSignatureDB:
 
         Args:
             signature_id: ID of the signature that failed operationally
-            embedding: The routing embedding (for future centroid analysis)
             produced_answer: What the signature produced
             expected_answer: The ground truth answer
         """
