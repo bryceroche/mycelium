@@ -509,6 +509,14 @@ class Solver:
 
         except Exception as e:
             logger.debug("[zero-llm] DSL execution failed: %s", e)
+            # Record failure for pattern learning (per CLAUDE.md: failures are valuable data)
+            self.step_db.record_failure(
+                step_text=problem[:200],
+                failure_type="dsl_error",
+                error_message=str(e),
+                signature_id=sig.id if sig else None,
+                context={"source": "zero_llm", "problem": problem[:500]},
+            )
 
         return None
 
@@ -624,6 +632,13 @@ class Solver:
             else:
                 is_valid, errors = plan.validate()
             if not is_valid:
+                # Record validation failure (per CLAUDE.md: failures are valuable data)
+                self.step_db.record_failure(
+                    step_text=problem[:200],
+                    failure_type="validation",
+                    error_message=f"Invalid DAG: {'; '.join(errors)}",
+                    context={"source": "planner", "problem": problem[:500]},
+                )
                 return SolverResult(
                     problem=problem,
                     answer="",
@@ -633,6 +648,13 @@ class Solver:
                 )
 
             if not plan.steps:
+                # Record planning failure (per CLAUDE.md: failures are valuable data)
+                self.step_db.record_failure(
+                    step_text=problem[:200],
+                    failure_type="validation",
+                    error_message="Planning failed: no steps generated",
+                    context={"source": "planner", "problem": problem[:500]},
+                )
                 return SolverResult(
                     problem=problem,
                     answer="",
@@ -781,6 +803,13 @@ class Solver:
 
         except Exception as e:
             logger.exception("[solver] Error solving problem")
+            # Record exception (per CLAUDE.md: failures are valuable data)
+            self.step_db.record_failure(
+                step_text=problem[:200],
+                failure_type="llm_error",
+                error_message=str(e),
+                context={"source": "solver_exception", "problem": problem[:500]},
+            )
             return SolverResult(
                 problem=problem,
                 answer="",
@@ -1281,6 +1310,14 @@ class Solver:
                     "[solver] Umbrella routing: no good embedding match (best=%.3f)",
                     best_sim
                 )
+                # Record routing failure (per CLAUDE.md: failures are valuable data)
+                self.step_db.record_failure(
+                    step_text=step.task[:200],
+                    failure_type="routing",
+                    error_message=f"No good embedding match (best={best_sim:.3f})",
+                    signature_id=umbrella.id,
+                    context={"umbrella": umbrella.step_type, "best_sim": best_sim},
+                )
                 return None
         else:
             # No embedding available - cannot route without LLM
@@ -1288,6 +1325,14 @@ class Solver:
             # Return None to trigger decomposition/failure (failures are valuable data)
             logger.debug(
                 "[solver] Umbrella routing: no embedding available, cannot route"
+            )
+            # Record routing failure (per CLAUDE.md: failures are valuable data)
+            self.step_db.record_failure(
+                step_text=step.task[:200],
+                failure_type="routing",
+                error_message="No embedding available for routing",
+                signature_id=umbrella.id,
+                context={"umbrella": umbrella.step_type},
             )
             return None
 
@@ -1435,6 +1480,15 @@ class Solver:
 
         if best_result is None:
             logger.debug("[solver] Multi-path: all %d paths failed DSL", len(candidates))
+            # Record failure for all explored paths (per CLAUDE.md: failures are valuable data)
+            for sig in explored_sigs:
+                self.step_db.record_failure(
+                    step_text=step.task[:200],
+                    failure_type="dsl_error",
+                    error_message=f"Multi-path DSL failed ({len(candidates)} paths explored)",
+                    signature_id=sig.id,
+                    context={"source": "multi_path", "paths_explored": len(candidates)},
+                )
 
         return (best_result, best_sig, explored_sigs, best_result is not None)
 
@@ -1543,6 +1597,14 @@ class Solver:
 
         except Exception as e:
             logger.debug("[solver] DSL execution failed: %s", e)
+            # Record failure (per CLAUDE.md: failures are valuable data)
+            self.step_db.record_failure(
+                step_text=step.task[:200],
+                failure_type="dsl_error",
+                error_message=str(e),
+                signature_id=signature.id if signature else None,
+                context={"source": "try_dsl", "dsl_hint": getattr(step, 'dsl_hint', None)},
+            )
 
         return None
 
