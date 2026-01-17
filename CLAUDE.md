@@ -7,6 +7,17 @@ We want to treate this file as our source of truth.
 Every bug fix, optimization or feature should be implemented with this file in mind.
 Please always keep this file in the context window.
 
+A core issue: Standard embedding models conflate "looks similar" with "means similar." In math DSL, x + y and a + b are operationally identical but might embed differently due to variable names, while x + y and x * y are operationally distinct but lexically close.
+
+Multi step simulated mcts rollouts to solve this problem: embedding models cluster mathematically similar vocabulary close to different math operators
+
+The insight: use rollout outcomes as ground truth for operational equivalence
+
+Mcts for each dag task.
+Train 3 problems in parallel and they don't need to know about each other.
+
+Optional Inference in parallel for parallel dag tasks? Not dag of dags
+
 ## Architecture Overview
 Google deployment vm
 SQLite db
@@ -18,16 +29,6 @@ Mycelium application
 
 Big bang function accounting for the first five levels need to be empty. Sigmoid asymptomatic approaching 10k signatures
 
-Multi step simulated mcts rollouts to solve this problem: embedding models cluster mathematically similar vocabulary close to different math operators
-
-The insight: use rollout outcomes as ground truth for operational equivalence
-
-The core issue: Standard embedding models conflate "looks similar" with "means similar." In math DSL, x + y and a + b are operationally identical but might embed differently due to variable names, while x + y and x * y are operationally distinct but lexically close.
-
-Mcts for each dag task.
-Train 3 problems in parallel and they don't need to know about each other.
-
-Optional Inference in parallel for parallel dag tasks? Not dag of dags
 
 ## LLM Call Rule
   **Only call LLM on leaf nodes**
