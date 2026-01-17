@@ -27,6 +27,7 @@ import numpy as np
 
 from mycelium.config import (
     DB_PATH,
+    EMBEDDING_DIM,
     EMBEDDING_CACHE_ENABLED,
     EMBEDDING_CACHE_MEMORY_SIZE,
     EMBEDDING_CACHE_PERSIST,
@@ -36,9 +37,6 @@ from mycelium.config import (
 from mycelium.data_layer.connection import configure_connection
 
 logger = logging.getLogger(__name__)
-
-# Embedding dimension (gemini-embedding-001)
-EMBEDDING_DIM = 3072
 
 
 # =============================================================================
