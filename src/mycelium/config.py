@@ -119,12 +119,12 @@ ADAPTIVE_SPLIT_THRESHOLD_STRICT = 0.4   # Mature: split at 40% failure
 # MCTS COMPUTE BUDGET (multi-path exploration)
 # =============================================================================
 # Budget controls how many paths to explore during routing.
-# - 1.0 = single best path (default, backward compatible)
-# - 2.0 = explore up to 2 paths at low-confidence nodes
-# - 3.0+ = explore multiple paths (training mode)
+# Adaptive budget = BASE * (1 + difficulty), so:
+#   - difficulty=0.0 (easy): 3.0 paths
+#   - difficulty=0.5 (medium): 4.5 paths
+#   - difficulty=1.0 (hard): 6.0 paths
 
-COMPUTE_BUDGET_DEFAULT = 1.0  # Default: single-pass (backward compatible)
-COMPUTE_BUDGET_TRAINING = 3.0  # Training: explore 3 paths for cluster splitting
+COMPUTE_BUDGET_BASE = 3.0  # Base budget for adaptive scaling (both training & inference)
 COMPUTE_BUDGET_CONFIDENCE_THRESHOLD = 0.5  # Explore alternatives when confidence < this
 
 # Bayesian prior for cold start (assume some successes before any data)

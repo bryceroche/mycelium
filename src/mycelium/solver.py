@@ -567,7 +567,7 @@ class Solver:
         Returns:
             SolverResult with answer and step details
         """
-        from mycelium.config import COMPUTE_BUDGET_DEFAULT, TRAINING_MODE
+        from mycelium.config import COMPUTE_BUDGET_BASE, TRAINING_MODE
         from mycelium.difficulty import get_exploration_budget
 
         # Track if caller explicitly set budget (vs adaptive)
@@ -593,7 +593,7 @@ class Solver:
             if explicit_budget:
                 pass  # Use caller's value
             else:
-                compute_budget = get_exploration_budget(difficulty, base_budget=COMPUTE_BUDGET_DEFAULT)
+                compute_budget = get_exploration_budget(difficulty, base_budget=COMPUTE_BUDGET_BASE)
                 logger.debug(
                     "[solver] Adaptive budget: %.1f (difficulty=%.2f, mode=%s)",
                     compute_budget, difficulty, "training" if TRAINING_MODE else "inference"
