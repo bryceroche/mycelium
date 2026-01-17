@@ -1166,10 +1166,29 @@ class StepSignatureDB:
             - parent_for_new: Umbrella where routing stopped (for creating new child)
             - best_similarity: Similarity of best_match
         """
-        from mycelium.config import UMBRELLA_MAX_DEPTH, SCAFFOLD_ENABLED, MIN_SIGNATURE_DEPTH, SCAFFOLD_FORK_THRESHOLD, MIN_FORK_DEPTH
+        from mycelium.config import (
+            UMBRELLA_MAX_DEPTH, SCAFFOLD_ENABLED, MIN_SIGNATURE_DEPTH,
+            SCAFFOLD_FORK_THRESHOLD, SCAFFOLD_FORK_THRESHOLD_COLD_START,
+            SCAFFOLD_FORK_RAMP_SIGNATURES, MIN_FORK_DEPTH
+        )
 
         # Validate max depth to prevent unbounded recursion
         max_depth = max(1, min(int(UMBRELLA_MAX_DEPTH or 10), 100))  # Hard cap at 100
+
+        # Compute cold-start aware fork threshold
+        # During cold start, use HIGHER threshold (more forking / big bang)
+        # As system matures, lower to standard threshold (consolidation)
+        sig_count = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()[0]
+        if sig_count >= SCAFFOLD_FORK_RAMP_SIGNATURES:
+            fork_threshold = SCAFFOLD_FORK_THRESHOLD  # Mature
+        else:
+            # Linear ramp from cold_start to mature
+            progress = sig_count / SCAFFOLD_FORK_RAMP_SIGNATURES
+            fork_threshold = SCAFFOLD_FORK_THRESHOLD_COLD_START - (
+                progress * (SCAFFOLD_FORK_THRESHOLD_COLD_START - SCAFFOLD_FORK_THRESHOLD)
+            )
+        logger.debug("[db] Fork threshold: %.3f (sigs=%d, cold_start=%.2f, mature=%.2f)",
+                     fork_threshold, sig_count, SCAFFOLD_FORK_THRESHOLD_COLD_START, SCAFFOLD_FORK_THRESHOLD)
 
         # Start at root
         root_row = conn.execute(
@@ -1294,9 +1313,10 @@ class StepSignatureDB:
                     # DYNAMIC FORKING: If best match is below fork threshold,
                     # this problem diverges from existing paths - create new branch
                     # BUT only fork if we're deep enough (top levels stay abstract)
+                    # Uses cold-start aware threshold: higher during cold start (more forking)
                     should_fork = (
                         depth >= MIN_FORK_DEPTH and  # Don't fork in top abstract levels
-                        (best_below_sim < SCAFFOLD_FORK_THRESHOLD or best_below is None)
+                        (best_below_sim < fork_threshold or best_below is None)
                     )
 
                     if should_fork:
@@ -1306,8 +1326,8 @@ class StepSignatureDB:
                         )
                         if new_branch:
                             logger.info(
-                                "[db] FORK: Created new branch at depth %d (best_sim=%.2f < %.2f)",
-                                depth + 1, best_below_sim, SCAFFOLD_FORK_THRESHOLD
+                                "[db] FORK: Created new branch at depth %d (best_sim=%.2f < %.2f threshold)",
+                                depth + 1, best_below_sim, fork_threshold
                             )
                             parent_for_new = current
                             current = new_branch
