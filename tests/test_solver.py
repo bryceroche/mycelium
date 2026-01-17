@@ -215,3 +215,157 @@ class TestStepResult:
         assert result.success
         assert result.was_injected
         assert result.result == "42"
+
+
+# =============================================================================
+# ERROR PATH TESTS
+# =============================================================================
+
+from unittest.mock import patch, MagicMock
+
+
+class TestGetSignatureCount:
+    """Tests for get_signature_count() error handling."""
+
+    def test_db_error_returns_cached_value(self):
+        """DB errors should return cached value without crashing."""
+        from mycelium.solver import get_signature_count, _signature_count_cache
+
+        # Reset cache to known state
+        _signature_count_cache["count"] = 100
+        _signature_count_cache["last_check"] = 0  # Force recheck
+
+        # Patch at the module where it's imported from
+        with patch("mycelium.data_layer.connection.get_db") as mock_get_db:
+            mock_get_db.side_effect = Exception("DB connection failed")
+
+            # Should return cached value without raising
+            result = get_signature_count()
+            assert result == 100
+
+    def test_query_error_returns_cached_value(self):
+        """Query execution errors should return cached value."""
+        from mycelium.solver import get_signature_count, _signature_count_cache
+
+        _signature_count_cache["count"] = 50
+        _signature_count_cache["last_check"] = 0
+
+        mock_db = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+        mock_conn.__exit__ = MagicMock(return_value=False)
+        mock_conn.execute.side_effect = Exception("Query failed")
+        mock_db.connection.return_value = mock_conn
+
+        with patch("mycelium.data_layer.connection.get_db", return_value=mock_db):
+            result = get_signature_count()
+            assert result == 50
+
+
+class TestAdaptiveMatchThreshold:
+    """Tests for get_adaptive_match_threshold() cold-start behavior."""
+
+    def test_cold_start_higher_threshold(self):
+        """Cold start (few signatures) should use higher threshold."""
+        from mycelium.solver import get_adaptive_match_threshold
+        from mycelium.config import MIN_MATCH_THRESHOLD_COLD_START
+
+        with patch("mycelium.solver.get_signature_count", return_value=0):
+            threshold = get_adaptive_match_threshold()
+            # Cold start threshold should be at or near cold start value
+            assert threshold >= MIN_MATCH_THRESHOLD_COLD_START - 0.01
+
+    def test_mature_db_lower_threshold(self):
+        """Mature DB (many signatures) should use lower threshold."""
+        from mycelium.solver import get_adaptive_match_threshold
+        from mycelium.config import MIN_MATCH_THRESHOLD, MIN_MATCH_THRESHOLD_COLD_START
+
+        with patch("mycelium.solver.get_signature_count", return_value=1000):
+            threshold = get_adaptive_match_threshold()
+            # Mature threshold should be lower than cold start
+            assert threshold < MIN_MATCH_THRESHOLD_COLD_START
+            assert threshold <= MIN_MATCH_THRESHOLD + 0.01
+
+
+class TestExtractValuesFromProblem:
+    """Tests for Solver._extract_values_from_problem()."""
+
+    @pytest.fixture
+    def solver(self):
+        s = Solver.__new__(Solver)
+        return s
+
+    def test_no_numbers(self, solver):
+        """Problem with no numbers returns empty dict."""
+        result = solver._extract_values_from_problem("What is the sum?")
+        assert result == {}
+
+    def test_single_number(self, solver):
+        """Single number is extracted correctly."""
+        result = solver._extract_values_from_problem("Calculate 42 squared")
+        assert "value_1" in result
+        assert result["value_1"] == 42
+
+    def test_multiple_numbers(self, solver):
+        """Multiple numbers are extracted in order."""
+        result = solver._extract_values_from_problem("Add 10 and 5")
+        assert result["value_1"] == 10
+        assert result["value_2"] == 5
+        # Also has step_N aliases
+        assert result["step_1"] == 10
+        assert result["step_2"] == 5
+
+    def test_decimal_numbers(self, solver):
+        """Decimal numbers are extracted as floats."""
+        result = solver._extract_values_from_problem("Calculate 3.14 times 2")
+        assert result["value_1"] == 3.14
+        assert result["value_2"] == 2
+
+    def test_negative_numbers(self, solver):
+        """Negative numbers are handled."""
+        result = solver._extract_values_from_problem("Sum -5 and 10")
+        assert result["value_1"] == -5
+        assert result["value_2"] == 10
+
+
+class TestJsonExtractionEdgeCases:
+    """Additional edge cases for JSON extraction."""
+
+    @pytest.fixture
+    def solver(self):
+        s = Solver.__new__(Solver)
+        return s
+
+    def test_multiple_json_objects(self, solver):
+        """First valid JSON with result/answer should be used."""
+        response = '{"foo": 1} {"result": 42} {"bar": 2}'
+        result = solver._extract_json_result(response)
+        assert result == "42"
+
+    def test_unbalanced_braces(self, solver):
+        """Unbalanced braces should fall back to regex."""
+        response = '{"result": 42'  # Missing closing brace
+        result = solver._extract_json_result(response)
+        # Falls back to regex, finds 42
+        assert result == "42"
+
+    def test_list_result(self, solver):
+        """List results should be stringified."""
+        response = '{"result": [1, 2, 3]}'
+        result = solver._extract_json_result(response)
+        assert "1" in result
+        assert "2" in result
+        assert "3" in result
+
+    def test_boolean_result(self, solver):
+        """Boolean results should be stringified."""
+        response = '{"result": true}'
+        result = solver._extract_json_result(response)
+        assert result.lower() == "true"
+
+    def test_null_result(self, solver):
+        """Null result should return empty or null string."""
+        response = '{"result": null}'
+        result = solver._extract_json_result(response)
+        # Should handle gracefully
+        assert result in ("", "null", "None")
