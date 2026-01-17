@@ -52,7 +52,7 @@ from mycelium.step_signatures.db import normalize_step_text
 from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.embedder import Embedder
-from mycelium.embedding_cache import cached_embed
+from mycelium.embedding_cache import cached_embed, cached_embed_batch
 from mycelium.difficulty import estimate_difficulty
 
 logger = logging.getLogger(__name__)
@@ -624,6 +624,9 @@ class Solver:
 
             # Pre-warm DSL expression cache in parallel for independent steps
             await self._prewarm_dsl_cache(plan.steps)
+
+            # Pre-warm embedding cache with batch call (avoids N sequential embed calls)
+            self._prewarm_step_embeddings(plan.steps)
 
             # 2. Execute steps in dependency order (parallel where possible)
             step_results = []
@@ -1559,6 +1562,30 @@ class Solver:
         if prewarm_tasks:
             logger.debug("[solver] Pre-warming DSL cache: %d parallel calls", len(prewarm_tasks))
             await asyncio.gather(*prewarm_tasks, return_exceptions=True)
+
+    def _prewarm_step_embeddings(self, steps: list) -> None:
+        """Batch embed all step texts to pre-warm the embedding cache.
+
+        Instead of N sequential embed calls during step execution,
+        this makes a single batch API call upfront. The embeddings
+        are stored in the cache, so cached_embed() hits during execution.
+        """
+        if not steps:
+            return
+
+        # Collect normalized step texts (same normalization as _execute_step)
+        texts = []
+        for step in steps:
+            if not step.is_composite:
+                normalized = normalize_step_text(step.task)
+                texts.append(normalized)
+
+        if not texts:
+            return
+
+        # Batch embed - populates the cache
+        logger.debug("[solver] Pre-warming embeddings: %d steps in single batch call", len(texts))
+        cached_embed_batch(texts, self.embedder)
 
     async def _llm_write_expression(
         self,

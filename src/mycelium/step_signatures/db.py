@@ -321,84 +321,89 @@ class StepSignatureDB:
             logger.debug("[db] Scaffold disabled, skipping initialization")
             return False
 
-        # Check if scaffold already exists (has root with children)
-        if self.has_root():
-            root = self.get_root()
-            if root:
-                with self._connection() as conn:
-                    child_count = conn.execute(
-                        "SELECT COUNT(*) FROM signature_relationships WHERE parent_id = ?",
-                        (root.id,)
-                    ).fetchone()[0]
-                    if child_count > 0:
-                        logger.debug("[db] Scaffold already exists (%d root children)", child_count)
-                        return False
-
-        logger.info("[db] Initializing scaffold: %d levels (single chain, no horizontal scaling)", SCAFFOLD_LEVELS)
-
         now = datetime.now(timezone.utc).isoformat()
 
         with self._connection() as conn:
-            # Create root if it doesn't exist
-            root_row = conn.execute(
-                "SELECT id FROM step_signatures WHERE is_root = 1 LIMIT 1"
-            ).fetchone()
+            # Use BEGIN IMMEDIATE for atomic check-and-create to prevent race condition
+            # when multiple workers start simultaneously
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                # Check if scaffold already exists (has root with children)
+                root_row = conn.execute(
+                    "SELECT id FROM step_signatures WHERE is_root = 1 LIMIT 1"
+                ).fetchone()
 
-            if root_row is None:
-                # Create the root signature
-                root_sig_id = f"root_{uuid.uuid4().hex[:8]}"
-                cursor = conn.execute(
-                    """INSERT INTO step_signatures (
-                        signature_id, centroid, centroid_bucket,
-                        step_type, description, dsl_type,
-                        is_semantic_umbrella, is_root, depth, created_at
-                    ) VALUES (?, NULL, NULL, ?, ?, ?, 1, 1, 0, ?)""",
-                    (root_sig_id, "root", "Universal math problem router", "router", now)
-                )
-                root_id = cursor.lastrowid
-                logger.info("[db] Created scaffold root: id=%d", root_id)
-            else:
-                root_id = root_row[0]
-                # Ensure root is an umbrella
-                conn.execute(
-                    "UPDATE step_signatures SET is_semantic_umbrella = 1, dsl_type = 'router' WHERE id = ?",
-                    (root_id,)
-                )
+                if root_row is not None:
+                    # Root exists, check if it has children (scaffold already created)
+                    child_count = conn.execute(
+                        "SELECT COUNT(*) FROM signature_relationships WHERE parent_id = ?",
+                        (root_row[0],)
+                    ).fetchone()[0]
+                    if child_count > 0:
+                        logger.debug("[db] Scaffold already exists (%d root children)", child_count)
+                        conn.rollback()
+                        return False
 
-            # Create single-chain scaffold: ROOT → L1 → L2 → ... → LN
-            # NO horizontal scaling - branches fork dynamically at runtime
-            current_parent_id = root_id
+                logger.info("[db] Initializing scaffold: %d levels (single chain, no horizontal scaling)", SCAFFOLD_LEVELS)
 
-            for level in range(1, SCAFFOLD_LEVELS + 1):
-                placeholder_id = f"scaffold_L{level}_{uuid.uuid4().hex[:8]}"
-                cursor = conn.execute(
-                    """INSERT INTO step_signatures (
-                        signature_id, centroid, centroid_bucket,
-                        step_type, description, dsl_type,
-                        is_semantic_umbrella, is_root, depth, created_at
-                    ) VALUES (?, NULL, NULL, ?, ?, ?, 1, 0, ?, ?)""",
-                    (
-                        placeholder_id,
-                        f"abstract_L{level}",
-                        f"Abstract routing level {level}",
-                        "router",
-                        level,
-                        now,
+                if root_row is None:
+                    # Create the root signature
+                    root_sig_id = f"root_{uuid.uuid4().hex[:8]}"
+                    cursor = conn.execute(
+                        """INSERT INTO step_signatures (
+                            signature_id, centroid, centroid_bucket,
+                            step_type, description, dsl_type,
+                            is_semantic_umbrella, is_root, depth, created_at
+                        ) VALUES (?, NULL, NULL, ?, ?, ?, 1, 1, 0, ?)""",
+                        (root_sig_id, "root", "Universal math problem router", "router", now)
                     )
-                )
-                child_id = cursor.lastrowid
+                    root_id = cursor.lastrowid
+                    logger.info("[db] Created scaffold root: id=%d", root_id)
+                else:
+                    root_id = root_row[0]
+                    # Ensure root is an umbrella
+                    conn.execute(
+                        "UPDATE step_signatures SET is_semantic_umbrella = 1, dsl_type = 'router' WHERE id = ?",
+                        (root_id,)
+                    )
 
-                # Create parent-child relationship
-                conn.execute(
-                    """INSERT INTO signature_relationships (parent_id, child_id, condition, created_at)
-                       VALUES (?, ?, ?, ?)""",
-                    (current_parent_id, child_id, f"scaffold_chain_L{level}", now)
-                )
+                # Create single-chain scaffold: ROOT → L1 → L2 → ... → LN
+                # NO horizontal scaling - branches fork dynamically at runtime
+                current_parent_id = root_id
 
-                logger.debug("[db] Created scaffold level %d: id=%d", level, child_id)
-                current_parent_id = child_id
+                for level in range(1, SCAFFOLD_LEVELS + 1):
+                    placeholder_id = f"scaffold_L{level}_{uuid.uuid4().hex[:8]}"
+                    cursor = conn.execute(
+                        """INSERT INTO step_signatures (
+                            signature_id, centroid, centroid_bucket,
+                            step_type, description, dsl_type,
+                            is_semantic_umbrella, is_root, depth, created_at
+                        ) VALUES (?, NULL, NULL, ?, ?, ?, 1, 0, ?, ?)""",
+                        (
+                            placeholder_id,
+                            f"abstract_L{level}",
+                            f"Abstract routing level {level}",
+                            "router",
+                            level,
+                            now,
+                        )
+                    )
+                    child_id = cursor.lastrowid
 
-            conn.commit()
+                    # Create parent-child relationship
+                    conn.execute(
+                        """INSERT INTO signature_relationships (parent_id, child_id, condition, created_at)
+                           VALUES (?, ?, ?, ?)""",
+                        (current_parent_id, child_id, f"scaffold_chain_L{level}", now)
+                    )
+
+                    logger.debug("[db] Created scaffold level %d: id=%d", level, child_id)
+                    current_parent_id = child_id
+
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
 
         # Invalidate caches
         self._cached_root = None
