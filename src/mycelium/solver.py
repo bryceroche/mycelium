@@ -588,17 +588,16 @@ class Solver:
 
             # 0.2. Adaptive compute budget: scale by difficulty (if not explicitly set)
             # Per CLAUDE.md: "Multi step simulated mcts rollouts"
-            # Harder problems get more exploration budget in training mode
+            # Both training AND inference use adaptive budget for accuracy
+            # Difference: training records path outcomes for learning, inference doesn't
             if explicit_budget:
                 pass  # Use caller's value
-            elif TRAINING_MODE:
+            else:
                 compute_budget = get_exploration_budget(difficulty, base_budget=COMPUTE_BUDGET_DEFAULT)
                 logger.debug(
-                    "[solver] Adaptive budget: %.1f (difficulty=%.2f)",
-                    compute_budget, difficulty
+                    "[solver] Adaptive budget: %.1f (difficulty=%.2f, mode=%s)",
+                    compute_budget, difficulty, "training" if TRAINING_MODE else "inference"
                 )
-            else:
-                compute_budget = COMPUTE_BUDGET_DEFAULT  # Inference: single path
 
             # 0.5. Try zero-LLM solve first (skip planner for mature signatures)
             zero_llm_result = self._try_zero_llm_solve(problem, problem_embedding, difficulty)
