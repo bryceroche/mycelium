@@ -21,6 +21,7 @@ from typing import Optional
 
 import numpy as np
 
+from mycelium.config import EMBEDDING_DIM
 from .base import LLMProvider, EmbeddingProvider
 
 logger = logging.getLogger(__name__)
@@ -180,7 +181,7 @@ class VertexAIEmbeddingProvider(EmbeddingProvider):
         self.region = region or GCP_REGION
         self._client = None
         self._initialized = False
-        self._embedding_dim = 3072  # gemini-embedding-001
+        self._embedding_dim = EMBEDDING_DIM
 
         if not self.project_id:
             raise ValueError("GCP_PROJECT_ID environment variable required")
