@@ -20,11 +20,12 @@ pip install -r requirements.txt
 gh release download v1.4.0
 gunzip mycelium.db.gz embedding_cache.db.gz
 
-export OPENAI_API_KEY=your_key
+export MYCELIUM_PROVIDER=gcp
+export GOOGLE_CLOUD_PROJECT=your_project
 python scripts/pipeline_runner.py --dataset math --levels 1 2 --problems 20 --workers 4
 ```
 
-**Requirements:** Python 3.11+, ~2GB disk for MathBERT
+**Requirements:** Python 3.11+, GCP project with Vertex AI enabled
 
 ## Pre-trained Database
 
@@ -44,9 +45,11 @@ curl -L https://github.com/bryceroche/mycelium/releases/download/v1.4.0/embeddin
 
 ## Stack
 
-- **LLM:** gpt-4.1-nano with OpenAI API
+- **Deployment:** Google Cloud VM
+- **LLM (Training):** Gemini 2.5 Pro via Vertex AI
+- **LLM (Inference):** Gemini 2.0 Flash via Vertex AI
+- **Embeddings:** gemini-embedding-001 (3072 dimensions)
 - **DB:** SQLite + WAL mode
-- **Embeddings:** MathBERT 768-dim
 
 **Please read the [CLAUDE.md](CLAUDE.md) for the latest thinking.**
 ## License
