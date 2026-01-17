@@ -33,10 +33,10 @@ GCP_REGION = os.getenv("GCP_REGION", "us-central1")
 # Training mode uses a beefier model for higher-quality signature generation
 # Once signatures are mature, zero-LLM routing bypasses the model anyway
 _TRAINING_MODE = os.getenv("TRAINING_MODE", "true").lower() == "true"
-VERTEX_AI_MODEL_TRAINING = os.getenv("VERTEX_AI_MODEL_TRAINING", "gemini-2.0-flash")
-VERTEX_AI_MODEL_INFERENCE = os.getenv("VERTEX_AI_MODEL_INFERENCE", "gemini-1.5-flash")
+VERTEX_AI_MODEL_TRAINING = os.getenv("VERTEX_AI_MODEL_TRAINING", "gemini-2.5-pro")
+VERTEX_AI_MODEL_INFERENCE = os.getenv("VERTEX_AI_MODEL_INFERENCE", "gemini-2.0-flash")
 VERTEX_AI_MODEL = VERTEX_AI_MODEL_TRAINING if _TRAINING_MODE else VERTEX_AI_MODEL_INFERENCE
-VERTEX_AI_EMBEDDING_MODEL = os.getenv("VERTEX_AI_EMBEDDING_MODEL", "text-embedding-004")  # 768d
+VERTEX_AI_EMBEDDING_MODEL = os.getenv("VERTEX_AI_EMBEDDING_MODEL", "gemini-embedding-001")  # 3072d
 
 
 # =============================================================================
@@ -166,7 +166,7 @@ class VertexAILLMProvider(LLMProvider):
 class VertexAIEmbeddingProvider(EmbeddingProvider):
     """Vertex AI text embedding provider.
 
-    Uses text-embedding-004 (768 dims) for semantic matching.
+    Uses gemini-embedding-001 (3072 dims) for state-of-the-art semantic matching.
     """
 
     def __init__(
@@ -180,7 +180,7 @@ class VertexAIEmbeddingProvider(EmbeddingProvider):
         self.region = region or GCP_REGION
         self._client = None
         self._initialized = False
-        self._embedding_dim = 768  # text-embedding-004
+        self._embedding_dim = 3072  # gemini-embedding-001
 
         if not self.project_id:
             raise ValueError("GCP_PROJECT_ID environment variable required")
@@ -190,13 +190,15 @@ class VertexAIEmbeddingProvider(EmbeddingProvider):
         if self._initialized:
             return
 
-        import vertexai
-        from vertexai.language_models import TextEmbeddingModel
+        from google import genai
 
-        vertexai.init(project=self.project_id, location=self.region)
-        self._client = TextEmbeddingModel.from_pretrained(self.model)
+        self._client = genai.Client(
+            vertexai=True,
+            project=self.project_id,
+            location=self.region,
+        )
         self._initialized = True
-        logger.info(f"[vertex-ai-embed] Initialized model={self.model}")
+        logger.info(f"[vertex-ai-embed] Initialized model={self.model} dim={self._embedding_dim}")
 
     @property
     def embedding_dim(self) -> int:
@@ -205,8 +207,17 @@ class VertexAIEmbeddingProvider(EmbeddingProvider):
     def embed(self, text: str) -> np.ndarray:
         """Generate embedding for a single text."""
         self._initialize()
-        embeddings = self._client.get_embeddings([text])
-        return np.array(embeddings[0].values, dtype=np.float32)
+        from google.genai.types import EmbedContentConfig
+
+        response = self._client.models.embed_content(
+            model=self.model,
+            contents=[text],
+            config=EmbedContentConfig(
+                task_type="RETRIEVAL_DOCUMENT",
+                output_dimensionality=self._embedding_dim,
+            ),
+        )
+        return np.array(response.embeddings[0].values, dtype=np.float32)
 
     def embed_batch(self, texts: list[str]) -> np.ndarray:
         """Generate embeddings for multiple texts.
@@ -214,17 +225,25 @@ class VertexAIEmbeddingProvider(EmbeddingProvider):
         Vertex AI supports batches of up to 250 texts.
         """
         self._initialize()
+        from google.genai.types import EmbedContentConfig
 
         if not texts:
             return np.array([], dtype=np.float32).reshape(0, self._embedding_dim)
 
-        # Batch in chunks of 250 (Vertex AI limit)
-        batch_size = 250
+        # Batch in chunks of 100 (conservative for gemini-embedding-001)
+        batch_size = 100
         all_embeddings = []
 
         for i in range(0, len(texts), batch_size):
             batch = texts[i:i + batch_size]
-            embeddings = self._client.get_embeddings(batch)
-            all_embeddings.extend([np.array(e.values, dtype=np.float32) for e in embeddings])
+            response = self._client.models.embed_content(
+                model=self.model,
+                contents=batch,
+                config=EmbedContentConfig(
+                    task_type="RETRIEVAL_DOCUMENT",
+                    output_dimensionality=self._embedding_dim,
+                ),
+            )
+            all_embeddings.extend([np.array(e.values, dtype=np.float32) for e in response.embeddings])
 
         return np.stack(all_embeddings)

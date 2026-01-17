@@ -37,8 +37,8 @@ from mycelium.data_layer.connection import configure_connection
 
 logger = logging.getLogger(__name__)
 
-# Embedding dimension (MathBERT)
-EMBEDDING_DIM = 768
+# Embedding dimension (gemini-embedding-001)
+EMBEDDING_DIM = 3072
 
 
 # =============================================================================
@@ -278,10 +278,14 @@ class DiskCache:
     Survives process restarts. Used as L2 cache behind LRU.
     """
 
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: Optional[Path] = None, auto_prune: bool = True):
         self.db_path = db_path or Path(DB_PATH).parent / "embedding_cache.db"
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
+
+        # Auto-prune old entries on startup to prevent unbounded growth
+        if auto_prune:
+            self.prune_old(ttl_days=EMBEDDING_CACHE_TTL_DAYS)
 
     def _init_db(self) -> None:
         """Initialize the cache database."""

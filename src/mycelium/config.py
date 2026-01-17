@@ -139,6 +139,7 @@ PARENT_CREDIT_MIN = 0.1  # Minimum credit to apply (filter noise)
 
 # Centroid propagation (batch update parent centroids)
 CENTROID_PROPAGATION_MAX_DEPTH = 3  # Max levels to propagate centroid changes (perf optimization)
+CENTROID_PROPAGATION_BATCH_SIZE = 5  # Accumulate N matches before propagating (perf vs freshness tradeoff)
 
 # Centroid drift bounds (reject updates that would move centroid too far)
 # This prevents a signature from drifting outside its semantic confidence bounds.
@@ -189,15 +190,14 @@ DECAY_MAX_ACTIONS_PER_RUN = 10  # Max signatures to act on per cycle
 # EMBEDDING MODEL
 # =============================================================================
 # Supports multiple embedding backends:
-# - "text-embedding-3-large": OpenAI's best embeddings (up to 3072-dim, supports dimension reduction)
-# - "text-embedding-3-small": OpenAI's efficient embeddings (up to 1536-dim)
-# - "tbs17/MathBERT": Local math-specific embeddings (768-dim, requires sentence-transformers)
-# - "gemini-embedding-001": Google Gemini API embeddings (768-dim, requires GOOGLE_API_KEY)
+# - "gemini-embedding-001": Google Vertex AI flagship (3072-dim, state-of-the-art)
+# - "text-embedding-3-large": OpenAI's best embeddings (up to 3072-dim)
+# - "text-embedding-004": Vertex AI legacy (768-dim)
 #
-# text-embedding-3-large is recommended for math - best quality, uses dimension reduction to 768
+# gemini-embedding-001 is recommended - state-of-the-art, tops MTEB leaderboard
 
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-large")  # OpenAI's best
-EMBEDDING_DIM = 768  # Reduced from 3072 for compatibility with existing DB
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "gemini-embedding-001")
+EMBEDDING_DIM = 3072  # gemini-embedding-001 full dimension
 
 # =============================================================================
 # EMBEDDING CACHE
@@ -257,6 +257,7 @@ COLD_START_HALFLIFE = 3000  # Signatures at which cold boost decays to 37%
 # =============================================================================
 HINT_LIMIT = 3           # Max hints to include in prompts
 HINT_MIN_SIMILARITY = 0.5  # Min similarity for hints
+HINT_MAX_CHILDREN_PER_CLUSTER = 5  # Max child hints per umbrella cluster
 
 RECURSIVE_DECOMPOSITION_ENABLED = True  # Enable decomposition for complex steps
 RECURSIVE_MAX_DEPTH = 9  # Max routing depth: deep decomposition for complex problems
@@ -298,7 +299,9 @@ SCAFFOLD_ENABLED = True  # Enable pre-allocated scaffold structure
 SCAFFOLD_LEVELS = 8  # Deep scaffold (8 levels before leaves)
 MIN_SIGNATURE_DEPTH = 8  # Minimum depth for leaf signatures (deep tree)
 MIN_FORK_DEPTH = 4  # Don't fork until this depth (top levels stay abstract)
-SCAFFOLD_FORK_THRESHOLD = 0.6  # Create new branch if best match below this (divergent problem)
+SCAFFOLD_FORK_THRESHOLD = 0.6  # Create new branch if best match below this (mature)
+SCAFFOLD_FORK_THRESHOLD_COLD_START = 0.85  # Higher threshold during cold start (more forking)
+SCAFFOLD_FORK_RAMP_SIGNATURES = 500  # Ramp from cold start to mature over this many sigs
 
 # NO HORIZONTAL SCALING: Initial scaffold is a single chain.
 # Branches fork DYNAMICALLY at runtime when problems diverge.
@@ -334,6 +337,15 @@ DSL_REWRITER_MIN_USES = 10  # Need enough data to identify failure patterns
 DSL_REWRITER_MAX_SUCCESS_RATE = 0.40  # Rewrite if success rate below this
 DSL_REWRITER_MIN_TRAFFIC_SHARE = 0.005  # Only rewrite high-traffic sigs (0.5%)
 DSL_REWRITER_COOLDOWN_HOURS = 24  # Don't rewrite same sig within this period
+
+# =============================================================================
+# STEP-LEVEL ANALYTICS
+# =============================================================================
+# Per CLAUDE.md: "DB audit for signature step level stats"
+# Tracks per-step execution metrics for performance analysis.
+
+STEP_STATS_ENABLED = True  # Master switch for step-level analytics
+STEP_STATS_SAMPLE_RATE = 1.0  # Sample rate (1.0 = log all, 0.1 = log 10%)
 
 # =============================================================================
 # DATABASE

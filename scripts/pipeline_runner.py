@@ -240,7 +240,10 @@ async def solve_problem(
 
         # Propagate correctness back to signatures for lift tracking
         # Returns candidates that may need decomposition
-        candidates = solver.record_problem_outcome(result, is_correct)
+        # Pass ground_truth for MCTS operational equivalence learning
+        candidates = solver.record_problem_outcome(
+            result, is_correct, ground_truth=problem["answer"]
+        )
 
         # Auto-trigger umbrella learning if signatures need decomposition
         if candidates:

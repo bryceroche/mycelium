@@ -22,6 +22,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
 
+import random
+
+from mycelium.config import STEP_STATS_ENABLED, STEP_STATS_SAMPLE_RATE
 from mycelium.data_layer import configure_connection
 
 logger = logging.getLogger(__name__)
@@ -496,6 +499,188 @@ class StepStatsCollector:
             return results
         finally:
             conn.close()
+
+
+# =============================================================================
+# STEP STATS TABLE (new analytics table)
+# =============================================================================
+
+
+def record_step_stats(
+    db_path: str,
+    step_text: str,
+    latency_ms: float,
+    signature_id: Optional[int] = None,
+    embed_latency_ms: float = 0,
+    route_latency_ms: float = 0,
+    exec_latency_ms: float = 0,
+    routing_depth: int = 0,
+    was_routed: bool = False,
+    route_path: Optional[list[int]] = None,
+    embed_cache_hit: bool = False,
+    success: bool = False,
+    used_dsl: bool = False,
+) -> Optional[int]:
+    """Record step execution stats to step_stats table.
+
+    Feature-flagged by STEP_STATS_ENABLED and sampled by STEP_STATS_SAMPLE_RATE.
+
+    Args:
+        db_path: Path to SQLite database
+        step_text: The step being executed
+        latency_ms: Total step execution time
+        signature_id: ID of signature used (None if no match)
+        embed_latency_ms: Time spent on embedding lookup/compute
+        route_latency_ms: Time spent on routing decision
+        exec_latency_ms: Time spent on DSL/LLM execution
+        routing_depth: How deep in umbrella tree
+        was_routed: Whether routed through umbrella
+        route_path: List of signature IDs traversed
+        embed_cache_hit: Whether embedding was cached
+        success: Whether step completed successfully
+        used_dsl: Whether DSL executed (vs LLM fallback)
+
+    Returns:
+        Row ID if recorded, None if skipped (disabled or sampled out)
+    """
+    if not STEP_STATS_ENABLED:
+        return None
+
+    # Sample rate check
+    if STEP_STATS_SAMPLE_RATE < 1.0 and random.random() > STEP_STATS_SAMPLE_RATE:
+        return None
+
+    now = datetime.now(timezone.utc).isoformat()
+    route_path_json = json.dumps(route_path) if route_path else None
+
+    try:
+        conn = sqlite3.connect(db_path, timeout=30.0)
+        configure_connection(conn, enable_foreign_keys=False)
+
+        cursor = conn.execute(
+            """INSERT INTO step_stats
+               (signature_id, step_text, latency_ms, embed_latency_ms,
+                route_latency_ms, exec_latency_ms, routing_depth, was_routed,
+                route_path, embed_cache_hit, success, used_dsl, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                signature_id,
+                step_text[:500],  # Truncate long step text
+                latency_ms,
+                embed_latency_ms,
+                route_latency_ms,
+                exec_latency_ms,
+                routing_depth,
+                1 if was_routed else 0,
+                route_path_json,
+                1 if embed_cache_hit else 0,
+                1 if success else 0,
+                1 if used_dsl else 0,
+                now,
+            ),
+        )
+        conn.commit()
+        row_id = cursor.lastrowid
+        conn.close()
+
+        logger.debug(
+            "[step_stats] Recorded: sig=%s latency=%.1fms depth=%d cache_hit=%s",
+            signature_id, latency_ms, routing_depth, embed_cache_hit,
+        )
+        return row_id
+
+    except Exception as e:
+        logger.warning("[step_stats] Failed to record: %s", e)
+        return None
+
+
+def get_latency_percentiles(db_path: str, signature_id: Optional[int] = None) -> dict:
+    """Get latency percentiles from step_stats.
+
+    Args:
+        db_path: Path to SQLite database
+        signature_id: Optional filter by signature
+
+    Returns:
+        Dict with p50, p90, p95, p99 latencies
+    """
+    try:
+        conn = sqlite3.connect(db_path, timeout=30.0)
+        configure_connection(conn, enable_foreign_keys=False)
+
+        if signature_id is not None:
+            cursor = conn.execute(
+                "SELECT latency_ms FROM step_stats WHERE signature_id = ? ORDER BY latency_ms",
+                (signature_id,),
+            )
+        else:
+            cursor = conn.execute(
+                "SELECT latency_ms FROM step_stats ORDER BY latency_ms"
+            )
+
+        latencies = [row[0] for row in cursor.fetchall()]
+        conn.close()
+
+        if not latencies:
+            return {"p50": 0, "p90": 0, "p95": 0, "p99": 0, "count": 0}
+
+        n = len(latencies)
+        return {
+            "p50": latencies[int(n * 0.50)],
+            "p90": latencies[int(n * 0.90)] if n >= 10 else latencies[-1],
+            "p95": latencies[int(n * 0.95)] if n >= 20 else latencies[-1],
+            "p99": latencies[int(n * 0.99)] if n >= 100 else latencies[-1],
+            "count": n,
+        }
+
+    except Exception as e:
+        logger.warning("[step_stats] Failed to get percentiles: %s", e)
+        return {"p50": 0, "p90": 0, "p95": 0, "p99": 0, "count": 0}
+
+
+def get_routing_depth_histogram(db_path: str) -> dict[int, int]:
+    """Get histogram of routing depths from step_stats.
+
+    Returns:
+        Dict mapping depth -> count
+    """
+    try:
+        conn = sqlite3.connect(db_path, timeout=30.0)
+        configure_connection(conn, enable_foreign_keys=False)
+
+        cursor = conn.execute(
+            "SELECT routing_depth, COUNT(*) FROM step_stats GROUP BY routing_depth ORDER BY routing_depth"
+        )
+        histogram = {row[0]: row[1] for row in cursor.fetchall()}
+        conn.close()
+        return histogram
+
+    except Exception as e:
+        logger.warning("[step_stats] Failed to get depth histogram: %s", e)
+        return {}
+
+
+def get_cache_hit_rate(db_path: str) -> float:
+    """Get embedding cache hit rate from step_stats.
+
+    Returns:
+        Cache hit rate (0.0 to 1.0)
+    """
+    try:
+        conn = sqlite3.connect(db_path, timeout=30.0)
+        configure_connection(conn, enable_foreign_keys=False)
+
+        row = conn.execute(
+            "SELECT SUM(embed_cache_hit), COUNT(*) FROM step_stats"
+        ).fetchone()
+        conn.close()
+
+        hits, total = row[0] or 0, row[1] or 0
+        return hits / total if total > 0 else 0.0
+
+    except Exception as e:
+        logger.warning("[step_stats] Failed to get cache hit rate: %s", e)
+        return 0.0
 
 
 # =============================================================================

@@ -15,7 +15,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-EMBEDDING_DIM = 768  # MathBERT dimension
+EMBEDDING_DIM = 3072  # gemini-embedding-001 dimension
 
 SQLITE_SCHEMA = """
 -- =============================================================================
@@ -25,9 +25,9 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     signature_id TEXT UNIQUE NOT NULL,
 
-    -- Embedding (768-dim MathBERT)
+    -- Embedding (3072-dim gemini-embedding-001)
     -- centroid = embedding_sum / embedding_count (computed on read)
-    centroid TEXT NOT NULL,           -- Current centroid (for index/queries)
+    centroid TEXT,                    -- Current centroid (for index/queries), NULL for uninitialized scaffolds
     centroid_bucket TEXT,             -- Quantized hash for coarse-grained uniqueness
     embedding_sum TEXT,               -- Running sum of all matched embeddings
     embedding_count INTEGER DEFAULT 1, -- Number of embeddings in sum
@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     -- Statistics
     uses INTEGER DEFAULT 0,
     successes INTEGER DEFAULT 0,
+    operational_failures INTEGER DEFAULT 0,  -- MCTS: times produced wrong answer vs ground truth
 
     -- Umbrella routing (DAG of DAGs)
     is_semantic_umbrella INTEGER DEFAULT 0,  -- 1 if routes to children
@@ -148,6 +149,41 @@ CREATE INDEX IF NOT EXISTS idx_failures_created ON step_failures(created_at);
 CREATE INDEX IF NOT EXISTS idx_failures_created_sig ON step_failures(created_at, signature_id);
 
 -- =============================================================================
+-- STEP STATS: Per-step execution analytics (feature flagged)
+-- =============================================================================
+-- Per CLAUDE.md: "DB audit for signature step level stats"
+-- Tracks latency, routing depth, cache hits for performance analysis.
+CREATE TABLE IF NOT EXISTS step_stats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    signature_id INTEGER REFERENCES step_signatures(id),  -- Nullable if no sig matched
+    step_text TEXT NOT NULL,                              -- The step being executed
+
+    -- Timing
+    latency_ms REAL NOT NULL,                             -- Total step execution time
+    embed_latency_ms REAL DEFAULT 0,                      -- Embedding lookup/compute time
+    route_latency_ms REAL DEFAULT 0,                      -- Routing decision time
+    exec_latency_ms REAL DEFAULT 0,                       -- DSL/LLM execution time
+
+    -- Routing
+    routing_depth INTEGER DEFAULT 0,                      -- How deep in umbrella tree
+    was_routed INTEGER DEFAULT 0,                         -- 1 if routed through umbrella
+    route_path TEXT,                                      -- JSON: signature IDs traversed
+
+    -- Cache
+    embed_cache_hit INTEGER DEFAULT 0,                    -- 1 if embedding was cached
+
+    -- Outcome
+    success INTEGER DEFAULT 0,                            -- 1 if step completed successfully
+    used_dsl INTEGER DEFAULT 0,                           -- 1 if DSL executed (vs LLM fallback)
+
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_step_stats_sig ON step_stats(signature_id);
+CREATE INDEX IF NOT EXISTS idx_step_stats_created ON step_stats(created_at);
+CREATE INDEX IF NOT EXISTS idx_step_stats_depth ON step_stats(routing_depth);
+
+-- =============================================================================
 -- METADATA: Key-value store for DB-level settings
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS db_metadata (
@@ -234,6 +270,14 @@ def migrate_db(conn) -> None:
     if "max_difficulty_solved" not in existing_cols:
         migrations.append(
             "ALTER TABLE step_signatures ADD COLUMN max_difficulty_solved REAL DEFAULT 0.0"
+        )
+
+    # Add operational_failures if missing (MCTS operational equivalence learning)
+    # Tracks how many times a signature produced a different answer than ground truth
+    # Per CLAUDE.md: "Record every failure—it feeds the refinement loop"
+    if "operational_failures" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN operational_failures INTEGER DEFAULT 0"
         )
 
     # Run migrations

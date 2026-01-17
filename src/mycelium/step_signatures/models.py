@@ -44,7 +44,7 @@ class StepSignature:
     id: Optional[int] = None
     signature_id: str = ""
 
-    # Embedding (768-dim MathBERT centroid)
+    # Embedding (3072-dim gemini-embedding-001 centroid)
     # centroid = embedding_sum / embedding_count (running average)
     centroid: Optional[np.ndarray] = None
     embedding_sum: Optional[np.ndarray] = None  # Running sum of all matched embeddings

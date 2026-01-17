@@ -20,11 +20,24 @@ pip install -r requirements.txt
 gh release download v1.4.0
 gunzip mycelium.db.gz embedding_cache.db.gz
 
-export OPENAI_API_KEY=your_key
+# Inference (just needs API key from Google AI Studio)
+export GOOGLE_API_KEY=your_key
 python scripts/pipeline_runner.py --dataset math --levels 1 2 --problems 20 --workers 4
 ```
 
-**Requirements:** Python 3.11+, ~2GB disk for MathBERT
+**Requirements:** Python 3.11+, [Google API key](https://aistudio.google.com/apikey)
+
+### Training Runs (GCP)
+
+For large-scale training, use Vertex AI:
+
+```bash
+export MYCELIUM_PROVIDER=gcp
+export GOOGLE_CLOUD_PROJECT=your_project
+python scripts/pipeline_runner.py --dataset math --levels 1 2 3 4 5 --problems 500 --workers 8
+```
+
+Requires GCP project with Vertex AI enabled.
 
 ## Pre-trained Database
 
@@ -44,9 +57,11 @@ curl -L https://github.com/bryceroche/mycelium/releases/download/v1.4.0/embeddin
 
 ## Stack
 
-- **LLM:** gpt-4.1-nano with OpenAI API
+- **LLM (Training):** Gemini 2.5 Pro via Vertex AI
+- **LLM (Inference):** Gemini 2.0 Flash (API key or Vertex AI)
+- **Embeddings:** gemini-embedding-001 (3072 dimensions)
 - **DB:** SQLite + WAL mode
-- **Embeddings:** MathBERT 768-dim
+- **Training Deployment:** Google Cloud VM
 
 **Please read the [CLAUDE.md](CLAUDE.md) for the latest thinking.**
 ## License

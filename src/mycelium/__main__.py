@@ -61,7 +61,7 @@ async def train_command(args):
     cmd = [
         sys.executable, "-m", "scripts.pipeline_runner",
         "--dataset", args.dataset,
-        "--num", str(args.num),
+        "--problems", str(args.num),
         "--workers", str(args.workers),
     ]
     if args.levels:

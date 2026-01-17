@@ -25,6 +25,7 @@ import numpy as np
 import random
 
 from mycelium.config import (
+    DB_PATH,
     MIN_MATCH_THRESHOLD,
     MIN_MATCH_THRESHOLD_COLD_START,
     MIN_MATCH_RAMP_SIGNATURES,
@@ -51,8 +52,9 @@ from mycelium.step_signatures import StepSignatureDB, StepSignature
 from mycelium.step_signatures.db import normalize_step_text
 from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
+from mycelium.step_signatures.stats import record_step_stats
 from mycelium.embedder import Embedder
-from mycelium.embedding_cache import cached_embed
+from mycelium.embedding_cache import cached_embed, cached_embed_batch
 from mycelium.difficulty import estimate_difficulty
 
 logger = logging.getLogger(__name__)
@@ -292,6 +294,23 @@ class StepResult:
 
 
 @dataclass
+class PathOutcome:
+    """Outcome of a single path during multi-path MCTS exploration.
+
+    Used to track which signatures produced which answers during exploration,
+    enabling ground truth comparison for operational equivalence learning.
+
+    Key insight: During training, ground truth lets us LABEL paths as operationally
+    equivalent or different. Paths that produce the same correct answer are
+    operationally equivalent even if their vocab differs.
+    """
+    signature_id: int
+    answer: Optional[str]  # What this path produced (None if failed)
+    embedding: np.ndarray  # The routing embedding for centroid updates
+    step_id: str  # Which step this was for
+
+
+@dataclass
 class SolverResult:
     """Result of solving a complete problem."""
     problem: str
@@ -345,6 +364,10 @@ class Solver:
         # LRU cache for DSL expressions: (operation, param_names) -> (expr, used_params)
         # Bounded to DSL_EXPR_CACHE_MAX_SIZE to prevent memory growth
         self._dsl_expr_cache: OrderedDict[tuple[str, frozenset[str]], tuple[str, list[str]]] = OrderedDict()
+        # MCTS multi-path outcomes: step_id -> list[PathOutcome]
+        # Used for ground truth comparison to determine operational equivalence
+        # Cleared after each problem is graded via record_problem_outcome()
+        self._pending_path_outcomes: dict[str, list[PathOutcome]] = {}
 
     def _create_background_task(self, coro) -> asyncio.Task:
         """Create a background task with proper lifecycle management.
@@ -536,16 +559,20 @@ class Solver:
 
         Args:
             problem: The problem text
-            compute_budget: MCTS exploration budget (default from config)
+            compute_budget: MCTS exploration budget (None = adaptive based on difficulty)
+                - None = adaptive budget (harder problems get more exploration)
                 - 1.0 = single best path (backward compatible)
                 - 2.0+ = explore multiple paths at low-confidence nodes
 
         Returns:
             SolverResult with answer and step details
         """
-        from mycelium.config import COMPUTE_BUDGET_DEFAULT
-        if compute_budget is None:
-            compute_budget = COMPUTE_BUDGET_DEFAULT
+        from mycelium.config import COMPUTE_BUDGET_DEFAULT, TRAINING_MODE
+        from mycelium.difficulty import get_exploration_budget
+
+        # Track if caller explicitly set budget (vs adaptive)
+        explicit_budget = compute_budget is not None
+
         import time
         start_time = time.time()
 
@@ -558,6 +585,20 @@ class Solver:
             # Difficulty affects: depth, credit multiplier, routing preferences
             difficulty = estimate_difficulty(problem)
             logger.debug("[solver] Estimated difficulty: %.2f for problem: %s", difficulty, problem[:50])
+
+            # 0.2. Adaptive compute budget: scale by difficulty (if not explicitly set)
+            # Per CLAUDE.md: "Multi step simulated mcts rollouts"
+            # Harder problems get more exploration budget in training mode
+            if explicit_budget:
+                pass  # Use caller's value
+            elif TRAINING_MODE:
+                compute_budget = get_exploration_budget(difficulty, base_budget=COMPUTE_BUDGET_DEFAULT)
+                logger.debug(
+                    "[solver] Adaptive budget: %.1f (difficulty=%.2f)",
+                    compute_budget, difficulty
+                )
+            else:
+                compute_budget = COMPUTE_BUDGET_DEFAULT  # Inference: single path
 
             # 0.5. Try zero-LLM solve first (skip planner for mature signatures)
             zero_llm_result = self._try_zero_llm_solve(problem, problem_embedding, difficulty)
@@ -603,6 +644,9 @@ class Solver:
 
             # Pre-warm DSL expression cache in parallel for independent steps
             await self._prewarm_dsl_cache(plan.steps)
+
+            # Pre-warm embedding cache with batch call (avoids N sequential embed calls)
+            self._prewarm_step_embeddings(plan.steps)
 
             # 2. Execute steps in dependency order (parallel where possible)
             step_results = []
@@ -912,17 +956,7 @@ class Solver:
                     routed_signature.step_type
                 )
 
-        # 4.7. Fallback: try DSL on umbrella itself (it may still have DSL from before promotion)
-        if result is None and signature.is_semantic_umbrella and (has_dsl_hint or has_extracted_values):
-            logger.debug("[solver] Trying umbrella's own DSL as fallback")
-            dsl_result = await self._try_dsl(signature, step, context, step_descriptions)
-            if dsl_result is not None:
-                result = dsl_result
-                was_injected = True
-                routed_signature = signature  # Use original umbrella signature
-                logger.info("[solver] Umbrella fallback DSL succeeded: %s", result[:30] if result else "")
-
-        # 4.8. CREATE NEW CHILD ON ROUTING FAILURE (per CLAUDE.md: failing signatures decompose)
+        # 4.7. CREATE NEW CHILD ON ROUTING FAILURE (per CLAUDE.md: failing signatures decompose)
         # If umbrella routing failed (no matching child), create new child for current step
         # This grows the tree by adding specialized children to handle novel steps
         if result is None and routed_signature.is_semantic_umbrella:
@@ -1015,6 +1049,18 @@ class Solver:
             )
 
         elapsed_ms = (time.time() - start_time) * 1000
+
+        # 8. Record step stats (feature-flagged, non-blocking)
+        record_step_stats(
+            db_path=DB_PATH,
+            step_text=step.task,
+            latency_ms=elapsed_ms,
+            signature_id=routed_signature.id if routed_signature else None,
+            routing_depth=routed_signature.depth if routed_signature else 0,
+            was_routed=was_routed,
+            success=step_completed,
+            used_dsl=was_injected,
+        )
 
         return StepResult(
             step_id=step.id,
@@ -1356,6 +1402,25 @@ class Solver:
 
         results = await asyncio.gather(*[try_candidate(sig) for sig in candidates])
 
+        # Store path outcomes for ground truth comparison (operational equivalence learning)
+        # Key insight: After problem is graded, we can determine which paths are
+        # operationally equivalent (produce correct answer) vs different (produce wrong answer)
+        path_outcomes = [
+            PathOutcome(
+                signature_id=sig.id,
+                answer=result,
+                embedding=embedding,
+                step_id=step.id,
+            )
+            for sig, result in results
+        ]
+        if path_outcomes:
+            self._pending_path_outcomes[step.id] = path_outcomes
+            logger.debug(
+                "[solver] Stored %d path outcomes for step '%s' (for ground truth comparison)",
+                len(path_outcomes), step.id
+            )
+
         # Find first success (or None if all failed)
         best_sig = candidates[0]
         best_result = None
@@ -1519,6 +1584,30 @@ class Solver:
         if prewarm_tasks:
             logger.debug("[solver] Pre-warming DSL cache: %d parallel calls", len(prewarm_tasks))
             await asyncio.gather(*prewarm_tasks, return_exceptions=True)
+
+    def _prewarm_step_embeddings(self, steps: list) -> None:
+        """Batch embed all step texts to pre-warm the embedding cache.
+
+        Instead of N sequential embed calls during step execution,
+        this makes a single batch API call upfront. The embeddings
+        are stored in the cache, so cached_embed() hits during execution.
+        """
+        if not steps:
+            return
+
+        # Collect normalized step texts (same normalization as _execute_step)
+        texts = []
+        for step in steps:
+            if not step.is_composite:
+                normalized = normalize_step_text(step.task)
+                texts.append(normalized)
+
+        if not texts:
+            return
+
+        # Batch embed - populates the cache
+        logger.debug("[solver] Pre-warming embeddings: %d steps in single batch call", len(texts))
+        cached_embed_batch(texts, self.embedder)
 
     async def _llm_write_expression(
         self,
@@ -1736,11 +1825,47 @@ Expression:"""
 
         return order
 
+    def _answers_match(self, answer1: str, answer2: str) -> bool:
+        """Check if two answers are equivalent (for operational equivalence).
+
+        Simple numeric comparison for now. Could be extended with LLM judge
+        for more complex equivalence checking.
+
+        Args:
+            answer1: First answer string
+            answer2: Second answer string (typically ground truth)
+
+        Returns:
+            True if answers are considered equivalent
+        """
+        if answer1 is None or answer2 is None:
+            return False
+
+        # Normalize: strip whitespace, lowercase
+        a1 = answer1.strip().lower()
+        a2 = answer2.strip().lower()
+
+        # Direct match
+        if a1 == a2:
+            return True
+
+        # Try numeric comparison (handles "42" vs "42.0" vs "42.00")
+        try:
+            n1 = float(a1.replace(",", ""))
+            n2 = float(a2.replace(",", ""))
+            # Use relative tolerance for floating point
+            return abs(n1 - n2) < 1e-9 or (n2 != 0 and abs((n1 - n2) / n2) < 1e-6)
+        except (ValueError, TypeError):
+            pass
+
+        return False
+
     def record_problem_outcome(
         self,
         result: SolverResult,
         correct: bool,
         difficulty: float = None,
+        ground_truth: str = None,
     ) -> list[int]:
         """Propagate problem correctness to all signatures used.
 
@@ -1756,6 +1881,7 @@ Expression:"""
             result: The SolverResult from solve()
             correct: Whether the final answer was correct
             difficulty: Problem difficulty for weighted credit (0.0-1.0)
+            ground_truth: The correct answer (for MCTS path outcome comparison)
 
         Returns:
             List of signature IDs that may need decomposition (low confidence)
@@ -1766,6 +1892,71 @@ Expression:"""
             if step.signature_id is not None
         ]
         self.step_db.update_problem_outcome(signature_ids, correct, difficulty=difficulty)
+
+        # MCTS Training: Process path outcomes for operational equivalence learning
+        # Only in training mode - inference skips this overhead
+        # Key insight: Ground truth lets us determine which paths are operationally
+        # equivalent (produce correct answer) vs different (produce wrong answer)
+        from mycelium.config import TRAINING_MODE
+        if TRAINING_MODE and self._pending_path_outcomes and ground_truth is not None:
+            # Build step_id -> winning result mapping (for logging only)
+            step_results = {step.step_id: step.result for step in result.steps}
+            correct_paths = 0
+            incorrect_paths = 0
+
+            for step_id, path_outcomes in self._pending_path_outcomes.items():
+                winning_result = step_results.get(step_id)
+
+                for outcome in path_outcomes:
+                    # A path is operationally correct if it produced the correct answer
+                    # Compare directly to ground_truth, not to winning_result
+                    # This catches cases where a non-winning path would have been correct
+                    path_correct = (
+                        outcome.answer is not None and
+                        self._answers_match(outcome.answer, ground_truth)
+                    )
+
+                    # Update centroid only for operationally correct paths
+                    # This naturally clusters signatures by operational equivalence
+                    self.step_db.update_centroid_on_operational_success(
+                        outcome.signature_id,
+                        outcome.embedding,
+                        was_correct=path_correct,
+                    )
+
+                    if path_correct:
+                        correct_paths += 1
+                        logger.debug(
+                            "[solver] Path via sig %d was operationally correct for step '%s'",
+                            outcome.signature_id, step_id
+                        )
+                    else:
+                        incorrect_paths += 1
+                        # Record failure for potential cluster splitting
+                        # Per CLAUDE.md: "Record every failure—it feeds the refinement loop"
+                        self.step_db.record_operational_failure(
+                            outcome.signature_id,
+                            outcome.answer,
+                            ground_truth,
+                        )
+                        logger.debug(
+                            "[solver] Path via sig %d was operationally different for step '%s' "
+                            "(path_answer=%s, ground_truth=%s, winning=%s)",
+                            outcome.signature_id, step_id,
+                            outcome.answer[:20] if outcome.answer else "None",
+                            ground_truth[:20] if ground_truth else "None",
+                            winning_result[:20] if winning_result else "None"
+                        )
+
+            # Clear pending path outcomes after processing
+            logger.info(
+                "[solver] Processed %d path outcomes: %d correct, %d incorrect (ground_truth=%s)",
+                correct_paths + incorrect_paths, correct_paths, incorrect_paths,
+                ground_truth[:20] if ground_truth else "None"
+            )
+
+        # Always clear pending outcomes (memory safety)
+        self._pending_path_outcomes.clear()
 
         # Update rolling accuracy and reuse rate for self-tuning expansion
         current_accuracy = update_accuracy(correct)
@@ -1801,6 +1992,10 @@ Expression:"""
                         "uses=%d, success_rate=%.1f%%",
                         sig.step_type, sig_id, sig.uses, sig.success_rate * 100
                     )
+
+        # Flush any batched centroid propagations after problem is graded
+        # This ensures parent umbrellas have accurate centroids for next problem
+        self.step_db.flush_pending_propagations()
 
         return candidates
 
