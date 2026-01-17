@@ -292,6 +292,23 @@ class StepResult:
 
 
 @dataclass
+class PathOutcome:
+    """Outcome of a single path during multi-path MCTS exploration.
+
+    Used to track which signatures produced which answers during exploration,
+    enabling ground truth comparison for operational equivalence learning.
+
+    Key insight: During training, ground truth lets us LABEL paths as operationally
+    equivalent or different. Paths that produce the same correct answer are
+    operationally equivalent even if their vocab differs.
+    """
+    signature_id: int
+    answer: Optional[str]  # What this path produced (None if failed)
+    embedding: np.ndarray  # The routing embedding for centroid updates
+    step_id: str  # Which step this was for
+
+
+@dataclass
 class SolverResult:
     """Result of solving a complete problem."""
     problem: str
@@ -345,6 +362,10 @@ class Solver:
         # LRU cache for DSL expressions: (operation, param_names) -> (expr, used_params)
         # Bounded to DSL_EXPR_CACHE_MAX_SIZE to prevent memory growth
         self._dsl_expr_cache: OrderedDict[tuple[str, frozenset[str]], tuple[str, list[str]]] = OrderedDict()
+        # MCTS multi-path outcomes: step_id -> list[PathOutcome]
+        # Used for ground truth comparison to determine operational equivalence
+        # Cleared after each problem is graded via record_problem_outcome()
+        self._pending_path_outcomes: dict[str, list[PathOutcome]] = {}
 
     def _create_background_task(self, coro) -> asyncio.Task:
         """Create a background task with proper lifecycle management.
@@ -1356,6 +1377,25 @@ class Solver:
 
         results = await asyncio.gather(*[try_candidate(sig) for sig in candidates])
 
+        # Store path outcomes for ground truth comparison (operational equivalence learning)
+        # Key insight: After problem is graded, we can determine which paths are
+        # operationally equivalent (produce correct answer) vs different (produce wrong answer)
+        path_outcomes = [
+            PathOutcome(
+                signature_id=sig.id,
+                answer=result,
+                embedding=embedding,
+                step_id=step.id,
+            )
+            for sig, result in results
+        ]
+        if path_outcomes:
+            self._pending_path_outcomes[step.id] = path_outcomes
+            logger.debug(
+                "[solver] Stored %d path outcomes for step '%s' (for ground truth comparison)",
+                len(path_outcomes), step.id
+            )
+
         # Find first success (or None if all failed)
         best_sig = candidates[0]
         best_result = None
@@ -1767,6 +1807,55 @@ Expression:"""
         ]
         self.step_db.update_problem_outcome(signature_ids, correct, difficulty=difficulty)
 
+        # MCTS Training: Process path outcomes for operational equivalence learning
+        # Key insight: Ground truth lets us determine which paths are operationally
+        # equivalent (produce correct answer) vs different (produce wrong answer)
+        if self._pending_path_outcomes:
+            # Build step_id -> winning result mapping
+            step_results = {step.step_id: step.result for step in result.steps}
+
+            for step_id, path_outcomes in self._pending_path_outcomes.items():
+                winning_result = step_results.get(step_id)
+
+                for outcome in path_outcomes:
+                    # A path is operationally correct if:
+                    # 1. The overall problem was correct, AND
+                    # 2. This path produced the same answer as the winning path
+                    path_correct = correct and (
+                        outcome.answer is not None and
+                        outcome.answer == winning_result
+                    )
+
+                    # Update centroid only for operationally correct paths
+                    # This naturally clusters signatures by operational equivalence
+                    self.step_db.update_centroid_on_operational_success(
+                        outcome.signature_id,
+                        outcome.embedding,
+                        was_correct=path_correct,
+                    )
+
+                    if path_correct:
+                        logger.debug(
+                            "[solver] Path via sig %d was operationally correct for step '%s'",
+                            outcome.signature_id, step_id
+                        )
+                    else:
+                        logger.debug(
+                            "[solver] Path via sig %d was operationally different for step '%s' "
+                            "(problem_correct=%s, path_answer=%s, winning=%s)",
+                            outcome.signature_id, step_id, correct,
+                            outcome.answer[:20] if outcome.answer else "None",
+                            winning_result[:20] if winning_result else "None"
+                        )
+
+            # Clear pending path outcomes after processing
+            logger.info(
+                "[solver] Processed %d path outcomes across %d steps for operational equivalence",
+                sum(len(outcomes) for outcomes in self._pending_path_outcomes.values()),
+                len(self._pending_path_outcomes)
+            )
+            self._pending_path_outcomes.clear()
+
         # Update rolling accuracy and reuse rate for self-tuning expansion
         current_accuracy = update_accuracy(correct)
         current_reuse = update_reuse_rate(result.signatures_matched, result.total_steps)
@@ -1801,6 +1890,10 @@ Expression:"""
                         "uses=%d, success_rate=%.1f%%",
                         sig.step_type, sig_id, sig.uses, sig.success_rate * 100
                     )
+
+        # Flush any batched centroid propagations after problem is graded
+        # This ensures parent umbrellas have accurate centroids for next problem
+        self.step_db.flush_pending_propagations()
 
         return candidates
 

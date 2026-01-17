@@ -37,6 +37,7 @@ from mycelium.config import (
     AUTO_DEMOTE_MIN_USES_FLOOR,
     AUTO_DEMOTE_MIN_USES_CAP,
     CENTROID_PROPAGATION_MAX_DEPTH,
+    CENTROID_PROPAGATION_BATCH_SIZE,
     CENTROID_MAX_DRIFT,
     CENTROID_DRIFT_DECAY,
     DB_MAX_RETRIES,
@@ -149,6 +150,10 @@ class StepSignatureDB:
 
         # Cached root signature (never changes after creation)
         self._cached_root: Optional[StepSignature] = None
+
+        # Batched centroid propagation: track pending updates per signature
+        # Key: signature_id, Value: count of pending centroid updates
+        self._pending_propagations: dict[int, int] = {}
 
         self._init_schema()
 
@@ -468,6 +473,78 @@ class StepSignatureDB:
         except sqlite3.IntegrityError as e:
             logger.warning("[db] Failed to create scaffold branch: %s", e)
             return None
+
+    def _maybe_propagate_centroid(
+        self,
+        conn,
+        child_id: int,
+        force: bool = False,
+    ) -> bool:
+        """Conditionally propagate centroid to parents using batching.
+
+        Accumulates centroid updates and only propagates when batch size is reached.
+        This reduces overhead from calling propagate_centroid_to_parents on every match.
+
+        Args:
+            conn: Database connection (within transaction)
+            child_id: ID of the signature whose centroid was updated
+            force: If True, propagate immediately regardless of batch size
+
+        Returns:
+            True if propagation was performed, False if deferred
+        """
+        if force or CENTROID_PROPAGATION_BATCH_SIZE <= 1:
+            # Immediate propagation requested or batching disabled
+            self.propagate_centroid_to_parents(conn, child_id)
+            # Clear any pending count for this signature
+            self._pending_propagations.pop(child_id, None)
+            return True
+
+        # Increment pending count for this signature
+        pending = self._pending_propagations.get(child_id, 0) + 1
+        self._pending_propagations[child_id] = pending
+
+        if pending >= CENTROID_PROPAGATION_BATCH_SIZE:
+            # Threshold reached, propagate now
+            self.propagate_centroid_to_parents(conn, child_id)
+            self._pending_propagations.pop(child_id, None)
+            logger.debug(
+                "[db] Batch propagation triggered for sig %d after %d updates",
+                child_id, pending
+            )
+            return True
+
+        logger.debug(
+            "[db] Deferred centroid propagation for sig %d (%d/%d)",
+            child_id, pending, CENTROID_PROPAGATION_BATCH_SIZE
+        )
+        return False
+
+    def flush_pending_propagations(self):
+        """Flush all pending centroid propagations.
+
+        Call this at the end of a batch of operations to ensure all
+        centroid updates are propagated to parent umbrellas.
+        """
+        if not self._pending_propagations:
+            return
+
+        pending_ids = list(self._pending_propagations.keys())
+        self._pending_propagations.clear()
+
+        with self._connection() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                for sig_id in pending_ids:
+                    self.propagate_centroid_to_parents(conn, sig_id)
+                conn.commit()
+                logger.debug(
+                    "[db] Flushed %d pending centroid propagations",
+                    len(pending_ids)
+                )
+            except Exception:
+                conn.rollback()
+                raise
 
     def propagate_centroid_to_parents(
         self,
@@ -1016,8 +1093,9 @@ class StepSignatureDB:
                         conn, best_match.id, embedding, update_last_used=True
                     )
 
-                    # Propagate centroid change up to parent umbrellas
-                    self.propagate_centroid_to_parents(conn, best_match.id)
+                    # Batch propagate centroid change up to parent umbrellas
+                    # Uses batching to reduce overhead on high-traffic matches
+                    self._maybe_propagate_centroid(conn, best_match.id)
 
                     conn.commit()
                     logger.debug(
@@ -1860,7 +1938,7 @@ class StepSignatureDB:
                     conn.rollback()
                     return
 
-                # Propagate centroid change up to parent umbrellas
+                # Propagate centroid change up to parent umbrellas (immediate, as caller expects)
                 if propagate_to_parents:
                     self.propagate_centroid_to_parents(conn, signature_id)
 
@@ -1872,6 +1950,45 @@ class StepSignatureDB:
             except Exception:
                 conn.rollback()
                 raise
+
+    def update_centroid_on_operational_success(
+        self,
+        signature_id: int,
+        embedding: np.ndarray,
+        was_correct: bool,
+    ):
+        """Update centroid ONLY if the path produced a correct answer.
+
+        This is the key mechanism for splitting vocab-based clusters into
+        operation-based clusters. By only updating centroids for operationally
+        correct paths, signatures naturally cluster by operational equivalence
+        rather than vocabulary similarity.
+
+        Key insight from MCTS training:
+        - Paths with same vocab but different outcomes → centroids diverge (SPLIT)
+        - Paths with different vocab but same correct outcome → centroids converge (MERGE)
+
+        Args:
+            signature_id: ID of the signature to potentially update
+            embedding: The routing embedding from the step
+            was_correct: Whether this path produced the correct answer
+        """
+        if not was_correct:
+            # Don't update centroid for operationally incorrect paths
+            # This naturally causes incorrect paths to drift away from the cluster
+            logger.debug(
+                "[db] Skipping centroid update for sig %d (operationally incorrect)",
+                signature_id
+            )
+            return
+
+        # Update centroid for operationally correct paths
+        # This reinforces the cluster of signatures that produce correct answers
+        self.update_centroid(signature_id, embedding, propagate_to_parents=True)
+        logger.debug(
+            "[db] Updated centroid for sig %d (operationally correct)",
+            signature_id
+        )
 
     # =========================================================================
     # Usage Recording
