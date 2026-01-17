@@ -1,9 +1,9 @@
 """Embedder: Generate embeddings for problem signatures.
 
 Supports multiple backends:
-- OpenAI API: text-embedding-3-large (recommended for math)
+- Vertex AI (GCP): Set MYCELIUM_PROVIDER=gcp
+- OpenAI API: text-embedding-3-large
 - Gemini API: gemini-embedding-001
-- sentence-transformers (local): MathBERT, MiniLM, etc.
 
 The model is loaded lazily on first use.
 """
@@ -147,41 +147,6 @@ class GeminiEmbedder:
         return EMBEDDING_DIM
 
 
-class SentenceTransformerEmbedder:
-    """Generate embeddings using sentence-transformers (local)."""
-
-    def __init__(self, model_name: str):
-        self.model_name = model_name
-        self._model = None
-
-    def _load_model(self):
-        """Lazy load the model on first use."""
-        if self._model is None:
-            logger.info(f"[embedder] Loading model: {self.model_name}")
-            from sentence_transformers import SentenceTransformer
-            self._model = SentenceTransformer(self.model_name)
-            logger.info(f"[embedder] Model loaded, dim={self._model.get_sentence_embedding_dimension()}")
-        return self._model
-
-    def embed(self, text: str) -> np.ndarray:
-        """Generate embedding for a single text."""
-        model = self._load_model()
-        embedding = model.encode(text, convert_to_numpy=True)
-        return embedding.astype(np.float32)
-
-    def embed_batch(self, texts: list[str]) -> np.ndarray:
-        """Generate embeddings for multiple texts."""
-        model = self._load_model()
-        embeddings = model.encode(texts, convert_to_numpy=True)
-        return embeddings.astype(np.float32)
-
-    @property
-    def embedding_dim(self) -> int:
-        """Get the embedding dimension for this model."""
-        model = self._load_model()
-        return model.get_sentence_embedding_dimension()
-
-
 class Embedder:
     """Unified embedder interface supporting multiple backends."""
 
@@ -200,7 +165,7 @@ class Embedder:
         elif is_gemini_model(model_name):
             self._backend = GeminiEmbedder(model_name)
         else:
-            self._backend = SentenceTransformerEmbedder(model_name)
+            raise ValueError(f"Unknown embedding model: {model_name}. Use OpenAI (text-embedding-*), Gemini (gemini-*), or set MYCELIUM_PROVIDER=gcp for Vertex AI.")
 
     @classmethod
     def get_instance(cls, model_name: str = EMBEDDING_MODEL) -> "Embedder":
