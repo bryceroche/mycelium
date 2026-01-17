@@ -936,17 +936,7 @@ class Solver:
                     routed_signature.step_type
                 )
 
-        # 4.7. Fallback: try DSL on umbrella itself (it may still have DSL from before promotion)
-        if result is None and signature.is_semantic_umbrella and (has_dsl_hint or has_extracted_values):
-            logger.debug("[solver] Trying umbrella's own DSL as fallback")
-            dsl_result = await self._try_dsl(signature, step, context, step_descriptions)
-            if dsl_result is not None:
-                result = dsl_result
-                was_injected = True
-                routed_signature = signature  # Use original umbrella signature
-                logger.info("[solver] Umbrella fallback DSL succeeded: %s", result[:30] if result else "")
-
-        # 4.8. CREATE NEW CHILD ON ROUTING FAILURE (per CLAUDE.md: failing signatures decompose)
+        # 4.7. CREATE NEW CHILD ON ROUTING FAILURE (per CLAUDE.md: failing signatures decompose)
         # If umbrella routing failed (no matching child), create new child for current step
         # This grows the tree by adding specialized children to handle novel steps
         if result is None and routed_signature.is_semantic_umbrella:
