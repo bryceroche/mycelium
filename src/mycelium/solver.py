@@ -308,6 +308,8 @@ class PathOutcome:
     answer: Optional[str]  # What this path produced (None if failed)
     embedding: np.ndarray  # The routing embedding for centroid updates
     step_id: str  # Which step this was for
+    embedding_similarity: float = 0.0  # Cosine similarity to signature centroid
+    dsl_type: str = "unknown"  # DSL type for operational alignment tracking
 
 
 @dataclass
@@ -1417,18 +1419,21 @@ class Solver:
             routing_result.confidence, num_paths
         )
 
-        # Collect alternative leaf signatures to try
-        candidates = []
+        # Collect alternative leaf signatures to try (with similarity scores)
+        candidates = []  # List of (signature, similarity_score)
 
         # Add best path's leaf if it's not an umbrella
         if routing_result.signature and not routing_result.signature.is_semantic_umbrella:
-            candidates.append(routing_result.signature)
+            # Use confidence as proxy for similarity for best path
+            candidates.append((routing_result.signature, routing_result.confidence))
 
         # Add alternatives from each level (flatten)
         for level_alts in routing_result.alternatives:
-            for alt_sig, _score in level_alts:
-                if not alt_sig.is_semantic_umbrella and alt_sig not in candidates:
-                    candidates.append(alt_sig)
+            for alt_sig, score in level_alts:
+                # Check if already added (by signature id)
+                already_added = any(sig.id == alt_sig.id for sig, _ in candidates)
+                if not alt_sig.is_semantic_umbrella and not already_added:
+                    candidates.append((alt_sig, score))
                     explored_sigs.append(alt_sig)
                     if len(candidates) >= num_paths:
                         break
@@ -1440,11 +1445,12 @@ class Solver:
             return (None, routing_result.signature, explored_sigs, False)
 
         # Try DSL on each candidate in parallel
-        async def try_candidate(sig):
+        async def try_candidate(sig_with_score):
+            sig, score = sig_with_score
             result = await self._try_dsl(sig, step, context, step_descriptions)
-            return (sig, result)
+            return (sig, score, result)
 
-        results = await asyncio.gather(*[try_candidate(sig) for sig in candidates])
+        results = await asyncio.gather(*[try_candidate(c) for c in candidates])
 
         # Store path outcomes for ground truth comparison (operational equivalence learning)
         # Key insight: After problem is graded, we can determine which paths are
@@ -1455,8 +1461,10 @@ class Solver:
                 answer=result,
                 embedding=embedding,
                 step_id=step.id,
+                embedding_similarity=score,
+                dsl_type=sig.dsl_type or "unknown",
             )
-            for sig, result in results
+            for sig, score, result in results
         ]
         if path_outcomes:
             self._pending_path_outcomes[step.id] = path_outcomes
@@ -1466,9 +1474,9 @@ class Solver:
             )
 
         # Find first success (or None if all failed)
-        best_sig = candidates[0]
+        best_sig = candidates[0][0]  # First candidate's signature
         best_result = None
-        for sig, result in results:
+        for sig, _score, result in results:
             if result is not None:
                 best_sig = sig
                 best_result = result
@@ -1959,6 +1967,8 @@ Expression:"""
         # Key insight: Ground truth lets us determine which paths are operationally
         # equivalent (produce correct answer) vs different (produce wrong answer)
         from mycelium.config import TRAINING_MODE
+        from mycelium.step_signatures.operational_alignment import record_routing_outcome
+
         if TRAINING_MODE and self._pending_path_outcomes and ground_truth is not None:
             # Build step_id -> winning result mapping (for logging only)
             step_results = {step.step_id: step.result for step in result.steps}
@@ -1984,6 +1994,21 @@ Expression:"""
                         outcome.embedding,
                         was_correct=path_correct,
                     )
+
+                    # Record for operational alignment validation
+                    # This tracks whether MCTS is actually helping distinguish operations
+                    try:
+                        record_routing_outcome(
+                            db_path=DB_PATH,
+                            signature_id=outcome.signature_id,
+                            step_text=step_id,
+                            embedding_similarity=outcome.embedding_similarity,
+                            was_correct=path_correct,
+                            dsl_type=outcome.dsl_type,
+                            problem_id=result.problem[:50] if result.problem else None,
+                        )
+                    except Exception as e:
+                        logger.debug("[solver] Failed to record alignment outcome: %s", e)
 
                     if path_correct:
                         correct_paths += 1

@@ -66,6 +66,18 @@ from mycelium.step_signatures.decay import (
     get_decay_summary,
 )
 
+from mycelium.step_signatures.operational_alignment import (
+    OperationalAlignmentScore,
+    CentroidDriftMetrics,
+    RoutingOutcome,
+    OperationalAlignmentTracker,
+    CentroidDriftAnalyzer,
+    compute_operational_alignment_score,
+    get_alignment_trend,
+    record_routing_outcome,
+    print_alignment_report,
+)
+
 from mycelium.data_layer.schema import STEP_SCHEMA as STEP_SCHEMA_SQL
 
 __all__ = [
@@ -114,4 +126,14 @@ __all__ = [
     "run_decay_cycle",
     "get_signature_decay_state",
     "get_decay_summary",
+    # Operational Alignment Validation
+    "OperationalAlignmentScore",
+    "CentroidDriftMetrics",
+    "RoutingOutcome",
+    "OperationalAlignmentTracker",
+    "CentroidDriftAnalyzer",
+    "compute_operational_alignment_score",
+    "get_alignment_trend",
+    "record_routing_outcome",
+    "print_alignment_report",
 ]
