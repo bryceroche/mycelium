@@ -1634,7 +1634,7 @@ class StepSignatureDB:
         else:
             actual_parent_id = None  # Creating the root
 
-        step_type = self._infer_step_type(step_text)
+        step_type = self._infer_step_type(step_text, dsl_hint=dsl_hint)
         centroid_packed = pack_embedding(embedding)
         centroid_bucket = compute_centroid_bucket(embedding)
 
@@ -2884,11 +2884,29 @@ class StepSignatureDB:
         """
         return StepSignature.from_row_for_routing(dict(row))
 
-    def _infer_step_type(self, step_text: str) -> str:
+    def _infer_step_type(self, step_text: str, dsl_hint: str = None) -> str:
         """Infer a step type from step text.
 
-        Uses keyword matching to categorize common math operations.
+        Priority:
+        1. If dsl_hint provided, derive step_type from it (authoritative)
+        2. Fall back to keyword matching
+
+        The dsl_hint from the planner is the LLM's analysis of the actual
+        operation needed, so it's more reliable than keyword matching.
         """
+        # Priority 1: Use dsl_hint from planner (LLM's operation analysis)
+        if dsl_hint:
+            hint = dsl_hint.strip().lower()
+            HINT_TO_TYPE = {
+                "+": "compute_sum", "add": "compute_sum", "sum": "compute_sum",
+                "-": "compute_difference", "subtract": "compute_difference", "difference": "compute_difference",
+                "*": "compute_product", "multiply": "compute_product", "product": "compute_product",
+                "/": "compute_quotient", "divide": "compute_quotient", "quotient": "compute_quotient",
+            }
+            if hint in HINT_TO_TYPE:
+                return HINT_TO_TYPE[hint]
+
+        # Priority 2: Keyword matching fallback
         text_lower = step_text.lower()
 
         # Keyword patterns
