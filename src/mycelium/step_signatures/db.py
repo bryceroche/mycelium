@@ -238,12 +238,21 @@ def should_fork_at_depth(
     # Sample from probability
     should_fork = random.random() < prob
 
-    logger.debug(
-        "[big_bang] depth=%d, sig_count=%d, best_sim=%.3f, threshold=%.3f, "
-        "hysteresis=%s, fork_prob=%.3f, decision=%s",
-        depth, sig_count, best_similarity, fork_threshold,
-        has_existing_forks_at_level, prob, should_fork
-    )
+    # Log at INFO level when fork happens (important event), DEBUG otherwise
+    if should_fork:
+        logger.info(
+            "[FORK_DECISION] depth=%d sig_count=%d best_sim=%.3f threshold=%.3f "
+            "gap=%.3f hysteresis=%s fork_prob=%.3f → FORK",
+            depth, sig_count, best_similarity, fork_threshold,
+            fork_threshold - best_similarity, has_existing_forks_at_level, prob
+        )
+    else:
+        logger.debug(
+            "[FORK_DECISION] depth=%d sig_count=%d best_sim=%.3f threshold=%.3f "
+            "gap=%.3f hysteresis=%s fork_prob=%.3f → NO_FORK",
+            depth, sig_count, best_similarity, fork_threshold,
+            fork_threshold - best_similarity, has_existing_forks_at_level, prob
+        )
 
     return should_fork
 
@@ -1514,9 +1523,15 @@ class StepSignatureDB:
                             conn, current.id, embedding, depth + 1
                         )
                         if new_branch:
+                            # Structured fork event log for analysis
                             logger.info(
-                                "[db] FORK: Created new branch at depth %d (best_sim=%.2f < %.2f threshold)",
-                                depth + 1, best_below_sim, fork_threshold
+                                "[FORK_CREATED] depth=%d new_sig_id=%d parent_id=%d "
+                                "best_sim=%.3f threshold=%.3f gap=%.3f "
+                                "existing_children=%d sig_count=%d",
+                                depth + 1, new_branch.id, current.id,
+                                best_below_sim, fork_threshold,
+                                fork_threshold - best_below_sim,
+                                len(children_with_centroids), sig_count
                             )
                             parent_for_new = current
                             current = new_branch
