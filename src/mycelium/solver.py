@@ -1582,8 +1582,10 @@ class Solver:
         logger.debug("[solver] _try_dsl: hint=%s, params=%s", dsl_hint, list(params.keys()))
 
         # LLM writes the expression with correct params
+        # Inject few-shot examples from signature for better LLM guidance
+        few_shot_prompt = signature.get_few_shot_prompt() if signature else ""
         try:
-            expr_result = await self._llm_write_expression(dsl_hint, params, step.task)
+            expr_result = await self._llm_write_expression(dsl_hint, params, step.task, few_shot_prompt)
             if expr_result:
                 script, used_params = expr_result
                 logger.debug("[solver] LLM wrote: %s (used: %s)", script, used_params)
@@ -1683,6 +1685,7 @@ class Solver:
         operation: str,
         params: dict,
         task: str,
+        few_shot_prompt: str = "",
     ) -> Optional[tuple[str, list[str]]]:
         """Ask LLM to write arithmetic expression using available params.
 
@@ -1690,6 +1693,7 @@ class Solver:
             operation: The operation hint (+, -, *, /)
             params: Available param names and values
             task: The step task description
+            few_shot_prompt: Optional few-shot examples from matched signature
 
         Returns:
             (script, param_list) or None if failed
@@ -1708,12 +1712,17 @@ class Solver:
         # Format available params
         param_info = ", ".join(f"{k}={v}" for k, v in params.items() if not k.startswith('{'))
 
+        # Build prompt with optional few-shot examples
+        few_shot_section = ""
+        if few_shot_prompt:
+            few_shot_section = f"\nSimilar problems solved:\n{few_shot_prompt}\n"
+
         prompt = f"""Write a simple arithmetic expression for this task.
 
 Task: {task}
 Operation: {operation}
 Available values: {param_info}
-
+{few_shot_section}
 Rules:
 - Use EXACTLY the variable names provided (e.g., step_1, eggs_per_day)
 - Write ONLY the expression, nothing else
