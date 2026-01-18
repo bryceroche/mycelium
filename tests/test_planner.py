@@ -211,3 +211,136 @@ class TestPlanValidationError:
         levels = plan.get_execution_order(strict=False)
         # Result may be empty or partial for invalid DAG
         assert isinstance(levels, list)
+
+
+# =============================================================================
+# ADDITIONAL ERROR PATH TESTS
+# =============================================================================
+
+
+class TestStepExtractedValues:
+    """Tests for Step.extracted_values handling."""
+
+    def test_extracted_values_default(self):
+        step = Step(id="step1", task="Do something")
+        assert step.extracted_values == {}
+
+    def test_extracted_values_with_numbers(self):
+        step = Step(
+            id="step1",
+            task="Calculate",
+            extracted_values={"a": 10, "b": 3.14}
+        )
+        assert step.extracted_values["a"] == 10
+        assert step.extracted_values["b"] == 3.14
+
+    def test_extracted_values_with_references(self):
+        step = Step(
+            id="step2",
+            task="Combine",
+            extracted_values={"prev": "{step_1}"}
+        )
+        assert step.extracted_values["prev"] == "{step_1}"
+
+
+class TestDAGPlanEdgeCases:
+    """Additional edge cases for DAGPlan."""
+
+    def test_duplicate_step_ids_handled(self):
+        """Duplicate step IDs should be handled gracefully.
+
+        Note: Current implementation doesn't explicitly validate duplicates,
+        but should handle them without crashing.
+        """
+        plan = make_plan(steps=[
+            Step(id="step1", task="First"),
+            Step(id="step1", task="Duplicate ID"),
+        ])
+        # Should not crash - behavior may vary
+        is_valid, errors = plan.validate()
+        # If validation catches duplicates, great; if not, at least no crash
+        assert isinstance(is_valid, bool)
+
+    def test_very_deep_nesting(self):
+        """Very deep nesting should still work."""
+        # Create 5 levels of nesting
+        plan = make_plan(steps=[Step(id="leaf", task="Leaf")])
+        for i in range(5):
+            plan = make_plan(steps=[
+                Step(id=f"level_{i}", task=f"Level {i}", sub_plan=plan)
+            ])
+
+        assert plan.max_depth() == 5
+        is_valid, errors = plan.validate()
+        assert is_valid
+
+    def test_wide_parallel_plan(self):
+        """Many parallel steps should validate correctly."""
+        steps = [Step(id="root", task="Root")]
+        # Add 10 parallel children
+        for i in range(10):
+            steps.append(Step(id=f"child_{i}", task=f"Child {i}", depends_on=["root"]))
+        # Add join step
+        deps = [f"child_{i}" for i in range(10)]
+        steps.append(Step(id="join", task="Join", depends_on=deps))
+
+        plan = make_plan(steps=steps)
+        is_valid, errors = plan.validate()
+        assert is_valid
+
+        order = plan.get_execution_order()
+        # Root in level 0, all children in level 1, join in level 2
+        assert len(order) == 3
+        assert len(order[1]) == 10
+
+    def test_empty_depends_on_list(self):
+        """Empty depends_on list should be valid."""
+        step = Step(id="step1", task="Task", depends_on=[])
+        plan = make_plan(steps=[step])
+        is_valid, errors = plan.validate()
+        assert is_valid
+
+    def test_none_depends_on(self):
+        """None depends_on should be treated as empty."""
+        step = Step(id="step1", task="Task")  # depends_on defaults to None
+        assert step.depends_on is None or step.depends_on == []
+        plan = make_plan(steps=[step])
+        is_valid, errors = plan.validate()
+        assert is_valid
+
+
+class TestFlatten:
+    """Tests for plan flattening."""
+
+    def test_flatten_preserves_order(self):
+        """Flattening should preserve step order."""
+        plan = make_plan(steps=[
+            Step(id="a", task="A"),
+            Step(id="b", task="B", depends_on=["a"]),
+            Step(id="c", task="C", depends_on=["b"]),
+        ])
+
+        # Flatten via iteration
+        flat = list(plan.flatten())
+        ids = [step.id for _, step in flat]
+
+        assert ids == ["a", "b", "c"]
+
+    def test_flatten_nested_includes_all(self):
+        """Flattening nested plans should include all steps."""
+        inner = make_plan(steps=[
+            Step(id="inner1", task="Inner 1"),
+            Step(id="inner2", task="Inner 2"),
+        ])
+        outer = make_plan(steps=[
+            Step(id="outer", task="Outer", sub_plan=inner),
+        ])
+
+        flat = list(outer.flatten())
+        paths = [path for path, _ in flat]
+
+        # Should have outer and both inner steps
+        assert len(flat) == 3
+        assert "outer" in paths
+        assert "outer/inner1" in paths
+        assert "outer/inner2" in paths

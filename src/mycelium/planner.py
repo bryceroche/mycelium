@@ -74,15 +74,39 @@ class SignatureHint:
     children: list["SignatureHint"] = field(default_factory=list)  # Child operations for clusters
 
     def to_hint_text(self) -> str:
-        """Format as compact hint text for the planner prompt."""
+        """Format as hint text for the planner prompt.
+
+        Includes clarifying_questions and param_descriptions to guide parameter extraction.
+        For nested clusters, shows grandchildren inline: parent[child1[gc1,gc2], child2]
+        """
         if self.is_cluster and self.children:
-            # Compact cluster format
-            children_str = ", ".join(c.step_type for c in self.children[:3])
+            # Compact cluster format with nested children support
+            def format_child(c):
+                if c.is_cluster and c.children:
+                    gc_str = ",".join(gc.step_type for gc in c.children[:2])
+                    return f"{c.step_type}[{gc_str}]"
+                return c.step_type
+            children_str = ", ".join(format_child(c) for c in self.children[:3])
             return f"- {self.step_type}: {self.description[:50]}... [{children_str}]"
 
-        # Compact single signature format
+        # Single signature format with extraction guidance
+        lines = []
         params_str = f" ({', '.join(self.param_names)})" if self.param_names else ""
-        return f"- {self.step_type}{params_str}: {self.description[:60]}"
+        lines.append(f"- {self.step_type}{params_str}: {self.description[:60]}")
+
+        # Add clarifying questions to guide parameter extraction
+        if self.clarifying_questions:
+            lines.append("  Extract:")
+            for q in self.clarifying_questions:
+                lines.append(f"    - {q}")
+
+        # Add parameter descriptions for context
+        if self.param_descriptions:
+            lines.append("  Parameters:")
+            for param, desc in self.param_descriptions.items():
+                lines.append(f"    - {param}: {desc}")
+
+        return "\n".join(lines)
 
 
 @dataclass

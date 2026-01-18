@@ -13,9 +13,9 @@ The planner and signatures can now "talk" to each other through text.
 
 import logging
 
-logger = logging.getLogger(__name__)
+from mycelium.config import EMBEDDING_DIM
 
-EMBEDDING_DIM = 3072  # gemini-embedding-001 dimension
+logger = logging.getLogger(__name__)
 
 SQLITE_SCHEMA = """
 -- =============================================================================

@@ -15,13 +15,13 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Import config for DB path - allows branch-specific databases
+# Import config for DB path and embedding dimension - allows branch-specific databases
 try:
-    from mycelium.config import DB_PATH as CONFIG_DB_PATH
+    from mycelium.config import DB_PATH as CONFIG_DB_PATH, EMBEDDING_DIM
 except ImportError:
     CONFIG_DB_PATH = "mycelium.db"
+    EMBEDDING_DIM = 3072  # Fallback if config not available
 
-EMBEDDING_DIM = 3072  # gemini-embedding-001 (state-of-the-art)
 DEFAULT_DB_PATH = os.getenv("MYCELIUM_DB_PATH", CONFIG_DB_PATH)
 
 

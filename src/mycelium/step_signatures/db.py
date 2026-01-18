@@ -64,9 +64,203 @@ from mycelium.step_signatures.utils import (
     get_cached_centroid,
     invalidate_centroid_cache,
     compute_centroid_bucket,
+    # Signature lookup caches
+    get_cached_signature,
+    cache_signature,
+    get_cached_children,
+    cache_children,
+    invalidate_signature_cache,
+    invalidate_children_cache,
 )
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# BIG BANG - Smooth Fork Probability Functions
+# =============================================================================
+# Per CLAUDE.md: "smooth and continuous learning process"
+# Per CLAUDE.md: "aggressively branch out early, tapering off later"
+
+def get_system_maturity(sig_count: int) -> float:
+    """Compute system maturity as smooth 0→1 value.
+
+    Uses exponential approach: 1 - exp(-sig_count / (target / 3))
+    This gives ~95% maturity when sig_count = target.
+
+    Args:
+        sig_count: Current number of signatures in the database
+
+    Returns:
+        Maturity value between 0 (fresh) and 1 (mature)
+    """
+    from mycelium.config import BIG_BANG_TARGET_SIGNATURES
+
+    # Smooth exponential curve: rises quickly at first, asymptotes to 1
+    tau = BIG_BANG_TARGET_SIGNATURES / 3.0  # ~3tau to reach 95%
+    maturity = 1.0 - math.exp(-sig_count / tau)
+    return maturity
+
+
+def get_fork_center(maturity: float) -> float:
+    """Compute the depth where forking is most likely (fork center).
+
+    Starts at MIN_FORK_DEPTH (level 6) and drifts toward root (level 1)
+    as the system matures. Root (level 0) never forks.
+
+    Args:
+        maturity: System maturity from get_system_maturity() (0-1)
+
+    Returns:
+        Float representing the current fork center depth
+    """
+    from mycelium.config import MIN_FORK_DEPTH, BIG_BANG_FORK_CENTER_DRIFT_RATE
+
+    # Start at MIN_FORK_DEPTH, drift toward level 1 (not 0, root never forks)
+    # At maturity=0: center = MIN_FORK_DEPTH (e.g., 6)
+    # At maturity=1: center = 1 + (MIN_FORK_DEPTH - 1) * (1 - drift_rate)
+    drift = maturity * BIG_BANG_FORK_CENTER_DRIFT_RATE
+    center = MIN_FORK_DEPTH - drift * (MIN_FORK_DEPTH - 1)
+    return max(1.0, center)  # Never below level 1
+
+
+def _sigmoid(x: float, steepness: float = 1.0) -> float:
+    """Standard sigmoid function centered at 0.
+
+    Args:
+        x: Input value
+        steepness: How sharp the transition is (higher = sharper)
+
+    Returns:
+        Value between 0 and 1
+    """
+    return 1.0 / (1.0 + math.exp(-steepness * x))
+
+
+def compute_fork_probability(
+    depth: int,
+    sig_count: int,
+    best_similarity: float,
+    fork_threshold: float,
+    has_existing_forks_at_level: bool = False,
+) -> float:
+    """Compute probability of forking at a given depth.
+
+    Uses smooth, continuous functions with sigmoid transitions.
+    Per CLAUDE.md: "no hard thresholds", "smooth and continuous"
+
+    Factors:
+    1. Depth factor: Sigmoid around fork center (protected levels → allowed levels)
+    2. Similarity gap: Larger gap below threshold → more likely to fork
+    3. Maturity: System maturity modulates overall fork aggressiveness
+    4. Hysteresis: Levels with existing forks get bonus (easier to fork again)
+
+    Args:
+        depth: Current depth in the tree (0 = root)
+        sig_count: Current signature count (for maturity calculation)
+        best_similarity: Similarity of best matching child
+        fork_threshold: Current fork threshold
+        has_existing_forks_at_level: Whether this level has existing fork branches
+
+    Returns:
+        Fork probability between MIN_FORK_PROB and MAX_FORK_PROB
+    """
+    from mycelium.config import (
+        BIG_BANG_SIGMOID_STEEPNESS,
+        BIG_BANG_HYSTERESIS_BONUS,
+        BIG_BANG_MIN_FORK_PROB,
+        BIG_BANG_MAX_FORK_PROB,
+        MIN_FORK_DEPTH,
+    )
+
+    # Root (depth 0) NEVER forks
+    if depth == 0:
+        return 0.0
+
+    # HARD CUTOFF: Protected levels (below MIN_FORK_DEPTH) NEVER fork
+    # This preserves headroom for future domains
+    if depth < MIN_FORK_DEPTH:
+        return 0.0
+
+    maturity = get_system_maturity(sig_count)
+    fork_center = get_fork_center(maturity)
+
+    # 1. DEPTH FACTOR: Sigmoid around fork center
+    # Depths below fork center → low probability (protected)
+    # Depths at/above fork center → high probability (allowed)
+    depth_distance = depth - fork_center
+    depth_factor = _sigmoid(depth_distance, BIG_BANG_SIGMOID_STEEPNESS)
+
+    # 2. SIMILARITY GAP: How far below threshold is the best match?
+    # Larger gap → more reason to fork (problem is divergent)
+    gap = fork_threshold - best_similarity
+    gap_factor = max(0.0, min(1.0, gap * 2.0))  # Scale to 0-1 range
+
+    # 3. MATURITY MODULATION: Less aggressive forking as system matures
+    # Cold start (maturity=0): fork more aggressively
+    # Mature (maturity=1): be more selective
+    maturity_factor = 1.0 - (maturity * 0.5)  # Range: 1.0 → 0.5
+
+    # 4. HYSTERESIS: Levels with existing forks get bonus
+    hysteresis = BIG_BANG_HYSTERESIS_BONUS if has_existing_forks_at_level else 0.0
+
+    # Combine factors: depth is primary, gap and maturity modulate
+    base_prob = depth_factor * gap_factor * maturity_factor
+    final_prob = base_prob + hysteresis * (1.0 - base_prob)  # Hysteresis as boost
+
+    # Clamp to configured range
+    return max(BIG_BANG_MIN_FORK_PROB, min(BIG_BANG_MAX_FORK_PROB, final_prob))
+
+
+def should_fork_at_depth(
+    depth: int,
+    sig_count: int,
+    best_similarity: float,
+    fork_threshold: float,
+    has_existing_forks_at_level: bool = False,
+) -> bool:
+    """Probabilistic decision: should we fork at this depth?
+
+    Uses compute_fork_probability() and random sampling.
+
+    Args:
+        depth: Current depth in the tree
+        sig_count: Current signature count
+        best_similarity: Similarity of best matching child
+        fork_threshold: Current fork threshold
+        has_existing_forks_at_level: Whether this level has existing forks
+
+    Returns:
+        True if we should fork, False otherwise
+    """
+    prob = compute_fork_probability(
+        depth=depth,
+        sig_count=sig_count,
+        best_similarity=best_similarity,
+        fork_threshold=fork_threshold,
+        has_existing_forks_at_level=has_existing_forks_at_level,
+    )
+
+    # Sample from probability
+    should_fork = random.random() < prob
+
+    # Log at INFO level when fork happens (important event), DEBUG otherwise
+    if should_fork:
+        logger.info(
+            "[FORK_DECISION] depth=%d sig_count=%d best_sim=%.3f threshold=%.3f "
+            "gap=%.3f hysteresis=%s fork_prob=%.3f → FORK",
+            depth, sig_count, best_similarity, fork_threshold,
+            fork_threshold - best_similarity, has_existing_forks_at_level, prob
+        )
+    else:
+        logger.debug(
+            "[FORK_DECISION] depth=%d sig_count=%d best_sim=%.3f threshold=%.3f "
+            "gap=%.3f hysteresis=%s fork_prob=%.3f → NO_FORK",
+            depth, sig_count, best_similarity, fork_threshold,
+            fork_threshold - best_similarity, has_existing_forks_at_level, prob
+        )
+
+    return should_fork
 
 
 # =============================================================================
@@ -361,9 +555,9 @@ class StepSignatureDB:
                     logger.info("[db] Created scaffold root: id=%d", root_id)
                 else:
                     root_id = root_row[0]
-                    # Ensure root is an umbrella
+                    # Ensure root is an umbrella - routers don't execute DSL
                     conn.execute(
-                        "UPDATE step_signatures SET is_semantic_umbrella = 1, dsl_type = 'router' WHERE id = ?",
+                        "UPDATE step_signatures SET is_semantic_umbrella = 1, dsl_type = 'router', dsl_script = NULL WHERE id = ?",
                         (root_id,)
                     )
 
@@ -540,6 +734,8 @@ class StepSignatureDB:
 
         Call this at the end of a batch of operations to ensure all
         centroid updates are propagated to parent umbrellas.
+
+        Uses batch propagation to avoid N+1 queries when flushing multiple signatures.
         """
         if not self._pending_propagations:
             return
@@ -550,16 +746,174 @@ class StepSignatureDB:
         with self._connection() as conn:
             conn.execute("BEGIN IMMEDIATE")
             try:
-                for sig_id in pending_ids:
-                    self.propagate_centroid_to_parents(conn, sig_id)
+                self._batch_propagate_centroids_to_parents(conn, pending_ids)
                 conn.commit()
                 logger.debug(
-                    "[db] Flushed %d pending centroid propagations",
+                    "[db] Flushed %d pending centroid propagations (batched)",
                     len(pending_ids)
                 )
             except Exception:
                 conn.rollback()
                 raise
+
+    def _batch_propagate_centroids_to_parents(
+        self,
+        conn,
+        child_ids: list[int],
+    ) -> None:
+        """Batch propagate centroid changes for multiple children at once.
+
+        Optimized version that collects all ancestors for all children in one query,
+        avoiding N+1 pattern. Reduces overhead from O(N*3) queries to O(3) queries.
+
+        Args:
+            conn: Database connection (within transaction)
+            child_ids: List of signature IDs whose centroids were updated
+        """
+        if not child_ids:
+            return
+
+        max_depth = CENTROID_PROPAGATION_MAX_DEPTH
+
+        # SQLite has a default limit of 999 parameters. Chunk if needed.
+        # Reserve 1 slot for max_depth parameter.
+        SQLITE_MAX_PARAMS = 998
+        if len(child_ids) > SQLITE_MAX_PARAMS:
+            # Process in chunks, collecting all ancestors
+            all_ancestors: dict[int, int] = {}  # parent_id -> min_depth
+            for i in range(0, len(child_ids), SQLITE_MAX_PARAMS):
+                chunk = child_ids[i:i + SQLITE_MAX_PARAMS]
+                placeholders = ",".join("?" * len(chunk))
+                cursor = conn.execute(
+                    f"""
+                    WITH RECURSIVE ancestors AS (
+                        SELECT parent_id, child_id, 1 as depth
+                        FROM signature_relationships
+                        WHERE child_id IN ({placeholders})
+
+                        UNION ALL
+
+                        SELECT r.parent_id, a.child_id, a.depth + 1
+                        FROM signature_relationships r
+                        JOIN ancestors a ON r.child_id = a.parent_id
+                        WHERE a.depth < ?
+                    )
+                    SELECT DISTINCT parent_id, MIN(depth) as depth
+                    FROM ancestors
+                    GROUP BY parent_id
+                    """,
+                    (*chunk, max_depth),
+                )
+                for row in cursor.fetchall():
+                    pid, depth = row[0], row[1]
+                    if pid not in all_ancestors or depth < all_ancestors[pid]:
+                        all_ancestors[pid] = depth
+            # Convert to sorted list by depth
+            ancestors = sorted(all_ancestors.items(), key=lambda x: x[1])
+        else:
+            # 1. Batch-fetch all ancestors for ALL child_ids using recursive CTE
+            placeholders = ",".join("?" * len(child_ids))
+            cursor = conn.execute(
+                f"""
+                WITH RECURSIVE ancestors AS (
+                    SELECT parent_id, child_id, 1 as depth
+                    FROM signature_relationships
+                    WHERE child_id IN ({placeholders})
+
+                    UNION ALL
+
+                    SELECT r.parent_id, a.child_id, a.depth + 1
+                    FROM signature_relationships r
+                    JOIN ancestors a ON r.child_id = a.parent_id
+                    WHERE a.depth < ?
+                )
+                SELECT DISTINCT parent_id, MIN(depth) as depth
+                FROM ancestors
+                GROUP BY parent_id
+                ORDER BY depth
+                """,
+                (*child_ids, max_depth),
+            )
+            ancestors = cursor.fetchall()
+
+        if not ancestors:
+            return  # No parents (all are root nodes)
+
+        ancestor_ids = [row[0] for row in ancestors]
+
+        # 2. Batch-fetch all children data for ALL ancestors
+        # Also chunk this query to respect SQLite parameter limits
+        children_by_parent: dict[int, list[tuple]] = {}
+        for i in range(0, len(ancestor_ids), SQLITE_MAX_PARAMS):
+            chunk = ancestor_ids[i:i + SQLITE_MAX_PARAMS]
+            ancestor_placeholders = ",".join("?" * len(chunk))
+            cursor = conn.execute(
+                f"""
+                SELECT r.parent_id, s.centroid, s.embedding_count
+                FROM signature_relationships r
+                JOIN step_signatures s ON r.child_id = s.id
+                WHERE r.parent_id IN ({ancestor_placeholders})
+                """,
+                chunk,
+            )
+            for parent_id, centroid, count in cursor.fetchall():
+                if parent_id not in children_by_parent:
+                    children_by_parent[parent_id] = []
+                children_by_parent[parent_id].append((centroid, count))
+
+        # 3. Compute new centroids for each ancestor (process in depth order)
+        updates = []
+        for parent_id, _ in ancestors:
+            children = children_by_parent.get(parent_id, [])
+            if not children:
+                continue
+
+            total_weight = 0
+            centroid_sum = None
+
+            for child_centroid_packed, child_count in children:
+                child_centroid = unpack_embedding(child_centroid_packed)
+                weight = child_count or 1
+                if child_centroid is None:
+                    continue
+
+                if centroid_sum is None:
+                    centroid_sum = child_centroid * weight
+                else:
+                    centroid_sum = centroid_sum + (child_centroid * weight)
+                total_weight += weight
+
+            if centroid_sum is not None and total_weight > 0:
+                new_centroid = centroid_sum / total_weight
+                updates.append((
+                    pack_embedding(new_centroid),
+                    pack_embedding(centroid_sum),
+                    total_weight,
+                    parent_id,
+                ))
+
+        # 4. Batch update all ancestors
+        for packed_centroid, packed_sum, weight, parent_id in updates:
+            try:
+                conn.execute(
+                    """UPDATE step_signatures
+                       SET centroid = ?, embedding_sum = ?, embedding_count = ?
+                       WHERE id = ?""",
+                    (packed_centroid, packed_sum, weight, parent_id),
+                )
+                invalidate_centroid_cache(parent_id)
+                invalidate_signature_cache(parent_id)
+            except sqlite3.IntegrityError:
+                logger.debug(
+                    "[db] Skipped centroid propagation to parent %d (collision)",
+                    parent_id
+                )
+
+        if updates:
+            logger.debug(
+                "[db] Batch propagated centroids to %d ancestors from %d children",
+                len(updates), len(child_ids)
+            )
 
     def propagate_centroid_to_parents(
         self,
@@ -669,6 +1023,7 @@ class StepSignatureDB:
                     (packed_centroid, packed_sum, weight, parent_id),
                 )
                 invalidate_centroid_cache(parent_id)
+                invalidate_signature_cache(parent_id)
                 logger.debug(
                     "[db] Propagated centroid to parent %d (weight=%d)",
                     parent_id, weight
@@ -1103,6 +1458,17 @@ class StepSignatureDB:
                 )
 
                 if best_match is not None and best_sim >= min_similarity:
+                    # Check if matched signature's step_type is compatible with dsl_hint
+                    # This prevents matching "Calculate total distance" (sum) to a product signature
+                    if dsl_hint and not self._is_step_type_compatible(best_match.step_type, dsl_hint):
+                        logger.debug(
+                            "[db] Step type mismatch: sig='%s' has type '%s' but dsl_hint='%s' - creating new",
+                            best_match.step_type, best_match.step_type, dsl_hint
+                        )
+                        # Treat as no match - fall through to create new signature
+                        best_match = None
+
+                if best_match is not None and best_sim >= min_similarity:
                     # Found a match - update centroid using shared helper
                     new_count = self._update_centroid_atomic(
                         conn, best_match.id, embedding, update_last_used=True
@@ -1310,25 +1676,39 @@ class StepSignatureDB:
                             best_below_sim = child_sim
                             best_below_score = score
 
-                    # DYNAMIC FORKING: If best match is below fork threshold,
-                    # this problem diverges from existing paths - create new branch
-                    # BUT only fork if we're deep enough (top levels stay abstract)
-                    # Uses cold-start aware threshold: higher during cold start (more forking)
+                    # DYNAMIC FORKING (BIG BANG): Use smooth probability function
+                    # Per CLAUDE.md: "smooth and continuous", "no hard thresholds"
+                    # Factors: depth, maturity, similarity gap, hysteresis
                     # Note: depth + 1 because we're creating a child at the next level
-                    should_fork = (
-                        (depth + 1) >= MIN_FORK_DEPTH and  # Don't fork in top abstract levels
-                        (best_below_sim < fork_threshold or best_below is None)
+
+                    # Check for hysteresis: does this level have existing forks?
+                    # (more than 1 child with centroid at this level = already forked)
+                    has_existing_forks = len(children_with_centroids) > 1
+
+                    # Use smooth probabilistic forking decision
+                    fork_decision = should_fork_at_depth(
+                        depth=depth + 1,  # We're creating at next level
+                        sig_count=sig_count,
+                        best_similarity=best_below_sim if best_below else 0.0,
+                        fork_threshold=fork_threshold,
+                        has_existing_forks_at_level=has_existing_forks,
                     )
 
-                    if should_fork:
+                    if fork_decision:
                         # Create new branch (fork) for this divergent problem type
                         new_branch = self._create_scaffold_branch(
                             conn, current.id, embedding, depth + 1
                         )
                         if new_branch:
+                            # Structured fork event log for analysis
                             logger.info(
-                                "[db] FORK: Created new branch at depth %d (best_sim=%.2f < %.2f threshold)",
-                                depth + 1, best_below_sim, fork_threshold
+                                "[FORK_CREATED] depth=%d new_sig_id=%d parent_id=%d "
+                                "best_sim=%.3f threshold=%.3f gap=%.3f "
+                                "existing_children=%d sig_count=%d",
+                                depth + 1, new_branch.id, current.id,
+                                best_below_sim, fork_threshold,
+                                fork_threshold - best_below_sim,
+                                len(children_with_centroids), sig_count
                             )
                             parent_for_new = current
                             current = new_branch
@@ -1425,7 +1805,7 @@ class StepSignatureDB:
         else:
             actual_parent_id = None  # Creating the root
 
-        step_type = self._infer_step_type(step_text)
+        step_type = self._infer_step_type(step_text, dsl_hint=dsl_hint)
         centroid_packed = pack_embedding(embedding)
         centroid_bucket = compute_centroid_bucket(embedding)
 
@@ -1510,11 +1890,17 @@ class StepSignatureDB:
                        VALUES (?, ?, ?, ?, ?)""",
                     (actual_parent_id, row_id, step_type, 0, now),
                 )
-                # Mark parent as umbrella (it now has children)
+                # Mark parent as umbrella - routers don't execute DSL, they route
+                # Clear dsl_script to avoid mismatch between dsl_type='router' and script type='math'
                 conn.execute(
-                    "UPDATE step_signatures SET is_semantic_umbrella = 1 WHERE id = ?",
+                    """UPDATE step_signatures
+                       SET is_semantic_umbrella = 1, dsl_type = 'router', dsl_script = NULL
+                       WHERE id = ?""",
                     (actual_parent_id,),
                 )
+                # Invalidate parent's children cache since we added a new child
+                invalidate_children_cache(actual_parent_id)
+                invalidate_signature_cache(actual_parent_id)
                 logger.debug(
                     "[db] Added as child: parent_id=%d (depth=%d) -> child_id=%d (depth=%d) (condition='%s')",
                     actual_parent_id, actual_depth - 1, row_id, actual_depth, step_type
@@ -1575,14 +1961,25 @@ class StepSignatureDB:
     # =========================================================================
 
     def get_signature(self, signature_id: int) -> Optional[StepSignature]:
-        """Get a signature by ID."""
+        """Get a signature by ID.
+
+        Uses LRU cache with TTL to skip DB for hot signatures.
+        """
+        # Check cache first
+        cached = get_cached_signature(signature_id)
+        if cached is not None:
+            return cached
+
+        # Cache miss - fetch from DB
         with self._connection() as conn:
             row = conn.execute(
                 "SELECT * FROM step_signatures WHERE id = ?",
                 (signature_id,)
             ).fetchone()
             if row:
-                return self._row_to_signature(row)
+                sig = self._row_to_signature(row)
+                cache_signature(signature_id, sig)
+                return sig
             return None
 
     def _ensure_centroid_matrix(self):
@@ -1979,6 +2376,7 @@ class StepSignatureDB:
                     self.propagate_centroid_to_parents(conn, signature_id)
 
                 conn.commit()
+                invalidate_signature_cache(signature_id)
                 logger.debug(
                     "[db] Updated centroid for sig %d: count=%d",
                     signature_id, new_count
@@ -2164,10 +2562,12 @@ class StepSignatureDB:
                     )
                     if should_demote:
                         # Promote to umbrella: clear DSL, set type to router
+                        # Clear dsl_script to avoid type mismatch
                         conn.execute(
                             """UPDATE step_signatures
                                SET is_semantic_umbrella = 1,
-                                   dsl_type = 'router'
+                                   dsl_type = 'router',
+                                   dsl_script = NULL
                                WHERE id = ?""",
                             (signature_id,),
                         )
@@ -2629,6 +3029,7 @@ class StepSignatureDB:
                 f"UPDATE step_signatures SET {', '.join(updates)} WHERE id = ?",
                 params,
             )
+            invalidate_signature_cache(signature_id)
 
     # =========================================================================
     # Helpers
@@ -2654,11 +3055,65 @@ class StepSignatureDB:
         """
         return StepSignature.from_row_for_routing(dict(row))
 
-    def _infer_step_type(self, step_text: str) -> str:
+    def _is_step_type_compatible(self, step_type: str, dsl_hint: str) -> bool:
+        """Check if a step_type is compatible with a dsl_hint.
+
+        Used during routing to prevent matching a sum step to a product signature.
+
+        Args:
+            step_type: The signature's step_type (e.g., "compute_product")
+            dsl_hint: The planner's operation hint (+, -, *, /)
+
+        Returns:
+            True if compatible, False if they conflict
+        """
+        hint = dsl_hint.strip().lower()
+
+        # Map dsl_hint to expected step_type
+        HINT_TO_TYPE = {
+            "+": "compute_sum", "add": "compute_sum", "sum": "compute_sum",
+            "-": "compute_difference", "subtract": "compute_difference", "difference": "compute_difference",
+            "*": "compute_product", "multiply": "compute_product", "product": "compute_product",
+            "/": "compute_quotient", "divide": "compute_quotient", "quotient": "compute_quotient",
+        }
+
+        expected_type = HINT_TO_TYPE.get(hint)
+        if expected_type is None:
+            # Unknown hint - allow any match
+            return True
+
+        # Check if step_type matches expected
+        # Also allow matching to abstract/branch types (they route, don't execute)
+        if step_type == expected_type:
+            return True
+        if step_type.startswith("abstract_") or step_type.startswith("branch_"):
+            return True
+
+        return False
+
+    def _infer_step_type(self, step_text: str, dsl_hint: str = None) -> str:
         """Infer a step type from step text.
 
-        Uses keyword matching to categorize common math operations.
+        Priority:
+        1. If dsl_hint provided, derive step_type from it (authoritative)
+        2. Fall back to keyword matching
+
+        The dsl_hint from the planner is the LLM's analysis of the actual
+        operation needed, so it's more reliable than keyword matching.
         """
+        # Priority 1: Use dsl_hint from planner (LLM's operation analysis)
+        if dsl_hint:
+            hint = dsl_hint.strip().lower()
+            HINT_TO_TYPE = {
+                "+": "compute_sum", "add": "compute_sum", "sum": "compute_sum",
+                "-": "compute_difference", "subtract": "compute_difference", "difference": "compute_difference",
+                "*": "compute_product", "multiply": "compute_product", "product": "compute_product",
+                "/": "compute_quotient", "divide": "compute_quotient", "quotient": "compute_quotient",
+            }
+            if hint in HINT_TO_TYPE:
+                return HINT_TO_TYPE[hint]
+
+        # Priority 2: Keyword matching fallback
         text_lower = step_text.lower()
 
         # Keyword patterns
@@ -2723,11 +3178,15 @@ class StepSignatureDB:
     ) -> list:
         """Get hierarchical signature hints for the decomposer.
 
-        Returns a mix of:
-        1. Cluster hints (umbrellas with children) - shows operation categories
-        2. Leaf hints (specific operations) - shows concrete patterns
+        Returns a multi-level hierarchy:
+        1. Level-1 clusters (root's children) - top-level operation categories
+        2. Level-2 children per cluster - specific operation types
+        3. Level-3 grandchildren (if HINT_MAX_DEPTH >= 2) - specialized variants
 
-        This gives the planner a hierarchical view of available operations.
+        This gives the planner visibility into deeper specialized operations,
+        not just top-level clusters. Controlled by config:
+        - HINT_MAX_DEPTH: How deep to traverse (1=level-1 only, 2+=grandchildren)
+        - HINT_MAX_GRANDCHILDREN: Max grandchildren per level-2 umbrella
 
         PERF: Uses selective columns, batched queries, minimal JSON parsing (~3x faster).
         Only parses param_descriptions and clarifying_questions, skips examples/centroid.
@@ -2738,10 +3197,14 @@ class StepSignatureDB:
             min_similarity: Minimum cosine similarity to include hint (default 0.3)
 
         Returns:
-            List of SignatureHint objects (some with children for clusters)
+            List of SignatureHint objects (some with nested children for clusters)
         """
         from mycelium.planner import SignatureHint
-        from mycelium.config import HINT_MAX_CHILDREN_PER_CLUSTER
+        from mycelium.config import (
+            HINT_MAX_CHILDREN_PER_CLUSTER,
+            HINT_MAX_DEPTH,
+            HINT_MAX_GRANDCHILDREN,
+        )
 
         # Columns needed for hints (avoid SELECT * and full JSON parsing)
         HINT_COLUMNS = """s.id, s.step_type, s.description, s.param_descriptions,
@@ -2779,6 +3242,7 @@ class StepSignatureDB:
 
                 # Batch fetch all children for all umbrellas (avoids N+1 queries)
                 children_by_parent = {}
+                level2_umbrella_ids = []
                 if umbrella_ids:
                     placeholders = ",".join("?" * len(umbrella_ids))
                     child_cursor = conn.execute(
@@ -2797,6 +3261,37 @@ class StepSignatureDB:
                         if len(children_by_parent[parent_id]) < HINT_MAX_CHILDREN_PER_CLUSTER:
                             children_by_parent[parent_id].append(child_row)
                             seen_ids.add(child_row["id"])
+                            # Track level-2 umbrellas for deeper fetch
+                            if child_row["is_semantic_umbrella"]:
+                                level2_umbrella_ids.append(child_row["id"])
+
+                # Fetch grandchildren (level-3) if depth allows
+                grandchildren_by_parent = {}
+                if HINT_MAX_DEPTH >= 2 and level2_umbrella_ids:
+                    placeholders = ",".join("?" * len(level2_umbrella_ids))
+                    gc_cursor = conn.execute(
+                        f"""SELECT r.parent_id, {HINT_COLUMNS}
+                           FROM signature_relationships r
+                           JOIN step_signatures s ON r.child_id = s.id
+                           WHERE r.parent_id IN ({placeholders})
+                           ORDER BY r.parent_id, s.successes DESC""",
+                        level2_umbrella_ids
+                    )
+                    gc_rows = gc_cursor.fetchall()
+
+                    # Filter grandchildren by similarity if embedding provided
+                    if problem_embedding is not None:
+                        gc_rows = self._filter_rows_by_similarity(
+                            gc_rows, problem_embedding, min_similarity
+                        )
+
+                    for gc_row in gc_rows:
+                        parent_id = gc_row["parent_id"]
+                        if parent_id not in grandchildren_by_parent:
+                            grandchildren_by_parent[parent_id] = []
+                        if len(grandchildren_by_parent[parent_id]) < HINT_MAX_GRANDCHILDREN:
+                            grandchildren_by_parent[parent_id].append(gc_row)
+                            seen_ids.add(gc_row["id"])
 
                 # Build cluster hints
                 for row in level1_rows:
@@ -2808,7 +3303,14 @@ class StepSignatureDB:
                     child_hints = []
                     if is_umbrella and sig_id in children_by_parent:
                         for child_row in children_by_parent[sig_id]:
-                            child_hints.append(self._row_to_hint(child_row))
+                            child_hint = self._row_to_hint(child_row)
+                            # Attach grandchildren if this child is an umbrella
+                            child_id = child_row["id"]
+                            if child_row["is_semantic_umbrella"] and child_id in grandchildren_by_parent:
+                                gc_hints = [self._row_to_hint(gc) for gc in grandchildren_by_parent[child_id]]
+                                child_hint.is_cluster = len(gc_hints) > 0
+                                child_hint.children = gc_hints
+                            child_hints.append(child_hint)
 
                     hint = self._row_to_hint(row)
                     hint.is_cluster = is_umbrella and len(child_hints) > 0
@@ -2839,9 +3341,14 @@ class StepSignatureDB:
                 for row in leaf_rows:
                     hints.append(self._row_to_hint(row))
 
+        # Count nested clusters (grandchildren with children)
+        nested_count = sum(
+            1 for h in hints if h.is_cluster
+            for c in h.children if c.is_cluster
+        )
         logger.debug(
-            "[db] Retrieved %d hierarchical hints (%d clusters)",
-            len(hints), sum(1 for h in hints if h.is_cluster)
+            "[db] Retrieved %d hierarchical hints (%d clusters, %d nested)",
+            len(hints), sum(1 for h in hints if h.is_cluster), nested_count
         )
         return hints
 
@@ -2943,6 +3450,8 @@ class StepSignatureDB:
     ) -> list[tuple[StepSignature, str]]:
         """Get child signatures for an umbrella parent.
 
+        Uses LRU cache with TTL to skip DB for hot umbrella nodes during routing.
+
         Args:
             parent_id: ID of the parent signature
             for_routing: If True, use fast parsing (centroid only, skip JSON).
@@ -2951,6 +3460,12 @@ class StepSignatureDB:
         Returns:
             List of (child_signature, condition) tuples, ordered by routing_order
         """
+        # Check cache first
+        cached = get_cached_children(parent_id, for_routing)
+        if cached is not None:
+            return cached
+
+        # Cache miss - fetch from DB
         with self._connection() as conn:
             cursor = conn.execute(
                 """SELECT s.*, r.condition
@@ -2970,6 +3485,9 @@ class StepSignatureDB:
                 condition = row_dict.pop("condition")
                 sig = row_converter(row_dict)
                 results.append((sig, condition))
+
+            # Cache the result
+            cache_children(parent_id, results, for_routing)
             return results
 
     def get_parent(self, child_id: int) -> Optional[StepSignature]:
@@ -3069,10 +3587,11 @@ class StepSignatureDB:
                    VALUES (?, ?, ?, ?, ?)""",
                 (parent_id, child_id, condition, routing_order, now),
             )
-            # Mark parent as umbrella (keep DSL as fallback if routing fails)
+            # Mark parent as umbrella - routers don't execute DSL, they route
+            # Clear dsl_script to avoid mismatch between dsl_type='router' and script type='math'
             conn.execute(
                 """UPDATE step_signatures
-                   SET is_semantic_umbrella = 1, dsl_type = 'router'
+                   SET is_semantic_umbrella = 1, dsl_type = 'router', dsl_script = NULL
                    WHERE id = ?""",
                 (parent_id,),
             )
@@ -3082,8 +3601,11 @@ class StepSignatureDB:
                 "UPDATE step_signatures SET depth = ? WHERE id = ?",
                 (child_depth, child_id),
             )
-            # Invalidate parent's centroid cache (new child affects routing)
+            # Invalidate caches (new child affects routing and lookups)
             invalidate_centroid_cache(parent_id)
+            invalidate_children_cache(parent_id)
+            invalidate_signature_cache(parent_id)
+            invalidate_signature_cache(child_id)
             self.invalidate_centroid_matrix()
             logger.info(
                 "[db] Added child: parent=%d (depth=%d) → child=%d (depth=%d) (condition='%s')",
@@ -3106,15 +3628,18 @@ class StepSignatureDB:
         """
         with self._connection() as conn:
             # Clear DSL and set type to router - umbrellas don't execute, they route
+            # Clear dsl_script to avoid mismatch between dsl_type='router' and script type='math'
             cursor = conn.execute(
                 """UPDATE step_signatures
                    SET is_semantic_umbrella = 1,
-                       dsl_type = 'router'
+                       dsl_type = 'router',
+                       dsl_script = NULL
                    WHERE id = ?""",
                 (signature_id,),
             )
             if cursor.rowcount > 0:
-                logger.info("[db] Promoted signature %d to umbrella (DSL kept as fallback)", signature_id)
+                invalidate_signature_cache(signature_id)
+                logger.info("[db] Promoted signature %d to umbrella (router)", signature_id)
                 return True
             return False
 

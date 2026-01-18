@@ -308,6 +308,8 @@ class PathOutcome:
     answer: Optional[str]  # What this path produced (None if failed)
     embedding: np.ndarray  # The routing embedding for centroid updates
     step_id: str  # Which step this was for
+    embedding_similarity: float = 0.0  # Cosine similarity to signature centroid
+    dsl_type: str = "unknown"  # DSL type for operational alignment tracking
 
 
 @dataclass
@@ -509,6 +511,14 @@ class Solver:
 
         except Exception as e:
             logger.debug("[zero-llm] DSL execution failed: %s", e)
+            # Record failure for pattern learning (per CLAUDE.md: failures are valuable data)
+            self.step_db.record_failure(
+                step_text=problem[:200],
+                failure_type="dsl_error",
+                error_message=str(e),
+                signature_id=sig.id if sig else None,
+                context={"source": "zero_llm", "problem": problem[:500]},
+            )
 
         return None
 
@@ -567,7 +577,7 @@ class Solver:
         Returns:
             SolverResult with answer and step details
         """
-        from mycelium.config import COMPUTE_BUDGET_DEFAULT, TRAINING_MODE
+        from mycelium.config import COMPUTE_BUDGET_BASE, TRAINING_MODE
         from mycelium.difficulty import get_exploration_budget
 
         # Track if caller explicitly set budget (vs adaptive)
@@ -588,17 +598,16 @@ class Solver:
 
             # 0.2. Adaptive compute budget: scale by difficulty (if not explicitly set)
             # Per CLAUDE.md: "Multi step simulated mcts rollouts"
-            # Harder problems get more exploration budget in training mode
+            # Both training AND inference use adaptive budget for accuracy
+            # Difference: training records path outcomes for learning, inference doesn't
             if explicit_budget:
                 pass  # Use caller's value
-            elif TRAINING_MODE:
-                compute_budget = get_exploration_budget(difficulty, base_budget=COMPUTE_BUDGET_DEFAULT)
-                logger.debug(
-                    "[solver] Adaptive budget: %.1f (difficulty=%.2f)",
-                    compute_budget, difficulty
-                )
             else:
-                compute_budget = COMPUTE_BUDGET_DEFAULT  # Inference: single path
+                compute_budget = get_exploration_budget(difficulty, base_budget=COMPUTE_BUDGET_BASE)
+                logger.debug(
+                    "[solver] Adaptive budget: %.1f (difficulty=%.2f, mode=%s)",
+                    compute_budget, difficulty, "training" if TRAINING_MODE else "inference"
+                )
 
             # 0.5. Try zero-LLM solve first (skip planner for mature signatures)
             zero_llm_result = self._try_zero_llm_solve(problem, problem_embedding, difficulty)
@@ -625,6 +634,13 @@ class Solver:
             else:
                 is_valid, errors = plan.validate()
             if not is_valid:
+                # Record validation failure (per CLAUDE.md: failures are valuable data)
+                self.step_db.record_failure(
+                    step_text=problem[:200],
+                    failure_type="validation",
+                    error_message=f"Invalid DAG: {'; '.join(errors)}",
+                    context={"source": "planner", "problem": problem[:500]},
+                )
                 return SolverResult(
                     problem=problem,
                     answer="",
@@ -634,6 +650,13 @@ class Solver:
                 )
 
             if not plan.steps:
+                # Record planning failure (per CLAUDE.md: failures are valuable data)
+                self.step_db.record_failure(
+                    step_text=problem[:200],
+                    failure_type="validation",
+                    error_message="Planning failed: no steps generated",
+                    context={"source": "planner", "problem": problem[:500]},
+                )
                 return SolverResult(
                     problem=problem,
                     answer="",
@@ -782,6 +805,13 @@ class Solver:
 
         except Exception as e:
             logger.exception("[solver] Error solving problem")
+            # Record exception (per CLAUDE.md: failures are valuable data)
+            self.step_db.record_failure(
+                step_text=problem[:200],
+                failure_type="llm_error",
+                error_message=str(e),
+                context={"source": "solver_exception", "problem": problem[:500]},
+            )
             return SolverResult(
                 problem=problem,
                 answer="",
@@ -1282,6 +1312,14 @@ class Solver:
                     "[solver] Umbrella routing: no good embedding match (best=%.3f)",
                     best_sim
                 )
+                # Record routing failure (per CLAUDE.md: failures are valuable data)
+                self.step_db.record_failure(
+                    step_text=step.task[:200],
+                    failure_type="routing",
+                    error_message=f"No good embedding match (best={best_sim:.3f})",
+                    signature_id=umbrella.id,
+                    context={"umbrella": umbrella.step_type, "best_sim": best_sim},
+                )
                 return None
         else:
             # No embedding available - cannot route without LLM
@@ -1289,6 +1327,14 @@ class Solver:
             # Return None to trigger decomposition/failure (failures are valuable data)
             logger.debug(
                 "[solver] Umbrella routing: no embedding available, cannot route"
+            )
+            # Record routing failure (per CLAUDE.md: failures are valuable data)
+            self.step_db.record_failure(
+                step_text=step.task[:200],
+                failure_type="routing",
+                error_message="No embedding available for routing",
+                signature_id=umbrella.id,
+                context={"umbrella": umbrella.step_type},
             )
             return None
 
@@ -1373,18 +1419,21 @@ class Solver:
             routing_result.confidence, num_paths
         )
 
-        # Collect alternative leaf signatures to try
-        candidates = []
+        # Collect alternative leaf signatures to try (with similarity scores)
+        candidates = []  # List of (signature, similarity_score)
 
         # Add best path's leaf if it's not an umbrella
         if routing_result.signature and not routing_result.signature.is_semantic_umbrella:
-            candidates.append(routing_result.signature)
+            # Use confidence as proxy for similarity for best path
+            candidates.append((routing_result.signature, routing_result.confidence))
 
         # Add alternatives from each level (flatten)
         for level_alts in routing_result.alternatives:
-            for alt_sig, _score in level_alts:
-                if not alt_sig.is_semantic_umbrella and alt_sig not in candidates:
-                    candidates.append(alt_sig)
+            for alt_sig, score in level_alts:
+                # Check if already added (by signature id)
+                already_added = any(sig.id == alt_sig.id for sig, _ in candidates)
+                if not alt_sig.is_semantic_umbrella and not already_added:
+                    candidates.append((alt_sig, score))
                     explored_sigs.append(alt_sig)
                     if len(candidates) >= num_paths:
                         break
@@ -1396,11 +1445,12 @@ class Solver:
             return (None, routing_result.signature, explored_sigs, False)
 
         # Try DSL on each candidate in parallel
-        async def try_candidate(sig):
+        async def try_candidate(sig_with_score):
+            sig, score = sig_with_score
             result = await self._try_dsl(sig, step, context, step_descriptions)
-            return (sig, result)
+            return (sig, score, result)
 
-        results = await asyncio.gather(*[try_candidate(sig) for sig in candidates])
+        results = await asyncio.gather(*[try_candidate(c) for c in candidates])
 
         # Store path outcomes for ground truth comparison (operational equivalence learning)
         # Key insight: After problem is graded, we can determine which paths are
@@ -1411,8 +1461,10 @@ class Solver:
                 answer=result,
                 embedding=embedding,
                 step_id=step.id,
+                embedding_similarity=score,
+                dsl_type=sig.dsl_type or "unknown",
             )
-            for sig, result in results
+            for sig, score, result in results
         ]
         if path_outcomes:
             self._pending_path_outcomes[step.id] = path_outcomes
@@ -1422,9 +1474,9 @@ class Solver:
             )
 
         # Find first success (or None if all failed)
-        best_sig = candidates[0]
+        best_sig = candidates[0][0]  # First candidate's signature
         best_result = None
-        for sig, result in results:
+        for sig, _score, result in results:
             if result is not None:
                 best_sig = sig
                 best_result = result
@@ -1436,6 +1488,15 @@ class Solver:
 
         if best_result is None:
             logger.debug("[solver] Multi-path: all %d paths failed DSL", len(candidates))
+            # Record failure for all explored paths (per CLAUDE.md: failures are valuable data)
+            for sig in explored_sigs:
+                self.step_db.record_failure(
+                    step_text=step.task[:200],
+                    failure_type="dsl_error",
+                    error_message=f"Multi-path DSL failed ({len(candidates)} paths explored)",
+                    signature_id=sig.id,
+                    context={"source": "multi_path", "paths_explored": len(candidates)},
+                )
 
         return (best_result, best_sig, explored_sigs, best_result is not None)
 
@@ -1521,8 +1582,11 @@ class Solver:
         logger.debug("[solver] _try_dsl: hint=%s, params=%s", dsl_hint, list(params.keys()))
 
         # LLM writes the expression with correct params
+        # Inject few-shot examples from signature for better LLM guidance
+        few_shot_prompt = signature.get_few_shot_prompt() if signature else ""
+        signature_id = signature.id if signature else None
         try:
-            expr_result = await self._llm_write_expression(dsl_hint, params, step.task)
+            expr_result = await self._llm_write_expression(dsl_hint, params, step.task, few_shot_prompt, signature_id)
             if expr_result:
                 script, used_params = expr_result
                 logger.debug("[solver] LLM wrote: %s (used: %s)", script, used_params)
@@ -1544,6 +1608,14 @@ class Solver:
 
         except Exception as e:
             logger.debug("[solver] DSL execution failed: %s", e)
+            # Record failure (per CLAUDE.md: failures are valuable data)
+            self.step_db.record_failure(
+                step_text=step.task[:200],
+                failure_type="dsl_error",
+                error_message=str(e),
+                signature_id=signature.id if signature else None,
+                context={"source": "try_dsl", "dsl_hint": getattr(step, 'dsl_hint', None)},
+            )
 
         return None
 
@@ -1614,6 +1686,8 @@ class Solver:
         operation: str,
         params: dict,
         task: str,
+        few_shot_prompt: str = "",
+        signature_id: int = None,
     ) -> Optional[tuple[str, list[str]]]:
         """Ask LLM to write arithmetic expression using available params.
 
@@ -1621,13 +1695,16 @@ class Solver:
             operation: The operation hint (+, -, *, /)
             params: Available param names and values
             task: The step task description
+            few_shot_prompt: Optional few-shot examples from matched signature
+            signature_id: Optional signature ID for cache isolation
 
         Returns:
             (script, param_list) or None if failed
         """
-        # Cache key: (operation, frozenset of param names)
+        # Cache key: (operation, param names, signature_id)
+        # Include signature_id so different signatures with same op+params get separate cache entries
         param_names = frozenset(k for k in params.keys() if not k.startswith('{'))
-        cache_key = (operation.strip().lower(), param_names)
+        cache_key = (operation.strip().lower(), param_names, signature_id)
 
         # Check cache first - saves ~1-2s LLM call
         if cache_key in self._dsl_expr_cache:
@@ -1639,12 +1716,17 @@ class Solver:
         # Format available params
         param_info = ", ".join(f"{k}={v}" for k, v in params.items() if not k.startswith('{'))
 
+        # Build prompt with optional few-shot examples
+        few_shot_section = ""
+        if few_shot_prompt:
+            few_shot_section = f"\nSimilar problems solved:\n{few_shot_prompt}\n"
+
         prompt = f"""Write a simple arithmetic expression for this task.
 
 Task: {task}
 Operation: {operation}
 Available values: {param_info}
-
+{few_shot_section}
 Rules:
 - Use EXACTLY the variable names provided (e.g., step_1, eggs_per_day)
 - Write ONLY the expression, nothing else
@@ -1898,6 +1980,8 @@ Expression:"""
         # Key insight: Ground truth lets us determine which paths are operationally
         # equivalent (produce correct answer) vs different (produce wrong answer)
         from mycelium.config import TRAINING_MODE
+        from mycelium.step_signatures.operational_alignment import record_routing_outcome
+
         if TRAINING_MODE and self._pending_path_outcomes and ground_truth is not None:
             # Build step_id -> winning result mapping (for logging only)
             step_results = {step.step_id: step.result for step in result.steps}
@@ -1923,6 +2007,21 @@ Expression:"""
                         outcome.embedding,
                         was_correct=path_correct,
                     )
+
+                    # Record for operational alignment validation
+                    # This tracks whether MCTS is actually helping distinguish operations
+                    try:
+                        record_routing_outcome(
+                            db_path=DB_PATH,
+                            signature_id=outcome.signature_id,
+                            step_text=step_id,
+                            embedding_similarity=outcome.embedding_similarity,
+                            was_correct=path_correct,
+                            dsl_type=outcome.dsl_type,
+                            problem_id=result.problem[:50] if result.problem else None,
+                        )
+                    except Exception as e:
+                        logger.debug("[solver] Failed to record alignment outcome: %s", e)
 
                     if path_correct:
                         correct_paths += 1

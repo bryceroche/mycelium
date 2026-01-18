@@ -122,3 +122,251 @@ class TestDSLSpec:
         spec = DSLSpec.from_json('{"layer": "math"}')
         # Should handle missing script gracefully
         assert spec is None or spec.script == ""
+
+
+# =============================================================================
+# ERROR PATH TESTS
+# =============================================================================
+
+import sys
+import time
+from unittest.mock import patch
+
+
+class TestDSLTimeout:
+    """Tests for DSL execution timeout handling."""
+
+    def test_timeout_context_manager_normal(self):
+        """Timeout context manager should not interrupt fast operations."""
+        from mycelium.step_signatures.dsl_executor import _timeout
+
+        with _timeout(1.0):
+            result = 1 + 1
+        assert result == 2
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="Signal timeout not available on Windows")
+    def test_timeout_context_manager_triggers(self):
+        """Timeout should raise TimeoutError for slow operations."""
+        from mycelium.step_signatures.dsl_executor import _timeout
+
+        with pytest.raises(TimeoutError):
+            with _timeout(0.1):
+                time.sleep(1.0)
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="Signal timeout not available on Windows")
+    def test_dsl_timeout_returns_failure(self):
+        """DSL execution that times out should return (None, False)."""
+        from mycelium.step_signatures.dsl_executor import try_execute_dsl
+
+        spec = DSLSpec(
+            layer=DSLLayer.MATH,
+            script="a + b",
+            params=["a", "b"],
+        )
+
+        with patch(
+            "mycelium.step_signatures.dsl_executor.try_execute_dsl_math"
+        ) as mock_exec:
+            mock_exec.side_effect = lambda *args, **kwargs: time.sleep(1.0)
+
+            result, success = try_execute_dsl(
+                spec, {"a": 1, "b": 2}, timeout_sec=0.1
+            )
+
+            assert result is None
+            assert success is False
+
+
+class TestDSLErrorPaths:
+    """Tests for DSL executor error handling."""
+
+    def test_missing_required_params(self):
+        """DSL with missing required params should return failure."""
+        from mycelium.step_signatures.dsl_executor import try_execute_dsl
+
+        spec = DSLSpec(
+            layer=DSLLayer.MATH,
+            script="base ** exponent",
+            params=["base", "exponent"],
+        )
+
+        result, success = try_execute_dsl(spec, {"base": 2})
+
+        assert result is None
+        assert success is False
+
+    def test_decompose_layer_returns_failure(self):
+        """DECOMPOSE layer should immediately return failure (no execution)."""
+        from mycelium.step_signatures.dsl_executor import try_execute_dsl
+
+        spec = DSLSpec(
+            layer=DSLLayer.DECOMPOSE,
+            script="anything",
+            params=[],
+        )
+
+        result, success = try_execute_dsl(spec, {})
+
+        assert result is None
+        assert success is False
+
+    def test_router_layer_returns_failure(self):
+        """ROUTER layer should immediately return failure (no execution)."""
+        from mycelium.step_signatures.dsl_executor import try_execute_dsl
+
+        spec = DSLSpec(
+            layer=DSLLayer.ROUTER,
+            script="anything",
+            params=[],
+        )
+
+        result, success = try_execute_dsl(spec, {})
+
+        assert result is None
+        assert success is False
+
+    def test_empty_inputs_after_filtering(self):
+        """DSL with all empty/None inputs should return failure."""
+        from mycelium.step_signatures.dsl_executor import try_execute_dsl
+
+        spec = DSLSpec(
+            layer=DSLLayer.MATH,
+            script="a + b",
+            params=["a", "b"],
+        )
+
+        result, success = try_execute_dsl(spec, {"a": "", "b": None})
+
+        assert result is None
+        assert success is False
+
+    def test_huge_result_rejected(self):
+        """Results exceeding 1e15 should be rejected."""
+        from mycelium.step_signatures.dsl_executor import try_execute_dsl
+
+        spec = DSLSpec(
+            layer=DSLLayer.MATH,
+            script="a * b",
+            params=["a", "b"],
+        )
+
+        with patch(
+            "mycelium.step_signatures.dsl_executor.try_execute_dsl_math"
+        ) as mock_exec:
+            mock_exec.return_value = 1e16
+
+            result, success = try_execute_dsl(spec, {"a": 1, "b": 1})
+
+            assert result is None
+            assert success is False
+
+    def test_false_result_rejected(self):
+        """sympy False results should be rejected."""
+        from mycelium.step_signatures.dsl_executor import try_execute_dsl
+
+        spec = DSLSpec(
+            layer=DSLLayer.MATH,
+            script="a == b",
+            params=["a", "b"],
+        )
+
+        with patch(
+            "mycelium.step_signatures.dsl_executor.try_execute_dsl_math"
+        ) as mock_exec:
+            mock_exec.return_value = False
+
+            result, success = try_execute_dsl(spec, {"a": 1, "b": 2})
+
+            assert result is None
+            assert success is False
+
+    def test_exception_during_execution(self):
+        """Exceptions during DSL execution should return failure."""
+        from mycelium.step_signatures.dsl_executor import try_execute_dsl
+
+        spec = DSLSpec(
+            layer=DSLLayer.MATH,
+            script="a / b",
+            params=["a", "b"],
+        )
+
+        with patch(
+            "mycelium.step_signatures.dsl_executor.try_execute_dsl_math"
+        ) as mock_exec:
+            mock_exec.side_effect = RuntimeError("unexpected error")
+
+            result, success = try_execute_dsl(spec, {"a": 1, "b": 0})
+
+            assert result is None
+            assert success is False
+
+
+class TestDSLFromJson:
+    """Tests for execute_dsl_from_json()."""
+
+    def test_invalid_json(self):
+        """Invalid JSON should return failure."""
+        from mycelium.step_signatures.dsl_executor import execute_dsl_from_json
+
+        result, success = execute_dsl_from_json("not json", {"a": 1})
+
+        assert result is None
+        assert success is False
+
+    def test_empty_json(self):
+        """Empty JSON should return failure."""
+        from mycelium.step_signatures.dsl_executor import execute_dsl_from_json
+
+        result, success = execute_dsl_from_json("{}", {"a": 1})
+
+        assert result is None
+        assert success is False
+
+
+class TestDSLAliasMatching:
+    """Tests for DSL alias-based parameter matching."""
+
+    def test_alias_matching_finds_params(self):
+        """Aliases should help match context keys to params."""
+        from mycelium.step_signatures.dsl_executor import try_execute_dsl
+
+        spec = DSLSpec(
+            layer=DSLLayer.MATH,
+            script="base ** exp",
+            params=["base", "exp"],
+            aliases={
+                "base": ["number", "value", "n"],
+                "exp": ["exponent", "power", "p"],
+            },
+        )
+
+        with patch(
+            "mycelium.step_signatures.dsl_executor.try_execute_dsl_math"
+        ) as mock_exec:
+            mock_exec.return_value = 8
+
+            result, success = try_execute_dsl(
+                spec, {"number": 2, "exponent": 3}
+            )
+
+            assert result == 8
+            assert success is True
+
+    def test_alias_matching_partial_match_fails(self):
+        """Partial alias match (missing params) should fail."""
+        from mycelium.step_signatures.dsl_executor import try_execute_dsl
+
+        spec = DSLSpec(
+            layer=DSLLayer.MATH,
+            script="base ** exp",
+            params=["base", "exp"],
+            aliases={
+                "base": ["number"],
+                "exp": ["exponent"],
+            },
+        )
+
+        result, success = try_execute_dsl(spec, {"number": 2})
+
+        assert result is None
+        assert success is False
