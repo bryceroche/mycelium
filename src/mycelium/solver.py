@@ -2076,6 +2076,9 @@ Expression:"""
 
         # Check which signatures might need decomposition
         # Use same thresholds as umbrella_learner for consistency
+        # Two categories:
+        # 1. Failing guidance signatures (dsl_type="decompose", not yet umbrella)
+        # 2. Auto-demoted router umbrellas with NO children
         from mycelium.config import (
             UMBRELLA_MIN_USES_FOR_EVALUATION,
             UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION,
@@ -2083,14 +2086,30 @@ Expression:"""
         candidates = []
         for sig_id in signature_ids:
             sig = self.step_db.get_signature(sig_id)
-            if sig and sig.dsl_type == "decompose" and sig.uses >= UMBRELLA_MIN_USES_FOR_EVALUATION:
-                if sig.success_rate <= UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION and not sig.is_semantic_umbrella:
-                    candidates.append(sig_id)
-                    logger.info(
-                        "[solver] Signature '%s' (id=%d) needs decomposition: "
-                        "uses=%d, success_rate=%.1f%%",
-                        sig.step_type, sig_id, sig.uses, sig.success_rate * 100
-                    )
+            if not sig or sig.uses < UMBRELLA_MIN_USES_FOR_EVALUATION:
+                continue
+            if sig.success_rate > UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION:
+                continue
+
+            # Category 1: decompose type not yet promoted to umbrella
+            is_decompose_candidate = (
+                sig.dsl_type == "decompose"
+                and not sig.is_semantic_umbrella
+            )
+
+            # Category 2: auto-demoted router umbrellas without children
+            is_orphan_umbrella = False
+            if sig.is_semantic_umbrella and sig.dsl_type == "router":
+                children = self.step_db.get_children(sig_id, for_routing=True)
+                is_orphan_umbrella = len(children) == 0
+
+            if is_decompose_candidate or is_orphan_umbrella:
+                candidates.append(sig_id)
+                logger.info(
+                    "[solver] Signature '%s' (id=%d) needs decomposition: "
+                    "uses=%d, success_rate=%.1f%%, orphan=%s",
+                    sig.step_type, sig_id, sig.uses, sig.success_rate * 100, is_orphan_umbrella
+                )
 
         # Flush any batched centroid propagations after problem is graded
         # This ensures parent umbrellas have accurate centroids for next problem

@@ -185,13 +185,15 @@ class UmbrellaLearner:
         return None
 
     def get_decomposition_candidates(self) -> list[StepSignature]:
-        """Find guidance signatures that should be decomposed.
+        """Find signatures that should be decomposed.
 
-        Criteria:
-        - dsl_type = "decompose" (no actual computation)
+        Two categories:
+        1. Failing guidance signatures (dsl_type="decompose", not yet umbrella)
+        2. Auto-demoted router umbrellas with NO children (need actual decomposition)
+
+        Criteria for both:
         - uses >= UMBRELLA_MIN_USES_FOR_EVALUATION (enough data)
         - failure_rate > adaptive_split_threshold (failing)
-        - is_semantic_umbrella = False (not already decomposed)
 
         The split threshold is adaptive based on global accuracy:
         - Low accuracy (cold start): lenient threshold (tolerate more failures)
@@ -209,16 +211,33 @@ class UmbrellaLearner:
 
         candidates = []
         for sig in all_sigs:
-            if (
+            # Skip if not enough uses
+            if sig.uses < UMBRELLA_MIN_USES_FOR_EVALUATION:
+                continue
+            # Skip if success rate is acceptable
+            if sig.success_rate > max_success_rate:
+                continue
+
+            # Category 1: decompose type not yet promoted to umbrella
+            is_decompose_candidate = (
                 sig.dsl_type == "decompose"
-                and sig.uses >= UMBRELLA_MIN_USES_FOR_EVALUATION
-                and sig.success_rate <= max_success_rate
                 and not sig.is_semantic_umbrella
-            ):
+            )
+
+            # Category 2: auto-demoted router umbrellas without children
+            # These were math/other DSLs that failed and got promoted to umbrella,
+            # but never had children created for them
+            is_orphan_umbrella = False
+            if sig.is_semantic_umbrella and sig.dsl_type == "router":
+                children = self.db.get_children(sig.id, for_routing=True)
+                is_orphan_umbrella = len(children) == 0
+
+            if is_decompose_candidate or is_orphan_umbrella:
                 candidates.append(sig)
                 logger.debug(
-                    "[umbrella] Candidate: '%s' (uses=%d, success=%.1f%%, threshold=%.1f%%)",
-                    sig.step_type, sig.uses, sig.success_rate * 100, max_success_rate * 100
+                    "[umbrella] Candidate: '%s' (uses=%d, success=%.1f%%, threshold=%.1f%%, orphan=%s)",
+                    sig.step_type, sig.uses, sig.success_rate * 100, max_success_rate * 100,
+                    is_orphan_umbrella
                 )
 
         return candidates
