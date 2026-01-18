@@ -1584,8 +1584,9 @@ class Solver:
         # LLM writes the expression with correct params
         # Inject few-shot examples from signature for better LLM guidance
         few_shot_prompt = signature.get_few_shot_prompt() if signature else ""
+        signature_id = signature.id if signature else None
         try:
-            expr_result = await self._llm_write_expression(dsl_hint, params, step.task, few_shot_prompt)
+            expr_result = await self._llm_write_expression(dsl_hint, params, step.task, few_shot_prompt, signature_id)
             if expr_result:
                 script, used_params = expr_result
                 logger.debug("[solver] LLM wrote: %s (used: %s)", script, used_params)
@@ -1686,6 +1687,7 @@ class Solver:
         params: dict,
         task: str,
         few_shot_prompt: str = "",
+        signature_id: int = None,
     ) -> Optional[tuple[str, list[str]]]:
         """Ask LLM to write arithmetic expression using available params.
 
@@ -1694,13 +1696,15 @@ class Solver:
             params: Available param names and values
             task: The step task description
             few_shot_prompt: Optional few-shot examples from matched signature
+            signature_id: Optional signature ID for cache isolation
 
         Returns:
             (script, param_list) or None if failed
         """
-        # Cache key: (operation, frozenset of param names)
+        # Cache key: (operation, param names, signature_id)
+        # Include signature_id so different signatures with same op+params get separate cache entries
         param_names = frozenset(k for k in params.keys() if not k.startswith('{'))
-        cache_key = (operation.strip().lower(), param_names)
+        cache_key = (operation.strip().lower(), param_names, signature_id)
 
         # Check cache first - saves ~1-2s LLM call
         if cache_key in self._dsl_expr_cache:
