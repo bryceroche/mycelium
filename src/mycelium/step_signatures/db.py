@@ -2120,6 +2120,149 @@ class StepSignatureDB:
             row = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()
             return row[0] if row else 0
 
+    def get_structure_stats(self) -> dict:
+        """Get structural statistics about the signature database.
+
+        Returns:
+            Dict with:
+            - total: Total signature count
+            - by_type: Count by dsl_type (router, math, decompose, etc.)
+            - by_role: Count by role (router vs leaf)
+            - depth_histogram: Count of signatures at each depth
+            - umbrella_count: Number of umbrella signatures
+            - orphan_umbrellas: Umbrellas with no children
+            - avg_depth: Average depth of all signatures
+            - max_depth: Maximum depth in the tree
+            - success_rate: Overall success rate
+        """
+        with self._connection() as conn:
+            stats = {}
+
+            # Total count
+            row = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()
+            stats["total"] = row[0] if row else 0
+
+            if stats["total"] == 0:
+                return {
+                    "total": 0,
+                    "by_type": {},
+                    "by_role": {"router": 0, "leaf": 0},
+                    "depth_histogram": {},
+                    "umbrella_count": 0,
+                    "orphan_umbrellas": 0,
+                    "avg_depth": 0.0,
+                    "max_depth": 0,
+                    "success_rate": 0.0,
+                }
+
+            # Count by dsl_type
+            rows = conn.execute(
+                "SELECT dsl_type, COUNT(*) FROM step_signatures GROUP BY dsl_type"
+            ).fetchall()
+            stats["by_type"] = {row[0] or "unknown": row[1] for row in rows}
+
+            # Count by role: router (is_semantic_umbrella=1 OR dsl_type='router') vs leaf
+            router_count = conn.execute(
+                """SELECT COUNT(*) FROM step_signatures
+                   WHERE is_semantic_umbrella = 1 OR dsl_type = 'router'"""
+            ).fetchone()[0]
+            stats["by_role"] = {
+                "router": router_count,
+                "leaf": stats["total"] - router_count,
+            }
+
+            # Depth histogram
+            rows = conn.execute(
+                """SELECT COALESCE(depth, 0) as d, COUNT(*)
+                   FROM step_signatures
+                   GROUP BY d
+                   ORDER BY d"""
+            ).fetchall()
+            stats["depth_histogram"] = {row[0]: row[1] for row in rows}
+
+            # Umbrella stats
+            umbrella_count = conn.execute(
+                "SELECT COUNT(*) FROM step_signatures WHERE is_semantic_umbrella = 1"
+            ).fetchone()[0]
+            stats["umbrella_count"] = umbrella_count
+
+            # Orphan umbrellas (umbrellas with no children)
+            try:
+                orphan_count = conn.execute(
+                    """SELECT COUNT(*) FROM step_signatures s
+                       WHERE s.is_semantic_umbrella = 1
+                       AND NOT EXISTS (
+                           SELECT 1 FROM signature_children c WHERE c.parent_id = s.id
+                       )"""
+                ).fetchone()[0]
+                stats["orphan_umbrellas"] = orphan_count
+            except Exception:
+                # Table may not exist in older DBs
+                stats["orphan_umbrellas"] = 0
+
+            # Depth stats
+            depth_row = conn.execute(
+                """SELECT AVG(COALESCE(depth, 0)), MAX(COALESCE(depth, 0))
+                   FROM step_signatures"""
+            ).fetchone()
+            stats["avg_depth"] = round(depth_row[0] or 0.0, 2)
+            stats["max_depth"] = depth_row[1] or 0
+
+            # Overall success rate
+            totals = conn.execute(
+                "SELECT SUM(uses), SUM(successes) FROM step_signatures"
+            ).fetchone()
+            total_uses = totals[0] or 0
+            total_successes = totals[1] or 0
+            stats["success_rate"] = round(
+                total_successes / total_uses if total_uses > 0 else 0.0, 3
+            )
+
+            # Success rate by type
+            rows = conn.execute(
+                """SELECT dsl_type, SUM(uses), SUM(successes)
+                   FROM step_signatures
+                   GROUP BY dsl_type"""
+            ).fetchall()
+            stats["success_by_type"] = {}
+            for row in rows:
+                dsl_type = row[0] or "unknown"
+                uses = row[1] or 0
+                successes = row[2] or 0
+                if uses > 0:
+                    stats["success_by_type"][dsl_type] = round(successes / uses, 3)
+
+            return stats
+
+    def print_structure_stats(self) -> None:
+        """Print a formatted summary of database structure stats."""
+        stats = self.get_structure_stats()
+
+        print("\n" + "=" * 50)
+        print("DATABASE STRUCTURE STATS")
+        print("=" * 50)
+        print(f"Total signatures: {stats['total']}")
+        print(f"Routers: {stats['by_role']['router']} | Leaves: {stats['by_role']['leaf']}")
+        if stats['total'] > 0:
+            ratio = stats['by_role']['router'] / stats['total']
+            print(f"Router ratio: {ratio:.1%}")
+        print(f"Umbrellas: {stats['umbrella_count']} (orphans: {stats['orphan_umbrellas']})")
+        print(f"Overall success rate: {stats['success_rate']:.1%}")
+
+        print("\nBy DSL type:")
+        for dsl_type, count in sorted(stats['by_type'].items()):
+            success = stats['success_by_type'].get(dsl_type, 0)
+            print(f"  {dsl_type:15s} {count:4d} ({success:.0%} success)")
+
+        print("\nDepth histogram:")
+        for depth in sorted(stats['depth_histogram'].keys()):
+            count = stats['depth_histogram'][depth]
+            bar = "█" * min(count, 40)
+            print(f"  {depth:2d}: {count:4d} {bar}")
+
+        print(f"\nAvg depth: {stats['avg_depth']:.1f} | Max depth: {stats['max_depth']}")
+        print("=" * 50)
+
     # =========================================================================
     # DSL Rewriter Support
     # =========================================================================

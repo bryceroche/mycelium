@@ -403,6 +403,10 @@ def run_pipeline(
         total = level_stats[level]["total"]
         level_stats[level]["accuracy"] = level_stats[level]["successes"] / total if total > 0 else 0.0
 
+    # Get database structure stats
+    step_db = StepSignatureDB(db_path)
+    structure_stats = step_db.get_structure_stats()
+
     # Save results
     output = {
         "config": {
@@ -418,6 +422,7 @@ def run_pipeline(
             "total_time_seconds": total_time,
             "mode_stats": mode_stats,
             "level_stats": level_stats,
+            "structure_stats": structure_stats,
         },
         "results": results,
     }
@@ -465,6 +470,25 @@ def run_pipeline(
         for level in sorted(level_stats.keys()):
             stats = level_stats[level]
             print(f"  {level:15s} {stats['accuracy']:5.1%} ({stats['successes']}/{stats['total']})")
+
+    # Print database structure stats
+    print("\nDatabase structure:")
+    ss = structure_stats
+    print(f"  Total signatures: {ss['total']}")
+    print(f"  Routers: {ss['by_role']['router']} | Leaves: {ss['by_role']['leaf']}", end="")
+    if ss['total'] > 0:
+        ratio = ss['by_role']['router'] / ss['total']
+        print(f" ({ratio:.0%} routers)")
+    else:
+        print()
+    print(f"  Umbrellas: {ss['umbrella_count']} (orphans: {ss['orphan_umbrellas']})")
+    print(f"  Avg depth: {ss['avg_depth']:.1f} | Max depth: {ss['max_depth']}")
+    print(f"  Overall success rate: {ss['success_rate']:.0%}")
+
+    # Depth histogram (compact)
+    if ss['depth_histogram']:
+        depth_str = " | ".join(f"d{d}:{c}" for d, c in sorted(ss['depth_histogram'].items()))
+        print(f"  Depth histogram: {depth_str}")
 
     print("=" * 60)
 
