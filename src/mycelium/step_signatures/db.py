@@ -1298,6 +1298,17 @@ class StepSignatureDB:
                 )
 
                 if best_match is not None and best_sim >= min_similarity:
+                    # Check if matched signature's step_type is compatible with dsl_hint
+                    # This prevents matching "Calculate total distance" (sum) to a product signature
+                    if dsl_hint and not self._is_step_type_compatible(best_match.step_type, dsl_hint):
+                        logger.debug(
+                            "[db] Step type mismatch: sig='%s' has type '%s' but dsl_hint='%s' - creating new",
+                            best_match.step_type, best_match.step_type, dsl_hint
+                        )
+                        # Treat as no match - fall through to create new signature
+                        best_match = None
+
+                if best_match is not None and best_sim >= min_similarity:
                     # Found a match - update centroid using shared helper
                     new_count = self._update_centroid_atomic(
                         conn, best_match.id, embedding, update_last_used=True
@@ -2883,6 +2894,42 @@ class StepSignatureDB:
         should not require an LLM call" - routing is purely embedding-based.
         """
         return StepSignature.from_row_for_routing(dict(row))
+
+    def _is_step_type_compatible(self, step_type: str, dsl_hint: str) -> bool:
+        """Check if a step_type is compatible with a dsl_hint.
+
+        Used during routing to prevent matching a sum step to a product signature.
+
+        Args:
+            step_type: The signature's step_type (e.g., "compute_product")
+            dsl_hint: The planner's operation hint (+, -, *, /)
+
+        Returns:
+            True if compatible, False if they conflict
+        """
+        hint = dsl_hint.strip().lower()
+
+        # Map dsl_hint to expected step_type
+        HINT_TO_TYPE = {
+            "+": "compute_sum", "add": "compute_sum", "sum": "compute_sum",
+            "-": "compute_difference", "subtract": "compute_difference", "difference": "compute_difference",
+            "*": "compute_product", "multiply": "compute_product", "product": "compute_product",
+            "/": "compute_quotient", "divide": "compute_quotient", "quotient": "compute_quotient",
+        }
+
+        expected_type = HINT_TO_TYPE.get(hint)
+        if expected_type is None:
+            # Unknown hint - allow any match
+            return True
+
+        # Check if step_type matches expected
+        # Also allow matching to abstract/branch types (they route, don't execute)
+        if step_type == expected_type:
+            return True
+        if step_type.startswith("abstract_") or step_type.startswith("branch_"):
+            return True
+
+        return False
 
     def _infer_step_type(self, step_text: str, dsl_hint: str = None) -> str:
         """Infer a step type from step text.
