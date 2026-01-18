@@ -7,11 +7,37 @@ We want to treate this file as our source of truth.
 Every bug fix, optimization or feature should be implemented with this file in mind.
 Please always keep this file in the context window.
 
-A core issue: Standard embedding models conflate "looks similar" with "means similar." In math DSL, x + y and a + b are operationally identical but might embed differently due to variable names, while x + y and x * y are operationally distinct but lexically close.
+## The Core Problem: Lexical vs Operational Similarity
 
-We use multi step simulated mcts rollouts to solve this problem: embedding models cluster mathematically similar vocabulary close to different math operators
+Standard embedding models learn similarity from surface-level patterns—what text "looks like" rather than what it "does."
 
-The insight: use rollout outcomes as ground truth for operational equivalence
+In a math DSL, this creates two failure modes:
+
+| Expression Pair | Lexically | Operationally | Embedding Behavior |
+|-----------------|-----------|---------------|-------------------|
+| `x + y` vs `a + b` | Different | **Identical** (both addition) | May embed far apart |
+| `x + y` vs `x * y` | Similar | **Different** (+ vs *) | May embed close together |
+
+Embeddings trained on natural language don't understand that `+` and `*` are fundamentally different operations, regardless of variable names.
+
+## The Insight: MCTS Rollouts as Ground Truth
+
+**MCTS rollout outcomes provide ground truth for operational equivalence.**
+
+When the system routes a problem through a signature and the DSL executes correctly, that's evidence the signature represents the *right operation*. When it fails, that's evidence of operational mismatch.
+
+### How It Works
+
+1. **Route** problems through the signature tree using embedding similarity
+2. **Execute** the matched DSL and record success/failure
+3. **Update centroids** on success—averaging in the new problem's embedding
+4. **Measure alignment** between embedding similarity and operational correctness
+
+Over time, successful signatures accumulate embeddings of problems they *actually solve*. Their centroids drift toward the true semantic center of that operation—not the lexical center.
+
+### The Result
+
+High-traffic signatures become **semantic attractors**: their centroids stabilize around operational meaning rather than vocabulary. The embedding space self-organizes by what operations *do*, not what they *look like*.
 
 ## Validating MCTS is Working
 Use `print_alignment_report(DB_PATH)` to check if rollouts are helping:

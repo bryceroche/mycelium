@@ -170,10 +170,16 @@ def compute_fork_probability(
         BIG_BANG_HYSTERESIS_BONUS,
         BIG_BANG_MIN_FORK_PROB,
         BIG_BANG_MAX_FORK_PROB,
+        MIN_FORK_DEPTH,
     )
 
     # Root (depth 0) NEVER forks
     if depth == 0:
+        return 0.0
+
+    # HARD CUTOFF: Protected levels (below MIN_FORK_DEPTH) NEVER fork
+    # This preserves headroom for future domains
+    if depth < MIN_FORK_DEPTH:
         return 0.0
 
     maturity = get_system_maturity(sig_count)

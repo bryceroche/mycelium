@@ -112,20 +112,21 @@ class TestComputeForkProbability:
         )
         assert prob == 0.0
 
-    def test_shallow_depths_low_probability(self):
-        """Shallow depths (protected levels) should have low fork probability."""
+    def test_shallow_depths_zero_probability(self):
+        """Shallow depths (protected levels) should have ZERO fork probability."""
         from mycelium.step_signatures.db import compute_fork_probability
-        from mycelium.config import BIG_BANG_MIN_FORK_PROB
+        from mycelium.config import MIN_FORK_DEPTH
 
-        # During cold start with depth=2 (well below MIN_FORK_DEPTH=6)
-        prob = compute_fork_probability(
-            depth=2,
-            sig_count=0,  # Cold start
-            best_similarity=0.3,  # Large gap
-            fork_threshold=0.7,
-        )
-        # Should be at or near minimum
-        assert prob <= 0.3
+        # Test all protected levels (below MIN_FORK_DEPTH)
+        for depth in range(1, MIN_FORK_DEPTH):
+            prob = compute_fork_probability(
+                depth=depth,
+                sig_count=0,  # Cold start
+                best_similarity=0.3,  # Large gap
+                fork_threshold=0.7,
+            )
+            # Hard cutoff: protected levels NEVER fork
+            assert prob == 0.0, f"depth={depth} should have 0 probability, got {prob}"
 
     def test_deep_depths_higher_probability(self):
         """Deep depths (forking zone) should have higher fork probability."""
@@ -194,11 +195,24 @@ class TestComputeForkProbability:
         assert prob_large_gap >= prob_small_gap
 
     def test_probability_bounded(self):
-        """Fork probability should always be within configured bounds."""
+        """Fork probability should be within configured bounds (for allowed depths)."""
         from mycelium.step_signatures.db import compute_fork_probability
-        from mycelium.config import BIG_BANG_MIN_FORK_PROB, BIG_BANG_MAX_FORK_PROB
+        from mycelium.config import (
+            BIG_BANG_MIN_FORK_PROB, BIG_BANG_MAX_FORK_PROB, MIN_FORK_DEPTH
+        )
 
-        for depth in range(1, 15):
+        # Test protected levels (0 to MIN_FORK_DEPTH-1) → should be 0
+        for depth in range(0, MIN_FORK_DEPTH):
+            prob = compute_fork_probability(
+                depth=depth,
+                sig_count=100,
+                best_similarity=0.3,
+                fork_threshold=0.7,
+            )
+            assert prob == 0.0, f"Protected depth {depth} should be 0"
+
+        # Test allowed levels (MIN_FORK_DEPTH and above) → bounded by config
+        for depth in range(MIN_FORK_DEPTH, MIN_FORK_DEPTH + 10):
             for sig_count in [0, 100, 1000, 10000]:
                 for best_sim in [0.0, 0.3, 0.5, 0.7, 0.9]:
                     prob = compute_fork_probability(
