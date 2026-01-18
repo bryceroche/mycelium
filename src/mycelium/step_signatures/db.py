@@ -760,7 +760,7 @@ class StepSignatureDB:
         self,
         conn,
         child_ids: list[int],
-    ):
+    ) -> None:
         """Batch propagate centroid changes for multiple children at once.
 
         Optimized version that collects all ancestors for all children in one query,
@@ -775,56 +775,91 @@ class StepSignatureDB:
 
         max_depth = CENTROID_PROPAGATION_MAX_DEPTH
 
-        # 1. Batch-fetch all ancestors for ALL child_ids using recursive CTE
-        # Build placeholders for IN clause
-        placeholders = ",".join("?" * len(child_ids))
-        cursor = conn.execute(
-            f"""
-            WITH RECURSIVE ancestors AS (
-                SELECT parent_id, child_id, 1 as depth
-                FROM signature_relationships
-                WHERE child_id IN ({placeholders})
+        # SQLite has a default limit of 999 parameters. Chunk if needed.
+        # Reserve 1 slot for max_depth parameter.
+        SQLITE_MAX_PARAMS = 998
+        if len(child_ids) > SQLITE_MAX_PARAMS:
+            # Process in chunks, collecting all ancestors
+            all_ancestors: dict[int, int] = {}  # parent_id -> min_depth
+            for i in range(0, len(child_ids), SQLITE_MAX_PARAMS):
+                chunk = child_ids[i:i + SQLITE_MAX_PARAMS]
+                placeholders = ",".join("?" * len(chunk))
+                cursor = conn.execute(
+                    f"""
+                    WITH RECURSIVE ancestors AS (
+                        SELECT parent_id, child_id, 1 as depth
+                        FROM signature_relationships
+                        WHERE child_id IN ({placeholders})
 
-                UNION ALL
+                        UNION ALL
 
-                SELECT r.parent_id, a.child_id, a.depth + 1
-                FROM signature_relationships r
-                JOIN ancestors a ON r.child_id = a.parent_id
-                WHERE a.depth < ?
+                        SELECT r.parent_id, a.child_id, a.depth + 1
+                        FROM signature_relationships r
+                        JOIN ancestors a ON r.child_id = a.parent_id
+                        WHERE a.depth < ?
+                    )
+                    SELECT DISTINCT parent_id, MIN(depth) as depth
+                    FROM ancestors
+                    GROUP BY parent_id
+                    """,
+                    (*chunk, max_depth),
+                )
+                for row in cursor.fetchall():
+                    pid, depth = row[0], row[1]
+                    if pid not in all_ancestors or depth < all_ancestors[pid]:
+                        all_ancestors[pid] = depth
+            # Convert to sorted list by depth
+            ancestors = sorted(all_ancestors.items(), key=lambda x: x[1])
+        else:
+            # 1. Batch-fetch all ancestors for ALL child_ids using recursive CTE
+            placeholders = ",".join("?" * len(child_ids))
+            cursor = conn.execute(
+                f"""
+                WITH RECURSIVE ancestors AS (
+                    SELECT parent_id, child_id, 1 as depth
+                    FROM signature_relationships
+                    WHERE child_id IN ({placeholders})
+
+                    UNION ALL
+
+                    SELECT r.parent_id, a.child_id, a.depth + 1
+                    FROM signature_relationships r
+                    JOIN ancestors a ON r.child_id = a.parent_id
+                    WHERE a.depth < ?
+                )
+                SELECT DISTINCT parent_id, MIN(depth) as depth
+                FROM ancestors
+                GROUP BY parent_id
+                ORDER BY depth
+                """,
+                (*child_ids, max_depth),
             )
-            SELECT DISTINCT parent_id, MIN(depth) as depth
-            FROM ancestors
-            GROUP BY parent_id
-            ORDER BY depth
-            """,
-            (*child_ids, max_depth),
-        )
-        ancestors = cursor.fetchall()
+            ancestors = cursor.fetchall()
 
         if not ancestors:
             return  # No parents (all are root nodes)
 
         ancestor_ids = [row[0] for row in ancestors]
 
-        # 2. Batch-fetch all children data for ALL ancestors in one query
-        ancestor_placeholders = ",".join("?" * len(ancestor_ids))
-        cursor = conn.execute(
-            f"""
-            SELECT r.parent_id, s.centroid, s.embedding_count
-            FROM signature_relationships r
-            JOIN step_signatures s ON r.child_id = s.id
-            WHERE r.parent_id IN ({ancestor_placeholders})
-            """,
-            ancestor_ids,
-        )
-        children_data = cursor.fetchall()
-
-        # Group children by parent_id
+        # 2. Batch-fetch all children data for ALL ancestors
+        # Also chunk this query to respect SQLite parameter limits
         children_by_parent: dict[int, list[tuple]] = {}
-        for parent_id, centroid, count in children_data:
-            if parent_id not in children_by_parent:
-                children_by_parent[parent_id] = []
-            children_by_parent[parent_id].append((centroid, count))
+        for i in range(0, len(ancestor_ids), SQLITE_MAX_PARAMS):
+            chunk = ancestor_ids[i:i + SQLITE_MAX_PARAMS]
+            ancestor_placeholders = ",".join("?" * len(chunk))
+            cursor = conn.execute(
+                f"""
+                SELECT r.parent_id, s.centroid, s.embedding_count
+                FROM signature_relationships r
+                JOIN step_signatures s ON r.child_id = s.id
+                WHERE r.parent_id IN ({ancestor_placeholders})
+                """,
+                chunk,
+            )
+            for parent_id, centroid, count in cursor.fetchall():
+                if parent_id not in children_by_parent:
+                    children_by_parent[parent_id] = []
+                children_by_parent[parent_id].append((centroid, count))
 
         # 3. Compute new centroids for each ancestor (process in depth order)
         updates = []
