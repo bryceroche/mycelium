@@ -107,14 +107,14 @@ def _build_dsl_from_hint(
         logger.debug("[dsl_infer] dsl_hint needs 2+ params, got %d", len(params))
         return None
 
-    # Build script with first two params (guarded by len check above)
-    p1, p2 = params[0], params[1]
-    script = f"{p1} {operator} {p2}"
+    # Build script with GENERIC params (a, b) so any matching problem can use it
+    # The positional fallback in map_inputs will assign incoming values to a, b
+    script = f"a {operator} b"
 
     dsl = {
         "type": "math",
         "script": script,
-        "params": [p1, p2],
+        "params": ["a", "b"],
         "purpose": f"planner hint: {dsl_hint}",
     }
     return json.dumps(dsl), "math"
