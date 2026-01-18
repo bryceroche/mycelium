@@ -2971,11 +2971,15 @@ class StepSignatureDB:
     ) -> list:
         """Get hierarchical signature hints for the decomposer.
 
-        Returns a mix of:
-        1. Cluster hints (umbrellas with children) - shows operation categories
-        2. Leaf hints (specific operations) - shows concrete patterns
+        Returns a multi-level hierarchy:
+        1. Level-1 clusters (root's children) - top-level operation categories
+        2. Level-2 children per cluster - specific operation types
+        3. Level-3 grandchildren (if HINT_MAX_DEPTH >= 2) - specialized variants
 
-        This gives the planner a hierarchical view of available operations.
+        This gives the planner visibility into deeper specialized operations,
+        not just top-level clusters. Controlled by config:
+        - HINT_MAX_DEPTH: How deep to traverse (1=level-1 only, 2+=grandchildren)
+        - HINT_MAX_GRANDCHILDREN: Max grandchildren per level-2 umbrella
 
         PERF: Uses selective columns, batched queries, minimal JSON parsing (~3x faster).
         Only parses param_descriptions and clarifying_questions, skips examples/centroid.
@@ -2986,10 +2990,14 @@ class StepSignatureDB:
             min_similarity: Minimum cosine similarity to include hint (default 0.3)
 
         Returns:
-            List of SignatureHint objects (some with children for clusters)
+            List of SignatureHint objects (some with nested children for clusters)
         """
         from mycelium.planner import SignatureHint
-        from mycelium.config import HINT_MAX_CHILDREN_PER_CLUSTER
+        from mycelium.config import (
+            HINT_MAX_CHILDREN_PER_CLUSTER,
+            HINT_MAX_DEPTH,
+            HINT_MAX_GRANDCHILDREN,
+        )
 
         # Columns needed for hints (avoid SELECT * and full JSON parsing)
         HINT_COLUMNS = """s.id, s.step_type, s.description, s.param_descriptions,
@@ -3027,6 +3035,7 @@ class StepSignatureDB:
 
                 # Batch fetch all children for all umbrellas (avoids N+1 queries)
                 children_by_parent = {}
+                level2_umbrella_ids = []
                 if umbrella_ids:
                     placeholders = ",".join("?" * len(umbrella_ids))
                     child_cursor = conn.execute(
@@ -3045,6 +3054,37 @@ class StepSignatureDB:
                         if len(children_by_parent[parent_id]) < HINT_MAX_CHILDREN_PER_CLUSTER:
                             children_by_parent[parent_id].append(child_row)
                             seen_ids.add(child_row["id"])
+                            # Track level-2 umbrellas for deeper fetch
+                            if child_row["is_semantic_umbrella"]:
+                                level2_umbrella_ids.append(child_row["id"])
+
+                # Fetch grandchildren (level-3) if depth allows
+                grandchildren_by_parent = {}
+                if HINT_MAX_DEPTH >= 2 and level2_umbrella_ids:
+                    placeholders = ",".join("?" * len(level2_umbrella_ids))
+                    gc_cursor = conn.execute(
+                        f"""SELECT r.parent_id, {HINT_COLUMNS}
+                           FROM signature_relationships r
+                           JOIN step_signatures s ON r.child_id = s.id
+                           WHERE r.parent_id IN ({placeholders})
+                           ORDER BY r.parent_id, s.successes DESC""",
+                        level2_umbrella_ids
+                    )
+                    gc_rows = gc_cursor.fetchall()
+
+                    # Filter grandchildren by similarity if embedding provided
+                    if problem_embedding is not None:
+                        gc_rows = self._filter_rows_by_similarity(
+                            gc_rows, problem_embedding, min_similarity
+                        )
+
+                    for gc_row in gc_rows:
+                        parent_id = gc_row["parent_id"]
+                        if parent_id not in grandchildren_by_parent:
+                            grandchildren_by_parent[parent_id] = []
+                        if len(grandchildren_by_parent[parent_id]) < HINT_MAX_GRANDCHILDREN:
+                            grandchildren_by_parent[parent_id].append(gc_row)
+                            seen_ids.add(gc_row["id"])
 
                 # Build cluster hints
                 for row in level1_rows:
@@ -3056,7 +3096,14 @@ class StepSignatureDB:
                     child_hints = []
                     if is_umbrella and sig_id in children_by_parent:
                         for child_row in children_by_parent[sig_id]:
-                            child_hints.append(self._row_to_hint(child_row))
+                            child_hint = self._row_to_hint(child_row)
+                            # Attach grandchildren if this child is an umbrella
+                            child_id = child_row["id"]
+                            if child_row["is_semantic_umbrella"] and child_id in grandchildren_by_parent:
+                                gc_hints = [self._row_to_hint(gc) for gc in grandchildren_by_parent[child_id]]
+                                child_hint.is_cluster = len(gc_hints) > 0
+                                child_hint.children = gc_hints
+                            child_hints.append(child_hint)
 
                     hint = self._row_to_hint(row)
                     hint.is_cluster = is_umbrella and len(child_hints) > 0
@@ -3087,9 +3134,14 @@ class StepSignatureDB:
                 for row in leaf_rows:
                     hints.append(self._row_to_hint(row))
 
+        # Count nested clusters (grandchildren with children)
+        nested_count = sum(
+            1 for h in hints if h.is_cluster
+            for c in h.children if c.is_cluster
+        )
         logger.debug(
-            "[db] Retrieved %d hierarchical hints (%d clusters)",
-            len(hints), sum(1 for h in hints if h.is_cluster)
+            "[db] Retrieved %d hierarchical hints (%d clusters, %d nested)",
+            len(hints), sum(1 for h in hints if h.is_cluster), nested_count
         )
         return hints
 

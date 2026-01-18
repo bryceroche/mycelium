@@ -77,10 +77,16 @@ class SignatureHint:
         """Format as hint text for the planner prompt.
 
         Includes clarifying_questions and param_descriptions to guide parameter extraction.
+        For nested clusters, shows grandchildren inline: parent[child1[gc1,gc2], child2]
         """
         if self.is_cluster and self.children:
-            # Compact cluster format
-            children_str = ", ".join(c.step_type for c in self.children[:3])
+            # Compact cluster format with nested children support
+            def format_child(c):
+                if c.is_cluster and c.children:
+                    gc_str = ",".join(gc.step_type for gc in c.children[:2])
+                    return f"{c.step_type}[{gc_str}]"
+                return c.step_type
+            children_str = ", ".join(format_child(c) for c in self.children[:3])
             return f"- {self.step_type}: {self.description[:50]}... [{children_str}]"
 
         # Single signature format with extraction guidance

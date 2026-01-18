@@ -270,6 +270,8 @@ COLD_START_HALFLIFE = 3000  # Signatures at which cold boost decays to 37%
 HINT_LIMIT = 3           # Max hints to include in prompts
 HINT_MIN_SIMILARITY = 0.5  # Min similarity for hints
 HINT_MAX_CHILDREN_PER_CLUSTER = 5  # Max child hints per umbrella cluster
+HINT_MAX_DEPTH = 3       # How deep to traverse (1=level-1 only, 2=include grandchildren)
+HINT_MAX_GRANDCHILDREN = 3  # Max grandchildren hints per level-2 umbrella
 
 RECURSIVE_DECOMPOSITION_ENABLED = True  # Enable decomposition for complex steps
 RECURSIVE_MAX_DEPTH = 19  # Max routing depth (1 beyond MIN_SIGNATURE_DEPTH=18)
