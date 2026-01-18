@@ -241,15 +241,14 @@ CHILDREN_CACHE_MAX_SIZE = 500  # Max entries for get_children cache
 #   P(decompose) = 1.0 if depth <= FORCE_DECOMPOSE_DEPTH
 #   P(decompose) = DECAY_BASE ^ (depth - FORCE_DECOMPOSE_DEPTH) for deeper
 #
-# Example with FORCE_DECOMPOSE_DEPTH=5, DECAY_BASE=0.5:
-#   depth 0-5: 100% decompose (forced)
-#   depth 6: 50% decompose
-#   depth 7: 25% decompose
-#   depth 8: 12.5% decompose
-#   depth 9+: ~0% decompose (execute)
+# Example with FORCE_DECOMPOSE_DEPTH=7, DECAY_BASE=0.5:
+#   depth 0-7: 100% decompose (forced through abstract + early fork zone)
+#   depth 8: 50% decompose
+#   depth 9: 25% decompose
+#   depth 10+: ~12.5% decompose (mostly execute at leaf depth)
 
 # Note: Smooth expansion is always enabled (no toggle) per CLAUDE.md
-DEPTH_FORCE_DECOMPOSE_DEPTH = 5  # Always decompose at depth 0-5
+DEPTH_FORCE_DECOMPOSE_DEPTH = 7  # Always decompose at depth 0-7 (matches level 6 fork start + 1)
 DEPTH_DECOMPOSE_DECAY_BASE = 0.5  # Decay rate per depth beyond force threshold
 DEPTH_DECOMPOSE_MIN_PROB = 0.05  # Floor probability (never fully disable decompose option)
 
@@ -271,11 +270,11 @@ HINT_MIN_SIMILARITY = 0.5  # Min similarity for hints
 HINT_MAX_CHILDREN_PER_CLUSTER = 5  # Max child hints per umbrella cluster
 
 RECURSIVE_DECOMPOSITION_ENABLED = True  # Enable decomposition for complex steps
-RECURSIVE_MAX_DEPTH = 9  # Max routing depth: deep decomposition for complex problems
+RECURSIVE_MAX_DEPTH = 11  # Max routing depth (1 beyond MIN_SIGNATURE_DEPTH=10)
 RECURSIVE_CONFIDENCE_THRESHOLD = 0.8  # Route deeper when DSL confidence < this
 
 # Umbrella routing depth limits
-_UMBRELLA_MAX_DEPTH_RAW = 10  # Configurable max depth for umbrella routing chains
+_UMBRELLA_MAX_DEPTH_RAW = 12  # Configurable max depth for umbrella routing chains (2 beyond leaves)
 _UMBRELLA_HARD_CAP = 100  # Absolute maximum to prevent unbounded recursion
 # Validate and clamp: ensure positive integer, capped at hard limit
 UMBRELLA_MAX_DEPTH = max(1, min(int(_UMBRELLA_MAX_DEPTH_RAW or 10), _UMBRELLA_HARD_CAP))
@@ -294,22 +293,22 @@ UMBRELLA_ROUTING_THRESHOLD = 0.5  # Min similarity for umbrella child routing (l
 #
 # Structure (initial):
 #   Level 0: ROOT
-#   Level 1: [placeholder]        <- single chain, forks on demand
-#   Level 2: [placeholder]
-#   ...
-#   Level N: [placeholder]
-#   Level N+1+: LEAF SIGNATURES   <- GSM8K problems land here
+#   Level 1-5: [abstract]         <- protected levels, unlock with maturity
+#   Level 6-9: [placeholder]      <- forking starts here
+#   Level 10+: LEAF SIGNATURES    <- GSM8K problems land here
 #
-# Structure (after training):
+# Structure (after GSM8K + MATH L3 training):
 #   Level 0: ROOT
-#   Level 1: [arithmetic] [algebra] [geometry]...   <- forked from traffic
-#   Level 2: [addition] [subtraction]...
-#   ...
+#   Level 1-3: [abstract path]                <- shared by all (still protected)
+#   Level 4: [arithmetic] [algebra]           <- MATH L3 forked new domain
+#   Level 5: [word_probs] [equations]         <- forked as types diverged
+#   Level 6-9: operation clustering           <- fine-grained categories
+#   Level 10+: LEAF signatures                <- DSL executors
 
 SCAFFOLD_ENABLED = True  # Enable pre-allocated scaffold structure
-SCAFFOLD_LEVELS = 8  # Deep scaffold (8 levels before leaves)
-MIN_SIGNATURE_DEPTH = 8  # Minimum depth for leaf signatures (deep tree)
-MIN_FORK_DEPTH = 4  # Don't fork until this depth (top levels stay abstract)
+SCAFFOLD_LEVELS = 10  # Deep scaffold (10 levels before leaves)
+MIN_SIGNATURE_DEPTH = 10  # Minimum depth for leaf signatures (deep tree)
+MIN_FORK_DEPTH = 6  # Don't fork until this depth initially (top 6 levels abstract)
 SCAFFOLD_FORK_THRESHOLD = 0.6  # Create new branch if best match below this (mature)
 SCAFFOLD_FORK_THRESHOLD_COLD_START = 0.85  # Higher threshold during cold start (more forking)
 SCAFFOLD_FORK_RAMP_SIGNATURES = 500  # Ramp from cold start to mature over this many sigs
@@ -318,10 +317,32 @@ SCAFFOLD_FORK_RAMP_SIGNATURES = 500  # Ramp from cold start to mature over this 
 # Branches fork DYNAMICALLY at runtime when problems diverge.
 #
 # Tree structure:
-#   Level 0: ROOT
-#   Level 1-3: Abstract routing (no forking, all problems flow through)
-#   Level 4-7: Domain emergence (arithmetic, algebra fork dynamically here)
-#   Level 8+: Leaf signatures (actual DSL executors)
+#   Level 0: ROOT (never forks)
+#   Level 1-5: Abstract routing (protected, unlocks with maturity + difficulty)
+#   Level 6-9: Domain emergence (arithmetic, algebra fork dynamically here)
+#   Level 10+: Leaf signatures (actual DSL executors)
+
+# =============================================================================
+# BIG BANG - Smooth Fork Probability
+# =============================================================================
+# Controls when/where forking is allowed in the signature tree.
+# Uses smooth, continuous functions - no hard thresholds.
+#
+# Key concepts:
+#   - Maturity: 0→1 as signature count grows (sigmoid)
+#   - Fork center: Starts at level 6, drifts toward root as maturity increases
+#   - Hysteresis: Levels that have forked become easier to fork again
+#   - Similarity gap: Larger gap from threshold = more likely to fork
+#
+# Per CLAUDE.md: "smooth and continuous learning process"
+# Per CLAUDE.md: "aggressively branch out early, tapering off later"
+
+BIG_BANG_TARGET_SIGNATURES = 10000  # Signature count at which system is "mature"
+BIG_BANG_SIGMOID_STEEPNESS = 2.0  # Steepness of sigmoid transitions (higher = sharper)
+BIG_BANG_HYSTERESIS_BONUS = 0.3  # 30% bonus fork probability for levels with existing forks
+BIG_BANG_FORK_CENTER_DRIFT_RATE = 0.8  # How fast fork center drifts toward root (per maturity unit)
+BIG_BANG_MIN_FORK_PROB = 0.05  # Floor probability (always some chance to fork)
+BIG_BANG_MAX_FORK_PROB = 0.95  # Ceiling probability (never 100% certain to fork)
 
 # =============================================================================
 # ZERO-LLM ROUTING (Skip planner for mature signatures)

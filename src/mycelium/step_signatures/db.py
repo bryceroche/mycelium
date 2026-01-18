@@ -77,6 +77,178 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
+# BIG BANG - Smooth Fork Probability Functions
+# =============================================================================
+# Per CLAUDE.md: "smooth and continuous learning process"
+# Per CLAUDE.md: "aggressively branch out early, tapering off later"
+
+def get_system_maturity(sig_count: int) -> float:
+    """Compute system maturity as smooth 0→1 value.
+
+    Uses exponential approach: 1 - exp(-sig_count / (target / 3))
+    This gives ~95% maturity when sig_count = target.
+
+    Args:
+        sig_count: Current number of signatures in the database
+
+    Returns:
+        Maturity value between 0 (fresh) and 1 (mature)
+    """
+    from mycelium.config import BIG_BANG_TARGET_SIGNATURES
+
+    # Smooth exponential curve: rises quickly at first, asymptotes to 1
+    tau = BIG_BANG_TARGET_SIGNATURES / 3.0  # ~3tau to reach 95%
+    maturity = 1.0 - math.exp(-sig_count / tau)
+    return maturity
+
+
+def get_fork_center(maturity: float) -> float:
+    """Compute the depth where forking is most likely (fork center).
+
+    Starts at MIN_FORK_DEPTH (level 6) and drifts toward root (level 1)
+    as the system matures. Root (level 0) never forks.
+
+    Args:
+        maturity: System maturity from get_system_maturity() (0-1)
+
+    Returns:
+        Float representing the current fork center depth
+    """
+    from mycelium.config import MIN_FORK_DEPTH, BIG_BANG_FORK_CENTER_DRIFT_RATE
+
+    # Start at MIN_FORK_DEPTH, drift toward level 1 (not 0, root never forks)
+    # At maturity=0: center = MIN_FORK_DEPTH (e.g., 6)
+    # At maturity=1: center = 1 + (MIN_FORK_DEPTH - 1) * (1 - drift_rate)
+    drift = maturity * BIG_BANG_FORK_CENTER_DRIFT_RATE
+    center = MIN_FORK_DEPTH - drift * (MIN_FORK_DEPTH - 1)
+    return max(1.0, center)  # Never below level 1
+
+
+def _sigmoid(x: float, steepness: float = 1.0) -> float:
+    """Standard sigmoid function centered at 0.
+
+    Args:
+        x: Input value
+        steepness: How sharp the transition is (higher = sharper)
+
+    Returns:
+        Value between 0 and 1
+    """
+    return 1.0 / (1.0 + math.exp(-steepness * x))
+
+
+def compute_fork_probability(
+    depth: int,
+    sig_count: int,
+    best_similarity: float,
+    fork_threshold: float,
+    has_existing_forks_at_level: bool = False,
+) -> float:
+    """Compute probability of forking at a given depth.
+
+    Uses smooth, continuous functions with sigmoid transitions.
+    Per CLAUDE.md: "no hard thresholds", "smooth and continuous"
+
+    Factors:
+    1. Depth factor: Sigmoid around fork center (protected levels → allowed levels)
+    2. Similarity gap: Larger gap below threshold → more likely to fork
+    3. Maturity: System maturity modulates overall fork aggressiveness
+    4. Hysteresis: Levels with existing forks get bonus (easier to fork again)
+
+    Args:
+        depth: Current depth in the tree (0 = root)
+        sig_count: Current signature count (for maturity calculation)
+        best_similarity: Similarity of best matching child
+        fork_threshold: Current fork threshold
+        has_existing_forks_at_level: Whether this level has existing fork branches
+
+    Returns:
+        Fork probability between MIN_FORK_PROB and MAX_FORK_PROB
+    """
+    from mycelium.config import (
+        BIG_BANG_SIGMOID_STEEPNESS,
+        BIG_BANG_HYSTERESIS_BONUS,
+        BIG_BANG_MIN_FORK_PROB,
+        BIG_BANG_MAX_FORK_PROB,
+    )
+
+    # Root (depth 0) NEVER forks
+    if depth == 0:
+        return 0.0
+
+    maturity = get_system_maturity(sig_count)
+    fork_center = get_fork_center(maturity)
+
+    # 1. DEPTH FACTOR: Sigmoid around fork center
+    # Depths below fork center → low probability (protected)
+    # Depths at/above fork center → high probability (allowed)
+    depth_distance = depth - fork_center
+    depth_factor = _sigmoid(depth_distance, BIG_BANG_SIGMOID_STEEPNESS)
+
+    # 2. SIMILARITY GAP: How far below threshold is the best match?
+    # Larger gap → more reason to fork (problem is divergent)
+    gap = fork_threshold - best_similarity
+    gap_factor = max(0.0, min(1.0, gap * 2.0))  # Scale to 0-1 range
+
+    # 3. MATURITY MODULATION: Less aggressive forking as system matures
+    # Cold start (maturity=0): fork more aggressively
+    # Mature (maturity=1): be more selective
+    maturity_factor = 1.0 - (maturity * 0.5)  # Range: 1.0 → 0.5
+
+    # 4. HYSTERESIS: Levels with existing forks get bonus
+    hysteresis = BIG_BANG_HYSTERESIS_BONUS if has_existing_forks_at_level else 0.0
+
+    # Combine factors: depth is primary, gap and maturity modulate
+    base_prob = depth_factor * gap_factor * maturity_factor
+    final_prob = base_prob + hysteresis * (1.0 - base_prob)  # Hysteresis as boost
+
+    # Clamp to configured range
+    return max(BIG_BANG_MIN_FORK_PROB, min(BIG_BANG_MAX_FORK_PROB, final_prob))
+
+
+def should_fork_at_depth(
+    depth: int,
+    sig_count: int,
+    best_similarity: float,
+    fork_threshold: float,
+    has_existing_forks_at_level: bool = False,
+) -> bool:
+    """Probabilistic decision: should we fork at this depth?
+
+    Uses compute_fork_probability() and random sampling.
+
+    Args:
+        depth: Current depth in the tree
+        sig_count: Current signature count
+        best_similarity: Similarity of best matching child
+        fork_threshold: Current fork threshold
+        has_existing_forks_at_level: Whether this level has existing forks
+
+    Returns:
+        True if we should fork, False otherwise
+    """
+    prob = compute_fork_probability(
+        depth=depth,
+        sig_count=sig_count,
+        best_similarity=best_similarity,
+        fork_threshold=fork_threshold,
+        has_existing_forks_at_level=has_existing_forks_at_level,
+    )
+
+    # Sample from probability
+    should_fork = random.random() < prob
+
+    logger.debug(
+        "[big_bang] depth=%d, sig_count=%d, best_sim=%.3f, threshold=%.3f, "
+        "hysteresis=%s, fork_prob=%.3f, decision=%s",
+        depth, sig_count, best_similarity, fork_threshold,
+        has_existing_forks_at_level, prob, should_fork
+    )
+
+    return should_fork
+
+
+# =============================================================================
 # ROUTING RESULT (for MCTS confidence scoring)
 # =============================================================================
 
@@ -1318,17 +1490,25 @@ class StepSignatureDB:
                             best_below_sim = child_sim
                             best_below_score = score
 
-                    # DYNAMIC FORKING: If best match is below fork threshold,
-                    # this problem diverges from existing paths - create new branch
-                    # BUT only fork if we're deep enough (top levels stay abstract)
-                    # Uses cold-start aware threshold: higher during cold start (more forking)
+                    # DYNAMIC FORKING (BIG BANG): Use smooth probability function
+                    # Per CLAUDE.md: "smooth and continuous", "no hard thresholds"
+                    # Factors: depth, maturity, similarity gap, hysteresis
                     # Note: depth + 1 because we're creating a child at the next level
-                    should_fork = (
-                        (depth + 1) >= MIN_FORK_DEPTH and  # Don't fork in top abstract levels
-                        (best_below_sim < fork_threshold or best_below is None)
+
+                    # Check for hysteresis: does this level have existing forks?
+                    # (more than 1 child with centroid at this level = already forked)
+                    has_existing_forks = len(children_with_centroids) > 1
+
+                    # Use smooth probabilistic forking decision
+                    fork_decision = should_fork_at_depth(
+                        depth=depth + 1,  # We're creating at next level
+                        sig_count=sig_count,
+                        best_similarity=best_below_sim if best_below else 0.0,
+                        fork_threshold=fork_threshold,
+                        has_existing_forks_at_level=has_existing_forks,
                     )
 
-                    if should_fork:
+                    if fork_decision:
                         # Create new branch (fork) for this divergent problem type
                         new_branch = self._create_scaffold_branch(
                             conn, current.id, embedding, depth + 1
