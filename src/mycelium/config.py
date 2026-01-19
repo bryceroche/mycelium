@@ -395,6 +395,9 @@ GORILLA_COMPLEXITY_KEYWORDS = ["then", "and then", "after", "before", "finally"]
 SCORPION_REPULSION_WEIGHT = 0.3  # How strongly to push on failure (0.0-1.0)
                                   # Higher = more aggressive separation
                                   # Lower = slower but more stable clustering
+SCORPION_ATTRACTION_WEIGHT = 0.2  # How strongly to pull on success (0.0-1.0)
+                                   # Lower than repulsion: failures are rarer, need stronger signal
+                                   # Success is more common, so gentler pull to avoid overfitting
 
 # =============================================================================
 # ZERO-LLM ROUTING (Skip planner for mature signatures)

@@ -1073,16 +1073,29 @@ class Solver:
 
         # 4.6. If we don't have a result yet, try routing through umbrella
         if result is None and routed_signature.is_semantic_umbrella:
-            child_result = await self._try_umbrella_routing(
-                routed_signature, step, problem, context, step_descriptions, embedding=embedding
-            )
-            if child_result is not None:
-                result, routed_signature, was_injected = child_result
-                was_routed = True
-                logger.info(
-                    "[solver] Routed through umbrella to: '%s'",
-                    routed_signature.step_type
+            try:
+                child_result = await self._try_umbrella_routing(
+                    routed_signature, step, problem, context, step_descriptions, embedding=embedding
                 )
+                if child_result is not None:
+                    result, routed_signature, was_injected = child_result
+                    was_routed = True
+                    logger.info(
+                        "[solver] Routed through umbrella to: '%s'",
+                        routed_signature.step_type
+                    )
+            except OctopusDetected as octopus:
+                # OCTOPUS: Step spans multiple branches - decompose the step itself
+                logger.info(
+                    "[OCTOPUS] Decomposing step '%s' (confused between %d children, second routing attempt)",
+                    step.task[:40], len(octopus.top_children)
+                )
+                decomposed_result = await self._decompose_octopus_step(
+                    step, problem, context, step_descriptions, octopus, difficulty
+                )
+                if decomposed_result is not None:
+                    return decomposed_result
+                logger.warning("[OCTOPUS] Step decomposition failed, continuing to create new child")
 
         # 4.7. CREATE NEW CHILD ON ROUTING FAILURE (per CLAUDE.md: failing signatures decompose)
         # If umbrella routing failed (no matching child), create new child for current step
