@@ -46,6 +46,12 @@ from mycelium.config import (
     COLD_START_HALFLIFE,
     HINT_LIMIT,
     HINT_MIN_SIMILARITY,
+    OCTOPUS_DETECTION_ENABLED,
+    OCTOPUS_CONFUSION_GAP,
+    OCTOPUS_MIN_DEPTH,
+    GORILLA_PROACTIVE_ENABLED,
+    GORILLA_MAX_PARAMS,
+    GORILLA_COMPLEXITY_KEYWORDS,
 )
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
@@ -58,6 +64,66 @@ from mycelium.embedding_cache import cached_embed, cached_embed_batch
 from mycelium.difficulty import estimate_difficulty
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# OCTOPUS & GORILLA EXCEPTIONS
+# =============================================================================
+# These signal that the step needs further decomposition before execution.
+# Per CLAUDE.md: "Attempt to route first - decompose on failure"
+
+
+class OctopusDetected(Exception):
+    """DAG step is semantically ambiguous - spans multiple tree branches.
+
+    Raised when routing can't confidently choose between children.
+    Solution: Decompose the step into more specific sub-steps.
+    """
+
+    def __init__(self, step: "Step", top_children: list, similarities: list):
+        self.step = step
+        self.top_children = top_children  # Top-2 children that caused confusion
+        self.similarities = similarities  # Their similarity scores
+        msg = f"Octopus: '{step.task[:50]}' confused between {len(top_children)} children (gap={abs(similarities[0]-similarities[1]):.3f})"
+        super().__init__(msg)
+
+
+class GorillaDetected(Exception):
+    """Step is too complex for a single leaf - needs decomposition.
+
+    Raised when a step has too many parameters or complexity keywords.
+    Solution: Decompose into simpler atomic operations.
+    """
+
+    def __init__(self, step: "Step", reason: str):
+        self.step = step
+        self.reason = reason
+        msg = f"Gorilla: '{step.task[:50]}' too complex ({reason})"
+        super().__init__(msg)
+
+
+def detect_gorilla(step: "Step") -> Optional[str]:
+    """Check if a step is too complex and should be decomposed proactively.
+
+    Returns reason string if Gorilla detected, None otherwise.
+    Per CLAUDE.md: "Failing signatures get decomposed"
+    """
+    if not GORILLA_PROACTIVE_ENABLED:
+        return None
+
+    task_lower = step.task.lower()
+
+    # Check for complexity keywords
+    for keyword in GORILLA_COMPLEXITY_KEYWORDS:
+        if keyword in task_lower:
+            return f"contains '{keyword}'"
+
+    # Check for too many extracted values (likely multi-operation)
+    extracted = getattr(step, 'extracted_values', None) or {}
+    if len(extracted) > GORILLA_MAX_PARAMS:
+        return f"{len(extracted)} params (max {GORILLA_MAX_PARAMS})"
+
+    return None
 
 
 # =============================================================================
@@ -860,6 +926,23 @@ class Solver:
                 compute_budget=compute_budget,
             )
 
+        # 0.5 GORILLA DETECTION: Check if step is too complex
+        # If detected, decompose proactively before routing
+        gorilla_reason = detect_gorilla(step)
+        if gorilla_reason:
+            logger.info(
+                "[GORILLA] Detected complex step: '%s' (%s)",
+                step.task[:40], gorilla_reason
+            )
+            # Decompose the step using the planner (similar to Octopus)
+            decomposed_result = await self._decompose_gorilla_step(
+                step, problem, context, step_descriptions, gorilla_reason, difficulty
+            )
+            if decomposed_result is not None:
+                return decomposed_result
+            # If decomposition failed, continue with normal execution
+            logger.warning("[GORILLA] Step decomposition failed, continuing normally")
+
         # 1. Normalize and embed step (strip numbers for better matching)
         # Use cached_embed to avoid redundant computation for repeated steps
         normalized_task = normalize_step_text(step.task)
@@ -916,14 +999,29 @@ class Solver:
         routed_signature = signature
 
         if signature.is_semantic_umbrella:
-            child_result = await self._try_umbrella_routing(signature, step, problem, context, step_descriptions, embedding=embedding, children=children)
-            if child_result is not None:
-                result, routed_signature, was_injected = child_result
-                was_routed = True  # Successfully routed through umbrella
+            try:
+                child_result = await self._try_umbrella_routing(signature, step, problem, context, step_descriptions, embedding=embedding, children=children)
+                if child_result is not None:
+                    result, routed_signature, was_injected = child_result
+                    was_routed = True  # Successfully routed through umbrella
+                    logger.info(
+                        "[solver] Umbrella routed: '%s' → '%s'",
+                        signature.step_type, routed_signature.step_type
+                    )
+            except OctopusDetected as octopus:
+                # OCTOPUS: Step spans multiple branches - decompose the step itself
                 logger.info(
-                    "[solver] Umbrella routed: '%s' → '%s'",
-                    signature.step_type, routed_signature.step_type
+                    "[OCTOPUS] Decomposing step '%s' (confused between %d children)",
+                    step.task[:40], len(octopus.top_children)
                 )
+                # Use planner to decompose this specific step
+                decomposed_result = await self._decompose_octopus_step(
+                    step, problem, context, step_descriptions, octopus, difficulty
+                )
+                if decomposed_result is not None:
+                    return decomposed_result
+                # If decomposition failed, continue with best-effort routing
+                logger.warning("[OCTOPUS] Step decomposition failed, falling back to best match")
 
         # 4. Try DSL execution if not already routed
         # Key: Use dsl_hint from planner (LLM writes the expression)
@@ -1286,19 +1384,41 @@ class Solver:
         # Embedding-based routing: compare step embedding to child centroids
         # This is ~0ms vs ~500ms for LLM routing
         if embedding is not None:
-            best_child = None
-            best_sim = 0.0
-            best_condition = ""
-
+            # Collect ALL child similarities for Octopus detection
+            child_scores = []
             for child_sig, condition in children:
                 # Capture centroid once to avoid TOCTOU race condition
                 centroid = child_sig.centroid
                 if centroid is not None:
                     sim = cosine_similarity(embedding, centroid)
-                    if sim > best_sim:
-                        best_sim = sim
-                        best_child = child_sig
-                        best_condition = condition
+                    child_scores.append((child_sig, sim, condition))
+
+            # Sort by similarity descending
+            child_scores.sort(key=lambda x: x[1], reverse=True)
+
+            # OCTOPUS DETECTION: Check if top-2 are too close (routing confusion)
+            # If undecided, the step itself needs decomposition
+            if OCTOPUS_DETECTION_ENABLED and len(child_scores) >= 2 and depth >= OCTOPUS_MIN_DEPTH:
+                top_sim = child_scores[0][1]
+                second_sim = child_scores[1][1]
+                gap = top_sim - second_sim
+
+                # Both must be above threshold AND gap too small
+                if top_sim > UMBRELLA_ROUTING_THRESHOLD and second_sim > UMBRELLA_ROUTING_THRESHOLD:
+                    if gap < OCTOPUS_CONFUSION_GAP:
+                        logger.info(
+                            "[OCTOPUS] Detected routing confusion: '%s' top-2 gap=%.3f (threshold=%.3f)",
+                            step.task[:40], gap, OCTOPUS_CONFUSION_GAP
+                        )
+                        raise OctopusDetected(
+                            step=step,
+                            top_children=[child_scores[0][0], child_scores[1][0]],
+                            similarities=[top_sim, second_sim],
+                        )
+
+            # Use best match if available
+            best_child = child_scores[0][0] if child_scores else None
+            best_sim = child_scores[0][1] if child_scores else 0.0
 
             # Use embedding match if similarity is reasonable
             if best_child and best_sim > UMBRELLA_ROUTING_THRESHOLD:
@@ -2116,6 +2236,180 @@ Expression:"""
         self.step_db.flush_pending_propagations()
 
         return candidates
+
+    async def _decompose_octopus_step(
+        self,
+        step: Step,
+        problem: str,
+        context: dict[str, str],
+        step_descriptions: dict[str, str],
+        octopus: OctopusDetected,
+        difficulty: float = None,
+    ) -> Optional[StepResult]:
+        """Decompose an Octopus step (semantically ambiguous) into sub-steps.
+
+        Called when routing detected confusion between multiple children.
+        Uses the planner to break down the ambiguous step into more specific sub-steps.
+
+        Args:
+            step: The ambiguous step that needs decomposition
+            problem: Original problem text
+            context: step_id → result from previous steps
+            step_descriptions: step_id → task description
+            octopus: The OctopusDetected exception with confusion details
+            difficulty: Problem difficulty for adaptive decomposition
+
+        Returns:
+            StepResult if decomposition and execution succeeded, None otherwise
+        """
+        import time
+        start_time = time.time()
+
+        # Ask planner to decompose this specific step
+        # Provide context about the confusion to guide decomposition
+        confusion_hint = f"The step '{step.task}' is ambiguous. It could involve: "
+        confusion_hint += ", ".join([c.step_type for c in octopus.top_children])
+        confusion_hint += ". Please break it down into more specific operations."
+
+        try:
+            # Decompose the step using the planner
+            sub_plan = await self.planner.decompose(
+                problem=step.task,  # Decompose the step itself
+                context=f"Original problem: {problem}\n{confusion_hint}",
+            )
+
+            if not sub_plan or not sub_plan.steps or len(sub_plan.steps) <= 1:
+                logger.warning(
+                    "[OCTOPUS] Planner couldn't decompose '%s' further",
+                    step.task[:40]
+                )
+                return None
+
+            logger.info(
+                "[OCTOPUS] Decomposed '%s' into %d sub-steps",
+                step.task[:40], len(sub_plan.steps)
+            )
+
+            # Execute sub-steps recursively
+            sub_context = context.copy()
+            sub_results = []
+
+            for sub_step in sub_plan.steps:
+                sub_result = await self._execute_step(
+                    sub_step,
+                    problem,
+                    sub_context,
+                    step_descriptions,
+                    depth=1,  # Increment depth
+                    difficulty=difficulty,
+                )
+                sub_results.append(sub_result)
+                sub_context[sub_step.id] = sub_result.result
+
+            # Use the final sub-step's result as the overall result
+            final_result = sub_results[-1].result if sub_results else None
+
+            elapsed_ms = (time.time() - start_time) * 1000
+
+            return StepResult(
+                step_id=step.id,
+                task=step.task,
+                result=final_result,
+                signature_type="octopus_decomposed",
+                was_injected=False,
+                was_routed=True,
+                elapsed_ms=elapsed_ms,
+            )
+
+        except Exception as e:
+            logger.error("[OCTOPUS] Step decomposition failed: %s", e)
+            return None
+
+    async def _decompose_gorilla_step(
+        self,
+        step: Step,
+        problem: str,
+        context: dict[str, str],
+        step_descriptions: dict[str, str],
+        reason: str,
+        difficulty: float = None,
+    ) -> Optional[StepResult]:
+        """Decompose a Gorilla step (too complex for single leaf) into sub-steps.
+
+        Called when proactive detection found a step with too many params or
+        complexity keywords (e.g., "and then", "after").
+
+        Args:
+            step: The complex step that needs decomposition
+            problem: Original problem text
+            context: step_id → result from previous steps
+            step_descriptions: step_id → task description
+            reason: Why the step was flagged as Gorilla
+            difficulty: Problem difficulty for adaptive decomposition
+
+        Returns:
+            StepResult if decomposition and execution succeeded, None otherwise
+        """
+        import time
+        start_time = time.time()
+
+        # Ask planner to decompose this complex step
+        complexity_hint = f"The step '{step.task}' is complex ({reason}). "
+        complexity_hint += "Break it down into simpler atomic operations."
+
+        try:
+            # Decompose the step using the planner
+            sub_plan = await self.planner.decompose(
+                problem=step.task,  # Decompose the step itself
+                context=f"Original problem: {problem}\n{complexity_hint}",
+            )
+
+            if not sub_plan or not sub_plan.steps or len(sub_plan.steps) <= 1:
+                logger.warning(
+                    "[GORILLA] Planner couldn't decompose '%s' further",
+                    step.task[:40]
+                )
+                return None
+
+            logger.info(
+                "[GORILLA] Decomposed '%s' into %d sub-steps",
+                step.task[:40], len(sub_plan.steps)
+            )
+
+            # Execute sub-steps recursively
+            sub_context = context.copy()
+            sub_results = []
+
+            for sub_step in sub_plan.steps:
+                sub_result = await self._execute_step(
+                    sub_step,
+                    problem,
+                    sub_context,
+                    step_descriptions,
+                    depth=1,  # Increment depth
+                    difficulty=difficulty,
+                )
+                sub_results.append(sub_result)
+                sub_context[sub_step.id] = sub_result.result
+
+            # Use the final sub-step's result as the overall result
+            final_result = sub_results[-1].result if sub_results else None
+
+            elapsed_ms = (time.time() - start_time) * 1000
+
+            return StepResult(
+                step_id=step.id,
+                task=step.task,
+                result=final_result,
+                signature_type="gorilla_decomposed",
+                was_injected=False,
+                was_routed=True,
+                elapsed_ms=elapsed_ms,
+            )
+
+        except Exception as e:
+            logger.error("[GORILLA] Step decomposition failed: %s", e)
+            return None
 
     async def _auto_decompose_signature(
         self, signature, recursion_depth: int = 0, difficulty: float = None

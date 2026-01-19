@@ -2528,44 +2528,111 @@ class StepSignatureDB:
                 conn.rollback()
                 raise
 
+    def update_centroid_on_operational_outcome(
+        self,
+        signature_id: int,
+        embedding: np.ndarray,
+        was_correct: bool,
+        confidence: float = 1.0,
+    ):
+        """BIPOLAR centroid update based on operational outcome (Scorpion fix).
+
+        This is the key mechanism for splitting vocab-based clusters into
+        operation-based clusters:
+        - SUCCESS: PULL centroid toward embedding (attract)
+        - FAILURE: PUSH centroid away from embedding (repel)
+
+        Key insight from AlphaGo/MCTS:
+        - High confidence + failure = STRONG negative signal (push hard)
+        - High confidence + success = STRONG positive signal (pull hard)
+        - Centroids drift toward operational meaning, not vocabulary
+
+        Args:
+            signature_id: ID of the signature to update
+            embedding: The routing embedding from the step
+            was_correct: Whether this path produced the correct answer
+            confidence: How confident we were in this route (0.0-1.0)
+        """
+        from mycelium.config import SCORPION_REPULSION_WEIGHT
+
+        if was_correct:
+            # SUCCESS: Pull centroid toward this embedding (attract)
+            self.update_centroid(signature_id, embedding, propagate_to_parents=True)
+            logger.debug(
+                "[db] SCORPION PULL: sig %d centroid toward embedding (correct, conf=%.2f)",
+                signature_id, confidence
+            )
+        else:
+            # FAILURE: Push centroid away from this embedding (repel)
+            # Weighted by confidence: high confidence + failure = strong repulsion
+            repulsion_strength = confidence * SCORPION_REPULSION_WEIGHT
+            self._repel_centroid(signature_id, embedding, repulsion_strength)
+            logger.debug(
+                "[db] SCORPION PUSH: sig %d centroid away from embedding (incorrect, conf=%.2f, strength=%.2f)",
+                signature_id, confidence, repulsion_strength
+            )
+
+    def _repel_centroid(
+        self,
+        signature_id: int,
+        embedding: np.ndarray,
+        strength: float = 0.1,
+    ):
+        """Push centroid AWAY from an embedding (failure repulsion).
+
+        This creates separation between operationally different clusters.
+        The centroid moves in the opposite direction from the embedding.
+
+        Args:
+            signature_id: Signature to update
+            embedding: Embedding to repel from
+            strength: How strongly to push (0.0-1.0)
+        """
+        with self._connection() as conn:
+            row = conn.execute(
+                "SELECT centroid, embedding_count FROM step_signatures WHERE id = ?",
+                (signature_id,)
+            ).fetchone()
+
+            if row is None or row[0] is None:
+                return  # No centroid to repel from
+
+            centroid = np.frombuffer(row[0], dtype=np.float32)
+            count = row[1] or 1
+
+            # Repulsion: move centroid away from embedding
+            # new_centroid = centroid + strength * (centroid - embedding)
+            # This pushes in the opposite direction of the embedding
+            direction = centroid - embedding
+            direction_norm = np.linalg.norm(direction)
+            if direction_norm > 0:
+                direction = direction / direction_norm  # Normalize direction
+
+            # Scale repulsion by strength and inverse of count (mature signatures resist change)
+            repulsion_scale = strength / np.sqrt(count + 1)
+            new_centroid = centroid + repulsion_scale * direction
+
+            # Normalize to unit length
+            centroid_norm = np.linalg.norm(new_centroid)
+            if centroid_norm > 0:
+                new_centroid = new_centroid / centroid_norm
+
+            # Update in DB
+            conn.execute(
+                "UPDATE step_signatures SET centroid = ? WHERE id = ?",
+                (new_centroid.tobytes(), signature_id)
+            )
+            conn.commit()
+
+    # Backward compatibility alias
     def update_centroid_on_operational_success(
         self,
         signature_id: int,
         embedding: np.ndarray,
         was_correct: bool,
     ):
-        """Update centroid ONLY if the path produced a correct answer.
-
-        This is the key mechanism for splitting vocab-based clusters into
-        operation-based clusters. By only updating centroids for operationally
-        correct paths, signatures naturally cluster by operational equivalence
-        rather than vocabulary similarity.
-
-        Key insight from MCTS training:
-        - Paths with same vocab but different outcomes → centroids diverge (SPLIT)
-        - Paths with different vocab but same correct outcome → centroids converge (MERGE)
-
-        Args:
-            signature_id: ID of the signature to potentially update
-            embedding: The routing embedding from the step
-            was_correct: Whether this path produced the correct answer
-        """
-        if not was_correct:
-            # Don't update centroid for operationally incorrect paths
-            # This naturally causes incorrect paths to drift away from the cluster
-            logger.debug(
-                "[db] Skipping centroid update for sig %d (operationally incorrect)",
-                signature_id
-            )
-            return
-
-        # Update centroid for operationally correct paths
-        # This reinforces the cluster of signatures that produce correct answers
-        self.update_centroid(signature_id, embedding, propagate_to_parents=True)
-        logger.debug(
-            "[db] Updated centroid for sig %d (operationally correct)",
-            signature_id
-        )
+        """Backward-compatible alias for update_centroid_on_operational_outcome."""
+        self.update_centroid_on_operational_outcome(signature_id, embedding, was_correct)
 
     def record_operational_failure(
         self,
