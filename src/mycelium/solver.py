@@ -1020,7 +1020,7 @@ class Solver:
             )
             # Decompose the step using the planner (similar to Octopus)
             decomposed_result = await self._decompose_gorilla_step(
-                step, problem, context, step_descriptions, gorilla_reason, difficulty
+                step, problem, context, step_descriptions, gorilla_reason, difficulty, thread_id
             )
             if decomposed_result is not None:
                 return decomposed_result
