@@ -4278,3 +4278,84 @@ class StepSignatureDB:
             (table_name,)
         )
         return cursor.fetchone() is not None
+
+    def get_thread_stats_for_signature(self, signature_id: int, days: int = 7) -> dict:
+        """Get thread win/loss statistics for a signature.
+
+        Used for cluster analysis and understanding which signatures contribute
+        to correct vs incorrect threads. Per CLAUDE.md: "Per-signature thread
+        win/loss tracking for cluster analysis"
+
+        Args:
+            signature_id: ID of the signature to analyze
+            days: How many days of history to include (default 7)
+
+        Returns:
+            Dict with thread statistics:
+                - total_threads: Total threads this signature participated in
+                - winning_threads: Threads where this signature was in the winning path
+                - correct_threads: Threads that produced correct answers
+                - incorrect_threads: Threads that produced incorrect answers
+                - win_rate: Percentage of winning threads
+                - correct_rate: Percentage of correct threads
+                - avg_fork_depth: Average fork depth when this signature was used
+        """
+        from datetime import datetime, timedelta, timezone
+
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+        with self._connection() as conn:
+            # Check if thread tables exist
+            if not self._table_exists(conn, "thread_outcomes"):
+                return {
+                    "total_threads": 0,
+                    "winning_threads": 0,
+                    "correct_threads": 0,
+                    "incorrect_threads": 0,
+                    "win_rate": 0.0,
+                    "correct_rate": 0.0,
+                    "avg_fork_depth": 0.0,
+                }
+
+            # Get thread stats for this signature
+            cursor = conn.execute(
+                """SELECT
+                    COUNT(DISTINCT tsc.thread_id) as total_threads,
+                    SUM(CASE WHEN t.is_winner = 1 THEN 1 ELSE 0 END) as winning_threads,
+                    SUM(CASE WHEN t.is_correct = 1 THEN 1 ELSE 0 END) as correct_threads,
+                    SUM(CASE WHEN t.is_correct = 0 THEN 1 ELSE 0 END) as incorrect_threads,
+                    AVG(t.fork_depth) as avg_fork_depth
+                FROM thread_signature_contributions tsc
+                JOIN thread_outcomes t ON tsc.thread_id = t.thread_id
+                WHERE tsc.signature_id = ?
+                  AND tsc.created_at >= ?""",
+                (signature_id, cutoff),
+            )
+
+            row = cursor.fetchone()
+            if not row or row["total_threads"] == 0:
+                return {
+                    "total_threads": 0,
+                    "winning_threads": 0,
+                    "correct_threads": 0,
+                    "incorrect_threads": 0,
+                    "win_rate": 0.0,
+                    "correct_rate": 0.0,
+                    "avg_fork_depth": 0.0,
+                }
+
+            total = row["total_threads"] or 0
+            winning = row["winning_threads"] or 0
+            correct = row["correct_threads"] or 0
+            incorrect = row["incorrect_threads"] or 0
+            avg_depth = row["avg_fork_depth"] or 0.0
+
+            return {
+                "total_threads": total,
+                "winning_threads": winning,
+                "correct_threads": correct,
+                "incorrect_threads": incorrect,
+                "win_rate": winning / total if total > 0 else 0.0,
+                "correct_rate": correct / (correct + incorrect) if (correct + incorrect) > 0 else 0.0,
+                "avg_fork_depth": avg_depth,
+            }

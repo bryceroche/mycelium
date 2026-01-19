@@ -1125,7 +1125,7 @@ class Solver:
             if compute_budget > 1.0:
                 mp_result, mp_sig, explored_sigs, mp_injected = await self._explore_multiple_paths(
                     step, problem, context, step_descriptions or {},
-                    embedding, compute_budget,
+                    embedding, compute_budget, thread_id,
                 )
                 if mp_result is not None:
                     result = mp_result
@@ -1586,6 +1586,7 @@ class Solver:
         step_descriptions: dict[str, str],
         embedding: np.ndarray,
         compute_budget: float = 1.0,
+        thread_id: str = None,
     ) -> tuple[Optional[str], StepSignature, list[StepSignature], bool]:
         """MCTS multi-path exploration when confidence is low.
 
@@ -1596,6 +1597,9 @@ class Solver:
         lead to different outcomes, helping split vocab-based clusters
         into operation-based clusters.
 
+        When thread tracking is enabled, creates fork threads for each
+        alternative path to enable per-signature thread win/loss tracking.
+
         Args:
             step: The step being executed
             problem: Original problem text
@@ -1603,6 +1607,7 @@ class Solver:
             step_descriptions: Task descriptions for NL param matching
             embedding: Step embedding for routing
             compute_budget: Max paths to explore (1.0 = single path)
+            thread_id: Thread ID for multi-path credit tracking (None if not tracking)
 
         Returns:
             Tuple of (result, best_signature, explored_sigs, was_injected)
@@ -1675,17 +1680,45 @@ class Solver:
         # Store path outcomes for ground truth comparison (operational equivalence learning)
         # Key insight: After problem is graded, we can determine which paths are
         # operationally equivalent (produce correct answer) vs different (produce wrong answer)
-        path_outcomes = [
-            PathOutcome(
+        #
+        # Thread tracking: Create fork threads for each alternative path
+        # Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
+        path_outcomes = []
+        parent_thread = self._active_threads.get(thread_id) if thread_id else None
+
+        for i, (sig, score, result) in enumerate(results):
+            # Create fork thread for each alternative (if thread tracking enabled)
+            fork_thread_id = ""
+            if parent_thread and THREAD_TRACKING_ENABLED and len(results) > 1:
+                # First candidate stays on parent thread, others fork
+                if i == 0:
+                    fork_thread_id = thread_id
+                    # Update parent thread with this signature
+                    parent_thread.signature_path.append(sig.id)
+                    parent_thread.step_results[step.id] = result or ""
+                else:
+                    # Create fork thread for alternative
+                    fork_thread = parent_thread.fork(step.id, sig.id)
+                    fork_thread.step_results[step.id] = result or ""
+                    fork_thread.final_answer = result
+                    self._active_threads[fork_thread.thread_id] = fork_thread
+                    self._problem_threads.append(fork_thread.thread_id)
+                    fork_thread_id = fork_thread.thread_id
+                    logger.debug(
+                        "[solver] Created fork thread %s for signature %s at step %s",
+                        fork_thread_id[:8], sig.step_type, step.id
+                    )
+
+            path_outcomes.append(PathOutcome(
                 signature_id=sig.id,
                 answer=result,
                 embedding=embedding,
                 step_id=step.id,
                 embedding_similarity=score,
                 dsl_type=sig.dsl_type or "unknown",
-            )
-            for sig, score, result in results
-        ]
+                thread_id=fork_thread_id,
+            ))
+
         if path_outcomes:
             self._pending_path_outcomes[step.id] = path_outcomes
             logger.debug(
@@ -2274,6 +2307,11 @@ Expression:"""
                 ground_truth[:20] if ground_truth else "None"
             )
 
+        # Record thread outcomes for multi-path credit/blame (if enabled and threads exist)
+        # Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
+        if THREAD_TRACKING_ENABLED and TRAINING_MODE and self._problem_threads:
+            self._record_thread_outcomes(result, correct, ground_truth)
+
         # Always clear pending outcomes (memory safety)
         self._pending_path_outcomes.clear()
 
@@ -2336,6 +2374,146 @@ Expression:"""
         self.step_db.flush_pending_propagations()
 
         return candidates
+
+    def _record_thread_outcomes(
+        self,
+        result: SolverResult,
+        correct: bool,
+        ground_truth: str = None,
+    ) -> None:
+        """Persist thread outcomes and apply thread-based credit/blame.
+
+        Records all threads for this problem to the thread_outcomes table,
+        identifies the winning thread, and applies credit/blame to signatures
+        in each thread's path.
+
+        Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
+
+        Args:
+            result: The SolverResult with the final answer
+            correct: Whether the final answer was correct
+            ground_truth: The correct answer (for comparison)
+        """
+        import json
+        from datetime import datetime, timezone
+        from mycelium.data_layer import get_db
+
+        if not self._problem_threads:
+            return
+
+        now = datetime.now(timezone.utc).isoformat()
+        problem_id = result.problem[:50] if result.problem else "unknown"
+
+        # Identify winning thread (the one whose answer matches the result)
+        winning_thread_id = None
+        for thread_id in self._problem_threads:
+            thread = self._active_threads.get(thread_id)
+            if thread and self._answers_match(thread.final_answer, result.answer):
+                winning_thread_id = thread_id
+                thread.is_winner = True
+                break
+
+        # If no thread matched, use root thread as winner
+        if winning_thread_id is None and self._root_thread_id:
+            winning_thread_id = self._root_thread_id
+            root = self._active_threads.get(self._root_thread_id)
+            if root:
+                root.is_winner = True
+
+        db = get_db()
+        try:
+            with db.connection() as conn:
+                # Insert all thread outcomes
+                for thread_id in self._problem_threads:
+                    thread = self._active_threads.get(thread_id)
+                    if not thread:
+                        continue
+
+                    is_winner = 1 if thread_id == winning_thread_id else 0
+                    # Thread is correct if it's the winner AND problem was correct
+                    # OR if its answer matches ground truth
+                    is_correct = None
+                    if ground_truth:
+                        is_correct = 1 if self._answers_match(
+                            thread.final_answer, ground_truth
+                        ) else 0
+
+                    conn.execute(
+                        """INSERT OR REPLACE INTO thread_outcomes (
+                            thread_id, parent_thread_id, problem_id, problem_text,
+                            fork_step_id, fork_depth, signature_path, final_answer,
+                            is_winner, is_correct, ground_truth, created_at, graded_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (
+                            thread.thread_id,
+                            thread.parent_thread_id,
+                            problem_id,
+                            result.problem[:500] if result.problem else None,
+                            thread.fork_step_id,
+                            thread.fork_depth,
+                            json.dumps(thread.signature_path),
+                            thread.final_answer,
+                            is_winner,
+                            is_correct,
+                            ground_truth,
+                            thread.created_at,
+                            now,
+                        ),
+                    )
+
+                    # Insert signature contributions for this thread
+                    for sig_id in thread.signature_path:
+                        conn.execute(
+                            """INSERT INTO thread_signature_contributions (
+                                thread_id, signature_id, step_id, embedding_similarity,
+                                was_primary_choice, created_at
+                            ) VALUES (?, ?, ?, ?, ?, ?)""",
+                            (
+                                thread.thread_id,
+                                sig_id,
+                                thread.fork_step_id or "",
+                                None,  # Similarity not tracked per-signature in thread
+                                1 if thread_id == self._root_thread_id else 0,
+                                now,
+                            ),
+                        )
+
+                    # Apply credit/blame to signatures in this thread
+                    thread_correct = is_correct == 1 if is_correct is not None else (
+                        is_winner and correct
+                    )
+
+                    # Credit decay based on fork depth
+                    credit = THREAD_CREDIT_DECAY_PER_FORK ** thread.fork_depth
+                    if credit >= THREAD_MIN_CREDIT:
+                        for sig_id in thread.signature_path:
+                            self.step_db.update_centroid_on_operational_outcome(
+                                sig_id,
+                                embedding=None,  # No embedding update here
+                                was_correct=thread_correct,
+                                confidence=credit,
+                            )
+
+                logger.info(
+                    "[solver] Recorded %d thread outcomes (winner=%s, threads_correct=%d)",
+                    len(self._problem_threads),
+                    winning_thread_id[:8] if winning_thread_id else "None",
+                    sum(
+                        1 for t in self._problem_threads
+                        if self._active_threads.get(t) and
+                        self._answers_match(
+                            self._active_threads[t].final_answer, ground_truth
+                        )
+                    ) if ground_truth else 0,
+                )
+
+        except Exception as e:
+            logger.warning("[solver] Failed to record thread outcomes: %s", e)
+
+        # Clear thread state for next problem
+        self._active_threads.clear()
+        self._problem_threads.clear()
+        self._root_thread_id = None
 
     async def _decompose_octopus_step(
         self,
