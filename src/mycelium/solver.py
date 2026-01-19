@@ -401,11 +401,20 @@ class ThreadContext:
     parent_thread_id: Optional[str] = None  # Parent thread (if forked)
     fork_step_id: Optional[str] = None  # Step where this thread forked from parent
     fork_depth: int = 0  # How many forks from root thread
-    signature_path: list[int] = field(default_factory=list)  # Signature IDs in execution order
+    signature_steps: list[tuple[int, str]] = field(default_factory=list)  # (sig_id, step_id) pairs
     step_results: dict[str, str] = field(default_factory=dict)  # step_id -> result
     is_winner: bool = False  # Whether this thread produced the final answer
     final_answer: Optional[str] = None  # Answer produced by this thread
     created_at: str = ""  # ISO timestamp
+
+    def add_signature(self, sig_id: int, step_id: str) -> None:
+        """Record that a signature was used at a step in this thread."""
+        self.signature_steps.append((sig_id, step_id))
+
+    @property
+    def signature_ids(self) -> list[int]:
+        """Get just the signature IDs (for backward compatibility)."""
+        return [sig_id for sig_id, _ in self.signature_steps]
 
     def fork(self, step_id: str, new_signature_id: int) -> "ThreadContext":
         """Create a child thread at a fork point.
@@ -420,12 +429,16 @@ class ThreadContext:
         import uuid
         from datetime import datetime, timezone
 
+        # Copy existing signature_steps and add the new one
+        new_sig_steps = self.signature_steps.copy()
+        new_sig_steps.append((new_signature_id, step_id))
+
         return ThreadContext(
             thread_id=str(uuid.uuid4()),
             parent_thread_id=self.thread_id,
             fork_step_id=step_id,
             fork_depth=self.fork_depth + 1,
-            signature_path=self.signature_path.copy() + [new_signature_id],
+            signature_steps=new_sig_steps,
             step_results=self.step_results.copy(),
             created_at=datetime.now(timezone.utc).isoformat(),
         )
@@ -1287,6 +1300,19 @@ class Solver:
             used_dsl=was_injected,
         )
 
+        # 9. Track signature in thread (for single-path and multi-path credit tracking)
+        # This ensures ALL routing is tracked, not just multi-path exploration
+        if thread_id and routed_signature:
+            thread = self._active_threads.get(thread_id)
+            if thread:
+                # Only add if not already tracked (multi-path adds in _explore_multiple_paths)
+                if not any(sig_id == routed_signature.id and s_id == step.id
+                          for sig_id, s_id in thread.signature_steps):
+                    thread.add_signature(routed_signature.id, step.id)
+                thread.step_results[step.id] = result or ""
+                # Update final_answer to track the latest result (last step wins)
+                thread.final_answer = result or ""
+
         return StepResult(
             step_id=step.id,
             task=step.task,
@@ -1686,18 +1712,21 @@ class Solver:
         path_outcomes = []
         parent_thread = self._active_threads.get(thread_id) if thread_id else None
 
+        # Limit forks per step to prevent thread explosion
+        max_forks = min(len(results), THREAD_MAX_FORKS_PER_STEP)
+
         for i, (sig, score, result) in enumerate(results):
             # Create fork thread for each alternative (if thread tracking enabled)
             fork_thread_id = ""
             if parent_thread and THREAD_TRACKING_ENABLED and len(results) > 1:
-                # First candidate stays on parent thread, others fork
+                # First candidate stays on parent thread, others fork (up to max)
                 if i == 0:
                     fork_thread_id = thread_id
                     # Update parent thread with this signature
-                    parent_thread.signature_path.append(sig.id)
+                    parent_thread.add_signature(sig.id, step.id)
                     parent_thread.step_results[step.id] = result or ""
-                else:
-                    # Create fork thread for alternative
+                elif i < max_forks:
+                    # Create fork thread for alternative (respecting limit)
                     fork_thread = parent_thread.fork(step.id, sig.id)
                     fork_thread.step_results[step.id] = result or ""
                     fork_thread.final_answer = result
@@ -1708,6 +1737,7 @@ class Solver:
                         "[solver] Created fork thread %s for signature %s at step %s",
                         fork_thread_id[:8], sig.step_type, step.id
                     )
+                # else: skip this alternative (over max_forks limit)
 
             path_outcomes.append(PathOutcome(
                 signature_id=sig.id,
@@ -2451,7 +2481,7 @@ Expression:"""
                             result.problem[:500] if result.problem else None,
                             thread.fork_step_id,
                             thread.fork_depth,
-                            json.dumps(thread.signature_path),
+                            json.dumps(thread.signature_steps),  # Store (sig_id, step_id) pairs
                             thread.final_answer,
                             is_winner,
                             is_correct,
@@ -2461,8 +2491,8 @@ Expression:"""
                         ),
                     )
 
-                    # Insert signature contributions for this thread
-                    for sig_id in thread.signature_path:
+                    # Insert signature contributions for this thread (with correct step_id)
+                    for sig_id, step_id in thread.signature_steps:
                         conn.execute(
                             """INSERT INTO thread_signature_contributions (
                                 thread_id, signature_id, step_id, embedding_similarity,
@@ -2471,7 +2501,7 @@ Expression:"""
                             (
                                 thread.thread_id,
                                 sig_id,
-                                thread.fork_step_id or "",
+                                step_id,  # Now using actual step_id from the pair
                                 None,  # Similarity not tracked per-signature in thread
                                 1 if thread_id == self._root_thread_id else 0,
                                 now,
@@ -2486,7 +2516,7 @@ Expression:"""
                     # Credit decay based on fork depth
                     credit = THREAD_CREDIT_DECAY_PER_FORK ** thread.fork_depth
                     if credit >= THREAD_MIN_CREDIT:
-                        for sig_id in thread.signature_path:
+                        for sig_id in thread.signature_ids:  # Use property for just IDs
                             self.step_db.update_centroid_on_operational_outcome(
                                 sig_id,
                                 embedding=None,  # No embedding update here
@@ -2510,10 +2540,11 @@ Expression:"""
         except Exception as e:
             logger.warning("[solver] Failed to record thread outcomes: %s", e)
 
-        # Clear thread state for next problem
-        self._active_threads.clear()
-        self._problem_threads.clear()
-        self._root_thread_id = None
+        finally:
+            # Always clear thread state for next problem (even on exception)
+            self._active_threads.clear()
+            self._problem_threads.clear()
+            self._root_thread_id = None
 
     async def _decompose_octopus_step(
         self,
