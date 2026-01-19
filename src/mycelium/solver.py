@@ -1100,7 +1100,7 @@ class Solver:
                 )
                 # Use planner to decompose this specific step
                 decomposed_result = await self._decompose_octopus_step(
-                    step, problem, context, step_descriptions, octopus, difficulty
+                    step, problem, context, step_descriptions, octopus, difficulty, thread_id
                 )
                 if decomposed_result is not None:
                     return decomposed_result
@@ -1175,7 +1175,7 @@ class Solver:
                     step.task[:40], len(octopus.top_children)
                 )
                 decomposed_result = await self._decompose_octopus_step(
-                    step, problem, context, step_descriptions, octopus, difficulty
+                    step, problem, context, step_descriptions, octopus, difficulty, thread_id
                 )
                 if decomposed_result is not None:
                     return decomposed_result
@@ -2404,6 +2404,7 @@ Expression:"""
                     step_descriptions,
                     depth=1,  # Increment depth
                     difficulty=difficulty,
+                    thread_id=thread_id,
                 )
                 sub_results.append(sub_result)
                 sub_context[sub_step.id] = sub_result.result
@@ -2435,6 +2436,7 @@ Expression:"""
         step_descriptions: dict[str, str],
         reason: str,
         difficulty: float = None,
+        thread_id: str = None,
     ) -> Optional[StepResult]:
         """Decompose a Gorilla step (too complex for single leaf) into sub-steps.
 
@@ -2448,6 +2450,7 @@ Expression:"""
             step_descriptions: step_id → task description
             reason: Why the step was flagged as Gorilla
             difficulty: Problem difficulty for adaptive decomposition
+            thread_id: Thread ID for multi-path credit tracking
 
         Returns:
             StepResult if decomposition and execution succeeded, None otherwise
@@ -2490,6 +2493,7 @@ Expression:"""
                     step_descriptions,
                     depth=1,  # Increment depth
                     difficulty=difficulty,
+                    thread_id=thread_id,
                 )
                 sub_results.append(sub_result)
                 sub_context[sub_step.id] = sub_result.result
