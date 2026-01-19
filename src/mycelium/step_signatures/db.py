@@ -4318,12 +4318,13 @@ class StepSignatureDB:
                 }
 
             # Get thread stats for this signature
+            # Use COUNT(DISTINCT CASE...) to avoid over-counting when signature appears multiple times
             cursor = conn.execute(
                 """SELECT
                     COUNT(DISTINCT tsc.thread_id) as total_threads,
-                    SUM(CASE WHEN t.is_winner = 1 THEN 1 ELSE 0 END) as winning_threads,
-                    SUM(CASE WHEN t.is_correct = 1 THEN 1 ELSE 0 END) as correct_threads,
-                    SUM(CASE WHEN t.is_correct = 0 THEN 1 ELSE 0 END) as incorrect_threads,
+                    COUNT(DISTINCT CASE WHEN t.is_winner = 1 THEN tsc.thread_id END) as winning_threads,
+                    COUNT(DISTINCT CASE WHEN t.is_correct = 1 THEN tsc.thread_id END) as correct_threads,
+                    COUNT(DISTINCT CASE WHEN t.is_correct = 0 THEN tsc.thread_id END) as incorrect_threads,
                     AVG(t.fork_depth) as avg_fork_depth
                 FROM thread_signature_contributions tsc
                 JOIN thread_outcomes t ON tsc.thread_id = t.thread_id

@@ -401,23 +401,26 @@ class ThreadContext:
     parent_thread_id: Optional[str] = None  # Parent thread (if forked)
     fork_step_id: Optional[str] = None  # Step where this thread forked from parent
     fork_depth: int = 0  # How many forks from root thread
-    signature_steps: list[tuple[int, str]] = field(default_factory=list)  # (sig_id, step_id) pairs
+    # (sig_id, step_id, was_primary) - was_primary=True if this was the best/first choice at that step
+    signature_steps: list[tuple[int, str, bool]] = field(default_factory=list)
     step_results: dict[str, str] = field(default_factory=dict)  # step_id -> result
     is_winner: bool = False  # Whether this thread produced the final answer
     final_answer: Optional[str] = None  # Answer produced by this thread
     created_at: str = ""  # ISO timestamp
 
-    def add_signature(self, sig_id: int, step_id: str) -> None:
+    def add_signature(self, sig_id: int, step_id: str, was_primary: bool = True) -> None:
         """Record that a signature was used at a step in this thread."""
-        self.signature_steps.append((sig_id, step_id))
+        self.signature_steps.append((sig_id, step_id, was_primary))
 
     @property
     def signature_ids(self) -> list[int]:
         """Get just the signature IDs (for backward compatibility)."""
-        return [sig_id for sig_id, _ in self.signature_steps]
+        return [sig_id for sig_id, _, _ in self.signature_steps]
 
     def fork(self, step_id: str, new_signature_id: int) -> "ThreadContext":
         """Create a child thread at a fork point.
+
+        The new signature at the fork is marked as non-primary (it's an alternative).
 
         Args:
             step_id: The step where the fork occurs
@@ -429,9 +432,9 @@ class ThreadContext:
         import uuid
         from datetime import datetime, timezone
 
-        # Copy existing signature_steps and add the new one
+        # Copy existing signature_steps and add the new one (marked as non-primary since it's a fork)
         new_sig_steps = self.signature_steps.copy()
-        new_sig_steps.append((new_signature_id, step_id))
+        new_sig_steps.append((new_signature_id, step_id, False))  # False = not primary choice
 
         return ThreadContext(
             thread_id=str(uuid.uuid4()),
@@ -732,7 +735,6 @@ class Solver:
         try:
             # Initialize thread tracking for this problem (if enabled and multi-path)
             # Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
-            from mycelium.config import TRAINING_MODE
             if THREAD_TRACKING_ENABLED and TRAINING_MODE:
                 self._root_thread_id = str(uuid.uuid4())
                 root_thread = ThreadContext(
@@ -942,6 +944,10 @@ class Solver:
             # 3. Synthesize final answer
             final_answer = await self._synthesize(problem, step_results, context)
 
+            # Update root thread's final_answer for thread tracking
+            if self._root_thread_id and self._root_thread_id in self._active_threads:
+                self._active_threads[self._root_thread_id].final_answer = final_answer
+
             elapsed_ms = (time.time() - start_time) * 1000
             logger.info(
                 "[solver] Solved in %.0fms: steps=%d new=%d matched=%d reused=%d (dsl=%d, routed=%d)",
@@ -1117,8 +1123,17 @@ class Solver:
                 )
                 if decomposed_result is not None:
                     return decomposed_result
-                # If decomposition failed, continue with best-effort routing
-                logger.warning("[OCTOPUS] Step decomposition failed, falling back to best match")
+                # If decomposition failed, use BEST of the confused children (not the umbrella)
+                # This ensures we land on a leaf, not stay stuck at the umbrella
+                if octopus.top_children:
+                    routed_signature = octopus.top_children[0]  # Best match by similarity
+                    was_routed = True
+                    logger.warning(
+                        "[OCTOPUS] Decomposition failed, using best confused child: '%s' (sim=%.3f)",
+                        routed_signature.step_type, octopus.similarities[0] if octopus.similarities else 0.0
+                    )
+                else:
+                    logger.warning("[OCTOPUS] Step decomposition failed, no children to fall back to")
 
         # 4. Try DSL execution if not already routed
         # Key: Use dsl_hint from planner (LLM writes the expression)
@@ -1192,7 +1207,16 @@ class Solver:
                 )
                 if decomposed_result is not None:
                     return decomposed_result
-                logger.warning("[OCTOPUS] Step decomposition failed, continuing to create new child")
+                # If decomposition failed, use BEST of the confused children
+                if octopus.top_children:
+                    routed_signature = octopus.top_children[0]
+                    was_routed = True
+                    logger.warning(
+                        "[OCTOPUS] Decomposition failed (2nd attempt), using best child: '%s'",
+                        routed_signature.step_type
+                    )
+                else:
+                    logger.warning("[OCTOPUS] Step decomposition failed, continuing to create new child")
 
         # 4.7. CREATE NEW CHILD ON ROUTING FAILURE (per CLAUDE.md: failing signatures decompose)
         # If umbrella routing failed (no matching child), create new child for current step
@@ -1307,11 +1331,9 @@ class Solver:
             if thread:
                 # Only add if not already tracked (multi-path adds in _explore_multiple_paths)
                 if not any(sig_id == routed_signature.id and s_id == step.id
-                          for sig_id, s_id in thread.signature_steps):
-                    thread.add_signature(routed_signature.id, step.id)
+                          for sig_id, s_id, _ in thread.signature_steps):
+                    thread.add_signature(routed_signature.id, step.id, was_primary=True)
                 thread.step_results[step.id] = result or ""
-                # Update final_answer to track the latest result (last step wins)
-                thread.final_answer = result or ""
 
         return StepResult(
             step_id=step.id,
@@ -1722,8 +1744,8 @@ class Solver:
                 # First candidate stays on parent thread, others fork (up to max)
                 if i == 0:
                     fork_thread_id = thread_id
-                    # Update parent thread with this signature
-                    parent_thread.add_signature(sig.id, step.id)
+                    # Update parent thread with this signature (primary choice)
+                    parent_thread.add_signature(sig.id, step.id, was_primary=True)
                     parent_thread.step_results[step.id] = result or ""
                 elif i < max_forks:
                     # Create fork thread for alternative (respecting limit)
@@ -2453,6 +2475,14 @@ Expression:"""
         db = get_db()
         try:
             with db.connection() as conn:
+                # Check if thread tables exist (they may not in older DBs)
+                cursor = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='thread_outcomes'"
+                )
+                if not cursor.fetchone():
+                    logger.debug("[solver] thread_outcomes table not found, skipping thread recording")
+                    return
+
                 # Insert all thread outcomes
                 for thread_id in self._problem_threads:
                     thread = self._active_threads.get(thread_id)
@@ -2492,7 +2522,7 @@ Expression:"""
                     )
 
                     # Insert signature contributions for this thread (with correct step_id)
-                    for sig_id, step_id in thread.signature_steps:
+                    for sig_id, step_id, was_primary in thread.signature_steps:
                         conn.execute(
                             """INSERT INTO thread_signature_contributions (
                                 thread_id, signature_id, step_id, embedding_similarity,
@@ -2501,9 +2531,9 @@ Expression:"""
                             (
                                 thread.thread_id,
                                 sig_id,
-                                step_id,  # Now using actual step_id from the pair
+                                step_id,
                                 None,  # Similarity not tracked per-signature in thread
-                                1 if thread_id == self._root_thread_id else 0,
+                                1 if was_primary else 0,  # Use actual was_primary from tracking
                                 now,
                             ),
                         )
