@@ -52,6 +52,10 @@ from mycelium.config import (
     GORILLA_PROACTIVE_ENABLED,
     GORILLA_MAX_PARAMS,
     GORILLA_COMPLEXITY_KEYWORDS,
+    THREAD_TRACKING_ENABLED,
+    THREAD_MAX_FORKS_PER_STEP,
+    THREAD_CREDIT_DECAY_PER_FORK,
+    THREAD_MIN_CREDIT,
 )
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
@@ -376,6 +380,55 @@ class PathOutcome:
     step_id: str  # Which step this was for
     embedding_similarity: float = 0.0  # Cosine similarity to signature centroid
     dsl_type: str = "unknown"  # DSL type for operational alignment tracking
+    thread_id: str = ""  # Thread that explored this path (for multi-path credit)
+
+
+@dataclass
+class ThreadContext:
+    """Tracks a complete execution path through the DAG for multi-path credit/blame.
+
+    A "thread" = one complete execution path through all DAG steps.
+    When multi-path exploration forks at any step, each alternative becomes a child thread.
+    Only one thread's answer becomes the final result (winner).
+
+    After grading against ground truth, we know which threads were correct vs incorrect,
+    enabling:
+    - Positive credit to entire winning thread (not just final step)
+    - Negative credit to losing threads (SCORPION repulsion)
+    - Per-signature thread win/loss tracking for cluster analysis
+    """
+    thread_id: str  # UUID
+    parent_thread_id: Optional[str] = None  # Parent thread (if forked)
+    fork_step_id: Optional[str] = None  # Step where this thread forked from parent
+    fork_depth: int = 0  # How many forks from root thread
+    signature_path: list[int] = field(default_factory=list)  # Signature IDs in execution order
+    step_results: dict[str, str] = field(default_factory=dict)  # step_id -> result
+    is_winner: bool = False  # Whether this thread produced the final answer
+    final_answer: Optional[str] = None  # Answer produced by this thread
+    created_at: str = ""  # ISO timestamp
+
+    def fork(self, step_id: str, new_signature_id: int) -> "ThreadContext":
+        """Create a child thread at a fork point.
+
+        Args:
+            step_id: The step where the fork occurs
+            new_signature_id: Signature ID for the new path
+
+        Returns:
+            New ThreadContext that branches from this thread
+        """
+        import uuid
+        from datetime import datetime, timezone
+
+        return ThreadContext(
+            thread_id=str(uuid.uuid4()),
+            parent_thread_id=self.thread_id,
+            fork_step_id=step_id,
+            fork_depth=self.fork_depth + 1,
+            signature_path=self.signature_path.copy() + [new_signature_id],
+            step_results=self.step_results.copy(),
+            created_at=datetime.now(timezone.utc).isoformat(),
+        )
 
 
 @dataclass
@@ -436,6 +489,15 @@ class Solver:
         # Used for ground truth comparison to determine operational equivalence
         # Cleared after each problem is graded via record_problem_outcome()
         self._pending_path_outcomes: dict[str, list[PathOutcome]] = {}
+
+        # Thread tracking state for multi-path credit/blame backpropagation
+        # Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
+        # thread_id -> ThreadContext (tracks complete execution paths)
+        self._active_threads: dict[str, ThreadContext] = {}
+        # List of all thread IDs for current problem (for iteration during grading)
+        self._problem_threads: list[str] = []
+        # Root thread ID for current problem (parent of all forks)
+        self._root_thread_id: Optional[str] = None
 
     def _create_background_task(self, coro) -> asyncio.Task:
         """Create a background task with proper lifecycle management.
@@ -650,9 +712,27 @@ class Solver:
         explicit_budget = compute_budget is not None
 
         import time
+        import uuid
+        from datetime import datetime, timezone
         start_time = time.time()
 
         try:
+            # Initialize thread tracking for this problem (if enabled and multi-path)
+            # Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
+            from mycelium.config import TRAINING_MODE
+            if THREAD_TRACKING_ENABLED and TRAINING_MODE:
+                self._root_thread_id = str(uuid.uuid4())
+                root_thread = ThreadContext(
+                    thread_id=self._root_thread_id,
+                    created_at=datetime.now(timezone.utc).isoformat(),
+                )
+                self._active_threads = {self._root_thread_id: root_thread}
+                self._problem_threads = [self._root_thread_id]
+            else:
+                self._root_thread_id = None
+                self._active_threads = {}
+                self._problem_threads = []
+
             # 0. Embed problem (used for both zero-LLM and planner hints)
             # Use cached_embed to avoid redundant computation
             problem_embedding = cached_embed(problem, self.embedder)
@@ -779,6 +859,7 @@ class Solver:
                         step, problem, step_context, step_desc_context,
                         compute_budget=compute_budget,
                         difficulty=difficulty,
+                        thread_id=self._root_thread_id,
                     )
 
                 if len(ready_steps) > 1:
@@ -895,6 +976,7 @@ class Solver:
         depth: int = 0,
         compute_budget: float = 1.0,
         difficulty: float = None,
+        thread_id: str = None,
     ) -> StepResult:
         """Execute a single step.
 
@@ -914,6 +996,7 @@ class Solver:
             step_descriptions: step_id → task description (for NL param matching)
             depth: Recursion depth for composite steps
             compute_budget: MCTS exploration budget (>1 enables multi-path)
+            thread_id: Thread ID for multi-path credit tracking (None if not tracking)
         """
         step_descriptions = step_descriptions or {}
         import time
@@ -924,6 +1007,7 @@ class Solver:
             return await self._execute_composite_step(
                 step, problem, context, step_descriptions, depth,
                 compute_budget=compute_budget,
+                thread_id=thread_id,
             )
 
         # 0.5 GORILLA DETECTION: Check if step is too complex
@@ -1224,6 +1308,7 @@ class Solver:
         step_descriptions: dict[str, str] = None,
         depth: int = 0,
         compute_budget: float = 1.0,
+        thread_id: str = None,
     ) -> StepResult:
         """Execute a composite step by recursively executing its sub-plan.
 
@@ -1240,6 +1325,7 @@ class Solver:
             step_descriptions: step_id → task description (for NL param matching)
             depth: Recursion depth for nested composites
             compute_budget: MCTS exploration budget (>1 enables multi-path)
+            thread_id: Thread ID for multi-path credit tracking (None if not tracking)
         """
         step_descriptions = step_descriptions or {}
         import time
@@ -1287,6 +1373,7 @@ class Solver:
             sub_result = await self._execute_step(
                 sub_step, problem, step_context, step_desc_context, depth=depth + 1,
                 compute_budget=compute_budget,
+                thread_id=thread_id,
             )
             sub_results.append(sub_result)
 
@@ -2258,6 +2345,7 @@ Expression:"""
         step_descriptions: dict[str, str],
         octopus: OctopusDetected,
         difficulty: float = None,
+        thread_id: str = None,
     ) -> Optional[StepResult]:
         """Decompose an Octopus step (semantically ambiguous) into sub-steps.
 
@@ -2271,6 +2359,7 @@ Expression:"""
             step_descriptions: step_id → task description
             octopus: The OctopusDetected exception with confusion details
             difficulty: Problem difficulty for adaptive decomposition
+            thread_id: Thread ID for multi-path credit tracking
 
         Returns:
             StepResult if decomposition and execution succeeded, None otherwise

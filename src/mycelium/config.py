@@ -400,6 +400,21 @@ SCORPION_ATTRACTION_WEIGHT = 0.2  # How strongly to pull on success (0.0-1.0)
                                    # Success is more common, so gentler pull to avoid overfitting
 
 # =============================================================================
+# THREAD TRACKING (Multi-path credit/blame backpropagation)
+# =============================================================================
+# Tracks complete execution paths ("threads") through DAG for credit attribution.
+# Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
+#
+# Key insight: When multi-path exploration forks, each alternative is a separate
+# thread. After grading against ground truth, we know which threads were correct
+# vs incorrect, enabling per-signature win/loss tracking for cluster analysis.
+
+THREAD_TRACKING_ENABLED = True  # Enable thread tracking (only active in TRAINING_MODE)
+THREAD_MAX_FORKS_PER_STEP = 3  # Max alternative threads to create at any fork point
+THREAD_CREDIT_DECAY_PER_FORK = 0.7  # Credit decay per fork depth (0.7^1=0.7, 0.7^2=0.49, etc.)
+THREAD_MIN_CREDIT = 0.1  # Minimum credit to apply (filter noise from deep forks)
+
+# =============================================================================
 # ZERO-LLM ROUTING (Skip planner for mature signatures)
 # =============================================================================
 # When enabled, the solver will attempt to route problems directly through

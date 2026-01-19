@@ -243,6 +243,99 @@ class TestStepExtractedValues:
         assert step.extracted_values["prev"] == "{step_1}"
 
 
+class TestStepReferenceValidation:
+    """Tests for step reference validation in extracted_values (8xr1)."""
+
+    def test_valid_step_reference(self):
+        """Valid reference to existing step in depends_on should pass."""
+        plan = make_plan(steps=[
+            Step(id="step_1", task="First"),
+            Step(
+                id="step_2",
+                task="Second",
+                depends_on=["step_1"],
+                extracted_values={"prev_result": "{step_1}"}
+            ),
+        ])
+        is_valid, errors = plan.validate()
+        assert is_valid, f"Expected valid, got errors: {errors}"
+
+    def test_reference_to_unknown_step(self):
+        """Reference to non-existent step should fail validation."""
+        plan = make_plan(steps=[
+            Step(id="step_1", task="First"),
+            Step(
+                id="step_2",
+                task="Second",
+                depends_on=["step_1"],
+                extracted_values={"bad_ref": "{step_99}"}
+            ),
+        ])
+        is_valid, errors = plan.validate()
+        assert not is_valid
+        assert any("step_99" in e and "unknown" in e.lower() for e in errors)
+
+    def test_reference_not_in_depends_on(self):
+        """Reference to step not in depends_on should fail validation."""
+        plan = make_plan(steps=[
+            Step(id="step_1", task="First"),
+            Step(id="step_2", task="Second"),
+            Step(
+                id="step_3",
+                task="Third",
+                depends_on=["step_1"],  # Only depends on step_1
+                extracted_values={"from_step_2": "{step_2}"}  # But references step_2
+            ),
+        ])
+        is_valid, errors = plan.validate()
+        assert not is_valid
+        assert any("step_2" in e and "depend" in e.lower() for e in errors)
+
+    def test_multiple_references_all_valid(self):
+        """Multiple valid references should pass."""
+        plan = make_plan(steps=[
+            Step(id="step_1", task="First"),
+            Step(id="step_2", task="Second"),
+            Step(
+                id="step_3",
+                task="Combine",
+                depends_on=["step_1", "step_2"],
+                extracted_values={
+                    "a": "{step_1}",
+                    "b": "{step_2}",
+                }
+            ),
+        ])
+        is_valid, errors = plan.validate()
+        assert is_valid, f"Expected valid, got errors: {errors}"
+
+    def test_numeric_values_not_checked(self):
+        """Numeric values in extracted_values should not trigger reference check."""
+        plan = make_plan(steps=[
+            Step(
+                id="step_1",
+                task="Calculate",
+                extracted_values={"a": 10, "b": 3.14, "c": -5}
+            ),
+        ])
+        is_valid, errors = plan.validate()
+        assert is_valid
+
+    def test_case_insensitive_reference(self):
+        """References should be case-insensitive."""
+        plan = make_plan(steps=[
+            Step(id="step_1", task="First"),
+            Step(
+                id="step_2",
+                task="Second",
+                depends_on=["step_1"],
+                extracted_values={"ref": "{STEP_1}"}  # Uppercase
+            ),
+        ])
+        is_valid, errors = plan.validate()
+        assert is_valid, f"Expected valid (case-insensitive), got errors: {errors}"
+
+
 class TestDAGPlanEdgeCases:
     """Additional edge cases for DAGPlan."""
 

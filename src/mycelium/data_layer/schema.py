@@ -191,6 +191,53 @@ CREATE TABLE IF NOT EXISTS db_metadata (
     value TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+
+-- =============================================================================
+-- THREAD OUTCOMES: Track complete execution paths for multi-path credit/blame
+-- =============================================================================
+-- A "thread" = one complete execution path through all DAG steps.
+-- When multi-path exploration forks, each alternative becomes a child thread.
+-- After grading, we know which threads were correct vs incorrect.
+-- Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
+CREATE TABLE IF NOT EXISTS thread_outcomes (
+    thread_id TEXT UNIQUE NOT NULL,
+    parent_thread_id TEXT,                -- NULL for root thread
+    problem_id TEXT NOT NULL,             -- Problem being solved (truncated text)
+    problem_text TEXT,                    -- Full problem text (for debugging)
+    fork_step_id TEXT,                    -- Step where this thread forked
+    fork_depth INTEGER DEFAULT 0,         -- How many forks from root thread
+    signature_path TEXT,                  -- JSON array of signature IDs in execution order
+    final_answer TEXT,                    -- Answer produced by this thread
+    is_winner INTEGER DEFAULT 0,          -- 1 if this thread's answer was used
+    is_correct INTEGER DEFAULT NULL,      -- 1 if answer matches ground truth (NULL if not graded)
+    ground_truth TEXT,                    -- Correct answer (for comparison)
+    created_at TEXT NOT NULL,
+    graded_at TEXT                        -- When correctness was determined
+);
+
+CREATE INDEX IF NOT EXISTS idx_thread_outcomes_problem ON thread_outcomes(problem_id);
+CREATE INDEX IF NOT EXISTS idx_thread_outcomes_parent ON thread_outcomes(parent_thread_id);
+CREATE INDEX IF NOT EXISTS idx_thread_outcomes_created ON thread_outcomes(created_at);
+CREATE INDEX IF NOT EXISTS idx_thread_outcomes_correct ON thread_outcomes(is_correct);
+
+-- =============================================================================
+-- THREAD SIGNATURE CONTRIBUTIONS: Per-signature role in each thread
+-- =============================================================================
+-- Tracks which signatures contributed to which threads and how.
+-- Enables per-signature thread win/loss tracking for cluster analysis.
+-- Per CLAUDE.md: "Per-signature thread win/loss tracking"
+CREATE TABLE IF NOT EXISTS thread_signature_contributions (
+    thread_id TEXT NOT NULL,
+    signature_id INTEGER NOT NULL,
+    step_id TEXT NOT NULL,                -- Which step this signature was used for
+    embedding_similarity REAL,            -- Cosine similarity when routed
+    was_primary_choice INTEGER DEFAULT 1, -- 1 if this was the best match, 0 if alternative
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_thread_sig_contrib_thread ON thread_signature_contributions(thread_id);
+CREATE INDEX IF NOT EXISTS idx_thread_sig_contrib_sig ON thread_signature_contributions(signature_id);
+CREATE INDEX IF NOT EXISTS idx_thread_sig_contrib_step ON thread_signature_contributions(step_id);
 """
 
 def get_schema() -> str:
