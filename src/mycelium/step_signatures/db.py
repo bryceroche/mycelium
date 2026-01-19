@@ -2479,6 +2479,7 @@ class StepSignatureDB:
 
         # Invalidate caches since centroid changed
         invalidate_centroid_cache(signature_id)
+        invalidate_signature_cache(signature_id)  # Also invalidate signature cache
         self.invalidate_centroid_matrix()
 
         return new_count
