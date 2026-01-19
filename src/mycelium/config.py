@@ -283,6 +283,10 @@ _UMBRELLA_HARD_CAP = 100  # Absolute maximum to prevent unbounded recursion
 # Validate and clamp: ensure positive integer, capped at hard limit
 UMBRELLA_MAX_DEPTH = max(1, min(int(_UMBRELLA_MAX_DEPTH_RAW or 10), _UMBRELLA_HARD_CAP))
 UMBRELLA_ROUTING_THRESHOLD = 0.5  # Min similarity for umbrella child routing (lower than global 0.85 since we're picking best among known children)
+NEW_CHILD_SIMILARITY_THRESHOLD = 0.7  # Min similarity to reuse existing child instead of creating new
+                                       # Higher than UMBRELLA_ROUTING_THRESHOLD: routing failed at 0.5,
+                                       # but child at 0.7+ is "close enough" - use instead of duplicating
+                                       # This prevents duplicate children for similar steps
 
 # =============================================================================
 # SCAFFOLD STRUCTURE (Pre-allocated tree depth for domain emergence)

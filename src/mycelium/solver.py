@@ -1222,31 +1222,58 @@ class Solver:
         # If umbrella routing failed (no matching child), create new child for current step
         # This grows the tree by adding specialized children to handle novel steps
         if result is None and routed_signature.is_semantic_umbrella:
-            logger.info(
-                "[solver] Router umbrella '%s' failed to route, creating new child for step '%s'",
-                routed_signature.step_type, step.task[:40]
-            )
-            # Create new child signature directly under this umbrella
-            new_child = self.step_db.create_signature(
-                step_text=step.task,
-                embedding=embedding,
-                parent_id=routed_signature.id,
-                origin_depth=depth + 1,
-                extracted_values=getattr(step, 'extracted_values', None),
-                dsl_hint=getattr(step, 'dsl_hint', None),
-            )
-            logger.info(
-                "[solver] Created new child '%s' (id=%d) under umbrella '%s'",
-                new_child.step_type, new_child.id, routed_signature.step_type
-            )
+            from mycelium.step_signatures.utils import cosine_similarity
+            from mycelium.config import NEW_CHILD_SIMILARITY_THRESHOLD
 
-            # Execute the new child's DSL
-            dsl_result = await self._try_dsl(new_child, step, context, step_descriptions)
+            # First check if there's an existing child that's "close enough"
+            # Routing failed (similarity < UMBRELLA_ROUTING_THRESHOLD), but maybe
+            # there's a child above NEW_CHILD_SIMILARITY_THRESHOLD we should use
+            # instead of creating a duplicate
+            existing_children = self.step_db.get_children(routed_signature.id, for_routing=True)
+            best_existing_child = None
+            best_existing_sim = 0.0
+
+            for child_sig, _condition in existing_children:
+                if child_sig.centroid is not None:
+                    sim = cosine_similarity(embedding, child_sig.centroid)
+                    if sim > best_existing_sim:
+                        best_existing_sim = sim
+                        best_existing_child = child_sig
+
+            # Use existing child if similarity is above threshold (avoid duplicates)
+            if best_existing_child and best_existing_sim >= NEW_CHILD_SIMILARITY_THRESHOLD:
+                logger.info(
+                    "[solver] Using existing child '%s' (sim=%.3f >= %.3f threshold) instead of creating new",
+                    best_existing_child.step_type, best_existing_sim, NEW_CHILD_SIMILARITY_THRESHOLD
+                )
+                routed_signature = best_existing_child
+                was_routed = True
+            else:
+                # No close-enough child exists, create new one
+                logger.info(
+                    "[solver] Router umbrella '%s' failed to route (best_sim=%.3f < %.3f), creating new child",
+                    routed_signature.step_type, best_existing_sim, NEW_CHILD_SIMILARITY_THRESHOLD
+                )
+                new_child = self.step_db.create_signature(
+                    step_text=step.task,
+                    embedding=embedding,
+                    parent_id=routed_signature.id,
+                    origin_depth=depth + 1,
+                    extracted_values=getattr(step, 'extracted_values', None),
+                    dsl_hint=getattr(step, 'dsl_hint', None),
+                )
+                logger.info(
+                    "[solver] Created new child '%s' (id=%d) under umbrella '%s'",
+                    new_child.step_type, new_child.id, routed_signature.step_type
+                )
+                routed_signature = new_child
+
+            # Execute the child's DSL (either existing or newly created)
+            dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
             if dsl_result is not None:
                 result = dsl_result
                 was_injected = True
-                routed_signature = new_child
-                logger.info("[solver] New child DSL succeeded: %s", result[:30] if result else "")
+                logger.info("[solver] Child DSL succeeded: %s", result[:30] if result else "")
 
         # 5. No LLM fallback - strict DAG execution
         # Three outcomes: route to child, create child, or fail
