@@ -238,6 +238,105 @@ CREATE TABLE IF NOT EXISTS thread_signature_contributions (
 CREATE INDEX IF NOT EXISTS idx_thread_sig_contrib_thread ON thread_signature_contributions(thread_id);
 CREATE INDEX IF NOT EXISTS idx_thread_sig_contrib_sig ON thread_signature_contributions(signature_id);
 CREATE INDEX IF NOT EXISTS idx_thread_sig_contrib_step ON thread_signature_contributions(step_id);
+
+-- =============================================================================
+-- MCTS WAVE FUNCTION TABLES: Amplitude tracking for multi-path exploration
+-- =============================================================================
+-- Per ideas.md: "The combination of dag_step_id and node_id is what we're learning"
+-- Wave function collapses at final step where we have ground truth.
+-- Amplitude updates based on interference patterns across threads.
+
+-- DAG: A problem and its decomposition plan
+CREATE TABLE IF NOT EXISTS mcts_dags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dag_id TEXT UNIQUE NOT NULL,          -- Unique ID for this DAG
+    problem_id TEXT NOT NULL,             -- Problem identifier (e.g., hash of text)
+    problem_desc TEXT,                    -- Full problem text
+    benchmark TEXT,                       -- gsm8k, math500_L1, math500_L5, etc.
+    difficulty_level REAL,                -- Numeric difficulty score
+    success INTEGER DEFAULT NULL,         -- NULL until graded, 0=wrong, 1=correct
+    ground_truth TEXT,                    -- Correct answer for comparison
+    created_at TEXT NOT NULL,
+    graded_at TEXT                        -- When final answer was graded
+);
+
+CREATE INDEX IF NOT EXISTS idx_mcts_dags_problem ON mcts_dags(problem_id);
+CREATE INDEX IF NOT EXISTS idx_mcts_dags_benchmark ON mcts_dags(benchmark);
+CREATE INDEX IF NOT EXISTS idx_mcts_dags_success ON mcts_dags(success);
+CREATE INDEX IF NOT EXISTS idx_mcts_dags_difficulty ON mcts_dags(difficulty_level);
+
+-- DAG_Step: Individual steps in a decomposition plan
+-- Per ideas.md: "Each step should not be capable of being broken down further"
+CREATE TABLE IF NOT EXISTS mcts_dag_steps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dag_step_id TEXT UNIQUE NOT NULL,     -- Unique ID for this step
+    dag_id TEXT NOT NULL,                 -- Parent DAG
+    step_desc TEXT NOT NULL,              -- What this step does (natural language)
+    step_num INTEGER NOT NULL,            -- Sequential order (1..n)
+    branch_num INTEGER DEFAULT 1,         -- Parallel branch ID (1..n for independent steps)
+    is_atomic INTEGER DEFAULT 0,          -- 1 if cannot be decomposed further
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_mcts_dag_steps_dag ON mcts_dag_steps(dag_id);
+CREATE INDEX IF NOT EXISTS idx_mcts_dag_steps_step_num ON mcts_dag_steps(dag_id, step_num);
+
+-- Thread: A single MCTS rollout path through the DAG
+-- Per ideas.md: "Thread ID essential for backpropagation"
+CREATE TABLE IF NOT EXISTS mcts_threads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    thread_id TEXT UNIQUE NOT NULL,       -- Unique ID for this thread
+    dag_id TEXT NOT NULL,                 -- Parent DAG being solved
+    parent_thread_id TEXT,                -- NULL for root thread, else forked from
+    fork_at_step TEXT,                    -- dag_step_id where this thread forked
+    fork_reason TEXT,                     -- Why we branched: 'undecided', 'explore', 'top_k'
+    final_answer TEXT,                    -- Answer produced by this thread
+    success INTEGER DEFAULT NULL,         -- NULL until graded, 0=wrong, 1=correct
+    created_at TEXT NOT NULL,
+    graded_at TEXT                        -- When answer was compared to ground truth
+);
+
+CREATE INDEX IF NOT EXISTS idx_mcts_threads_dag ON mcts_threads(dag_id);
+CREATE INDEX IF NOT EXISTS idx_mcts_threads_parent ON mcts_threads(parent_thread_id);
+CREATE INDEX IF NOT EXISTS idx_mcts_threads_success ON mcts_threads(success);
+
+-- Thread_Step: Fact table for MCTS rollouts (wave function amplitudes)
+-- Per ideas.md: "The combination of dag_step_id and node_id is what we're learning"
+-- This is the core table for post-mortem credit/blame analysis.
+CREATE TABLE IF NOT EXISTS mcts_thread_steps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    thread_step_id TEXT UNIQUE NOT NULL,  -- Unique ID for this step execution
+    thread_id TEXT NOT NULL,              -- Which thread this belongs to
+    dag_id TEXT NOT NULL,                 -- Denormalized for query efficiency
+    dag_step_id TEXT NOT NULL,            -- Which DAG step
+    node_id INTEGER NOT NULL,             -- Which signature (leaf node) was used
+
+    -- Wave function amplitude tracking
+    -- Per ideas.md: "High confidence + failure = strong negative signal"
+    amplitude REAL DEFAULT 1.0,           -- Prior confidence in this choice (|α|²)
+    amplitude_post REAL DEFAULT NULL,     -- Updated amplitude after grading
+
+    -- Routing decision context
+    similarity_score REAL,                -- Cosine similarity when routed
+    was_undecided INTEGER DEFAULT 0,      -- 1 if we branched here (low confidence)
+    ucb1_gap REAL,                        -- Gap between top-2 UCB1 scores
+    alternatives_considered INTEGER DEFAULT 1,  -- How many options we evaluated
+
+    -- Step execution outcome
+    step_result TEXT,                     -- Result produced at this step
+    step_success INTEGER DEFAULT NULL,    -- 1 if step executed without error
+
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_mcts_thread_steps_thread ON mcts_thread_steps(thread_id);
+CREATE INDEX IF NOT EXISTS idx_mcts_thread_steps_dag ON mcts_thread_steps(dag_id);
+CREATE INDEX IF NOT EXISTS idx_mcts_thread_steps_dag_step ON mcts_thread_steps(dag_step_id);
+CREATE INDEX IF NOT EXISTS idx_mcts_thread_steps_node ON mcts_thread_steps(node_id);
+CREATE INDEX IF NOT EXISTS idx_mcts_thread_steps_amplitude ON mcts_thread_steps(amplitude);
+CREATE INDEX IF NOT EXISTS idx_mcts_thread_steps_undecided ON mcts_thread_steps(was_undecided);
+-- Composite index for post-mortem analysis: (dag_step_id, node_id) is what we're learning
+CREATE INDEX IF NOT EXISTS idx_mcts_thread_steps_learning ON mcts_thread_steps(dag_step_id, node_id);
 """
 
 def get_schema() -> str:
