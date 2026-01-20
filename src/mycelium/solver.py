@@ -14,6 +14,7 @@ Key difference from V1: Signatures speak natural language.
 """
 
 import asyncio
+import hashlib
 import logging
 import re
 from collections import OrderedDict
@@ -779,7 +780,6 @@ class Solver:
 
             # 0.15. Create MCTS DAG record for this problem (training mode only)
             # Per CLAUDE.md: Track problem_id, problem_desc, benchmark, difficulty_level
-            import hashlib
             problem_id = hashlib.sha256(problem.encode()).hexdigest()[:16]
             if TRAINING_MODE:
                 self._current_dag_id = create_dag(
