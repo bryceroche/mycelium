@@ -2628,6 +2628,15 @@ Expression:"""
                         ),
                     )
 
+                    # Also update mcts_threads table with final_answer and success
+                    # Per CLAUDE.md: "Track fork_at_step, fork_reason, final_answer"
+                    thread_success = is_correct == 1 if is_correct is not None else None
+                    complete_thread(
+                        thread_id=thread.thread_id,
+                        final_answer=thread.final_answer or "",
+                        success=thread_success,
+                    )
+
                     # Insert signature contributions for this thread (with correct step_id)
                     for sig_id, step_id, was_primary in thread.signature_steps:
                         conn.execute(
