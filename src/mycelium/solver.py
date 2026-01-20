@@ -876,20 +876,26 @@ class Solver:
 
             # Log DAG steps to mcts_dag_steps table (training mode only)
             # Per beads issue: wire up step logging when DAG plan is generated
+            # Use execution order to get proper step_num (level) and branch_num (position in level)
             if TRAINING_MODE and self._current_dag_id:
-                dag_step_tuples = [
-                    (step.task, idx + 1, 1, step.is_atomic)  # (desc, step_num, branch_num, is_atomic)
-                    for idx, step in enumerate(plan.steps)
-                ]
+                execution_levels = plan.get_execution_order()
+                dag_step_tuples = []
+                step_order = []  # Track step objects in same order as tuples
+                for level_num, level_steps in enumerate(execution_levels, start=1):
+                    for branch_num, step in enumerate(level_steps, start=1):
+                        dag_step_tuples.append(
+                            (step.task, level_num, branch_num, step.is_atomic)
+                        )
+                        step_order.append(step)
                 dag_step_ids = create_dag_steps(self._current_dag_id, dag_step_tuples)
                 # Store mapping for thread step logging
                 self._dag_step_ids = {
                     step.id: dag_step_id
-                    for step, dag_step_id in zip(plan.steps, dag_step_ids)
+                    for step, dag_step_id in zip(step_order, dag_step_ids)
                 }
                 logger.debug(
-                    "[solver] Logged %d DAG steps for %s",
-                    len(dag_step_ids), self._current_dag_id
+                    "[solver] Logged %d DAG steps for %s (%d levels)",
+                    len(dag_step_ids), self._current_dag_id, len(execution_levels)
                 )
             else:
                 self._dag_step_ids = {}
@@ -1441,7 +1447,7 @@ class Solver:
         # Per beads issue: Wire up mcts_thread_steps amplitude logging
         # Key fields: amplitude (prior confidence), was_undecided, ucb1_gap, similarity_score, node_id
         if TRAINING_MODE and thread_id and routed_signature and self._current_dag_id:
-            dag_step_id = getattr(self, '_dag_step_ids', {}).get(step.id)
+            dag_step_id = self._dag_step_ids.get(step.id)
             if dag_step_id:
                 log_thread_step(
                     thread_id=thread_id,
