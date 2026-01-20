@@ -524,6 +524,13 @@ class Solver:
         # Root thread ID for current problem (parent of all forks)
         self._root_thread_id: Optional[str] = None
 
+        # Routing context tracking for MCTS amplitude logging
+        # Set during route_with_confidence, cleared at start of each step
+        self._routing_confidence: float = 1.0
+        self._routing_similarity: Optional[float] = None
+        self._routing_ucb1_gap: Optional[float] = None
+        self._routing_was_undecided: bool = False
+
     def _create_background_task(self, coro) -> asyncio.Task:
         """Create a background task with proper lifecycle management.
 
@@ -1082,6 +1089,13 @@ class Solver:
         import time
         start_time = time.time()
 
+        # Reset routing context for MCTS amplitude logging
+        # Updated during routing in _explore_multiple_paths, read at end for log_thread_step
+        self._routing_confidence = 1.0
+        self._routing_similarity = None
+        self._routing_ucb1_gap = None
+        self._routing_was_undecided = False
+
         # 0. Handle composite steps (recursive DAG of DAGs)
         if step.is_composite:
             return await self._execute_composite_step(
@@ -1423,6 +1437,33 @@ class Solver:
                     thread.add_signature(routed_signature.id, step.id, was_primary=True)
                 thread.step_results[step.id] = result or ""
 
+        # 10. Log MCTS thread step with amplitude (training mode only)
+        # Per beads issue: Wire up mcts_thread_steps amplitude logging
+        # Key fields: amplitude (prior confidence), was_undecided, ucb1_gap, similarity_score, node_id
+        if TRAINING_MODE and thread_id and routed_signature and self._current_dag_id:
+            dag_step_id = getattr(self, '_dag_step_ids', {}).get(step.id)
+            if dag_step_id:
+                log_thread_step(
+                    thread_id=thread_id,
+                    dag_id=self._current_dag_id,
+                    dag_step_id=dag_step_id,
+                    node_id=routed_signature.id,
+                    amplitude=1.0,  # TODO: Use routing confidence when available
+                    similarity_score=None,  # TODO: Track from routing
+                    was_undecided=False,  # TODO: Set when multi-path branching
+                    ucb1_gap=None,  # TODO: Track from route_with_confidence
+                    alternatives_considered=len(explored_sigs) if explored_sigs else 1,
+                    step_result=result[:500] if result else None,
+                    step_success=step_completed,
+                )
+                logger.debug(
+                    "[solver] Logged thread step: thread=%s dag_step=%s node=%d success=%s",
+                    thread_id[:12] if thread_id else None,
+                    dag_step_id[:12] if dag_step_id else None,
+                    routed_signature.id,
+                    step_completed,
+                )
+
         return StepResult(
             step_id=step.id,
             task=step.task,
@@ -1762,6 +1803,11 @@ class Solver:
             top_k=int(compute_budget) + 1,  # Get enough alternatives
         )
 
+        # Store routing context for MCTS amplitude logging
+        self._routing_confidence = routing_result.confidence
+        self._routing_ucb1_gap = routing_result.min_gap
+        self._routing_similarity = routing_result.confidence  # Use confidence as similarity proxy
+
         explored_sigs = list(routing_result.path)  # Start with best path
 
         # If high confidence or single-path mode, just use best path
@@ -1774,6 +1820,8 @@ class Solver:
             return (None, routing_result.signature, explored_sigs, False)
 
         # Low confidence + multi-path mode: explore alternatives
+        # Mark as undecided for MCTS amplitude tracking
+        self._routing_was_undecided = True
         num_paths = min(int(compute_budget), len(routing_result.alternatives) + 1)
         logger.info(
             "[solver] Multi-path exploration: confidence=%.2f, exploring %d paths",
