@@ -1247,6 +1247,11 @@ class Solver:
                     )
             else:
                 # Single-path: just try DSL on routed signature
+                # Compute similarity for amplitude logging (not available from multi-path routing)
+                if routed_signature.centroid is not None:
+                    from mycelium.step_signatures.utils import cosine_similarity
+                    self._routing_similarity = cosine_similarity(embedding, routed_signature.centroid)
+                    self._routing_confidence = self._routing_similarity  # Use similarity as confidence proxy
                 dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
                 if dsl_result is not None:
                     result = dsl_result
