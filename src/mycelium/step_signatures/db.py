@@ -278,6 +278,7 @@ class RoutingResult:
     - confidence: Overall routing confidence (0-1), product of per-level confidences
     - ucb1_gaps: Gap between top-2 UCB1 scores at each level (larger = more certain)
     - alternatives: Top-k alternatives at each level (for multi-path exploration)
+    - best_similarity: Cosine similarity of the best match (for amplitude logging)
 
     Usage:
         result = db.route_through_hierarchy_v2(embedding)
@@ -292,6 +293,7 @@ class RoutingResult:
     confidence: float = 1.0  # Overall confidence (0-1)
     ucb1_gaps: list[float] = field(default_factory=list)  # Gap at each routing level
     alternatives: list[list[tuple[StepSignature, float]]] = field(default_factory=list)  # Top-k alts per level
+    best_similarity: Optional[float] = None  # Cosine similarity of best match at final level
 
     @property
     def is_match(self) -> bool:
@@ -1161,6 +1163,7 @@ class StepSignatureDB:
         ucb1_gaps = []
         alternatives = []
         confidence_factors = []
+        best_similarity = None  # Track best cosine similarity at final level
 
         while depth < max_depth:
             # If current is not an umbrella, it's a leaf - we're done
@@ -1220,6 +1223,7 @@ class StepSignatureDB:
 
             # Check if best child meets similarity threshold
             best_child, _best_ucb1, best_sim = scored_children[0]
+            best_similarity = best_sim  # Track for MCTS amplitude logging
             if best_sim < min_similarity:
                 # Best child doesn't meet threshold - stop here
                 break
@@ -1242,6 +1246,7 @@ class StepSignatureDB:
             confidence=overall_confidence,
             ucb1_gaps=ucb1_gaps,
             alternatives=alternatives,
+            best_similarity=best_similarity,
         )
 
     # =========================================================================

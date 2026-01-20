@@ -1814,7 +1814,7 @@ class Solver:
         # Store routing context for MCTS amplitude logging
         self._routing_confidence = routing_result.confidence
         self._routing_ucb1_gap = routing_result.min_gap
-        self._routing_similarity = routing_result.confidence  # Use confidence as similarity proxy
+        self._routing_similarity = routing_result.best_similarity  # Actual cosine similarity
 
         explored_sigs = list(routing_result.path)  # Start with best path
 
