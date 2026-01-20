@@ -178,12 +178,21 @@ def create_thread(
     parent_thread_id: Optional[str] = None,
     fork_at_step: Optional[str] = None,
     fork_reason: Optional[str] = None,
+    thread_id: Optional[str] = None,
 ) -> str:
     """Create a new MCTS thread.
 
+    Args:
+        dag_id: Parent DAG being solved
+        parent_thread_id: NULL for root thread, else forked from
+        fork_at_step: dag_step_id where this thread forked
+        fork_reason: Why we branched: 'undecided', 'explore', 'top_k'
+        thread_id: Optional thread ID (generated if not provided)
+
     Returns the thread_id.
     """
-    thread_id = f"thread-{uuid.uuid4().hex[:12]}"
+    if thread_id is None:
+        thread_id = f"thread-{uuid.uuid4().hex[:12]}"
     now = datetime.now(timezone.utc).isoformat()
 
     conn = get_db()

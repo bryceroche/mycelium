@@ -187,6 +187,7 @@ async def main():
         result = await solver.solve(
             problem=problem["problem"],
             ground_truth=ground_truth,
+            benchmark=f"math_L{args.level}",
         )
 
         # Check correctness (basic string match)

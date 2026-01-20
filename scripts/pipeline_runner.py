@@ -227,13 +227,19 @@ async def solve_problem(
     injection_mode: str = "all",
     use_hints: bool = True,
     compute_budget: float = 1.0,
+    benchmark: str = None,
 ) -> ProblemResult:
     """Solve a single problem with the given match mode."""
     try:
         # V2 Solver: simplified API (strict DAG mode - no LLM fallback)
         solver = Solver(db_path=db_path)
 
-        result = await solver.solve(problem=problem["problem"], compute_budget=compute_budget)
+        result = await solver.solve(
+            problem=problem["problem"],
+            compute_budget=compute_budget,
+            benchmark=benchmark,
+            ground_truth=problem["answer"],
+        )
 
         # Check if answer matches ground truth
         is_correct = await answers_equivalent_llm(result.answer, problem["answer"])
@@ -303,11 +309,11 @@ async def solve_problem(
 
 def run_problem_sync(args: tuple) -> dict:
     """Synchronous wrapper for process pool."""
-    problem, match_mode, db_path, injection_mode, use_hints, compute_budget = args
+    problem, match_mode, db_path, injection_mode, use_hints, compute_budget, benchmark = args
     if match_mode == "direct":
         result = asyncio.run(solve_direct(problem))
     else:
-        result = asyncio.run(solve_problem(problem, match_mode, db_path, injection_mode, use_hints, compute_budget))
+        result = asyncio.run(solve_problem(problem, match_mode, db_path, injection_mode, use_hints, compute_budget, benchmark))
     return asdict(result)
 
 
@@ -338,7 +344,7 @@ def run_pipeline(
     tasks = []
     for mode in modes:
         for problem in problems:
-            tasks.append((problem, mode, db_path, injection_mode, use_hints, compute_budget))
+            tasks.append((problem, mode, db_path, injection_mode, use_hints, compute_budget, dataset))
 
     logger.info(f"Running {len(tasks)} total tasks ({len(problems)} problems x {len(modes)} modes)")
 

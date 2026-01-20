@@ -66,6 +66,15 @@ from mycelium.step_signatures.stats import record_step_stats
 from mycelium.embedder import Embedder
 from mycelium.embedding_cache import cached_embed, cached_embed_batch
 from mycelium.difficulty import estimate_difficulty
+from mycelium.data_layer.mcts import (
+    create_dag,
+    create_dag_steps,
+    grade_dag,
+    create_thread,
+    complete_thread,
+    grade_thread,
+    log_thread_step,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -708,6 +717,8 @@ class Solver:
         self,
         problem: str,
         compute_budget: float = None,
+        benchmark: str = None,
+        ground_truth: str = None,
     ) -> SolverResult:
         """Solve a problem end-to-end.
 
@@ -717,6 +728,8 @@ class Solver:
                 - None = adaptive budget (harder problems get more exploration)
                 - 1.0 = single best path (backward compatible)
                 - 2.0+ = explore multiple paths at low-confidence nodes
+            benchmark: Dataset name (e.g., "gsm8k", "math500_L1") for MCTS tracking
+            ground_truth: Correct answer for MCTS DAG grading
 
         Returns:
             SolverResult with answer and step details
@@ -756,6 +769,34 @@ class Solver:
             # Difficulty affects: depth, credit multiplier, routing preferences
             difficulty = estimate_difficulty(problem)
             logger.debug("[solver] Estimated difficulty: %.2f for problem: %s", difficulty, problem[:50])
+
+            # 0.15. Create MCTS DAG record for this problem (training mode only)
+            # Per CLAUDE.md: Track problem_id, problem_desc, benchmark, difficulty_level
+            import hashlib
+            problem_id = hashlib.sha256(problem.encode()).hexdigest()[:16]
+            if TRAINING_MODE:
+                self._current_dag_id = create_dag(
+                    problem_id=problem_id,
+                    problem_desc=problem,
+                    benchmark=benchmark,
+                    difficulty_level=difficulty,
+                    ground_truth=ground_truth,
+                )
+                logger.debug("[solver] Created MCTS DAG %s for problem %s", self._current_dag_id, problem_id)
+
+                # Create root thread record for MCTS tracking
+                # Per CLAUDE.md: "Create mcts_thread record for root thread at problem start"
+                if THREAD_TRACKING_ENABLED and self._root_thread_id:
+                    create_thread(
+                        dag_id=self._current_dag_id,
+                        parent_thread_id=None,
+                        fork_at_step=None,
+                        fork_reason=None,
+                        thread_id=self._root_thread_id,
+                    )
+                    logger.debug("[solver] Created root thread %s for DAG %s", self._root_thread_id[:12], self._current_dag_id)
+            else:
+                self._current_dag_id = None
 
             # 0.2. Adaptive compute budget: scale by difficulty (if not explicitly set)
             # Per CLAUDE.md: "Multi step simulated mcts rollouts"
@@ -825,6 +866,26 @@ class Solver:
                     error="Planning failed: no steps generated",
                     elapsed_ms=(time.time() - start_time) * 1000,
                 )
+
+            # Log DAG steps to mcts_dag_steps table (training mode only)
+            # Per beads issue: wire up step logging when DAG plan is generated
+            if TRAINING_MODE and self._current_dag_id:
+                dag_step_tuples = [
+                    (step.task, idx + 1, 1, step.is_atomic)  # (desc, step_num, branch_num, is_atomic)
+                    for idx, step in enumerate(plan.steps)
+                ]
+                dag_step_ids = create_dag_steps(self._current_dag_id, dag_step_tuples)
+                # Store mapping for thread step logging
+                self._dag_step_ids = {
+                    step.id: dag_step_id
+                    for step, dag_step_id in zip(plan.steps, dag_step_ids)
+                }
+                logger.debug(
+                    "[solver] Logged %d DAG steps for %s",
+                    len(dag_step_ids), self._current_dag_id
+                )
+            else:
+                self._dag_step_ids = {}
 
             # Pre-warm DSL expression cache in parallel for independent steps
             await self._prewarm_dsl_cache(plan.steps)
@@ -1782,6 +1843,19 @@ class Solver:
                     self._active_threads[fork_thread.thread_id] = fork_thread
                     self._problem_threads.append(fork_thread.thread_id)
                     fork_thread_id = fork_thread.thread_id
+
+                    # Create mcts_thread record for fork
+                    # Per CLAUDE.md: "Create fork records when MCTS branches"
+                    if self._current_dag_id:
+                        dag_step_id = self._dag_step_ids.get(step.id)
+                        create_thread(
+                            dag_id=self._current_dag_id,
+                            parent_thread_id=thread_id,
+                            fork_at_step=dag_step_id,
+                            fork_reason="explore",
+                            thread_id=fork_thread_id,
+                        )
+
                     logger.debug(
                         "[solver] Created fork thread %s for signature %s at step %s",
                         fork_thread_id[:8], sig.step_type, step.id
@@ -2306,6 +2380,12 @@ Expression:"""
             if step.signature_id is not None
         ]
         self.step_db.update_problem_outcome(signature_ids, correct, difficulty=difficulty)
+
+        # Grade the MCTS DAG (training mode only)
+        # Per CLAUDE.md: Set success/graded_at after final answer comparison
+        if hasattr(self, '_current_dag_id') and self._current_dag_id:
+            grade_dag(self._current_dag_id, success=correct)
+            logger.debug("[solver] Graded MCTS DAG %s: success=%s", self._current_dag_id, correct)
 
         # MCTS Training: Process path outcomes for operational equivalence learning
         # Only in training mode - inference skips this overhead
