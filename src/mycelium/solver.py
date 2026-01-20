@@ -1448,19 +1448,21 @@ class Solver:
                     dag_id=self._current_dag_id,
                     dag_step_id=dag_step_id,
                     node_id=routed_signature.id,
-                    amplitude=1.0,  # TODO: Use routing confidence when available
-                    similarity_score=None,  # TODO: Track from routing
-                    was_undecided=False,  # TODO: Set when multi-path branching
-                    ucb1_gap=None,  # TODO: Track from route_with_confidence
+                    amplitude=self._routing_confidence,
+                    similarity_score=self._routing_similarity,
+                    was_undecided=self._routing_was_undecided,
+                    ucb1_gap=self._routing_ucb1_gap,
                     alternatives_considered=len(explored_sigs) if explored_sigs else 1,
                     step_result=result[:500] if result else None,
                     step_success=step_completed,
                 )
                 logger.debug(
-                    "[solver] Logged thread step: thread=%s dag_step=%s node=%d success=%s",
+                    "[solver] Logged thread step: thread=%s dag_step=%s node=%d amp=%.2f undecided=%s success=%s",
                     thread_id[:12] if thread_id else None,
                     dag_step_id[:12] if dag_step_id else None,
                     routed_signature.id,
+                    self._routing_confidence,
+                    self._routing_was_undecided,
                     step_completed,
                 )
 
@@ -1903,6 +1905,22 @@ class Solver:
                             fork_reason="explore",
                             thread_id=fork_thread_id,
                         )
+
+                        # Log thread step for fork with amplitude data
+                        if dag_step_id:
+                            log_thread_step(
+                                thread_id=fork_thread_id,
+                                dag_id=self._current_dag_id,
+                                dag_step_id=dag_step_id,
+                                node_id=sig.id,
+                                amplitude=self._routing_confidence,
+                                similarity_score=score,
+                                was_undecided=True,  # Always undecided in multi-path
+                                ucb1_gap=self._routing_ucb1_gap,
+                                alternatives_considered=len(candidates),
+                                step_result=result[:500] if result else None,
+                                step_success=result is not None,
+                            )
 
                     logger.debug(
                         "[solver] Created fork thread %s for signature %s at step %s",
