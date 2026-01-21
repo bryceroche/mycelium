@@ -25,6 +25,19 @@ import numpy as np
 # Version for centroid matrix cache (increment to invalidate old caches)
 _CENTROID_CACHE_VERSION = 1
 
+
+def _parse_centroid_data(data) -> Optional[np.ndarray]:
+    """Parse centroid data which may be JSON string or binary bytes.
+
+    SQLite stores centroids as JSON strings, but legacy code expected binary.
+    This helper handles both formats.
+    """
+    if data is None:
+        return None
+    if isinstance(data, str):
+        return np.array(json.loads(data), dtype=np.float32)
+    return np.frombuffer(data, dtype=np.float32)
+
 from mycelium.config import (
     EMBEDDING_DIM,
     PARENT_CREDIT_DECAY,
@@ -2654,7 +2667,7 @@ class StepSignatureDB:
             if isinstance(centroid_data, str):
                 centroid = np.array(json.loads(centroid_data), dtype=np.float32)
             else:
-                centroid = np.frombuffer(centroid_data, dtype=np.float32)
+                centroid = _parse_centroid_data(centroid_data)
             count = row[1] or 1
             parent_id = row[2]
 
@@ -2725,7 +2738,7 @@ class StepSignatureDB:
             if isinstance(centroid_data, str):
                 centroid = np.array(json.loads(centroid_data), dtype=np.float32)
             else:
-                centroid = np.frombuffer(centroid_data, dtype=np.float32)
+                centroid = _parse_centroid_data(centroid_data)
             count = row[1] or 1
             parent_id = row[2]
 
@@ -2969,13 +2982,13 @@ class StepSignatureDB:
             survivor = rows[survivor_id]
             absorbed = rows[absorbed_id]
 
-            # Parse centroids
-            survivor_centroid = np.frombuffer(survivor[1], dtype=np.float32) if survivor[1] else None
-            absorbed_centroid = np.frombuffer(absorbed[1], dtype=np.float32) if absorbed[1] else None
+            # Parse centroids (handles both JSON string and binary formats)
+            survivor_centroid = _parse_centroid_data(survivor[1])
+            absorbed_centroid = _parse_centroid_data(absorbed[1])
 
             # Parse embedding sums
-            survivor_sum = np.frombuffer(survivor[2], dtype=np.float32) if survivor[2] else None
-            absorbed_sum = np.frombuffer(absorbed[2], dtype=np.float32) if absorbed[2] else None
+            survivor_sum = _parse_centroid_data(survivor[2])
+            absorbed_sum = _parse_centroid_data(absorbed[2])
 
             survivor_count = survivor[3] or 1
             absorbed_count = absorbed[3] or 1
@@ -3081,7 +3094,7 @@ class StepSignatureDB:
                     if isinstance(centroid_data, str):
                         centroid = np.array(json.loads(centroid_data), dtype=np.float32)
                     else:
-                        centroid = np.frombuffer(centroid_data, dtype=np.float32)
+                        centroid = _parse_centroid_data(centroid_data)
                     candidates.append((sig_id, centroid, uses, successes))
 
             if len(candidates) < 2:
