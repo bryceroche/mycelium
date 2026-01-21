@@ -1102,6 +1102,7 @@ class Solver:
         """
         step_descriptions = step_descriptions or {}
         import time
+        from mycelium.config import TRAINING_MODE
         start_time = time.time()
 
         # Reset routing context for MCTS amplitude logging

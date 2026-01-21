@@ -2603,14 +2603,22 @@ class StepSignatureDB:
         """
         with self._connection() as conn:
             row = conn.execute(
-                "SELECT centroid, embedding_count, parent_id FROM step_signatures WHERE id = ?",
+                """SELECT s.centroid, s.embedding_count, r.parent_id
+                   FROM step_signatures s
+                   LEFT JOIN signature_relationships r ON r.child_id = s.id
+                   WHERE s.id = ?""",
                 (signature_id,)
             ).fetchone()
 
             if row is None or row[0] is None:
                 return  # No centroid to attract
 
-            centroid = np.frombuffer(row[0], dtype=np.float32)
+            # Centroid is stored as JSON string, not bytes
+            centroid_data = row[0]
+            if isinstance(centroid_data, str):
+                centroid = np.array(json.loads(centroid_data), dtype=np.float32)
+            else:
+                centroid = np.frombuffer(centroid_data, dtype=np.float32)
             count = row[1] or 1
             parent_id = row[2]
 
@@ -2666,14 +2674,22 @@ class StepSignatureDB:
         """
         with self._connection() as conn:
             row = conn.execute(
-                "SELECT centroid, embedding_count, parent_id FROM step_signatures WHERE id = ?",
+                """SELECT s.centroid, s.embedding_count, r.parent_id
+                   FROM step_signatures s
+                   LEFT JOIN signature_relationships r ON r.child_id = s.id
+                   WHERE s.id = ?""",
                 (signature_id,)
             ).fetchone()
 
             if row is None or row[0] is None:
                 return  # No centroid to repel from
 
-            centroid = np.frombuffer(row[0], dtype=np.float32)
+            # Centroid is stored as JSON string, not bytes
+            centroid_data = row[0]
+            if isinstance(centroid_data, str):
+                centroid = np.array(json.loads(centroid_data), dtype=np.float32)
+            else:
+                centroid = np.frombuffer(centroid_data, dtype=np.float32)
             count = row[1] or 1
             parent_id = row[2]
 

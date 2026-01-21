@@ -127,7 +127,6 @@ def create_dag(
         """,
         (dag_id, problem_id, problem_desc, benchmark, difficulty_level, ground_truth, now),
     )
-    conn.commit()
 
     logger.debug("[mcts] Created DAG %s for problem %s", dag_id, problem_id[:30])
     return dag_id
@@ -144,7 +143,6 @@ def grade_dag(dag_id: str, success: bool) -> None:
         """,
         (1 if success else 0, now, dag_id),
     )
-    conn.commit()
 
 
 # =============================================================================
@@ -178,7 +176,6 @@ def create_dag_steps(dag_id: str, steps: list[tuple[str, int, int, bool]]) -> li
         )
         step_ids.append(dag_step_id)
 
-    conn.commit()
     logger.debug("[mcts] Created %d DAG steps for %s", len(steps), dag_id)
     return step_ids
 
@@ -219,7 +216,6 @@ def create_thread(
         """,
         (thread_id, dag_id, parent_thread_id, fork_at_step, fork_reason, now),
     )
-    conn.commit()
 
     logger.debug("[mcts] Created thread %s (parent=%s)", thread_id, parent_thread_id)
     return thread_id
@@ -246,7 +242,6 @@ def complete_thread(thread_id: str, final_answer: str, success: Optional[bool] =
             """,
             (final_answer, thread_id),
         )
-    conn.commit()
 
 
 def grade_thread(thread_id: str, success: bool) -> None:
@@ -260,7 +255,6 @@ def grade_thread(thread_id: str, success: bool) -> None:
         """,
         (1 if success else 0, now, thread_id),
     )
-    conn.commit()
 
 
 # =============================================================================
@@ -309,7 +303,6 @@ def log_thread_step(
             now,
         ),
     )
-    conn.commit()
 
     return thread_step_id
 
@@ -326,7 +319,6 @@ def update_amplitude_post(thread_step_id: str, amplitude_post: float) -> None:
         """,
         (amplitude_post, thread_step_id),
     )
-    conn.commit()
 
 
 def batch_update_amplitudes(updates: list[tuple[str, float]]) -> None:
@@ -345,7 +337,6 @@ def batch_update_amplitudes(updates: list[tuple[str, float]]) -> None:
         """,
         [(amp, tsid) for tsid, amp in updates],
     )
-    conn.commit()
     logger.debug("[mcts] Batch updated %d amplitudes", len(updates))
 
 
