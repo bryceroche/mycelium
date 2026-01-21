@@ -273,12 +273,31 @@ Big bang function accounting for the first five levels need to be empty. Sigmoid
 
   In a mature system, most atomic operations should have signatures. A novel step that doesn't match anything suggests it's a composite operation that should be broken into smaller pieces the system already knows.
 
-  Flow:
+  ### Sigmoid Transition (Cold → Mature)
+
+  The behavior isn't a hard cutoff - it's a **smooth sigmoid** based on maturity:
+
+  ```
+  P(decompose) = sigmoid(maturity_score)
+
+  where maturity_score = f(num_signatures, recent_accuracy)
+  ```
+
+  - **Early (low maturity)**: Bias toward creating new atomic signatures
+  - **Late (high maturity)**: Bias toward decomposing into existing signatures
+
+  This mirrors the "big bang" cold start philosophy - aggressive signature creation early, tapering off as the vocabulary stabilizes.
+
+  ### Flow (with escape hatch)
+
   1. Route fails (no graph embedding match above threshold)
-  2. Recognize this as "novel complex step" not "missing simple operation"
-  3. LLM decomposes the step into sub-steps
-  4. Route each sub-step (should now match existing signatures)
-  5. Combine results
+  2. Check maturity score → compute P(decompose)
+  3. If decomposing: LLM breaks step into sub-steps
+  4. Route each sub-step against existing signatures
+  5. **Escape hatch**: If sub-steps ALSO don't match → genuinely novel → create new atomic signature
+  6. Combine results
+
+  The escape hatch ensures the system can still learn new atomic operations when truly needed, while preferring composition in a mature state.
 
 ## Key Questions
   ### Depth & Accuracy
