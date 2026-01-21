@@ -2472,23 +2472,7 @@ Expression:"""
         if self._current_dag_id:
             grade_dag(self._current_dag_id, success=correct)
             logger.debug("[solver] Graded MCTS DAG %s: success=%s", self._current_dag_id, correct)
-
-            # Run post-mortem analysis including interference pattern detection
-            # Per CLAUDE.md: "High confidence + failure = strong negative signal"
-            # Per CLAUDE.md: Interference patterns drive structural tree evolution
-            postmortem_stats = run_postmortem_with_interference(self._current_dag_id, self.step_db)
-            if postmortem_stats.get("high_conf_wrong", 0) > 0:
-                logger.warning(
-                    "[solver] Post-mortem found %d high-confidence wrong decisions in DAG %s",
-                    postmortem_stats["high_conf_wrong"], self._current_dag_id
-                )
-            if postmortem_stats.get("destructive_interference", 0) > 0:
-                logger.info(
-                    "[solver] Post-mortem found %d destructive interference patterns "
-                    "(nodes flagged for split: %s)",
-                    postmortem_stats["destructive_interference"],
-                    postmortem_stats.get("nodes_flagged_split", [])
-                )
+            # NOTE: Postmortem runs AFTER thread outcomes are recorded (see below)
 
         # MCTS Training: Process path outcomes for operational equivalence learning
         # Only in training mode - inference skips this overhead
@@ -2573,6 +2557,26 @@ Expression:"""
         # Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
         if THREAD_TRACKING_ENABLED and TRAINING_MODE and self._problem_threads:
             self._record_thread_outcomes(result, correct, ground_truth)
+
+        # Run post-mortem AFTER threads are graded (so we have success values)
+        # Per CLAUDE.md: "High confidence + failure = strong negative signal"
+        if self._current_dag_id:
+            try:
+                postmortem_stats = run_postmortem_with_interference(self._current_dag_id, self.step_db)
+                if postmortem_stats.get("high_conf_wrong", 0) > 0:
+                    logger.warning(
+                        "[solver] Post-mortem: %d high-confidence wrong in DAG %s",
+                        postmortem_stats["high_conf_wrong"], self._current_dag_id
+                    )
+                if postmortem_stats.get("total_steps", 0) > 0:
+                    logger.info(
+                        "[solver] Post-mortem: %d steps, %d won, %d lost",
+                        postmortem_stats["total_steps"],
+                        postmortem_stats.get("threads_won", 0),
+                        postmortem_stats.get("threads_lost", 0),
+                    )
+            except Exception as e:
+                logger.error("[solver] Postmortem failed: %s", e)
 
         # Always clear pending outcomes (memory safety)
         self._pending_path_outcomes.clear()
