@@ -78,6 +78,20 @@ from mycelium.step_signatures.operational_alignment import (
     print_alignment_report,
 )
 
+from mycelium.step_signatures.graph_extractor import (
+    extract_computation_graph,
+    graphs_equivalent,
+    embed_computation_graph,
+    clear_graph_embedding_cache,
+)
+
+from mycelium.step_signatures.operation_extractor import (
+    extract_operation_needed,
+    get_operation_embedding,
+    extract_and_embed_operation,
+    clear_operation_cache,
+)
+
 from mycelium.data_layer.schema import STEP_SCHEMA as STEP_SCHEMA_SQL
 
 __all__ = [
@@ -136,4 +150,14 @@ __all__ = [
     "get_alignment_trend",
     "record_routing_outcome",
     "print_alignment_report",
+    # Computation Graph Extraction & Embedding
+    "extract_computation_graph",
+    "graphs_equivalent",
+    "embed_computation_graph",
+    "clear_graph_embedding_cache",
+    # Operation Extraction (for routing)
+    "extract_operation_needed",
+    "get_operation_embedding",
+    "extract_and_embed_operation",
+    "clear_operation_cache",
 ]

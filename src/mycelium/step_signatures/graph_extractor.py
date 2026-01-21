@@ -263,3 +263,69 @@ def graphs_equivalent(graph1: Optional[str], graph2: Optional[str]) -> bool:
     if graph1 is None or graph2 is None:
         return graph1 == graph2
     return graph1 == graph2
+
+
+# Graph embedding cache
+_graph_embedding_cache: dict[str, list[float]] = {}
+_GRAPH_CACHE_MAX_SIZE = 500
+
+
+async def embed_computation_graph(
+    embedding_client,
+    graph: str,
+) -> Optional[list[float]]:
+    """Embed a computation graph for routing comparison.
+
+    The graph embedding is what signatures are matched against.
+    Operation embeddings (extracted from problem text) are compared
+    to graph embeddings to find matching signatures.
+
+    Args:
+        embedding_client: Client for embedding generation
+        graph: Computation graph string (e.g., "MUL(param_0, param_1)")
+
+    Returns:
+        Embedding vector or None
+
+    Example:
+        >>> emb = await embed_computation_graph(client, "MUL(param_0, param_1)")
+        >>> len(emb)
+        3072
+    """
+    global _graph_embedding_cache
+
+    if not graph:
+        return None
+
+    # Check cache
+    if graph in _graph_embedding_cache:
+        logger.debug("[graph_embed] Cache hit for: %s", graph[:50])
+        return _graph_embedding_cache[graph]
+
+    # Generate embedding
+    try:
+        embedding = await embedding_client.embed(graph)
+
+        if embedding:
+            # Cache with simple eviction
+            if len(_graph_embedding_cache) >= _GRAPH_CACHE_MAX_SIZE:
+                # Remove oldest entries
+                keys_to_remove = list(_graph_embedding_cache.keys())[:_GRAPH_CACHE_MAX_SIZE // 10]
+                for k in keys_to_remove:
+                    del _graph_embedding_cache[k]
+
+            _graph_embedding_cache[graph] = embedding
+            logger.debug("[graph_embed] Cached embedding for: %s", graph[:50])
+
+        return embedding
+
+    except Exception as e:
+        logger.error("[graph_embed] Failed to embed graph: %s", e)
+        return None
+
+
+def clear_graph_embedding_cache() -> None:
+    """Clear the graph embedding cache."""
+    global _graph_embedding_cache
+    _graph_embedding_cache.clear()
+    logger.debug("[graph_embed] Cache cleared")
