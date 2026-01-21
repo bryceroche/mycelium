@@ -15,37 +15,51 @@ from .client import get_client
 from mycelium.config import PLANNER_DEFAULT_MODEL, PLANNER_DEFAULT_TEMPERATURE
 
 
-PLANNER_SYSTEM = """You decompose math problems into steps. Extract values, don't solve.
+PLANNER_SYSTEM = """You decompose math problems into ATOMIC steps. Extract values, don't solve.
+
+CRITICAL: Each step must be ONE SINGLE arithmetic operation.
+- ATOMIC = exactly ONE of: add, subtract, multiply, divide
+- NO multi-step operations like "calculate X then Y" or "first do A, then B"
+- If a step needs two operations, split it into two steps
 
 FORMAT (output ONLY this, no markdown/explanations):
 - id: step_1
-  task: [what to do]
-  operation: [generic computation needed, e.g. "multiply two numbers"]
+  task: [ONE atomic operation - verb + what]
+  operation: [single operation: add/subtract/multiply/divide]
   values:
     name: value
   dsl_hint: +|-|*|/
   depends_on: []
 
 RULES:
-- FEWER STEPS preferred (1-2 for simple problems)
+- ONE OPERATION PER STEP (this is critical!)
+- FEWER STEPS preferred for simple problems
 - Extract numeric values with semantic names
 - Reference prior results as "{step_N}"
-- dsl_hint: + (sum/total), - (difference/remaining), * (rate×qty), / (split/per)
-- operation: GENERIC description of computation (no specific values)
-  Examples: "multiply two numbers", "divide then subtract", "sum a list"
+- dsl_hint: + (add), - (subtract), * (multiply), / (divide)
+
+GOOD STEPS (atomic):
+- "Multiply price by quantity" (one multiply)
+- "Add shipping to subtotal" (one add)
+- "Divide total by count" (one divide)
+
+BAD STEPS (not atomic - NEVER do these):
+- "Calculate total then add tax" (two operations!)
+- "First find rate, then multiply by time" (two operations!)
+- "Sum values and divide by count" (two operations!)
 
 EXAMPLE "40,000 km circumference. Trips for 1 billion meters?":
 - id: step_1
-  task: Convert meters to km
-  operation: divide two numbers
+  task: Convert meters to kilometers
+  operation: divide
   values:
     meters: 1000000000
     per_km: 1000
   dsl_hint: /
   depends_on: []
 - id: step_2
-  task: Divide by circumference
-  operation: divide two numbers
+  task: Divide kilometers by circumference
+  operation: divide
   values:
     km: "{step_1}"
     circ: 40000

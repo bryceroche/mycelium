@@ -378,7 +378,7 @@ BIG_BANG_MAX_FORK_PROB = 0.95  # Ceiling probability (never 100% certain to fork
 # Detection: If top_2_similarity_gap < threshold, trigger step decomposition.
 # Per CLAUDE.md: "Attempt to route first - decompose on failure"
 
-OCTOPUS_DETECTION_ENABLED = True  # Enable Octopus detection
+OCTOPUS_DETECTION_ENABLED = False  # Disabled: rely on better prompts for atomic steps
 OCTOPUS_CONFUSION_GAP = 0.05  # Min gap between top-2 children to be "confident"
 OCTOPUS_MIN_DEPTH = 3  # Only detect at depth >= this (ignore root-level confusion)
 
@@ -390,7 +390,7 @@ OCTOPUS_MIN_DEPTH = 3  # Only detect at depth >= this (ignore root-level confusi
 #
 # Per CLAUDE.md: "Failing signatures get decomposed"
 
-GORILLA_PROACTIVE_ENABLED = True  # Enable proactive complexity detection
+GORILLA_PROACTIVE_ENABLED = False  # Disabled: rely on better prompts for atomic steps
 GORILLA_MAX_PARAMS = 4  # Steps with more extracted_values likely need decomposition
 
 # Embedding-based complexity detection (replaces keyword matching)
