@@ -20,6 +20,90 @@ In a math DSL, this creates two failure modes:
 
 Embeddings trained on natural language don't understand that `+` and `*` are fundamentally different operations, regardless of variable names.
 
+## The Solution: Computation Graph Embeddings
+
+**Route by what operations DO, not what they SOUND LIKE.**
+
+Instead of embedding problem text and comparing to signature text, we:
+1. **Extract "what operation is needed"** from the problem text (LLM call)
+2. **Embed that operation description**
+3. **Compare to computation graph embeddings** stored on signatures
+
+### Computation Graphs
+
+A computation graph is a structural representation of what a DSL actually computes:
+
+```
+DSL: return amount * rate
+Graph: MUL(param_0, param_1) → result
+
+DSL: return sum(items)
+Graph: REDUCE_SUM(param_0) → result
+
+DSL: return (price * quantity) + tax
+Graph: ADD(MUL(param_0, param_1), param_2) → result
+```
+
+The graph is:
+- **Parameter-agnostic**: Variable names don't matter, structure does
+- **Implementation-agnostic**: Same graph regardless of Python vs SymPy
+- **Operationally meaningful**: Two DSLs with the same graph do the same thing
+
+### Routing Flow
+
+```
+Problem: "What is 15% of 80?"
+    │
+    ▼ (LLM extracts operation needed)
+"multiply a value by a percentage"
+    │
+    ▼ (embed operation description)
+    │
+    ▼ (compare to graph embeddings)
+Match: signature with graph MUL(p0, p1)
+    │
+    ▼ (extract parameters from problem)
+{value: 80, percentage: 0.15}
+    │
+    ▼ (execute DSL)
+Result: 12
+```
+
+### Why This Works
+
+| Text Embedding | Graph Embedding |
+|----------------|-----------------|
+| "add tax" ≈ "add items" (same word) | ADD(a, MUL(b,c)) ≠ REDUCE_SUM(list) |
+| Clusters by vocabulary | Clusters by computation structure |
+| Needs centroid drift to fix | Correct from first successful execution |
+
+### Generic DSL Parameters
+
+DSLs must be templates with generic parameters, not hardcoded values:
+
+```python
+# Good: generic template
+def compute(amount, rate):
+    return amount * rate
+
+# Bad: hardcoded values
+def compute():
+    return 100 * 0.08
+```
+
+The `param_descriptions` and `clarifying_questions` guide parameter extraction from problem text at runtime.
+
+### Cold Start
+
+1. Problem arrives, no matching graph embedding
+2. LLM extracts "what operation is needed"
+3. LLM generates new DSL
+4. Extract computation graph from DSL
+5. Embed graph → create signature
+6. Execute and record outcome
+
+Future similar operations route here by graph similarity.
+
 ## The Insight: MCTS Rollouts as Ground Truth
 
 **MCTS rollout outcomes provide ground truth for operational equivalence.**
@@ -190,11 +274,11 @@ Big bang function accounting for the first five levels need to be empty. Sigmoid
   **How do clusters form?**
   Emerge naturally from umbrella promotions.
   **How do we route?**
-  MCTS, but learned from embeddings.
+  Extract "what operation is needed" from problem → embed → compare to computation graph embeddings.
   **Cluster Centroid**
-  Average of all descendant leaf embeddings.
+  Computation graph embedding (structural, not lexical).
   **How does learning work at each level?**
-  Learn "these operation types cluster together."
+  Learn "these computation structures cluster together."
   ### Hierarchy
   **When to create a new root?**
   Only one root. Every problem goes through the first root signature.
@@ -274,8 +358,10 @@ This lets umbrella signatures accumulate credit from their children's successes,
   - Smooth refactoring - not all at once
 
 
-## Semantic Embedding First
-**Always prefer embedding similarity over keyword matching.**
+## Operational Embedding First
+**Route by computation graph embeddings, not text similarity.**
+
+Text embeddings cluster by vocabulary. Computation graph embeddings cluster by what operations actually do. Always match against the graph.
 
 
 ## How to use Beads
