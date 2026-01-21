@@ -208,7 +208,7 @@ Big bang function accounting for the first five levels need to be empty. Sigmoid
   **What's the root's initial state?**
   First signature IS the root.
   **When does umbrella promotion happen?**
-  On failure.
+  Driven by post-mortem analysis detecting destructive interference (not immediate on failure).
   **How to migrate existing signatures?**
   Start fresh.
   ## The Meta Insight
@@ -222,12 +222,12 @@ slow decay.  Calculate signature use count /  ((cache) count of total num proble
 
 ## Core Principle: Failures Are Valuable Data Points
 **Let signatures fail.** This is how the system learns.
-- Record every failure—it feeds the refinement loop
+- Record every failure—it feeds the post-mortem analysis
 - Do not fallback to LLM reasoning
-- Failed signatures get decomposed
+- Accumulated failure patterns (not individual failures) trigger decomposition via post-mortem
 - Success/failure stats drive routing decisions
 
-The goal is NOT 100% accuracy on every run. The goal is collecting data that makes the system smarter over time. A failed DSL provides valuable signal.
+The goal is NOT 100% accuracy on every run. The goal is collecting data that makes the system smarter over time. A failed DSL provides valuable signal for post-mortem analysis.
 
 ## Learning Mechanisms
 Centroid Averaging
@@ -256,8 +256,8 @@ This lets umbrella signatures accumulate credit from their children's successes,
   - Credit propagation guided by decay by depth function
 
   ### Decomposition
-  - Failing signatures (or nodes) decompose
-  - It's okay for node to decompose bc it provides signal
+  - Signatures decompose when post-mortem detects destructive interference (not on individual failures)
+  - It's okay for node to decompose bc it provides signal for future post-mortems
   - Bi-directional natural language communication between signatures and decomposer is key (query each other)
 
   ### Cold Start

@@ -3070,6 +3070,34 @@ class StepSignatureDB:
 
             return True
 
+    def archive_signature(self, signature_id: int, reason: str = "retirement") -> bool:
+        """Archive a signature (soft delete).
+
+        Archived signatures are excluded from routing but kept for analysis.
+        This is a soft delete - the signature data remains in the database.
+
+        Args:
+            signature_id: ID of signature to archive
+            reason: Why it's being archived
+
+        Returns:
+            True if archived successfully
+        """
+        with self._connection() as conn:
+            conn.execute(
+                """UPDATE step_signatures
+                   SET is_archived = 1
+                   WHERE id = ?""",
+                (signature_id,)
+            )
+
+            logger.info(
+                "[db] Archived signature %d (reason: %s)",
+                signature_id, reason
+            )
+
+            return True
+
     # =========================================================================
     # Usage Recording
     # =========================================================================

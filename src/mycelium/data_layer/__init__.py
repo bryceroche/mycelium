@@ -34,6 +34,11 @@ from mycelium.data_layer.mcts import (
     get_dag_step_node_performance,
     run_postmortem,
     get_problem_nodes_needing_attention,
+    # DSL regeneration from post-mortem (per beads mycelium-flbq)
+    trigger_dsl_regeneration_for_nodes,
+    get_accumulated_failing_nodes,
+    clear_accumulated_failing_nodes,
+    should_trigger_dsl_regen,
 )
 
 db = get_db()
@@ -68,4 +73,9 @@ __all__ = [
     "get_dag_step_node_performance",
     "run_postmortem",
     "get_problem_nodes_needing_attention",
+    # DSL regeneration
+    "trigger_dsl_regeneration_for_nodes",
+    "get_accumulated_failing_nodes",
+    "clear_accumulated_failing_nodes",
+    "should_trigger_dsl_regen",
 ]

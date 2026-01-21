@@ -985,15 +985,16 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
             len(problem_nodes), len(get_accumulated_failing_nodes())
         )
 
-    # Check if we should run merge/split (batched for performance)
+    # Check if we should run merge/split/retirement (batched for performance)
     merge_split_result = {"merges_succeeded": 0, "merged_pairs": [], "splits_flagged": 0}
+    retirement_result = {"demoted": 0, "pruned": 0, "merged_up": 0}
 
-    should_run_merge_split = (
+    should_run_batch_ops = (
         MERGE_SPLIT_BATCH_SIZE > 0 and
         _postmortem_problem_count >= MERGE_SPLIT_BATCH_SIZE
     )
 
-    if should_run_merge_split:
+    if should_run_batch_ops:
         # Run merge/split with accumulated data
         merge_split_result = run_merge_split_from_interference(
             step_db,
@@ -1001,12 +1002,23 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
             nodes_flagged_split=list(set(_accumulated_nodes_for_split)),  # Dedupe
         )
 
+        # Run retirement check (per beads mycelium-x0mt)
+        if RETIREMENT_ENABLED:
+            retirement_result = run_retirement_check(step_db)
+            if retirement_result.get("demoted", 0) or retirement_result.get("pruned", 0):
+                logger.info(
+                    "[mcts] Retirement: %d demoted, %d pruned, %d merged_up",
+                    retirement_result.get("demoted", 0),
+                    retirement_result.get("pruned", 0),
+                    retirement_result.get("merged_up", 0),
+                )
+
         # Reset counters
         _postmortem_problem_count = 0
         _accumulated_nodes_for_split = []
 
         logger.info(
-            "[mcts] Batch merge/split complete: %d merges, %d splits flagged",
+            "[mcts] Batch operations complete: %d merges, %d splits flagged",
             merge_split_result["merges_succeeded"],
             merge_split_result["splits_flagged"],
         )
@@ -1021,6 +1033,10 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         "merges_succeeded": merge_split_result["merges_succeeded"],
         "merged_pairs": merge_split_result["merged_pairs"],
         "splits_flagged": merge_split_result["splits_flagged"],
+        # Retirement stats (per beads mycelium-x0mt)
+        "retirement_demoted": retirement_result.get("demoted", 0),
+        "retirement_pruned": retirement_result.get("pruned", 0),
+        "retirement_merged_up": retirement_result.get("merged_up", 0),
         "batch_counter": _postmortem_problem_count,
         "next_merge_split_in": MERGE_SPLIT_BATCH_SIZE - _postmortem_problem_count if MERGE_SPLIT_BATCH_SIZE > 0 else -1,
         # DSL regeneration info (per beads mycelium-flbq)
