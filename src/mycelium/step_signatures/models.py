@@ -15,8 +15,23 @@ import json
 import logging
 
 import numpy as np
+from typing import Union
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_centroid_data(data: Union[str, bytes, None]) -> Optional[np.ndarray]:
+    """Parse centroid data which may be JSON string or binary bytes.
+
+    SQLite stores centroids as JSON strings, but legacy code stored binary.
+    This helper handles both formats.
+    """
+    if data is None:
+        return None
+    if isinstance(data, str):
+        return np.array(json.loads(data), dtype=np.float32)
+    # Binary numpy data
+    return np.frombuffer(data, dtype=np.float32)
 
 
 @dataclass
@@ -219,19 +234,19 @@ class StepSignature:
             except json.JSONDecodeError as e:
                 logger.warning("[models] Invalid difficulty_stats JSON for sig %s: %s", sig_id, e)
 
-        # Parse centroid and embedding_sum
+        # Parse centroid and embedding_sum (handles both JSON and legacy binary)
         centroid = None
         if row.get("centroid"):
             try:
-                centroid = np.array(json.loads(row["centroid"]))
-            except (json.JSONDecodeError, ValueError) as e:
+                centroid = _parse_centroid_data(row["centroid"])
+            except Exception as e:
                 logger.warning("[models] Invalid centroid for sig %s: %s", sig_id, e)
 
         embedding_sum = None
         if row.get("embedding_sum"):
             try:
-                embedding_sum = np.array(json.loads(row["embedding_sum"]))
-            except (json.JSONDecodeError, ValueError) as e:
+                embedding_sum = _parse_centroid_data(row["embedding_sum"])
+            except Exception as e:
                 logger.warning("[models] Invalid embedding_sum for sig %s: %s", sig_id, e)
 
         embedding_count = row.get("embedding_count", 1) or 1
