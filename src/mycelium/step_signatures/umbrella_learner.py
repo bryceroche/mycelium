@@ -193,7 +193,12 @@ class UmbrellaLearner:
 
         Criteria for both:
         - uses >= UMBRELLA_MIN_USES_FOR_EVALUATION (enough data)
+        - operational_failures > 0 (flagged by MCTS post-mortem)
         - failure_rate > adaptive_split_threshold (failing)
+
+        Per CLAUDE.md: "Do not decompose a leaf node until instructed by the
+        MCTS rollout post-mortem analysis." Decomposition is triggered by
+        destructive interference patterns, not by low success rate alone.
 
         The split threshold is adaptive based on global accuracy:
         - Low accuracy (cold start): lenient threshold (tolerate more failures)
@@ -213,6 +218,10 @@ class UmbrellaLearner:
         for sig in all_sigs:
             # Skip if not enough uses
             if sig.uses < UMBRELLA_MIN_USES_FOR_EVALUATION:
+                continue
+            # CRITICAL: Per CLAUDE.md, only decompose when flagged by MCTS post-mortem
+            # operational_failures > 0 means destructive interference was detected
+            if sig.operational_failures <= 0:
                 continue
             # Skip if success rate is acceptable
             if sig.success_rate > max_success_rate:
@@ -235,9 +244,9 @@ class UmbrellaLearner:
             if is_decompose_candidate or is_orphan_umbrella:
                 candidates.append(sig)
                 logger.debug(
-                    "[umbrella] Candidate: '%s' (uses=%d, success=%.1f%%, threshold=%.1f%%, orphan=%s)",
+                    "[umbrella] Candidate: '%s' (uses=%d, success=%.1f%%, threshold=%.1f%%, op_fail=%d, orphan=%s)",
                     sig.step_type, sig.uses, sig.success_rate * 100, max_success_rate * 100,
-                    is_orphan_umbrella
+                    sig.operational_failures, is_orphan_umbrella
                 )
 
         return candidates

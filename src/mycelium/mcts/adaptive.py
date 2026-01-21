@@ -18,6 +18,10 @@ from mycelium.config import (
     ADAPTIVE_SPLIT_THRESHOLD_LENIENT,
     ADAPTIVE_SPLIT_THRESHOLD_STRICT,
     ADAPTIVE_ACCURACY_WINDOW_SIZE,
+    UCB1_ADJUSTMENT_ENABLED,
+    UCB1_ADJUSTMENT_WINDOW,
+    UCB1_ADJUSTMENT_MAX_DELTA,
+    UCB1_ADJUSTMENT_SENSITIVITY,
 )
 
 logger = logging.getLogger(__name__)
@@ -105,6 +109,15 @@ class AdaptiveExploration:
         self._total_problems = 0
         self._total_successes = 0
 
+        # Hit/miss tracking for UCB1 adjustment (per beads issue mycelium-nirq)
+        # Tracks post-mortem patterns: high_conf_wrong, low_conf_right
+        self._hitmiss_window = UCB1_ADJUSTMENT_WINDOW
+        self._high_conf_wrong: deque[int] = deque(maxlen=self._hitmiss_window)
+        self._low_conf_right: deque[int] = deque(maxlen=self._hitmiss_window)
+        self._total_high_conf: deque[int] = deque(maxlen=self._hitmiss_window)
+        self._total_low_conf: deque[int] = deque(maxlen=self._hitmiss_window)
+        self._ucb1_adjustment = 0.0  # Current adjustment to C
+
     @classmethod
     def get_instance(cls, window_size: int = None) -> "AdaptiveExploration":
         """Get singleton instance."""
@@ -131,12 +144,79 @@ class AdaptiveExploration:
         # Log periodically
         if self._total_problems % 100 == 0:
             logger.info(
-                "[adaptive] Progress: %d problems, %.1f%% rolling accuracy, C=%.2f, split_threshold=%.2f",
+                "[adaptive] Progress: %d problems, %.1f%% rolling accuracy, C=%.2f (adj=%.2f), split_threshold=%.2f",
                 self._total_problems,
                 self.global_accuracy * 100,
                 self.exploration_weight,
+                self._ucb1_adjustment,
                 self.split_threshold,
             )
+
+    def record_postmortem_stats(
+        self,
+        high_conf_wrong: int,
+        low_conf_right: int,
+        total_high_conf: int,
+        total_low_conf: int,
+    ):
+        """Record post-mortem hit/miss stats for UCB1 adjustment.
+
+        Called after run_postmortem to update hit/miss tracking.
+
+        Args:
+            high_conf_wrong: Count of high-confidence wrong decisions
+            low_conf_right: Count of low-confidence right decisions
+            total_high_conf: Total high-confidence decisions
+            total_low_conf: Total low-confidence decisions
+        """
+        if not UCB1_ADJUSTMENT_ENABLED:
+            return
+
+        self._high_conf_wrong.append(high_conf_wrong)
+        self._low_conf_right.append(low_conf_right)
+        self._total_high_conf.append(total_high_conf)
+        self._total_low_conf.append(total_low_conf)
+
+        # Recompute UCB1 adjustment from rolling window
+        self._update_ucb1_adjustment()
+
+    def _update_ucb1_adjustment(self):
+        """Update UCB1 adjustment based on hit/miss patterns.
+
+        Logic:
+        - high_conf_wrong_rate = sum(high_conf_wrong) / sum(total_high_conf)
+        - low_conf_right_rate = sum(low_conf_right) / sum(total_low_conf)
+
+        Adjustment signals:
+        - High low_conf_right_rate → exploration is finding good paths → increase C
+        - High high_conf_wrong_rate → confident picks are wrong → increase C
+        - Both low → well-calibrated → no adjustment
+        """
+        total_hc = sum(self._total_high_conf)
+        total_lc = sum(self._total_low_conf)
+
+        if total_hc == 0 and total_lc == 0:
+            self._ucb1_adjustment = 0.0
+            return
+
+        # Compute rates
+        hc_wrong_rate = sum(self._high_conf_wrong) / total_hc if total_hc > 0 else 0.0
+        lc_right_rate = sum(self._low_conf_right) / total_lc if total_lc > 0 else 0.0
+
+        # Adjustment logic:
+        # - hc_wrong_rate high → we're over-confident → explore more (+)
+        # - lc_right_rate high → exploration finds good stuff → explore more (+)
+        # Combined signal, scaled by sensitivity
+        raw_signal = (hc_wrong_rate + lc_right_rate) / 2.0
+        adjustment = raw_signal * UCB1_ADJUSTMENT_SENSITIVITY * UCB1_ADJUSTMENT_MAX_DELTA * 2
+
+        # Clamp to max delta
+        self._ucb1_adjustment = max(-UCB1_ADJUSTMENT_MAX_DELTA, min(UCB1_ADJUSTMENT_MAX_DELTA, adjustment))
+
+        logger.debug(
+            "[adaptive] UCB1 adjustment: hc_wrong=%.2f, lc_right=%.2f, adj=%.3f",
+            hc_wrong_rate, lc_right_rate, self._ucb1_adjustment
+        )
 
     @property
     def global_accuracy(self) -> float:
@@ -154,8 +234,15 @@ class AdaptiveExploration:
 
     @property
     def exploration_weight(self) -> float:
-        """Get adaptive exploration weight (C) for UCB1."""
-        return get_adaptive_exploration_weight(self.global_accuracy)
+        """Get adaptive exploration weight (C) for UCB1.
+
+        Combines accuracy-based weight with post-mortem hit/miss adjustment.
+        """
+        base_c = get_adaptive_exploration_weight(self.global_accuracy)
+        adjusted_c = base_c + self._ucb1_adjustment
+
+        # Clamp to valid range
+        return max(ADAPTIVE_EXPLORATION_C_MIN, min(ADAPTIVE_EXPLORATION_C_MAX, adjusted_c))
 
     @property
     def split_threshold(self) -> float:
@@ -169,6 +256,9 @@ class AdaptiveExploration:
 
     def get_stats(self) -> dict:
         """Get current adaptive exploration stats."""
+        total_hc = sum(self._total_high_conf)
+        total_lc = sum(self._total_low_conf)
+
         return {
             "total_problems": self._total_problems,
             "total_successes": self._total_successes,
@@ -178,4 +268,9 @@ class AdaptiveExploration:
             "lifetime_accuracy": self.lifetime_accuracy,
             "exploration_weight": self.exploration_weight,
             "split_threshold": self.split_threshold,
+            # Hit/miss stats for UCB1 adjustment
+            "ucb1_adjustment": self._ucb1_adjustment,
+            "hitmiss_window": len(self._high_conf_wrong),
+            "high_conf_wrong_rate": sum(self._high_conf_wrong) / total_hc if total_hc > 0 else 0.0,
+            "low_conf_right_rate": sum(self._low_conf_right) / total_lc if total_lc > 0 else 0.0,
         }

@@ -20,6 +20,90 @@ In a math DSL, this creates two failure modes:
 
 Embeddings trained on natural language don't understand that `+` and `*` are fundamentally different operations, regardless of variable names.
 
+## The Solution: Computation Graph Embeddings
+
+**Route by what operations DO, not what they SOUND LIKE.**
+
+Instead of embedding problem text and comparing to signature text, we:
+1. **Extract "what operation is needed"** from the problem text (LLM call)
+2. **Embed that operation description**
+3. **Compare to computation graph embeddings** stored on signatures
+
+### Computation Graphs
+
+A computation graph is a structural representation of what a DSL actually computes:
+
+```
+DSL: return amount * rate
+Graph: MUL(param_0, param_1) → result
+
+DSL: return sum(items)
+Graph: REDUCE_SUM(param_0) → result
+
+DSL: return (price * quantity) + tax
+Graph: ADD(MUL(param_0, param_1), param_2) → result
+```
+
+The graph is:
+- **Parameter-agnostic**: Variable names don't matter, structure does
+- **Implementation-agnostic**: Same graph regardless of Python vs SymPy
+- **Operationally meaningful**: Two DSLs with the same graph do the same thing
+
+### Routing Flow
+
+```
+Problem: "What is 15% of 80?"
+    │
+    ▼ (LLM extracts operation needed)
+"multiply a value by a percentage"
+    │
+    ▼ (embed operation description)
+    │
+    ▼ (compare to graph embeddings)
+Match: signature with graph MUL(p0, p1)
+    │
+    ▼ (extract parameters from problem)
+{value: 80, percentage: 0.15}
+    │
+    ▼ (execute DSL)
+Result: 12
+```
+
+### Why This Works
+
+| Text Embedding | Graph Embedding |
+|----------------|-----------------|
+| "add tax" ≈ "add items" (same word) | ADD(a, MUL(b,c)) ≠ REDUCE_SUM(list) |
+| Clusters by vocabulary | Clusters by computation structure |
+| Needs centroid drift to fix | Correct from first successful execution |
+
+### Generic DSL Parameters
+
+DSLs must be templates with generic parameters, not hardcoded values:
+
+```python
+# Good: generic template
+def compute(amount, rate):
+    return amount * rate
+
+# Bad: hardcoded values
+def compute():
+    return 100 * 0.08
+```
+
+The `param_descriptions` and `clarifying_questions` guide parameter extraction from problem text at runtime.
+
+### Cold Start
+
+1. Problem arrives, no matching graph embedding
+2. LLM extracts "what operation is needed"
+3. LLM generates new DSL
+4. Extract computation graph from DSL
+5. Embed graph → create signature
+6. Execute and record outcome
+
+Future similar operations route here by graph similarity.
+
 ## The Insight: MCTS Rollouts as Ground Truth
 
 **MCTS rollout outcomes provide ground truth for operational equivalence.**
@@ -38,6 +122,26 @@ Over time, successful signatures accumulate embeddings of problems they *actuall
 ### The Result
 
 High-traffic signatures become **semantic attractors**: their centroids stabilize around operational meaning rather than vocabulary. The embedding space self-organizes by what operations *do*, not what they *look like*.
+
+## The Crown Jewel: MCTS Post-Mortem Analysis
+
+**MCTS post-mortem analysis is the central brain of the system.** All structural decisions flow from it:
+
+| Decision | Trigger from Post-Mortem |
+|----------|-------------------------|
+| **Leaf decomposition** | Destructive interference (mixed success/failure at same node) |
+| **Centroid updates** | Successful rollouts average in new embeddings |
+| **Cluster merges** | Constructive interference (multiple nodes succeed together) |
+| **Cluster splits** | High variance in `(dag_step_id, node_id)` performance |
+| **Amplitude adjustments** | Confidence × outcome signal strength |
+
+**Nothing changes the tree structure except post-mortem analysis.** Individual failures don't trigger decomposition—accumulated evidence does. This prevents thrashing and ensures changes are data-driven.
+
+The post-mortem runs after ground truth is known (problem graded), examines all thread paths, and updates:
+1. `amplitude_post` for each thread step
+2. Signature success/failure counts
+3. Interference pattern detection
+4. Structural change recommendations
 
 ## Validating MCTS is Working
 Use `print_alignment_report(DB_PATH)` to check if rollouts are helping:
@@ -79,6 +183,21 @@ After grading, update amplitudes based on thread outcomes:
 | High amplitude | Failure | **Strong negative** (confident and wrong) |
 | Low amplitude | Success | Boost (discovered something) |
 | Low amplitude | Failure | Weak signal (expected uncertainty) |
+
+### Post-Mortem Statistics
+
+The post-mortem analysis of MCTS rollouts should consider:
+
+- **Confidence at each step** - amplitude value when routing decision was made
+- **Depth level of leaf node** - how deep in the signature tree
+- **Node hit count** - total times this node was visited across all problems
+- **Node success count** - times this node contributed to correct answer
+- **DAG step association** - which step type (dag_step_id) this node handled
+- **UCB1 gap** - certainty of routing decision (large gap = confident choice)
+- **Was undecided** - whether we branched due to low confidence
+- **Alternatives considered** - how many other paths were explored
+
+Key insight: Performance is tracked per `(dag_step_id, node_id)` pair, not just per node.
 
 ### Interference Patterns
 
@@ -125,6 +244,12 @@ Big bang function accounting for the first five levels need to be empty. Sigmoid
   ## Leaf DSL Types
   1. decompose
   2. math
+
+  ## Decomposition Rule
+  **Do not decompose a leaf node until instructed by the MCTS rollout post-mortem analysis.**
+
+  Decomposition is triggered by destructive interference patterns (mixed success/failure at the same node), not by individual failures. Let the post-mortem accumulate evidence before splitting clusters.
+
   ## With Fresh DB
   A **smooth and continuous** learning process is key.
 
@@ -149,11 +274,11 @@ Big bang function accounting for the first five levels need to be empty. Sigmoid
   **How do clusters form?**
   Emerge naturally from umbrella promotions.
   **How do we route?**
-  MCTS, but learned from embeddings.
+  Extract "what operation is needed" from problem → embed → compare to computation graph embeddings.
   **Cluster Centroid**
-  Average of all descendant leaf embeddings.
+  Computation graph embedding (structural, not lexical).
   **How does learning work at each level?**
-  Learn "these operation types cluster together."
+  Learn "these computation structures cluster together."
   ### Hierarchy
   **When to create a new root?**
   Only one root. Every problem goes through the first root signature.
@@ -167,7 +292,7 @@ Big bang function accounting for the first five levels need to be empty. Sigmoid
   **What's the root's initial state?**
   First signature IS the root.
   **When does umbrella promotion happen?**
-  On failure.
+  Driven by post-mortem analysis detecting destructive interference (not immediate on failure).
   **How to migrate existing signatures?**
   Start fresh.
   ## The Meta Insight
@@ -181,12 +306,12 @@ slow decay.  Calculate signature use count /  ((cache) count of total num proble
 
 ## Core Principle: Failures Are Valuable Data Points
 **Let signatures fail.** This is how the system learns.
-- Record every failure—it feeds the refinement loop
+- Record every failure—it feeds the post-mortem analysis
 - Do not fallback to LLM reasoning
-- Failed signatures get decomposed
+- Accumulated failure patterns (not individual failures) trigger decomposition via post-mortem
 - Success/failure stats drive routing decisions
 
-The goal is NOT 100% accuracy on every run. The goal is collecting data that makes the system smarter over time. A failed DSL provides valuable signal.
+The goal is NOT 100% accuracy on every run. The goal is collecting data that makes the system smarter over time. A failed DSL provides valuable signal for post-mortem analysis.
 
 ## Learning Mechanisms
 Centroid Averaging
@@ -215,8 +340,8 @@ This lets umbrella signatures accumulate credit from their children's successes,
   - Credit propagation guided by decay by depth function
 
   ### Decomposition
-  - Failing signatures (or nodes) decompose
-  - It's okay for node to decompose bc it provides signal
+  - Signatures decompose when post-mortem detects destructive interference (not on individual failures)
+  - It's okay for node to decompose bc it provides signal for future post-mortems
   - Bi-directional natural language communication between signatures and decomposer is key (query each other)
 
   ### Cold Start
@@ -233,8 +358,10 @@ This lets umbrella signatures accumulate credit from their children's successes,
   - Smooth refactoring - not all at once
 
 
-## Semantic Embedding First
-**Always prefer embedding similarity over keyword matching.**
+## Operational Embedding First
+**Route by computation graph embeddings, not text similarity.**
+
+Text embeddings cluster by vocabulary. Computation graph embeddings cluster by what operations actually do. Always match against the graph.
 
 
 ## How to use Beads

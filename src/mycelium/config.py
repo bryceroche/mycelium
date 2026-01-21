@@ -115,6 +115,15 @@ ADAPTIVE_EXPLORATION_C_MIN = 0.5  # Mature: mostly exploit
 ADAPTIVE_SPLIT_THRESHOLD_LENIENT = 0.7  # Cold start: tolerate 70% failure before split
 ADAPTIVE_SPLIT_THRESHOLD_STRICT = 0.4   # Mature: split at 40% failure
 
+# UCB1 adjustment from post-mortem hit/miss patterns
+# Tracks: high_conf_wrong (confident but failed), low_conf_right (explored and succeeded)
+# - High low_conf_right rate → exploration is finding good paths → increase C
+# - High high_conf_wrong rate → confident picks are wrong → increase C
+UCB1_ADJUSTMENT_ENABLED = True  # Enable post-mortem UCB1 adjustment
+UCB1_ADJUSTMENT_WINDOW = 50  # Rolling window of problems for hit/miss tracking
+UCB1_ADJUSTMENT_MAX_DELTA = 0.3  # Max adjustment to C (±0.3)
+UCB1_ADJUSTMENT_SENSITIVITY = 0.5  # How quickly to respond to patterns (0-1)
+
 # =============================================================================
 # MCTS COMPUTE BUDGET (multi-path exploration)
 # =============================================================================
@@ -126,6 +135,11 @@ ADAPTIVE_SPLIT_THRESHOLD_STRICT = 0.4   # Mature: split at 40% failure
 
 COMPUTE_BUDGET_BASE = 3.0  # Base budget for adaptive scaling (both training & inference)
 COMPUTE_BUDGET_CONFIDENCE_THRESHOLD = 0.5  # Explore alternatives when confidence < this
+
+# Selective branching: only branch when undecided (per CLAUDE.md)
+# UCB1 gap = difference between top-2 UCB1 scores at routing decision
+# High gap = confident (don't branch), Low gap = undecided (branch)
+UCB1_GAP_BRANCH_THRESHOLD = 0.15  # Branch when min_gap < this (undecided)
 
 # Bayesian prior for cold start (assume some successes before any data)
 ROUTING_PRIOR_SUCCESSES = 2
@@ -419,6 +433,98 @@ THREAD_CREDIT_DECAY_PER_FORK = 0.7  # Credit decay per fork depth (0.7^1=0.7, 0.
 THREAD_MIN_CREDIT = 0.1  # Minimum credit to apply (filter noise from deep forks)
 
 # =============================================================================
+# MCTS POST-MORTEM (Amplitude updates after grading)
+# =============================================================================
+# Per CLAUDE.md: "High confidence + failure = strong negative signal"
+# After grading, compute amplitude_post for each thread_step based on:
+# - Thread outcome (won/lost)
+# - Prior amplitude (confidence when routing decision was made)
+#
+# Formula:
+# - Won + high conf: reinforce (× POSTMORTEM_REINFORCE_MULT)
+# - Won + low conf: boost discovery (× POSTMORTEM_BOOST_MULT)
+# - Lost + low conf: mild penalty (× POSTMORTEM_MILD_PENALTY_MULT)
+# - Lost + high conf: strong penalty (× POSTMORTEM_STRONG_PENALTY_MULT)
+
+POSTMORTEM_ENABLED = True  # Run postmortem analysis after grading
+POSTMORTEM_HIGH_CONF_THRESHOLD = 0.7  # Amplitude >= this is "high confidence"
+POSTMORTEM_REINFORCE_MULT = 1.1  # Won + high confidence: small boost
+POSTMORTEM_BOOST_MULT = 1.4  # Won + low confidence: bigger boost (discovery)
+POSTMORTEM_MILD_PENALTY_MULT = 0.85  # Lost + low confidence: expected uncertainty
+POSTMORTEM_STRONG_PENALTY_MULT = 0.5  # Lost + high confidence: harsh penalty
+POSTMORTEM_AMPLITUDE_MIN = 0.0  # Clamp amplitude_post minimum
+POSTMORTEM_AMPLITUDE_MAX = 2.0  # Clamp amplitude_post maximum
+
+# Credit propagation from amplitude_post to signature stats (per mycelium-itkn)
+# Closes the loop: amplitude_post → signature.successes/operational_failures
+# Works for BOTH single-path and multi-path problems (per mycelium-plm8)
+CREDIT_PROPAGATION_ENABLED = True  # Enable amplitude_post → signature stats
+CREDIT_PROPAGATION_THRESHOLD_CREDIT = 1.0  # amp_post >= this → credit (success)
+CREDIT_PROPAGATION_THRESHOLD_BLAME = 0.7  # amp_post < this → blame (op_failure)
+
+# Partial credit for correct steps in failed problems (per mycelium-7o8i)
+# Steps with high confidence in losing threads get partial credit (benefit of doubt)
+# Steps with low confidence in losing threads get blamed (likely caused failure)
+PARTIAL_CREDIT_HIGH_CONF_THRESHOLD = 0.7  # amplitude >= this in lost thread → partial credit
+PARTIAL_CREDIT_WEIGHT = 0.5  # Weight for partial credit (0.5 = half a success)
+
+# =============================================================================
+# MCTS INTERFERENCE PATTERNS (Constructive/Destructive)
+# =============================================================================
+# Per CLAUDE.md: When multiple threads visit the same (dag_step_id, node_id):
+# - Constructive (all succeed): Reinforce, consider MERGE centroids
+# - Destructive (mixed): Signal to SPLIT the cluster
+#
+# Interference reveals operational equivalence that embedding similarity cannot.
+
+INTERFERENCE_ENABLED = True  # Detect and apply interference patterns
+INTERFERENCE_MIN_CONSTRUCTIVE = 3  # Min occurrences for merge consideration
+INTERFERENCE_MIN_DESTRUCTIVE = 2  # Min occurrences for split consideration
+INTERFERENCE_CONSTRUCTIVE_BOOST = 0.1  # Strength for constructive effects (placeholder)
+INTERFERENCE_DESTRUCTIVE_PENALTY = 0.15  # Strength for destructive effects (placeholder)
+
+# =============================================================================
+# MERGE/SPLIT BATCHING (Structural tree changes from interference)
+# =============================================================================
+# Per CLAUDE.md: Constructive → merge, Destructive → split
+# These operations are expensive, so we batch them instead of running per-problem.
+
+MERGE_SPLIT_BATCH_SIZE = 10  # Run merge/split every N problems (0 = disabled)
+MERGE_MIN_SUCCESS_RATE = 0.75  # Min success rate for merge candidates
+MERGE_MIN_USES = 10  # Min uses to trust signal for merge
+MERGE_MIN_SIMILARITY = 0.90  # Min centroid similarity for merge
+MERGE_MAX_PER_BATCH = 3  # Max merges per batch run
+
+# =============================================================================
+# SIGNATURE RETIREMENT (Prune consistently failing nodes)
+# =============================================================================
+# Per CLAUDE.md: Signatures that consistently fail should be flagged for retirement.
+# Post-mortem identifies "dead weight" nodes that hurt routing.
+#
+# Accuracy tracking: For each leaf node, we track:
+#   - How many times it was selected (uses)
+#   - How many times the thread it was in won (successes)
+# This gives us leaf_accuracy = successes / uses, inferred from MCTS post-mortem.
+#
+# Retirement options:
+#   1. PRUNE: Delete signature entirely (reroute traffic to siblings)
+#   2. DEMOTE: Add routing penalty (deprioritize but keep for learning)
+#   3. MERGE_UP: Absorb back into parent umbrella
+#
+# Different from DECAY (traffic-based): retirement is accuracy-based.
+
+RETIREMENT_ENABLED = True  # Master switch for retirement processing
+RETIREMENT_MIN_USES = 10  # Need enough selections to trust accuracy
+RETIREMENT_MAX_SUCCESS_RATE = 0.15  # Retire if accuracy below 15%
+RETIREMENT_MIN_OPERATIONAL_FAILURES = 3  # Need multiple post-mortem flags
+RETIREMENT_MAX_PER_BATCH = 5  # Max retirements per batch run
+
+# Retirement action thresholds (escalating severity)
+RETIREMENT_DEMOTE_PENALTY = 0.3  # Routing penalty for demoted signatures
+RETIREMENT_PRUNE_SUCCESS_RATE = 0.05  # Prune entirely if below this (very bad)
+RETIREMENT_PRUNE_MIN_USES = 20  # Only prune if we have high confidence
+
+# =============================================================================
 # ZERO-LLM ROUTING (Skip planner for mature signatures)
 # =============================================================================
 # When enabled, the solver will attempt to route problems directly through
@@ -443,6 +549,12 @@ DSL_REWRITER_MIN_USES = 10  # Need enough data to identify failure patterns
 DSL_REWRITER_MAX_SUCCESS_RATE = 0.40  # Rewrite if success rate below this
 DSL_REWRITER_MIN_TRAFFIC_SHARE = 0.005  # Only rewrite high-traffic sigs (0.5%)
 DSL_REWRITER_COOLDOWN_HOURS = 24  # Don't rewrite same sig within this period
+
+# Post-mortem triggered DSL regeneration
+# Per beads mycelium-flbq: When post-mortem detects high failure rate, trigger DSL regen
+POSTMORTEM_DSL_REGEN_ENABLED = True  # Trigger DSL regen from post-mortem
+POSTMORTEM_DSL_REGEN_MIN_HIGH_CONF_WRONG = 2  # Min high-conf-wrong to trigger regen
+POSTMORTEM_DSL_REGEN_BATCH_SIZE = 10  # How many problems before running batch regen
 
 # =============================================================================
 # STEP-LEVEL ANALYTICS

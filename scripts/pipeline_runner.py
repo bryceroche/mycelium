@@ -260,6 +260,16 @@ async def solve_problem(
                     learn_result["decomposed"], learn_result["children_created"]
                 )
 
+        # Auto-trigger DSL regeneration if post-mortem flagged it (per beads mycelium-flbq)
+        # This runs mod 10 problems when high-conf-wrong nodes accumulate
+        async with LLMClient() as client:
+            dsl_result = await solver.maybe_run_dsl_regeneration(client)
+            if dsl_result.get("regenerated", 0) > 0:
+                logger.info(
+                    "[pipeline] DSL regeneration: %d regenerated, %d failed",
+                    dsl_result["regenerated"], dsl_result.get("failed", 0)
+                )
+
         # Convert step results to timing info
         step_timings = [
             StepTiming(

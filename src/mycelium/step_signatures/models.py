@@ -62,17 +62,28 @@ class StepSignature:
     dsl_script: Optional[str] = None  # "base ** exponent"
     dsl_type: str = "math"  # "math", "sympy", "python"
 
+    # Computation Graph (per CLAUDE.md: route by what operations DO)
+    # Graph is structural representation: MUL(param_0, param_1), ADD(MUL(p0, p1), p2)
+    computation_graph: Optional[str] = None  # e.g., "MUL(param_0, param_1)"
+    graph_embedding: Optional[np.ndarray] = None  # Embedding of graph for routing
+
     # Few-shot Examples
     examples: list[dict] = field(default_factory=list)  # [{"input": "2^8", "params": {...}, "result": "256"}]
 
     # Statistics
     uses: int = 0
     successes: int = 0
+    operational_failures: int = 0  # MCTS post-mortem: destructive interference flags
 
     # Difficulty tracking (for universal tree)
     # Format: {"0.2": {"uses": 10, "successes": 8}, "0.8": {"uses": 2, "successes": 0}}
     difficulty_stats: dict[str, dict[str, int]] = field(default_factory=dict)
     max_difficulty_solved: float = 0.0  # Highest difficulty this sig has succeeded on
+
+    # Step-type specialization (per mycelium-vuuc)
+    # Format: {"calculate_percentage": {"uses": 10, "successes": 8}, "find_remainder": {"uses": 2, "successes": 0}}
+    # Tracks performance by dag_step description/type for routing preferences
+    step_type_stats: dict[str, dict[str, int]] = field(default_factory=dict)
 
     # Umbrella routing (DAG of DAGs)
     is_semantic_umbrella: bool = False  # True if routes to children
@@ -120,6 +131,29 @@ class StepSignature:
     def difficulty_stats_json(self) -> str:
         """Serialize difficulty_stats to JSON."""
         return json.dumps(self.difficulty_stats)
+
+    def step_type_stats_json(self) -> str:
+        """Serialize step_type_stats to JSON."""
+        return json.dumps(self.step_type_stats)
+
+    def get_step_type_success_rate(self, step_type: str) -> float:
+        """Get success rate for a specific step type.
+
+        Per mycelium-vuuc: Enable step-type specialization in routing.
+
+        Args:
+            step_type: The dag_step description/type (normalized)
+
+        Returns:
+            Success rate for this step type, or -1 if no data
+        """
+        stats = self.step_type_stats.get(step_type)
+        if not stats:
+            return -1.0  # No data for this step type
+        uses = stats.get("uses", 0)
+        if uses == 0:
+            return -1.0
+        return stats.get("successes", 0) / uses
 
     def get_clarifying_prompt(self) -> str:
         """Generate a prompt asking the LLM to extract parameters."""
@@ -213,6 +247,13 @@ class StepSignature:
             except json.JSONDecodeError as e:
                 logger.warning("[models] Invalid difficulty_stats JSON for sig %s: %s", sig_id, e)
 
+        step_type_stats = {}
+        if row.get("step_type_stats"):
+            try:
+                step_type_stats = json.loads(row["step_type_stats"])
+            except json.JSONDecodeError as e:
+                logger.warning("[models] Invalid step_type_stats JSON for sig %s: %s", sig_id, e)
+
         # Parse centroid and embedding_sum
         centroid = None
         if row.get("centroid"):
@@ -242,11 +283,14 @@ class StepSignature:
             param_descriptions=param_descriptions,
             dsl_script=row.get("dsl_script"),
             dsl_type=row.get("dsl_type", "math"),
+            computation_graph=row.get("computation_graph"),
             examples=examples,
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
+            operational_failures=row.get("operational_failures", 0) or 0,
             difficulty_stats=difficulty_stats,
             max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
+            step_type_stats=step_type_stats,
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,
@@ -282,11 +326,14 @@ class StepSignature:
             param_descriptions=param_descriptions,  # Parse for extraction validation
             dsl_script=row.get("dsl_script"),
             dsl_type=row.get("dsl_type", "math"),
+            computation_graph=row.get("computation_graph"),
             examples=[],  # Skip JSON parsing
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
+            operational_failures=row.get("operational_failures", 0) or 0,
             difficulty_stats={},  # Skip JSON parsing
             max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
+            step_type_stats={},  # Skip JSON parsing
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,
@@ -323,11 +370,14 @@ class StepSignature:
             param_descriptions={},  # Skip JSON parsing
             dsl_script=row.get("dsl_script"),
             dsl_type=row.get("dsl_type", "math"),
+            computation_graph=row.get("computation_graph"),
             examples=[],  # Skip JSON parsing
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
+            operational_failures=row.get("operational_failures", 0) or 0,
             difficulty_stats={},  # Skip JSON parsing
             max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
+            step_type_stats={},  # Skip JSON parsing
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,

@@ -52,6 +52,7 @@ from mycelium.step_signatures.scoring import (
     increment_total_problems,
 )
 from mycelium.step_signatures.dsl_templates import infer_dsl_for_signature
+from mycelium.step_signatures.graph_extractor import extract_computation_graph
 
 from mycelium.data_layer import get_db, configure_connection
 from mycelium.data_layer.schema import init_db
@@ -1120,12 +1121,51 @@ class StepSignatureDB:
         )
         return current, path
 
+    def _get_step_type_success_rate(
+        self, signature_id: int, step_type: str
+    ) -> float:
+        """Get step-type success rate for a signature (helper for routing).
+
+        Per mycelium-vuuc: Look up step_type_stats for routing boost/penalty.
+        This queries the DB directly to avoid loading full JSON in routing.
+
+        Args:
+            signature_id: ID of the signature
+            step_type: Normalized step type to look up
+
+        Returns:
+            Success rate for this step type, or -1.0 if no data
+        """
+        import json
+
+        with self._connection() as conn:
+            row = conn.execute(
+                "SELECT step_type_stats FROM step_signatures WHERE id = ?",
+                (signature_id,)
+            ).fetchone()
+
+            if not row or not row[0]:
+                return -1.0
+
+            try:
+                stats = json.loads(row[0])
+                step_stats = stats.get(step_type)
+                if not step_stats:
+                    return -1.0
+                uses = step_stats.get("uses", 0)
+                if uses == 0:
+                    return -1.0
+                return step_stats.get("successes", 0) / uses
+            except (json.JSONDecodeError, TypeError):
+                return -1.0
+
     def route_with_confidence(
         self,
         embedding: np.ndarray,
         min_similarity: float = 0.85,
         max_depth: int = None,
         top_k: int = 3,
+        step_type: str = None,
     ) -> RoutingResult:
         """Route with confidence scoring for MCTS multi-path exploration.
 
@@ -1142,6 +1182,7 @@ class StepSignatureDB:
             min_similarity: Minimum similarity threshold to follow a route
             max_depth: Maximum depth to traverse (default from config)
             top_k: Number of top alternatives to track at each level
+            step_type: Optional step type for specialization boost (per mycelium-vuuc)
 
         Returns:
             RoutingResult with signature, path, confidence, and alternatives
@@ -1186,12 +1227,19 @@ class StepSignatureDB:
                     continue
                 sim = cosine_similarity(embedding, centroid)
                 if sim >= min_similarity * 0.7:  # Lower threshold to capture alternatives
+                    # Per mycelium-vuuc: Use step_type_stats for specialization
+                    step_type_rate = -1.0
+                    if step_type and child_sig.id:
+                        step_type_rate = self._get_step_type_success_rate(
+                            child_sig.id, step_type
+                        )
                     ucb1 = compute_ucb1_score(
                         cosine_sim=sim,
                         uses=child_sig.uses,
                         successes=child_sig.successes,
                         parent_uses=parent_uses,
                         last_used_at=child_sig.last_used_at,
+                        step_type_success_rate=step_type_rate,
                     )
                     scored_children.append((child_sig, ucb1, sim))
 
@@ -1842,6 +1890,11 @@ class StepSignatureDB:
         clarifying_json = json.dumps(clarifying_questions)
         params_json = json.dumps(param_descriptions)
 
+        # Extract computation graph from DSL (per CLAUDE.md: route by what operations DO)
+        computation_graph = extract_computation_graph(dsl_script) if dsl_script else None
+        if computation_graph:
+            logger.debug("[db] Extracted computation graph: %s", computation_graph)
+
         # Set flags based on whether this is the root
         is_root_flag = 1 if is_first_signature else 0
         # Root is an umbrella (routes to children), others start as leaves
@@ -1866,11 +1919,11 @@ class StepSignatureDB:
                 """INSERT INTO step_signatures
                    (signature_id, centroid, centroid_bucket, embedding_sum, embedding_count, step_type, description,
                     dsl_script, dsl_type, clarifying_questions, param_descriptions, depth,
-                    is_root, is_semantic_umbrella, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    is_root, is_semantic_umbrella, computation_graph, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (sig_id, centroid_packed, centroid_bucket, embedding_sum_packed, 1, step_type, step_text,
                  dsl_script, dsl_type, clarifying_json, params_json, actual_depth,
-                 is_root_flag, is_umbrella, now),
+                 is_root_flag, is_umbrella, computation_graph, now),
             )
             row_id = cursor.lastrowid
 
@@ -1952,6 +2005,7 @@ class StepSignatureDB:
             param_descriptions=param_descriptions,
             dsl_script=dsl_script,
             dsl_type=dsl_type,
+            computation_graph=computation_graph,
             examples=[],
             uses=0,
             successes=0,
@@ -2558,10 +2612,14 @@ class StepSignatureDB:
 
         Args:
             signature_id: ID of the signature to update
-            embedding: The routing embedding from the step
+            embedding: The routing embedding from the step (None to skip centroid update)
             was_correct: Whether this path produced the correct answer
             confidence: How confident we were in this route (0.0-1.0)
         """
+        # Skip centroid update if no embedding provided
+        if embedding is None:
+            return
+
         from mycelium.config import SCORPION_REPULSION_WEIGHT, SCORPION_ATTRACTION_WEIGHT
 
         if was_correct:
@@ -2603,14 +2661,22 @@ class StepSignatureDB:
         """
         with self._connection() as conn:
             row = conn.execute(
-                "SELECT centroid, embedding_count, parent_id FROM step_signatures WHERE id = ?",
+                """SELECT s.centroid, s.embedding_count, r.parent_id
+                   FROM step_signatures s
+                   LEFT JOIN signature_relationships r ON r.child_id = s.id
+                   WHERE s.id = ?""",
                 (signature_id,)
             ).fetchone()
 
             if row is None or row[0] is None:
                 return  # No centroid to attract
 
-            centroid = np.frombuffer(row[0], dtype=np.float32)
+            # Centroid is stored as JSON string, not bytes
+            centroid_data = row[0]
+            if isinstance(centroid_data, str):
+                centroid = np.array(json.loads(centroid_data), dtype=np.float32)
+            else:
+                centroid = np.frombuffer(centroid_data, dtype=np.float32)
             count = row[1] or 1
             parent_id = row[2]
 
@@ -2666,14 +2732,22 @@ class StepSignatureDB:
         """
         with self._connection() as conn:
             row = conn.execute(
-                "SELECT centroid, embedding_count, parent_id FROM step_signatures WHERE id = ?",
+                """SELECT s.centroid, s.embedding_count, r.parent_id
+                   FROM step_signatures s
+                   LEFT JOIN signature_relationships r ON r.child_id = s.id
+                   WHERE s.id = ?""",
                 (signature_id,)
             ).fetchone()
 
             if row is None or row[0] is None:
                 return  # No centroid to repel from
 
-            centroid = np.frombuffer(row[0], dtype=np.float32)
+            # Centroid is stored as JSON string, not bytes
+            centroid_data = row[0]
+            if isinstance(centroid_data, str):
+                centroid = np.array(json.loads(centroid_data), dtype=np.float32)
+            else:
+                centroid = np.frombuffer(centroid_data, dtype=np.float32)
             count = row[1] or 1
             parent_id = row[2]
 
@@ -2821,6 +2895,365 @@ class StepSignatureDB:
                     "(%d/%d threads failed)",
                     signature_id, failure_count, failure_count, thread_count,
                 )
+
+    def increment_signature_successes(self, signature_id: int, count: int = 1):
+        """Increment the successes count for a signature.
+
+        Per beads mycelium-itkn: Used by amplitude credit propagation.
+
+        Args:
+            signature_id: ID of the signature
+            count: Amount to increment by (default 1)
+        """
+        with self._connection() as conn:
+            conn.execute(
+                """UPDATE step_signatures
+                   SET successes = COALESCE(successes, 0) + ?
+                   WHERE id = ?""",
+                (count, signature_id)
+            )
+
+    def increment_signature_failures(self, signature_id: int, count: int = 1):
+        """Increment the operational_failures count for a signature.
+
+        Per beads mycelium-itkn: Used by amplitude credit propagation.
+
+        Args:
+            signature_id: ID of the signature
+            count: Amount to increment by (default 1)
+        """
+        with self._connection() as conn:
+            conn.execute(
+                """UPDATE step_signatures
+                   SET operational_failures = COALESCE(operational_failures, 0) + ?
+                   WHERE id = ?""",
+                (count, signature_id)
+            )
+
+    def increment_signature_partial_success(self, signature_id: int, weight: float = 0.5):
+        """Increment successes with a fractional weight (partial credit).
+
+        Per beads mycelium-7o8i: Used for correct steps in failed problems.
+        Steps with high confidence in losing threads get partial credit rather
+        than full blame - they were probably correct, just in a bad chain.
+
+        Args:
+            signature_id: ID of the signature
+            weight: Fractional credit (default 0.5 = half a success)
+        """
+        with self._connection() as conn:
+            conn.execute(
+                """UPDATE step_signatures
+                   SET successes = COALESCE(successes, 0) + ?
+                   WHERE id = ?""",
+                (weight, signature_id)
+            )
+
+    def update_step_type_stats(
+        self,
+        signature_id: int,
+        step_type: str,
+        success: bool
+    ):
+        """Update step_type_stats for a signature.
+
+        Per beads mycelium-vuuc: Track performance by dag_step type for routing.
+        A signature might be great for 'calculate percentage' but bad for
+        'find remainder' - this lets routing prefer signatures that excel
+        at specific step types.
+
+        Args:
+            signature_id: ID of the signature
+            step_type: Normalized step type (e.g., 'calculate_percentage')
+            success: Whether this use was successful
+        """
+        import json
+
+        with self._connection() as conn:
+            # Read current stats
+            row = conn.execute(
+                "SELECT step_type_stats FROM step_signatures WHERE id = ?",
+                (signature_id,)
+            ).fetchone()
+
+            if not row:
+                return
+
+            # Parse existing stats
+            try:
+                stats = json.loads(row[0]) if row[0] else {}
+            except json.JSONDecodeError:
+                stats = {}
+
+            # Update stats for this step type
+            if step_type not in stats:
+                stats[step_type] = {"uses": 0, "successes": 0}
+
+            stats[step_type]["uses"] += 1
+            if success:
+                stats[step_type]["successes"] += 1
+
+            # Write back
+            conn.execute(
+                "UPDATE step_signatures SET step_type_stats = ? WHERE id = ?",
+                (json.dumps(stats), signature_id)
+            )
+
+    def merge_signatures(
+        self,
+        survivor_id: int,
+        absorbed_id: int,
+    ) -> bool:
+        """Merge two signatures into one (constructive interference optimization).
+
+        Per CLAUDE.md: When centroids are close AND both succeed consistently,
+        merge into single node.
+
+        The survivor keeps its identity but absorbs:
+        - Centroid: weighted average by embedding_count
+        - Stats: summed uses, successes
+        - The absorbed signature is archived
+
+        Args:
+            survivor_id: ID of signature to keep
+            absorbed_id: ID of signature to absorb and archive
+
+        Returns:
+            True if merge succeeded, False otherwise
+        """
+        with self._connection() as conn:
+            # Get both signatures
+            cursor = conn.execute(
+                """SELECT id, centroid, embedding_sum, embedding_count, uses, successes,
+                          operational_failures, step_type, description
+                   FROM step_signatures WHERE id IN (?, ?)""",
+                (survivor_id, absorbed_id)
+            )
+            rows = {row[0]: row for row in cursor.fetchall()}
+
+            if survivor_id not in rows or absorbed_id not in rows:
+                logger.warning(
+                    "[db] Cannot merge: one or both signatures not found (survivor=%d, absorbed=%d)",
+                    survivor_id, absorbed_id
+                )
+                return False
+
+            survivor = rows[survivor_id]
+            absorbed = rows[absorbed_id]
+
+            # Parse centroids
+            survivor_centroid = np.frombuffer(survivor[1], dtype=np.float32) if survivor[1] else None
+            absorbed_centroid = np.frombuffer(absorbed[1], dtype=np.float32) if absorbed[1] else None
+
+            # Parse embedding sums
+            survivor_sum = np.frombuffer(survivor[2], dtype=np.float32) if survivor[2] else None
+            absorbed_sum = np.frombuffer(absorbed[2], dtype=np.float32) if absorbed[2] else None
+
+            survivor_count = survivor[3] or 1
+            absorbed_count = absorbed[3] or 1
+
+            # Compute merged centroid (weighted average by embedding_count)
+            if survivor_centroid is not None and absorbed_centroid is not None:
+                total_count = survivor_count + absorbed_count
+                merged_centroid = (
+                    survivor_centroid * survivor_count + absorbed_centroid * absorbed_count
+                ) / total_count
+
+                # Compute merged embedding sum
+                if survivor_sum is not None and absorbed_sum is not None:
+                    merged_sum = survivor_sum + absorbed_sum
+                else:
+                    merged_sum = merged_centroid * total_count  # Reconstruct from centroid
+
+                # Update survivor with merged values
+                conn.execute(
+                    """UPDATE step_signatures SET
+                       centroid = ?,
+                       embedding_sum = ?,
+                       embedding_count = ?,
+                       uses = uses + ?,
+                       successes = successes + ?,
+                       operational_failures = COALESCE(operational_failures, 0) + ?
+                       WHERE id = ?""",
+                    (
+                        merged_centroid.astype(np.float32).tobytes(),
+                        merged_sum.astype(np.float32).tobytes(),
+                        total_count,
+                        absorbed[4] or 0,  # uses
+                        absorbed[5] or 0,  # successes
+                        absorbed[6] or 0,  # operational_failures
+                        survivor_id,
+                    )
+                )
+
+            # Archive the absorbed signature
+            conn.execute(
+                "UPDATE step_signatures SET is_archived = 1 WHERE id = ?",
+                (absorbed_id,)
+            )
+
+            # Repoint any children of absorbed to survivor
+            conn.execute(
+                "UPDATE signature_relationships SET parent_id = ? WHERE parent_id = ?",
+                (survivor_id, absorbed_id)
+            )
+
+            logger.info(
+                "[db] Merged signature %d ('%s') into %d ('%s'): "
+                "combined count=%d, absorbed archived",
+                absorbed_id, absorbed[8][:30] if absorbed[8] else "?",
+                survivor_id, survivor[8][:30] if survivor[8] else "?",
+                survivor_count + absorbed_count,
+            )
+
+            return True
+
+    def find_merge_candidates(
+        self,
+        min_success_rate: float = 0.7,
+        min_uses: int = 5,
+        min_similarity: float = 0.85,
+        limit: int = 10,
+    ) -> list[tuple[int, int, float]]:
+        """Find pairs of signatures that are candidates for merging.
+
+        Candidates are signatures that:
+        - Both have high success rates (operationally correct)
+        - Have similar centroids (semantically similar)
+        - Are not already archived
+
+        Args:
+            min_success_rate: Minimum success rate for both signatures
+            min_uses: Minimum uses for both signatures (need data to trust)
+            min_similarity: Minimum cosine similarity between centroids
+            limit: Maximum number of pairs to return
+
+        Returns:
+            List of (sig1_id, sig2_id, similarity) tuples, ordered by similarity desc
+        """
+        with self._connection() as conn:
+            # Get candidate signatures (high success rate, enough uses)
+            cursor = conn.execute(
+                """SELECT id, centroid, uses, successes
+                   FROM step_signatures
+                   WHERE is_archived = 0
+                     AND uses >= ?
+                     AND centroid IS NOT NULL
+                     AND (CAST(successes AS REAL) / uses) >= ?
+                   ORDER BY uses DESC
+                   LIMIT 100""",  # Limit to top 100 for performance
+                (min_uses, min_success_rate)
+            )
+
+            candidates = []
+            for row in cursor.fetchall():
+                sig_id, centroid_bytes, uses, successes = row
+                if centroid_bytes:
+                    centroid = np.frombuffer(centroid_bytes, dtype=np.float32)
+                    candidates.append((sig_id, centroid, uses, successes))
+
+            if len(candidates) < 2:
+                return []
+
+            # Vectorized similarity computation (much faster than O(n²) loop)
+            # Stack centroids into matrix and compute all pairwise similarities at once
+            ids = [c[0] for c in candidates]
+            centroids = np.vstack([c[1] for c in candidates])  # (n, dim)
+
+            # Normalize for cosine similarity
+            norms = np.linalg.norm(centroids, axis=1, keepdims=True)
+            norms = np.where(norms > 0, norms, 1e-9)  # Avoid division by zero
+            normalized = centroids / norms
+
+            # All pairwise cosine similarities in one matrix multiply
+            # similarity_matrix[i,j] = cosine_similarity(centroid_i, centroid_j)
+            similarity_matrix = normalized @ normalized.T  # (n, n)
+
+            # Vectorized upper triangle extraction (avoid O(n²) loop)
+            n = len(ids)
+            i_idx, j_idx = np.triu_indices(n, k=1)  # Upper triangle indices, k=1 excludes diagonal
+            sims = similarity_matrix[i_idx, j_idx]
+
+            # Filter by threshold
+            mask = sims >= min_similarity
+            if not np.any(mask):
+                return []
+
+            # Build results from filtered indices
+            filtered_i = i_idx[mask]
+            filtered_j = j_idx[mask]
+            filtered_sims = sims[mask]
+
+            # Sort by similarity descending
+            sort_idx = np.argsort(-filtered_sims)[:limit]
+
+            merge_candidates = [
+                (ids[filtered_i[k]], ids[filtered_j[k]], float(filtered_sims[k]))
+                for k in sort_idx
+            ]
+
+            return merge_candidates
+
+    def flag_for_split(self, signature_id: int, reason: str = "destructive_interference") -> bool:
+        """Flag a signature for potential decomposition/split.
+
+        This marks a signature as needing attention due to mixed interference
+        results. The actual decomposition is triggered by umbrella_learner.
+
+        This increments operational_failures which gates decomposition in umbrella_learner.
+        Per CLAUDE.md: only signatures with operational_failures > 0 are decomposition candidates.
+
+        Args:
+            signature_id: ID of signature to flag
+            reason: Why it's being flagged
+
+        Returns:
+            True if flagged successfully
+        """
+        with self._connection() as conn:
+            # Increment operational failures to trigger decomposition consideration
+            # The umbrella learner checks success rate and will decompose low performers
+            conn.execute(
+                """UPDATE step_signatures
+                   SET operational_failures = COALESCE(operational_failures, 0) + 1
+                   WHERE id = ?""",
+                (signature_id,)
+            )
+
+            logger.info(
+                "[db] Flagged signature %d for split (reason: %s)",
+                signature_id, reason
+            )
+
+            return True
+
+    def archive_signature(self, signature_id: int, reason: str = "retirement") -> bool:
+        """Archive a signature (soft delete).
+
+        Archived signatures are excluded from routing but kept for analysis.
+        This is a soft delete - the signature data remains in the database.
+
+        Args:
+            signature_id: ID of signature to archive
+            reason: Why it's being archived
+
+        Returns:
+            True if archived successfully
+        """
+        with self._connection() as conn:
+            conn.execute(
+                """UPDATE step_signatures
+                   SET is_archived = 1
+                   WHERE id = ?""",
+                (signature_id,)
+            )
+
+            logger.info(
+                "[db] Archived signature %d (reason: %s)",
+                signature_id, reason
+            )
+
+            return True
 
     # =========================================================================
     # Usage Recording
@@ -4421,3 +4854,149 @@ class StepSignatureDB:
                 "correct_rate": correct / (correct + incorrect) if (correct + incorrect) > 0 else 0.0,
                 "avg_fork_depth": avg_depth,
             }
+
+    # =========================================================================
+    # Graph Embedding Methods
+    # Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE
+    # =========================================================================
+
+    def update_graph_embedding(
+        self, signature_id: int, graph_embedding: list[float]
+    ) -> bool:
+        """Update a signature's graph_embedding.
+
+        Called after async embedding computation to store the result.
+
+        Args:
+            signature_id: ID of the signature
+            graph_embedding: Embedding vector (will be JSON-serialized)
+
+        Returns:
+            True if updated, False if signature not found
+        """
+        embedding_json = json.dumps(graph_embedding)
+
+        with self._connection() as conn:
+            cursor = conn.execute(
+                "UPDATE step_signatures SET graph_embedding = ? WHERE id = ?",
+                (embedding_json, signature_id),
+            )
+            if cursor.rowcount > 0:
+                invalidate_signature_cache(signature_id)
+                logger.debug("[db] Updated graph_embedding for sig %d", signature_id)
+                return True
+            return False
+
+    def get_signatures_needing_graph_embedding(
+        self, limit: int = 100
+    ) -> list[tuple[int, str]]:
+        """Get signatures that have computation_graph but no graph_embedding.
+
+        Used for batch population of graph embeddings.
+
+        Args:
+            limit: Maximum number of signatures to return
+
+        Returns:
+            List of (signature_id, computation_graph) tuples
+        """
+        with self._connection() as conn:
+            rows = conn.execute(
+                """SELECT id, computation_graph
+                   FROM step_signatures
+                   WHERE computation_graph IS NOT NULL
+                     AND computation_graph != ''
+                     AND (graph_embedding IS NULL OR graph_embedding = '')
+                   LIMIT ?""",
+                (limit,)
+            ).fetchall()
+            return [(row["id"], row["computation_graph"]) for row in rows]
+
+    def get_signatures_with_graph_embeddings(
+        self, for_routing: bool = True
+    ) -> list[StepSignature]:
+        """Get all signatures that have graph_embeddings for routing.
+
+        Returns signatures optimized for routing (minimal parsing).
+
+        Args:
+            for_routing: If True, use fast parsing (skip most JSON fields)
+
+        Returns:
+            List of signatures with graph_embedding populated
+        """
+        with self._connection() as conn:
+            rows = conn.execute(
+                """SELECT *
+                   FROM step_signatures
+                   WHERE graph_embedding IS NOT NULL
+                     AND graph_embedding != ''
+                     AND is_semantic_umbrella = 0"""  # Only leaf nodes for execution
+            ).fetchall()
+
+            if for_routing:
+                return [self._row_to_signature_for_routing(dict(row)) for row in rows]
+            return [self._row_to_signature(dict(row)) for row in rows]
+
+    def route_by_graph_embedding(
+        self,
+        operation_embedding: np.ndarray,
+        min_similarity: float = 0.75,
+        top_k: int = 5,
+    ) -> list[tuple[StepSignature, float]]:
+        """Route by comparing operation embedding to graph embeddings.
+
+        This is the new routing method per CLAUDE.md:
+        - Extract operation from problem → embed → compare to graph embeddings
+        - Routes by what operations DO, not what they SOUND LIKE
+
+        Args:
+            operation_embedding: Embedding of the extracted operation
+            min_similarity: Minimum cosine similarity threshold
+            top_k: Maximum number of matches to return
+
+        Returns:
+            List of (signature, similarity) tuples, sorted by similarity descending
+        """
+        matches = []
+
+        with self._connection() as conn:
+            # Get all signatures with graph embeddings (leaf nodes only)
+            rows = conn.execute(
+                """SELECT id, graph_embedding, step_type, description,
+                          dsl_script, dsl_type, computation_graph,
+                          uses, successes, depth, is_semantic_umbrella
+                   FROM step_signatures
+                   WHERE graph_embedding IS NOT NULL
+                     AND graph_embedding != ''
+                     AND is_semantic_umbrella = 0"""
+            ).fetchall()
+
+            for row in rows:
+                try:
+                    graph_emb = np.array(json.loads(row["graph_embedding"]))
+                    sim = cosine_similarity(operation_embedding, graph_emb)
+
+                    if sim >= min_similarity:
+                        # Create minimal signature for routing
+                        sig = StepSignature(
+                            id=row["id"],
+                            step_type=row["step_type"],
+                            description=row["description"],
+                            dsl_script=row["dsl_script"],
+                            dsl_type=row["dsl_type"],
+                            computation_graph=row["computation_graph"],
+                            uses=row["uses"] or 0,
+                            successes=row["successes"] or 0,
+                            depth=row["depth"] or 0,
+                            is_semantic_umbrella=bool(row["is_semantic_umbrella"]),
+                        )
+                        matches.append((sig, sim))
+
+                except (json.JSONDecodeError, ValueError) as e:
+                    logger.warning("[db] Invalid graph_embedding for sig %d: %s", row["id"], e)
+                    continue
+
+        # Sort by similarity descending
+        matches.sort(key=lambda x: x[1], reverse=True)
+        return matches[:top_k]

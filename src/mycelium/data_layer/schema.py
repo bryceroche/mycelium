@@ -32,6 +32,12 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     embedding_sum TEXT,               -- Running sum of all matched embeddings
     embedding_count INTEGER DEFAULT 1, -- Number of embeddings in sum
 
+    -- Computation Graph Embedding (per CLAUDE.md: route by what operations DO)
+    -- Graph is structural representation: MUL(param_0, param_1) → result
+    -- graph_embedding is what we route against (replaces text-based centroid for routing)
+    computation_graph TEXT,           -- Structural graph: "MUL(param_0, param_1)", "ADD(MUL(p0, p1), p2)"
+    graph_embedding TEXT,             -- Embedding of the computation graph (for routing)
+
     -- Identity
     step_type TEXT NOT NULL,  -- e.g., "compute_power", "find_gcd"
 
@@ -70,6 +76,7 @@ CREATE INDEX IF NOT EXISTS idx_sig_id ON step_signatures(signature_id);
 CREATE INDEX IF NOT EXISTS idx_sig_type ON step_signatures(step_type);
 CREATE INDEX IF NOT EXISTS idx_sig_centroid ON step_signatures(centroid);  -- Non-unique, for queries
 CREATE UNIQUE INDEX IF NOT EXISTS idx_sig_centroid_bucket ON step_signatures(centroid_bucket);  -- Coarse uniqueness
+CREATE INDEX IF NOT EXISTS idx_sig_graph_embedding ON step_signatures(graph_embedding);  -- For graph-based routing
 CREATE INDEX IF NOT EXISTS idx_sig_depth ON step_signatures(depth);
 CREATE INDEX IF NOT EXISTS idx_sig_is_root ON step_signatures(is_root);
 CREATE INDEX IF NOT EXISTS idx_sig_dsl_type ON step_signatures(dsl_type);
@@ -200,8 +207,9 @@ CREATE TABLE IF NOT EXISTS db_metadata (
 -- After grading, we know which threads were correct vs incorrect.
 -- Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
 CREATE TABLE IF NOT EXISTS thread_outcomes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     thread_id TEXT UNIQUE NOT NULL,
-    parent_thread_id TEXT,                -- NULL for root thread
+    parent_thread_id TEXT REFERENCES thread_outcomes(thread_id),  -- NULL for root thread
     problem_id TEXT NOT NULL,             -- Problem being solved (truncated text)
     problem_text TEXT,                    -- Full problem text (for debugging)
     fork_step_id TEXT,                    -- Step where this thread forked
@@ -227,8 +235,9 @@ CREATE INDEX IF NOT EXISTS idx_thread_outcomes_correct ON thread_outcomes(is_cor
 -- Enables per-signature thread win/loss tracking for cluster analysis.
 -- Per CLAUDE.md: "Per-signature thread win/loss tracking"
 CREATE TABLE IF NOT EXISTS thread_signature_contributions (
-    thread_id TEXT NOT NULL,
-    signature_id INTEGER NOT NULL,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    thread_id TEXT NOT NULL REFERENCES thread_outcomes(thread_id),
+    signature_id INTEGER NOT NULL REFERENCES step_signatures(id),
     step_id TEXT NOT NULL,                -- Which step this signature was used for
     embedding_similarity REAL,            -- Cosine similarity when routed
     was_primary_choice INTEGER DEFAULT 1, -- 1 if this was the best match, 0 if alternative
@@ -270,7 +279,7 @@ CREATE INDEX IF NOT EXISTS idx_mcts_dags_difficulty ON mcts_dags(difficulty_leve
 CREATE TABLE IF NOT EXISTS mcts_dag_steps (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     dag_step_id TEXT UNIQUE NOT NULL,     -- Unique ID for this step
-    dag_id TEXT NOT NULL,                 -- Parent DAG
+    dag_id TEXT NOT NULL REFERENCES mcts_dags(dag_id) ON DELETE CASCADE,
     step_desc TEXT NOT NULL,              -- What this step does (natural language)
     step_num INTEGER NOT NULL,            -- Sequential order (1..n)
     branch_num INTEGER DEFAULT 1,         -- Parallel branch ID (1..n for independent steps)
@@ -286,9 +295,9 @@ CREATE INDEX IF NOT EXISTS idx_mcts_dag_steps_step_num ON mcts_dag_steps(dag_id,
 CREATE TABLE IF NOT EXISTS mcts_threads (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     thread_id TEXT UNIQUE NOT NULL,       -- Unique ID for this thread
-    dag_id TEXT NOT NULL,                 -- Parent DAG being solved
-    parent_thread_id TEXT,                -- NULL for root thread, else forked from
-    fork_at_step TEXT,                    -- dag_step_id where this thread forked
+    dag_id TEXT NOT NULL REFERENCES mcts_dags(dag_id) ON DELETE CASCADE,
+    parent_thread_id TEXT REFERENCES mcts_threads(thread_id),  -- NULL for root thread, else forked from
+    fork_at_step TEXT REFERENCES mcts_dag_steps(dag_step_id),  -- dag_step_id where this thread forked
     fork_reason TEXT,                     -- Why we branched: 'undecided', 'explore', 'top_k'
     final_answer TEXT,                    -- Answer produced by this thread
     success INTEGER DEFAULT NULL,         -- NULL until graded, 0=wrong, 1=correct
@@ -306,10 +315,11 @@ CREATE INDEX IF NOT EXISTS idx_mcts_threads_success ON mcts_threads(success);
 CREATE TABLE IF NOT EXISTS mcts_thread_steps (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     thread_step_id TEXT UNIQUE NOT NULL,  -- Unique ID for this step execution
-    thread_id TEXT NOT NULL,              -- Which thread this belongs to
-    dag_id TEXT NOT NULL,                 -- Denormalized for query efficiency
-    dag_step_id TEXT NOT NULL,            -- Which DAG step
-    node_id INTEGER NOT NULL,             -- Which signature (leaf node) was used
+    thread_id TEXT NOT NULL REFERENCES mcts_threads(thread_id) ON DELETE CASCADE,
+    dag_id TEXT NOT NULL REFERENCES mcts_dags(dag_id) ON DELETE CASCADE,  -- Denormalized for query efficiency
+    dag_step_id TEXT NOT NULL REFERENCES mcts_dag_steps(dag_step_id),
+    node_id INTEGER NOT NULL REFERENCES step_signatures(id),  -- Which signature (leaf node) was used
+    node_depth INTEGER,                   -- Depth of node in signature tree (for post-mortem analysis)
 
     -- Wave function amplitude tracking
     -- Per ideas.md: "High confidence + failure = strong negative signal"
@@ -426,6 +436,29 @@ def migrate_db(conn) -> None:
             "ALTER TABLE step_signatures ADD COLUMN operational_failures INTEGER DEFAULT 0"
         )
 
+    # Add step_type_stats if missing (per mycelium-vuuc)
+    # Tracks performance by dag_step type for routing preferences
+    # Format: {"calculate_percentage": {"uses": 10, "successes": 8}, ...}
+    if "step_type_stats" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN step_type_stats TEXT DEFAULT '{}'"
+        )
+
+    # Add computation_graph if missing (per mycelium-k509)
+    # Structural graph representation: MUL(param_0, param_1), ADD(MUL(p0, p1), p2)
+    # Per CLAUDE.md: route by what operations DO, not what they SOUND LIKE
+    if "computation_graph" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN computation_graph TEXT"
+        )
+
+    # Add graph_embedding if missing (per mycelium-k509)
+    # Embedding of computation graph for routing (replaces text-based centroid routing)
+    if "graph_embedding" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN graph_embedding TEXT"
+        )
+
     # Run migrations
     for sql in migrations:
         try:
@@ -445,6 +478,8 @@ def migrate_db(conn) -> None:
         "CREATE INDEX IF NOT EXISTS idx_sig_archived_created ON step_signatures(is_archived, created_at)",
         "CREATE INDEX IF NOT EXISTS idx_usage_sig_created ON step_usage_log(signature_id, created_at)",
         "CREATE INDEX IF NOT EXISTS idx_failures_created_sig ON step_failures(created_at, signature_id)",
+        # Computation graph routing index (per mycelium-k509)
+        "CREATE INDEX IF NOT EXISTS idx_sig_graph_embedding ON step_signatures(graph_embedding)",
     ]
     for sql in index_migrations:
         try:

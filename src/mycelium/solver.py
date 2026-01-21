@@ -537,6 +537,10 @@ class Solver:
         self._current_dag_id: Optional[str] = None
         self._dag_step_ids: dict[str, str] = {}  # step.id -> dag_step_id
 
+        # DSL regeneration flag (per beads mycelium-flbq)
+        # Set to True when post-mortem batch threshold reached
+        self._pending_dsl_regen: bool = False
+
     def _create_background_task(self, coro) -> asyncio.Task:
         """Create a background task with proper lifecycle management.
 
@@ -1102,6 +1106,7 @@ class Solver:
         """
         step_descriptions = step_descriptions or {}
         import time
+        from mycelium.config import TRAINING_MODE
         start_time = time.time()
 
         # Reset routing context for MCTS amplitude logging
@@ -1473,6 +1478,7 @@ class Solver:
                     alternatives_considered=len(explored_sigs) if explored_sigs else 1,
                     step_result=result[:500] if result else None,
                     step_success=step_completed,
+                    node_depth=routed_signature.depth,
                 )
                 logger.debug(
                     "[solver] Logged thread step: thread=%s dag_step=%s node=%d amp=%.2f undecided=%s success=%s",
@@ -1811,14 +1817,17 @@ class Solver:
             - explored_sigs: All signatures explored (for backpropagation)
             - was_injected: Whether result came from DSL execution
         """
-        from mycelium.config import COMPUTE_BUDGET_CONFIDENCE_THRESHOLD
+        from mycelium.config import UCB1_GAP_BRANCH_THRESHOLD
         from mycelium.step_signatures.db import RoutingResult
 
         # Get routing result with confidence and alternatives
+        # Per mycelium-vuuc: Pass step_type for specialization boost
+        normalized_step_type = step.task.lower().strip()[:100] if step.task else None
         routing_result = self.step_db.route_with_confidence(
             embedding,
             min_similarity=get_adaptive_match_threshold(),
             top_k=int(compute_budget) + 1,  # Get enough alternatives
+            step_type=normalized_step_type,
         )
 
         # Store routing context for MCTS amplitude logging
@@ -1828,8 +1837,11 @@ class Solver:
 
         explored_sigs = list(routing_result.path)  # Start with best path
 
-        # If high confidence or single-path mode, just use best path
-        if routing_result.confidence >= COMPUTE_BUDGET_CONFIDENCE_THRESHOLD or compute_budget <= 1.0:
+        # Selective branching: only branch when undecided (per CLAUDE.md)
+        # Use UCB1 gap to detect uncertainty: high gap = confident, low gap = undecided
+        # Also respect single-path mode (compute_budget <= 1.0)
+        is_undecided = routing_result.min_gap < UCB1_GAP_BRANCH_THRESHOLD
+        if not is_undecided or compute_budget <= 1.0:
             if routing_result.signature is not None:
                 result = await self._try_dsl(
                     routing_result.signature, step, context, step_descriptions
@@ -1837,13 +1849,13 @@ class Solver:
                 return (result, routing_result.signature, explored_sigs, result is not None)
             return (None, routing_result.signature, explored_sigs, False)
 
-        # Low confidence + multi-path mode: explore alternatives
+        # Undecided (low UCB1 gap) + multi-path mode: explore alternatives
         # Mark as undecided for MCTS amplitude tracking
         self._routing_was_undecided = True
         num_paths = min(int(compute_budget), len(routing_result.alternatives) + 1)
         logger.info(
-            "[solver] Multi-path exploration: confidence=%.2f, exploring %d paths",
-            routing_result.confidence, num_paths
+            "[solver] Selective branching: undecided (gap=%.3f < %.3f), exploring %d paths",
+            routing_result.min_gap, UCB1_GAP_BRANCH_THRESHOLD, num_paths
         )
 
         # Collect alternative leaf signatures to try (with similarity scores)
@@ -1918,7 +1930,7 @@ class Solver:
                             dag_id=self._current_dag_id,
                             parent_thread_id=thread_id,
                             fork_at_step=dag_step_id,
-                            fork_reason="explore",
+                            fork_reason="undecided",  # Only branch when UCB1 gap is low
                             thread_id=fork_thread_id,
                         )
 
@@ -1936,6 +1948,7 @@ class Solver:
                                 alternatives_considered=len(candidates),
                                 step_result=result[:500] if result else None,
                                 step_success=result is not None,
+                                node_depth=sig.depth,
                             )
 
                     logger.debug(
@@ -2468,23 +2481,7 @@ Expression:"""
         if self._current_dag_id:
             grade_dag(self._current_dag_id, success=correct)
             logger.debug("[solver] Graded MCTS DAG %s: success=%s", self._current_dag_id, correct)
-
-            # Run post-mortem analysis including interference pattern detection
-            # Per CLAUDE.md: "High confidence + failure = strong negative signal"
-            # Per CLAUDE.md: Interference patterns drive structural tree evolution
-            postmortem_stats = run_postmortem_with_interference(self._current_dag_id, self.step_db)
-            if postmortem_stats.get("high_conf_wrong", 0) > 0:
-                logger.warning(
-                    "[solver] Post-mortem found %d high-confidence wrong decisions in DAG %s",
-                    postmortem_stats["high_conf_wrong"], self._current_dag_id
-                )
-            if postmortem_stats.get("destructive_interference", 0) > 0:
-                logger.info(
-                    "[solver] Post-mortem found %d destructive interference patterns "
-                    "(nodes flagged for split: %s)",
-                    postmortem_stats["destructive_interference"],
-                    postmortem_stats.get("nodes_flagged_split", [])
-                )
+            # NOTE: Postmortem runs AFTER thread outcomes are recorded (see below)
 
         # MCTS Training: Process path outcomes for operational equivalence learning
         # Only in training mode - inference skips this overhead
@@ -2570,6 +2567,33 @@ Expression:"""
         if THREAD_TRACKING_ENABLED and TRAINING_MODE and self._problem_threads:
             self._record_thread_outcomes(result, correct, ground_truth)
 
+        # Run post-mortem AFTER threads are graded (so we have success values)
+        # Per CLAUDE.md: "High confidence + failure = strong negative signal"
+        if self._current_dag_id:
+            try:
+                postmortem_stats = run_postmortem_with_interference(self._current_dag_id, self.step_db)
+                if postmortem_stats.get("high_conf_wrong", 0) > 0:
+                    logger.warning(
+                        "[solver] Post-mortem: %d high-confidence wrong in DAG %s",
+                        postmortem_stats["high_conf_wrong"], self._current_dag_id
+                    )
+                if postmortem_stats.get("total_steps", 0) > 0:
+                    logger.info(
+                        "[solver] Post-mortem: %d steps, %d won, %d lost",
+                        postmortem_stats["total_steps"],
+                        postmortem_stats.get("threads_won", 0),
+                        postmortem_stats.get("threads_lost", 0),
+                    )
+                # Per beads mycelium-flbq: Check if DSL regen batch is ready
+                if postmortem_stats.get("dsl_regen_ready"):
+                    self._pending_dsl_regen = True
+                    logger.info(
+                        "[solver] DSL regeneration ready: %d nodes accumulated",
+                        postmortem_stats.get("dsl_regen_nodes_accumulated", 0)
+                    )
+            except Exception as e:
+                logger.error("[solver] Postmortem failed: %s", e)
+
         # Always clear pending outcomes (memory safety)
         self._pending_path_outcomes.clear()
 
@@ -2632,6 +2656,56 @@ Expression:"""
         self.step_db.flush_pending_propagations()
 
         return candidates
+
+    async def maybe_run_dsl_regeneration(self, client) -> dict:
+        """Run DSL regeneration if batch threshold was reached.
+
+        Per beads mycelium-flbq: When post-mortem accumulates enough high-conf-wrong
+        nodes, regenerate their DSLs using the LLM.
+
+        Args:
+            client: LLM client for DSL generation
+
+        Returns:
+            Dict with regeneration statistics, or empty dict if not ready
+        """
+        if not self._pending_dsl_regen:
+            return {}
+
+        from mycelium.data_layer import (
+            trigger_dsl_regeneration_for_nodes,
+            get_accumulated_failing_nodes,
+            clear_accumulated_failing_nodes,
+        )
+
+        # Get accumulated failing nodes
+        failing_nodes = get_accumulated_failing_nodes()
+        if not failing_nodes:
+            self._pending_dsl_regen = False
+            return {}
+
+        logger.info("[solver] Running DSL regeneration for %d accumulated nodes", len(failing_nodes))
+
+        try:
+            result = await trigger_dsl_regeneration_for_nodes(
+                node_ids=failing_nodes,
+                step_db=self.step_db,
+                client=client,
+            )
+            # Clear accumulated nodes after processing
+            clear_accumulated_failing_nodes()
+            self._pending_dsl_regen = False
+
+            if result.get("regenerated", 0) > 0:
+                logger.info(
+                    "[solver] DSL regeneration complete: %d regenerated, %d failed",
+                    result.get("regenerated", 0), result.get("failed", 0)
+                )
+            return result
+        except Exception as e:
+            logger.error("[solver] DSL regeneration failed: %s", e)
+            self._pending_dsl_regen = False
+            return {"error": str(e)}
 
     def _record_thread_outcomes(
         self,
