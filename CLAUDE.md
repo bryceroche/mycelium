@@ -80,6 +80,21 @@ After grading, update amplitudes based on thread outcomes:
 | Low amplitude | Success | Boost (discovered something) |
 | Low amplitude | Failure | Weak signal (expected uncertainty) |
 
+### Post-Mortem Statistics
+
+The post-mortem analysis of MCTS rollouts should consider:
+
+- **Confidence at each step** - amplitude value when routing decision was made
+- **Depth level of leaf node** - how deep in the signature tree
+- **Node hit count** - total times this node was visited across all problems
+- **Node success count** - times this node contributed to correct answer
+- **DAG step association** - which step type (dag_step_id) this node handled
+- **UCB1 gap** - certainty of routing decision (large gap = confident choice)
+- **Was undecided** - whether we branched due to low confidence
+- **Alternatives considered** - how many other paths were explored
+
+Key insight: Performance is tracked per `(dag_step_id, node_id)` pair, not just per node.
+
 ### Interference Patterns
 
 When multiple threads visit the same `(dag_step_id, node_id)`:
