@@ -1149,9 +1149,12 @@ class Solver:
                 "[GORILLA] Detected complex step: '%s' (%s)",
                 step.task[:40], gorilla_reason
             )
-            # Decompose the step using the planner (similar to Octopus)
-            decomposed_result = await self._decompose_gorilla_step(
-                step, problem, context, step_descriptions, gorilla_reason, difficulty, thread_id
+            # Decompose the step using the planner
+            hint = f"The step '{step.task}' is complex ({gorilla_reason}). Break it down into simpler atomic operations."
+            decomposed_result = await self._decompose_complex_step(
+                step, problem, context, step_descriptions,
+                hint=hint, log_tag="GORILLA", signature_type="gorilla_decomposed",
+                difficulty=difficulty, thread_id=thread_id
             )
             if decomposed_result is not None:
                 return decomposed_result
@@ -1232,8 +1235,13 @@ class Solver:
                     step.task[:40], len(octopus.top_children)
                 )
                 # Use planner to decompose this specific step
-                decomposed_result = await self._decompose_octopus_step(
-                    step, problem, context, step_descriptions, octopus, difficulty, thread_id
+                hint = f"The step '{step.task}' is ambiguous. It could involve: "
+                hint += ", ".join([c.step_type for c in octopus.top_children])
+                hint += ". Please break it down into more specific operations."
+                decomposed_result = await self._decompose_complex_step(
+                    step, problem, context, step_descriptions,
+                    hint=hint, log_tag="OCTOPUS", signature_type="octopus_decomposed",
+                    difficulty=difficulty, thread_id=thread_id
                 )
                 if decomposed_result is not None:
                     return decomposed_result
@@ -1320,8 +1328,13 @@ class Solver:
                     "[OCTOPUS] Decomposing step '%s' (confused between %d children, second routing attempt)",
                     step.task[:40], len(octopus.top_children)
                 )
-                decomposed_result = await self._decompose_octopus_step(
-                    step, problem, context, step_descriptions, octopus, difficulty, thread_id
+                hint = f"The step '{step.task}' is ambiguous. It could involve: "
+                hint += ", ".join([c.step_type for c in octopus.top_children])
+                hint += ". Please break it down into more specific operations."
+                decomposed_result = await self._decompose_complex_step(
+                    step, problem, context, step_descriptions,
+                    hint=hint, log_tag="OCTOPUS", signature_type="octopus_decomposed",
+                    difficulty=difficulty, thread_id=thread_id
                 )
                 if decomposed_result is not None:
                     return decomposed_result
@@ -3018,27 +3031,32 @@ Expression:"""
             self._problem_threads.clear()
             self._root_thread_id = None
 
-    async def _decompose_octopus_step(
+    async def _decompose_complex_step(
         self,
         step: Step,
         problem: str,
         context: dict[str, str],
         step_descriptions: dict[str, str],
-        octopus: OctopusDetected,
+        hint: str,
+        log_tag: str,
+        signature_type: str,
         difficulty: float = None,
         thread_id: str = None,
     ) -> Optional[StepResult]:
-        """Decompose an Octopus step (semantically ambiguous) into sub-steps.
+        """Decompose a complex step into sub-steps.
 
-        Called when routing detected confusion between multiple children.
-        Uses the planner to break down the ambiguous step into more specific sub-steps.
+        Unified method for both OCTOPUS (routing ambiguity) and GORILLA (complexity)
+        decomposition. Uses the planner to break down steps that can't be handled
+        by a single leaf signature.
 
         Args:
-            step: The ambiguous step that needs decomposition
+            step: The step that needs decomposition
             problem: Original problem text
             context: step_id → result from previous steps
             step_descriptions: step_id → task description
-            octopus: The OctopusDetected exception with confusion details
+            hint: Context hint explaining why decomposition is needed
+            log_tag: Tag for logging (e.g., "OCTOPUS", "GORILLA")
+            signature_type: Type to use in StepResult (e.g., "octopus_decomposed")
             difficulty: Problem difficulty for adaptive decomposition
             thread_id: Thread ID for multi-path credit tracking
 
@@ -3048,29 +3066,23 @@ Expression:"""
         import time
         start_time = time.time()
 
-        # Ask planner to decompose this specific step
-        # Provide context about the confusion to guide decomposition
-        confusion_hint = f"The step '{step.task}' is ambiguous. It could involve: "
-        confusion_hint += ", ".join([c.step_type for c in octopus.top_children])
-        confusion_hint += ". Please break it down into more specific operations."
-
         try:
             # Decompose the step using the planner
             sub_plan = await self.planner.decompose(
-                problem=step.task,  # Decompose the step itself
-                context=f"Original problem: {problem}\n{confusion_hint}",
+                problem=step.task,
+                context=f"Original problem: {problem}\n{hint}",
             )
 
             if not sub_plan or not sub_plan.steps or len(sub_plan.steps) <= 1:
                 logger.warning(
-                    "[OCTOPUS] Planner couldn't decompose '%s' further",
-                    step.task[:40]
+                    "[%s] Planner couldn't decompose '%s' further",
+                    log_tag, step.task[:40]
                 )
                 return None
 
             logger.info(
-                "[OCTOPUS] Decomposed '%s' into %d sub-steps",
-                step.task[:40], len(sub_plan.steps)
+                "[%s] Decomposed '%s' into %d sub-steps",
+                log_tag, step.task[:40], len(sub_plan.steps)
             )
 
             # Execute sub-steps recursively
@@ -3083,7 +3095,7 @@ Expression:"""
                     problem,
                     sub_context,
                     step_descriptions,
-                    depth=1,  # Increment depth
+                    depth=1,
                     difficulty=difficulty,
                     thread_id=thread_id,
                 )
@@ -3099,103 +3111,14 @@ Expression:"""
                 step_id=step.id,
                 task=step.task,
                 result=final_result,
-                signature_type="octopus_decomposed",
+                signature_type=signature_type,
                 was_injected=False,
                 was_routed=True,
                 elapsed_ms=elapsed_ms,
             )
 
         except Exception as e:
-            logger.error("[OCTOPUS] Step decomposition failed: %s", e)
-            return None
-
-    async def _decompose_gorilla_step(
-        self,
-        step: Step,
-        problem: str,
-        context: dict[str, str],
-        step_descriptions: dict[str, str],
-        reason: str,
-        difficulty: float = None,
-        thread_id: str = None,
-    ) -> Optional[StepResult]:
-        """Decompose a Gorilla step (too complex for single leaf) into sub-steps.
-
-        Called when proactive detection found a step with too many params or
-        complexity keywords (e.g., "and then", "after").
-
-        Args:
-            step: The complex step that needs decomposition
-            problem: Original problem text
-            context: step_id → result from previous steps
-            step_descriptions: step_id → task description
-            reason: Why the step was flagged as Gorilla
-            difficulty: Problem difficulty for adaptive decomposition
-            thread_id: Thread ID for multi-path credit tracking
-
-        Returns:
-            StepResult if decomposition and execution succeeded, None otherwise
-        """
-        import time
-        start_time = time.time()
-
-        # Ask planner to decompose this complex step
-        complexity_hint = f"The step '{step.task}' is complex ({reason}). "
-        complexity_hint += "Break it down into simpler atomic operations."
-
-        try:
-            # Decompose the step using the planner
-            sub_plan = await self.planner.decompose(
-                problem=step.task,  # Decompose the step itself
-                context=f"Original problem: {problem}\n{complexity_hint}",
-            )
-
-            if not sub_plan or not sub_plan.steps or len(sub_plan.steps) <= 1:
-                logger.warning(
-                    "[GORILLA] Planner couldn't decompose '%s' further",
-                    step.task[:40]
-                )
-                return None
-
-            logger.info(
-                "[GORILLA] Decomposed '%s' into %d sub-steps",
-                step.task[:40], len(sub_plan.steps)
-            )
-
-            # Execute sub-steps recursively
-            sub_context = context.copy()
-            sub_results = []
-
-            for sub_step in sub_plan.steps:
-                sub_result = await self._execute_step(
-                    sub_step,
-                    problem,
-                    sub_context,
-                    step_descriptions,
-                    depth=1,  # Increment depth
-                    difficulty=difficulty,
-                    thread_id=thread_id,
-                )
-                sub_results.append(sub_result)
-                sub_context[sub_step.id] = sub_result.result
-
-            # Use the final sub-step's result as the overall result
-            final_result = sub_results[-1].result if sub_results else None
-
-            elapsed_ms = (time.time() - start_time) * 1000
-
-            return StepResult(
-                step_id=step.id,
-                task=step.task,
-                result=final_result,
-                signature_type="gorilla_decomposed",
-                was_injected=False,
-                was_routed=True,
-                elapsed_ms=elapsed_ms,
-            )
-
-        except Exception as e:
-            logger.error("[GORILLA] Step decomposition failed: %s", e)
+            logger.error("[%s] Step decomposition failed: %s", log_tag, e)
             return None
 
     async def _auto_decompose_signature(
