@@ -406,9 +406,9 @@ class StepSignatureDB:
 
                 cached_count = int(data["sig_count"])
 
-                # Quick staleness check: compare signature count
+                # Quick staleness check: compare non-archived signature count
                 with self._connection() as conn:
-                    row = conn.execute("SELECT COUNT(*) FROM step_signatures WHERE centroid IS NOT NULL").fetchone()
+                    row = conn.execute("SELECT COUNT(*) FROM step_signatures WHERE centroid IS NOT NULL AND is_archived = 0").fetchone()
                     current_count = row[0] if row else 0
 
                 if cached_count != current_count:
@@ -1629,11 +1629,12 @@ class StepSignatureDB:
                 sim = cosine_similarity(embedding, leaf_centroid) if leaf_centroid is not None else 0.0
                 return current, parent_for_new, sim
 
-            # Get children of current umbrella
+            # Get children of current umbrella (exclude archived)
             cursor = conn.execute(
                 """SELECT s.* FROM signature_relationships r
                    JOIN step_signatures s ON r.child_id = s.id
                    WHERE r.parent_id = ?
+                     AND s.is_archived = 0
                    ORDER BY r.routing_order ASC""",
                 (current.id,)
             )
@@ -2047,7 +2048,8 @@ class StepSignatureDB:
 
         # Slow path: build from DB
         # Select only columns needed for matrix building + from_row_fast()
-        # Skips: centroid_bucket, embedding_sum, clarifying_questions, examples, is_archived, last_rewrite_at
+        # Skips: centroid_bucket, embedding_sum, clarifying_questions, examples, last_rewrite_at
+        # IMPORTANT: Exclude archived signatures from routing
         with self._connection() as conn:
             cursor = conn.execute("""
                 SELECT id, signature_id, centroid, embedding_count, step_type,
@@ -2055,6 +2057,7 @@ class StepSignatureDB:
                        uses, successes, is_semantic_umbrella, is_root, depth,
                        created_at, last_used_at
                 FROM step_signatures
+                WHERE is_archived = 0
             """)
             rows = cursor.fetchall()
 
@@ -4237,7 +4240,7 @@ class StepSignatureDB:
     # =========================================================================
 
     def get_children(
-        self, parent_id: int, for_routing: bool = False
+        self, parent_id: int, for_routing: bool = False, skip_cache: bool = False
     ) -> list[tuple[StepSignature, str]]:
         """Get child signatures for an umbrella parent.
 
@@ -4247,22 +4250,27 @@ class StepSignatureDB:
             parent_id: ID of the parent signature
             for_routing: If True, use fast parsing (centroid only, skip JSON).
                         Per CLAUDE.md: "Umbrella routing should not require LLM call"
+            skip_cache: If True, bypass cache and query DB directly.
+                       Use for critical checks like "umbrella has no children"
+                       in multiprocess environments where cache may be stale.
 
         Returns:
             List of (child_signature, condition) tuples, ordered by routing_order
         """
-        # Check cache first
-        cached = get_cached_children(parent_id, for_routing)
-        if cached is not None:
-            return cached
+        # Check cache first (unless explicitly skipped)
+        if not skip_cache:
+            cached = get_cached_children(parent_id, for_routing)
+            if cached is not None:
+                return cached
 
-        # Cache miss - fetch from DB
+        # Cache miss - fetch from DB (exclude archived signatures)
         with self._connection() as conn:
             cursor = conn.execute(
                 """SELECT s.*, r.condition
                    FROM signature_relationships r
                    JOIN step_signatures s ON r.child_id = s.id
                    WHERE r.parent_id = ?
+                     AND s.is_archived = 0
                    ORDER BY r.routing_order ASC""",
                 (parent_id,)
             )

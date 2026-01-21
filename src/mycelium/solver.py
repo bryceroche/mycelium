@@ -1111,15 +1111,17 @@ class Solver:
             needs_decompose = True
             reason = "decompose type needs children"
         elif signature.is_semantic_umbrella:
-            children = self.step_db.get_children(signature.id, for_routing=True)
+            # Skip cache for this critical check - in multiprocess environments,
+            # another process may have created children that our cache doesn't know about
+            children = self.step_db.get_children(signature.id, for_routing=True, skip_cache=True)
             if not children:
                 needs_decompose = True
                 reason = "umbrella has no children (auto-demoted?)"
 
         if needs_decompose:
             logger.info(
-                "[solver] Auto-decomposing '%s' (%s, difficulty=%.2f)",
-                signature.step_type, reason, difficulty or 0.0
+                "[solver] Auto-decomposing '%s' (id=%d) (%s, difficulty=%.2f)",
+                signature.step_type, signature.id, reason, difficulty or 0.0
             )
             await self._auto_decompose_signature(signature, difficulty=difficulty)
             # Refresh signature and children after decomposition

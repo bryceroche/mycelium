@@ -366,8 +366,9 @@ class UmbrellaLearner:
             List of child signature IDs created
         """
         # Check if already an umbrella WITH children - skip decomposition
+        # Skip cache to ensure fresh data in multiprocess environments
         if signature.is_semantic_umbrella:
-            existing_children = self.db.get_children(signature.id, for_routing=True)
+            existing_children = self.db.get_children(signature.id, for_routing=True, skip_cache=True)
             if existing_children:
                 logger.warning(
                     "[umbrella] Signature %d is already an umbrella with %d children",
