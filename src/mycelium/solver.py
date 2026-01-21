@@ -47,15 +47,6 @@ from mycelium.config import (
     COLD_START_HALFLIFE,
     HINT_LIMIT,
     HINT_MIN_SIMILARITY,
-    OCTOPUS_DETECTION_ENABLED,
-    OCTOPUS_CONFUSION_GAP,
-    OCTOPUS_MIN_DEPTH,
-    GORILLA_PROACTIVE_ENABLED,
-    GORILLA_MAX_PARAMS,
-    GORILLA_COMPLEXITY_KEYWORDS,
-    GORILLA_COMPLEXITY_ANCHORS,
-    GORILLA_COMPLEXITY_THRESHOLD,
-    GORILLA_USE_EMBEDDINGS,
     THREAD_TRACKING_ENABLED,
     THREAD_MAX_FORKS_PER_STEP,
     THREAD_CREDIT_DECAY_PER_FORK,
@@ -90,116 +81,6 @@ from mycelium.data_layer.mcts import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-# =============================================================================
-# OCTOPUS & GORILLA EXCEPTIONS
-# =============================================================================
-# These signal that the step needs further decomposition before execution.
-# Per CLAUDE.md: "Attempt to route first - decompose on failure"
-
-
-class OctopusDetected(Exception):
-    """DAG step is semantically ambiguous - spans multiple tree branches.
-
-    Raised when routing can't confidently choose between children.
-    Solution: Decompose the step into more specific sub-steps.
-    """
-
-    def __init__(self, step: "Step", top_children: list, similarities: list):
-        self.step = step
-        self.top_children = top_children  # Top-2 children that caused confusion
-        self.similarities = similarities  # Their similarity scores
-        msg = f"Octopus: '{step.task[:50]}' confused between {len(top_children)} children (gap={abs(similarities[0]-similarities[1]):.3f})"
-        super().__init__(msg)
-
-
-class GorillaDetected(Exception):
-    """Step is too complex for a single leaf - needs decomposition.
-
-    Raised when a step has too many parameters or complexity keywords.
-    Solution: Decompose into simpler atomic operations.
-    """
-
-    def __init__(self, step: "Step", reason: str):
-        self.step = step
-        self.reason = reason
-        msg = f"Gorilla: '{step.task[:50]}' too complex ({reason})"
-        super().__init__(msg)
-
-
-# Cache for GORILLA complexity anchor embeddings (lazy-loaded)
-_gorilla_anchor_embeddings: Optional[list[np.ndarray]] = None
-
-
-def _get_gorilla_anchor_embeddings(embedder) -> list[np.ndarray]:
-    """Get or compute cached embeddings for complexity anchors."""
-    global _gorilla_anchor_embeddings
-    if _gorilla_anchor_embeddings is None:
-        # Batch embed all anchors (returns dict: text -> embedding)
-        embeddings_dict = cached_embed_batch(GORILLA_COMPLEXITY_ANCHORS, embedder)
-        # Extract embeddings in same order as anchors
-        _gorilla_anchor_embeddings = [
-            embeddings_dict[anchor] for anchor in GORILLA_COMPLEXITY_ANCHORS
-            if anchor in embeddings_dict
-        ]
-        logger.debug(
-            "[gorilla] Computed %d complexity anchor embeddings",
-            len(_gorilla_anchor_embeddings)
-        )
-    return _gorilla_anchor_embeddings
-
-
-def detect_gorilla(step: "Step", embedder=None, step_embedding: np.ndarray = None) -> Optional[str]:
-    """Check if a step is too complex and should be decomposed proactively.
-
-    Uses embedding-based semantic similarity to complexity anchors (preferred)
-    or falls back to keyword matching if embedder not available.
-
-    Args:
-        step: The step to check
-        embedder: Optional embedder for embedding-based detection
-        step_embedding: Optional pre-computed step embedding (avoids redundant computation)
-
-    Returns:
-        Reason string if Gorilla detected, None otherwise.
-        Per CLAUDE.md: "Failing signatures get decomposed"
-    """
-    if not GORILLA_PROACTIVE_ENABLED:
-        return None
-
-    # Check for too many extracted values first (cheap check)
-    extracted = getattr(step, 'extracted_values', None) or {}
-    if len(extracted) > GORILLA_MAX_PARAMS:
-        return f"{len(extracted)} params (max {GORILLA_MAX_PARAMS})"
-
-    # Embedding-based complexity detection (preferred)
-    if GORILLA_USE_EMBEDDINGS and embedder is not None:
-        # Get or compute step embedding
-        if step_embedding is None:
-            step_embedding = cached_embed(step.task, embedder)
-
-        # Get cached complexity anchor embeddings
-        anchor_embeddings = _get_gorilla_anchor_embeddings(embedder)
-
-        # Check similarity against each anchor
-        for i, anchor_emb in enumerate(anchor_embeddings):
-            similarity = cosine_similarity(step_embedding, anchor_emb)
-            if similarity >= GORILLA_COMPLEXITY_THRESHOLD:
-                return f"semantic complexity (sim={similarity:.2f})"
-
-        # No match - not complex
-        return None
-
-    # Fallback: keyword-based detection (legacy)
-    task_lower = step.task.lower()
-    for keyword in GORILLA_COMPLEXITY_KEYWORDS:
-        # Use word boundary regex to avoid "after" matching "afternoon"
-        pattern = r'\b' + re.escape(keyword) + r'\b'
-        if re.search(pattern, task_lower):
-            return f"contains '{keyword}'"
-
-    return None
 
 
 # =============================================================================
@@ -1194,30 +1075,10 @@ class Solver:
                 thread_id=thread_id,
             )
 
-        # 1. Normalize and embed step FIRST (needed for GORILLA and routing)
+        # 1. Normalize and embed step (strip numbers for better matching)
         # Use cached_embed to avoid redundant computation for repeated steps
         normalized_task = normalize_step_text(step.task)
         embedding = cached_embed(normalized_task, self.embedder)
-
-        # 1.5 GORILLA DETECTION: Check if step is too complex (uses embedding)
-        # If detected, decompose proactively before routing
-        gorilla_reason = detect_gorilla(step, embedder=self.embedder, step_embedding=embedding)
-        if gorilla_reason:
-            logger.info(
-                "[GORILLA] Detected complex step: '%s' (%s)",
-                step.task[:40], gorilla_reason
-            )
-            # Decompose the step using the planner
-            hint = f"The step '{step.task}' is complex ({gorilla_reason}). Break it down into simpler atomic operations."
-            decomposed_result = await self._decompose_complex_step(
-                step, problem, context, step_descriptions,
-                hint=hint, log_tag="GORILLA", signature_type="gorilla_decomposed",
-                difficulty=difficulty, thread_id=thread_id
-            )
-            if decomposed_result is not None:
-                return decomposed_result
-            # If decomposition failed, continue with normal execution
-            logger.warning("[GORILLA] Step decomposition failed, continuing normally")
 
         # 2. Find or create signature (use original text for description)
         # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
@@ -1272,43 +1133,14 @@ class Solver:
         routed_signature = signature
 
         if signature.is_semantic_umbrella:
-            try:
-                child_result = await self._try_umbrella_routing(signature, step, problem, context, step_descriptions, embedding=embedding, children=children)
-                if child_result is not None:
-                    result, routed_signature, was_injected = child_result
-                    was_routed = True  # Successfully routed through umbrella
-                    logger.info(
-                        "[solver] Umbrella routed: '%s' → '%s'",
-                        signature.step_type, routed_signature.step_type
-                    )
-            except OctopusDetected as octopus:
-                # OCTOPUS: Step spans multiple branches - decompose the step itself
+            child_result = await self._try_umbrella_routing(signature, step, problem, context, step_descriptions, embedding=embedding, children=children)
+            if child_result is not None:
+                result, routed_signature, was_injected = child_result
+                was_routed = True  # Successfully routed through umbrella
                 logger.info(
-                    "[OCTOPUS] Decomposing step '%s' (confused between %d children)",
-                    step.task[:40], len(octopus.top_children)
+                    "[solver] Umbrella routed: '%s' → '%s'",
+                    signature.step_type, routed_signature.step_type
                 )
-                # Use planner to decompose this specific step
-                hint = f"The step '{step.task}' is ambiguous. It could involve: "
-                hint += ", ".join([c.step_type for c in octopus.top_children])
-                hint += ". Please break it down into more specific operations."
-                decomposed_result = await self._decompose_complex_step(
-                    step, problem, context, step_descriptions,
-                    hint=hint, log_tag="OCTOPUS", signature_type="octopus_decomposed",
-                    difficulty=difficulty, thread_id=thread_id
-                )
-                if decomposed_result is not None:
-                    return decomposed_result
-                # If decomposition failed, use BEST of the confused children (not the umbrella)
-                # This ensures we land on a leaf, not stay stuck at the umbrella
-                if octopus.top_children:
-                    routed_signature = octopus.top_children[0]  # Best match by similarity
-                    was_routed = True
-                    logger.warning(
-                        "[OCTOPUS] Decomposition failed, using best confused child: '%s' (sim=%.3f)",
-                        routed_signature.step_type, octopus.similarities[0] if octopus.similarities else 0.0
-                    )
-                else:
-                    logger.warning("[OCTOPUS] Step decomposition failed, no children to fall back to")
 
         # 4. Try DSL execution if not already routed
         # Key: Use dsl_hint from planner (LLM writes the expression)
@@ -1364,43 +1196,16 @@ class Solver:
 
         # 4.6. If we don't have a result yet, try routing through umbrella
         if result is None and routed_signature.is_semantic_umbrella:
-            try:
-                child_result = await self._try_umbrella_routing(
-                    routed_signature, step, problem, context, step_descriptions, embedding=embedding
-                )
-                if child_result is not None:
-                    result, routed_signature, was_injected = child_result
-                    was_routed = True
-                    logger.info(
-                        "[solver] Routed through umbrella to: '%s'",
-                        routed_signature.step_type
-                    )
-            except OctopusDetected as octopus:
-                # OCTOPUS: Step spans multiple branches - decompose the step itself
+            child_result = await self._try_umbrella_routing(
+                routed_signature, step, problem, context, step_descriptions, embedding=embedding
+            )
+            if child_result is not None:
+                result, routed_signature, was_injected = child_result
+                was_routed = True
                 logger.info(
-                    "[OCTOPUS] Decomposing step '%s' (confused between %d children, second routing attempt)",
-                    step.task[:40], len(octopus.top_children)
+                    "[solver] Routed through umbrella to: '%s'",
+                    routed_signature.step_type
                 )
-                hint = f"The step '{step.task}' is ambiguous. It could involve: "
-                hint += ", ".join([c.step_type for c in octopus.top_children])
-                hint += ". Please break it down into more specific operations."
-                decomposed_result = await self._decompose_complex_step(
-                    step, problem, context, step_descriptions,
-                    hint=hint, log_tag="OCTOPUS", signature_type="octopus_decomposed",
-                    difficulty=difficulty, thread_id=thread_id
-                )
-                if decomposed_result is not None:
-                    return decomposed_result
-                # If decomposition failed, use BEST of the confused children
-                if octopus.top_children:
-                    routed_signature = octopus.top_children[0]
-                    was_routed = True
-                    logger.warning(
-                        "[OCTOPUS] Decomposition failed (2nd attempt), using best child: '%s'",
-                        routed_signature.step_type
-                    )
-                else:
-                    logger.warning("[OCTOPUS] Step decomposition failed, continuing to create new child")
 
         # 4.7. CREATE NEW CHILD ON ROUTING FAILURE (per CLAUDE.md: failing signatures decompose)
         # If umbrella routing failed (no matching child), create new child for current step
@@ -1770,7 +1575,6 @@ class Solver:
         # Embedding-based routing: compare step embedding to child centroids
         # This is ~0ms vs ~500ms for LLM routing
         if embedding is not None:
-            # Collect ALL child similarities for Octopus detection
             child_scores = []
             for child_sig, condition in children:
                 # Capture centroid once to avoid TOCTOU race condition
@@ -1781,26 +1585,6 @@ class Solver:
 
             # Sort by similarity descending
             child_scores.sort(key=lambda x: x[1], reverse=True)
-
-            # OCTOPUS DETECTION: Check if top-2 are too close (routing confusion)
-            # If undecided, the step itself needs decomposition
-            if OCTOPUS_DETECTION_ENABLED and len(child_scores) >= 2 and depth >= OCTOPUS_MIN_DEPTH:
-                top_sim = child_scores[0][1]
-                second_sim = child_scores[1][1]
-                gap = top_sim - second_sim
-
-                # Both must be above threshold AND gap too small
-                if top_sim > UMBRELLA_ROUTING_THRESHOLD and second_sim > UMBRELLA_ROUTING_THRESHOLD:
-                    if gap < OCTOPUS_CONFUSION_GAP:
-                        logger.info(
-                            "[OCTOPUS] Detected routing confusion: '%s' top-2 gap=%.3f (threshold=%.3f)",
-                            step.task[:40], gap, OCTOPUS_CONFUSION_GAP
-                        )
-                        raise OctopusDetected(
-                            step=step,
-                            top_children=[child_scores[0][0], child_scores[1][0]],
-                            similarities=[top_sim, second_sim],
-                        )
 
             # Use best match if available
             best_child = child_scores[0][0] if child_scores else None
@@ -3098,8 +2882,7 @@ Expression:"""
     ) -> Optional[StepResult]:
         """Decompose a complex step into sub-steps.
 
-        Unified method for both OCTOPUS (routing ambiguity) and GORILLA (complexity)
-        decomposition. Uses the planner to break down steps that can't be handled
+        Uses the planner to break down steps that can't be handled
         by a single leaf signature.
 
         Args:
@@ -3108,8 +2891,8 @@ Expression:"""
             context: step_id → result from previous steps
             step_descriptions: step_id → task description
             hint: Context hint explaining why decomposition is needed
-            log_tag: Tag for logging (e.g., "OCTOPUS", "GORILLA")
-            signature_type: Type to use in StepResult (e.g., "octopus_decomposed")
+            log_tag: Tag for logging
+            signature_type: Type to use in StepResult
             difficulty: Problem difficulty for adaptive decomposition
             thread_id: Thread ID for multi-path credit tracking
 

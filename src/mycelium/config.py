@@ -369,45 +369,6 @@ BIG_BANG_FORK_CENTER_DRIFT_RATE = 0.8  # How fast fork center drifts toward root
 BIG_BANG_MIN_FORK_PROB = 0.05  # Floor probability (always some chance to fork)
 BIG_BANG_MAX_FORK_PROB = 0.95  # Ceiling probability (never 100% certain to fork)
 
-# =============================================================================
-# OCTOPUS DETECTION (DAG step spans multiple tree branches)
-# =============================================================================
-# When a DAG step can't be confidently routed (top-2 children have similar
-# scores), the step itself needs decomposition - it's semantically ambiguous.
-#
-# Detection: If top_2_similarity_gap < threshold, trigger step decomposition.
-# Per CLAUDE.md: "Attempt to route first - decompose on failure"
-
-OCTOPUS_DETECTION_ENABLED = False  # Disabled: rely on better prompts for atomic steps
-OCTOPUS_CONFUSION_GAP = 0.05  # Min gap between top-2 children to be "confident"
-OCTOPUS_MIN_DEPTH = 3  # Only detect at depth >= this (ignore root-level confusion)
-
-# =============================================================================
-# GORILLA DETECTION (Leaf node is too complex)
-# =============================================================================
-# Proactive detection of multi-operation steps that should be decomposed
-# before routing to a leaf. Complements auto-demotion (reactive).
-#
-# Per CLAUDE.md: "Failing signatures get decomposed"
-
-GORILLA_PROACTIVE_ENABLED = False  # Disabled: rely on better prompts for atomic steps
-GORILLA_MAX_PARAMS = 4  # Steps with more extracted_values likely need decomposition
-
-# Embedding-based complexity detection (replaces keyword matching)
-# These are semantic anchors - if step embedding is similar to any, flag as complex
-# IMPORTANT: Anchors must be HIGHLY specific to multi-step sequential operations
-# to avoid matching simple calculations like "Calculate X" or "Identify Y"
-GORILLA_COMPLEXITY_ANCHORS = [
-    "First calculate one value, then use that result to calculate another value in sequence",
-    "Do step A, and after step A completes, use its output to do step B",
-    "A multi-phase sequential process: phase 1 produces output, phase 2 consumes it",
-]
-GORILLA_COMPLEXITY_THRESHOLD = 0.80  # Higher threshold to reduce false positives
-
-# Legacy: keyword-based detection (deprecated, kept for fallback)
-GORILLA_COMPLEXITY_KEYWORDS = ["then", "and then", "after", "before", "finally"]
-GORILLA_USE_EMBEDDINGS = True  # Use embedding-based detection (preferred) vs keywords
-
 # Synthesis step detection (for umbrella learner)
 # These are anchors for steps that aggregate/combine results (should be skipped)
 SYNTHESIS_STEP_ANCHORS = [
