@@ -488,18 +488,22 @@ MERGE_MAX_PER_BATCH = 3  # Max merges per batch run
 # Per CLAUDE.md: Signatures that consistently fail should be flagged for retirement.
 # Post-mortem identifies "dead weight" nodes that hurt routing.
 #
+# Accuracy tracking: For each leaf node, we track:
+#   - How many times it was selected (uses)
+#   - How many times the thread it was in won (successes)
+# This gives us leaf_accuracy = successes / uses, inferred from MCTS post-mortem.
+#
 # Retirement options:
 #   1. PRUNE: Delete signature entirely (reroute traffic to siblings)
 #   2. DEMOTE: Add routing penalty (deprioritize but keep for learning)
 #   3. MERGE_UP: Absorb back into parent umbrella
 #
-# Different from DECAY (traffic-based): retirement is failure-based.
+# Different from DECAY (traffic-based): retirement is accuracy-based.
 
 RETIREMENT_ENABLED = True  # Master switch for retirement processing
-RETIREMENT_MIN_USES = 10  # Need enough data to trust failure pattern
-RETIREMENT_MAX_SUCCESS_RATE = 0.15  # Retire if success rate below this
+RETIREMENT_MIN_USES = 10  # Need enough selections to trust accuracy
+RETIREMENT_MAX_SUCCESS_RATE = 0.15  # Retire if accuracy below 15%
 RETIREMENT_MIN_OPERATIONAL_FAILURES = 3  # Need multiple post-mortem flags
-RETIREMENT_MIN_AGE_DAYS = 3  # Don't retire signatures younger than this
 RETIREMENT_MAX_PER_BATCH = 5  # Max retirements per batch run
 
 # Retirement action thresholds (escalating severity)

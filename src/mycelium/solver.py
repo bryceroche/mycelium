@@ -537,6 +537,10 @@ class Solver:
         self._current_dag_id: Optional[str] = None
         self._dag_step_ids: dict[str, str] = {}  # step.id -> dag_step_id
 
+        # DSL regeneration flag (per beads mycelium-flbq)
+        # Set to True when post-mortem batch threshold reached
+        self._pending_dsl_regen: bool = False
+
     def _create_background_task(self, coro) -> asyncio.Task:
         """Create a background task with proper lifecycle management.
 
@@ -2577,6 +2581,13 @@ Expression:"""
                         postmortem_stats.get("threads_won", 0),
                         postmortem_stats.get("threads_lost", 0),
                     )
+                # Per beads mycelium-flbq: Check if DSL regen batch is ready
+                if postmortem_stats.get("dsl_regen_ready"):
+                    self._pending_dsl_regen = True
+                    logger.info(
+                        "[solver] DSL regeneration ready: %d nodes accumulated",
+                        postmortem_stats.get("dsl_regen_nodes_accumulated", 0)
+                    )
             except Exception as e:
                 logger.error("[solver] Postmortem failed: %s", e)
 
@@ -2642,6 +2653,56 @@ Expression:"""
         self.step_db.flush_pending_propagations()
 
         return candidates
+
+    async def maybe_run_dsl_regeneration(self, client) -> dict:
+        """Run DSL regeneration if batch threshold was reached.
+
+        Per beads mycelium-flbq: When post-mortem accumulates enough high-conf-wrong
+        nodes, regenerate their DSLs using the LLM.
+
+        Args:
+            client: LLM client for DSL generation
+
+        Returns:
+            Dict with regeneration statistics, or empty dict if not ready
+        """
+        if not self._pending_dsl_regen:
+            return {}
+
+        from mycelium.data_layer import (
+            trigger_dsl_regeneration_for_nodes,
+            get_accumulated_failing_nodes,
+            clear_accumulated_failing_nodes,
+        )
+
+        # Get accumulated failing nodes
+        failing_nodes = get_accumulated_failing_nodes()
+        if not failing_nodes:
+            self._pending_dsl_regen = False
+            return {}
+
+        logger.info("[solver] Running DSL regeneration for %d accumulated nodes", len(failing_nodes))
+
+        try:
+            result = await trigger_dsl_regeneration_for_nodes(
+                node_ids=failing_nodes,
+                step_db=self.step_db,
+                client=client,
+            )
+            # Clear accumulated nodes after processing
+            clear_accumulated_failing_nodes()
+            self._pending_dsl_regen = False
+
+            if result.get("regenerated", 0) > 0:
+                logger.info(
+                    "[solver] DSL regeneration complete: %d regenerated, %d failed",
+                    result.get("regenerated", 0), result.get("failed", 0)
+                )
+            return result
+        except Exception as e:
+            logger.error("[solver] DSL regeneration failed: %s", e)
+            self._pending_dsl_regen = False
+            return {"error": str(e)}
 
     def _record_thread_outcomes(
         self,
