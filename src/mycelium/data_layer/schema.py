@@ -207,8 +207,9 @@ CREATE TABLE IF NOT EXISTS db_metadata (
 -- After grading, we know which threads were correct vs incorrect.
 -- Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
 CREATE TABLE IF NOT EXISTS thread_outcomes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     thread_id TEXT UNIQUE NOT NULL,
-    parent_thread_id TEXT,                -- NULL for root thread
+    parent_thread_id TEXT REFERENCES thread_outcomes(thread_id),  -- NULL for root thread
     problem_id TEXT NOT NULL,             -- Problem being solved (truncated text)
     problem_text TEXT,                    -- Full problem text (for debugging)
     fork_step_id TEXT,                    -- Step where this thread forked
@@ -234,8 +235,9 @@ CREATE INDEX IF NOT EXISTS idx_thread_outcomes_correct ON thread_outcomes(is_cor
 -- Enables per-signature thread win/loss tracking for cluster analysis.
 -- Per CLAUDE.md: "Per-signature thread win/loss tracking"
 CREATE TABLE IF NOT EXISTS thread_signature_contributions (
-    thread_id TEXT NOT NULL,
-    signature_id INTEGER NOT NULL,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    thread_id TEXT NOT NULL REFERENCES thread_outcomes(thread_id),
+    signature_id INTEGER NOT NULL REFERENCES step_signatures(id),
     step_id TEXT NOT NULL,                -- Which step this signature was used for
     embedding_similarity REAL,            -- Cosine similarity when routed
     was_primary_choice INTEGER DEFAULT 1, -- 1 if this was the best match, 0 if alternative
@@ -277,7 +279,7 @@ CREATE INDEX IF NOT EXISTS idx_mcts_dags_difficulty ON mcts_dags(difficulty_leve
 CREATE TABLE IF NOT EXISTS mcts_dag_steps (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     dag_step_id TEXT UNIQUE NOT NULL,     -- Unique ID for this step
-    dag_id TEXT NOT NULL,                 -- Parent DAG
+    dag_id TEXT NOT NULL REFERENCES mcts_dags(dag_id) ON DELETE CASCADE,
     step_desc TEXT NOT NULL,              -- What this step does (natural language)
     step_num INTEGER NOT NULL,            -- Sequential order (1..n)
     branch_num INTEGER DEFAULT 1,         -- Parallel branch ID (1..n for independent steps)
@@ -293,9 +295,9 @@ CREATE INDEX IF NOT EXISTS idx_mcts_dag_steps_step_num ON mcts_dag_steps(dag_id,
 CREATE TABLE IF NOT EXISTS mcts_threads (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     thread_id TEXT UNIQUE NOT NULL,       -- Unique ID for this thread
-    dag_id TEXT NOT NULL,                 -- Parent DAG being solved
-    parent_thread_id TEXT,                -- NULL for root thread, else forked from
-    fork_at_step TEXT,                    -- dag_step_id where this thread forked
+    dag_id TEXT NOT NULL REFERENCES mcts_dags(dag_id) ON DELETE CASCADE,
+    parent_thread_id TEXT REFERENCES mcts_threads(thread_id),  -- NULL for root thread, else forked from
+    fork_at_step TEXT REFERENCES mcts_dag_steps(dag_step_id),  -- dag_step_id where this thread forked
     fork_reason TEXT,                     -- Why we branched: 'undecided', 'explore', 'top_k'
     final_answer TEXT,                    -- Answer produced by this thread
     success INTEGER DEFAULT NULL,         -- NULL until graded, 0=wrong, 1=correct
@@ -313,10 +315,10 @@ CREATE INDEX IF NOT EXISTS idx_mcts_threads_success ON mcts_threads(success);
 CREATE TABLE IF NOT EXISTS mcts_thread_steps (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     thread_step_id TEXT UNIQUE NOT NULL,  -- Unique ID for this step execution
-    thread_id TEXT NOT NULL,              -- Which thread this belongs to
-    dag_id TEXT NOT NULL,                 -- Denormalized for query efficiency
-    dag_step_id TEXT NOT NULL,            -- Which DAG step
-    node_id INTEGER NOT NULL,             -- Which signature (leaf node) was used
+    thread_id TEXT NOT NULL REFERENCES mcts_threads(thread_id) ON DELETE CASCADE,
+    dag_id TEXT NOT NULL REFERENCES mcts_dags(dag_id) ON DELETE CASCADE,  -- Denormalized for query efficiency
+    dag_step_id TEXT NOT NULL REFERENCES mcts_dag_steps(dag_step_id),
+    node_id INTEGER NOT NULL REFERENCES step_signatures(id),  -- Which signature (leaf node) was used
     node_depth INTEGER,                   -- Depth of node in signature tree (for post-mortem analysis)
 
     -- Wave function amplitude tracking
