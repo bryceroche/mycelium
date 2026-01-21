@@ -168,6 +168,53 @@ class TestGetDecompositionCandidates:
         assert len(candidates) == 2
         assert {c.id for c in candidates} == {1, 5}
 
+    def test_includes_orphan_umbrella(self, learner, mock_db):
+        """Auto-demoted router umbrellas without children should be candidates."""
+        # Create an orphan umbrella (auto-demoted from math, no children)
+        orphan = StepSignature(
+            id=1,
+            step_type="compute_product",
+            description="A * B",
+            dsl_type="router",  # Auto-demoted to router
+            uses=10,
+            successes=2,  # 20% success rate
+            is_semantic_umbrella=True,  # Is umbrella
+        )
+        mock_db.get_all_signatures.return_value = [orphan]
+        # Orphan has no children
+        mock_db.get_children.return_value = []
+
+        candidates = learner.get_decomposition_candidates()
+
+        assert len(candidates) == 1
+        assert candidates[0].id == 1
+
+    def test_filters_umbrella_with_children(self, learner, mock_db):
+        """Router umbrellas WITH children should not be candidates."""
+        umbrella = StepSignature(
+            id=1,
+            step_type="compute_product",
+            description="A * B",
+            dsl_type="router",
+            uses=10,
+            successes=2,
+            is_semantic_umbrella=True,
+        )
+        child = StepSignature(
+            id=2,
+            step_type="child_step",
+            description="Child",
+            dsl_type="math",
+        )
+        mock_db.get_all_signatures.return_value = [umbrella]
+        # Umbrella has children - NOT orphan
+        mock_db.get_children.return_value = [child]
+
+        candidates = learner.get_decomposition_candidates()
+
+        # Should NOT include umbrella with children
+        assert len(candidates) == 0
+
 
 class TestGenerateNlInterface:
     """Tests for UmbrellaLearner.generate_nl_interface()."""

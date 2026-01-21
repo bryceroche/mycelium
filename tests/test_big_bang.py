@@ -43,23 +43,37 @@ class TestGetSystemMaturity:
 class TestGetForkCenter:
     """Tests for get_fork_center()."""
 
-    def test_cold_start_at_min_fork_depth(self):
-        """Cold start (maturity=0) should have fork center at MIN_FORK_DEPTH."""
+    def test_cold_start_fork_center(self):
+        """Cold start (maturity=0) should have fork center >= 1.0."""
         from mycelium.step_signatures.db import get_fork_center
         from mycelium.config import MIN_FORK_DEPTH
 
         center = get_fork_center(0.0)
-        assert center == MIN_FORK_DEPTH
+        # With organic growth (MIN_FORK_DEPTH=0), center is clamped to >= 1.0
+        # With scaffold (MIN_FORK_DEPTH=12), center starts at 12
+        if MIN_FORK_DEPTH > 1:
+            assert center == MIN_FORK_DEPTH
+        else:
+            assert center >= 1.0  # Clamped minimum
 
     def test_fork_center_drifts_toward_root(self):
-        """Fork center should drift toward root as maturity increases."""
+        """Fork center should drift toward root as maturity increases (when MIN_FORK_DEPTH > 1)."""
         from mycelium.step_signatures.db import get_fork_center
+        from mycelium.config import MIN_FORK_DEPTH
 
         c1 = get_fork_center(0.0)
         c2 = get_fork_center(0.5)
         c3 = get_fork_center(1.0)
 
-        assert c1 > c2 > c3  # Closer to root as maturity increases
+        # Only meaningful when MIN_FORK_DEPTH > 1 (scaffold mode)
+        # With organic growth (MIN_FORK_DEPTH=0), all are clamped to 1.0
+        if MIN_FORK_DEPTH > 1:
+            assert c1 > c2 > c3  # Closer to root as maturity increases
+        else:
+            # Organic growth: all clamped to 1.0
+            assert c1 >= 1.0
+            assert c2 >= 1.0
+            assert c3 >= 1.0
 
     def test_fork_center_never_below_one(self):
         """Fork center should never go below level 1 (root never forks)."""
@@ -118,6 +132,7 @@ class TestComputeForkProbability:
         from mycelium.config import MIN_FORK_DEPTH
 
         # Test all protected levels (below MIN_FORK_DEPTH)
+        # With organic growth (MIN_FORK_DEPTH=0), this range is empty
         for depth in range(1, MIN_FORK_DEPTH):
             prob = compute_fork_probability(
                 depth=depth,
@@ -129,26 +144,29 @@ class TestComputeForkProbability:
             assert prob == 0.0, f"depth={depth} should have 0 probability, got {prob}"
 
     def test_deep_depths_higher_probability(self):
-        """Deep depths (forking zone) should have higher fork probability."""
+        """Deep depths (forking zone) should have higher fork probability than root."""
         from mycelium.step_signatures.db import compute_fork_probability
         from mycelium.config import MIN_FORK_DEPTH
 
-        # At MIN_FORK_DEPTH with cold start and large similarity gap
+        # At deep depth with cold start and large similarity gap
         prob_deep = compute_fork_probability(
-            depth=MIN_FORK_DEPTH + 2,  # Well into forking zone
+            depth=max(MIN_FORK_DEPTH, 1) + 2,  # Well into forking zone
             sig_count=0,  # Cold start (more aggressive)
             best_similarity=0.3,  # Large gap from threshold
             fork_threshold=0.7,
         )
 
-        prob_shallow = compute_fork_probability(
-            depth=2,  # Shallow, protected
+        # Root (depth 0) should always have 0 probability
+        prob_root = compute_fork_probability(
+            depth=0,  # Root never forks
             sig_count=0,
             best_similarity=0.3,
             fork_threshold=0.7,
         )
 
-        assert prob_deep > prob_shallow
+        # Deep should be higher than root
+        assert prob_deep > prob_root
+        assert prob_root == 0.0
 
     def test_hysteresis_increases_probability(self):
         """Having existing forks at a level should increase fork probability."""
@@ -201,8 +219,18 @@ class TestComputeForkProbability:
             BIG_BANG_MIN_FORK_PROB, BIG_BANG_MAX_FORK_PROB, MIN_FORK_DEPTH
         )
 
-        # Test protected levels (0 to MIN_FORK_DEPTH-1) → should be 0
-        for depth in range(0, MIN_FORK_DEPTH):
+        # Root (depth 0) always has 0 probability (never forks)
+        prob_root = compute_fork_probability(
+            depth=0,
+            sig_count=100,
+            best_similarity=0.3,
+            fork_threshold=0.7,
+        )
+        assert prob_root == 0.0, "Root (depth 0) should always be 0"
+
+        # Test protected levels (1 to MIN_FORK_DEPTH-1) → should be 0
+        # With organic growth (MIN_FORK_DEPTH=0), this range is empty
+        for depth in range(1, MIN_FORK_DEPTH):
             prob = compute_fork_probability(
                 depth=depth,
                 sig_count=100,
@@ -211,8 +239,9 @@ class TestComputeForkProbability:
             )
             assert prob == 0.0, f"Protected depth {depth} should be 0"
 
-        # Test allowed levels (MIN_FORK_DEPTH and above) → bounded by config
-        for depth in range(MIN_FORK_DEPTH, MIN_FORK_DEPTH + 10):
+        # Test allowed levels (>= max(MIN_FORK_DEPTH, 1)) → bounded by config
+        start_depth = max(MIN_FORK_DEPTH, 1)  # Skip root which is always 0
+        for depth in range(start_depth, start_depth + 10):
             for sig_count in [0, 100, 1000, 10000]:
                 for best_sim in [0.0, 0.3, 0.5, 0.7, 0.9]:
                     prob = compute_fork_probability(

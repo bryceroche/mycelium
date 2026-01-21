@@ -283,6 +283,10 @@ _UMBRELLA_HARD_CAP = 100  # Absolute maximum to prevent unbounded recursion
 # Validate and clamp: ensure positive integer, capped at hard limit
 UMBRELLA_MAX_DEPTH = max(1, min(int(_UMBRELLA_MAX_DEPTH_RAW or 10), _UMBRELLA_HARD_CAP))
 UMBRELLA_ROUTING_THRESHOLD = 0.5  # Min similarity for umbrella child routing (lower than global 0.85 since we're picking best among known children)
+NEW_CHILD_SIMILARITY_THRESHOLD = 0.7  # Min similarity to reuse existing child instead of creating new
+                                       # Higher than UMBRELLA_ROUTING_THRESHOLD: routing failed at 0.5,
+                                       # but child at 0.7+ is "close enough" - use instead of duplicating
+                                       # This prevents duplicate children for similar steps
 
 # =============================================================================
 # SCAFFOLD STRUCTURE (Pre-allocated tree depth for domain emergence)
@@ -312,10 +316,10 @@ UMBRELLA_ROUTING_THRESHOLD = 0.5  # Min similarity for umbrella child routing (l
 # Philosophy: Routing is cheap (just embeddings), so depth costs nothing.
 # Better to have tons of headroom than be cramped at the top later.
 
-SCAFFOLD_ENABLED = True  # Enable pre-allocated scaffold structure
-SCAFFOLD_LEVELS = 18  # Very deep scaffold (18 levels before leaves)
-MIN_SIGNATURE_DEPTH = 18  # Minimum depth for leaf signatures (deep tree)
-MIN_FORK_DEPTH = 12  # Don't fork until this depth initially (top 12 levels reserved)
+SCAFFOLD_ENABLED = False  # DISABLED: Let tree grow organically (AlphaGo style)
+SCAFFOLD_LEVELS = 18  # (unused when disabled) Very deep scaffold (18 levels before leaves)
+MIN_SIGNATURE_DEPTH = 0  # Allow leaf signatures at any depth (organic growth)
+MIN_FORK_DEPTH = 0  # Allow forking at any depth (no reserved levels)
 SCAFFOLD_FORK_THRESHOLD = 0.6  # Create new branch if best match below this (mature)
 SCAFFOLD_FORK_THRESHOLD_COLD_START = 0.85  # Higher threshold during cold start (more forking)
 SCAFFOLD_FORK_RAMP_SIGNATURES = 500  # Ramp from cold start to mature over this many sigs
@@ -350,6 +354,69 @@ BIG_BANG_HYSTERESIS_BONUS = 0.3  # 30% bonus fork probability for levels with ex
 BIG_BANG_FORK_CENTER_DRIFT_RATE = 0.8  # How fast fork center drifts toward root (per maturity unit)
 BIG_BANG_MIN_FORK_PROB = 0.05  # Floor probability (always some chance to fork)
 BIG_BANG_MAX_FORK_PROB = 0.95  # Ceiling probability (never 100% certain to fork)
+
+# =============================================================================
+# OCTOPUS DETECTION (DAG step spans multiple tree branches)
+# =============================================================================
+# When a DAG step can't be confidently routed (top-2 children have similar
+# scores), the step itself needs decomposition - it's semantically ambiguous.
+#
+# Detection: If top_2_similarity_gap < threshold, trigger step decomposition.
+# Per CLAUDE.md: "Attempt to route first - decompose on failure"
+
+OCTOPUS_DETECTION_ENABLED = True  # Enable Octopus detection
+OCTOPUS_CONFUSION_GAP = 0.05  # Min gap between top-2 children to be "confident"
+OCTOPUS_MIN_DEPTH = 3  # Only detect at depth >= this (ignore root-level confusion)
+
+# =============================================================================
+# GORILLA DETECTION (Leaf node is too complex)
+# =============================================================================
+# Proactive detection of multi-operation steps that should be decomposed
+# before routing to a leaf. Complements auto-demotion (reactive).
+#
+# Per CLAUDE.md: "Failing signatures get decomposed"
+
+GORILLA_PROACTIVE_ENABLED = True  # Enable proactive complexity detection
+GORILLA_MAX_PARAMS = 4  # Steps with more extracted_values likely need decomposition
+GORILLA_COMPLEXITY_KEYWORDS = ["then", "and then", "after", "before", "finally"]
+
+# =============================================================================
+# SCORPION FIX (Bipolar signal propagation)
+# =============================================================================
+# Fixes lexical vs operational similarity problem.
+# Embeddings cluster by vocabulary, but we want operational clusters.
+#
+# Solution: Bipolar centroid updates
+#   - SUCCESS: PULL centroid toward embedding (attract)
+#   - FAILURE: PUSH centroid away from embedding (repel)
+#
+# Key insight from AlphaGo/MCTS:
+#   - High confidence + failure = STRONG negative signal
+#   - Centroids drift toward operational meaning, not vocabulary
+#
+# Per CLAUDE.md: "Centroid averaging based off avg of children"
+
+SCORPION_REPULSION_WEIGHT = 0.3  # How strongly to push on failure (0.0-1.0)
+                                  # Higher = more aggressive separation
+                                  # Lower = slower but more stable clustering
+SCORPION_ATTRACTION_WEIGHT = 0.2  # How strongly to pull on success (0.0-1.0)
+                                   # Lower than repulsion: failures are rarer, need stronger signal
+                                   # Success is more common, so gentler pull to avoid overfitting
+
+# =============================================================================
+# THREAD TRACKING (Multi-path credit/blame backpropagation)
+# =============================================================================
+# Tracks complete execution paths ("threads") through DAG for credit attribution.
+# Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
+#
+# Key insight: When multi-path exploration forks, each alternative is a separate
+# thread. After grading against ground truth, we know which threads were correct
+# vs incorrect, enabling per-signature win/loss tracking for cluster analysis.
+
+THREAD_TRACKING_ENABLED = True  # Enable thread tracking (only active in TRAINING_MODE)
+THREAD_MAX_FORKS_PER_STEP = 3  # Max alternative threads to create at any fork point
+THREAD_CREDIT_DECAY_PER_FORK = 0.7  # Credit decay per fork depth (0.7^1=0.7, 0.7^2=0.49, etc.)
+THREAD_MIN_CREDIT = 0.1  # Minimum credit to apply (filter noise from deep forks)
 
 # =============================================================================
 # ZERO-LLM ROUTING (Skip planner for mature signatures)

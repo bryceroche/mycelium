@@ -47,6 +47,57 @@ Use `print_alignment_report(DB_PATH)` to check if rollouts are helping:
 
 If correlation is negative, embeddings are misleading—clustering by vocab not operations.
 
+## Wave Function Model for MCTS
+
+MCTS rollouts can be modeled as wave function collapse, providing a principled framework for multi-path exploration and credit assignment.
+
+### Core Concepts
+
+**Superposition**: Before execution, a problem exists in superposition across all possible paths through the tree. Each path has an amplitude (confidence score).
+
+```
+|ψ⟩ = α₁|path₁⟩ + α₂|path₂⟩ + α₃|path₃⟩ + ...
+```
+
+**Wave Collapse**: The wave function collapses at the **final step** where we have ground truth. Only then do we know which thread was correct.
+
+**Selective Branching**: Don't branch on every DAG step—only when **undecided**. Use UCB1 gap to detect uncertainty. High gap = confident, low gap = branch.
+
+### The Key Learning Unit
+
+**The combination of `(dag_step_id, node_id)` is what we're learning.**
+
+A node might be great for step 2 but terrible for step 5. Track performance per step-node pair, not just per node.
+
+### Amplitude Updates (Post-Mortem)
+
+After grading, update amplitudes based on thread outcomes:
+
+| Confidence | Outcome | Signal |
+|------------|---------|--------|
+| High amplitude | Success | Reinforce (stay confident) |
+| High amplitude | Failure | **Strong negative** (confident and wrong) |
+| Low amplitude | Success | Boost (discovered something) |
+| Low amplitude | Failure | Weak signal (expected uncertainty) |
+
+### Interference Patterns
+
+When multiple threads visit the same `(dag_step_id, node_id)`:
+
+- **Constructive interference** (both succeed): Reinforce the node, consider **merging** similar centroids
+- **Destructive interference** (mixed results): Signal to **split** the cluster—it's too generic
+
+This connects wave mechanics to structural tree evolution.
+
+### MCTS Tables
+
+```
+mcts_dags          - Problem-level tracking (benchmark, difficulty, ground_truth)
+mcts_dag_steps     - Plan step decomposition (step_num, is_atomic)
+mcts_threads       - Rollout paths (fork_at_step, fork_reason)
+mcts_thread_steps  - Fact table with amplitude (the core learning data)
+```
+
 Mcts for each dag task.
 Train 3 problems in parallel and they don't need to know about each other.
 

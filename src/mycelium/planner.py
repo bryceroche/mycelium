@@ -217,17 +217,59 @@ class DAGPlan:
     def validate(self, recursive: bool = True) -> tuple[bool, list[str]]:
         """Validate the DAG structure.
 
+        Checks:
+        1. Missing dependencies (step depends on non-existent step)
+        2. Cyclic dependencies
+        3. Invalid step references in extracted_values (e.g., {step_1} pointing to unknown step)
+        4. Step references not in depends_on (can't use result from step you don't depend on)
+
         Returns:
             Tuple of (is_valid, list of error messages)
         """
+        import re
         errors = []
         step_ids = {s.id for s in self.steps}
+
+        # Pattern to match step references like {step_1}, {step_2}, etc.
+        step_ref_pattern = re.compile(r'\{(step_?\d+)\}', re.IGNORECASE)
 
         # Check for missing dependencies
         for step in self.steps:
             for dep in step.depends_on:
                 if dep not in step_ids:
                     errors.append(f"Step '{step.id}' depends on unknown step '{dep}'")
+
+        # Check step references in extracted_values
+        for step in self.steps:
+            if not step.extracted_values:
+                continue
+            for key, value in step.extracted_values.items():
+                # Only check string values that could be references
+                if not isinstance(value, str):
+                    continue
+                # Find all step references in this value
+                matches = step_ref_pattern.findall(value)
+                for ref_id in matches:
+                    # Normalize: handle both "step1" and "step_1" formats
+                    normalized_ref = ref_id.lower()
+                    # Check if referenced step exists
+                    if normalized_ref not in step_ids and ref_id not in step_ids:
+                        errors.append(
+                            f"Step '{step.id}' has extracted_value '{key}' referencing "
+                            f"unknown step '{{{ref_id}}}'"
+                        )
+                    # Check if referenced step is in depends_on
+                    elif normalized_ref not in step.depends_on and ref_id not in step.depends_on:
+                        # Try both formats
+                        found_in_deps = any(
+                            d.lower() == normalized_ref or d == ref_id
+                            for d in step.depends_on
+                        )
+                        if not found_in_deps:
+                            errors.append(
+                                f"Step '{step.id}' references '{{{ref_id}}}' in extracted_values "
+                                f"but doesn't depend on it (depends_on={step.depends_on})"
+                            )
 
         # Check for cycles using DFS with forward traversal
         # Build adjacency list: step -> list of steps that depend on it

@@ -227,13 +227,19 @@ async def solve_problem(
     injection_mode: str = "all",
     use_hints: bool = True,
     compute_budget: float = 1.0,
+    benchmark: str = None,
 ) -> ProblemResult:
     """Solve a single problem with the given match mode."""
     try:
         # V2 Solver: simplified API (strict DAG mode - no LLM fallback)
         solver = Solver(db_path=db_path)
 
-        result = await solver.solve(problem=problem["problem"], compute_budget=compute_budget)
+        result = await solver.solve(
+            problem=problem["problem"],
+            compute_budget=compute_budget,
+            benchmark=benchmark,
+            ground_truth=problem["answer"],
+        )
 
         # Check if answer matches ground truth
         is_correct = await answers_equivalent_llm(result.answer, problem["answer"])
@@ -303,11 +309,11 @@ async def solve_problem(
 
 def run_problem_sync(args: tuple) -> dict:
     """Synchronous wrapper for process pool."""
-    problem, match_mode, db_path, injection_mode, use_hints, compute_budget = args
+    problem, match_mode, db_path, injection_mode, use_hints, compute_budget, benchmark = args
     if match_mode == "direct":
         result = asyncio.run(solve_direct(problem))
     else:
-        result = asyncio.run(solve_problem(problem, match_mode, db_path, injection_mode, use_hints, compute_budget))
+        result = asyncio.run(solve_problem(problem, match_mode, db_path, injection_mode, use_hints, compute_budget, benchmark))
     return asdict(result)
 
 
@@ -338,7 +344,7 @@ def run_pipeline(
     tasks = []
     for mode in modes:
         for problem in problems:
-            tasks.append((problem, mode, db_path, injection_mode, use_hints, compute_budget))
+            tasks.append((problem, mode, db_path, injection_mode, use_hints, compute_budget, dataset))
 
     logger.info(f"Running {len(tasks)} total tasks ({len(problems)} problems x {len(modes)} modes)")
 
@@ -403,6 +409,10 @@ def run_pipeline(
         total = level_stats[level]["total"]
         level_stats[level]["accuracy"] = level_stats[level]["successes"] / total if total > 0 else 0.0
 
+    # Get database structure stats
+    step_db = StepSignatureDB(db_path)
+    structure_stats = step_db.get_structure_stats()
+
     # Save results
     output = {
         "config": {
@@ -418,6 +428,7 @@ def run_pipeline(
             "total_time_seconds": total_time,
             "mode_stats": mode_stats,
             "level_stats": level_stats,
+            "structure_stats": structure_stats,
         },
         "results": results,
     }
@@ -465,6 +476,25 @@ def run_pipeline(
         for level in sorted(level_stats.keys()):
             stats = level_stats[level]
             print(f"  {level:15s} {stats['accuracy']:5.1%} ({stats['successes']}/{stats['total']})")
+
+    # Print database structure stats
+    print("\nDatabase structure:")
+    ss = structure_stats
+    print(f"  Total signatures: {ss['total']}")
+    print(f"  Routers: {ss['by_role']['router']} | Leaves: {ss['by_role']['leaf']}", end="")
+    if ss['total'] > 0:
+        ratio = ss['by_role']['router'] / ss['total']
+        print(f" ({ratio:.0%} routers)")
+    else:
+        print()
+    print(f"  Umbrellas: {ss['umbrella_count']} (orphans: {ss['orphan_umbrellas']})")
+    print(f"  Avg depth: {ss['avg_depth']:.1f} | Max depth: {ss['max_depth']}")
+    print(f"  Overall success rate: {ss['success_rate']:.0%}")
+
+    # Depth histogram (compact)
+    if ss['depth_histogram']:
+        depth_str = " | ".join(f"d{d}:{c}" for d, c in sorted(ss['depth_histogram'].items()))
+        print(f"  Depth histogram: {depth_str}")
 
     print("=" * 60)
 

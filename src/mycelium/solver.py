@@ -14,6 +14,7 @@ Key difference from V1: Signatures speak natural language.
 """
 
 import asyncio
+import hashlib
 import logging
 import re
 from collections import OrderedDict
@@ -46,6 +47,16 @@ from mycelium.config import (
     COLD_START_HALFLIFE,
     HINT_LIMIT,
     HINT_MIN_SIMILARITY,
+    OCTOPUS_DETECTION_ENABLED,
+    OCTOPUS_CONFUSION_GAP,
+    OCTOPUS_MIN_DEPTH,
+    GORILLA_PROACTIVE_ENABLED,
+    GORILLA_MAX_PARAMS,
+    GORILLA_COMPLEXITY_KEYWORDS,
+    THREAD_TRACKING_ENABLED,
+    THREAD_MAX_FORKS_PER_STEP,
+    THREAD_CREDIT_DECAY_PER_FORK,
+    THREAD_MIN_CREDIT,
 )
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
@@ -53,11 +64,81 @@ from mycelium.step_signatures.db import normalize_step_text
 from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.step_signatures.stats import record_step_stats
+from mycelium.step_signatures.utils import cosine_similarity
 from mycelium.embedder import Embedder
 from mycelium.embedding_cache import cached_embed, cached_embed_batch
 from mycelium.difficulty import estimate_difficulty
+from mycelium.data_layer.mcts import (
+    create_dag,
+    create_dag_steps,
+    grade_dag,
+    create_thread,
+    complete_thread,
+    log_thread_step,
+    run_postmortem_with_interference,
+)
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# OCTOPUS & GORILLA EXCEPTIONS
+# =============================================================================
+# These signal that the step needs further decomposition before execution.
+# Per CLAUDE.md: "Attempt to route first - decompose on failure"
+
+
+class OctopusDetected(Exception):
+    """DAG step is semantically ambiguous - spans multiple tree branches.
+
+    Raised when routing can't confidently choose between children.
+    Solution: Decompose the step into more specific sub-steps.
+    """
+
+    def __init__(self, step: "Step", top_children: list, similarities: list):
+        self.step = step
+        self.top_children = top_children  # Top-2 children that caused confusion
+        self.similarities = similarities  # Their similarity scores
+        msg = f"Octopus: '{step.task[:50]}' confused between {len(top_children)} children (gap={abs(similarities[0]-similarities[1]):.3f})"
+        super().__init__(msg)
+
+
+class GorillaDetected(Exception):
+    """Step is too complex for a single leaf - needs decomposition.
+
+    Raised when a step has too many parameters or complexity keywords.
+    Solution: Decompose into simpler atomic operations.
+    """
+
+    def __init__(self, step: "Step", reason: str):
+        self.step = step
+        self.reason = reason
+        msg = f"Gorilla: '{step.task[:50]}' too complex ({reason})"
+        super().__init__(msg)
+
+
+def detect_gorilla(step: "Step") -> Optional[str]:
+    """Check if a step is too complex and should be decomposed proactively.
+
+    Returns reason string if Gorilla detected, None otherwise.
+    Per CLAUDE.md: "Failing signatures get decomposed"
+    """
+    if not GORILLA_PROACTIVE_ENABLED:
+        return None
+
+    task_lower = step.task.lower()
+
+    # Check for complexity keywords
+    for keyword in GORILLA_COMPLEXITY_KEYWORDS:
+        if keyword in task_lower:
+            return f"contains '{keyword}'"
+
+    # Check for too many extracted values (likely multi-operation)
+    extracted = getattr(step, 'extracted_values', None) or {}
+    if len(extracted) > GORILLA_MAX_PARAMS:
+        return f"{len(extracted)} params (max {GORILLA_MAX_PARAMS})"
+
+    return None
 
 
 # =============================================================================
@@ -310,6 +391,71 @@ class PathOutcome:
     step_id: str  # Which step this was for
     embedding_similarity: float = 0.0  # Cosine similarity to signature centroid
     dsl_type: str = "unknown"  # DSL type for operational alignment tracking
+    thread_id: str = ""  # Thread that explored this path (for multi-path credit)
+
+
+@dataclass
+class ThreadContext:
+    """Tracks a complete execution path through the DAG for multi-path credit/blame.
+
+    A "thread" = one complete execution path through all DAG steps.
+    When multi-path exploration forks at any step, each alternative becomes a child thread.
+    Only one thread's answer becomes the final result (winner).
+
+    After grading against ground truth, we know which threads were correct vs incorrect,
+    enabling:
+    - Positive credit to entire winning thread (not just final step)
+    - Negative credit to losing threads (SCORPION repulsion)
+    - Per-signature thread win/loss tracking for cluster analysis
+    """
+    thread_id: str  # UUID
+    parent_thread_id: Optional[str] = None  # Parent thread (if forked)
+    fork_step_id: Optional[str] = None  # Step where this thread forked from parent
+    fork_depth: int = 0  # How many forks from root thread
+    # (sig_id, step_id, was_primary) - was_primary=True if this was the best/first choice at that step
+    signature_steps: list[tuple[int, str, bool]] = field(default_factory=list)
+    step_results: dict[str, str] = field(default_factory=dict)  # step_id -> result
+    is_winner: bool = False  # Whether this thread produced the final answer
+    final_answer: Optional[str] = None  # Answer produced by this thread
+    created_at: str = ""  # ISO timestamp
+
+    def add_signature(self, sig_id: int, step_id: str, was_primary: bool = True) -> None:
+        """Record that a signature was used at a step in this thread."""
+        self.signature_steps.append((sig_id, step_id, was_primary))
+
+    @property
+    def signature_ids(self) -> list[int]:
+        """Get just the signature IDs (for backward compatibility)."""
+        return [sig_id for sig_id, _, _ in self.signature_steps]
+
+    def fork(self, step_id: str, new_signature_id: int) -> "ThreadContext":
+        """Create a child thread at a fork point.
+
+        The new signature at the fork is marked as non-primary (it's an alternative).
+
+        Args:
+            step_id: The step where the fork occurs
+            new_signature_id: Signature ID for the new path
+
+        Returns:
+            New ThreadContext that branches from this thread
+        """
+        import uuid
+        from datetime import datetime, timezone
+
+        # Copy existing signature_steps and add the new one (marked as non-primary since it's a fork)
+        new_sig_steps = self.signature_steps.copy()
+        new_sig_steps.append((new_signature_id, step_id, False))  # False = not primary choice
+
+        return ThreadContext(
+            thread_id=str(uuid.uuid4()),
+            parent_thread_id=self.thread_id,
+            fork_step_id=step_id,
+            fork_depth=self.fork_depth + 1,
+            signature_steps=new_sig_steps,
+            step_results=self.step_results.copy(),
+            created_at=datetime.now(timezone.utc).isoformat(),
+        )
 
 
 @dataclass
@@ -370,6 +516,26 @@ class Solver:
         # Used for ground truth comparison to determine operational equivalence
         # Cleared after each problem is graded via record_problem_outcome()
         self._pending_path_outcomes: dict[str, list[PathOutcome]] = {}
+
+        # Thread tracking state for multi-path credit/blame backpropagation
+        # Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
+        # thread_id -> ThreadContext (tracks complete execution paths)
+        self._active_threads: dict[str, ThreadContext] = {}
+        # List of all thread IDs for current problem (for iteration during grading)
+        self._problem_threads: list[str] = []
+        # Root thread ID for current problem (parent of all forks)
+        self._root_thread_id: Optional[str] = None
+
+        # Routing context tracking for MCTS amplitude logging
+        # Set during route_with_confidence, cleared at start of each step
+        self._routing_confidence: float = 1.0
+        self._routing_similarity: Optional[float] = None
+        self._routing_ucb1_gap: Optional[float] = None
+        self._routing_was_undecided: bool = False
+
+        # MCTS DAG tracking (set per-problem in solve())
+        self._current_dag_id: Optional[str] = None
+        self._dag_step_ids: dict[str, str] = {}  # step.id -> dag_step_id
 
     def _create_background_task(self, coro) -> asyncio.Task:
         """Create a background task with proper lifecycle management.
@@ -564,6 +730,8 @@ class Solver:
         self,
         problem: str,
         compute_budget: float = None,
+        benchmark: str = None,
+        ground_truth: str = None,
     ) -> SolverResult:
         """Solve a problem end-to-end.
 
@@ -573,6 +741,8 @@ class Solver:
                 - None = adaptive budget (harder problems get more exploration)
                 - 1.0 = single best path (backward compatible)
                 - 2.0+ = explore multiple paths at low-confidence nodes
+            benchmark: Dataset name (e.g., "gsm8k", "math500_L1") for MCTS tracking
+            ground_truth: Correct answer for MCTS DAG grading
 
         Returns:
             SolverResult with answer and step details
@@ -584,9 +754,26 @@ class Solver:
         explicit_budget = compute_budget is not None
 
         import time
+        import uuid
+        from datetime import datetime, timezone
         start_time = time.time()
 
         try:
+            # Initialize thread tracking for this problem (if enabled and multi-path)
+            # Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
+            if THREAD_TRACKING_ENABLED and TRAINING_MODE:
+                self._root_thread_id = str(uuid.uuid4())
+                root_thread = ThreadContext(
+                    thread_id=self._root_thread_id,
+                    created_at=datetime.now(timezone.utc).isoformat(),
+                )
+                self._active_threads = {self._root_thread_id: root_thread}
+                self._problem_threads = [self._root_thread_id]
+            else:
+                self._root_thread_id = None
+                self._active_threads = {}
+                self._problem_threads = []
+
             # 0. Embed problem (used for both zero-LLM and planner hints)
             # Use cached_embed to avoid redundant computation
             problem_embedding = cached_embed(problem, self.embedder)
@@ -595,6 +782,33 @@ class Solver:
             # Difficulty affects: depth, credit multiplier, routing preferences
             difficulty = estimate_difficulty(problem)
             logger.debug("[solver] Estimated difficulty: %.2f for problem: %s", difficulty, problem[:50])
+
+            # 0.15. Create MCTS DAG record for this problem (training mode only)
+            # Per CLAUDE.md: Track problem_id, problem_desc, benchmark, difficulty_level
+            problem_id = hashlib.sha256(problem.encode()).hexdigest()[:16]
+            if TRAINING_MODE:
+                self._current_dag_id = create_dag(
+                    problem_id=problem_id,
+                    problem_desc=problem,
+                    benchmark=benchmark,
+                    difficulty_level=difficulty,
+                    ground_truth=ground_truth,
+                )
+                logger.debug("[solver] Created MCTS DAG %s for problem %s", self._current_dag_id, problem_id)
+
+                # Create root thread record for MCTS tracking
+                # Per CLAUDE.md: "Create mcts_thread record for root thread at problem start"
+                if THREAD_TRACKING_ENABLED and self._root_thread_id:
+                    create_thread(
+                        dag_id=self._current_dag_id,
+                        parent_thread_id=None,
+                        fork_at_step=None,
+                        fork_reason=None,
+                        thread_id=self._root_thread_id,
+                    )
+                    logger.debug("[solver] Created root thread %s for DAG %s", self._root_thread_id[:12], self._current_dag_id)
+            else:
+                self._current_dag_id = None
 
             # 0.2. Adaptive compute budget: scale by difficulty (if not explicitly set)
             # Per CLAUDE.md: "Multi step simulated mcts rollouts"
@@ -665,6 +879,32 @@ class Solver:
                     elapsed_ms=(time.time() - start_time) * 1000,
                 )
 
+            # Log DAG steps to mcts_dag_steps table (training mode only)
+            # Per beads issue: wire up step logging when DAG plan is generated
+            # Use execution order to get proper step_num (level) and branch_num (position in level)
+            if TRAINING_MODE and self._current_dag_id:
+                execution_levels = plan.get_execution_order()
+                dag_step_tuples = []
+                step_order = []  # Track step objects in same order as tuples
+                for level_num, level_steps in enumerate(execution_levels, start=1):
+                    for branch_num, step in enumerate(level_steps, start=1):
+                        dag_step_tuples.append(
+                            (step.task, level_num, branch_num, step.is_atomic)
+                        )
+                        step_order.append(step)
+                dag_step_ids = create_dag_steps(self._current_dag_id, dag_step_tuples)
+                # Store mapping for thread step logging
+                self._dag_step_ids = {
+                    step.id: dag_step_id
+                    for step, dag_step_id in zip(step_order, dag_step_ids)
+                }
+                logger.debug(
+                    "[solver] Logged %d DAG steps for %s (%d levels)",
+                    len(dag_step_ids), self._current_dag_id, len(execution_levels)
+                )
+            else:
+                self._dag_step_ids = {}
+
             # Pre-warm DSL expression cache in parallel for independent steps
             await self._prewarm_dsl_cache(plan.steps)
 
@@ -713,6 +953,7 @@ class Solver:
                         step, problem, step_context, step_desc_context,
                         compute_budget=compute_budget,
                         difficulty=difficulty,
+                        thread_id=self._root_thread_id,
                     )
 
                 if len(ready_steps) > 1:
@@ -782,6 +1023,10 @@ class Solver:
             # 3. Synthesize final answer
             final_answer = await self._synthesize(problem, step_results, context)
 
+            # Update root thread's final_answer for thread tracking
+            if self._root_thread_id and self._root_thread_id in self._active_threads:
+                self._active_threads[self._root_thread_id].final_answer = final_answer
+
             elapsed_ms = (time.time() - start_time) * 1000
             logger.info(
                 "[solver] Solved in %.0fms: steps=%d new=%d matched=%d reused=%d (dsl=%d, routed=%d)",
@@ -812,6 +1057,10 @@ class Solver:
                 error_message=str(e),
                 context={"source": "solver_exception", "problem": problem[:500]},
             )
+            # Grade DAG as failed on exception (training mode only)
+            if self._current_dag_id:
+                grade_dag(self._current_dag_id, success=False)
+                logger.debug("[solver] Graded MCTS DAG %s as failed (exception)", self._current_dag_id)
             return SolverResult(
                 problem=problem,
                 answer="",
@@ -829,6 +1078,7 @@ class Solver:
         depth: int = 0,
         compute_budget: float = 1.0,
         difficulty: float = None,
+        thread_id: str = None,
     ) -> StepResult:
         """Execute a single step.
 
@@ -848,17 +1098,43 @@ class Solver:
             step_descriptions: step_id → task description (for NL param matching)
             depth: Recursion depth for composite steps
             compute_budget: MCTS exploration budget (>1 enables multi-path)
+            thread_id: Thread ID for multi-path credit tracking (None if not tracking)
         """
         step_descriptions = step_descriptions or {}
         import time
         start_time = time.time()
+
+        # Reset routing context for MCTS amplitude logging
+        # Updated during routing in _explore_multiple_paths, read at end for log_thread_step
+        self._routing_confidence = 1.0
+        self._routing_similarity = None
+        self._routing_ucb1_gap = None
+        self._routing_was_undecided = False
 
         # 0. Handle composite steps (recursive DAG of DAGs)
         if step.is_composite:
             return await self._execute_composite_step(
                 step, problem, context, step_descriptions, depth,
                 compute_budget=compute_budget,
+                thread_id=thread_id,
             )
+
+        # 0.5 GORILLA DETECTION: Check if step is too complex
+        # If detected, decompose proactively before routing
+        gorilla_reason = detect_gorilla(step)
+        if gorilla_reason:
+            logger.info(
+                "[GORILLA] Detected complex step: '%s' (%s)",
+                step.task[:40], gorilla_reason
+            )
+            # Decompose the step using the planner (similar to Octopus)
+            decomposed_result = await self._decompose_gorilla_step(
+                step, problem, context, step_descriptions, gorilla_reason, difficulty, thread_id
+            )
+            if decomposed_result is not None:
+                return decomposed_result
+            # If decomposition failed, continue with normal execution
+            logger.warning("[GORILLA] Step decomposition failed, continuing normally")
 
         # 1. Normalize and embed step (strip numbers for better matching)
         # Use cached_embed to avoid redundant computation for repeated steps
@@ -916,14 +1192,38 @@ class Solver:
         routed_signature = signature
 
         if signature.is_semantic_umbrella:
-            child_result = await self._try_umbrella_routing(signature, step, problem, context, step_descriptions, embedding=embedding, children=children)
-            if child_result is not None:
-                result, routed_signature, was_injected = child_result
-                was_routed = True  # Successfully routed through umbrella
+            try:
+                child_result = await self._try_umbrella_routing(signature, step, problem, context, step_descriptions, embedding=embedding, children=children)
+                if child_result is not None:
+                    result, routed_signature, was_injected = child_result
+                    was_routed = True  # Successfully routed through umbrella
+                    logger.info(
+                        "[solver] Umbrella routed: '%s' → '%s'",
+                        signature.step_type, routed_signature.step_type
+                    )
+            except OctopusDetected as octopus:
+                # OCTOPUS: Step spans multiple branches - decompose the step itself
                 logger.info(
-                    "[solver] Umbrella routed: '%s' → '%s'",
-                    signature.step_type, routed_signature.step_type
+                    "[OCTOPUS] Decomposing step '%s' (confused between %d children)",
+                    step.task[:40], len(octopus.top_children)
                 )
+                # Use planner to decompose this specific step
+                decomposed_result = await self._decompose_octopus_step(
+                    step, problem, context, step_descriptions, octopus, difficulty, thread_id
+                )
+                if decomposed_result is not None:
+                    return decomposed_result
+                # If decomposition failed, use BEST of the confused children (not the umbrella)
+                # This ensures we land on a leaf, not stay stuck at the umbrella
+                if octopus.top_children:
+                    routed_signature = octopus.top_children[0]  # Best match by similarity
+                    was_routed = True
+                    logger.warning(
+                        "[OCTOPUS] Decomposition failed, using best confused child: '%s' (sim=%.3f)",
+                        routed_signature.step_type, octopus.similarities[0] if octopus.similarities else 0.0
+                    )
+                else:
+                    logger.warning("[OCTOPUS] Step decomposition failed, no children to fall back to")
 
         # 4. Try DSL execution if not already routed
         # Key: Use dsl_hint from planner (LLM writes the expression)
@@ -943,7 +1243,7 @@ class Solver:
             if compute_budget > 1.0:
                 mp_result, mp_sig, explored_sigs, mp_injected = await self._explore_multiple_paths(
                     step, problem, context, step_descriptions or {},
-                    embedding, compute_budget,
+                    embedding, compute_budget, thread_id,
                 )
                 if mp_result is not None:
                     result = mp_result
@@ -956,6 +1256,10 @@ class Solver:
                     )
             else:
                 # Single-path: just try DSL on routed signature
+                # Compute similarity for amplitude logging (not available from multi-path routing)
+                if routed_signature.centroid is not None:
+                    self._routing_similarity = cosine_similarity(embedding, routed_signature.centroid)
+                    self._routing_confidence = self._routing_similarity  # Use similarity as confidence proxy
                 dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
                 if dsl_result is not None:
                     result = dsl_result
@@ -975,46 +1279,94 @@ class Solver:
 
         # 4.6. If we don't have a result yet, try routing through umbrella
         if result is None and routed_signature.is_semantic_umbrella:
-            child_result = await self._try_umbrella_routing(
-                routed_signature, step, problem, context, step_descriptions, embedding=embedding
-            )
-            if child_result is not None:
-                result, routed_signature, was_injected = child_result
-                was_routed = True
-                logger.info(
-                    "[solver] Routed through umbrella to: '%s'",
-                    routed_signature.step_type
+            try:
+                child_result = await self._try_umbrella_routing(
+                    routed_signature, step, problem, context, step_descriptions, embedding=embedding
                 )
+                if child_result is not None:
+                    result, routed_signature, was_injected = child_result
+                    was_routed = True
+                    logger.info(
+                        "[solver] Routed through umbrella to: '%s'",
+                        routed_signature.step_type
+                    )
+            except OctopusDetected as octopus:
+                # OCTOPUS: Step spans multiple branches - decompose the step itself
+                logger.info(
+                    "[OCTOPUS] Decomposing step '%s' (confused between %d children, second routing attempt)",
+                    step.task[:40], len(octopus.top_children)
+                )
+                decomposed_result = await self._decompose_octopus_step(
+                    step, problem, context, step_descriptions, octopus, difficulty, thread_id
+                )
+                if decomposed_result is not None:
+                    return decomposed_result
+                # If decomposition failed, use BEST of the confused children
+                if octopus.top_children:
+                    routed_signature = octopus.top_children[0]
+                    was_routed = True
+                    logger.warning(
+                        "[OCTOPUS] Decomposition failed (2nd attempt), using best child: '%s'",
+                        routed_signature.step_type
+                    )
+                else:
+                    logger.warning("[OCTOPUS] Step decomposition failed, continuing to create new child")
 
         # 4.7. CREATE NEW CHILD ON ROUTING FAILURE (per CLAUDE.md: failing signatures decompose)
         # If umbrella routing failed (no matching child), create new child for current step
         # This grows the tree by adding specialized children to handle novel steps
         if result is None and routed_signature.is_semantic_umbrella:
-            logger.info(
-                "[solver] Router umbrella '%s' failed to route, creating new child for step '%s'",
-                routed_signature.step_type, step.task[:40]
-            )
-            # Create new child signature directly under this umbrella
-            new_child = self.step_db.create_signature(
-                step_text=step.task,
-                embedding=embedding,
-                parent_id=routed_signature.id,
-                origin_depth=depth + 1,
-                extracted_values=getattr(step, 'extracted_values', None),
-                dsl_hint=getattr(step, 'dsl_hint', None),
-            )
-            logger.info(
-                "[solver] Created new child '%s' (id=%d) under umbrella '%s'",
-                new_child.step_type, new_child.id, routed_signature.step_type
-            )
+            from mycelium.config import NEW_CHILD_SIMILARITY_THRESHOLD
 
-            # Execute the new child's DSL
-            dsl_result = await self._try_dsl(new_child, step, context, step_descriptions)
+            # First check if there's an existing child that's "close enough"
+            # Routing failed (similarity < UMBRELLA_ROUTING_THRESHOLD), but maybe
+            # there's a child above NEW_CHILD_SIMILARITY_THRESHOLD we should use
+            # instead of creating a duplicate
+            existing_children = self.step_db.get_children(routed_signature.id, for_routing=True)
+            best_existing_child = None
+            best_existing_sim = 0.0
+
+            for child_sig, _condition in existing_children:
+                if child_sig.centroid is not None:
+                    sim = cosine_similarity(embedding, child_sig.centroid)
+                    if sim > best_existing_sim:
+                        best_existing_sim = sim
+                        best_existing_child = child_sig
+
+            # Use existing child if similarity is above threshold (avoid duplicates)
+            if best_existing_child and best_existing_sim >= NEW_CHILD_SIMILARITY_THRESHOLD:
+                logger.info(
+                    "[solver] Using existing child '%s' (sim=%.3f >= %.3f threshold) instead of creating new",
+                    best_existing_child.step_type, best_existing_sim, NEW_CHILD_SIMILARITY_THRESHOLD
+                )
+                routed_signature = best_existing_child
+                was_routed = True
+            else:
+                # No close-enough child exists, create new one
+                logger.info(
+                    "[solver] Router umbrella '%s' failed to route (best_sim=%.3f < %.3f), creating new child",
+                    routed_signature.step_type, best_existing_sim, NEW_CHILD_SIMILARITY_THRESHOLD
+                )
+                new_child = self.step_db.create_signature(
+                    step_text=step.task,
+                    embedding=embedding,
+                    parent_id=routed_signature.id,
+                    origin_depth=depth + 1,
+                    extracted_values=getattr(step, 'extracted_values', None),
+                    dsl_hint=getattr(step, 'dsl_hint', None),
+                )
+                logger.info(
+                    "[solver] Created new child '%s' (id=%d) under umbrella '%s'",
+                    new_child.step_type, new_child.id, routed_signature.step_type
+                )
+                routed_signature = new_child
+
+            # Execute the child's DSL (either existing or newly created)
+            dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
             if dsl_result is not None:
                 result = dsl_result
                 was_injected = True
-                routed_signature = new_child
-                logger.info("[solver] New child DSL succeeded: %s", result[:30] if result else "")
+                logger.info("[solver] Child DSL succeeded: %s", result[:30] if result else "")
 
         # 5. No LLM fallback - strict DAG execution
         # Three outcomes: route to child, create child, or fail
@@ -1092,6 +1444,46 @@ class Solver:
             used_dsl=was_injected,
         )
 
+        # 9. Track signature in thread (for single-path and multi-path credit tracking)
+        # This ensures ALL routing is tracked, not just multi-path exploration
+        if thread_id and routed_signature:
+            thread = self._active_threads.get(thread_id)
+            if thread:
+                # Only add if not already tracked (multi-path adds in _explore_multiple_paths)
+                if not any(sig_id == routed_signature.id and s_id == step.id
+                          for sig_id, s_id, _ in thread.signature_steps):
+                    thread.add_signature(routed_signature.id, step.id, was_primary=True)
+                thread.step_results[step.id] = result or ""
+
+        # 10. Log MCTS thread step with amplitude (training mode only)
+        # Per beads issue: Wire up mcts_thread_steps amplitude logging
+        # Key fields: amplitude (prior confidence), was_undecided, ucb1_gap, similarity_score, node_id
+        if TRAINING_MODE and thread_id and routed_signature and self._current_dag_id:
+            dag_step_id = self._dag_step_ids.get(step.id)
+            if dag_step_id:
+                log_thread_step(
+                    thread_id=thread_id,
+                    dag_id=self._current_dag_id,
+                    dag_step_id=dag_step_id,
+                    node_id=routed_signature.id,
+                    amplitude=self._routing_confidence,
+                    similarity_score=self._routing_similarity,
+                    was_undecided=self._routing_was_undecided,
+                    ucb1_gap=self._routing_ucb1_gap,
+                    alternatives_considered=len(explored_sigs) if explored_sigs else 1,
+                    step_result=result[:500] if result else None,
+                    step_success=step_completed,
+                )
+                logger.debug(
+                    "[solver] Logged thread step: thread=%s dag_step=%s node=%d amp=%.2f undecided=%s success=%s",
+                    thread_id[:12] if thread_id else None,
+                    dag_step_id[:12] if dag_step_id else None,
+                    routed_signature.id,
+                    self._routing_confidence,
+                    self._routing_was_undecided,
+                    step_completed,
+                )
+
         return StepResult(
             step_id=step.id,
             task=step.task,
@@ -1113,6 +1505,7 @@ class Solver:
         step_descriptions: dict[str, str] = None,
         depth: int = 0,
         compute_budget: float = 1.0,
+        thread_id: str = None,
     ) -> StepResult:
         """Execute a composite step by recursively executing its sub-plan.
 
@@ -1129,6 +1522,7 @@ class Solver:
             step_descriptions: step_id → task description (for NL param matching)
             depth: Recursion depth for nested composites
             compute_budget: MCTS exploration budget (>1 enables multi-path)
+            thread_id: Thread ID for multi-path credit tracking (None if not tracking)
         """
         step_descriptions = step_descriptions or {}
         import time
@@ -1176,6 +1570,7 @@ class Solver:
             sub_result = await self._execute_step(
                 sub_step, problem, step_context, step_desc_context, depth=depth + 1,
                 compute_budget=compute_budget,
+                thread_id=thread_id,
             )
             sub_results.append(sub_result)
 
@@ -1255,8 +1650,6 @@ class Solver:
             depth: Current recursion depth (for limiting chain length)
             children: Pre-fetched children (avoids redundant DB query)
         """
-        from mycelium.step_signatures.utils import cosine_similarity
-
         # Depth limit: prevent unbounded recursion through long umbrella chains
         if depth >= UMBRELLA_MAX_DEPTH:
             logger.warning(
@@ -1286,19 +1679,41 @@ class Solver:
         # Embedding-based routing: compare step embedding to child centroids
         # This is ~0ms vs ~500ms for LLM routing
         if embedding is not None:
-            best_child = None
-            best_sim = 0.0
-            best_condition = ""
-
+            # Collect ALL child similarities for Octopus detection
+            child_scores = []
             for child_sig, condition in children:
                 # Capture centroid once to avoid TOCTOU race condition
                 centroid = child_sig.centroid
                 if centroid is not None:
                     sim = cosine_similarity(embedding, centroid)
-                    if sim > best_sim:
-                        best_sim = sim
-                        best_child = child_sig
-                        best_condition = condition
+                    child_scores.append((child_sig, sim, condition))
+
+            # Sort by similarity descending
+            child_scores.sort(key=lambda x: x[1], reverse=True)
+
+            # OCTOPUS DETECTION: Check if top-2 are too close (routing confusion)
+            # If undecided, the step itself needs decomposition
+            if OCTOPUS_DETECTION_ENABLED and len(child_scores) >= 2 and depth >= OCTOPUS_MIN_DEPTH:
+                top_sim = child_scores[0][1]
+                second_sim = child_scores[1][1]
+                gap = top_sim - second_sim
+
+                # Both must be above threshold AND gap too small
+                if top_sim > UMBRELLA_ROUTING_THRESHOLD and second_sim > UMBRELLA_ROUTING_THRESHOLD:
+                    if gap < OCTOPUS_CONFUSION_GAP:
+                        logger.info(
+                            "[OCTOPUS] Detected routing confusion: '%s' top-2 gap=%.3f (threshold=%.3f)",
+                            step.task[:40], gap, OCTOPUS_CONFUSION_GAP
+                        )
+                        raise OctopusDetected(
+                            step=step,
+                            top_children=[child_scores[0][0], child_scores[1][0]],
+                            similarities=[top_sim, second_sim],
+                        )
+
+            # Use best match if available
+            best_child = child_scores[0][0] if child_scores else None
+            best_sim = child_scores[0][1] if child_scores else 0.0
 
             # Use embedding match if similarity is reasonable
             if best_child and best_sim > UMBRELLA_ROUTING_THRESHOLD:
@@ -1366,6 +1781,7 @@ class Solver:
         step_descriptions: dict[str, str],
         embedding: np.ndarray,
         compute_budget: float = 1.0,
+        thread_id: str = None,
     ) -> tuple[Optional[str], StepSignature, list[StepSignature], bool]:
         """MCTS multi-path exploration when confidence is low.
 
@@ -1376,6 +1792,9 @@ class Solver:
         lead to different outcomes, helping split vocab-based clusters
         into operation-based clusters.
 
+        When thread tracking is enabled, creates fork threads for each
+        alternative path to enable per-signature thread win/loss tracking.
+
         Args:
             step: The step being executed
             problem: Original problem text
@@ -1383,6 +1802,7 @@ class Solver:
             step_descriptions: Task descriptions for NL param matching
             embedding: Step embedding for routing
             compute_budget: Max paths to explore (1.0 = single path)
+            thread_id: Thread ID for multi-path credit tracking (None if not tracking)
 
         Returns:
             Tuple of (result, best_signature, explored_sigs, was_injected)
@@ -1401,6 +1821,11 @@ class Solver:
             top_k=int(compute_budget) + 1,  # Get enough alternatives
         )
 
+        # Store routing context for MCTS amplitude logging
+        self._routing_confidence = routing_result.confidence
+        self._routing_ucb1_gap = routing_result.min_gap
+        self._routing_similarity = routing_result.best_similarity  # Actual cosine similarity
+
         explored_sigs = list(routing_result.path)  # Start with best path
 
         # If high confidence or single-path mode, just use best path
@@ -1413,6 +1838,8 @@ class Solver:
             return (None, routing_result.signature, explored_sigs, False)
 
         # Low confidence + multi-path mode: explore alternatives
+        # Mark as undecided for MCTS amplitude tracking
+        self._routing_was_undecided = True
         num_paths = min(int(compute_budget), len(routing_result.alternatives) + 1)
         logger.info(
             "[solver] Multi-path exploration: confidence=%.2f, exploring %d paths",
@@ -1455,17 +1882,78 @@ class Solver:
         # Store path outcomes for ground truth comparison (operational equivalence learning)
         # Key insight: After problem is graded, we can determine which paths are
         # operationally equivalent (produce correct answer) vs different (produce wrong answer)
-        path_outcomes = [
-            PathOutcome(
+        #
+        # Thread tracking: Create fork threads for each alternative path
+        # Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
+        path_outcomes = []
+        parent_thread = self._active_threads.get(thread_id) if thread_id else None
+
+        # Limit forks per step to prevent thread explosion
+        max_forks = min(len(results), THREAD_MAX_FORKS_PER_STEP)
+
+        for i, (sig, score, result) in enumerate(results):
+            # Create fork thread for each alternative (if thread tracking enabled)
+            fork_thread_id = ""
+            if parent_thread and THREAD_TRACKING_ENABLED and len(results) > 1:
+                # First candidate stays on parent thread, others fork (up to max)
+                if i == 0:
+                    fork_thread_id = thread_id
+                    # Update parent thread with this signature (primary choice)
+                    parent_thread.add_signature(sig.id, step.id, was_primary=True)
+                    parent_thread.step_results[step.id] = result or ""
+                elif i < max_forks:
+                    # Create fork thread for alternative (respecting limit)
+                    fork_thread = parent_thread.fork(step.id, sig.id)
+                    fork_thread.step_results[step.id] = result or ""
+                    fork_thread.final_answer = result
+                    self._active_threads[fork_thread.thread_id] = fork_thread
+                    self._problem_threads.append(fork_thread.thread_id)
+                    fork_thread_id = fork_thread.thread_id
+
+                    # Create mcts_thread record for fork
+                    # Per CLAUDE.md: "Create fork records when MCTS branches"
+                    if self._current_dag_id:
+                        dag_step_id = self._dag_step_ids.get(step.id)
+                        create_thread(
+                            dag_id=self._current_dag_id,
+                            parent_thread_id=thread_id,
+                            fork_at_step=dag_step_id,
+                            fork_reason="explore",
+                            thread_id=fork_thread_id,
+                        )
+
+                        # Log thread step for fork with amplitude data
+                        if dag_step_id:
+                            log_thread_step(
+                                thread_id=fork_thread_id,
+                                dag_id=self._current_dag_id,
+                                dag_step_id=dag_step_id,
+                                node_id=sig.id,
+                                amplitude=self._routing_confidence,
+                                similarity_score=score,
+                                was_undecided=True,  # Always undecided in multi-path
+                                ucb1_gap=self._routing_ucb1_gap,
+                                alternatives_considered=len(candidates),
+                                step_result=result[:500] if result else None,
+                                step_success=result is not None,
+                            )
+
+                    logger.debug(
+                        "[solver] Created fork thread %s for signature %s at step %s",
+                        fork_thread_id[:8], sig.step_type, step.id
+                    )
+                # else: skip this alternative (over max_forks limit)
+
+            path_outcomes.append(PathOutcome(
                 signature_id=sig.id,
                 answer=result,
                 embedding=embedding,
                 step_id=step.id,
                 embedding_similarity=score,
                 dsl_type=sig.dsl_type or "unknown",
-            )
-            for sig, score, result in results
-        ]
+                thread_id=fork_thread_id,
+            ))
+
         if path_outcomes:
             self._pending_path_outcomes[step.id] = path_outcomes
             logger.debug(
@@ -1975,6 +2463,29 @@ Expression:"""
         ]
         self.step_db.update_problem_outcome(signature_ids, correct, difficulty=difficulty)
 
+        # Grade the MCTS DAG (training mode only)
+        # Per CLAUDE.md: Set success/graded_at after final answer comparison
+        if self._current_dag_id:
+            grade_dag(self._current_dag_id, success=correct)
+            logger.debug("[solver] Graded MCTS DAG %s: success=%s", self._current_dag_id, correct)
+
+            # Run post-mortem analysis including interference pattern detection
+            # Per CLAUDE.md: "High confidence + failure = strong negative signal"
+            # Per CLAUDE.md: Interference patterns drive structural tree evolution
+            postmortem_stats = run_postmortem_with_interference(self._current_dag_id, self.step_db)
+            if postmortem_stats.get("high_conf_wrong", 0) > 0:
+                logger.warning(
+                    "[solver] Post-mortem found %d high-confidence wrong decisions in DAG %s",
+                    postmortem_stats["high_conf_wrong"], self._current_dag_id
+                )
+            if postmortem_stats.get("destructive_interference", 0) > 0:
+                logger.info(
+                    "[solver] Post-mortem found %d destructive interference patterns "
+                    "(nodes flagged for split: %s)",
+                    postmortem_stats["destructive_interference"],
+                    postmortem_stats.get("nodes_flagged_split", [])
+                )
+
         # MCTS Training: Process path outcomes for operational equivalence learning
         # Only in training mode - inference skips this overhead
         # Key insight: Ground truth lets us determine which paths are operationally
@@ -2054,6 +2565,11 @@ Expression:"""
                 ground_truth[:20] if ground_truth else "None"
             )
 
+        # Record thread outcomes for multi-path credit/blame (if enabled and threads exist)
+        # Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
+        if THREAD_TRACKING_ENABLED and TRAINING_MODE and self._problem_threads:
+            self._record_thread_outcomes(result, correct, ground_truth)
+
         # Always clear pending outcomes (memory safety)
         self._pending_path_outcomes.clear()
 
@@ -2076,6 +2592,9 @@ Expression:"""
 
         # Check which signatures might need decomposition
         # Use same thresholds as umbrella_learner for consistency
+        # Two categories:
+        # 1. Failing guidance signatures (dsl_type="decompose", not yet umbrella)
+        # 2. Auto-demoted router umbrellas with NO children
         from mycelium.config import (
             UMBRELLA_MIN_USES_FOR_EVALUATION,
             UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION,
@@ -2083,20 +2602,374 @@ Expression:"""
         candidates = []
         for sig_id in signature_ids:
             sig = self.step_db.get_signature(sig_id)
-            if sig and sig.dsl_type == "decompose" and sig.uses >= UMBRELLA_MIN_USES_FOR_EVALUATION:
-                if sig.success_rate <= UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION and not sig.is_semantic_umbrella:
-                    candidates.append(sig_id)
-                    logger.info(
-                        "[solver] Signature '%s' (id=%d) needs decomposition: "
-                        "uses=%d, success_rate=%.1f%%",
-                        sig.step_type, sig_id, sig.uses, sig.success_rate * 100
-                    )
+            if not sig or sig.uses < UMBRELLA_MIN_USES_FOR_EVALUATION:
+                continue
+            if sig.success_rate > UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION:
+                continue
+
+            # Category 1: decompose type not yet promoted to umbrella
+            is_decompose_candidate = (
+                sig.dsl_type == "decompose"
+                and not sig.is_semantic_umbrella
+            )
+
+            # Category 2: auto-demoted router umbrellas without children
+            is_orphan_umbrella = False
+            if sig.is_semantic_umbrella and sig.dsl_type == "router":
+                children = self.step_db.get_children(sig_id, for_routing=True)
+                is_orphan_umbrella = len(children) == 0
+
+            if is_decompose_candidate or is_orphan_umbrella:
+                candidates.append(sig_id)
+                logger.info(
+                    "[solver] Signature '%s' (id=%d) needs decomposition: "
+                    "uses=%d, success_rate=%.1f%%, orphan=%s",
+                    sig.step_type, sig_id, sig.uses, sig.success_rate * 100, is_orphan_umbrella
+                )
 
         # Flush any batched centroid propagations after problem is graded
         # This ensures parent umbrellas have accurate centroids for next problem
         self.step_db.flush_pending_propagations()
 
         return candidates
+
+    def _record_thread_outcomes(
+        self,
+        result: SolverResult,
+        correct: bool,
+        ground_truth: str = None,
+    ) -> None:
+        """Persist thread outcomes and apply thread-based credit/blame.
+
+        Records all threads for this problem to the thread_outcomes table,
+        identifies the winning thread, and applies credit/blame to signatures
+        in each thread's path.
+
+        Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
+
+        Args:
+            result: The SolverResult with the final answer
+            correct: Whether the final answer was correct
+            ground_truth: The correct answer (for comparison)
+        """
+        import json
+        from datetime import datetime, timezone
+        from mycelium.data_layer import get_db
+
+        if not self._problem_threads:
+            return
+
+        now = datetime.now(timezone.utc).isoformat()
+        problem_id = result.problem[:50] if result.problem else "unknown"
+
+        # Identify winning thread (the one whose answer matches the result)
+        winning_thread_id = None
+        for thread_id in self._problem_threads:
+            thread = self._active_threads.get(thread_id)
+            if thread and self._answers_match(thread.final_answer, result.answer):
+                winning_thread_id = thread_id
+                thread.is_winner = True
+                break
+
+        # If no thread matched, use root thread as winner
+        if winning_thread_id is None and self._root_thread_id:
+            winning_thread_id = self._root_thread_id
+            root = self._active_threads.get(self._root_thread_id)
+            if root:
+                root.is_winner = True
+
+        db = get_db()
+        try:
+            with db.connection() as conn:
+                # Check if thread tables exist (they may not in older DBs)
+                cursor = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='thread_outcomes'"
+                )
+                if not cursor.fetchone():
+                    logger.debug("[solver] thread_outcomes table not found, skipping thread recording")
+                    return
+
+                # Insert all thread outcomes
+                for thread_id in self._problem_threads:
+                    thread = self._active_threads.get(thread_id)
+                    if not thread:
+                        continue
+
+                    is_winner = 1 if thread_id == winning_thread_id else 0
+                    # Thread is correct if it's the winner AND problem was correct
+                    # OR if its answer matches ground truth
+                    is_correct = None
+                    if ground_truth:
+                        is_correct = 1 if self._answers_match(
+                            thread.final_answer, ground_truth
+                        ) else 0
+
+                    conn.execute(
+                        """INSERT OR REPLACE INTO thread_outcomes (
+                            thread_id, parent_thread_id, problem_id, problem_text,
+                            fork_step_id, fork_depth, signature_path, final_answer,
+                            is_winner, is_correct, ground_truth, created_at, graded_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (
+                            thread.thread_id,
+                            thread.parent_thread_id,
+                            problem_id,
+                            result.problem[:500] if result.problem else None,
+                            thread.fork_step_id,
+                            thread.fork_depth,
+                            json.dumps(thread.signature_steps),  # Store (sig_id, step_id) pairs
+                            thread.final_answer,
+                            is_winner,
+                            is_correct,
+                            ground_truth,
+                            thread.created_at,
+                            now,
+                        ),
+                    )
+
+                    # Also update mcts_threads table with final_answer and success
+                    # Per CLAUDE.md: "Track fork_at_step, fork_reason, final_answer"
+                    thread_success = is_correct == 1 if is_correct is not None else None
+                    complete_thread(
+                        thread_id=thread.thread_id,
+                        final_answer=thread.final_answer or "",
+                        success=thread_success,
+                    )
+
+                    # Insert signature contributions for this thread (with correct step_id)
+                    for sig_id, step_id, was_primary in thread.signature_steps:
+                        conn.execute(
+                            """INSERT INTO thread_signature_contributions (
+                                thread_id, signature_id, step_id, embedding_similarity,
+                                was_primary_choice, created_at
+                            ) VALUES (?, ?, ?, ?, ?, ?)""",
+                            (
+                                thread.thread_id,
+                                sig_id,
+                                step_id,
+                                None,  # Similarity not tracked per-signature in thread
+                                1 if was_primary else 0,  # Use actual was_primary from tracking
+                                now,
+                            ),
+                        )
+
+                    # Apply credit/blame to signatures in this thread
+                    thread_correct = is_correct == 1 if is_correct is not None else (
+                        is_winner and correct
+                    )
+
+                    # Credit decay based on fork depth
+                    credit = THREAD_CREDIT_DECAY_PER_FORK ** thread.fork_depth
+                    if credit >= THREAD_MIN_CREDIT:
+                        for sig_id in thread.signature_ids:  # Use property for just IDs
+                            self.step_db.update_centroid_on_operational_outcome(
+                                sig_id,
+                                embedding=None,  # No embedding update here
+                                was_correct=thread_correct,
+                                confidence=credit,
+                            )
+
+                logger.info(
+                    "[solver] Recorded %d thread outcomes (winner=%s, threads_correct=%d)",
+                    len(self._problem_threads),
+                    winning_thread_id[:8] if winning_thread_id else "None",
+                    sum(
+                        1 for t in self._problem_threads
+                        if self._active_threads.get(t) and
+                        self._answers_match(
+                            self._active_threads[t].final_answer, ground_truth
+                        )
+                    ) if ground_truth else 0,
+                )
+
+        except Exception as e:
+            logger.warning("[solver] Failed to record thread outcomes: %s", e)
+
+        finally:
+            # Always clear thread state for next problem (even on exception)
+            self._active_threads.clear()
+            self._problem_threads.clear()
+            self._root_thread_id = None
+
+    async def _decompose_octopus_step(
+        self,
+        step: Step,
+        problem: str,
+        context: dict[str, str],
+        step_descriptions: dict[str, str],
+        octopus: OctopusDetected,
+        difficulty: float = None,
+        thread_id: str = None,
+    ) -> Optional[StepResult]:
+        """Decompose an Octopus step (semantically ambiguous) into sub-steps.
+
+        Called when routing detected confusion between multiple children.
+        Uses the planner to break down the ambiguous step into more specific sub-steps.
+
+        Args:
+            step: The ambiguous step that needs decomposition
+            problem: Original problem text
+            context: step_id → result from previous steps
+            step_descriptions: step_id → task description
+            octopus: The OctopusDetected exception with confusion details
+            difficulty: Problem difficulty for adaptive decomposition
+            thread_id: Thread ID for multi-path credit tracking
+
+        Returns:
+            StepResult if decomposition and execution succeeded, None otherwise
+        """
+        import time
+        start_time = time.time()
+
+        # Ask planner to decompose this specific step
+        # Provide context about the confusion to guide decomposition
+        confusion_hint = f"The step '{step.task}' is ambiguous. It could involve: "
+        confusion_hint += ", ".join([c.step_type for c in octopus.top_children])
+        confusion_hint += ". Please break it down into more specific operations."
+
+        try:
+            # Decompose the step using the planner
+            sub_plan = await self.planner.decompose(
+                problem=step.task,  # Decompose the step itself
+                context=f"Original problem: {problem}\n{confusion_hint}",
+            )
+
+            if not sub_plan or not sub_plan.steps or len(sub_plan.steps) <= 1:
+                logger.warning(
+                    "[OCTOPUS] Planner couldn't decompose '%s' further",
+                    step.task[:40]
+                )
+                return None
+
+            logger.info(
+                "[OCTOPUS] Decomposed '%s' into %d sub-steps",
+                step.task[:40], len(sub_plan.steps)
+            )
+
+            # Execute sub-steps recursively
+            sub_context = context.copy()
+            sub_results = []
+
+            for sub_step in sub_plan.steps:
+                sub_result = await self._execute_step(
+                    sub_step,
+                    problem,
+                    sub_context,
+                    step_descriptions,
+                    depth=1,  # Increment depth
+                    difficulty=difficulty,
+                    thread_id=thread_id,
+                )
+                sub_results.append(sub_result)
+                sub_context[sub_step.id] = sub_result.result
+
+            # Use the final sub-step's result as the overall result
+            final_result = sub_results[-1].result if sub_results else None
+
+            elapsed_ms = (time.time() - start_time) * 1000
+
+            return StepResult(
+                step_id=step.id,
+                task=step.task,
+                result=final_result,
+                signature_type="octopus_decomposed",
+                was_injected=False,
+                was_routed=True,
+                elapsed_ms=elapsed_ms,
+            )
+
+        except Exception as e:
+            logger.error("[OCTOPUS] Step decomposition failed: %s", e)
+            return None
+
+    async def _decompose_gorilla_step(
+        self,
+        step: Step,
+        problem: str,
+        context: dict[str, str],
+        step_descriptions: dict[str, str],
+        reason: str,
+        difficulty: float = None,
+        thread_id: str = None,
+    ) -> Optional[StepResult]:
+        """Decompose a Gorilla step (too complex for single leaf) into sub-steps.
+
+        Called when proactive detection found a step with too many params or
+        complexity keywords (e.g., "and then", "after").
+
+        Args:
+            step: The complex step that needs decomposition
+            problem: Original problem text
+            context: step_id → result from previous steps
+            step_descriptions: step_id → task description
+            reason: Why the step was flagged as Gorilla
+            difficulty: Problem difficulty for adaptive decomposition
+            thread_id: Thread ID for multi-path credit tracking
+
+        Returns:
+            StepResult if decomposition and execution succeeded, None otherwise
+        """
+        import time
+        start_time = time.time()
+
+        # Ask planner to decompose this complex step
+        complexity_hint = f"The step '{step.task}' is complex ({reason}). "
+        complexity_hint += "Break it down into simpler atomic operations."
+
+        try:
+            # Decompose the step using the planner
+            sub_plan = await self.planner.decompose(
+                problem=step.task,  # Decompose the step itself
+                context=f"Original problem: {problem}\n{complexity_hint}",
+            )
+
+            if not sub_plan or not sub_plan.steps or len(sub_plan.steps) <= 1:
+                logger.warning(
+                    "[GORILLA] Planner couldn't decompose '%s' further",
+                    step.task[:40]
+                )
+                return None
+
+            logger.info(
+                "[GORILLA] Decomposed '%s' into %d sub-steps",
+                step.task[:40], len(sub_plan.steps)
+            )
+
+            # Execute sub-steps recursively
+            sub_context = context.copy()
+            sub_results = []
+
+            for sub_step in sub_plan.steps:
+                sub_result = await self._execute_step(
+                    sub_step,
+                    problem,
+                    sub_context,
+                    step_descriptions,
+                    depth=1,  # Increment depth
+                    difficulty=difficulty,
+                    thread_id=thread_id,
+                )
+                sub_results.append(sub_result)
+                sub_context[sub_step.id] = sub_result.result
+
+            # Use the final sub-step's result as the overall result
+            final_result = sub_results[-1].result if sub_results else None
+
+            elapsed_ms = (time.time() - start_time) * 1000
+
+            return StepResult(
+                step_id=step.id,
+                task=step.task,
+                result=final_result,
+                signature_type="gorilla_decomposed",
+                was_injected=False,
+                was_routed=True,
+                elapsed_ms=elapsed_ms,
+            )
+
+        except Exception as e:
+            logger.error("[GORILLA] Step decomposition failed: %s", e)
+            return None
 
     async def _auto_decompose_signature(
         self, signature, recursion_depth: int = 0, difficulty: float = None

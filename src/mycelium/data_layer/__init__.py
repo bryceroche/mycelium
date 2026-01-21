@@ -14,6 +14,28 @@ from mycelium.data_layer.schema import (
     init_db,
 )
 
+# MCTS Wave Function data access
+from mycelium.data_layer.mcts import (
+    MCTSDag,
+    MCTSDagStep,
+    MCTSThread,
+    MCTSThreadStep,
+    create_dag,
+    grade_dag,
+    create_dag_steps,
+    create_thread,
+    complete_thread,
+    grade_thread,
+    log_thread_step,
+    update_amplitude_post,
+    batch_update_amplitudes,
+    get_thread_steps_for_dag,
+    get_node_step_stats,
+    get_dag_step_node_performance,
+    run_postmortem,
+    get_problem_nodes_needing_attention,
+)
+
 db = get_db()
 
 __all__ = [
@@ -27,4 +49,23 @@ __all__ = [
     "STEP_SCHEMA",
     "get_schema",
     "init_db",
+    # MCTS Wave Function
+    "MCTSDag",
+    "MCTSDagStep",
+    "MCTSThread",
+    "MCTSThreadStep",
+    "create_dag",
+    "grade_dag",
+    "create_dag_steps",
+    "create_thread",
+    "complete_thread",
+    "grade_thread",
+    "log_thread_step",
+    "update_amplitude_post",
+    "batch_update_amplitudes",
+    "get_thread_steps_for_dag",
+    "get_node_step_stats",
+    "get_dag_step_node_performance",
+    "run_postmortem",
+    "get_problem_nodes_needing_attention",
 ]

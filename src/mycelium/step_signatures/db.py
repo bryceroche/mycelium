@@ -278,6 +278,7 @@ class RoutingResult:
     - confidence: Overall routing confidence (0-1), product of per-level confidences
     - ucb1_gaps: Gap between top-2 UCB1 scores at each level (larger = more certain)
     - alternatives: Top-k alternatives at each level (for multi-path exploration)
+    - best_similarity: Cosine similarity of the best match (for amplitude logging)
 
     Usage:
         result = db.route_through_hierarchy_v2(embedding)
@@ -292,6 +293,7 @@ class RoutingResult:
     confidence: float = 1.0  # Overall confidence (0-1)
     ucb1_gaps: list[float] = field(default_factory=list)  # Gap at each routing level
     alternatives: list[list[tuple[StepSignature, float]]] = field(default_factory=list)  # Top-k alts per level
+    best_similarity: Optional[float] = None  # Cosine similarity of best match at final level
 
     @property
     def is_match(self) -> bool:
@@ -1161,6 +1163,7 @@ class StepSignatureDB:
         ucb1_gaps = []
         alternatives = []
         confidence_factors = []
+        best_similarity = None  # Track best cosine similarity at final level
 
         while depth < max_depth:
             # If current is not an umbrella, it's a leaf - we're done
@@ -1220,6 +1223,7 @@ class StepSignatureDB:
 
             # Check if best child meets similarity threshold
             best_child, _best_ucb1, best_sim = scored_children[0]
+            best_similarity = best_sim  # Track for MCTS amplitude logging
             if best_sim < min_similarity:
                 # Best child doesn't meet threshold - stop here
                 break
@@ -1242,6 +1246,7 @@ class StepSignatureDB:
             confidence=overall_confidence,
             ucb1_gaps=ucb1_gaps,
             alternatives=alternatives,
+            best_similarity=best_similarity,
         )
 
     # =========================================================================
@@ -2120,6 +2125,149 @@ class StepSignatureDB:
             row = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()
             return row[0] if row else 0
 
+    def get_structure_stats(self) -> dict:
+        """Get structural statistics about the signature database.
+
+        Returns:
+            Dict with:
+            - total: Total signature count
+            - by_type: Count by dsl_type (router, math, decompose, etc.)
+            - by_role: Count by role (router vs leaf)
+            - depth_histogram: Count of signatures at each depth
+            - umbrella_count: Number of umbrella signatures
+            - orphan_umbrellas: Umbrellas with no children
+            - avg_depth: Average depth of all signatures
+            - max_depth: Maximum depth in the tree
+            - success_rate: Overall success rate
+        """
+        with self._connection() as conn:
+            stats = {}
+
+            # Total count
+            row = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()
+            stats["total"] = row[0] if row else 0
+
+            if stats["total"] == 0:
+                return {
+                    "total": 0,
+                    "by_type": {},
+                    "by_role": {"router": 0, "leaf": 0},
+                    "depth_histogram": {},
+                    "umbrella_count": 0,
+                    "orphan_umbrellas": 0,
+                    "avg_depth": 0.0,
+                    "max_depth": 0,
+                    "success_rate": 0.0,
+                }
+
+            # Count by dsl_type
+            rows = conn.execute(
+                "SELECT dsl_type, COUNT(*) FROM step_signatures GROUP BY dsl_type"
+            ).fetchall()
+            stats["by_type"] = {row[0] or "unknown": row[1] for row in rows}
+
+            # Count by role: router (is_semantic_umbrella=1 OR dsl_type='router') vs leaf
+            router_count = conn.execute(
+                """SELECT COUNT(*) FROM step_signatures
+                   WHERE is_semantic_umbrella = 1 OR dsl_type = 'router'"""
+            ).fetchone()[0]
+            stats["by_role"] = {
+                "router": router_count,
+                "leaf": stats["total"] - router_count,
+            }
+
+            # Depth histogram
+            rows = conn.execute(
+                """SELECT COALESCE(depth, 0) as d, COUNT(*)
+                   FROM step_signatures
+                   GROUP BY d
+                   ORDER BY d"""
+            ).fetchall()
+            stats["depth_histogram"] = {row[0]: row[1] for row in rows}
+
+            # Umbrella stats
+            umbrella_count = conn.execute(
+                "SELECT COUNT(*) FROM step_signatures WHERE is_semantic_umbrella = 1"
+            ).fetchone()[0]
+            stats["umbrella_count"] = umbrella_count
+
+            # Orphan umbrellas (umbrellas with no children)
+            try:
+                orphan_count = conn.execute(
+                    """SELECT COUNT(*) FROM step_signatures s
+                       WHERE s.is_semantic_umbrella = 1
+                       AND NOT EXISTS (
+                           SELECT 1 FROM signature_children c WHERE c.parent_id = s.id
+                       )"""
+                ).fetchone()[0]
+                stats["orphan_umbrellas"] = orphan_count
+            except Exception:
+                # Table may not exist in older DBs
+                stats["orphan_umbrellas"] = 0
+
+            # Depth stats
+            depth_row = conn.execute(
+                """SELECT AVG(COALESCE(depth, 0)), MAX(COALESCE(depth, 0))
+                   FROM step_signatures"""
+            ).fetchone()
+            stats["avg_depth"] = round(depth_row[0] or 0.0, 2)
+            stats["max_depth"] = depth_row[1] or 0
+
+            # Overall success rate
+            totals = conn.execute(
+                "SELECT SUM(uses), SUM(successes) FROM step_signatures"
+            ).fetchone()
+            total_uses = totals[0] or 0
+            total_successes = totals[1] or 0
+            stats["success_rate"] = round(
+                total_successes / total_uses if total_uses > 0 else 0.0, 3
+            )
+
+            # Success rate by type
+            rows = conn.execute(
+                """SELECT dsl_type, SUM(uses), SUM(successes)
+                   FROM step_signatures
+                   GROUP BY dsl_type"""
+            ).fetchall()
+            stats["success_by_type"] = {}
+            for row in rows:
+                dsl_type = row[0] or "unknown"
+                uses = row[1] or 0
+                successes = row[2] or 0
+                if uses > 0:
+                    stats["success_by_type"][dsl_type] = round(successes / uses, 3)
+
+            return stats
+
+    def print_structure_stats(self) -> None:
+        """Print a formatted summary of database structure stats."""
+        stats = self.get_structure_stats()
+
+        print("\n" + "=" * 50)
+        print("DATABASE STRUCTURE STATS")
+        print("=" * 50)
+        print(f"Total signatures: {stats['total']}")
+        print(f"Routers: {stats['by_role']['router']} | Leaves: {stats['by_role']['leaf']}")
+        if stats['total'] > 0:
+            ratio = stats['by_role']['router'] / stats['total']
+            print(f"Router ratio: {ratio:.1%}")
+        print(f"Umbrellas: {stats['umbrella_count']} (orphans: {stats['orphan_umbrellas']})")
+        print(f"Overall success rate: {stats['success_rate']:.1%}")
+
+        print("\nBy DSL type:")
+        for dsl_type, count in sorted(stats['by_type'].items()):
+            success = stats['success_by_type'].get(dsl_type, 0)
+            print(f"  {dsl_type:15s} {count:4d} ({success:.0%} success)")
+
+        print("\nDepth histogram:")
+        for depth in sorted(stats['depth_histogram'].keys()):
+            count = stats['depth_histogram'][depth]
+            bar = "█" * min(count, 40)
+            print(f"  {depth:2d}: {count:4d} {bar}")
+
+        print(f"\nAvg depth: {stats['avg_depth']:.1f} | Max depth: {stats['max_depth']}")
+        print("=" * 50)
+
     # =========================================================================
     # DSL Rewriter Support
     # =========================================================================
@@ -2336,6 +2484,7 @@ class StepSignatureDB:
 
         # Invalidate caches since centroid changed
         invalidate_centroid_cache(signature_id)
+        invalidate_signature_cache(signature_id)  # Also invalidate signature cache
         self.invalidate_centroid_matrix()
 
         return new_count
@@ -2385,44 +2534,199 @@ class StepSignatureDB:
                 conn.rollback()
                 raise
 
+    def update_centroid_on_operational_outcome(
+        self,
+        signature_id: int,
+        embedding: np.ndarray,
+        was_correct: bool,
+        confidence: float = 1.0,
+    ):
+        """BIPOLAR centroid update based on operational outcome (Scorpion fix).
+
+        This is the key mechanism for splitting vocab-based clusters into
+        operation-based clusters:
+        - SUCCESS: PULL centroid toward embedding (attract)
+        - FAILURE: PUSH centroid away from embedding (repel)
+
+        Key insight from AlphaGo/MCTS:
+        - High confidence + failure = STRONG negative signal (push hard)
+        - High confidence + success = STRONG positive signal (pull hard)
+        - Centroids drift toward operational meaning, not vocabulary
+
+        Both success and failure signals propagate to parent signatures,
+        reinforcing good routing paths and weakening bad ones.
+
+        Args:
+            signature_id: ID of the signature to update
+            embedding: The routing embedding from the step
+            was_correct: Whether this path produced the correct answer
+            confidence: How confident we were in this route (0.0-1.0)
+        """
+        from mycelium.config import SCORPION_REPULSION_WEIGHT, SCORPION_ATTRACTION_WEIGHT
+
+        if was_correct:
+            # SUCCESS: Pull centroid toward this embedding (attract)
+            # Weighted by confidence: high confidence = stronger pull
+            attraction_strength = confidence * SCORPION_ATTRACTION_WEIGHT
+            self._attract_centroid(signature_id, embedding, attraction_strength, propagate_to_parents=True)
+            logger.debug(
+                "[db] SCORPION PULL: sig %d centroid toward embedding (correct, conf=%.2f, strength=%.2f)",
+                signature_id, confidence, attraction_strength
+            )
+        else:
+            # FAILURE: Push centroid away from this embedding (repel)
+            # Weighted by confidence: high confidence + failure = strong repulsion
+            repulsion_strength = confidence * SCORPION_REPULSION_WEIGHT
+            self._repel_centroid(signature_id, embedding, repulsion_strength, propagate_to_parents=True)
+            logger.debug(
+                "[db] SCORPION PUSH: sig %d centroid away from embedding (incorrect, conf=%.2f, strength=%.2f)",
+                signature_id, confidence, repulsion_strength
+            )
+
+    def _attract_centroid(
+        self,
+        signature_id: int,
+        embedding: np.ndarray,
+        strength: float = 0.1,
+        propagate_to_parents: bool = False,
+    ):
+        """Pull centroid TOWARD an embedding (success attraction).
+
+        This strengthens operational clusters by pulling toward successful examples.
+        The centroid moves in the direction of the embedding.
+
+        Args:
+            signature_id: Signature to update
+            embedding: Embedding to attract toward
+            strength: How strongly to pull (0.0-1.0)
+            propagate_to_parents: If True, also update parent centroids (with decay)
+        """
+        with self._connection() as conn:
+            row = conn.execute(
+                "SELECT centroid, embedding_count, parent_id FROM step_signatures WHERE id = ?",
+                (signature_id,)
+            ).fetchone()
+
+            if row is None or row[0] is None:
+                return  # No centroid to attract
+
+            centroid = np.frombuffer(row[0], dtype=np.float32)
+            count = row[1] or 1
+            parent_id = row[2]
+
+            # Attraction: move centroid toward embedding
+            # direction = embedding - centroid (opposite of repulsion)
+            direction = embedding - centroid
+            direction_norm = np.linalg.norm(direction)
+
+            # Edge case: if centroid == embedding, direction is zero vector
+            # This is correct behavior - no movement needed when already aligned
+            if direction_norm > 0:
+                direction = direction / direction_norm  # Normalize direction
+
+            # Scale attraction by strength and inverse of count (mature signatures resist change)
+            attraction_scale = strength / np.sqrt(count + 1)
+            new_centroid = centroid + attraction_scale * direction
+
+            # Normalize to unit length
+            centroid_norm = np.linalg.norm(new_centroid)
+            if centroid_norm > 0:
+                new_centroid = new_centroid / centroid_norm
+
+            # Update in DB
+            conn.execute(
+                "UPDATE step_signatures SET centroid = ? WHERE id = ?",
+                (new_centroid.tobytes(), signature_id)
+            )
+            conn.commit()
+
+            # Propagate to parents with decay
+            if propagate_to_parents and parent_id is not None:
+                decayed_strength = strength * PARENT_CREDIT_DECAY
+                if decayed_strength >= PARENT_CREDIT_MIN:
+                    self._attract_centroid(parent_id, embedding, decayed_strength, propagate_to_parents=True)
+
+    def _repel_centroid(
+        self,
+        signature_id: int,
+        embedding: np.ndarray,
+        strength: float = 0.1,
+        propagate_to_parents: bool = False,
+    ):
+        """Push centroid AWAY from an embedding (failure repulsion).
+
+        This creates separation between operationally different clusters.
+        The centroid moves in the opposite direction from the embedding.
+
+        Args:
+            signature_id: Signature to update
+            embedding: Embedding to repel from
+            strength: How strongly to push (0.0-1.0)
+            propagate_to_parents: If True, also update parent centroids (with decay)
+        """
+        with self._connection() as conn:
+            row = conn.execute(
+                "SELECT centroid, embedding_count, parent_id FROM step_signatures WHERE id = ?",
+                (signature_id,)
+            ).fetchone()
+
+            if row is None or row[0] is None:
+                return  # No centroid to repel from
+
+            centroid = np.frombuffer(row[0], dtype=np.float32)
+            count = row[1] or 1
+            parent_id = row[2]
+
+            # Repulsion: move centroid away from embedding
+            # new_centroid = centroid + strength * (centroid - embedding)
+            # This pushes in the opposite direction of the embedding
+            direction = centroid - embedding
+            direction_norm = np.linalg.norm(direction)
+
+            # Edge case: if centroid == embedding, direction is zero vector
+            # This means the centroid is exactly at the failed embedding's position.
+            # We can't determine which direction to push, so we skip the update.
+            # This is rare but possible if a signature was created from this exact embedding.
+            if direction_norm > 0:
+                direction = direction / direction_norm  # Normalize direction
+            else:
+                logger.debug(
+                    "[db] SCORPION: skipping repulsion for sig %d (centroid == embedding)",
+                    signature_id
+                )
+                return
+
+            # Scale repulsion by strength and inverse of count (mature signatures resist change)
+            repulsion_scale = strength / np.sqrt(count + 1)
+            new_centroid = centroid + repulsion_scale * direction
+
+            # Normalize to unit length
+            centroid_norm = np.linalg.norm(new_centroid)
+            if centroid_norm > 0:
+                new_centroid = new_centroid / centroid_norm
+
+            # Update in DB
+            conn.execute(
+                "UPDATE step_signatures SET centroid = ? WHERE id = ?",
+                (new_centroid.tobytes(), signature_id)
+            )
+            conn.commit()
+
+            # Propagate to parents with decay
+            if propagate_to_parents and parent_id is not None:
+                decayed_strength = strength * PARENT_CREDIT_DECAY
+                if decayed_strength >= PARENT_CREDIT_MIN:
+                    self._repel_centroid(parent_id, embedding, decayed_strength, propagate_to_parents=True)
+
+    # Backward compatibility alias
     def update_centroid_on_operational_success(
         self,
         signature_id: int,
         embedding: np.ndarray,
         was_correct: bool,
     ):
-        """Update centroid ONLY if the path produced a correct answer.
-
-        This is the key mechanism for splitting vocab-based clusters into
-        operation-based clusters. By only updating centroids for operationally
-        correct paths, signatures naturally cluster by operational equivalence
-        rather than vocabulary similarity.
-
-        Key insight from MCTS training:
-        - Paths with same vocab but different outcomes → centroids diverge (SPLIT)
-        - Paths with different vocab but same correct outcome → centroids converge (MERGE)
-
-        Args:
-            signature_id: ID of the signature to potentially update
-            embedding: The routing embedding from the step
-            was_correct: Whether this path produced the correct answer
-        """
-        if not was_correct:
-            # Don't update centroid for operationally incorrect paths
-            # This naturally causes incorrect paths to drift away from the cluster
-            logger.debug(
-                "[db] Skipping centroid update for sig %d (operationally incorrect)",
-                signature_id
-            )
-            return
-
-        # Update centroid for operationally correct paths
-        # This reinforces the cluster of signatures that produce correct answers
-        self.update_centroid(signature_id, embedding, propagate_to_parents=True)
-        logger.debug(
-            "[db] Updated centroid for sig %d (operationally correct)",
-            signature_id
-        )
+        """Backward-compatible alias for update_centroid_on_operational_outcome."""
+        self.update_centroid_on_operational_outcome(signature_id, embedding, was_correct)
 
     def record_operational_failure(
         self,
@@ -2461,6 +2765,62 @@ class StepSignatureDB:
                 produced_answer[:30] if produced_answer else "None",
                 expected_answer[:30] if expected_answer else "None",
             )
+
+    def record_interference_outcome(
+        self,
+        signature_id: int,
+        interference_type: str,
+        thread_count: int,
+        success_count: int,
+    ):
+        """Record an interference pattern outcome for a signature.
+
+        Per CLAUDE.md: When multiple threads visit the same (dag_step_id, node_id):
+        - Constructive interference (all succeed): Reinforce the node
+        - Destructive interference (mixed results): Signal to split the cluster
+
+        This updates signature statistics based on interference patterns:
+        - Constructive: Boost successes (the node is operationally correct)
+        - Destructive: Increment operational_failures (cluster is too generic)
+
+        Args:
+            signature_id: ID of the signature
+            interference_type: 'constructive' or 'destructive'
+            thread_count: How many threads visited this combination
+            success_count: How many threads succeeded
+        """
+        with self._connection() as conn:
+            if interference_type == "constructive":
+                # Constructive interference: all threads succeeded
+                # This is strong evidence the signature is operationally correct
+                # Boost success count (scaled by thread_count for multi-thread signal)
+                conn.execute(
+                    """UPDATE step_signatures
+                       SET successes = COALESCE(successes, 0) + ?
+                       WHERE id = ?""",
+                    (thread_count, signature_id)
+                )
+                logger.debug(
+                    "[db] Constructive interference: sig %d boosted by %d (all %d threads succeeded)",
+                    signature_id, thread_count, thread_count,
+                )
+
+            elif interference_type == "destructive":
+                # Destructive interference: mixed results (some succeeded, some failed)
+                # This signals the cluster is too generic and may need splitting
+                # Record as operational failures to trigger decomposition consideration
+                failure_count = thread_count - success_count
+                conn.execute(
+                    """UPDATE step_signatures
+                       SET operational_failures = COALESCE(operational_failures, 0) + ?
+                       WHERE id = ?""",
+                    (failure_count, signature_id)
+                )
+                logger.debug(
+                    "[db] Destructive interference: sig %d recorded %d failures "
+                    "(%d/%d threads failed)",
+                    signature_id, failure_count, failure_count, thread_count,
+                )
 
     # =========================================================================
     # Usage Recording
@@ -3979,3 +4339,85 @@ class StepSignatureDB:
             (table_name,)
         )
         return cursor.fetchone() is not None
+
+    def get_thread_stats_for_signature(self, signature_id: int, days: int = 7) -> dict:
+        """Get thread win/loss statistics for a signature.
+
+        Used for cluster analysis and understanding which signatures contribute
+        to correct vs incorrect threads. Per CLAUDE.md: "Per-signature thread
+        win/loss tracking for cluster analysis"
+
+        Args:
+            signature_id: ID of the signature to analyze
+            days: How many days of history to include (default 7)
+
+        Returns:
+            Dict with thread statistics:
+                - total_threads: Total threads this signature participated in
+                - winning_threads: Threads where this signature was in the winning path
+                - correct_threads: Threads that produced correct answers
+                - incorrect_threads: Threads that produced incorrect answers
+                - win_rate: Percentage of winning threads
+                - correct_rate: Percentage of correct threads
+                - avg_fork_depth: Average fork depth when this signature was used
+        """
+        from datetime import datetime, timedelta, timezone
+
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+        with self._connection() as conn:
+            # Check if thread tables exist
+            if not self._table_exists(conn, "thread_outcomes"):
+                return {
+                    "total_threads": 0,
+                    "winning_threads": 0,
+                    "correct_threads": 0,
+                    "incorrect_threads": 0,
+                    "win_rate": 0.0,
+                    "correct_rate": 0.0,
+                    "avg_fork_depth": 0.0,
+                }
+
+            # Get thread stats for this signature
+            # Use COUNT(DISTINCT CASE...) to avoid over-counting when signature appears multiple times
+            cursor = conn.execute(
+                """SELECT
+                    COUNT(DISTINCT tsc.thread_id) as total_threads,
+                    COUNT(DISTINCT CASE WHEN t.is_winner = 1 THEN tsc.thread_id END) as winning_threads,
+                    COUNT(DISTINCT CASE WHEN t.is_correct = 1 THEN tsc.thread_id END) as correct_threads,
+                    COUNT(DISTINCT CASE WHEN t.is_correct = 0 THEN tsc.thread_id END) as incorrect_threads,
+                    AVG(t.fork_depth) as avg_fork_depth
+                FROM thread_signature_contributions tsc
+                JOIN thread_outcomes t ON tsc.thread_id = t.thread_id
+                WHERE tsc.signature_id = ?
+                  AND tsc.created_at >= ?""",
+                (signature_id, cutoff),
+            )
+
+            row = cursor.fetchone()
+            if not row or row["total_threads"] == 0:
+                return {
+                    "total_threads": 0,
+                    "winning_threads": 0,
+                    "correct_threads": 0,
+                    "incorrect_threads": 0,
+                    "win_rate": 0.0,
+                    "correct_rate": 0.0,
+                    "avg_fork_depth": 0.0,
+                }
+
+            total = row["total_threads"] or 0
+            winning = row["winning_threads"] or 0
+            correct = row["correct_threads"] or 0
+            incorrect = row["incorrect_threads"] or 0
+            avg_depth = row["avg_fork_depth"] or 0.0
+
+            return {
+                "total_threads": total,
+                "winning_threads": winning,
+                "correct_threads": correct,
+                "incorrect_threads": incorrect,
+                "win_rate": winning / total if total > 0 else 0.0,
+                "correct_rate": correct / (correct + incorrect) if (correct + incorrect) > 0 else 0.0,
+                "avg_fork_depth": avg_depth,
+            }
