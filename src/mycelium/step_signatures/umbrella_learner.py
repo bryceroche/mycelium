@@ -17,18 +17,84 @@ import json
 import logging
 from typing import Optional
 
+import numpy as np
+
 from mycelium.config import (
     UMBRELLA_MIN_USES_FOR_EVALUATION,
     UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION,
+    SYNTHESIS_STEP_ANCHORS,
+    SYNTHESIS_STEP_THRESHOLD,
 )
 from mycelium.planner import Planner
 from mycelium.step_signatures.db import StepSignatureDB
 from mycelium.step_signatures.models import StepSignature
+from mycelium.step_signatures.utils import cosine_similarity
 from mycelium.embedder import Embedder
-from mycelium.embedding_cache import cached_embed
+from mycelium.embedding_cache import cached_embed, cached_embed_batch
 from mycelium.client import get_client
 
 logger = logging.getLogger(__name__)
+
+# Cache for synthesis step anchor embeddings (lazy-loaded)
+_synthesis_anchor_embeddings: Optional[list[np.ndarray]] = None
+
+
+def _get_synthesis_anchor_embeddings(embedder) -> list[np.ndarray]:
+    """Get or compute cached embeddings for synthesis step anchors."""
+    global _synthesis_anchor_embeddings
+    if _synthesis_anchor_embeddings is None:
+        _synthesis_anchor_embeddings = cached_embed_batch(
+            SYNTHESIS_STEP_ANCHORS, embedder
+        )
+        logger.debug(
+            "[umbrella] Computed %d synthesis anchor embeddings",
+            len(_synthesis_anchor_embeddings)
+        )
+    return _synthesis_anchor_embeddings
+
+
+def is_synthesis_step(step_embedding: np.ndarray, embedder, step_text: str = "") -> bool:
+    """Check if a step is a synthesis/aggregation step.
+
+    Uses embedding similarity (preferred) with keyword fallback for robustness.
+    Synthesis steps combine results from previous steps and should be skipped
+    when creating umbrella children (they don't add computational value).
+
+    Args:
+        step_embedding: The step's embedding vector
+        embedder: Embedder instance for getting anchor embeddings
+        step_text: The step text (for keyword fallback)
+
+    Returns:
+        True if step appears to be a synthesis step
+    """
+    # First try embedding-based detection (preferred)
+    if isinstance(step_embedding, np.ndarray):
+        try:
+            anchor_embeddings = _get_synthesis_anchor_embeddings(embedder)
+
+            # Validate anchor embeddings are real list of arrays
+            if isinstance(anchor_embeddings, list) and len(anchor_embeddings) > 0:
+                if isinstance(anchor_embeddings[0], np.ndarray):
+                    for anchor_emb in anchor_embeddings:
+                        similarity = cosine_similarity(step_embedding, anchor_emb)
+                        if similarity >= SYNTHESIS_STEP_THRESHOLD:
+                            return True
+
+        except (TypeError, ValueError, KeyError, IndexError):
+            # Fall through to keyword fallback
+            pass
+
+    # Keyword fallback (for tests/mocked embedder/robustness)
+    # These are synthesis indicators that should be rare in actual computation steps
+    if step_text:
+        text_lower = step_text.lower()
+        synthesis_keywords = ["final", "combine", "aggregate", "sum up", "put together"]
+        for keyword in synthesis_keywords:
+            if keyword in text_lower:
+                return True
+
+    return False
 
 
 # Prompt for generating NL interface for a signature
@@ -295,12 +361,13 @@ class UmbrellaLearner:
         min_child_depth = parent_depth + 1
 
         for i, step in enumerate(plan.steps):
-            # Skip synthesis/final steps
-            if "final" in step.task.lower() or "combine" in step.task.lower():
-                continue
-
-            # Embed the step (use cached_embed to avoid redundant computation)
+            # Embed the step first (needed for synthesis check and routing)
             embedding = cached_embed(step.task, self.embedder)
+
+            # Skip synthesis/aggregation steps (embedding-based with keyword fallback)
+            if is_synthesis_step(embedding, self.embedder, step.task):
+                logger.debug("[umbrella] Skipping synthesis step: '%s'", step.task[:40])
+                continue
 
             # First: try to repoint to existing deeper signature
             child_sig = self.db.find_deeper_signature(

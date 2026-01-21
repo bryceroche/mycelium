@@ -392,7 +392,30 @@ OCTOPUS_MIN_DEPTH = 3  # Only detect at depth >= this (ignore root-level confusi
 
 GORILLA_PROACTIVE_ENABLED = True  # Enable proactive complexity detection
 GORILLA_MAX_PARAMS = 4  # Steps with more extracted_values likely need decomposition
+
+# Embedding-based complexity detection (replaces keyword matching)
+# These are semantic anchors - if step embedding is similar to any, flag as complex
+GORILLA_COMPLEXITY_ANCHORS = [
+    "A multi-step operation that does one thing and then does another thing",
+    "A sequential calculation where you compute something first, then use it to compute something else",
+    "An operation that requires multiple phases performed in a specific order",
+    "A task that must be done after completing a prerequisite step",
+    "A process that combines or aggregates multiple intermediate results at the end",
+]
+GORILLA_COMPLEXITY_THRESHOLD = 0.72  # Similarity threshold to flag as complex
+
+# Legacy: keyword-based detection (deprecated, kept for fallback)
 GORILLA_COMPLEXITY_KEYWORDS = ["then", "and then", "after", "before", "finally"]
+GORILLA_USE_EMBEDDINGS = True  # Use embedding-based detection (preferred) vs keywords
+
+# Synthesis step detection (for umbrella learner)
+# These are anchors for steps that aggregate/combine results (should be skipped)
+SYNTHESIS_STEP_ANCHORS = [
+    "Combine or aggregate the results from previous calculations",
+    "Add up or sum all the intermediate results to get the final answer",
+    "Put together the computed values to find the total",
+]
+SYNTHESIS_STEP_THRESHOLD = 0.75  # Similarity threshold to detect synthesis steps
 
 # =============================================================================
 # SCORPION FIX (Bipolar signal propagation)

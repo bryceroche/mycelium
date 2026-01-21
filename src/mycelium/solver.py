@@ -53,6 +53,9 @@ from mycelium.config import (
     GORILLA_PROACTIVE_ENABLED,
     GORILLA_MAX_PARAMS,
     GORILLA_COMPLEXITY_KEYWORDS,
+    GORILLA_COMPLEXITY_ANCHORS,
+    GORILLA_COMPLEXITY_THRESHOLD,
+    GORILLA_USE_EMBEDDINGS,
     THREAD_TRACKING_ENABLED,
     THREAD_MAX_FORKS_PER_STEP,
     THREAD_CREDIT_DECAY_PER_FORK,
@@ -125,29 +128,73 @@ class GorillaDetected(Exception):
         super().__init__(msg)
 
 
-def detect_gorilla(step: "Step") -> Optional[str]:
+# Cache for GORILLA complexity anchor embeddings (lazy-loaded)
+_gorilla_anchor_embeddings: Optional[list[np.ndarray]] = None
+
+
+def _get_gorilla_anchor_embeddings(embedder) -> list[np.ndarray]:
+    """Get or compute cached embeddings for complexity anchors."""
+    global _gorilla_anchor_embeddings
+    if _gorilla_anchor_embeddings is None:
+        # Batch embed all anchors
+        _gorilla_anchor_embeddings = cached_embed_batch(
+            GORILLA_COMPLEXITY_ANCHORS, embedder
+        )
+        logger.debug(
+            "[gorilla] Computed %d complexity anchor embeddings",
+            len(_gorilla_anchor_embeddings)
+        )
+    return _gorilla_anchor_embeddings
+
+
+def detect_gorilla(step: "Step", embedder=None, step_embedding: np.ndarray = None) -> Optional[str]:
     """Check if a step is too complex and should be decomposed proactively.
 
-    Returns reason string if Gorilla detected, None otherwise.
-    Per CLAUDE.md: "Failing signatures get decomposed"
+    Uses embedding-based semantic similarity to complexity anchors (preferred)
+    or falls back to keyword matching if embedder not available.
+
+    Args:
+        step: The step to check
+        embedder: Optional embedder for embedding-based detection
+        step_embedding: Optional pre-computed step embedding (avoids redundant computation)
+
+    Returns:
+        Reason string if Gorilla detected, None otherwise.
+        Per CLAUDE.md: "Failing signatures get decomposed"
     """
     if not GORILLA_PROACTIVE_ENABLED:
         return None
 
-    task_lower = step.task.lower()
-
-    # Check for complexity keywords using word boundaries
-    # This prevents "after" from matching "afternoon", "before" matching "beforehand", etc.
-    for keyword in GORILLA_COMPLEXITY_KEYWORDS:
-        # Use word boundary regex: \b matches word boundaries
-        pattern = r'\b' + re.escape(keyword) + r'\b'
-        if re.search(pattern, task_lower):
-            return f"contains '{keyword}'"
-
-    # Check for too many extracted values (likely multi-operation)
+    # Check for too many extracted values first (cheap check)
     extracted = getattr(step, 'extracted_values', None) or {}
     if len(extracted) > GORILLA_MAX_PARAMS:
         return f"{len(extracted)} params (max {GORILLA_MAX_PARAMS})"
+
+    # Embedding-based complexity detection (preferred)
+    if GORILLA_USE_EMBEDDINGS and embedder is not None:
+        # Get or compute step embedding
+        if step_embedding is None:
+            step_embedding = cached_embed(step.task, embedder)
+
+        # Get cached complexity anchor embeddings
+        anchor_embeddings = _get_gorilla_anchor_embeddings(embedder)
+
+        # Check similarity against each anchor
+        for i, anchor_emb in enumerate(anchor_embeddings):
+            similarity = cosine_similarity(step_embedding, anchor_emb)
+            if similarity >= GORILLA_COMPLEXITY_THRESHOLD:
+                return f"semantic complexity (sim={similarity:.2f})"
+
+        # No match - not complex
+        return None
+
+    # Fallback: keyword-based detection (legacy)
+    task_lower = step.task.lower()
+    for keyword in GORILLA_COMPLEXITY_KEYWORDS:
+        # Use word boundary regex to avoid "after" matching "afternoon"
+        pattern = r'\b' + re.escape(keyword) + r'\b'
+        if re.search(pattern, task_lower):
+            return f"contains '{keyword}'"
 
     return None
 
@@ -1144,9 +1191,14 @@ class Solver:
                 thread_id=thread_id,
             )
 
-        # 0.5 GORILLA DETECTION: Check if step is too complex
+        # 1. Normalize and embed step FIRST (needed for GORILLA and routing)
+        # Use cached_embed to avoid redundant computation for repeated steps
+        normalized_task = normalize_step_text(step.task)
+        embedding = cached_embed(normalized_task, self.embedder)
+
+        # 1.5 GORILLA DETECTION: Check if step is too complex (uses embedding)
         # If detected, decompose proactively before routing
-        gorilla_reason = detect_gorilla(step)
+        gorilla_reason = detect_gorilla(step, embedder=self.embedder, step_embedding=embedding)
         if gorilla_reason:
             logger.info(
                 "[GORILLA] Detected complex step: '%s' (%s)",
@@ -1163,11 +1215,6 @@ class Solver:
                 return decomposed_result
             # If decomposition failed, continue with normal execution
             logger.warning("[GORILLA] Step decomposition failed, continuing normally")
-
-        # 1. Normalize and embed step (strip numbers for better matching)
-        # Use cached_embed to avoid redundant computation for repeated steps
-        normalized_task = normalize_step_text(step.task)
-        embedding = cached_embed(normalized_task, self.embedder)
 
         # 2. Find or create signature (use original text for description)
         # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
