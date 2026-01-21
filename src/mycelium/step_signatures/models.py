@@ -62,6 +62,11 @@ class StepSignature:
     dsl_script: Optional[str] = None  # "base ** exponent"
     dsl_type: str = "math"  # "math", "sympy", "python"
 
+    # Computation Graph (per CLAUDE.md: route by what operations DO)
+    # Graph is structural representation: MUL(param_0, param_1), ADD(MUL(p0, p1), p2)
+    computation_graph: Optional[str] = None  # e.g., "MUL(param_0, param_1)"
+    graph_embedding: Optional[np.ndarray] = None  # Embedding of graph for routing
+
     # Few-shot Examples
     examples: list[dict] = field(default_factory=list)  # [{"input": "2^8", "params": {...}, "result": "256"}]
 
@@ -278,6 +283,7 @@ class StepSignature:
             param_descriptions=param_descriptions,
             dsl_script=row.get("dsl_script"),
             dsl_type=row.get("dsl_type", "math"),
+            computation_graph=row.get("computation_graph"),
             examples=examples,
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
@@ -320,6 +326,7 @@ class StepSignature:
             param_descriptions=param_descriptions,  # Parse for extraction validation
             dsl_script=row.get("dsl_script"),
             dsl_type=row.get("dsl_type", "math"),
+            computation_graph=row.get("computation_graph"),
             examples=[],  # Skip JSON parsing
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
@@ -363,6 +370,7 @@ class StepSignature:
             param_descriptions={},  # Skip JSON parsing
             dsl_script=row.get("dsl_script"),
             dsl_type=row.get("dsl_type", "math"),
+            computation_graph=row.get("computation_graph"),
             examples=[],  # Skip JSON parsing
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),

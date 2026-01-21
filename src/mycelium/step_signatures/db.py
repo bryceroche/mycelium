@@ -52,6 +52,7 @@ from mycelium.step_signatures.scoring import (
     increment_total_problems,
 )
 from mycelium.step_signatures.dsl_templates import infer_dsl_for_signature
+from mycelium.step_signatures.graph_extractor import extract_computation_graph
 
 from mycelium.data_layer import get_db, configure_connection
 from mycelium.data_layer.schema import init_db
@@ -1889,6 +1890,11 @@ class StepSignatureDB:
         clarifying_json = json.dumps(clarifying_questions)
         params_json = json.dumps(param_descriptions)
 
+        # Extract computation graph from DSL (per CLAUDE.md: route by what operations DO)
+        computation_graph = extract_computation_graph(dsl_script) if dsl_script else None
+        if computation_graph:
+            logger.debug("[db] Extracted computation graph: %s", computation_graph)
+
         # Set flags based on whether this is the root
         is_root_flag = 1 if is_first_signature else 0
         # Root is an umbrella (routes to children), others start as leaves
@@ -1913,11 +1919,11 @@ class StepSignatureDB:
                 """INSERT INTO step_signatures
                    (signature_id, centroid, centroid_bucket, embedding_sum, embedding_count, step_type, description,
                     dsl_script, dsl_type, clarifying_questions, param_descriptions, depth,
-                    is_root, is_semantic_umbrella, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    is_root, is_semantic_umbrella, computation_graph, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (sig_id, centroid_packed, centroid_bucket, embedding_sum_packed, 1, step_type, step_text,
                  dsl_script, dsl_type, clarifying_json, params_json, actual_depth,
-                 is_root_flag, is_umbrella, now),
+                 is_root_flag, is_umbrella, computation_graph, now),
             )
             row_id = cursor.lastrowid
 
@@ -1999,6 +2005,7 @@ class StepSignatureDB:
             param_descriptions=param_descriptions,
             dsl_script=dsl_script,
             dsl_type=dsl_type,
+            computation_graph=computation_graph,
             examples=[],
             uses=0,
             successes=0,
