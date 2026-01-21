@@ -57,6 +57,10 @@ from mycelium.config import (
     THREAD_MAX_FORKS_PER_STEP,
     THREAD_CREDIT_DECAY_PER_FORK,
     THREAD_MIN_CREDIT,
+    GRAPH_ROUTING_ENABLED,
+    GRAPH_ROUTING_MIN_SIMILARITY,
+    GRAPH_ROUTING_BOOST_FACTOR,
+    GRAPH_ROUTING_FALLBACK_TO_CENTROID,
 )
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
@@ -65,6 +69,10 @@ from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.step_signatures.stats import record_step_stats
 from mycelium.step_signatures.utils import cosine_similarity
+from mycelium.step_signatures.operation_extractor import (
+    extract_operation_needed,
+    get_operation_embedding,
+)
 from mycelium.embedder import Embedder
 from mycelium.embedding_cache import cached_embed, cached_embed_batch
 from mycelium.difficulty import estimate_difficulty
@@ -1149,6 +1157,7 @@ class Solver:
         # 2. Find or create signature (use original text for description)
         # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
         # Use adaptive threshold: higher during cold start (more signatures), lower when mature
+        # Pass embedder for cold start graph embedding (per CLAUDE.md: route by what ops DO)
         adaptive_threshold = get_adaptive_match_threshold()
         signature, is_new = await self.step_db.find_or_create_async(
             step_text=step.task,  # Keep original for description
@@ -1158,6 +1167,7 @@ class Solver:
             origin_depth=depth,  # Track decomposition depth
             extracted_values=getattr(step, 'extracted_values', None),
             dsl_hint=getattr(step, 'dsl_hint', None),  # LLM → signature communication
+            embedder=self.embedder,  # For cold start graph embedding
         )
 
         logger.debug(
@@ -1821,13 +1831,10 @@ class Solver:
         from mycelium.step_signatures.db import RoutingResult
 
         # Get routing result with confidence and alternatives
-        # Per mycelium-vuuc: Pass step_type for specialization boost
-        normalized_step_type = step.task.lower().strip()[:100] if step.task else None
         routing_result = self.step_db.route_with_confidence(
             embedding,
             min_similarity=get_adaptive_match_threshold(),
             top_k=int(compute_budget) + 1,  # Get enough alternatives
-            step_type=normalized_step_type,
         )
 
         # Store routing context for MCTS amplitude logging
@@ -1836,6 +1843,41 @@ class Solver:
         self._routing_similarity = routing_result.best_similarity  # Actual cosine similarity
 
         explored_sigs = list(routing_result.path)  # Start with best path
+
+        # Graph-based routing: Route by what operations DO, not what they SOUND LIKE
+        # Per CLAUDE.md: "embedding clusters by vocab not operational semantics" (problem to solve)
+        # Graph routing addresses this by comparing operation embedding to graph embeddings
+        graph_matches = {}  # sig_id -> similarity for graph routing boost
+        graph_signatures = {}  # sig_id -> StepSignature for graph-only candidates
+        if GRAPH_ROUTING_ENABLED:
+            try:
+                # Extract operation from step text (semantic description of what's needed)
+                operation = await extract_operation_needed(
+                    self.solver_client, step.task, timeout=10.0
+                )
+                if operation:
+                    # Embed the extracted operation
+                    operation_embedding = await get_operation_embedding(
+                        self.embedder, operation
+                    )
+                    if operation_embedding is not None:
+                        # Compare to graph embeddings (what DSLs actually compute)
+                        graph_routing_results = self.step_db.route_by_graph_embedding(
+                            np.array(operation_embedding),
+                            min_similarity=GRAPH_ROUTING_MIN_SIMILARITY,
+                            top_k=5,
+                        )
+                        # Build lookup for boosting centroid candidates
+                        for sig, sim in graph_routing_results:
+                            graph_matches[sig.id] = sim
+                            graph_signatures[sig.id] = sig  # Store signature for graph-only adds
+                            logger.debug(
+                                "[solver] Graph routing match: sig %d (%s) sim=%.3f",
+                                sig.id, sig.computation_graph[:30] if sig.computation_graph else "?", sim
+                            )
+            except Exception as e:
+                # Graph routing is optional - don't fail on errors
+                logger.debug("[solver] Graph routing failed (continuing): %s", e)
 
         # Selective branching: only branch when undecided (per CLAUDE.md)
         # Use UCB1 gap to detect uncertainty: high gap = confident, low gap = undecided
@@ -1859,12 +1901,28 @@ class Solver:
         )
 
         # Collect alternative leaf signatures to try (with similarity scores)
-        candidates = []  # List of (signature, similarity_score)
+        candidates = []  # List of (signature, similarity_score, graph_boost_applied)
+
+        def _apply_graph_boost(sig_id: int, base_score: float) -> tuple[float, bool]:
+            """Apply graph routing boost if signature appears in graph matches."""
+            if sig_id in graph_matches:
+                graph_sim = graph_matches[sig_id]
+                boosted = base_score + (GRAPH_ROUTING_BOOST_FACTOR * graph_sim)
+                logger.debug(
+                    "[solver] Graph boost: sig %d score %.3f -> %.3f (graph_sim=%.3f)",
+                    sig_id, base_score, boosted, graph_sim
+                )
+                return (boosted, True)
+            return (base_score, False)
 
         # Add best path's leaf if it's not an umbrella
         if routing_result.signature and not routing_result.signature.is_semantic_umbrella:
-            # Use confidence as proxy for similarity for best path
-            candidates.append((routing_result.signature, routing_result.confidence))
+            # Use confidence as proxy for similarity for best path, apply graph boost
+            base_score = routing_result.confidence
+            boosted_score, had_boost = _apply_graph_boost(
+                routing_result.signature.id, base_score
+            )
+            candidates.append((routing_result.signature, boosted_score))
 
         # Add alternatives from each level (flatten)
         for level_alts in routing_result.alternatives:
@@ -1872,12 +1930,39 @@ class Solver:
                 # Check if already added (by signature id)
                 already_added = any(sig.id == alt_sig.id for sig, _ in candidates)
                 if not alt_sig.is_semantic_umbrella and not already_added:
-                    candidates.append((alt_sig, score))
+                    # Apply graph boost if this signature appears in graph routing
+                    boosted_score, _ = _apply_graph_boost(alt_sig.id, score)
+                    candidates.append((alt_sig, boosted_score))
                     explored_sigs.append(alt_sig)
                     if len(candidates) >= num_paths:
                         break
             if len(candidates) >= num_paths:
                 break
+
+        # Re-sort candidates by boosted score (graph matches rise to top)
+        if graph_matches:
+            candidates.sort(key=lambda x: x[1], reverse=True)
+            logger.debug(
+                "[solver] After graph boost re-sort: %s",
+                [(sig.id, score) for sig, score in candidates[:3]]
+            )
+
+            # Add graph-only candidates (found by graph routing but not centroid)
+            # This is key for "route by what operations DO, not what they SOUND LIKE"
+            candidate_ids = {sig.id for sig, _ in candidates}
+            for graph_sig_id, graph_sim in graph_matches.items():
+                if graph_sig_id not in candidate_ids and len(candidates) < num_paths:
+                    graph_sig = graph_signatures.get(graph_sig_id)
+                    if graph_sig:
+                        # Graph-only candidates get their graph similarity as score
+                        candidates.append((graph_sig, graph_sim))
+                        explored_sigs.append(graph_sig)
+                        logger.debug(
+                            "[solver] Added graph-only candidate: sig %d (%s) sim=%.3f",
+                            graph_sig.id,
+                            graph_sig.computation_graph[:30] if graph_sig.computation_graph else "?",
+                            graph_sim,
+                        )
 
         if not candidates:
             # No leaf candidates found
