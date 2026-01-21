@@ -1052,6 +1052,10 @@ class Solver:
                 error_message=str(e),
                 context={"source": "solver_exception", "problem": problem[:500]},
             )
+            # Grade DAG as failed on exception (training mode only)
+            if hasattr(self, '_current_dag_id') and self._current_dag_id:
+                grade_dag(self._current_dag_id, success=False)
+                logger.debug("[solver] Graded MCTS DAG %s as failed (exception)", self._current_dag_id)
             return SolverResult(
                 problem=problem,
                 answer="",
