@@ -2675,7 +2675,7 @@ Expression:"""
         for node_id in postmortem_failing_nodes:
             if node_id not in candidates:
                 sig = self.step_db.get_signature(node_id)
-                if sig and not sig.is_archived:
+                if sig:
                     candidates.append(node_id)
                     logger.info(
                         "[solver] Signature '%s' (id=%d) needs decomposition (post-mortem analysis): "

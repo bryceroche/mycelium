@@ -3075,9 +3075,13 @@ class StepSignatureDB:
 
             candidates = []
             for row in cursor.fetchall():
-                sig_id, centroid_bytes, uses, successes = row
-                if centroid_bytes:
-                    centroid = np.frombuffer(centroid_bytes, dtype=np.float32)
+                sig_id, centroid_data, uses, successes = row
+                if centroid_data:
+                    # Centroid is stored as JSON string, not binary
+                    if isinstance(centroid_data, str):
+                        centroid = np.array(json.loads(centroid_data), dtype=np.float32)
+                    else:
+                        centroid = np.frombuffer(centroid_data, dtype=np.float32)
                     candidates.append((sig_id, centroid, uses, successes))
 
             if len(candidates) < 2:
