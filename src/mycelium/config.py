@@ -462,6 +462,12 @@ CREDIT_PROPAGATION_ENABLED = True  # Enable amplitude_post → signature stats
 CREDIT_PROPAGATION_THRESHOLD_CREDIT = 1.0  # amp_post >= this → credit (success)
 CREDIT_PROPAGATION_THRESHOLD_BLAME = 0.7  # amp_post < this → blame (op_failure)
 
+# Partial credit for correct steps in failed problems (per mycelium-7o8i)
+# Steps with high confidence in losing threads get partial credit (benefit of doubt)
+# Steps with low confidence in losing threads get blamed (likely caused failure)
+PARTIAL_CREDIT_HIGH_CONF_THRESHOLD = 0.7  # amplitude >= this in lost thread → partial credit
+PARTIAL_CREDIT_WEIGHT = 0.5  # Weight for partial credit (0.5 = half a success)
+
 # =============================================================================
 # MCTS INTERFERENCE PATTERNS (Constructive/Destructive)
 # =============================================================================

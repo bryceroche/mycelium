@@ -579,17 +579,21 @@ def run_postmortem(dag_id: str) -> dict:
 
 
 def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
-    """Propagate amplitude_post values to signature stats.
+    """Propagate amplitude_post values to signature stats with partial credit.
 
-    Per beads mycelium-itkn: Close the loop from post-mortem to signature learning.
+    Per beads mycelium-itkn + mycelium-7o8i: Close the loop from post-mortem to
+    signature learning, with partial credit for correct steps in failed problems.
 
-    Groups thread_steps by node_id, computes average amplitude_post, and updates:
-    - High amplitude_post average (>= threshold) → increment successes
-    - Low amplitude_post average (< threshold) → increment operational_failures
+    Key insight: In a failed problem, not all steps are wrong. Steps with high
+    confidence (amplitude) in a failed thread were probably correct - only the
+    step(s) that caused the failure should be blamed.
 
-    Thresholds are configurable via:
-    - CREDIT_PROPAGATION_THRESHOLD_CREDIT (default 1.0)
-    - CREDIT_PROPAGATION_THRESHOLD_BLAME (default 0.7)
+    Credit logic:
+    1. Thread won + any amplitude → full credit (success)
+    2. Thread lost + high amplitude (≥ 0.7) → PARTIAL credit (benefit of doubt)
+    3. Thread lost + low amplitude (< 0.7) → blame (uncertain and thread failed)
+
+    This prevents good signatures from being punished for a single bad step.
 
     Args:
         dag_id: The DAG to process
@@ -600,69 +604,89 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
     """
     from mycelium.config import (
         CREDIT_PROPAGATION_ENABLED,
-        CREDIT_PROPAGATION_THRESHOLD_CREDIT,
-        CREDIT_PROPAGATION_THRESHOLD_BLAME,
+        PARTIAL_CREDIT_HIGH_CONF_THRESHOLD,
+        PARTIAL_CREDIT_WEIGHT,
     )
 
     if not CREDIT_PROPAGATION_ENABLED:
-        return {"nodes_processed": 0, "successes_credited": 0, "failures_credited": 0, "skipped": True}
+        return {"nodes_processed": 0, "successes_credited": 0, "failures_credited": 0,
+                "partial_credits": 0, "skipped": True}
 
     conn = get_db()
 
-    # Get average amplitude_post grouped by node_id
+    # Get per-node stats with thread outcome context
+    # Per beads mycelium-7o8i: Need to know if step was in winning or losing thread
     cursor = conn.execute(
         """
         SELECT
-            node_id,
-            COUNT(*) as step_count,
-            AVG(amplitude_post) as avg_amplitude_post
-        FROM mcts_thread_steps
-        WHERE dag_id = ? AND amplitude_post IS NOT NULL
-        GROUP BY node_id
+            ts.node_id,
+            COUNT(*) as total_steps,
+            -- Steps in winning threads (eligible for full credit)
+            SUM(CASE WHEN t.success = 1 THEN 1 ELSE 0 END) as winning_steps,
+            -- Steps in losing threads with high confidence (eligible for partial credit)
+            SUM(CASE WHEN t.success = 0 AND ts.amplitude >= ? THEN 1 ELSE 0 END) as high_conf_losing_steps,
+            -- Steps in losing threads with low confidence (eligible for blame)
+            SUM(CASE WHEN t.success = 0 AND ts.amplitude < ? THEN 1 ELSE 0 END) as low_conf_losing_steps,
+            -- Average amplitude_post for reference
+            AVG(ts.amplitude_post) as avg_amplitude_post
+        FROM mcts_thread_steps ts
+        JOIN mcts_threads t ON ts.thread_id = t.thread_id
+        WHERE ts.dag_id = ? AND ts.amplitude_post IS NOT NULL
+        GROUP BY ts.node_id
         """,
-        (dag_id,),
+        (PARTIAL_CREDIT_HIGH_CONF_THRESHOLD, PARTIAL_CREDIT_HIGH_CONF_THRESHOLD, dag_id),
     )
 
     stats = {
         "nodes_processed": 0,
         "successes_credited": 0,
+        "partial_credits": 0,
         "failures_credited": 0,
     }
 
     for row in cursor.fetchall():
-        node_id, step_count, avg_amp = row
+        node_id, total_steps, winning_steps, high_conf_losing, low_conf_losing, avg_amp = row
 
-        if avg_amp is None:
+        if total_steps == 0:
             continue
 
         stats["nodes_processed"] += 1
 
-        # Credit based on average amplitude_post (using config thresholds)
-        # High average → the node consistently performed well across threads/steps
-        # Low average → the node consistently performed poorly
-        if avg_amp >= CREDIT_PROPAGATION_THRESHOLD_CREDIT:
-            # Strong positive signal: increment successes
+        # 1. Full credit for winning thread steps
+        if winning_steps > 0:
             step_db.increment_signature_successes(node_id, count=1)
             stats["successes_credited"] += 1
             logger.debug(
-                "[mcts] Credited success to node %d (avg_amp=%.2f >= %.2f, steps=%d)",
-                node_id, avg_amp, CREDIT_PROPAGATION_THRESHOLD_CREDIT, step_count
+                "[mcts] Full credit to node %d (%d winning steps)",
+                node_id, winning_steps
             )
-        elif avg_amp < CREDIT_PROPAGATION_THRESHOLD_BLAME:
-            # Strong negative signal: increment operational_failures
+
+        # 2. Partial credit for high-confidence steps in losing threads
+        # Per mycelium-7o8i: These steps were probably correct, just in a bad chain
+        elif high_conf_losing > 0:
+            # Give partial credit - benefit of the doubt
+            step_db.increment_signature_partial_success(node_id, weight=PARTIAL_CREDIT_WEIGHT)
+            stats["partial_credits"] += 1
+            logger.debug(
+                "[mcts] Partial credit to node %d (%d high-conf losing steps, avg_amp=%.2f)",
+                node_id, high_conf_losing, avg_amp or 0
+            )
+
+        # 3. Blame for low-confidence steps in losing threads
+        # These were uncertain AND the thread failed - likely the problem
+        elif low_conf_losing > 0:
             step_db.increment_signature_failures(node_id, count=1)
             stats["failures_credited"] += 1
             logger.debug(
-                "[mcts] Credited failure to node %d (avg_amp=%.2f < %.2f, steps=%d)",
-                node_id, avg_amp, CREDIT_PROPAGATION_THRESHOLD_BLAME, step_count
+                "[mcts] Blamed node %d (%d low-conf losing steps, avg_amp=%.2f)",
+                node_id, low_conf_losing, avg_amp or 0
             )
-        # avg_amp between thresholds: neutral, no credit propagation
 
     if stats["nodes_processed"] > 0:
         logger.info(
-            "[mcts] Amplitude credit propagation for DAG %s: %d nodes, +%d successes, +%d failures",
+            "[mcts] Credit propagation for DAG %s: %d nodes, +%d full, +%d partial, +%d failures",
             dag_id, stats["nodes_processed"],
-            stats["successes_credited"], stats["failures_credited"],
+            stats["successes_credited"], stats["partial_credits"], stats["failures_credited"],
         )
 
     return stats

@@ -2876,6 +2876,25 @@ class StepSignatureDB:
                 (count, signature_id)
             )
 
+    def increment_signature_partial_success(self, signature_id: int, weight: float = 0.5):
+        """Increment successes with a fractional weight (partial credit).
+
+        Per beads mycelium-7o8i: Used for correct steps in failed problems.
+        Steps with high confidence in losing threads get partial credit rather
+        than full blame - they were probably correct, just in a bad chain.
+
+        Args:
+            signature_id: ID of the signature
+            weight: Fractional credit (default 0.5 = half a success)
+        """
+        with self._connection() as conn:
+            conn.execute(
+                """UPDATE step_signatures
+                   SET successes = COALESCE(successes, 0) + ?
+                   WHERE id = ?""",
+                (weight, signature_id)
+            )
+
     def merge_signatures(
         self,
         survivor_id: int,
