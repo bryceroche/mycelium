@@ -376,7 +376,7 @@ SYNTHESIS_STEP_ANCHORS = [
     "Add up or sum all the intermediate results to get the final answer",
     "Put together the computed values to find the total",
 ]
-SYNTHESIS_STEP_THRESHOLD = 0.75  # Similarity threshold to detect synthesis steps
+SYNTHESIS_STEP_THRESHOLD = 0.88  # Similarity threshold to detect synthesis steps (raised from 0.75 to avoid false positives)
 
 # =============================================================================
 # SCORPION FIX (Bipolar signal propagation)

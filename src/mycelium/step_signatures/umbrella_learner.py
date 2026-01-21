@@ -321,6 +321,41 @@ class UmbrellaLearner:
 
         return candidates
 
+    def _get_failing_step_descriptions(self, node_id: int, limit: int = 5) -> list[str]:
+        """Get specific step descriptions that failed with this node.
+
+        Queries mcts_thread_steps to find actual step descriptions that
+        this node failed on. These are more specific than the generic
+        signature step_type and may be decomposable.
+
+        Args:
+            node_id: The signature ID that's failing
+            limit: Maximum number of step descriptions to return
+
+        Returns:
+            List of unique step descriptions that failed with this node
+        """
+        from mycelium.data_layer import get_db
+
+        try:
+            db = get_db()
+            with db.connection() as conn:
+                cursor = conn.execute("""
+                    SELECT DISTINCT s.step_desc
+                    FROM mcts_thread_steps t
+                    JOIN mcts_dag_steps s ON t.dag_step_id = s.dag_step_id
+                    WHERE t.node_id = ?
+                      AND t.step_success = 0
+                    ORDER BY t.created_at DESC
+                    LIMIT ?
+                """, (node_id, limit))
+
+                return [row[0] for row in cursor.fetchall()]
+        except Exception as e:
+            # Table may not exist in test environment
+            logger.debug("[umbrella] Could not query failing steps: %s", e)
+            return []
+
     async def decompose_signature(self, signature: StepSignature) -> list[int]:
         """Decompose a guidance signature into child signatures.
 
@@ -350,13 +385,37 @@ class UmbrellaLearner:
         plan = await self.planner.decompose(problem)
 
         if len(plan.steps) <= 1:
-            # Mark as atomic to prevent repeated decomposition attempts
-            # Can't decompose further - keep as decompose, let it fail and learn
-            logger.info(
-                "[umbrella] Cannot decompose '%s' further (got %d steps) - keeping as decompose",
-                signature.step_type, len(plan.steps)
-            )
-            return []
+            # Signature description is already atomic - try decomposing actual failing steps
+            # Get specific step descriptions that failed with this node
+            failing_steps = self._get_failing_step_descriptions(signature.id)
+            if failing_steps:
+                logger.info(
+                    "[umbrella] Trying to decompose %d failing step descriptions for sig %d",
+                    len(failing_steps), signature.id
+                )
+                # Try decomposing each failing step
+                for step_desc in failing_steps[:3]:  # Limit to 3 to avoid explosion
+                    step_problem = f"Break down this math step into simpler sub-steps: {step_desc}"
+                    step_plan = await self.planner.decompose(step_problem)
+                    if len(step_plan.steps) > 1:
+                        logger.info(
+                            "[umbrella] Decomposed failing step '%s' into %d sub-steps",
+                            step_desc[:40], len(step_plan.steps)
+                        )
+                        plan = step_plan  # Use this successful decomposition
+                        break
+                else:
+                    logger.info(
+                        "[umbrella] Cannot decompose '%s' or its failing steps - keeping as decompose",
+                        signature.step_type
+                    )
+                    return []
+            else:
+                logger.info(
+                    "[umbrella] Cannot decompose '%s' further (got %d steps) - keeping as decompose",
+                    signature.step_type, len(plan.steps)
+                )
+                return []
 
         # Create child signatures from decomposition
         # Strategy: prefer repointing to existing deeper sigs over creating new ones

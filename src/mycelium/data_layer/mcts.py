@@ -1570,6 +1570,16 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
             merge_split_result["splits_flagged"],
         )
 
+    # Run decomposition analysis to find nodes/steps needing decomposition
+    decomp_analysis = analyze_decomposition_needs(min_attempts=3, max_win_rate=0.5)
+
+    if decomp_analysis["stats"]["nodes_failing"] > 0 or decomp_analysis["stats"]["steps_failing"] > 0:
+        logger.info(
+            "[mcts] Decomposition analysis: %d nodes, %d steps need decomposition",
+            decomp_analysis["stats"]["nodes_failing"],
+            decomp_analysis["stats"]["steps_failing"],
+        )
+
     return {
         **amplitude_stats,
         "interference_patterns": interference_result.patterns_processed,
@@ -1598,6 +1608,9 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         "divergence_blame_assigned": divergence_stats.get("divergence_blame_assigned", 0),
         "suffix_blame_assigned": divergence_stats.get("suffix_blame_assigned", 0),
         "shared_prefix_credit": divergence_stats.get("shared_prefix_credit", 0),
+        # Decomposition analysis (nodes/steps that need decomposition)
+        "nodes_needing_decomposition": [rec.target_id for rec in decomp_analysis["nodes_to_decompose"]],
+        "steps_needing_decomposition": [(rec.target_id, rec.target_desc) for rec in decomp_analysis["steps_to_decompose"]],
     }
 
 
@@ -1996,6 +2009,166 @@ def increment_dsl_regen_counter() -> int:
     # Use accumulate with empty list to just increment counter
     state.accumulate_high_conf_wrong([])
     return state.dsl_regen_problem_count
+
+
+# =============================================================================
+# DECOMPOSITION ANALYSIS: Determine what needs decomposition
+# =============================================================================
+# Per CLAUDE.md: "The combination of (dag_step_id, node_id) is what we're learning"
+# Analyze failure patterns to decide whether to decompose the NODE or the STEP.
+
+
+@dataclass
+class DecompositionRecommendation:
+    """Recommendation for what to decompose."""
+    target_type: str  # "node" or "step"
+    target_id: int  # node_id or dag_step_id
+    target_desc: str  # Description for logging
+    reason: str  # Why this needs decomposition
+    win_rate: float  # Current success rate
+    attempts: int  # Number of attempts
+
+
+def analyze_decomposition_needs(min_attempts: int = 3, max_win_rate: float = 0.5) -> dict:
+    """Analyze (node, step) pairs to find what needs decomposition.
+
+    Decision logic:
+    1. NODE fails across ALL steps → Decompose the NODE (bad DSL or orphan)
+    2. STEP fails across ALL nodes → Decompose the STEP (too complex)
+    3. Specific (node, step) pair fails but node succeeds elsewhere → Create specialized child
+
+    Args:
+        min_attempts: Minimum attempts before considering for decomposition
+        max_win_rate: Maximum win rate to be considered failing
+
+    Returns:
+        Dict with 'nodes_to_decompose', 'steps_to_decompose', 'stats'
+    """
+    db = get_db()
+
+    # 1. NODE-CENTRIC: Find nodes failing across all steps
+    node_stats = {}
+    with db.connection() as conn:
+        cursor = conn.execute("""
+            SELECT
+                t.node_id,
+                COUNT(*) as total,
+                SUM(CASE WHEN t.step_success = 1 THEN 1 ELSE 0 END) as wins
+            FROM mcts_thread_steps t
+            WHERE t.node_id IS NOT NULL
+            GROUP BY t.node_id
+            HAVING COUNT(*) >= ?
+        """, (min_attempts,))
+
+        for row in cursor.fetchall():
+            node_id, total, wins = row
+            win_rate = wins / total if total > 0 else 0
+            node_stats[node_id] = {
+                "total": total,
+                "wins": wins,
+                "win_rate": win_rate,
+            }
+
+    # 2. STEP-CENTRIC: Find steps failing across all nodes
+    step_stats = {}
+    with db.connection() as conn:
+        cursor = conn.execute("""
+            SELECT
+                s.dag_step_id,
+                s.step_desc,
+                COUNT(DISTINCT t.node_id) as nodes_tried,
+                COUNT(*) as total,
+                SUM(CASE WHEN t.step_success = 1 THEN 1 ELSE 0 END) as wins
+            FROM mcts_thread_steps t
+            JOIN mcts_dag_steps s ON t.dag_step_id = s.dag_step_id
+            WHERE t.node_id IS NOT NULL
+            GROUP BY s.dag_step_id
+            HAVING COUNT(*) >= ?
+        """, (min_attempts,))
+
+        for row in cursor.fetchall():
+            step_id, step_desc, nodes_tried, total, wins = row
+            win_rate = wins / total if total > 0 else 0
+            step_stats[step_id] = {
+                "step_desc": step_desc,
+                "nodes_tried": nodes_tried,
+                "total": total,
+                "wins": wins,
+                "win_rate": win_rate,
+            }
+
+    # 3. Analyze and generate recommendations
+    nodes_to_decompose = []
+    steps_to_decompose = []
+
+    # Get signature info for nodes
+    with db.connection() as conn:
+        for node_id, stats in node_stats.items():
+            if stats["win_rate"] <= max_win_rate:
+                # Get node details
+                cursor = conn.execute(
+                    "SELECT step_type, dsl_type, dsl_script FROM step_signatures WHERE id = ?",
+                    (node_id,)
+                )
+                row = cursor.fetchone()
+                if row:
+                    step_type, dsl_type, dsl_script = row
+                    # Check if it's an orphan router (no DSL)
+                    is_orphan = dsl_type == "router" and not dsl_script
+                    reason = "orphan router (no DSL)" if is_orphan else f"failing across all steps ({stats['win_rate']*100:.0f}% win rate)"
+
+                    nodes_to_decompose.append(DecompositionRecommendation(
+                        target_type="node",
+                        target_id=node_id,
+                        target_desc=step_type,
+                        reason=reason,
+                        win_rate=stats["win_rate"],
+                        attempts=stats["total"],
+                    ))
+
+    # Analyze failing steps
+    for step_id, stats in step_stats.items():
+        if stats["win_rate"] <= max_win_rate:
+            # Check if ALL nodes that tried this step failed
+            # If yes, the step itself is too complex
+            if stats["nodes_tried"] >= 1:  # At least one node tried
+                steps_to_decompose.append(DecompositionRecommendation(
+                    target_type="step",
+                    target_id=step_id,
+                    target_desc=stats["step_desc"],
+                    reason=f"failing with {stats['nodes_tried']} node(s) tried ({stats['win_rate']*100:.0f}% win rate)",
+                    win_rate=stats["win_rate"],
+                    attempts=stats["total"],
+                ))
+
+    return {
+        "nodes_to_decompose": nodes_to_decompose,
+        "steps_to_decompose": steps_to_decompose,
+        "stats": {
+            "total_nodes_analyzed": len(node_stats),
+            "total_steps_analyzed": len(step_stats),
+            "nodes_failing": len(nodes_to_decompose),
+            "steps_failing": len(steps_to_decompose),
+        }
+    }
+
+
+def get_failing_nodes_for_decomposition(min_attempts: int = 3, max_win_rate: float = 0.5) -> list[int]:
+    """Get list of node IDs that need decomposition based on failure analysis.
+
+    Returns nodes that are failing across all steps they handle.
+    """
+    result = analyze_decomposition_needs(min_attempts, max_win_rate)
+    return [rec.target_id for rec in result["nodes_to_decompose"]]
+
+
+def get_failing_steps_for_decomposition(min_attempts: int = 3, max_win_rate: float = 0.5) -> list[tuple[str, str]]:
+    """Get list of (dag_step_id, step_desc) tuples that need decomposition.
+
+    Returns steps that are failing regardless of which node handles them.
+    """
+    result = analyze_decomposition_needs(min_attempts, max_win_rate)
+    return [(rec.target_id, rec.target_desc) for rec in result["steps_to_decompose"]]
 
 
 # =============================================================================

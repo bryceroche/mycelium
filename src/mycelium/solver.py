@@ -2594,6 +2594,20 @@ Expression:"""
                         "[solver] DSL regeneration ready: %d nodes accumulated",
                         postmortem_stats.get("dsl_regen_nodes_accumulated", 0)
                     )
+
+                # Log nodes/steps needing decomposition from post-mortem analysis
+                nodes_needing = postmortem_stats.get("nodes_needing_decomposition", [])
+                steps_needing = postmortem_stats.get("steps_needing_decomposition", [])
+                if nodes_needing:
+                    logger.info(
+                        "[solver] Post-mortem: %d nodes need decomposition: %s",
+                        len(nodes_needing), nodes_needing
+                    )
+                if steps_needing:
+                    logger.info(
+                        "[solver] Post-mortem: %d steps need decomposition: %s",
+                        len(steps_needing), [s[1][:40] for s in steps_needing]
+                    )
             except Exception as e:
                 logger.error("[solver] Postmortem failed: %s", e)
 
@@ -2653,6 +2667,21 @@ Expression:"""
                     "uses=%d, success_rate=%.1f%%, orphan=%s",
                     sig.step_type, sig_id, sig.uses, sig.success_rate * 100, is_orphan_umbrella
                 )
+
+        # Also add nodes identified by post-mortem decomposition analysis
+        # These are nodes with low win rates from mcts_thread_steps
+        from mycelium.data_layer.mcts import get_failing_nodes_for_decomposition
+        postmortem_failing_nodes = get_failing_nodes_for_decomposition(min_attempts=3, max_win_rate=0.5)
+        for node_id in postmortem_failing_nodes:
+            if node_id not in candidates:
+                sig = self.step_db.get_signature(node_id)
+                if sig and not sig.is_archived:
+                    candidates.append(node_id)
+                    logger.info(
+                        "[solver] Signature '%s' (id=%d) needs decomposition (post-mortem analysis): "
+                        "failing across step types",
+                        sig.step_type, node_id
+                    )
 
         # Flush any batched centroid propagations after problem is graded
         # This ensures parent umbrellas have accurate centroids for next problem
