@@ -32,6 +32,12 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     embedding_sum TEXT,               -- Running sum of all matched embeddings
     embedding_count INTEGER DEFAULT 1, -- Number of embeddings in sum
 
+    -- Computation Graph Embedding (per CLAUDE.md: route by what operations DO)
+    -- Graph is structural representation: MUL(param_0, param_1) → result
+    -- graph_embedding is what we route against (replaces text-based centroid for routing)
+    computation_graph TEXT,           -- Structural graph: "MUL(param_0, param_1)", "ADD(MUL(p0, p1), p2)"
+    graph_embedding TEXT,             -- Embedding of the computation graph (for routing)
+
     -- Identity
     step_type TEXT NOT NULL,  -- e.g., "compute_power", "find_gcd"
 
@@ -70,6 +76,7 @@ CREATE INDEX IF NOT EXISTS idx_sig_id ON step_signatures(signature_id);
 CREATE INDEX IF NOT EXISTS idx_sig_type ON step_signatures(step_type);
 CREATE INDEX IF NOT EXISTS idx_sig_centroid ON step_signatures(centroid);  -- Non-unique, for queries
 CREATE UNIQUE INDEX IF NOT EXISTS idx_sig_centroid_bucket ON step_signatures(centroid_bucket);  -- Coarse uniqueness
+CREATE INDEX IF NOT EXISTS idx_sig_graph_embedding ON step_signatures(graph_embedding);  -- For graph-based routing
 CREATE INDEX IF NOT EXISTS idx_sig_depth ON step_signatures(depth);
 CREATE INDEX IF NOT EXISTS idx_sig_is_root ON step_signatures(is_root);
 CREATE INDEX IF NOT EXISTS idx_sig_dsl_type ON step_signatures(dsl_type);
@@ -435,6 +442,21 @@ def migrate_db(conn) -> None:
             "ALTER TABLE step_signatures ADD COLUMN step_type_stats TEXT DEFAULT '{}'"
         )
 
+    # Add computation_graph if missing (per mycelium-k509)
+    # Structural graph representation: MUL(param_0, param_1), ADD(MUL(p0, p1), p2)
+    # Per CLAUDE.md: route by what operations DO, not what they SOUND LIKE
+    if "computation_graph" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN computation_graph TEXT"
+        )
+
+    # Add graph_embedding if missing (per mycelium-k509)
+    # Embedding of computation graph for routing (replaces text-based centroid routing)
+    if "graph_embedding" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN graph_embedding TEXT"
+        )
+
     # Run migrations
     for sql in migrations:
         try:
@@ -454,6 +476,8 @@ def migrate_db(conn) -> None:
         "CREATE INDEX IF NOT EXISTS idx_sig_archived_created ON step_signatures(is_archived, created_at)",
         "CREATE INDEX IF NOT EXISTS idx_usage_sig_created ON step_usage_log(signature_id, created_at)",
         "CREATE INDEX IF NOT EXISTS idx_failures_created_sig ON step_failures(created_at, signature_id)",
+        # Computation graph routing index (per mycelium-k509)
+        "CREATE INDEX IF NOT EXISTS idx_sig_graph_embedding ON step_signatures(graph_embedding)",
     ]
     for sql in index_migrations:
         try:
