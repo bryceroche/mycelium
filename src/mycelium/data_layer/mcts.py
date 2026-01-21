@@ -1312,46 +1312,146 @@ def apply_interference_effects(
 
 
 # =============================================================================
-# POSTMORTEM STATE MANAGEMENT (Thread-safe singleton)
+# POSTMORTEM STATE MANAGEMENT (Database-backed for cross-process persistence)
 # =============================================================================
+
+import json
+
+
+def _get_db_state_value(key: str, default: str = "0") -> str:
+    """Get a value from db_metadata table."""
+    db = get_db()
+    with db.connection() as conn:
+        row = conn.execute(
+            "SELECT value FROM db_metadata WHERE key = ?", (key,)
+        ).fetchone()
+        return row["value"] if row else default
+
+
+def _set_db_state_value(key: str, value: str) -> None:
+    """Set a value in db_metadata table (upsert)."""
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+    with db.connection() as conn:
+        conn.execute(
+            """INSERT INTO db_metadata (key, value, updated_at)
+               VALUES (?, ?, ?)
+               ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at""",
+            (key, value, now)
+        )
+
+
+# Keys for persistent state
+_KEY_DSL_REGEN_COUNT = "postmortem_dsl_regen_count"
+_KEY_HIGH_CONF_WRONG_NODES = "postmortem_high_conf_wrong_nodes"
+_KEY_PROBLEM_COUNT = "postmortem_problem_count"
+_KEY_NODES_FOR_SPLIT = "postmortem_nodes_for_split"
 
 
 @dataclass
 class PostmortemState:
     """Encapsulates mutable state for post-mortem batching.
 
-    Replaces module-level globals for thread safety and testability.
+    Now uses database for persistence across processes.
+    In-memory fields are loaded from DB on access.
     """
-    problem_count: int = 0
-    nodes_for_split: list[int] = field(default_factory=list)
-    high_conf_wrong_nodes: list[int] = field(default_factory=list)
-    dsl_regen_problem_count: int = 0
+    # In-memory cache (loaded from DB)
+    _problem_count: int = field(default=None, repr=False)
+    _nodes_for_split: list[int] = field(default=None, repr=False)
+    _high_conf_wrong_nodes: list[int] = field(default=None, repr=False)
+    _dsl_regen_problem_count: int = field(default=None, repr=False)
+
+    @property
+    def problem_count(self) -> int:
+        if self._problem_count is None:
+            self._problem_count = int(_get_db_state_value(_KEY_PROBLEM_COUNT, "0"))
+        return self._problem_count
+
+    @property
+    def nodes_for_split(self) -> list[int]:
+        if self._nodes_for_split is None:
+            raw = _get_db_state_value(_KEY_NODES_FOR_SPLIT, "[]")
+            self._nodes_for_split = json.loads(raw)
+        return self._nodes_for_split
+
+    @property
+    def high_conf_wrong_nodes(self) -> list[int]:
+        if self._high_conf_wrong_nodes is None:
+            raw = _get_db_state_value(_KEY_HIGH_CONF_WRONG_NODES, "[]")
+            self._high_conf_wrong_nodes = json.loads(raw)
+        return self._high_conf_wrong_nodes
+
+    @property
+    def dsl_regen_problem_count(self) -> int:
+        if self._dsl_regen_problem_count is None:
+            self._dsl_regen_problem_count = int(_get_db_state_value(_KEY_DSL_REGEN_COUNT, "0"))
+        return self._dsl_regen_problem_count
 
     def reset_merge_split(self) -> None:
         """Reset state after merge/split batch processing."""
-        self.problem_count = 0
-        self.nodes_for_split = []
+        self._problem_count = 0
+        self._nodes_for_split = []
+        _set_db_state_value(_KEY_PROBLEM_COUNT, "0")
+        _set_db_state_value(_KEY_NODES_FOR_SPLIT, "[]")
 
     def reset_dsl_regen(self) -> None:
         """Reset state after DSL regeneration batch."""
-        self.high_conf_wrong_nodes = []
-        self.dsl_regen_problem_count = 0
+        self._high_conf_wrong_nodes = []
+        self._dsl_regen_problem_count = 0
+        _set_db_state_value(_KEY_HIGH_CONF_WRONG_NODES, "[]")
+        _set_db_state_value(_KEY_DSL_REGEN_COUNT, "0")
 
     def accumulate_split_nodes(self, node_ids: list[int]) -> None:
         """Add nodes flagged for split."""
-        self.nodes_for_split.extend(node_ids)
-        self.problem_count += 1
+        # Load current state from DB
+        current_nodes = list(self.nodes_for_split)
+        current_count = self.problem_count
+
+        # Update
+        current_nodes.extend(node_ids)
+        current_count += 1
+
+        # Save back to DB
+        self._nodes_for_split = current_nodes
+        self._problem_count = current_count
+        _set_db_state_value(_KEY_NODES_FOR_SPLIT, json.dumps(current_nodes))
+        _set_db_state_value(_KEY_PROBLEM_COUNT, str(current_count))
 
     def accumulate_high_conf_wrong(self, nodes: list[dict]) -> None:
         """Add nodes with high-confidence wrong decisions."""
+        # Load current state from DB (force refresh)
+        self._high_conf_wrong_nodes = None
+        self._dsl_regen_problem_count = None
+        current_nodes = list(self.high_conf_wrong_nodes)
+        current_count = self.dsl_regen_problem_count
+
+        # Update
         for node in nodes:
             node_id = node.get("node_id")
-            if node_id is not None and node_id not in self.high_conf_wrong_nodes:
-                self.high_conf_wrong_nodes.append(node_id)
-        self.dsl_regen_problem_count += 1
+            if node_id is not None and node_id not in current_nodes:
+                current_nodes.append(node_id)
+        current_count += 1
+
+        # Save back to DB
+        self._high_conf_wrong_nodes = current_nodes
+        self._dsl_regen_problem_count = current_count
+        _set_db_state_value(_KEY_HIGH_CONF_WRONG_NODES, json.dumps(current_nodes))
+        _set_db_state_value(_KEY_DSL_REGEN_COUNT, str(current_count))
+
+        logger.debug(
+            "[postmortem] Accumulated high-conf-wrong: %d nodes, count=%d/%d",
+            len(current_nodes), current_count, POSTMORTEM_DSL_REGEN_BATCH_SIZE
+        )
+
+    def invalidate_cache(self) -> None:
+        """Force reload from DB on next access."""
+        self._problem_count = None
+        self._nodes_for_split = None
+        self._high_conf_wrong_nodes = None
+        self._dsl_regen_problem_count = None
 
 
-# Singleton instance
+# Singleton instance (thin wrapper, actual state in DB)
 _postmortem_state: Optional[PostmortemState] = None
 
 
@@ -1360,6 +1460,8 @@ def get_postmortem_state() -> PostmortemState:
     global _postmortem_state
     if _postmortem_state is None:
         _postmortem_state = PostmortemState()
+    # Invalidate cache to ensure fresh read from DB
+    _postmortem_state.invalidate_cache()
     return _postmortem_state
 
 
@@ -1367,6 +1469,8 @@ def reset_postmortem_state() -> None:
     """Reset the singleton state (useful for testing)."""
     global _postmortem_state
     _postmortem_state = PostmortemState()
+    _postmortem_state.reset_merge_split()
+    _postmortem_state.reset_dsl_regen()
 
 
 def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
@@ -1885,11 +1989,12 @@ def should_trigger_dsl_regen() -> bool:
 def increment_dsl_regen_counter() -> int:
     """Increment the problem counter for DSL regen batching.
 
-    Note: This is now handled internally by accumulate_high_conf_wrong_nodes.
-    Kept for backward compatibility.
+    Note: This is now handled internally by accumulate_high_conf_wrong.
+    Kept for backward compatibility - increments via empty accumulate call.
     """
     state = get_postmortem_state()
-    state.dsl_regen_problem_count += 1
+    # Use accumulate with empty list to just increment counter
+    state.accumulate_high_conf_wrong([])
     return state.dsl_regen_problem_count
 
 
