@@ -1811,7 +1811,7 @@ class Solver:
             - explored_sigs: All signatures explored (for backpropagation)
             - was_injected: Whether result came from DSL execution
         """
-        from mycelium.config import COMPUTE_BUDGET_CONFIDENCE_THRESHOLD
+        from mycelium.config import UCB1_GAP_BRANCH_THRESHOLD
         from mycelium.step_signatures.db import RoutingResult
 
         # Get routing result with confidence and alternatives
@@ -1828,8 +1828,11 @@ class Solver:
 
         explored_sigs = list(routing_result.path)  # Start with best path
 
-        # If high confidence or single-path mode, just use best path
-        if routing_result.confidence >= COMPUTE_BUDGET_CONFIDENCE_THRESHOLD or compute_budget <= 1.0:
+        # Selective branching: only branch when undecided (per CLAUDE.md)
+        # Use UCB1 gap to detect uncertainty: high gap = confident, low gap = undecided
+        # Also respect single-path mode (compute_budget <= 1.0)
+        is_undecided = routing_result.min_gap < UCB1_GAP_BRANCH_THRESHOLD
+        if not is_undecided or compute_budget <= 1.0:
             if routing_result.signature is not None:
                 result = await self._try_dsl(
                     routing_result.signature, step, context, step_descriptions
@@ -1837,13 +1840,13 @@ class Solver:
                 return (result, routing_result.signature, explored_sigs, result is not None)
             return (None, routing_result.signature, explored_sigs, False)
 
-        # Low confidence + multi-path mode: explore alternatives
+        # Undecided (low UCB1 gap) + multi-path mode: explore alternatives
         # Mark as undecided for MCTS amplitude tracking
         self._routing_was_undecided = True
         num_paths = min(int(compute_budget), len(routing_result.alternatives) + 1)
         logger.info(
-            "[solver] Multi-path exploration: confidence=%.2f, exploring %d paths",
-            routing_result.confidence, num_paths
+            "[solver] Selective branching: undecided (gap=%.3f < %.3f), exploring %d paths",
+            routing_result.min_gap, UCB1_GAP_BRANCH_THRESHOLD, num_paths
         )
 
         # Collect alternative leaf signatures to try (with similarity scores)
@@ -1918,7 +1921,7 @@ class Solver:
                             dag_id=self._current_dag_id,
                             parent_thread_id=thread_id,
                             fork_at_step=dag_step_id,
-                            fork_reason="explore",
+                            fork_reason="undecided",  # Only branch when UCB1 gap is low
                             thread_id=fork_thread_id,
                         )
 

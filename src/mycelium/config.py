@@ -127,6 +127,11 @@ ADAPTIVE_SPLIT_THRESHOLD_STRICT = 0.4   # Mature: split at 40% failure
 COMPUTE_BUDGET_BASE = 3.0  # Base budget for adaptive scaling (both training & inference)
 COMPUTE_BUDGET_CONFIDENCE_THRESHOLD = 0.5  # Explore alternatives when confidence < this
 
+# Selective branching: only branch when undecided (per CLAUDE.md)
+# UCB1 gap = difference between top-2 UCB1 scores at routing decision
+# High gap = confident (don't branch), Low gap = undecided (branch)
+UCB1_GAP_BRANCH_THRESHOLD = 0.15  # Branch when min_gap < this (undecided)
+
 # Bayesian prior for cold start (assume some successes before any data)
 ROUTING_PRIOR_SUCCESSES = 2
 ROUTING_PRIOR_USES = 4
