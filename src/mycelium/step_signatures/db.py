@@ -2842,6 +2842,40 @@ class StepSignatureDB:
                     signature_id, failure_count, failure_count, thread_count,
                 )
 
+    def increment_signature_successes(self, signature_id: int, count: int = 1):
+        """Increment the successes count for a signature.
+
+        Per beads mycelium-itkn: Used by amplitude credit propagation.
+
+        Args:
+            signature_id: ID of the signature
+            count: Amount to increment by (default 1)
+        """
+        with self._connection() as conn:
+            conn.execute(
+                """UPDATE step_signatures
+                   SET successes = COALESCE(successes, 0) + ?
+                   WHERE id = ?""",
+                (count, signature_id)
+            )
+
+    def increment_signature_failures(self, signature_id: int, count: int = 1):
+        """Increment the operational_failures count for a signature.
+
+        Per beads mycelium-itkn: Used by amplitude credit propagation.
+
+        Args:
+            signature_id: ID of the signature
+            count: Amount to increment by (default 1)
+        """
+        with self._connection() as conn:
+            conn.execute(
+                """UPDATE step_signatures
+                   SET operational_failures = COALESCE(operational_failures, 0) + ?
+                   WHERE id = ?""",
+                (count, signature_id)
+            )
+
     def merge_signatures(
         self,
         survivor_id: int,

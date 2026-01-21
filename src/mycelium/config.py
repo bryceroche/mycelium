@@ -455,6 +455,13 @@ POSTMORTEM_STRONG_PENALTY_MULT = 0.5  # Lost + high confidence: harsh penalty
 POSTMORTEM_AMPLITUDE_MIN = 0.0  # Clamp amplitude_post minimum
 POSTMORTEM_AMPLITUDE_MAX = 2.0  # Clamp amplitude_post maximum
 
+# Credit propagation from amplitude_post to signature stats (per mycelium-itkn)
+# Closes the loop: amplitude_post → signature.successes/operational_failures
+# Works for BOTH single-path and multi-path problems (per mycelium-plm8)
+CREDIT_PROPAGATION_ENABLED = True  # Enable amplitude_post → signature stats
+CREDIT_PROPAGATION_THRESHOLD_CREDIT = 1.0  # amp_post >= this → credit (success)
+CREDIT_PROPAGATION_THRESHOLD_BLAME = 0.7  # amp_post < this → blame (op_failure)
+
 # =============================================================================
 # MCTS INTERFERENCE PATTERNS (Constructive/Destructive)
 # =============================================================================

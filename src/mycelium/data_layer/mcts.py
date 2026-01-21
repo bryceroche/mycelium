@@ -578,6 +578,91 @@ def run_postmortem(dag_id: str) -> dict:
     return stats
 
 
+def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
+    """Propagate amplitude_post values to signature stats.
+
+    Per beads mycelium-itkn: Close the loop from post-mortem to signature learning.
+
+    Groups thread_steps by node_id, computes average amplitude_post, and updates:
+    - High amplitude_post average (>= 1.0) → increment successes
+    - Low amplitude_post average (< 0.5) → increment operational_failures
+
+    The thresholds are based on the amplitude_post computation:
+    - Reinforce (confident+right) → ~1.1-1.2
+    - Boost (uncertain+right) → ~1.5
+    - Mild penalty (uncertain+wrong) → ~0.7
+    - Strong penalty (confident+wrong) → ~0.3
+
+    Args:
+        dag_id: The DAG to process
+        step_db: StepSignatureDB instance for stat updates
+
+    Returns:
+        Dict with propagation statistics
+    """
+    conn = get_db()
+
+    # Get average amplitude_post grouped by node_id
+    cursor = conn.execute(
+        """
+        SELECT
+            node_id,
+            COUNT(*) as step_count,
+            AVG(amplitude_post) as avg_amplitude_post,
+            SUM(CASE WHEN amplitude_post >= 1.0 THEN 1 ELSE 0 END) as high_amp_count,
+            SUM(CASE WHEN amplitude_post < 0.5 THEN 1 ELSE 0 END) as low_amp_count
+        FROM mcts_thread_steps
+        WHERE dag_id = ? AND amplitude_post IS NOT NULL
+        GROUP BY node_id
+        """,
+        (dag_id,),
+    )
+
+    stats = {
+        "nodes_processed": 0,
+        "successes_credited": 0,
+        "failures_credited": 0,
+    }
+
+    for row in cursor.fetchall():
+        node_id, step_count, avg_amp, high_count, low_count = row
+
+        if avg_amp is None:
+            continue
+
+        stats["nodes_processed"] += 1
+
+        # Credit based on average amplitude_post
+        # High average → the node consistently performed well across threads/steps
+        # Low average → the node consistently performed poorly
+        if avg_amp >= 1.0:
+            # Strong positive signal: increment successes
+            step_db.increment_signature_successes(node_id, count=1)
+            stats["successes_credited"] += 1
+            logger.debug(
+                "[mcts] Credited success to node %d (avg_amp=%.2f, steps=%d)",
+                node_id, avg_amp, step_count
+            )
+        elif avg_amp < 0.5:
+            # Strong negative signal: increment operational_failures
+            step_db.increment_signature_failures(node_id, count=1)
+            stats["failures_credited"] += 1
+            logger.debug(
+                "[mcts] Credited failure to node %d (avg_amp=%.2f, steps=%d)",
+                node_id, avg_amp, step_count
+            )
+        # avg_amp between 0.5 and 1.0: neutral, no credit propagation
+
+    if stats["nodes_processed"] > 0:
+        logger.info(
+            "[mcts] Amplitude credit propagation for DAG %s: %d nodes, +%d successes, +%d failures",
+            dag_id, stats["nodes_processed"],
+            stats["successes_credited"], stats["failures_credited"],
+        )
+
+    return stats
+
+
 def get_problem_nodes_needing_attention(dag_id: str) -> list[dict]:
     """Identify nodes that performed poorly in this DAG.
 
@@ -970,6 +1055,10 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     # Then detect and apply interference effects - cheap, always run
     interference_result = apply_interference_effects(dag_id, step_db)
 
+    # Per beads mycelium-itkn: Propagate amplitude_post to signature stats
+    # This closes the loop from post-mortem analysis to signature learning
+    credit_stats = propagate_amplitude_to_signature_stats(dag_id, step_db)
+
     # Accumulate nodes flagged for split
     _accumulated_nodes_for_split.extend(interference_result.nodes_flagged_split)
     _postmortem_problem_count += 1
@@ -1042,6 +1131,10 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         # DSL regeneration info (per beads mycelium-flbq)
         "dsl_regen_nodes_accumulated": len(get_accumulated_failing_nodes()),
         "dsl_regen_ready": should_trigger_dsl_regen(),
+        # Amplitude credit propagation (per beads mycelium-itkn)
+        "credit_nodes_processed": credit_stats.get("nodes_processed", 0),
+        "credit_successes": credit_stats.get("successes_credited", 0),
+        "credit_failures": credit_stats.get("failures_credited", 0),
     }
 
 
