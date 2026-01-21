@@ -904,11 +904,13 @@ def assign_divergence_blame(dag_id: str, step_db) -> dict:
     blamed_nodes: set[int] = set()
     credited_nodes: set[int] = set()
 
+    # Pre-fetch all thread paths once (instead of inside loop)
+    all_paths = get_thread_paths(dag_id)
+    paths_by_thread = {p.thread_id: p for p in all_paths}
+
     for dp in divergence_points:
         # 1. Give partial credit to shared prefix nodes (they were correct)
-        # Get paths to access shared prefix
-        paths = get_thread_paths(dag_id)
-        losing_path = next((p for p in paths if p.thread_id == dp.losing_thread_id), None)
+        losing_path = paths_by_thread.get(dp.losing_thread_id)
 
         if losing_path and dp.shared_prefix_len > 0:
             for i in range(dp.shared_prefix_len):
@@ -964,7 +966,7 @@ def get_problem_nodes_needing_attention(dag_id: str) -> list[dict]:
     """Identify nodes that performed poorly in this DAG.
 
     Returns nodes where:
-    - High confidence but thread lost (amplitude >= 0.7, success = 0)
+    - High confidence but thread lost (amplitude >= threshold, success = 0)
 
     These are candidates for decomposition or centroid adjustment.
     """
@@ -980,10 +982,10 @@ def get_problem_nodes_needing_attention(dag_id: str) -> list[dict]:
         FROM mcts_thread_steps ts
         JOIN mcts_threads t ON ts.thread_id = t.thread_id
         WHERE ts.dag_id = ?
-          AND ts.amplitude >= 0.7
+          AND ts.amplitude >= ?
           AND t.success = 0
         """,
-        (dag_id,),
+        (dag_id, POSTMORTEM_HIGH_CONF_THRESHOLD),
     )
 
     return [
@@ -1309,9 +1311,62 @@ def apply_interference_effects(
     return result
 
 
-# Module-level counter for batch merge/split scheduling
-_postmortem_problem_count = 0
-_accumulated_nodes_for_split: list[int] = []
+# =============================================================================
+# POSTMORTEM STATE MANAGEMENT (Thread-safe singleton)
+# =============================================================================
+
+
+@dataclass
+class PostmortemState:
+    """Encapsulates mutable state for post-mortem batching.
+
+    Replaces module-level globals for thread safety and testability.
+    """
+    problem_count: int = 0
+    nodes_for_split: list[int] = field(default_factory=list)
+    high_conf_wrong_nodes: list[int] = field(default_factory=list)
+    dsl_regen_problem_count: int = 0
+
+    def reset_merge_split(self) -> None:
+        """Reset state after merge/split batch processing."""
+        self.problem_count = 0
+        self.nodes_for_split = []
+
+    def reset_dsl_regen(self) -> None:
+        """Reset state after DSL regeneration batch."""
+        self.high_conf_wrong_nodes = []
+        self.dsl_regen_problem_count = 0
+
+    def accumulate_split_nodes(self, node_ids: list[int]) -> None:
+        """Add nodes flagged for split."""
+        self.nodes_for_split.extend(node_ids)
+        self.problem_count += 1
+
+    def accumulate_high_conf_wrong(self, nodes: list[dict]) -> None:
+        """Add nodes with high-confidence wrong decisions."""
+        for node in nodes:
+            node_id = node.get("node_id")
+            if node_id is not None and node_id not in self.high_conf_wrong_nodes:
+                self.high_conf_wrong_nodes.append(node_id)
+        self.dsl_regen_problem_count += 1
+
+
+# Singleton instance
+_postmortem_state: Optional[PostmortemState] = None
+
+
+def get_postmortem_state() -> PostmortemState:
+    """Get or create the singleton PostmortemState instance."""
+    global _postmortem_state
+    if _postmortem_state is None:
+        _postmortem_state = PostmortemState()
+    return _postmortem_state
+
+
+def reset_postmortem_state() -> None:
+    """Reset the singleton state (useful for testing)."""
+    global _postmortem_state
+    _postmortem_state = PostmortemState()
 
 
 def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
@@ -1331,10 +1386,11 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     Returns:
         Combined dict with amplitude stats and interference results
     """
-    global _postmortem_problem_count, _accumulated_nodes_for_split
-
     from mycelium.config import MERGE_SPLIT_BATCH_SIZE, RETIREMENT_ENABLED
     from mycelium.mcts.adaptive import AdaptiveExploration
+
+    # Get singleton state (thread-safe)
+    state = get_postmortem_state()
 
     # First run standard postmortem (amplitude_post computation) - cheap, always run
     amplitude_stats = run_postmortem(dag_id)
@@ -1360,19 +1416,17 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     # Compare winning vs losing thread paths to find exactly where failure occurred
     divergence_stats = assign_divergence_blame(dag_id, step_db)
 
-    # Accumulate nodes flagged for split
-    _accumulated_nodes_for_split.extend(interference_result.nodes_flagged_split)
-    _postmortem_problem_count += 1
+    # Accumulate nodes flagged for split (using state object)
+    state.accumulate_split_nodes(interference_result.nodes_flagged_split)
 
     # Per beads mycelium-flbq: Accumulate high-conf-wrong nodes for DSL regen
     # This tracks nodes that had high confidence but produced wrong answers
     if amplitude_stats.get("high_conf_wrong", 0) >= POSTMORTEM_DSL_REGEN_MIN_HIGH_CONF_WRONG:
         problem_nodes = get_problem_nodes_needing_attention(dag_id)
-        accumulate_high_conf_wrong_nodes(problem_nodes)
-        increment_dsl_regen_counter()
+        state.accumulate_high_conf_wrong(problem_nodes)
         logger.debug(
             "[mcts] Accumulated %d high-conf-wrong nodes for DSL regen (total: %d)",
-            len(problem_nodes), len(get_accumulated_failing_nodes())
+            len(problem_nodes), len(state.high_conf_wrong_nodes)
         )
 
     # Check if we should run merge/split/retirement (batched for performance)
@@ -1381,7 +1435,7 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
 
     should_run_batch_ops = (
         MERGE_SPLIT_BATCH_SIZE > 0 and
-        _postmortem_problem_count >= MERGE_SPLIT_BATCH_SIZE
+        state.problem_count >= MERGE_SPLIT_BATCH_SIZE
     )
 
     if should_run_batch_ops:
@@ -1389,7 +1443,7 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         merge_split_result = run_merge_split_from_interference(
             step_db,
             nodes_reinforced=interference_result.nodes_reinforced,
-            nodes_flagged_split=list(set(_accumulated_nodes_for_split)),  # Dedupe
+            nodes_flagged_split=list(set(state.nodes_for_split)),  # Dedupe
         )
 
         # Run retirement check (per beads mycelium-x0mt)
@@ -1403,9 +1457,8 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
                     retirement_result.get("merged_up", 0),
                 )
 
-        # Reset counters
-        _postmortem_problem_count = 0
-        _accumulated_nodes_for_split = []
+        # Reset merge/split state
+        state.reset_merge_split()
 
         logger.info(
             "[mcts] Batch operations complete: %d merges, %d splits flagged",
@@ -1427,10 +1480,10 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         "retirement_demoted": retirement_result.get("demoted", 0),
         "retirement_pruned": retirement_result.get("pruned", 0),
         "retirement_merged_up": retirement_result.get("merged_up", 0),
-        "batch_counter": _postmortem_problem_count,
-        "next_merge_split_in": MERGE_SPLIT_BATCH_SIZE - _postmortem_problem_count if MERGE_SPLIT_BATCH_SIZE > 0 else -1,
+        "batch_counter": state.problem_count,
+        "next_merge_split_in": MERGE_SPLIT_BATCH_SIZE - state.problem_count if MERGE_SPLIT_BATCH_SIZE > 0 else -1,
         # DSL regeneration info (per beads mycelium-flbq)
-        "dsl_regen_nodes_accumulated": len(get_accumulated_failing_nodes()),
+        "dsl_regen_nodes_accumulated": len(state.high_conf_wrong_nodes),
         "dsl_regen_ready": should_trigger_dsl_regen(),
         # Amplitude credit propagation (per beads mycelium-itkn)
         "credit_nodes_processed": credit_stats.get("nodes_processed", 0),
@@ -1648,34 +1701,26 @@ def run_merge_split_from_interference(
 # Per beads mycelium-flbq: When post-mortem detects high failure rate at a
 # specific (dag_step_id, node_id) pair, trigger DSL regeneration.
 
-# Accumulator for nodes with high-conf-wrong across problems
-_accumulated_high_conf_wrong_nodes: list[int] = []
-_dsl_regen_problem_count: int = 0
-
-
 def accumulate_high_conf_wrong_nodes(nodes: list[dict]) -> None:
     """Accumulate nodes with high-confidence wrong decisions for batch DSL regen.
 
     Args:
         nodes: List of dicts with node_id from get_problem_nodes_needing_attention
     """
-    global _accumulated_high_conf_wrong_nodes
-    for node in nodes:
-        node_id = node.get("node_id")
-        if node_id is not None and node_id not in _accumulated_high_conf_wrong_nodes:
-            _accumulated_high_conf_wrong_nodes.append(node_id)
+    state = get_postmortem_state()
+    state.accumulate_high_conf_wrong(nodes)
 
 
 def get_accumulated_failing_nodes() -> list[int]:
     """Get the current list of accumulated failing node IDs."""
-    return list(_accumulated_high_conf_wrong_nodes)
+    state = get_postmortem_state()
+    return list(state.high_conf_wrong_nodes)
 
 
 def clear_accumulated_failing_nodes() -> None:
     """Clear the accumulated failing nodes after processing."""
-    global _accumulated_high_conf_wrong_nodes, _dsl_regen_problem_count
-    _accumulated_high_conf_wrong_nodes = []
-    _dsl_regen_problem_count = 0
+    state = get_postmortem_state()
+    state.reset_dsl_regen()
 
 
 async def trigger_dsl_regeneration_for_nodes(
@@ -1793,18 +1838,18 @@ def _get_recent_failures_for_node(node_id: int, limit: int = 5) -> list[dict]:
         """
         SELECT
             ts.step_result,
-            ds.step_description,
+            ds.step_desc,
             t.final_answer
         FROM mcts_thread_steps ts
         JOIN mcts_threads t ON ts.thread_id = t.thread_id
         LEFT JOIN mcts_dag_steps ds ON ts.dag_step_id = ds.dag_step_id
         WHERE ts.node_id = ?
           AND t.success = 0
-          AND ts.amplitude >= 0.7
+          AND ts.amplitude >= ?
         ORDER BY ts.created_at DESC
         LIMIT ?
         """,
-        (node_id, limit),
+        (node_id, POSTMORTEM_HIGH_CONF_THRESHOLD, limit),
     )
 
     examples = []
@@ -1829,18 +1874,23 @@ def should_trigger_dsl_regen() -> bool:
     """
     if not POSTMORTEM_DSL_REGEN_ENABLED:
         return False
-    if _dsl_regen_problem_count < POSTMORTEM_DSL_REGEN_BATCH_SIZE:
+    state = get_postmortem_state()
+    if state.dsl_regen_problem_count < POSTMORTEM_DSL_REGEN_BATCH_SIZE:
         return False
-    if not _accumulated_high_conf_wrong_nodes:
+    if not state.high_conf_wrong_nodes:
         return False
     return True
 
 
 def increment_dsl_regen_counter() -> int:
-    """Increment the problem counter for DSL regen batching."""
-    global _dsl_regen_problem_count
-    _dsl_regen_problem_count += 1
-    return _dsl_regen_problem_count
+    """Increment the problem counter for DSL regen batching.
+
+    Note: This is now handled internally by accumulate_high_conf_wrong_nodes.
+    Kept for backward compatibility.
+    """
+    state = get_postmortem_state()
+    state.dsl_regen_problem_count += 1
+    return state.dsl_regen_problem_count
 
 
 # =============================================================================
@@ -1959,6 +2009,7 @@ def process_retirement_candidates(
     demoted_ids = []
     pruned_ids = []
     merged_up_ids = []
+    failed_ids = []  # Track partial failures
     processed = 0
 
     for sig_id, action in candidates:
@@ -1977,18 +2028,25 @@ def process_retirement_candidates(
 
             elif action == "prune":
                 # Soft delete - archive the signature
-                # First check if it has a parent to absorb its children
+                # Use transaction for atomic re-parent + archive
                 parent = step_db.get_parent(sig_id)
                 children = step_db.get_children(sig_id, for_routing=True)
 
+                # Perform re-parent and archive atomically via step_db method
+                # Note: step_db.archive_signature_with_reparent handles transaction
                 if parent is not None and children:
-                    # Re-parent children to grandparent before pruning
-                    for child in children:
-                        step_db.add_child(parent.id, child.id, condition="reparented", routing_order=0)
-                    logger.info("[mcts] Reparented %d children of sig %d to parent %d", len(children), sig_id, parent.id)
+                    success = step_db.archive_signature_with_reparent(
+                        sig_id,
+                        parent_id=parent.id,
+                        child_ids=[c.id for c in children],
+                        reason="retirement_prune"
+                    )
+                    if success:
+                        logger.info("[mcts] Reparented %d children of sig %d to parent %d", len(children), sig_id, parent.id)
+                else:
+                    # No children to reparent, just archive
+                    success = step_db.archive_signature(sig_id, reason="retirement_prune")
 
-                # Archive the signature (soft delete)
-                success = step_db.archive_signature(sig_id, reason="retirement_prune")
                 if success:
                     pruned_ids.append(sig_id)
                     processed += 1
@@ -2014,6 +2072,7 @@ def process_retirement_candidates(
 
         except Exception as e:
             logger.warning("[mcts] Failed to retire signature %d (action=%s): %s", sig_id, action, e)
+            failed_ids.append(sig_id)
 
     result = RetirementResult(
         candidates_found=len(candidates),
@@ -2027,8 +2086,8 @@ def process_retirement_candidates(
 
     if demoted_ids or pruned_ids or merged_up_ids:
         logger.info(
-            "[mcts] Retirement complete: %d demoted, %d pruned, %d merged_up (of %d candidates)",
-            result.demoted, result.pruned, result.merged_up, result.candidates_found
+            "[mcts] Retirement complete: %d demoted, %d pruned, %d merged_up, %d failed (of %d candidates)",
+            result.demoted, result.pruned, result.merged_up, len(failed_ids), result.candidates_found
         )
 
     return result

@@ -3183,6 +3183,59 @@ class StepSignatureDB:
 
             return True
 
+    def archive_signature_with_reparent(
+        self,
+        signature_id: int,
+        parent_id: int,
+        child_ids: list[int],
+        reason: str = "retirement",
+    ) -> bool:
+        """Archive a signature and reparent its children atomically.
+
+        This handles the multi-step operation of re-parenting children to a
+        grandparent and then archiving the signature, all within a single
+        transaction to ensure consistency.
+
+        Args:
+            signature_id: ID of signature to archive
+            parent_id: ID of parent to reparent children to
+            child_ids: List of child signature IDs to reparent
+            reason: Why it's being archived
+
+        Returns:
+            True if archived successfully
+        """
+        with self._connection() as conn:
+            # Re-parent all children to the grandparent
+            for child_id in child_ids:
+                conn.execute(
+                    """INSERT OR REPLACE INTO signature_hierarchy
+                       (parent_id, child_id, condition, routing_order)
+                       VALUES (?, ?, 'reparented', 0)""",
+                    (parent_id, child_id)
+                )
+                # Remove old parent relationship
+                conn.execute(
+                    """DELETE FROM signature_hierarchy
+                       WHERE parent_id = ? AND child_id = ?""",
+                    (signature_id, child_id)
+                )
+
+            # Archive the signature
+            conn.execute(
+                """UPDATE step_signatures
+                   SET is_archived = 1
+                   WHERE id = ?""",
+                (signature_id,)
+            )
+
+            logger.info(
+                "[db] Archived signature %d with %d children reparented to %d (reason: %s)",
+                signature_id, len(child_ids), parent_id, reason
+            )
+
+            return True
+
     # =========================================================================
     # Usage Recording
     # =========================================================================
