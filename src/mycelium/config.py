@@ -395,14 +395,14 @@ GORILLA_MAX_PARAMS = 4  # Steps with more extracted_values likely need decomposi
 
 # Embedding-based complexity detection (replaces keyword matching)
 # These are semantic anchors - if step embedding is similar to any, flag as complex
+# IMPORTANT: Anchors must be HIGHLY specific to multi-step sequential operations
+# to avoid matching simple calculations like "Calculate X" or "Identify Y"
 GORILLA_COMPLEXITY_ANCHORS = [
-    "A multi-step operation that does one thing and then does another thing",
-    "A sequential calculation where you compute something first, then use it to compute something else",
-    "An operation that requires multiple phases performed in a specific order",
-    "A task that must be done after completing a prerequisite step",
-    "A process that combines or aggregates multiple intermediate results at the end",
+    "First calculate one value, then use that result to calculate another value in sequence",
+    "Do step A, and after step A completes, use its output to do step B",
+    "A multi-phase sequential process: phase 1 produces output, phase 2 consumes it",
 ]
-GORILLA_COMPLEXITY_THRESHOLD = 0.72  # Similarity threshold to flag as complex
+GORILLA_COMPLEXITY_THRESHOLD = 0.80  # Higher threshold to reduce false positives
 
 # Legacy: keyword-based detection (deprecated, kept for fallback)
 GORILLA_COMPLEXITY_KEYWORDS = ["then", "and then", "after", "before", "finally"]

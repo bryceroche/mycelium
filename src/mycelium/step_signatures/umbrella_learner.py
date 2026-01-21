@@ -43,9 +43,13 @@ def _get_synthesis_anchor_embeddings(embedder) -> list[np.ndarray]:
     """Get or compute cached embeddings for synthesis step anchors."""
     global _synthesis_anchor_embeddings
     if _synthesis_anchor_embeddings is None:
-        _synthesis_anchor_embeddings = cached_embed_batch(
-            SYNTHESIS_STEP_ANCHORS, embedder
-        )
+        # Batch embed all anchors (returns dict: text -> embedding)
+        embeddings_dict = cached_embed_batch(SYNTHESIS_STEP_ANCHORS, embedder)
+        # Extract embeddings in same order as anchors
+        _synthesis_anchor_embeddings = [
+            embeddings_dict[anchor] for anchor in SYNTHESIS_STEP_ANCHORS
+            if anchor in embeddings_dict
+        ]
         logger.debug(
             "[umbrella] Computed %d synthesis anchor embeddings",
             len(_synthesis_anchor_embeddings)

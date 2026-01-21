@@ -136,10 +136,13 @@ def _get_gorilla_anchor_embeddings(embedder) -> list[np.ndarray]:
     """Get or compute cached embeddings for complexity anchors."""
     global _gorilla_anchor_embeddings
     if _gorilla_anchor_embeddings is None:
-        # Batch embed all anchors
-        _gorilla_anchor_embeddings = cached_embed_batch(
-            GORILLA_COMPLEXITY_ANCHORS, embedder
-        )
+        # Batch embed all anchors (returns dict: text -> embedding)
+        embeddings_dict = cached_embed_batch(GORILLA_COMPLEXITY_ANCHORS, embedder)
+        # Extract embeddings in same order as anchors
+        _gorilla_anchor_embeddings = [
+            embeddings_dict[anchor] for anchor in GORILLA_COMPLEXITY_ANCHORS
+            if anchor in embeddings_dict
+        ]
         logger.debug(
             "[gorilla] Computed %d complexity anchor embeddings",
             len(_gorilla_anchor_embeddings)
