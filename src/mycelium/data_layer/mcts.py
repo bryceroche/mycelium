@@ -16,6 +16,21 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from mycelium.data_layer import get_db
+from mycelium.config import (
+    POSTMORTEM_ENABLED,
+    POSTMORTEM_HIGH_CONF_THRESHOLD,
+    POSTMORTEM_REINFORCE_MULT,
+    POSTMORTEM_BOOST_MULT,
+    POSTMORTEM_MILD_PENALTY_MULT,
+    POSTMORTEM_STRONG_PENALTY_MULT,
+    POSTMORTEM_AMPLITUDE_MIN,
+    POSTMORTEM_AMPLITUDE_MAX,
+    INTERFERENCE_ENABLED,
+    INTERFERENCE_MIN_CONSTRUCTIVE,
+    INTERFERENCE_MIN_DESTRUCTIVE,
+    INTERFERENCE_CONSTRUCTIVE_BOOST,
+    INTERFERENCE_DESTRUCTIVE_PENALTY,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -459,12 +474,7 @@ def run_postmortem(dag_id: str) -> dict:
     """Run post-mortem analysis on a completed DAG.
 
     Computes amplitude_post for each thread_step based on thread outcomes.
-
-    Formula:
-    - Thread won + high confidence (amp >= 0.7) → amplitude_post = amp * 1.1 (reinforce)
-    - Thread won + low confidence (amp < 0.7) → amplitude_post = amp * 1.4 (boost discovery)
-    - Thread lost + low confidence (amp < 0.7) → amplitude_post = amp * 0.85 (mild penalty)
-    - Thread lost + high confidence (amp >= 0.7) → amplitude_post = amp * 0.5 (strong penalty)
+    Uses config values for thresholds and multipliers.
 
     Returns:
         Dict with summary statistics:
@@ -474,6 +484,9 @@ def run_postmortem(dag_id: str) -> dict:
         - high_conf_wrong: Count of high-confidence wrong decisions (red flag)
         - low_conf_right: Count of low-confidence right decisions (opportunity)
     """
+    if not POSTMORTEM_ENABLED:
+        return {"total_steps": 0, "threads_won": 0, "threads_lost": 0, "skipped": True}
+
     conn = get_db()
 
     # Get all thread outcomes for this DAG
@@ -514,8 +527,6 @@ def run_postmortem(dag_id: str) -> dict:
         "low_conf_right": 0,
     }
 
-    HIGH_CONF_THRESHOLD = 0.7
-
     for thread_step_id, thread_id, amplitude in thread_steps:
         thread_success = thread_outcomes.get(thread_id)
 
@@ -524,27 +535,27 @@ def run_postmortem(dag_id: str) -> dict:
             continue
 
         amp = amplitude if amplitude is not None else 1.0
-        is_high_conf = amp >= HIGH_CONF_THRESHOLD
+        is_high_conf = amp >= POSTMORTEM_HIGH_CONF_THRESHOLD
         won = thread_success == 1
 
-        # Compute amplitude_post based on outcome × confidence
+        # Compute amplitude_post based on outcome × confidence (using config multipliers)
         if won and is_high_conf:
             # Reinforce: confident and right
-            amplitude_post = amp * 1.1
+            amplitude_post = amp * POSTMORTEM_REINFORCE_MULT
         elif won and not is_high_conf:
             # Boost: discovered something (low confidence but right)
-            amplitude_post = amp * 1.4
+            amplitude_post = amp * POSTMORTEM_BOOST_MULT
             stats["low_conf_right"] += 1
         elif not won and not is_high_conf:
             # Mild penalty: uncertain and wrong (expected)
-            amplitude_post = amp * 0.85
+            amplitude_post = amp * POSTMORTEM_MILD_PENALTY_MULT
         else:
             # Strong penalty: confident and wrong (bad signal)
-            amplitude_post = amp * 0.5
+            amplitude_post = amp * POSTMORTEM_STRONG_PENALTY_MULT
             stats["high_conf_wrong"] += 1
 
-        # Clamp to [0, 2] range
-        amplitude_post = max(0.0, min(2.0, amplitude_post))
+        # Clamp to configured range
+        amplitude_post = max(POSTMORTEM_AMPLITUDE_MIN, min(POSTMORTEM_AMPLITUDE_MAX, amplitude_post))
         updates.append((thread_step_id, amplitude_post))
 
     # Batch update
@@ -690,7 +701,7 @@ def detect_interference_patterns(dag_id: str) -> list[InterferencePattern]:
     return patterns
 
 
-def get_nodes_for_merge_consideration(min_constructive_count: int = 3) -> list[dict]:
+def get_nodes_for_merge_consideration(min_constructive_count: int = None) -> list[dict]:
     """Find nodes that consistently appear in constructive interference patterns.
 
     These nodes might be candidates for merging - they represent operations
@@ -698,10 +709,14 @@ def get_nodes_for_merge_consideration(min_constructive_count: int = 3) -> list[d
 
     Args:
         min_constructive_count: Minimum number of constructive interference occurrences
+            (defaults to INTERFERENCE_MIN_CONSTRUCTIVE from config)
 
     Returns:
         List of dicts with node_id and constructive interference stats
     """
+    if min_constructive_count is None:
+        min_constructive_count = INTERFERENCE_MIN_CONSTRUCTIVE
+
     conn = get_db()
 
     # Find nodes that appear together in successful thread runs
@@ -734,7 +749,7 @@ def get_nodes_for_merge_consideration(min_constructive_count: int = 3) -> list[d
     ]
 
 
-def get_nodes_for_split_consideration(min_destructive_count: int = 2) -> list[dict]:
+def get_nodes_for_split_consideration(min_destructive_count: int = None) -> list[dict]:
     """Find nodes that consistently appear in destructive interference patterns.
 
     These nodes are candidates for cluster splitting - they represent operations
@@ -742,10 +757,14 @@ def get_nodes_for_split_consideration(min_destructive_count: int = 2) -> list[di
 
     Args:
         min_destructive_count: Minimum number of destructive interference occurrences
+            (defaults to INTERFERENCE_MIN_DESTRUCTIVE from config)
 
     Returns:
         List of dicts with node_id, destructive count, and stats
     """
+    if min_destructive_count is None:
+        min_destructive_count = INTERFERENCE_MIN_DESTRUCTIVE
+
     conn = get_db()
 
     # Find nodes with high variance in outcomes (mixed success/failure)
@@ -795,8 +814,8 @@ class InterferenceResult:
 def apply_interference_effects(
     dag_id: str,
     step_db,  # StepSignatureDB instance
-    constructive_boost: float = 0.1,
-    destructive_penalty: float = 0.15,
+    constructive_boost: float = None,
+    destructive_penalty: float = None,
 ) -> InterferenceResult:
     """Apply centroid updates based on interference patterns detected in a DAG.
 
@@ -810,12 +829,28 @@ def apply_interference_effects(
     Args:
         dag_id: The DAG to analyze
         step_db: StepSignatureDB instance for centroid updates
-        constructive_boost: Strength multiplier for constructive interference (default 0.1)
-        destructive_penalty: Strength multiplier for destructive interference (default 0.15)
+        constructive_boost: Strength multiplier for constructive interference
+            (defaults to INTERFERENCE_CONSTRUCTIVE_BOOST from config)
+        destructive_penalty: Strength multiplier for destructive interference
+            (defaults to INTERFERENCE_DESTRUCTIVE_PENALTY from config)
 
     Returns:
         InterferenceResult with counts and affected node IDs
     """
+    if not INTERFERENCE_ENABLED:
+        return InterferenceResult(
+            patterns_processed=0,
+            constructive_count=0,
+            destructive_count=0,
+            nodes_reinforced=[],
+            nodes_flagged_split=[],
+        )
+
+    if constructive_boost is None:
+        constructive_boost = INTERFERENCE_CONSTRUCTIVE_BOOST
+    if destructive_penalty is None:
+        destructive_penalty = INTERFERENCE_DESTRUCTIVE_PENALTY
+
     patterns = detect_interference_patterns(dag_id)
 
     if not patterns:

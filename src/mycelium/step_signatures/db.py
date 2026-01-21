@@ -2822,6 +2822,207 @@ class StepSignatureDB:
                     signature_id, failure_count, failure_count, thread_count,
                 )
 
+    def merge_signatures(
+        self,
+        survivor_id: int,
+        absorbed_id: int,
+    ) -> bool:
+        """Merge two signatures into one (constructive interference optimization).
+
+        Per CLAUDE.md: When centroids are close AND both succeed consistently,
+        merge into single node.
+
+        The survivor keeps its identity but absorbs:
+        - Centroid: weighted average by embedding_count
+        - Stats: summed uses, successes
+        - The absorbed signature is archived
+
+        Args:
+            survivor_id: ID of signature to keep
+            absorbed_id: ID of signature to absorb and archive
+
+        Returns:
+            True if merge succeeded, False otherwise
+        """
+        with self._connection() as conn:
+            # Get both signatures
+            cursor = conn.execute(
+                """SELECT id, centroid, embedding_sum, embedding_count, uses, successes,
+                          operational_failures, step_type, description
+                   FROM step_signatures WHERE id IN (?, ?)""",
+                (survivor_id, absorbed_id)
+            )
+            rows = {row[0]: row for row in cursor.fetchall()}
+
+            if survivor_id not in rows or absorbed_id not in rows:
+                logger.warning(
+                    "[db] Cannot merge: one or both signatures not found (survivor=%d, absorbed=%d)",
+                    survivor_id, absorbed_id
+                )
+                return False
+
+            survivor = rows[survivor_id]
+            absorbed = rows[absorbed_id]
+
+            # Parse centroids
+            survivor_centroid = np.frombuffer(survivor[1], dtype=np.float32) if survivor[1] else None
+            absorbed_centroid = np.frombuffer(absorbed[1], dtype=np.float32) if absorbed[1] else None
+
+            # Parse embedding sums
+            survivor_sum = np.frombuffer(survivor[2], dtype=np.float32) if survivor[2] else None
+            absorbed_sum = np.frombuffer(absorbed[2], dtype=np.float32) if absorbed[2] else None
+
+            survivor_count = survivor[3] or 1
+            absorbed_count = absorbed[3] or 1
+
+            # Compute merged centroid (weighted average by embedding_count)
+            if survivor_centroid is not None and absorbed_centroid is not None:
+                total_count = survivor_count + absorbed_count
+                merged_centroid = (
+                    survivor_centroid * survivor_count + absorbed_centroid * absorbed_count
+                ) / total_count
+
+                # Compute merged embedding sum
+                if survivor_sum is not None and absorbed_sum is not None:
+                    merged_sum = survivor_sum + absorbed_sum
+                else:
+                    merged_sum = merged_centroid * total_count  # Reconstruct from centroid
+
+                # Update survivor with merged values
+                conn.execute(
+                    """UPDATE step_signatures SET
+                       centroid = ?,
+                       embedding_sum = ?,
+                       embedding_count = ?,
+                       uses = uses + ?,
+                       successes = successes + ?,
+                       operational_failures = COALESCE(operational_failures, 0) + ?
+                       WHERE id = ?""",
+                    (
+                        merged_centroid.astype(np.float32).tobytes(),
+                        merged_sum.astype(np.float32).tobytes(),
+                        total_count,
+                        absorbed[4] or 0,  # uses
+                        absorbed[5] or 0,  # successes
+                        absorbed[6] or 0,  # operational_failures
+                        survivor_id,
+                    )
+                )
+
+            # Archive the absorbed signature
+            conn.execute(
+                "UPDATE step_signatures SET is_archived = 1 WHERE id = ?",
+                (absorbed_id,)
+            )
+
+            # Repoint any children of absorbed to survivor
+            conn.execute(
+                "UPDATE signature_relationships SET parent_id = ? WHERE parent_id = ?",
+                (survivor_id, absorbed_id)
+            )
+
+            logger.info(
+                "[db] Merged signature %d ('%s') into %d ('%s'): "
+                "combined count=%d, absorbed archived",
+                absorbed_id, absorbed[8][:30] if absorbed[8] else "?",
+                survivor_id, survivor[8][:30] if survivor[8] else "?",
+                survivor_count + absorbed_count,
+            )
+
+            return True
+
+    def find_merge_candidates(
+        self,
+        min_success_rate: float = 0.7,
+        min_uses: int = 5,
+        min_similarity: float = 0.85,
+        limit: int = 10,
+    ) -> list[tuple[int, int, float]]:
+        """Find pairs of signatures that are candidates for merging.
+
+        Candidates are signatures that:
+        - Both have high success rates (operationally correct)
+        - Have similar centroids (semantically similar)
+        - Are not already archived
+
+        Args:
+            min_success_rate: Minimum success rate for both signatures
+            min_uses: Minimum uses for both signatures (need data to trust)
+            min_similarity: Minimum cosine similarity between centroids
+            limit: Maximum number of pairs to return
+
+        Returns:
+            List of (sig1_id, sig2_id, similarity) tuples, ordered by similarity desc
+        """
+        with self._connection() as conn:
+            # Get candidate signatures (high success rate, enough uses)
+            cursor = conn.execute(
+                """SELECT id, centroid, uses, successes
+                   FROM step_signatures
+                   WHERE is_archived = 0
+                     AND uses >= ?
+                     AND centroid IS NOT NULL
+                     AND (CAST(successes AS REAL) / uses) >= ?
+                   ORDER BY uses DESC
+                   LIMIT 100""",  # Limit to top 100 for performance
+                (min_uses, min_success_rate)
+            )
+
+            candidates = []
+            for row in cursor.fetchall():
+                sig_id, centroid_bytes, uses, successes = row
+                if centroid_bytes:
+                    centroid = np.frombuffer(centroid_bytes, dtype=np.float32)
+                    candidates.append((sig_id, centroid, uses, successes))
+
+            if len(candidates) < 2:
+                return []
+
+            # Find pairs with high similarity
+            merge_candidates = []
+            for i, (id1, c1, u1, s1) in enumerate(candidates):
+                for j, (id2, c2, u2, s2) in enumerate(candidates[i+1:], i+1):
+                    sim = float(np.dot(c1, c2) / (np.linalg.norm(c1) * np.linalg.norm(c2) + 1e-9))
+                    if sim >= min_similarity:
+                        merge_candidates.append((id1, id2, sim))
+
+            # Sort by similarity descending and limit
+            merge_candidates.sort(key=lambda x: -x[2])
+            return merge_candidates[:limit]
+
+    def flag_for_split(self, signature_id: int, reason: str = "destructive_interference") -> bool:
+        """Flag a signature for potential decomposition/split.
+
+        This marks a signature as needing attention due to mixed interference
+        results. The actual decomposition is triggered by umbrella_learner.
+
+        For now, this increments operational_failures which will naturally
+        trigger decomposition consideration in the learning loop.
+
+        Args:
+            signature_id: ID of signature to flag
+            reason: Why it's being flagged
+
+        Returns:
+            True if flagged successfully
+        """
+        with self._connection() as conn:
+            # Increment operational failures to trigger decomposition consideration
+            # The umbrella learner checks success rate and will decompose low performers
+            conn.execute(
+                """UPDATE step_signatures
+                   SET operational_failures = COALESCE(operational_failures, 0) + 1
+                   WHERE id = ?""",
+                (signature_id,)
+            )
+
+            logger.info(
+                "[db] Flagged signature %d for split (reason: %s)",
+                signature_id, reason
+            )
+
+            return True
+
     # =========================================================================
     # Usage Recording
     # =========================================================================

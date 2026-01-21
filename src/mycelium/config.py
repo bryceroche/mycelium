@@ -424,6 +424,44 @@ THREAD_CREDIT_DECAY_PER_FORK = 0.7  # Credit decay per fork depth (0.7^1=0.7, 0.
 THREAD_MIN_CREDIT = 0.1  # Minimum credit to apply (filter noise from deep forks)
 
 # =============================================================================
+# MCTS POST-MORTEM (Amplitude updates after grading)
+# =============================================================================
+# Per CLAUDE.md: "High confidence + failure = strong negative signal"
+# After grading, compute amplitude_post for each thread_step based on:
+# - Thread outcome (won/lost)
+# - Prior amplitude (confidence when routing decision was made)
+#
+# Formula:
+# - Won + high conf: reinforce (× POSTMORTEM_REINFORCE_MULT)
+# - Won + low conf: boost discovery (× POSTMORTEM_BOOST_MULT)
+# - Lost + low conf: mild penalty (× POSTMORTEM_MILD_PENALTY_MULT)
+# - Lost + high conf: strong penalty (× POSTMORTEM_STRONG_PENALTY_MULT)
+
+POSTMORTEM_ENABLED = True  # Run postmortem analysis after grading
+POSTMORTEM_HIGH_CONF_THRESHOLD = 0.7  # Amplitude >= this is "high confidence"
+POSTMORTEM_REINFORCE_MULT = 1.1  # Won + high confidence: small boost
+POSTMORTEM_BOOST_MULT = 1.4  # Won + low confidence: bigger boost (discovery)
+POSTMORTEM_MILD_PENALTY_MULT = 0.85  # Lost + low confidence: expected uncertainty
+POSTMORTEM_STRONG_PENALTY_MULT = 0.5  # Lost + high confidence: harsh penalty
+POSTMORTEM_AMPLITUDE_MIN = 0.0  # Clamp amplitude_post minimum
+POSTMORTEM_AMPLITUDE_MAX = 2.0  # Clamp amplitude_post maximum
+
+# =============================================================================
+# MCTS INTERFERENCE PATTERNS (Constructive/Destructive)
+# =============================================================================
+# Per CLAUDE.md: When multiple threads visit the same (dag_step_id, node_id):
+# - Constructive (all succeed): Reinforce, consider MERGE centroids
+# - Destructive (mixed): Signal to SPLIT the cluster
+#
+# Interference reveals operational equivalence that embedding similarity cannot.
+
+INTERFERENCE_ENABLED = True  # Detect and apply interference patterns
+INTERFERENCE_MIN_CONSTRUCTIVE = 3  # Min occurrences for merge consideration
+INTERFERENCE_MIN_DESTRUCTIVE = 2  # Min occurrences for split consideration
+INTERFERENCE_CONSTRUCTIVE_BOOST = 0.1  # Strength for constructive effects (placeholder)
+INTERFERENCE_DESTRUCTIVE_PENALTY = 0.15  # Strength for destructive effects (placeholder)
+
+# =============================================================================
 # ZERO-LLM ROUTING (Skip planner for mature signatures)
 # =============================================================================
 # When enabled, the solver will attempt to route problems directly through
