@@ -2558,10 +2558,14 @@ class StepSignatureDB:
 
         Args:
             signature_id: ID of the signature to update
-            embedding: The routing embedding from the step
+            embedding: The routing embedding from the step (None to skip centroid update)
             was_correct: Whether this path produced the correct answer
             confidence: How confident we were in this route (0.0-1.0)
         """
+        # Skip centroid update if no embedding provided
+        if embedding is None:
+            return
+
         from mycelium.config import SCORPION_REPULSION_WEIGHT, SCORPION_ATTRACTION_WEIGHT
 
         if was_correct:
