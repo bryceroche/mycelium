@@ -265,6 +265,130 @@ def graphs_equivalent(graph1: Optional[str], graph2: Optional[str]) -> bool:
     return graph1 == graph2
 
 
+# Natural language expansions for graph operations
+# Used to make graph embeddings comparable to operation embeddings
+_OP_TO_NL = {
+    "ADD": "add",
+    "SUB": "subtract",
+    "MUL": "multiply",
+    "DIV": "divide",
+    "FLOORDIV": "integer divide",
+    "MOD": "find remainder of",
+    "POW": "raise to power",
+    "NEG": "negate",
+    "POS": "positive",
+    "SQRT": "square root of",
+    "ABS": "absolute value of",
+    "GCD": "greatest common divisor of",
+    "LCM": "least common multiple of",
+    "FACTORIAL": "factorial of",
+    "COMB": "combinations of",
+    "PERM": "permutations of",
+    "REDUCE_SUM": "sum of",
+    "REDUCE_MIN": "minimum of",
+    "REDUCE_MAX": "maximum of",
+    "LEN": "length of",
+    "ROUND": "round",
+    "INT": "convert to integer",
+    "FLOAT": "convert to decimal",
+    "CEIL": "ceiling of",
+    "FLOOR": "floor of",
+    "COMPARE": "compare",
+    "IF": "if condition then",
+    "INDEX": "get element from",
+}
+
+
+def graph_to_natural_language(graph: str) -> str:
+    """Convert computation graph to natural language for embedding.
+
+    This makes graph embeddings comparable to operation embeddings
+    (which are extracted as natural language from problem text).
+
+    Args:
+        graph: Computation graph string (e.g., "MUL(param_0, param_1)")
+
+    Returns:
+        Natural language description (e.g., "multiply two values")
+
+    Examples:
+        >>> graph_to_natural_language("MUL(param_0, param_1)")
+        'multiply two values'
+
+        >>> graph_to_natural_language("POW(param_0, param_1)")
+        'raise first value to power of second value'
+
+        >>> graph_to_natural_language("ADD(MUL(param_0, param_1), param_2)")
+        'add multiply two values and third value'
+    """
+    if not graph:
+        return ""
+
+    # Simple recursive expansion
+    def expand(g: str) -> str:
+        g = g.strip()
+
+        # Check for CONST
+        if g.startswith("CONST("):
+            return "constant"
+
+        # Check for param
+        if g.startswith("param_"):
+            # Extract param number for ordinal
+            try:
+                num = int(g.split("_")[1])
+                ordinals = ["first", "second", "third", "fourth", "fifth"]
+                return f"{ordinals[num] if num < len(ordinals) else f'param {num}'} value"
+            except (IndexError, ValueError):
+                return "value"
+
+        # Find the operation and arguments
+        paren_idx = g.find("(")
+        if paren_idx == -1:
+            # No arguments - might be unknown op
+            return _OP_TO_NL.get(g, g.lower())
+
+        op = g[:paren_idx]
+        args_str = g[paren_idx + 1:-1]  # Remove outer parens
+
+        # Parse arguments (handle nested parens)
+        args = []
+        depth = 0
+        current = ""
+        for char in args_str:
+            if char == "(":
+                depth += 1
+                current += char
+            elif char == ")":
+                depth -= 1
+                current += char
+            elif char == "," and depth == 0:
+                if current.strip():
+                    args.append(current.strip())
+                current = ""
+            else:
+                current += char
+        if current.strip():
+            args.append(current.strip())
+
+        # Expand arguments
+        expanded_args = [expand(arg) for arg in args]
+
+        # Build natural language based on operation
+        op_nl = _OP_TO_NL.get(op, op.lower())
+
+        if len(expanded_args) == 0:
+            return op_nl
+        elif len(expanded_args) == 1:
+            return f"{op_nl} {expanded_args[0]}"
+        elif len(expanded_args) == 2:
+            return f"{op_nl} {expanded_args[0]} and {expanded_args[1]}"
+        else:
+            return f"{op_nl} {', '.join(expanded_args[:-1])}, and {expanded_args[-1]}"
+
+    return expand(graph)
+
+
 # Graph embedding cache
 _graph_embedding_cache: dict[str, list[float]] = {}
 _GRAPH_CACHE_MAX_SIZE = 500
@@ -275,6 +399,9 @@ async def embed_computation_graph(
     graph: str,
 ) -> Optional[list[float]]:
     """Embed a computation graph for routing comparison.
+
+    Converts the graph to natural language first so embeddings are
+    comparable to operation embeddings (extracted from problem text).
 
     The graph embedding is what signatures are matched against.
     Operation embeddings (extracted from problem text) are compared
@@ -297,14 +424,18 @@ async def embed_computation_graph(
     if not graph:
         return None
 
-    # Check cache
+    # Check cache (use original graph as key for consistency)
     if graph in _graph_embedding_cache:
         logger.debug("[graph_embed] Cache hit for: %s", graph[:50])
         return _graph_embedding_cache[graph]
 
-    # Generate embedding
+    # Convert graph to natural language for better embedding comparison
+    nl_description = graph_to_natural_language(graph)
+    logger.debug("[graph_embed] Expanded '%s' to '%s'", graph[:30], nl_description[:50])
+
+    # Generate embedding from natural language description
     try:
-        embedding = await embedding_client.embed(graph)
+        embedding = await embedding_client.embed(nl_description)
 
         if embedding:
             # Cache with simple eviction
@@ -329,3 +460,51 @@ def clear_graph_embedding_cache() -> None:
     global _graph_embedding_cache
     _graph_embedding_cache.clear()
     logger.debug("[graph_embed] Cache cleared")
+
+
+async def populate_graph_embeddings(
+    db,  # StepSignatureDB
+    embedding_client,
+    batch_size: int = 50,
+) -> int:
+    """Populate graph_embedding for signatures that need it.
+
+    Finds signatures with computation_graph but no graph_embedding,
+    embeds them, and stores the results.
+
+    Args:
+        db: StepSignatureDB instance
+        embedding_client: Async embedding client
+        batch_size: How many to process at once
+
+    Returns:
+        Number of signatures updated
+    """
+    updated = 0
+
+    while True:
+        # Get batch of signatures needing embeddings
+        needed = db.get_signatures_needing_graph_embedding(limit=batch_size)
+        if not needed:
+            break
+
+        logger.info("[graph_embed] Populating %d graph embeddings", len(needed))
+
+        for sig_id, computation_graph in needed:
+            try:
+                embedding = await embed_computation_graph(embedding_client, computation_graph)
+                if embedding:
+                    db.update_graph_embedding(sig_id, embedding)
+                    updated += 1
+                    logger.debug(
+                        "[graph_embed] Updated sig %d: %s",
+                        sig_id, computation_graph[:30]
+                    )
+            except Exception as e:
+                logger.error("[graph_embed] Failed to embed sig %d: %s", sig_id, e)
+                continue
+
+    if updated > 0:
+        logger.info("[graph_embed] Populated %d graph embeddings", updated)
+
+    return updated

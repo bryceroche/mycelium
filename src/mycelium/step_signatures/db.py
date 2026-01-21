@@ -4854,3 +4854,149 @@ class StepSignatureDB:
                 "correct_rate": correct / (correct + incorrect) if (correct + incorrect) > 0 else 0.0,
                 "avg_fork_depth": avg_depth,
             }
+
+    # =========================================================================
+    # Graph Embedding Methods
+    # Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE
+    # =========================================================================
+
+    def update_graph_embedding(
+        self, signature_id: int, graph_embedding: list[float]
+    ) -> bool:
+        """Update a signature's graph_embedding.
+
+        Called after async embedding computation to store the result.
+
+        Args:
+            signature_id: ID of the signature
+            graph_embedding: Embedding vector (will be JSON-serialized)
+
+        Returns:
+            True if updated, False if signature not found
+        """
+        embedding_json = json.dumps(graph_embedding)
+
+        with self._connection() as conn:
+            cursor = conn.execute(
+                "UPDATE step_signatures SET graph_embedding = ? WHERE id = ?",
+                (embedding_json, signature_id),
+            )
+            if cursor.rowcount > 0:
+                invalidate_signature_cache(signature_id)
+                logger.debug("[db] Updated graph_embedding for sig %d", signature_id)
+                return True
+            return False
+
+    def get_signatures_needing_graph_embedding(
+        self, limit: int = 100
+    ) -> list[tuple[int, str]]:
+        """Get signatures that have computation_graph but no graph_embedding.
+
+        Used for batch population of graph embeddings.
+
+        Args:
+            limit: Maximum number of signatures to return
+
+        Returns:
+            List of (signature_id, computation_graph) tuples
+        """
+        with self._connection() as conn:
+            rows = conn.execute(
+                """SELECT id, computation_graph
+                   FROM step_signatures
+                   WHERE computation_graph IS NOT NULL
+                     AND computation_graph != ''
+                     AND (graph_embedding IS NULL OR graph_embedding = '')
+                   LIMIT ?""",
+                (limit,)
+            ).fetchall()
+            return [(row["id"], row["computation_graph"]) for row in rows]
+
+    def get_signatures_with_graph_embeddings(
+        self, for_routing: bool = True
+    ) -> list[StepSignature]:
+        """Get all signatures that have graph_embeddings for routing.
+
+        Returns signatures optimized for routing (minimal parsing).
+
+        Args:
+            for_routing: If True, use fast parsing (skip most JSON fields)
+
+        Returns:
+            List of signatures with graph_embedding populated
+        """
+        with self._connection() as conn:
+            rows = conn.execute(
+                """SELECT *
+                   FROM step_signatures
+                   WHERE graph_embedding IS NOT NULL
+                     AND graph_embedding != ''
+                     AND is_semantic_umbrella = 0"""  # Only leaf nodes for execution
+            ).fetchall()
+
+            if for_routing:
+                return [self._row_to_signature_for_routing(dict(row)) for row in rows]
+            return [self._row_to_signature(dict(row)) for row in rows]
+
+    def route_by_graph_embedding(
+        self,
+        operation_embedding: np.ndarray,
+        min_similarity: float = 0.75,
+        top_k: int = 5,
+    ) -> list[tuple[StepSignature, float]]:
+        """Route by comparing operation embedding to graph embeddings.
+
+        This is the new routing method per CLAUDE.md:
+        - Extract operation from problem → embed → compare to graph embeddings
+        - Routes by what operations DO, not what they SOUND LIKE
+
+        Args:
+            operation_embedding: Embedding of the extracted operation
+            min_similarity: Minimum cosine similarity threshold
+            top_k: Maximum number of matches to return
+
+        Returns:
+            List of (signature, similarity) tuples, sorted by similarity descending
+        """
+        matches = []
+
+        with self._connection() as conn:
+            # Get all signatures with graph embeddings (leaf nodes only)
+            rows = conn.execute(
+                """SELECT id, graph_embedding, step_type, description,
+                          dsl_script, dsl_type, computation_graph,
+                          uses, successes, depth, is_semantic_umbrella
+                   FROM step_signatures
+                   WHERE graph_embedding IS NOT NULL
+                     AND graph_embedding != ''
+                     AND is_semantic_umbrella = 0"""
+            ).fetchall()
+
+            for row in rows:
+                try:
+                    graph_emb = np.array(json.loads(row["graph_embedding"]))
+                    sim = cosine_similarity(operation_embedding, graph_emb)
+
+                    if sim >= min_similarity:
+                        # Create minimal signature for routing
+                        sig = StepSignature(
+                            id=row["id"],
+                            step_type=row["step_type"],
+                            description=row["description"],
+                            dsl_script=row["dsl_script"],
+                            dsl_type=row["dsl_type"],
+                            computation_graph=row["computation_graph"],
+                            uses=row["uses"] or 0,
+                            successes=row["successes"] or 0,
+                            depth=row["depth"] or 0,
+                            is_semantic_umbrella=bool(row["is_semantic_umbrella"]),
+                        )
+                        matches.append((sig, sim))
+
+                except (json.JSONDecodeError, ValueError) as e:
+                    logger.warning("[db] Invalid graph_embedding for sig %d: %s", row["id"], e)
+                    continue
+
+        # Sort by similarity descending
+        matches.sort(key=lambda x: x[1], reverse=True)
+        return matches[:top_k]

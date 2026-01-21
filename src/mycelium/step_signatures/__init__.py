@@ -81,8 +81,10 @@ from mycelium.step_signatures.operational_alignment import (
 from mycelium.step_signatures.graph_extractor import (
     extract_computation_graph,
     graphs_equivalent,
+    graph_to_natural_language,
     embed_computation_graph,
     clear_graph_embedding_cache,
+    populate_graph_embeddings,
 )
 
 from mycelium.step_signatures.operation_extractor import (
@@ -153,8 +155,10 @@ __all__ = [
     # Computation Graph Extraction & Embedding
     "extract_computation_graph",
     "graphs_equivalent",
+    "graph_to_natural_language",
     "embed_computation_graph",
     "clear_graph_embedding_cache",
+    "populate_graph_embeddings",
     # Operation Extraction (for routing)
     "extract_operation_needed",
     "get_operation_embedding",
