@@ -584,14 +584,12 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
     Per beads mycelium-itkn: Close the loop from post-mortem to signature learning.
 
     Groups thread_steps by node_id, computes average amplitude_post, and updates:
-    - High amplitude_post average (>= 1.0) → increment successes
-    - Low amplitude_post average (< 0.5) → increment operational_failures
+    - High amplitude_post average (>= threshold) → increment successes
+    - Low amplitude_post average (< threshold) → increment operational_failures
 
-    The thresholds are based on the amplitude_post computation:
-    - Reinforce (confident+right) → ~1.1-1.2
-    - Boost (uncertain+right) → ~1.5
-    - Mild penalty (uncertain+wrong) → ~0.7
-    - Strong penalty (confident+wrong) → ~0.3
+    Thresholds are configurable via:
+    - CREDIT_PROPAGATION_THRESHOLD_CREDIT (default 1.0)
+    - CREDIT_PROPAGATION_THRESHOLD_BLAME (default 0.7)
 
     Args:
         dag_id: The DAG to process
@@ -600,6 +598,15 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
     Returns:
         Dict with propagation statistics
     """
+    from mycelium.config import (
+        CREDIT_PROPAGATION_ENABLED,
+        CREDIT_PROPAGATION_THRESHOLD_CREDIT,
+        CREDIT_PROPAGATION_THRESHOLD_BLAME,
+    )
+
+    if not CREDIT_PROPAGATION_ENABLED:
+        return {"nodes_processed": 0, "successes_credited": 0, "failures_credited": 0, "skipped": True}
+
     conn = get_db()
 
     # Get average amplitude_post grouped by node_id
@@ -608,9 +615,7 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
         SELECT
             node_id,
             COUNT(*) as step_count,
-            AVG(amplitude_post) as avg_amplitude_post,
-            SUM(CASE WHEN amplitude_post >= 1.0 THEN 1 ELSE 0 END) as high_amp_count,
-            SUM(CASE WHEN amplitude_post < 0.5 THEN 1 ELSE 0 END) as low_amp_count
+            AVG(amplitude_post) as avg_amplitude_post
         FROM mcts_thread_steps
         WHERE dag_id = ? AND amplitude_post IS NOT NULL
         GROUP BY node_id
@@ -625,33 +630,33 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
     }
 
     for row in cursor.fetchall():
-        node_id, step_count, avg_amp, high_count, low_count = row
+        node_id, step_count, avg_amp = row
 
         if avg_amp is None:
             continue
 
         stats["nodes_processed"] += 1
 
-        # Credit based on average amplitude_post
+        # Credit based on average amplitude_post (using config thresholds)
         # High average → the node consistently performed well across threads/steps
         # Low average → the node consistently performed poorly
-        if avg_amp >= 1.0:
+        if avg_amp >= CREDIT_PROPAGATION_THRESHOLD_CREDIT:
             # Strong positive signal: increment successes
             step_db.increment_signature_successes(node_id, count=1)
             stats["successes_credited"] += 1
             logger.debug(
-                "[mcts] Credited success to node %d (avg_amp=%.2f, steps=%d)",
-                node_id, avg_amp, step_count
+                "[mcts] Credited success to node %d (avg_amp=%.2f >= %.2f, steps=%d)",
+                node_id, avg_amp, CREDIT_PROPAGATION_THRESHOLD_CREDIT, step_count
             )
-        elif avg_amp < 0.5:
+        elif avg_amp < CREDIT_PROPAGATION_THRESHOLD_BLAME:
             # Strong negative signal: increment operational_failures
             step_db.increment_signature_failures(node_id, count=1)
             stats["failures_credited"] += 1
             logger.debug(
-                "[mcts] Credited failure to node %d (avg_amp=%.2f, steps=%d)",
-                node_id, avg_amp, step_count
+                "[mcts] Credited failure to node %d (avg_amp=%.2f < %.2f, steps=%d)",
+                node_id, avg_amp, CREDIT_PROPAGATION_THRESHOLD_BLAME, step_count
             )
-        # avg_amp between 0.5 and 1.0: neutral, no credit propagation
+        # avg_amp between thresholds: neutral, no credit propagation
 
     if stats["nodes_processed"] > 0:
         logger.info(
