@@ -20,6 +20,7 @@ PLANNER_SYSTEM = """You decompose math problems into steps. Extract values, don'
 FORMAT (output ONLY this, no markdown/explanations):
 - id: step_1
   task: [what to do]
+  operation: [generic computation needed, e.g. "multiply two numbers"]
   values:
     name: value
   dsl_hint: +|-|*|/
@@ -30,10 +31,13 @@ RULES:
 - Extract numeric values with semantic names
 - Reference prior results as "{step_N}"
 - dsl_hint: + (sum/total), - (difference/remaining), * (rate×qty), / (split/per)
+- operation: GENERIC description of computation (no specific values)
+  Examples: "multiply two numbers", "divide then subtract", "sum a list"
 
 EXAMPLE "40,000 km circumference. Trips for 1 billion meters?":
 - id: step_1
   task: Convert meters to km
+  operation: divide two numbers
   values:
     meters: 1000000000
     per_km: 1000
@@ -41,6 +45,7 @@ EXAMPLE "40,000 km circumference. Trips for 1 billion meters?":
   depends_on: []
 - id: step_2
   task: Divide by circumference
+  operation: divide two numbers
   values:
     km: "{step_1}"
     circ: 40000
@@ -128,6 +133,12 @@ class Step:
     extracted_values: dict[str, Any] = field(default_factory=dict)
     # Optional DSL hint from planner
     dsl_hint: Optional[str] = None
+    # Operation description for graph-based routing (per CLAUDE.md)
+    # Describes WHAT computation is needed, not the specific values
+    # Example: "multiply two numbers" or "divide then add"
+    operation: Optional[str] = None
+    # Cached operation embedding for routing (set by solver)
+    operation_embedding: Optional[list[float]] = None
     # Recursive nesting: sub-plan for composite steps
     sub_plan: Optional["DAGPlan"] = None
 
@@ -483,7 +494,7 @@ class Planner:
                 continue
 
             # Inside values block - parse indented key: value pairs
-            if parsing_values and current_step and stripped and not re.match(r'^-?\s*(id|task|depends_on|dsl_hint)\s*:', stripped, re.IGNORECASE):
+            if parsing_values and current_step and stripped and not re.match(r'^-?\s*(id|task|depends_on|dsl_hint|operation)\s*:', stripped, re.IGNORECASE):
                 # Parse key: value
                 if ":" in stripped:
                     key, val = stripped.split(":", 1)
@@ -517,6 +528,13 @@ class Planner:
             if re.match(r'^\s*dsl_hint\s*:', stripped, re.IGNORECASE) and current_step:
                 parsing_values = False
                 current_step.dsl_hint = stripped.split(":", 1)[1].strip()
+                i += 1
+                continue
+
+            # Operation - extracted during decomposition for graph-based routing
+            if re.match(r'^\s*operation\s*:', stripped, re.IGNORECASE) and current_step:
+                parsing_values = False
+                current_step.operation = stripped.split(":", 1)[1].strip()
                 i += 1
                 continue
 

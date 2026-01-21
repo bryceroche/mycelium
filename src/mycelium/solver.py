@@ -923,6 +923,11 @@ class Solver:
             # Pre-warm embedding cache with batch call (avoids N sequential embed calls)
             self._prewarm_step_embeddings(plan.steps)
 
+            # Pre-warm operation embeddings for graph-based routing
+            # Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE
+            # Operations are extracted during decomposition, batch embedded here
+            self._prewarm_operation_embeddings(plan.steps)
+
             # 2. Execute steps in dependency order (parallel where possible)
             step_results = []
             step_results_by_id = {}  # step_id → StepResult for ordering
@@ -1851,30 +1856,43 @@ class Solver:
         graph_signatures = {}  # sig_id -> StepSignature for graph-only candidates
         if GRAPH_ROUTING_ENABLED:
             try:
-                # Extract operation from step text (semantic description of what's needed)
-                operation = await extract_operation_needed(
-                    self.solver_client, step.task, timeout=10.0
-                )
-                if operation:
-                    # Embed the extracted operation
-                    operation_embedding = await get_operation_embedding(
-                        self.embedder, operation
+                operation_embedding = None
+
+                # Prefer pre-extracted operation embedding (batch embedded during decomposition)
+                # This avoids per-step LLM calls - operations extracted in 1 decomposition call
+                if hasattr(step, 'operation_embedding') and step.operation_embedding is not None:
+                    operation_embedding = step.operation_embedding
+                    operation = getattr(step, 'operation', None)
+                    logger.debug(
+                        "[solver] Using pre-extracted operation embedding for: %s",
+                        operation[:50] if operation else "?"
                     )
-                    if operation_embedding is not None:
-                        # Compare to graph embeddings (what DSLs actually compute)
-                        graph_routing_results = self.step_db.route_by_graph_embedding(
-                            np.array(operation_embedding),
-                            min_similarity=GRAPH_ROUTING_MIN_SIMILARITY,
-                            top_k=5,
+                else:
+                    # Fallback: Extract operation from step text (legacy path)
+                    operation = await extract_operation_needed(
+                        self.solver_client, step.task, timeout=10.0
+                    )
+                    if operation:
+                        # Embed the extracted operation
+                        operation_embedding = await get_operation_embedding(
+                            self.embedder, operation
                         )
-                        # Build lookup for boosting centroid candidates
-                        for sig, sim in graph_routing_results:
-                            graph_matches[sig.id] = sim
-                            graph_signatures[sig.id] = sig  # Store signature for graph-only adds
-                            logger.debug(
-                                "[solver] Graph routing match: sig %d (%s) sim=%.3f",
-                                sig.id, sig.computation_graph[:30] if sig.computation_graph else "?", sim
-                            )
+
+                if operation_embedding is not None:
+                    # Compare to graph embeddings (what DSLs actually compute)
+                    graph_routing_results = self.step_db.route_by_graph_embedding(
+                        np.array(operation_embedding),
+                        min_similarity=GRAPH_ROUTING_MIN_SIMILARITY,
+                        top_k=5,
+                    )
+                    # Build lookup for boosting centroid candidates
+                    for sig, sim in graph_routing_results:
+                        graph_matches[sig.id] = sim
+                        graph_signatures[sig.id] = sig  # Store signature for graph-only adds
+                        logger.debug(
+                            "[solver] Graph routing match: sig %d (%s) sim=%.3f",
+                            sig.id, sig.computation_graph[:30] if sig.computation_graph else "?", sim
+                        )
             except Exception as e:
                 # Graph routing is optional - don't fail on errors
                 logger.debug("[solver] Graph routing failed (continuing): %s", e)
@@ -2266,6 +2284,48 @@ class Solver:
         # Batch embed - populates the cache
         logger.debug("[solver] Pre-warming embeddings: %d steps in single batch call", len(texts))
         cached_embed_batch(texts, self.embedder)
+
+    def _prewarm_operation_embeddings(self, steps: list) -> None:
+        """Batch embed all step operations for graph-based routing.
+
+        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        Operations are extracted during decomposition (1 LLM call), then batch
+        embedded here (1 embedding call). This avoids per-step LLM calls for
+        operation extraction during routing.
+
+        The embeddings are stored in each step's operation_embedding field
+        for use during routing.
+        """
+        if not steps:
+            return
+
+        # Collect non-None operations with their step indices
+        operations = []
+        step_indices = []  # Track which step each operation belongs to
+        for i, step in enumerate(steps):
+            if step.operation and not step.is_composite:
+                operations.append(step.operation)
+                step_indices.append(i)
+
+        if not operations:
+            logger.debug("[solver] No operations to embed (steps may lack operation field)")
+            return
+
+        # Batch embed all operations
+        logger.debug("[solver] Pre-warming operation embeddings: %d operations in single batch call", len(operations))
+        embeddings_dict = cached_embed_batch(operations, self.embedder)
+
+        # Store embeddings back in the steps
+        for operation, step_idx in zip(operations, step_indices):
+            if operation in embeddings_dict:
+                embedding = embeddings_dict[operation]
+                # Convert numpy array to list if needed
+                if hasattr(embedding, 'tolist'):
+                    steps[step_idx].operation_embedding = embedding.tolist()
+                else:
+                    steps[step_idx].operation_embedding = list(embedding)
+
+        logger.debug("[solver] Stored operation embeddings for %d steps", len(step_indices))
 
     async def _llm_write_expression(
         self,
