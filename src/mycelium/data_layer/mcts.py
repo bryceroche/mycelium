@@ -596,3 +596,320 @@ def get_problem_nodes_needing_attention(dag_id: str) -> list[dict]:
         }
         for row in cursor.fetchall()
     ]
+
+
+# =============================================================================
+# INTERFERENCE PATTERN DETECTION
+# =============================================================================
+# Per CLAUDE.md: When multiple threads visit the same (dag_step_id, node_id):
+# - Constructive interference (both succeed): Reinforce, consider MERGE centroids
+# - Destructive interference (mixed results): Signal to SPLIT the cluster
+
+
+@dataclass
+class InterferencePattern:
+    """Represents interference when multiple threads visit the same (dag_step_id, node_id)."""
+    dag_id: str
+    dag_step_id: str
+    node_id: int
+    thread_count: int  # How many threads visited this combination
+    successes: int     # How many threads succeeded
+    failures: int      # How many threads failed
+    interference_type: str  # 'constructive', 'destructive', or 'neutral'
+    avg_amplitude: float  # Average amplitude across threads
+
+
+def detect_interference_patterns(dag_id: str) -> list[InterferencePattern]:
+    """Find interference patterns where multiple threads visited the same (dag_step_id, node_id).
+
+    Per CLAUDE.md:
+    - Constructive (all succeed): Reinforce, consider merge
+    - Destructive (mixed): Signal to split cluster
+
+    Only returns patterns where thread_count >= 2 (actual interference).
+
+    Returns:
+        List of InterferencePattern objects for this DAG
+    """
+    conn = get_db()
+
+    # Find (dag_step_id, node_id) combinations visited by multiple threads
+    cursor = conn.execute(
+        """
+        SELECT
+            ts.dag_step_id,
+            ts.node_id,
+            COUNT(DISTINCT ts.thread_id) as thread_count,
+            SUM(CASE WHEN t.success = 1 THEN 1 ELSE 0 END) as successes,
+            SUM(CASE WHEN t.success = 0 THEN 1 ELSE 0 END) as failures,
+            AVG(ts.amplitude) as avg_amplitude
+        FROM mcts_thread_steps ts
+        JOIN mcts_threads t ON ts.thread_id = t.thread_id
+        WHERE ts.dag_id = ?
+          AND t.success IS NOT NULL  -- Only graded threads
+        GROUP BY ts.dag_step_id, ts.node_id
+        HAVING COUNT(DISTINCT ts.thread_id) >= 2
+        """,
+        (dag_id,),
+    )
+
+    patterns = []
+    for row in cursor.fetchall():
+        dag_step_id, node_id, thread_count, successes, failures, avg_amplitude = row
+        successes = successes or 0
+        failures = failures or 0
+
+        # Classify interference type
+        if failures == 0 and successes > 0:
+            interference_type = "constructive"  # All succeeded
+        elif successes == 0 and failures > 0:
+            interference_type = "destructive"   # All failed (coherent failure)
+        elif successes > 0 and failures > 0:
+            interference_type = "destructive"   # Mixed results = cluster too generic
+        else:
+            interference_type = "neutral"       # No graded results
+
+        patterns.append(InterferencePattern(
+            dag_id=dag_id,
+            dag_step_id=dag_step_id,
+            node_id=node_id,
+            thread_count=thread_count,
+            successes=successes,
+            failures=failures,
+            interference_type=interference_type,
+            avg_amplitude=avg_amplitude or 1.0,
+        ))
+
+    logger.debug(
+        "[mcts] Detected %d interference patterns for DAG %s: %d constructive, %d destructive",
+        len(patterns), dag_id,
+        sum(1 for p in patterns if p.interference_type == "constructive"),
+        sum(1 for p in patterns if p.interference_type == "destructive"),
+    )
+
+    return patterns
+
+
+def get_nodes_for_merge_consideration(min_constructive_count: int = 3) -> list[dict]:
+    """Find nodes that consistently appear in constructive interference patterns.
+
+    These nodes might be candidates for merging - they represent operations
+    that consistently succeed together, suggesting they're operationally similar.
+
+    Args:
+        min_constructive_count: Minimum number of constructive interference occurrences
+
+    Returns:
+        List of dicts with node_id and constructive interference stats
+    """
+    conn = get_db()
+
+    # Find nodes that appear together in successful thread runs
+    cursor = conn.execute(
+        """
+        SELECT
+            ts.node_id,
+            COUNT(*) as total_appearances,
+            SUM(CASE WHEN t.success = 1 THEN 1 ELSE 0 END) as success_appearances,
+            AVG(ts.amplitude) as avg_amplitude
+        FROM mcts_thread_steps ts
+        JOIN mcts_threads t ON ts.thread_id = t.thread_id
+        WHERE t.success IS NOT NULL
+        GROUP BY ts.node_id
+        HAVING SUM(CASE WHEN t.success = 1 THEN 1 ELSE 0 END) >= ?
+        ORDER BY success_appearances DESC
+        """,
+        (min_constructive_count,),
+    )
+
+    return [
+        {
+            "node_id": row[0],
+            "total_appearances": row[1],
+            "success_appearances": row[2],
+            "success_rate": row[2] / row[1] if row[1] > 0 else 0.0,
+            "avg_amplitude": row[3] or 1.0,
+        }
+        for row in cursor.fetchall()
+    ]
+
+
+def get_nodes_for_split_consideration(min_destructive_count: int = 2) -> list[dict]:
+    """Find nodes that consistently appear in destructive interference patterns.
+
+    These nodes are candidates for cluster splitting - they represent operations
+    that produce mixed results, suggesting the cluster is too generic.
+
+    Args:
+        min_destructive_count: Minimum number of destructive interference occurrences
+
+    Returns:
+        List of dicts with node_id, destructive count, and stats
+    """
+    conn = get_db()
+
+    # Find nodes with high variance in outcomes (mixed success/failure)
+    cursor = conn.execute(
+        """
+        SELECT
+            ts.node_id,
+            COUNT(*) as total_appearances,
+            SUM(CASE WHEN t.success = 1 THEN 1 ELSE 0 END) as successes,
+            SUM(CASE WHEN t.success = 0 THEN 1 ELSE 0 END) as failures,
+            AVG(ts.amplitude) as avg_amplitude
+        FROM mcts_thread_steps ts
+        JOIN mcts_threads t ON ts.thread_id = t.thread_id
+        WHERE t.success IS NOT NULL
+        GROUP BY ts.node_id
+        HAVING
+            SUM(CASE WHEN t.success = 1 THEN 1 ELSE 0 END) >= 1
+            AND SUM(CASE WHEN t.success = 0 THEN 1 ELSE 0 END) >= ?
+        ORDER BY failures DESC
+        """,
+        (min_destructive_count,),
+    )
+
+    return [
+        {
+            "node_id": row[0],
+            "total_appearances": row[1],
+            "successes": row[2],
+            "failures": row[3],
+            "mixed_ratio": min(row[2], row[3]) / max(row[2], row[3]) if max(row[2], row[3]) > 0 else 0.0,
+            "avg_amplitude": row[4] or 1.0,
+        }
+        for row in cursor.fetchall()
+    ]
+
+
+@dataclass
+class InterferenceResult:
+    """Result of applying interference effects."""
+    patterns_processed: int
+    constructive_count: int
+    destructive_count: int
+    nodes_reinforced: list[int]   # Node IDs that got constructive boost
+    nodes_flagged_split: list[int]  # Node IDs flagged for potential split
+
+
+def apply_interference_effects(
+    dag_id: str,
+    step_db,  # StepSignatureDB instance
+    constructive_boost: float = 0.1,
+    destructive_penalty: float = 0.15,
+) -> InterferenceResult:
+    """Apply centroid updates based on interference patterns detected in a DAG.
+
+    Per CLAUDE.md:
+    - Constructive interference (all succeed): REINFORCE centroid, flag for potential merge
+    - Destructive interference (mixed): WEAKEN centroid, flag for potential split
+
+    The key insight: Interference patterns reveal operational equivalence/difference
+    that pure embedding similarity cannot capture.
+
+    Args:
+        dag_id: The DAG to analyze
+        step_db: StepSignatureDB instance for centroid updates
+        constructive_boost: Strength multiplier for constructive interference (default 0.1)
+        destructive_penalty: Strength multiplier for destructive interference (default 0.15)
+
+    Returns:
+        InterferenceResult with counts and affected node IDs
+    """
+    patterns = detect_interference_patterns(dag_id)
+
+    if not patterns:
+        return InterferenceResult(
+            patterns_processed=0,
+            constructive_count=0,
+            destructive_count=0,
+            nodes_reinforced=[],
+            nodes_flagged_split=[],
+        )
+
+    nodes_reinforced = []
+    nodes_flagged_split = []
+
+    for pattern in patterns:
+        if pattern.interference_type == "constructive":
+            # All threads succeeded at this (dag_step, node) combination
+            # This is strong evidence the node is operationally correct for this step type
+            # Boost the centroid stability (don't move it, just record success)
+            step_db.record_interference_outcome(
+                signature_id=pattern.node_id,
+                interference_type="constructive",
+                thread_count=pattern.thread_count,
+                success_count=pattern.successes,
+            )
+            nodes_reinforced.append(pattern.node_id)
+            logger.debug(
+                "[mcts] Constructive interference: node %d at step %s "
+                "(%d threads, all succeeded, avg_amp=%.2f)",
+                pattern.node_id, pattern.dag_step_id[:12],
+                pattern.thread_count, pattern.avg_amplitude,
+            )
+
+        elif pattern.interference_type == "destructive":
+            # Mixed results: some threads succeeded, some failed
+            # This suggests the cluster is too generic - needs splitting
+            step_db.record_interference_outcome(
+                signature_id=pattern.node_id,
+                interference_type="destructive",
+                thread_count=pattern.thread_count,
+                success_count=pattern.successes,
+            )
+            nodes_flagged_split.append(pattern.node_id)
+            logger.debug(
+                "[mcts] Destructive interference: node %d at step %s "
+                "(%d threads, %d succeeded, %d failed, avg_amp=%.2f)",
+                pattern.node_id, pattern.dag_step_id[:12],
+                pattern.thread_count, pattern.successes, pattern.failures,
+                pattern.avg_amplitude,
+            )
+
+    result = InterferenceResult(
+        patterns_processed=len(patterns),
+        constructive_count=len(nodes_reinforced),
+        destructive_count=len(nodes_flagged_split),
+        nodes_reinforced=list(set(nodes_reinforced)),  # Dedupe
+        nodes_flagged_split=list(set(nodes_flagged_split)),  # Dedupe
+    )
+
+    logger.info(
+        "[mcts] Interference effects for DAG %s: %d patterns, "
+        "%d constructive (reinforced), %d destructive (flagged for split)",
+        dag_id, result.patterns_processed,
+        result.constructive_count, result.destructive_count,
+    )
+
+    return result
+
+
+def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
+    """Run full post-mortem including interference pattern analysis.
+
+    This is the main entry point for post-mortem analysis that includes:
+    1. Standard amplitude_post computation (run_postmortem)
+    2. Interference pattern detection and centroid effects
+
+    Args:
+        dag_id: The DAG to analyze
+        step_db: StepSignatureDB instance for centroid updates
+
+    Returns:
+        Combined dict with amplitude stats and interference results
+    """
+    # First run standard postmortem (amplitude_post computation)
+    amplitude_stats = run_postmortem(dag_id)
+
+    # Then detect and apply interference effects
+    interference_result = apply_interference_effects(dag_id, step_db)
+
+    return {
+        **amplitude_stats,
+        "interference_patterns": interference_result.patterns_processed,
+        "constructive_interference": interference_result.constructive_count,
+        "destructive_interference": interference_result.destructive_count,
+        "nodes_reinforced": interference_result.nodes_reinforced,
+        "nodes_flagged_split": interference_result.nodes_flagged_split,
+    }

@@ -2766,6 +2766,62 @@ class StepSignatureDB:
                 expected_answer[:30] if expected_answer else "None",
             )
 
+    def record_interference_outcome(
+        self,
+        signature_id: int,
+        interference_type: str,
+        thread_count: int,
+        success_count: int,
+    ):
+        """Record an interference pattern outcome for a signature.
+
+        Per CLAUDE.md: When multiple threads visit the same (dag_step_id, node_id):
+        - Constructive interference (all succeed): Reinforce the node
+        - Destructive interference (mixed results): Signal to split the cluster
+
+        This updates signature statistics based on interference patterns:
+        - Constructive: Boost successes (the node is operationally correct)
+        - Destructive: Increment operational_failures (cluster is too generic)
+
+        Args:
+            signature_id: ID of the signature
+            interference_type: 'constructive' or 'destructive'
+            thread_count: How many threads visited this combination
+            success_count: How many threads succeeded
+        """
+        with self._connection() as conn:
+            if interference_type == "constructive":
+                # Constructive interference: all threads succeeded
+                # This is strong evidence the signature is operationally correct
+                # Boost success count (scaled by thread_count for multi-thread signal)
+                conn.execute(
+                    """UPDATE step_signatures
+                       SET successes = COALESCE(successes, 0) + ?
+                       WHERE id = ?""",
+                    (thread_count, signature_id)
+                )
+                logger.debug(
+                    "[db] Constructive interference: sig %d boosted by %d (all %d threads succeeded)",
+                    signature_id, thread_count, thread_count,
+                )
+
+            elif interference_type == "destructive":
+                # Destructive interference: mixed results (some succeeded, some failed)
+                # This signals the cluster is too generic and may need splitting
+                # Record as operational failures to trigger decomposition consideration
+                failure_count = thread_count - success_count
+                conn.execute(
+                    """UPDATE step_signatures
+                       SET operational_failures = COALESCE(operational_failures, 0) + ?
+                       WHERE id = ?""",
+                    (failure_count, signature_id)
+                )
+                logger.debug(
+                    "[db] Destructive interference: sig %d recorded %d failures "
+                    "(%d/%d threads failed)",
+                    signature_id, failure_count, failure_count, thread_count,
+                )
+
     # =========================================================================
     # Usage Recording
     # =========================================================================

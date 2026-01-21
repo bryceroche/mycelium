@@ -75,7 +75,7 @@ from mycelium.data_layer.mcts import (
     create_thread,
     complete_thread,
     log_thread_step,
-    run_postmortem,
+    run_postmortem_with_interference,
 )
 
 logger = logging.getLogger(__name__)
@@ -2469,13 +2469,21 @@ Expression:"""
             grade_dag(self._current_dag_id, success=correct)
             logger.debug("[solver] Graded MCTS DAG %s: success=%s", self._current_dag_id, correct)
 
-            # Run post-mortem analysis to compute amplitude_post values
+            # Run post-mortem analysis including interference pattern detection
             # Per CLAUDE.md: "High confidence + failure = strong negative signal"
-            postmortem_stats = run_postmortem(self._current_dag_id)
+            # Per CLAUDE.md: Interference patterns drive structural tree evolution
+            postmortem_stats = run_postmortem_with_interference(self._current_dag_id, self.step_db)
             if postmortem_stats.get("high_conf_wrong", 0) > 0:
                 logger.warning(
                     "[solver] Post-mortem found %d high-confidence wrong decisions in DAG %s",
                     postmortem_stats["high_conf_wrong"], self._current_dag_id
+                )
+            if postmortem_stats.get("destructive_interference", 0) > 0:
+                logger.info(
+                    "[solver] Post-mortem found %d destructive interference patterns "
+                    "(nodes flagged for split: %s)",
+                    postmortem_stats["destructive_interference"],
+                    postmortem_stats.get("nodes_flagged_split", [])
                 )
 
         # MCTS Training: Process path outcomes for operational equivalence learning
