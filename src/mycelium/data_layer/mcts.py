@@ -689,6 +689,42 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
             stats["successes_credited"], stats["partial_credits"], stats["failures_credited"],
         )
 
+    # Per mycelium-vuuc: Track step_type_stats for routing preferences
+    # A signature might excel at 'calculate percentage' but fail at 'find remainder'
+    step_type_cursor = conn.execute(
+        """
+        SELECT
+            ts.node_id,
+            ds.step_desc,
+            t.success as thread_success
+        FROM mcts_thread_steps ts
+        JOIN mcts_dag_steps ds ON ts.dag_step_id = ds.dag_step_id
+        JOIN mcts_threads t ON ts.thread_id = t.thread_id
+        WHERE ts.dag_id = ? AND ts.node_id IS NOT NULL
+        """,
+        (dag_id,),
+    )
+
+    step_type_updates = 0
+    for row in step_type_cursor.fetchall():
+        node_id, step_desc, thread_success = row
+        if node_id and step_desc:
+            # Normalize step_desc for consistent tracking
+            normalized_step_type = step_desc.lower().strip()[:100]
+            step_db.update_step_type_stats(
+                signature_id=node_id,
+                step_type=normalized_step_type,
+                success=bool(thread_success)
+            )
+            step_type_updates += 1
+
+    if step_type_updates > 0:
+        logger.debug(
+            "[mcts] Step type stats updated for DAG %s: %d updates",
+            dag_id, step_type_updates
+        )
+
+    stats["step_type_updates"] = step_type_updates
     return stats
 
 

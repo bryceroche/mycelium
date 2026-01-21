@@ -1821,10 +1821,13 @@ class Solver:
         from mycelium.step_signatures.db import RoutingResult
 
         # Get routing result with confidence and alternatives
+        # Per mycelium-vuuc: Pass step_type for specialization boost
+        normalized_step_type = step.task.lower().strip()[:100] if step.task else None
         routing_result = self.step_db.route_with_confidence(
             embedding,
             min_similarity=get_adaptive_match_threshold(),
             top_k=int(compute_budget) + 1,  # Get enough alternatives
+            step_type=normalized_step_type,
         )
 
         # Store routing context for MCTS amplitude logging

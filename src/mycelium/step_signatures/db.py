@@ -1120,12 +1120,51 @@ class StepSignatureDB:
         )
         return current, path
 
+    def _get_step_type_success_rate(
+        self, signature_id: int, step_type: str
+    ) -> float:
+        """Get step-type success rate for a signature (helper for routing).
+
+        Per mycelium-vuuc: Look up step_type_stats for routing boost/penalty.
+        This queries the DB directly to avoid loading full JSON in routing.
+
+        Args:
+            signature_id: ID of the signature
+            step_type: Normalized step type to look up
+
+        Returns:
+            Success rate for this step type, or -1.0 if no data
+        """
+        import json
+
+        with self._connection() as conn:
+            row = conn.execute(
+                "SELECT step_type_stats FROM step_signatures WHERE id = ?",
+                (signature_id,)
+            ).fetchone()
+
+            if not row or not row[0]:
+                return -1.0
+
+            try:
+                stats = json.loads(row[0])
+                step_stats = stats.get(step_type)
+                if not step_stats:
+                    return -1.0
+                uses = step_stats.get("uses", 0)
+                if uses == 0:
+                    return -1.0
+                return step_stats.get("successes", 0) / uses
+            except (json.JSONDecodeError, TypeError):
+                return -1.0
+
     def route_with_confidence(
         self,
         embedding: np.ndarray,
         min_similarity: float = 0.85,
         max_depth: int = None,
         top_k: int = 3,
+        step_type: str = None,
     ) -> RoutingResult:
         """Route with confidence scoring for MCTS multi-path exploration.
 
@@ -1142,6 +1181,7 @@ class StepSignatureDB:
             min_similarity: Minimum similarity threshold to follow a route
             max_depth: Maximum depth to traverse (default from config)
             top_k: Number of top alternatives to track at each level
+            step_type: Optional step type for specialization boost (per mycelium-vuuc)
 
         Returns:
             RoutingResult with signature, path, confidence, and alternatives
@@ -1186,12 +1226,19 @@ class StepSignatureDB:
                     continue
                 sim = cosine_similarity(embedding, centroid)
                 if sim >= min_similarity * 0.7:  # Lower threshold to capture alternatives
+                    # Per mycelium-vuuc: Use step_type_stats for specialization
+                    step_type_rate = -1.0
+                    if step_type and child_sig.id:
+                        step_type_rate = self._get_step_type_success_rate(
+                            child_sig.id, step_type
+                        )
                     ucb1 = compute_ucb1_score(
                         cosine_sim=sim,
                         uses=child_sig.uses,
                         successes=child_sig.successes,
                         parent_uses=parent_uses,
                         last_used_at=child_sig.last_used_at,
+                        step_type_success_rate=step_type_rate,
                     )
                     scored_children.append((child_sig, ucb1, sim))
 
@@ -2893,6 +2940,56 @@ class StepSignatureDB:
                    SET successes = COALESCE(successes, 0) + ?
                    WHERE id = ?""",
                 (weight, signature_id)
+            )
+
+    def update_step_type_stats(
+        self,
+        signature_id: int,
+        step_type: str,
+        success: bool
+    ):
+        """Update step_type_stats for a signature.
+
+        Per beads mycelium-vuuc: Track performance by dag_step type for routing.
+        A signature might be great for 'calculate percentage' but bad for
+        'find remainder' - this lets routing prefer signatures that excel
+        at specific step types.
+
+        Args:
+            signature_id: ID of the signature
+            step_type: Normalized step type (e.g., 'calculate_percentage')
+            success: Whether this use was successful
+        """
+        import json
+
+        with self._connection() as conn:
+            # Read current stats
+            row = conn.execute(
+                "SELECT step_type_stats FROM step_signatures WHERE id = ?",
+                (signature_id,)
+            ).fetchone()
+
+            if not row:
+                return
+
+            # Parse existing stats
+            try:
+                stats = json.loads(row[0]) if row[0] else {}
+            except json.JSONDecodeError:
+                stats = {}
+
+            # Update stats for this step type
+            if step_type not in stats:
+                stats[step_type] = {"uses": 0, "successes": 0}
+
+            stats[step_type]["uses"] += 1
+            if success:
+                stats[step_type]["successes"] += 1
+
+            # Write back
+            conn.execute(
+                "UPDATE step_signatures SET step_type_stats = ? WHERE id = ?",
+                (json.dumps(stats), signature_id)
             )
 
     def merge_signatures(
