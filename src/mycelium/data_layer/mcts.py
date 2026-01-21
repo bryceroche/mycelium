@@ -1879,7 +1879,7 @@ async def trigger_dsl_regeneration_for_nodes(
     for node_id in unique_nodes:
         try:
             # Get signature details
-            sig = step_db.get_signature_by_id(node_id)
+            sig = step_db.get_signature(node_id)
             if sig is None:
                 logger.warning("[mcts] Node %d not found in signatures, skipping", node_id)
                 skipped += 1
