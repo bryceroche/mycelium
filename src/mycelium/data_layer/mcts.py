@@ -1468,10 +1468,13 @@ def detect_retirement_candidates(step_db) -> list[tuple[int, str]]:
     """Find signatures that should be considered for retirement.
 
     Criteria:
-    - uses >= RETIREMENT_MIN_USES (enough data)
-    - success_rate <= RETIREMENT_MAX_SUCCESS_RATE (consistently failing)
+    - uses >= RETIREMENT_MIN_USES (enough selections to trust accuracy)
+    - success_rate <= RETIREMENT_MAX_SUCCESS_RATE (low accuracy)
     - operational_failures >= RETIREMENT_MIN_OPERATIONAL_FAILURES (flagged by post-mortem)
-    - age >= RETIREMENT_MIN_AGE_DAYS (not too new)
+
+    Accuracy is inferred from MCTS post-mortem: for each leaf node, we track how
+    many times it was selected (uses) vs how many times the thread it was in won
+    (successes). This gives leaf_accuracy = successes / uses.
 
     Returns:
         List of (signature_id, recommended_action) tuples.
@@ -1482,45 +1485,32 @@ def detect_retirement_candidates(step_db) -> list[tuple[int, str]]:
         RETIREMENT_MIN_USES,
         RETIREMENT_MAX_SUCCESS_RATE,
         RETIREMENT_MIN_OPERATIONAL_FAILURES,
-        RETIREMENT_MIN_AGE_DAYS,
         RETIREMENT_PRUNE_SUCCESS_RATE,
         RETIREMENT_PRUNE_MIN_USES,
     )
-    from datetime import datetime, timedelta
 
     if not RETIREMENT_ENABLED:
         return []
 
     candidates = []
     all_sigs = step_db.get_all_signatures()
-    now = datetime.now()
-    min_age_cutoff = now - timedelta(days=RETIREMENT_MIN_AGE_DAYS)
 
     for sig in all_sigs:
         # Skip root signature (never retire)
         if sig.is_root:
             continue
 
-        # Skip if not enough uses
+        # Skip if not enough uses to trust accuracy
         if (sig.uses or 0) < RETIREMENT_MIN_USES:
             continue
 
-        # Skip if success rate is acceptable
+        # Skip if accuracy is acceptable
         if sig.success_rate > RETIREMENT_MAX_SUCCESS_RATE:
             continue
 
         # Skip if not flagged enough by post-mortem
         if (sig.operational_failures or 0) < RETIREMENT_MIN_OPERATIONAL_FAILURES:
             continue
-
-        # Skip if too new
-        if sig.created_at:
-            try:
-                created = datetime.fromisoformat(sig.created_at.replace("Z", "+00:00"))
-                if created.replace(tzinfo=None) > min_age_cutoff:
-                    continue
-            except (ValueError, TypeError):
-                pass  # Can't parse date, allow retirement
 
         # Determine recommended action based on severity
         if sig.success_rate <= RETIREMENT_PRUNE_SUCCESS_RATE and (sig.uses or 0) >= RETIREMENT_PRUNE_MIN_USES:
@@ -1535,7 +1525,7 @@ def detect_retirement_candidates(step_db) -> list[tuple[int, str]]:
 
         candidates.append((sig.id, action))
         logger.debug(
-            "[mcts] Retirement candidate: sig=%d, action=%s, uses=%d, success=%.1f%%, op_fail=%d",
+            "[mcts] Retirement candidate: sig=%d, action=%s, uses=%d, accuracy=%.1f%%, op_fail=%d",
             sig.id, action, sig.uses or 0, sig.success_rate * 100, sig.operational_failures or 0
         )
 
