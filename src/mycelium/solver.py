@@ -1474,6 +1474,7 @@ class Solver:
                     alternatives_considered=len(explored_sigs) if explored_sigs else 1,
                     step_result=result[:500] if result else None,
                     step_success=step_completed,
+                    node_depth=routed_signature.depth,
                 )
                 logger.debug(
                     "[solver] Logged thread step: thread=%s dag_step=%s node=%d amp=%.2f undecided=%s success=%s",
@@ -1940,6 +1941,7 @@ class Solver:
                                 alternatives_considered=len(candidates),
                                 step_result=result[:500] if result else None,
                                 step_success=result is not None,
+                                node_depth=sig.depth,
                             )
 
                     logger.debug(

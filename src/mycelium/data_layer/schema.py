@@ -310,6 +310,7 @@ CREATE TABLE IF NOT EXISTS mcts_thread_steps (
     dag_id TEXT NOT NULL,                 -- Denormalized for query efficiency
     dag_step_id TEXT NOT NULL,            -- Which DAG step
     node_id INTEGER NOT NULL,             -- Which signature (leaf node) was used
+    node_depth INTEGER,                   -- Depth of node in signature tree (for post-mortem analysis)
 
     -- Wave function amplitude tracking
     -- Per ideas.md: "High confidence + failure = strong negative signal"

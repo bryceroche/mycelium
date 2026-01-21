@@ -274,11 +274,15 @@ def log_thread_step(
     alternatives_considered: int = 1,
     step_result: Optional[str] = None,
     step_success: Optional[bool] = None,
+    node_depth: Optional[int] = None,
 ) -> str:
     """Log a thread step execution with wave function amplitude.
 
     This is the core logging function for MCTS post-mortem analysis.
     The (dag_step_id, node_id) combination is what we're learning.
+
+    Args:
+        node_depth: Depth of the signature node in the tree (for post-mortem analysis)
 
     Returns the thread_step_id.
     """
@@ -289,14 +293,14 @@ def log_thread_step(
     conn.execute(
         """
         INSERT INTO mcts_thread_steps (
-            thread_step_id, thread_id, dag_id, dag_step_id, node_id,
+            thread_step_id, thread_id, dag_id, dag_step_id, node_id, node_depth,
             amplitude, similarity_score, was_undecided, ucb1_gap,
             alternatives_considered, step_result, step_success, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
-            thread_step_id, thread_id, dag_id, dag_step_id, node_id,
+            thread_step_id, thread_id, dag_id, dag_step_id, node_id, node_depth,
             amplitude, similarity_score, 1 if was_undecided else 0, ucb1_gap,
             alternatives_considered, step_result,
             (1 if step_success else 0) if step_success is not None else None,
