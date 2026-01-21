@@ -64,6 +64,7 @@ from mycelium.step_signatures.db import normalize_step_text
 from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.step_signatures.stats import record_step_stats
+from mycelium.step_signatures.utils import cosine_similarity
 from mycelium.embedder import Embedder
 from mycelium.embedding_cache import cached_embed, cached_embed_batch
 from mycelium.difficulty import estimate_difficulty
@@ -73,7 +74,6 @@ from mycelium.data_layer.mcts import (
     grade_dag,
     create_thread,
     complete_thread,
-    grade_thread,
     log_thread_step,
 )
 
@@ -531,6 +531,10 @@ class Solver:
         self._routing_similarity: Optional[float] = None
         self._routing_ucb1_gap: Optional[float] = None
         self._routing_was_undecided: bool = False
+
+        # MCTS DAG tracking (set per-problem in solve())
+        self._current_dag_id: Optional[str] = None
+        self._dag_step_ids: dict[str, str] = {}  # step.id -> dag_step_id
 
     def _create_background_task(self, coro) -> asyncio.Task:
         """Create a background task with proper lifecycle management.
@@ -1053,7 +1057,7 @@ class Solver:
                 context={"source": "solver_exception", "problem": problem[:500]},
             )
             # Grade DAG as failed on exception (training mode only)
-            if hasattr(self, '_current_dag_id') and self._current_dag_id:
+            if self._current_dag_id:
                 grade_dag(self._current_dag_id, success=False)
                 logger.debug("[solver] Graded MCTS DAG %s as failed (exception)", self._current_dag_id)
             return SolverResult(
@@ -1253,7 +1257,6 @@ class Solver:
                 # Single-path: just try DSL on routed signature
                 # Compute similarity for amplitude logging (not available from multi-path routing)
                 if routed_signature.centroid is not None:
-                    from mycelium.step_signatures.utils import cosine_similarity
                     self._routing_similarity = cosine_similarity(embedding, routed_signature.centroid)
                     self._routing_confidence = self._routing_similarity  # Use similarity as confidence proxy
                 dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
@@ -1312,7 +1315,6 @@ class Solver:
         # If umbrella routing failed (no matching child), create new child for current step
         # This grows the tree by adding specialized children to handle novel steps
         if result is None and routed_signature.is_semantic_umbrella:
-            from mycelium.step_signatures.utils import cosine_similarity
             from mycelium.config import NEW_CHILD_SIMILARITY_THRESHOLD
 
             # First check if there's an existing child that's "close enough"
@@ -1647,8 +1649,6 @@ class Solver:
             depth: Current recursion depth (for limiting chain length)
             children: Pre-fetched children (avoids redundant DB query)
         """
-        from mycelium.step_signatures.utils import cosine_similarity
-
         # Depth limit: prevent unbounded recursion through long umbrella chains
         if depth >= UMBRELLA_MAX_DEPTH:
             logger.warning(
@@ -2464,7 +2464,7 @@ Expression:"""
 
         # Grade the MCTS DAG (training mode only)
         # Per CLAUDE.md: Set success/graded_at after final answer comparison
-        if hasattr(self, '_current_dag_id') and self._current_dag_id:
+        if self._current_dag_id:
             grade_dag(self._current_dag_id, success=correct)
             logger.debug("[solver] Graded MCTS DAG %s: success=%s", self._current_dag_id, correct)
 
