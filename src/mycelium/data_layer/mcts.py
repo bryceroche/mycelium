@@ -331,12 +331,13 @@ def batch_update_amplitudes(updates: list[tuple[str, float]]) -> None:
         return
 
     conn = get_db()
-    conn.executemany(
-        """
-        UPDATE mcts_thread_steps SET amplitude_post = ? WHERE thread_step_id = ?
-        """,
-        [(amp, tsid) for tsid, amp in updates],
-    )
+    with conn.connection() as raw_conn:
+        raw_conn.executemany(
+            """
+            UPDATE mcts_thread_steps SET amplitude_post = ? WHERE thread_step_id = ?
+            """,
+            [(amp, tsid) for tsid, amp in updates],
+        )
     logger.debug("[mcts] Batch updated %d amplitudes", len(updates))
 
 
