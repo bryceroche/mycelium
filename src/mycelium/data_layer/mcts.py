@@ -1012,10 +1012,10 @@ class MergeSplitResult:
 
 def process_merge_candidates(
     step_db,
-    min_success_rate: float = 0.75,
-    min_uses: int = 10,
-    min_similarity: float = 0.90,
-    max_merges_per_run: int = 3,
+    min_success_rate: float = None,
+    min_uses: int = None,
+    min_similarity: float = None,
+    max_merges_per_run: int = None,
 ) -> MergeSplitResult:
     """Process merge candidates from constructive interference patterns.
 
@@ -1025,14 +1025,31 @@ def process_merge_candidates(
 
     Args:
         step_db: StepSignatureDB instance
-        min_success_rate: Minimum success rate for merge candidates
-        min_uses: Minimum uses to trust the signal
-        min_similarity: Minimum centroid similarity for merge
-        max_merges_per_run: Limit merges per call to avoid over-consolidation
+        min_success_rate: Minimum success rate (default from config)
+        min_uses: Minimum uses to trust (default from config)
+        min_similarity: Minimum centroid similarity (default from config)
+        max_merges_per_run: Limit merges per call (default from config)
 
     Returns:
         MergeSplitResult with merge statistics
     """
+    from mycelium.config import (
+        MERGE_MIN_SUCCESS_RATE,
+        MERGE_MIN_USES,
+        MERGE_MIN_SIMILARITY,
+        MERGE_MAX_PER_BATCH,
+    )
+
+    # Use config defaults if not specified
+    if min_success_rate is None:
+        min_success_rate = MERGE_MIN_SUCCESS_RATE
+    if min_uses is None:
+        min_uses = MERGE_MIN_USES
+    if min_similarity is None:
+        min_similarity = MERGE_MIN_SIMILARITY
+    if max_merges_per_run is None:
+        max_merges_per_run = MERGE_MAX_PER_BATCH
+
     candidates = step_db.find_merge_candidates(
         min_success_rate=min_success_rate,
         min_uses=min_uses,
