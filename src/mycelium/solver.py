@@ -545,6 +545,10 @@ class Solver:
         self._current_dag_id: Optional[str] = None
         self._dag_step_ids: dict[str, str] = {}  # step.id -> dag_step_id
 
+        # Operation embeddings for graph-based routing (set per-problem in solve())
+        # Stored separately from Step objects for memory efficiency (~24KB per embedding)
+        self._operation_embeddings: dict[str, list[float]] = {}  # step.id -> embedding
+
         # DSL regeneration flag (per beads mycelium-flbq)
         # Set to True when post-mortem batch threshold reached
         self._pending_dsl_regen: bool = False
@@ -1860,8 +1864,9 @@ class Solver:
 
                 # Prefer pre-extracted operation embedding (batch embedded during decomposition)
                 # This avoids per-step LLM calls - operations extracted in 1 decomposition call
-                if hasattr(step, 'operation_embedding') and step.operation_embedding is not None:
-                    operation_embedding = step.operation_embedding
+                # Embeddings stored in self._operation_embeddings dict for memory efficiency
+                if step.id in self._operation_embeddings:
+                    operation_embedding = self._operation_embeddings[step.id]
                     operation = getattr(step, 'operation', None)
                     logger.debug(
                         "[solver] Using pre-extracted operation embedding for: %s",
@@ -2293,19 +2298,22 @@ class Solver:
         embedded here (1 embedding call). This avoids per-step LLM calls for
         operation extraction during routing.
 
-        The embeddings are stored in each step's operation_embedding field
-        for use during routing.
+        Embeddings stored in self._operation_embeddings dict (not on Step objects)
+        for memory efficiency - each embedding is ~24KB (3072 floats).
         """
+        # Clear previous problem's embeddings
+        self._operation_embeddings.clear()
+
         if not steps:
             return
 
-        # Collect non-None operations with their step indices
+        # Collect non-None operations with their step IDs
         operations = []
-        step_indices = []  # Track which step each operation belongs to
-        for i, step in enumerate(steps):
+        step_ids = []  # Track which step each operation belongs to
+        for step in steps:
             if step.operation and not step.is_composite:
                 operations.append(step.operation)
-                step_indices.append(i)
+                step_ids.append(step.id)
 
         if not operations:
             logger.debug("[solver] No operations to embed (steps may lack operation field)")
@@ -2315,17 +2323,17 @@ class Solver:
         logger.debug("[solver] Pre-warming operation embeddings: %d operations in single batch call", len(operations))
         embeddings_dict = cached_embed_batch(operations, self.embedder)
 
-        # Store embeddings back in the steps
-        for operation, step_idx in zip(operations, step_indices):
+        # Store embeddings in instance dict (keyed by step.id)
+        for operation, step_id in zip(operations, step_ids):
             if operation in embeddings_dict:
                 embedding = embeddings_dict[operation]
                 # Convert numpy array to list if needed
                 if hasattr(embedding, 'tolist'):
-                    steps[step_idx].operation_embedding = embedding.tolist()
+                    self._operation_embeddings[step_id] = embedding.tolist()
                 else:
-                    steps[step_idx].operation_embedding = list(embedding)
+                    self._operation_embeddings[step_id] = list(embedding)
 
-        logger.debug("[solver] Stored operation embeddings for %d steps", len(step_indices))
+        logger.debug("[solver] Stored operation embeddings for %d steps", len(self._operation_embeddings))
 
     async def _llm_write_expression(
         self,

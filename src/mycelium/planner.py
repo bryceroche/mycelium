@@ -136,9 +136,8 @@ class Step:
     # Operation description for graph-based routing (per CLAUDE.md)
     # Describes WHAT computation is needed, not the specific values
     # Example: "multiply two numbers" or "divide then add"
+    # Note: Operation embeddings stored separately in solver (not on Step) for memory efficiency
     operation: Optional[str] = None
-    # Cached operation embedding for routing (set by solver)
-    operation_embedding: Optional[list[float]] = None
     # Recursive nesting: sub-plan for composite steps
     sub_plan: Optional["DAGPlan"] = None
 
@@ -548,6 +547,16 @@ class Planner:
         # Log any parsing warnings
         if parse_warnings:
             logger.warning(f"Planner parsing issues: {'; '.join(parse_warnings)}")
+
+        # Check for missing operations (needed for graph-based routing)
+        # Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE
+        steps_missing_ops = [s for s in steps if not s.operation and not s.is_composite]
+        if steps_missing_ops:
+            logger.warning(
+                "[planner] %d/%d steps missing 'operation' field (will use fallback extraction): %s",
+                len(steps_missing_ops), len(steps),
+                ", ".join(s.id for s in steps_missing_ops[:3]) + ("..." if len(steps_missing_ops) > 3 else "")
+            )
 
         # Ensure we have at least one step
         if not steps:
