@@ -284,40 +284,6 @@ def compute_routing_score(
     return base_score - staleness_penalty - traffic_penalty
 
 
-def compute_step_type_adjustment(
-    step_type_success_rate: float,
-    baseline_rate: float = 0.5,
-    max_adjustment: float = 0.15,
-) -> float:
-    """Compute score adjustment based on step-type specialization.
-
-    Per mycelium-vuuc: A signature might excel at 'calculate percentage' but
-    fail at 'find remainder'. This adjustment boosts/penalizes based on the
-    signature's track record with this specific step type.
-
-    Args:
-        step_type_success_rate: Success rate for this step type (-1 if no data)
-        baseline_rate: Expected baseline success rate (default 0.5)
-        max_adjustment: Maximum positive/negative adjustment (default 0.15)
-
-    Returns:
-        Adjustment to add to UCB1 score (positive = boost, negative = penalty)
-    """
-    if step_type_success_rate < 0:
-        # No data for this step type - no adjustment
-        return 0.0
-
-    # Compute adjustment based on deviation from baseline
-    # Above baseline → positive adjustment, below → negative
-    deviation = step_type_success_rate - baseline_rate
-
-    # Scale to max_adjustment range: deviation of ±0.5 maps to ±max_adjustment
-    adjustment = deviation * 2 * max_adjustment
-
-    # Clamp to max range
-    return max(-max_adjustment, min(max_adjustment, adjustment))
-
-
 def compute_ucb1_score(
     cosine_sim: float,
     uses: int,
@@ -325,7 +291,6 @@ def compute_ucb1_score(
     parent_uses: int,
     last_used_at: Optional[str] = None,
     exploration_c: Optional[float] = None,
-    step_type_success_rate: float = -1.0,
 ) -> float:
     """Compute MCTS UCB1 score for signature routing.
 
@@ -333,13 +298,12 @@ def compute_ucb1_score(
     - Exploitation: prefer signatures with high similarity and success rate
     - Exploration: give bonus to under-visited signatures
 
-    Formula: exploit_score + C * sqrt(ln(N) / n) + step_type_adjustment
+    Formula: exploit_score + C * sqrt(ln(N) / n)
     Where:
     - exploit_score = similarity * success_rate (weighted)
     - C = exploration constant (adaptive or fixed)
     - N = parent visits (total opportunities at this routing level)
     - n = child visits (this signature's uses)
-    - step_type_adjustment = boost/penalty based on step-type specialization
 
     Args:
         cosine_sim: Cosine similarity between step and signature
@@ -348,7 +312,6 @@ def compute_ucb1_score(
         parent_uses: Total uses at parent level (N)
         last_used_at: ISO timestamp of last use (for staleness decay)
         exploration_c: Override exploration constant (None = use adaptive)
-        step_type_success_rate: Success rate for this step type (-1 = no data)
 
     Returns:
         UCB1 score (higher = better choice)
@@ -378,7 +341,4 @@ def compute_ucb1_score(
     # Apply staleness penalty (time-based decay)
     staleness_penalty = compute_staleness_penalty(last_used_at)
 
-    # Apply step-type adjustment (per mycelium-vuuc)
-    step_type_adjustment = compute_step_type_adjustment(step_type_success_rate)
-
-    return exploit_score + exploration_bonus - staleness_penalty + step_type_adjustment
+    return exploit_score + exploration_bonus - staleness_penalty

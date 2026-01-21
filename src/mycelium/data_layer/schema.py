@@ -436,14 +436,6 @@ def migrate_db(conn) -> None:
             "ALTER TABLE step_signatures ADD COLUMN operational_failures INTEGER DEFAULT 0"
         )
 
-    # Add step_type_stats if missing (per mycelium-vuuc)
-    # Tracks performance by dag_step type for routing preferences
-    # Format: {"calculate_percentage": {"uses": 10, "successes": 8}, ...}
-    if "step_type_stats" not in existing_cols:
-        migrations.append(
-            "ALTER TABLE step_signatures ADD COLUMN step_type_stats TEXT DEFAULT '{}'"
-        )
-
     # Add computation_graph if missing (per mycelium-k509)
     # Structural graph representation: MUL(param_0, param_1), ADD(MUL(p0, p1), p2)
     # Per CLAUDE.md: route by what operations DO, not what they SOUND LIKE

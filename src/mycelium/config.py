@@ -538,6 +538,28 @@ ZERO_LLM_MIN_USES = 5  # Need enough data to trust the signature
 ZERO_LLM_REQUIRE_DSL = True  # Signature must have a working DSL script
 
 # =============================================================================
+# GRAPH-BASED ROUTING (Route by operation, not vocabulary)
+# =============================================================================
+# Per CLAUDE.md: "Route by what operations DO, not what they SOUND LIKE"
+#
+# Flow: problem → extract operation → embed → compare to graph embeddings
+# This addresses: "embedding clusters by vocab not operational semantics"
+#
+# Graph embeddings encode WHAT a DSL computes (structurally):
+#   MUL(param_0, param_1) → "multiply two values"
+# Operation extraction identifies WHAT is needed (semantically):
+#   "Calculate 15% of 200" → "multiply percentage by base, divide by 100"
+#
+# Comparing operation embedding to graph embeddings routes by operation type,
+# not by surface vocabulary similarity.
+
+GRAPH_ROUTING_ENABLED = True  # Master switch for graph-based routing
+GRAPH_ROUTING_MIN_SIMILARITY = 0.80  # Minimum similarity for graph match
+GRAPH_ROUTING_BOOST_FACTOR = 0.15  # Boost to UCB1 when graph matches
+GRAPH_ROUTING_REQUIRE_EXTRACTION = True  # Require operation extraction (uses LLM)
+GRAPH_ROUTING_FALLBACK_TO_CENTROID = True  # Fall back to centroid if no graph match
+
+# =============================================================================
 # DSL AUTO-REWRITER (Fix underperforming DSLs automatically)
 # =============================================================================
 # When a signature has low success rate but high traffic, the rewriter
