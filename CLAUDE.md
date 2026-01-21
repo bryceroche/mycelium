@@ -265,6 +265,21 @@ Big bang function accounting for the first five levels need to be empty. Sigmoid
   Need some successes to learn from; failures alone don't teach what works.
   System is designed to aggressively **branch out early**, tapering off later.
 
+## With Mature DB
+
+  If you encounter a DAG step that has **no matching signature** in a mature DB (many signatures, high accuracy), this is a signal:
+
+  **The step is likely too complex and needs decomposition.**
+
+  In a mature system, most atomic operations should have signatures. A novel step that doesn't match anything suggests it's a composite operation that should be broken into smaller pieces the system already knows.
+
+  Flow:
+  1. Route fails (no graph embedding match above threshold)
+  2. Recognize this as "novel complex step" not "missing simple operation"
+  3. LLM decomposes the step into sub-steps
+  4. Route each sub-step (should now match existing signatures)
+  5. Combine results
+
 ## Key Questions
   ### Depth & Accuracy
   **Are we going deep enough?**
