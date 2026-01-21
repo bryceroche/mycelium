@@ -136,9 +136,12 @@ def detect_gorilla(step: "Step") -> Optional[str]:
 
     task_lower = step.task.lower()
 
-    # Check for complexity keywords
+    # Check for complexity keywords using word boundaries
+    # This prevents "after" from matching "afternoon", "before" matching "beforehand", etc.
     for keyword in GORILLA_COMPLEXITY_KEYWORDS:
-        if keyword in task_lower:
+        # Use word boundary regex: \b matches word boundaries
+        pattern = r'\b' + re.escape(keyword) + r'\b'
+        if re.search(pattern, task_lower):
             return f"contains '{keyword}'"
 
     # Check for too many extracted values (likely multi-operation)
