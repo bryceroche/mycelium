@@ -920,12 +920,18 @@ def apply_interference_effects(
     return result
 
 
+# Module-level counter for batch merge/split scheduling
+_postmortem_problem_count = 0
+_accumulated_nodes_for_split: list[int] = []
+
+
 def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     """Run full post-mortem including interference pattern analysis.
 
     This is the main entry point for post-mortem analysis that includes:
-    1. Standard amplitude_post computation (run_postmortem)
-    2. Interference pattern detection and centroid effects
+    1. Standard amplitude_post computation (run_postmortem) - ALWAYS runs
+    2. Interference pattern detection and centroid effects - ALWAYS runs
+    3. Merge/split operations - BATCHED (runs every N problems per config)
 
     Args:
         dag_id: The DAG to analyze
@@ -934,19 +940,45 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     Returns:
         Combined dict with amplitude stats and interference results
     """
-    # First run standard postmortem (amplitude_post computation)
+    global _postmortem_problem_count, _accumulated_nodes_for_split
+
+    from mycelium.config import MERGE_SPLIT_BATCH_SIZE
+
+    # First run standard postmortem (amplitude_post computation) - cheap, always run
     amplitude_stats = run_postmortem(dag_id)
 
-    # Then detect and apply interference effects
+    # Then detect and apply interference effects - cheap, always run
     interference_result = apply_interference_effects(dag_id, step_db)
 
-    # Finally, run merge/split operations based on interference
-    # Per CLAUDE.md: Constructive → merge, Destructive → split
-    merge_split_result = run_merge_split_from_interference(
-        step_db,
-        nodes_reinforced=interference_result.nodes_reinforced,
-        nodes_flagged_split=interference_result.nodes_flagged_split,
+    # Accumulate nodes flagged for split
+    _accumulated_nodes_for_split.extend(interference_result.nodes_flagged_split)
+    _postmortem_problem_count += 1
+
+    # Check if we should run merge/split (batched for performance)
+    merge_split_result = {"merges_succeeded": 0, "merged_pairs": [], "splits_flagged": 0}
+
+    should_run_merge_split = (
+        MERGE_SPLIT_BATCH_SIZE > 0 and
+        _postmortem_problem_count >= MERGE_SPLIT_BATCH_SIZE
     )
+
+    if should_run_merge_split:
+        # Run merge/split with accumulated data
+        merge_split_result = run_merge_split_from_interference(
+            step_db,
+            nodes_reinforced=interference_result.nodes_reinforced,
+            nodes_flagged_split=list(set(_accumulated_nodes_for_split)),  # Dedupe
+        )
+
+        # Reset counters
+        _postmortem_problem_count = 0
+        _accumulated_nodes_for_split = []
+
+        logger.info(
+            "[mcts] Batch merge/split complete: %d merges, %d splits flagged",
+            merge_split_result["merges_succeeded"],
+            merge_split_result["splits_flagged"],
+        )
 
     return {
         **amplitude_stats,
@@ -958,6 +990,8 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         "merges_succeeded": merge_split_result["merges_succeeded"],
         "merged_pairs": merge_split_result["merged_pairs"],
         "splits_flagged": merge_split_result["splits_flagged"],
+        "batch_counter": _postmortem_problem_count,
+        "next_merge_split_in": MERGE_SPLIT_BATCH_SIZE - _postmortem_problem_count if MERGE_SPLIT_BATCH_SIZE > 0 else -1,
     }
 
 

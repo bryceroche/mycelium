@@ -2978,13 +2978,28 @@ class StepSignatureDB:
             if len(candidates) < 2:
                 return []
 
-            # Find pairs with high similarity
+            # Vectorized similarity computation (much faster than O(n²) loop)
+            # Stack centroids into matrix and compute all pairwise similarities at once
+            ids = [c[0] for c in candidates]
+            centroids = np.vstack([c[1] for c in candidates])  # (n, dim)
+
+            # Normalize for cosine similarity
+            norms = np.linalg.norm(centroids, axis=1, keepdims=True)
+            norms = np.where(norms > 0, norms, 1e-9)  # Avoid division by zero
+            normalized = centroids / norms
+
+            # All pairwise cosine similarities in one matrix multiply
+            # similarity_matrix[i,j] = cosine_similarity(centroid_i, centroid_j)
+            similarity_matrix = normalized @ normalized.T  # (n, n)
+
+            # Extract upper triangle pairs above threshold (avoid duplicates and self-similarity)
             merge_candidates = []
-            for i, (id1, c1, u1, s1) in enumerate(candidates):
-                for j, (id2, c2, u2, s2) in enumerate(candidates[i+1:], i+1):
-                    sim = float(np.dot(c1, c2) / (np.linalg.norm(c1) * np.linalg.norm(c2) + 1e-9))
+            n = len(ids)
+            for i in range(n):
+                for j in range(i + 1, n):
+                    sim = float(similarity_matrix[i, j])
                     if sim >= min_similarity:
-                        merge_candidates.append((id1, id2, sim))
+                        merge_candidates.append((ids[i], ids[j], sim))
 
             # Sort by similarity descending and limit
             merge_candidates.sort(key=lambda x: -x[2])

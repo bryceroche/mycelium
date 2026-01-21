@@ -462,6 +462,18 @@ INTERFERENCE_CONSTRUCTIVE_BOOST = 0.1  # Strength for constructive effects (plac
 INTERFERENCE_DESTRUCTIVE_PENALTY = 0.15  # Strength for destructive effects (placeholder)
 
 # =============================================================================
+# MERGE/SPLIT BATCHING (Structural tree changes from interference)
+# =============================================================================
+# Per CLAUDE.md: Constructive → merge, Destructive → split
+# These operations are expensive, so we batch them instead of running per-problem.
+
+MERGE_SPLIT_BATCH_SIZE = 10  # Run merge/split every N problems (0 = disabled)
+MERGE_MIN_SUCCESS_RATE = 0.75  # Min success rate for merge candidates
+MERGE_MIN_USES = 10  # Min uses to trust signal for merge
+MERGE_MIN_SIMILARITY = 0.90  # Min centroid similarity for merge
+MERGE_MAX_PER_BATCH = 3  # Max merges per batch run
+
+# =============================================================================
 # ZERO-LLM ROUTING (Skip planner for mature signatures)
 # =============================================================================
 # When enabled, the solver will attempt to route problems directly through
