@@ -2992,18 +2992,30 @@ class StepSignatureDB:
             # similarity_matrix[i,j] = cosine_similarity(centroid_i, centroid_j)
             similarity_matrix = normalized @ normalized.T  # (n, n)
 
-            # Extract upper triangle pairs above threshold (avoid duplicates and self-similarity)
-            merge_candidates = []
+            # Vectorized upper triangle extraction (avoid O(n²) loop)
             n = len(ids)
-            for i in range(n):
-                for j in range(i + 1, n):
-                    sim = float(similarity_matrix[i, j])
-                    if sim >= min_similarity:
-                        merge_candidates.append((ids[i], ids[j], sim))
+            i_idx, j_idx = np.triu_indices(n, k=1)  # Upper triangle indices, k=1 excludes diagonal
+            sims = similarity_matrix[i_idx, j_idx]
 
-            # Sort by similarity descending and limit
-            merge_candidates.sort(key=lambda x: -x[2])
-            return merge_candidates[:limit]
+            # Filter by threshold
+            mask = sims >= min_similarity
+            if not np.any(mask):
+                return []
+
+            # Build results from filtered indices
+            filtered_i = i_idx[mask]
+            filtered_j = j_idx[mask]
+            filtered_sims = sims[mask]
+
+            # Sort by similarity descending
+            sort_idx = np.argsort(-filtered_sims)[:limit]
+
+            merge_candidates = [
+                (ids[filtered_i[k]], ids[filtered_j[k]], float(filtered_sims[k]))
+                for k in sort_idx
+            ]
+
+            return merge_candidates
 
     def flag_for_split(self, signature_id: int, reason: str = "destructive_interference") -> bool:
         """Flag a signature for potential decomposition/split.
