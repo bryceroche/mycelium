@@ -75,6 +75,7 @@ from mycelium.data_layer.mcts import (
     create_thread,
     complete_thread,
     log_thread_step,
+    run_postmortem,
 )
 
 logger = logging.getLogger(__name__)
@@ -2467,6 +2468,15 @@ Expression:"""
         if self._current_dag_id:
             grade_dag(self._current_dag_id, success=correct)
             logger.debug("[solver] Graded MCTS DAG %s: success=%s", self._current_dag_id, correct)
+
+            # Run post-mortem analysis to compute amplitude_post values
+            # Per CLAUDE.md: "High confidence + failure = strong negative signal"
+            postmortem_stats = run_postmortem(self._current_dag_id)
+            if postmortem_stats.get("high_conf_wrong", 0) > 0:
+                logger.warning(
+                    "[solver] Post-mortem found %d high-confidence wrong decisions in DAG %s",
+                    postmortem_stats["high_conf_wrong"], self._current_dag_id
+                )
 
         # MCTS Training: Process path outcomes for operational equivalence learning
         # Only in training mode - inference skips this overhead

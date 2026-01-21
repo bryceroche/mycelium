@@ -448,3 +448,151 @@ def get_dag_step_node_performance(dag_step_id: str, node_id: int) -> dict:
         "avg_amplitude": row[3] or 1.0,
         "avg_amplitude_post": row[4],
     }
+
+
+# =============================================================================
+# POST-MORTEM ANALYSIS (amplitude_post computation)
+# =============================================================================
+
+
+def run_postmortem(dag_id: str) -> dict:
+    """Run post-mortem analysis on a completed DAG.
+
+    Computes amplitude_post for each thread_step based on thread outcomes.
+
+    Formula:
+    - Thread won + high confidence (amp >= 0.7) → amplitude_post = amp * 1.1 (reinforce)
+    - Thread won + low confidence (amp < 0.7) → amplitude_post = amp * 1.4 (boost discovery)
+    - Thread lost + low confidence (amp < 0.7) → amplitude_post = amp * 0.85 (mild penalty)
+    - Thread lost + high confidence (amp >= 0.7) → amplitude_post = amp * 0.5 (strong penalty)
+
+    Returns:
+        Dict with summary statistics:
+        - total_steps: Number of thread_steps processed
+        - threads_won: Number of winning threads
+        - threads_lost: Number of losing threads
+        - high_conf_wrong: Count of high-confidence wrong decisions (red flag)
+        - low_conf_right: Count of low-confidence right decisions (opportunity)
+    """
+    conn = get_db()
+
+    # Get all thread outcomes for this DAG
+    cursor = conn.execute(
+        """
+        SELECT thread_id, success FROM mcts_threads WHERE dag_id = ?
+        """,
+        (dag_id,),
+    )
+    thread_outcomes = {row[0]: row[1] for row in cursor.fetchall()}
+
+    if not thread_outcomes:
+        logger.debug("[mcts] No threads found for DAG %s", dag_id)
+        return {"total_steps": 0, "threads_won": 0, "threads_lost": 0}
+
+    # Get all thread_steps for this DAG
+    cursor = conn.execute(
+        """
+        SELECT thread_step_id, thread_id, amplitude
+        FROM mcts_thread_steps
+        WHERE dag_id = ?
+        """,
+        (dag_id,),
+    )
+    thread_steps = cursor.fetchall()
+
+    if not thread_steps:
+        logger.debug("[mcts] No thread_steps found for DAG %s", dag_id)
+        return {"total_steps": 0, "threads_won": 0, "threads_lost": 0}
+
+    # Compute amplitude_post for each step
+    updates = []
+    stats = {
+        "total_steps": len(thread_steps),
+        "threads_won": sum(1 for s in thread_outcomes.values() if s == 1),
+        "threads_lost": sum(1 for s in thread_outcomes.values() if s == 0),
+        "high_conf_wrong": 0,
+        "low_conf_right": 0,
+    }
+
+    HIGH_CONF_THRESHOLD = 0.7
+
+    for thread_step_id, thread_id, amplitude in thread_steps:
+        thread_success = thread_outcomes.get(thread_id)
+
+        if thread_success is None:
+            # Thread not graded yet, skip
+            continue
+
+        amp = amplitude if amplitude is not None else 1.0
+        is_high_conf = amp >= HIGH_CONF_THRESHOLD
+        won = thread_success == 1
+
+        # Compute amplitude_post based on outcome × confidence
+        if won and is_high_conf:
+            # Reinforce: confident and right
+            amplitude_post = amp * 1.1
+        elif won and not is_high_conf:
+            # Boost: discovered something (low confidence but right)
+            amplitude_post = amp * 1.4
+            stats["low_conf_right"] += 1
+        elif not won and not is_high_conf:
+            # Mild penalty: uncertain and wrong (expected)
+            amplitude_post = amp * 0.85
+        else:
+            # Strong penalty: confident and wrong (bad signal)
+            amplitude_post = amp * 0.5
+            stats["high_conf_wrong"] += 1
+
+        # Clamp to [0, 2] range
+        amplitude_post = max(0.0, min(2.0, amplitude_post))
+        updates.append((thread_step_id, amplitude_post))
+
+    # Batch update
+    if updates:
+        batch_update_amplitudes(updates)
+        logger.info(
+            "[mcts] Post-mortem for DAG %s: %d steps, %d won, %d lost, "
+            "%d high-conf-wrong, %d low-conf-right",
+            dag_id, stats["total_steps"], stats["threads_won"], stats["threads_lost"],
+            stats["high_conf_wrong"], stats["low_conf_right"],
+        )
+
+    return stats
+
+
+def get_problem_nodes_needing_attention(dag_id: str) -> list[dict]:
+    """Identify nodes that performed poorly in this DAG.
+
+    Returns nodes where:
+    - High confidence but thread lost (amplitude >= 0.7, success = 0)
+
+    These are candidates for decomposition or centroid adjustment.
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT
+            ts.node_id,
+            ts.dag_step_id,
+            ts.amplitude,
+            ts.amplitude_post,
+            t.success as thread_success
+        FROM mcts_thread_steps ts
+        JOIN mcts_threads t ON ts.thread_id = t.thread_id
+        WHERE ts.dag_id = ?
+          AND ts.amplitude >= 0.7
+          AND t.success = 0
+        """,
+        (dag_id,),
+    )
+
+    return [
+        {
+            "node_id": row[0],
+            "dag_step_id": row[1],
+            "amplitude": row[2],
+            "amplitude_post": row[3],
+            "thread_success": row[4],
+        }
+        for row in cursor.fetchall()
+    ]

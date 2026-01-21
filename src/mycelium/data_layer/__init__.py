@@ -32,6 +32,8 @@ from mycelium.data_layer.mcts import (
     get_thread_steps_for_dag,
     get_node_step_stats,
     get_dag_step_node_performance,
+    run_postmortem,
+    get_problem_nodes_needing_attention,
 )
 
 db = get_db()
@@ -64,4 +66,6 @@ __all__ = [
     "get_thread_steps_for_dag",
     "get_node_step_stats",
     "get_dag_step_node_performance",
+    "run_postmortem",
+    "get_problem_nodes_needing_attention",
 ]
