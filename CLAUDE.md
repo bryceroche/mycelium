@@ -39,6 +39,26 @@ Over time, successful signatures accumulate embeddings of problems they *actuall
 
 High-traffic signatures become **semantic attractors**: their centroids stabilize around operational meaning rather than vocabulary. The embedding space self-organizes by what operations *do*, not what they *look like*.
 
+## The Crown Jewel: MCTS Post-Mortem Analysis
+
+**MCTS post-mortem analysis is the central brain of the system.** All structural decisions flow from it:
+
+| Decision | Trigger from Post-Mortem |
+|----------|-------------------------|
+| **Leaf decomposition** | Destructive interference (mixed success/failure at same node) |
+| **Centroid updates** | Successful rollouts average in new embeddings |
+| **Cluster merges** | Constructive interference (multiple nodes succeed together) |
+| **Cluster splits** | High variance in `(dag_step_id, node_id)` performance |
+| **Amplitude adjustments** | Confidence × outcome signal strength |
+
+**Nothing changes the tree structure except post-mortem analysis.** Individual failures don't trigger decomposition—accumulated evidence does. This prevents thrashing and ensures changes are data-driven.
+
+The post-mortem runs after ground truth is known (problem graded), examines all thread paths, and updates:
+1. `amplitude_post` for each thread step
+2. Signature success/failure counts
+3. Interference pattern detection
+4. Structural change recommendations
+
 ## Validating MCTS is Working
 Use `print_alignment_report(DB_PATH)` to check if rollouts are helping:
 - **Correlation**: Should increase over training (similarity predicts correctness)

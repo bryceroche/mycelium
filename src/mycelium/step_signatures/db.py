@@ -3043,8 +3043,8 @@ class StepSignatureDB:
         This marks a signature as needing attention due to mixed interference
         results. The actual decomposition is triggered by umbrella_learner.
 
-        For now, this increments operational_failures which will naturally
-        trigger decomposition consideration in the learning loop.
+        This increments operational_failures which gates decomposition in umbrella_learner.
+        Per CLAUDE.md: only signatures with operational_failures > 0 are decomposition candidates.
 
         Args:
             signature_id: ID of signature to flag

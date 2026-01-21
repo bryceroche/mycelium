@@ -68,6 +68,7 @@ class StepSignature:
     # Statistics
     uses: int = 0
     successes: int = 0
+    operational_failures: int = 0  # MCTS post-mortem: destructive interference flags
 
     # Difficulty tracking (for universal tree)
     # Format: {"0.2": {"uses": 10, "successes": 8}, "0.8": {"uses": 2, "successes": 0}}
@@ -245,6 +246,7 @@ class StepSignature:
             examples=examples,
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
+            operational_failures=row.get("operational_failures", 0) or 0,
             difficulty_stats=difficulty_stats,
             max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
@@ -285,6 +287,7 @@ class StepSignature:
             examples=[],  # Skip JSON parsing
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
+            operational_failures=row.get("operational_failures", 0) or 0,
             difficulty_stats={},  # Skip JSON parsing
             max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
@@ -326,6 +329,7 @@ class StepSignature:
             examples=[],  # Skip JSON parsing
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
+            operational_failures=row.get("operational_failures", 0) or 0,
             difficulty_stats={},  # Skip JSON parsing
             max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
