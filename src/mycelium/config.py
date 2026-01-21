@@ -115,6 +115,15 @@ ADAPTIVE_EXPLORATION_C_MIN = 0.5  # Mature: mostly exploit
 ADAPTIVE_SPLIT_THRESHOLD_LENIENT = 0.7  # Cold start: tolerate 70% failure before split
 ADAPTIVE_SPLIT_THRESHOLD_STRICT = 0.4   # Mature: split at 40% failure
 
+# UCB1 adjustment from post-mortem hit/miss patterns
+# Tracks: high_conf_wrong (confident but failed), low_conf_right (explored and succeeded)
+# - High low_conf_right rate → exploration is finding good paths → increase C
+# - High high_conf_wrong rate → confident picks are wrong → increase C
+UCB1_ADJUSTMENT_ENABLED = True  # Enable post-mortem UCB1 adjustment
+UCB1_ADJUSTMENT_WINDOW = 50  # Rolling window of problems for hit/miss tracking
+UCB1_ADJUSTMENT_MAX_DELTA = 0.3  # Max adjustment to C (±0.3)
+UCB1_ADJUSTMENT_SENSITIVITY = 0.5  # How quickly to respond to patterns (0-1)
+
 # =============================================================================
 # MCTS COMPUTE BUDGET (multi-path exploration)
 # =============================================================================
@@ -474,6 +483,31 @@ MERGE_MIN_SIMILARITY = 0.90  # Min centroid similarity for merge
 MERGE_MAX_PER_BATCH = 3  # Max merges per batch run
 
 # =============================================================================
+# SIGNATURE RETIREMENT (Prune consistently failing nodes)
+# =============================================================================
+# Per CLAUDE.md: Signatures that consistently fail should be flagged for retirement.
+# Post-mortem identifies "dead weight" nodes that hurt routing.
+#
+# Retirement options:
+#   1. PRUNE: Delete signature entirely (reroute traffic to siblings)
+#   2. DEMOTE: Add routing penalty (deprioritize but keep for learning)
+#   3. MERGE_UP: Absorb back into parent umbrella
+#
+# Different from DECAY (traffic-based): retirement is failure-based.
+
+RETIREMENT_ENABLED = True  # Master switch for retirement processing
+RETIREMENT_MIN_USES = 10  # Need enough data to trust failure pattern
+RETIREMENT_MAX_SUCCESS_RATE = 0.15  # Retire if success rate below this
+RETIREMENT_MIN_OPERATIONAL_FAILURES = 3  # Need multiple post-mortem flags
+RETIREMENT_MIN_AGE_DAYS = 3  # Don't retire signatures younger than this
+RETIREMENT_MAX_PER_BATCH = 5  # Max retirements per batch run
+
+# Retirement action thresholds (escalating severity)
+RETIREMENT_DEMOTE_PENALTY = 0.3  # Routing penalty for demoted signatures
+RETIREMENT_PRUNE_SUCCESS_RATE = 0.05  # Prune entirely if below this (very bad)
+RETIREMENT_PRUNE_MIN_USES = 20  # Only prune if we have high confidence
+
+# =============================================================================
 # ZERO-LLM ROUTING (Skip planner for mature signatures)
 # =============================================================================
 # When enabled, the solver will attempt to route problems directly through
@@ -498,6 +532,12 @@ DSL_REWRITER_MIN_USES = 10  # Need enough data to identify failure patterns
 DSL_REWRITER_MAX_SUCCESS_RATE = 0.40  # Rewrite if success rate below this
 DSL_REWRITER_MIN_TRAFFIC_SHARE = 0.005  # Only rewrite high-traffic sigs (0.5%)
 DSL_REWRITER_COOLDOWN_HOURS = 24  # Don't rewrite same sig within this period
+
+# Post-mortem triggered DSL regeneration
+# Per beads mycelium-flbq: When post-mortem detects high failure rate, trigger DSL regen
+POSTMORTEM_DSL_REGEN_ENABLED = True  # Trigger DSL regen from post-mortem
+POSTMORTEM_DSL_REGEN_MIN_HIGH_CONF_WRONG = 2  # Min high-conf-wrong to trigger regen
+POSTMORTEM_DSL_REGEN_BATCH_SIZE = 10  # How many problems before running batch regen
 
 # =============================================================================
 # STEP-LEVEL ANALYTICS

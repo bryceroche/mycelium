@@ -30,6 +30,9 @@ from mycelium.config import (
     INTERFERENCE_MIN_DESTRUCTIVE,
     INTERFERENCE_CONSTRUCTIVE_BOOST,
     INTERFERENCE_DESTRUCTIVE_PENALTY,
+    POSTMORTEM_DSL_REGEN_ENABLED,
+    POSTMORTEM_DSL_REGEN_MIN_HIGH_CONF_WRONG,
+    POSTMORTEM_DSL_REGEN_BATCH_SIZE,
 )
 
 logger = logging.getLogger(__name__)
@@ -521,6 +524,8 @@ def run_postmortem(dag_id: str) -> dict:
         "threads_lost": sum(1 for s in thread_outcomes.values() if s == 0),
         "high_conf_wrong": 0,
         "low_conf_right": 0,
+        "total_high_conf": 0,  # For UCB1 adjustment (mycelium-nirq)
+        "total_low_conf": 0,   # For UCB1 adjustment (mycelium-nirq)
     }
 
     for thread_step_id, thread_id, amplitude in thread_steps:
@@ -533,6 +538,12 @@ def run_postmortem(dag_id: str) -> dict:
         amp = amplitude if amplitude is not None else 1.0
         is_high_conf = amp >= POSTMORTEM_HIGH_CONF_THRESHOLD
         won = thread_success == 1
+
+        # Track totals for UCB1 adjustment hit/miss rates
+        if is_high_conf:
+            stats["total_high_conf"] += 1
+        else:
+            stats["total_low_conf"] += 1
 
         # Compute amplitude_post based on outcome × confidence (using config multipliers)
         if won and is_high_conf:
@@ -928,6 +939,8 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     1. Standard amplitude_post computation (run_postmortem) - ALWAYS runs
     2. Interference pattern detection and centroid effects - ALWAYS runs
     3. Merge/split operations - BATCHED (runs every N problems per config)
+    4. Retirement processing - BATCHED (runs at same interval as merge/split)
+    5. DSL regeneration accumulation - tracks high-conf-wrong for batch regen
 
     Args:
         dag_id: The DAG to analyze
@@ -938,10 +951,21 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     """
     global _postmortem_problem_count, _accumulated_nodes_for_split
 
-    from mycelium.config import MERGE_SPLIT_BATCH_SIZE
+    from mycelium.config import MERGE_SPLIT_BATCH_SIZE, RETIREMENT_ENABLED
+    from mycelium.mcts.adaptive import AdaptiveExploration
 
     # First run standard postmortem (amplitude_post computation) - cheap, always run
     amplitude_stats = run_postmortem(dag_id)
+
+    # Record hit/miss stats for UCB1 adjustment (per mycelium-nirq)
+    # This feeds into AdaptiveExploration to tune the exploration constant
+    adaptive = AdaptiveExploration.get_instance()
+    adaptive.record_postmortem_stats(
+        high_conf_wrong=amplitude_stats.get("high_conf_wrong", 0),
+        low_conf_right=amplitude_stats.get("low_conf_right", 0),
+        total_high_conf=amplitude_stats.get("total_high_conf", 0),
+        total_low_conf=amplitude_stats.get("total_low_conf", 0),
+    )
 
     # Then detect and apply interference effects - cheap, always run
     interference_result = apply_interference_effects(dag_id, step_db)
@@ -949,6 +973,17 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     # Accumulate nodes flagged for split
     _accumulated_nodes_for_split.extend(interference_result.nodes_flagged_split)
     _postmortem_problem_count += 1
+
+    # Per beads mycelium-flbq: Accumulate high-conf-wrong nodes for DSL regen
+    # This tracks nodes that had high confidence but produced wrong answers
+    if amplitude_stats.get("high_conf_wrong", 0) >= POSTMORTEM_DSL_REGEN_MIN_HIGH_CONF_WRONG:
+        problem_nodes = get_problem_nodes_needing_attention(dag_id)
+        accumulate_high_conf_wrong_nodes(problem_nodes)
+        increment_dsl_regen_counter()
+        logger.debug(
+            "[mcts] Accumulated %d high-conf-wrong nodes for DSL regen (total: %d)",
+            len(problem_nodes), len(get_accumulated_failing_nodes())
+        )
 
     # Check if we should run merge/split (batched for performance)
     merge_split_result = {"merges_succeeded": 0, "merged_pairs": [], "splits_flagged": 0}
@@ -988,6 +1023,9 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         "splits_flagged": merge_split_result["splits_flagged"],
         "batch_counter": _postmortem_problem_count,
         "next_merge_split_in": MERGE_SPLIT_BATCH_SIZE - _postmortem_problem_count if MERGE_SPLIT_BATCH_SIZE > 0 else -1,
+        # DSL regeneration info (per beads mycelium-flbq)
+        "dsl_regen_nodes_accumulated": len(get_accumulated_failing_nodes()),
+        "dsl_regen_ready": should_trigger_dsl_regen(),
     }
 
 
@@ -1186,4 +1224,453 @@ def run_merge_split_from_interference(
         "merged_pairs": merge_result.merged_pairs,
         "splits_flagged": split_result.splits_flagged,
         "split_node_ids": split_result.split_node_ids,
+    }
+
+
+# =============================================================================
+# POST-MORTEM TRIGGERED DSL REGENERATION
+# =============================================================================
+# Per beads mycelium-flbq: When post-mortem detects high failure rate at a
+# specific (dag_step_id, node_id) pair, trigger DSL regeneration.
+
+# Accumulator for nodes with high-conf-wrong across problems
+_accumulated_high_conf_wrong_nodes: list[int] = []
+_dsl_regen_problem_count: int = 0
+
+
+def accumulate_high_conf_wrong_nodes(nodes: list[dict]) -> None:
+    """Accumulate nodes with high-confidence wrong decisions for batch DSL regen.
+
+    Args:
+        nodes: List of dicts with node_id from get_problem_nodes_needing_attention
+    """
+    global _accumulated_high_conf_wrong_nodes
+    for node in nodes:
+        node_id = node.get("node_id")
+        if node_id is not None and node_id not in _accumulated_high_conf_wrong_nodes:
+            _accumulated_high_conf_wrong_nodes.append(node_id)
+
+
+def get_accumulated_failing_nodes() -> list[int]:
+    """Get the current list of accumulated failing node IDs."""
+    return list(_accumulated_high_conf_wrong_nodes)
+
+
+def clear_accumulated_failing_nodes() -> None:
+    """Clear the accumulated failing nodes after processing."""
+    global _accumulated_high_conf_wrong_nodes, _dsl_regen_problem_count
+    _accumulated_high_conf_wrong_nodes = []
+    _dsl_regen_problem_count = 0
+
+
+async def trigger_dsl_regeneration_for_nodes(
+    node_ids: list[int],
+    step_db,
+    client,
+) -> dict:
+    """Trigger DSL regeneration for specific failing nodes.
+
+    This is called when post-mortem has accumulated enough evidence that
+    certain signatures have incorrect DSLs.
+
+    Args:
+        node_ids: List of signature IDs (node_id in MCTS tables = signature id)
+        step_db: StepSignatureDB instance
+        client: LLM client for DSL generation
+
+    Returns:
+        Dict with regeneration statistics
+    """
+    from mycelium.step_signatures.dsl_rewriter import (
+        RewriteCandidate,
+        generate_improved_dsl,
+    )
+
+    if not POSTMORTEM_DSL_REGEN_ENABLED:
+        return {"skipped": True, "reason": "POSTMORTEM_DSL_REGEN_ENABLED is False"}
+
+    if not node_ids:
+        return {"regenerated": 0, "failed": 0, "skipped": 0}
+
+    # Deduplicate and get unique node IDs
+    unique_nodes = list(set(node_ids))
+
+    regenerated = 0
+    failed = 0
+    skipped = 0
+
+    for node_id in unique_nodes:
+        try:
+            # Get signature details
+            sig = step_db.get_signature_by_id(node_id)
+            if sig is None:
+                logger.warning("[mcts] Node %d not found in signatures, skipping", node_id)
+                skipped += 1
+                continue
+
+            # Skip non-math DSLs (decompose, router, etc)
+            if sig.dsl_type not in ("math", "sympy", "python"):
+                logger.debug("[mcts] Skipping non-math signature %d (type=%s)", node_id, sig.dsl_type)
+                skipped += 1
+                continue
+
+            # Build rewrite candidate
+            candidate = RewriteCandidate(
+                signature_id=node_id,
+                step_type=sig.step_type,
+                description=sig.description,
+                current_dsl=sig.dsl_script,
+                uses=sig.uses,
+                successes=sig.successes,
+                success_rate=sig.success_rate,
+            )
+
+            # Get failure examples from recent MCTS data
+            failure_examples = _get_recent_failures_for_node(node_id)
+
+            # Generate improved DSL
+            new_dsl = await generate_improved_dsl(candidate, client, failure_examples)
+
+            if new_dsl:
+                # Update signature with new DSL
+                step_db.update_nl_interface(
+                    signature_id=node_id,
+                    dsl_script=new_dsl,
+                )
+                # Mark as rewritten for cooldown
+                step_db.mark_signature_rewritten(node_id)
+                regenerated += 1
+                logger.info(
+                    "[mcts] Regenerated DSL for sig %d '%s' (was %.1f%% success)",
+                    node_id, sig.step_type, sig.success_rate * 100
+                )
+            else:
+                failed += 1
+                logger.warning(
+                    "[mcts] Failed to generate new DSL for sig %d '%s'",
+                    node_id, sig.step_type
+                )
+
+        except Exception as e:
+            logger.error("[mcts] Error regenerating DSL for node %d: %s", node_id, e)
+            failed += 1
+
+    logger.info(
+        "[mcts] DSL regeneration batch complete: %d regenerated, %d failed, %d skipped",
+        regenerated, failed, skipped
+    )
+
+    return {
+        "regenerated": regenerated,
+        "failed": failed,
+        "skipped": skipped,
+        "total_nodes": len(unique_nodes),
+    }
+
+
+def _get_recent_failures_for_node(node_id: int, limit: int = 5) -> list[dict]:
+    """Get recent failure examples for a node from MCTS thread_steps.
+
+    Returns examples of what inputs/results led to failures.
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT
+            ts.step_result,
+            ds.step_description,
+            t.final_answer
+        FROM mcts_thread_steps ts
+        JOIN mcts_threads t ON ts.thread_id = t.thread_id
+        LEFT JOIN mcts_dag_steps ds ON ts.dag_step_id = ds.dag_step_id
+        WHERE ts.node_id = ?
+          AND t.success = 0
+          AND ts.amplitude >= 0.7
+        ORDER BY ts.created_at DESC
+        LIMIT ?
+        """,
+        (node_id, limit),
+    )
+
+    examples = []
+    for row in cursor.fetchall():
+        examples.append({
+            "result": row[0],
+            "step_description": row[1],
+            "thread_answer": row[2],
+            "error": "High-confidence wrong decision",
+        })
+
+    return examples
+
+
+def should_trigger_dsl_regen() -> bool:
+    """Check if we should trigger batch DSL regeneration.
+
+    Returns True if:
+    - POSTMORTEM_DSL_REGEN_ENABLED is True
+    - We've accumulated enough problems
+    - We have nodes needing attention
+    """
+    if not POSTMORTEM_DSL_REGEN_ENABLED:
+        return False
+    if _dsl_regen_problem_count < POSTMORTEM_DSL_REGEN_BATCH_SIZE:
+        return False
+    if not _accumulated_high_conf_wrong_nodes:
+        return False
+    return True
+
+
+def increment_dsl_regen_counter() -> int:
+    """Increment the problem counter for DSL regen batching."""
+    global _dsl_regen_problem_count
+    _dsl_regen_problem_count += 1
+    return _dsl_regen_problem_count
+
+
+# =============================================================================
+# SIGNATURE RETIREMENT (Prune consistently failing nodes)
+# =============================================================================
+# Per beads mycelium-x0mt: Signatures that consistently fail across multiple
+# problems should be flagged for retirement. Post-mortem identifies "dead weight"
+# nodes that hurt routing.
+
+
+@dataclass
+class RetirementResult:
+    """Result of retirement processing."""
+    candidates_found: int
+    demoted: int
+    pruned: int
+    merged_up: int
+    demoted_ids: list[int]
+    pruned_ids: list[int]
+    merged_up_ids: list[int]
+
+
+def detect_retirement_candidates(step_db) -> list[tuple[int, str]]:
+    """Find signatures that should be considered for retirement.
+
+    Criteria:
+    - uses >= RETIREMENT_MIN_USES (enough data)
+    - success_rate <= RETIREMENT_MAX_SUCCESS_RATE (consistently failing)
+    - operational_failures >= RETIREMENT_MIN_OPERATIONAL_FAILURES (flagged by post-mortem)
+    - age >= RETIREMENT_MIN_AGE_DAYS (not too new)
+
+    Returns:
+        List of (signature_id, recommended_action) tuples.
+        Actions: "demote", "prune", "merge_up"
+    """
+    from mycelium.config import (
+        RETIREMENT_ENABLED,
+        RETIREMENT_MIN_USES,
+        RETIREMENT_MAX_SUCCESS_RATE,
+        RETIREMENT_MIN_OPERATIONAL_FAILURES,
+        RETIREMENT_MIN_AGE_DAYS,
+        RETIREMENT_PRUNE_SUCCESS_RATE,
+        RETIREMENT_PRUNE_MIN_USES,
+    )
+    from datetime import datetime, timedelta
+
+    if not RETIREMENT_ENABLED:
+        return []
+
+    candidates = []
+    all_sigs = step_db.get_all_signatures()
+    now = datetime.now()
+    min_age_cutoff = now - timedelta(days=RETIREMENT_MIN_AGE_DAYS)
+
+    for sig in all_sigs:
+        # Skip root signature (never retire)
+        if sig.is_root:
+            continue
+
+        # Skip if not enough uses
+        if (sig.uses or 0) < RETIREMENT_MIN_USES:
+            continue
+
+        # Skip if success rate is acceptable
+        if sig.success_rate > RETIREMENT_MAX_SUCCESS_RATE:
+            continue
+
+        # Skip if not flagged enough by post-mortem
+        if (sig.operational_failures or 0) < RETIREMENT_MIN_OPERATIONAL_FAILURES:
+            continue
+
+        # Skip if too new
+        if sig.created_at:
+            try:
+                created = datetime.fromisoformat(sig.created_at.replace("Z", "+00:00"))
+                if created.replace(tzinfo=None) > min_age_cutoff:
+                    continue
+            except (ValueError, TypeError):
+                pass  # Can't parse date, allow retirement
+
+        # Determine recommended action based on severity
+        if sig.success_rate <= RETIREMENT_PRUNE_SUCCESS_RATE and (sig.uses or 0) >= RETIREMENT_PRUNE_MIN_USES:
+            # Very bad - prune entirely
+            action = "prune"
+        elif sig.is_semantic_umbrella:
+            # Umbrella with poor performance - merge children up
+            action = "merge_up"
+        else:
+            # Default - demote (add routing penalty)
+            action = "demote"
+
+        candidates.append((sig.id, action))
+        logger.debug(
+            "[mcts] Retirement candidate: sig=%d, action=%s, uses=%d, success=%.1f%%, op_fail=%d",
+            sig.id, action, sig.uses or 0, sig.success_rate * 100, sig.operational_failures or 0
+        )
+
+    return candidates
+
+
+def process_retirement_candidates(
+    step_db,
+    candidates: list[tuple[int, str]],
+    max_per_batch: int = None,
+) -> RetirementResult:
+    """Apply retirement actions to candidate signatures.
+
+    Actions:
+    - demote: Add routing penalty via operational_failures increment
+    - prune: Archive signature (soft delete) and reparent children
+    - merge_up: Absorb back into parent umbrella
+
+    Args:
+        step_db: StepSignatureDB instance
+        candidates: List of (signature_id, action) tuples from detect_retirement_candidates
+        max_per_batch: Max retirements to process (default from config)
+
+    Returns:
+        RetirementResult with statistics
+    """
+    from mycelium.config import RETIREMENT_MAX_PER_BATCH
+
+    if max_per_batch is None:
+        max_per_batch = RETIREMENT_MAX_PER_BATCH
+
+    demoted_ids = []
+    pruned_ids = []
+    merged_up_ids = []
+    processed = 0
+
+    for sig_id, action in candidates:
+        if processed >= max_per_batch:
+            break
+
+        try:
+            if action == "demote":
+                # Add routing penalty by incrementing operational_failures further
+                # This affects routing decisions via success_rate
+                success = step_db.flag_for_split(sig_id, reason="retirement_demote")
+                if success:
+                    demoted_ids.append(sig_id)
+                    processed += 1
+                    logger.info("[mcts] Demoted signature %d (added routing penalty)", sig_id)
+
+            elif action == "prune":
+                # Soft delete - archive the signature
+                # First check if it has a parent to absorb its children
+                parent = step_db.get_parent(sig_id)
+                children = step_db.get_children(sig_id, for_routing=True)
+
+                if parent is not None and children:
+                    # Re-parent children to grandparent before pruning
+                    for child in children:
+                        step_db.add_child(parent.id, child.id, condition="reparented", routing_order=0)
+                    logger.info("[mcts] Reparented %d children of sig %d to parent %d", len(children), sig_id, parent.id)
+
+                # Archive the signature (soft delete)
+                success = step_db.archive_signature(sig_id, reason="retirement_prune")
+                if success:
+                    pruned_ids.append(sig_id)
+                    processed += 1
+                    logger.info("[mcts] Pruned (archived) signature %d", sig_id)
+
+            elif action == "merge_up":
+                # Merge this umbrella back into its parent
+                parent = step_db.get_parent(sig_id)
+                if parent is not None:
+                    # Use existing merge_signatures (parent absorbs this sig)
+                    success = step_db.merge_signatures(parent.id, sig_id)
+                    if success:
+                        merged_up_ids.append(sig_id)
+                        processed += 1
+                        logger.info("[mcts] Merged signature %d up into parent %d", sig_id, parent.id)
+                else:
+                    # No parent - just demote instead
+                    success = step_db.flag_for_split(sig_id, reason="retirement_merge_failed")
+                    if success:
+                        demoted_ids.append(sig_id)
+                        processed += 1
+                        logger.info("[mcts] No parent for merge_up, demoted signature %d instead", sig_id)
+
+        except Exception as e:
+            logger.warning("[mcts] Failed to retire signature %d (action=%s): %s", sig_id, action, e)
+
+    result = RetirementResult(
+        candidates_found=len(candidates),
+        demoted=len(demoted_ids),
+        pruned=len(pruned_ids),
+        merged_up=len(merged_up_ids),
+        demoted_ids=demoted_ids,
+        pruned_ids=pruned_ids,
+        merged_up_ids=merged_up_ids,
+    )
+
+    if demoted_ids or pruned_ids or merged_up_ids:
+        logger.info(
+            "[mcts] Retirement complete: %d demoted, %d pruned, %d merged_up (of %d candidates)",
+            result.demoted, result.pruned, result.merged_up, result.candidates_found
+        )
+
+    return result
+
+
+def run_retirement_check(step_db) -> dict:
+    """Run retirement check and process candidates.
+
+    This should be called as part of the post-mortem pipeline,
+    typically after merge/split processing.
+
+    Args:
+        step_db: StepSignatureDB instance
+
+    Returns:
+        Dict with retirement statistics
+    """
+    from mycelium.config import RETIREMENT_ENABLED
+
+    if not RETIREMENT_ENABLED:
+        return {
+            "candidates_found": 0,
+            "demoted": 0,
+            "pruned": 0,
+            "merged_up": 0,
+        }
+
+    # Detect candidates
+    candidates = detect_retirement_candidates(step_db)
+
+    if not candidates:
+        return {
+            "candidates_found": 0,
+            "demoted": 0,
+            "pruned": 0,
+            "merged_up": 0,
+        }
+
+    # Process candidates
+    result = process_retirement_candidates(step_db, candidates)
+
+    return {
+        "candidates_found": result.candidates_found,
+        "demoted": result.demoted,
+        "pruned": result.pruned,
+        "merged_up": result.merged_up,
+        "demoted_ids": result.demoted_ids,
+        "pruned_ids": result.pruned_ids,
+        "merged_up_ids": result.merged_up_ids,
     }
