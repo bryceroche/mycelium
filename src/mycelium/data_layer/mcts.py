@@ -940,6 +940,14 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     # Then detect and apply interference effects
     interference_result = apply_interference_effects(dag_id, step_db)
 
+    # Finally, run merge/split operations based on interference
+    # Per CLAUDE.md: Constructive → merge, Destructive → split
+    merge_split_result = run_merge_split_from_interference(
+        step_db,
+        nodes_reinforced=interference_result.nodes_reinforced,
+        nodes_flagged_split=interference_result.nodes_flagged_split,
+    )
+
     return {
         **amplitude_stats,
         "interference_patterns": interference_result.patterns_processed,
@@ -947,4 +955,188 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         "destructive_interference": interference_result.destructive_count,
         "nodes_reinforced": interference_result.nodes_reinforced,
         "nodes_flagged_split": interference_result.nodes_flagged_split,
+        "merges_succeeded": merge_split_result["merges_succeeded"],
+        "merged_pairs": merge_split_result["merged_pairs"],
+        "splits_flagged": merge_split_result["splits_flagged"],
+    }
+
+
+# =============================================================================
+# MERGE/SPLIT OPERATIONS (structural tree changes from interference)
+# =============================================================================
+
+
+@dataclass
+class MergeSplitResult:
+    """Result of merge/split operations."""
+    merges_attempted: int
+    merges_succeeded: int
+    merged_pairs: list[tuple[int, int]]  # (survivor_id, absorbed_id)
+    splits_flagged: int
+    split_node_ids: list[int]
+
+
+def process_merge_candidates(
+    step_db,
+    min_success_rate: float = 0.75,
+    min_uses: int = 10,
+    min_similarity: float = 0.90,
+    max_merges_per_run: int = 3,
+) -> MergeSplitResult:
+    """Process merge candidates from constructive interference patterns.
+
+    Finds pairs of signatures that consistently succeed together with similar
+    centroids and merges them. This consolidates operationally equivalent
+    signatures that were split by vocabulary differences.
+
+    Args:
+        step_db: StepSignatureDB instance
+        min_success_rate: Minimum success rate for merge candidates
+        min_uses: Minimum uses to trust the signal
+        min_similarity: Minimum centroid similarity for merge
+        max_merges_per_run: Limit merges per call to avoid over-consolidation
+
+    Returns:
+        MergeSplitResult with merge statistics
+    """
+    candidates = step_db.find_merge_candidates(
+        min_success_rate=min_success_rate,
+        min_uses=min_uses,
+        min_similarity=min_similarity,
+        limit=max_merges_per_run * 2,  # Get extra in case some fail
+    )
+
+    merged_pairs = []
+    merges_attempted = 0
+
+    for sig1_id, sig2_id, similarity in candidates:
+        if len(merged_pairs) >= max_merges_per_run:
+            break
+
+        merges_attempted += 1
+
+        # Determine survivor (more uses = more mature)
+        sig1 = step_db.get_signature(sig1_id)
+        sig2 = step_db.get_signature(sig2_id)
+
+        if sig1 is None or sig2 is None:
+            continue
+
+        # Survivor is the one with more uses (more established)
+        if (sig1.uses or 0) >= (sig2.uses or 0):
+            survivor_id, absorbed_id = sig1_id, sig2_id
+        else:
+            survivor_id, absorbed_id = sig2_id, sig1_id
+
+        # Attempt merge
+        success = step_db.merge_signatures(survivor_id, absorbed_id)
+        if success:
+            merged_pairs.append((survivor_id, absorbed_id))
+            logger.info(
+                "[mcts] Merged signatures: %d absorbed into %d (similarity=%.3f)",
+                absorbed_id, survivor_id, similarity
+            )
+
+    result = MergeSplitResult(
+        merges_attempted=merges_attempted,
+        merges_succeeded=len(merged_pairs),
+        merged_pairs=merged_pairs,
+        splits_flagged=0,
+        split_node_ids=[],
+    )
+
+    if merged_pairs:
+        logger.info(
+            "[mcts] Merge processing complete: %d/%d succeeded",
+            result.merges_succeeded, result.merges_attempted
+        )
+
+    return result
+
+
+def process_split_candidates(
+    step_db,
+    node_ids: list[int],
+) -> MergeSplitResult:
+    """Flag nodes for split/decomposition based on destructive interference.
+
+    Nodes with destructive interference (mixed success/failure) are flagged
+    for decomposition. The actual split is handled by umbrella_learner when
+    the signature's success rate drops low enough.
+
+    Args:
+        step_db: StepSignatureDB instance
+        node_ids: List of node IDs flagged from destructive interference
+
+    Returns:
+        MergeSplitResult with split statistics
+    """
+    split_node_ids = []
+
+    for node_id in node_ids:
+        success = step_db.flag_for_split(node_id, reason="destructive_interference")
+        if success:
+            split_node_ids.append(node_id)
+
+    result = MergeSplitResult(
+        merges_attempted=0,
+        merges_succeeded=0,
+        merged_pairs=[],
+        splits_flagged=len(split_node_ids),
+        split_node_ids=split_node_ids,
+    )
+
+    if split_node_ids:
+        logger.info(
+            "[mcts] Split flagging complete: %d nodes flagged for decomposition",
+            result.splits_flagged
+        )
+
+    return result
+
+
+def run_merge_split_from_interference(
+    step_db,
+    nodes_reinforced: list[int] = None,
+    nodes_flagged_split: list[int] = None,
+    enable_merges: bool = True,
+    enable_splits: bool = True,
+) -> dict:
+    """Run merge/split operations based on interference analysis.
+
+    This is called after apply_interference_effects to perform structural
+    changes to the signature tree:
+
+    - MERGE: Consolidate operationally equivalent signatures
+    - SPLIT: Flag generic clusters for decomposition
+
+    Args:
+        step_db: StepSignatureDB instance
+        nodes_reinforced: Node IDs from constructive interference (for merge consideration)
+        nodes_flagged_split: Node IDs from destructive interference (for split)
+        enable_merges: Whether to attempt merges
+        enable_splits: Whether to flag splits
+
+    Returns:
+        Dict with merge and split statistics
+    """
+    merge_result = MergeSplitResult(0, 0, [], 0, [])
+    split_result = MergeSplitResult(0, 0, [], 0, [])
+
+    # Process merges (uses global candidates, not just reinforced nodes)
+    # Reinforced nodes inform us that merging is safe, but we find candidates
+    # based on centroid similarity and success rates
+    if enable_merges:
+        merge_result = process_merge_candidates(step_db)
+
+    # Process splits (directly uses flagged nodes)
+    if enable_splits and nodes_flagged_split:
+        split_result = process_split_candidates(step_db, nodes_flagged_split)
+
+    return {
+        "merges_attempted": merge_result.merges_attempted,
+        "merges_succeeded": merge_result.merges_succeeded,
+        "merged_pairs": merge_result.merged_pairs,
+        "splits_flagged": split_result.splits_flagged,
+        "split_node_ids": split_result.split_node_ids,
     }
