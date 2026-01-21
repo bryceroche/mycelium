@@ -728,6 +728,274 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
     return stats
 
 
+# =============================================================================
+# DIVERGENCE-POINT ANALYSIS
+# =============================================================================
+# Per beads mycelium-2rss: Compare winning vs losing thread paths to find
+# exactly where the problem occurred. Not just the divergence point, but also
+# downstream nodes in the losing path that might be the actual culprit.
+
+
+@dataclass
+class ThreadPath:
+    """Ordered sequence of (dag_step_id, node_id) for a thread."""
+    thread_id: str
+    success: Optional[int]  # 1=won, 0=lost, None=ungraded
+    steps: list[tuple[str, int]]  # [(dag_step_id, node_id), ...]
+
+
+@dataclass
+class DivergencePoint:
+    """Where a winning and losing thread diverged."""
+    winning_thread_id: str
+    losing_thread_id: str
+    shared_prefix_len: int  # Number of identical steps before divergence
+    divergence_step_idx: int  # Index where paths diverged
+    divergence_dag_step_id: Optional[str]  # dag_step_id where they diverged
+    # The actual nodes chosen at divergence (winning chose one, losing chose another)
+    winning_node_at_divergence: Optional[int]
+    losing_node_at_divergence: Optional[int]
+    # The losing thread's suffix (nodes after divergence that might be problematic)
+    losing_suffix: list[tuple[str, int]]  # [(dag_step_id, node_id), ...]
+
+
+def get_thread_paths(dag_id: str) -> list[ThreadPath]:
+    """Get ordered step paths for all threads in a DAG.
+
+    Returns threads with their sequence of (dag_step_id, node_id) pairs,
+    ordered by step execution (created_at).
+
+    Args:
+        dag_id: The DAG to analyze
+
+    Returns:
+        List of ThreadPath objects with ordered steps
+    """
+    conn = get_db()
+
+    # Get thread outcomes
+    thread_cursor = conn.execute(
+        """
+        SELECT thread_id, success FROM mcts_threads WHERE dag_id = ?
+        """,
+        (dag_id,),
+    )
+    thread_outcomes = {row[0]: row[1] for row in thread_cursor.fetchall()}
+
+    if not thread_outcomes:
+        return []
+
+    # Get all steps for all threads, ordered by created_at within each thread
+    steps_cursor = conn.execute(
+        """
+        SELECT thread_id, dag_step_id, node_id
+        FROM mcts_thread_steps
+        WHERE dag_id = ?
+        ORDER BY thread_id, created_at
+        """,
+        (dag_id,),
+    )
+
+    # Group steps by thread
+    thread_steps: dict[str, list[tuple[str, int]]] = {}
+    for row in steps_cursor.fetchall():
+        thread_id, dag_step_id, node_id = row
+        if thread_id not in thread_steps:
+            thread_steps[thread_id] = []
+        thread_steps[thread_id].append((dag_step_id, node_id))
+
+    # Build ThreadPath objects
+    paths = []
+    for thread_id, steps in thread_steps.items():
+        paths.append(ThreadPath(
+            thread_id=thread_id,
+            success=thread_outcomes.get(thread_id),
+            steps=steps,
+        ))
+
+    return paths
+
+
+def find_divergence_points(dag_id: str) -> list[DivergencePoint]:
+    """Find divergence points between winning and losing threads.
+
+    Compares each winning thread against each losing thread to find where
+    they share a common prefix but then diverge. This helps identify
+    exactly which routing decision led to failure.
+
+    Args:
+        dag_id: The DAG to analyze
+
+    Returns:
+        List of DivergencePoint objects describing where paths split
+    """
+    paths = get_thread_paths(dag_id)
+
+    if not paths:
+        return []
+
+    # Separate winning and losing threads
+    winning = [p for p in paths if p.success == 1]
+    losing = [p for p in paths if p.success == 0]
+
+    if not winning or not losing:
+        # Need both to find divergence
+        logger.debug(
+            "[mcts] No divergence analysis for DAG %s: %d winning, %d losing threads",
+            dag_id, len(winning), len(losing)
+        )
+        return []
+
+    divergence_points = []
+
+    for win_path in winning:
+        for lose_path in losing:
+            # Find common prefix length
+            shared_len = 0
+            min_len = min(len(win_path.steps), len(lose_path.steps))
+
+            for i in range(min_len):
+                if win_path.steps[i] == lose_path.steps[i]:
+                    shared_len += 1
+                else:
+                    break
+
+            # Determine divergence details
+            divergence_idx = shared_len
+            divergence_dag_step = None
+            winning_node = None
+            losing_node = None
+            losing_suffix = []
+
+            if divergence_idx < len(lose_path.steps):
+                # There's a divergence point
+                divergence_dag_step = lose_path.steps[divergence_idx][0]
+                losing_node = lose_path.steps[divergence_idx][1]
+
+                if divergence_idx < len(win_path.steps):
+                    winning_node = win_path.steps[divergence_idx][1]
+
+                # Capture the losing thread's suffix (divergence point + downstream)
+                losing_suffix = lose_path.steps[divergence_idx:]
+
+            divergence_points.append(DivergencePoint(
+                winning_thread_id=win_path.thread_id,
+                losing_thread_id=lose_path.thread_id,
+                shared_prefix_len=shared_len,
+                divergence_step_idx=divergence_idx,
+                divergence_dag_step_id=divergence_dag_step,
+                winning_node_at_divergence=winning_node,
+                losing_node_at_divergence=losing_node,
+                losing_suffix=losing_suffix,
+            ))
+
+    logger.debug(
+        "[mcts] Found %d divergence points for DAG %s (%d winning × %d losing)",
+        len(divergence_points), dag_id, len(winning), len(losing)
+    )
+
+    return divergence_points
+
+
+def assign_divergence_blame(dag_id: str, step_db) -> dict:
+    """Assign targeted blame/credit based on divergence analysis.
+
+    Per beads mycelium-2rss: Uses divergence points to assign more precise
+    credit/blame:
+
+    1. Shared prefix nodes in losing thread: PARTIAL credit (they were correct)
+    2. Divergence point node: PRIMARY blame (this is where it went wrong)
+    3. Downstream nodes in losing suffix: SECONDARY blame (might be the real problem)
+
+    The insight is that the divergence point isn't always the root cause -
+    sometimes a downstream step in the losing path is the actual problem.
+
+    Args:
+        dag_id: The DAG to analyze
+        step_db: StepSignatureDB for stat updates
+
+    Returns:
+        Dict with divergence blame statistics
+    """
+    from mycelium.config import PARTIAL_CREDIT_WEIGHT
+
+    divergence_points = find_divergence_points(dag_id)
+
+    if not divergence_points:
+        return {
+            "divergence_points_found": 0,
+            "divergence_blame_assigned": 0,
+            "suffix_blame_assigned": 0,
+            "shared_prefix_credit": 0,
+        }
+
+    stats = {
+        "divergence_points_found": len(divergence_points),
+        "divergence_blame_assigned": 0,
+        "suffix_blame_assigned": 0,
+        "shared_prefix_credit": 0,
+    }
+
+    # Track which nodes have been credited/blamed to avoid double-counting
+    blamed_nodes: set[int] = set()
+    credited_nodes: set[int] = set()
+
+    for dp in divergence_points:
+        # 1. Give partial credit to shared prefix nodes (they were correct)
+        # Get paths to access shared prefix
+        paths = get_thread_paths(dag_id)
+        losing_path = next((p for p in paths if p.thread_id == dp.losing_thread_id), None)
+
+        if losing_path and dp.shared_prefix_len > 0:
+            for i in range(dp.shared_prefix_len):
+                if i < len(losing_path.steps):
+                    node_id = losing_path.steps[i][1]
+                    if node_id not in credited_nodes:
+                        step_db.increment_signature_partial_success(node_id, weight=PARTIAL_CREDIT_WEIGHT)
+                        credited_nodes.add(node_id)
+                        stats["shared_prefix_credit"] += 1
+
+        # 2. Primary blame to divergence point
+        if dp.losing_node_at_divergence is not None:
+            node_id = dp.losing_node_at_divergence
+            if node_id not in blamed_nodes:
+                step_db.increment_signature_failures(node_id, count=1)
+                blamed_nodes.add(node_id)
+                stats["divergence_blame_assigned"] += 1
+                logger.debug(
+                    "[mcts] Divergence blame: node %d at step %s (winning chose %s)",
+                    node_id, dp.divergence_dag_step_id,
+                    dp.winning_node_at_divergence
+                )
+
+        # 3. Secondary blame to downstream suffix nodes
+        # Skip first element (that's the divergence point, already blamed)
+        if len(dp.losing_suffix) > 1:
+            for dag_step_id, node_id in dp.losing_suffix[1:]:
+                if node_id not in blamed_nodes and node_id not in credited_nodes:
+                    # Give partial blame (0.5 weight) since these might not be
+                    # the root cause - they might just be victims of early bad routing
+                    step_db.increment_signature_failures(node_id, count=1)
+                    blamed_nodes.add(node_id)
+                    stats["suffix_blame_assigned"] += 1
+                    logger.debug(
+                        "[mcts] Suffix blame: node %d at step %s (downstream of divergence)",
+                        node_id, dag_step_id
+                    )
+
+    if stats["divergence_blame_assigned"] > 0 or stats["suffix_blame_assigned"] > 0:
+        logger.info(
+            "[mcts] Divergence blame for DAG %s: %d divergence points, "
+            "%d primary blame, %d suffix blame, %d prefix credit",
+            dag_id, stats["divergence_points_found"],
+            stats["divergence_blame_assigned"],
+            stats["suffix_blame_assigned"],
+            stats["shared_prefix_credit"],
+        )
+
+    return stats
+
+
 def get_problem_nodes_needing_attention(dag_id: str) -> list[dict]:
     """Identify nodes that performed poorly in this DAG.
 
@@ -1124,6 +1392,10 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     # This closes the loop from post-mortem analysis to signature learning
     credit_stats = propagate_amplitude_to_signature_stats(dag_id, step_db)
 
+    # Per beads mycelium-2rss: Divergence-point analysis for targeted blame
+    # Compare winning vs losing thread paths to find exactly where failure occurred
+    divergence_stats = assign_divergence_blame(dag_id, step_db)
+
     # Accumulate nodes flagged for split
     _accumulated_nodes_for_split.extend(interference_result.nodes_flagged_split)
     _postmortem_problem_count += 1
@@ -1200,6 +1472,11 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         "credit_nodes_processed": credit_stats.get("nodes_processed", 0),
         "credit_successes": credit_stats.get("successes_credited", 0),
         "credit_failures": credit_stats.get("failures_credited", 0),
+        # Divergence-point analysis (per beads mycelium-2rss)
+        "divergence_points_found": divergence_stats.get("divergence_points_found", 0),
+        "divergence_blame_assigned": divergence_stats.get("divergence_blame_assigned", 0),
+        "suffix_blame_assigned": divergence_stats.get("suffix_blame_assigned", 0),
+        "shared_prefix_credit": divergence_stats.get("shared_prefix_credit", 0),
     }
 
 
