@@ -398,6 +398,7 @@ class Planner:
         self,
         problem: str,
         signature_hints: Optional[list[SignatureHint]] = None,
+        context: Optional[str] = None,
     ) -> DAGPlan:
         """Decompose a problem into a DAG of steps.
 
@@ -406,6 +407,8 @@ class Planner:
             signature_hints: Optional list of SignatureHint objects that tell the
                             decomposer what operations are available and what
                             parameters each needs (from NL interface)
+            context: Optional additional context (e.g., original problem when
+                    decomposing a sub-step, complexity hints)
 
         Returns:
             DAGPlan with steps and dependencies
@@ -419,9 +422,15 @@ class Planner:
             system_prompt += SIGNATURE_HINTS_TEMPLATE.format(hints=hints_text)
             logger.debug("[planner] Added %d signature hints with NL interface", len(signature_hints))
 
+        # Build user message with optional context
+        user_content = problem
+        if context:
+            user_content = f"{context}\n\nDecompose this step: {problem}"
+            logger.debug("[planner] Added context to decomposition request")
+
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": problem},
+            {"role": "user", "content": user_content},
         ]
 
         response = await self.client.generate(messages, temperature=self.temperature)
