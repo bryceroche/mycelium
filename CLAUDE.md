@@ -140,6 +140,12 @@ Big bang function accounting for the first five levels need to be empty. Sigmoid
   ## Leaf DSL Types
   1. decompose
   2. math
+
+  ## Decomposition Rule
+  **Do not decompose a leaf node until instructed by the MCTS rollout post-mortem analysis.**
+
+  Decomposition is triggered by destructive interference patterns (mixed success/failure at the same node), not by individual failures. Let the post-mortem accumulate evidence before splitting clusters.
+
   ## With Fresh DB
   A **smooth and continuous** learning process is key.
 
