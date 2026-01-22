@@ -38,13 +38,15 @@ STEPS:
   task: [ONE atomic operation - verb + what]
   operation: [add/subtract/multiply/divide]
   values:
-    name: value_name_or_number
+    semantic_name: ACTUAL_NUMBER_or_{step_N}
   dsl_hint: +|-|*|/
   depends_on: []
 
 RULES:
 - ONE OPERATION PER STEP (critical!)
-- Use value names from Phase 1 (semantic names preferred)
+- Use SEMANTIC NAMES as keys (e.g., "base", "rate", "quantity")
+- Values must be ACTUAL NUMBERS (like 80000) or step references (like "{step_2}")
+- NEVER use Phase 1 variable names as values - use the actual numbers!
 - Reference prior results as "{step_N}"
 - For "increased by X%": multiply base by (1 + X/100)
 
