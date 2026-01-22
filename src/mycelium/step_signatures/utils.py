@@ -295,12 +295,18 @@ def pack_embedding(embedding: Optional[Union[np.ndarray, list]]) -> Optional[str
     return json.dumps(embedding)
 
 
-def unpack_embedding(data: str) -> Optional[np.ndarray]:
-    """Unpack JSON string into numpy array."""
+def unpack_embedding(data) -> Optional[np.ndarray]:
+    """Unpack JSON string or bytes into numpy array.
+
+    Handles both new JSON format and legacy binary format.
+    """
     if data is None:
         return None
     if isinstance(data, str):
         return np.array(json.loads(data), dtype=np.float32)
+    if isinstance(data, bytes):
+        # Legacy binary format
+        return np.frombuffer(data, dtype=np.float32).copy()
     if isinstance(data, (list, tuple)):
         return np.array(data, dtype=np.float32)
     if isinstance(data, np.ndarray):

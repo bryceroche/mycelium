@@ -544,6 +544,36 @@ GRAPH_ROUTING_REQUIRE_EXTRACTION = True  # Require operation extraction (uses LL
 GRAPH_ROUTING_FALLBACK_TO_CENTROID = True  # Fall back to centroid if no graph match
 
 # =============================================================================
+# MATURITY-BASED DECOMPOSE VS CREATE (Sigmoid transition)
+# =============================================================================
+# When routing fails (no matching signature), the system must decide:
+#   - Create a new atomic signature, OR
+#   - Decompose into sub-steps that match existing signatures
+#
+# Decision uses sigmoid based on system maturity:
+#   P(decompose) = sigmoid(maturity_score)
+#   maturity_score = (num_sigs - midpoint) / steepness + accuracy_weight * accuracy
+#
+# Early (few signatures): Low P(decompose) → create new signatures
+# Mature (many signatures): High P(decompose) → reuse existing via decomposition
+#
+# Per CLAUDE.md: "With Mature DB" - smooth transition from expansion to consolidation
+
+MATURITY_DECOMPOSE_ENABLED = True  # Master switch for maturity-based decompose/create
+MATURITY_SIGMOID_MIDPOINT = 500  # Signature count where P(decompose) = 0.5
+MATURITY_SIGMOID_STEEPNESS = 200  # Controls sigmoid sharpness (higher = smoother)
+MATURITY_ACCURACY_WEIGHT = 2.0  # How much accuracy (0-1) shifts the decision
+                                 # accuracy=0.8 adds 2.0*0.8=1.6 to maturity_score
+MATURITY_MIN_DECOMPOSE_PROB = 0.1  # Floor: always some chance to decompose
+MATURITY_MAX_DECOMPOSE_PROB = 0.9  # Ceiling: always some chance to create new
+
+# Escape hatch: If decomposed sub-steps ALSO don't match, create new atomic
+# This recognizes genuinely novel operations that can't be built from existing sigs
+MATURITY_ESCAPE_ENABLED = True  # Enable escape hatch for novel operations
+MATURITY_ESCAPE_MIN_SUBSTEPS = 2  # Need this many substeps to trigger escape
+MATURITY_ESCAPE_MAX_MISSES = 1  # Max substeps allowed to miss before creating atomic
+
+# =============================================================================
 # DSL AUTO-REWRITER (Fix underperforming DSLs automatically)
 # =============================================================================
 # When a signature has low success rate but high traffic, the rewriter

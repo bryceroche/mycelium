@@ -55,6 +55,16 @@ from mycelium.config import (
     GRAPH_ROUTING_MIN_SIMILARITY,
     GRAPH_ROUTING_BOOST_FACTOR,
     GRAPH_ROUTING_FALLBACK_TO_CENTROID,
+    # Maturity sigmoid (decompose vs create new)
+    MATURITY_DECOMPOSE_ENABLED,
+    MATURITY_SIGMOID_MIDPOINT,
+    MATURITY_SIGMOID_STEEPNESS,
+    MATURITY_ACCURACY_WEIGHT,
+    MATURITY_MIN_DECOMPOSE_PROB,
+    MATURITY_MAX_DECOMPOSE_PROB,
+    MATURITY_ESCAPE_ENABLED,
+    MATURITY_ESCAPE_MIN_SUBSTEPS,
+    MATURITY_ESCAPE_MAX_MISSES,
 )
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
@@ -295,6 +305,71 @@ def should_force_decompose(depth: int) -> bool:
         return True
 
     return False
+
+
+def compute_maturity_decompose_prob(step_db) -> float:
+    """Compute probability of decomposing vs creating new when routing fails.
+
+    Per mycelium-jaq9: Uses sigmoid based on system maturity:
+        P(decompose) = sigmoid(maturity_score)
+        maturity_score = (num_sigs - midpoint) / steepness + accuracy_weight * accuracy
+
+    Early (few signatures): Low P(decompose) → create new signatures to bootstrap
+    Mature (many signatures): High P(decompose) → reuse existing via decomposition
+
+    Args:
+        step_db: StepSignatureDB for signature count
+
+    Returns:
+        Probability of decomposing (0.0 to 1.0)
+    """
+    import math
+
+    if not MATURITY_DECOMPOSE_ENABLED:
+        return 0.0  # Disabled → always create new
+
+    # Get system state
+    sig_count = step_db.count_signatures() if step_db else 0
+    accuracy = get_recent_accuracy()  # Reuse existing accuracy tracking
+
+    # Compute maturity score
+    # Base: how far past midpoint in signature count
+    # Boost: accuracy contribution (good accuracy → more likely to decompose)
+    base_score = (sig_count - MATURITY_SIGMOID_MIDPOINT) / MATURITY_SIGMOID_STEEPNESS
+    accuracy_boost = MATURITY_ACCURACY_WEIGHT * accuracy
+    maturity_score = base_score + accuracy_boost
+
+    # Apply sigmoid: 1 / (1 + exp(-x))
+    try:
+        raw_prob = 1.0 / (1.0 + math.exp(-maturity_score))
+    except OverflowError:
+        # exp overflow → maturity_score very negative → prob ≈ 0
+        raw_prob = 0.0
+
+    # Clamp to configured bounds
+    prob = max(MATURITY_MIN_DECOMPOSE_PROB, min(MATURITY_MAX_DECOMPOSE_PROB, raw_prob))
+
+    logger.debug(
+        "[maturity] P(decompose)=%.2f (sigs=%d, accuracy=%.2f, score=%.2f)",
+        prob, sig_count, accuracy, maturity_score
+    )
+
+    return prob
+
+
+def should_try_decompose_first(step_db) -> bool:
+    """Sample whether to try decomposition before creating new signature.
+
+    Per mycelium-jaq9: When routing fails, decide based on maturity sigmoid.
+
+    Args:
+        step_db: StepSignatureDB for maturity calculation
+
+    Returns:
+        True if should try decomposition, False if should create new
+    """
+    prob = compute_maturity_decompose_prob(step_db)
+    return random.random() < prob
 
 
 # =============================================================================
@@ -1101,6 +1176,45 @@ class Solver:
             step.task[:40], signature.step_type, is_new, signature.is_semantic_umbrella,
             signature.dsl_type, adaptive_threshold
         )
+
+        # 2.3. Maturity-based decompose vs create (per mycelium-jaq9)
+        # When we create a NEW signature, maturity sigmoid decides whether to:
+        # - Keep as atomic (early/cold start: build vocabulary)
+        # - Try decomposition first (mature: reuse existing signatures)
+        maturity_triggered_decompose = False
+        if is_new and signature.dsl_type != "decompose" and should_try_decompose_first(self.step_db):
+            logger.info(
+                "[maturity] New signature '%s' created, maturity suggests trying decomposition first",
+                signature.step_type
+            )
+            # Try to decompose and see if sub-steps match existing signatures
+            decompose_result = await self._try_maturity_decomposition(
+                step, signature, problem, context, step_descriptions or {}, embedding, difficulty
+            )
+            if decompose_result is not None:
+                # Decomposition succeeded - all sub-steps matched existing signatures
+                logger.info(
+                    "[maturity] Decomposition succeeded - reusing existing signatures"
+                )
+                maturity_triggered_decompose = True
+                # Return the decomposed result
+                return StepResult(
+                    step_id=step.id,
+                    task=step.task,
+                    result=decompose_result,
+                    success=True,
+                    signature_id=signature.id,
+                    signature_type=signature.step_type,
+                    is_new_signature=is_new,
+                    was_injected=False,
+                    was_routed=True,  # Decomposition is a form of routing
+                )
+            else:
+                # Decomposition failed (escape hatch) - keep the new atomic signature
+                logger.info(
+                    "[maturity] Decomposition failed (escape hatch) - keeping atomic signature '%s'",
+                    signature.step_type
+                )
 
         # 2.5. Auto-decompose if signature needs children
         # Case 1: decompose-type that isn't umbrella yet
@@ -2986,6 +3100,125 @@ Expression:"""
 
         except Exception as e:
             logger.error("[%s] Step decomposition failed: %s", log_tag, e)
+            return None
+
+    async def _try_maturity_decomposition(
+        self,
+        step: Step,
+        signature: StepSignature,
+        problem: str,
+        context: dict[str, str],
+        step_descriptions: dict[str, str],
+        embedding: np.ndarray,
+        difficulty: float = None,
+    ) -> Optional[str]:
+        """Try decomposing a step to reuse existing signatures (maturity-based).
+
+        Per mycelium-jaq9: When maturity sigmoid suggests decomposition, try to
+        break the step into sub-steps that match existing signatures.
+
+        Escape hatch: If too many sub-steps don't match existing signatures,
+        this recognizes a genuinely novel operation and returns None.
+
+        Args:
+            step: The step to decompose
+            signature: The newly created signature (for logging)
+            problem: Original problem text
+            context: Results from previous steps
+            step_descriptions: Task descriptions
+            embedding: Step embedding
+            difficulty: Problem difficulty
+
+        Returns:
+            Combined result string if decomposition succeeds, None if escape hatch triggered
+        """
+        try:
+            # Use planner to decompose the step
+            sub_plan = await self.planner.decompose(
+                step.task,
+                problem_context=problem,
+                known_values=context,
+            )
+
+            if not sub_plan or not sub_plan.steps:
+                logger.debug("[maturity] Decomposition returned empty plan - escape hatch")
+                return None
+
+            # Check if we have enough sub-steps
+            if len(sub_plan.steps) < MATURITY_ESCAPE_MIN_SUBSTEPS:
+                logger.debug(
+                    "[maturity] Only %d sub-steps (need %d) - escape hatch",
+                    len(sub_plan.steps), MATURITY_ESCAPE_MIN_SUBSTEPS
+                )
+                return None
+
+            # Route each sub-step through existing signatures
+            # Track how many miss (don't match existing)
+            adaptive_threshold = get_adaptive_match_threshold()
+            miss_count = 0
+            results = []
+
+            for sub_step in sub_plan.steps:
+                normalized_task = normalize_step_text(sub_step.task)
+                sub_embedding = cached_embed(normalized_task, self.embedder)
+
+                # Use route_with_confidence to check for existing match
+                routing_result = self.step_db.route_with_confidence(
+                    sub_embedding,
+                    min_similarity=adaptive_threshold,
+                )
+
+                if routing_result.signature is None or routing_result.best_similarity < adaptive_threshold:
+                    # No match found - count as miss
+                    miss_count += 1
+                    logger.debug(
+                        "[maturity] Sub-step '%s' has no match (sim=%.2f) - miss %d/%d",
+                        sub_step.task[:30],
+                        routing_result.best_similarity or 0,
+                        miss_count, MATURITY_ESCAPE_MAX_MISSES + 1
+                    )
+
+                    if miss_count > MATURITY_ESCAPE_MAX_MISSES:
+                        logger.info(
+                            "[maturity] Too many misses (%d > %d) - escape hatch triggered",
+                            miss_count, MATURITY_ESCAPE_MAX_MISSES
+                        )
+                        return None
+                else:
+                    # Match found - execute the sub-step via existing signature
+                    matched_sig = routing_result.signature
+                    logger.debug(
+                        "[maturity] Sub-step '%s' matched sig '%s' (sim=%.2f)",
+                        sub_step.task[:30], matched_sig.step_type, routing_result.best_similarity
+                    )
+
+                    # Execute via the matched signature
+                    sub_result = await self._execute_step(
+                        sub_step, problem, context, step_descriptions,
+                        depth=signature.depth + 1 if signature.depth else 1,
+                        difficulty=difficulty,
+                        compute_budget=1.0,  # Single-path for sub-steps
+                    )
+
+                    if sub_result and sub_result.result:
+                        results.append(sub_result.result)
+                        # Update context with sub-step result
+                        context[sub_step.id] = sub_result.result
+
+            # All sub-steps processed successfully
+            if results:
+                combined_result = results[-1]  # Use final sub-step result
+                logger.info(
+                    "[maturity] Decomposition succeeded with %d sub-steps (%d misses)",
+                    len(sub_plan.steps), miss_count
+                )
+                return combined_result
+            else:
+                logger.debug("[maturity] No results from decomposition - escape hatch")
+                return None
+
+        except Exception as e:
+            logger.warning("[maturity] Decomposition error: %s - escape hatch", e)
             return None
 
     async def _auto_decompose_signature(
