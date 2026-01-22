@@ -611,6 +611,28 @@ MATURITY_ESCAPE_MAX_MISSES = 1  # Max substeps allowed to miss before creating a
 #
 # Key insight: A signature with 60 successes + 4 failures (93.75%) should NOT
 # be decomposed. We use accuracy (percent), not failure count.
+#
+# CONFIG INTERACTION SUMMARY:
+# ---------------------------
+# 1. FAILURE THRESHOLD determines when to diagnose:
+#    threshold = THRESHOLD_MIN + (THRESHOLD_MAX - THRESHOLD_MIN) * sigmoid(maturity)
+#    Cold start: threshold → MIN (act fast, few failures)
+#    Mature: threshold → MAX (be patient, more failures needed)
+#    Uses MATURITY_SIGMOID_MIDPOINT/STEEPNESS for consistent system-wide maturity
+#
+# 2. ACCURACY + CONFIDENCE determine what to decompose:
+#    confidence = 1 - exp(-uses / CONFIDENCE_HALFLIFE)
+#    decompose_score = (1 - accuracy) * confidence * ACCURACY_WEIGHT
+#                    + step_distance * DISTANCE_WEIGHT
+#
+# 3. VERDICT THRESHOLD determines if we act:
+#    If max(decompose_step, decompose_sig, reroute) < ACTION_THRESHOLD → "wait"
+#    Otherwise, highest score wins
+#
+# 4. STEP VS SIGNATURE decomposition heuristic:
+#    Good sig (accuracy > GOOD_SIG_ACCURACY) + outlier step → decompose step
+#    Bad sig (accuracy < BAD_SIG_ACCURACY) → decompose signature
+#    Middle: blend between both scores
 
 DIAGNOSTIC_POSTMORTEM_ENABLED = True  # Master switch for diagnostic post-mortem
 

@@ -3247,6 +3247,7 @@ def diagnose_failure(
     import numpy as np
     from mycelium.config import (
         DIAGNOSTIC_REROUTE_SIMILARITY_MIN,
+        DIAGNOSTIC_REROUTE_LOOKBACK_DAYS,
         DIAGNOSTIC_GOOD_SIG_ACCURACY,
     )
 
@@ -3320,14 +3321,18 @@ def diagnose_failure(
             exclude_signature_id=signature_id,
             min_similarity=DIAGNOSTIC_REROUTE_SIMILARITY_MIN,
             limit=3,
+            lookback_days=DIAGNOSTIC_REROUTE_LOOKBACK_DAYS,
         )
         if similar_successes:
             # Best alternative similarity
             best_alt_similarity = similar_successes[0].get("similarity", 0.0)
             reroute_score = best_alt_similarity * confidence
-    except (AttributeError, TypeError):
-        # Method may not exist yet - that's OK
-        reroute_score = 0.0
+    except AttributeError:
+        # Method not implemented on step_db - expected during migration
+        logger.debug("[diagnostic] find_similar_successful_steps not available")
+    except Exception as e:
+        # Unexpected error - log but don't crash diagnosis
+        logger.warning("[diagnostic] Error finding similar successful steps: %s", e)
 
     result = DiagnosticResult(
         decompose_step_score=decompose_step_score,
@@ -3405,6 +3410,9 @@ def run_diagnostic_postmortem(
     routing_misses = []
 
     for (dag_step_id, node_id), failure_count in pair_failures.items():
+        # Note: Using >= is intentional. failure_count is always an integer,
+        # and at cold start (THRESHOLD_MIN=1.0) we want a single failure to trigger.
+        # Using > would require 2 failures minimum even at cold start.
         if failure_count >= failure_threshold:
             # Run diagnosis
             step_emb = pair_embeddings.get((dag_step_id, node_id))

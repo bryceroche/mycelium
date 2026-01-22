@@ -3187,6 +3187,7 @@ class StepSignatureDB:
         exclude_signature_id: int = None,
         min_similarity: float = 0.8,
         limit: int = 5,
+        lookback_days: int = None,
     ) -> list[dict]:
         """Find successful steps from OTHER signatures that are similar to this embedding.
 
@@ -3198,6 +3199,7 @@ class StepSignatureDB:
             exclude_signature_id: Exclude results from this signature (the one that failed)
             min_similarity: Minimum cosine similarity threshold
             limit: Maximum results to return
+            lookback_days: Only consider examples from last N days (None = no limit)
 
         Returns:
             List of dicts with: signature_id, similarity, success_rate, step_desc
@@ -3209,12 +3211,20 @@ class StepSignatureDB:
         if not isinstance(embedding, np.ndarray):
             embedding = np.array(embedding, dtype=np.float32)
 
+        # Build date filter if lookback specified
+        date_filter = ""
+        params = [exclude_signature_id, exclude_signature_id]
+        if lookback_days is not None and lookback_days > 0:
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).isoformat()
+            date_filter = "AND e.created_at >= ?"
+            params.append(cutoff)
+
         # Query step_examples for successful steps with embeddings
         with self._connection() as conn:
             # Join step_examples with step_signatures to get success rate
             # Filter for successful examples from non-excluded signatures
             cursor = conn.execute(
-                """SELECT e.signature_id, e.step_text, e.embedding,
+                f"""SELECT e.signature_id, e.step_text, e.embedding,
                           s.uses, s.successes
                    FROM step_examples e
                    JOIN step_signatures s ON e.signature_id = s.id
@@ -3222,8 +3232,9 @@ class StepSignatureDB:
                      AND e.embedding IS NOT NULL
                      AND s.is_archived = 0
                      AND (? IS NULL OR e.signature_id != ?)
+                     {date_filter}
                    LIMIT 500""",  # Limit scan for performance
-                (exclude_signature_id, exclude_signature_id)
+                params
             )
 
             candidates = []
