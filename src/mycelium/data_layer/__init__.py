@@ -33,6 +33,11 @@ from mycelium.data_layer.mcts import (
     get_node_step_stats,
     get_dag_step_node_performance,
     run_postmortem,
+    # Step-node stats (closes feedback loop)
+    update_dag_step_node_stats,
+    get_dag_step_node_stats_batch,
+    get_dag_step_node_stats_single,
+    propagate_step_node_stats,
     get_problem_nodes_needing_attention,
     # DSL regeneration from post-mortem (per beads mycelium-flbq)
     trigger_dsl_regeneration_for_nodes,
@@ -78,6 +83,11 @@ __all__ = [
     "get_node_step_stats",
     "get_dag_step_node_performance",
     "run_postmortem",
+    # Step-node stats
+    "update_dag_step_node_stats",
+    "get_dag_step_node_stats_batch",
+    "get_dag_step_node_stats_single",
+    "propagate_step_node_stats",
     "get_problem_nodes_needing_attention",
     # DSL regeneration
     "trigger_dsl_regeneration_for_nodes",

@@ -347,6 +347,25 @@ CREATE INDEX IF NOT EXISTS idx_mcts_thread_steps_amplitude ON mcts_thread_steps(
 CREATE INDEX IF NOT EXISTS idx_mcts_thread_steps_undecided ON mcts_thread_steps(was_undecided);
 -- Composite index for post-mortem analysis: (dag_step_id, node_id) is what we're learning
 CREATE INDEX IF NOT EXISTS idx_mcts_thread_steps_learning ON mcts_thread_steps(dag_step_id, node_id);
+
+-- Materialized stats for (dag_step_type, node_id) pairs
+-- This closes the feedback loop: post-mortem → stats → routing decisions
+CREATE TABLE IF NOT EXISTS dag_step_node_stats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dag_step_type TEXT NOT NULL,              -- e.g., "compute_sum", "compute_product"
+    node_id INTEGER NOT NULL,                 -- References step_signatures(id)
+    uses INTEGER DEFAULT 0,                   -- Total times this pair was used
+    wins INTEGER DEFAULT 0,                   -- Times the thread won
+    losses INTEGER DEFAULT 0,                 -- Times the thread lost
+    win_rate REAL DEFAULT 0.5,                -- Computed: wins / uses (with prior)
+    avg_amplitude_post REAL DEFAULT 1.0,      -- Running avg of amplitude_post
+    amplitude_post_sum REAL DEFAULT 0.0,      -- Sum for incremental avg calculation
+    last_updated TEXT,                        -- ISO timestamp
+    UNIQUE(dag_step_type, node_id),
+    FOREIGN KEY (node_id) REFERENCES step_signatures(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_dsns_lookup ON dag_step_node_stats(dag_step_type, node_id);
+CREATE INDEX IF NOT EXISTS idx_dsns_node ON dag_step_node_stats(node_id);
 """
 
 def get_schema() -> str:

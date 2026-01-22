@@ -693,6 +693,213 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
 
 
 # =============================================================================
+# STEP-NODE STATS (Materialized (dag_step_type, node_id) performance)
+# =============================================================================
+# Per CLAUDE.md: "The combination of (dag_step_id, node_id) is what we're learning"
+# This closes the feedback loop: post-mortem → dag_step_node_stats → routing UCB1
+
+
+def update_dag_step_node_stats(
+    dag_step_type: str,
+    node_id: int,
+    won: bool,
+    amplitude_post: float,
+) -> None:
+    """Upsert stats for a (dag_step_type, node_id) pair.
+
+    Called during post-mortem to materialize (step, node) performance.
+    Routing then queries these stats to make better decisions.
+
+    Args:
+        dag_step_type: The step type (e.g., "compute_sum", "compute_product")
+        node_id: The signature ID that handled this step
+        won: Whether the thread won (correct answer)
+        amplitude_post: The post-observation amplitude for this step
+    """
+    from mycelium.config import (
+        STEP_NODE_STATS_ENABLED,
+        STEP_NODE_STATS_PRIOR_WINS,
+        STEP_NODE_STATS_PRIOR_USES,
+    )
+
+    if not STEP_NODE_STATS_ENABLED:
+        return
+
+    conn = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Upsert: increment counters, update running avg
+    conn.execute(
+        """
+        INSERT INTO dag_step_node_stats (
+            dag_step_type, node_id, uses, wins, losses,
+            win_rate, avg_amplitude_post, amplitude_post_sum, last_updated
+        )
+        VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(dag_step_type, node_id) DO UPDATE SET
+            uses = uses + 1,
+            wins = wins + ?,
+            losses = losses + ?,
+            amplitude_post_sum = amplitude_post_sum + ?,
+            avg_amplitude_post = (amplitude_post_sum + ?) / (uses + 1),
+            win_rate = CAST(wins + ? + ? AS REAL) / (uses + 1 + ?),
+            last_updated = ?
+        """,
+        (
+            dag_step_type,
+            node_id,
+            1 if won else 0,  # Initial wins
+            0 if won else 1,  # Initial losses
+            (STEP_NODE_STATS_PRIOR_WINS + (1 if won else 0)) / (STEP_NODE_STATS_PRIOR_USES + 1),  # Initial win_rate with prior
+            amplitude_post,  # Initial avg_amplitude_post
+            amplitude_post,  # Initial amplitude_post_sum
+            now,
+            # ON CONFLICT update values:
+            1 if won else 0,  # wins increment
+            0 if won else 1,  # losses increment
+            amplitude_post,  # amplitude_post_sum increment
+            amplitude_post,  # for avg calculation
+            STEP_NODE_STATS_PRIOR_WINS,  # Prior wins for win_rate
+            1 if won else 0,  # New win for win_rate
+            STEP_NODE_STATS_PRIOR_USES,  # Prior uses for win_rate
+            now,
+        ),
+    )
+    # No explicit commit needed - ConnectionManager handles this
+
+    logger.debug(
+        "[mcts] Updated step-node stats: %s/node_%d won=%s amp_post=%.2f",
+        dag_step_type, node_id, won, amplitude_post
+    )
+
+
+def get_dag_step_node_stats_batch(
+    dag_step_type: str,
+    node_ids: list[int],
+) -> dict[int, dict]:
+    """Batch query stats for multiple (dag_step_type, node_id) pairs.
+
+    Used by routing to efficiently fetch step-specific performance data.
+
+    Args:
+        dag_step_type: The step type to query
+        node_ids: List of node IDs to fetch stats for
+
+    Returns:
+        Dict mapping node_id → stats dict with keys:
+        - uses, wins, losses, win_rate, avg_amplitude_post
+    """
+    from mycelium.config import STEP_NODE_STATS_ENABLED
+
+    if not STEP_NODE_STATS_ENABLED or not node_ids:
+        return {}
+
+    conn = get_db()
+
+    # Build placeholders for IN clause
+    placeholders = ",".join("?" * len(node_ids))
+
+    cursor = conn.execute(
+        f"""
+        SELECT node_id, uses, wins, losses, win_rate, avg_amplitude_post
+        FROM dag_step_node_stats
+        WHERE dag_step_type = ? AND node_id IN ({placeholders})
+        """,
+        [dag_step_type] + list(node_ids),
+    )
+
+    result = {}
+    for row in cursor.fetchall():
+        result[row[0]] = {
+            "uses": row[1],
+            "wins": row[2],
+            "losses": row[3],
+            "win_rate": row[4],
+            "avg_amplitude_post": row[5],
+        }
+
+    return result
+
+
+def get_dag_step_node_stats_single(
+    dag_step_type: str,
+    node_id: int,
+) -> Optional[dict]:
+    """Get stats for a single (dag_step_type, node_id) pair.
+
+    Args:
+        dag_step_type: The step type
+        node_id: The signature ID
+
+    Returns:
+        Stats dict or None if no data exists
+    """
+    batch = get_dag_step_node_stats_batch(dag_step_type, [node_id])
+    return batch.get(node_id)
+
+
+def propagate_step_node_stats(dag_id: str) -> dict:
+    """Propagate post-mortem results to dag_step_node_stats table.
+
+    Called after amplitude_post is computed to materialize (step, node) stats.
+    These stats are then used by routing UCB1 to make better decisions.
+
+    Args:
+        dag_id: The DAG to process
+
+    Returns:
+        Dict with propagation statistics
+    """
+    from mycelium.config import STEP_NODE_STATS_ENABLED
+
+    if not STEP_NODE_STATS_ENABLED:
+        return {"pairs_updated": 0, "skipped": True}
+
+    conn = get_db()
+
+    # Get all thread_steps with their thread outcomes and dag_step info
+    # Note: mcts_dag_steps has step_desc (not dsl_hint - that's on planner Step)
+    cursor = conn.execute(
+        """
+        SELECT
+            ts.node_id,
+            ts.amplitude_post,
+            t.success as thread_won,
+            ds.step_desc
+        FROM mcts_thread_steps ts
+        JOIN mcts_threads t ON ts.thread_id = t.thread_id
+        JOIN mcts_dag_steps ds ON ts.dag_step_id = ds.dag_step_id
+        WHERE ts.dag_id = ? AND ts.amplitude_post IS NOT NULL AND ts.node_id IS NOT NULL
+        """,
+        (dag_id,),
+    )
+
+    stats = {"pairs_updated": 0}
+
+    for row in cursor.fetchall():
+        node_id, amplitude_post, thread_won, step_desc = row
+
+        # Use step_desc as the dag_step_type
+        dag_step_type = step_desc or "unknown"
+
+        update_dag_step_node_stats(
+            dag_step_type=dag_step_type,
+            node_id=node_id,
+            won=bool(thread_won),
+            amplitude_post=amplitude_post,
+        )
+        stats["pairs_updated"] += 1
+
+    if stats["pairs_updated"] > 0:
+        logger.info(
+            "[mcts] Step-node stats propagated for DAG %s: %d pairs updated",
+            dag_id, stats["pairs_updated"]
+        )
+
+    return stats
+
+
+# =============================================================================
 # DIVERGENCE-POINT ANALYSIS
 # =============================================================================
 # Per beads mycelium-2rss: Compare winning vs losing thread paths to find
@@ -1515,6 +1722,10 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     # Per beads mycelium-itkn: Propagate amplitude_post to signature stats
     # This closes the loop from post-mortem analysis to signature learning
     credit_stats = propagate_amplitude_to_signature_stats(dag_id, step_db)
+
+    # Propagate to (dag_step_type, node_id) stats table
+    # This enables routing UCB1 to use step-specific performance data
+    step_node_stats = propagate_step_node_stats(dag_id)
 
     # Per beads mycelium-2rss: Divergence-point analysis for targeted blame
     # Compare winning vs losing thread paths to find exactly where failure occurred

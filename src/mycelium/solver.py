@@ -1855,10 +1855,14 @@ class Solver:
         from mycelium.step_signatures.db import RoutingResult
 
         # Get routing result with confidence and alternatives
+        # Pass dag_step_type to enable step-node stats lookup for routing decisions
+        # Per CLAUDE.md: "(dag_step_id, node_id) is what we're learning"
+        dag_step_type = getattr(step, 'dsl_hint', None) or getattr(step, 'task', None)
         routing_result = self.step_db.route_with_confidence(
             embedding,
             min_similarity=get_adaptive_match_threshold(),
             top_k=int(compute_budget) + 1,  # Get enough alternatives
+            dag_step_type=dag_step_type,
         )
 
         # Store routing context for MCTS amplitude logging
@@ -3383,9 +3387,12 @@ Rules:
                 sub_embedding = cached_embed(normalized_task, self.embedder)
 
                 # Use route_with_confidence to check for existing match
+                # Pass dag_step_type for step-node stats lookup
+                sub_dag_step_type = getattr(sub_step, 'dsl_hint', None) or sub_step.task
                 routing_result = self.step_db.route_with_confidence(
                     sub_embedding,
                     min_similarity=adaptive_threshold,
+                    dag_step_type=sub_dag_step_type,
                 )
 
                 if routing_result.signature is None or routing_result.best_similarity < adaptive_threshold:

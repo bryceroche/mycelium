@@ -1140,11 +1140,16 @@ class StepSignatureDB:
         min_similarity: float = 0.85,
         max_depth: int = None,
         top_k: int = 3,
+        dag_step_type: Optional[str] = None,
     ) -> RoutingResult:
         """Route with confidence scoring for MCTS multi-path exploration.
 
         Enhanced version of route_through_hierarchy that computes confidence
         signals based on UCB1 score gaps between top-k children at each level.
+
+        Per CLAUDE.md: "The combination of (dag_step_id, node_id) is what we're learning."
+        If dag_step_type is provided, step-specific performance stats from
+        dag_step_node_stats are used to improve routing decisions.
 
         Confidence interpretation:
         - High confidence (>0.8): Clear winner, single path likely sufficient
@@ -1156,6 +1161,8 @@ class StepSignatureDB:
             min_similarity: Minimum similarity threshold to follow a route
             max_depth: Maximum depth to traverse (default from config)
             top_k: Number of top alternatives to track at each level
+            dag_step_type: Optional step type for step-node stats lookup
+                (e.g., "compute_sum", "compute_product")
 
         Returns:
             RoutingResult with signature, path, confidence, and alternatives
@@ -1194,18 +1201,29 @@ class StepSignatureDB:
             parent_uses = current.uses or 1
             scored_children = []
 
+            # Fetch step-node stats for all children if dag_step_type provided
+            # This enables routing to use (dag_step_type, node_id) pair performance
+            step_stats_map = {}
+            if dag_step_type:
+                from mycelium.data_layer.mcts import get_dag_step_node_stats_batch
+                child_ids = [c.id for c, _ in children if c.id is not None]
+                step_stats_map = get_dag_step_node_stats_batch(dag_step_type, child_ids)
+
             for child_sig, _condition in children:
                 centroid = child_sig.centroid
                 if centroid is None:
                     continue
                 sim = cosine_similarity(embedding, centroid)
                 if sim >= min_similarity * 0.7:  # Lower threshold to capture alternatives
+                    # Get step-node stats for this child (if available)
+                    child_step_stats = step_stats_map.get(child_sig.id)
                     ucb1 = compute_ucb1_score(
                         cosine_sim=sim,
                         uses=child_sig.uses,
                         successes=child_sig.successes,
                         parent_uses=parent_uses,
                         last_used_at=child_sig.last_used_at,
+                        step_node_stats=child_step_stats,
                     )
                     scored_children.append((child_sig, ucb1, sim))
 

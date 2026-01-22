@@ -251,6 +251,14 @@ class StepSignature:
 
         embedding_count = row.get("embedding_count", 1) or 1
 
+        # Parse graph_embedding (JSON-serialized numpy array)
+        graph_embedding = None
+        if row.get("graph_embedding"):
+            try:
+                graph_embedding = np.array(json.loads(row["graph_embedding"]))
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning("[models] Invalid graph_embedding for sig %s: %s", sig_id, e)
+
         return cls(
             id=row.get("id"),
             signature_id=row.get("signature_id", ""),
@@ -264,6 +272,7 @@ class StepSignature:
             dsl_script=row.get("dsl_script"),
             dsl_type=row.get("dsl_type", "math"),
             computation_graph=row.get("computation_graph"),
+            graph_embedding=graph_embedding,
             examples=examples,
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
@@ -328,13 +337,21 @@ class StepSignature:
         for recursion. Per CLAUDE.md: "Umbrella signature routing should not
         require an LLM call" - routing is purely embedding-based.
 
-        Parses: centroid (REQUIRED for similarity)
+        Parses: centroid (REQUIRED for similarity), graph_embedding (for graph routing)
         Skips: clarifying_questions, param_descriptions, examples, embedding_sum
         """
         from mycelium.step_signatures.utils import get_cached_centroid
 
         # Use cached centroid to avoid repeated JSON parsing
         centroid = get_cached_centroid(row.get("id"), row.get("centroid"))
+
+        # Parse graph_embedding for graph-based routing
+        graph_embedding = None
+        if row.get("graph_embedding"):
+            try:
+                graph_embedding = np.array(json.loads(row["graph_embedding"]))
+            except (json.JSONDecodeError, TypeError):
+                pass  # Silent fail for routing - not critical
 
         return cls(
             id=row.get("id"),
@@ -349,6 +366,7 @@ class StepSignature:
             dsl_script=row.get("dsl_script"),
             dsl_type=row.get("dsl_type", "math"),
             computation_graph=row.get("computation_graph"),
+            graph_embedding=graph_embedding,
             examples=[],  # Skip JSON parsing
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),

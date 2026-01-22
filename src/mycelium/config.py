@@ -459,6 +459,20 @@ PARTIAL_CREDIT_HIGH_CONF_THRESHOLD = 0.7  # amplitude >= this in lost thread →
 PARTIAL_CREDIT_WEIGHT = 0.5  # Weight for partial credit (0.5 = half a success)
 
 # =============================================================================
+# STEP-NODE STATS (Materialized (dag_step_type, node_id) performance)
+# =============================================================================
+# Per CLAUDE.md: "The combination of (dag_step_id, node_id) is what we're learning"
+# This closes the feedback loop: post-mortem → dag_step_node_stats → routing UCB1
+
+STEP_NODE_STATS_ENABLED = True  # Track and use (dag_step_type, node_id) stats
+STEP_NODE_STATS_MIN_USES = 3  # Min uses before trusting step-level stats
+STEP_NODE_STATS_WEIGHT = 0.6  # Blend weight (0.6 step + 0.4 signature-level)
+STEP_NODE_STATS_PRIOR_WINS = 1  # Bayesian prior wins (prevents 0/0 division)
+STEP_NODE_STATS_PRIOR_USES = 2  # Bayesian prior uses
+AMPLITUDE_POST_PENALTY_THRESHOLD = 0.6  # avg_amplitude_post below this → penalize routing
+AMPLITUDE_POST_PENALTY_MULT = 0.8  # Multiplicative penalty for low amplitude_post
+
+# =============================================================================
 # MCTS INTERFERENCE PATTERNS (Constructive/Destructive)
 # =============================================================================
 # Per CLAUDE.md: When multiple threads visit the same (dag_step_id, node_id):

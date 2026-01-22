@@ -291,6 +291,7 @@ def compute_ucb1_score(
     parent_uses: int,
     last_used_at: Optional[str] = None,
     exploration_c: Optional[float] = None,
+    step_node_stats: Optional[dict] = None,
 ) -> float:
     """Compute MCTS UCB1 score for signature routing.
 
@@ -305,6 +306,10 @@ def compute_ucb1_score(
     - N = parent visits (total opportunities at this routing level)
     - n = child visits (this signature's uses)
 
+    Per CLAUDE.md: "The combination of (dag_step_id, node_id) is what we're learning."
+    If step_node_stats is provided, we blend step-specific performance with
+    signature-level stats for more accurate routing decisions.
+
     Args:
         cosine_sim: Cosine similarity between step and signature
         uses: Number of times this signature was used (n)
@@ -312,19 +317,62 @@ def compute_ucb1_score(
         parent_uses: Total uses at parent level (N)
         last_used_at: ISO timestamp of last use (for staleness decay)
         exploration_c: Override exploration constant (None = use adaptive)
+        step_node_stats: Optional dict with step-specific stats:
+            - uses, wins, losses, win_rate, avg_amplitude_post
+            From dag_step_node_stats table (post-mortem feedback)
 
     Returns:
         UCB1 score (higher = better choice)
     """
+    from mycelium.config import (
+        STEP_NODE_STATS_ENABLED,
+        STEP_NODE_STATS_MIN_USES,
+        STEP_NODE_STATS_WEIGHT,
+        AMPLITUDE_POST_PENALTY_THRESHOLD,
+        AMPLITUDE_POST_PENALTY_MULT,
+    )
+
     # Get exploration constant: use adaptive if not overridden
     if exploration_c is None:
         from mycelium.mcts.adaptive import AdaptiveExploration
         exploration_c = AdaptiveExploration.get_instance().exploration_weight
 
-    # Exploitation term: similarity weighted by success rate
+    # Compute signature-level success rate (baseline)
     denominator = uses + ROUTING_PRIOR_USES
-    effective_rate = (successes + ROUTING_PRIOR_SUCCESSES) / denominator if denominator > 0 else 0.5
+    sig_success_rate = (successes + ROUTING_PRIOR_SUCCESSES) / denominator if denominator > 0 else 0.5
+
+    # Blend with step-node stats if available and trusted
+    # Per CLAUDE.md: Post-mortem amplitude_post feeds back into routing
+    effective_rate = sig_success_rate
+    amplitude_penalty = 1.0  # No penalty by default
+
+    if (
+        STEP_NODE_STATS_ENABLED
+        and step_node_stats
+        and step_node_stats.get("uses", 0) >= STEP_NODE_STATS_MIN_USES
+    ):
+        step_win_rate = step_node_stats.get("win_rate", 0.5)
+        step_amp_post = step_node_stats.get("avg_amplitude_post", 1.0)
+
+        # Blend step-level and signature-level success rates
+        # STEP_NODE_STATS_WEIGHT controls the blend (0.6 = 60% step, 40% sig)
+        effective_rate = (
+            STEP_NODE_STATS_WEIGHT * step_win_rate +
+            (1 - STEP_NODE_STATS_WEIGHT) * sig_success_rate
+        )
+
+        # Penalize if avg_amplitude_post is low (indicates high-confidence failures)
+        # This surfaces destructive interference patterns from post-mortem
+        if step_amp_post < AMPLITUDE_POST_PENALTY_THRESHOLD:
+            amplitude_penalty = AMPLITUDE_POST_PENALTY_MULT
+            logger.debug(
+                "[scoring] Amplitude penalty applied: avg_amp_post=%.2f < %.2f, penalty=%.2f",
+                step_amp_post, AMPLITUDE_POST_PENALTY_THRESHOLD, amplitude_penalty
+            )
+
+    # Exploitation term: similarity weighted by success rate
     exploit_score = MCTS_SIMILARITY_WEIGHT * cosine_sim + MCTS_SUCCESS_WEIGHT * effective_rate
+    exploit_score *= amplitude_penalty  # Apply amplitude-based penalty
 
     # Exploration term: UCB1 bonus for under-visited signatures
     # sqrt(ln(N) / n) gives higher bonus to less-visited children
