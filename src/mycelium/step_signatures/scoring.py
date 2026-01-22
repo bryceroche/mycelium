@@ -353,12 +353,20 @@ def compute_ucb1_score(
     ):
         step_win_rate = step_node_stats.get("win_rate", 0.5)
         step_amp_post = step_node_stats.get("avg_amplitude_post", 1.0)
+        step_uses = step_node_stats.get("uses", 0)
 
         # Blend step-level and signature-level success rates
         # STEP_NODE_STATS_WEIGHT controls the blend (0.6 = 60% step, 40% sig)
         effective_rate = (
             STEP_NODE_STATS_WEIGHT * step_win_rate +
             (1 - STEP_NODE_STATS_WEIGHT) * sig_success_rate
+        )
+
+        # Debug: Log step-node stats influence on routing
+        logger.debug(
+            "[scoring] Step-node stats applied: sig_rate=%.2f -> effective_rate=%.2f "
+            "(step_win=%.2f, step_uses=%d, weight=%.1f)",
+            sig_success_rate, effective_rate, step_win_rate, step_uses, STEP_NODE_STATS_WEIGHT
         )
 
         # Penalize if avg_amplitude_post is low (indicates high-confidence failures)
@@ -369,6 +377,12 @@ def compute_ucb1_score(
                 "[scoring] Amplitude penalty applied: avg_amp_post=%.2f < %.2f, penalty=%.2f",
                 step_amp_post, AMPLITUDE_POST_PENALTY_THRESHOLD, amplitude_penalty
             )
+    elif step_node_stats and step_node_stats.get("uses", 0) < STEP_NODE_STATS_MIN_USES:
+        # Log why stats weren't applied (insufficient data)
+        logger.debug(
+            "[scoring] Step-node stats skipped: uses=%d < min=%d required",
+            step_node_stats.get("uses", 0), STEP_NODE_STATS_MIN_USES
+        )
 
     # Exploitation term: similarity weighted by success rate
     exploit_score = MCTS_SIMILARITY_WEIGHT * cosine_sim + MCTS_SUCCESS_WEIGHT * effective_rate

@@ -1208,6 +1208,18 @@ class StepSignatureDB:
                 from mycelium.data_layer.mcts import get_dag_step_node_stats_batch
                 child_ids = [c.id for c, _ in children if c.id is not None]
                 step_stats_map = get_dag_step_node_stats_batch(dag_step_type, child_ids)
+                # Debug: Log step-node stats retrieval
+                if step_stats_map:
+                    logger.debug(
+                        "[routing] Step-node stats for '%s': %d/%d children have stats",
+                        dag_step_type[:40], len(step_stats_map), len(child_ids)
+                    )
+                    for sig_id, stats in list(step_stats_map.items())[:3]:  # Log first 3
+                        logger.debug(
+                            "[routing]   sig=%d: uses=%d win_rate=%.2f avg_amp=%.2f",
+                            sig_id, stats.get("uses", 0), stats.get("win_rate", 0),
+                            stats.get("avg_amplitude_post", 1.0)
+                        )
 
             for child_sig, _condition in children:
                 centroid = child_sig.centroid
