@@ -153,12 +153,17 @@ def grade_dag(dag_id: str, success: bool) -> None:
 # =============================================================================
 
 
-def create_dag_steps(dag_id: str, steps: list[tuple[str, int, int, bool]]) -> list[str]:
+def create_dag_steps(dag_id: str, steps: list[tuple[str, int, int, bool, Optional[str]]]) -> list[str]:
     """Create DAG steps for a plan.
 
     Args:
         dag_id: Parent DAG ID
-        steps: List of (step_desc, step_num, branch_num, is_atomic)
+        steps: List of (step_desc, step_num, branch_num, is_atomic, dsl_hint)
+            - step_desc: Natural language description of the step
+            - step_num: Sequential order (1..n)
+            - branch_num: Parallel branch ID
+            - is_atomic: Whether step can be decomposed further
+            - dsl_hint: Operation type hint (e.g., "compute_sum") for stats normalization
 
     Returns:
         List of dag_step_ids
@@ -167,15 +172,22 @@ def create_dag_steps(dag_id: str, steps: list[tuple[str, int, int, bool]]) -> li
     conn = get_db()
 
     step_ids = []
-    for step_desc, step_num, branch_num, is_atomic in steps:
+    for step_tuple in steps:
+        # Support both old 4-tuple and new 5-tuple format for backward compatibility
+        if len(step_tuple) == 5:
+            step_desc, step_num, branch_num, is_atomic, dsl_hint = step_tuple
+        else:
+            step_desc, step_num, branch_num, is_atomic = step_tuple
+            dsl_hint = None
+
         dag_step_id = f"step-{uuid.uuid4().hex[:12]}"
         conn.execute(
             """
-            INSERT INTO mcts_dag_steps (dag_step_id, dag_id, step_desc, step_num,
-                                        branch_num, is_atomic, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO mcts_dag_steps (dag_step_id, dag_id, step_desc, dsl_hint,
+                                        step_num, branch_num, is_atomic, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (dag_step_id, dag_id, step_desc, step_num, branch_num, 1 if is_atomic else 0, now),
+            (dag_step_id, dag_id, step_desc, dsl_hint, step_num, branch_num, 1 if is_atomic else 0, now),
         )
         step_ids.append(dag_step_id)
 
@@ -858,13 +870,15 @@ def propagate_step_node_stats(dag_id: str) -> dict:
     conn = get_db()
 
     # Get all thread_steps with their thread outcomes and dag_step info
-    # Note: mcts_dag_steps has step_desc (not dsl_hint - that's on planner Step)
+    # Use dsl_hint (operation type) when available, fall back to step_desc
+    # Per mycelium-mgbs: dsl_hint provides better normalization than NL descriptions
     cursor = conn.execute(
         """
         SELECT
             ts.node_id,
             ts.amplitude_post,
             t.success as thread_won,
+            ds.dsl_hint,
             ds.step_desc
         FROM mcts_thread_steps ts
         JOIN mcts_threads t ON ts.thread_id = t.thread_id
@@ -877,10 +891,11 @@ def propagate_step_node_stats(dag_id: str) -> dict:
     stats = {"pairs_updated": 0}
 
     for row in cursor.fetchall():
-        node_id, amplitude_post, thread_won, step_desc = row
+        node_id, amplitude_post, thread_won, dsl_hint, step_desc = row
 
-        # Use step_desc as the dag_step_type
-        dag_step_type = step_desc or "unknown"
+        # Use dsl_hint (e.g., "compute_sum") for better normalization
+        # Fall back to step_desc if dsl_hint not available
+        dag_step_type = dsl_hint or step_desc or "unknown"
 
         update_dag_step_node_stats(
             dag_step_type=dag_step_type,

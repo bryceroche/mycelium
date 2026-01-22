@@ -30,67 +30,16 @@ Instead of embedding problem text and comparing to signature text, we:
 3. **Compare to computation graph embeddings** stored on signatures
 
 ### Computation Graphs
-
 A computation graph is a structural representation of what a DSL actually computes:
 
-```
-DSL: return amount * rate
-Graph: MUL(param_0, param_1) → result
-
-DSL: return sum(items)
-Graph: REDUCE_SUM(param_0) → result
-
-DSL: return (price * quantity) + tax
-Graph: ADD(MUL(param_0, param_1), param_2) → result
-```
 
 The graph is:
 - **Parameter-agnostic**: Variable names don't matter, structure does
 - **Implementation-agnostic**: Same graph regardless of Python vs SymPy
 - **Operationally meaningful**: Two DSLs with the same graph do the same thing
 
-### Routing Flow
-
-```
-Problem: "What is 15% of 80?"
-    │
-    ▼ (LLM extracts operation needed)
-"multiply a value by a percentage"
-    │
-    ▼ (embed operation description)
-    │
-    ▼ (compare to graph embeddings)
-Match: signature with graph MUL(p0, p1)
-    │
-    ▼ (extract parameters from problem)
-{value: 80, percentage: 0.15}
-    │
-    ▼ (execute DSL)
-Result: 12
-```
-
-### Why This Works
-
-| Text Embedding | Graph Embedding |
-|----------------|-----------------|
-| "add tax" ≈ "add items" (same word) | ADD(a, MUL(b,c)) ≠ REDUCE_SUM(list) |
-| Clusters by vocabulary | Clusters by computation structure |
-| Needs centroid drift to fix | Correct from first successful execution |
-
 ### Generic DSL Parameters
-
 DSLs must be templates with generic parameters, not hardcoded values:
-
-```python
-# Good: generic template
-def compute(amount, rate):
-    return amount * rate
-
-# Bad: hardcoded values
-def compute():
-    return 100 * 0.08
-```
-
 The `param_descriptions` and `clarifying_questions` guide parameter extraction from problem text at runtime.
 
 ### Cold Start
@@ -104,7 +53,7 @@ The `param_descriptions` and `clarifying_questions` guide parameter extraction f
 
 Future similar operations route here by graph similarity.
 
-## The Insight: MCTS Rollouts as Ground Truth
+## MCTS Rollouts as Ground Truth
 
 **MCTS rollout outcomes provide ground truth for operational equivalence.**
 

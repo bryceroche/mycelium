@@ -921,7 +921,7 @@ class Solver:
                 for level_num, level_steps in enumerate(execution_levels, start=1):
                     for branch_num, step in enumerate(level_steps, start=1):
                         dag_step_tuples.append(
-                            (step.task, level_num, branch_num, step.is_atomic)
+                            (step.task, level_num, branch_num, step.is_atomic, step.dsl_hint)
                         )
                         step_order.append(step)
                 dag_step_ids = create_dag_steps(self._current_dag_id, dag_step_tuples)

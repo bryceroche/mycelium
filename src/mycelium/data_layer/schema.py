@@ -281,6 +281,7 @@ CREATE TABLE IF NOT EXISTS mcts_dag_steps (
     dag_step_id TEXT UNIQUE NOT NULL,     -- Unique ID for this step
     dag_id TEXT NOT NULL REFERENCES mcts_dags(dag_id) ON DELETE CASCADE,
     step_desc TEXT NOT NULL,              -- What this step does (natural language)
+    dsl_hint TEXT,                        -- Operation type hint (e.g., "compute_sum") for stats normalization
     step_num INTEGER NOT NULL,            -- Sequential order (1..n)
     branch_num INTEGER DEFAULT 1,         -- Parallel branch ID (1..n for independent steps)
     is_atomic INTEGER DEFAULT 0,          -- 1 if cannot be decomposed further
@@ -470,7 +471,7 @@ def migrate_db(conn) -> None:
             "ALTER TABLE step_signatures ADD COLUMN graph_embedding TEXT"
         )
 
-    # Run migrations
+    # Run step_signatures migrations
     for sql in migrations:
         try:
             conn.execute(sql)
@@ -479,6 +480,18 @@ def migrate_db(conn) -> None:
 
     if migrations:
         conn.commit()
+
+    # Migrate mcts_dag_steps table (add dsl_hint column for step-node stats normalization)
+    try:
+        cursor = conn.execute("PRAGMA table_info(mcts_dag_steps)")
+        dag_step_cols = {row[1] for row in cursor.fetchall()}
+        if "dsl_hint" not in dag_step_cols:
+            conn.execute("ALTER TABLE mcts_dag_steps ADD COLUMN dsl_hint TEXT")
+            conn.commit()
+            logger.info("[schema] Added dsl_hint column to mcts_dag_steps")
+    except Exception as e:
+        # Table might not exist yet (fresh DB)
+        logger.debug("[schema] mcts_dag_steps migration skipped: %s", e)
 
     # Add new indexes (safe to run multiple times)
     index_migrations = [
