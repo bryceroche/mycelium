@@ -956,8 +956,9 @@ class Solver:
                 params = {}
                 for key, val in (step.extracted_values or {}).items():
                     if isinstance(val, str) and val.startswith('{') and val.endswith('}'):
-                        # Reference to previous step - use placeholder for now
-                        params[key] = f"<{val[1:-1]}>"
+                        # Reference to previous step - use step_N as placeholder (no angle brackets!)
+                        # LLM will use this in expression, which must be valid Python
+                        params[key] = val[1:-1]  # {step_1} -> step_1
                     else:
                         params[key] = val
                 if params:

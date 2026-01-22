@@ -306,9 +306,12 @@ class DAGPlan:
                             for d in step.depends_on
                         )
                         if not found_in_deps:
-                            errors.append(
-                                f"Step '{step.id}' references '{{{ref_id}}}' in extracted_values "
-                                f"but doesn't depend on it (depends_on={step.depends_on})"
+                            # Auto-fix: add missing dependency instead of error
+                            # LLM often forgets to add depends_on when referencing step values
+                            step.depends_on.append(normalized_ref)
+                            logger.debug(
+                                f"[planner] Auto-fixed: added '{normalized_ref}' to "
+                                f"depends_on for step '{step.id}' (referenced in extracted_values)"
                             )
 
         # Check for cycles using DFS with forward traversal
