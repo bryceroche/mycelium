@@ -3189,6 +3189,10 @@ Rules:
         # CRITICAL: Flag them with operational_failures so get_decomposition_candidates picks them up
         from mycelium.data_layer.mcts import get_failing_nodes_for_decomposition
         postmortem_failing_nodes = get_failing_nodes_for_decomposition(min_attempts=3, max_win_rate=0.5)
+        logger.debug(
+            "[solver] get_failing_nodes_for_decomposition returned %d nodes: %s",
+            len(postmortem_failing_nodes), postmortem_failing_nodes
+        )
         for node_id in postmortem_failing_nodes:
             if node_id not in candidates:
                 sig = self.step_db.get_signature(node_id)
