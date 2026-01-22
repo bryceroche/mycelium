@@ -1501,7 +1501,12 @@ class StepSignatureDB:
                     conn, embedding, min_similarity
                 )
 
-                if best_match is not None and best_sim >= min_similarity:
+                # ALWAYS_ROUTE_TO_BEST mode: accept any match, let failures drive learning
+                # Per CLAUDE.md: "Let signatures fail. This is how the system learns."
+                from mycelium.config import ALWAYS_ROUTE_TO_BEST
+                similarity_ok = best_sim >= min_similarity if not ALWAYS_ROUTE_TO_BEST else True
+
+                if best_match is not None and similarity_ok:
                     # Check if matched signature's step_type is compatible with dsl_hint
                     # This prevents matching "Calculate total distance" (sum) to a product signature
                     if dsl_hint and not self._is_step_type_compatible(best_match.step_type, dsl_hint):
@@ -1512,7 +1517,7 @@ class StepSignatureDB:
                         # Treat as no match - fall through to create new signature
                         best_match = None
 
-                if best_match is not None and best_sim >= min_similarity:
+                if best_match is not None and similarity_ok:
                     # Found a match - update centroid using shared helper
                     new_count = self._update_centroid_atomic(
                         conn, best_match.id, embedding, update_last_used=True
@@ -1618,8 +1623,10 @@ class StepSignatureDB:
             current_centroid = current.centroid
             if current_centroid is not None:
                 sim = cosine_similarity(embedding, current_centroid)
-                # If current is a leaf and matches, return it
-                if not current.is_semantic_umbrella and sim >= min_similarity:
+                # If current is a leaf, return it
+                # ALWAYS_ROUTE_TO_BEST: return regardless of similarity threshold
+                from mycelium.config import ALWAYS_ROUTE_TO_BEST
+                if not current.is_semantic_umbrella and (ALWAYS_ROUTE_TO_BEST or sim >= min_similarity):
                     return current, parent_for_new, sim
 
             # If current is not an umbrella, it's a leaf - return similarity result
@@ -1668,8 +1675,10 @@ class StepSignatureDB:
                     children_with_centroids.append((child, child_sim))
 
             # Try children with centroids first (standard UCB1 selection)
+            # ALWAYS_ROUTE_TO_BEST: Consider all children, not just those above threshold
+            from mycelium.config import ALWAYS_ROUTE_TO_BEST
             for child, child_sim in children_with_centroids:
-                if child_sim >= min_similarity:
+                if ALWAYS_ROUTE_TO_BEST or child_sim >= min_similarity:
                     score = compute_ucb1_score(
                         child_sim,
                         child.uses,
