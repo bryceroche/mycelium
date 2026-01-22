@@ -1553,6 +1553,17 @@ class Solver:
                     step_completed,
                 )
 
+                # Update dag_step embedding with node_id (for decomposition decisions)
+                from mycelium.data_layer.mcts import update_dag_step_embedding_outcome
+                try:
+                    update_dag_step_embedding_outcome(
+                        dag_step_id=dag_step_id,
+                        node_id=routed_signature.id,
+                        success=step_completed,
+                    )
+                except Exception as e:
+                    logger.debug("[solver] Failed to update dag_step embedding: %s", e)
+
         return StepResult(
             step_id=step.id,
             task=step.task,
