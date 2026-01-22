@@ -15,56 +15,72 @@ from .client import get_client
 from mycelium.config import PLANNER_DEFAULT_MODEL, PLANNER_DEFAULT_TEMPERATURE
 
 
-PLANNER_SYSTEM = """You decompose math problems into ATOMIC steps. Extract values, don't solve.
+PLANNER_SYSTEM = """You decompose math problems in TWO PHASES. First extract values, then build steps.
 
-CRITICAL: Each step must be ONE SINGLE arithmetic operation.
-- ATOMIC = exactly ONE of: add, subtract, multiply, divide
-- NO multi-step operations like "calculate X then Y" or "first do A, then B"
-- If a step needs two operations, split it into two steps
+=== PHASE 1: VALUE EXTRACTION ===
+Extract ALL numeric values with semantic meaning. Be explicit about WHAT each value represents.
 
-FORMAT (output ONLY this, no markdown/explanations):
+FORMAT:
+VALUES:
+name: number — what this value represents (be specific about the SOURCE)
+
+CRITICAL for percentages:
+- "X increased by Y%" → base is X, NOT any derived value
+- "Y% of X" → base is X
+- Always identify the BASE that the percentage applies to
+
+=== PHASE 2: DECOMPOSITION ===
+Build ATOMIC steps using the extracted values.
+
+FORMAT:
+STEPS:
 - id: step_1
   task: [ONE atomic operation - verb + what]
-  operation: [single operation: add/subtract/multiply/divide]
+  operation: [add/subtract/multiply/divide]
   values:
-    name: value
+    name: value_name_or_number
   dsl_hint: +|-|*|/
   depends_on: []
 
 RULES:
-- ONE OPERATION PER STEP (this is critical!)
-- FEWER STEPS preferred for simple problems
-- Extract numeric values with semantic names
+- ONE OPERATION PER STEP (critical!)
+- Use value names from Phase 1 (semantic names preferred)
 - Reference prior results as "{step_N}"
-- dsl_hint: + (add), - (subtract), * (multiply), / (divide)
+- For "increased by X%": multiply base by (1 + X/100)
 
-GOOD STEPS (atomic):
-- "Multiply price by quantity" (one multiply)
-- "Add shipping to subtotal" (one add)
-- "Divide total by count" (one divide)
+=== EXAMPLE ===
+Problem: "Josh buys a house for $80,000, puts in $50,000 repairs. This increased the value of the house by 150%. How much profit?"
 
-BAD STEPS (not atomic - NEVER do these):
-- "Calculate total then add tax" (two operations!)
-- "First find rate, then multiply by time" (two operations!)
-- "Sum values and divide by count" (two operations!)
+VALUES:
+purchase_price: 80000 — price Josh paid for the house (the BASE for value increase)
+repair_cost: 50000 — cost of repairs (investment, not the base for %)
+increase_pct: 150 — percentage increase applied to HOUSE value, not total investment
 
-EXAMPLE "40,000 km circumference. Trips for 1 billion meters?":
+STEPS:
 - id: step_1
-  task: Convert meters to kilometers
-  operation: divide
+  task: Calculate total investment
+  operation: add
   values:
-    meters: 1000000000
-    per_km: 1000
-  dsl_hint: /
+    a: 80000
+    b: 50000
+  dsl_hint: +
   depends_on: []
 - id: step_2
-  task: Divide kilometers by circumference
-  operation: divide
+  task: Calculate new house value (purchase_price × 2.5 for 150% increase)
+  operation: multiply
   values:
-    km: "{step_1}"
-    circ: 40000
-  dsl_hint: /
-  depends_on: [step_1]
+    base: 80000
+    multiplier: 2.5
+  dsl_hint: *
+  depends_on: []
+- id: step_3
+  task: Calculate profit (new value minus investment)
+  operation: subtract
+  values:
+    new_value: "{step_2}"
+    investment: "{step_1}"
+  dsl_hint: -
+  depends_on: [step_1, step_2]
 """
 
 SIGNATURE_HINTS_TEMPLATE = """
@@ -464,12 +480,15 @@ class Planner:
     def _parse_steps(self, response: str) -> list[Step]:
         """Parse steps from planner response.
 
+        Handles two-phase format with VALUES: and STEPS: sections.
         Logs warnings when parsing issues are detected (empty tasks, etc.)
         """
         steps = []
         current_step = None
         parse_warnings = []
         parsing_values = False  # Track if we're inside a values: block
+        extracted_values_phase1 = {}  # Values from Phase 1 (for logging)
+        in_values_section = False  # Track if we're in the VALUES: section
 
         lines = response.split("\n")
         i = 0
@@ -477,11 +496,41 @@ class Planner:
             line = lines[i]
             stripped = line.strip()
 
+            # Skip section headers and markers
+            if stripped.upper() in ("VALUES:", "STEPS:") or "===" in stripped:
+                in_values_section = stripped.upper() == "VALUES:"
+                i += 1
+                continue
+
+            # Parse Phase 1 VALUES section (for logging/debugging)
+            # Only parse lines that look like "name: value" or "name: value — description"
+            if in_values_section and ":" in stripped and not stripped.startswith("-"):
+                # Format: "name: value — description"
+                parts = stripped.split("—")[0] if "—" in stripped else stripped
+                if ":" in parts:
+                    key, val = parts.split(":", 1)
+                    key = key.strip()
+                    val = val.strip()
+                    # Skip if key looks like a step field or is empty
+                    skip_keys = {"dsl_hint", "depends_on", "operation", "id", "task", "values", ""}
+                    if key.lower() in skip_keys:
+                        i += 1
+                        continue
+                    # Only capture numeric values (skip references and placeholders)
+                    try:
+                        extracted_values_phase1[key] = float(val) if "." in val else int(val)
+                    except ValueError:
+                        # Skip non-numeric values in Phase 1 logging (they're captured in Step parsing)
+                        pass
+                i += 1
+                continue
+
             # New step - flexible matching for various formats
             # Matches: "- id: step_1", "-id: step_1", "id: step_1", "- id:step_1"
             id_match = re.match(r'^-?\s*id\s*:\s*(.+)$', stripped, re.IGNORECASE)
             if id_match:
                 parsing_values = False
+                in_values_section = False  # Exit Phase 1 when we hit a step
                 if current_step:
                     # Validate before appending
                     if not current_step.task:
@@ -566,6 +615,13 @@ class Planner:
             if not current_step.task:
                 parse_warnings.append(f"Step '{current_step.id}' has empty task")
             steps.append(current_step)
+
+        # Log Phase 1 values extraction (for debugging value attribution)
+        if extracted_values_phase1:
+            logger.info(
+                "[planner] Phase 1 values extracted: %s",
+                ", ".join(f"{k}={v}" for k, v in extracted_values_phase1.items())
+            )
 
         # Log any parsing warnings
         if parse_warnings:
