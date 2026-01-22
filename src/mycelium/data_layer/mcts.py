@@ -1593,6 +1593,7 @@ _KEY_DSL_REGEN_COUNT = "postmortem_dsl_regen_count"
 _KEY_HIGH_CONF_WRONG_NODES = "postmortem_high_conf_wrong_nodes"
 _KEY_PROBLEM_COUNT = "postmortem_problem_count"
 _KEY_NODES_FOR_SPLIT = "postmortem_nodes_for_split"
+_KEY_POSTMORTEM_RUN_COUNT = "postmortem_run_count"
 
 
 @dataclass
@@ -1607,6 +1608,7 @@ class PostmortemState:
     _nodes_for_split: list[int] = field(default=None, repr=False)
     _high_conf_wrong_nodes: list[int] = field(default=None, repr=False)
     _dsl_regen_problem_count: int = field(default=None, repr=False)
+    _postmortem_run_count: int = field(default=None, repr=False)
 
     @property
     def problem_count(self) -> int:
@@ -1633,6 +1635,20 @@ class PostmortemState:
         if self._dsl_regen_problem_count is None:
             self._dsl_regen_problem_count = int(_get_db_state_value(_KEY_DSL_REGEN_COUNT, "0"))
         return self._dsl_regen_problem_count
+
+    @property
+    def postmortem_run_count(self) -> int:
+        """Total number of times post-mortem analysis has run."""
+        if self._postmortem_run_count is None:
+            self._postmortem_run_count = int(_get_db_state_value(_KEY_POSTMORTEM_RUN_COUNT, "0"))
+        return self._postmortem_run_count
+
+    def increment_run_count(self) -> int:
+        """Increment and persist the post-mortem run count. Returns new count."""
+        current = self.postmortem_run_count
+        self._postmortem_run_count = current + 1
+        _set_db_state_value(_KEY_POSTMORTEM_RUN_COUNT, str(self._postmortem_run_count))
+        return self._postmortem_run_count
 
     def reset_merge_split(self) -> None:
         """Reset state after merge/split batch processing."""
@@ -1743,6 +1759,10 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     # Get singleton state (thread-safe)
     state = get_postmortem_state()
 
+    # Increment the run counter (tracks total post-mortem runs)
+    run_count = state.increment_run_count()
+    logger.debug("[mcts] Post-mortem run #%d", run_count)
+
     # First run standard postmortem (amplitude_post computation) - cheap, always run
     amplitude_stats = run_postmortem(dag_id)
 
@@ -1833,6 +1853,7 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
 
     return {
         **amplitude_stats,
+        "postmortem_run_count": run_count,
         "interference_patterns": interference_result.patterns_processed,
         "constructive_interference": interference_result.constructive_count,
         "destructive_interference": interference_result.destructive_count,
