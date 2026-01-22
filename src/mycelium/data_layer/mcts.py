@@ -1594,6 +1594,7 @@ _KEY_HIGH_CONF_WRONG_NODES = "postmortem_high_conf_wrong_nodes"
 _KEY_PROBLEM_COUNT = "postmortem_problem_count"
 _KEY_NODES_FOR_SPLIT = "postmortem_nodes_for_split"
 _KEY_POSTMORTEM_RUN_COUNT = "postmortem_run_count"
+_KEY_BATCH_OPS_RUN_COUNT = "postmortem_batch_ops_count"
 
 
 @dataclass
@@ -1609,6 +1610,7 @@ class PostmortemState:
     _high_conf_wrong_nodes: list[int] = field(default=None, repr=False)
     _dsl_regen_problem_count: int = field(default=None, repr=False)
     _postmortem_run_count: int = field(default=None, repr=False)
+    _batch_ops_run_count: int = field(default=None, repr=False)
 
     @property
     def problem_count(self) -> int:
@@ -1649,6 +1651,20 @@ class PostmortemState:
         self._postmortem_run_count = current + 1
         _set_db_state_value(_KEY_POSTMORTEM_RUN_COUNT, str(self._postmortem_run_count))
         return self._postmortem_run_count
+
+    @property
+    def batch_ops_run_count(self) -> int:
+        """Total number of times batch operations (merge/split) have run."""
+        if self._batch_ops_run_count is None:
+            self._batch_ops_run_count = int(_get_db_state_value(_KEY_BATCH_OPS_RUN_COUNT, "0"))
+        return self._batch_ops_run_count
+
+    def increment_batch_ops_count(self) -> int:
+        """Increment and persist the batch ops run count. Returns new count."""
+        current = self.batch_ops_run_count
+        self._batch_ops_run_count = current + 1
+        _set_db_state_value(_KEY_BATCH_OPS_RUN_COUNT, str(self._batch_ops_run_count))
+        return self._batch_ops_run_count
 
     def reset_merge_split(self) -> None:
         """Reset state after merge/split batch processing."""
@@ -1814,6 +1830,10 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     )
 
     if should_run_batch_ops:
+        # Increment batch ops counter
+        batch_ops_count = state.increment_batch_ops_count()
+        logger.info("[mcts] Batch operations run #%d (every %d problems)", batch_ops_count, MERGE_SPLIT_BATCH_SIZE)
+
         # Run merge/split with accumulated data
         merge_split_result = run_merge_split_from_interference(
             step_db,
@@ -1868,6 +1888,7 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         "retirement_merged_up": retirement_result.get("merged_up", 0),
         "batch_counter": state.problem_count,
         "next_merge_split_in": MERGE_SPLIT_BATCH_SIZE - state.problem_count if MERGE_SPLIT_BATCH_SIZE > 0 else -1,
+        "batch_ops_run_count": state.batch_ops_run_count,
         # DSL regeneration info (per beads mycelium-flbq)
         "dsl_regen_nodes_accumulated": len(state.high_conf_wrong_nodes),
         "dsl_regen_ready": should_trigger_dsl_regen(),
