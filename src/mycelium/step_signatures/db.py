@@ -4072,8 +4072,8 @@ class StepSignatureDB:
             cursor = conn.execute("""
                 SELECT id, signature_id, centroid, embedding_count, step_type,
                        description, param_descriptions, dsl_script, dsl_type,
-                       uses, successes, is_semantic_umbrella, is_root, depth,
-                       created_at, last_used_at
+                       uses, successes, operational_failures, is_semantic_umbrella,
+                       is_root, depth, created_at, last_used_at
                 FROM step_signatures
             """)
             return [self._row_to_signature_fast(row) for row in cursor.fetchall()]

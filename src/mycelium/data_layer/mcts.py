@@ -2770,6 +2770,47 @@ def get_failing_steps_for_decomposition(min_attempts: int = 3, max_win_rate: flo
     return [(rec.target_id, rec.target_desc) for rec in result["steps_to_decompose"]]
 
 
+def get_mcts_win_rates(min_attempts: int = 1) -> dict[int, dict]:
+    """Get MCTS win rates for all nodes with sufficient data.
+
+    Returns actual win rates from mcts_thread_steps, which tracks
+    step-level outcomes (success/failure). This is ground truth for
+    operational correctness, as opposed to signature.success_rate which
+    includes partial credit.
+
+    Args:
+        min_attempts: Minimum step attempts to include a node
+
+    Returns:
+        Dict mapping node_id to {"total": int, "wins": int, "win_rate": float}
+    """
+    db = get_db()
+    node_stats = {}
+
+    with db.connection() as conn:
+        cursor = conn.execute("""
+            SELECT
+                t.node_id,
+                COUNT(*) as total,
+                SUM(CASE WHEN t.step_success = 1 THEN 1 ELSE 0 END) as wins
+            FROM mcts_thread_steps t
+            WHERE t.node_id IS NOT NULL
+            GROUP BY t.node_id
+            HAVING COUNT(*) >= ?
+        """, (min_attempts,))
+
+        for row in cursor.fetchall():
+            node_id, total, wins = row
+            win_rate = wins / total if total > 0 else 0
+            node_stats[node_id] = {
+                "total": total,
+                "wins": wins,
+                "win_rate": win_rate,
+            }
+
+    return node_stats
+
+
 # =============================================================================
 # SIGNATURE RETIREMENT (Prune consistently failing nodes)
 # =============================================================================

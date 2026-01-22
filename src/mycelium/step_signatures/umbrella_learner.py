@@ -264,7 +264,7 @@ class UmbrellaLearner:
         Criteria for both:
         - uses >= UMBRELLA_MIN_USES_FOR_EVALUATION (enough data)
         - operational_failures > 0 (flagged by MCTS post-mortem)
-        - failure_rate > adaptive_split_threshold (failing)
+        - MCTS win_rate <= max_success_rate (actually failing per ground truth)
 
         Per CLAUDE.md: "Do not decompose a leaf node until instructed by the
         MCTS rollout post-mortem analysis." Decomposition is triggered by
@@ -273,8 +273,13 @@ class UmbrellaLearner:
         The split threshold is adaptive based on global accuracy:
         - Low accuracy (cold start): lenient threshold (tolerate more failures)
         - High accuracy (mature): strict threshold (split confidently)
+
+        NOTE: Uses MCTS win rates (ground truth) instead of signature.success_rate
+        (which includes partial credit). This ensures we only decompose signatures
+        that are actually failing operationally.
         """
         from mycelium.mcts.adaptive import AdaptiveExploration
+        from mycelium.data_layer.mcts import get_mcts_win_rates
 
         all_sigs = self.db.get_all_signatures()
 
@@ -283,6 +288,10 @@ class UmbrellaLearner:
         split_threshold = adaptive.split_threshold
         # Convert failure threshold to max success rate
         max_success_rate = 1.0 - split_threshold
+
+        # Get MCTS win rates for ground truth filtering
+        # This is the actual step-level win rate, not partial credit
+        mcts_stats = get_mcts_win_rates(min_attempts=UMBRELLA_MIN_USES_FOR_EVALUATION)
 
         candidates = []
         for sig in all_sigs:
@@ -293,8 +302,18 @@ class UmbrellaLearner:
             # operational_failures > 0 means destructive interference was detected
             if sig.operational_failures <= 0:
                 continue
-            # Skip if success rate is acceptable
-            if sig.success_rate > max_success_rate:
+
+            # Use MCTS win rate (ground truth) instead of sig.success_rate (partial credit)
+            # Fall back to sig.success_rate if no MCTS data (cold start)
+            mcts_data = mcts_stats.get(sig.id)
+            if mcts_data:
+                actual_win_rate = mcts_data["win_rate"]
+            else:
+                # No MCTS data - use signature success rate as fallback
+                actual_win_rate = sig.success_rate
+
+            # Skip if win rate is acceptable
+            if actual_win_rate > max_success_rate:
                 continue
 
             # Category 1: decompose type not yet promoted to umbrella
@@ -313,9 +332,9 @@ class UmbrellaLearner:
 
             if is_decompose_candidate or is_orphan_umbrella:
                 candidates.append(sig)
-                logger.debug(
-                    "[umbrella] Candidate: '%s' (uses=%d, success=%.1f%%, threshold=%.1f%%, op_fail=%d, orphan=%s)",
-                    sig.step_type, sig.uses, sig.success_rate * 100, max_success_rate * 100,
+                logger.info(
+                    "[umbrella] Candidate: '%s' (id=%d, mcts_win=%.1f%%, sig_success=%.1f%%, threshold=%.1f%%, op_fail=%d, orphan=%s)",
+                    sig.step_type, sig.id, actual_win_rate * 100, sig.success_rate * 100, max_success_rate * 100,
                     sig.operational_failures, is_orphan_umbrella
                 )
 
