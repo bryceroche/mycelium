@@ -367,6 +367,29 @@ CREATE TABLE IF NOT EXISTS dag_step_node_stats (
 );
 CREATE INDEX IF NOT EXISTS idx_dsns_lookup ON dag_step_node_stats(dag_step_type, node_id);
 CREATE INDEX IF NOT EXISTS idx_dsns_node ON dag_step_node_stats(node_id);
+
+-- =============================================================================
+-- DAG_STEP_EMBEDDINGS: Semantic similarity for decomposition decisions
+-- =============================================================================
+-- Stores embeddings for dag_steps to enable:
+-- 1. "Find similar dag_steps that succeeded" queries
+-- 2. Data-driven decomposition: decompose dag_step vs leaf_node based on stats
+-- Per CLAUDE.md: "Semantic Embedding First"
+CREATE TABLE IF NOT EXISTS dag_step_embeddings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dag_id TEXT NOT NULL REFERENCES mcts_dags(dag_id) ON DELETE CASCADE,
+    dag_step_id TEXT NOT NULL REFERENCES mcts_dag_steps(dag_step_id) ON DELETE CASCADE,
+    step_desc TEXT NOT NULL,              -- The step description (task)
+    embedding BLOB,                       -- Packed embedding vector
+    node_id INTEGER,                      -- Which leaf_node handled it (NULL if not yet executed)
+    success INTEGER,                      -- 0=failed, 1=succeeded, NULL=not yet known
+    created_at TEXT NOT NULL,             -- ISO timestamp
+    FOREIGN KEY (node_id) REFERENCES step_signatures(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_dse_dag ON dag_step_embeddings(dag_id);
+CREATE INDEX IF NOT EXISTS idx_dse_dag_step ON dag_step_embeddings(dag_step_id);
+CREATE INDEX IF NOT EXISTS idx_dse_node ON dag_step_embeddings(node_id);
+CREATE INDEX IF NOT EXISTS idx_dse_success ON dag_step_embeddings(success);
 """
 
 def get_schema() -> str:

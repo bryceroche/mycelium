@@ -54,6 +54,14 @@ from mycelium.data_layer.mcts import (
     DiagnosticResult,
     get_problems_for_diagnostic_exploration,
     run_diagnostic_exploration,
+    # Dag-step embeddings for decomposition decisions
+    DecompositionDecision,
+    store_dag_step_embedding,
+    update_dag_step_embedding_outcome,
+    find_similar_dag_steps,
+    get_node_aggregate_stats,
+    get_similar_steps_win_rate,
+    decide_decomposition_target,
 )
 
 db = get_db()
@@ -108,4 +116,12 @@ __all__ = [
     "DiagnosticResult",
     "get_problems_for_diagnostic_exploration",
     "run_diagnostic_exploration",
+    # Dag-step embeddings for decomposition decisions
+    "DecompositionDecision",
+    "store_dag_step_embedding",
+    "update_dag_step_embedding_outcome",
+    "find_similar_dag_steps",
+    "get_node_aggregate_stats",
+    "get_similar_steps_win_rate",
+    "decide_decomposition_target",
 ]

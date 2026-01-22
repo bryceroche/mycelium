@@ -89,6 +89,8 @@ from mycelium.data_layer.mcts import (
     log_thread_step,
     run_postmortem_with_interference,
     run_diagnostic_postmortem,
+    store_dag_step_embedding,
+    decide_decomposition_target,
 )
 
 logger = logging.getLogger(__name__)
@@ -939,6 +941,11 @@ class Solver:
 
             # Pre-warm embedding cache with batch call (avoids N sequential embed calls)
             self._prewarm_step_embeddings(plan.steps)
+
+            # Store dag_step embeddings for decomposition decisions
+            # Per CLAUDE.md: Track (dag_step, leaf_node) pairs to decide what to decompose
+            if TRAINING_MODE and self._dag_step_ids:
+                self._store_dag_step_embeddings(plan.steps)
 
             # Pre-warm operation embeddings for graph-based routing
             # Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE
@@ -2329,6 +2336,46 @@ class Solver:
         # Batch embed - populates the cache
         logger.debug("[solver] Pre-warming embeddings: %d steps in single batch call", len(texts))
         cached_embed_batch(texts, self.embedder)
+
+    def _store_dag_step_embeddings(self, steps: list) -> None:
+        """Store embeddings for dag_steps to enable similarity-based decomposition decisions.
+
+        Per CLAUDE.md: Track (dag_step, leaf_node) pairs and use statistics to
+        decide which to decompose on failure.
+
+        Called after _prewarm_step_embeddings so embeddings are already cached.
+        """
+        if not self._current_dag_id or not self._dag_step_ids:
+            return
+
+        stored = 0
+        for step in steps:
+            if step.is_composite:
+                continue
+
+            dag_step_id = self._dag_step_ids.get(step.id)
+            if not dag_step_id:
+                continue
+
+            # Get cached embedding
+            normalized = normalize_step_text(step.task)
+            embedding = cached_embed(normalized, self.embedder)
+
+            # Store for similarity lookups
+            try:
+                store_dag_step_embedding(
+                    dag_id=self._current_dag_id,
+                    dag_step_id=dag_step_id,
+                    step_desc=step.task,
+                    embedding=embedding,
+                    node_id=None,  # Will be updated when step executes
+                )
+                stored += 1
+            except Exception as e:
+                logger.warning("[solver] Failed to store dag_step embedding: %s", e)
+
+        if stored > 0:
+            logger.debug("[solver] Stored %d dag_step embeddings for similarity lookups", stored)
 
     def _prewarm_operation_embeddings(self, steps: list) -> None:
         """Batch embed all step operations for graph-based routing.

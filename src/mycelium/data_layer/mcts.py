@@ -940,6 +940,312 @@ def propagate_step_node_stats(dag_id: str) -> dict:
 
 
 # =============================================================================
+# DAG_STEP EMBEDDINGS: Semantic similarity for decomposition decisions
+# =============================================================================
+# Per CLAUDE.md: Track (dag_step, leaf_node) pairs and use statistics to decide
+# which to decompose on failure. If leaf_node is strong, decompose the dag_step.
+# If similar dag_steps succeed with other nodes, decompose the leaf_node.
+
+
+@dataclass
+class DecompositionDecision:
+    """Result of analyzing which component to decompose on failure."""
+    target: str  # "dag_step", "leaf_node", or "both"
+    confidence: float  # 0-1, how confident we are in this decision
+    reason: str  # Human-readable explanation
+    node_win_rate: Optional[float] = None  # Leaf node's overall win rate
+    similar_step_win_rate: Optional[float] = None  # Win rate of similar dag_steps
+
+
+def store_dag_step_embedding(
+    dag_id: str,
+    dag_step_id: str,
+    step_desc: str,
+    embedding: "np.ndarray",
+    node_id: Optional[int] = None,
+) -> int:
+    """Store embedding for a dag_step.
+
+    Called when a dag_step is created/executed to enable similarity lookups.
+
+    Args:
+        dag_id: The DAG this step belongs to
+        dag_step_id: Unique step ID
+        step_desc: The step description (task)
+        embedding: The embedding vector
+        node_id: Which leaf_node handled it (None if not yet executed)
+
+    Returns:
+        The ID of the inserted row
+    """
+    from datetime import datetime, timezone
+    from mycelium.step_signatures.db import pack_embedding
+
+    conn = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+    embedding_packed = pack_embedding(embedding)
+
+    # Use the ConnectionManager's execute which auto-commits
+    cursor = conn.execute(
+        """INSERT INTO dag_step_embeddings
+           (dag_id, dag_step_id, step_desc, embedding, node_id, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (dag_id, dag_step_id, step_desc, embedding_packed, node_id, now),
+    )
+    return cursor.lastrowid
+
+
+def update_dag_step_embedding_outcome(
+    dag_step_id: str,
+    node_id: int,
+    success: bool,
+) -> None:
+    """Update the outcome for a dag_step embedding record.
+
+    Called after thread grading to record whether the step succeeded.
+
+    Args:
+        dag_step_id: The step ID
+        node_id: The leaf_node that handled it
+        success: Whether the step succeeded
+    """
+    conn = get_db()
+    # ConnectionManager.execute() auto-commits
+    conn.execute(
+        """UPDATE dag_step_embeddings
+           SET node_id = ?, success = ?
+           WHERE dag_step_id = ?""",
+        (node_id, 1 if success else 0, dag_step_id),
+    )
+
+
+def find_similar_dag_steps(
+    embedding: "np.ndarray",
+    limit: int = 20,
+    min_similarity: float = 0.7,
+) -> list[dict]:
+    """Find dag_steps similar to the given embedding.
+
+    Used to check: "Have we seen steps like this before? How did they do?"
+
+    Args:
+        embedding: The embedding to compare against
+        limit: Maximum number of results
+        min_similarity: Minimum cosine similarity threshold
+
+    Returns:
+        List of dicts with: dag_step_id, step_desc, node_id, success, similarity
+    """
+    import numpy as np
+    from mycelium.step_signatures.db import unpack_embedding
+
+    conn = get_db()
+    cursor = conn.execute(
+        """SELECT dag_step_id, step_desc, embedding, node_id, success
+           FROM dag_step_embeddings
+           WHERE embedding IS NOT NULL AND success IS NOT NULL"""
+    )
+
+    results = []
+    embedding_norm = np.linalg.norm(embedding)
+    if embedding_norm == 0:
+        return results
+
+    for row in cursor.fetchall():
+        dag_step_id, step_desc, emb_packed, node_id, success = row
+        stored_emb = unpack_embedding(emb_packed)
+        if stored_emb is None:
+            continue
+
+        stored_norm = np.linalg.norm(stored_emb)
+        if stored_norm == 0:
+            continue
+
+        similarity = float(np.dot(embedding, stored_emb) / (embedding_norm * stored_norm))
+
+        if similarity >= min_similarity:
+            results.append({
+                "dag_step_id": dag_step_id,
+                "step_desc": step_desc,
+                "node_id": node_id,
+                "success": success,
+                "similarity": similarity,
+            })
+
+    # Sort by similarity descending
+    results.sort(key=lambda x: x["similarity"], reverse=True)
+    return results[:limit]
+
+
+def get_node_aggregate_stats(node_id: int) -> dict:
+    """Get aggregate stats for a leaf_node across ALL dag_steps.
+
+    Used to check: "Is this node generally strong, regardless of step type?"
+
+    Args:
+        node_id: The leaf_node signature ID
+
+    Returns:
+        Dict with: total_uses, total_wins, total_losses, overall_win_rate
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """SELECT SUM(uses), SUM(wins), SUM(losses)
+           FROM dag_step_node_stats
+           WHERE node_id = ?""",
+        (node_id,),
+    )
+    row = cursor.fetchone()
+
+    uses = row[0] or 0
+    wins = row[1] or 0
+    losses = row[2] or 0
+
+    # Bayesian prior: assume 50% with 2 pseudo-observations
+    prior_alpha = 1.0
+    prior_beta = 1.0
+    win_rate = (wins + prior_alpha) / (uses + prior_alpha + prior_beta) if uses > 0 else 0.5
+
+    return {
+        "total_uses": uses,
+        "total_wins": wins,
+        "total_losses": losses,
+        "overall_win_rate": win_rate,
+    }
+
+
+def get_similar_steps_win_rate(
+    embedding: "np.ndarray",
+    exclude_node_id: Optional[int] = None,
+    min_similarity: float = 0.7,
+) -> dict:
+    """Get win rate of similar dag_steps, optionally excluding a specific node.
+
+    Used to check: "Do steps like this usually succeed with OTHER nodes?"
+
+    Args:
+        embedding: The step's embedding
+        exclude_node_id: Node to exclude (the one that failed)
+        min_similarity: Minimum similarity threshold
+
+    Returns:
+        Dict with: total_similar, wins, losses, win_rate, best_nodes (nodes that succeeded)
+    """
+    similar = find_similar_dag_steps(embedding, limit=50, min_similarity=min_similarity)
+
+    # Filter out the failing node if specified
+    if exclude_node_id is not None:
+        similar = [s for s in similar if s["node_id"] != exclude_node_id]
+
+    if not similar:
+        return {
+            "total_similar": 0,
+            "wins": 0,
+            "losses": 0,
+            "win_rate": 0.5,
+            "best_nodes": [],
+        }
+
+    wins = sum(1 for s in similar if s["success"] == 1)
+    losses = sum(1 for s in similar if s["success"] == 0)
+    total = wins + losses
+
+    # Bayesian prior
+    prior_alpha = 1.0
+    prior_beta = 1.0
+    win_rate = (wins + prior_alpha) / (total + prior_alpha + prior_beta) if total > 0 else 0.5
+
+    # Find nodes that succeeded with similar steps
+    best_nodes = list(set(s["node_id"] for s in similar if s["success"] == 1))
+
+    return {
+        "total_similar": len(similar),
+        "wins": wins,
+        "losses": losses,
+        "win_rate": win_rate,
+        "best_nodes": best_nodes,
+    }
+
+
+def decide_decomposition_target(
+    step_embedding: "np.ndarray",
+    node_id: int,
+    node_win_threshold: float = 0.7,
+    similar_win_threshold: float = 0.6,
+) -> DecompositionDecision:
+    """Decide whether to decompose the dag_step or leaf_node on failure.
+
+    The key insight: blame the weak link in the (dag_step, leaf_node) pair.
+
+    Decision logic:
+    1. If leaf_node has high win rate overall → decompose dag_step (wrong formulation)
+    2. If similar dag_steps succeed with other nodes → decompose leaf_node (wrong operation)
+    3. Both weak → decompose both (or the weaker one)
+
+    Args:
+        step_embedding: Embedding of the failing dag_step
+        node_id: The leaf_node that failed
+        node_win_threshold: Win rate above which node is considered "strong"
+        similar_win_threshold: Win rate above which similar steps are "usually successful"
+
+    Returns:
+        DecompositionDecision with target and reasoning
+    """
+    # Get node's overall performance
+    node_stats = get_node_aggregate_stats(node_id)
+    node_win_rate = node_stats["overall_win_rate"]
+    node_uses = node_stats["total_uses"]
+
+    # Get similar steps' performance (excluding this node)
+    similar_stats = get_similar_steps_win_rate(
+        step_embedding, exclude_node_id=node_id, min_similarity=0.7
+    )
+    similar_win_rate = similar_stats["win_rate"]
+    similar_count = similar_stats["total_similar"]
+
+    # Decision logic
+    node_is_strong = node_win_rate >= node_win_threshold and node_uses >= 3
+    similar_usually_succeed = similar_win_rate >= similar_win_threshold and similar_count >= 2
+
+    if node_is_strong and not similar_usually_succeed:
+        # Strong node, weak/unknown step pattern → decompose the step
+        return DecompositionDecision(
+            target="dag_step",
+            confidence=min(0.9, node_win_rate),
+            reason=f"Node is strong ({node_win_rate:.0%} win rate, {node_uses} uses), step pattern is weak",
+            node_win_rate=node_win_rate,
+            similar_step_win_rate=similar_win_rate,
+        )
+    elif similar_usually_succeed and not node_is_strong:
+        # Similar steps succeed elsewhere, this node is weak → decompose the node
+        return DecompositionDecision(
+            target="leaf_node",
+            confidence=min(0.9, similar_win_rate),
+            reason=f"Similar steps succeed ({similar_win_rate:.0%} with other nodes), this node is weak ({node_win_rate:.0%})",
+            node_win_rate=node_win_rate,
+            similar_step_win_rate=similar_win_rate,
+        )
+    elif node_is_strong and similar_usually_succeed:
+        # Both are strong but still failed → likely a novel combination, try both
+        return DecompositionDecision(
+            target="both",
+            confidence=0.5,
+            reason=f"Both node ({node_win_rate:.0%}) and step pattern ({similar_win_rate:.0%}) are strong - novel combination",
+            node_win_rate=node_win_rate,
+            similar_step_win_rate=similar_win_rate,
+        )
+    else:
+        # Both weak or insufficient data → decompose dag_step first (safer default)
+        return DecompositionDecision(
+            target="dag_step",
+            confidence=0.4,
+            reason=f"Insufficient data (node: {node_uses} uses, similar: {similar_count} steps) - defaulting to step decomposition",
+            node_win_rate=node_win_rate,
+            similar_step_win_rate=similar_win_rate,
+        )
+
+
+# =============================================================================
 # DIVERGENCE-POINT ANALYSIS
 # =============================================================================
 # Per beads mycelium-2rss: Compare winning vs losing thread paths to find
