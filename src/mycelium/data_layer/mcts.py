@@ -13,7 +13,7 @@ import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from mycelium.data_layer import get_db
 from mycelium.config import (
@@ -2700,30 +2700,35 @@ def analyze_decomposition_needs(min_attempts: int = 3, max_win_rate: float = 0.5
     nodes_to_decompose = []
     steps_to_decompose = []
 
-    # Get signature info for nodes
-    with db.connection() as conn:
-        for node_id, stats in node_stats.items():
-            if stats["win_rate"] <= max_win_rate:
-                # Get node details
-                cursor = conn.execute(
-                    "SELECT step_type, dsl_type, dsl_script FROM step_signatures WHERE id = ?",
-                    (node_id,)
-                )
-                row = cursor.fetchone()
-                if row:
-                    step_type, dsl_type, dsl_script = row
-                    # Check if it's an orphan router (no DSL)
-                    is_orphan = dsl_type == "router" and not dsl_script
-                    reason = "orphan router (no DSL)" if is_orphan else f"failing across all steps ({stats['win_rate']*100:.0f}% win rate)"
+    # Get signature info for failing nodes (batch query to avoid N+1)
+    failing_node_ids = [nid for nid, stats in node_stats.items() if stats["win_rate"] <= max_win_rate]
 
-                    nodes_to_decompose.append(DecompositionRecommendation(
-                        target_type="node",
-                        target_id=node_id,
-                        target_desc=step_type,
-                        reason=reason,
-                        win_rate=stats["win_rate"],
-                        attempts=stats["total"],
-                    ))
+    if failing_node_ids:
+        with db.connection() as conn:
+            # Batch query all failing nodes at once
+            placeholders = ",".join("?" * len(failing_node_ids))
+            cursor = conn.execute(
+                f"SELECT id, step_type, dsl_type, dsl_script FROM step_signatures WHERE id IN ({placeholders})",
+                failing_node_ids
+            )
+            node_details = {row[0]: (row[1], row[2], row[3]) for row in cursor.fetchall()}
+
+        for node_id in failing_node_ids:
+            stats = node_stats[node_id]
+            if node_id in node_details:
+                step_type, dsl_type, dsl_script = node_details[node_id]
+                # Check if it's an orphan router (no DSL)
+                is_orphan = dsl_type == "router" and not dsl_script
+                reason = "orphan router (no DSL)" if is_orphan else f"failing across all steps ({stats['win_rate']*100:.0f}% win rate)"
+
+                nodes_to_decompose.append(DecompositionRecommendation(
+                    target_type="node",
+                    target_id=node_id,
+                    target_desc=step_type,
+                    reason=reason,
+                    win_rate=stats["win_rate"],
+                    attempts=stats["total"],
+                ))
 
     # Analyze failing steps
     for step_id, stats in step_stats.items():
@@ -3245,6 +3250,17 @@ def diagnose_failure(
         DIAGNOSTIC_GOOD_SIG_ACCURACY,
     )
 
+    # Guard against None step_db
+    if step_db is None:
+        return DiagnosticResult(
+            decompose_step_score=0.0,
+            decompose_sig_score=0.0,
+            reroute_score=0.0,
+            accuracy=0.0,
+            confidence=0.0,
+            step_distance=0.0,
+        )
+
     # Get signature stats
     sig = step_db.get_signature(signature_id)
     if sig is None:
@@ -3340,7 +3356,7 @@ def diagnose_failure(
 def run_diagnostic_postmortem(
     dag_id: str,
     step_db,
-    step_embeddings: dict[str, any] = None,
+    step_embeddings: dict[str, Any] = None,
 ) -> dict:
     """Run diagnostic post-mortem on a completed DAG.
 
@@ -3537,7 +3553,7 @@ def get_problems_for_diagnostic_exploration(
 
 
 @dataclass
-class DiagnosticResult:
+class DiagnosticExplorationResult:
     """Result of diagnostic exploration on a single problem."""
     problem_id: str
     threads_generated: int
@@ -3554,7 +3570,7 @@ async def run_diagnostic_exploration(
     ground_truth: str,
     num_rollouts: int = 5,
     exploration_c: float = 2.0,
-) -> DiagnosticResult:
+) -> DiagnosticExplorationResult:
     """Re-run a problem with forced exploration to diagnose failures.
 
     This generates multiple threads exploring different paths, then uses
@@ -3588,7 +3604,7 @@ async def run_diagnostic_exploration(
             logger.warning("[diagnostic] Rollout %d failed: %s", i, e)
 
     if not dag_ids:
-        return DiagnosticResult(
+        return DiagnosticExplorationResult(
             problem_id=problem_desc[:50],
             threads_generated=0,
             winning_threads=0,
@@ -3638,7 +3654,7 @@ async def run_diagnostic_exploration(
         balance = min(winning_count, losing_count) / max(winning_count, losing_count)
         confidence = min(0.9, 0.5 + (total_divergence_points * 0.1) + (balance * 0.3))
 
-    result = DiagnosticResult(
+    result = DiagnosticExplorationResult(
         problem_id=problem_desc[:50],
         threads_generated=total_threads,
         winning_threads=winning_count,
