@@ -347,6 +347,34 @@ slow decay.  Calculate signature use count /  ((cache) count of total num proble
 
 The goal is NOT 100% accuracy on every run. The goal is collecting data that makes the system smarter over time. A failed DSL provides valuable signal for post-mortem analysis.
 
+## Always Route to Best Match (No Arbitrary Thresholds)
+
+**ALWAYS_ROUTE_TO_BEST = True** (default)
+
+Instead of rejecting matches below arbitrary similarity thresholds, we always route to the best available match and let execution failures drive learning.
+
+### Why No Thresholds?
+
+Thresholds are arbitrary magic numbers that don't add value:
+- We always pick the highest similarity match anyway
+- Thresholds only decide "accept any match or create new"
+- Better to let actual execution results drive that decision
+
+### The Flow
+
+1. **Route** to best cosine similarity match (no minimum threshold)
+2. **Execute** the matched DSL
+3. **If success** → reinforce the match (centroid update, credit propagation)
+4. **If failure** → post-mortem flags for decomposition
+
+Structure emerges from failure patterns, not our guesses about what similarity is "good enough."
+
+### When New Signatures Are Created
+
+- Tree is empty (need root)
+- Decomposition creates children (umbrella learner)
+- Step type incompatible with dsl_hint (e.g., sum step matched to product signature)
+
 ## Learning Mechanisms
 Centroid Averaging
 Cluster Centroid - Average of all descendant leaf embeddings 
