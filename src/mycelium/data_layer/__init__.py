@@ -50,6 +50,10 @@ from mycelium.data_layer.mcts import (
     get_thread_paths,
     find_divergence_points,
     assign_divergence_blame,
+    # Diagnostic exploration (per beads mycelium-g1hh)
+    DiagnosticResult,
+    get_problems_for_diagnostic_exploration,
+    run_diagnostic_exploration,
 )
 
 db = get_db()
@@ -100,4 +104,8 @@ __all__ = [
     "get_thread_paths",
     "find_divergence_points",
     "assign_divergence_blame",
+    # Diagnostic exploration
+    "DiagnosticResult",
+    "get_problems_for_diagnostic_exploration",
+    "run_diagnostic_exploration",
 ]

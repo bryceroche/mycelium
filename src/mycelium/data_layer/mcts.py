@@ -3090,3 +3090,223 @@ def run_diagnostic_postmortem(
         "signatures_to_decompose": list(set(sigs_to_decompose)),
         "routing_misses": routing_misses,
     }
+
+
+# =============================================================================
+# DIAGNOSTIC EXPLORATION: Re-run failing problems to pinpoint (step, node) blame
+# =============================================================================
+# Per beads mycelium-g1hh: When we detect repeated failures, re-run the problem
+# with forced MCTS exploration to generate multiple threads, then use divergence
+# analysis to pinpoint the exact (dag_step, node) pair that's failing.
+
+
+def get_problems_for_diagnostic_exploration(
+    min_failures: int = 3,
+    max_win_rate: float = 0.3,
+) -> list[dict]:
+    """Find problems that should be re-run with diagnostic exploration.
+
+    Looks for:
+    1. DAGs where thread lost (wrong final answer)
+    2. (dag_step_type, node) pairs with low win rate
+    3. Problems that haven't been diagnosed yet
+
+    Args:
+        min_failures: Minimum failures for a (step, node) pair to trigger
+        max_win_rate: Maximum win rate to be considered failing
+
+    Returns:
+        List of dicts with problem_id, problem_desc, ground_truth, failing_pairs
+    """
+    db = get_db()
+
+    # Find failing (dag_step_type, node) pairs
+    with db.connection() as conn:
+        cursor = conn.execute("""
+            SELECT dag_step_type, node_id, uses, wins, losses, win_rate
+            FROM dag_step_node_stats
+            WHERE uses >= ? AND win_rate <= ?
+            ORDER BY win_rate ASC, losses DESC
+        """, (min_failures, max_win_rate))
+
+        failing_pairs = []
+        for row in cursor.fetchall():
+            failing_pairs.append({
+                "dag_step_type": row[0],
+                "node_id": row[1],
+                "uses": row[2],
+                "wins": row[3],
+                "losses": row[4],
+                "win_rate": row[5],
+            })
+
+    if not failing_pairs:
+        return []
+
+    # Find problems that used these failing pairs and lost
+    problems = []
+    with db.connection() as conn:
+        for pair in failing_pairs[:5]:  # Limit to top 5 failing pairs
+            cursor = conn.execute("""
+                SELECT DISTINCT
+                    d.dag_id,
+                    d.problem_id,
+                    d.problem_desc,
+                    d.ground_truth
+                FROM mcts_dags d
+                JOIN mcts_threads t ON d.dag_id = t.dag_id
+                JOIN mcts_thread_steps ts ON t.thread_id = ts.thread_id
+                JOIN mcts_dag_steps ds ON ts.dag_step_id = ds.dag_step_id
+                WHERE t.success = 0
+                  AND ts.node_id = ?
+                  AND (ds.dsl_hint = ? OR ds.step_desc LIKE ?)
+                ORDER BY d.created_at DESC
+                LIMIT 3
+            """, (pair["node_id"], pair["dag_step_type"], f"%{pair['dag_step_type']}%"))
+
+            for row in cursor.fetchall():
+                problems.append({
+                    "dag_id": row[0],
+                    "problem_id": row[1],
+                    "problem_desc": row[2],
+                    "ground_truth": row[3],
+                    "failing_pair": pair,
+                })
+
+    # Deduplicate by problem_id
+    seen = set()
+    unique_problems = []
+    for p in problems:
+        if p["problem_id"] not in seen:
+            seen.add(p["problem_id"])
+            unique_problems.append(p)
+
+    logger.info(
+        "[mcts] Found %d problems for diagnostic exploration (%d failing pairs)",
+        len(unique_problems), len(failing_pairs)
+    )
+
+    return unique_problems
+
+
+@dataclass
+class DiagnosticResult:
+    """Result of diagnostic exploration on a single problem."""
+    problem_id: str
+    threads_generated: int
+    winning_threads: int
+    losing_threads: int
+    divergence_points: int
+    blamed_nodes: list[int]  # Nodes identified as causing failures
+    blamed_steps: list[str]  # dag_step_ids identified as problematic
+    confidence: float  # How confident we are in the diagnosis (0-1)
+
+
+async def run_diagnostic_exploration(
+    problem_desc: str,
+    ground_truth: str,
+    num_rollouts: int = 5,
+    exploration_c: float = 2.0,
+) -> DiagnosticResult:
+    """Re-run a problem with forced exploration to diagnose failures.
+
+    This generates multiple threads exploring different paths, then uses
+    divergence analysis to pinpoint the exact (dag_step, node) pairs causing failures.
+
+    Args:
+        problem_desc: The problem text
+        ground_truth: The correct answer
+        num_rollouts: Number of threads to generate
+        exploration_c: Exploration constant (higher = more exploration)
+
+    Returns:
+        DiagnosticResult with identified failing pairs
+    """
+    from mycelium.solver import Solver
+    from mycelium.step_signatures import StepSignatureDB
+
+    # Create solver with high exploration
+    step_db = StepSignatureDB()
+    solver = Solver(db_path=step_db.db_path)
+
+    # Run multiple times with forced exploration
+    dag_ids = []
+    for i in range(num_rollouts):
+        try:
+            # Solve with ground_truth for grading
+            result = await solver.solve(problem_desc, ground_truth=ground_truth)
+            if solver._current_dag_id:
+                dag_ids.append(solver._current_dag_id)
+        except Exception as e:
+            logger.warning("[diagnostic] Rollout %d failed: %s", i, e)
+
+    if not dag_ids:
+        return DiagnosticResult(
+            problem_id=problem_desc[:50],
+            threads_generated=0,
+            winning_threads=0,
+            losing_threads=0,
+            divergence_points=0,
+            blamed_nodes=[],
+            blamed_steps=[],
+            confidence=0.0,
+        )
+
+    # Analyze divergence across all DAGs
+    all_blamed_nodes = set()
+    all_blamed_steps = set()
+    total_divergence_points = 0
+    winning_count = 0
+    losing_count = 0
+
+    for dag_id in dag_ids:
+        # Get thread outcomes
+        paths = get_thread_paths(dag_id)
+        winning_count += sum(1 for p in paths if p.success == 1)
+        losing_count += sum(1 for p in paths if p.success == 0)
+
+        # Find divergence points
+        divergence_points = find_divergence_points(dag_id)
+        total_divergence_points += len(divergence_points)
+
+        # Collect blamed nodes from divergence
+        for dp in divergence_points:
+            if dp.losing_node_at_divergence:
+                all_blamed_nodes.add(dp.losing_node_at_divergence)
+            if dp.divergence_dag_step_id:
+                all_blamed_steps.add(dp.divergence_dag_step_id)
+            # Also check suffix
+            for step_id, node_id in dp.losing_suffix:
+                all_blamed_nodes.add(node_id)
+                all_blamed_steps.add(step_id)
+
+    # Calculate confidence based on data quality
+    total_threads = winning_count + losing_count
+    if total_threads == 0:
+        confidence = 0.0
+    elif winning_count == 0 or losing_count == 0:
+        confidence = 0.3  # No comparison possible
+    else:
+        # Higher confidence with more divergence points and balanced win/loss
+        balance = min(winning_count, losing_count) / max(winning_count, losing_count)
+        confidence = min(0.9, 0.5 + (total_divergence_points * 0.1) + (balance * 0.3))
+
+    result = DiagnosticResult(
+        problem_id=problem_desc[:50],
+        threads_generated=total_threads,
+        winning_threads=winning_count,
+        losing_threads=losing_count,
+        divergence_points=total_divergence_points,
+        blamed_nodes=list(all_blamed_nodes),
+        blamed_steps=list(all_blamed_steps),
+        confidence=confidence,
+    )
+
+    logger.info(
+        "[diagnostic] Exploration complete: %d threads (%d win, %d lose), "
+        "%d divergence points, blamed %d nodes, confidence=%.2f",
+        result.threads_generated, result.winning_threads, result.losing_threads,
+        result.divergence_points, len(result.blamed_nodes), result.confidence
+    )
+
+    return result
