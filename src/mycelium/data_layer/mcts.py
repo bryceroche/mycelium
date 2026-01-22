@@ -737,47 +737,65 @@ def update_dag_step_node_stats(
     if not STEP_NODE_STATS_ENABLED:
         return
 
+    # Validate dag_step_type
+    if not dag_step_type or not isinstance(dag_step_type, str):
+        logger.warning("[mcts] Invalid dag_step_type: %r, skipping stats update", dag_step_type)
+        return
+    # Truncate excessively long step types (sanity check)
+    if len(dag_step_type) > 200:
+        dag_step_type = dag_step_type[:200]
+
     conn = get_db()
     now = datetime.now(timezone.utc).isoformat()
+    win_inc = 1 if won else 0
+    loss_inc = 0 if won else 1
 
-    # Upsert: increment counters, update running avg
+    # Step 1: Simple upsert - just increment raw counters
     conn.execute(
         """
         INSERT INTO dag_step_node_stats (
             dag_step_type, node_id, uses, wins, losses,
-            win_rate, avg_amplitude_post, amplitude_post_sum, last_updated
+            amplitude_post_sum, last_updated
         )
-        VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, 1, ?, ?, ?, ?)
         ON CONFLICT(dag_step_type, node_id) DO UPDATE SET
             uses = uses + 1,
             wins = wins + ?,
             losses = losses + ?,
             amplitude_post_sum = amplitude_post_sum + ?,
-            avg_amplitude_post = (amplitude_post_sum + ?) / (uses + 1),
-            win_rate = CAST(wins + ? + ? AS REAL) / (uses + 1 + ?),
             last_updated = ?
         """,
         (
             dag_step_type,
             node_id,
-            1 if won else 0,  # Initial wins
-            0 if won else 1,  # Initial losses
-            (STEP_NODE_STATS_PRIOR_WINS + (1 if won else 0)) / (STEP_NODE_STATS_PRIOR_USES + 1),  # Initial win_rate with prior
-            amplitude_post,  # Initial avg_amplitude_post
-            amplitude_post,  # Initial amplitude_post_sum
+            win_inc,
+            loss_inc,
+            amplitude_post,
             now,
-            # ON CONFLICT update values:
-            1 if won else 0,  # wins increment
-            0 if won else 1,  # losses increment
-            amplitude_post,  # amplitude_post_sum increment
-            amplitude_post,  # for avg calculation
-            STEP_NODE_STATS_PRIOR_WINS,  # Prior wins for win_rate
-            1 if won else 0,  # New win for win_rate
-            STEP_NODE_STATS_PRIOR_USES,  # Prior uses for win_rate
+            # ON CONFLICT values:
+            win_inc,
+            loss_inc,
+            amplitude_post,
             now,
         ),
     )
-    # No explicit commit needed - ConnectionManager handles this
+
+    # Step 2: Compute derived fields (win_rate, avg_amplitude_post) in Python
+    # This is clearer than complex inline SQL and applies Bayesian priors correctly
+    conn.execute(
+        """
+        UPDATE dag_step_node_stats
+        SET win_rate = CAST(wins + ? AS REAL) / (uses + ?),
+            avg_amplitude_post = amplitude_post_sum / uses
+        WHERE dag_step_type = ? AND node_id = ?
+        """,
+        (
+            STEP_NODE_STATS_PRIOR_WINS,
+            STEP_NODE_STATS_PRIOR_USES,
+            dag_step_type,
+            node_id,
+        ),
+    )
 
     logger.debug(
         "[mcts] Updated step-node stats: %s/node_%d won=%s amp_post=%.2f",
@@ -806,6 +824,10 @@ def get_dag_step_node_stats_batch(
     if not STEP_NODE_STATS_ENABLED or not node_ids:
         return {}
 
+    # Validate dag_step_type
+    if not dag_step_type or not isinstance(dag_step_type, str):
+        return {}
+
     conn = get_db()
 
     # Build placeholders for IN clause
@@ -820,14 +842,17 @@ def get_dag_step_node_stats_batch(
         [dag_step_type] + list(node_ids),
     )
 
+    # Use named column access for clarity and safety
+    # Column names match SELECT order: node_id, uses, wins, losses, win_rate, avg_amplitude_post
     result = {}
     for row in cursor.fetchall():
-        result[row[0]] = {
-            "uses": row[1],
-            "wins": row[2],
-            "losses": row[3],
-            "win_rate": row[4],
-            "avg_amplitude_post": row[5],
+        # row is a sqlite3.Row which supports both index and name access
+        result[row["node_id"]] = {
+            "uses": row["uses"],
+            "wins": row["wins"],
+            "losses": row["losses"],
+            "win_rate": row["win_rate"],
+            "avg_amplitude_post": row["avg_amplitude_post"],
         }
 
     return result
