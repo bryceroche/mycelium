@@ -330,7 +330,9 @@ def compute_maturity_decompose_prob(step_db) -> float:
 
     # Get system state
     sig_count = step_db.count_signatures() if step_db else 0
-    accuracy = get_recent_accuracy()  # Reuse existing accuracy tracking
+    # TODO: Wire up actual accuracy tracking from mcts/adaptive.py
+    # For now, default to 0.0 (no accuracy boost - rely on signature count)
+    accuracy = 0.0
 
     # Compute maturity score
     # Base: how far past midpoint in signature count
