@@ -3359,10 +3359,13 @@ Rules:
         """
         try:
             # Use planner to decompose the step
+            # Build context string from problem and known values
+            context_str = f"Original problem: {problem}"
+            if context:
+                context_str += f"\nKnown values: {context}"
             sub_plan = await self.planner.decompose(
                 step.task,
-                problem_context=problem,
-                known_values=context,
+                context=context_str,
             )
 
             if not sub_plan or not sub_plan.steps:
