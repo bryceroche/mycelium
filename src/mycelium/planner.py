@@ -497,7 +497,13 @@ class Planner:
             stripped = line.strip()
 
             # Skip section headers and markers
-            if stripped.upper() in ("VALUES:", "STEPS:") or "===" in stripped:
+            # Section headers are NOT indented (line starts with the header)
+            # Per-step "values:" blocks ARE indented
+            is_section_header = (
+                (line.lstrip() == line and stripped.upper() in ("VALUES:", "STEPS:"))
+                or "===" in stripped
+            )
+            if is_section_header:
                 in_values_section = stripped.upper() == "VALUES:"
                 i += 1
                 continue

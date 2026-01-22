@@ -1222,6 +1222,8 @@ class Solver:
         # 2.5. Auto-decompose if signature needs children
         # Case 1: decompose-type that isn't umbrella yet
         # Case 2: umbrella (possibly auto-demoted) with no children
+        # EXCEPTION: Brand new umbrellas (uses=0) should NOT auto-decompose
+        #            Let them get their first child organically (cold-start protection)
         needs_decompose = False
         children = None  # Track fetched children to avoid redundant DB query
         if signature.dsl_type == "decompose" and not signature.is_semantic_umbrella:
@@ -1232,8 +1234,16 @@ class Solver:
             # another process may have created children that our cache doesn't know about
             children = self.step_db.get_children(signature.id, for_routing=True, skip_cache=True)
             if not children:
-                needs_decompose = True
-                reason = "umbrella has no children (auto-demoted?)"
+                # Cold-start protection: Don't decompose brand new umbrellas
+                # They need a chance to get children organically first
+                if signature.uses == 0:
+                    logger.info(
+                        "[solver] Skipping auto-decompose for new umbrella '%s' (uses=0, cold-start)",
+                        signature.step_type
+                    )
+                else:
+                    needs_decompose = True
+                    reason = "umbrella has no children (auto-demoted?)"
 
         if needs_decompose:
             logger.info(
@@ -2096,6 +2106,15 @@ class Solver:
         dsl_hint = getattr(step, 'dsl_hint', None)
         extracted_values = getattr(step, 'extracted_values', {}) or {}
 
+        # Debug logging for DSL execution
+        logger.debug(
+            "[solver] _try_dsl: task='%s' dsl_hint=%s extracted_values=%s context_keys=%s",
+            step.task[:40] if step.task else "None",
+            dsl_hint,
+            extracted_values,
+            list(context.keys()) if context else []
+        )
+
         # Handle extraction-only steps: no dsl_hint but has single extracted value
         # These steps just extract a constant from the problem (e.g., "eggs per day = 16")
         if not dsl_hint and extracted_values:
@@ -2117,7 +2136,8 @@ class Solver:
 
         if not dsl_hint:
             # No hint from planner - can't execute DSL
-            logger.debug("[solver] No dsl_hint for step, skipping DSL")
+            logger.info("[solver] No dsl_hint for step '%s', skipping DSL (extracted_values=%s)",
+                       step.task[:40] if step.task else "None", extracted_values)
             return None
 
         # Build available params from context + extracted values
