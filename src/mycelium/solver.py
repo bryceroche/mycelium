@@ -571,6 +571,10 @@ class Solver:
         # Set to True when post-mortem batch threshold reached
         self._pending_dsl_regen: bool = False
 
+        # Nodes flagged for decomposition by post-mortem interference detection
+        # These have operational_failures > 0 already set
+        self._postmortem_flagged_nodes: list[int] = []
+
     def _create_background_task(self, coro) -> asyncio.Task:
         """Create a background task with proper lifecycle management.
 
@@ -2388,6 +2392,92 @@ class Solver:
         if stored > 0:
             logger.debug("[solver] Stored %d dag_step embeddings for similarity lookups", stored)
 
+    def _mark_step_for_decomposition(self, dag_step_id: str) -> None:
+        """Mark a dag_step pattern for future decomposition.
+
+        When similar steps come in later, we'll decompose them proactively
+        based on this signal that the step pattern is too complex.
+
+        Per CLAUDE.md: "Failing signatures get decomposed" - same applies to steps.
+        """
+        from mycelium.data_layer.mcts import update_dag_step_embedding_outcome
+
+        try:
+            # Mark the step as needing decomposition by setting success=0
+            # This affects find_similar_dag_steps() which checks success rates
+            update_dag_step_embedding_outcome(
+                dag_step_id=dag_step_id,
+                node_id=0,  # Placeholder - we're marking the step itself
+                success=False,
+            )
+            logger.info(
+                "[solver] Marked dag_step %s for decomposition (step pattern too complex)",
+                dag_step_id[:20]
+            )
+        except Exception as e:
+            logger.warning("[solver] Failed to mark step for decomposition: %s", e)
+
+    def _trigger_signature_decomposition(self, signature_id: int) -> None:
+        """Trigger decomposition of a failing signature.
+
+        This promotes the signature to an umbrella (if not already) and flags it
+        for the umbrella learner to create specialized children.
+
+        Per CLAUDE.md: "Failing signatures get decomposed"
+        """
+        try:
+            sig = self.step_db.get_signature(signature_id)
+            if sig is None:
+                return
+
+            # Skip if already an umbrella with children
+            if sig.is_semantic_umbrella:
+                children = self.step_db.get_children(signature_id, for_routing=True)
+                if children:
+                    logger.debug(
+                        "[solver] Sig %d already umbrella with %d children, skipping",
+                        signature_id, len(children)
+                    )
+                    return
+
+            # Flag for split/decomposition - increments operational_failures
+            # which triggers umbrella_learner consideration
+            self.step_db.flag_for_split(signature_id, reason="diagnostic_postmortem")
+
+            logger.info(
+                "[solver] Triggered decomposition for sig %d '%s' (accuracy=%.1f%%)",
+                signature_id,
+                sig.step_type[:30] if sig.step_type else "?",
+                sig.success_rate * 100,
+            )
+        except Exception as e:
+            logger.warning("[solver] Failed to trigger sig decomposition: %s", e)
+
+    def _record_routing_miss(self, dag_step_id: str, signature_id: int) -> None:
+        """Record a routing miss - this (step, sig) pair should be avoided.
+
+        Similar steps succeeded with other signatures, so this was a bad routing
+        decision. We record it to improve future routing.
+
+        Per CLAUDE.md: "Routing: Decompose the search space"
+        """
+        try:
+            # Update the step embedding to mark this node as unsuccessful for this step
+            from mycelium.data_layer.mcts import update_dag_step_embedding_outcome
+
+            update_dag_step_embedding_outcome(
+                dag_step_id=dag_step_id,
+                node_id=signature_id,
+                success=False,
+            )
+
+            logger.info(
+                "[solver] Recorded routing miss: step %s should not route to sig %d",
+                dag_step_id[:20], signature_id
+            )
+        except Exception as e:
+            logger.warning("[solver] Failed to record routing miss: %s", e)
+
     def _prewarm_operation_embeddings(self, steps: list) -> None:
         """Batch embed all step operations for graph-based routing.
 
@@ -2974,6 +3064,9 @@ Rules:
                 # Log nodes/steps needing decomposition from post-mortem analysis
                 nodes_needing = postmortem_stats.get("nodes_needing_decomposition", [])
                 steps_needing = postmortem_stats.get("steps_needing_decomposition", [])
+                # Store nodes flagged by interference for candidate list building
+                # These already have operational_failures > 0 from record_interference_outcome
+                self._postmortem_flagged_nodes = postmortem_stats.get("nodes_flagged_split", [])
                 if nodes_needing:
                     logger.info(
                         "[solver] Post-mortem: %d nodes need decomposition: %s",
@@ -2983,6 +3076,11 @@ Rules:
                     logger.info(
                         "[solver] Post-mortem: %d steps need decomposition: %s",
                         len(steps_needing), [s[1][:40] for s in steps_needing]
+                    )
+                if self._postmortem_flagged_nodes:
+                    logger.info(
+                        "[solver] Post-mortem: %d nodes flagged for split (destructive interference): %s",
+                        len(self._postmortem_flagged_nodes), self._postmortem_flagged_nodes
                     )
 
                 # Run diagnostic post-mortem with smooth functions (accuracy-based)
@@ -2996,14 +3094,33 @@ Rules:
                     if not diagnostic_stats.get("skipped"):
                         diag_steps = diagnostic_stats.get("steps_to_decompose", [])
                         diag_sigs = diagnostic_stats.get("signatures_to_decompose", [])
-                        if diag_steps or diag_sigs:
+                        routing_misses = diagnostic_stats.get("routing_misses", [])
+
+                        if diag_steps or diag_sigs or routing_misses:
                             logger.info(
                                 "[solver] Diagnostic post-mortem: threshold=%.1f, "
-                                "steps_to_decompose=%d, sigs_to_decompose=%d",
+                                "steps_to_decompose=%d, sigs_to_decompose=%d, routing_misses=%d",
                                 diagnostic_stats.get("failure_threshold", 0),
                                 len(diag_steps),
                                 len(diag_sigs),
+                                len(routing_misses),
                             )
+
+                        # === ACT ON DECOMPOSITION DECISIONS ===
+
+                        # 1. Steps to decompose: Mark step patterns for future decomposition
+                        # When similar steps come in, we'll decompose them proactively
+                        for dag_step_id in diag_steps:
+                            self._mark_step_for_decomposition(dag_step_id)
+
+                        # 2. Signatures to decompose: Promote to umbrella or flag for rewrite
+                        for sig_id in diag_sigs:
+                            self._trigger_signature_decomposition(sig_id)
+
+                        # 3. Routing misses: Record bad (step, sig) pairs for routing avoidance
+                        for dag_step_id, sig_id in routing_misses:
+                            self._record_routing_miss(dag_step_id, sig_id)
+
                 except Exception as e:
                     logger.debug("[solver] Diagnostic post-mortem skipped: %s", e)
 
@@ -3069,18 +3186,36 @@ Rules:
 
         # Also add nodes identified by post-mortem decomposition analysis
         # These are nodes with low win rates from mcts_thread_steps
+        # CRITICAL: Flag them with operational_failures so get_decomposition_candidates picks them up
         from mycelium.data_layer.mcts import get_failing_nodes_for_decomposition
         postmortem_failing_nodes = get_failing_nodes_for_decomposition(min_attempts=3, max_win_rate=0.5)
         for node_id in postmortem_failing_nodes:
             if node_id not in candidates:
                 sig = self.step_db.get_signature(node_id)
                 if sig:
+                    # Flag for decomposition - this sets operational_failures so umbrella_learner finds it
+                    # Per CLAUDE.md: "only signatures with operational_failures > 0 are decomposition candidates"
+                    self.step_db.flag_for_split(node_id, reason="postmortem_analysis")
                     candidates.append(node_id)
                     logger.info(
-                        "[solver] Signature '%s' (id=%d) needs decomposition (post-mortem analysis): "
+                        "[solver] Signature '%s' (id=%d) flagged for decomposition (post-mortem analysis): "
                         "failing across step types",
                         sig.step_type, node_id
                     )
+
+        # Also add nodes flagged by interference detection (destructive interference)
+        # These already have operational_failures > 0 from record_interference_outcome
+        for node_id in self._postmortem_flagged_nodes:
+            if node_id not in candidates:
+                sig = self.step_db.get_signature(node_id)
+                if sig:
+                    candidates.append(node_id)
+                    logger.info(
+                        "[solver] Signature '%s' (id=%d) candidate for decomposition (destructive interference)",
+                        sig.step_type, node_id
+                    )
+        # Clear the flagged nodes list after processing
+        self._postmortem_flagged_nodes = []
 
         # Flush any batched centroid propagations after problem is graded
         # This ensures parent umbrellas have accurate centroids for next problem
