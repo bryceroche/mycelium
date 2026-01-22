@@ -15,37 +15,72 @@ from .client import get_client
 from mycelium.config import PLANNER_DEFAULT_MODEL, PLANNER_DEFAULT_TEMPERATURE
 
 
-PLANNER_SYSTEM = """You decompose math problems into steps. Extract values, don't solve.
+PLANNER_SYSTEM = """You decompose math problems in TWO PHASES. First extract values, then build steps.
 
-FORMAT (output ONLY this, no markdown/explanations):
+=== PHASE 1: VALUE EXTRACTION ===
+Extract ALL numeric values with semantic meaning. Be explicit about WHAT each value represents.
+
+FORMAT:
+VALUES:
+name: number — what this value represents (be specific about the SOURCE)
+
+CRITICAL for percentages:
+- "X increased by Y%" → base is X, NOT any derived value
+- "Y% of X" → base is X
+- Always identify the BASE that the percentage applies to
+
+=== PHASE 2: DECOMPOSITION ===
+Build ATOMIC steps using the extracted values.
+
+FORMAT:
+STEPS:
 - id: step_1
-  task: [what to do]
+  task: [ONE atomic operation - verb + what]
+  operation: [add/subtract/multiply/divide]
   values:
-    name: value
+    name: value_name_or_number
   dsl_hint: +|-|*|/
   depends_on: []
 
 RULES:
-- FEWER STEPS preferred (1-2 for simple problems)
-- Extract numeric values with semantic names
+- ONE OPERATION PER STEP (critical!)
+- Use value names from Phase 1 (semantic names preferred)
 - Reference prior results as "{step_N}"
-- dsl_hint: + (sum/total), - (difference/remaining), * (rate×qty), / (split/per)
+- For "increased by X%": multiply base by (1 + X/100)
 
-EXAMPLE "40,000 km circumference. Trips for 1 billion meters?":
+=== EXAMPLE ===
+Problem: "Josh buys a house for $80,000, puts in $50,000 repairs. This increased the value of the house by 150%. How much profit?"
+
+VALUES:
+purchase_price: 80000 — price Josh paid for the house (the BASE for value increase)
+repair_cost: 50000 — cost of repairs (investment, not the base for %)
+increase_pct: 150 — percentage increase applied to HOUSE value, not total investment
+
+STEPS:
 - id: step_1
-  task: Convert meters to km
+  task: Calculate total investment
+  operation: add
   values:
-    meters: 1000000000
-    per_km: 1000
-  dsl_hint: /
+    a: 80000
+    b: 50000
+  dsl_hint: +
   depends_on: []
 - id: step_2
-  task: Divide by circumference
+  task: Calculate new house value (purchase_price × 2.5 for 150% increase)
+  operation: multiply
   values:
-    km: "{step_1}"
-    circ: 40000
-  dsl_hint: /
-  depends_on: [step_1]
+    base: 80000
+    multiplier: 2.5
+  dsl_hint: *
+  depends_on: []
+- id: step_3
+  task: Calculate profit (new value minus investment)
+  operation: subtract
+  values:
+    new_value: "{step_2}"
+    investment: "{step_1}"
+  dsl_hint: -
+  depends_on: [step_1, step_2]
 """
 
 SIGNATURE_HINTS_TEMPLATE = """
@@ -128,6 +163,11 @@ class Step:
     extracted_values: dict[str, Any] = field(default_factory=dict)
     # Optional DSL hint from planner
     dsl_hint: Optional[str] = None
+    # Operation description for graph-based routing (per CLAUDE.md)
+    # Describes WHAT computation is needed, not the specific values
+    # Example: "multiply two numbers" or "divide then add"
+    # Note: Operation embeddings stored separately in solver (not on Step) for memory efficiency
+    operation: Optional[str] = None
     # Recursive nesting: sub-plan for composite steps
     sub_plan: Optional["DAGPlan"] = None
 
@@ -388,6 +428,7 @@ class Planner:
         self,
         problem: str,
         signature_hints: Optional[list[SignatureHint]] = None,
+        context: Optional[str] = None,
     ) -> DAGPlan:
         """Decompose a problem into a DAG of steps.
 
@@ -396,6 +437,8 @@ class Planner:
             signature_hints: Optional list of SignatureHint objects that tell the
                             decomposer what operations are available and what
                             parameters each needs (from NL interface)
+            context: Optional additional context (e.g., original problem when
+                    decomposing a sub-step, complexity hints)
 
         Returns:
             DAGPlan with steps and dependencies
@@ -409,9 +452,15 @@ class Planner:
             system_prompt += SIGNATURE_HINTS_TEMPLATE.format(hints=hints_text)
             logger.debug("[planner] Added %d signature hints with NL interface", len(signature_hints))
 
+        # Build user message with optional context
+        user_content = problem
+        if context:
+            user_content = f"{context}\n\nDecompose this step: {problem}"
+            logger.debug("[planner] Added context to decomposition request")
+
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": problem},
+            {"role": "user", "content": user_content},
         ]
 
         response = await self.client.generate(messages, temperature=self.temperature)
@@ -431,12 +480,15 @@ class Planner:
     def _parse_steps(self, response: str) -> list[Step]:
         """Parse steps from planner response.
 
+        Handles two-phase format with VALUES: and STEPS: sections.
         Logs warnings when parsing issues are detected (empty tasks, etc.)
         """
         steps = []
         current_step = None
         parse_warnings = []
         parsing_values = False  # Track if we're inside a values: block
+        extracted_values_phase1 = {}  # Values from Phase 1 (for logging)
+        in_values_section = False  # Track if we're in the VALUES: section
 
         lines = response.split("\n")
         i = 0
@@ -444,11 +496,47 @@ class Planner:
             line = lines[i]
             stripped = line.strip()
 
+            # Skip section headers and markers
+            # Section headers are NOT indented (line starts with the header)
+            # Per-step "values:" blocks ARE indented
+            is_section_header = (
+                (line.lstrip() == line and stripped.upper() in ("VALUES:", "STEPS:"))
+                or "===" in stripped
+            )
+            if is_section_header:
+                in_values_section = stripped.upper() == "VALUES:"
+                i += 1
+                continue
+
+            # Parse Phase 1 VALUES section (for logging/debugging)
+            # Only parse lines that look like "name: value" or "name: value — description"
+            if in_values_section and ":" in stripped and not stripped.startswith("-"):
+                # Format: "name: value — description"
+                parts = stripped.split("—")[0] if "—" in stripped else stripped
+                if ":" in parts:
+                    key, val = parts.split(":", 1)
+                    key = key.strip()
+                    val = val.strip()
+                    # Skip if key looks like a step field or is empty
+                    skip_keys = {"dsl_hint", "depends_on", "operation", "id", "task", "values", ""}
+                    if key.lower() in skip_keys:
+                        i += 1
+                        continue
+                    # Only capture numeric values (skip references and placeholders)
+                    try:
+                        extracted_values_phase1[key] = float(val) if "." in val else int(val)
+                    except ValueError:
+                        # Skip non-numeric values in Phase 1 logging (they're captured in Step parsing)
+                        pass
+                i += 1
+                continue
+
             # New step - flexible matching for various formats
             # Matches: "- id: step_1", "-id: step_1", "id: step_1", "- id:step_1"
             id_match = re.match(r'^-?\s*id\s*:\s*(.+)$', stripped, re.IGNORECASE)
             if id_match:
                 parsing_values = False
+                in_values_section = False  # Exit Phase 1 when we hit a step
                 if current_step:
                     # Validate before appending
                     if not current_step.task:
@@ -483,7 +571,7 @@ class Planner:
                 continue
 
             # Inside values block - parse indented key: value pairs
-            if parsing_values and current_step and stripped and not re.match(r'^-?\s*(id|task|depends_on|dsl_hint)\s*:', stripped, re.IGNORECASE):
+            if parsing_values and current_step and stripped and not re.match(r'^-?\s*(id|task|depends_on|dsl_hint|operation)\s*:', stripped, re.IGNORECASE):
                 # Parse key: value
                 if ":" in stripped:
                     key, val = stripped.split(":", 1)
@@ -520,6 +608,13 @@ class Planner:
                 i += 1
                 continue
 
+            # Operation - extracted during decomposition for graph-based routing
+            if re.match(r'^\s*operation\s*:', stripped, re.IGNORECASE) and current_step:
+                parsing_values = False
+                current_step.operation = stripped.split(":", 1)[1].strip()
+                i += 1
+                continue
+
             i += 1
 
         if current_step:
@@ -527,9 +622,26 @@ class Planner:
                 parse_warnings.append(f"Step '{current_step.id}' has empty task")
             steps.append(current_step)
 
+        # Log Phase 1 values extraction (for debugging value attribution)
+        if extracted_values_phase1:
+            logger.info(
+                "[planner] Phase 1 values extracted: %s",
+                ", ".join(f"{k}={v}" for k, v in extracted_values_phase1.items())
+            )
+
         # Log any parsing warnings
         if parse_warnings:
             logger.warning(f"Planner parsing issues: {'; '.join(parse_warnings)}")
+
+        # Check for missing operations (needed for graph-based routing)
+        # Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE
+        steps_missing_ops = [s for s in steps if not s.operation and not s.is_composite]
+        if steps_missing_ops:
+            logger.warning(
+                "[planner] %d/%d steps missing 'operation' field (will use fallback extraction): %s",
+                len(steps_missing_ops), len(steps),
+                ", ".join(s.id for s in steps_missing_ops[:3]) + ("..." if len(steps_missing_ops) > 3 else "")
+            )
 
         # Ensure we have at least one step
         if not steps:

@@ -224,8 +224,6 @@ async def solve_problem(
     problem: dict,
     match_mode: str,
     db_path: str,
-    injection_mode: str = "all",
-    use_hints: bool = True,
     compute_budget: float = 1.0,
     benchmark: str = None,
 ) -> ProblemResult:
@@ -270,15 +268,15 @@ async def solve_problem(
                     dsl_result["regenerated"], dsl_result.get("failed", 0)
                 )
 
-        # Convert step results to timing info
+        # Convert step results to timing info (use getattr for safety)
         step_timings = [
             StepTiming(
-                step_id=s.step_id,
-                task=s.task[:50],
-                elapsed_ms=s.elapsed_ms,
-                signature_type=s.signature_type or "",
-                was_injected=s.was_injected,
-                was_routed=s.was_routed,
+                step_id=getattr(s, 'step_id', ''),
+                task=getattr(s, 'task', '')[:50],
+                elapsed_ms=getattr(s, 'elapsed_ms', 0.0),
+                signature_type=getattr(s, 'signature_type', '') or "",
+                was_injected=getattr(s, 'was_injected', False),
+                was_routed=getattr(s, 'was_routed', False),
             )
             for s in result.steps
         ]
@@ -319,11 +317,11 @@ async def solve_problem(
 
 def run_problem_sync(args: tuple) -> dict:
     """Synchronous wrapper for process pool."""
-    problem, match_mode, db_path, injection_mode, use_hints, compute_budget, benchmark = args
+    problem, match_mode, db_path, compute_budget, benchmark = args
     if match_mode == "direct":
         result = asyncio.run(solve_direct(problem))
     else:
-        result = asyncio.run(solve_problem(problem, match_mode, db_path, injection_mode, use_hints, compute_budget, benchmark))
+        result = asyncio.run(solve_problem(problem, match_mode, db_path, compute_budget, benchmark))
     return asdict(result)
 
 
@@ -334,14 +332,17 @@ def run_pipeline(
     output_file: str,
     dataset: str = "gsm8k",
     levels: list[int] = None,
-    injection_mode: str = "all",
     seed: int = None,
-    use_hints: bool = True,
     db_path: str = "mycelium.db",
     compute_budget: float = 1.0,
 ):
-    """Run the evaluation pipeline."""
-    logger.info(f"Starting pipeline: {num_problems} problems, modes={modes}, workers={num_workers}, dataset={dataset}, injection={injection_mode}, seed={seed}, hints={use_hints}, db={db_path}, budget={compute_budget}")
+    """Run the evaluation pipeline.
+
+    Note: SQLite has limited concurrency. With num_workers > 1, you may see
+    database lock contention. For heavy parallel workloads, consider using
+    WAL mode or running with --workers 1.
+    """
+    logger.info(f"Starting pipeline: {num_problems} problems, modes={modes}, workers={num_workers}, dataset={dataset}, seed={seed}, db={db_path}, budget={compute_budget}")
 
     # Load problems
     problems = load_problems(num_problems, dataset=dataset, levels=levels, seed=seed)
@@ -354,7 +355,7 @@ def run_pipeline(
     tasks = []
     for mode in modes:
         for problem in problems:
-            tasks.append((problem, mode, db_path, injection_mode, use_hints, compute_budget, dataset))
+            tasks.append((problem, mode, db_path, compute_budget, dataset))
 
     logger.info(f"Running {len(tasks)} total tasks ({len(problems)} problems x {len(modes)} modes)")
 
@@ -375,6 +376,7 @@ def run_pipeline(
     for mode in modes:
         mode_results = [r for r in results if r["match_mode"] == mode]
         successes = sum(1 for r in mode_results if r["success"])
+        errors = sum(1 for r in mode_results if r.get("error"))
         total = len(mode_results)
 
         # Signature matching stats
@@ -391,6 +393,7 @@ def run_pipeline(
         mode_stats[mode] = {
             "total": total,
             "successes": successes,
+            "errors": errors,
             "accuracy": successes / total if total > 0 else 0.0,
             "avg_elapsed_ms": sum(r["elapsed_ms"] for r in mode_results) / total if total > 0 else 0.0,
             # Signature stats
@@ -431,8 +434,8 @@ def run_pipeline(
             "num_workers": num_workers,
             "dataset": dataset,
             "levels": levels,
-            "injection_mode": injection_mode,
             "seed": seed,
+            "compute_budget": compute_budget,
         },
         "summary": {
             "total_time_seconds": total_time,
@@ -457,14 +460,16 @@ def run_pipeline(
     print(f"Total time: {total_time:.1f}s")
     print(f"Problems: {num_problems}")
     print(f"Modes: {modes}")
-    print(f"Injection: {injection_mode}")
     if levels:
         print(f"Levels: {levels}")
+    if compute_budget > 1.0:
+        print(f"Compute budget: {compute_budget}")
     print()
 
     print("Results by mode:")
     for mode, stats in mode_stats.items():
-        print(f"  {mode:15s} {stats['accuracy']:5.1%} ({stats['successes']}/{stats['total']})  avg {stats['avg_elapsed_ms']:.0f}ms")
+        error_str = f"  ({stats['errors']} errors)" if stats.get('errors', 0) > 0 else ""
+        print(f"  {mode:15s} {stats['accuracy']:5.1%} ({stats['successes']}/{stats['total']})  avg {stats['avg_elapsed_ms']:.0f}ms{error_str}")
 
     # Print signature matching stats
     print("\nSignature matching stats:")
@@ -538,9 +543,9 @@ def main():
     parser.add_argument(
         "--dataset", "-d",
         type=str,
-        default="math",
+        default="gsm8k",
         choices=["gsm8k", "math"],
-        help="Dataset to use (default: math)",
+        help="Dataset to use (default: gsm8k)",
     )
     parser.add_argument(
         "--levels", "-l",
@@ -550,30 +555,10 @@ def main():
         help="Difficulty levels for MATH dataset (1-5, default: all)",
     )
     parser.add_argument(
-        "--injection-mode", "-i",
-        type=str,
-        default="all",
-        choices=["none", "dsl", "formula", "procedure", "guidance", "all"],
-        help="Injection strategy: none (baseline), dsl, formula, procedure, guidance, all (default: all)",
-    )
-    parser.add_argument(
         "--seed", "-s",
         type=int,
         default=None,
         help="Random seed for reproducible problem selection (default: None)",
-    )
-    parser.add_argument(
-        "--hints/--no-hints",
-        dest="use_hints",
-        action="store_true",
-        default=True,
-        help="Enable signature-guided decomposition hints (default: enabled)",
-    )
-    parser.add_argument(
-        "--no-hints",
-        dest="use_hints",
-        action="store_false",
-        help="Disable signature-guided decomposition hints",
     )
     parser.add_argument(
         "--db",
@@ -596,9 +581,7 @@ def main():
         output_file=args.output,
         dataset=args.dataset,
         levels=args.levels,
-        injection_mode=args.injection_mode,
         seed=args.seed,
-        use_hints=args.use_hints,
         db_path=args.db,
         compute_budget=args.budget,
     )

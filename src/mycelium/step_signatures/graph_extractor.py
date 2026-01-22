@@ -462,6 +462,57 @@ def clear_graph_embedding_cache() -> None:
     logger.debug("[graph_embed] Cache cleared")
 
 
+def embed_computation_graph_sync(
+    embedder,  # Sync embedder with embed(text) method
+    graph: str,
+) -> Optional[list[float]]:
+    """Sync version of embed_computation_graph for use with sync Embedder.
+
+    Converts graph to natural language first so embeddings are comparable
+    to operation embeddings.
+
+    Args:
+        embedder: Sync embedder with embed(text) -> np.ndarray method
+        graph: Computation graph string (e.g., "MUL(param_0, param_1)")
+
+    Returns:
+        Embedding as list[float] or None
+    """
+    global _graph_embedding_cache
+
+    if not graph:
+        return None
+
+    # Check cache
+    if graph in _graph_embedding_cache:
+        logger.debug("[graph_embed] Cache hit for: %s", graph[:50])
+        return _graph_embedding_cache[graph]
+
+    # Convert graph to natural language
+    nl_description = graph_to_natural_language(graph)
+    logger.debug("[graph_embed] Expanded '%s' to '%s'", graph[:30], nl_description[:50])
+
+    try:
+        # Use sync embedder
+        embedding_array = embedder.embed(nl_description)
+        embedding = embedding_array.tolist()
+
+        # Cache
+        if len(_graph_embedding_cache) >= _GRAPH_CACHE_MAX_SIZE:
+            keys_to_remove = list(_graph_embedding_cache.keys())[:_GRAPH_CACHE_MAX_SIZE // 10]
+            for k in keys_to_remove:
+                del _graph_embedding_cache[k]
+
+        _graph_embedding_cache[graph] = embedding
+        logger.debug("[graph_embed] Cached sync embedding for: %s", graph[:50])
+
+        return embedding
+
+    except Exception as e:
+        logger.error("[graph_embed] Failed to embed graph (sync): %s", e)
+        return None
+
+
 async def populate_graph_embeddings(
     db,  # StepSignatureDB
     embedding_client,

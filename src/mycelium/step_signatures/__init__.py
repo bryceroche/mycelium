@@ -83,6 +83,7 @@ from mycelium.step_signatures.graph_extractor import (
     graphs_equivalent,
     graph_to_natural_language,
     embed_computation_graph,
+    embed_computation_graph_sync,
     clear_graph_embedding_cache,
     populate_graph_embeddings,
 )
@@ -157,6 +158,7 @@ __all__ = [
     "graphs_equivalent",
     "graph_to_natural_language",
     "embed_computation_graph",
+    "embed_computation_graph_sync",
     "clear_graph_embedding_cache",
     "populate_graph_embeddings",
     # Operation Extraction (for routing)

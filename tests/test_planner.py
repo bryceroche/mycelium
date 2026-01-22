@@ -437,3 +437,117 @@ class TestFlatten:
         assert "outer" in paths
         assert "outer/inner1" in paths
         assert "outer/inner2" in paths
+
+
+# =============================================================================
+# OPERATION FIELD TESTS (Graph-based routing)
+# =============================================================================
+
+
+class TestStepOperation:
+    """Tests for Step.operation field used in graph-based routing."""
+
+    def test_operation_default_none(self):
+        """Operation field should default to None."""
+        step = Step(id="step1", task="Do something")
+        assert step.operation is None
+
+    def test_operation_with_value(self):
+        """Operation field should store description."""
+        step = Step(
+            id="step1",
+            task="Calculate 25% of 200",
+            operation="multiply then divide"
+        )
+        assert step.operation == "multiply then divide"
+
+    def test_operation_in_plan(self):
+        """Steps with operations should validate in plan."""
+        plan = make_plan(steps=[
+            Step(id="step1", task="Convert units", operation="divide two numbers"),
+            Step(id="step2", task="Calculate total", operation="multiply two numbers", depends_on=["step1"]),
+        ])
+        is_valid, errors = plan.validate()
+        assert is_valid, f"Expected valid, got errors: {errors}"
+
+
+class TestPlannerOperationParsing:
+    """Tests for parsing operation field from planner YAML output."""
+
+    def test_parse_operation_field(self):
+        """Planner._parse_steps should extract operation field."""
+        from mycelium.planner import Planner
+
+        planner = Planner()
+        response = """- id: step_1
+  task: Convert meters to km
+  operation: divide two numbers
+  values:
+    meters: 1000000
+    per_km: 1000
+  dsl_hint: /
+  depends_on: []"""
+
+        steps = planner._parse_steps(response)
+        assert len(steps) == 1
+        assert steps[0].operation == "divide two numbers"
+
+    def test_parse_operation_multiple_steps(self):
+        """Parse operations from multiple steps."""
+        from mycelium.planner import Planner
+
+        planner = Planner()
+        response = """- id: step_1
+  task: Find total
+  operation: multiply two numbers
+  values:
+    a: 10
+    b: 5
+  dsl_hint: *
+  depends_on: []
+- id: step_2
+  task: Subtract discount
+  operation: subtract from total
+  values:
+    total: "{step_1}"
+    discount: 15
+  dsl_hint: -
+  depends_on: [step_1]"""
+
+        steps = planner._parse_steps(response)
+        assert len(steps) == 2
+        assert steps[0].operation == "multiply two numbers"
+        assert steps[1].operation == "subtract from total"
+
+    def test_parse_missing_operation_still_works(self):
+        """Steps without operation field should parse (backward compatibility)."""
+        from mycelium.planner import Planner
+
+        planner = Planner()
+        response = """- id: step_1
+  task: Do something
+  values:
+    x: 10
+  dsl_hint: +
+  depends_on: []"""
+
+        steps = planner._parse_steps(response)
+        assert len(steps) == 1
+        assert steps[0].operation is None  # Missing operation -> None
+
+    def test_parse_operation_with_colon_in_description(self):
+        """Operation descriptions with colons should parse correctly."""
+        from mycelium.planner import Planner
+
+        planner = Planner()
+        response = """- id: step_1
+  task: Calculate ratio
+  operation: divide: first by second
+  values:
+    a: 10
+  depends_on: []"""
+
+        steps = planner._parse_steps(response)
+        assert len(steps) == 1
+        # Only first colon splits, rest is kept
+        assert steps[0].operation == "divide: first by second"

@@ -265,6 +265,40 @@ Big bang function accounting for the first five levels need to be empty. Sigmoid
   Need some successes to learn from; failures alone don't teach what works.
   System is designed to aggressively **branch out early**, tapering off later.
 
+## With Mature DB
+
+  If you encounter a DAG step that has **no matching signature** in a mature DB (many signatures, high accuracy), this is a signal:
+
+  **The step is likely too complex and needs decomposition.**
+
+  In a mature system, most atomic operations should have signatures. A novel step that doesn't match anything suggests it's a composite operation that should be broken into smaller pieces the system already knows.
+
+  ### Sigmoid Transition (Cold → Mature)
+
+  The behavior isn't a hard cutoff - it's a **smooth sigmoid** based on maturity:
+
+  ```
+  P(decompose) = sigmoid(maturity_score)
+
+  where maturity_score = f(num_signatures, recent_accuracy)
+  ```
+
+  - **Early (low maturity)**: Bias toward creating new atomic signatures
+  - **Late (high maturity)**: Bias toward decomposing into existing signatures
+
+  This mirrors the "big bang" cold start philosophy - aggressive signature creation early, tapering off as the vocabulary stabilizes.
+
+  ### Flow (with escape hatch)
+
+  1. Route fails (no graph embedding match above threshold)
+  2. Check maturity score → compute P(decompose)
+  3. If decomposing: LLM breaks step into sub-steps
+  4. Route each sub-step against existing signatures
+  5. **Escape hatch**: If sub-steps ALSO don't match → genuinely novel → create new atomic signature
+  6. Combine results
+
+  The escape hatch ensures the system can still learn new atomic operations when truly needed, while preferring composition in a mature state.
+
 ## Key Questions
   ### Depth & Accuracy
   **Are we going deep enough?**
@@ -312,6 +346,34 @@ slow decay.  Calculate signature use count /  ((cache) count of total num proble
 - Success/failure stats drive routing decisions
 
 The goal is NOT 100% accuracy on every run. The goal is collecting data that makes the system smarter over time. A failed DSL provides valuable signal for post-mortem analysis.
+
+## Always Route to Best Match (No Arbitrary Thresholds)
+
+**ALWAYS_ROUTE_TO_BEST = True** (default)
+
+Instead of rejecting matches below arbitrary similarity thresholds, we always route to the best available match and let execution failures drive learning.
+
+### Why No Thresholds?
+
+Thresholds are arbitrary magic numbers that don't add value:
+- We always pick the highest similarity match anyway
+- Thresholds only decide "accept any match or create new"
+- Better to let actual execution results drive that decision
+
+### The Flow
+
+1. **Route** to best cosine similarity match (no minimum threshold)
+2. **Execute** the matched DSL
+3. **If success** → reinforce the match (centroid update, credit propagation)
+4. **If failure** → post-mortem flags for decomposition
+
+Structure emerges from failure patterns, not our guesses about what similarity is "good enough."
+
+### When New Signatures Are Created
+
+- Tree is empty (need root)
+- Decomposition creates children (umbrella learner)
+- Step type incompatible with dsl_hint (e.g., sum step matched to product signature)
 
 ## Learning Mechanisms
 Centroid Averaging

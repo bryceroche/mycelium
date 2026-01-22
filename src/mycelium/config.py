@@ -38,6 +38,12 @@ MIN_MATCH_THRESHOLD = 0.85  # Mature threshold - reduce signature fragmentation
 MIN_MATCH_THRESHOLD_COLD_START = 0.92  # Cold start threshold - create more signatures
 MIN_MATCH_RAMP_SIGNATURES = 50  # Signatures needed to reach mature threshold
 
+# Always Route Mode: Remove arbitrary thresholds, always route to best match
+# Per CLAUDE.md: "Let signatures fail. This is how the system learns."
+# Instead of rejecting matches below threshold, we accept best match and let
+# execution failures drive decomposition/restructuring.
+ALWAYS_ROUTE_TO_BEST = True  # If True, ignore thresholds and always use best match
+
 # =============================================================================
 # DSL EXECUTION
 # =============================================================================
@@ -369,30 +375,14 @@ BIG_BANG_FORK_CENTER_DRIFT_RATE = 0.8  # How fast fork center drifts toward root
 BIG_BANG_MIN_FORK_PROB = 0.05  # Floor probability (always some chance to fork)
 BIG_BANG_MAX_FORK_PROB = 0.95  # Ceiling probability (never 100% certain to fork)
 
-# =============================================================================
-# OCTOPUS DETECTION (DAG step spans multiple tree branches)
-# =============================================================================
-# When a DAG step can't be confidently routed (top-2 children have similar
-# scores), the step itself needs decomposition - it's semantically ambiguous.
-#
-# Detection: If top_2_similarity_gap < threshold, trigger step decomposition.
-# Per CLAUDE.md: "Attempt to route first - decompose on failure"
-
-OCTOPUS_DETECTION_ENABLED = True  # Enable Octopus detection
-OCTOPUS_CONFUSION_GAP = 0.05  # Min gap between top-2 children to be "confident"
-OCTOPUS_MIN_DEPTH = 3  # Only detect at depth >= this (ignore root-level confusion)
-
-# =============================================================================
-# GORILLA DETECTION (Leaf node is too complex)
-# =============================================================================
-# Proactive detection of multi-operation steps that should be decomposed
-# before routing to a leaf. Complements auto-demotion (reactive).
-#
-# Per CLAUDE.md: "Failing signatures get decomposed"
-
-GORILLA_PROACTIVE_ENABLED = True  # Enable proactive complexity detection
-GORILLA_MAX_PARAMS = 4  # Steps with more extracted_values likely need decomposition
-GORILLA_COMPLEXITY_KEYWORDS = ["then", "and then", "after", "before", "finally"]
+# Synthesis step detection (for umbrella learner)
+# These are anchors for steps that aggregate/combine results (should be skipped)
+SYNTHESIS_STEP_ANCHORS = [
+    "Combine or aggregate the results from previous calculations",
+    "Add up or sum all the intermediate results to get the final answer",
+    "Put together the computed values to find the total",
+]
+SYNTHESIS_STEP_THRESHOLD = 0.88  # Similarity threshold to detect synthesis steps (raised from 0.75 to avoid false positives)
 
 # =============================================================================
 # SCORPION FIX (Bipolar signal propagation)
@@ -536,6 +526,117 @@ ZERO_LLM_MIN_SIMILARITY = 0.90  # High similarity required (stricter than normal
 ZERO_LLM_MIN_SUCCESS_RATE = 0.70  # Signature must have >= 70% success rate
 ZERO_LLM_MIN_USES = 5  # Need enough data to trust the signature
 ZERO_LLM_REQUIRE_DSL = True  # Signature must have a working DSL script
+
+# =============================================================================
+# GRAPH-BASED ROUTING (Route by operation, not vocabulary)
+# =============================================================================
+# Per CLAUDE.md: "Route by what operations DO, not what they SOUND LIKE"
+#
+# Flow: problem → extract operation → embed → compare to graph embeddings
+# This addresses: "embedding clusters by vocab not operational semantics"
+#
+# Graph embeddings encode WHAT a DSL computes (structurally):
+#   MUL(param_0, param_1) → "multiply two values"
+# Operation extraction identifies WHAT is needed (semantically):
+#   "Calculate 15% of 200" → "multiply percentage by base, divide by 100"
+#
+# Comparing operation embedding to graph embeddings routes by operation type,
+# not by surface vocabulary similarity.
+
+GRAPH_ROUTING_ENABLED = True  # Master switch for graph-based routing
+GRAPH_ROUTING_MIN_SIMILARITY = 0.80  # Minimum similarity for graph match
+GRAPH_ROUTING_BOOST_FACTOR = 0.15  # Boost to UCB1 when graph matches
+GRAPH_ROUTING_REQUIRE_EXTRACTION = True  # Require operation extraction (uses LLM)
+GRAPH_ROUTING_FALLBACK_TO_CENTROID = True  # Fall back to centroid if no graph match
+
+# =============================================================================
+# MATURITY-BASED DECOMPOSE VS CREATE (Sigmoid transition)
+# =============================================================================
+# When routing fails (no matching signature), the system must decide:
+#   - Create a new atomic signature, OR
+#   - Decompose into sub-steps that match existing signatures
+#
+# Decision uses sigmoid based on system maturity:
+#   P(decompose) = sigmoid(maturity_score)
+#   maturity_score = (num_sigs - midpoint) / steepness + accuracy_weight * accuracy
+#
+# Early (few signatures): Low P(decompose) → create new signatures
+# Mature (many signatures): High P(decompose) → reuse existing via decomposition
+#
+# Per CLAUDE.md: "With Mature DB" - smooth transition from expansion to consolidation
+
+MATURITY_DECOMPOSE_ENABLED = True  # Master switch for maturity-based decompose/create
+MATURITY_SIGMOID_MIDPOINT = 500  # Signature count where P(decompose) = 0.5
+MATURITY_SIGMOID_STEEPNESS = 200  # Controls sigmoid sharpness (higher = smoother)
+MATURITY_ACCURACY_WEIGHT = 2.0  # How much accuracy (0-1) shifts the decision
+                                 # accuracy=0.8 adds 2.0*0.8=1.6 to maturity_score
+MATURITY_MIN_DECOMPOSE_PROB = 0.1  # Floor: always some chance to decompose
+MATURITY_MAX_DECOMPOSE_PROB = 0.9  # Ceiling: always some chance to create new
+
+# Escape hatch: If decomposed sub-steps ALSO don't match, create new atomic
+# This recognizes genuinely novel operations that can't be built from existing sigs
+MATURITY_ESCAPE_ENABLED = True  # Enable escape hatch for novel operations
+MATURITY_ESCAPE_MIN_SUBSTEPS = 2  # Need this many substeps to trigger escape
+MATURITY_ESCAPE_MAX_MISSES = 1  # Max substeps allowed to miss before creating atomic
+
+# =============================================================================
+# DIAGNOSTIC POST-MORTEM (Accuracy-driven decomposition decisions)
+# =============================================================================
+# Per CLAUDE.md: "Failures are valuable data points" + "Failing signatures get decomposed"
+#
+# Post-mortem runs after problem completion to diagnose failures and decide:
+#   1. Decompose the dag_step (step too complex for atomic execution)
+#   2. Decompose the signature (approach/DSL is wrong for this problem class)
+#   3. Reroute (wrong routing, similar steps succeeded elsewhere)
+#   4. Wait (insufficient signal, collect more data)
+#
+# All decisions use smooth continuous functions based on:
+#   - Accuracy = successes / uses (percent, not absolute counts)
+#   - Confidence = smooth ramp with uses (more data → more trust)
+#   - Maturity = sigmoid over signature count (cold start → mature)
+#
+# Key insight: A signature with 60 successes + 4 failures (93.75%) should NOT
+# be decomposed. We use accuracy (percent), not failure count.
+
+DIAGNOSTIC_POSTMORTEM_ENABLED = True  # Master switch for diagnostic post-mortem
+
+# Failure threshold: How many failures before we act (smooth function of maturity)
+# threshold = MIN + (MAX - MIN) * sigmoid(maturity)
+# Cold start (low sigs): act fast (threshold → MIN)
+# Mature (high sigs): be patient (threshold → MAX)
+DIAGNOSTIC_THRESHOLD_MIN = 1.0  # Minimum failures before acting (cold start)
+DIAGNOSTIC_THRESHOLD_MAX = 5.0  # Maximum failures before acting (mature)
+
+# Maturity sigmoid parameters (shared with MATURITY_SIGMOID_* above)
+# Uses same midpoint/steepness for consistency across system
+
+# Accuracy confidence: How much we trust the accuracy signal
+# confidence = 1 - exp(-uses / CONFIDENCE_HALFLIFE)
+# Low uses → low confidence (don't trust accuracy yet)
+# High uses → high confidence (accuracy is reliable)
+DIAGNOSTIC_CONFIDENCE_HALFLIFE = 10.0  # Uses at which confidence reaches ~63%
+
+# Decompose score weights (continuous blend, not thresholds)
+# decompose_score = accuracy_component + distance_component
+# Higher score = stronger signal to decompose
+DIAGNOSTIC_ACCURACY_WEIGHT = 1.0  # How much low accuracy drives decomposition
+DIAGNOSTIC_DISTANCE_WEIGHT = 0.5  # How much step-centroid distance matters
+
+# Action threshold: Must exceed this to act (below = "wait")
+DIAGNOSTIC_ACTION_THRESHOLD = 0.5  # Score threshold for taking action
+
+# Reroute detection: When similar steps succeeded with different signatures
+DIAGNOSTIC_REROUTE_SIMILARITY_MIN = 0.8  # Min similarity to consider reroute
+DIAGNOSTIC_REROUTE_LOOKBACK_DAYS = 7  # How far back to search for similar successes
+
+# Step vs Signature decomposition heuristic
+# When signature is accurate overall but failed on THIS step:
+#   → Step is unusual/complex → decompose step
+# When signature has poor accuracy overall:
+#   → Approach is wrong → decompose signature
+DIAGNOSTIC_GOOD_SIG_ACCURACY = 0.7  # Accuracy above this = "good signature"
+DIAGNOSTIC_BAD_SIG_ACCURACY = 0.3  # Accuracy below this = "bad signature"
+# Between these values: blend between step and signature decomposition
 
 # =============================================================================
 # DSL AUTO-REWRITER (Fix underperforming DSLs automatically)

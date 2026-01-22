@@ -689,42 +689,6 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
             stats["successes_credited"], stats["partial_credits"], stats["failures_credited"],
         )
 
-    # Per mycelium-vuuc: Track step_type_stats for routing preferences
-    # A signature might excel at 'calculate percentage' but fail at 'find remainder'
-    step_type_cursor = conn.execute(
-        """
-        SELECT
-            ts.node_id,
-            ds.step_desc,
-            t.success as thread_success
-        FROM mcts_thread_steps ts
-        JOIN mcts_dag_steps ds ON ts.dag_step_id = ds.dag_step_id
-        JOIN mcts_threads t ON ts.thread_id = t.thread_id
-        WHERE ts.dag_id = ? AND ts.node_id IS NOT NULL
-        """,
-        (dag_id,),
-    )
-
-    step_type_updates = 0
-    for row in step_type_cursor.fetchall():
-        node_id, step_desc, thread_success = row
-        if node_id and step_desc:
-            # Normalize step_desc for consistent tracking
-            normalized_step_type = step_desc.lower().strip()[:100]
-            step_db.update_step_type_stats(
-                signature_id=node_id,
-                step_type=normalized_step_type,
-                success=bool(thread_success)
-            )
-            step_type_updates += 1
-
-    if step_type_updates > 0:
-        logger.debug(
-            "[mcts] Step type stats updated for DAG %s: %d updates",
-            dag_id, step_type_updates
-        )
-
-    stats["step_type_updates"] = step_type_updates
     return stats
 
 
@@ -940,11 +904,13 @@ def assign_divergence_blame(dag_id: str, step_db) -> dict:
     blamed_nodes: set[int] = set()
     credited_nodes: set[int] = set()
 
+    # Pre-fetch all thread paths once (instead of inside loop)
+    all_paths = get_thread_paths(dag_id)
+    paths_by_thread = {p.thread_id: p for p in all_paths}
+
     for dp in divergence_points:
         # 1. Give partial credit to shared prefix nodes (they were correct)
-        # Get paths to access shared prefix
-        paths = get_thread_paths(dag_id)
-        losing_path = next((p for p in paths if p.thread_id == dp.losing_thread_id), None)
+        losing_path = paths_by_thread.get(dp.losing_thread_id)
 
         if losing_path and dp.shared_prefix_len > 0:
             for i in range(dp.shared_prefix_len):
@@ -1000,7 +966,7 @@ def get_problem_nodes_needing_attention(dag_id: str) -> list[dict]:
     """Identify nodes that performed poorly in this DAG.
 
     Returns nodes where:
-    - High confidence but thread lost (amplitude >= 0.7, success = 0)
+    - High confidence but thread lost (amplitude >= threshold, success = 0)
 
     These are candidates for decomposition or centroid adjustment.
     """
@@ -1016,10 +982,10 @@ def get_problem_nodes_needing_attention(dag_id: str) -> list[dict]:
         FROM mcts_thread_steps ts
         JOIN mcts_threads t ON ts.thread_id = t.thread_id
         WHERE ts.dag_id = ?
-          AND ts.amplitude >= 0.7
+          AND ts.amplitude >= ?
           AND t.success = 0
         """,
-        (dag_id,),
+        (dag_id, POSTMORTEM_HIGH_CONF_THRESHOLD),
     )
 
     return [
@@ -1345,9 +1311,166 @@ def apply_interference_effects(
     return result
 
 
-# Module-level counter for batch merge/split scheduling
-_postmortem_problem_count = 0
-_accumulated_nodes_for_split: list[int] = []
+# =============================================================================
+# POSTMORTEM STATE MANAGEMENT (Database-backed for cross-process persistence)
+# =============================================================================
+
+import json
+
+
+def _get_db_state_value(key: str, default: str = "0") -> str:
+    """Get a value from db_metadata table."""
+    db = get_db()
+    with db.connection() as conn:
+        row = conn.execute(
+            "SELECT value FROM db_metadata WHERE key = ?", (key,)
+        ).fetchone()
+        return row["value"] if row else default
+
+
+def _set_db_state_value(key: str, value: str) -> None:
+    """Set a value in db_metadata table (upsert)."""
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+    with db.connection() as conn:
+        conn.execute(
+            """INSERT INTO db_metadata (key, value, updated_at)
+               VALUES (?, ?, ?)
+               ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at""",
+            (key, value, now)
+        )
+
+
+# Keys for persistent state
+_KEY_DSL_REGEN_COUNT = "postmortem_dsl_regen_count"
+_KEY_HIGH_CONF_WRONG_NODES = "postmortem_high_conf_wrong_nodes"
+_KEY_PROBLEM_COUNT = "postmortem_problem_count"
+_KEY_NODES_FOR_SPLIT = "postmortem_nodes_for_split"
+
+
+@dataclass
+class PostmortemState:
+    """Encapsulates mutable state for post-mortem batching.
+
+    Now uses database for persistence across processes.
+    In-memory fields are loaded from DB on access.
+    """
+    # In-memory cache (loaded from DB)
+    _problem_count: int = field(default=None, repr=False)
+    _nodes_for_split: list[int] = field(default=None, repr=False)
+    _high_conf_wrong_nodes: list[int] = field(default=None, repr=False)
+    _dsl_regen_problem_count: int = field(default=None, repr=False)
+
+    @property
+    def problem_count(self) -> int:
+        if self._problem_count is None:
+            self._problem_count = int(_get_db_state_value(_KEY_PROBLEM_COUNT, "0"))
+        return self._problem_count
+
+    @property
+    def nodes_for_split(self) -> list[int]:
+        if self._nodes_for_split is None:
+            raw = _get_db_state_value(_KEY_NODES_FOR_SPLIT, "[]")
+            self._nodes_for_split = json.loads(raw)
+        return self._nodes_for_split
+
+    @property
+    def high_conf_wrong_nodes(self) -> list[int]:
+        if self._high_conf_wrong_nodes is None:
+            raw = _get_db_state_value(_KEY_HIGH_CONF_WRONG_NODES, "[]")
+            self._high_conf_wrong_nodes = json.loads(raw)
+        return self._high_conf_wrong_nodes
+
+    @property
+    def dsl_regen_problem_count(self) -> int:
+        if self._dsl_regen_problem_count is None:
+            self._dsl_regen_problem_count = int(_get_db_state_value(_KEY_DSL_REGEN_COUNT, "0"))
+        return self._dsl_regen_problem_count
+
+    def reset_merge_split(self) -> None:
+        """Reset state after merge/split batch processing."""
+        self._problem_count = 0
+        self._nodes_for_split = []
+        _set_db_state_value(_KEY_PROBLEM_COUNT, "0")
+        _set_db_state_value(_KEY_NODES_FOR_SPLIT, "[]")
+
+    def reset_dsl_regen(self) -> None:
+        """Reset state after DSL regeneration batch."""
+        self._high_conf_wrong_nodes = []
+        self._dsl_regen_problem_count = 0
+        _set_db_state_value(_KEY_HIGH_CONF_WRONG_NODES, "[]")
+        _set_db_state_value(_KEY_DSL_REGEN_COUNT, "0")
+
+    def accumulate_split_nodes(self, node_ids: list[int]) -> None:
+        """Add nodes flagged for split."""
+        # Load current state from DB
+        current_nodes = list(self.nodes_for_split)
+        current_count = self.problem_count
+
+        # Update
+        current_nodes.extend(node_ids)
+        current_count += 1
+
+        # Save back to DB
+        self._nodes_for_split = current_nodes
+        self._problem_count = current_count
+        _set_db_state_value(_KEY_NODES_FOR_SPLIT, json.dumps(current_nodes))
+        _set_db_state_value(_KEY_PROBLEM_COUNT, str(current_count))
+
+    def accumulate_high_conf_wrong(self, nodes: list[dict]) -> None:
+        """Add nodes with high-confidence wrong decisions."""
+        # Load current state from DB (force refresh)
+        self._high_conf_wrong_nodes = None
+        self._dsl_regen_problem_count = None
+        current_nodes = list(self.high_conf_wrong_nodes)
+        current_count = self.dsl_regen_problem_count
+
+        # Update
+        for node in nodes:
+            node_id = node.get("node_id")
+            if node_id is not None and node_id not in current_nodes:
+                current_nodes.append(node_id)
+        current_count += 1
+
+        # Save back to DB
+        self._high_conf_wrong_nodes = current_nodes
+        self._dsl_regen_problem_count = current_count
+        _set_db_state_value(_KEY_HIGH_CONF_WRONG_NODES, json.dumps(current_nodes))
+        _set_db_state_value(_KEY_DSL_REGEN_COUNT, str(current_count))
+
+        logger.debug(
+            "[postmortem] Accumulated high-conf-wrong: %d nodes, count=%d/%d",
+            len(current_nodes), current_count, POSTMORTEM_DSL_REGEN_BATCH_SIZE
+        )
+
+    def invalidate_cache(self) -> None:
+        """Force reload from DB on next access."""
+        self._problem_count = None
+        self._nodes_for_split = None
+        self._high_conf_wrong_nodes = None
+        self._dsl_regen_problem_count = None
+
+
+# Singleton instance (thin wrapper, actual state in DB)
+_postmortem_state: Optional[PostmortemState] = None
+
+
+def get_postmortem_state() -> PostmortemState:
+    """Get or create the singleton PostmortemState instance."""
+    global _postmortem_state
+    if _postmortem_state is None:
+        _postmortem_state = PostmortemState()
+    # Invalidate cache to ensure fresh read from DB
+    _postmortem_state.invalidate_cache()
+    return _postmortem_state
+
+
+def reset_postmortem_state() -> None:
+    """Reset the singleton state (useful for testing)."""
+    global _postmortem_state
+    _postmortem_state = PostmortemState()
+    _postmortem_state.reset_merge_split()
+    _postmortem_state.reset_dsl_regen()
 
 
 def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
@@ -1367,10 +1490,11 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     Returns:
         Combined dict with amplitude stats and interference results
     """
-    global _postmortem_problem_count, _accumulated_nodes_for_split
-
     from mycelium.config import MERGE_SPLIT_BATCH_SIZE, RETIREMENT_ENABLED
     from mycelium.mcts.adaptive import AdaptiveExploration
+
+    # Get singleton state (thread-safe)
+    state = get_postmortem_state()
 
     # First run standard postmortem (amplitude_post computation) - cheap, always run
     amplitude_stats = run_postmortem(dag_id)
@@ -1396,19 +1520,17 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     # Compare winning vs losing thread paths to find exactly where failure occurred
     divergence_stats = assign_divergence_blame(dag_id, step_db)
 
-    # Accumulate nodes flagged for split
-    _accumulated_nodes_for_split.extend(interference_result.nodes_flagged_split)
-    _postmortem_problem_count += 1
+    # Accumulate nodes flagged for split (using state object)
+    state.accumulate_split_nodes(interference_result.nodes_flagged_split)
 
     # Per beads mycelium-flbq: Accumulate high-conf-wrong nodes for DSL regen
     # This tracks nodes that had high confidence but produced wrong answers
     if amplitude_stats.get("high_conf_wrong", 0) >= POSTMORTEM_DSL_REGEN_MIN_HIGH_CONF_WRONG:
         problem_nodes = get_problem_nodes_needing_attention(dag_id)
-        accumulate_high_conf_wrong_nodes(problem_nodes)
-        increment_dsl_regen_counter()
+        state.accumulate_high_conf_wrong(problem_nodes)
         logger.debug(
             "[mcts] Accumulated %d high-conf-wrong nodes for DSL regen (total: %d)",
-            len(problem_nodes), len(get_accumulated_failing_nodes())
+            len(problem_nodes), len(state.high_conf_wrong_nodes)
         )
 
     # Check if we should run merge/split/retirement (batched for performance)
@@ -1417,7 +1539,7 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
 
     should_run_batch_ops = (
         MERGE_SPLIT_BATCH_SIZE > 0 and
-        _postmortem_problem_count >= MERGE_SPLIT_BATCH_SIZE
+        state.problem_count >= MERGE_SPLIT_BATCH_SIZE
     )
 
     if should_run_batch_ops:
@@ -1425,7 +1547,7 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         merge_split_result = run_merge_split_from_interference(
             step_db,
             nodes_reinforced=interference_result.nodes_reinforced,
-            nodes_flagged_split=list(set(_accumulated_nodes_for_split)),  # Dedupe
+            nodes_flagged_split=list(set(state.nodes_for_split)),  # Dedupe
         )
 
         # Run retirement check (per beads mycelium-x0mt)
@@ -1439,14 +1561,23 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
                     retirement_result.get("merged_up", 0),
                 )
 
-        # Reset counters
-        _postmortem_problem_count = 0
-        _accumulated_nodes_for_split = []
+        # Reset merge/split state
+        state.reset_merge_split()
 
         logger.info(
             "[mcts] Batch operations complete: %d merges, %d splits flagged",
             merge_split_result["merges_succeeded"],
             merge_split_result["splits_flagged"],
+        )
+
+    # Run decomposition analysis to find nodes/steps needing decomposition
+    decomp_analysis = analyze_decomposition_needs(min_attempts=3, max_win_rate=0.5)
+
+    if decomp_analysis["stats"]["nodes_failing"] > 0 or decomp_analysis["stats"]["steps_failing"] > 0:
+        logger.info(
+            "[mcts] Decomposition analysis: %d nodes, %d steps need decomposition",
+            decomp_analysis["stats"]["nodes_failing"],
+            decomp_analysis["stats"]["steps_failing"],
         )
 
     return {
@@ -1463,10 +1594,10 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         "retirement_demoted": retirement_result.get("demoted", 0),
         "retirement_pruned": retirement_result.get("pruned", 0),
         "retirement_merged_up": retirement_result.get("merged_up", 0),
-        "batch_counter": _postmortem_problem_count,
-        "next_merge_split_in": MERGE_SPLIT_BATCH_SIZE - _postmortem_problem_count if MERGE_SPLIT_BATCH_SIZE > 0 else -1,
+        "batch_counter": state.problem_count,
+        "next_merge_split_in": MERGE_SPLIT_BATCH_SIZE - state.problem_count if MERGE_SPLIT_BATCH_SIZE > 0 else -1,
         # DSL regeneration info (per beads mycelium-flbq)
-        "dsl_regen_nodes_accumulated": len(get_accumulated_failing_nodes()),
+        "dsl_regen_nodes_accumulated": len(state.high_conf_wrong_nodes),
         "dsl_regen_ready": should_trigger_dsl_regen(),
         # Amplitude credit propagation (per beads mycelium-itkn)
         "credit_nodes_processed": credit_stats.get("nodes_processed", 0),
@@ -1477,6 +1608,9 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         "divergence_blame_assigned": divergence_stats.get("divergence_blame_assigned", 0),
         "suffix_blame_assigned": divergence_stats.get("suffix_blame_assigned", 0),
         "shared_prefix_credit": divergence_stats.get("shared_prefix_credit", 0),
+        # Decomposition analysis (nodes/steps that need decomposition)
+        "nodes_needing_decomposition": [rec.target_id for rec in decomp_analysis["nodes_to_decompose"]],
+        "steps_needing_decomposition": [(rec.target_id, rec.target_desc) for rec in decomp_analysis["steps_to_decompose"]],
     }
 
 
@@ -1684,34 +1818,26 @@ def run_merge_split_from_interference(
 # Per beads mycelium-flbq: When post-mortem detects high failure rate at a
 # specific (dag_step_id, node_id) pair, trigger DSL regeneration.
 
-# Accumulator for nodes with high-conf-wrong across problems
-_accumulated_high_conf_wrong_nodes: list[int] = []
-_dsl_regen_problem_count: int = 0
-
-
 def accumulate_high_conf_wrong_nodes(nodes: list[dict]) -> None:
     """Accumulate nodes with high-confidence wrong decisions for batch DSL regen.
 
     Args:
         nodes: List of dicts with node_id from get_problem_nodes_needing_attention
     """
-    global _accumulated_high_conf_wrong_nodes
-    for node in nodes:
-        node_id = node.get("node_id")
-        if node_id is not None and node_id not in _accumulated_high_conf_wrong_nodes:
-            _accumulated_high_conf_wrong_nodes.append(node_id)
+    state = get_postmortem_state()
+    state.accumulate_high_conf_wrong(nodes)
 
 
 def get_accumulated_failing_nodes() -> list[int]:
     """Get the current list of accumulated failing node IDs."""
-    return list(_accumulated_high_conf_wrong_nodes)
+    state = get_postmortem_state()
+    return list(state.high_conf_wrong_nodes)
 
 
 def clear_accumulated_failing_nodes() -> None:
     """Clear the accumulated failing nodes after processing."""
-    global _accumulated_high_conf_wrong_nodes, _dsl_regen_problem_count
-    _accumulated_high_conf_wrong_nodes = []
-    _dsl_regen_problem_count = 0
+    state = get_postmortem_state()
+    state.reset_dsl_regen()
 
 
 async def trigger_dsl_regeneration_for_nodes(
@@ -1753,7 +1879,7 @@ async def trigger_dsl_regeneration_for_nodes(
     for node_id in unique_nodes:
         try:
             # Get signature details
-            sig = step_db.get_signature_by_id(node_id)
+            sig = step_db.get_signature(node_id)
             if sig is None:
                 logger.warning("[mcts] Node %d not found in signatures, skipping", node_id)
                 skipped += 1
@@ -1829,18 +1955,18 @@ def _get_recent_failures_for_node(node_id: int, limit: int = 5) -> list[dict]:
         """
         SELECT
             ts.step_result,
-            ds.step_description,
+            ds.step_desc,
             t.final_answer
         FROM mcts_thread_steps ts
         JOIN mcts_threads t ON ts.thread_id = t.thread_id
         LEFT JOIN mcts_dag_steps ds ON ts.dag_step_id = ds.dag_step_id
         WHERE ts.node_id = ?
           AND t.success = 0
-          AND ts.amplitude >= 0.7
+          AND ts.amplitude >= ?
         ORDER BY ts.created_at DESC
         LIMIT ?
         """,
-        (node_id, limit),
+        (node_id, POSTMORTEM_HIGH_CONF_THRESHOLD, limit),
     )
 
     examples = []
@@ -1865,18 +1991,184 @@ def should_trigger_dsl_regen() -> bool:
     """
     if not POSTMORTEM_DSL_REGEN_ENABLED:
         return False
-    if _dsl_regen_problem_count < POSTMORTEM_DSL_REGEN_BATCH_SIZE:
+    state = get_postmortem_state()
+    if state.dsl_regen_problem_count < POSTMORTEM_DSL_REGEN_BATCH_SIZE:
         return False
-    if not _accumulated_high_conf_wrong_nodes:
+    if not state.high_conf_wrong_nodes:
         return False
     return True
 
 
 def increment_dsl_regen_counter() -> int:
-    """Increment the problem counter for DSL regen batching."""
-    global _dsl_regen_problem_count
-    _dsl_regen_problem_count += 1
-    return _dsl_regen_problem_count
+    """Increment the problem counter for DSL regen batching.
+
+    Note: This is now handled internally by accumulate_high_conf_wrong.
+    Kept for backward compatibility - increments via empty accumulate call.
+    """
+    state = get_postmortem_state()
+    # Use accumulate with empty list to just increment counter
+    state.accumulate_high_conf_wrong([])
+    return state.dsl_regen_problem_count
+
+
+# =============================================================================
+# DECOMPOSITION ANALYSIS: Determine what needs decomposition
+# =============================================================================
+# Per CLAUDE.md: "The combination of (dag_step_id, node_id) is what we're learning"
+# Analyze failure patterns to decide whether to decompose the NODE or the STEP.
+
+
+@dataclass
+class DecompositionRecommendation:
+    """Recommendation for what to decompose."""
+    target_type: str  # "node" or "step"
+    target_id: int  # node_id or dag_step_id
+    target_desc: str  # Description for logging
+    reason: str  # Why this needs decomposition
+    win_rate: float  # Current success rate
+    attempts: int  # Number of attempts
+
+
+def analyze_decomposition_needs(min_attempts: int = 3, max_win_rate: float = 0.5) -> dict:
+    """Analyze (node, step) pairs to find what needs decomposition.
+
+    Decision logic:
+    1. NODE fails across ALL steps → Decompose the NODE (bad DSL or orphan)
+    2. STEP fails across ALL nodes → Decompose the STEP (too complex)
+    3. Specific (node, step) pair fails but node succeeds elsewhere → Create specialized child
+
+    Args:
+        min_attempts: Minimum attempts before considering for decomposition
+        max_win_rate: Maximum win rate to be considered failing
+
+    Returns:
+        Dict with 'nodes_to_decompose', 'steps_to_decompose', 'stats'
+    """
+    db = get_db()
+
+    # 1. NODE-CENTRIC: Find nodes failing across all steps
+    node_stats = {}
+    with db.connection() as conn:
+        cursor = conn.execute("""
+            SELECT
+                t.node_id,
+                COUNT(*) as total,
+                SUM(CASE WHEN t.step_success = 1 THEN 1 ELSE 0 END) as wins
+            FROM mcts_thread_steps t
+            WHERE t.node_id IS NOT NULL
+            GROUP BY t.node_id
+            HAVING COUNT(*) >= ?
+        """, (min_attempts,))
+
+        for row in cursor.fetchall():
+            node_id, total, wins = row
+            win_rate = wins / total if total > 0 else 0
+            node_stats[node_id] = {
+                "total": total,
+                "wins": wins,
+                "win_rate": win_rate,
+            }
+
+    # 2. STEP-CENTRIC: Find steps failing across all nodes
+    step_stats = {}
+    with db.connection() as conn:
+        cursor = conn.execute("""
+            SELECT
+                s.dag_step_id,
+                s.step_desc,
+                COUNT(DISTINCT t.node_id) as nodes_tried,
+                COUNT(*) as total,
+                SUM(CASE WHEN t.step_success = 1 THEN 1 ELSE 0 END) as wins
+            FROM mcts_thread_steps t
+            JOIN mcts_dag_steps s ON t.dag_step_id = s.dag_step_id
+            WHERE t.node_id IS NOT NULL
+            GROUP BY s.dag_step_id
+            HAVING COUNT(*) >= ?
+        """, (min_attempts,))
+
+        for row in cursor.fetchall():
+            step_id, step_desc, nodes_tried, total, wins = row
+            win_rate = wins / total if total > 0 else 0
+            step_stats[step_id] = {
+                "step_desc": step_desc,
+                "nodes_tried": nodes_tried,
+                "total": total,
+                "wins": wins,
+                "win_rate": win_rate,
+            }
+
+    # 3. Analyze and generate recommendations
+    nodes_to_decompose = []
+    steps_to_decompose = []
+
+    # Get signature info for nodes
+    with db.connection() as conn:
+        for node_id, stats in node_stats.items():
+            if stats["win_rate"] <= max_win_rate:
+                # Get node details
+                cursor = conn.execute(
+                    "SELECT step_type, dsl_type, dsl_script FROM step_signatures WHERE id = ?",
+                    (node_id,)
+                )
+                row = cursor.fetchone()
+                if row:
+                    step_type, dsl_type, dsl_script = row
+                    # Check if it's an orphan router (no DSL)
+                    is_orphan = dsl_type == "router" and not dsl_script
+                    reason = "orphan router (no DSL)" if is_orphan else f"failing across all steps ({stats['win_rate']*100:.0f}% win rate)"
+
+                    nodes_to_decompose.append(DecompositionRecommendation(
+                        target_type="node",
+                        target_id=node_id,
+                        target_desc=step_type,
+                        reason=reason,
+                        win_rate=stats["win_rate"],
+                        attempts=stats["total"],
+                    ))
+
+    # Analyze failing steps
+    for step_id, stats in step_stats.items():
+        if stats["win_rate"] <= max_win_rate:
+            # Check if ALL nodes that tried this step failed
+            # If yes, the step itself is too complex
+            if stats["nodes_tried"] >= 1:  # At least one node tried
+                steps_to_decompose.append(DecompositionRecommendation(
+                    target_type="step",
+                    target_id=step_id,
+                    target_desc=stats["step_desc"],
+                    reason=f"failing with {stats['nodes_tried']} node(s) tried ({stats['win_rate']*100:.0f}% win rate)",
+                    win_rate=stats["win_rate"],
+                    attempts=stats["total"],
+                ))
+
+    return {
+        "nodes_to_decompose": nodes_to_decompose,
+        "steps_to_decompose": steps_to_decompose,
+        "stats": {
+            "total_nodes_analyzed": len(node_stats),
+            "total_steps_analyzed": len(step_stats),
+            "nodes_failing": len(nodes_to_decompose),
+            "steps_failing": len(steps_to_decompose),
+        }
+    }
+
+
+def get_failing_nodes_for_decomposition(min_attempts: int = 3, max_win_rate: float = 0.5) -> list[int]:
+    """Get list of node IDs that need decomposition based on failure analysis.
+
+    Returns nodes that are failing across all steps they handle.
+    """
+    result = analyze_decomposition_needs(min_attempts, max_win_rate)
+    return [rec.target_id for rec in result["nodes_to_decompose"]]
+
+
+def get_failing_steps_for_decomposition(min_attempts: int = 3, max_win_rate: float = 0.5) -> list[tuple[str, str]]:
+    """Get list of (dag_step_id, step_desc) tuples that need decomposition.
+
+    Returns steps that are failing regardless of which node handles them.
+    """
+    result = analyze_decomposition_needs(min_attempts, max_win_rate)
+    return [(rec.target_id, rec.target_desc) for rec in result["steps_to_decompose"]]
 
 
 # =============================================================================
@@ -1995,6 +2287,7 @@ def process_retirement_candidates(
     demoted_ids = []
     pruned_ids = []
     merged_up_ids = []
+    failed_ids = []  # Track partial failures
     processed = 0
 
     for sig_id, action in candidates:
@@ -2013,18 +2306,25 @@ def process_retirement_candidates(
 
             elif action == "prune":
                 # Soft delete - archive the signature
-                # First check if it has a parent to absorb its children
+                # Use transaction for atomic re-parent + archive
                 parent = step_db.get_parent(sig_id)
                 children = step_db.get_children(sig_id, for_routing=True)
 
+                # Perform re-parent and archive atomically via step_db method
+                # Note: step_db.archive_signature_with_reparent handles transaction
                 if parent is not None and children:
-                    # Re-parent children to grandparent before pruning
-                    for child in children:
-                        step_db.add_child(parent.id, child.id, condition="reparented", routing_order=0)
-                    logger.info("[mcts] Reparented %d children of sig %d to parent %d", len(children), sig_id, parent.id)
+                    success = step_db.archive_signature_with_reparent(
+                        sig_id,
+                        parent_id=parent.id,
+                        child_ids=[c.id for c in children],
+                        reason="retirement_prune"
+                    )
+                    if success:
+                        logger.info("[mcts] Reparented %d children of sig %d to parent %d", len(children), sig_id, parent.id)
+                else:
+                    # No children to reparent, just archive
+                    success = step_db.archive_signature(sig_id, reason="retirement_prune")
 
-                # Archive the signature (soft delete)
-                success = step_db.archive_signature(sig_id, reason="retirement_prune")
                 if success:
                     pruned_ids.append(sig_id)
                     processed += 1
@@ -2050,6 +2350,7 @@ def process_retirement_candidates(
 
         except Exception as e:
             logger.warning("[mcts] Failed to retire signature %d (action=%s): %s", sig_id, action, e)
+            failed_ids.append(sig_id)
 
     result = RetirementResult(
         candidates_found=len(candidates),
@@ -2063,8 +2364,8 @@ def process_retirement_candidates(
 
     if demoted_ids or pruned_ids or merged_up_ids:
         logger.info(
-            "[mcts] Retirement complete: %d demoted, %d pruned, %d merged_up (of %d candidates)",
-            result.demoted, result.pruned, result.merged_up, result.candidates_found
+            "[mcts] Retirement complete: %d demoted, %d pruned, %d merged_up, %d failed (of %d candidates)",
+            result.demoted, result.pruned, result.merged_up, len(failed_ids), result.candidates_found
         )
 
     return result
@@ -2114,4 +2415,385 @@ def run_retirement_check(step_db) -> dict:
         "demoted_ids": result.demoted_ids,
         "pruned_ids": result.pruned_ids,
         "merged_up_ids": result.merged_up_ids,
+    }
+
+
+# =============================================================================
+# DIAGNOSTIC POST-MORTEM (Accuracy-driven decomposition decisions)
+# =============================================================================
+# Per CLAUDE.md: "Failures are valuable data points" + "Failing signatures get decomposed"
+#
+# Uses smooth continuous functions based on:
+# - Accuracy = successes / uses (percent, not absolute counts)
+# - Confidence = smooth ramp with uses (more data → more trust)
+# - Maturity = sigmoid over signature count
+#
+# Key insight: A signature with 60 successes + 4 failures (93.75%) should NOT
+# be decomposed. We use accuracy (percent), not failure count.
+
+
+@dataclass
+class DiagnosticResult:
+    """Result of diagnostic post-mortem analysis."""
+    decompose_step_score: float    # 0-1, how much to decompose the dag_step
+    decompose_sig_score: float     # 0-1, how much to decompose the signature
+    reroute_score: float           # 0-1, how much this looks like a routing miss
+
+    # Context for logging
+    accuracy: float
+    confidence: float
+    step_distance: float
+
+    @property
+    def verdict(self) -> str:
+        """Highest score wins, but only if above threshold."""
+        from mycelium.config import DIAGNOSTIC_ACTION_THRESHOLD
+
+        scores = {
+            "decompose_step": self.decompose_step_score,
+            "decompose_signature": self.decompose_sig_score,
+            "reroute": self.reroute_score,
+        }
+        best = max(scores, key=scores.get)
+
+        if scores[best] < DIAGNOSTIC_ACTION_THRESHOLD:
+            return "wait"
+        return best
+
+    @property
+    def max_score(self) -> float:
+        """The winning score."""
+        return max(self.decompose_step_score, self.decompose_sig_score, self.reroute_score)
+
+
+def _sigmoid(x: float, midpoint: float = 0.0, steepness: float = 1.0) -> float:
+    """Smooth S-curve from 0 to 1.
+
+    Args:
+        x: Input value
+        midpoint: Value where sigmoid = 0.5
+        steepness: Controls sharpness (higher = sharper transition)
+
+    Returns:
+        Value between 0 and 1
+    """
+    import math
+    z = (x - midpoint) / steepness if steepness > 0 else 0
+    try:
+        return 1.0 / (1.0 + math.exp(-z))
+    except OverflowError:
+        return 0.0 if z < 0 else 1.0
+
+
+def get_diagnostic_failure_threshold(system_maturity: float) -> float:
+    """Compute failure threshold using smooth sigmoid.
+
+    Cold start (low maturity): act fast, low threshold
+    Mature (high maturity): be patient, higher threshold
+
+    Args:
+        system_maturity: Signature count (used as maturity proxy)
+
+    Returns:
+        Failure threshold (float, can be fractional)
+    """
+    from mycelium.config import (
+        DIAGNOSTIC_THRESHOLD_MIN,
+        DIAGNOSTIC_THRESHOLD_MAX,
+        MATURITY_SIGMOID_MIDPOINT,
+        MATURITY_SIGMOID_STEEPNESS,
+    )
+
+    maturity_factor = _sigmoid(
+        system_maturity,
+        midpoint=MATURITY_SIGMOID_MIDPOINT,
+        steepness=MATURITY_SIGMOID_STEEPNESS,
+    )
+
+    # Interpolate between min and max threshold
+    return DIAGNOSTIC_THRESHOLD_MIN + (
+        (DIAGNOSTIC_THRESHOLD_MAX - DIAGNOSTIC_THRESHOLD_MIN) * maturity_factor
+    )
+
+
+def accuracy_confidence(uses: int) -> float:
+    """Compute confidence in accuracy signal based on sample size.
+
+    Uses exponential decay: confidence approaches 1.0 as uses increase.
+    Low uses → don't trust accuracy yet
+    High uses → accuracy is reliable
+
+    Args:
+        uses: Number of times signature was used
+
+    Returns:
+        Confidence between 0 and 1
+    """
+    import math
+    from mycelium.config import DIAGNOSTIC_CONFIDENCE_HALFLIFE
+
+    if uses <= 0:
+        return 0.0
+
+    # 1 - e^(-uses/halflife) approaches 1 as uses → ∞
+    return 1.0 - math.exp(-uses / DIAGNOSTIC_CONFIDENCE_HALFLIFE)
+
+
+def compute_decompose_score(
+    accuracy: float,
+    uses: int,
+    step_centroid_distance: float = 0.0,
+) -> float:
+    """Compute continuous score indicating how much this signature should be decomposed.
+
+    Components:
+    - Low accuracy → high decompose score (weighted by confidence)
+    - High step distance from centroid → suggests step doesn't belong here
+
+    Args:
+        accuracy: Success rate (0-1)
+        uses: Number of times used
+        step_centroid_distance: Distance from step embedding to signature centroid (0-1)
+
+    Returns:
+        Decompose score between 0 and 1 (higher = stronger signal to decompose)
+    """
+    from mycelium.config import (
+        DIAGNOSTIC_ACCURACY_WEIGHT,
+        DIAGNOSTIC_DISTANCE_WEIGHT,
+    )
+
+    confidence = accuracy_confidence(uses)
+
+    # Accuracy component: invert accuracy, weight by confidence
+    # accuracy=1.0 → 0 score, accuracy=0.0 → max score
+    accuracy_score = (1.0 - accuracy) * confidence * DIAGNOSTIC_ACCURACY_WEIGHT
+
+    # Distance component: far from centroid suggests wrong routing or complex step
+    distance_score = step_centroid_distance * DIAGNOSTIC_DISTANCE_WEIGHT
+
+    # Combine (weighted sum)
+    raw_score = accuracy_score + distance_score
+
+    # Normalize to 0-1 range
+    return min(1.0, max(0.0, raw_score))
+
+
+def diagnose_failure(
+    signature_id: int,
+    step_embedding,
+    step_db,
+) -> DiagnosticResult:
+    """Diagnose a failure to determine decomposition target.
+
+    Uses smooth continuous functions to compute scores for:
+    - Decompose the step (step is too complex)
+    - Decompose the signature (approach is wrong)
+    - Reroute (wrong routing, similar steps succeeded elsewhere)
+
+    Args:
+        signature_id: ID of the signature that was used
+        step_embedding: Embedding of the dag_step (numpy array)
+        step_db: StepSignatureDB instance
+
+    Returns:
+        DiagnosticResult with scores and verdict
+    """
+    import numpy as np
+    from mycelium.config import (
+        DIAGNOSTIC_REROUTE_SIMILARITY_MIN,
+        DIAGNOSTIC_GOOD_SIG_ACCURACY,
+    )
+
+    # Get signature stats
+    sig = step_db.get_signature(signature_id)
+    if sig is None:
+        # Signature not found - can't diagnose
+        return DiagnosticResult(
+            decompose_step_score=0.0,
+            decompose_sig_score=0.0,
+            reroute_score=0.0,
+            accuracy=0.0,
+            confidence=0.0,
+            step_distance=0.0,
+        )
+
+    # Core stats
+    accuracy = sig.success_rate
+    uses = sig.uses or 0
+    confidence = accuracy_confidence(uses)
+
+    # Compute step distance from signature centroid
+    step_distance = 0.0
+    if step_embedding is not None and sig.centroid is not None:
+        try:
+            # Cosine distance = 1 - cosine_similarity
+            sig_centroid = np.array(sig.centroid, dtype=np.float32)
+            step_emb = np.array(step_embedding, dtype=np.float32)
+
+            norm_a = np.linalg.norm(sig_centroid)
+            norm_b = np.linalg.norm(step_emb)
+            if norm_a > 0 and norm_b > 0:
+                cosine_sim = np.dot(sig_centroid, step_emb) / (norm_a * norm_b)
+                step_distance = 1.0 - cosine_sim
+        except Exception:
+            step_distance = 0.0
+
+    # === Decompose STEP score ===
+    # High when: signature is accurate overall, but this step is distant
+    # Good signature + outlier step → step needs decomposition
+    sig_is_good = _sigmoid(accuracy, midpoint=DIAGNOSTIC_GOOD_SIG_ACCURACY, steepness=0.1)
+    step_is_outlier = step_distance
+    decompose_step_score = sig_is_good * step_is_outlier * confidence
+
+    # === Decompose SIGNATURE score ===
+    # High when: signature has poor accuracy with sufficient confidence
+    decompose_sig_score = compute_decompose_score(
+        accuracy=accuracy,
+        uses=uses,
+        step_centroid_distance=0.0,  # Don't double-count distance
+    )
+
+    # === Reroute score ===
+    # High when: similar steps succeeded with OTHER signatures
+    # Find similar successful steps from different signatures
+    reroute_score = 0.0
+    try:
+        similar_successes = step_db.find_similar_successful_steps(
+            embedding=step_embedding,
+            exclude_signature_id=signature_id,
+            min_similarity=DIAGNOSTIC_REROUTE_SIMILARITY_MIN,
+            limit=3,
+        )
+        if similar_successes:
+            # Best alternative similarity
+            best_alt_similarity = similar_successes[0].get("similarity", 0.0)
+            reroute_score = best_alt_similarity * confidence
+    except (AttributeError, TypeError):
+        # Method may not exist yet - that's OK
+        reroute_score = 0.0
+
+    result = DiagnosticResult(
+        decompose_step_score=decompose_step_score,
+        decompose_sig_score=decompose_sig_score,
+        reroute_score=reroute_score,
+        accuracy=accuracy,
+        confidence=confidence,
+        step_distance=step_distance,
+    )
+
+    logger.debug(
+        "[diagnostic] sig=%d accuracy=%.1f%% conf=%.2f verdict=%s "
+        "(step=%.2f sig=%.2f reroute=%.2f)",
+        signature_id,
+        accuracy * 100,
+        confidence,
+        result.verdict,
+        decompose_step_score,
+        decompose_sig_score,
+        reroute_score,
+    )
+
+    return result
+
+
+def run_diagnostic_postmortem(
+    dag_id: str,
+    step_db,
+    step_embeddings: dict[str, any] = None,
+) -> dict:
+    """Run diagnostic post-mortem on a completed DAG.
+
+    Analyzes failures to determine what should be decomposed:
+    - dag_steps that are too complex
+    - signatures with wrong approaches
+    - routing misses
+
+    Args:
+        dag_id: The DAG to analyze
+        step_db: StepSignatureDB instance
+        step_embeddings: Optional dict mapping dag_step_id to embeddings
+
+    Returns:
+        Dict with diagnostic results and recommendations
+    """
+    from mycelium.config import DIAGNOSTIC_POSTMORTEM_ENABLED
+
+    if not DIAGNOSTIC_POSTMORTEM_ENABLED:
+        return {"skipped": True, "reason": "DIAGNOSTIC_POSTMORTEM_ENABLED is False"}
+
+    # Get system maturity (signature count)
+    system_maturity = step_db.count_signatures() if step_db else 0
+    failure_threshold = get_diagnostic_failure_threshold(system_maturity)
+
+    # Get thread steps for this DAG
+    thread_steps = get_thread_steps_for_dag(dag_id)
+
+    # Group by (dag_step_id, node_id) to find repeated failures
+    pair_failures = {}  # (dag_step_id, node_id) -> failure count
+    pair_embeddings = {}  # (dag_step_id, node_id) -> step_embedding
+
+    for ts in thread_steps:
+        if ts.step_success == 0:  # Failed step
+            key = (ts.dag_step_id, ts.node_id)
+            pair_failures[key] = pair_failures.get(key, 0) + 1
+
+            # Store embedding if available
+            if step_embeddings and ts.dag_step_id in step_embeddings:
+                pair_embeddings[key] = step_embeddings[ts.dag_step_id]
+
+    # Diagnose pairs that exceed threshold
+    diagnoses = []
+    steps_to_decompose = []
+    sigs_to_decompose = []
+    routing_misses = []
+
+    for (dag_step_id, node_id), failure_count in pair_failures.items():
+        if failure_count >= failure_threshold:
+            # Run diagnosis
+            step_emb = pair_embeddings.get((dag_step_id, node_id))
+            diagnosis = diagnose_failure(node_id, step_emb, step_db)
+
+            diagnoses.append({
+                "dag_step_id": dag_step_id,
+                "node_id": node_id,
+                "failure_count": failure_count,
+                "verdict": diagnosis.verdict,
+                "scores": {
+                    "decompose_step": diagnosis.decompose_step_score,
+                    "decompose_sig": diagnosis.decompose_sig_score,
+                    "reroute": diagnosis.reroute_score,
+                },
+                "accuracy": diagnosis.accuracy,
+                "confidence": diagnosis.confidence,
+            })
+
+            # Collect recommendations by verdict
+            if diagnosis.verdict == "decompose_step":
+                steps_to_decompose.append(dag_step_id)
+            elif diagnosis.verdict == "decompose_signature":
+                sigs_to_decompose.append(node_id)
+            elif diagnosis.verdict == "reroute":
+                routing_misses.append((dag_step_id, node_id))
+
+    logger.info(
+        "[diagnostic] Post-mortem for %s: threshold=%.1f, pairs_analyzed=%d, "
+        "steps_decompose=%d, sigs_decompose=%d, reroutes=%d",
+        dag_id,
+        failure_threshold,
+        len(pair_failures),
+        len(steps_to_decompose),
+        len(sigs_to_decompose),
+        len(routing_misses),
+    )
+
+    return {
+        "dag_id": dag_id,
+        "system_maturity": system_maturity,
+        "failure_threshold": failure_threshold,
+        "pairs_analyzed": len(pair_failures),
+        "diagnoses": diagnoses,
+        "steps_to_decompose": list(set(steps_to_decompose)),
+        "signatures_to_decompose": list(set(sigs_to_decompose)),
+        "routing_misses": routing_misses,
     }

@@ -15,8 +15,23 @@ import json
 import logging
 
 import numpy as np
+from typing import Union
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_centroid_data(data: Union[str, bytes, None]) -> Optional[np.ndarray]:
+    """Parse centroid data which may be JSON string or binary bytes.
+
+    SQLite stores centroids as JSON strings, but legacy code stored binary.
+    This helper handles both formats.
+    """
+    if data is None:
+        return None
+    if isinstance(data, str):
+        return np.array(json.loads(data), dtype=np.float32)
+    # Binary numpy data
+    return np.frombuffer(data, dtype=np.float32)
 
 
 @dataclass
@@ -80,11 +95,6 @@ class StepSignature:
     difficulty_stats: dict[str, dict[str, int]] = field(default_factory=dict)
     max_difficulty_solved: float = 0.0  # Highest difficulty this sig has succeeded on
 
-    # Step-type specialization (per mycelium-vuuc)
-    # Format: {"calculate_percentage": {"uses": 10, "successes": 8}, "find_remainder": {"uses": 2, "successes": 0}}
-    # Tracks performance by dag_step description/type for routing preferences
-    step_type_stats: dict[str, dict[str, int]] = field(default_factory=dict)
-
     # Umbrella routing (DAG of DAGs)
     is_semantic_umbrella: bool = False  # True if routes to children
     is_root: bool = False  # True if this is THE root signature (single entry point)
@@ -131,29 +141,6 @@ class StepSignature:
     def difficulty_stats_json(self) -> str:
         """Serialize difficulty_stats to JSON."""
         return json.dumps(self.difficulty_stats)
-
-    def step_type_stats_json(self) -> str:
-        """Serialize step_type_stats to JSON."""
-        return json.dumps(self.step_type_stats)
-
-    def get_step_type_success_rate(self, step_type: str) -> float:
-        """Get success rate for a specific step type.
-
-        Per mycelium-vuuc: Enable step-type specialization in routing.
-
-        Args:
-            step_type: The dag_step description/type (normalized)
-
-        Returns:
-            Success rate for this step type, or -1 if no data
-        """
-        stats = self.step_type_stats.get(step_type)
-        if not stats:
-            return -1.0  # No data for this step type
-        uses = stats.get("uses", 0)
-        if uses == 0:
-            return -1.0
-        return stats.get("successes", 0) / uses
 
     def get_clarifying_prompt(self) -> str:
         """Generate a prompt asking the LLM to extract parameters."""
@@ -247,26 +234,19 @@ class StepSignature:
             except json.JSONDecodeError as e:
                 logger.warning("[models] Invalid difficulty_stats JSON for sig %s: %s", sig_id, e)
 
-        step_type_stats = {}
-        if row.get("step_type_stats"):
-            try:
-                step_type_stats = json.loads(row["step_type_stats"])
-            except json.JSONDecodeError as e:
-                logger.warning("[models] Invalid step_type_stats JSON for sig %s: %s", sig_id, e)
-
-        # Parse centroid and embedding_sum
+        # Parse centroid and embedding_sum (handles both JSON and legacy binary)
         centroid = None
         if row.get("centroid"):
             try:
-                centroid = np.array(json.loads(row["centroid"]))
-            except (json.JSONDecodeError, ValueError) as e:
+                centroid = _parse_centroid_data(row["centroid"])
+            except Exception as e:
                 logger.warning("[models] Invalid centroid for sig %s: %s", sig_id, e)
 
         embedding_sum = None
         if row.get("embedding_sum"):
             try:
-                embedding_sum = np.array(json.loads(row["embedding_sum"]))
-            except (json.JSONDecodeError, ValueError) as e:
+                embedding_sum = _parse_centroid_data(row["embedding_sum"])
+            except Exception as e:
                 logger.warning("[models] Invalid embedding_sum for sig %s: %s", sig_id, e)
 
         embedding_count = row.get("embedding_count", 1) or 1
@@ -290,7 +270,6 @@ class StepSignature:
             operational_failures=row.get("operational_failures", 0) or 0,
             difficulty_stats=difficulty_stats,
             max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
-            step_type_stats=step_type_stats,
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,
@@ -333,7 +312,6 @@ class StepSignature:
             operational_failures=row.get("operational_failures", 0) or 0,
             difficulty_stats={},  # Skip JSON parsing
             max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
-            step_type_stats={},  # Skip JSON parsing
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,
@@ -377,7 +355,6 @@ class StepSignature:
             operational_failures=row.get("operational_failures", 0) or 0,
             difficulty_stats={},  # Skip JSON parsing
             max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
-            step_type_stats={},  # Skip JSON parsing
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,

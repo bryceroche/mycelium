@@ -369,3 +369,116 @@ class TestJsonExtractionEdgeCases:
         result = solver._extract_json_result(response)
         # Should handle gracefully
         assert result in ("", "null", "None")
+
+
+# =============================================================================
+# OPERATION EMBEDDING TESTS (Graph-based routing)
+# =============================================================================
+
+
+class TestPrewarmOperationEmbeddings:
+    """Tests for Solver._prewarm_operation_embeddings()."""
+
+    @pytest.fixture
+    def solver(self):
+        """Create solver instance with minimal init for testing."""
+        s = Solver.__new__(Solver)
+        s._operation_embeddings = {}
+        s.embedder = None  # Will be mocked in tests
+        return s
+
+    def test_empty_steps(self, solver):
+        """Empty steps should clear dict and return."""
+        solver._operation_embeddings = {"old": [1.0, 2.0]}
+        solver._prewarm_operation_embeddings([])
+        assert solver._operation_embeddings == {}
+
+    def test_steps_without_operations(self, solver, monkeypatch):
+        """Steps without operations should be skipped."""
+        steps = [
+            Step(id="s1", task="Do something"),  # No operation
+            Step(id="s2", task="Do another"),    # No operation
+        ]
+        # Track if cached_embed_batch was called
+        embed_called = []
+        def mock_embed(texts, embedder):
+            embed_called.append(texts)
+            return {}
+        monkeypatch.setattr('mycelium.solver.cached_embed_batch', mock_embed)
+
+        solver._prewarm_operation_embeddings(steps)
+
+        # Should not call embed if no operations
+        assert len(embed_called) == 0
+        assert solver._operation_embeddings == {}
+
+    def test_steps_with_operations(self, solver, monkeypatch):
+        """Steps with operations should be batch embedded."""
+        import numpy as np
+
+        steps = [
+            Step(id="s1", task="Convert units", operation="divide two numbers"),
+            Step(id="s2", task="Calculate total", operation="multiply two numbers"),
+        ]
+
+        # Mock cached_embed_batch to return fake embeddings
+        embed_calls = []
+        def mock_embed(texts, embedder):
+            embed_calls.append(texts)
+            return {
+                "divide two numbers": np.array([1.0, 2.0, 3.0]),
+                "multiply two numbers": np.array([4.0, 5.0, 6.0]),
+            }
+        monkeypatch.setattr('mycelium.solver.cached_embed_batch', mock_embed)
+
+        solver._prewarm_operation_embeddings(steps)
+
+        # Should call embed with operations
+        assert len(embed_calls) == 1
+        assert "divide two numbers" in embed_calls[0]
+        assert "multiply two numbers" in embed_calls[0]
+
+        # Should store embeddings keyed by step.id
+        assert "s1" in solver._operation_embeddings
+        assert "s2" in solver._operation_embeddings
+        assert solver._operation_embeddings["s1"] == [1.0, 2.0, 3.0]
+        assert solver._operation_embeddings["s2"] == [4.0, 5.0, 6.0]
+
+    def test_mixed_steps(self, solver, monkeypatch):
+        """Mix of steps with and without operations."""
+        import numpy as np
+
+        steps = [
+            Step(id="s1", task="Do something"),  # No operation
+            Step(id="s2", task="Calculate", operation="add two numbers"),
+            Step(id="s3", task="Another"),  # No operation
+        ]
+
+        def mock_embed(texts, embedder):
+            return {"add two numbers": np.array([1.0, 2.0])}
+        monkeypatch.setattr('mycelium.solver.cached_embed_batch', mock_embed)
+
+        solver._prewarm_operation_embeddings(steps)
+
+        # Only s2 should have embedding
+        assert "s1" not in solver._operation_embeddings
+        assert "s2" in solver._operation_embeddings
+        assert "s3" not in solver._operation_embeddings
+
+    def test_clears_previous_embeddings(self, solver, monkeypatch):
+        """Should clear embeddings from previous problem."""
+        # Pre-populate with old embeddings
+        solver._operation_embeddings = {
+            "old_step": [9.0, 9.0, 9.0]
+        }
+
+        steps = [Step(id="new_step", task="New", operation="new op")]
+        def mock_embed(texts, embedder):
+            return {"new op": [1.0, 2.0]}
+        monkeypatch.setattr('mycelium.solver.cached_embed_batch', mock_embed)
+
+        solver._prewarm_operation_embeddings(steps)
+
+        # Old embedding should be gone
+        assert "old_step" not in solver._operation_embeddings
+        assert "new_step" in solver._operation_embeddings

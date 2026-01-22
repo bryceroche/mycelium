@@ -92,8 +92,12 @@ class TestGetDecompositionCandidates:
         learner.db = mock_db
         return learner
 
-    def _make_sig(self, id, dsl_type, uses, successes, is_umbrella=False):
-        """Helper to create test signatures."""
+    def _make_sig(self, id, dsl_type, uses, successes, is_umbrella=False, operational_failures=1):
+        """Helper to create test signatures.
+
+        Note: operational_failures defaults to 1 because per CLAUDE.md, decomposition
+        candidates must be flagged by MCTS post-mortem (operational_failures > 0).
+        """
         sig = StepSignature(
             id=id,
             step_type=f"step_{id}",
@@ -102,6 +106,7 @@ class TestGetDecompositionCandidates:
             uses=uses,
             successes=successes,
             is_semantic_umbrella=is_umbrella,
+            operational_failures=operational_failures,
         )
         return sig
 
@@ -168,6 +173,20 @@ class TestGetDecompositionCandidates:
         assert len(candidates) == 2
         assert {c.id for c in candidates} == {1, 5}
 
+    def test_filters_no_operational_failures(self, learner, mock_db):
+        """Signatures not flagged by MCTS post-mortem should be excluded.
+
+        Per CLAUDE.md: "Do not decompose a leaf node until instructed by the
+        MCTS rollout post-mortem analysis." operational_failures > 0 indicates
+        destructive interference was detected.
+        """
+        mock_db.get_all_signatures.return_value = [
+            # Valid except no post-mortem flag
+            self._make_sig(1, "decompose", uses=10, successes=2, operational_failures=0),
+        ]
+        candidates = learner.get_decomposition_candidates()
+        assert candidates == []
+
     def test_includes_orphan_umbrella(self, learner, mock_db):
         """Auto-demoted router umbrellas without children should be candidates."""
         # Create an orphan umbrella (auto-demoted from math, no children)
@@ -179,6 +198,7 @@ class TestGetDecompositionCandidates:
             uses=10,
             successes=2,  # 20% success rate
             is_semantic_umbrella=True,  # Is umbrella
+            operational_failures=1,  # Flagged by post-mortem
         )
         mock_db.get_all_signatures.return_value = [orphan]
         # Orphan has no children
@@ -466,7 +486,7 @@ class TestLearnFromFailures:
 
     @pytest.mark.asyncio
     async def test_counts_decompositions(self, learner, mock_db):
-        # Create a failing signature
+        # Create a failing signature flagged by post-mortem
         sig = StepSignature(
             id=1,
             step_type="failing_step",
@@ -475,6 +495,7 @@ class TestLearnFromFailures:
             uses=10,
             successes=2,
             is_semantic_umbrella=False,
+            operational_failures=1,  # Flagged by MCTS post-mortem
         )
         mock_db.get_all_signatures.return_value = [sig]
         mock_db.get_children.return_value = []
@@ -508,6 +529,7 @@ class TestLearnFromFailures:
             uses=10,
             successes=2,
             is_semantic_umbrella=False,
+            operational_failures=1,  # Flagged by MCTS post-mortem
         )
         mock_db.get_all_signatures.return_value = [sig]
         mock_db.get_children.return_value = []

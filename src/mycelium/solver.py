@@ -47,16 +47,24 @@ from mycelium.config import (
     COLD_START_HALFLIFE,
     HINT_LIMIT,
     HINT_MIN_SIMILARITY,
-    OCTOPUS_DETECTION_ENABLED,
-    OCTOPUS_CONFUSION_GAP,
-    OCTOPUS_MIN_DEPTH,
-    GORILLA_PROACTIVE_ENABLED,
-    GORILLA_MAX_PARAMS,
-    GORILLA_COMPLEXITY_KEYWORDS,
     THREAD_TRACKING_ENABLED,
     THREAD_MAX_FORKS_PER_STEP,
     THREAD_CREDIT_DECAY_PER_FORK,
     THREAD_MIN_CREDIT,
+    GRAPH_ROUTING_ENABLED,
+    GRAPH_ROUTING_MIN_SIMILARITY,
+    GRAPH_ROUTING_BOOST_FACTOR,
+    GRAPH_ROUTING_FALLBACK_TO_CENTROID,
+    # Maturity sigmoid (decompose vs create new)
+    MATURITY_DECOMPOSE_ENABLED,
+    MATURITY_SIGMOID_MIDPOINT,
+    MATURITY_SIGMOID_STEEPNESS,
+    MATURITY_ACCURACY_WEIGHT,
+    MATURITY_MIN_DECOMPOSE_PROB,
+    MATURITY_MAX_DECOMPOSE_PROB,
+    MATURITY_ESCAPE_ENABLED,
+    MATURITY_ESCAPE_MIN_SUBSTEPS,
+    MATURITY_ESCAPE_MAX_MISSES,
 )
 from mycelium.planner import Planner, Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
@@ -65,6 +73,10 @@ from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.step_signatures.stats import record_step_stats
 from mycelium.step_signatures.utils import cosine_similarity
+from mycelium.step_signatures.operation_extractor import (
+    extract_operation_needed,
+    get_operation_embedding,
+)
 from mycelium.embedder import Embedder
 from mycelium.embedding_cache import cached_embed, cached_embed_batch
 from mycelium.difficulty import estimate_difficulty
@@ -76,69 +88,10 @@ from mycelium.data_layer.mcts import (
     complete_thread,
     log_thread_step,
     run_postmortem_with_interference,
+    run_diagnostic_postmortem,
 )
 
 logger = logging.getLogger(__name__)
-
-
-# =============================================================================
-# OCTOPUS & GORILLA EXCEPTIONS
-# =============================================================================
-# These signal that the step needs further decomposition before execution.
-# Per CLAUDE.md: "Attempt to route first - decompose on failure"
-
-
-class OctopusDetected(Exception):
-    """DAG step is semantically ambiguous - spans multiple tree branches.
-
-    Raised when routing can't confidently choose between children.
-    Solution: Decompose the step into more specific sub-steps.
-    """
-
-    def __init__(self, step: "Step", top_children: list, similarities: list):
-        self.step = step
-        self.top_children = top_children  # Top-2 children that caused confusion
-        self.similarities = similarities  # Their similarity scores
-        msg = f"Octopus: '{step.task[:50]}' confused between {len(top_children)} children (gap={abs(similarities[0]-similarities[1]):.3f})"
-        super().__init__(msg)
-
-
-class GorillaDetected(Exception):
-    """Step is too complex for a single leaf - needs decomposition.
-
-    Raised when a step has too many parameters or complexity keywords.
-    Solution: Decompose into simpler atomic operations.
-    """
-
-    def __init__(self, step: "Step", reason: str):
-        self.step = step
-        self.reason = reason
-        msg = f"Gorilla: '{step.task[:50]}' too complex ({reason})"
-        super().__init__(msg)
-
-
-def detect_gorilla(step: "Step") -> Optional[str]:
-    """Check if a step is too complex and should be decomposed proactively.
-
-    Returns reason string if Gorilla detected, None otherwise.
-    Per CLAUDE.md: "Failing signatures get decomposed"
-    """
-    if not GORILLA_PROACTIVE_ENABLED:
-        return None
-
-    task_lower = step.task.lower()
-
-    # Check for complexity keywords
-    for keyword in GORILLA_COMPLEXITY_KEYWORDS:
-        if keyword in task_lower:
-            return f"contains '{keyword}'"
-
-    # Check for too many extracted values (likely multi-operation)
-    extracted = getattr(step, 'extracted_values', None) or {}
-    if len(extracted) > GORILLA_MAX_PARAMS:
-        return f"{len(extracted)} params (max {GORILLA_MAX_PARAMS})"
-
-    return None
 
 
 # =============================================================================
@@ -355,6 +308,73 @@ def should_force_decompose(depth: int) -> bool:
     return False
 
 
+def compute_maturity_decompose_prob(step_db) -> float:
+    """Compute probability of decomposing vs creating new when routing fails.
+
+    Per mycelium-jaq9: Uses sigmoid based on system maturity:
+        P(decompose) = sigmoid(maturity_score)
+        maturity_score = (num_sigs - midpoint) / steepness + accuracy_weight * accuracy
+
+    Early (few signatures): Low P(decompose) → create new signatures to bootstrap
+    Mature (many signatures): High P(decompose) → reuse existing via decomposition
+
+    Args:
+        step_db: StepSignatureDB for signature count
+
+    Returns:
+        Probability of decomposing (0.0 to 1.0)
+    """
+    import math
+
+    if not MATURITY_DECOMPOSE_ENABLED:
+        return 0.0  # Disabled → always create new
+
+    # Get system state
+    sig_count = step_db.count_signatures() if step_db else 0
+    # TODO: Wire up actual accuracy tracking from mcts/adaptive.py
+    # For now, default to 0.0 (no accuracy boost - rely on signature count)
+    accuracy = 0.0
+
+    # Compute maturity score
+    # Base: how far past midpoint in signature count
+    # Boost: accuracy contribution (good accuracy → more likely to decompose)
+    base_score = (sig_count - MATURITY_SIGMOID_MIDPOINT) / MATURITY_SIGMOID_STEEPNESS
+    accuracy_boost = MATURITY_ACCURACY_WEIGHT * accuracy
+    maturity_score = base_score + accuracy_boost
+
+    # Apply sigmoid: 1 / (1 + exp(-x))
+    try:
+        raw_prob = 1.0 / (1.0 + math.exp(-maturity_score))
+    except OverflowError:
+        # exp overflow → maturity_score very negative → prob ≈ 0
+        raw_prob = 0.0
+
+    # Clamp to configured bounds
+    prob = max(MATURITY_MIN_DECOMPOSE_PROB, min(MATURITY_MAX_DECOMPOSE_PROB, raw_prob))
+
+    logger.debug(
+        "[maturity] P(decompose)=%.2f (sigs=%d, accuracy=%.2f, score=%.2f)",
+        prob, sig_count, accuracy, maturity_score
+    )
+
+    return prob
+
+
+def should_try_decompose_first(step_db) -> bool:
+    """Sample whether to try decomposition before creating new signature.
+
+    Per mycelium-jaq9: When routing fails, decide based on maturity sigmoid.
+
+    Args:
+        step_db: StepSignatureDB for maturity calculation
+
+    Returns:
+        True if should try decomposition, False if should create new
+    """
+    prob = compute_maturity_decompose_prob(step_db)
+    return random.random() < prob
+
+
 # =============================================================================
 # Result Types
 # =============================================================================
@@ -536,6 +556,10 @@ class Solver:
         # MCTS DAG tracking (set per-problem in solve())
         self._current_dag_id: Optional[str] = None
         self._dag_step_ids: dict[str, str] = {}  # step.id -> dag_step_id
+
+        # Operation embeddings for graph-based routing (set per-problem in solve())
+        # Stored separately from Step objects for memory efficiency (~24KB per embedding)
+        self._operation_embeddings: dict[str, list[float]] = {}  # step.id -> embedding
 
         # DSL regeneration flag (per beads mycelium-flbq)
         # Set to True when post-mortem batch threshold reached
@@ -915,6 +939,11 @@ class Solver:
             # Pre-warm embedding cache with batch call (avoids N sequential embed calls)
             self._prewarm_step_embeddings(plan.steps)
 
+            # Pre-warm operation embeddings for graph-based routing
+            # Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE
+            # Operations are extracted during decomposition, batch embedded here
+            self._prewarm_operation_embeddings(plan.steps)
+
             # 2. Execute steps in dependency order (parallel where possible)
             step_results = []
             step_results_by_id = {}  # step_id → StepResult for ordering
@@ -1124,23 +1153,6 @@ class Solver:
                 thread_id=thread_id,
             )
 
-        # 0.5 GORILLA DETECTION: Check if step is too complex
-        # If detected, decompose proactively before routing
-        gorilla_reason = detect_gorilla(step)
-        if gorilla_reason:
-            logger.info(
-                "[GORILLA] Detected complex step: '%s' (%s)",
-                step.task[:40], gorilla_reason
-            )
-            # Decompose the step using the planner (similar to Octopus)
-            decomposed_result = await self._decompose_gorilla_step(
-                step, problem, context, step_descriptions, gorilla_reason, difficulty, thread_id
-            )
-            if decomposed_result is not None:
-                return decomposed_result
-            # If decomposition failed, continue with normal execution
-            logger.warning("[GORILLA] Step decomposition failed, continuing normally")
-
         # 1. Normalize and embed step (strip numbers for better matching)
         # Use cached_embed to avoid redundant computation for repeated steps
         normalized_task = normalize_step_text(step.task)
@@ -1149,6 +1161,7 @@ class Solver:
         # 2. Find or create signature (use original text for description)
         # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
         # Use adaptive threshold: higher during cold start (more signatures), lower when mature
+        # Pass embedder for cold start graph embedding (per CLAUDE.md: route by what ops DO)
         adaptive_threshold = get_adaptive_match_threshold()
         signature, is_new = await self.step_db.find_or_create_async(
             step_text=step.task,  # Keep original for description
@@ -1158,6 +1171,7 @@ class Solver:
             origin_depth=depth,  # Track decomposition depth
             extracted_values=getattr(step, 'extracted_values', None),
             dsl_hint=getattr(step, 'dsl_hint', None),  # LLM → signature communication
+            embedder=self.embedder,  # For cold start graph embedding
         )
 
         logger.debug(
@@ -1166,24 +1180,75 @@ class Solver:
             signature.dsl_type, adaptive_threshold
         )
 
+        # 2.3. Maturity-based decompose vs create (per mycelium-jaq9)
+        # When we create a NEW signature, maturity sigmoid decides whether to:
+        # - Keep as atomic (early/cold start: build vocabulary)
+        # - Try decomposition first (mature: reuse existing signatures)
+        maturity_triggered_decompose = False
+        if is_new and signature.dsl_type != "decompose" and should_try_decompose_first(self.step_db):
+            logger.info(
+                "[maturity] New signature '%s' created, maturity suggests trying decomposition first",
+                signature.step_type
+            )
+            # Try to decompose and see if sub-steps match existing signatures
+            decompose_result = await self._try_maturity_decomposition(
+                step, signature, problem, context, step_descriptions or {}, embedding, difficulty
+            )
+            if decompose_result is not None:
+                # Decomposition succeeded - all sub-steps matched existing signatures
+                logger.info(
+                    "[maturity] Decomposition succeeded - reusing existing signatures"
+                )
+                maturity_triggered_decompose = True
+                # Return the decomposed result
+                return StepResult(
+                    step_id=step.id,
+                    task=step.task,
+                    result=decompose_result,
+                    success=True,
+                    signature_id=signature.id,
+                    signature_type=signature.step_type,
+                    is_new_signature=is_new,
+                    was_injected=False,
+                    was_routed=True,  # Decomposition is a form of routing
+                )
+            else:
+                # Decomposition failed (escape hatch) - keep the new atomic signature
+                logger.info(
+                    "[maturity] Decomposition failed (escape hatch) - keeping atomic signature '%s'",
+                    signature.step_type
+                )
+
         # 2.5. Auto-decompose if signature needs children
         # Case 1: decompose-type that isn't umbrella yet
         # Case 2: umbrella (possibly auto-demoted) with no children
+        # EXCEPTION: Brand new umbrellas (uses=0) should NOT auto-decompose
+        #            Let them get their first child organically (cold-start protection)
         needs_decompose = False
         children = None  # Track fetched children to avoid redundant DB query
         if signature.dsl_type == "decompose" and not signature.is_semantic_umbrella:
             needs_decompose = True
             reason = "decompose type needs children"
         elif signature.is_semantic_umbrella:
-            children = self.step_db.get_children(signature.id, for_routing=True)
+            # Skip cache for this critical check - in multiprocess environments,
+            # another process may have created children that our cache doesn't know about
+            children = self.step_db.get_children(signature.id, for_routing=True, skip_cache=True)
             if not children:
-                needs_decompose = True
-                reason = "umbrella has no children (auto-demoted?)"
+                # Cold-start protection: Don't decompose brand new umbrellas
+                # They need a chance to get children organically first
+                if signature.uses == 0:
+                    logger.info(
+                        "[solver] Skipping auto-decompose for new umbrella '%s' (uses=0, cold-start)",
+                        signature.step_type
+                    )
+                else:
+                    needs_decompose = True
+                    reason = "umbrella has no children (auto-demoted?)"
 
         if needs_decompose:
             logger.info(
-                "[solver] Auto-decomposing '%s' (%s, difficulty=%.2f)",
-                signature.step_type, reason, difficulty or 0.0
+                "[solver] Auto-decomposing '%s' (id=%d) (%s, difficulty=%.2f)",
+                signature.step_type, signature.id, reason, difficulty or 0.0
             )
             await self._auto_decompose_signature(signature, difficulty=difficulty)
             # Refresh signature and children after decomposition
@@ -1197,38 +1262,14 @@ class Solver:
         routed_signature = signature
 
         if signature.is_semantic_umbrella:
-            try:
-                child_result = await self._try_umbrella_routing(signature, step, problem, context, step_descriptions, embedding=embedding, children=children)
-                if child_result is not None:
-                    result, routed_signature, was_injected = child_result
-                    was_routed = True  # Successfully routed through umbrella
-                    logger.info(
-                        "[solver] Umbrella routed: '%s' → '%s'",
-                        signature.step_type, routed_signature.step_type
-                    )
-            except OctopusDetected as octopus:
-                # OCTOPUS: Step spans multiple branches - decompose the step itself
+            child_result = await self._try_umbrella_routing(signature, step, problem, context, step_descriptions, embedding=embedding, children=children)
+            if child_result is not None:
+                result, routed_signature, was_injected = child_result
+                was_routed = True  # Successfully routed through umbrella
                 logger.info(
-                    "[OCTOPUS] Decomposing step '%s' (confused between %d children)",
-                    step.task[:40], len(octopus.top_children)
+                    "[solver] Umbrella routed: '%s' → '%s'",
+                    signature.step_type, routed_signature.step_type
                 )
-                # Use planner to decompose this specific step
-                decomposed_result = await self._decompose_octopus_step(
-                    step, problem, context, step_descriptions, octopus, difficulty, thread_id
-                )
-                if decomposed_result is not None:
-                    return decomposed_result
-                # If decomposition failed, use BEST of the confused children (not the umbrella)
-                # This ensures we land on a leaf, not stay stuck at the umbrella
-                if octopus.top_children:
-                    routed_signature = octopus.top_children[0]  # Best match by similarity
-                    was_routed = True
-                    logger.warning(
-                        "[OCTOPUS] Decomposition failed, using best confused child: '%s' (sim=%.3f)",
-                        routed_signature.step_type, octopus.similarities[0] if octopus.similarities else 0.0
-                    )
-                else:
-                    logger.warning("[OCTOPUS] Step decomposition failed, no children to fall back to")
 
         # 4. Try DSL execution if not already routed
         # Key: Use dsl_hint from planner (LLM writes the expression)
@@ -1284,38 +1325,16 @@ class Solver:
 
         # 4.6. If we don't have a result yet, try routing through umbrella
         if result is None and routed_signature.is_semantic_umbrella:
-            try:
-                child_result = await self._try_umbrella_routing(
-                    routed_signature, step, problem, context, step_descriptions, embedding=embedding
-                )
-                if child_result is not None:
-                    result, routed_signature, was_injected = child_result
-                    was_routed = True
-                    logger.info(
-                        "[solver] Routed through umbrella to: '%s'",
-                        routed_signature.step_type
-                    )
-            except OctopusDetected as octopus:
-                # OCTOPUS: Step spans multiple branches - decompose the step itself
+            child_result = await self._try_umbrella_routing(
+                routed_signature, step, problem, context, step_descriptions, embedding=embedding
+            )
+            if child_result is not None:
+                result, routed_signature, was_injected = child_result
+                was_routed = True
                 logger.info(
-                    "[OCTOPUS] Decomposing step '%s' (confused between %d children, second routing attempt)",
-                    step.task[:40], len(octopus.top_children)
+                    "[solver] Routed through umbrella to: '%s'",
+                    routed_signature.step_type
                 )
-                decomposed_result = await self._decompose_octopus_step(
-                    step, problem, context, step_descriptions, octopus, difficulty, thread_id
-                )
-                if decomposed_result is not None:
-                    return decomposed_result
-                # If decomposition failed, use BEST of the confused children
-                if octopus.top_children:
-                    routed_signature = octopus.top_children[0]
-                    was_routed = True
-                    logger.warning(
-                        "[OCTOPUS] Decomposition failed (2nd attempt), using best child: '%s'",
-                        routed_signature.step_type
-                    )
-                else:
-                    logger.warning("[OCTOPUS] Step decomposition failed, continuing to create new child")
 
         # 4.7. CREATE NEW CHILD ON ROUTING FAILURE (per CLAUDE.md: failing signatures decompose)
         # If umbrella routing failed (no matching child), create new child for current step
@@ -1685,7 +1704,6 @@ class Solver:
         # Embedding-based routing: compare step embedding to child centroids
         # This is ~0ms vs ~500ms for LLM routing
         if embedding is not None:
-            # Collect ALL child similarities for Octopus detection
             child_scores = []
             for child_sig, condition in children:
                 # Capture centroid once to avoid TOCTOU race condition
@@ -1696,26 +1714,6 @@ class Solver:
 
             # Sort by similarity descending
             child_scores.sort(key=lambda x: x[1], reverse=True)
-
-            # OCTOPUS DETECTION: Check if top-2 are too close (routing confusion)
-            # If undecided, the step itself needs decomposition
-            if OCTOPUS_DETECTION_ENABLED and len(child_scores) >= 2 and depth >= OCTOPUS_MIN_DEPTH:
-                top_sim = child_scores[0][1]
-                second_sim = child_scores[1][1]
-                gap = top_sim - second_sim
-
-                # Both must be above threshold AND gap too small
-                if top_sim > UMBRELLA_ROUTING_THRESHOLD and second_sim > UMBRELLA_ROUTING_THRESHOLD:
-                    if gap < OCTOPUS_CONFUSION_GAP:
-                        logger.info(
-                            "[OCTOPUS] Detected routing confusion: '%s' top-2 gap=%.3f (threshold=%.3f)",
-                            step.task[:40], gap, OCTOPUS_CONFUSION_GAP
-                        )
-                        raise OctopusDetected(
-                            step=step,
-                            top_children=[child_scores[0][0], child_scores[1][0]],
-                            similarities=[top_sim, second_sim],
-                        )
 
             # Use best match if available
             best_child = child_scores[0][0] if child_scores else None
@@ -1821,13 +1819,10 @@ class Solver:
         from mycelium.step_signatures.db import RoutingResult
 
         # Get routing result with confidence and alternatives
-        # Per mycelium-vuuc: Pass step_type for specialization boost
-        normalized_step_type = step.task.lower().strip()[:100] if step.task else None
         routing_result = self.step_db.route_with_confidence(
             embedding,
             min_similarity=get_adaptive_match_threshold(),
             top_k=int(compute_budget) + 1,  # Get enough alternatives
-            step_type=normalized_step_type,
         )
 
         # Store routing context for MCTS amplitude logging
@@ -1836,6 +1831,55 @@ class Solver:
         self._routing_similarity = routing_result.best_similarity  # Actual cosine similarity
 
         explored_sigs = list(routing_result.path)  # Start with best path
+
+        # Graph-based routing: Route by what operations DO, not what they SOUND LIKE
+        # Per CLAUDE.md: "embedding clusters by vocab not operational semantics" (problem to solve)
+        # Graph routing addresses this by comparing operation embedding to graph embeddings
+        graph_matches = {}  # sig_id -> similarity for graph routing boost
+        graph_signatures = {}  # sig_id -> StepSignature for graph-only candidates
+        if GRAPH_ROUTING_ENABLED:
+            try:
+                operation_embedding = None
+
+                # Prefer pre-extracted operation embedding (batch embedded during decomposition)
+                # This avoids per-step LLM calls - operations extracted in 1 decomposition call
+                # Embeddings stored in self._operation_embeddings dict for memory efficiency
+                if step.id in self._operation_embeddings:
+                    operation_embedding = self._operation_embeddings[step.id]
+                    operation = getattr(step, 'operation', None)
+                    logger.debug(
+                        "[solver] Using pre-extracted operation embedding for: %s",
+                        operation[:50] if operation else "?"
+                    )
+                else:
+                    # Fallback: Extract operation from step text (legacy path)
+                    operation = await extract_operation_needed(
+                        self.solver_client, step.task, timeout=10.0
+                    )
+                    if operation:
+                        # Embed the extracted operation
+                        operation_embedding = await get_operation_embedding(
+                            self.embedder, operation
+                        )
+
+                if operation_embedding is not None:
+                    # Compare to graph embeddings (what DSLs actually compute)
+                    graph_routing_results = self.step_db.route_by_graph_embedding(
+                        np.array(operation_embedding),
+                        min_similarity=GRAPH_ROUTING_MIN_SIMILARITY,
+                        top_k=5,
+                    )
+                    # Build lookup for boosting centroid candidates
+                    for sig, sim in graph_routing_results:
+                        graph_matches[sig.id] = sim
+                        graph_signatures[sig.id] = sig  # Store signature for graph-only adds
+                        logger.debug(
+                            "[solver] Graph routing match: sig %d (%s) sim=%.3f",
+                            sig.id, sig.computation_graph[:30] if sig.computation_graph else "?", sim
+                        )
+            except Exception as e:
+                # Graph routing is optional - don't fail on errors
+                logger.debug("[solver] Graph routing failed (continuing): %s", e)
 
         # Selective branching: only branch when undecided (per CLAUDE.md)
         # Use UCB1 gap to detect uncertainty: high gap = confident, low gap = undecided
@@ -1859,12 +1903,28 @@ class Solver:
         )
 
         # Collect alternative leaf signatures to try (with similarity scores)
-        candidates = []  # List of (signature, similarity_score)
+        candidates = []  # List of (signature, similarity_score, graph_boost_applied)
+
+        def _apply_graph_boost(sig_id: int, base_score: float) -> tuple[float, bool]:
+            """Apply graph routing boost if signature appears in graph matches."""
+            if sig_id in graph_matches:
+                graph_sim = graph_matches[sig_id]
+                boosted = base_score + (GRAPH_ROUTING_BOOST_FACTOR * graph_sim)
+                logger.debug(
+                    "[solver] Graph boost: sig %d score %.3f -> %.3f (graph_sim=%.3f)",
+                    sig_id, base_score, boosted, graph_sim
+                )
+                return (boosted, True)
+            return (base_score, False)
 
         # Add best path's leaf if it's not an umbrella
         if routing_result.signature and not routing_result.signature.is_semantic_umbrella:
-            # Use confidence as proxy for similarity for best path
-            candidates.append((routing_result.signature, routing_result.confidence))
+            # Use confidence as proxy for similarity for best path, apply graph boost
+            base_score = routing_result.confidence
+            boosted_score, had_boost = _apply_graph_boost(
+                routing_result.signature.id, base_score
+            )
+            candidates.append((routing_result.signature, boosted_score))
 
         # Add alternatives from each level (flatten)
         for level_alts in routing_result.alternatives:
@@ -1872,12 +1932,39 @@ class Solver:
                 # Check if already added (by signature id)
                 already_added = any(sig.id == alt_sig.id for sig, _ in candidates)
                 if not alt_sig.is_semantic_umbrella and not already_added:
-                    candidates.append((alt_sig, score))
+                    # Apply graph boost if this signature appears in graph routing
+                    boosted_score, _ = _apply_graph_boost(alt_sig.id, score)
+                    candidates.append((alt_sig, boosted_score))
                     explored_sigs.append(alt_sig)
                     if len(candidates) >= num_paths:
                         break
             if len(candidates) >= num_paths:
                 break
+
+        # Re-sort candidates by boosted score (graph matches rise to top)
+        if graph_matches:
+            candidates.sort(key=lambda x: x[1], reverse=True)
+            logger.debug(
+                "[solver] After graph boost re-sort: %s",
+                [(sig.id, score) for sig, score in candidates[:3]]
+            )
+
+            # Add graph-only candidates (found by graph routing but not centroid)
+            # This is key for "route by what operations DO, not what they SOUND LIKE"
+            candidate_ids = {sig.id for sig, _ in candidates}
+            for graph_sig_id, graph_sim in graph_matches.items():
+                if graph_sig_id not in candidate_ids and len(candidates) < num_paths:
+                    graph_sig = graph_signatures.get(graph_sig_id)
+                    if graph_sig:
+                        # Graph-only candidates get their graph similarity as score
+                        candidates.append((graph_sig, graph_sim))
+                        explored_sigs.append(graph_sig)
+                        logger.debug(
+                            "[solver] Added graph-only candidate: sig %d (%s) sim=%.3f",
+                            graph_sig.id,
+                            graph_sig.computation_graph[:30] if graph_sig.computation_graph else "?",
+                            graph_sim,
+                        )
 
         if not candidates:
             # No leaf candidates found
@@ -2019,6 +2106,15 @@ class Solver:
         dsl_hint = getattr(step, 'dsl_hint', None)
         extracted_values = getattr(step, 'extracted_values', {}) or {}
 
+        # Debug logging for DSL execution
+        logger.debug(
+            "[solver] _try_dsl: task='%s' dsl_hint=%s extracted_values=%s context_keys=%s",
+            step.task[:40] if step.task else "None",
+            dsl_hint,
+            extracted_values,
+            list(context.keys()) if context else []
+        )
+
         # Handle extraction-only steps: no dsl_hint but has single extracted value
         # These steps just extract a constant from the problem (e.g., "eggs per day = 16")
         if not dsl_hint and extracted_values:
@@ -2040,7 +2136,8 @@ class Solver:
 
         if not dsl_hint:
             # No hint from planner - can't execute DSL
-            logger.debug("[solver] No dsl_hint for step, skipping DSL")
+            logger.info("[solver] No dsl_hint for step '%s', skipping DSL (extracted_values=%s)",
+                       step.task[:40] if step.task else "None", extracted_values)
             return None
 
         # Build available params from context + extracted values
@@ -2181,6 +2278,51 @@ class Solver:
         # Batch embed - populates the cache
         logger.debug("[solver] Pre-warming embeddings: %d steps in single batch call", len(texts))
         cached_embed_batch(texts, self.embedder)
+
+    def _prewarm_operation_embeddings(self, steps: list) -> None:
+        """Batch embed all step operations for graph-based routing.
+
+        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        Operations are extracted during decomposition (1 LLM call), then batch
+        embedded here (1 embedding call). This avoids per-step LLM calls for
+        operation extraction during routing.
+
+        Embeddings stored in self._operation_embeddings dict (not on Step objects)
+        for memory efficiency - each embedding is ~24KB (3072 floats).
+        """
+        # Clear previous problem's embeddings
+        self._operation_embeddings.clear()
+
+        if not steps:
+            return
+
+        # Collect non-None operations with their step IDs
+        operations = []
+        step_ids = []  # Track which step each operation belongs to
+        for step in steps:
+            if step.operation and not step.is_composite:
+                operations.append(step.operation)
+                step_ids.append(step.id)
+
+        if not operations:
+            logger.debug("[solver] No operations to embed (steps may lack operation field)")
+            return
+
+        # Batch embed all operations
+        logger.debug("[solver] Pre-warming operation embeddings: %d operations in single batch call", len(operations))
+        embeddings_dict = cached_embed_batch(operations, self.embedder)
+
+        # Store embeddings in instance dict (keyed by step.id)
+        for operation, step_id in zip(operations, step_ids):
+            if operation in embeddings_dict:
+                embedding = embeddings_dict[operation]
+                # Convert numpy array to list if needed
+                if hasattr(embedding, 'tolist'):
+                    self._operation_embeddings[step_id] = embedding.tolist()
+                else:
+                    self._operation_embeddings[step_id] = list(embedding)
+
+        logger.debug("[solver] Stored operation embeddings for %d steps", len(self._operation_embeddings))
 
     async def _llm_write_expression(
         self,
@@ -2591,6 +2733,43 @@ Expression:"""
                         "[solver] DSL regeneration ready: %d nodes accumulated",
                         postmortem_stats.get("dsl_regen_nodes_accumulated", 0)
                     )
+
+                # Log nodes/steps needing decomposition from post-mortem analysis
+                nodes_needing = postmortem_stats.get("nodes_needing_decomposition", [])
+                steps_needing = postmortem_stats.get("steps_needing_decomposition", [])
+                if nodes_needing:
+                    logger.info(
+                        "[solver] Post-mortem: %d nodes need decomposition: %s",
+                        len(nodes_needing), nodes_needing
+                    )
+                if steps_needing:
+                    logger.info(
+                        "[solver] Post-mortem: %d steps need decomposition: %s",
+                        len(steps_needing), [s[1][:40] for s in steps_needing]
+                    )
+
+                # Run diagnostic post-mortem with smooth functions (accuracy-based)
+                # This complements the existing analysis with continuous scoring
+                try:
+                    diagnostic_stats = run_diagnostic_postmortem(
+                        dag_id=self._current_dag_id,
+                        step_db=self.step_db,
+                        step_embeddings=getattr(self, '_step_embeddings', None),
+                    )
+                    if not diagnostic_stats.get("skipped"):
+                        diag_steps = diagnostic_stats.get("steps_to_decompose", [])
+                        diag_sigs = diagnostic_stats.get("signatures_to_decompose", [])
+                        if diag_steps or diag_sigs:
+                            logger.info(
+                                "[solver] Diagnostic post-mortem: threshold=%.1f, "
+                                "steps_to_decompose=%d, sigs_to_decompose=%d",
+                                diagnostic_stats.get("failure_threshold", 0),
+                                len(diag_steps),
+                                len(diag_sigs),
+                            )
+                except Exception as e:
+                    logger.debug("[solver] Diagnostic post-mortem skipped: %s", e)
+
             except Exception as e:
                 logger.error("[solver] Postmortem failed: %s", e)
 
@@ -2650,6 +2829,21 @@ Expression:"""
                     "uses=%d, success_rate=%.1f%%, orphan=%s",
                     sig.step_type, sig_id, sig.uses, sig.success_rate * 100, is_orphan_umbrella
                 )
+
+        # Also add nodes identified by post-mortem decomposition analysis
+        # These are nodes with low win rates from mcts_thread_steps
+        from mycelium.data_layer.mcts import get_failing_nodes_for_decomposition
+        postmortem_failing_nodes = get_failing_nodes_for_decomposition(min_attempts=3, max_win_rate=0.5)
+        for node_id in postmortem_failing_nodes:
+            if node_id not in candidates:
+                sig = self.step_db.get_signature(node_id)
+                if sig:
+                    candidates.append(node_id)
+                    logger.info(
+                        "[solver] Signature '%s' (id=%d) needs decomposition (post-mortem analysis): "
+                        "failing across step types",
+                        sig.step_type, node_id
+                    )
 
         # Flush any batched centroid propagations after problem is graded
         # This ensures parent umbrellas have accurate centroids for next problem
@@ -2865,27 +3059,31 @@ Expression:"""
             self._problem_threads.clear()
             self._root_thread_id = None
 
-    async def _decompose_octopus_step(
+    async def _decompose_complex_step(
         self,
         step: Step,
         problem: str,
         context: dict[str, str],
         step_descriptions: dict[str, str],
-        octopus: OctopusDetected,
+        hint: str,
+        log_tag: str,
+        signature_type: str,
         difficulty: float = None,
         thread_id: str = None,
     ) -> Optional[StepResult]:
-        """Decompose an Octopus step (semantically ambiguous) into sub-steps.
+        """Decompose a complex step into sub-steps.
 
-        Called when routing detected confusion between multiple children.
-        Uses the planner to break down the ambiguous step into more specific sub-steps.
+        Uses the planner to break down steps that can't be handled
+        by a single leaf signature.
 
         Args:
-            step: The ambiguous step that needs decomposition
+            step: The step that needs decomposition
             problem: Original problem text
             context: step_id → result from previous steps
             step_descriptions: step_id → task description
-            octopus: The OctopusDetected exception with confusion details
+            hint: Context hint explaining why decomposition is needed
+            log_tag: Tag for logging
+            signature_type: Type to use in StepResult
             difficulty: Problem difficulty for adaptive decomposition
             thread_id: Thread ID for multi-path credit tracking
 
@@ -2895,29 +3093,23 @@ Expression:"""
         import time
         start_time = time.time()
 
-        # Ask planner to decompose this specific step
-        # Provide context about the confusion to guide decomposition
-        confusion_hint = f"The step '{step.task}' is ambiguous. It could involve: "
-        confusion_hint += ", ".join([c.step_type for c in octopus.top_children])
-        confusion_hint += ". Please break it down into more specific operations."
-
         try:
             # Decompose the step using the planner
             sub_plan = await self.planner.decompose(
-                problem=step.task,  # Decompose the step itself
-                context=f"Original problem: {problem}\n{confusion_hint}",
+                problem=step.task,
+                context=f"Original problem: {problem}\n{hint}",
             )
 
             if not sub_plan or not sub_plan.steps or len(sub_plan.steps) <= 1:
                 logger.warning(
-                    "[OCTOPUS] Planner couldn't decompose '%s' further",
-                    step.task[:40]
+                    "[%s] Planner couldn't decompose '%s' further",
+                    log_tag, step.task[:40]
                 )
                 return None
 
             logger.info(
-                "[OCTOPUS] Decomposed '%s' into %d sub-steps",
-                step.task[:40], len(sub_plan.steps)
+                "[%s] Decomposed '%s' into %d sub-steps",
+                log_tag, step.task[:40], len(sub_plan.steps)
             )
 
             # Execute sub-steps recursively
@@ -2930,7 +3122,7 @@ Expression:"""
                     problem,
                     sub_context,
                     step_descriptions,
-                    depth=1,  # Increment depth
+                    depth=1,
                     difficulty=difficulty,
                     thread_id=thread_id,
                 )
@@ -2946,103 +3138,133 @@ Expression:"""
                 step_id=step.id,
                 task=step.task,
                 result=final_result,
-                signature_type="octopus_decomposed",
+                signature_type=signature_type,
                 was_injected=False,
                 was_routed=True,
                 elapsed_ms=elapsed_ms,
             )
 
         except Exception as e:
-            logger.error("[OCTOPUS] Step decomposition failed: %s", e)
+            logger.error("[%s] Step decomposition failed: %s", log_tag, e)
             return None
 
-    async def _decompose_gorilla_step(
+    async def _try_maturity_decomposition(
         self,
         step: Step,
+        signature: StepSignature,
         problem: str,
         context: dict[str, str],
         step_descriptions: dict[str, str],
-        reason: str,
+        embedding: np.ndarray,
         difficulty: float = None,
-        thread_id: str = None,
-    ) -> Optional[StepResult]:
-        """Decompose a Gorilla step (too complex for single leaf) into sub-steps.
+    ) -> Optional[str]:
+        """Try decomposing a step to reuse existing signatures (maturity-based).
 
-        Called when proactive detection found a step with too many params or
-        complexity keywords (e.g., "and then", "after").
+        Per mycelium-jaq9: When maturity sigmoid suggests decomposition, try to
+        break the step into sub-steps that match existing signatures.
+
+        Escape hatch: If too many sub-steps don't match existing signatures,
+        this recognizes a genuinely novel operation and returns None.
 
         Args:
-            step: The complex step that needs decomposition
+            step: The step to decompose
+            signature: The newly created signature (for logging)
             problem: Original problem text
-            context: step_id → result from previous steps
-            step_descriptions: step_id → task description
-            reason: Why the step was flagged as Gorilla
-            difficulty: Problem difficulty for adaptive decomposition
-            thread_id: Thread ID for multi-path credit tracking
+            context: Results from previous steps
+            step_descriptions: Task descriptions
+            embedding: Step embedding
+            difficulty: Problem difficulty
 
         Returns:
-            StepResult if decomposition and execution succeeded, None otherwise
+            Combined result string if decomposition succeeds, None if escape hatch triggered
         """
-        import time
-        start_time = time.time()
-
-        # Ask planner to decompose this complex step
-        complexity_hint = f"The step '{step.task}' is complex ({reason}). "
-        complexity_hint += "Break it down into simpler atomic operations."
-
         try:
-            # Decompose the step using the planner
+            # Use planner to decompose the step
             sub_plan = await self.planner.decompose(
-                problem=step.task,  # Decompose the step itself
-                context=f"Original problem: {problem}\n{complexity_hint}",
+                step.task,
+                problem_context=problem,
+                known_values=context,
             )
 
-            if not sub_plan or not sub_plan.steps or len(sub_plan.steps) <= 1:
-                logger.warning(
-                    "[GORILLA] Planner couldn't decompose '%s' further",
-                    step.task[:40]
+            if not sub_plan or not sub_plan.steps:
+                logger.debug("[maturity] Decomposition returned empty plan - escape hatch")
+                return None
+
+            # Check if we have enough sub-steps
+            if len(sub_plan.steps) < MATURITY_ESCAPE_MIN_SUBSTEPS:
+                logger.debug(
+                    "[maturity] Only %d sub-steps (need %d) - escape hatch",
+                    len(sub_plan.steps), MATURITY_ESCAPE_MIN_SUBSTEPS
                 )
                 return None
 
-            logger.info(
-                "[GORILLA] Decomposed '%s' into %d sub-steps",
-                step.task[:40], len(sub_plan.steps)
-            )
-
-            # Execute sub-steps recursively
-            sub_context = context.copy()
-            sub_results = []
+            # Route each sub-step through existing signatures
+            # Track how many miss (don't match existing)
+            adaptive_threshold = get_adaptive_match_threshold()
+            miss_count = 0
+            results = []
 
             for sub_step in sub_plan.steps:
-                sub_result = await self._execute_step(
-                    sub_step,
-                    problem,
-                    sub_context,
-                    step_descriptions,
-                    depth=1,  # Increment depth
-                    difficulty=difficulty,
-                    thread_id=thread_id,
+                normalized_task = normalize_step_text(sub_step.task)
+                sub_embedding = cached_embed(normalized_task, self.embedder)
+
+                # Use route_with_confidence to check for existing match
+                routing_result = self.step_db.route_with_confidence(
+                    sub_embedding,
+                    min_similarity=adaptive_threshold,
                 )
-                sub_results.append(sub_result)
-                sub_context[sub_step.id] = sub_result.result
 
-            # Use the final sub-step's result as the overall result
-            final_result = sub_results[-1].result if sub_results else None
+                if routing_result.signature is None or routing_result.best_similarity < adaptive_threshold:
+                    # No match found - count as miss
+                    miss_count += 1
+                    logger.debug(
+                        "[maturity] Sub-step '%s' has no match (sim=%.2f) - miss %d/%d",
+                        sub_step.task[:30],
+                        routing_result.best_similarity or 0,
+                        miss_count, MATURITY_ESCAPE_MAX_MISSES + 1
+                    )
 
-            elapsed_ms = (time.time() - start_time) * 1000
+                    if miss_count > MATURITY_ESCAPE_MAX_MISSES:
+                        logger.info(
+                            "[maturity] Too many misses (%d > %d) - escape hatch triggered",
+                            miss_count, MATURITY_ESCAPE_MAX_MISSES
+                        )
+                        return None
+                else:
+                    # Match found - execute the sub-step via existing signature
+                    matched_sig = routing_result.signature
+                    logger.debug(
+                        "[maturity] Sub-step '%s' matched sig '%s' (sim=%.2f)",
+                        sub_step.task[:30], matched_sig.step_type, routing_result.best_similarity
+                    )
 
-            return StepResult(
-                step_id=step.id,
-                task=step.task,
-                result=final_result,
-                signature_type="gorilla_decomposed",
-                was_injected=False,
-                was_routed=True,
-                elapsed_ms=elapsed_ms,
-            )
+                    # Execute via the matched signature
+                    sub_result = await self._execute_step(
+                        sub_step, problem, context, step_descriptions,
+                        depth=signature.depth + 1 if signature.depth else 1,
+                        difficulty=difficulty,
+                        compute_budget=1.0,  # Single-path for sub-steps
+                    )
+
+                    if sub_result and sub_result.result:
+                        results.append(sub_result.result)
+                        # Update context with sub-step result
+                        context[sub_step.id] = sub_result.result
+
+            # All sub-steps processed successfully
+            if results:
+                combined_result = results[-1]  # Use final sub-step result
+                logger.info(
+                    "[maturity] Decomposition succeeded with %d sub-steps (%d misses)",
+                    len(sub_plan.steps), miss_count
+                )
+                return combined_result
+            else:
+                logger.debug("[maturity] No results from decomposition - escape hatch")
+                return None
 
         except Exception as e:
-            logger.error("[GORILLA] Step decomposition failed: %s", e)
+            logger.warning("[maturity] Decomposition error: %s - escape hatch", e)
             return None
 
     async def _auto_decompose_signature(

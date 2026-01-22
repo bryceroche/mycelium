@@ -25,6 +25,19 @@ import numpy as np
 # Version for centroid matrix cache (increment to invalidate old caches)
 _CENTROID_CACHE_VERSION = 1
 
+
+def _parse_centroid_data(data) -> Optional[np.ndarray]:
+    """Parse centroid data which may be JSON string or binary bytes.
+
+    SQLite stores centroids as JSON strings, but legacy code expected binary.
+    This helper handles both formats.
+    """
+    if data is None:
+        return None
+    if isinstance(data, str):
+        return np.array(json.loads(data), dtype=np.float32)
+    return np.frombuffer(data, dtype=np.float32)
+
 from mycelium.config import (
     EMBEDDING_DIM,
     PARENT_CREDIT_DECAY,
@@ -393,9 +406,9 @@ class StepSignatureDB:
 
                 cached_count = int(data["sig_count"])
 
-                # Quick staleness check: compare signature count
+                # Quick staleness check: compare non-archived signature count
                 with self._connection() as conn:
-                    row = conn.execute("SELECT COUNT(*) FROM step_signatures WHERE centroid IS NOT NULL").fetchone()
+                    row = conn.execute("SELECT COUNT(*) FROM step_signatures WHERE centroid IS NOT NULL AND is_archived = 0").fetchone()
                     current_count = row[0] if row else 0
 
                 if cached_count != current_count:
@@ -1121,51 +1134,12 @@ class StepSignatureDB:
         )
         return current, path
 
-    def _get_step_type_success_rate(
-        self, signature_id: int, step_type: str
-    ) -> float:
-        """Get step-type success rate for a signature (helper for routing).
-
-        Per mycelium-vuuc: Look up step_type_stats for routing boost/penalty.
-        This queries the DB directly to avoid loading full JSON in routing.
-
-        Args:
-            signature_id: ID of the signature
-            step_type: Normalized step type to look up
-
-        Returns:
-            Success rate for this step type, or -1.0 if no data
-        """
-        import json
-
-        with self._connection() as conn:
-            row = conn.execute(
-                "SELECT step_type_stats FROM step_signatures WHERE id = ?",
-                (signature_id,)
-            ).fetchone()
-
-            if not row or not row[0]:
-                return -1.0
-
-            try:
-                stats = json.loads(row[0])
-                step_stats = stats.get(step_type)
-                if not step_stats:
-                    return -1.0
-                uses = step_stats.get("uses", 0)
-                if uses == 0:
-                    return -1.0
-                return step_stats.get("successes", 0) / uses
-            except (json.JSONDecodeError, TypeError):
-                return -1.0
-
     def route_with_confidence(
         self,
         embedding: np.ndarray,
         min_similarity: float = 0.85,
         max_depth: int = None,
         top_k: int = 3,
-        step_type: str = None,
     ) -> RoutingResult:
         """Route with confidence scoring for MCTS multi-path exploration.
 
@@ -1182,7 +1156,6 @@ class StepSignatureDB:
             min_similarity: Minimum similarity threshold to follow a route
             max_depth: Maximum depth to traverse (default from config)
             top_k: Number of top alternatives to track at each level
-            step_type: Optional step type for specialization boost (per mycelium-vuuc)
 
         Returns:
             RoutingResult with signature, path, confidence, and alternatives
@@ -1227,19 +1200,12 @@ class StepSignatureDB:
                     continue
                 sim = cosine_similarity(embedding, centroid)
                 if sim >= min_similarity * 0.7:  # Lower threshold to capture alternatives
-                    # Per mycelium-vuuc: Use step_type_stats for specialization
-                    step_type_rate = -1.0
-                    if step_type and child_sig.id:
-                        step_type_rate = self._get_step_type_success_rate(
-                            child_sig.id, step_type
-                        )
                     ucb1 = compute_ucb1_score(
                         cosine_sim=sim,
                         uses=child_sig.uses,
                         successes=child_sig.successes,
                         parent_uses=parent_uses,
                         last_used_at=child_sig.last_used_at,
-                        step_type_success_rate=step_type_rate,
                     )
                     scored_children.append((child_sig, ucb1, sim))
 
@@ -1376,6 +1342,7 @@ class StepSignatureDB:
         extracted_values: dict = None,
         dsl_hint: str = None,
         parent_id: int = None,
+        embedder=None,  # Optional sync embedder for graph embedding
     ) -> tuple[StepSignature, bool]:
         """Async version of find_or_create with non-blocking retry sleep.
 
@@ -1392,16 +1359,23 @@ class StepSignatureDB:
             origin_depth: Decomposition depth at which this step was created
             extracted_values: Dict of semantic param names -> values from planner
             parent_id: Explicit parent ID for new signatures (overrides routing)
+            embedder: Optional sync embedder for computing graph_embedding on new signatures
 
         Returns:
             Tuple of (signature, is_new) where is_new=True if newly created
         """
+        from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
+
+        sig = None
+        is_new = False
+
         for attempt in range(DB_MAX_RETRIES):
             try:
-                return self._find_or_create_atomic(
+                sig, is_new = self._find_or_create_atomic(
                     step_text, embedding, min_similarity, parent_problem, origin_depth,
                     extracted_values=extracted_values, dsl_hint=dsl_hint, parent_id=parent_id
                 )
+                break
             except sqlite3.OperationalError as e:
                 if attempt < DB_MAX_RETRIES - 1:
                     # Exponential backoff with jitter to avoid thundering herd
@@ -1414,6 +1388,23 @@ class StepSignatureDB:
                     )
                     continue
                 raise
+
+        # Cold start: Embed computation graph for new signatures
+        # Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE
+        if is_new and sig and sig.computation_graph and embedder is not None:
+            try:
+                graph_emb = embed_computation_graph_sync(embedder, sig.computation_graph)
+                if graph_emb:
+                    self.update_graph_embedding(sig.id, graph_emb)
+                    logger.debug(
+                        "[db] Cold start: embedded graph for new sig %d: %s",
+                        sig.id, sig.computation_graph[:30]
+                    )
+            except Exception as e:
+                # Don't fail signature creation if embedding fails
+                logger.warning("[db] Failed to embed graph for new sig %d: %s", sig.id, e)
+
+        return sig, is_new
 
     def create_signature(
         self,
@@ -1510,7 +1501,12 @@ class StepSignatureDB:
                     conn, embedding, min_similarity
                 )
 
-                if best_match is not None and best_sim >= min_similarity:
+                # ALWAYS_ROUTE_TO_BEST mode: accept any match, let failures drive learning
+                # Per CLAUDE.md: "Let signatures fail. This is how the system learns."
+                from mycelium.config import ALWAYS_ROUTE_TO_BEST
+                similarity_ok = best_sim >= min_similarity if not ALWAYS_ROUTE_TO_BEST else True
+
+                if best_match is not None and similarity_ok:
                     # Check if matched signature's step_type is compatible with dsl_hint
                     # This prevents matching "Calculate total distance" (sum) to a product signature
                     if dsl_hint and not self._is_step_type_compatible(best_match.step_type, dsl_hint):
@@ -1521,7 +1517,7 @@ class StepSignatureDB:
                         # Treat as no match - fall through to create new signature
                         best_match = None
 
-                if best_match is not None and best_sim >= min_similarity:
+                if best_match is not None and similarity_ok:
                     # Found a match - update centroid using shared helper
                     new_count = self._update_centroid_atomic(
                         conn, best_match.id, embedding, update_last_used=True
@@ -1627,8 +1623,10 @@ class StepSignatureDB:
             current_centroid = current.centroid
             if current_centroid is not None:
                 sim = cosine_similarity(embedding, current_centroid)
-                # If current is a leaf and matches, return it
-                if not current.is_semantic_umbrella and sim >= min_similarity:
+                # If current is a leaf, return it
+                # ALWAYS_ROUTE_TO_BEST: return regardless of similarity threshold
+                from mycelium.config import ALWAYS_ROUTE_TO_BEST
+                if not current.is_semantic_umbrella and (ALWAYS_ROUTE_TO_BEST or sim >= min_similarity):
                     return current, parent_for_new, sim
 
             # If current is not an umbrella, it's a leaf - return similarity result
@@ -1638,11 +1636,12 @@ class StepSignatureDB:
                 sim = cosine_similarity(embedding, leaf_centroid) if leaf_centroid is not None else 0.0
                 return current, parent_for_new, sim
 
-            # Get children of current umbrella
+            # Get children of current umbrella (exclude archived)
             cursor = conn.execute(
                 """SELECT s.* FROM signature_relationships r
                    JOIN step_signatures s ON r.child_id = s.id
                    WHERE r.parent_id = ?
+                     AND s.is_archived = 0
                    ORDER BY r.routing_order ASC""",
                 (current.id,)
             )
@@ -1676,8 +1675,10 @@ class StepSignatureDB:
                     children_with_centroids.append((child, child_sim))
 
             # Try children with centroids first (standard UCB1 selection)
+            # ALWAYS_ROUTE_TO_BEST: Consider all children, not just those above threshold
+            from mycelium.config import ALWAYS_ROUTE_TO_BEST
             for child, child_sim in children_with_centroids:
-                if child_sim >= min_similarity:
+                if ALWAYS_ROUTE_TO_BEST or child_sim >= min_similarity:
                     score = compute_ucb1_score(
                         child_sim,
                         child.uses,
@@ -2056,7 +2057,8 @@ class StepSignatureDB:
 
         # Slow path: build from DB
         # Select only columns needed for matrix building + from_row_fast()
-        # Skips: centroid_bucket, embedding_sum, clarifying_questions, examples, is_archived, last_rewrite_at
+        # Skips: centroid_bucket, embedding_sum, clarifying_questions, examples, last_rewrite_at
+        # IMPORTANT: Exclude archived signatures from routing
         with self._connection() as conn:
             cursor = conn.execute("""
                 SELECT id, signature_id, centroid, embedding_count, step_type,
@@ -2064,6 +2066,7 @@ class StepSignatureDB:
                        uses, successes, is_semantic_umbrella, is_root, depth,
                        created_at, last_used_at
                 FROM step_signatures
+                WHERE is_archived = 0
             """)
             rows = cursor.fetchall()
 
@@ -2676,7 +2679,7 @@ class StepSignatureDB:
             if isinstance(centroid_data, str):
                 centroid = np.array(json.loads(centroid_data), dtype=np.float32)
             else:
-                centroid = np.frombuffer(centroid_data, dtype=np.float32)
+                centroid = _parse_centroid_data(centroid_data)
             count = row[1] or 1
             parent_id = row[2]
 
@@ -2747,7 +2750,7 @@ class StepSignatureDB:
             if isinstance(centroid_data, str):
                 centroid = np.array(json.loads(centroid_data), dtype=np.float32)
             else:
-                centroid = np.frombuffer(centroid_data, dtype=np.float32)
+                centroid = _parse_centroid_data(centroid_data)
             count = row[1] or 1
             parent_id = row[2]
 
@@ -2949,56 +2952,6 @@ class StepSignatureDB:
                 (weight, signature_id)
             )
 
-    def update_step_type_stats(
-        self,
-        signature_id: int,
-        step_type: str,
-        success: bool
-    ):
-        """Update step_type_stats for a signature.
-
-        Per beads mycelium-vuuc: Track performance by dag_step type for routing.
-        A signature might be great for 'calculate percentage' but bad for
-        'find remainder' - this lets routing prefer signatures that excel
-        at specific step types.
-
-        Args:
-            signature_id: ID of the signature
-            step_type: Normalized step type (e.g., 'calculate_percentage')
-            success: Whether this use was successful
-        """
-        import json
-
-        with self._connection() as conn:
-            # Read current stats
-            row = conn.execute(
-                "SELECT step_type_stats FROM step_signatures WHERE id = ?",
-                (signature_id,)
-            ).fetchone()
-
-            if not row:
-                return
-
-            # Parse existing stats
-            try:
-                stats = json.loads(row[0]) if row[0] else {}
-            except json.JSONDecodeError:
-                stats = {}
-
-            # Update stats for this step type
-            if step_type not in stats:
-                stats[step_type] = {"uses": 0, "successes": 0}
-
-            stats[step_type]["uses"] += 1
-            if success:
-                stats[step_type]["successes"] += 1
-
-            # Write back
-            conn.execute(
-                "UPDATE step_signatures SET step_type_stats = ? WHERE id = ?",
-                (json.dumps(stats), signature_id)
-            )
-
     def merge_signatures(
         self,
         survivor_id: int,
@@ -3041,13 +2994,13 @@ class StepSignatureDB:
             survivor = rows[survivor_id]
             absorbed = rows[absorbed_id]
 
-            # Parse centroids
-            survivor_centroid = np.frombuffer(survivor[1], dtype=np.float32) if survivor[1] else None
-            absorbed_centroid = np.frombuffer(absorbed[1], dtype=np.float32) if absorbed[1] else None
+            # Parse centroids (handles both JSON string and binary formats)
+            survivor_centroid = _parse_centroid_data(survivor[1])
+            absorbed_centroid = _parse_centroid_data(absorbed[1])
 
             # Parse embedding sums
-            survivor_sum = np.frombuffer(survivor[2], dtype=np.float32) if survivor[2] else None
-            absorbed_sum = np.frombuffer(absorbed[2], dtype=np.float32) if absorbed[2] else None
+            survivor_sum = _parse_centroid_data(survivor[2])
+            absorbed_sum = _parse_centroid_data(absorbed[2])
 
             survivor_count = survivor[3] or 1
             absorbed_count = absorbed[3] or 1
@@ -3147,9 +3100,13 @@ class StepSignatureDB:
 
             candidates = []
             for row in cursor.fetchall():
-                sig_id, centroid_bytes, uses, successes = row
-                if centroid_bytes:
-                    centroid = np.frombuffer(centroid_bytes, dtype=np.float32)
+                sig_id, centroid_data, uses, successes = row
+                if centroid_data:
+                    # Centroid is stored as JSON string, not binary
+                    if isinstance(centroid_data, str):
+                        centroid = np.array(json.loads(centroid_data), dtype=np.float32)
+                    else:
+                        centroid = _parse_centroid_data(centroid_data)
                     candidates.append((sig_id, centroid, uses, successes))
 
             if len(candidates) < 2:
@@ -3193,6 +3150,81 @@ class StepSignatureDB:
             ]
 
             return merge_candidates
+
+    def find_similar_successful_steps(
+        self,
+        embedding,
+        exclude_signature_id: int = None,
+        min_similarity: float = 0.8,
+        limit: int = 5,
+    ) -> list[dict]:
+        """Find successful steps from OTHER signatures that are similar to this embedding.
+
+        Used by diagnostic post-mortem to detect routing misses:
+        "Similar steps succeeded with different signatures"
+
+        Args:
+            embedding: Query embedding (numpy array or list)
+            exclude_signature_id: Exclude results from this signature (the one that failed)
+            min_similarity: Minimum cosine similarity threshold
+            limit: Maximum results to return
+
+        Returns:
+            List of dicts with: signature_id, similarity, success_rate, step_desc
+        """
+        if embedding is None:
+            return []
+
+        # Convert to numpy if needed
+        if not isinstance(embedding, np.ndarray):
+            embedding = np.array(embedding, dtype=np.float32)
+
+        # Query step_examples for successful steps with embeddings
+        with self._connection() as conn:
+            # Join step_examples with step_signatures to get success rate
+            # Filter for successful examples from non-excluded signatures
+            cursor = conn.execute(
+                """SELECT e.signature_id, e.step_text, e.embedding,
+                          s.uses, s.successes
+                   FROM step_examples e
+                   JOIN step_signatures s ON e.signature_id = s.id
+                   WHERE e.success = 1
+                     AND e.embedding IS NOT NULL
+                     AND s.is_archived = 0
+                     AND (? IS NULL OR e.signature_id != ?)
+                   LIMIT 500""",  # Limit scan for performance
+                (exclude_signature_id, exclude_signature_id)
+            )
+
+            candidates = []
+            for row in cursor.fetchall():
+                sig_id, step_text, emb_data, uses, successes = row
+                if emb_data:
+                    try:
+                        if isinstance(emb_data, str):
+                            step_emb = np.array(json.loads(emb_data), dtype=np.float32)
+                        else:
+                            step_emb = np.frombuffer(emb_data, dtype=np.float32)
+
+                        # Compute cosine similarity
+                        norm_a = np.linalg.norm(embedding)
+                        norm_b = np.linalg.norm(step_emb)
+                        if norm_a > 0 and norm_b > 0:
+                            similarity = float(np.dot(embedding, step_emb) / (norm_a * norm_b))
+                            if similarity >= min_similarity:
+                                success_rate = (successes / uses) if uses and uses > 0 else 0.0
+                                candidates.append({
+                                    "signature_id": sig_id,
+                                    "similarity": similarity,
+                                    "success_rate": success_rate,
+                                    "step_desc": step_text[:100] if step_text else "",
+                                })
+                    except (json.JSONDecodeError, ValueError):
+                        continue
+
+            # Sort by similarity descending and return top results
+            candidates.sort(key=lambda x: x["similarity"], reverse=True)
+            return candidates[:limit]
 
     def flag_for_split(self, signature_id: int, reason: str = "destructive_interference") -> bool:
         """Flag a signature for potential decomposition/split.
@@ -3251,6 +3283,59 @@ class StepSignatureDB:
             logger.info(
                 "[db] Archived signature %d (reason: %s)",
                 signature_id, reason
+            )
+
+            return True
+
+    def archive_signature_with_reparent(
+        self,
+        signature_id: int,
+        parent_id: int,
+        child_ids: list[int],
+        reason: str = "retirement",
+    ) -> bool:
+        """Archive a signature and reparent its children atomically.
+
+        This handles the multi-step operation of re-parenting children to a
+        grandparent and then archiving the signature, all within a single
+        transaction to ensure consistency.
+
+        Args:
+            signature_id: ID of signature to archive
+            parent_id: ID of parent to reparent children to
+            child_ids: List of child signature IDs to reparent
+            reason: Why it's being archived
+
+        Returns:
+            True if archived successfully
+        """
+        with self._connection() as conn:
+            # Re-parent all children to the grandparent
+            for child_id in child_ids:
+                conn.execute(
+                    """INSERT OR REPLACE INTO signature_hierarchy
+                       (parent_id, child_id, condition, routing_order)
+                       VALUES (?, ?, 'reparented', 0)""",
+                    (parent_id, child_id)
+                )
+                # Remove old parent relationship
+                conn.execute(
+                    """DELETE FROM signature_hierarchy
+                       WHERE parent_id = ? AND child_id = ?""",
+                    (signature_id, child_id)
+                )
+
+            # Archive the signature
+            conn.execute(
+                """UPDATE step_signatures
+                   SET is_archived = 1
+                   WHERE id = ?""",
+                (signature_id,)
+            )
+
+            logger.info(
+                "[db] Archived signature %d with %d children reparented to %d (reason: %s)",
+                signature_id, len(child_ids), parent_id, reason
             )
 
             return True
@@ -4239,7 +4324,7 @@ class StepSignatureDB:
     # =========================================================================
 
     def get_children(
-        self, parent_id: int, for_routing: bool = False
+        self, parent_id: int, for_routing: bool = False, skip_cache: bool = False
     ) -> list[tuple[StepSignature, str]]:
         """Get child signatures for an umbrella parent.
 
@@ -4249,22 +4334,27 @@ class StepSignatureDB:
             parent_id: ID of the parent signature
             for_routing: If True, use fast parsing (centroid only, skip JSON).
                         Per CLAUDE.md: "Umbrella routing should not require LLM call"
+            skip_cache: If True, bypass cache and query DB directly.
+                       Use for critical checks like "umbrella has no children"
+                       in multiprocess environments where cache may be stale.
 
         Returns:
             List of (child_signature, condition) tuples, ordered by routing_order
         """
-        # Check cache first
-        cached = get_cached_children(parent_id, for_routing)
-        if cached is not None:
-            return cached
+        # Check cache first (unless explicitly skipped)
+        if not skip_cache:
+            cached = get_cached_children(parent_id, for_routing)
+            if cached is not None:
+                return cached
 
-        # Cache miss - fetch from DB
+        # Cache miss - fetch from DB (exclude archived signatures)
         with self._connection() as conn:
             cursor = conn.execute(
                 """SELECT s.*, r.condition
                    FROM signature_relationships r
                    JOIN step_signatures s ON r.child_id = s.id
                    WHERE r.parent_id = ?
+                     AND s.is_archived = 0
                    ORDER BY r.routing_order ASC""",
                 (parent_id,)
             )
