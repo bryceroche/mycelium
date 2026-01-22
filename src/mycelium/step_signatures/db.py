@@ -3151,6 +3151,81 @@ class StepSignatureDB:
 
             return merge_candidates
 
+    def find_similar_successful_steps(
+        self,
+        embedding,
+        exclude_signature_id: int = None,
+        min_similarity: float = 0.8,
+        limit: int = 5,
+    ) -> list[dict]:
+        """Find successful steps from OTHER signatures that are similar to this embedding.
+
+        Used by diagnostic post-mortem to detect routing misses:
+        "Similar steps succeeded with different signatures"
+
+        Args:
+            embedding: Query embedding (numpy array or list)
+            exclude_signature_id: Exclude results from this signature (the one that failed)
+            min_similarity: Minimum cosine similarity threshold
+            limit: Maximum results to return
+
+        Returns:
+            List of dicts with: signature_id, similarity, success_rate, step_desc
+        """
+        if embedding is None:
+            return []
+
+        # Convert to numpy if needed
+        if not isinstance(embedding, np.ndarray):
+            embedding = np.array(embedding, dtype=np.float32)
+
+        # Query step_examples for successful steps with embeddings
+        with self._connection() as conn:
+            # Join step_examples with step_signatures to get success rate
+            # Filter for successful examples from non-excluded signatures
+            cursor = conn.execute(
+                """SELECT e.signature_id, e.step_text, e.embedding,
+                          s.uses, s.successes
+                   FROM step_examples e
+                   JOIN step_signatures s ON e.signature_id = s.id
+                   WHERE e.success = 1
+                     AND e.embedding IS NOT NULL
+                     AND s.is_archived = 0
+                     AND (? IS NULL OR e.signature_id != ?)
+                   LIMIT 500""",  # Limit scan for performance
+                (exclude_signature_id, exclude_signature_id)
+            )
+
+            candidates = []
+            for row in cursor.fetchall():
+                sig_id, step_text, emb_data, uses, successes = row
+                if emb_data:
+                    try:
+                        if isinstance(emb_data, str):
+                            step_emb = np.array(json.loads(emb_data), dtype=np.float32)
+                        else:
+                            step_emb = np.frombuffer(emb_data, dtype=np.float32)
+
+                        # Compute cosine similarity
+                        norm_a = np.linalg.norm(embedding)
+                        norm_b = np.linalg.norm(step_emb)
+                        if norm_a > 0 and norm_b > 0:
+                            similarity = float(np.dot(embedding, step_emb) / (norm_a * norm_b))
+                            if similarity >= min_similarity:
+                                success_rate = (successes / uses) if uses and uses > 0 else 0.0
+                                candidates.append({
+                                    "signature_id": sig_id,
+                                    "similarity": similarity,
+                                    "success_rate": success_rate,
+                                    "step_desc": step_text[:100] if step_text else "",
+                                })
+                    except (json.JSONDecodeError, ValueError):
+                        continue
+
+            # Sort by similarity descending and return top results
+            candidates.sort(key=lambda x: x["similarity"], reverse=True)
+            return candidates[:limit]
+
     def flag_for_split(self, signature_id: int, reason: str = "destructive_interference") -> bool:
         """Flag a signature for potential decomposition/split.
 

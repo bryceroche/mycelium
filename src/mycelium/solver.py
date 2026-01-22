@@ -88,6 +88,7 @@ from mycelium.data_layer.mcts import (
     complete_thread,
     log_thread_step,
     run_postmortem_with_interference,
+    run_diagnostic_postmortem,
 )
 
 logger = logging.getLogger(__name__)
@@ -2726,6 +2727,29 @@ Expression:"""
                         "[solver] Post-mortem: %d steps need decomposition: %s",
                         len(steps_needing), [s[1][:40] for s in steps_needing]
                     )
+
+                # Run diagnostic post-mortem with smooth functions (accuracy-based)
+                # This complements the existing analysis with continuous scoring
+                try:
+                    diagnostic_stats = run_diagnostic_postmortem(
+                        dag_id=self._current_dag_id,
+                        step_db=self.step_db,
+                        step_embeddings=getattr(self, '_step_embeddings', None),
+                    )
+                    if not diagnostic_stats.get("skipped"):
+                        diag_steps = diagnostic_stats.get("steps_to_decompose", [])
+                        diag_sigs = diagnostic_stats.get("signatures_to_decompose", [])
+                        if diag_steps or diag_sigs:
+                            logger.info(
+                                "[solver] Diagnostic post-mortem: threshold=%.1f, "
+                                "steps_to_decompose=%d, sigs_to_decompose=%d",
+                                diagnostic_stats.get("failure_threshold", 0),
+                                len(diag_steps),
+                                len(diag_sigs),
+                            )
+                except Exception as e:
+                    logger.debug("[solver] Diagnostic post-mortem skipped: %s", e)
+
             except Exception as e:
                 logger.error("[solver] Postmortem failed: %s", e)
 

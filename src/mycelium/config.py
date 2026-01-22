@@ -580,6 +580,65 @@ MATURITY_ESCAPE_MIN_SUBSTEPS = 2  # Need this many substeps to trigger escape
 MATURITY_ESCAPE_MAX_MISSES = 1  # Max substeps allowed to miss before creating atomic
 
 # =============================================================================
+# DIAGNOSTIC POST-MORTEM (Accuracy-driven decomposition decisions)
+# =============================================================================
+# Per CLAUDE.md: "Failures are valuable data points" + "Failing signatures get decomposed"
+#
+# Post-mortem runs after problem completion to diagnose failures and decide:
+#   1. Decompose the dag_step (step too complex for atomic execution)
+#   2. Decompose the signature (approach/DSL is wrong for this problem class)
+#   3. Reroute (wrong routing, similar steps succeeded elsewhere)
+#   4. Wait (insufficient signal, collect more data)
+#
+# All decisions use smooth continuous functions based on:
+#   - Accuracy = successes / uses (percent, not absolute counts)
+#   - Confidence = smooth ramp with uses (more data → more trust)
+#   - Maturity = sigmoid over signature count (cold start → mature)
+#
+# Key insight: A signature with 60 successes + 4 failures (93.75%) should NOT
+# be decomposed. We use accuracy (percent), not failure count.
+
+DIAGNOSTIC_POSTMORTEM_ENABLED = True  # Master switch for diagnostic post-mortem
+
+# Failure threshold: How many failures before we act (smooth function of maturity)
+# threshold = MIN + (MAX - MIN) * sigmoid(maturity)
+# Cold start (low sigs): act fast (threshold → MIN)
+# Mature (high sigs): be patient (threshold → MAX)
+DIAGNOSTIC_THRESHOLD_MIN = 1.0  # Minimum failures before acting (cold start)
+DIAGNOSTIC_THRESHOLD_MAX = 5.0  # Maximum failures before acting (mature)
+
+# Maturity sigmoid parameters (shared with MATURITY_SIGMOID_* above)
+# Uses same midpoint/steepness for consistency across system
+
+# Accuracy confidence: How much we trust the accuracy signal
+# confidence = 1 - exp(-uses / CONFIDENCE_HALFLIFE)
+# Low uses → low confidence (don't trust accuracy yet)
+# High uses → high confidence (accuracy is reliable)
+DIAGNOSTIC_CONFIDENCE_HALFLIFE = 10.0  # Uses at which confidence reaches ~63%
+
+# Decompose score weights (continuous blend, not thresholds)
+# decompose_score = accuracy_component + distance_component
+# Higher score = stronger signal to decompose
+DIAGNOSTIC_ACCURACY_WEIGHT = 1.0  # How much low accuracy drives decomposition
+DIAGNOSTIC_DISTANCE_WEIGHT = 0.5  # How much step-centroid distance matters
+
+# Action threshold: Must exceed this to act (below = "wait")
+DIAGNOSTIC_ACTION_THRESHOLD = 0.5  # Score threshold for taking action
+
+# Reroute detection: When similar steps succeeded with different signatures
+DIAGNOSTIC_REROUTE_SIMILARITY_MIN = 0.8  # Min similarity to consider reroute
+DIAGNOSTIC_REROUTE_LOOKBACK_DAYS = 7  # How far back to search for similar successes
+
+# Step vs Signature decomposition heuristic
+# When signature is accurate overall but failed on THIS step:
+#   → Step is unusual/complex → decompose step
+# When signature has poor accuracy overall:
+#   → Approach is wrong → decompose signature
+DIAGNOSTIC_GOOD_SIG_ACCURACY = 0.7  # Accuracy above this = "good signature"
+DIAGNOSTIC_BAD_SIG_ACCURACY = 0.3  # Accuracy below this = "bad signature"
+# Between these values: blend between step and signature decomposition
+
+# =============================================================================
 # DSL AUTO-REWRITER (Fix underperforming DSLs automatically)
 # =============================================================================
 # When a signature has low success rate but high traffic, the rewriter

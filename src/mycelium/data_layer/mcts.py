@@ -2416,3 +2416,384 @@ def run_retirement_check(step_db) -> dict:
         "pruned_ids": result.pruned_ids,
         "merged_up_ids": result.merged_up_ids,
     }
+
+
+# =============================================================================
+# DIAGNOSTIC POST-MORTEM (Accuracy-driven decomposition decisions)
+# =============================================================================
+# Per CLAUDE.md: "Failures are valuable data points" + "Failing signatures get decomposed"
+#
+# Uses smooth continuous functions based on:
+# - Accuracy = successes / uses (percent, not absolute counts)
+# - Confidence = smooth ramp with uses (more data → more trust)
+# - Maturity = sigmoid over signature count
+#
+# Key insight: A signature with 60 successes + 4 failures (93.75%) should NOT
+# be decomposed. We use accuracy (percent), not failure count.
+
+
+@dataclass
+class DiagnosticResult:
+    """Result of diagnostic post-mortem analysis."""
+    decompose_step_score: float    # 0-1, how much to decompose the dag_step
+    decompose_sig_score: float     # 0-1, how much to decompose the signature
+    reroute_score: float           # 0-1, how much this looks like a routing miss
+
+    # Context for logging
+    accuracy: float
+    confidence: float
+    step_distance: float
+
+    @property
+    def verdict(self) -> str:
+        """Highest score wins, but only if above threshold."""
+        from mycelium.config import DIAGNOSTIC_ACTION_THRESHOLD
+
+        scores = {
+            "decompose_step": self.decompose_step_score,
+            "decompose_signature": self.decompose_sig_score,
+            "reroute": self.reroute_score,
+        }
+        best = max(scores, key=scores.get)
+
+        if scores[best] < DIAGNOSTIC_ACTION_THRESHOLD:
+            return "wait"
+        return best
+
+    @property
+    def max_score(self) -> float:
+        """The winning score."""
+        return max(self.decompose_step_score, self.decompose_sig_score, self.reroute_score)
+
+
+def _sigmoid(x: float, midpoint: float = 0.0, steepness: float = 1.0) -> float:
+    """Smooth S-curve from 0 to 1.
+
+    Args:
+        x: Input value
+        midpoint: Value where sigmoid = 0.5
+        steepness: Controls sharpness (higher = sharper transition)
+
+    Returns:
+        Value between 0 and 1
+    """
+    import math
+    z = (x - midpoint) / steepness if steepness > 0 else 0
+    try:
+        return 1.0 / (1.0 + math.exp(-z))
+    except OverflowError:
+        return 0.0 if z < 0 else 1.0
+
+
+def get_diagnostic_failure_threshold(system_maturity: float) -> float:
+    """Compute failure threshold using smooth sigmoid.
+
+    Cold start (low maturity): act fast, low threshold
+    Mature (high maturity): be patient, higher threshold
+
+    Args:
+        system_maturity: Signature count (used as maturity proxy)
+
+    Returns:
+        Failure threshold (float, can be fractional)
+    """
+    from mycelium.config import (
+        DIAGNOSTIC_THRESHOLD_MIN,
+        DIAGNOSTIC_THRESHOLD_MAX,
+        MATURITY_SIGMOID_MIDPOINT,
+        MATURITY_SIGMOID_STEEPNESS,
+    )
+
+    maturity_factor = _sigmoid(
+        system_maturity,
+        midpoint=MATURITY_SIGMOID_MIDPOINT,
+        steepness=MATURITY_SIGMOID_STEEPNESS,
+    )
+
+    # Interpolate between min and max threshold
+    return DIAGNOSTIC_THRESHOLD_MIN + (
+        (DIAGNOSTIC_THRESHOLD_MAX - DIAGNOSTIC_THRESHOLD_MIN) * maturity_factor
+    )
+
+
+def accuracy_confidence(uses: int) -> float:
+    """Compute confidence in accuracy signal based on sample size.
+
+    Uses exponential decay: confidence approaches 1.0 as uses increase.
+    Low uses → don't trust accuracy yet
+    High uses → accuracy is reliable
+
+    Args:
+        uses: Number of times signature was used
+
+    Returns:
+        Confidence between 0 and 1
+    """
+    import math
+    from mycelium.config import DIAGNOSTIC_CONFIDENCE_HALFLIFE
+
+    if uses <= 0:
+        return 0.0
+
+    # 1 - e^(-uses/halflife) approaches 1 as uses → ∞
+    return 1.0 - math.exp(-uses / DIAGNOSTIC_CONFIDENCE_HALFLIFE)
+
+
+def compute_decompose_score(
+    accuracy: float,
+    uses: int,
+    step_centroid_distance: float = 0.0,
+) -> float:
+    """Compute continuous score indicating how much this signature should be decomposed.
+
+    Components:
+    - Low accuracy → high decompose score (weighted by confidence)
+    - High step distance from centroid → suggests step doesn't belong here
+
+    Args:
+        accuracy: Success rate (0-1)
+        uses: Number of times used
+        step_centroid_distance: Distance from step embedding to signature centroid (0-1)
+
+    Returns:
+        Decompose score between 0 and 1 (higher = stronger signal to decompose)
+    """
+    from mycelium.config import (
+        DIAGNOSTIC_ACCURACY_WEIGHT,
+        DIAGNOSTIC_DISTANCE_WEIGHT,
+    )
+
+    confidence = accuracy_confidence(uses)
+
+    # Accuracy component: invert accuracy, weight by confidence
+    # accuracy=1.0 → 0 score, accuracy=0.0 → max score
+    accuracy_score = (1.0 - accuracy) * confidence * DIAGNOSTIC_ACCURACY_WEIGHT
+
+    # Distance component: far from centroid suggests wrong routing or complex step
+    distance_score = step_centroid_distance * DIAGNOSTIC_DISTANCE_WEIGHT
+
+    # Combine (weighted sum)
+    raw_score = accuracy_score + distance_score
+
+    # Normalize to 0-1 range
+    return min(1.0, max(0.0, raw_score))
+
+
+def diagnose_failure(
+    signature_id: int,
+    step_embedding,
+    step_db,
+) -> DiagnosticResult:
+    """Diagnose a failure to determine decomposition target.
+
+    Uses smooth continuous functions to compute scores for:
+    - Decompose the step (step is too complex)
+    - Decompose the signature (approach is wrong)
+    - Reroute (wrong routing, similar steps succeeded elsewhere)
+
+    Args:
+        signature_id: ID of the signature that was used
+        step_embedding: Embedding of the dag_step (numpy array)
+        step_db: StepSignatureDB instance
+
+    Returns:
+        DiagnosticResult with scores and verdict
+    """
+    import numpy as np
+    from mycelium.config import (
+        DIAGNOSTIC_REROUTE_SIMILARITY_MIN,
+        DIAGNOSTIC_GOOD_SIG_ACCURACY,
+    )
+
+    # Get signature stats
+    sig = step_db.get_signature(signature_id)
+    if sig is None:
+        # Signature not found - can't diagnose
+        return DiagnosticResult(
+            decompose_step_score=0.0,
+            decompose_sig_score=0.0,
+            reroute_score=0.0,
+            accuracy=0.0,
+            confidence=0.0,
+            step_distance=0.0,
+        )
+
+    # Core stats
+    accuracy = sig.success_rate
+    uses = sig.uses or 0
+    confidence = accuracy_confidence(uses)
+
+    # Compute step distance from signature centroid
+    step_distance = 0.0
+    if step_embedding is not None and sig.centroid is not None:
+        try:
+            # Cosine distance = 1 - cosine_similarity
+            sig_centroid = np.array(sig.centroid, dtype=np.float32)
+            step_emb = np.array(step_embedding, dtype=np.float32)
+
+            norm_a = np.linalg.norm(sig_centroid)
+            norm_b = np.linalg.norm(step_emb)
+            if norm_a > 0 and norm_b > 0:
+                cosine_sim = np.dot(sig_centroid, step_emb) / (norm_a * norm_b)
+                step_distance = 1.0 - cosine_sim
+        except Exception:
+            step_distance = 0.0
+
+    # === Decompose STEP score ===
+    # High when: signature is accurate overall, but this step is distant
+    # Good signature + outlier step → step needs decomposition
+    sig_is_good = _sigmoid(accuracy, midpoint=DIAGNOSTIC_GOOD_SIG_ACCURACY, steepness=0.1)
+    step_is_outlier = step_distance
+    decompose_step_score = sig_is_good * step_is_outlier * confidence
+
+    # === Decompose SIGNATURE score ===
+    # High when: signature has poor accuracy with sufficient confidence
+    decompose_sig_score = compute_decompose_score(
+        accuracy=accuracy,
+        uses=uses,
+        step_centroid_distance=0.0,  # Don't double-count distance
+    )
+
+    # === Reroute score ===
+    # High when: similar steps succeeded with OTHER signatures
+    # Find similar successful steps from different signatures
+    reroute_score = 0.0
+    try:
+        similar_successes = step_db.find_similar_successful_steps(
+            embedding=step_embedding,
+            exclude_signature_id=signature_id,
+            min_similarity=DIAGNOSTIC_REROUTE_SIMILARITY_MIN,
+            limit=3,
+        )
+        if similar_successes:
+            # Best alternative similarity
+            best_alt_similarity = similar_successes[0].get("similarity", 0.0)
+            reroute_score = best_alt_similarity * confidence
+    except (AttributeError, TypeError):
+        # Method may not exist yet - that's OK
+        reroute_score = 0.0
+
+    result = DiagnosticResult(
+        decompose_step_score=decompose_step_score,
+        decompose_sig_score=decompose_sig_score,
+        reroute_score=reroute_score,
+        accuracy=accuracy,
+        confidence=confidence,
+        step_distance=step_distance,
+    )
+
+    logger.debug(
+        "[diagnostic] sig=%d accuracy=%.1f%% conf=%.2f verdict=%s "
+        "(step=%.2f sig=%.2f reroute=%.2f)",
+        signature_id,
+        accuracy * 100,
+        confidence,
+        result.verdict,
+        decompose_step_score,
+        decompose_sig_score,
+        reroute_score,
+    )
+
+    return result
+
+
+def run_diagnostic_postmortem(
+    dag_id: str,
+    step_db,
+    step_embeddings: dict[str, any] = None,
+) -> dict:
+    """Run diagnostic post-mortem on a completed DAG.
+
+    Analyzes failures to determine what should be decomposed:
+    - dag_steps that are too complex
+    - signatures with wrong approaches
+    - routing misses
+
+    Args:
+        dag_id: The DAG to analyze
+        step_db: StepSignatureDB instance
+        step_embeddings: Optional dict mapping dag_step_id to embeddings
+
+    Returns:
+        Dict with diagnostic results and recommendations
+    """
+    from mycelium.config import DIAGNOSTIC_POSTMORTEM_ENABLED
+
+    if not DIAGNOSTIC_POSTMORTEM_ENABLED:
+        return {"skipped": True, "reason": "DIAGNOSTIC_POSTMORTEM_ENABLED is False"}
+
+    # Get system maturity (signature count)
+    system_maturity = step_db.count_signatures() if step_db else 0
+    failure_threshold = get_diagnostic_failure_threshold(system_maturity)
+
+    # Get thread steps for this DAG
+    thread_steps = get_thread_steps_for_dag(dag_id)
+
+    # Group by (dag_step_id, node_id) to find repeated failures
+    pair_failures = {}  # (dag_step_id, node_id) -> failure count
+    pair_embeddings = {}  # (dag_step_id, node_id) -> step_embedding
+
+    for ts in thread_steps:
+        if ts.step_success == 0:  # Failed step
+            key = (ts.dag_step_id, ts.node_id)
+            pair_failures[key] = pair_failures.get(key, 0) + 1
+
+            # Store embedding if available
+            if step_embeddings and ts.dag_step_id in step_embeddings:
+                pair_embeddings[key] = step_embeddings[ts.dag_step_id]
+
+    # Diagnose pairs that exceed threshold
+    diagnoses = []
+    steps_to_decompose = []
+    sigs_to_decompose = []
+    routing_misses = []
+
+    for (dag_step_id, node_id), failure_count in pair_failures.items():
+        if failure_count >= failure_threshold:
+            # Run diagnosis
+            step_emb = pair_embeddings.get((dag_step_id, node_id))
+            diagnosis = diagnose_failure(node_id, step_emb, step_db)
+
+            diagnoses.append({
+                "dag_step_id": dag_step_id,
+                "node_id": node_id,
+                "failure_count": failure_count,
+                "verdict": diagnosis.verdict,
+                "scores": {
+                    "decompose_step": diagnosis.decompose_step_score,
+                    "decompose_sig": diagnosis.decompose_sig_score,
+                    "reroute": diagnosis.reroute_score,
+                },
+                "accuracy": diagnosis.accuracy,
+                "confidence": diagnosis.confidence,
+            })
+
+            # Collect recommendations by verdict
+            if diagnosis.verdict == "decompose_step":
+                steps_to_decompose.append(dag_step_id)
+            elif diagnosis.verdict == "decompose_signature":
+                sigs_to_decompose.append(node_id)
+            elif diagnosis.verdict == "reroute":
+                routing_misses.append((dag_step_id, node_id))
+
+    logger.info(
+        "[diagnostic] Post-mortem for %s: threshold=%.1f, pairs_analyzed=%d, "
+        "steps_decompose=%d, sigs_decompose=%d, reroutes=%d",
+        dag_id,
+        failure_threshold,
+        len(pair_failures),
+        len(steps_to_decompose),
+        len(sigs_to_decompose),
+        len(routing_misses),
+    )
+
+    return {
+        "dag_id": dag_id,
+        "system_maturity": system_maturity,
+        "failure_threshold": failure_threshold,
+        "pairs_analyzed": len(pair_failures),
+        "diagnoses": diagnoses,
+        "steps_to_decompose": list(set(steps_to_decompose)),
+        "signatures_to_decompose": list(set(sigs_to_decompose)),
+        "routing_misses": routing_misses,
+    }
