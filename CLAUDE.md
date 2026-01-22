@@ -223,15 +223,14 @@ Train 3 problems in parallel and they don't need to know about each other.
 Optional Inference in parallel for parallel dag tasks? Not dag of dags
 
 ## Architecture Overview
-Google deployment vm
-SQLite db
-Vertex apis
-embedding model 3k dimensions
-Gemini 2.5 pro training
-Gemini 1.5 flash inference
-Mycelium application
+- Google Cloud VM
+- SQLite DB
+- Vertex AI APIs
+- gemini-embedding-001 (3072 dimensions)
+- Gemini 2.5 Pro (training)
+- Gemini 2.0 Flash (inference)
 
-Big bang function accounting for the first five levels need to be empty. Sigmoid asymptomatic approaching 10k signatures
+Big bang: aggressive signature creation early, sigmoid tapering toward 10k signatures.
 
 
 ## LLM Call Rule
@@ -253,14 +252,6 @@ Big bang function accounting for the first five levels need to be empty. Sigmoid
   ## With Fresh DB
   A **smooth and continuous** learning process is key.
 
-  Start with **easy** problems (GSM8K or MATH L1-L2).
-  Need some successes to learn from; failures alone don't teach what works.
-  System is designed to aggressively **branch out early**, tapering off later.
-
-
-## With Fresh DB
-
-  A **smooth and continuous** learning process is key.
   Start with **easy** problems (GSM8K or MATH L1-L2).
   Need some successes to learn from; failures alone don't teach what works.
   System is designed to aggressively **branch out early**, tapering off later.
@@ -500,41 +491,29 @@ This lets umbrella signatures accumulate credit from their children's successes,
 ## Brainstorming Ideas
 
   ### Routing & Signatures
-  - Umbrella signature routing should not require an LLM call
-  - Attempt to route first - decompose on failure
-  - Mandate injection of DSL on signature hit
+  - ✅ Umbrella routing without LLM call (embedding similarity)
+  - ✅ Route first, decompose on failure
+  - ✅ DSL injection on signature hit
   - Confirm DSL auto generation on signature creation
 
   ### Learning & Adaptation
   - Rewrite DSL if centroid avg outside confidence bounds
-  - LLM rewrite DSL script
+  - ✅ Batch DSL rewriting with JSON mode (v1.8.0)
   - Centroid averaging based off avg of children
   - Credit propagation guided by decay by depth function
 
   ### Decomposition
-  - Signatures decompose when post-mortem detects destructive interference (not on individual failures)
-  - It's okay for node to decompose bc it provides signal for future post-mortems
-  - Bi-directional natural language communication between signatures and decomposer is key (query each other)
-
-  ### Cold Start
-  - Cold-start adaptive branching more aggressive during cold start - big bang
+  - Signatures decompose when post-mortem detects destructive interference
+  - Bi-directional NL communication between signatures and decomposer
 
   ### Infrastructure
   - Move all magic numbers to config
   - DB audit for signature step level stats
-  - OpenAI API for cleaner JSON response
-  - Rich step level descriptions
+  - ✅ JSON mode for reliable LLM responses (v1.8.0)
 
   ### Philosophy
   - Everything must be automated - system must be independent
   - Smooth refactoring - not all at once
-
-
-## Operational Embedding First
-**Route by computation graph embeddings, not text similarity.**
-
-Text embeddings cluster by vocabulary. Computation graph embeddings cluster by what operations actually do. Always match against the graph.
-
 
 ## How to use Beads
 
@@ -568,8 +547,4 @@ Don't fix and forget - always track issues in beads.
 5. `bd sync` to sync changes
 
 See `AGENTS.md` for detailed guidance.
-
-
-
-
 
