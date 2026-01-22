@@ -557,6 +557,10 @@ class Solver:
         self._current_dag_id: Optional[str] = None
         self._dag_step_ids: dict[str, str] = {}  # step.id -> dag_step_id
 
+        # Batch expressions: step_id -> (expression, params_used)
+        # Set per-problem in solve() via _batch_write_expressions()
+        self._batch_expressions: dict[str, tuple[str, list[str]]] = {}
+
         # Operation embeddings for graph-based routing (set per-problem in solve())
         # Stored separately from Step objects for memory efficiency (~24KB per embedding)
         self._operation_embeddings: dict[str, list[float]] = {}  # step.id -> embedding
@@ -933,9 +937,6 @@ class Solver:
             else:
                 self._dag_step_ids = {}
 
-            # Pre-warm DSL expression cache in parallel for independent steps
-            await self._prewarm_dsl_cache(plan.steps)
-
             # Pre-warm embedding cache with batch call (avoids N sequential embed calls)
             self._prewarm_step_embeddings(plan.steps)
 
@@ -943,6 +944,41 @@ class Solver:
             # Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE
             # Operations are extracted during decomposition, batch embedded here
             self._prewarm_operation_embeddings(plan.steps)
+
+            # 1.5. BATCH EXPRESSION WRITING (single LLM call for all steps)
+            # Collect step info for batch expression writing
+            # For steps with {step_N} references, we'll resolve them during execution
+            step_infos = []
+            for step in plan.steps:
+                if not step.dsl_hint:
+                    continue
+                # Build params from extracted_values (without context resolution yet)
+                params = {}
+                for key, val in (step.extracted_values or {}).items():
+                    if isinstance(val, str) and val.startswith('{') and val.endswith('}'):
+                        # Reference to previous step - use placeholder for now
+                        params[key] = f"<{val[1:-1]}>"
+                    else:
+                        params[key] = val
+                if params:
+                    step_infos.append({
+                        "step_id": step.id,
+                        "task": step.task,
+                        "operation": step.dsl_hint,
+                        "params": params,
+                    })
+
+            # Single LLM call to write all expressions
+            batch_expressions = {}
+            if step_infos:
+                batch_expressions = await self._batch_write_expressions(step_infos)
+                logger.info(
+                    "[solver] Batch expressions: %d/%d steps",
+                    len(batch_expressions), len(step_infos)
+                )
+
+            # Store batch expressions for use during execution
+            self._batch_expressions = batch_expressions
 
             # 2. Execute steps in dependency order (parallel where possible)
             step_results = []
@@ -2179,15 +2215,25 @@ class Solver:
 
         logger.debug("[solver] _try_dsl: hint=%s, params=%s", dsl_hint, list(params.keys()))
 
-        # LLM writes the expression with correct params
-        # Inject few-shot examples from signature for better LLM guidance
-        few_shot_prompt = signature.get_few_shot_prompt() if signature else ""
-        signature_id = signature.id if signature else None
-        try:
+        # Check for batch-written expression first (single LLM call for all steps)
+        batch_expressions = getattr(self, '_batch_expressions', {})
+        expr_result = None
+
+        if step.id in batch_expressions:
+            script, used_params = batch_expressions[step.id]
+            logger.debug("[solver] Using batch expression for %s: %s", step.id, script)
+            expr_result = (script, used_params)
+        else:
+            # Fallback: LLM writes the expression (individual call)
+            # Inject few-shot examples from signature for better LLM guidance
+            few_shot_prompt = signature.get_few_shot_prompt() if signature else ""
+            signature_id = signature.id if signature else None
             expr_result = await self._llm_write_expression(dsl_hint, params, step.task, few_shot_prompt, signature_id)
+
+        try:
             if expr_result:
                 script, used_params = expr_result
-                logger.debug("[solver] LLM wrote: %s (used: %s)", script, used_params)
+                logger.debug("[solver] Expression: %s (used: %s)", script, used_params)
 
                 dsl_spec = DSLSpec(
                     layer=DSLSpec.from_json('{"type":"math"}').layer,
@@ -2406,6 +2452,134 @@ Expression:"""
             logger.debug("[solver] LLM expression failed: %s", e)
 
         return None
+
+    async def _batch_write_expressions(
+        self,
+        step_infos: list[dict],
+    ) -> dict[str, tuple[str, list[str]]]:
+        """Write arithmetic expressions for all steps in ONE LLM call.
+
+        This replaces N individual _llm_write_expression calls with a single
+        batch call using JSON mode for reliable parsing.
+
+        Args:
+            step_infos: List of dicts with keys:
+                - step_id: The step identifier
+                - task: The step task description
+                - operation: The operation hint (+, -, *, /)
+                - params: Dict of available param names and values
+
+        Returns:
+            Dict mapping step_id -> (expression, params_used)
+        """
+        import json
+
+        if not step_infos:
+            return {}
+
+        # Build the batch prompt
+        steps_text = []
+        for i, info in enumerate(step_infos, 1):
+            param_str = ", ".join(f"{k}={v}" for k, v in info["params"].items())
+            steps_text.append(
+                f"{i}. step_id: {info['step_id']}\n"
+                f"   task: {info['task']}\n"
+                f"   operation: {info['operation']}\n"
+                f"   available_params: {param_str}"
+            )
+
+        prompt = f"""Write arithmetic expressions for these steps.
+
+CRITICAL: Use ONLY the exact parameter names provided in available_params.
+Do NOT invent or modify parameter names.
+
+Steps:
+{chr(10).join(steps_text)}
+
+Output valid JSON with this exact structure:
+{{
+  "expressions": [
+    {{"step_id": "step_1", "expression": "param_a + param_b", "params_used": ["param_a", "param_b"]}},
+    ...
+  ]
+}}
+
+Rules:
+- Use EXACTLY the variable names from available_params
+- Write simple arithmetic: +, -, *, /
+- Each expression should use the operation specified
+- Output ONLY the JSON, no explanation"""
+
+        try:
+            from mycelium.client import get_client
+            client = get_client()
+            response = await client.generate(
+                [{"role": "user", "content": prompt}],
+                temperature=0.0,
+                max_tokens=1000,
+                response_format={"type": "json_object"},
+            )
+
+            # Parse JSON response
+            data = json.loads(response.strip())
+            expressions = data.get("expressions", [])
+
+            result = {}
+            for expr_info in expressions:
+                step_id = expr_info.get("step_id")
+                expression = expr_info.get("expression")
+                params_used = expr_info.get("params_used", [])
+
+                if step_id and expression:
+                    result[step_id] = (expression, params_used)
+                    logger.debug(
+                        "[solver] Batch expr: %s -> %s (params: %s)",
+                        step_id, expression, params_used
+                    )
+
+            logger.info(
+                "[solver] Batch wrote %d/%d expressions in single LLM call",
+                len(result), len(step_infos)
+            )
+            return result
+
+        except Exception as e:
+            logger.warning("[solver] Batch expression write failed: %s", e)
+            return {}
+
+    def _build_step_params(
+        self,
+        step,
+        context: dict[str, str],
+    ) -> dict:
+        """Build params dict for a step from extracted_values and context.
+
+        Resolves {step_N} references to actual values from context.
+        """
+        params = {}
+        extracted_values = getattr(step, 'extracted_values', {}) or {}
+
+        # Add validated extracted values (resolve references)
+        for key, val in extracted_values.items():
+            if isinstance(val, str) and val.startswith('{') and val.endswith('}'):
+                ref_key = val[1:-1]
+                if ref_key in context:
+                    try:
+                        params[key] = float(context[ref_key])
+                    except (ValueError, TypeError):
+                        params[key] = context[ref_key]
+            else:
+                params[key] = val
+
+        # Add context values (results from previous steps)
+        for key, value in context.items():
+            if key not in params:
+                try:
+                    params[key] = float(value)
+                except (ValueError, TypeError):
+                    params[key] = value
+
+        return params
 
     def _extract_json_result(self, response: str) -> str:
         """Extract result from JSON response (may be embedded in text)."""
