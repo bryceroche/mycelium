@@ -3991,11 +3991,7 @@ Rules:
         correct: bool,
         ground_truth: str = None,
     ) -> None:
-        """Persist thread outcomes and apply thread-based credit/blame.
-
-        Records all threads for this problem to the thread_outcomes table,
-        identifies the winning thread, and applies credit/blame to signatures
-        in each thread's path.
+        """Apply thread-based credit/blame and update MCTS thread state.
 
         Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
 
@@ -4004,15 +4000,8 @@ Rules:
             correct: Whether the final answer was correct
             ground_truth: The correct answer (for comparison)
         """
-        import json
-        from datetime import datetime, timezone
-        from mycelium.data_layer import get_db
-
         if not self._problem_threads:
             return
-
-        now = datetime.now(timezone.utc).isoformat()
-        problem_id = result.problem[:50] if result.problem else "unknown"
 
         # Identify winning thread (the one whose answer matches the result)
         winning_thread_id = None
@@ -4030,109 +4019,55 @@ Rules:
             if root:
                 root.is_winner = True
 
-        db = get_db()
         try:
-            with db.connection() as conn:
-                # Check if thread tables exist (they may not in older DBs)
-                cursor = conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name='thread_outcomes'"
+            # Process all threads
+            for thread_id in self._problem_threads:
+                thread = self._active_threads.get(thread_id)
+                if not thread:
+                    continue
+
+                is_winner = thread_id == winning_thread_id
+                # Thread is correct if its answer matches ground truth
+                is_correct = None
+                if ground_truth:
+                    is_correct = self._answers_match(thread.final_answer, ground_truth)
+
+                # Update mcts_threads table with final_answer and success
+                thread_success = is_correct if is_correct is not None else None
+                complete_thread(
+                    thread_id=thread.thread_id,
+                    final_answer=thread.final_answer or "",
+                    success=thread_success,
                 )
-                if not cursor.fetchone():
-                    logger.debug("[solver] thread_outcomes table not found, skipping thread recording")
-                    return
 
-                # Insert all thread outcomes
-                for thread_id in self._problem_threads:
-                    thread = self._active_threads.get(thread_id)
-                    if not thread:
-                        continue
+                # Apply credit/blame to signatures in this thread
+                thread_correct = is_correct if is_correct is not None else (
+                    is_winner and correct
+                )
 
-                    is_winner = 1 if thread_id == winning_thread_id else 0
-                    # Thread is correct if it's the winner AND problem was correct
-                    # OR if its answer matches ground truth
-                    is_correct = None
-                    if ground_truth:
-                        is_correct = 1 if self._answers_match(
-                            thread.final_answer, ground_truth
-                        ) else 0
-
-                    conn.execute(
-                        """INSERT OR REPLACE INTO thread_outcomes (
-                            thread_id, parent_thread_id, problem_id, problem_text,
-                            fork_step_id, fork_depth, signature_path, final_answer,
-                            is_winner, is_correct, ground_truth, created_at, graded_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                        (
-                            thread.thread_id,
-                            thread.parent_thread_id,
-                            problem_id,
-                            result.problem[:500] if result.problem else None,
-                            thread.fork_step_id,
-                            thread.fork_depth,
-                            json.dumps(thread.signature_steps),  # Store (sig_id, step_id) pairs
-                            thread.final_answer,
-                            is_winner,
-                            is_correct,
-                            ground_truth,
-                            thread.created_at,
-                            now,
-                        ),
-                    )
-
-                    # Also update mcts_threads table with final_answer and success
-                    # Per CLAUDE.md: "Track fork_at_step, fork_reason, final_answer"
-                    thread_success = is_correct == 1 if is_correct is not None else None
-                    complete_thread(
-                        thread_id=thread.thread_id,
-                        final_answer=thread.final_answer or "",
-                        success=thread_success,
-                    )
-
-                    # Insert signature contributions for this thread (with correct step_id)
-                    for sig_id, step_id, was_primary in thread.signature_steps:
-                        conn.execute(
-                            """INSERT INTO thread_signature_contributions (
-                                thread_id, signature_id, step_id, embedding_similarity,
-                                was_primary_choice, created_at
-                            ) VALUES (?, ?, ?, ?, ?, ?)""",
-                            (
-                                thread.thread_id,
-                                sig_id,
-                                step_id,
-                                None,  # Similarity not tracked per-signature in thread
-                                1 if was_primary else 0,  # Use actual was_primary from tracking
-                                now,
-                            ),
+                # Credit decay based on fork depth
+                credit = THREAD_CREDIT_DECAY_PER_FORK ** thread.fork_depth
+                if credit >= THREAD_MIN_CREDIT:
+                    for sig_id in thread.signature_ids:  # Use property for just IDs
+                        self.step_db.update_centroid_on_operational_outcome(
+                            sig_id,
+                            embedding=None,  # No embedding update here
+                            was_correct=thread_correct,
+                            confidence=credit,
                         )
 
-                    # Apply credit/blame to signatures in this thread
-                    thread_correct = is_correct == 1 if is_correct is not None else (
-                        is_winner and correct
+            logger.info(
+                "[solver] Recorded %d thread outcomes (winner=%s, threads_correct=%d)",
+                len(self._problem_threads),
+                winning_thread_id[:8] if winning_thread_id else "None",
+                sum(
+                    1 for t in self._problem_threads
+                    if self._active_threads.get(t) and
+                    self._answers_match(
+                        self._active_threads[t].final_answer, ground_truth
                     )
-
-                    # Credit decay based on fork depth
-                    credit = THREAD_CREDIT_DECAY_PER_FORK ** thread.fork_depth
-                    if credit >= THREAD_MIN_CREDIT:
-                        for sig_id in thread.signature_ids:  # Use property for just IDs
-                            self.step_db.update_centroid_on_operational_outcome(
-                                sig_id,
-                                embedding=None,  # No embedding update here
-                                was_correct=thread_correct,
-                                confidence=credit,
-                            )
-
-                logger.info(
-                    "[solver] Recorded %d thread outcomes (winner=%s, threads_correct=%d)",
-                    len(self._problem_threads),
-                    winning_thread_id[:8] if winning_thread_id else "None",
-                    sum(
-                        1 for t in self._problem_threads
-                        if self._active_threads.get(t) and
-                        self._answers_match(
-                            self._active_threads[t].final_answer, ground_truth
-                        )
-                    ) if ground_truth else 0,
-                )
+                ) if ground_truth else 0,
+            )
 
         except Exception as e:
             logger.warning("[solver] Failed to record thread outcomes: %s", e)
