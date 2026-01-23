@@ -14,7 +14,6 @@ The system should avoid redundant computation automatically.
 import hashlib
 import logging
 import sqlite3
-import struct
 import time
 from collections import OrderedDict
 from dataclasses import dataclass, field

@@ -90,6 +90,13 @@ class StepSignature:
     successes: int = 0
     operational_failures: int = 0  # MCTS post-mortem: destructive interference flags
 
+    # Embedding Variance Tracking (Welford's online algorithm)
+    # Tracks how diverse the problems routed to this signature are
+    # High variance = too generic, should decompose into specialized children
+    similarity_count: int = 0      # N in Welford's algorithm
+    similarity_mean: float = 0.0   # Running mean of cosine similarities
+    similarity_m2: float = 0.0     # Sum of squared differences (variance = M2/N)
+
     # Difficulty tracking (for universal tree)
     # Format: {"0.2": {"uses": 10, "successes": 8}, "0.8": {"uses": 2, "successes": 0}}
     difficulty_stats: dict[str, dict[str, int]] = field(default_factory=dict)
@@ -111,6 +118,26 @@ class StepSignature:
     @property
     def has_dsl(self) -> bool:
         return bool(self.dsl_script)
+
+    @property
+    def similarity_variance(self) -> float:
+        """Compute variance of embedding similarities (Welford's algorithm).
+
+        High variance indicates diverse problems routing to this signature,
+        suggesting it should decompose into specialized children.
+
+        Returns:
+            Variance of similarities, or 0.0 if insufficient data.
+        """
+        if self.similarity_count < 2:
+            return 0.0
+        return self.similarity_m2 / self.similarity_count
+
+    @property
+    def similarity_stddev(self) -> float:
+        """Standard deviation of embedding similarities."""
+        import math
+        return math.sqrt(self.similarity_variance)
 
     def get_difficulty_success_rate(self, difficulty: float, tolerance: float = 0.15) -> float:
         """Get success rate for problems at similar difficulty level.
@@ -277,6 +304,9 @@ class StepSignature:
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
             operational_failures=row.get("operational_failures", 0) or 0,
+            similarity_count=row.get("similarity_count", 0) or 0,
+            similarity_mean=row.get("similarity_mean", 0.0) or 0.0,
+            similarity_m2=row.get("similarity_m2", 0.0) or 0.0,
             difficulty_stats=difficulty_stats,
             max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),

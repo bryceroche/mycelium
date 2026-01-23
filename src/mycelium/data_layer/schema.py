@@ -58,6 +58,13 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     successes INTEGER DEFAULT 0,
     operational_failures INTEGER DEFAULT 0,  -- MCTS: times produced wrong answer vs ground truth
 
+    -- Embedding Variance Tracking (Welford's online algorithm)
+    -- Tracks how diverse the problems routed to this signature are
+    -- High variance = too generic, should decompose into specialized children
+    similarity_count INTEGER DEFAULT 0,     -- N in Welford's algorithm
+    similarity_mean REAL DEFAULT 0.0,       -- Running mean of cosine similarities to centroid
+    similarity_m2 REAL DEFAULT 0.0,         -- Sum of squared differences (variance = M2/N)
+
     -- Umbrella routing (DAG of DAGs)
     is_semantic_umbrella INTEGER DEFAULT 0,  -- 1 if routes to children
     is_root INTEGER DEFAULT 0,  -- 1 if this is THE root signature (single entry point)
@@ -492,6 +499,21 @@ def migrate_db(conn) -> None:
     if "graph_embedding" not in existing_cols:
         migrations.append(
             "ALTER TABLE step_signatures ADD COLUMN graph_embedding TEXT"
+        )
+
+    # Add embedding variance tracking columns (Welford's algorithm)
+    # Per CLAUDE.md: High variance = too generic, should decompose
+    if "similarity_count" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN similarity_count INTEGER DEFAULT 0"
+        )
+    if "similarity_mean" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN similarity_mean REAL DEFAULT 0.0"
+        )
+    if "similarity_m2" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN similarity_m2 REAL DEFAULT 0.0"
         )
 
     # Run step_signatures migrations

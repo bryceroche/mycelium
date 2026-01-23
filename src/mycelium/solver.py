@@ -30,12 +30,8 @@ from mycelium.config import (
     MIN_MATCH_THRESHOLD,
     MIN_MATCH_THRESHOLD_COLD_START,
     MIN_MATCH_RAMP_SIGNATURES,
-    RECURSIVE_DECOMPOSITION_ENABLED,
-    RECURSIVE_MAX_DEPTH,
-    RECURSIVE_CONFIDENCE_THRESHOLD,
     UMBRELLA_MAX_DEPTH,
     UMBRELLA_ROUTING_THRESHOLD,
-    DEPTH_FORCE_DECOMPOSE_DEPTH,
     DEPTH_DECOMPOSE_DECAY_BASE,
     DEPTH_DECOMPOSE_MIN_PROB,
     ZERO_LLM_ROUTING_ENABLED,
@@ -54,7 +50,6 @@ from mycelium.config import (
     GRAPH_ROUTING_ENABLED,
     GRAPH_ROUTING_MIN_SIMILARITY,
     GRAPH_ROUTING_BOOST_FACTOR,
-    GRAPH_ROUTING_FALLBACK_TO_CENTROID,
     # Maturity sigmoid (decompose vs create new)
     MATURITY_DECOMPOSE_ENABLED,
     MATURITY_SIGMOID_MIDPOINT,
@@ -62,7 +57,6 @@ from mycelium.config import (
     MATURITY_ACCURACY_WEIGHT,
     MATURITY_MIN_DECOMPOSE_PROB,
     MATURITY_MAX_DECOMPOSE_PROB,
-    MATURITY_ESCAPE_ENABLED,
     MATURITY_ESCAPE_MIN_SUBSTEPS,
     MATURITY_ESCAPE_MAX_MISSES,
 )
@@ -3221,6 +3215,32 @@ Rules:
                         "[solver] Signature '%s' (id=%d) flagged for decomposition (post-mortem analysis): "
                         "failing across step types",
                         sig.step_type, node_id
+                    )
+
+        # VARIANCE-BASED DECOMPOSITION: Flag high-variance signatures
+        # Per CLAUDE.md: Tree depth emerges from problem structure, not magic numbers
+        # High variance = too generic, catching diverse problem types that should specialize
+        from mycelium.data_layer.mcts import get_high_variance_nodes_for_decomposition
+        from mycelium.config import VARIANCE_MIN_SAMPLES, VARIANCE_DECOMP_THRESHOLD
+
+        high_variance_nodes = get_high_variance_nodes_for_decomposition(
+            min_samples=VARIANCE_MIN_SAMPLES,
+            max_variance=VARIANCE_DECOMP_THRESHOLD
+        )
+        logger.debug(
+            "[solver] get_high_variance_nodes_for_decomposition returned %d nodes",
+            len(high_variance_nodes)
+        )
+        for node_id, variance in high_variance_nodes:
+            if node_id not in candidates:
+                sig = self.step_db.get_signature(node_id)
+                if sig:
+                    self.step_db.flag_for_split(node_id, reason="high_variance")
+                    candidates.append(node_id)
+                    logger.info(
+                        "[solver] Signature '%s' (id=%d) flagged for decomposition (high variance=%.4f): "
+                        "too generic, should specialize into children",
+                        sig.step_type, node_id, variance
                     )
 
         # Also add nodes flagged by interference detection (destructive interference)

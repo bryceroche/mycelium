@@ -42,12 +42,6 @@ from mycelium.step_signatures.dsl_types import (
 
 # Math layer
 from mycelium.step_signatures.math_layer import (
-    BINOPS as _BINOPS,
-    UNARYOPS as _UNARYOPS,
-    FUNCTIONS as _FUNCTIONS,
-    CONSTANTS as _CONSTANTS,
-    extract_numeric_value as _extract_numeric_value,
-    prepare_math_inputs as _prepare_math_inputs,
     try_execute_dsl_math,
 )
 
