@@ -3013,11 +3013,13 @@ Rules:
 
             # Create a new thread for this exploration
             explore_thread_id = f"explore-{uuid.uuid4().hex[:8]}"
-            if self._current_dag_id:
+            # Look up the actual dag_step_id for the fork point
+            fork_dag_step_id = self._dag_step_ids.get(failed_step.step_id)
+            if self._current_dag_id and fork_dag_step_id:
                 create_thread(
                     dag_id=self._current_dag_id,
                     parent_thread_id=self._root_thread_id,
-                    fork_at_step=failed_step.step_id,
+                    fork_at_step=fork_dag_step_id,
                     fork_reason="reactive_exploration",
                     thread_id=explore_thread_id,
                 )
@@ -3053,22 +3055,23 @@ Rules:
             try:
                 dsl_result = await self._try_dsl(alt_sig, step_obj, context, step_descriptions)
 
-                # Log the thread step
+                # Log the thread step (only if we have a valid dag_step_id)
                 if self._current_dag_id:
-                    # Find dag_step_id for this step
-                    dag_step_id = getattr(failed_step, 'dag_step_id', None) or failed_step.step_id
-                    log_thread_step(
-                        thread_id=explore_thread_id,
-                        dag_id=self._current_dag_id,
-                        dag_step_id=dag_step_id,
-                        node_id=alt_sig_id,
-                        amplitude=alt_sim,
-                        similarity_score=alt_sim,
-                        was_undecided=1,
-                        alternatives_considered=len(step_alternatives[best_step_idx]) + 1,
-                        step_result=dsl_result[:500] if dsl_result else None,
-                        step_success=1 if dsl_result else 0,
-                    )
+                    # Look up the actual dag_step_id from our mapping
+                    dag_step_id = self._dag_step_ids.get(failed_step.step_id)
+                    if dag_step_id:
+                        log_thread_step(
+                            thread_id=explore_thread_id,
+                            dag_id=self._current_dag_id,
+                            dag_step_id=dag_step_id,
+                            node_id=alt_sig_id,
+                            amplitude=alt_sim,
+                            similarity_score=alt_sim,
+                            was_undecided=1,
+                            alternatives_considered=len(step_alternatives[best_step_idx]) + 1,
+                            step_result=dsl_result[:500] if dsl_result else None,
+                            step_success=1 if dsl_result else 0,
+                        )
 
                 if dsl_result is None:
                     logger.debug("[reactive] Alternative sig %d failed DSL execution", alt_sig_id)
