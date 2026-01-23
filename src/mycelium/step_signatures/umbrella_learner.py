@@ -289,14 +289,25 @@ class UmbrellaLearner:
         # Convert failure threshold to max success rate
         max_success_rate = 1.0 - split_threshold
 
+        # Adaptive min_uses: lower during cold start, higher when mature
+        # This ensures we evaluate failing signatures quickly during early learning
+        from mycelium.config import DECOMP_MIN_ATTEMPTS_COLD, DECOMP_MIN_ATTEMPTS_MATURE
+        from mycelium.mcts.adaptive import AdaptiveExploration
+        adaptive = AdaptiveExploration.get_instance()
+        accuracy = adaptive.global_accuracy
+        adaptive_min_uses = int(
+            DECOMP_MIN_ATTEMPTS_COLD + accuracy * (DECOMP_MIN_ATTEMPTS_MATURE - DECOMP_MIN_ATTEMPTS_COLD)
+        )
+        adaptive_min_uses = max(1, adaptive_min_uses)
+
         # Get MCTS win rates for ground truth filtering
         # This is the actual step-level win rate, not partial credit
-        mcts_stats = get_mcts_win_rates(min_attempts=UMBRELLA_MIN_USES_FOR_EVALUATION)
+        mcts_stats = get_mcts_win_rates(min_attempts=adaptive_min_uses)
 
         candidates = []
         for sig in all_sigs:
-            # Skip if not enough uses
-            if sig.uses < UMBRELLA_MIN_USES_FOR_EVALUATION:
+            # Skip if not enough uses (adaptive threshold)
+            if sig.uses < adaptive_min_uses:
                 continue
             # CRITICAL: Per CLAUDE.md, only decompose when flagged by MCTS post-mortem
             # operational_failures > 0 means destructive interference was detected

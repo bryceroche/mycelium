@@ -3188,10 +3188,26 @@ Rules:
         # These are nodes with low win rates from mcts_thread_steps
         # CRITICAL: Flag them with operational_failures so get_decomposition_candidates picks them up
         from mycelium.data_layer.mcts import get_failing_nodes_for_decomposition
-        postmortem_failing_nodes = get_failing_nodes_for_decomposition(min_attempts=3, max_win_rate=0.5)
+        from mycelium.config import DECOMP_MIN_ATTEMPTS_COLD, DECOMP_MIN_ATTEMPTS_MATURE, DECOMP_MAX_WIN_RATE
+        from mycelium.mcts.adaptive import AdaptiveExploration
+
+        # Adaptive min_attempts: lower during cold start, higher when mature
+        # This ensures we flag failing signatures quickly during early learning
+        adaptive = AdaptiveExploration.get_instance()
+        accuracy = adaptive.global_accuracy
+        # Interpolate: cold (0% accuracy) → COLD threshold, mature (100%) → MATURE threshold
+        adaptive_min_attempts = int(
+            DECOMP_MIN_ATTEMPTS_COLD + accuracy * (DECOMP_MIN_ATTEMPTS_MATURE - DECOMP_MIN_ATTEMPTS_COLD)
+        )
+        adaptive_min_attempts = max(1, adaptive_min_attempts)  # At least 1
+
+        postmortem_failing_nodes = get_failing_nodes_for_decomposition(
+            min_attempts=adaptive_min_attempts,
+            max_win_rate=DECOMP_MAX_WIN_RATE
+        )
         logger.debug(
-            "[solver] get_failing_nodes_for_decomposition returned %d nodes: %s",
-            len(postmortem_failing_nodes), postmortem_failing_nodes
+            "[solver] get_failing_nodes_for_decomposition(min_attempts=%d, accuracy=%.1f%%) returned %d nodes: %s",
+            adaptive_min_attempts, accuracy * 100, len(postmortem_failing_nodes), postmortem_failing_nodes
         )
         for node_id in postmortem_failing_nodes:
             if node_id not in candidates:

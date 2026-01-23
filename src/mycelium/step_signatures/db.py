@@ -1246,6 +1246,22 @@ class StepSignatureDB:
             # Sort by UCB1 score (descending)
             scored_children.sort(key=lambda x: x[1], reverse=True)
 
+            # Epsilon-greedy exploration: occasionally pick random child
+            # This ensures under-visited signatures get attempts even when UCB1 favors exploitation
+            from mycelium.config import EXPLORATION_EPSILON
+            import random
+            if EXPLORATION_EPSILON > 0 and random.random() < EXPLORATION_EPSILON and len(scored_children) > 1:
+                # Pick random child (not necessarily the best)
+                random_idx = random.randint(0, len(scored_children) - 1)
+                # Move selected child to front so it becomes "best"
+                selected = scored_children[random_idx]
+                scored_children[random_idx] = scored_children[0]
+                scored_children[0] = selected
+                logger.debug(
+                    "[routing] Epsilon exploration: picked random child %d (score=%.3f) instead of best (score=%.3f)",
+                    selected[0].id, selected[1], scored_children[1][1] if len(scored_children) > 1 else 0
+                )
+
             # Track top-k alternatives at this level
             level_alts = [(sig, score) for sig, score, _sim in scored_children[:top_k]]
             alternatives.append(level_alts)

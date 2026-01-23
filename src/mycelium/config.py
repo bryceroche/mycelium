@@ -147,6 +147,21 @@ COMPUTE_BUDGET_CONFIDENCE_THRESHOLD = 0.5  # Explore alternatives when confidenc
 # High gap = confident (don't branch), Low gap = undecided (branch)
 UCB1_GAP_BRANCH_THRESHOLD = 0.15  # Branch when min_gap < this (undecided)
 
+# Epsilon-greedy exploration: with probability EPSILON, pick random signature
+# This ensures under-visited signatures get attempts even when UCB1 favors exploitation
+EXPLORATION_EPSILON = 0.15  # 15% chance of random exploration (0 = pure UCB1)
+EXPLORATION_EPSILON_DECAY = 0.995  # Decay factor per problem (0.995^100 ≈ 0.6)
+EXPLORATION_EPSILON_MIN = 0.05  # Minimum epsilon floor
+
+# =============================================================================
+# ADAPTIVE DECOMPOSITION THRESHOLDS
+# =============================================================================
+# min_attempts for flagging nodes needing decomposition
+# Lower during cold start (get signal faster), higher when mature (wait for evidence)
+DECOMP_MIN_ATTEMPTS_COLD = 1  # Cold start: flag after just 1 failure
+DECOMP_MIN_ATTEMPTS_MATURE = 3  # Mature: require 3+ attempts before flagging
+DECOMP_MAX_WIN_RATE = 0.5  # Flag nodes with win rate below this
+
 # Bayesian prior for cold start (assume some successes before any data)
 ROUTING_PRIOR_SUCCESSES = 2
 ROUTING_PRIOR_USES = 4
