@@ -227,6 +227,7 @@ async def solve_problem(
     db_path: str,
     compute_budget: float = 1.0,
     benchmark: str = None,
+    problem_idx: int = 0,
 ) -> ProblemResult:
     """Solve a single problem with the given match mode."""
     try:
@@ -281,13 +282,19 @@ async def solve_problem(
                     dsl_result["regenerated"], dsl_result.get("failed", 0)
                 )
 
-            # Auto-trigger batch decomposition if queue has items (per beads mycelium-mm08)
-            decomp_result = await solver.maybe_run_batch_decomposition(client)
-            if decomp_result.get("processed", 0) > 0:
-                logger.info(
-                    "[pipeline] Batch decomposition: %d processed, %d signatures created",
-                    decomp_result["processed"], decomp_result.get("signatures_created", 0)
+            # Auto-trigger batch decomposition every 5 problems (per beads mycelium-mm08)
+            # Balance: not too frequent (LLM cost), not too rare (mid-run learning)
+            if problem_idx % 5 == 0:
+                decomp_result = await solver.maybe_run_batch_decomposition(
+                    client,
+                    batch_size=10,      # Larger batches when we do fire
+                    min_queue_size=5,   # Need meaningful accumulation
                 )
+                if decomp_result.get("processed", 0) > 0:
+                    logger.info(
+                        "[pipeline] Batch decomposition: %d processed, %d signatures created",
+                        decomp_result["processed"], decomp_result.get("signatures_created", 0)
+                    )
 
         # Convert step results to timing info (use getattr for safety)
         step_timings = [
@@ -338,11 +345,11 @@ async def solve_problem(
 
 def run_problem_sync(args: tuple) -> dict:
     """Synchronous wrapper for process pool."""
-    problem, match_mode, db_path, compute_budget, benchmark = args
+    problem_idx, problem, match_mode, db_path, compute_budget, benchmark = args
     if match_mode == "direct":
         result = asyncio.run(solve_direct(problem))
     else:
-        result = asyncio.run(solve_problem(problem, match_mode, db_path, compute_budget, benchmark))
+        result = asyncio.run(solve_problem(problem, match_mode, db_path, compute_budget, benchmark, problem_idx=problem_idx))
     return asdict(result)
 
 
@@ -373,10 +380,11 @@ def run_pipeline(
     results_dir.mkdir(exist_ok=True)
 
     # Prepare tasks (use single shared database)
+    # Include problem index for mod-N batch decomposition triggering
     tasks = []
     for mode in modes:
-        for problem in problems:
-            tasks.append((problem, mode, db_path, compute_budget, dataset))
+        for idx, problem in enumerate(problems):
+            tasks.append((idx, problem, mode, db_path, compute_budget, dataset))
 
     logger.info(f"Running {len(tasks)} total tasks ({len(problems)} problems x {len(modes)} modes)")
 
