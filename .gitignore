@@ -70,3 +70,5 @@ logs/
 *.log
 paper.txt
 *.backup.*
+.coverage
+*.centroid_cache.npz

@@ -28,7 +28,9 @@ from mycelium.data_layer.mcts import (
     grade_thread,
     log_thread_step,
     update_amplitude_post,
+    update_summary_amplitude_post,
     batch_update_amplitudes,
+    batch_update_summary_amplitudes,
     get_thread_steps_for_dag,
     get_node_step_stats,
     get_dag_step_node_performance,
@@ -50,18 +52,45 @@ from mycelium.data_layer.mcts import (
     get_thread_paths,
     find_divergence_points,
     assign_divergence_blame,
-    # Diagnostic exploration (per beads mycelium-g1hh)
+    # Diagnostic post-mortem
     DiagnosticResult,
-    get_problems_for_diagnostic_exploration,
-    run_diagnostic_exploration,
-    # Dag-step embeddings for decomposition decisions
-    DecompositionDecision,
+    # Dag-step embeddings
     store_dag_step_embedding,
     update_dag_step_embedding_outcome,
     find_similar_dag_steps,
-    get_node_aggregate_stats,
-    get_similar_steps_win_rate,
-    decide_decomposition_target,
+    # Atomic discovery (math primes)
+    AtomicCandidate,
+    discover_atomic_signatures,
+    mark_signature_atomic,
+    unmark_signature_atomic,
+    is_signature_atomic,
+    run_atomic_discovery,
+    # DAG plan stats (per beads mycelium-ogo6)
+    compute_plan_signature,
+    record_plan_outcome,
+    get_plan_stats_summary,
+    get_top_plans,
+    get_worst_plans,
+    # Decomposition queue (per beads mycelium-mm08)
+    is_step_complex,
+    queue_for_decomposition,
+    get_pending_decompositions,
+    get_decomposition_queue_size,
+    mark_decomposition_processed,
+    get_decomposition_queue_stats,
+    # Blocking decomposition coordination
+    get_decomposition_results,
+    are_decompositions_ready,
+    get_pending_queue_ids,
+    # Leaf rejection tracking
+    REJECTION_SIM_THRESHOLD,
+    REJECTION_COUNT_THRESHOLD,
+    REJECTION_RATE_THRESHOLD,
+    record_leaf_rejection,
+    get_leaf_rejection_stats,
+    get_leaves_needing_decomposition,
+    check_and_reject_if_low_similarity,
+    flag_high_rejection_leaves_for_decomposition,
 )
 
 db = get_db()
@@ -90,7 +119,9 @@ __all__ = [
     "grade_thread",
     "log_thread_step",
     "update_amplitude_post",
+    "update_summary_amplitude_post",
     "batch_update_amplitudes",
+    "batch_update_summary_amplitudes",
     "get_thread_steps_for_dag",
     "get_node_step_stats",
     "get_dag_step_node_performance",
@@ -112,16 +143,43 @@ __all__ = [
     "get_thread_paths",
     "find_divergence_points",
     "assign_divergence_blame",
-    # Diagnostic exploration
+    # Diagnostic post-mortem
     "DiagnosticResult",
-    "get_problems_for_diagnostic_exploration",
-    "run_diagnostic_exploration",
-    # Dag-step embeddings for decomposition decisions
-    "DecompositionDecision",
+    # Dag-step embeddings
     "store_dag_step_embedding",
     "update_dag_step_embedding_outcome",
     "find_similar_dag_steps",
-    "get_node_aggregate_stats",
-    "get_similar_steps_win_rate",
-    "decide_decomposition_target",
+    # Atomic discovery (math primes)
+    "AtomicCandidate",
+    "discover_atomic_signatures",
+    "mark_signature_atomic",
+    "unmark_signature_atomic",
+    "is_signature_atomic",
+    "run_atomic_discovery",
+    # DAG plan stats (per beads mycelium-ogo6)
+    "compute_plan_signature",
+    "record_plan_outcome",
+    "get_plan_stats_summary",
+    "get_top_plans",
+    "get_worst_plans",
+    # Decomposition queue
+    "is_step_complex",
+    "queue_for_decomposition",
+    "get_pending_decompositions",
+    "get_decomposition_queue_size",
+    "mark_decomposition_processed",
+    "get_decomposition_queue_stats",
+    # Blocking decomposition coordination
+    "get_decomposition_results",
+    "are_decompositions_ready",
+    "get_pending_queue_ids",
+    # Leaf rejection tracking
+    "REJECTION_SIM_THRESHOLD",
+    "REJECTION_COUNT_THRESHOLD",
+    "REJECTION_RATE_THRESHOLD",
+    "record_leaf_rejection",
+    "get_leaf_rejection_stats",
+    "get_leaves_needing_decomposition",
+    "check_and_reject_if_low_similarity",
+    "flag_high_rejection_leaves_for_decomposition",
 ]

@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     uses INTEGER DEFAULT 0,
     successes INTEGER DEFAULT 0,
     operational_failures INTEGER DEFAULT 0,  -- MCTS: times produced wrong answer vs ground truth
+    rejection_count INTEGER DEFAULT 0,  -- Times this leaf rejected a dag_step (low similarity)
 
     -- Embedding Variance Tracking (Welford's online algorithm)
     -- Tracks how diverse the problems routed to this signature are
@@ -69,6 +70,11 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     is_semantic_umbrella INTEGER DEFAULT 0,  -- 1 if routes to children
     is_root INTEGER DEFAULT 0,  -- 1 if this is THE root signature (single entry point)
     depth INTEGER DEFAULT 0,  -- Routing depth (0=root, increases with parent-child hops)
+
+    -- Atomic operations (math primes)
+    -- Discovered via statistics: high success rate + enough uses = stop decomposing
+    is_atomic INTEGER DEFAULT 0,  -- 1 if this is a "math prime" that should never decompose
+    atomic_reason TEXT,  -- Why this was marked atomic: "high_success", "decomp_failed", etc.
 
     -- Lifecycle
     is_archived INTEGER DEFAULT 0,  -- 1 if soft-deleted due to decay
@@ -207,55 +213,6 @@ CREATE TABLE IF NOT EXISTS db_metadata (
 );
 
 -- =============================================================================
--- THREAD OUTCOMES: Track complete execution paths for multi-path credit/blame
--- =============================================================================
--- A "thread" = one complete execution path through all DAG steps.
--- When multi-path exploration forks, each alternative becomes a child thread.
--- After grading, we know which threads were correct vs incorrect.
--- Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
-CREATE TABLE IF NOT EXISTS thread_outcomes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    thread_id TEXT UNIQUE NOT NULL,
-    parent_thread_id TEXT REFERENCES thread_outcomes(thread_id),  -- NULL for root thread
-    problem_id TEXT NOT NULL,             -- Problem being solved (truncated text)
-    problem_text TEXT,                    -- Full problem text (for debugging)
-    fork_step_id TEXT,                    -- Step where this thread forked
-    fork_depth INTEGER DEFAULT 0,         -- How many forks from root thread
-    signature_path TEXT,                  -- JSON array of signature IDs in execution order
-    final_answer TEXT,                    -- Answer produced by this thread
-    is_winner INTEGER DEFAULT 0,          -- 1 if this thread's answer was used
-    is_correct INTEGER DEFAULT NULL,      -- 1 if answer matches ground truth (NULL if not graded)
-    ground_truth TEXT,                    -- Correct answer (for comparison)
-    created_at TEXT NOT NULL,
-    graded_at TEXT                        -- When correctness was determined
-);
-
-CREATE INDEX IF NOT EXISTS idx_thread_outcomes_problem ON thread_outcomes(problem_id);
-CREATE INDEX IF NOT EXISTS idx_thread_outcomes_parent ON thread_outcomes(parent_thread_id);
-CREATE INDEX IF NOT EXISTS idx_thread_outcomes_created ON thread_outcomes(created_at);
-CREATE INDEX IF NOT EXISTS idx_thread_outcomes_correct ON thread_outcomes(is_correct);
-
--- =============================================================================
--- THREAD SIGNATURE CONTRIBUTIONS: Per-signature role in each thread
--- =============================================================================
--- Tracks which signatures contributed to which threads and how.
--- Enables per-signature thread win/loss tracking for cluster analysis.
--- Per CLAUDE.md: "Per-signature thread win/loss tracking"
-CREATE TABLE IF NOT EXISTS thread_signature_contributions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    thread_id TEXT NOT NULL REFERENCES thread_outcomes(thread_id),
-    signature_id INTEGER NOT NULL REFERENCES step_signatures(id),
-    step_id TEXT NOT NULL,                -- Which step this signature was used for
-    embedding_similarity REAL,            -- Cosine similarity when routed
-    was_primary_choice INTEGER DEFAULT 1, -- 1 if this was the best match, 0 if alternative
-    created_at TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_thread_sig_contrib_thread ON thread_signature_contributions(thread_id);
-CREATE INDEX IF NOT EXISTS idx_thread_sig_contrib_sig ON thread_signature_contributions(signature_id);
-CREATE INDEX IF NOT EXISTS idx_thread_sig_contrib_step ON thread_signature_contributions(step_id);
-
--- =============================================================================
 -- MCTS WAVE FUNCTION TABLES: Amplitude tracking for multi-path exploration
 -- =============================================================================
 -- Per ideas.md: "The combination of dag_step_id and node_id is what we're learning"
@@ -356,6 +313,29 @@ CREATE INDEX IF NOT EXISTS idx_mcts_thread_steps_undecided ON mcts_thread_steps(
 -- Composite index for post-mortem analysis: (dag_step_id, node_id) is what we're learning
 CREATE INDEX IF NOT EXISTS idx_mcts_thread_steps_learning ON mcts_thread_steps(dag_step_id, node_id);
 
+-- =============================================================================
+-- MCTS_STEP_SUMMARIES: Lightweight table for credit propagation
+-- =============================================================================
+-- Contains minimal data needed for credit propagation and aggregate stats.
+-- mcts_thread_steps (detailed) only stores failures for debugging/analysis.
+-- This separation reduces DB writes while keeping credit propagation working.
+CREATE TABLE IF NOT EXISTS mcts_step_summaries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    thread_id TEXT NOT NULL REFERENCES mcts_threads(thread_id) ON DELETE CASCADE,
+    dag_id TEXT NOT NULL REFERENCES mcts_dags(dag_id) ON DELETE CASCADE,
+    dag_step_id TEXT NOT NULL REFERENCES mcts_dag_steps(dag_step_id),
+    node_id INTEGER NOT NULL REFERENCES step_signatures(id),
+
+    -- Wave function amplitude (minimal data for credit propagation)
+    amplitude REAL DEFAULT 1.0,           -- Prior confidence
+    amplitude_post REAL DEFAULT NULL,     -- Updated after grading
+    step_success INTEGER DEFAULT NULL     -- 1=success, 0=failure, NULL=unknown
+);
+CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_dag ON mcts_step_summaries(dag_id);
+CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_thread ON mcts_step_summaries(thread_id);
+CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_node ON mcts_step_summaries(node_id);
+CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_dag_step ON mcts_step_summaries(dag_step_id);
+
 -- Materialized stats for (dag_step_type, node_id) pairs
 -- This closes the feedback loop: post-mortem → stats → routing decisions
 CREATE TABLE IF NOT EXISTS dag_step_node_stats (
@@ -397,6 +377,49 @@ CREATE INDEX IF NOT EXISTS idx_dse_dag ON dag_step_embeddings(dag_id);
 CREATE INDEX IF NOT EXISTS idx_dse_dag_step ON dag_step_embeddings(dag_step_id);
 CREATE INDEX IF NOT EXISTS idx_dse_node ON dag_step_embeddings(node_id);
 CREATE INDEX IF NOT EXISTS idx_dse_success ON dag_step_embeddings(success);
+
+-- =============================================================================
+-- DAG_PLAN_STATS: Track success rates of (DAG plan, Thread) pairs
+-- =============================================================================
+-- Per beads mycelium-ogo6: Track which decomposition strategies work.
+-- plan_signature = hash of (step tasks + dependency structure)
+-- A plan that consistently fails suggests the decomposition strategy is wrong.
+-- A plan that consistently succeeds suggests good problem structure.
+CREATE TABLE IF NOT EXISTS dag_plan_stats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plan_signature TEXT UNIQUE NOT NULL,  -- Hash of normalized plan structure
+    step_count INTEGER NOT NULL,          -- Number of steps in plan
+    plan_structure TEXT,                  -- JSON: normalized step descriptions + deps
+    uses INTEGER DEFAULT 0,               -- Total times this plan was used
+    successes INTEGER DEFAULT 0,          -- Times the plan led to correct answer
+    success_rate REAL DEFAULT 0.5,        -- Computed: successes / uses (with prior)
+    first_seen_at TEXT NOT NULL,
+    last_used_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_dps_signature ON dag_plan_stats(plan_signature);
+CREATE INDEX IF NOT EXISTS idx_dps_success_rate ON dag_plan_stats(success_rate);
+CREATE INDEX IF NOT EXISTS idx_dps_uses ON dag_plan_stats(uses);
+
+-- =============================================================================
+-- DECOMPOSITION_QUEUE: Batch complex steps for later decomposition
+-- =============================================================================
+-- Per beads mycelium-mm08: Instead of decomposing immediately (1 LLM call per step),
+-- queue complex steps and batch decompose them periodically.
+-- This is more efficient and allows the system to learn patterns.
+CREATE TABLE IF NOT EXISTS decomposition_queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    step_text TEXT NOT NULL,              -- The complex step to decompose
+    embedding TEXT,                       -- Step embedding (for similarity after decomp)
+    dag_step_id TEXT,                     -- Optional link to originating dag_step
+    problem_context TEXT,                 -- Original problem (for LLM context)
+    complexity_reason TEXT NOT NULL,      -- Why queued: multi_op, long_step, sequential, etc.
+    queued_at TEXT NOT NULL,
+    processed_at TEXT,                    -- NULL until processed
+    result_signature_ids TEXT,            -- JSON array of created atomic signature IDs
+    decomposition_steps TEXT              -- JSON: the atomic steps LLM produced
+);
+CREATE INDEX IF NOT EXISTS idx_decomp_queue_processed ON decomposition_queue(processed_at);
+CREATE INDEX IF NOT EXISTS idx_decomp_queue_queued ON decomposition_queue(queued_at);
 """
 
 def get_schema() -> str:
@@ -516,6 +539,24 @@ def migrate_db(conn) -> None:
             "ALTER TABLE step_signatures ADD COLUMN similarity_m2 REAL DEFAULT 0.0"
         )
 
+    # Add atomic operations tracking (math primes discovery)
+    # Per CLAUDE.md: system discovers which signatures are truly atomic
+    if "is_atomic" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN is_atomic INTEGER DEFAULT 0"
+        )
+    if "atomic_reason" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN atomic_reason TEXT"
+        )
+
+    # Add rejection_count for leaf rejection tracking
+    # Per CLAUDE.md: leaves reject low-similarity steps, high rejection rate triggers decomposition
+    if "rejection_count" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN rejection_count INTEGER DEFAULT 0"
+        )
+
     # Run step_signatures migrations
     for sql in migrations:
         try:
@@ -549,6 +590,8 @@ def migrate_db(conn) -> None:
         "CREATE INDEX IF NOT EXISTS idx_failures_created_sig ON step_failures(created_at, signature_id)",
         # Computation graph routing index (per mycelium-k509)
         "CREATE INDEX IF NOT EXISTS idx_sig_graph_embedding ON step_signatures(graph_embedding)",
+        # Atomic operations index (math primes discovery)
+        "CREATE INDEX IF NOT EXISTS idx_sig_is_atomic ON step_signatures(is_atomic)",
     ]
     for sql in index_migrations:
         try:

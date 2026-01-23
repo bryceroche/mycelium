@@ -28,6 +28,7 @@ from mycelium.solver import Solver
 from mycelium.step_signatures import StepSignatureDB
 from mycelium.client import LLMClient
 from mycelium.answer_norm import answers_equivalent_llm
+from mycelium.data_layer.mcts import get_plan_stats_summary, get_top_plans, get_worst_plans
 
 
 logging.basicConfig(
@@ -226,6 +227,7 @@ async def solve_problem(
     db_path: str,
     compute_budget: float = 1.0,
     benchmark: str = None,
+    problem_idx: int = 0,
 ) -> ProblemResult:
     """Solve a single problem with the given match mode."""
     try:
@@ -258,6 +260,18 @@ async def solve_problem(
                     learn_result["decomposed"], learn_result["children_created"]
                 )
 
+        # Auto-trigger reactive exploration for failed problems (per CLAUDE.md)
+        # This explores alternative nodes to find what would have worked, enabling
+        # precise divergence-based blame assignment
+        if not is_correct:
+            reactive_result = await solver.maybe_run_reactive_exploration()
+            if reactive_result.get("winning_path_found"):
+                logger.info(
+                    "[pipeline] Reactive exploration: found winning path, %d divergence points, %d blame assigned",
+                    reactive_result.get("divergence_points", 0),
+                    reactive_result.get("blame_assigned", 0),
+                )
+
         # Auto-trigger DSL regeneration if post-mortem flagged it (per beads mycelium-flbq)
         # This runs mod 10 problems when high-conf-wrong nodes accumulate
         async with LLMClient() as client:
@@ -267,6 +281,20 @@ async def solve_problem(
                     "[pipeline] DSL regeneration: %d regenerated, %d failed",
                     dsl_result["regenerated"], dsl_result.get("failed", 0)
                 )
+
+            # Auto-trigger batch decomposition every 5 problems (per beads mycelium-mm08)
+            # Balance: not too frequent (LLM cost), not too rare (mid-run learning)
+            if problem_idx % 5 == 0:
+                decomp_result = await solver.maybe_run_batch_decomposition(
+                    client,
+                    batch_size=10,      # Larger batches when we do fire
+                    min_queue_size=5,   # Need meaningful accumulation
+                )
+                if decomp_result.get("processed", 0) > 0:
+                    logger.info(
+                        "[pipeline] Batch decomposition: %d processed, %d signatures created",
+                        decomp_result["processed"], decomp_result.get("signatures_created", 0)
+                    )
 
         # Convert step results to timing info (use getattr for safety)
         step_timings = [
@@ -317,11 +345,11 @@ async def solve_problem(
 
 def run_problem_sync(args: tuple) -> dict:
     """Synchronous wrapper for process pool."""
-    problem, match_mode, db_path, compute_budget, benchmark = args
+    problem_idx, problem, match_mode, db_path, compute_budget, benchmark = args
     if match_mode == "direct":
         result = asyncio.run(solve_direct(problem))
     else:
-        result = asyncio.run(solve_problem(problem, match_mode, db_path, compute_budget, benchmark))
+        result = asyncio.run(solve_problem(problem, match_mode, db_path, compute_budget, benchmark, problem_idx=problem_idx))
     return asdict(result)
 
 
@@ -352,10 +380,11 @@ def run_pipeline(
     results_dir.mkdir(exist_ok=True)
 
     # Prepare tasks (use single shared database)
+    # Include problem index for mod-N batch decomposition triggering
     tasks = []
     for mode in modes:
-        for problem in problems:
-            tasks.append((problem, mode, db_path, compute_budget, dataset))
+        for idx, problem in enumerate(problems):
+            tasks.append((idx, problem, mode, db_path, compute_budget, dataset))
 
     logger.info(f"Running {len(tasks)} total tasks ({len(problems)} problems x {len(modes)} modes)")
 
@@ -426,6 +455,11 @@ def run_pipeline(
     step_db = StepSignatureDB(db_path)
     structure_stats = step_db.get_structure_stats()
 
+    # Get plan stats (per beads mycelium-ogo6)
+    plan_stats = get_plan_stats_summary()
+    top_plans = get_top_plans(limit=5, min_uses=2)
+    worst_plans = get_worst_plans(limit=5, min_uses=2)
+
     # Save results
     output = {
         "config": {
@@ -442,6 +476,9 @@ def run_pipeline(
             "mode_stats": mode_stats,
             "level_stats": level_stats,
             "structure_stats": structure_stats,
+            "plan_stats": plan_stats,
+            "top_plans": top_plans,
+            "worst_plans": worst_plans,
         },
         "results": results,
     }
@@ -510,6 +547,22 @@ def run_pipeline(
     if ss['depth_histogram']:
         depth_str = " | ".join(f"d{d}:{c}" for d, c in sorted(ss['depth_histogram'].items()))
         print(f"  Depth histogram: {depth_str}")
+
+    # Plan stats (per beads mycelium-ogo6)
+    print("\nPlan statistics:")
+    ps = plan_stats
+    print(f"  Unique plans: {ps['total_plans']} | Total uses: {ps['total_uses']}")
+    print(f"  Avg success rate: {ps['avg_success_rate']:.0%} (range: {ps['min_success_rate']:.0%}-{ps['max_success_rate']:.0%})")
+
+    if top_plans:
+        print("\n  Top plans (by success rate):")
+        for p in top_plans[:3]:
+            print(f"    {p['signature'][:8]}... {p['step_count']} steps, {p['success_rate']:.0%} ({p['successes']}/{p['uses']})")
+
+    if worst_plans:
+        print("\n  Worst plans (need attention):")
+        for p in worst_plans[:3]:
+            print(f"    {p['signature'][:8]}... {p['step_count']} steps, {p['success_rate']:.0%} ({p['successes']}/{p['uses']})")
 
     print("=" * 60)
 

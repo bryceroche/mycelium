@@ -9,19 +9,14 @@ Please always keep this file in the context window.
 
 ## The Core Problem: Lexical vs Operational Similarity
 
-Standard embedding models learn similarity from surface-level patterns—what text "looks like" rather than what it "does."
+Standard embedding models learn similarity from vocabulary, not from operational semantics
 
-In a math DSL, this creates two failure modes:
+`x + y` vs `a + b` → **Lexically similar but operationally different** 
+`x + y` vs `x * y` → **Lexically similar but operationally different** 
 
-| Expression Pair | Lexically | Operationally | Embedding Behavior |
-|-----------------|-----------|---------------|-------------------|
-| `x + y` vs `a + b` | Different | **Identical** (both addition) | May embed far apart |
-| `x + y` vs `x * y` | Similar | **Different** (+ vs *) | May embed close together |
-
-Embeddings trained on natural language don't understand that `+` and `*` are fundamentally different operations, regardless of variable names.
+Embeddings get confused 
 
 ## The Solution: Computation Graph Embeddings
-
 **Route by what operations DO, not what they SOUND LIKE.**
 
 Instead of embedding problem text and comparing to signature text, we:
@@ -105,21 +100,10 @@ If correlation is negative, embeddings are misleading—clustering by vocab not 
 MCTS rollouts can be modeled as wave function collapse, providing a principled framework for multi-path exploration and credit assignment.
 
 ### Core Concepts
-
-**Superposition**: Before execution, a problem exists in superposition across all possible paths through the tree. Each path has an amplitude (confidence score).
-
-```
-|ψ⟩ = α₁|path₁⟩ + α₂|path₂⟩ + α₃|path₃⟩ + ...
-```
-
-**Wave Collapse**: The wave function collapses at the **final step** where we have ground truth. Only then do we know which thread was correct.
-
 **Selective Branching**: Don't branch on every DAG step—only when **undecided**. Use UCB1 gap to detect uncertainty. High gap = confident, low gap = branch.
 
 ### The Key Learning Unit
-
 **The combination of `(dag_step_id, node_id)` is what we're learning.**
-
 A node might be great for step 2 but terrible for step 5. Track performance per step-node pair, not just per node.
 
 ### Amplitude Updates (Post-Mortem)
@@ -289,16 +273,9 @@ The goal is NOT 100% accuracy on every run. The goal is collecting data that mak
 
 ## Always Route to Best Match (No Arbitrary Thresholds)
 
-**ALWAYS_ROUTE_TO_BEST = True** (default)
+**ALWAYS_ROUTE_TO_BEST = True** 
 
 Instead of rejecting matches below arbitrary similarity thresholds, we always route to the best available match and let execution failures drive learning.
-
-### Why No Thresholds?
-
-Thresholds are arbitrary magic numbers that don't add value:
-- We always pick the highest similarity match anyway
-- Thresholds only decide "accept any match or create new"
-- Better to let actual execution results drive that decision
 
 ### The Flow
 
@@ -321,22 +298,7 @@ Structure emerges from failure patterns, not our guesses about what similarity i
 
 ### The Problem: Parameter Attribution Errors
 
-Before this fix, the planner would misattribute values. Example:
-
-```
-Problem: "Josh buys a house for $80k, puts in $50k repairs. Value increases by 150%."
-
-WRONG decomposition:
-  Step 1: total_investment = 80000 + 50000 = 130000
-  Step 2: new_value = 130000 × 1.5 = 195000  ← WRONG! 150% applied to investment, not house
-  Result: $65,000 profit (incorrect)
-
-CORRECT decomposition:
-  Step 1: total_investment = 80000 + 50000 = 130000
-  Step 2: new_value = 80000 × 2.5 = 200000  ← 150% increase means ×2.5 on ORIGINAL house
-  Result: $70,000 profit (correct)
-```
-
+Before this fix, the planner would misattribute values. 
 The planner didn't track which value (house price vs total investment) the percentage applied to.
 
 ### The Solution: Two-Phase Decomposition
@@ -344,43 +306,11 @@ The planner didn't track which value (house price vs total investment) the perce
 Force the LLM to explicitly name and attribute every value BEFORE building the DAG.
 
 **Phase 1: VALUE EXTRACTION**
-```
-VALUES:
-purchase_price: 80000 — original cost of the house
-repair_cost: 50000 — amount spent on repairs
-increase_rate: 2.5 — 150% increase means multiply by 2.5
-```
-
 **Phase 2: DAG BUILDING**
-```
-STEPS:
-- step_id: step_1
-  task: Calculate total investment
-  dsl_hint: compute_sum
-  values: {a: purchase_price, b: repair_cost}
-  depends_on: []
-
-- step_id: step_2
-  task: Calculate new house value
-  dsl_hint: compute_product
-  values: {a: purchase_price, b: increase_rate}  ← Explicit attribution!
-  depends_on: []
-```
 
 ### Batch Expression Writing with JSON Mode
 
 After decomposition, a single LLM call writes ALL DSL expressions:
-
-```python
-# Prompt contains all steps with their exact parameter names
-# Response is JSON: {"step_1": {"expression": "a + b", "params_used": ["a", "b"]}, ...}
-
-response = await client.generate(
-    messages,
-    temperature=0.0,
-    response_format={"type": "json_object"},  # Reliable parsing
-)
-```
 
 **Why batch?**
 - LLM sees full context of all steps and their parameters
@@ -389,30 +319,13 @@ response = await client.generate(
 
 ### The Complete Flow
 
-```
-Problem Text
-     │
-     ▼ (LLM Call #1: Two-Phase Decomposition)
-┌─────────────────────────────────────┐
-│ Phase 1: Extract & name all values  │
-│ Phase 2: Build DAG with explicit    │
-│          value references           │
-└─────────────────────────────────────┘
-     │
-     ▼ (Route each step to signatures - NO LLM)
-     │
-     ▼ (LLM Call #2: Batch Expression Writing)
-┌─────────────────────────────────────┐
-│ For each (step, signature) pair:    │
-│   Write DSL expression using exact  │
-│   parameter names from context      │
-└─────────────────────────────────────┘
-     │
-     ▼ (Execute DSL - NO LLM)
-     │
-     ▼
-   Result
-```
+LLM Call 1:
+Phase 1: Extract & name all values
+Phase 2: Build DAG with explicit value references
+
+LLM Call 2:
+For each (step, signature) pair: Write DSL expression using exact parameter names from context 
+
 
 **Total: 2 LLM calls** regardless of problem complexity.
 
@@ -420,29 +333,13 @@ Problem Text
 
 New umbrella signatures (uses=0) skip auto-decomposition. This prevents cascading decomposition before the system has any execution data to learn from.
 
-```python
-if signature.uses == 0:
-    logger.info("Skipping auto-decompose for new umbrella (cold-start)")
-```
-
 ## DAG Plan Validation: Data Flow Analysis (v1.8.1)
 
 **Catch bad plans before execution by validating data flow.**
 
 ### The Problem: Undefined Variables
 
-Some problems can't be solved forward—they require algebra (working backwards). The planner might generate steps that reference undefined variables:
-
-```
-Problem: "She sold 1/3 at green house, 2 more at red, half the rest at orange. She has 5 left. How many did she start with?"
-
-BAD PLAN (undefined variable):
-  Step 1: after_green = total × (2/3)  ← 'total' is UNDEFINED!
-  Step 2: after_red = after_green - 2
-  ...
-```
-
-The `total` variable doesn't exist yet—it's what we're trying to find.
+Some problems can't be solved forward—they require algebra (working backwards). The planner might generate steps that reference undefined variables
 
 ### The Solution: Data Flow Validation
 
@@ -452,29 +349,9 @@ Every step's inputs MUST be either:
 
 The planner validates this at parse time:
 
-```python
-# Pattern to detect undefined variable names
-variable_pattern = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
-
-for step in self.steps:
-    for key, value in step.extracted_values.items():
-        if isinstance(value, str) and variable_pattern.match(value):
-            # This is an undefined variable name, not a number or step ref
-            errors.append(f"Step '{step.id}' has undefined variable '{value}'")
-```
-
 ### Work-Backwards Detection
 
 When data flow validation fails, it signals an **algebra problem** that needs work-backwards logic:
-
-```
-CORRECT PLAN (work backwards from known result):
-  Step 1: before_orange = 5 × 2 = 10       ← Start from known (5 left)
-  Step 2: before_red = 10 + 2 = 12         ← Reverse the operations
-  Step 3: before_green = 12 × (3/2) = 18   ← Invert 1/3 sold → 2/3 remained
-  Result: 18 vacuums
-```
-
 The prompt now includes explicit instructions and examples for detecting and handling work-backwards problems.
 
 ### Why This Matters

@@ -79,14 +79,6 @@ Reply with ONLY 'YES' or 'NO'. Nothing else."""
         return answers_equivalent(predicted, expected)
 
 
-def answers_equivalent_llm_sync(
-    predicted: str,
-    expected: str,
-    problem: Optional[str] = None,
-) -> bool:
-    """Synchronous wrapper for answers_equivalent_llm."""
-    return asyncio.run(answers_equivalent_llm(predicted, expected, problem))
-
 # =============================================================================
 # Pre-compiled regex patterns (compiled once at module load for performance)
 # =============================================================================

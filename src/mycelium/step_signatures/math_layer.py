@@ -271,6 +271,25 @@ def _safe_eval_math(script: str, inputs: dict[str, float]) -> Optional[float]:
         return None
 
 
+def _strip_dollar_signs(script: str, inputs: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    """Strip $ prefixes from script and input keys.
+
+    LLMs sometimes generate variable names like $total or $value.
+    Python AST can't parse these, so we normalize them.
+    """
+    # Strip $ from script variable names
+    # Match $word patterns and replace with just word
+    clean_script = re.sub(r'\$([a-zA-Z_][a-zA-Z0-9_]*)', r'\1', script)
+
+    # Strip $ from input keys
+    clean_inputs = {}
+    for key, value in inputs.items():
+        clean_key = key.lstrip('$') if key.startswith('$') else key
+        clean_inputs[clean_key] = value
+
+    return clean_script, clean_inputs
+
+
 def try_execute_dsl_math(script: str, inputs: dict[str, Any]) -> Optional[float]:
     """Execute basic math DSL script.
 
@@ -280,6 +299,9 @@ def try_execute_dsl_math(script: str, inputs: dict[str, Any]) -> Optional[float]
     - sum_all(): Returns sum of all numeric inputs
     - Single input with multi-param script: Returns the single value (identity)
     """
+    # Strip $ prefixes from script and inputs (LLM sometimes generates these)
+    script, inputs = _strip_dollar_signs(script, inputs)
+
     # Prepare inputs: extract numeric values from text
     prepared = prepare_math_inputs(inputs)
     if not prepared and inputs:

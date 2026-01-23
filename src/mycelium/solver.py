@@ -67,10 +67,6 @@ from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.step_signatures.stats import record_step_stats
 from mycelium.step_signatures.utils import cosine_similarity
-from mycelium.step_signatures.operation_extractor import (
-    extract_operation_needed,
-    get_operation_embedding,
-)
 from mycelium.embedder import Embedder
 from mycelium.embedding_cache import cached_embed, cached_embed_batch
 from mycelium.difficulty import estimate_difficulty
@@ -84,7 +80,6 @@ from mycelium.data_layer.mcts import (
     run_postmortem_with_interference,
     run_diagnostic_postmortem,
     store_dag_step_embedding,
-    decide_decomposition_target,
 )
 
 logger = logging.getLogger(__name__)
@@ -569,6 +564,14 @@ class Solver:
         # These have operational_failures > 0 already set
         self._postmortem_flagged_nodes: list[int] = []
 
+        # Reactive exploration context (per CLAUDE.md: explore alternatives on failure)
+        # Stored after record_problem_outcome() for async processing
+        self._pending_reactive_exploration: Optional[dict] = None
+
+        # Phase 1 values for provenance tracking (set per-problem in solve())
+        # Maps value name -> numeric value for resolving $name references
+        self._current_phase1_values: dict[str, Any] = {}
+
     def _create_background_task(self, coro) -> asyncio.Task:
         """Create a background task with proper lifecycle management.
 
@@ -873,6 +876,15 @@ class Solver:
                 signature_hints=signature_hints,
             )
 
+            # Store Phase 1 values for provenance tracking during execution
+            # These are resolved when $name references appear in extracted_values
+            self._current_phase1_values = plan.phase1_values or {}
+            if self._current_phase1_values:
+                logger.debug(
+                    "[solver] Phase 1 values for provenance: %s",
+                    list(self._current_phase1_values.keys())
+                )
+
             # Validate DAG structure before execution
             # Skip validation for single-step plans (no dependencies to check, no cycles possible)
             if len(plan.steps) <= 1:
@@ -949,6 +961,23 @@ class Solver:
             # Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE
             # Operations are extracted during decomposition, batch embedded here
             self._prewarm_operation_embeddings(plan.steps)
+
+            # 1.4. BLOCKING DECOMPOSITION: Check for complex steps and decompose before execution
+            # Per beads mycelium-mm08: Complex steps block until decomposed into atomic operations
+            # This batches across multiple problems - steps queue up, decomposition fires when threshold met
+            if TRAINING_MODE:
+                from mycelium.client import LLMClient
+                async with LLMClient() as client:
+                    queue_ids, decomp_results = await self._blocking_decompose_complex_steps(
+                        plan=plan,
+                        problem=problem,
+                        client=client,
+                        min_batch_size=5,  # Wait for 5 complex steps across problems
+                    )
+                    if queue_ids:
+                        plan = await self._expand_plan_with_decompositions(
+                            plan, queue_ids, decomp_results
+                        )
 
             # 1.5. BATCH EXPRESSION WRITING (single LLM call for all steps)
             # Collect step info for batch expression writing
@@ -1200,26 +1229,56 @@ class Solver:
         normalized_task = normalize_step_text(step.task)
         embedding = cached_embed(normalized_task, self.embedder)
 
-        # 2. Find or create signature (use original text for description)
-        # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
-        # Use adaptive threshold: higher during cold start (more signatures), lower when mature
-        # Pass embedder for cold start graph embedding (per CLAUDE.md: route by what ops DO)
-        adaptive_threshold = get_adaptive_match_threshold()
-        signature, is_new = await self.step_db.find_or_create_async(
-            step_text=step.task,  # Keep original for description
-            embedding=embedding,   # Use normalized embedding for matching
-            min_similarity=adaptive_threshold,
-            parent_problem=problem,
-            origin_depth=depth,  # Track decomposition depth
-            extracted_values=getattr(step, 'extracted_values', None),
-            dsl_hint=getattr(step, 'dsl_hint', None),  # LLM → signature communication
-            embedder=self.embedder,  # For cold start graph embedding
-        )
+        # 2. GRAPH-FIRST ROUTING (per mycelium-pl5c)
+        # Check graph routing FIRST - route by what operations DO, not what they SOUND LIKE
+        # If graph routing finds a high-confidence operational match, use it directly
+        # This prevents creating new signatures for operationally identical steps
+        signature = None
+        is_new = False
+        graph_matched = False
+
+        if GRAPH_ROUTING_ENABLED and step.id in self._operation_embeddings:
+            operation_embedding = self._operation_embeddings[step.id]
+            graph_results = self.step_db.route_by_graph_embedding(
+                np.array(operation_embedding),
+                min_similarity=GRAPH_ROUTING_MIN_SIMILARITY,
+                top_k=3,
+            )
+
+            if graph_results:
+                best_sig, best_sim = graph_results[0]
+                # High-confidence graph match - use this signature directly
+                # Threshold: 90% similarity means operationally identical
+                if best_sim >= 0.90:
+                    signature = best_sig
+                    is_new = False
+                    graph_matched = True
+                    # Update the matched signature's centroid with this new text embedding
+                    self.step_db.update_centroid(signature.id, embedding)
+                    logger.info(
+                        "[solver] GRAPH-FIRST match: '%s' → sig %d (%s) sim=%.3f",
+                        step.task[:40], signature.id, signature.step_type, best_sim
+                    )
+
+        # 3. TEXT ROUTING FALLBACK
+        # If graph routing didn't find a match, fall back to text-based routing
+        if signature is None:
+            adaptive_threshold = get_adaptive_match_threshold()
+            signature, is_new = await self.step_db.find_or_create_async(
+                step_text=step.task,  # Keep original for description
+                embedding=embedding,   # Use normalized embedding for matching
+                min_similarity=adaptive_threshold,
+                parent_problem=problem,
+                origin_depth=depth,  # Track decomposition depth
+                extracted_values=getattr(step, 'extracted_values', None),
+                dsl_hint=getattr(step, 'dsl_hint', None),  # LLM → signature communication
+                embedder=self.embedder,  # For cold start graph embedding
+            )
 
         logger.debug(
-            "[solver] Step '%s' → signature '%s' (new=%s, umbrella=%s, dsl_type=%s, threshold=%.2f)",
+            "[solver] Step '%s' → signature '%s' (new=%s, umbrella=%s, dsl_type=%s, graph_matched=%s)",
             step.task[:40], signature.step_type, is_new, signature.is_semantic_umbrella,
-            signature.dsl_type, adaptive_threshold
+            signature.dsl_type, graph_matched
         )
 
         # 2.3. Maturity-based decompose vs create (per mycelium-jaq9)
@@ -1420,6 +1479,7 @@ class Solver:
                     origin_depth=depth + 1,
                     extracted_values=getattr(step, 'extracted_values', None),
                     dsl_hint=getattr(step, 'dsl_hint', None),
+                    embedder=self.embedder,  # For graph embedding
                 )
                 logger.info(
                     "[solver] Created new child '%s' (id=%d) under umbrella '%s'",
@@ -1898,9 +1958,9 @@ class Solver:
             try:
                 operation_embedding = None
 
-                # Prefer pre-extracted operation embedding (batch embedded during decomposition)
-                # This avoids per-step LLM calls - operations extracted in 1 decomposition call
-                # Embeddings stored in self._operation_embeddings dict for memory efficiency
+                # Use pre-extracted operation embedding (batch embedded during decomposition)
+                # Operations are extracted in 1 decomposition call, embedded in 1 batch call
+                # Per CLAUDE.md: "Only call LLM on leaf nodes" - no LLM during routing
                 if step.id in self._operation_embeddings:
                     operation_embedding = self._operation_embeddings[step.id]
                     operation = getattr(step, 'operation', None)
@@ -1909,15 +1969,13 @@ class Solver:
                         operation[:50] if operation else "?"
                     )
                 else:
-                    # Fallback: Extract operation from step text (legacy path)
-                    operation = await extract_operation_needed(
-                        self.solver_client, step.task, timeout=10.0
+                    # No operation embedding available - skip graph routing for this step
+                    # This happens when step.operation wasn't extracted during decomposition
+                    logger.debug(
+                        "[solver] No operation embedding for step %s - skipping graph routing",
+                        step.id
                     )
-                    if operation:
-                        # Embed the extracted operation
-                        operation_embedding = await get_operation_embedding(
-                            self.embedder, operation
-                        )
+                    operation_embedding = None
 
                 if operation_embedding is not None:
                     # Compare to graph embeddings (what DSLs actually compute)
@@ -2201,17 +2259,56 @@ class Solver:
         params = {}
 
         # Add validated extracted values (resolve references)
-        # Note: extracted_values was already validated above using signature's param_descriptions
+        # Supports two reference types:
+        # 1. $name - Phase 1 value reference (e.g., $purchase_price)
+        # 2. {step_N} - Prior step result reference (e.g., {step_1})
         if extracted_values:
             for key, val in extracted_values.items():
-                if isinstance(val, str) and val.startswith('{') and val.endswith('}'):
-                    ref_key = val[1:-1]
-                    if ref_key in context:
+                if isinstance(val, str):
+                    # Check for Phase 1 value reference ($name)
+                    if val.startswith('$'):
+                        ref_name = val[1:]  # Remove $ prefix
+                        if ref_name in self._current_phase1_values:
+                            params[key] = self._current_phase1_values[ref_name]
+                            logger.debug(
+                                "[solver] Resolved $%s → %s (Phase 1 provenance)",
+                                ref_name, params[key]
+                            )
+                        else:
+                            # Try partial match fallback (e.g., single_glass_price -> glass_price)
+                            matched_key = None
+                            for p1_key in self._current_phase1_values:
+                                # Check if either is a suffix/substring of the other
+                                if p1_key in ref_name or ref_name in p1_key:
+                                    matched_key = p1_key
+                                    break
+                            if matched_key:
+                                params[key] = self._current_phase1_values[matched_key]
+                                logger.debug(
+                                    "[solver] Resolved $%s → %s (partial match: %s)",
+                                    ref_name, params[key], matched_key
+                                )
+                            else:
+                                logger.warning(
+                                    "[solver] Unknown Phase 1 reference: $%s (available: %s)",
+                                    ref_name, list(self._current_phase1_values.keys())
+                                )
+                                params[key] = val  # Keep as-is for error handling
+                    # Check for step reference ({step_N})
+                    elif val.startswith('{') and val.endswith('}'):
+                        ref_key = val[1:-1]
+                        if ref_key in context:
+                            try:
+                                params[key] = float(context[ref_key])
+                            except (ValueError, TypeError):
+                                logger.debug("[solver] Non-numeric ref %s=%s, keeping as-is", ref_key, str(context[ref_key])[:30])
+                                params[key] = context[ref_key]
+                    else:
+                        # Try to parse as number (backwards compatibility)
                         try:
-                            params[key] = float(context[ref_key])
-                        except (ValueError, TypeError):
-                            logger.debug("[solver] Non-numeric ref %s=%s, keeping as-is", ref_key, str(context[ref_key])[:30])
-                            params[key] = context[ref_key]
+                            params[key] = float(val) if '.' in val else int(val)
+                        except ValueError:
+                            params[key] = val
                 else:
                     params[key] = val
 
@@ -2701,20 +2798,44 @@ Rules:
     ) -> dict:
         """Build params dict for a step from extracted_values and context.
 
-        Resolves {step_N} references to actual values from context.
+        Resolves $name (Phase 1) and {step_N} references to actual values.
         """
         params = {}
         extracted_values = getattr(step, 'extracted_values', {}) or {}
 
         # Add validated extracted values (resolve references)
         for key, val in extracted_values.items():
-            if isinstance(val, str) and val.startswith('{') and val.endswith('}'):
-                ref_key = val[1:-1]
-                if ref_key in context:
+            if isinstance(val, str):
+                # Check for Phase 1 value reference ($name)
+                if val.startswith('$'):
+                    ref_name = val[1:]
+                    if ref_name in self._current_phase1_values:
+                        params[key] = self._current_phase1_values[ref_name]
+                    else:
+                        # Try partial match fallback
+                        matched_key = None
+                        for p1_key in self._current_phase1_values:
+                            if p1_key in ref_name or ref_name in p1_key:
+                                matched_key = p1_key
+                                break
+                        if matched_key:
+                            params[key] = self._current_phase1_values[matched_key]
+                        else:
+                            params[key] = val  # Keep as-is
+                # Check for step reference ({step_N})
+                elif val.startswith('{') and val.endswith('}'):
+                    ref_key = val[1:-1]
+                    if ref_key in context:
+                        try:
+                            params[key] = float(context[ref_key])
+                        except (ValueError, TypeError):
+                            params[key] = context[ref_key]
+                else:
+                    # Try to parse as number
                     try:
-                        params[key] = float(context[ref_key])
-                    except (ValueError, TypeError):
-                        params[key] = context[ref_key]
+                        params[key] = float(val) if '.' in val else int(val)
+                    except ValueError:
+                        params[key] = val
             else:
                 params[key] = val
 
@@ -2905,6 +3026,551 @@ Rules:
             pass
 
         return False
+
+    async def _retry_with_alternatives(
+        self,
+        problem: str,
+        failed_result: SolverResult,
+        ground_truth: str,
+        difficulty: float = None,
+    ) -> Optional[tuple[SolverResult, str]]:
+        """Retry a failed problem exploring alternative nodes at each step.
+
+        Per CLAUDE.md: "If we got the wrong answer that should trigger a larger MCTS
+        rollout where we explore the tree more widely searching for the right
+        leaf_node, dag_step pairs"
+
+        This function re-runs steps from the failed thread, trying alternative
+        signatures at each decision point. If a winning path is found, it returns
+        that result for divergence analysis.
+
+        Args:
+            problem: Original problem text
+            failed_result: The failed SolverResult
+            ground_truth: Correct answer to compare against
+            difficulty: Problem difficulty (for compute budget)
+
+        Returns:
+            Tuple of (winning_result, winning_thread_id) if found, else None
+        """
+        from mycelium.config import (
+            REACTIVE_EXPLORATION_MAX_ALTERNATIVES,
+            REACTIVE_EXPLORATION_MAX_RETRIES,
+            REACTIVE_EXPLORATION_MIN_SIMILARITY,
+        )
+        from mycelium.data_layer.mcts import create_thread, log_thread_step, complete_thread, grade_thread
+        import uuid
+
+        # Get step embeddings and signatures from the failed run
+        failed_steps = failed_result.steps
+        if not failed_steps:
+            return None
+
+        logger.info(
+            "[reactive] Starting reactive exploration for failed problem with %d steps",
+            len(failed_steps)
+        )
+
+        # For each step, get alternative signatures we could have tried
+        step_alternatives: list[list[tuple[int, float]]] = []  # list of (sig_id, similarity) per step
+        for step_result in failed_steps:
+            if step_result.signature_id is None:
+                step_alternatives.append([])
+                continue
+
+            # Get step embedding (should be cached from original run)
+            step_text = normalize_step_text(step_result.task)
+            embedding = cached_embed(step_text, self.embedder)
+
+            # Find similar signatures excluding the one we used
+            similar = self.step_db.find_similar(
+                embedding,
+                threshold=REACTIVE_EXPLORATION_MIN_SIMILARITY,
+                limit=REACTIVE_EXPLORATION_MAX_ALTERNATIVES + 1,
+            )
+
+            # Filter out the signature we already tried
+            alternatives = [
+                (sig.id, sim) for sig, sim in similar
+                if sig.id != step_result.signature_id and not sig.is_semantic_umbrella
+            ][:REACTIVE_EXPLORATION_MAX_ALTERNATIVES]
+
+            step_alternatives.append(alternatives)
+            logger.debug(
+                "[reactive] Step '%s' has %d alternatives: %s",
+                step_result.step_id[:20] if step_result.step_id else "?",
+                len(alternatives),
+                [(a[0], f"{a[1]:.3f}") for a in alternatives]
+            )
+
+        # Try alternative paths (greedy: substitute one step at a time)
+        for retry_num in range(min(REACTIVE_EXPLORATION_MAX_RETRIES, len(failed_steps))):
+            # Find step with most promising alternatives
+            best_step_idx = -1
+            best_alt_sim = 0.0
+            for i, alts in enumerate(step_alternatives):
+                if alts and alts[0][1] > best_alt_sim:
+                    best_alt_sim = alts[0][1]
+                    best_step_idx = i
+
+            if best_step_idx < 0:
+                logger.debug("[reactive] No more alternatives to try")
+                break
+
+            # Pop best alternative for this step
+            alt_sig_id, alt_sim = step_alternatives[best_step_idx].pop(0)
+            failed_step = failed_steps[best_step_idx]
+
+            logger.info(
+                "[reactive] Retry %d: trying sig %d (sim=%.3f) for step '%s' (was sig %d)",
+                retry_num + 1, alt_sig_id, alt_sim,
+                failed_step.step_id[:20] if failed_step.step_id else "?",
+                failed_step.signature_id
+            )
+
+            # Create a new thread for this exploration
+            explore_thread_id = f"explore-{uuid.uuid4().hex[:8]}"
+            # Look up the actual dag_step_id for the fork point
+            fork_dag_step_id = self._dag_step_ids.get(failed_step.step_id)
+            if self._current_dag_id and fork_dag_step_id:
+                create_thread(
+                    dag_id=self._current_dag_id,
+                    parent_thread_id=self._root_thread_id,
+                    fork_at_step=fork_dag_step_id,
+                    fork_reason="reactive_exploration",
+                    thread_id=explore_thread_id,
+                )
+
+            # Get alternative signature
+            alt_sig = self.step_db.get_signature(alt_sig_id)
+            if not alt_sig:
+                continue
+
+            # Try executing with the alternative signature
+            # Build context from previous steps (use original results up to this point)
+            context = {}
+            step_descriptions = {}
+            for i, prev_step in enumerate(failed_steps[:best_step_idx]):
+                if prev_step.result:
+                    context[prev_step.step_id] = prev_step.result
+                step_descriptions[prev_step.step_id] = prev_step.task
+
+            # Create a Step object for execution
+            from mycelium.planner import Step
+            step_obj = Step(
+                id=failed_step.step_id,
+                task=failed_step.task,
+                depends_on=list(context.keys()),
+            )
+            # Copy dsl_hint and extracted_values if available
+            if hasattr(failed_step, 'dsl_hint'):
+                step_obj.dsl_hint = failed_step.dsl_hint
+            if hasattr(failed_step, 'extracted_values'):
+                step_obj.extracted_values = failed_step.extracted_values
+
+            # Try DSL with alternative signature
+            try:
+                dsl_result = await self._try_dsl(alt_sig, step_obj, context, step_descriptions)
+
+                # Log the thread step (only if we have a valid dag_step_id)
+                if self._current_dag_id:
+                    # Look up the actual dag_step_id from our mapping
+                    dag_step_id = self._dag_step_ids.get(failed_step.step_id)
+                    if dag_step_id:
+                        log_thread_step(
+                            thread_id=explore_thread_id,
+                            dag_id=self._current_dag_id,
+                            dag_step_id=dag_step_id,
+                            node_id=alt_sig_id,
+                            amplitude=alt_sim,
+                            similarity_score=alt_sim,
+                            was_undecided=1,
+                            alternatives_considered=len(step_alternatives[best_step_idx]) + 1,
+                            step_result=dsl_result[:500] if dsl_result else None,
+                            step_success=1 if dsl_result else 0,
+                        )
+
+                if dsl_result is None:
+                    logger.debug("[reactive] Alternative sig %d failed DSL execution", alt_sig_id)
+                    if self._current_dag_id:
+                        complete_thread(explore_thread_id, final_answer=None)
+                        grade_thread(explore_thread_id, success=False)
+                    continue
+
+                # Execute remaining steps with original signatures
+                remaining_context = dict(context)
+                remaining_context[failed_step.step_id] = dsl_result
+                all_results = [dsl_result]
+
+                for remaining_step in failed_steps[best_step_idx + 1:]:
+                    step_descriptions[remaining_step.step_id] = remaining_step.task
+                    rem_step_obj = Step(
+                        id=remaining_step.step_id,
+                        task=remaining_step.task,
+                        depends_on=[d for d in (remaining_step.depends_on or []) if d in remaining_context],
+                    )
+                    if hasattr(remaining_step, 'dsl_hint'):
+                        rem_step_obj.dsl_hint = remaining_step.dsl_hint
+                    if hasattr(remaining_step, 'extracted_values'):
+                        rem_step_obj.extracted_values = remaining_step.extracted_values
+
+                    rem_sig = self.step_db.get_signature(remaining_step.signature_id)
+                    if rem_sig:
+                        rem_result = await self._try_dsl(rem_sig, rem_step_obj, remaining_context, step_descriptions)
+                        if rem_result:
+                            remaining_context[remaining_step.step_id] = rem_result
+                            all_results.append(rem_result)
+
+                # Check if final answer matches ground truth
+                final_answer = all_results[-1] if all_results else None
+                is_correct = self._answers_match(str(final_answer), ground_truth) if final_answer else False
+
+                if self._current_dag_id:
+                    complete_thread(explore_thread_id, final_answer=str(final_answer) if final_answer else None)
+                    grade_thread(explore_thread_id, success=is_correct)
+
+                if is_correct:
+                    logger.info(
+                        "[reactive] Found winning path via sig %d! (answer=%s)",
+                        alt_sig_id, str(final_answer)[:30] if final_answer else "None"
+                    )
+                    # Create a result for the winning path
+                    winning_result = SolverResult(
+                        problem=problem,
+                        answer=str(final_answer) if final_answer else "",
+                        success=True,
+                        steps=failed_steps,  # Keep original steps for comparison
+                    )
+                    return (winning_result, explore_thread_id)
+
+            except Exception as e:
+                logger.debug("[reactive] Error trying alternative: %s", e)
+                if self._current_dag_id:
+                    complete_thread(explore_thread_id, final_answer=None)
+                    grade_thread(explore_thread_id, success=False)
+                continue
+
+        logger.info("[reactive] No winning path found after %d retries", REACTIVE_EXPLORATION_MAX_RETRIES)
+        return None
+
+    async def _decompose_and_resolve(
+        self,
+        failed_result: SolverResult,
+        ground_truth: str,
+        difficulty: float = None,
+        decomposition_depth: int = 0,
+    ) -> Optional[tuple[SolverResult, str]]:
+        """Decompose failing steps and re-solve the problem.
+
+        Per CLAUDE.md: "The step is likely too complex and needs decomposition"
+
+        When reactive exploration fails to find a winning path by trying alternative
+        signatures, this method decomposes the failing steps into smaller sub-steps
+        and re-solves the entire problem.
+
+        Args:
+            failed_result: The failed SolverResult
+            ground_truth: Correct answer to compare against
+            difficulty: Problem difficulty
+            decomposition_depth: Current decomposition depth (prevents infinite recursion)
+
+        Returns:
+            Tuple of (winning_result, thread_id) if decomposition found a solution, else None
+        """
+        from mycelium.config import STEP_DECOMPOSITION_MAX_DEPTH
+        from mycelium.data_layer.mcts import create_thread, complete_thread, grade_thread
+        import uuid
+
+        # Prevent infinite recursion
+        if decomposition_depth >= STEP_DECOMPOSITION_MAX_DEPTH:
+            logger.debug("[decompose] Max decomposition depth reached (%d)", decomposition_depth)
+            return None
+
+        problem = failed_result.problem
+        failed_steps = failed_result.steps
+
+        if not failed_steps:
+            return None
+
+        logger.info(
+            "[decompose] Attempting step decomposition for failed problem (depth=%d, steps=%d)",
+            decomposition_depth, len(failed_steps)
+        )
+
+        # Identify which steps are most likely failing
+        # For now, try decomposing all steps that had a result (executed but gave wrong answer)
+        steps_to_decompose = []
+        for step_result in failed_steps:
+            if step_result.result is not None:
+                steps_to_decompose.append(step_result)
+
+        if not steps_to_decompose:
+            logger.debug("[decompose] No steps with results to decompose")
+            return None
+
+        # Create a thread for this decomposition attempt
+        decomp_thread_id = f"decomp-{uuid.uuid4().hex[:8]}"
+        if self._current_dag_id:
+            create_thread(
+                dag_id=self._current_dag_id,
+                parent_thread_id=self._root_thread_id,
+                fork_at_step=None,  # Decomposition doesn't fork from a specific step
+                fork_reason="step_decomposition",
+                thread_id=decomp_thread_id,
+            )
+
+        try:
+            # Re-plan the problem with a hint to use finer-grained decomposition
+            signature_hints = self.step_db.get_signature_hints(
+                limit=HINT_LIMIT,
+                problem_embedding=cached_embed(problem, self.embedder),
+                min_similarity=HINT_MIN_SIMILARITY,
+            )
+
+            # Add context about what failed
+            failed_step_descriptions = [
+                f"- '{s.task[:60]}' produced '{str(s.result)[:30]}'"
+                for s in steps_to_decompose[:3]  # Limit to first 3 for prompt length
+            ]
+            decomposition_context = (
+                "The previous solution was incorrect. "
+                "Please break down the problem into MORE GRANULAR steps. "
+                "These steps may need finer decomposition:\n" +
+                "\n".join(failed_step_descriptions)
+            )
+
+            # Re-decompose with the hint
+            new_plan = await self.planner.decompose(
+                problem,
+                signature_hints=signature_hints,
+                context=decomposition_context,
+            )
+
+            if not new_plan or not new_plan.steps:
+                logger.debug("[decompose] Re-decomposition produced no steps")
+                if self._current_dag_id:
+                    complete_thread(decomp_thread_id, final_answer=None)
+                    grade_thread(decomp_thread_id, success=False)
+                return None
+
+            # Check if we got more steps (finer decomposition)
+            if len(new_plan.steps) <= len(failed_steps):
+                logger.debug(
+                    "[decompose] Re-decomposition didn't produce finer steps (%d vs %d)",
+                    len(new_plan.steps), len(failed_steps)
+                )
+                if self._current_dag_id:
+                    complete_thread(decomp_thread_id, final_answer=None)
+                    grade_thread(decomp_thread_id, success=False)
+                return None
+
+            logger.info(
+                "[decompose] Re-decomposed into %d steps (was %d)",
+                len(new_plan.steps), len(failed_steps)
+            )
+
+            # Update Phase 1 values for the new plan (for $name resolution)
+            self._current_phase1_values = new_plan.phase1_values or {}
+
+            # Execute the new plan
+            # Validate DAG structure
+            if len(new_plan.steps) > 1:
+                is_valid, errors = new_plan.validate()
+                if not is_valid:
+                    logger.warning("[decompose] New plan has invalid DAG: %s", errors)
+                    if self._current_dag_id:
+                        complete_thread(decomp_thread_id, final_answer=None)
+                        grade_thread(decomp_thread_id, success=False)
+                    return None
+
+            # Batch write expressions for all steps
+            # Build step_infos dicts from Step objects (same format as main solve())
+            step_infos = []
+            for step in new_plan.steps:
+                params = {}
+                for key, val in (step.extracted_values or {}).items():
+                    if isinstance(val, str) and val.startswith('{') and val.endswith('}'):
+                        params[key] = val[1:-1]  # {step_1} -> step_1
+                    else:
+                        params[key] = val
+                if params:
+                    step_infos.append({
+                        "step_id": step.id,
+                        "task": step.task,
+                        "operation": step.dsl_hint,
+                        "params": params,
+                    })
+            if step_infos:
+                await self._batch_write_expressions(step_infos)
+
+            # Execute steps in dependency order
+            step_order = self._get_execution_order(new_plan)
+            context = {}
+            step_descriptions = {s.id: s.task for s in new_plan.steps}
+
+            for step in step_order:
+                step_context = {
+                    dep: context[dep]
+                    for dep in step.depends_on
+                    if dep in context
+                }
+                step_desc_context = {
+                    dep: step_descriptions[dep]
+                    for dep in step.depends_on
+                    if dep in step_descriptions
+                }
+
+                step_result = await self._execute_step(
+                    step, problem, step_context, step_desc_context,
+                    compute_budget=1.0,  # Single path for decomposition
+                    difficulty=difficulty,
+                    thread_id=decomp_thread_id,
+                )
+
+                if step_result.result is None:
+                    logger.debug("[decompose] Step '%s' failed in re-execution", step.id)
+                    if self._current_dag_id:
+                        complete_thread(decomp_thread_id, final_answer=None)
+                        grade_thread(decomp_thread_id, success=False)
+                    return None
+
+                context[step.id] = step_result.result
+
+            # Get final answer from last step
+            final_step = step_order[-1] if step_order else None
+            final_answer = context.get(final_step.id) if final_step else None
+
+            # Check if the answer matches ground truth
+            is_correct = self._answers_match(str(final_answer), ground_truth) if final_answer else False
+
+            if self._current_dag_id:
+                complete_thread(decomp_thread_id, final_answer=str(final_answer) if final_answer else None)
+                grade_thread(decomp_thread_id, success=is_correct)
+
+            if is_correct:
+                logger.info(
+                    "[decompose] Decomposition found correct answer: %s",
+                    str(final_answer)[:30] if final_answer else "None"
+                )
+                winning_result = SolverResult(
+                    problem=problem,
+                    answer=str(final_answer) if final_answer else "",
+                    success=True,
+                    steps=failed_result.steps,  # Keep original for comparison
+                )
+                return (winning_result, decomp_thread_id)
+
+            logger.debug("[decompose] Decomposed solution also incorrect")
+            return None
+
+        except Exception as e:
+            logger.error("[decompose] Step decomposition failed: %s", e)
+            if self._current_dag_id:
+                complete_thread(decomp_thread_id, final_answer=None)
+                grade_thread(decomp_thread_id, success=False)
+            return None
+
+    async def _run_reactive_exploration(
+        self,
+        result: SolverResult,
+        ground_truth: str,
+        difficulty: float = None,
+    ) -> dict:
+        """Run reactive exploration when a problem fails.
+
+        Per CLAUDE.md: Compare winning vs losing threads to find divergence points.
+        First divergence is root cause for blame assignment.
+
+        Args:
+            result: The failed SolverResult
+            ground_truth: Correct answer
+            difficulty: Problem difficulty
+
+        Returns:
+            Dict with exploration statistics
+        """
+        from mycelium.data_layer.mcts import find_divergence_points, assign_divergence_blame
+
+        stats = {
+            "reactive_exploration_triggered": True,
+            "winning_path_found": False,
+            "divergence_points": 0,
+            "blame_assigned": 0,
+        }
+
+        # Try to find a winning path
+        winning = await self._retry_with_alternatives(
+            result.problem, result, ground_truth, difficulty
+        )
+
+        if winning is None:
+            logger.info("[reactive] No winning alternative found, trying step decomposition")
+
+            # Fallback: try decomposing failing steps into sub-steps
+            from mycelium.config import (
+                STEP_DECOMPOSITION_FALLBACK_ENABLED,
+                STEP_DECOMPOSITION_MIN_STEPS,
+            )
+
+            if STEP_DECOMPOSITION_FALLBACK_ENABLED and len(result.steps) >= STEP_DECOMPOSITION_MIN_STEPS:
+                decomp_result = await self._decompose_and_resolve(
+                    result, ground_truth, difficulty
+                )
+                if decomp_result is not None:
+                    stats["step_decomposition_triggered"] = True
+                    stats["winning_path_found"] = True
+                    stats["decomposition_succeeded"] = True
+                    logger.info("[reactive] Step decomposition found winning path")
+                    # Continue to divergence analysis with the decomposed result
+                    winning = decomp_result
+                else:
+                    stats["step_decomposition_triggered"] = True
+                    stats["decomposition_succeeded"] = False
+                    logger.info("[reactive] Step decomposition also failed")
+                    return stats
+            else:
+                return stats
+
+        winning_result, winning_thread_id = winning
+        stats["winning_path_found"] = True
+        logger.info(
+            "[reactive] Found winning thread %s, running divergence analysis",
+            winning_thread_id
+        )
+
+        # Run divergence analysis to compare winning vs losing threads
+        if self._current_dag_id:
+            divergence_points = find_divergence_points(self._current_dag_id)
+            stats["divergence_points"] = len(divergence_points)
+
+            if divergence_points:
+                # Log divergence details
+                for dp in divergence_points[:3]:  # Log first 3
+                    logger.info(
+                        "[reactive] Divergence at step %s (idx=%d): "
+                        "winning node=%s, losing node=%s",
+                        dp.divergence_dag_step_id,
+                        dp.divergence_step_idx,
+                        dp.winning_node_at_divergence,
+                        dp.losing_node_at_divergence,
+                    )
+
+                # Assign targeted blame/credit
+                blame_stats = assign_divergence_blame(self._current_dag_id, self.step_db)
+                stats["blame_assigned"] = (
+                    blame_stats.get("divergence_blame_assigned", 0) +
+                    blame_stats.get("suffix_blame_assigned", 0)
+                )
+                stats.update(blame_stats)
+
+                logger.info(
+                    "[reactive] Divergence blame: %d primary, %d suffix, %d prefix credit",
+                    blame_stats.get("divergence_blame_assigned", 0),
+                    blame_stats.get("suffix_blame_assigned", 0),
+                    blame_stats.get("shared_prefix_credit", 0),
+                )
+
+        return stats
 
     def record_problem_outcome(
         self,
@@ -3141,6 +3807,21 @@ Rules:
                  for s in result.steps]
             )
 
+            # Store context for reactive exploration (if enabled)
+            # Caller can invoke maybe_run_reactive_exploration() to find winning alternatives
+            from mycelium.config import REACTIVE_EXPLORATION_ENABLED
+            if REACTIVE_EXPLORATION_ENABLED and ground_truth:
+                self._pending_reactive_exploration = {
+                    "result": result,
+                    "ground_truth": ground_truth,
+                    "difficulty": difficulty,
+                }
+                logger.debug("[solver] Reactive exploration pending for failed problem")
+            else:
+                self._pending_reactive_exploration = None
+        else:
+            self._pending_reactive_exploration = None
+
         # Check which signatures might need decomposition
         # Use same thresholds as umbrella_learner for consistency
         # Two categories:
@@ -3304,17 +3985,357 @@ Rules:
             self._pending_dsl_regen = False
             return {"error": str(e)}
 
+    async def maybe_run_reactive_exploration(self) -> dict:
+        """Run reactive exploration if a problem failed.
+
+        Per CLAUDE.md: "If we got the wrong answer that should trigger a larger MCTS
+        rollout where we explore the tree more widely"
+
+        This searches for alternative paths that would have produced the correct answer.
+        When found, uses divergence analysis for precise blame assignment.
+
+        Returns:
+            Dict with exploration statistics, or empty dict if not needed
+        """
+        if not hasattr(self, '_pending_reactive_exploration') or not self._pending_reactive_exploration:
+            return {}
+
+        context = self._pending_reactive_exploration
+        self._pending_reactive_exploration = None
+
+        logger.info("[solver] Running reactive exploration for failed problem")
+
+        try:
+            result = await self._run_reactive_exploration(
+                result=context["result"],
+                ground_truth=context["ground_truth"],
+                difficulty=context.get("difficulty"),
+            )
+
+            if result.get("winning_path_found"):
+                logger.info(
+                    "[solver] Reactive exploration found winning path: %d divergence points, %d blame assigned",
+                    result.get("divergence_points", 0),
+                    result.get("blame_assigned", 0),
+                )
+            else:
+                logger.debug("[solver] Reactive exploration found no winning alternative")
+
+            return result
+        except Exception as e:
+            logger.error("[solver] Reactive exploration failed: %s", e)
+            return {"error": str(e)}
+
+    async def _blocking_decompose_complex_steps(
+        self,
+        plan,
+        problem: str,
+        client,
+        min_batch_size: int = 3,
+        poll_interval: float = 0.5,
+        timeout: float = 15.0,
+    ) -> tuple[list, dict]:
+        """Check plan for complex steps, queue them, and block until decomposed.
+
+        This implements blocking decomposition: complex steps are queued, we wait
+        for batch decomposition to complete, then return decomposed atomic steps.
+
+        Args:
+            plan: The execution plan with steps
+            problem: Problem text for context
+            client: LLM client for decomposition
+            min_batch_size: Minimum queue size before triggering decomposition
+            poll_interval: Seconds between polling for results
+            timeout: Max seconds to wait for decomposition
+
+        Returns:
+            Tuple of (queue_ids for our complex steps, decomposed results dict)
+        """
+        import asyncio
+        from mycelium.data_layer.mcts import (
+            is_step_complex,
+            queue_for_decomposition,
+            get_decomposition_queue_size,
+            get_decomposition_results,
+            are_decompositions_ready,
+        )
+        from mycelium.embedding_cache import cached_embed
+
+        # 1. Scan plan for complex steps
+        complex_steps = []
+        for step in plan.steps:
+            is_complex, complexity_reason = is_step_complex(step.task)
+            if is_complex:
+                complex_steps.append((step, complexity_reason))
+
+        if not complex_steps:
+            return [], {}
+
+        logger.info(
+            "[solver] Found %d complex steps in plan, queueing for decomposition",
+            len(complex_steps)
+        )
+
+        # 2. Queue complex steps with their dag_step_ids
+        our_queue_ids = []
+        for step, complexity_reason in complex_steps:
+            embedding = cached_embed(step.task, self.embedder)
+            dag_step_id = self._dag_step_ids.get(step.id)
+
+            queue_id = queue_for_decomposition(
+                step_text=step.task,
+                complexity_reason=complexity_reason,
+                embedding=embedding,
+                dag_step_id=dag_step_id,
+                problem_context=problem[:500],
+            )
+            our_queue_ids.append(queue_id)
+            logger.debug(
+                "[solver] Queued complex step %s (queue_id=%d): %s",
+                step.id, queue_id, step.task[:50]
+            )
+
+        # 3. Check if threshold met, trigger decomposition if so
+        queue_size = get_decomposition_queue_size()
+        if queue_size >= min_batch_size:
+            logger.info(
+                "[solver] Queue threshold met (%d >= %d), triggering batch decomposition",
+                queue_size, min_batch_size
+            )
+            # Run decomposition for ALL pending items (not just ours)
+            decomp_result = await self.maybe_run_batch_decomposition(
+                client,
+                batch_size=queue_size,  # Process all pending
+                min_queue_size=1,  # Force run since we already checked threshold
+            )
+            logger.info(
+                "[solver] Batch decomposition complete: %d processed",
+                decomp_result.get("processed", 0)
+            )
+
+        # 4. Wait for our steps to be processed (may have been processed by another worker)
+        start_time = asyncio.get_event_loop().time()
+        while not are_decompositions_ready(our_queue_ids):
+            elapsed = asyncio.get_event_loop().time() - start_time
+            if elapsed > timeout:
+                logger.warning(
+                    "[solver] Timeout waiting for decomposition after %.1fs",
+                    elapsed
+                )
+                break
+            await asyncio.sleep(poll_interval)
+
+        # 5. Get decomposed results for our steps
+        results = get_decomposition_results(our_queue_ids)
+        logger.info(
+            "[solver] Retrieved decomposition results for %d/%d steps",
+            sum(1 for r in results.values() if r.get("processed")),
+            len(our_queue_ids)
+        )
+
+        return our_queue_ids, results
+
+    async def _expand_plan_with_decompositions(
+        self,
+        plan,
+        queue_ids: list[int],
+        decomposition_results: dict[int, dict],
+    ):
+        """Expand plan by replacing complex steps with their decomposed atomic sub-steps.
+
+        Args:
+            plan: The execution plan to modify
+            queue_ids: Queue IDs for our complex steps
+            decomposition_results: Results from get_decomposition_results()
+
+        Returns:
+            Modified plan with complex steps expanded
+        """
+        from mycelium.planner import Step
+
+        if not queue_ids or not decomposition_results:
+            return plan
+
+        # Build mapping of step.task -> decomposed atomic steps
+        # We need to match by task text since queue doesn't store step.id directly
+        expanded_count = 0
+
+        for step in plan.steps:
+            # Find if this step was queued (by checking if it matches a queued step's decomposition)
+            for queue_id in queue_ids:
+                result = decomposition_results.get(queue_id)
+                if not result or not result.get("processed"):
+                    continue
+
+                decomposed_steps = result.get("decomposition_steps", [])
+                if not decomposed_steps:
+                    continue
+
+                # If this step has decomposed sub-steps, create a sub-plan
+                if len(decomposed_steps) > 1:
+                    # Create sub-steps from decomposed atomic operations
+                    sub_steps = []
+                    for i, atomic_task in enumerate(decomposed_steps):
+                        sub_step = Step(
+                            id=f"{step.id}_sub_{i}",
+                            task=atomic_task,
+                            is_atomic=True,
+                            depends_on=[f"{step.id}_sub_{j}" for j in range(i)] if i > 0 else step.depends_on,
+                        )
+                        sub_steps.append(sub_step)
+
+                    # Attach sub-plan to the original step
+                    step.sub_plan = type(plan)(steps=sub_steps)
+                    step.is_atomic = False  # Now a composite step
+                    expanded_count += 1
+                    logger.debug(
+                        "[solver] Expanded step %s into %d sub-steps",
+                        step.id, len(decomposed_steps)
+                    )
+                    break  # Found match, move to next step
+
+        if expanded_count > 0:
+            logger.info("[solver] Expanded %d complex steps with decompositions", expanded_count)
+
+        return plan
+
+    async def maybe_run_batch_decomposition(
+        self,
+        client,
+        batch_size: int = 5,
+        min_queue_size: int = 3,
+    ) -> dict:
+        """Process queued complex steps in batch.
+
+        Per beads mycelium-mm08: Instead of decomposing immediately (1 LLM call per step),
+        batch decompose queued complex steps periodically.
+
+        Args:
+            client: LLM client for decomposition
+            batch_size: Max steps to process in one batch
+            min_queue_size: Minimum queue size before processing
+
+        Returns:
+            Dict with decomposition statistics
+        """
+        from mycelium.data_layer.mcts import (
+            get_pending_decompositions,
+            get_decomposition_queue_size,
+            mark_decomposition_processed,
+        )
+
+        queue_size = get_decomposition_queue_size()
+        if queue_size < min_queue_size:
+            return {"skipped": True, "reason": f"queue_size={queue_size} < min={min_queue_size}"}
+
+        pending = get_pending_decompositions(limit=batch_size)
+        if not pending:
+            return {"skipped": True, "reason": "no pending items"}
+
+        logger.info("[solver] Running batch decomposition: %d items", len(pending))
+
+        # Build batch prompt
+        prompt_parts = [
+            "Break each of the following complex steps into simple atomic operations.",
+            "Each atomic operation should do ONE thing (add, subtract, multiply, divide, etc.).",
+            "Return JSON array where each element has 'original_step' and 'atomic_steps' (array of strings).",
+            "",
+            "Complex steps to decompose:",
+        ]
+
+        for i, item in enumerate(pending):
+            context = f" (Context: {item['problem_context'][:100]})" if item.get('problem_context') else ""
+            prompt_parts.append(f"{i+1}. {item['step_text']}{context}")
+
+        prompt_parts.append("")
+        prompt_parts.append("Return ONLY valid JSON array, no other text.")
+
+        prompt = "\n".join(prompt_parts)
+
+        try:
+            messages = [
+                {"role": "system", "content": "You decompose complex math steps into atomic operations. Return valid JSON only."},
+                {"role": "user", "content": prompt},
+            ]
+            response = await client.generate(messages, temperature=0.0)
+
+            # Parse response
+            import json
+            import re
+
+            # Extract JSON from response
+            json_match = re.search(r'\[.*\]', response, re.DOTALL)
+            if not json_match:
+                logger.warning("[solver] Batch decomposition returned no JSON: %s", response[:200])
+                return {"error": "no JSON in response", "processed": 0}
+
+            decompositions = json.loads(json_match.group())
+
+            # Process each decomposition
+            processed = 0
+            signatures_created = 0
+
+            for i, decomp in enumerate(decompositions):
+                if i >= len(pending):
+                    break
+
+                item = pending[i]
+                atomic_steps = decomp.get("atomic_steps", [])
+
+                if not atomic_steps:
+                    logger.debug("[solver] No atomic steps for: %s", item['step_text'][:50])
+                    continue
+
+                # Create signatures for atomic steps
+                created_ids = []
+                for atomic_step in atomic_steps:
+                    if not atomic_step or len(atomic_step.strip()) < 3:
+                        continue
+
+                    # Embed and create signature
+                    from mycelium.embedding_cache import cached_embed
+                    embedding = cached_embed(atomic_step)
+                    if embedding is not None:
+                        sig, is_new = self.step_db.find_or_create(
+                            step_text=atomic_step,
+                            embedding=embedding,
+                            min_similarity=0.85,
+                            parent_problem=item.get('problem_context', ''),
+                        )
+                        created_ids.append(sig.id)
+                        if is_new:
+                            signatures_created += 1
+
+                # Mark as processed
+                mark_decomposition_processed(
+                    queue_id=item['id'],
+                    result_signature_ids=created_ids,
+                    decomposition_steps=atomic_steps,
+                )
+                processed += 1
+
+            logger.info(
+                "[solver] Batch decomposition complete: %d processed, %d signatures created",
+                processed, signatures_created
+            )
+
+            return {
+                "processed": processed,
+                "signatures_created": signatures_created,
+                "queue_remaining": queue_size - processed,
+            }
+
+        except Exception as e:
+            logger.error("[solver] Batch decomposition failed: %s", e)
+            return {"error": str(e), "processed": 0}
+
     def _record_thread_outcomes(
         self,
         result: SolverResult,
         correct: bool,
         ground_truth: str = None,
     ) -> None:
-        """Persist thread outcomes and apply thread-based credit/blame.
-
-        Records all threads for this problem to the thread_outcomes table,
-        identifies the winning thread, and applies credit/blame to signatures
-        in each thread's path.
+        """Apply thread-based credit/blame and update MCTS thread state.
 
         Per CLAUDE.md: "Positive credit to winning thread, negative to losing threads"
 
@@ -3323,15 +4344,8 @@ Rules:
             correct: Whether the final answer was correct
             ground_truth: The correct answer (for comparison)
         """
-        import json
-        from datetime import datetime, timezone
-        from mycelium.data_layer import get_db
-
         if not self._problem_threads:
             return
-
-        now = datetime.now(timezone.utc).isoformat()
-        problem_id = result.problem[:50] if result.problem else "unknown"
 
         # Identify winning thread (the one whose answer matches the result)
         winning_thread_id = None
@@ -3349,109 +4363,55 @@ Rules:
             if root:
                 root.is_winner = True
 
-        db = get_db()
         try:
-            with db.connection() as conn:
-                # Check if thread tables exist (they may not in older DBs)
-                cursor = conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name='thread_outcomes'"
+            # Process all threads
+            for thread_id in self._problem_threads:
+                thread = self._active_threads.get(thread_id)
+                if not thread:
+                    continue
+
+                is_winner = thread_id == winning_thread_id
+                # Thread is correct if its answer matches ground truth
+                is_correct = None
+                if ground_truth:
+                    is_correct = self._answers_match(thread.final_answer, ground_truth)
+
+                # Update mcts_threads table with final_answer and success
+                thread_success = is_correct if is_correct is not None else None
+                complete_thread(
+                    thread_id=thread.thread_id,
+                    final_answer=thread.final_answer or "",
+                    success=thread_success,
                 )
-                if not cursor.fetchone():
-                    logger.debug("[solver] thread_outcomes table not found, skipping thread recording")
-                    return
 
-                # Insert all thread outcomes
-                for thread_id in self._problem_threads:
-                    thread = self._active_threads.get(thread_id)
-                    if not thread:
-                        continue
+                # Apply credit/blame to signatures in this thread
+                thread_correct = is_correct if is_correct is not None else (
+                    is_winner and correct
+                )
 
-                    is_winner = 1 if thread_id == winning_thread_id else 0
-                    # Thread is correct if it's the winner AND problem was correct
-                    # OR if its answer matches ground truth
-                    is_correct = None
-                    if ground_truth:
-                        is_correct = 1 if self._answers_match(
-                            thread.final_answer, ground_truth
-                        ) else 0
-
-                    conn.execute(
-                        """INSERT OR REPLACE INTO thread_outcomes (
-                            thread_id, parent_thread_id, problem_id, problem_text,
-                            fork_step_id, fork_depth, signature_path, final_answer,
-                            is_winner, is_correct, ground_truth, created_at, graded_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                        (
-                            thread.thread_id,
-                            thread.parent_thread_id,
-                            problem_id,
-                            result.problem[:500] if result.problem else None,
-                            thread.fork_step_id,
-                            thread.fork_depth,
-                            json.dumps(thread.signature_steps),  # Store (sig_id, step_id) pairs
-                            thread.final_answer,
-                            is_winner,
-                            is_correct,
-                            ground_truth,
-                            thread.created_at,
-                            now,
-                        ),
-                    )
-
-                    # Also update mcts_threads table with final_answer and success
-                    # Per CLAUDE.md: "Track fork_at_step, fork_reason, final_answer"
-                    thread_success = is_correct == 1 if is_correct is not None else None
-                    complete_thread(
-                        thread_id=thread.thread_id,
-                        final_answer=thread.final_answer or "",
-                        success=thread_success,
-                    )
-
-                    # Insert signature contributions for this thread (with correct step_id)
-                    for sig_id, step_id, was_primary in thread.signature_steps:
-                        conn.execute(
-                            """INSERT INTO thread_signature_contributions (
-                                thread_id, signature_id, step_id, embedding_similarity,
-                                was_primary_choice, created_at
-                            ) VALUES (?, ?, ?, ?, ?, ?)""",
-                            (
-                                thread.thread_id,
-                                sig_id,
-                                step_id,
-                                None,  # Similarity not tracked per-signature in thread
-                                1 if was_primary else 0,  # Use actual was_primary from tracking
-                                now,
-                            ),
+                # Credit decay based on fork depth
+                credit = THREAD_CREDIT_DECAY_PER_FORK ** thread.fork_depth
+                if credit >= THREAD_MIN_CREDIT:
+                    for sig_id in thread.signature_ids:  # Use property for just IDs
+                        self.step_db.update_centroid_on_operational_outcome(
+                            sig_id,
+                            embedding=None,  # No embedding update here
+                            was_correct=thread_correct,
+                            confidence=credit,
                         )
 
-                    # Apply credit/blame to signatures in this thread
-                    thread_correct = is_correct == 1 if is_correct is not None else (
-                        is_winner and correct
+            logger.info(
+                "[solver] Recorded %d thread outcomes (winner=%s, threads_correct=%d)",
+                len(self._problem_threads),
+                winning_thread_id[:8] if winning_thread_id else "None",
+                sum(
+                    1 for t in self._problem_threads
+                    if self._active_threads.get(t) and
+                    self._answers_match(
+                        self._active_threads[t].final_answer, ground_truth
                     )
-
-                    # Credit decay based on fork depth
-                    credit = THREAD_CREDIT_DECAY_PER_FORK ** thread.fork_depth
-                    if credit >= THREAD_MIN_CREDIT:
-                        for sig_id in thread.signature_ids:  # Use property for just IDs
-                            self.step_db.update_centroid_on_operational_outcome(
-                                sig_id,
-                                embedding=None,  # No embedding update here
-                                was_correct=thread_correct,
-                                confidence=credit,
-                            )
-
-                logger.info(
-                    "[solver] Recorded %d thread outcomes (winner=%s, threads_correct=%d)",
-                    len(self._problem_threads),
-                    winning_thread_id[:8] if winning_thread_id else "None",
-                    sum(
-                        1 for t in self._problem_threads
-                        if self._active_threads.get(t) and
-                        self._answers_match(
-                            self._active_threads[t].final_answer, ground_truth
-                        )
-                    ) if ground_truth else 0,
-                )
+                ) if ground_truth else 0,
+            )
 
         except Exception as e:
             logger.warning("[solver] Failed to record thread outcomes: %s", e)

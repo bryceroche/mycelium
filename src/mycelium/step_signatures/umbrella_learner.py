@@ -206,6 +206,95 @@ class UmbrellaLearner:
             logger.error("[umbrella] NL interface generation failed: %s", e)
             return {"clarifying_questions": [], "param_descriptions": {}, "params": []}
 
+    async def batch_generate_nl_interfaces(self, step_tasks: list[str]) -> dict[str, dict]:
+        """Generate NL interfaces for multiple steps in ONE LLM call.
+
+        This replaces N individual generate_nl_interface() calls with a single
+        batch call using JSON mode.
+
+        Args:
+            step_tasks: List of step descriptions/tasks
+
+        Returns:
+            Dict mapping step_task -> {clarifying_questions, param_descriptions, params}
+        """
+        if not step_tasks:
+            return {}
+
+        # Build the batch prompt
+        steps_text = []
+        for i, task in enumerate(step_tasks, 1):
+            steps_text.append(f"{i}. {task}")
+
+        prompt = f"""Generate natural language interfaces for these mathematical steps.
+For each step, provide:
+- clarifying_questions: Questions to extract each parameter needed
+- param_descriptions: What each parameter means in plain English
+- params: List of parameter names (short, snake_case)
+
+Steps:
+{chr(10).join(steps_text)}
+
+Output valid JSON with this exact structure:
+{{
+  "interfaces": [
+    {{
+      "step_index": 1,
+      "clarifying_questions": ["What is X?", "What is Y?"],
+      "param_descriptions": {{"x": "description", "y": "description"}},
+      "params": ["x", "y"]
+    }},
+    ...
+  ]
+}}
+
+Rules:
+- Generate one interface entry for each step (in order)
+- Keep parameter names short and snake_case
+- Questions should be clear and specific to the step
+- Output ONLY the JSON, no explanation"""
+
+        try:
+            messages = [
+                {"role": "system", "content": "You are a JSON generator. You must respond with valid JSON only."},
+                {"role": "user", "content": prompt},
+            ]
+
+            response = await self.client.generate(
+                messages,
+                temperature=0.0,
+                max_tokens=2000,
+                response_format={"type": "json_object"},
+            )
+
+            # Parse JSON response
+            data = json.loads(response.strip())
+            interfaces = data.get("interfaces", [])
+
+            # Map back to step tasks
+            result = {}
+            for i, task in enumerate(step_tasks):
+                if i < len(interfaces):
+                    iface = interfaces[i]
+                    result[task] = {
+                        "clarifying_questions": iface.get("clarifying_questions", []),
+                        "param_descriptions": iface.get("param_descriptions", {}),
+                        "params": iface.get("params", []),
+                    }
+                else:
+                    result[task] = {"clarifying_questions": [], "param_descriptions": {}, "params": []}
+
+            logger.info(
+                "[umbrella] Batch generated %d/%d NL interfaces in single LLM call",
+                len([r for r in result.values() if r["clarifying_questions"]]), len(step_tasks)
+            )
+            return result
+
+        except Exception as e:
+            logger.warning("[umbrella] Batch NL interface generation failed: %s", e)
+            # Return empty interfaces for all tasks
+            return {task: {"clarifying_questions": [], "param_descriptions": {}, "params": []} for task in step_tasks}
+
     def _extract_json(self, text: str) -> Optional[str]:
         """Extract JSON object from text response."""
         text = text.strip()
@@ -306,6 +395,10 @@ class UmbrellaLearner:
 
         candidates = []
         for sig in all_sigs:
+            # Skip atomic signatures (math primes that should never decompose)
+            # Per CLAUDE.md: system discovers atomic operations based on stats
+            if getattr(sig, 'is_atomic', False):
+                continue
             # Skip if not enough uses (adaptive threshold)
             if sig.uses < adaptive_min_uses:
                 continue
@@ -529,24 +622,6 @@ class UmbrellaLearner:
                     step.task[:40], child_sig.step_type, child_sig.dsl_type, min_child_depth
                 )
 
-                # Generate NL interface for LEAF nodes only (not routers)
-                # Routers just route by embedding - no LLM call needed
-                if child_sig.dsl_type != "router":
-                    try:
-                        nl_interface = await self.generate_nl_interface(step.task)
-                        if nl_interface["clarifying_questions"] or nl_interface["param_descriptions"]:
-                            self.db.update_nl_interface(
-                                signature_id=child_sig.id,
-                                clarifying_questions=nl_interface["clarifying_questions"],
-                                param_descriptions=nl_interface["param_descriptions"],
-                            )
-                            logger.info(
-                                "[umbrella] Added NL interface to child %d: %d questions",
-                                child_sig.id, len(nl_interface["clarifying_questions"])
-                            )
-                    except Exception as e:
-                        logger.warning("[umbrella] NL interface generation failed for child %d: %s", child_sig.id, e)
-
             # Add relationship (skip if child matches parent - prevents self-references)
             if child_sig.id == signature.id:
                 logger.warning(
@@ -562,10 +637,52 @@ class UmbrellaLearner:
                 condition=condition,
                 routing_order=i,
             )
-            child_ids.append(child_sig.id)
+            child_ids.append((child_sig.id, step.task, is_new, child_sig.dsl_type))
 
-        if child_ids:
-            # Promote to umbrella (already done by add_child, but be explicit)
+        # BATCH NL Interface Generation: Generate all NL interfaces in ONE LLM call
+        # Collect step tasks for new non-router children
+        nl_tasks = [(sig_id, task) for sig_id, task, is_new, dsl_type in child_ids
+                    if is_new and dsl_type != "router"]
+
+        if nl_tasks:
+            step_tasks = [task for _, task in nl_tasks]
+            try:
+                nl_interfaces = await self.batch_generate_nl_interfaces(step_tasks)
+
+                # Update each signature with its NL interface
+                for sig_id, task in nl_tasks:
+                    nl_interface = nl_interfaces.get(task, {})
+                    if nl_interface.get("clarifying_questions") or nl_interface.get("param_descriptions"):
+                        self.db.update_nl_interface(
+                            signature_id=sig_id,
+                            clarifying_questions=nl_interface.get("clarifying_questions", []),
+                            param_descriptions=nl_interface.get("param_descriptions", {}),
+                        )
+                        logger.debug(
+                            "[umbrella] Added NL interface to child %d: %d questions",
+                            sig_id, len(nl_interface.get("clarifying_questions", []))
+                        )
+            except Exception as e:
+                logger.warning("[umbrella] Batch NL interface generation failed: %s", e)
+
+        # Extract just the signature IDs for return value
+        child_ids = [sig_id for sig_id, _, _, _ in child_ids]
+
+        if len(child_ids) == 1:
+            # Single child = pointless router, mark parent as atomic instead
+            # Per CLAUDE.md: "healthy tree would have ~5:1 ratio where each router has roughly five children"
+            # A router with 1 child is just a chain, not meaningful branching
+            from mycelium.data_layer.mcts import mark_signature_atomic
+            logger.info(
+                "[umbrella] Decomposition produced only 1 child for '%s' - marking as atomic (no chain)",
+                signature.step_type
+            )
+            # Remove the single child relationship we just added
+            self.db.remove_child(parent_id=signature.id, child_id=child_ids[0])
+            mark_signature_atomic(signature.id, "single_child_decomp")
+            return []  # No meaningful decomposition occurred
+        elif len(child_ids) >= 2:
+            # Multiple children = meaningful branching, promote to umbrella
             self.db.promote_to_umbrella(signature.id)
             logger.info(
                 "[umbrella] Promoted '%s' to umbrella with %d children",

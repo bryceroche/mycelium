@@ -147,6 +147,736 @@ def grade_dag(dag_id: str, success: bool) -> None:
         (1 if success else 0, now, dag_id),
     )
 
+    # Track plan success rate (per beads mycelium-ogo6)
+    try:
+        record_plan_outcome(dag_id, success)
+    except Exception as e:
+        logger.warning("[mcts] Failed to record plan outcome: %s", e)
+
+
+# =============================================================================
+# DAG PLAN STATS: Track success rates of (DAG plan, Thread) pairs
+# =============================================================================
+# Per beads mycelium-ogo6: Track which decomposition strategies work.
+# A plan_signature = hash of (step tasks + dependency structure)
+
+
+def compute_plan_signature(dag_id: str) -> tuple[str, int, str]:
+    """Compute a hash signature for a DAG plan structure.
+
+    The signature captures:
+    - Number of steps
+    - Normalized step descriptions (lowercase, numbers removed)
+    - Step ordering and dependencies
+
+    Returns:
+        Tuple of (plan_signature, step_count, plan_structure_json)
+    """
+    import hashlib
+    import json
+    import re
+
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT step_desc, step_num, branch_num, dsl_hint
+        FROM mcts_dag_steps
+        WHERE dag_id = ?
+        ORDER BY step_num, branch_num
+        """,
+        (dag_id,),
+    )
+    rows = cursor.fetchall()
+
+    if not rows:
+        return ("empty", 0, "[]")
+
+    # Normalize steps: remove numbers, lowercase, strip
+    def normalize_step(desc: str) -> str:
+        # Remove specific numbers but keep structure
+        normalized = re.sub(r'\b\d+\.?\d*\b', 'N', desc.lower().strip())
+        # Remove extra whitespace
+        normalized = ' '.join(normalized.split())
+        return normalized
+
+    # Build canonical structure
+    plan_structure = []
+    for row in rows:
+        step_desc, step_num, branch_num, dsl_hint = row
+        plan_structure.append({
+            "step_num": step_num,
+            "branch_num": branch_num,
+            "normalized": normalize_step(step_desc),
+            "dsl_hint": dsl_hint or "",
+        })
+
+    # Create stable JSON representation
+    plan_json = json.dumps(plan_structure, sort_keys=True)
+
+    # Hash for quick lookup
+    signature = hashlib.sha256(plan_json.encode()).hexdigest()[:16]
+
+    return (signature, len(rows), plan_json)
+
+
+def record_plan_outcome(dag_id: str, success: bool) -> None:
+    """Record the outcome of a DAG plan for stats tracking.
+
+    Called after grade_dag() to update plan success rates.
+
+    Args:
+        dag_id: The DAG that was graded
+        success: Whether the DAG produced correct answer
+    """
+    now = datetime.now(timezone.utc).isoformat()
+
+    try:
+        signature, step_count, plan_json = compute_plan_signature(dag_id)
+    except Exception as e:
+        logger.warning("[mcts] Failed to compute plan signature for %s: %s", dag_id, e)
+        return
+
+    if signature == "empty":
+        return  # Don't track empty plans
+
+    conn = get_db()
+
+    # Upsert with atomic update
+    conn.execute(
+        """
+        INSERT INTO dag_plan_stats (
+            plan_signature, step_count, plan_structure,
+            uses, successes, success_rate,
+            first_seen_at, last_used_at
+        ) VALUES (?, ?, ?, 1, ?, ?, ?, ?)
+        ON CONFLICT(plan_signature) DO UPDATE SET
+            uses = uses + 1,
+            successes = successes + excluded.successes,
+            success_rate = CAST(successes + excluded.successes AS REAL) / (uses + 1),
+            last_used_at = excluded.last_used_at
+        """,
+        (signature, step_count, plan_json, 1 if success else 0,
+         0.5 if success else 0.0, now, now),
+    )
+
+    logger.debug(
+        "[mcts] Recorded plan outcome: sig=%s steps=%d success=%s",
+        signature[:8], step_count, success
+    )
+
+
+def get_plan_stats_summary() -> dict:
+    """Get summary statistics for plan tracking.
+
+    Returns:
+        Dict with total_plans, total_uses, avg_success_rate, etc.
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT
+            COUNT(*) as total_plans,
+            SUM(uses) as total_uses,
+            AVG(success_rate) as avg_success_rate,
+            MIN(success_rate) as min_success_rate,
+            MAX(success_rate) as max_success_rate
+        FROM dag_plan_stats
+        """
+    )
+    row = cursor.fetchone()
+    if row:
+        return {
+            "total_plans": row[0] or 0,
+            "total_uses": row[1] or 0,
+            "avg_success_rate": row[2] or 0.0,
+            "min_success_rate": row[3] or 0.0,
+            "max_success_rate": row[4] or 0.0,
+        }
+    return {"total_plans": 0, "total_uses": 0, "avg_success_rate": 0.0}
+
+
+def get_top_plans(limit: int = 10, min_uses: int = 3) -> list[dict]:
+    """Get top performing plans by success rate.
+
+    Args:
+        limit: Max plans to return
+        min_uses: Minimum uses required (filter noise)
+
+    Returns:
+        List of plan stats dicts sorted by success_rate desc
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT plan_signature, step_count, uses, successes, success_rate
+        FROM dag_plan_stats
+        WHERE uses >= ?
+        ORDER BY success_rate DESC, uses DESC
+        LIMIT ?
+        """,
+        (min_uses, limit),
+    )
+    return [
+        {
+            "signature": row[0],
+            "step_count": row[1],
+            "uses": row[2],
+            "successes": row[3],
+            "success_rate": row[4],
+        }
+        for row in cursor.fetchall()
+    ]
+
+
+def get_worst_plans(limit: int = 10, min_uses: int = 3) -> list[dict]:
+    """Get worst performing plans by success rate.
+
+    Args:
+        limit: Max plans to return
+        min_uses: Minimum uses required (filter noise)
+
+    Returns:
+        List of plan stats dicts sorted by success_rate asc
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT plan_signature, step_count, uses, successes, success_rate
+        FROM dag_plan_stats
+        WHERE uses >= ?
+        ORDER BY success_rate ASC, uses DESC
+        LIMIT ?
+        """,
+        (min_uses, limit),
+    )
+    return [
+        {
+            "signature": row[0],
+            "step_count": row[1],
+            "uses": row[2],
+            "successes": row[3],
+            "success_rate": row[4],
+        }
+        for row in cursor.fetchall()
+    ]
+
+
+# =============================================================================
+# DECOMPOSITION QUEUE: Batch complex steps for later decomposition
+# =============================================================================
+# Per beads mycelium-mm08: Queue complex steps instead of decomposing immediately.
+# Batch LLM calls are more efficient than one-at-a-time.
+
+
+def is_step_complex(step_text: str) -> tuple[bool, str]:
+    """Detect if a step is too complex for atomic execution.
+
+    Returns:
+        Tuple of (is_complex, reason) where reason explains why
+    """
+    import re
+
+    step_lower = step_text.lower()
+
+    # Check for multiple math operators (suggests multi-step)
+    operators = ['+', '-', '*', '/', '×', '÷']
+    op_count = sum(1 for op in operators if op in step_text)
+    if op_count >= 2:
+        return True, "multi_op"
+
+    # Check for sequential markers
+    sequential_markers = [
+        " then ", " and then ", " after that ", " finally ",
+        " next ", " followed by ", " before "
+    ]
+    for marker in sequential_markers:
+        if marker in step_lower:
+            return True, "sequential"
+
+    # Check for multiple actions (compound sentences)
+    action_words = ["calculate", "compute", "find", "determine", "add", "subtract", "multiply", "divide"]
+    action_count = sum(1 for word in action_words if word in step_lower)
+    if action_count >= 2:
+        return True, "multi_action"
+
+    # Check for very long steps (complexity correlates with length)
+    if len(step_text) > 150:
+        return True, "long_step"
+
+    return False, ""
+
+
+def queue_for_decomposition(
+    step_text: str,
+    complexity_reason: str,
+    embedding=None,
+    dag_step_id: str = None,
+    problem_context: str = None,
+) -> int:
+    """Add a complex step to the decomposition queue.
+
+    Args:
+        step_text: The step to decompose
+        complexity_reason: Why it's being queued (from is_step_complex)
+        embedding: Optional embedding for the step
+        dag_step_id: Optional link to originating dag_step
+        problem_context: Optional problem text for LLM context
+
+    Returns:
+        Queue entry ID (or existing ID if already queued)
+    """
+    import json
+    from mycelium.step_signatures.utils import pack_embedding
+
+    now = datetime.now(timezone.utc).isoformat()
+    conn = get_db()
+
+    # Check if already queued (pending) with same step_text - avoid duplicates
+    cursor = conn.execute(
+        """
+        SELECT id FROM decomposition_queue
+        WHERE step_text = ? AND processed_at IS NULL
+        LIMIT 1
+        """,
+        (step_text,),
+    )
+    existing = cursor.fetchone()
+    if existing:
+        return existing[0]  # Return existing queue ID
+
+    embedding_packed = pack_embedding(embedding) if embedding is not None else None
+
+    cursor = conn.execute(
+        """
+        INSERT INTO decomposition_queue (
+            step_text, embedding, dag_step_id, problem_context,
+            complexity_reason, queued_at
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (step_text, embedding_packed, dag_step_id, problem_context,
+         complexity_reason, now),
+    )
+
+    queue_id = cursor.lastrowid
+    logger.info(
+        "[decomp-queue] Queued step for decomposition: id=%d reason=%s step='%s'",
+        queue_id, complexity_reason, step_text[:50]
+    )
+    return queue_id
+
+
+def get_pending_decompositions(limit: int = 10) -> list[dict]:
+    """Get steps waiting to be decomposed.
+
+    Args:
+        limit: Max entries to return
+
+    Returns:
+        List of queue entries with id, step_text, problem_context, etc.
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT id, step_text, embedding, dag_step_id, problem_context,
+               complexity_reason, queued_at
+        FROM decomposition_queue
+        WHERE processed_at IS NULL
+        ORDER BY queued_at ASC
+        LIMIT ?
+        """,
+        (limit,),
+    )
+
+    return [
+        {
+            "id": row[0],
+            "step_text": row[1],
+            "embedding": row[2],
+            "dag_step_id": row[3],
+            "problem_context": row[4],
+            "complexity_reason": row[5],
+            "queued_at": row[6],
+        }
+        for row in cursor.fetchall()
+    ]
+
+
+def get_decomposition_queue_size() -> int:
+    """Get count of pending decompositions."""
+    conn = get_db()
+    cursor = conn.execute(
+        "SELECT COUNT(*) FROM decomposition_queue WHERE processed_at IS NULL"
+    )
+    row = cursor.fetchone()
+    return row[0] if row else 0
+
+
+def mark_decomposition_processed(
+    queue_id: int,
+    result_signature_ids: list[int],
+    decomposition_steps: list[str],
+) -> None:
+    """Mark a queue entry as processed with results.
+
+    Args:
+        queue_id: The queue entry ID
+        result_signature_ids: IDs of created atomic signatures
+        decomposition_steps: The atomic steps produced by LLM
+    """
+    import json
+
+    now = datetime.now(timezone.utc).isoformat()
+    conn = get_db()
+
+    conn.execute(
+        """
+        UPDATE decomposition_queue
+        SET processed_at = ?,
+            result_signature_ids = ?,
+            decomposition_steps = ?
+        WHERE id = ?
+        """,
+        (now, json.dumps(result_signature_ids), json.dumps(decomposition_steps), queue_id),
+    )
+
+    logger.info(
+        "[decomp-queue] Marked queue entry %d as processed: %d signatures created",
+        queue_id, len(result_signature_ids)
+    )
+
+
+def get_decomposition_queue_stats() -> dict:
+    """Get statistics about the decomposition queue."""
+    conn = get_db()
+
+    # Count by status
+    cursor = conn.execute("""
+        SELECT
+            COUNT(*) FILTER (WHERE processed_at IS NULL) as pending,
+            COUNT(*) FILTER (WHERE processed_at IS NOT NULL) as processed,
+            COUNT(*) as total
+        FROM decomposition_queue
+    """)
+    row = cursor.fetchone()
+
+    # Count by reason (pending only)
+    cursor = conn.execute("""
+        SELECT complexity_reason, COUNT(*)
+        FROM decomposition_queue
+        WHERE processed_at IS NULL
+        GROUP BY complexity_reason
+    """)
+    by_reason = {r[0]: r[1] for r in cursor.fetchall()}
+
+    return {
+        "pending": row[0] if row else 0,
+        "processed": row[1] if row else 0,
+        "total": row[2] if row else 0,
+        "by_reason": by_reason,
+    }
+
+
+def get_decomposition_results(queue_ids: list[int]) -> dict[int, dict]:
+    """Get decomposition results for specific queue entries.
+
+    Args:
+        queue_ids: List of queue entry IDs to retrieve
+
+    Returns:
+        Dict mapping queue_id to result dict with:
+        - processed: bool
+        - decomposition_steps: list[str] (if processed)
+        - result_signature_ids: list[int] (if processed)
+    """
+    import json
+
+    if not queue_ids:
+        return {}
+
+    conn = get_db()
+    placeholders = ",".join("?" * len(queue_ids))
+    cursor = conn.execute(
+        f"""
+        SELECT id, processed_at, decomposition_steps, result_signature_ids
+        FROM decomposition_queue
+        WHERE id IN ({placeholders})
+        """,
+        queue_ids,
+    )
+
+    results = {}
+    for row in cursor.fetchall():
+        queue_id = row[0]
+        processed = row[1] is not None
+        results[queue_id] = {
+            "processed": processed,
+            "decomposition_steps": json.loads(row[2]) if row[2] else [],
+            "result_signature_ids": json.loads(row[3]) if row[3] else [],
+        }
+
+    return results
+
+
+def are_decompositions_ready(queue_ids: list[int]) -> bool:
+    """Check if all specified queue entries have been processed.
+
+    Args:
+        queue_ids: Queue entry IDs to check
+
+    Returns:
+        True if all are processed, False otherwise
+    """
+    if not queue_ids:
+        return True
+
+    conn = get_db()
+    placeholders = ",".join("?" * len(queue_ids))
+    cursor = conn.execute(
+        f"""
+        SELECT COUNT(*) FROM decomposition_queue
+        WHERE id IN ({placeholders}) AND processed_at IS NULL
+        """,
+        queue_ids,
+    )
+    pending_count = cursor.fetchone()[0]
+    return pending_count == 0
+
+
+def get_pending_queue_ids() -> list[int]:
+    """Get all pending (unprocessed) queue entry IDs.
+
+    Returns:
+        List of queue IDs waiting for decomposition
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT id FROM decomposition_queue
+        WHERE processed_at IS NULL
+        ORDER BY queued_at ASC
+        """
+    )
+    return [row[0] for row in cursor.fetchall()]
+
+
+# =============================================================================
+# LEAF REJECTION TRACKING
+# =============================================================================
+
+
+# Rejection thresholds (per CLAUDE.md: leaves define their own boundaries)
+REJECTION_SIM_THRESHOLD = 0.65  # Below this similarity, leaf rejects the step
+REJECTION_COUNT_THRESHOLD = 10  # Min rejections before considering decomposition
+REJECTION_RATE_THRESHOLD = 0.30  # 30% rejection rate triggers decomposition flag
+
+
+def record_leaf_rejection(
+    signature_id: int,
+    step_text: str,
+    similarity: float,
+    dag_step_id: str = None,
+    problem_context: str = None,
+) -> int:
+    """Record that a leaf signature rejected a dag_step due to low similarity.
+
+    Args:
+        signature_id: The leaf signature that rejected
+        step_text: The step that was rejected
+        similarity: The similarity score that caused rejection
+        dag_step_id: Optional link to the dag_step
+        problem_context: Optional problem text for context
+
+    Returns:
+        Updated rejection_count for the signature
+    """
+    conn = get_db()
+
+    # Increment rejection count
+    conn.execute(
+        "UPDATE step_signatures SET rejection_count = rejection_count + 1 WHERE id = ?",
+        (signature_id,),
+    )
+    conn.commit()
+
+    # Get updated count
+    cursor = conn.execute(
+        "SELECT rejection_count FROM step_signatures WHERE id = ?",
+        (signature_id,),
+    )
+    row = cursor.fetchone()
+    rejection_count = row[0] if row else 0
+
+    # Queue the rejected step for decomposition
+    queue_for_decomposition(
+        step_text=step_text,
+        complexity_reason=f"rejected_by_leaf_{signature_id}_sim_{similarity:.3f}",
+        dag_step_id=dag_step_id,
+        problem_context=problem_context,
+    )
+
+    logger.debug(
+        "[rejection] Leaf %d rejected step (sim=%.3f), total rejections=%d",
+        signature_id, similarity, rejection_count
+    )
+
+    return rejection_count
+
+
+def get_leaf_rejection_stats(signature_id: int) -> dict:
+    """Get rejection statistics for a leaf signature.
+
+    Returns:
+        Dict with rejection_count, uses, rejection_rate, should_decompose
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT rejection_count, uses, is_semantic_umbrella
+        FROM step_signatures
+        WHERE id = ?
+        """,
+        (signature_id,),
+    )
+    row = cursor.fetchone()
+
+    if not row:
+        return {"error": "signature not found"}
+
+    rejection_count = row[0] or 0
+    uses = row[1] or 0
+    is_umbrella = row[2] or 0
+
+    # Calculate rejection rate (rejections / total attempts)
+    total_attempts = uses + rejection_count
+    rejection_rate = rejection_count / total_attempts if total_attempts > 0 else 0.0
+
+    # Determine if this leaf should be decomposed
+    should_decompose = (
+        not is_umbrella  # Only leaves, not umbrellas
+        and rejection_count >= REJECTION_COUNT_THRESHOLD
+        and rejection_rate >= REJECTION_RATE_THRESHOLD
+    )
+
+    return {
+        "signature_id": signature_id,
+        "rejection_count": rejection_count,
+        "uses": uses,
+        "total_attempts": total_attempts,
+        "rejection_rate": rejection_rate,
+        "should_decompose": should_decompose,
+    }
+
+
+def get_leaves_needing_decomposition(limit: int = 10) -> list[dict]:
+    """Find leaf signatures with high rejection rates that need decomposition.
+
+    Returns:
+        List of leaf stats dicts for signatures that should be decomposed
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT id, rejection_count, uses
+        FROM step_signatures
+        WHERE is_semantic_umbrella = 0
+          AND rejection_count >= ?
+          AND (rejection_count * 1.0 / (uses + rejection_count + 0.001)) >= ?
+        ORDER BY rejection_count DESC
+        LIMIT ?
+        """,
+        (REJECTION_COUNT_THRESHOLD, REJECTION_RATE_THRESHOLD, limit),
+    )
+
+    results = []
+    for row in cursor.fetchall():
+        sig_id, rejection_count, uses = row
+        total = uses + rejection_count
+        results.append({
+            "signature_id": sig_id,
+            "rejection_count": rejection_count,
+            "uses": uses,
+            "rejection_rate": rejection_count / total if total > 0 else 0,
+        })
+
+    return results
+
+
+def check_and_reject_if_low_similarity(
+    signature_id: int,
+    step_text: str,
+    similarity: float,
+    dag_step_id: str = None,
+    problem_context: str = None,
+) -> tuple[bool, int]:
+    """Check if similarity is below threshold and record rejection if so.
+
+    Args:
+        signature_id: The leaf signature being checked
+        step_text: The step being routed
+        similarity: Cosine similarity to the signature
+        dag_step_id: Optional dag_step ID
+        problem_context: Optional problem context
+
+    Returns:
+        Tuple of (was_rejected, rejection_count)
+    """
+    if similarity >= REJECTION_SIM_THRESHOLD:
+        return False, 0
+
+    rejection_count = record_leaf_rejection(
+        signature_id=signature_id,
+        step_text=step_text,
+        similarity=similarity,
+        dag_step_id=dag_step_id,
+        problem_context=problem_context,
+    )
+
+    return True, rejection_count
+
+
+def flag_high_rejection_leaves_for_decomposition() -> list[dict]:
+    """Find and flag high-rejection leaves for decomposition.
+
+    This should be called periodically (e.g., during batch operations).
+    Leaves with high rejection rates get promoted to umbrellas and decomposed.
+
+    Returns:
+        List of flagged signature stats
+    """
+    leaves = get_leaves_needing_decomposition()
+
+    if not leaves:
+        return []
+
+    conn = get_db()
+    flagged = []
+
+    for leaf in leaves:
+        sig_id = leaf["signature_id"]
+
+        # Flag for decomposition by marking it as needing split
+        # The umbrella_learner will pick this up and decompose it
+        conn.execute(
+            """
+            UPDATE step_signatures
+            SET is_semantic_umbrella = 1
+            WHERE id = ? AND is_semantic_umbrella = 0
+            """,
+            (sig_id,),
+        )
+
+        if conn.total_changes > 0:
+            logger.info(
+                "[rejection] Flagged leaf %d for decomposition: %d rejections, %.1f%% rate",
+                sig_id, leaf["rejection_count"], leaf["rejection_rate"] * 100
+            )
+            flagged.append(leaf)
+
+    if flagged:
+        conn.commit()
+
+    return flagged
+
 
 # =============================================================================
 # DAG STEP FUNCTIONS
@@ -290,46 +1020,75 @@ def log_thread_step(
     step_result: Optional[str] = None,
     step_success: Optional[bool] = None,
     node_depth: Optional[int] = None,
-) -> str:
+) -> tuple[str, int]:
     """Log a thread step execution with wave function amplitude.
 
     This is the core logging function for MCTS post-mortem analysis.
     The (dag_step_id, node_id) combination is what we're learning.
 
+    Two-table strategy for efficiency:
+    - mcts_step_summaries: Always stores minimal data for credit propagation
+    - mcts_thread_steps: Only stores detailed records for failures (debugging)
+
     Args:
         node_depth: Depth of the signature node in the tree (for post-mortem analysis)
 
-    Returns the thread_step_id.
+    Returns:
+        Tuple of (thread_step_id, summary_id) for later amplitude_post updates.
     """
+    from mycelium.config import LOG_DETAILED_STEPS_FAILURES_ONLY
+
     thread_step_id = f"tstep-{uuid.uuid4().hex[:12]}"
     now = datetime.now(timezone.utc).isoformat()
+    step_success_int = (1 if step_success else 0) if step_success is not None else None
 
     conn = get_db()
-    conn.execute(
+
+    # Always insert into summaries table (minimal data for credit propagation)
+    cursor = conn.execute(
         """
-        INSERT INTO mcts_thread_steps (
-            thread_step_id, thread_id, dag_id, dag_step_id, node_id, node_depth,
-            amplitude, similarity_score, was_undecided, ucb1_gap,
-            alternatives_considered, step_result, step_success, created_at
+        INSERT INTO mcts_step_summaries (
+            thread_id, dag_id, dag_step_id, node_id,
+            amplitude, step_success
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (
-            thread_step_id, thread_id, dag_id, dag_step_id, node_id, node_depth,
-            amplitude, similarity_score, 1 if was_undecided else 0, ucb1_gap,
-            alternatives_considered, step_result,
-            (1 if step_success else 0) if step_success is not None else None,
-            now,
-        ),
+        (thread_id, dag_id, dag_step_id, node_id, amplitude, step_success_int),
+    )
+    summary_id = cursor.lastrowid
+
+    # Only insert detailed records for failures (or if optimization is disabled)
+    should_log_details = (
+        not LOG_DETAILED_STEPS_FAILURES_ONLY  # Optimization disabled
+        or step_success is False              # Failure - always log details
+        or step_success is None               # Unknown - log details for safety
     )
 
-    return thread_step_id
+    if should_log_details:
+        conn.execute(
+            """
+            INSERT INTO mcts_thread_steps (
+                thread_step_id, thread_id, dag_id, dag_step_id, node_id, node_depth,
+                amplitude, similarity_score, was_undecided, ucb1_gap,
+                alternatives_considered, step_result, step_success, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                thread_step_id, thread_id, dag_id, dag_step_id, node_id, node_depth,
+                amplitude, similarity_score, 1 if was_undecided else 0, ucb1_gap,
+                alternatives_considered, step_result, step_success_int, now,
+            ),
+        )
+
+    return thread_step_id, summary_id
 
 
 def update_amplitude_post(thread_step_id: str, amplitude_post: float) -> None:
-    """Update the post-observation amplitude for a thread step.
+    """Update the post-observation amplitude for a thread step (detailed table).
 
     Called after wave function collapse (grading).
+    Note: For credit propagation, use update_summary_amplitude_post() instead.
     """
     conn = get_db()
     conn.execute(
@@ -340,8 +1099,24 @@ def update_amplitude_post(thread_step_id: str, amplitude_post: float) -> None:
     )
 
 
+def update_summary_amplitude_post(summary_id: int, amplitude_post: float) -> None:
+    """Update amplitude_post in the summaries table (used for credit propagation).
+
+    Args:
+        summary_id: The ID from mcts_step_summaries (returned by log_thread_step)
+        amplitude_post: The post-observation amplitude value
+    """
+    conn = get_db()
+    conn.execute(
+        """
+        UPDATE mcts_step_summaries SET amplitude_post = ? WHERE id = ?
+        """,
+        (amplitude_post, summary_id),
+    )
+
+
 def batch_update_amplitudes(updates: list[tuple[str, float]]) -> None:
-    """Batch update amplitude_post values.
+    """Batch update amplitude_post values in detailed table.
 
     Args:
         updates: List of (thread_step_id, amplitude_post) tuples
@@ -358,6 +1133,26 @@ def batch_update_amplitudes(updates: list[tuple[str, float]]) -> None:
             [(amp, tsid) for tsid, amp in updates],
         )
     logger.debug("[mcts] Batch updated %d amplitudes", len(updates))
+
+
+def batch_update_summary_amplitudes(updates: list[tuple[int, float]]) -> None:
+    """Batch update amplitude_post values in summaries table.
+
+    Args:
+        updates: List of (summary_id, amplitude_post) tuples
+    """
+    if not updates:
+        return
+
+    conn = get_db()
+    with conn.connection() as raw_conn:
+        raw_conn.executemany(
+            """
+            UPDATE mcts_step_summaries SET amplitude_post = ? WHERE id = ?
+            """,
+            [(amp, sid) for sid, amp in updates],
+        )
+    logger.debug("[mcts] Batch updated %d summary amplitudes", len(updates))
 
 
 # =============================================================================
@@ -513,25 +1308,25 @@ def run_postmortem(dag_id: str) -> dict:
         logger.debug("[mcts] No threads found for DAG %s", dag_id)
         return {"total_steps": 0, "threads_won": 0, "threads_lost": 0}
 
-    # Get all thread_steps for this DAG
+    # Get all step summaries for this DAG (lightweight table for credit propagation)
     cursor = conn.execute(
         """
-        SELECT thread_step_id, thread_id, amplitude
-        FROM mcts_thread_steps
+        SELECT id, thread_id, amplitude
+        FROM mcts_step_summaries
         WHERE dag_id = ?
         """,
         (dag_id,),
     )
-    thread_steps = cursor.fetchall()
+    step_summaries = cursor.fetchall()
 
-    if not thread_steps:
-        logger.debug("[mcts] No thread_steps found for DAG %s", dag_id)
+    if not step_summaries:
+        logger.debug("[mcts] No step_summaries found for DAG %s", dag_id)
         return {"total_steps": 0, "threads_won": 0, "threads_lost": 0}
 
     # Compute amplitude_post for each step
     updates = []
     stats = {
-        "total_steps": len(thread_steps),
+        "total_steps": len(step_summaries),
         "threads_won": sum(1 for s in thread_outcomes.values() if s == 1),
         "threads_lost": sum(1 for s in thread_outcomes.values() if s == 0),
         "high_conf_wrong": 0,
@@ -540,7 +1335,7 @@ def run_postmortem(dag_id: str) -> dict:
         "total_low_conf": 0,   # For UCB1 adjustment (mycelium-nirq)
     }
 
-    for thread_step_id, thread_id, amplitude in thread_steps:
+    for summary_id, thread_id, amplitude in step_summaries:
         thread_success = thread_outcomes.get(thread_id)
 
         if thread_success is None:
@@ -575,11 +1370,11 @@ def run_postmortem(dag_id: str) -> dict:
 
         # Clamp to configured range
         amplitude_post = max(POSTMORTEM_AMPLITUDE_MIN, min(POSTMORTEM_AMPLITUDE_MAX, amplitude_post))
-        updates.append((thread_step_id, amplitude_post))
+        updates.append((summary_id, amplitude_post))
 
-    # Batch update
+    # Batch update summaries table (used for credit propagation)
     if updates:
-        batch_update_amplitudes(updates)
+        batch_update_summary_amplitudes(updates)
         logger.info(
             "[mcts] Post-mortem for DAG %s: %d steps, %d won, %d lost, "
             "%d high-conf-wrong, %d low-conf-right",
@@ -591,21 +1386,22 @@ def run_postmortem(dag_id: str) -> dict:
 
 
 def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
-    """Propagate amplitude_post values to signature stats with partial credit.
+    """Propagate amplitude_post values to signature stats with step-level precision.
 
     Per beads mycelium-itkn + mycelium-7o8i: Close the loop from post-mortem to
-    signature learning, with partial credit for correct steps in failed problems.
+    signature learning, with STEP-LEVEL success for precise blame attribution.
 
-    Key insight: In a failed problem, not all steps are wrong. Steps with high
-    confidence (amplitude) in a failed thread were probably correct - only the
-    step(s) that caused the failure should be blamed.
+    Key insight: In a multi-step problem, only the failing step should be blamed.
+    Steps 1-3 might succeed while step 4 fails - we should credit 1-3 and blame 4.
 
-    Credit logic:
-    1. Thread won + any amplitude → full credit (success)
-    2. Thread lost + high amplitude (≥ 0.7) → PARTIAL credit (benefit of doubt)
-    3. Thread lost + low amplitude (< 0.7) → blame (uncertain and thread failed)
+    Credit logic (priority order):
+    1. step_success=1 (step itself succeeded) → FULL CREDIT (even if thread lost)
+    2. step_success=0 (step itself failed) → BLAME (even if thread won - edge case)
+    3. step_success=NULL + thread won → full credit (fallback)
+    4. step_success=NULL + thread lost + high amplitude → partial credit
+    5. step_success=NULL + thread lost + low amplitude → blame
 
-    This prevents good signatures from being punished for a single bad step.
+    Credit propagates UP to parent routers with decay per CLAUDE.md.
 
     Args:
         dag_id: The DAG to process
@@ -626,25 +1422,30 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
 
     conn = get_db()
 
-    # Get per-node stats with thread outcome context
-    # Per beads mycelium-7o8i: Need to know if step was in winning or losing thread
+    # Get per-node stats with STEP-LEVEL success (ss.step_success) as primary signal
+    # Fall back to thread-level (t.success) + amplitude when step_success is NULL
+    # NOTE: Uses mcts_step_summaries (lightweight) instead of mcts_thread_steps (detailed)
     cursor = conn.execute(
         """
         SELECT
-            ts.node_id,
+            ss.node_id,
             COUNT(*) as total_steps,
-            -- Steps in winning threads (eligible for full credit)
-            SUM(CASE WHEN t.success = 1 THEN 1 ELSE 0 END) as winning_steps,
-            -- Steps in losing threads with high confidence (eligible for partial credit)
-            SUM(CASE WHEN t.success = 0 AND ts.amplitude >= ? THEN 1 ELSE 0 END) as high_conf_losing_steps,
-            -- Steps in losing threads with low confidence (eligible for blame)
-            SUM(CASE WHEN t.success = 0 AND ts.amplitude < ? THEN 1 ELSE 0 END) as low_conf_losing_steps,
+            -- STEP-LEVEL: Steps that succeeded at execution (most precise signal)
+            SUM(CASE WHEN ss.step_success = 1 THEN 1 ELSE 0 END) as step_succeeded,
+            -- STEP-LEVEL: Steps that failed at execution (precise blame)
+            SUM(CASE WHEN ss.step_success = 0 THEN 1 ELSE 0 END) as step_failed,
+            -- FALLBACK: Steps in winning threads (when step_success is NULL)
+            SUM(CASE WHEN ss.step_success IS NULL AND t.success = 1 THEN 1 ELSE 0 END) as thread_won_no_step,
+            -- FALLBACK: High-confidence steps in losing threads (partial credit)
+            SUM(CASE WHEN ss.step_success IS NULL AND t.success = 0 AND ss.amplitude >= ? THEN 1 ELSE 0 END) as high_conf_losing,
+            -- FALLBACK: Low-confidence steps in losing threads (blame)
+            SUM(CASE WHEN ss.step_success IS NULL AND t.success = 0 AND ss.amplitude < ? THEN 1 ELSE 0 END) as low_conf_losing,
             -- Average amplitude_post for reference
-            AVG(ts.amplitude_post) as avg_amplitude_post
-        FROM mcts_thread_steps ts
-        JOIN mcts_threads t ON ts.thread_id = t.thread_id
-        WHERE ts.dag_id = ? AND ts.amplitude_post IS NOT NULL
-        GROUP BY ts.node_id
+            AVG(ss.amplitude_post) as avg_amplitude_post
+        FROM mcts_step_summaries ss
+        JOIN mcts_threads t ON ss.thread_id = t.thread_id
+        WHERE ss.dag_id = ? AND ss.amplitude_post IS NOT NULL
+        GROUP BY ss.node_id
         """,
         (PARTIAL_CREDIT_HIGH_CONF_THRESHOLD, PARTIAL_CREDIT_HIGH_CONF_THRESHOLD, dag_id),
     )
@@ -654,51 +1455,77 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
         "successes_credited": 0,
         "partial_credits": 0,
         "failures_credited": 0,
+        "step_level_credit": 0,  # New: track how many used step-level success
+        "step_level_blame": 0,   # New: track how many used step-level failure
     }
 
     for row in cursor.fetchall():
-        node_id, total_steps, winning_steps, high_conf_losing, low_conf_losing, avg_amp = row
+        (node_id, total_steps, step_succeeded, step_failed,
+         thread_won_no_step, high_conf_losing, low_conf_losing, avg_amp) = row
 
-        if total_steps == 0:
+        if total_steps == 0 or node_id is None:
             continue
 
         stats["nodes_processed"] += 1
 
-        # 1. Full credit for winning thread steps
-        if winning_steps > 0:
-            step_db.increment_signature_successes(node_id, count=1)
+        # Priority 1: STEP-LEVEL SUCCESS - step itself succeeded
+        # This is the most precise signal - step executed without error
+        if step_succeeded > 0:
+            step_db.increment_signature_successes(node_id, count=1, propagate_to_parents=True)
             stats["successes_credited"] += 1
+            stats["step_level_credit"] += 1
             logger.debug(
-                "[mcts] Full credit to node %d (%d winning steps)",
-                node_id, winning_steps
+                "[mcts] Step-level credit to node %d (%d steps succeeded)",
+                node_id, step_succeeded
             )
 
-        # 2. Partial credit for high-confidence steps in losing threads
-        # Per mycelium-7o8i: These steps were probably correct, just in a bad chain
+        # Priority 2: STEP-LEVEL FAILURE - step itself failed
+        # This is precise blame - this specific step caused the problem
+        elif step_failed > 0:
+            step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
+            stats["failures_credited"] += 1
+            stats["step_level_blame"] += 1
+            logger.debug(
+                "[mcts] Step-level blame to node %d (%d steps failed)",
+                node_id, step_failed
+            )
+
+        # Priority 3: FALLBACK - thread won but step_success not tracked
+        elif thread_won_no_step > 0:
+            step_db.increment_signature_successes(node_id, count=1, propagate_to_parents=True)
+            stats["successes_credited"] += 1
+            logger.debug(
+                "[mcts] Thread-level credit to node %d (%d steps in winning thread)",
+                node_id, thread_won_no_step
+            )
+
+        # Priority 4: FALLBACK - high-confidence in losing thread (partial credit)
         elif high_conf_losing > 0:
-            # Give partial credit - benefit of the doubt
-            step_db.increment_signature_partial_success(node_id, weight=PARTIAL_CREDIT_WEIGHT)
+            step_db.increment_signature_partial_success(
+                node_id, weight=PARTIAL_CREDIT_WEIGHT, propagate_to_parents=True
+            )
             stats["partial_credits"] += 1
             logger.debug(
                 "[mcts] Partial credit to node %d (%d high-conf losing steps, avg_amp=%.2f)",
                 node_id, high_conf_losing, avg_amp or 0
             )
 
-        # 3. Blame for low-confidence steps in losing threads
-        # These were uncertain AND the thread failed - likely the problem
+        # Priority 5: FALLBACK - low-confidence in losing thread (blame)
         elif low_conf_losing > 0:
-            step_db.increment_signature_failures(node_id, count=1)
+            step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
             stats["failures_credited"] += 1
             logger.debug(
-                "[mcts] Blamed node %d (%d low-conf losing steps, avg_amp=%.2f)",
+                "[mcts] Thread-level blame to node %d (%d low-conf losing steps, avg_amp=%.2f)",
                 node_id, low_conf_losing, avg_amp or 0
             )
 
     if stats["nodes_processed"] > 0:
         logger.info(
-            "[mcts] Credit propagation for DAG %s: %d nodes, +%d full, +%d partial, +%d failures",
+            "[mcts] Credit propagation for DAG %s: %d nodes, +%d full, +%d partial, +%d failures "
+            "(step-level: %d credit, %d blame)",
             dag_id, stats["nodes_processed"],
             stats["successes_credited"], stats["partial_credits"], stats["failures_credited"],
+            stats["step_level_credit"], stats["step_level_blame"],
         )
 
     return stats
@@ -894,21 +1721,22 @@ def propagate_step_node_stats(dag_id: str) -> dict:
 
     conn = get_db()
 
-    # Get all thread_steps with their thread outcomes and dag_step info
+    # Get all step summaries with their thread outcomes and dag_step info
     # Use dsl_hint (operation type) when available, fall back to step_desc
     # Per mycelium-mgbs: dsl_hint provides better normalization than NL descriptions
+    # NOTE: Uses mcts_step_summaries (lightweight) instead of mcts_thread_steps (detailed)
     cursor = conn.execute(
         """
         SELECT
-            ts.node_id,
-            ts.amplitude_post,
+            ss.node_id,
+            ss.amplitude_post,
             t.success as thread_won,
             ds.dsl_hint,
             ds.step_desc
-        FROM mcts_thread_steps ts
-        JOIN mcts_threads t ON ts.thread_id = t.thread_id
-        JOIN mcts_dag_steps ds ON ts.dag_step_id = ds.dag_step_id
-        WHERE ts.dag_id = ? AND ts.amplitude_post IS NOT NULL AND ts.node_id IS NOT NULL
+        FROM mcts_step_summaries ss
+        JOIN mcts_threads t ON ss.thread_id = t.thread_id
+        JOIN mcts_dag_steps ds ON ss.dag_step_id = ds.dag_step_id
+        WHERE ss.dag_id = ? AND ss.amplitude_post IS NOT NULL AND ss.node_id IS NOT NULL
         """,
         (dag_id,),
     )
@@ -941,22 +1769,6 @@ def propagate_step_node_stats(dag_id: str) -> dict:
 
 # =============================================================================
 # DAG_STEP EMBEDDINGS: Semantic similarity for decomposition decisions
-# =============================================================================
-# Per CLAUDE.md: Track (dag_step, leaf_node) pairs and use statistics to decide
-# which to decompose on failure. If leaf_node is strong, decompose the dag_step.
-# If similar dag_steps succeed with other nodes, decompose the leaf_node.
-
-
-@dataclass
-class DecompositionDecision:
-    """Result of analyzing which component to decompose on failure."""
-    target: str  # "dag_step", "leaf_node", or "both"
-    confidence: float  # 0-1, how confident we are in this decision
-    reason: str  # Human-readable explanation
-    node_win_rate: Optional[float] = None  # Leaf node's overall win rate
-    similar_step_win_rate: Optional[float] = None  # Win rate of similar dag_steps
-
-
 def store_dag_step_embedding(
     dag_id: str,
     dag_step_id: str,
@@ -1075,174 +1887,6 @@ def find_similar_dag_steps(
     # Sort by similarity descending
     results.sort(key=lambda x: x["similarity"], reverse=True)
     return results[:limit]
-
-
-def get_node_aggregate_stats(node_id: int) -> dict:
-    """Get aggregate stats for a leaf_node across ALL dag_steps.
-
-    Used to check: "Is this node generally strong, regardless of step type?"
-
-    Args:
-        node_id: The leaf_node signature ID
-
-    Returns:
-        Dict with: total_uses, total_wins, total_losses, overall_win_rate
-    """
-    conn = get_db()
-    cursor = conn.execute(
-        """SELECT SUM(uses), SUM(wins), SUM(losses)
-           FROM dag_step_node_stats
-           WHERE node_id = ?""",
-        (node_id,),
-    )
-    row = cursor.fetchone()
-
-    uses = row[0] or 0
-    wins = row[1] or 0
-    losses = row[2] or 0
-
-    # Bayesian prior: assume 50% with 2 pseudo-observations
-    prior_alpha = 1.0
-    prior_beta = 1.0
-    win_rate = (wins + prior_alpha) / (uses + prior_alpha + prior_beta) if uses > 0 else 0.5
-
-    return {
-        "total_uses": uses,
-        "total_wins": wins,
-        "total_losses": losses,
-        "overall_win_rate": win_rate,
-    }
-
-
-def get_similar_steps_win_rate(
-    embedding: "np.ndarray",
-    exclude_node_id: Optional[int] = None,
-    min_similarity: float = 0.7,
-) -> dict:
-    """Get win rate of similar dag_steps, optionally excluding a specific node.
-
-    Used to check: "Do steps like this usually succeed with OTHER nodes?"
-
-    Args:
-        embedding: The step's embedding
-        exclude_node_id: Node to exclude (the one that failed)
-        min_similarity: Minimum similarity threshold
-
-    Returns:
-        Dict with: total_similar, wins, losses, win_rate, best_nodes (nodes that succeeded)
-    """
-    similar = find_similar_dag_steps(embedding, limit=50, min_similarity=min_similarity)
-
-    # Filter out the failing node if specified
-    if exclude_node_id is not None:
-        similar = [s for s in similar if s["node_id"] != exclude_node_id]
-
-    if not similar:
-        return {
-            "total_similar": 0,
-            "wins": 0,
-            "losses": 0,
-            "win_rate": 0.5,
-            "best_nodes": [],
-        }
-
-    wins = sum(1 for s in similar if s["success"] == 1)
-    losses = sum(1 for s in similar if s["success"] == 0)
-    total = wins + losses
-
-    # Bayesian prior
-    prior_alpha = 1.0
-    prior_beta = 1.0
-    win_rate = (wins + prior_alpha) / (total + prior_alpha + prior_beta) if total > 0 else 0.5
-
-    # Find nodes that succeeded with similar steps
-    best_nodes = list(set(s["node_id"] for s in similar if s["success"] == 1))
-
-    return {
-        "total_similar": len(similar),
-        "wins": wins,
-        "losses": losses,
-        "win_rate": win_rate,
-        "best_nodes": best_nodes,
-    }
-
-
-def decide_decomposition_target(
-    step_embedding: "np.ndarray",
-    node_id: int,
-    node_win_threshold: float = 0.7,
-    similar_win_threshold: float = 0.6,
-) -> DecompositionDecision:
-    """Decide whether to decompose the dag_step or leaf_node on failure.
-
-    The key insight: blame the weak link in the (dag_step, leaf_node) pair.
-
-    Decision logic:
-    1. If leaf_node has high win rate overall → decompose dag_step (wrong formulation)
-    2. If similar dag_steps succeed with other nodes → decompose leaf_node (wrong operation)
-    3. Both weak → decompose both (or the weaker one)
-
-    Args:
-        step_embedding: Embedding of the failing dag_step
-        node_id: The leaf_node that failed
-        node_win_threshold: Win rate above which node is considered "strong"
-        similar_win_threshold: Win rate above which similar steps are "usually successful"
-
-    Returns:
-        DecompositionDecision with target and reasoning
-    """
-    # Get node's overall performance
-    node_stats = get_node_aggregate_stats(node_id)
-    node_win_rate = node_stats["overall_win_rate"]
-    node_uses = node_stats["total_uses"]
-
-    # Get similar steps' performance (excluding this node)
-    similar_stats = get_similar_steps_win_rate(
-        step_embedding, exclude_node_id=node_id, min_similarity=0.7
-    )
-    similar_win_rate = similar_stats["win_rate"]
-    similar_count = similar_stats["total_similar"]
-
-    # Decision logic
-    node_is_strong = node_win_rate >= node_win_threshold and node_uses >= 3
-    similar_usually_succeed = similar_win_rate >= similar_win_threshold and similar_count >= 2
-
-    if node_is_strong and not similar_usually_succeed:
-        # Strong node, weak/unknown step pattern → decompose the step
-        return DecompositionDecision(
-            target="dag_step",
-            confidence=min(0.9, node_win_rate),
-            reason=f"Node is strong ({node_win_rate:.0%} win rate, {node_uses} uses), step pattern is weak",
-            node_win_rate=node_win_rate,
-            similar_step_win_rate=similar_win_rate,
-        )
-    elif similar_usually_succeed and not node_is_strong:
-        # Similar steps succeed elsewhere, this node is weak → decompose the node
-        return DecompositionDecision(
-            target="leaf_node",
-            confidence=min(0.9, similar_win_rate),
-            reason=f"Similar steps succeed ({similar_win_rate:.0%} with other nodes), this node is weak ({node_win_rate:.0%})",
-            node_win_rate=node_win_rate,
-            similar_step_win_rate=similar_win_rate,
-        )
-    elif node_is_strong and similar_usually_succeed:
-        # Both are strong but still failed → likely a novel combination, try both
-        return DecompositionDecision(
-            target="both",
-            confidence=0.5,
-            reason=f"Both node ({node_win_rate:.0%}) and step pattern ({similar_win_rate:.0%}) are strong - novel combination",
-            node_win_rate=node_win_rate,
-            similar_step_win_rate=similar_win_rate,
-        )
-    else:
-        # Both weak or insufficient data → decompose dag_step first (safer default)
-        return DecompositionDecision(
-            target="dag_step",
-            confidence=0.4,
-            reason=f"Insufficient data (node: {node_uses} uses, similar: {similar_count} steps) - defaulting to step decomposition",
-            node_win_rate=node_win_rate,
-            similar_step_win_rate=similar_win_rate,
-        )
 
 
 # =============================================================================
@@ -2157,6 +2801,15 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
                     retirement_result.get("pruned", 0),
                     retirement_result.get("merged_up", 0),
                 )
+
+        # Collapse single-child routers to prevent chains
+        # Per CLAUDE.md: "healthy tree would have ~5:1 ratio"
+        collapse_result = collapse_single_child_routers()
+        if collapse_result["collapsed"] > 0:
+            logger.info(
+                "[mcts] Collapsed %d single-child routers (chain prevention)",
+                collapse_result["collapsed"],
+            )
 
         # Reset merge/split state
         state.reset_merge_split()
@@ -3123,6 +3776,92 @@ def run_retirement_check(step_db) -> dict:
     }
 
 
+def collapse_single_child_routers() -> dict:
+    """Collapse router signatures that have only one child.
+
+    Single-child routers add indirection without value. This function:
+    1. Finds routers with exactly one child
+    2. Promotes the child to replace the router in relationships
+    3. Removes the redundant router
+
+    Returns:
+        Dict with collapse statistics
+    """
+    conn = get_db()
+    collapsed = 0
+    collapsed_ids = []
+
+    try:
+        # Find routers (role='router' or is_umbrella=1) with exactly one child
+        cursor = conn.execute("""
+            SELECT sr.parent_id, sr.child_id, s.step_type
+            FROM signature_relationships sr
+            JOIN step_signatures s ON s.id = sr.parent_id
+            WHERE (s.role = 'router' OR s.is_umbrella = 1)
+            GROUP BY sr.parent_id
+            HAVING COUNT(sr.child_id) = 1
+        """)
+        single_child_routers = cursor.fetchall()
+
+        for row in single_child_routers:
+            parent_id = row["parent_id"]
+            child_id = row["child_id"]
+
+            # Skip if parent is the root (id=1 or has no parent)
+            cursor = conn.execute(
+                "SELECT COUNT(*) as cnt FROM signature_relationships WHERE child_id = ?",
+                (parent_id,)
+            )
+            if cursor.fetchone()["cnt"] == 0:
+                # This router has no parent - it's at the root level, don't collapse
+                continue
+
+            # Find grandparent relationships (who points to this router)
+            cursor = conn.execute(
+                "SELECT parent_id FROM signature_relationships WHERE child_id = ?",
+                (parent_id,)
+            )
+            grandparents = [r["parent_id"] for r in cursor.fetchall()]
+
+            # Update grandparent -> router to grandparent -> child
+            for grandparent_id in grandparents:
+                conn.execute("""
+                    UPDATE signature_relationships
+                    SET child_id = ?
+                    WHERE parent_id = ? AND child_id = ?
+                """, (child_id, grandparent_id, parent_id))
+
+            # Remove router -> child relationship
+            conn.execute(
+                "DELETE FROM signature_relationships WHERE parent_id = ? AND child_id = ?",
+                (parent_id, child_id)
+            )
+
+            # Mark router as inactive (don't delete, preserve history)
+            conn.execute(
+                "UPDATE step_signatures SET role = 'collapsed' WHERE id = ?",
+                (parent_id,)
+            )
+
+            collapsed += 1
+            collapsed_ids.append(parent_id)
+            logger.debug(
+                "[mcts] Collapsed single-child router %d, promoted child %d",
+                parent_id, child_id
+            )
+
+        conn.commit()
+
+    except Exception as e:
+        logger.warning("[mcts] Failed to collapse single-child routers: %s", e)
+        conn.rollback()
+
+    return {
+        "collapsed": collapsed,
+        "collapsed_ids": collapsed_ids,
+    }
+
+
 # =============================================================================
 # DIAGNOSTIC POST-MORTEM (Accuracy-driven decomposition decisions)
 # =============================================================================
@@ -3524,220 +4263,216 @@ def run_diagnostic_postmortem(
 
 
 # =============================================================================
-# DIAGNOSTIC EXPLORATION: Re-run failing problems to pinpoint (step, node) blame
+# ATOMIC DISCOVERY (Math Primes)
 # =============================================================================
-# Per beads mycelium-g1hh: When we detect repeated failures, re-run the problem
-# with forced MCTS exploration to generate multiple threads, then use divergence
-# analysis to pinpoint the exact (dag_step, node) pair that's failing.
-
-
-def get_problems_for_diagnostic_exploration(
-    min_failures: int = 3,
-    max_win_rate: float = 0.3,
-) -> list[dict]:
-    """Find problems that should be re-run with diagnostic exploration.
-
-    Looks for:
-    1. DAGs where thread lost (wrong final answer)
-    2. (dag_step_type, node) pairs with low win rate
-    3. Problems that haven't been diagnosed yet
-
-    Args:
-        min_failures: Minimum failures for a (step, node) pair to trigger
-        max_win_rate: Maximum win rate to be considered failing
-
-    Returns:
-        List of dicts with problem_id, problem_desc, ground_truth, failing_pairs
-    """
-    db = get_db()
-
-    # Find failing (dag_step_type, node) pairs
-    with db.connection() as conn:
-        cursor = conn.execute("""
-            SELECT dag_step_type, node_id, uses, wins, losses, win_rate
-            FROM dag_step_node_stats
-            WHERE uses >= ? AND win_rate <= ?
-            ORDER BY win_rate ASC, losses DESC
-        """, (min_failures, max_win_rate))
-
-        failing_pairs = []
-        for row in cursor.fetchall():
-            failing_pairs.append({
-                "dag_step_type": row[0],
-                "node_id": row[1],
-                "uses": row[2],
-                "wins": row[3],
-                "losses": row[4],
-                "win_rate": row[5],
-            })
-
-    if not failing_pairs:
-        return []
-
-    # Find problems that used these failing pairs and lost
-    problems = []
-    with db.connection() as conn:
-        for pair in failing_pairs[:5]:  # Limit to top 5 failing pairs
-            cursor = conn.execute("""
-                SELECT DISTINCT
-                    d.dag_id,
-                    d.problem_id,
-                    d.problem_desc,
-                    d.ground_truth
-                FROM mcts_dags d
-                JOIN mcts_threads t ON d.dag_id = t.dag_id
-                JOIN mcts_thread_steps ts ON t.thread_id = ts.thread_id
-                JOIN mcts_dag_steps ds ON ts.dag_step_id = ds.dag_step_id
-                WHERE t.success = 0
-                  AND ts.node_id = ?
-                  AND (ds.dsl_hint = ? OR ds.step_desc LIKE ?)
-                ORDER BY d.created_at DESC
-                LIMIT 3
-            """, (pair["node_id"], pair["dag_step_type"], f"%{pair['dag_step_type']}%"))
-
-            for row in cursor.fetchall():
-                problems.append({
-                    "dag_id": row[0],
-                    "problem_id": row[1],
-                    "problem_desc": row[2],
-                    "ground_truth": row[3],
-                    "failing_pair": pair,
-                })
-
-    # Deduplicate by problem_id
-    seen = set()
-    unique_problems = []
-    for p in problems:
-        if p["problem_id"] not in seen:
-            seen.add(p["problem_id"])
-            unique_problems.append(p)
-
-    logger.info(
-        "[mcts] Found %d problems for diagnostic exploration (%d failing pairs)",
-        len(unique_problems), len(failing_pairs)
-    )
-
-    return unique_problems
+# Per CLAUDE.md: "system discovers which signatures are truly atomic"
+# Signatures become "atomic" when they prove reliable enough to never decompose.
+# This is learned from (dag_step_type, node_id) pair statistics.
 
 
 @dataclass
-class DiagnosticExplorationResult:
-    """Result of diagnostic exploration on a single problem."""
-    problem_id: str
-    threads_generated: int
-    winning_threads: int
-    losing_threads: int
-    divergence_points: int
-    blamed_nodes: list[int]  # Nodes identified as causing failures
-    blamed_steps: list[str]  # dag_step_ids identified as problematic
-    confidence: float  # How confident we are in the diagnosis (0-1)
+class AtomicCandidate:
+    """A signature that qualifies for atomic status."""
+    node_id: int
+    step_type: str
+    uses: int
+    wins: int
+    win_rate: float
+    step_types_count: int  # How many distinct dag_step_types this handles
+    reason: str  # "high_success", "decomp_failed", "specialized"
 
 
-async def run_diagnostic_exploration(
-    problem_desc: str,
-    ground_truth: str,
-    num_rollouts: int = 5,
-    exploration_c: float = 2.0,
-) -> DiagnosticExplorationResult:
-    """Re-run a problem with forced exploration to diagnose failures.
+def discover_atomic_signatures(min_uses: int = None, min_success_rate: float = None) -> list[AtomicCandidate]:
+    """Find signatures that qualify for atomic status based on stats.
 
-    This generates multiple threads exploring different paths, then uses
-    divergence analysis to pinpoint the exact (dag_step, node) pairs causing failures.
+    A signature is atomic (a "math prime") if:
+    1. High success rate (>= min_success_rate) with enough uses (>= min_uses)
+    2. Specialized: handles 1-2 distinct dag_step_types with high success
+
+    Per CLAUDE.md: "leaf_node + dag_step pairs" - we evaluate the PAIR.
+    A node might be atomic for one step type but not another.
 
     Args:
-        problem_desc: The problem text
-        ground_truth: The correct answer
-        num_rollouts: Number of threads to generate
-        exploration_c: Exploration constant (higher = more exploration)
+        min_uses: Minimum total uses (default from config)
+        min_success_rate: Minimum win rate (default from config)
 
     Returns:
-        DiagnosticResult with identified failing pairs
+        List of AtomicCandidate objects
     """
-    from mycelium.solver import Solver
-    from mycelium.step_signatures import StepSignatureDB
-
-    # Create solver with high exploration
-    step_db = StepSignatureDB()
-    solver = Solver(db_path=step_db.db_path)
-
-    # Run multiple times with forced exploration
-    dag_ids = []
-    for i in range(num_rollouts):
-        try:
-            # Solve with ground_truth for grading
-            result = await solver.solve(problem_desc, ground_truth=ground_truth)
-            if solver._current_dag_id:
-                dag_ids.append(solver._current_dag_id)
-        except Exception as e:
-            logger.warning("[diagnostic] Rollout %d failed: %s", i, e)
-
-    if not dag_ids:
-        return DiagnosticExplorationResult(
-            problem_id=problem_desc[:50],
-            threads_generated=0,
-            winning_threads=0,
-            losing_threads=0,
-            divergence_points=0,
-            blamed_nodes=[],
-            blamed_steps=[],
-            confidence=0.0,
-        )
-
-    # Analyze divergence across all DAGs
-    all_blamed_nodes = set()
-    all_blamed_steps = set()
-    total_divergence_points = 0
-    winning_count = 0
-    losing_count = 0
-
-    for dag_id in dag_ids:
-        # Get thread outcomes
-        paths = get_thread_paths(dag_id)
-        winning_count += sum(1 for p in paths if p.success == 1)
-        losing_count += sum(1 for p in paths if p.success == 0)
-
-        # Find divergence points
-        divergence_points = find_divergence_points(dag_id)
-        total_divergence_points += len(divergence_points)
-
-        # Collect blamed nodes from divergence
-        for dp in divergence_points:
-            if dp.losing_node_at_divergence:
-                all_blamed_nodes.add(dp.losing_node_at_divergence)
-            if dp.divergence_dag_step_id:
-                all_blamed_steps.add(dp.divergence_dag_step_id)
-            # Also check suffix
-            for step_id, node_id in dp.losing_suffix:
-                all_blamed_nodes.add(node_id)
-                all_blamed_steps.add(step_id)
-
-    # Calculate confidence based on data quality
-    total_threads = winning_count + losing_count
-    if total_threads == 0:
-        confidence = 0.0
-    elif winning_count == 0 or losing_count == 0:
-        confidence = 0.3  # No comparison possible
-    else:
-        # Higher confidence with more divergence points and balanced win/loss
-        balance = min(winning_count, losing_count) / max(winning_count, losing_count)
-        confidence = min(0.9, 0.5 + (total_divergence_points * 0.1) + (balance * 0.3))
-
-    result = DiagnosticExplorationResult(
-        problem_id=problem_desc[:50],
-        threads_generated=total_threads,
-        winning_threads=winning_count,
-        losing_threads=losing_count,
-        divergence_points=total_divergence_points,
-        blamed_nodes=list(all_blamed_nodes),
-        blamed_steps=list(all_blamed_steps),
-        confidence=confidence,
+    from mycelium.config import (
+        ATOMIC_MIN_USES,
+        ATOMIC_MIN_SUCCESS_RATE,
+        ATOMIC_MIN_STEP_TYPES,
     )
+
+    min_uses = min_uses or ATOMIC_MIN_USES
+    min_success_rate = min_success_rate or ATOMIC_MIN_SUCCESS_RATE
+
+    conn = get_db()
+    candidates = []
+
+    # Find nodes that:
+    # 1. Are NOT already umbrellas or archived
+    # 2. Have enough total uses across all step types
+    # 3. Have high overall win rate
+    # 4. NOT already marked atomic
+    with conn.connection() as c:
+        # Get per-node aggregate stats from dag_step_node_stats
+        cursor = c.execute("""
+            SELECT
+                dsns.node_id,
+                SUM(dsns.uses) as total_uses,
+                SUM(dsns.wins) as total_wins,
+                COUNT(DISTINCT dsns.dag_step_type) as step_types_count,
+                ss.step_type,
+                ss.is_semantic_umbrella,
+                ss.is_archived,
+                ss.is_atomic
+            FROM dag_step_node_stats dsns
+            JOIN step_signatures ss ON dsns.node_id = ss.id
+            WHERE ss.is_archived = 0
+              AND ss.is_atomic = 0
+            GROUP BY dsns.node_id
+            HAVING SUM(dsns.uses) >= ?
+        """, (min_uses,))
+
+        for row in cursor.fetchall():
+            node_id = row[0]
+            total_uses = row[1] or 0
+            total_wins = row[2] or 0
+            step_types_count = row[3] or 0
+            step_type = row[4]
+            is_umbrella = row[5]
+            is_archived = row[6]
+            is_atomic = row[7]
+
+            # Skip umbrellas (routers don't become atomic)
+            if is_umbrella:
+                continue
+
+            # Calculate win rate with Bayesian prior
+            prior_alpha = 1.0
+            prior_beta = 1.0
+            win_rate = (total_wins + prior_alpha) / (total_uses + prior_alpha + prior_beta)
+
+            # Check if qualifies for atomic
+            if win_rate >= min_success_rate:
+                # Determine reason
+                if step_types_count <= ATOMIC_MIN_STEP_TYPES:
+                    reason = "specialized"  # Good at 1-2 specific things
+                else:
+                    reason = "high_success"  # Good at many things
+
+                candidates.append(AtomicCandidate(
+                    node_id=node_id,
+                    step_type=step_type,
+                    uses=total_uses,
+                    wins=total_wins,
+                    win_rate=win_rate,
+                    step_types_count=step_types_count,
+                    reason=reason,
+                ))
 
     logger.info(
-        "[diagnostic] Exploration complete: %d threads (%d win, %d lose), "
-        "%d divergence points, blamed %d nodes, confidence=%.2f",
-        result.threads_generated, result.winning_threads, result.losing_threads,
-        result.divergence_points, len(result.blamed_nodes), result.confidence
+        "[atomic] Discovered %d atomic candidates (min_uses=%d, min_rate=%.2f)",
+        len(candidates), min_uses, min_success_rate
     )
+    return candidates
+
+
+def mark_signature_atomic(node_id: int, reason: str) -> bool:
+    """Mark a signature as atomic (a "math prime" that shouldn't decompose).
+
+    Args:
+        node_id: The signature ID
+        reason: Why it's atomic ("high_success", "decomp_failed", "specialized")
+
+    Returns:
+        True if updated, False otherwise
+    """
+    conn = get_db()
+    with conn.connection() as c:
+        cursor = c.execute(
+            "UPDATE step_signatures SET is_atomic = 1, atomic_reason = ? WHERE id = ?",
+            (reason, node_id)
+        )
+        if cursor.rowcount > 0:
+            logger.info("[atomic] Marked signature %d as atomic (reason=%s)", node_id, reason)
+            return True
+    return False
+
+
+def unmark_signature_atomic(node_id: int) -> bool:
+    """Unmark a signature as atomic (revert to decomposable).
+
+    Args:
+        node_id: The signature ID
+
+    Returns:
+        True if updated, False otherwise
+    """
+    conn = get_db()
+    with conn.connection() as c:
+        cursor = c.execute(
+            "UPDATE step_signatures SET is_atomic = 0, atomic_reason = NULL WHERE id = ?",
+            (node_id,)
+        )
+        if cursor.rowcount > 0:
+            logger.info("[atomic] Unmarked signature %d as atomic", node_id)
+            return True
+    return False
+
+
+def is_signature_atomic(node_id: int) -> bool:
+    """Check if a signature is marked atomic.
+
+    Args:
+        node_id: The signature ID
+
+    Returns:
+        True if atomic, False otherwise
+    """
+    conn = get_db()
+    with conn.connection() as c:
+        cursor = c.execute(
+            "SELECT is_atomic FROM step_signatures WHERE id = ?",
+            (node_id,)
+        )
+        row = cursor.fetchone()
+        return bool(row and row[0])
+
+
+def run_atomic_discovery() -> dict:
+    """Discover and mark atomic signatures.
+
+    This should be called as part of the post-mortem pipeline.
+
+    Returns:
+        Dict with discovery statistics
+    """
+    candidates = discover_atomic_signatures()
+    marked = 0
+
+    for candidate in candidates:
+        if mark_signature_atomic(candidate.node_id, candidate.reason):
+            marked += 1
+
+    result = {
+        "candidates_found": len(candidates),
+        "marked_atomic": marked,
+        "reasons": {}
+    }
+
+    # Count by reason
+    for c in candidates:
+        result["reasons"][c.reason] = result["reasons"].get(c.reason, 0) + 1
+
+    if marked > 0:
+        logger.info(
+            "[atomic] Discovery complete: %d candidates, %d marked atomic. Reasons: %s",
+            len(candidates), marked, result["reasons"]
+        )
 
     return result
+
+

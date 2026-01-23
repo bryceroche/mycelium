@@ -154,6 +154,24 @@ EXPLORATION_EPSILON_DECAY = 0.995  # Decay factor per problem (0.995^100 ≈ 0.6
 EXPLORATION_EPSILON_MIN = 0.05  # Minimum epsilon floor
 
 # =============================================================================
+# REACTIVE EXPLORATION (retry on failure)
+# =============================================================================
+# Per CLAUDE.md: "If we got the wrong answer that should trigger a larger MCTS rollout
+# where we explore the tree more widely searching for the right leaf_node, dag_step pairs"
+# When a problem fails, we retry with forced exploration of alternative nodes at each step.
+# If we find a winning path, we compare divergence points for precise blame assignment.
+REACTIVE_EXPLORATION_ENABLED = True  # Enable reactive exploration on failure
+REACTIVE_EXPLORATION_MAX_ALTERNATIVES = 3  # Max alternative nodes to try per step
+REACTIVE_EXPLORATION_MAX_RETRIES = 5  # Max total retry attempts
+REACTIVE_EXPLORATION_MIN_SIMILARITY = 0.5  # Min similarity for alternative candidates
+
+# Step decomposition fallback: when reactive exploration fails to find a winning path,
+# decompose failing steps into smaller sub-steps and re-solve
+STEP_DECOMPOSITION_FALLBACK_ENABLED = True  # Enable step decomposition on reactive failure
+STEP_DECOMPOSITION_MAX_DEPTH = 2  # Max decomposition depth (prevent infinite recursion)
+STEP_DECOMPOSITION_MIN_STEPS = 2  # Min steps in failed result to attempt decomposition
+
+# =============================================================================
 # ADAPTIVE DECOMPOSITION THRESHOLDS
 # =============================================================================
 # min_attempts for flagging nodes needing decomposition
@@ -161,6 +179,15 @@ EXPLORATION_EPSILON_MIN = 0.05  # Minimum epsilon floor
 DECOMP_MIN_ATTEMPTS_COLD = 1  # Cold start: flag after just 1 failure
 DECOMP_MIN_ATTEMPTS_MATURE = 3  # Mature: require 3+ attempts before flagging
 DECOMP_MAX_WIN_RATE = 0.5  # Flag nodes with win rate below this
+
+# ATOMIC DISCOVERY (math primes - per CLAUDE.md: system discovers atomic operations)
+# Signatures become "atomic" when they prove reliable enough to never decompose further
+# This is learned from (dag_step_type, node_id) pair statistics
+ATOMIC_MIN_USES = 5  # Minimum uses before eligible for atomic status
+ATOMIC_MIN_SUCCESS_RATE = 0.85  # Success rate threshold for atomic promotion
+ATOMIC_MIN_STEP_TYPES = 1  # Must succeed at this many distinct dag_step_types
+# Alternative path to atomic: decomposition was attempted but children perform worse
+ATOMIC_DECOMP_FAILED_USES = 3  # If children perform worse for this many uses, mark parent atomic
 
 # VARIANCE-BASED DECOMPOSITION (per CLAUDE.md: depth emerges from problem structure)
 # High variance in embedding similarities indicates a signature is too generic
@@ -479,6 +506,14 @@ CREDIT_PROPAGATION_THRESHOLD_BLAME = 0.7  # amp_post < this → blame (op_failur
 # Steps with low confidence in losing threads get blamed (likely caused failure)
 PARTIAL_CREDIT_HIGH_CONF_THRESHOLD = 0.7  # amplitude >= this in lost thread → partial credit
 PARTIAL_CREDIT_WEIGHT = 0.5  # Weight for partial credit (0.5 = half a success)
+
+# =============================================================================
+# DETAILED LOGGING OPTIMIZATION
+# =============================================================================
+# Only store detailed thread step records (mcts_thread_steps) for failures.
+# Summaries (mcts_step_summaries) are always stored for credit propagation.
+# This reduces DB writes while keeping learning signal intact.
+LOG_DETAILED_STEPS_FAILURES_ONLY = True  # Only log detailed records for failures
 
 # =============================================================================
 # STEP-NODE STATS (Materialized (dag_step_type, node_id) performance)
