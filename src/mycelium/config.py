@@ -165,6 +165,12 @@ REACTIVE_EXPLORATION_MAX_ALTERNATIVES = 3  # Max alternative nodes to try per st
 REACTIVE_EXPLORATION_MAX_RETRIES = 5  # Max total retry attempts
 REACTIVE_EXPLORATION_MIN_SIMILARITY = 0.5  # Min similarity for alternative candidates
 
+# Step decomposition fallback: when reactive exploration fails to find a winning path,
+# decompose failing steps into smaller sub-steps and re-solve
+STEP_DECOMPOSITION_FALLBACK_ENABLED = True  # Enable step decomposition on reactive failure
+STEP_DECOMPOSITION_MAX_DEPTH = 2  # Max decomposition depth (prevent infinite recursion)
+STEP_DECOMPOSITION_MIN_STEPS = 2  # Min steps in failed result to attempt decomposition
+
 # =============================================================================
 # ADAPTIVE DECOMPOSITION THRESHOLDS
 # =============================================================================

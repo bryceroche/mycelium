@@ -3136,6 +3136,203 @@ Rules:
         logger.info("[reactive] No winning path found after %d retries", REACTIVE_EXPLORATION_MAX_RETRIES)
         return None
 
+    async def _decompose_and_resolve(
+        self,
+        failed_result: SolverResult,
+        ground_truth: str,
+        difficulty: float = None,
+        decomposition_depth: int = 0,
+    ) -> Optional[tuple[SolverResult, str]]:
+        """Decompose failing steps and re-solve the problem.
+
+        Per CLAUDE.md: "The step is likely too complex and needs decomposition"
+
+        When reactive exploration fails to find a winning path by trying alternative
+        signatures, this method decomposes the failing steps into smaller sub-steps
+        and re-solves the entire problem.
+
+        Args:
+            failed_result: The failed SolverResult
+            ground_truth: Correct answer to compare against
+            difficulty: Problem difficulty
+            decomposition_depth: Current decomposition depth (prevents infinite recursion)
+
+        Returns:
+            Tuple of (winning_result, thread_id) if decomposition found a solution, else None
+        """
+        from mycelium.config import STEP_DECOMPOSITION_MAX_DEPTH
+        from mycelium.data_layer.mcts import create_thread, complete_thread, grade_thread
+        import uuid
+
+        # Prevent infinite recursion
+        if decomposition_depth >= STEP_DECOMPOSITION_MAX_DEPTH:
+            logger.debug("[decompose] Max decomposition depth reached (%d)", decomposition_depth)
+            return None
+
+        problem = failed_result.problem
+        failed_steps = failed_result.steps
+
+        if not failed_steps:
+            return None
+
+        logger.info(
+            "[decompose] Attempting step decomposition for failed problem (depth=%d, steps=%d)",
+            decomposition_depth, len(failed_steps)
+        )
+
+        # Identify which steps are most likely failing
+        # For now, try decomposing all steps that had a result (executed but gave wrong answer)
+        steps_to_decompose = []
+        for step_result in failed_steps:
+            if step_result.result is not None:
+                steps_to_decompose.append(step_result)
+
+        if not steps_to_decompose:
+            logger.debug("[decompose] No steps with results to decompose")
+            return None
+
+        # Create a thread for this decomposition attempt
+        decomp_thread_id = f"decomp-{uuid.uuid4().hex[:8]}"
+        if self._current_dag_id:
+            create_thread(
+                dag_id=self._current_dag_id,
+                parent_thread_id=self._root_thread_id,
+                fork_at_step=None,  # Decomposition doesn't fork from a specific step
+                fork_reason="step_decomposition",
+                thread_id=decomp_thread_id,
+            )
+
+        try:
+            # Re-plan the problem with a hint to use finer-grained decomposition
+            signature_hints = self.step_db.get_signature_hints(
+                limit=HINT_LIMIT,
+                problem_embedding=cached_embed(problem, self.embedder),
+                min_similarity=HINT_MIN_SIMILARITY,
+            )
+
+            # Add context about what failed
+            failed_step_descriptions = [
+                f"- '{s.task[:60]}' produced '{str(s.result)[:30]}'"
+                for s in steps_to_decompose[:3]  # Limit to first 3 for prompt length
+            ]
+            decomposition_context = (
+                "The previous solution was incorrect. "
+                "Please break down the problem into MORE GRANULAR steps. "
+                "These steps may need finer decomposition:\n" +
+                "\n".join(failed_step_descriptions)
+            )
+
+            # Re-decompose with the hint
+            new_plan = await self.planner.decompose(
+                problem,
+                signature_hints=signature_hints,
+                context=decomposition_context,
+            )
+
+            if not new_plan or not new_plan.steps:
+                logger.debug("[decompose] Re-decomposition produced no steps")
+                if self._current_dag_id:
+                    complete_thread(decomp_thread_id, final_answer=None)
+                    grade_thread(decomp_thread_id, success=False)
+                return None
+
+            # Check if we got more steps (finer decomposition)
+            if len(new_plan.steps) <= len(failed_steps):
+                logger.debug(
+                    "[decompose] Re-decomposition didn't produce finer steps (%d vs %d)",
+                    len(new_plan.steps), len(failed_steps)
+                )
+                if self._current_dag_id:
+                    complete_thread(decomp_thread_id, final_answer=None)
+                    grade_thread(decomp_thread_id, success=False)
+                return None
+
+            logger.info(
+                "[decompose] Re-decomposed into %d steps (was %d)",
+                len(new_plan.steps), len(failed_steps)
+            )
+
+            # Execute the new plan
+            # Validate DAG structure
+            if len(new_plan.steps) > 1:
+                is_valid, errors = new_plan.validate()
+                if not is_valid:
+                    logger.warning("[decompose] New plan has invalid DAG: %s", errors)
+                    if self._current_dag_id:
+                        complete_thread(decomp_thread_id, final_answer=None)
+                        grade_thread(decomp_thread_id, success=False)
+                    return None
+
+            # Batch write expressions for all steps
+            await self._batch_write_expressions(new_plan.steps)
+
+            # Execute steps in dependency order
+            step_order = self._compute_execution_order(new_plan.steps)
+            context = {}
+            step_descriptions = {s.id: s.task for s in new_plan.steps}
+
+            for step in step_order:
+                step_context = {
+                    dep: context[dep]
+                    for dep in step.depends_on
+                    if dep in context
+                }
+                step_desc_context = {
+                    dep: step_descriptions[dep]
+                    for dep in step.depends_on
+                    if dep in step_descriptions
+                }
+
+                step_result = await self._execute_step(
+                    step, problem, step_context, step_desc_context,
+                    compute_budget=1.0,  # Single path for decomposition
+                    difficulty=difficulty,
+                    thread_id=decomp_thread_id,
+                )
+
+                if step_result.result is None:
+                    logger.debug("[decompose] Step '%s' failed in re-execution", step.id)
+                    if self._current_dag_id:
+                        complete_thread(decomp_thread_id, final_answer=None)
+                        grade_thread(decomp_thread_id, success=False)
+                    return None
+
+                context[step.id] = step_result.result
+
+            # Get final answer from last step
+            final_step = step_order[-1] if step_order else None
+            final_answer = context.get(final_step.id) if final_step else None
+
+            # Check if the answer matches ground truth
+            is_correct = self._answers_match(str(final_answer), ground_truth) if final_answer else False
+
+            if self._current_dag_id:
+                complete_thread(decomp_thread_id, final_answer=str(final_answer) if final_answer else None)
+                grade_thread(decomp_thread_id, success=is_correct)
+
+            if is_correct:
+                logger.info(
+                    "[decompose] Decomposition found correct answer: %s",
+                    str(final_answer)[:30] if final_answer else "None"
+                )
+                winning_result = SolverResult(
+                    problem=problem,
+                    answer=str(final_answer) if final_answer else "",
+                    success=True,
+                    steps=failed_result.steps,  # Keep original for comparison
+                )
+                return (winning_result, decomp_thread_id)
+
+            logger.debug("[decompose] Decomposed solution also incorrect")
+            return None
+
+        except Exception as e:
+            logger.error("[decompose] Step decomposition failed: %s", e)
+            if self._current_dag_id:
+                complete_thread(decomp_thread_id, final_answer=None)
+                grade_thread(decomp_thread_id, success=False)
+            return None
+
     async def _run_reactive_exploration(
         self,
         result: SolverResult,
@@ -3170,8 +3367,32 @@ Rules:
         )
 
         if winning is None:
-            logger.info("[reactive] No winning alternative found")
-            return stats
+            logger.info("[reactive] No winning alternative found, trying step decomposition")
+
+            # Fallback: try decomposing failing steps into sub-steps
+            from mycelium.config import (
+                STEP_DECOMPOSITION_FALLBACK_ENABLED,
+                STEP_DECOMPOSITION_MIN_STEPS,
+            )
+
+            if STEP_DECOMPOSITION_FALLBACK_ENABLED and len(result.steps) >= STEP_DECOMPOSITION_MIN_STEPS:
+                decomp_result = await self._decompose_and_resolve(
+                    result, ground_truth, difficulty
+                )
+                if decomp_result is not None:
+                    stats["step_decomposition_triggered"] = True
+                    stats["winning_path_found"] = True
+                    stats["decomposition_succeeded"] = True
+                    logger.info("[reactive] Step decomposition found winning path")
+                    # Continue to divergence analysis with the decomposed result
+                    winning = decomp_result
+                else:
+                    stats["step_decomposition_triggered"] = True
+                    stats["decomposition_succeeded"] = False
+                    logger.info("[reactive] Step decomposition also failed")
+                    return stats
+            else:
+                return stats
 
         winning_result, winning_thread_id = winning
         stats["winning_path_found"] = True
