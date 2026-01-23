@@ -78,6 +78,10 @@ from mycelium.data_layer.mcts import (
     get_decomposition_queue_size,
     mark_decomposition_processed,
     get_decomposition_queue_stats,
+    # Blocking decomposition coordination
+    get_decomposition_results,
+    are_decompositions_ready,
+    get_pending_queue_ids,
 )
 
 db = get_db()
@@ -156,4 +160,8 @@ __all__ = [
     "get_decomposition_queue_size",
     "mark_decomposition_processed",
     "get_decomposition_queue_stats",
+    # Blocking decomposition coordination
+    "get_decomposition_results",
+    "are_decompositions_ready",
+    "get_pending_queue_ids",
 ]

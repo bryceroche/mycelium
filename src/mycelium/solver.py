@@ -962,6 +962,23 @@ class Solver:
             # Operations are extracted during decomposition, batch embedded here
             self._prewarm_operation_embeddings(plan.steps)
 
+            # 1.4. BLOCKING DECOMPOSITION: Check for complex steps and decompose before execution
+            # Per beads mycelium-mm08: Complex steps block until decomposed into atomic operations
+            # This batches across multiple problems - steps queue up, decomposition fires when threshold met
+            if TRAINING_MODE:
+                from mycelium.llm_client import LLMClient
+                async with LLMClient() as client:
+                    queue_ids, decomp_results = await self._blocking_decompose_complex_steps(
+                        plan=plan,
+                        problem=problem,
+                        client=client,
+                        min_batch_size=5,  # Wait for 5 complex steps across problems
+                    )
+                    if queue_ids:
+                        plan = await self._expand_plan_with_decompositions(
+                            plan, queue_ids, decomp_results
+                        )
+
             # 1.5. BATCH EXPRESSION WRITING (single LLM call for all steps)
             # Collect step info for batch expression writing
             # For steps with {step_N} references, we'll resolve them during execution
@@ -4008,6 +4025,179 @@ Rules:
         except Exception as e:
             logger.error("[solver] Reactive exploration failed: %s", e)
             return {"error": str(e)}
+
+    async def _blocking_decompose_complex_steps(
+        self,
+        plan,
+        problem: str,
+        client,
+        min_batch_size: int = 3,
+        poll_interval: float = 0.5,
+        timeout: float = 30.0,
+    ) -> tuple[list, dict]:
+        """Check plan for complex steps, queue them, and block until decomposed.
+
+        This implements blocking decomposition: complex steps are queued, we wait
+        for batch decomposition to complete, then return decomposed atomic steps.
+
+        Args:
+            plan: The execution plan with steps
+            problem: Problem text for context
+            client: LLM client for decomposition
+            min_batch_size: Minimum queue size before triggering decomposition
+            poll_interval: Seconds between polling for results
+            timeout: Max seconds to wait for decomposition
+
+        Returns:
+            Tuple of (queue_ids for our complex steps, decomposed results dict)
+        """
+        import asyncio
+        from mycelium.data_layer.mcts import (
+            is_step_complex,
+            queue_for_decomposition,
+            get_decomposition_queue_size,
+            get_decomposition_results,
+            are_decompositions_ready,
+        )
+        from mycelium.embedding_cache import cached_embed
+
+        # 1. Scan plan for complex steps
+        complex_steps = []
+        for step in plan.steps:
+            is_complex, complexity_reason = is_step_complex(step.task)
+            if is_complex:
+                complex_steps.append((step, complexity_reason))
+
+        if not complex_steps:
+            return [], {}
+
+        logger.info(
+            "[solver] Found %d complex steps in plan, queueing for decomposition",
+            len(complex_steps)
+        )
+
+        # 2. Queue complex steps with their dag_step_ids
+        our_queue_ids = []
+        for step, complexity_reason in complex_steps:
+            embedding = cached_embed(step.task, self.embedder)
+            dag_step_id = self._dag_step_ids.get(step.id)
+
+            queue_id = queue_for_decomposition(
+                step_text=step.task,
+                complexity_reason=complexity_reason,
+                embedding=embedding,
+                dag_step_id=dag_step_id,
+                problem_context=problem[:500],
+            )
+            our_queue_ids.append(queue_id)
+            logger.debug(
+                "[solver] Queued complex step %s (queue_id=%d): %s",
+                step.id, queue_id, step.task[:50]
+            )
+
+        # 3. Check if threshold met, trigger decomposition if so
+        queue_size = get_decomposition_queue_size()
+        if queue_size >= min_batch_size:
+            logger.info(
+                "[solver] Queue threshold met (%d >= %d), triggering batch decomposition",
+                queue_size, min_batch_size
+            )
+            # Run decomposition for ALL pending items (not just ours)
+            decomp_result = await self.maybe_run_batch_decomposition(
+                client,
+                batch_size=queue_size,  # Process all pending
+                min_queue_size=1,  # Force run since we already checked threshold
+            )
+            logger.info(
+                "[solver] Batch decomposition complete: %d processed",
+                decomp_result.get("processed", 0)
+            )
+
+        # 4. Wait for our steps to be processed (may have been processed by another worker)
+        start_time = asyncio.get_event_loop().time()
+        while not are_decompositions_ready(our_queue_ids):
+            elapsed = asyncio.get_event_loop().time() - start_time
+            if elapsed > timeout:
+                logger.warning(
+                    "[solver] Timeout waiting for decomposition after %.1fs",
+                    elapsed
+                )
+                break
+            await asyncio.sleep(poll_interval)
+
+        # 5. Get decomposed results for our steps
+        results = get_decomposition_results(our_queue_ids)
+        logger.info(
+            "[solver] Retrieved decomposition results for %d/%d steps",
+            sum(1 for r in results.values() if r.get("processed")),
+            len(our_queue_ids)
+        )
+
+        return our_queue_ids, results
+
+    async def _expand_plan_with_decompositions(
+        self,
+        plan,
+        queue_ids: list[int],
+        decomposition_results: dict[int, dict],
+    ):
+        """Expand plan by replacing complex steps with their decomposed atomic sub-steps.
+
+        Args:
+            plan: The execution plan to modify
+            queue_ids: Queue IDs for our complex steps
+            decomposition_results: Results from get_decomposition_results()
+
+        Returns:
+            Modified plan with complex steps expanded
+        """
+        from mycelium.planner import Step
+
+        if not queue_ids or not decomposition_results:
+            return plan
+
+        # Build mapping of step.task -> decomposed atomic steps
+        # We need to match by task text since queue doesn't store step.id directly
+        expanded_count = 0
+
+        for step in plan.steps:
+            # Find if this step was queued (by checking if it matches a queued step's decomposition)
+            for queue_id in queue_ids:
+                result = decomposition_results.get(queue_id)
+                if not result or not result.get("processed"):
+                    continue
+
+                decomposed_steps = result.get("decomposition_steps", [])
+                if not decomposed_steps:
+                    continue
+
+                # If this step has decomposed sub-steps, create a sub-plan
+                if len(decomposed_steps) > 1:
+                    # Create sub-steps from decomposed atomic operations
+                    sub_steps = []
+                    for i, atomic_task in enumerate(decomposed_steps):
+                        sub_step = Step(
+                            id=f"{step.id}_sub_{i}",
+                            task=atomic_task,
+                            is_atomic=True,
+                            depends_on=[f"{step.id}_sub_{j}" for j in range(i)] if i > 0 else step.depends_on,
+                        )
+                        sub_steps.append(sub_step)
+
+                    # Attach sub-plan to the original step
+                    step.sub_plan = type(plan)(steps=sub_steps)
+                    step.is_atomic = False  # Now a composite step
+                    expanded_count += 1
+                    logger.debug(
+                        "[solver] Expanded step %s into %d sub-steps",
+                        step.id, len(decomposed_steps)
+                    )
+                    break  # Found match, move to next step
+
+        if expanded_count > 0:
+            logger.info("[solver] Expanded %d complex steps with decompositions", expanded_count)
+
+        return plan
 
     async def maybe_run_batch_decomposition(
         self,

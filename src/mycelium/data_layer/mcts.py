@@ -423,13 +423,26 @@ def queue_for_decomposition(
         problem_context: Optional problem text for LLM context
 
     Returns:
-        Queue entry ID
+        Queue entry ID (or existing ID if already queued)
     """
     import json
     from mycelium.step_signatures.utils import pack_embedding
 
     now = datetime.now(timezone.utc).isoformat()
     conn = get_db()
+
+    # Check if already queued (pending) with same step_text - avoid duplicates
+    cursor = conn.execute(
+        """
+        SELECT id FROM decomposition_queue
+        WHERE step_text = ? AND processed_at IS NULL
+        LIMIT 1
+        """,
+        (step_text,),
+    )
+    existing = cursor.fetchone()
+    if existing:
+        return existing[0]  # Return existing queue ID
 
     embedding_packed = pack_embedding(embedding) if embedding is not None else None
 
@@ -561,6 +574,89 @@ def get_decomposition_queue_stats() -> dict:
         "total": row[2] if row else 0,
         "by_reason": by_reason,
     }
+
+
+def get_decomposition_results(queue_ids: list[int]) -> dict[int, dict]:
+    """Get decomposition results for specific queue entries.
+
+    Args:
+        queue_ids: List of queue entry IDs to retrieve
+
+    Returns:
+        Dict mapping queue_id to result dict with:
+        - processed: bool
+        - decomposition_steps: list[str] (if processed)
+        - result_signature_ids: list[int] (if processed)
+    """
+    import json
+
+    if not queue_ids:
+        return {}
+
+    conn = get_db()
+    placeholders = ",".join("?" * len(queue_ids))
+    cursor = conn.execute(
+        f"""
+        SELECT id, processed_at, decomposition_steps, result_signature_ids
+        FROM decomposition_queue
+        WHERE id IN ({placeholders})
+        """,
+        queue_ids,
+    )
+
+    results = {}
+    for row in cursor.fetchall():
+        queue_id = row[0]
+        processed = row[1] is not None
+        results[queue_id] = {
+            "processed": processed,
+            "decomposition_steps": json.loads(row[2]) if row[2] else [],
+            "result_signature_ids": json.loads(row[3]) if row[3] else [],
+        }
+
+    return results
+
+
+def are_decompositions_ready(queue_ids: list[int]) -> bool:
+    """Check if all specified queue entries have been processed.
+
+    Args:
+        queue_ids: Queue entry IDs to check
+
+    Returns:
+        True if all are processed, False otherwise
+    """
+    if not queue_ids:
+        return True
+
+    conn = get_db()
+    placeholders = ",".join("?" * len(queue_ids))
+    cursor = conn.execute(
+        f"""
+        SELECT COUNT(*) FROM decomposition_queue
+        WHERE id IN ({placeholders}) AND processed_at IS NULL
+        """,
+        queue_ids,
+    )
+    pending_count = cursor.fetchone()[0]
+    return pending_count == 0
+
+
+def get_pending_queue_ids() -> list[int]:
+    """Get all pending (unprocessed) queue entry IDs.
+
+    Returns:
+        List of queue IDs waiting for decomposition
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT id FROM decomposition_queue
+        WHERE processed_at IS NULL
+        ORDER BY queued_at ASC
+        """
+    )
+    return [row[0] for row in cursor.fetchall()]
 
 
 # =============================================================================
