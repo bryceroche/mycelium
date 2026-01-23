@@ -116,11 +116,21 @@ MCTS rollouts can be modeled as wave function collapse, providing a principled f
 
 **Selective Branching**: Don't branch on every DAG step—only when **undecided**. Use UCB1 gap to detect uncertainty. High gap = confident, low gap = branch.
 
-### The Key Learning Unit
+### The Key Learning Units
 
-**The combination of `(dag_step_id, node_id)` is what we're learning.**
+**Two critical pairs drive learning:**
 
-A node might be great for step 2 but terrible for step 5. Track performance per step-node pair, not just per node.
+1. **`(dag_step_id, node_id)`** — Step-level routing performance
+   - A node might be great for step 2 but terrible for step 5
+   - Track which signatures work for which step types
+   - Drives UCB1 routing decisions within a plan
+
+2. **`(dag_plan, thread_id)`** — Plan-level execution patterns
+   - Which decomposition strategies work for which problem types
+   - Track which thread paths through a plan succeed
+   - Drives plan selection and thread credit assignment
+
+The first pair tells us "this signature handles addition steps well." The second tells us "this decomposition approach solves percentage problems well."
 
 ### Amplitude Updates (Post-Mortem)
 
@@ -146,7 +156,7 @@ The post-mortem analysis of MCTS rollouts should consider:
 - **Was undecided** - whether we branched due to low confidence
 - **Alternatives considered** - how many other paths were explored
 
-Key insight: Performance is tracked per `(dag_step_id, node_id)` pair, not just per node.
+Key insight: Performance is tracked per `(dag_step_id, node_id)` pair AND per `(dag_plan, thread_id)` pair—not just per node or per plan.
 
 ### Interference Patterns
 
