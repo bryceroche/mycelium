@@ -82,6 +82,15 @@ from mycelium.data_layer.mcts import (
     get_decomposition_results,
     are_decompositions_ready,
     get_pending_queue_ids,
+    # Leaf rejection tracking
+    REJECTION_SIM_THRESHOLD,
+    REJECTION_COUNT_THRESHOLD,
+    REJECTION_RATE_THRESHOLD,
+    record_leaf_rejection,
+    get_leaf_rejection_stats,
+    get_leaves_needing_decomposition,
+    check_and_reject_if_low_similarity,
+    flag_high_rejection_leaves_for_decomposition,
 )
 
 db = get_db()
@@ -164,4 +173,13 @@ __all__ = [
     "get_decomposition_results",
     "are_decompositions_ready",
     "get_pending_queue_ids",
+    # Leaf rejection tracking
+    "REJECTION_SIM_THRESHOLD",
+    "REJECTION_COUNT_THRESHOLD",
+    "REJECTION_RATE_THRESHOLD",
+    "record_leaf_rejection",
+    "get_leaf_rejection_stats",
+    "get_leaves_needing_decomposition",
+    "check_and_reject_if_low_similarity",
+    "flag_high_rejection_leaves_for_decomposition",
 ]

@@ -4033,7 +4033,7 @@ Rules:
         client,
         min_batch_size: int = 3,
         poll_interval: float = 0.5,
-        timeout: float = 30.0,
+        timeout: float = 15.0,
     ) -> tuple[list, dict]:
         """Check plan for complex steps, queue them, and block until decomposed.
 

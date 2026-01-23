@@ -660,6 +660,225 @@ def get_pending_queue_ids() -> list[int]:
 
 
 # =============================================================================
+# LEAF REJECTION TRACKING
+# =============================================================================
+
+
+# Rejection thresholds (per CLAUDE.md: leaves define their own boundaries)
+REJECTION_SIM_THRESHOLD = 0.65  # Below this similarity, leaf rejects the step
+REJECTION_COUNT_THRESHOLD = 10  # Min rejections before considering decomposition
+REJECTION_RATE_THRESHOLD = 0.30  # 30% rejection rate triggers decomposition flag
+
+
+def record_leaf_rejection(
+    signature_id: int,
+    step_text: str,
+    similarity: float,
+    dag_step_id: str = None,
+    problem_context: str = None,
+) -> int:
+    """Record that a leaf signature rejected a dag_step due to low similarity.
+
+    Args:
+        signature_id: The leaf signature that rejected
+        step_text: The step that was rejected
+        similarity: The similarity score that caused rejection
+        dag_step_id: Optional link to the dag_step
+        problem_context: Optional problem text for context
+
+    Returns:
+        Updated rejection_count for the signature
+    """
+    conn = get_db()
+
+    # Increment rejection count
+    conn.execute(
+        "UPDATE step_signatures SET rejection_count = rejection_count + 1 WHERE id = ?",
+        (signature_id,),
+    )
+    conn.commit()
+
+    # Get updated count
+    cursor = conn.execute(
+        "SELECT rejection_count FROM step_signatures WHERE id = ?",
+        (signature_id,),
+    )
+    row = cursor.fetchone()
+    rejection_count = row[0] if row else 0
+
+    # Queue the rejected step for decomposition
+    queue_for_decomposition(
+        step_text=step_text,
+        complexity_reason=f"rejected_by_leaf_{signature_id}_sim_{similarity:.3f}",
+        dag_step_id=dag_step_id,
+        problem_context=problem_context,
+    )
+
+    logger.debug(
+        "[rejection] Leaf %d rejected step (sim=%.3f), total rejections=%d",
+        signature_id, similarity, rejection_count
+    )
+
+    return rejection_count
+
+
+def get_leaf_rejection_stats(signature_id: int) -> dict:
+    """Get rejection statistics for a leaf signature.
+
+    Returns:
+        Dict with rejection_count, uses, rejection_rate, should_decompose
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT rejection_count, uses, is_semantic_umbrella
+        FROM step_signatures
+        WHERE id = ?
+        """,
+        (signature_id,),
+    )
+    row = cursor.fetchone()
+
+    if not row:
+        return {"error": "signature not found"}
+
+    rejection_count = row[0] or 0
+    uses = row[1] or 0
+    is_umbrella = row[2] or 0
+
+    # Calculate rejection rate (rejections / total attempts)
+    total_attempts = uses + rejection_count
+    rejection_rate = rejection_count / total_attempts if total_attempts > 0 else 0.0
+
+    # Determine if this leaf should be decomposed
+    should_decompose = (
+        not is_umbrella  # Only leaves, not umbrellas
+        and rejection_count >= REJECTION_COUNT_THRESHOLD
+        and rejection_rate >= REJECTION_RATE_THRESHOLD
+    )
+
+    return {
+        "signature_id": signature_id,
+        "rejection_count": rejection_count,
+        "uses": uses,
+        "total_attempts": total_attempts,
+        "rejection_rate": rejection_rate,
+        "should_decompose": should_decompose,
+    }
+
+
+def get_leaves_needing_decomposition(limit: int = 10) -> list[dict]:
+    """Find leaf signatures with high rejection rates that need decomposition.
+
+    Returns:
+        List of leaf stats dicts for signatures that should be decomposed
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT id, rejection_count, uses
+        FROM step_signatures
+        WHERE is_semantic_umbrella = 0
+          AND rejection_count >= ?
+          AND (rejection_count * 1.0 / (uses + rejection_count + 0.001)) >= ?
+        ORDER BY rejection_count DESC
+        LIMIT ?
+        """,
+        (REJECTION_COUNT_THRESHOLD, REJECTION_RATE_THRESHOLD, limit),
+    )
+
+    results = []
+    for row in cursor.fetchall():
+        sig_id, rejection_count, uses = row
+        total = uses + rejection_count
+        results.append({
+            "signature_id": sig_id,
+            "rejection_count": rejection_count,
+            "uses": uses,
+            "rejection_rate": rejection_count / total if total > 0 else 0,
+        })
+
+    return results
+
+
+def check_and_reject_if_low_similarity(
+    signature_id: int,
+    step_text: str,
+    similarity: float,
+    dag_step_id: str = None,
+    problem_context: str = None,
+) -> tuple[bool, int]:
+    """Check if similarity is below threshold and record rejection if so.
+
+    Args:
+        signature_id: The leaf signature being checked
+        step_text: The step being routed
+        similarity: Cosine similarity to the signature
+        dag_step_id: Optional dag_step ID
+        problem_context: Optional problem context
+
+    Returns:
+        Tuple of (was_rejected, rejection_count)
+    """
+    if similarity >= REJECTION_SIM_THRESHOLD:
+        return False, 0
+
+    rejection_count = record_leaf_rejection(
+        signature_id=signature_id,
+        step_text=step_text,
+        similarity=similarity,
+        dag_step_id=dag_step_id,
+        problem_context=problem_context,
+    )
+
+    return True, rejection_count
+
+
+def flag_high_rejection_leaves_for_decomposition() -> list[dict]:
+    """Find and flag high-rejection leaves for decomposition.
+
+    This should be called periodically (e.g., during batch operations).
+    Leaves with high rejection rates get promoted to umbrellas and decomposed.
+
+    Returns:
+        List of flagged signature stats
+    """
+    leaves = get_leaves_needing_decomposition()
+
+    if not leaves:
+        return []
+
+    conn = get_db()
+    flagged = []
+
+    for leaf in leaves:
+        sig_id = leaf["signature_id"]
+
+        # Flag for decomposition by marking it as needing split
+        # The umbrella_learner will pick this up and decompose it
+        conn.execute(
+            """
+            UPDATE step_signatures
+            SET is_semantic_umbrella = 1
+            WHERE id = ? AND is_semantic_umbrella = 0
+            """,
+            (sig_id,),
+        )
+
+        if conn.total_changes > 0:
+            logger.info(
+                "[rejection] Flagged leaf %d for decomposition: %d rejections, %.1f%% rate",
+                sig_id, leaf["rejection_count"], leaf["rejection_rate"] * 100
+            )
+            flagged.append(leaf)
+
+    if flagged:
+        conn.commit()
+
+    return flagged
+
+
+# =============================================================================
 # DAG STEP FUNCTIONS
 # =============================================================================
 

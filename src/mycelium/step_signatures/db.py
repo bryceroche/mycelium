@@ -1678,6 +1678,30 @@ class StepSignatureDB:
                         best_match = None
 
                 if best_match is not None and similarity_ok:
+                    # LEAF REJECTION: Check if leaf should reject this step due to low similarity
+                    # Per CLAUDE.md: leaves define their own boundaries, high rejection rate triggers decomp
+                    if not best_match.is_semantic_umbrella:
+                        from mycelium.data_layer.mcts import (
+                            check_and_reject_if_low_similarity,
+                            REJECTION_SIM_THRESHOLD,
+                        )
+                        if best_sim < REJECTION_SIM_THRESHOLD:
+                            was_rejected, rejection_count = check_and_reject_if_low_similarity(
+                                signature_id=best_match.id,
+                                step_text=step_text,
+                                similarity=best_sim,
+                                problem_context=parent_problem,
+                            )
+                            if was_rejected:
+                                logger.info(
+                                    "[db] Leaf '%s' REJECTED step (sim=%.3f < %.3f), rejections=%d: '%s'",
+                                    best_match.step_type, best_sim, REJECTION_SIM_THRESHOLD,
+                                    rejection_count, step_text[:40]
+                                )
+                                # Fall through to create new signature
+                                best_match = None
+
+                if best_match is not None and similarity_ok:
                     # Found a match - update centroid using shared helper
                     new_count = self._update_centroid_atomic(
                         conn, best_match.id, embedding, update_last_used=True

@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     uses INTEGER DEFAULT 0,
     successes INTEGER DEFAULT 0,
     operational_failures INTEGER DEFAULT 0,  -- MCTS: times produced wrong answer vs ground truth
+    rejection_count INTEGER DEFAULT 0,  -- Times this leaf rejected a dag_step (low similarity)
 
     -- Embedding Variance Tracking (Welford's online algorithm)
     -- Tracks how diverse the problems routed to this signature are
@@ -547,6 +548,13 @@ def migrate_db(conn) -> None:
     if "atomic_reason" not in existing_cols:
         migrations.append(
             "ALTER TABLE step_signatures ADD COLUMN atomic_reason TEXT"
+        )
+
+    # Add rejection_count for leaf rejection tracking
+    # Per CLAUDE.md: leaves reject low-similarity steps, high rejection rate triggers decomposition
+    if "rejection_count" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN rejection_count INTEGER DEFAULT 0"
         )
 
     # Run step_signatures migrations
