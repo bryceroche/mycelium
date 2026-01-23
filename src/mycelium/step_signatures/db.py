@@ -1680,10 +1680,14 @@ class StepSignatureDB:
 
                 if best_match is not None and similarity_ok:
                     # LEAF REJECTION: Check if leaf should reject this step
+                    # Reasons to reject:
+                    # 1. Low similarity (operational mismatch)
+                    # 2. Multi-part step (needs decomposition)
                     # Per CLAUDE.md: leaves use graph_embedding (operational), not centroid (semantic)
                     if not best_match.is_semantic_umbrella:
                         from mycelium.data_layer.mcts import (
                             check_and_reject_if_low_similarity,
+                            queue_for_decomposition,
                             REJECTION_SIM_THRESHOLD,
                         )
 
@@ -1710,6 +1714,7 @@ class StepSignatureDB:
                             except Exception as e:
                                 logger.debug("[db] Graph embedding comparison failed: %s", e)
 
+                        # Check 1: Low similarity rejection
                         if rejection_sim < REJECTION_SIM_THRESHOLD:
                             was_rejected, rejection_count = check_and_reject_if_low_similarity(
                                 signature_id=best_match.id,
@@ -1724,6 +1729,36 @@ class StepSignatureDB:
                                     rejection_count, step_text[:40]
                                 )
                                 # Fall through to create new signature
+                                best_match = None
+
+                        # Check 2: Multi-part step rejection (needs decomposition)
+                        # Leaves only handle atomic operations - detect via dsl_hint
+                        # Per CLAUDE.md: prefer embedding over keyword matching
+                        if best_match is not None and dsl_hint:
+                            # Multi-part dsl_hints contain multiple ops: "+, *" or "add then multiply"
+                            multi_op_indicators = [',', ' and ', ' then ', '+*', '+-', '*/', '-*']
+                            hint_lower = dsl_hint.lower()
+                            is_multi_part = any(ind in hint_lower for ind in multi_op_indicators)
+
+                            # Also reject if dsl_hint doesn't map to a known atomic operation
+                            if not is_multi_part:
+                                known_op = self._dsl_hint_to_graph(dsl_hint)
+                                if known_op is None and len(dsl_hint) > 5:
+                                    # Long dsl_hint that doesn't map to atomic op = likely complex
+                                    is_multi_part = True
+
+                            if is_multi_part:
+                                logger.info(
+                                    "[db] Leaf '%s' REJECTED multi-part step (hint='%s'): '%s'",
+                                    best_match.step_type, dsl_hint, step_text[:50]
+                                )
+                                # Queue for decomposition
+                                queue_for_decomposition(
+                                    step_text=step_text,
+                                    complexity_reason=f"multi_part_hint_{dsl_hint}",
+                                    problem_context=parent_problem,
+                                )
+                                # Fall through to create new signature (which will be umbrella)
                                 best_match = None
 
                 if best_match is not None and similarity_ok:
