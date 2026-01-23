@@ -281,6 +281,14 @@ async def solve_problem(
                     dsl_result["regenerated"], dsl_result.get("failed", 0)
                 )
 
+            # Auto-trigger batch decomposition if queue has items (per beads mycelium-mm08)
+            decomp_result = await solver.maybe_run_batch_decomposition(client)
+            if decomp_result.get("processed", 0) > 0:
+                logger.info(
+                    "[pipeline] Batch decomposition: %d processed, %d signatures created",
+                    decomp_result["processed"], decomp_result.get("signatures_created", 0)
+                )
+
         # Convert step results to timing info (use getattr for safety)
         step_timings = [
             StepTiming(

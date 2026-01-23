@@ -398,6 +398,27 @@ CREATE TABLE IF NOT EXISTS dag_plan_stats (
 CREATE INDEX IF NOT EXISTS idx_dps_signature ON dag_plan_stats(plan_signature);
 CREATE INDEX IF NOT EXISTS idx_dps_success_rate ON dag_plan_stats(success_rate);
 CREATE INDEX IF NOT EXISTS idx_dps_uses ON dag_plan_stats(uses);
+
+-- =============================================================================
+-- DECOMPOSITION_QUEUE: Batch complex steps for later decomposition
+-- =============================================================================
+-- Per beads mycelium-mm08: Instead of decomposing immediately (1 LLM call per step),
+-- queue complex steps and batch decompose them periodically.
+-- This is more efficient and allows the system to learn patterns.
+CREATE TABLE IF NOT EXISTS decomposition_queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    step_text TEXT NOT NULL,              -- The complex step to decompose
+    embedding TEXT,                       -- Step embedding (for similarity after decomp)
+    dag_step_id TEXT,                     -- Optional link to originating dag_step
+    problem_context TEXT,                 -- Original problem (for LLM context)
+    complexity_reason TEXT NOT NULL,      -- Why queued: multi_op, long_step, sequential, etc.
+    queued_at TEXT NOT NULL,
+    processed_at TEXT,                    -- NULL until processed
+    result_signature_ids TEXT,            -- JSON array of created atomic signature IDs
+    decomposition_steps TEXT              -- JSON: the atomic steps LLM produced
+);
+CREATE INDEX IF NOT EXISTS idx_decomp_queue_processed ON decomposition_queue(processed_at);
+CREATE INDEX IF NOT EXISTS idx_decomp_queue_queued ON decomposition_queue(queued_at);
 """
 
 def get_schema() -> str:

@@ -4009,6 +4009,136 @@ Rules:
             logger.error("[solver] Reactive exploration failed: %s", e)
             return {"error": str(e)}
 
+    async def maybe_run_batch_decomposition(
+        self,
+        client,
+        batch_size: int = 5,
+        min_queue_size: int = 3,
+    ) -> dict:
+        """Process queued complex steps in batch.
+
+        Per beads mycelium-mm08: Instead of decomposing immediately (1 LLM call per step),
+        batch decompose queued complex steps periodically.
+
+        Args:
+            client: LLM client for decomposition
+            batch_size: Max steps to process in one batch
+            min_queue_size: Minimum queue size before processing
+
+        Returns:
+            Dict with decomposition statistics
+        """
+        from mycelium.data_layer.mcts import (
+            get_pending_decompositions,
+            get_decomposition_queue_size,
+            mark_decomposition_processed,
+        )
+
+        queue_size = get_decomposition_queue_size()
+        if queue_size < min_queue_size:
+            return {"skipped": True, "reason": f"queue_size={queue_size} < min={min_queue_size}"}
+
+        pending = get_pending_decompositions(limit=batch_size)
+        if not pending:
+            return {"skipped": True, "reason": "no pending items"}
+
+        logger.info("[solver] Running batch decomposition: %d items", len(pending))
+
+        # Build batch prompt
+        prompt_parts = [
+            "Break each of the following complex steps into simple atomic operations.",
+            "Each atomic operation should do ONE thing (add, subtract, multiply, divide, etc.).",
+            "Return JSON array where each element has 'original_step' and 'atomic_steps' (array of strings).",
+            "",
+            "Complex steps to decompose:",
+        ]
+
+        for i, item in enumerate(pending):
+            context = f" (Context: {item['problem_context'][:100]})" if item.get('problem_context') else ""
+            prompt_parts.append(f"{i+1}. {item['step_text']}{context}")
+
+        prompt_parts.append("")
+        prompt_parts.append("Return ONLY valid JSON array, no other text.")
+
+        prompt = "\n".join(prompt_parts)
+
+        try:
+            messages = [
+                {"role": "system", "content": "You decompose complex math steps into atomic operations. Return valid JSON only."},
+                {"role": "user", "content": prompt},
+            ]
+            response = await client.generate(messages, temperature=0.0)
+
+            # Parse response
+            import json
+            import re
+
+            # Extract JSON from response
+            json_match = re.search(r'\[.*\]', response, re.DOTALL)
+            if not json_match:
+                logger.warning("[solver] Batch decomposition returned no JSON: %s", response[:200])
+                return {"error": "no JSON in response", "processed": 0}
+
+            decompositions = json.loads(json_match.group())
+
+            # Process each decomposition
+            processed = 0
+            signatures_created = 0
+
+            for i, decomp in enumerate(decompositions):
+                if i >= len(pending):
+                    break
+
+                item = pending[i]
+                atomic_steps = decomp.get("atomic_steps", [])
+
+                if not atomic_steps:
+                    logger.debug("[solver] No atomic steps for: %s", item['step_text'][:50])
+                    continue
+
+                # Create signatures for atomic steps
+                created_ids = []
+                for atomic_step in atomic_steps:
+                    if not atomic_step or len(atomic_step.strip()) < 3:
+                        continue
+
+                    # Embed and create signature
+                    from mycelium.embedding_cache import cached_embed
+                    embedding = cached_embed(atomic_step)
+                    if embedding is not None:
+                        sig, is_new = self.step_db.find_or_create(
+                            step_text=atomic_step,
+                            embedding=embedding,
+                            min_similarity=0.85,
+                            parent_problem=item.get('problem_context', ''),
+                        )
+                        created_ids.append(sig.id)
+                        if is_new:
+                            signatures_created += 1
+
+                # Mark as processed
+                mark_decomposition_processed(
+                    queue_id=item['id'],
+                    result_signature_ids=created_ids,
+                    decomposition_steps=atomic_steps,
+                )
+                processed += 1
+
+            logger.info(
+                "[solver] Batch decomposition complete: %d processed, %d signatures created",
+                processed, signatures_created
+            )
+
+            return {
+                "processed": processed,
+                "signatures_created": signatures_created,
+                "queue_remaining": queue_size - processed,
+            }
+
+        except Exception as e:
+            logger.error("[solver] Batch decomposition failed: %s", e)
+            return {"error": str(e), "processed": 0}
+
     def _record_thread_outcomes(
         self,
         result: SolverResult,

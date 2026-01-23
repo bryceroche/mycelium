@@ -1594,6 +1594,27 @@ class StepSignatureDB:
                 # No match found - create new child
                 # Use explicit parent_id if provided (e.g., from decomposition), else use routing result
                 actual_parent_id = parent_id if parent_id is not None else (parent_for_new.id if parent_for_new else None)
+
+                # Check if step is too complex - queue for batch decomposition
+                # Per beads mycelium-mm08: Queue complex steps instead of creating many similar decompose-type sigs
+                from mycelium.data_layer.mcts import is_step_complex, queue_for_decomposition
+                is_complex, complexity_reason = is_step_complex(step_text)
+                if is_complex:
+                    try:
+                        from mycelium.step_signatures.utils import pack_embedding
+                        queue_for_decomposition(
+                            step_text=step_text,
+                            complexity_reason=complexity_reason,
+                            embedding=embedding,
+                            problem_context=parent_problem,
+                        )
+                        logger.info(
+                            "[db] Queued complex step for decomposition: reason=%s step='%s'",
+                            complexity_reason, step_text[:40]
+                        )
+                    except Exception as e:
+                        logger.warning("[db] Failed to queue for decomposition: %s", e)
+
                 sig = self._create_signature_atomic(
                     conn, step_text, embedding, parent_problem, origin_depth,
                     extracted_values=extracted_values, dsl_hint=dsl_hint,
@@ -1607,8 +1628,9 @@ class StepSignatureDB:
                 conn.commit()
                 parent_desc = f"id={parent_id}" if parent_id is not None else (parent_for_new.step_type if parent_for_new else "root")
                 logger.info(
-                    "[db] Created new signature (child of %s): step='%s' type='%s'",
-                    parent_desc, step_text[:40], sig.step_type
+                    "[db] Created new signature (child of %s): step='%s' type='%s'%s",
+                    parent_desc, step_text[:40], sig.step_type,
+                    " [queued for decomp]" if is_complex else ""
                 )
                 return sig, True
 

@@ -71,6 +71,13 @@ from mycelium.data_layer.mcts import (
     get_plan_stats_summary,
     get_top_plans,
     get_worst_plans,
+    # Decomposition queue (per beads mycelium-mm08)
+    is_step_complex,
+    queue_for_decomposition,
+    get_pending_decompositions,
+    get_decomposition_queue_size,
+    mark_decomposition_processed,
+    get_decomposition_queue_stats,
 )
 
 db = get_db()
@@ -142,4 +149,11 @@ __all__ = [
     "get_plan_stats_summary",
     "get_top_plans",
     "get_worst_plans",
+    # Decomposition queue
+    "is_step_complex",
+    "queue_for_decomposition",
+    "get_pending_decompositions",
+    "get_decomposition_queue_size",
+    "mark_decomposition_processed",
+    "get_decomposition_queue_stats",
 ]

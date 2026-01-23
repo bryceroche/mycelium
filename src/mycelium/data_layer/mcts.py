@@ -362,6 +362,208 @@ def get_worst_plans(limit: int = 10, min_uses: int = 3) -> list[dict]:
 
 
 # =============================================================================
+# DECOMPOSITION QUEUE: Batch complex steps for later decomposition
+# =============================================================================
+# Per beads mycelium-mm08: Queue complex steps instead of decomposing immediately.
+# Batch LLM calls are more efficient than one-at-a-time.
+
+
+def is_step_complex(step_text: str) -> tuple[bool, str]:
+    """Detect if a step is too complex for atomic execution.
+
+    Returns:
+        Tuple of (is_complex, reason) where reason explains why
+    """
+    import re
+
+    step_lower = step_text.lower()
+
+    # Check for multiple math operators (suggests multi-step)
+    operators = ['+', '-', '*', '/', '×', '÷']
+    op_count = sum(1 for op in operators if op in step_text)
+    if op_count >= 2:
+        return True, "multi_op"
+
+    # Check for sequential markers
+    sequential_markers = [
+        " then ", " and then ", " after that ", " finally ",
+        " next ", " followed by ", " before "
+    ]
+    for marker in sequential_markers:
+        if marker in step_lower:
+            return True, "sequential"
+
+    # Check for multiple actions (compound sentences)
+    action_words = ["calculate", "compute", "find", "determine", "add", "subtract", "multiply", "divide"]
+    action_count = sum(1 for word in action_words if word in step_lower)
+    if action_count >= 2:
+        return True, "multi_action"
+
+    # Check for very long steps (complexity correlates with length)
+    if len(step_text) > 150:
+        return True, "long_step"
+
+    return False, ""
+
+
+def queue_for_decomposition(
+    step_text: str,
+    complexity_reason: str,
+    embedding=None,
+    dag_step_id: str = None,
+    problem_context: str = None,
+) -> int:
+    """Add a complex step to the decomposition queue.
+
+    Args:
+        step_text: The step to decompose
+        complexity_reason: Why it's being queued (from is_step_complex)
+        embedding: Optional embedding for the step
+        dag_step_id: Optional link to originating dag_step
+        problem_context: Optional problem text for LLM context
+
+    Returns:
+        Queue entry ID
+    """
+    import json
+    from mycelium.step_signatures.utils import pack_embedding
+
+    now = datetime.now(timezone.utc).isoformat()
+    conn = get_db()
+
+    embedding_packed = pack_embedding(embedding) if embedding is not None else None
+
+    cursor = conn.execute(
+        """
+        INSERT INTO decomposition_queue (
+            step_text, embedding, dag_step_id, problem_context,
+            complexity_reason, queued_at
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (step_text, embedding_packed, dag_step_id, problem_context,
+         complexity_reason, now),
+    )
+
+    queue_id = cursor.lastrowid
+    logger.info(
+        "[decomp-queue] Queued step for decomposition: id=%d reason=%s step='%s'",
+        queue_id, complexity_reason, step_text[:50]
+    )
+    return queue_id
+
+
+def get_pending_decompositions(limit: int = 10) -> list[dict]:
+    """Get steps waiting to be decomposed.
+
+    Args:
+        limit: Max entries to return
+
+    Returns:
+        List of queue entries with id, step_text, problem_context, etc.
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT id, step_text, embedding, dag_step_id, problem_context,
+               complexity_reason, queued_at
+        FROM decomposition_queue
+        WHERE processed_at IS NULL
+        ORDER BY queued_at ASC
+        LIMIT ?
+        """,
+        (limit,),
+    )
+
+    return [
+        {
+            "id": row[0],
+            "step_text": row[1],
+            "embedding": row[2],
+            "dag_step_id": row[3],
+            "problem_context": row[4],
+            "complexity_reason": row[5],
+            "queued_at": row[6],
+        }
+        for row in cursor.fetchall()
+    ]
+
+
+def get_decomposition_queue_size() -> int:
+    """Get count of pending decompositions."""
+    conn = get_db()
+    cursor = conn.execute(
+        "SELECT COUNT(*) FROM decomposition_queue WHERE processed_at IS NULL"
+    )
+    row = cursor.fetchone()
+    return row[0] if row else 0
+
+
+def mark_decomposition_processed(
+    queue_id: int,
+    result_signature_ids: list[int],
+    decomposition_steps: list[str],
+) -> None:
+    """Mark a queue entry as processed with results.
+
+    Args:
+        queue_id: The queue entry ID
+        result_signature_ids: IDs of created atomic signatures
+        decomposition_steps: The atomic steps produced by LLM
+    """
+    import json
+
+    now = datetime.now(timezone.utc).isoformat()
+    conn = get_db()
+
+    conn.execute(
+        """
+        UPDATE decomposition_queue
+        SET processed_at = ?,
+            result_signature_ids = ?,
+            decomposition_steps = ?
+        WHERE id = ?
+        """,
+        (now, json.dumps(result_signature_ids), json.dumps(decomposition_steps), queue_id),
+    )
+
+    logger.info(
+        "[decomp-queue] Marked queue entry %d as processed: %d signatures created",
+        queue_id, len(result_signature_ids)
+    )
+
+
+def get_decomposition_queue_stats() -> dict:
+    """Get statistics about the decomposition queue."""
+    conn = get_db()
+
+    # Count by status
+    cursor = conn.execute("""
+        SELECT
+            COUNT(*) FILTER (WHERE processed_at IS NULL) as pending,
+            COUNT(*) FILTER (WHERE processed_at IS NOT NULL) as processed,
+            COUNT(*) as total
+        FROM decomposition_queue
+    """)
+    row = cursor.fetchone()
+
+    # Count by reason (pending only)
+    cursor = conn.execute("""
+        SELECT complexity_reason, COUNT(*)
+        FROM decomposition_queue
+        WHERE processed_at IS NULL
+        GROUP BY complexity_reason
+    """)
+    by_reason = {r[0]: r[1] for r in cursor.fetchall()}
+
+    return {
+        "pending": row[0] if row else 0,
+        "processed": row[1] if row else 0,
+        "total": row[2] if row else 0,
+        "by_reason": by_reason,
+    }
+
+
+# =============================================================================
 # DAG STEP FUNCTIONS
 # =============================================================================
 
