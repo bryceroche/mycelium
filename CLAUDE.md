@@ -425,6 +425,65 @@ if signature.uses == 0:
     logger.info("Skipping auto-decompose for new umbrella (cold-start)")
 ```
 
+## DAG Plan Validation: Data Flow Analysis (v1.8.1)
+
+**Catch bad plans before execution by validating data flow.**
+
+### The Problem: Undefined Variables
+
+Some problems can't be solved forward—they require algebra (working backwards). The planner might generate steps that reference undefined variables:
+
+```
+Problem: "She sold 1/3 at green house, 2 more at red, half the rest at orange. She has 5 left. How many did she start with?"
+
+BAD PLAN (undefined variable):
+  Step 1: after_green = total × (2/3)  ← 'total' is UNDEFINED!
+  Step 2: after_red = after_green - 2
+  ...
+```
+
+The `total` variable doesn't exist yet—it's what we're trying to find.
+
+### The Solution: Data Flow Validation
+
+Every step's inputs MUST be either:
+1. **Literal numbers** from the problem (like 80000, 0.5, 3)
+2. **Step references** pointing to prior step outputs (like `{step_1}`)
+
+The planner validates this at parse time:
+
+```python
+# Pattern to detect undefined variable names
+variable_pattern = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+
+for step in self.steps:
+    for key, value in step.extracted_values.items():
+        if isinstance(value, str) and variable_pattern.match(value):
+            # This is an undefined variable name, not a number or step ref
+            errors.append(f"Step '{step.id}' has undefined variable '{value}'")
+```
+
+### Work-Backwards Detection
+
+When data flow validation fails, it signals an **algebra problem** that needs work-backwards logic:
+
+```
+CORRECT PLAN (work backwards from known result):
+  Step 1: before_orange = 5 × 2 = 10       ← Start from known (5 left)
+  Step 2: before_red = 10 + 2 = 12         ← Reverse the operations
+  Step 3: before_green = 12 × (3/2) = 18   ← Invert 1/3 sold → 2/3 remained
+  Result: 18 vacuums
+```
+
+The prompt now includes explicit instructions and examples for detecting and handling work-backwards problems.
+
+### Why This Matters
+
+- **Catches impossible plans early** - Before wasting LLM calls on execution
+- **Provides clear signal** - Undefined variable = rethink the approach
+- **No arbitrary thresholds** - Binary check: inputs defined or not
+- **Enables targeted decomposition** - Failed validation → route to algebra handling
+
 ## Learning Mechanisms
 Centroid Averaging
 Cluster Centroid - Average of all descendant leaf embeddings 
