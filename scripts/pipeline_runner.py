@@ -28,6 +28,7 @@ from mycelium.solver import Solver
 from mycelium.step_signatures import StepSignatureDB
 from mycelium.client import LLMClient
 from mycelium.answer_norm import answers_equivalent_llm
+from mycelium.data_layer.mcts import get_plan_stats_summary, get_top_plans, get_worst_plans
 
 
 logging.basicConfig(
@@ -438,6 +439,11 @@ def run_pipeline(
     step_db = StepSignatureDB(db_path)
     structure_stats = step_db.get_structure_stats()
 
+    # Get plan stats (per beads mycelium-ogo6)
+    plan_stats = get_plan_stats_summary()
+    top_plans = get_top_plans(limit=5, min_uses=2)
+    worst_plans = get_worst_plans(limit=5, min_uses=2)
+
     # Save results
     output = {
         "config": {
@@ -454,6 +460,9 @@ def run_pipeline(
             "mode_stats": mode_stats,
             "level_stats": level_stats,
             "structure_stats": structure_stats,
+            "plan_stats": plan_stats,
+            "top_plans": top_plans,
+            "worst_plans": worst_plans,
         },
         "results": results,
     }
@@ -522,6 +531,22 @@ def run_pipeline(
     if ss['depth_histogram']:
         depth_str = " | ".join(f"d{d}:{c}" for d, c in sorted(ss['depth_histogram'].items()))
         print(f"  Depth histogram: {depth_str}")
+
+    # Plan stats (per beads mycelium-ogo6)
+    print("\nPlan statistics:")
+    ps = plan_stats
+    print(f"  Unique plans: {ps['total_plans']} | Total uses: {ps['total_uses']}")
+    print(f"  Avg success rate: {ps['avg_success_rate']:.0%} (range: {ps['min_success_rate']:.0%}-{ps['max_success_rate']:.0%})")
+
+    if top_plans:
+        print("\n  Top plans (by success rate):")
+        for p in top_plans[:3]:
+            print(f"    {p['signature'][:8]}... {p['step_count']} steps, {p['success_rate']:.0%} ({p['successes']}/{p['uses']})")
+
+    if worst_plans:
+        print("\n  Worst plans (need attention):")
+        for p in worst_plans[:3]:
+            print(f"    {p['signature'][:8]}... {p['step_count']} steps, {p['success_rate']:.0%} ({p['successes']}/{p['uses']})")
 
     print("=" * 60)
 
