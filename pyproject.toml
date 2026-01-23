@@ -26,3 +26,9 @@ build-backend = "hatchling.build"
 asyncio_mode = "auto"
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[dependency-groups]
+dev = [
+    "coverage>=7.13.1",
+    "pytest-cov>=7.0.0",
+]

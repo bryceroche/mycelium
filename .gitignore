@@ -70,3 +70,4 @@ logs/
 *.log
 paper.txt
 *.backup.*
+.coverage
