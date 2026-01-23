@@ -1657,8 +1657,9 @@ class StepSignatureDB:
                     return sig, True
 
                 # Route through hierarchy to find best match
+                # Pass dsl_hint for graph-based routing (per CLAUDE.md: route by what operations DO)
                 best_match, parent_for_new, best_sim = self._route_hierarchical(
-                    conn, embedding, min_similarity
+                    conn, embedding, min_similarity, dsl_hint=dsl_hint
                 )
 
                 # ALWAYS_ROUTE_TO_BEST mode: accept any match, let failures drive learning
@@ -1809,16 +1810,23 @@ class StepSignatureDB:
         conn,
         embedding: np.ndarray,
         min_similarity: float,
+        dsl_hint: str = None,
     ) -> tuple[Optional[StepSignature], Optional[StepSignature], float]:
-        """Route through hierarchy using MCTS-style UCB1 selection.
+        """Route through hierarchy using graph_embedding (operational similarity).
+
+        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        - Routers: use graph_centroid (avg of descendants' graph_embeddings)
+        - Leaves: use graph_embedding (fixed operational identity)
+
+        Falls back to text centroid if graph_embedding not available.
 
         Uses UCB1 scoring to balance exploitation (high-similarity, high-success)
         with exploration (under-visited signatures that might be better).
 
-        SCAFFOLD SUPPORT: Handles null-centroid placeholders by:
-        1. Picking least-used placeholder when all children have null centroids
-        2. Initializing placeholder centroid with first problem that routes through
-        3. Continuing to route until MIN_SIGNATURE_DEPTH for proper tree structure
+        Args:
+            embedding: Text embedding of the step (fallback)
+            min_similarity: Minimum similarity threshold
+            dsl_hint: Operation hint from planner (+, -, *, /) for graph routing
 
         Returns:
             (best_match, parent_for_new, best_similarity)
@@ -1850,6 +1858,16 @@ class StepSignatureDB:
         logger.debug("[db] Fork threshold: %.3f (sigs=%d, cold_start=%.2f, mature=%.2f)",
                      fork_threshold, sig_count, SCAFFOLD_FORK_THRESHOLD_COLD_START, SCAFFOLD_FORK_THRESHOLD)
 
+        # Compute step's graph_embedding from dsl_hint for operational routing
+        # Per CLAUDE.md: route by what operations DO, not what they SOUND LIKE
+        step_graph_embedding = None
+        if dsl_hint:
+            op_graph = self._dsl_hint_to_graph(dsl_hint)
+            if op_graph:
+                from mycelium.embedding_cache import cached_embed
+                step_graph_embedding = cached_embed(op_graph)
+                logger.debug("[db] Computed step_graph_embedding from dsl_hint=%s", dsl_hint)
+
         # Start at root
         root_row = conn.execute(
             "SELECT * FROM step_signatures WHERE is_root = 1 LIMIT 1"
@@ -1863,22 +1881,33 @@ class StepSignatureDB:
         depth = 0
 
         while depth < max_depth:
-            # Check similarity to current node
-            # Capture centroid once to avoid TOCTOU race condition
-            current_centroid = current.centroid
-            if current_centroid is not None:
-                sim = cosine_similarity(embedding, current_centroid)
-                # If current is a leaf, return it
-                # ALWAYS_ROUTE_TO_BEST: return regardless of similarity threshold
-                from mycelium.config import ALWAYS_ROUTE_TO_BEST
-                if not current.is_semantic_umbrella and (ALWAYS_ROUTE_TO_BEST or sim >= min_similarity):
-                    return current, parent_for_new, sim
+            # Check similarity to current node using graph_embedding (operational)
+            # Fallback to centroid (semantic) if graph_embedding unavailable
+            from mycelium.config import ALWAYS_ROUTE_TO_BEST
 
-            # If current is not an umbrella, it's a leaf - return similarity result
+            # Get graph_embedding for current node (leaves have fixed, routers have centroid of children)
+            current_graph_emb = current.graph_embedding
+            if current_graph_emb is not None and not isinstance(current_graph_emb, np.ndarray):
+                current_graph_emb = np.array(current_graph_emb)
+
+            # Determine which embedding to compare against
+            if step_graph_embedding is not None and current_graph_emb is not None:
+                # Prefer graph_embedding routing (operational similarity)
+                sim = cosine_similarity(step_graph_embedding, current_graph_emb)
+                used_graph = True
+            else:
+                # Fallback to text centroid routing (semantic similarity)
+                current_centroid = current.centroid
+                sim = cosine_similarity(embedding, current_centroid) if current_centroid is not None else 0.0
+                used_graph = False
+
+            # If current is a leaf, return it
             if not current.is_semantic_umbrella:
-                # Capture centroid once to avoid TOCTOU race condition
-                leaf_centroid = current.centroid
-                sim = cosine_similarity(embedding, leaf_centroid) if leaf_centroid is not None else 0.0
+                if used_graph:
+                    logger.debug("[db] Leaf %d routed by graph_embedding (sim=%.3f)", current.id, sim)
+                if ALWAYS_ROUTE_TO_BEST or sim >= min_similarity:
+                    return current, parent_for_new, sim
+                # Still return the leaf even if below threshold
                 return current, parent_for_new, sim
 
             # Get children of current umbrella (exclude archived)
@@ -1894,9 +1923,12 @@ class StepSignatureDB:
 
             if not children:
                 # Umbrella with no children - return current as best match
-                # Capture centroid once to avoid TOCTOU race condition
-                empty_umbrella_centroid = current.centroid
-                sim = cosine_similarity(embedding, empty_umbrella_centroid) if empty_umbrella_centroid is not None else 0.0
+                # Use graph_embedding if available, fallback to centroid
+                if step_graph_embedding is not None and current_graph_emb is not None:
+                    sim = cosine_similarity(step_graph_embedding, current_graph_emb)
+                else:
+                    empty_umbrella_centroid = current.centroid
+                    sim = cosine_similarity(embedding, empty_umbrella_centroid) if empty_umbrella_centroid is not None else 0.0
                 return current, current, sim
 
             # MCTS UCB1 Selection: balance exploitation vs exploration
@@ -1907,22 +1939,30 @@ class StepSignatureDB:
             best_child_sim = 0.0
             best_child_score = 0.0
 
-            # Separate children with centroids from null-centroid placeholders
-            children_with_centroids = []
-            null_centroid_children = []
+            # Separate children with graph_embeddings from those without
+            # Per CLAUDE.md: route by what operations DO (graph_embedding), not what they SOUND LIKE (centroid)
+            children_with_embeddings = []
+            null_embedding_children = []
 
             for child in children:
-                centroid = child.centroid
-                if centroid is None:
-                    null_centroid_children.append(child)
-                else:
-                    child_sim = cosine_similarity(embedding, centroid)
-                    children_with_centroids.append((child, child_sim))
+                # Prefer graph_embedding for routing
+                child_graph_emb = child.graph_embedding
+                if child_graph_emb is not None and not isinstance(child_graph_emb, np.ndarray):
+                    child_graph_emb = np.array(child_graph_emb)
 
-            # Try children with centroids first (standard UCB1 selection)
-            # ALWAYS_ROUTE_TO_BEST: Consider all children, not just those above threshold
-            from mycelium.config import ALWAYS_ROUTE_TO_BEST
-            for child, child_sim in children_with_centroids:
+                if step_graph_embedding is not None and child_graph_emb is not None:
+                    # Route by graph_embedding (operational similarity)
+                    child_sim = cosine_similarity(step_graph_embedding, child_graph_emb)
+                    children_with_embeddings.append((child, child_sim, True))  # True = used graph
+                elif child.centroid is not None:
+                    # Fallback to centroid (semantic similarity)
+                    child_sim = cosine_similarity(embedding, child.centroid)
+                    children_with_embeddings.append((child, child_sim, False))  # False = used text
+                else:
+                    null_embedding_children.append(child)
+
+            # Try children with embeddings (standard UCB1 selection)
+            for child, child_sim, used_graph in children_with_embeddings:
                 if ALWAYS_ROUTE_TO_BEST or child_sim >= min_similarity:
                     score = compute_ucb1_score(
                         child_sim,
@@ -1935,24 +1975,31 @@ class StepSignatureDB:
                         best_child = child
                         best_child_sim = child_sim
                         best_child_score = score
+                        if used_graph:
+                            logger.debug("[db] Child %d selected via graph_embedding (sim=%.3f, score=%.3f)",
+                                       child.id, child_sim, score)
 
-            # SCAFFOLD: If no match found but we have null-centroid placeholders,
+            # SCAFFOLD: If no match found but we have null-embedding placeholders,
             # and we haven't reached MIN_SIGNATURE_DEPTH yet, route through one
-            if best_child is None and null_centroid_children and SCAFFOLD_ENABLED:
+            if best_child is None and null_embedding_children and SCAFFOLD_ENABLED:
                 if depth < MIN_SIGNATURE_DEPTH - 1:
                     # Pick least-used placeholder (exploration) or random if all equal
-                    null_centroid_children.sort(key=lambda c: c.uses or 0)
-                    placeholder = null_centroid_children[0]
+                    null_embedding_children.sort(key=lambda c: c.uses or 0)
+                    placeholder = null_embedding_children[0]
 
                     # Initialize placeholder's centroid with this embedding
+                    # Also set graph_embedding if available
                     logger.info(
                         "[db] Initializing scaffold placeholder: id=%d depth=%d",
                         placeholder.id, depth + 1
                     )
                     self._update_centroid_atomic(conn, placeholder.id, embedding, update_last_used=False)
+                    if step_graph_embedding is not None:
+                        self.update_graph_embedding(placeholder.id, step_graph_embedding.tolist())
 
                     # Update our local object to reflect the change
                     placeholder.centroid = embedding
+                    placeholder.graph_embedding = step_graph_embedding
                     best_child = placeholder
                     best_child_sim = 1.0  # Perfect match since we just set it
 
@@ -1965,7 +2012,7 @@ class StepSignatureDB:
                     best_below_sim = 0.0
                     best_below_score = -float('inf')
 
-                    for child, child_sim in children_with_centroids:
+                    for child, child_sim, _used_graph in children_with_embeddings:
                         score = compute_ucb1_score(
                             child_sim, child.uses, child.successes,
                             parent_uses, child.last_used_at
@@ -1981,8 +2028,8 @@ class StepSignatureDB:
                     # Note: depth + 1 because we're creating a child at the next level
 
                     # Check for hysteresis: does this level have existing forks?
-                    # (more than 1 child with centroid at this level = already forked)
-                    has_existing_forks = len(children_with_centroids) > 1
+                    # (more than 1 child with embedding at this level = already forked)
+                    has_existing_forks = len(children_with_embeddings) > 1
 
                     # Use smooth probabilistic forking decision
                     fork_decision = should_fork_at_depth(
@@ -2007,20 +2054,23 @@ class StepSignatureDB:
                                 depth + 1, new_branch.id, current.id,
                                 best_below_sim, fork_threshold,
                                 fork_threshold - best_below_sim,
-                                len(children_with_centroids), sig_count
+                                len(children_with_embeddings), sig_count
                             )
                             parent_for_new = current
                             current = new_branch
                             depth += 1
                             continue
 
-                    # If no children with centroids, use a placeholder
-                    if best_below is None and null_centroid_children:
-                        null_centroid_children.sort(key=lambda c: c.uses or 0)
-                        placeholder = null_centroid_children[0]
-                        # Initialize centroid
+                    # If no children with embeddings, use a placeholder
+                    if best_below is None and null_embedding_children:
+                        null_embedding_children.sort(key=lambda c: c.uses or 0)
+                        placeholder = null_embedding_children[0]
+                        # Initialize centroid and graph_embedding
                         self._update_centroid_atomic(conn, placeholder.id, embedding, update_last_used=False)
                         placeholder.centroid = embedding
+                        if step_graph_embedding is not None:
+                            self.update_graph_embedding(placeholder.id, step_graph_embedding.tolist())
+                            placeholder.graph_embedding = step_graph_embedding
                         best_below = placeholder
                         best_below_sim = 1.0
                         logger.info(
@@ -2042,7 +2092,7 @@ class StepSignatureDB:
                 best_below = None
                 best_below_sim = 0.0
                 best_below_score = 0.0
-                for child, child_sim in children_with_centroids:
+                for child, child_sim, _used_graph in children_with_embeddings:
                     score = compute_ucb1_score(
                         child_sim, child.uses, child.successes,
                         parent_uses, child.last_used_at
