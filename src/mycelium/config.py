@@ -162,6 +162,15 @@ DECOMP_MIN_ATTEMPTS_COLD = 1  # Cold start: flag after just 1 failure
 DECOMP_MIN_ATTEMPTS_MATURE = 3  # Mature: require 3+ attempts before flagging
 DECOMP_MAX_WIN_RATE = 0.5  # Flag nodes with win rate below this
 
+# ATOMIC DISCOVERY (math primes - per CLAUDE.md: system discovers atomic operations)
+# Signatures become "atomic" when they prove reliable enough to never decompose further
+# This is learned from (dag_step_type, node_id) pair statistics
+ATOMIC_MIN_USES = 5  # Minimum uses before eligible for atomic status
+ATOMIC_MIN_SUCCESS_RATE = 0.85  # Success rate threshold for atomic promotion
+ATOMIC_MIN_STEP_TYPES = 1  # Must succeed at this many distinct dag_step_types
+# Alternative path to atomic: decomposition was attempted but children perform worse
+ATOMIC_DECOMP_FAILED_USES = 3  # If children perform worse for this many uses, mark parent atomic
+
 # VARIANCE-BASED DECOMPOSITION (per CLAUDE.md: depth emerges from problem structure)
 # High variance in embedding similarities indicates a signature is too generic
 # It's catching diverse problem types that should specialize into children

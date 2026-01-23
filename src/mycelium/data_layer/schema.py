@@ -70,6 +70,11 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     is_root INTEGER DEFAULT 0,  -- 1 if this is THE root signature (single entry point)
     depth INTEGER DEFAULT 0,  -- Routing depth (0=root, increases with parent-child hops)
 
+    -- Atomic operations (math primes)
+    -- Discovered via statistics: high success rate + enough uses = stop decomposing
+    is_atomic INTEGER DEFAULT 0,  -- 1 if this is a "math prime" that should never decompose
+    atomic_reason TEXT,  -- Why this was marked atomic: "high_success", "decomp_failed", etc.
+
     -- Lifecycle
     is_archived INTEGER DEFAULT 0,  -- 1 if soft-deleted due to decay
     last_rewrite_at TEXT,  -- When DSL was last rewritten
@@ -516,6 +521,17 @@ def migrate_db(conn) -> None:
             "ALTER TABLE step_signatures ADD COLUMN similarity_m2 REAL DEFAULT 0.0"
         )
 
+    # Add atomic operations tracking (math primes discovery)
+    # Per CLAUDE.md: system discovers which signatures are truly atomic
+    if "is_atomic" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN is_atomic INTEGER DEFAULT 0"
+        )
+    if "atomic_reason" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN atomic_reason TEXT"
+        )
+
     # Run step_signatures migrations
     for sql in migrations:
         try:
@@ -549,6 +565,8 @@ def migrate_db(conn) -> None:
         "CREATE INDEX IF NOT EXISTS idx_failures_created_sig ON step_failures(created_at, signature_id)",
         # Computation graph routing index (per mycelium-k509)
         "CREATE INDEX IF NOT EXISTS idx_sig_graph_embedding ON step_signatures(graph_embedding)",
+        # Atomic operations index (math primes discovery)
+        "CREATE INDEX IF NOT EXISTS idx_sig_is_atomic ON step_signatures(is_atomic)",
     ]
     for sql in index_migrations:
         try:

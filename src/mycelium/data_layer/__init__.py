@@ -62,6 +62,14 @@ from mycelium.data_layer.mcts import (
     get_node_aggregate_stats,
     get_similar_steps_win_rate,
     decide_decomposition_target,
+    # Atomic discovery (math primes)
+    AtomicCandidate,
+    discover_atomic_signatures,
+    mark_signature_atomic,
+    unmark_signature_atomic,
+    is_signature_atomic,
+    run_atomic_discovery,
+    get_tree_health_metrics,
 )
 
 db = get_db()
@@ -124,4 +132,12 @@ __all__ = [
     "get_node_aggregate_stats",
     "get_similar_steps_win_rate",
     "decide_decomposition_target",
+    # Atomic discovery (math primes)
+    "AtomicCandidate",
+    "discover_atomic_signatures",
+    "mark_signature_atomic",
+    "unmark_signature_atomic",
+    "is_signature_atomic",
+    "run_atomic_discovery",
+    "get_tree_health_metrics",
 ]

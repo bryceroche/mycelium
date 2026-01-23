@@ -395,6 +395,10 @@ Rules:
 
         candidates = []
         for sig in all_sigs:
+            # Skip atomic signatures (math primes that should never decompose)
+            # Per CLAUDE.md: system discovers atomic operations based on stats
+            if getattr(sig, 'is_atomic', False):
+                continue
             # Skip if not enough uses (adaptive threshold)
             if sig.uses < adaptive_min_uses:
                 continue
