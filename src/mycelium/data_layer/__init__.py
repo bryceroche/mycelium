@@ -52,18 +52,12 @@ from mycelium.data_layer.mcts import (
     get_thread_paths,
     find_divergence_points,
     assign_divergence_blame,
-    # Diagnostic exploration (per beads mycelium-g1hh)
+    # Diagnostic post-mortem
     DiagnosticResult,
-    get_problems_for_diagnostic_exploration,
-    run_diagnostic_exploration,
-    # Dag-step embeddings for decomposition decisions
-    DecompositionDecision,
+    # Dag-step embeddings
     store_dag_step_embedding,
     update_dag_step_embedding_outcome,
     find_similar_dag_steps,
-    get_node_aggregate_stats,
-    get_similar_steps_win_rate,
-    decide_decomposition_target,
     # Atomic discovery (math primes)
     AtomicCandidate,
     discover_atomic_signatures,
@@ -71,16 +65,12 @@ from mycelium.data_layer.mcts import (
     unmark_signature_atomic,
     is_signature_atomic,
     run_atomic_discovery,
-    get_tree_health_metrics,
-    collapse_single_child_routers,
     # DAG plan stats (per beads mycelium-ogo6)
     compute_plan_signature,
     record_plan_outcome,
-    get_plan_success_rate,
     get_plan_stats_summary,
     get_top_plans,
     get_worst_plans,
-    evaluate_proposed_plan,
 )
 
 db = get_db()
@@ -133,18 +123,12 @@ __all__ = [
     "get_thread_paths",
     "find_divergence_points",
     "assign_divergence_blame",
-    # Diagnostic exploration
+    # Diagnostic post-mortem
     "DiagnosticResult",
-    "get_problems_for_diagnostic_exploration",
-    "run_diagnostic_exploration",
-    # Dag-step embeddings for decomposition decisions
-    "DecompositionDecision",
+    # Dag-step embeddings
     "store_dag_step_embedding",
     "update_dag_step_embedding_outcome",
     "find_similar_dag_steps",
-    "get_node_aggregate_stats",
-    "get_similar_steps_win_rate",
-    "decide_decomposition_target",
     # Atomic discovery (math primes)
     "AtomicCandidate",
     "discover_atomic_signatures",
@@ -152,14 +136,10 @@ __all__ = [
     "unmark_signature_atomic",
     "is_signature_atomic",
     "run_atomic_discovery",
-    "get_tree_health_metrics",
-    "collapse_single_child_routers",
     # DAG plan stats (per beads mycelium-ogo6)
     "compute_plan_signature",
     "record_plan_outcome",
-    "get_plan_success_rate",
     "get_plan_stats_summary",
     "get_top_plans",
     "get_worst_plans",
-    "evaluate_proposed_plan",
 ]

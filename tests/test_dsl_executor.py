@@ -301,28 +301,6 @@ class TestDSLErrorPaths:
             assert success is False
 
 
-class TestDSLFromJson:
-    """Tests for execute_dsl_from_json()."""
-
-    def test_invalid_json(self):
-        """Invalid JSON should return failure."""
-        from mycelium.step_signatures.dsl_executor import execute_dsl_from_json
-
-        result, success = execute_dsl_from_json("not json", {"a": 1})
-
-        assert result is None
-        assert success is False
-
-    def test_empty_json(self):
-        """Empty JSON should return failure."""
-        from mycelium.step_signatures.dsl_executor import execute_dsl_from_json
-
-        result, success = execute_dsl_from_json("{}", {"a": 1})
-
-        assert result is None
-        assert success is False
-
-
 class TestDSLAliasMatching:
     """Tests for DSL alias-based parameter matching."""
 

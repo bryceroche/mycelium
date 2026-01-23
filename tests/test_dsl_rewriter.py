@@ -3,15 +3,12 @@
 import json
 import numpy as np
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 from mycelium.step_signatures.db import StepSignatureDB
 from mycelium.step_signatures.dsl_rewriter import (
     RewriteCandidate,
-    RewriteResult,
-    find_underperforming_signatures,
     generate_improved_dsl,
-    rewrite_underperforming_dsls,
     _parse_dsl_response,
 )
 
@@ -24,131 +21,6 @@ def make_embedding(seed: int) -> np.ndarray:
     rng = np.random.RandomState(seed)
     emb = rng.randn(EMBEDDING_DIM)
     return emb / np.linalg.norm(emb)
-
-
-class TestFindUnderperformingSignatures:
-    """Tests for finding signatures that need rewriting."""
-
-    def test_finds_low_success_rate_signatures(self, clean_test_db):
-        """Should find signatures with success rate below threshold."""
-        db = StepSignatureDB()
-
-        # Create a signature with low success rate
-        emb = make_embedding(100)
-        sig, _ = db.find_or_create(
-            step_text="Failing signature test",
-            embedding=emb,
-            parent_problem="test",
-        )
-
-        # Set up stats: 20 uses, 5 successes = 25% success rate
-        # Must also set is_semantic_umbrella = 0 since first sig is root by default
-        with db._connection() as conn:
-            conn.execute(
-                """UPDATE step_signatures
-                   SET uses = 20, successes = 5, dsl_type = 'math', is_semantic_umbrella = 0
-                   WHERE id = ?""",
-                (sig.id,)
-            )
-
-        # Find underperforming (threshold 40%)
-        candidates = find_underperforming_signatures(
-            db,
-            min_uses=10,
-            max_success_rate=0.40,
-            min_traffic_share=0.0,  # Disable traffic filter for test
-        )
-
-        assert len(candidates) == 1
-        assert candidates[0].signature_id == sig.id
-        assert candidates[0].success_rate == 0.25
-
-    def test_ignores_high_success_rate_signatures(self, clean_test_db):
-        """Should not find signatures above success threshold."""
-        db = StepSignatureDB()
-
-        emb = make_embedding(200)
-        sig, _ = db.find_or_create(
-            step_text="Successful signature test",
-            embedding=emb,
-            parent_problem="test",
-        )
-
-        # Set up stats: 20 uses, 15 successes = 75% success rate
-        with db._connection() as conn:
-            conn.execute(
-                """UPDATE step_signatures
-                   SET uses = 20, successes = 15, dsl_type = 'math'
-                   WHERE id = ?""",
-                (sig.id,)
-            )
-
-        candidates = find_underperforming_signatures(
-            db,
-            min_uses=10,
-            max_success_rate=0.40,
-            min_traffic_share=0.0,
-        )
-
-        assert len(candidates) == 0
-
-    def test_ignores_low_usage_signatures(self, clean_test_db):
-        """Should not find signatures with too few uses."""
-        db = StepSignatureDB()
-
-        emb = make_embedding(300)
-        sig, _ = db.find_or_create(
-            step_text="Low usage signature test",
-            embedding=emb,
-            parent_problem="test",
-        )
-
-        # Set up stats: only 5 uses (below threshold)
-        with db._connection() as conn:
-            conn.execute(
-                """UPDATE step_signatures
-                   SET uses = 5, successes = 1, dsl_type = 'math'
-                   WHERE id = ?""",
-                (sig.id,)
-            )
-
-        candidates = find_underperforming_signatures(
-            db,
-            min_uses=10,
-            max_success_rate=0.40,
-            min_traffic_share=0.0,
-        )
-
-        assert len(candidates) == 0
-
-    def test_ignores_decompose_signatures(self, clean_test_db):
-        """Should not find decompose signatures (only math DSLs)."""
-        db = StepSignatureDB()
-
-        emb = make_embedding(400)
-        sig, _ = db.find_or_create(
-            step_text="Decompose signature test",
-            embedding=emb,
-            parent_problem="test",
-        )
-
-        # Set up as decompose type with low success rate
-        with db._connection() as conn:
-            conn.execute(
-                """UPDATE step_signatures
-                   SET uses = 20, successes = 2, dsl_type = 'decompose'
-                   WHERE id = ?""",
-                (sig.id,)
-            )
-
-        candidates = find_underperforming_signatures(
-            db,
-            min_uses=10,
-            max_success_rate=0.40,
-            min_traffic_share=0.0,
-        )
-
-        assert len(candidates) == 0
 
 
 class TestParseDslResponse:
@@ -234,71 +106,6 @@ class TestGenerateImprovedDsl:
 
         result = await generate_improved_dsl(candidate, mock_client)
         assert result is None
-
-
-class TestRewriteUnderperformingDsls:
-    """Integration tests for the full rewrite flow."""
-
-    @pytest.mark.asyncio
-    async def test_rewrites_underperforming_signature(self, clean_test_db):
-        """Should rewrite a failing signature's DSL."""
-        db = StepSignatureDB()
-
-        # Create underperforming signature
-        emb = make_embedding(500)
-        sig, _ = db.find_or_create(
-            step_text="Bad DSL signature",
-            embedding=emb,
-            parent_problem="test",
-        )
-
-        old_dsl = '{"script": "a - b", "params": ["a", "b"], "type": "math"}'
-        # Must also set is_semantic_umbrella = 0 since first sig is root by default
-        with db._connection() as conn:
-            conn.execute(
-                """UPDATE step_signatures
-                   SET uses = 20, successes = 4, dsl_type = 'math', dsl_script = ?, is_semantic_umbrella = 0
-                   WHERE id = ?""",
-                (old_dsl, sig.id)
-            )
-
-        # Mock LLM client
-        mock_client = AsyncMock()
-        mock_client.generate.return_value = '{"script": "a + b", "params": ["a", "b"], "type": "math"}'
-
-        # Run rewriter with config override
-        with patch('mycelium.step_signatures.dsl_rewriter.DSL_REWRITER_ENABLED', True), \
-             patch('mycelium.step_signatures.dsl_rewriter.DSL_REWRITER_MIN_USES', 10), \
-             patch('mycelium.step_signatures.dsl_rewriter.DSL_REWRITER_MAX_SUCCESS_RATE', 0.40), \
-             patch('mycelium.step_signatures.dsl_rewriter.DSL_REWRITER_MIN_TRAFFIC_SHARE', 0.0):
-
-            results = await rewrite_underperforming_dsls(db, mock_client, max_rewrites=5)
-
-        # Verify rewrite happened
-        assert len(results) == 1
-        assert results[0].success is True
-        assert results[0].signature_id == sig.id
-
-        # Verify DB updated
-        updated = db.get_signature(sig.id)
-        new_dsl = json.loads(updated.dsl_script)
-        assert new_dsl["script"] == "a + b"
-
-        # Verify stats reset
-        assert updated.uses == 0
-        assert updated.successes == 0
-
-    @pytest.mark.asyncio
-    async def test_skips_when_disabled(self, clean_test_db):
-        """Should do nothing when rewriter is disabled."""
-        db = StepSignatureDB()
-        mock_client = AsyncMock()
-
-        with patch('mycelium.step_signatures.dsl_rewriter.DSL_REWRITER_ENABLED', False):
-            results = await rewrite_underperforming_dsls(db, mock_client)
-
-        assert len(results) == 0
-        mock_client.generate.assert_not_called()
 
 
 class TestDbHelperMethods:
