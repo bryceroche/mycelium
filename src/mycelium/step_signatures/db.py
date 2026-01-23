@@ -1454,6 +1454,7 @@ class StepSignatureDB:
         extracted_values: dict = None,
         dsl_hint: str = None,
         parent_id: int = None,
+        embedder=None,
     ) -> StepSignature:
         """Force create a new signature (no matching, always creates new).
 
@@ -1467,10 +1468,13 @@ class StepSignatureDB:
             extracted_values: Dict of semantic param names -> values from planner
             dsl_hint: Explicit operation hint from planner (+, -, *, /)
             parent_id: ID of parent signature. If None, defaults to root.
+            embedder: Optional sync embedder for computing graph_embedding
 
         Returns:
             The newly created StepSignature
         """
+        from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
+
         with self._connection() as conn:
             conn.execute("BEGIN IMMEDIATE")
             try:
@@ -1486,6 +1490,20 @@ class StepSignatureDB:
                     "[db] Force-created signature: step='%s' type='%s' depth=%d",
                     step_text[:40], sig.step_type, origin_depth
                 )
+
+                # Compute graph embedding for new signature (per CLAUDE.md: route by what ops DO)
+                if sig and sig.computation_graph and embedder is not None:
+                    try:
+                        graph_emb = embed_computation_graph_sync(embedder, sig.computation_graph)
+                        if graph_emb:
+                            self.update_graph_embedding(sig.id, graph_emb)
+                            logger.debug(
+                                "[db] Embedded graph for new child sig %d: %s",
+                                sig.id, sig.computation_graph[:30]
+                            )
+                    except Exception as e:
+                        logger.warning("[db] Failed to embed graph for sig %d: %s", sig.id, e)
+
                 return sig
             except Exception:
                 conn.rollback()

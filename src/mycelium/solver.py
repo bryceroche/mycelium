@@ -1437,6 +1437,7 @@ class Solver:
                     origin_depth=depth + 1,
                     extracted_values=getattr(step, 'extracted_values', None),
                     dsl_hint=getattr(step, 'dsl_hint', None),
+                    embedder=self.embedder,  # For graph embedding
                 )
                 logger.info(
                     "[solver] Created new child '%s' (id=%d) under umbrella '%s'",
