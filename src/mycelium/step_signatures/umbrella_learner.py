@@ -668,8 +668,21 @@ Rules:
         # Extract just the signature IDs for return value
         child_ids = [sig_id for sig_id, _, _, _ in child_ids]
 
-        if child_ids:
-            # Promote to umbrella (already done by add_child, but be explicit)
+        if len(child_ids) == 1:
+            # Single child = pointless router, mark parent as atomic instead
+            # Per CLAUDE.md: "healthy tree would have ~5:1 ratio where each router has roughly five children"
+            # A router with 1 child is just a chain, not meaningful branching
+            from mycelium.data_layer.mcts import mark_signature_atomic
+            logger.info(
+                "[umbrella] Decomposition produced only 1 child for '%s' - marking as atomic (no chain)",
+                signature.step_type
+            )
+            # Remove the single child relationship we just added
+            self.db.remove_child(parent_id=signature.id, child_id=child_ids[0])
+            mark_signature_atomic(signature.id, "single_child_decomp")
+            return []  # No meaningful decomposition occurred
+        elif len(child_ids) >= 2:
+            # Multiple children = meaningful branching, promote to umbrella
             self.db.promote_to_umbrella(signature.id)
             logger.info(
                 "[umbrella] Promoted '%s' to umbrella with %d children",
