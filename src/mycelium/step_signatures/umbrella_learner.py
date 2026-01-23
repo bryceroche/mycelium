@@ -341,12 +341,21 @@ class UmbrellaLearner:
                 children = self.db.get_children(sig.id, for_routing=True)
                 is_orphan_umbrella = len(children) == 0
 
-            if is_decompose_candidate or is_orphan_umbrella:
+            # Category 3: high-variance leaves flagged for decomposition
+            # Per CLAUDE.md: depth emerges from problem structure, not magic numbers
+            # High variance = too generic, catching diverse problems that should specialize
+            is_high_variance_leaf = (
+                not sig.is_semantic_umbrella  # Must be a leaf
+                and sig.similarity_variance > 0  # Has variance data
+            )
+
+            if is_decompose_candidate or is_orphan_umbrella or is_high_variance_leaf:
                 candidates.append(sig)
+                reason = "decompose_type" if is_decompose_candidate else ("orphan_umbrella" if is_orphan_umbrella else "high_variance")
                 logger.info(
-                    "[umbrella] Candidate: '%s' (id=%d, mcts_win=%.1f%%, sig_success=%.1f%%, threshold=%.1f%%, op_fail=%d, orphan=%s)",
-                    sig.step_type, sig.id, actual_win_rate * 100, sig.success_rate * 100, max_success_rate * 100,
-                    sig.operational_failures, is_orphan_umbrella
+                    "[umbrella] Candidate: '%s' (id=%d, reason=%s, mcts_win=%.1f%%, variance=%.4f, op_fail=%d)",
+                    sig.step_type, sig.id, reason, actual_win_rate * 100, sig.similarity_variance,
+                    sig.operational_failures
                 )
 
         return candidates
