@@ -39,11 +39,7 @@ from mycelium.step_signatures.dsl_executor import (
 from mycelium.step_signatures.stats import (
     StepExecution,
     SignatureStats,
-    RoutingContext,
     StepStatsCollector,
-    compute_routing_bonus,
-    should_prefer_decomposition,
-    get_signature_health,
 )
 
 from mycelium.step_signatures.dsl_rewriter import (
@@ -118,11 +114,7 @@ __all__ = [
     # Stats module
     "StepExecution",
     "SignatureStats",
-    "RoutingContext",
     "StepStatsCollector",
-    "compute_routing_bonus",
-    "should_prefer_decomposition",
-    "get_signature_health",
     # DSL Rewriter
     "RewriteCandidate",
     "generate_improved_dsl",

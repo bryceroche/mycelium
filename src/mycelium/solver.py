@@ -67,10 +67,6 @@ from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_
 from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.step_signatures.stats import record_step_stats
 from mycelium.step_signatures.utils import cosine_similarity
-from mycelium.step_signatures.operation_extractor import (
-    extract_operation_needed,
-    get_operation_embedding,
-)
 from mycelium.embedder import Embedder
 from mycelium.embedding_cache import cached_embed, cached_embed_batch
 from mycelium.difficulty import estimate_difficulty
@@ -84,7 +80,6 @@ from mycelium.data_layer.mcts import (
     run_postmortem_with_interference,
     run_diagnostic_postmortem,
     store_dag_step_embedding,
-    decide_decomposition_target,
 )
 
 logger = logging.getLogger(__name__)
@@ -1916,9 +1911,9 @@ class Solver:
             try:
                 operation_embedding = None
 
-                # Prefer pre-extracted operation embedding (batch embedded during decomposition)
-                # This avoids per-step LLM calls - operations extracted in 1 decomposition call
-                # Embeddings stored in self._operation_embeddings dict for memory efficiency
+                # Use pre-extracted operation embedding (batch embedded during decomposition)
+                # Operations are extracted in 1 decomposition call, embedded in 1 batch call
+                # Per CLAUDE.md: "Only call LLM on leaf nodes" - no LLM during routing
                 if step.id in self._operation_embeddings:
                     operation_embedding = self._operation_embeddings[step.id]
                     operation = getattr(step, 'operation', None)
@@ -1927,15 +1922,13 @@ class Solver:
                         operation[:50] if operation else "?"
                     )
                 else:
-                    # Fallback: Extract operation from step text (legacy path)
-                    operation = await extract_operation_needed(
-                        self.solver_client, step.task, timeout=10.0
+                    # No operation embedding available - skip graph routing for this step
+                    # This happens when step.operation wasn't extracted during decomposition
+                    logger.debug(
+                        "[solver] No operation embedding for step %s - skipping graph routing",
+                        step.id
                     )
-                    if operation:
-                        # Embed the extracted operation
-                        operation_embedding = await get_operation_embedding(
-                            self.embedder, operation
-                        )
+                    operation_embedding = None
 
                 if operation_embedding is not None:
                     # Compare to graph embeddings (what DSLs actually compute)
