@@ -48,6 +48,11 @@ async def answers_equivalent_llm(
     if predicted.strip().lower() == expected.strip().lower():
         return True
 
+    # Numeric equivalence check (handles 3.0 vs 3, 1/2 vs 0.5, etc.)
+    # This avoids LLM inconsistency for simple numeric comparisons
+    if answers_equivalent(predicted, expected):
+        return True
+
     context = f"\nProblem context: {problem}" if problem else ""
 
     prompt = f"""Are these two mathematical answers NUMERICALLY equivalent?

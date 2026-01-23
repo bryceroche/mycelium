@@ -33,6 +33,11 @@ from mycelium.data_layer.mcts import (
     get_node_step_stats,
     get_dag_step_node_performance,
     run_postmortem,
+    # Step-node stats (closes feedback loop)
+    update_dag_step_node_stats,
+    get_dag_step_node_stats_batch,
+    get_dag_step_node_stats_single,
+    propagate_step_node_stats,
     get_problem_nodes_needing_attention,
     # DSL regeneration from post-mortem (per beads mycelium-flbq)
     trigger_dsl_regeneration_for_nodes,
@@ -45,6 +50,18 @@ from mycelium.data_layer.mcts import (
     get_thread_paths,
     find_divergence_points,
     assign_divergence_blame,
+    # Diagnostic exploration (per beads mycelium-g1hh)
+    DiagnosticResult,
+    get_problems_for_diagnostic_exploration,
+    run_diagnostic_exploration,
+    # Dag-step embeddings for decomposition decisions
+    DecompositionDecision,
+    store_dag_step_embedding,
+    update_dag_step_embedding_outcome,
+    find_similar_dag_steps,
+    get_node_aggregate_stats,
+    get_similar_steps_win_rate,
+    decide_decomposition_target,
 )
 
 db = get_db()
@@ -78,6 +95,11 @@ __all__ = [
     "get_node_step_stats",
     "get_dag_step_node_performance",
     "run_postmortem",
+    # Step-node stats
+    "update_dag_step_node_stats",
+    "get_dag_step_node_stats_batch",
+    "get_dag_step_node_stats_single",
+    "propagate_step_node_stats",
     "get_problem_nodes_needing_attention",
     # DSL regeneration
     "trigger_dsl_regeneration_for_nodes",
@@ -90,4 +112,16 @@ __all__ = [
     "get_thread_paths",
     "find_divergence_points",
     "assign_divergence_blame",
+    # Diagnostic exploration
+    "DiagnosticResult",
+    "get_problems_for_diagnostic_exploration",
+    "run_diagnostic_exploration",
+    # Dag-step embeddings for decomposition decisions
+    "DecompositionDecision",
+    "store_dag_step_embedding",
+    "update_dag_step_embedding_outcome",
+    "find_similar_dag_steps",
+    "get_node_aggregate_stats",
+    "get_similar_steps_win_rate",
+    "decide_decomposition_target",
 ]

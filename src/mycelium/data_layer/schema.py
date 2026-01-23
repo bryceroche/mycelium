@@ -58,6 +58,13 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     successes INTEGER DEFAULT 0,
     operational_failures INTEGER DEFAULT 0,  -- MCTS: times produced wrong answer vs ground truth
 
+    -- Embedding Variance Tracking (Welford's online algorithm)
+    -- Tracks how diverse the problems routed to this signature are
+    -- High variance = too generic, should decompose into specialized children
+    similarity_count INTEGER DEFAULT 0,     -- N in Welford's algorithm
+    similarity_mean REAL DEFAULT 0.0,       -- Running mean of cosine similarities to centroid
+    similarity_m2 REAL DEFAULT 0.0,         -- Sum of squared differences (variance = M2/N)
+
     -- Umbrella routing (DAG of DAGs)
     is_semantic_umbrella INTEGER DEFAULT 0,  -- 1 if routes to children
     is_root INTEGER DEFAULT 0,  -- 1 if this is THE root signature (single entry point)
@@ -281,6 +288,7 @@ CREATE TABLE IF NOT EXISTS mcts_dag_steps (
     dag_step_id TEXT UNIQUE NOT NULL,     -- Unique ID for this step
     dag_id TEXT NOT NULL REFERENCES mcts_dags(dag_id) ON DELETE CASCADE,
     step_desc TEXT NOT NULL,              -- What this step does (natural language)
+    dsl_hint TEXT,                        -- Operation type hint (e.g., "compute_sum") for stats normalization
     step_num INTEGER NOT NULL,            -- Sequential order (1..n)
     branch_num INTEGER DEFAULT 1,         -- Parallel branch ID (1..n for independent steps)
     is_atomic INTEGER DEFAULT 0,          -- 1 if cannot be decomposed further
@@ -347,6 +355,48 @@ CREATE INDEX IF NOT EXISTS idx_mcts_thread_steps_amplitude ON mcts_thread_steps(
 CREATE INDEX IF NOT EXISTS idx_mcts_thread_steps_undecided ON mcts_thread_steps(was_undecided);
 -- Composite index for post-mortem analysis: (dag_step_id, node_id) is what we're learning
 CREATE INDEX IF NOT EXISTS idx_mcts_thread_steps_learning ON mcts_thread_steps(dag_step_id, node_id);
+
+-- Materialized stats for (dag_step_type, node_id) pairs
+-- This closes the feedback loop: post-mortem → stats → routing decisions
+CREATE TABLE IF NOT EXISTS dag_step_node_stats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dag_step_type TEXT NOT NULL,              -- e.g., "compute_sum", "compute_product"
+    node_id INTEGER NOT NULL,                 -- References step_signatures(id)
+    uses INTEGER DEFAULT 0,                   -- Total times this pair was used
+    wins INTEGER DEFAULT 0,                   -- Times the thread won
+    losses INTEGER DEFAULT 0,                 -- Times the thread lost
+    win_rate REAL DEFAULT 0.5,                -- Computed: wins / uses (with prior)
+    avg_amplitude_post REAL DEFAULT 1.0,      -- Running avg of amplitude_post
+    amplitude_post_sum REAL DEFAULT 0.0,      -- Sum for incremental avg calculation
+    last_updated TEXT,                        -- ISO timestamp
+    UNIQUE(dag_step_type, node_id),
+    FOREIGN KEY (node_id) REFERENCES step_signatures(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_dsns_lookup ON dag_step_node_stats(dag_step_type, node_id);
+CREATE INDEX IF NOT EXISTS idx_dsns_node ON dag_step_node_stats(node_id);
+
+-- =============================================================================
+-- DAG_STEP_EMBEDDINGS: Semantic similarity for decomposition decisions
+-- =============================================================================
+-- Stores embeddings for dag_steps to enable:
+-- 1. "Find similar dag_steps that succeeded" queries
+-- 2. Data-driven decomposition: decompose dag_step vs leaf_node based on stats
+-- Per CLAUDE.md: "Semantic Embedding First"
+CREATE TABLE IF NOT EXISTS dag_step_embeddings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dag_id TEXT NOT NULL REFERENCES mcts_dags(dag_id) ON DELETE CASCADE,
+    dag_step_id TEXT NOT NULL REFERENCES mcts_dag_steps(dag_step_id) ON DELETE CASCADE,
+    step_desc TEXT NOT NULL,              -- The step description (task)
+    embedding BLOB,                       -- Packed embedding vector
+    node_id INTEGER,                      -- Which leaf_node handled it (NULL if not yet executed)
+    success INTEGER,                      -- 0=failed, 1=succeeded, NULL=not yet known
+    created_at TEXT NOT NULL,             -- ISO timestamp
+    FOREIGN KEY (node_id) REFERENCES step_signatures(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_dse_dag ON dag_step_embeddings(dag_id);
+CREATE INDEX IF NOT EXISTS idx_dse_dag_step ON dag_step_embeddings(dag_step_id);
+CREATE INDEX IF NOT EXISTS idx_dse_node ON dag_step_embeddings(node_id);
+CREATE INDEX IF NOT EXISTS idx_dse_success ON dag_step_embeddings(success);
 """
 
 def get_schema() -> str:
@@ -451,7 +501,22 @@ def migrate_db(conn) -> None:
             "ALTER TABLE step_signatures ADD COLUMN graph_embedding TEXT"
         )
 
-    # Run migrations
+    # Add embedding variance tracking columns (Welford's algorithm)
+    # Per CLAUDE.md: High variance = too generic, should decompose
+    if "similarity_count" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN similarity_count INTEGER DEFAULT 0"
+        )
+    if "similarity_mean" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN similarity_mean REAL DEFAULT 0.0"
+        )
+    if "similarity_m2" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN similarity_m2 REAL DEFAULT 0.0"
+        )
+
+    # Run step_signatures migrations
     for sql in migrations:
         try:
             conn.execute(sql)
@@ -460,6 +525,18 @@ def migrate_db(conn) -> None:
 
     if migrations:
         conn.commit()
+
+    # Migrate mcts_dag_steps table (add dsl_hint column for step-node stats normalization)
+    try:
+        cursor = conn.execute("PRAGMA table_info(mcts_dag_steps)")
+        dag_step_cols = {row[1] for row in cursor.fetchall()}
+        if "dsl_hint" not in dag_step_cols:
+            conn.execute("ALTER TABLE mcts_dag_steps ADD COLUMN dsl_hint TEXT")
+            conn.commit()
+            logger.info("[schema] Added dsl_hint column to mcts_dag_steps")
+    except Exception as e:
+        # Table might not exist yet (fresh DB)
+        logger.debug("[schema] mcts_dag_steps migration skipped: %s", e)
 
     # Add new indexes (safe to run multiple times)
     index_migrations = [

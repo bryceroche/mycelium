@@ -90,6 +90,13 @@ class StepSignature:
     successes: int = 0
     operational_failures: int = 0  # MCTS post-mortem: destructive interference flags
 
+    # Embedding Variance Tracking (Welford's online algorithm)
+    # Tracks how diverse the problems routed to this signature are
+    # High variance = too generic, should decompose into specialized children
+    similarity_count: int = 0      # N in Welford's algorithm
+    similarity_mean: float = 0.0   # Running mean of cosine similarities
+    similarity_m2: float = 0.0     # Sum of squared differences (variance = M2/N)
+
     # Difficulty tracking (for universal tree)
     # Format: {"0.2": {"uses": 10, "successes": 8}, "0.8": {"uses": 2, "successes": 0}}
     difficulty_stats: dict[str, dict[str, int]] = field(default_factory=dict)
@@ -111,6 +118,26 @@ class StepSignature:
     @property
     def has_dsl(self) -> bool:
         return bool(self.dsl_script)
+
+    @property
+    def similarity_variance(self) -> float:
+        """Compute variance of embedding similarities (Welford's algorithm).
+
+        High variance indicates diverse problems routing to this signature,
+        suggesting it should decompose into specialized children.
+
+        Returns:
+            Variance of similarities, or 0.0 if insufficient data.
+        """
+        if self.similarity_count < 2:
+            return 0.0
+        return self.similarity_m2 / self.similarity_count
+
+    @property
+    def similarity_stddev(self) -> float:
+        """Standard deviation of embedding similarities."""
+        import math
+        return math.sqrt(self.similarity_variance)
 
     def get_difficulty_success_rate(self, difficulty: float, tolerance: float = 0.15) -> float:
         """Get success rate for problems at similar difficulty level.
@@ -251,6 +278,14 @@ class StepSignature:
 
         embedding_count = row.get("embedding_count", 1) or 1
 
+        # Parse graph_embedding (JSON-serialized numpy array)
+        graph_embedding = None
+        if row.get("graph_embedding"):
+            try:
+                graph_embedding = np.array(json.loads(row["graph_embedding"]))
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning("[models] Invalid graph_embedding for sig %s: %s", sig_id, e)
+
         return cls(
             id=row.get("id"),
             signature_id=row.get("signature_id", ""),
@@ -264,10 +299,14 @@ class StepSignature:
             dsl_script=row.get("dsl_script"),
             dsl_type=row.get("dsl_type", "math"),
             computation_graph=row.get("computation_graph"),
+            graph_embedding=graph_embedding,
             examples=examples,
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
             operational_failures=row.get("operational_failures", 0) or 0,
+            similarity_count=row.get("similarity_count", 0) or 0,
+            similarity_mean=row.get("similarity_mean", 0.0) or 0.0,
+            similarity_m2=row.get("similarity_m2", 0.0) or 0.0,
             difficulty_stats=difficulty_stats,
             max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
@@ -328,13 +367,21 @@ class StepSignature:
         for recursion. Per CLAUDE.md: "Umbrella signature routing should not
         require an LLM call" - routing is purely embedding-based.
 
-        Parses: centroid (REQUIRED for similarity)
+        Parses: centroid (REQUIRED for similarity), graph_embedding (for graph routing)
         Skips: clarifying_questions, param_descriptions, examples, embedding_sum
         """
         from mycelium.step_signatures.utils import get_cached_centroid
 
         # Use cached centroid to avoid repeated JSON parsing
         centroid = get_cached_centroid(row.get("id"), row.get("centroid"))
+
+        # Parse graph_embedding for graph-based routing
+        graph_embedding = None
+        if row.get("graph_embedding"):
+            try:
+                graph_embedding = np.array(json.loads(row["graph_embedding"]))
+            except (json.JSONDecodeError, TypeError):
+                pass  # Silent fail for routing - not critical
 
         return cls(
             id=row.get("id"),
@@ -349,6 +396,7 @@ class StepSignature:
             dsl_script=row.get("dsl_script"),
             dsl_type=row.get("dsl_type", "math"),
             computation_graph=row.get("computation_graph"),
+            graph_embedding=graph_embedding,
             examples=[],  # Skip JSON parsing
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),

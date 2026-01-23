@@ -30,12 +30,8 @@ from mycelium.config import (
     MIN_MATCH_THRESHOLD,
     MIN_MATCH_THRESHOLD_COLD_START,
     MIN_MATCH_RAMP_SIGNATURES,
-    RECURSIVE_DECOMPOSITION_ENABLED,
-    RECURSIVE_MAX_DEPTH,
-    RECURSIVE_CONFIDENCE_THRESHOLD,
     UMBRELLA_MAX_DEPTH,
     UMBRELLA_ROUTING_THRESHOLD,
-    DEPTH_FORCE_DECOMPOSE_DEPTH,
     DEPTH_DECOMPOSE_DECAY_BASE,
     DEPTH_DECOMPOSE_MIN_PROB,
     ZERO_LLM_ROUTING_ENABLED,
@@ -54,7 +50,6 @@ from mycelium.config import (
     GRAPH_ROUTING_ENABLED,
     GRAPH_ROUTING_MIN_SIMILARITY,
     GRAPH_ROUTING_BOOST_FACTOR,
-    GRAPH_ROUTING_FALLBACK_TO_CENTROID,
     # Maturity sigmoid (decompose vs create new)
     MATURITY_DECOMPOSE_ENABLED,
     MATURITY_SIGMOID_MIDPOINT,
@@ -62,7 +57,6 @@ from mycelium.config import (
     MATURITY_ACCURACY_WEIGHT,
     MATURITY_MIN_DECOMPOSE_PROB,
     MATURITY_MAX_DECOMPOSE_PROB,
-    MATURITY_ESCAPE_ENABLED,
     MATURITY_ESCAPE_MIN_SUBSTEPS,
     MATURITY_ESCAPE_MAX_MISSES,
 )
@@ -89,6 +83,8 @@ from mycelium.data_layer.mcts import (
     log_thread_step,
     run_postmortem_with_interference,
     run_diagnostic_postmortem,
+    store_dag_step_embedding,
+    decide_decomposition_target,
 )
 
 logger = logging.getLogger(__name__)
@@ -557,6 +553,10 @@ class Solver:
         self._current_dag_id: Optional[str] = None
         self._dag_step_ids: dict[str, str] = {}  # step.id -> dag_step_id
 
+        # Batch expressions: step_id -> (expression, params_used)
+        # Set per-problem in solve() via _batch_write_expressions()
+        self._batch_expressions: dict[str, tuple[str, list[str]]] = {}
+
         # Operation embeddings for graph-based routing (set per-problem in solve())
         # Stored separately from Step objects for memory efficiency (~24KB per embedding)
         self._operation_embeddings: dict[str, list[float]] = {}  # step.id -> embedding
@@ -564,6 +564,10 @@ class Solver:
         # DSL regeneration flag (per beads mycelium-flbq)
         # Set to True when post-mortem batch threshold reached
         self._pending_dsl_regen: bool = False
+
+        # Nodes flagged for decomposition by post-mortem interference detection
+        # These have operational_failures > 0 already set
+        self._postmortem_flagged_nodes: list[int] = []
 
     def _create_background_task(self, coro) -> asyncio.Task:
         """Create a background task with proper lifecycle management.
@@ -917,7 +921,7 @@ class Solver:
                 for level_num, level_steps in enumerate(execution_levels, start=1):
                     for branch_num, step in enumerate(level_steps, start=1):
                         dag_step_tuples.append(
-                            (step.task, level_num, branch_num, step.is_atomic)
+                            (step.task, level_num, branch_num, step.is_atomic, step.dsl_hint)
                         )
                         step_order.append(step)
                 dag_step_ids = create_dag_steps(self._current_dag_id, dag_step_tuples)
@@ -933,16 +937,54 @@ class Solver:
             else:
                 self._dag_step_ids = {}
 
-            # Pre-warm DSL expression cache in parallel for independent steps
-            await self._prewarm_dsl_cache(plan.steps)
-
             # Pre-warm embedding cache with batch call (avoids N sequential embed calls)
             self._prewarm_step_embeddings(plan.steps)
+
+            # Store dag_step embeddings for decomposition decisions
+            # Per CLAUDE.md: Track (dag_step, leaf_node) pairs to decide what to decompose
+            if TRAINING_MODE and self._dag_step_ids:
+                self._store_dag_step_embeddings(plan.steps)
 
             # Pre-warm operation embeddings for graph-based routing
             # Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE
             # Operations are extracted during decomposition, batch embedded here
             self._prewarm_operation_embeddings(plan.steps)
+
+            # 1.5. BATCH EXPRESSION WRITING (single LLM call for all steps)
+            # Collect step info for batch expression writing
+            # For steps with {step_N} references, we'll resolve them during execution
+            step_infos = []
+            for step in plan.steps:
+                if not step.dsl_hint:
+                    continue
+                # Build params from extracted_values (without context resolution yet)
+                params = {}
+                for key, val in (step.extracted_values or {}).items():
+                    if isinstance(val, str) and val.startswith('{') and val.endswith('}'):
+                        # Reference to previous step - use step_N as placeholder (no angle brackets!)
+                        # LLM will use this in expression, which must be valid Python
+                        params[key] = val[1:-1]  # {step_1} -> step_1
+                    else:
+                        params[key] = val
+                if params:
+                    step_infos.append({
+                        "step_id": step.id,
+                        "task": step.task,
+                        "operation": step.dsl_hint,
+                        "params": params,
+                    })
+
+            # Single LLM call to write all expressions
+            batch_expressions = {}
+            if step_infos:
+                batch_expressions = await self._batch_write_expressions(step_infos)
+                logger.info(
+                    "[solver] Batch expressions: %d/%d steps",
+                    len(batch_expressions), len(step_infos)
+                )
+
+            # Store batch expressions for use during execution
+            self._batch_expressions = batch_expressions
 
             # 2. Execute steps in dependency order (parallel where possible)
             step_results = []
@@ -1509,6 +1551,17 @@ class Solver:
                     step_completed,
                 )
 
+                # Update dag_step embedding with node_id (for decomposition decisions)
+                from mycelium.data_layer.mcts import update_dag_step_embedding_outcome
+                try:
+                    update_dag_step_embedding_outcome(
+                        dag_step_id=dag_step_id,
+                        node_id=routed_signature.id,
+                        success=step_completed,
+                    )
+                except Exception as e:
+                    logger.debug("[solver] Failed to update dag_step embedding: %s", e)
+
         return StepResult(
             step_id=step.id,
             task=step.task,
@@ -1819,10 +1872,14 @@ class Solver:
         from mycelium.step_signatures.db import RoutingResult
 
         # Get routing result with confidence and alternatives
+        # Pass dag_step_type to enable step-node stats lookup for routing decisions
+        # Per CLAUDE.md: "(dag_step_id, node_id) is what we're learning"
+        dag_step_type = getattr(step, 'dsl_hint', None) or getattr(step, 'task', None)
         routing_result = self.step_db.route_with_confidence(
             embedding,
             min_similarity=get_adaptive_match_threshold(),
             top_k=int(compute_budget) + 1,  # Get enough alternatives
+            dag_step_type=dag_step_type,
         )
 
         # Store routing context for MCTS amplitude logging
@@ -2179,15 +2236,25 @@ class Solver:
 
         logger.debug("[solver] _try_dsl: hint=%s, params=%s", dsl_hint, list(params.keys()))
 
-        # LLM writes the expression with correct params
-        # Inject few-shot examples from signature for better LLM guidance
-        few_shot_prompt = signature.get_few_shot_prompt() if signature else ""
-        signature_id = signature.id if signature else None
-        try:
+        # Check for batch-written expression first (single LLM call for all steps)
+        batch_expressions = getattr(self, '_batch_expressions', {})
+        expr_result = None
+
+        if step.id in batch_expressions:
+            script, used_params = batch_expressions[step.id]
+            logger.debug("[solver] Using batch expression for %s: %s", step.id, script)
+            expr_result = (script, used_params)
+        else:
+            # Fallback: LLM writes the expression (individual call)
+            # Inject few-shot examples from signature for better LLM guidance
+            few_shot_prompt = signature.get_few_shot_prompt() if signature else ""
+            signature_id = signature.id if signature else None
             expr_result = await self._llm_write_expression(dsl_hint, params, step.task, few_shot_prompt, signature_id)
+
+        try:
             if expr_result:
                 script, used_params = expr_result
-                logger.debug("[solver] LLM wrote: %s (used: %s)", script, used_params)
+                logger.debug("[solver] Expression: %s (used: %s)", script, used_params)
 
                 dsl_spec = DSLSpec(
                     layer=DSLSpec.from_json('{"type":"math"}').layer,
@@ -2278,6 +2345,132 @@ class Solver:
         # Batch embed - populates the cache
         logger.debug("[solver] Pre-warming embeddings: %d steps in single batch call", len(texts))
         cached_embed_batch(texts, self.embedder)
+
+    def _store_dag_step_embeddings(self, steps: list) -> None:
+        """Store embeddings for dag_steps to enable similarity-based decomposition decisions.
+
+        Per CLAUDE.md: Track (dag_step, leaf_node) pairs and use statistics to
+        decide which to decompose on failure.
+
+        Called after _prewarm_step_embeddings so embeddings are already cached.
+        """
+        if not self._current_dag_id or not self._dag_step_ids:
+            return
+
+        stored = 0
+        for step in steps:
+            if step.is_composite:
+                continue
+
+            dag_step_id = self._dag_step_ids.get(step.id)
+            if not dag_step_id:
+                continue
+
+            # Get cached embedding
+            normalized = normalize_step_text(step.task)
+            embedding = cached_embed(normalized, self.embedder)
+
+            # Store for similarity lookups
+            try:
+                store_dag_step_embedding(
+                    dag_id=self._current_dag_id,
+                    dag_step_id=dag_step_id,
+                    step_desc=step.task,
+                    embedding=embedding,
+                    node_id=None,  # Will be updated when step executes
+                )
+                stored += 1
+            except Exception as e:
+                logger.warning("[solver] Failed to store dag_step embedding: %s", e)
+
+        if stored > 0:
+            logger.debug("[solver] Stored %d dag_step embeddings for similarity lookups", stored)
+
+    def _mark_step_for_decomposition(self, dag_step_id: str) -> None:
+        """Mark a dag_step pattern for future decomposition.
+
+        When similar steps come in later, we'll decompose them proactively
+        based on this signal that the step pattern is too complex.
+
+        Per CLAUDE.md: "Failing signatures get decomposed" - same applies to steps.
+        """
+        from mycelium.data_layer.mcts import update_dag_step_embedding_outcome
+
+        try:
+            # Mark the step as needing decomposition by setting success=0
+            # This affects find_similar_dag_steps() which checks success rates
+            update_dag_step_embedding_outcome(
+                dag_step_id=dag_step_id,
+                node_id=0,  # Placeholder - we're marking the step itself
+                success=False,
+            )
+            logger.info(
+                "[solver] Marked dag_step %s for decomposition (step pattern too complex)",
+                dag_step_id[:20]
+            )
+        except Exception as e:
+            logger.warning("[solver] Failed to mark step for decomposition: %s", e)
+
+    def _trigger_signature_decomposition(self, signature_id: int) -> None:
+        """Trigger decomposition of a failing signature.
+
+        This promotes the signature to an umbrella (if not already) and flags it
+        for the umbrella learner to create specialized children.
+
+        Per CLAUDE.md: "Failing signatures get decomposed"
+        """
+        try:
+            sig = self.step_db.get_signature(signature_id)
+            if sig is None:
+                return
+
+            # Skip if already an umbrella with children
+            if sig.is_semantic_umbrella:
+                children = self.step_db.get_children(signature_id, for_routing=True)
+                if children:
+                    logger.debug(
+                        "[solver] Sig %d already umbrella with %d children, skipping",
+                        signature_id, len(children)
+                    )
+                    return
+
+            # Flag for split/decomposition - increments operational_failures
+            # which triggers umbrella_learner consideration
+            self.step_db.flag_for_split(signature_id, reason="diagnostic_postmortem")
+
+            logger.info(
+                "[solver] Triggered decomposition for sig %d '%s' (accuracy=%.1f%%)",
+                signature_id,
+                sig.step_type[:30] if sig.step_type else "?",
+                sig.success_rate * 100,
+            )
+        except Exception as e:
+            logger.warning("[solver] Failed to trigger sig decomposition: %s", e)
+
+    def _record_routing_miss(self, dag_step_id: str, signature_id: int) -> None:
+        """Record a routing miss - this (step, sig) pair should be avoided.
+
+        Similar steps succeeded with other signatures, so this was a bad routing
+        decision. We record it to improve future routing.
+
+        Per CLAUDE.md: "Routing: Decompose the search space"
+        """
+        try:
+            # Update the step embedding to mark this node as unsuccessful for this step
+            from mycelium.data_layer.mcts import update_dag_step_embedding_outcome
+
+            update_dag_step_embedding_outcome(
+                dag_step_id=dag_step_id,
+                node_id=signature_id,
+                success=False,
+            )
+
+            logger.info(
+                "[solver] Recorded routing miss: step %s should not route to sig %d",
+                dag_step_id[:20], signature_id
+            )
+        except Exception as e:
+            logger.warning("[solver] Failed to record routing miss: %s", e)
 
     def _prewarm_operation_embeddings(self, steps: list) -> None:
         """Batch embed all step operations for graph-based routing.
@@ -2406,6 +2599,134 @@ Expression:"""
             logger.debug("[solver] LLM expression failed: %s", e)
 
         return None
+
+    async def _batch_write_expressions(
+        self,
+        step_infos: list[dict],
+    ) -> dict[str, tuple[str, list[str]]]:
+        """Write arithmetic expressions for all steps in ONE LLM call.
+
+        This replaces N individual _llm_write_expression calls with a single
+        batch call using JSON mode for reliable parsing.
+
+        Args:
+            step_infos: List of dicts with keys:
+                - step_id: The step identifier
+                - task: The step task description
+                - operation: The operation hint (+, -, *, /)
+                - params: Dict of available param names and values
+
+        Returns:
+            Dict mapping step_id -> (expression, params_used)
+        """
+        import json
+
+        if not step_infos:
+            return {}
+
+        # Build the batch prompt
+        steps_text = []
+        for i, info in enumerate(step_infos, 1):
+            param_str = ", ".join(f"{k}={v}" for k, v in info["params"].items())
+            steps_text.append(
+                f"{i}. step_id: {info['step_id']}\n"
+                f"   task: {info['task']}\n"
+                f"   operation: {info['operation']}\n"
+                f"   available_params: {param_str}"
+            )
+
+        prompt = f"""Write arithmetic expressions for these steps.
+
+CRITICAL: Use ONLY the exact parameter names provided in available_params.
+Do NOT invent or modify parameter names.
+
+Steps:
+{chr(10).join(steps_text)}
+
+Output valid JSON with this exact structure:
+{{
+  "expressions": [
+    {{"step_id": "step_1", "expression": "param_a + param_b", "params_used": ["param_a", "param_b"]}},
+    ...
+  ]
+}}
+
+Rules:
+- Use EXACTLY the variable names from available_params
+- Write simple arithmetic: +, -, *, /
+- Each expression should use the operation specified
+- Output ONLY the JSON, no explanation"""
+
+        try:
+            from mycelium.client import get_client
+            client = get_client()
+            response = await client.generate(
+                [{"role": "user", "content": prompt}],
+                temperature=0.0,
+                max_tokens=1000,
+                response_format={"type": "json_object"},
+            )
+
+            # Parse JSON response
+            data = json.loads(response.strip())
+            expressions = data.get("expressions", [])
+
+            result = {}
+            for expr_info in expressions:
+                step_id = expr_info.get("step_id")
+                expression = expr_info.get("expression")
+                params_used = expr_info.get("params_used", [])
+
+                if step_id and expression:
+                    result[step_id] = (expression, params_used)
+                    logger.debug(
+                        "[solver] Batch expr: %s -> %s (params: %s)",
+                        step_id, expression, params_used
+                    )
+
+            logger.info(
+                "[solver] Batch wrote %d/%d expressions in single LLM call",
+                len(result), len(step_infos)
+            )
+            return result
+
+        except Exception as e:
+            logger.warning("[solver] Batch expression write failed: %s", e)
+            return {}
+
+    def _build_step_params(
+        self,
+        step,
+        context: dict[str, str],
+    ) -> dict:
+        """Build params dict for a step from extracted_values and context.
+
+        Resolves {step_N} references to actual values from context.
+        """
+        params = {}
+        extracted_values = getattr(step, 'extracted_values', {}) or {}
+
+        # Add validated extracted values (resolve references)
+        for key, val in extracted_values.items():
+            if isinstance(val, str) and val.startswith('{') and val.endswith('}'):
+                ref_key = val[1:-1]
+                if ref_key in context:
+                    try:
+                        params[key] = float(context[ref_key])
+                    except (ValueError, TypeError):
+                        params[key] = context[ref_key]
+            else:
+                params[key] = val
+
+        # Add context values (results from previous steps)
+        for key, value in context.items():
+            if key not in params:
+                try:
+                    params[key] = float(value)
+                except (ValueError, TypeError):
+                    params[key] = value
+
+        return params
 
     def _extract_json_result(self, response: str) -> str:
         """Extract result from JSON response (may be embedded in text)."""
@@ -2737,6 +3058,9 @@ Expression:"""
                 # Log nodes/steps needing decomposition from post-mortem analysis
                 nodes_needing = postmortem_stats.get("nodes_needing_decomposition", [])
                 steps_needing = postmortem_stats.get("steps_needing_decomposition", [])
+                # Store nodes flagged by interference for candidate list building
+                # These already have operational_failures > 0 from record_interference_outcome
+                self._postmortem_flagged_nodes = postmortem_stats.get("nodes_flagged_split", [])
                 if nodes_needing:
                     logger.info(
                         "[solver] Post-mortem: %d nodes need decomposition: %s",
@@ -2746,6 +3070,11 @@ Expression:"""
                     logger.info(
                         "[solver] Post-mortem: %d steps need decomposition: %s",
                         len(steps_needing), [s[1][:40] for s in steps_needing]
+                    )
+                if self._postmortem_flagged_nodes:
+                    logger.info(
+                        "[solver] Post-mortem: %d nodes flagged for split (destructive interference): %s",
+                        len(self._postmortem_flagged_nodes), self._postmortem_flagged_nodes
                     )
 
                 # Run diagnostic post-mortem with smooth functions (accuracy-based)
@@ -2759,14 +3088,33 @@ Expression:"""
                     if not diagnostic_stats.get("skipped"):
                         diag_steps = diagnostic_stats.get("steps_to_decompose", [])
                         diag_sigs = diagnostic_stats.get("signatures_to_decompose", [])
-                        if diag_steps or diag_sigs:
+                        routing_misses = diagnostic_stats.get("routing_misses", [])
+
+                        if diag_steps or diag_sigs or routing_misses:
                             logger.info(
                                 "[solver] Diagnostic post-mortem: threshold=%.1f, "
-                                "steps_to_decompose=%d, sigs_to_decompose=%d",
+                                "steps_to_decompose=%d, sigs_to_decompose=%d, routing_misses=%d",
                                 diagnostic_stats.get("failure_threshold", 0),
                                 len(diag_steps),
                                 len(diag_sigs),
+                                len(routing_misses),
                             )
+
+                        # === ACT ON DECOMPOSITION DECISIONS ===
+
+                        # 1. Steps to decompose: Mark step patterns for future decomposition
+                        # When similar steps come in, we'll decompose them proactively
+                        for dag_step_id in diag_steps:
+                            self._mark_step_for_decomposition(dag_step_id)
+
+                        # 2. Signatures to decompose: Promote to umbrella or flag for rewrite
+                        for sig_id in diag_sigs:
+                            self._trigger_signature_decomposition(sig_id)
+
+                        # 3. Routing misses: Record bad (step, sig) pairs for routing avoidance
+                        for dag_step_id, sig_id in routing_misses:
+                            self._record_routing_miss(dag_step_id, sig_id)
+
                 except Exception as e:
                     logger.debug("[solver] Diagnostic post-mortem skipped: %s", e)
 
@@ -2832,18 +3180,73 @@ Expression:"""
 
         # Also add nodes identified by post-mortem decomposition analysis
         # These are nodes with low win rates from mcts_thread_steps
+        # CRITICAL: Flag them with operational_failures so get_decomposition_candidates picks them up
         from mycelium.data_layer.mcts import get_failing_nodes_for_decomposition
-        postmortem_failing_nodes = get_failing_nodes_for_decomposition(min_attempts=3, max_win_rate=0.5)
+        from mycelium.config import DECOMP_MIN_ATTEMPTS_COLD, DECOMP_MIN_ATTEMPTS_MATURE, DECOMP_MAX_WIN_RATE
+        from mycelium.mcts.adaptive import AdaptiveExploration
+
+        # Adaptive min_attempts: lower during cold start, higher when mature
+        # This ensures we flag failing signatures quickly during early learning
+        adaptive = AdaptiveExploration.get_instance()
+        accuracy = adaptive.global_accuracy
+        # Interpolate: cold (0% accuracy) → COLD threshold, mature (100%) → MATURE threshold
+        adaptive_min_attempts = int(
+            DECOMP_MIN_ATTEMPTS_COLD + accuracy * (DECOMP_MIN_ATTEMPTS_MATURE - DECOMP_MIN_ATTEMPTS_COLD)
+        )
+        adaptive_min_attempts = max(1, adaptive_min_attempts)  # At least 1
+
+        postmortem_failing_nodes = get_failing_nodes_for_decomposition(
+            min_attempts=adaptive_min_attempts,
+            max_win_rate=DECOMP_MAX_WIN_RATE
+        )
+        logger.debug(
+            "[solver] get_failing_nodes_for_decomposition(min_attempts=%d, accuracy=%.1f%%) returned %d nodes: %s",
+            adaptive_min_attempts, accuracy * 100, len(postmortem_failing_nodes), postmortem_failing_nodes
+        )
         for node_id in postmortem_failing_nodes:
+            if node_id not in candidates:
+                sig = self.step_db.get_signature(node_id)
+                if sig:
+                    # Flag for decomposition - this sets operational_failures so umbrella_learner finds it
+                    # Per CLAUDE.md: "only signatures with operational_failures > 0 are decomposition candidates"
+                    self.step_db.flag_for_split(node_id, reason="postmortem_analysis")
+                    candidates.append(node_id)
+                    logger.info(
+                        "[solver] Signature '%s' (id=%d) flagged for decomposition (post-mortem analysis): "
+                        "failing across step types",
+                        sig.step_type, node_id
+                    )
+
+        # VARIANCE MONITORING (informational only, does not trigger decomposition)
+        # Variance tracking helps identify signatures catching diverse problem types.
+        # However, automatic decomposition based on variance alone creates empty umbrellas
+        # because there's no concrete problem context. Let actual failures drive decomposition.
+        from mycelium.data_layer.mcts import get_high_variance_nodes_for_decomposition
+        from mycelium.config import VARIANCE_MIN_SAMPLES, VARIANCE_DECOMP_THRESHOLD
+
+        high_variance_nodes = get_high_variance_nodes_for_decomposition(
+            min_samples=VARIANCE_MIN_SAMPLES,
+            max_variance=VARIANCE_DECOMP_THRESHOLD
+        )
+        if high_variance_nodes:
+            logger.info(
+                "[solver] High-variance signatures detected (monitoring only): %s",
+                [(nid, f"{var:.4f}") for nid, var in high_variance_nodes[:5]]
+            )
+
+        # Also add nodes flagged by interference detection (destructive interference)
+        # These already have operational_failures > 0 from record_interference_outcome
+        for node_id in self._postmortem_flagged_nodes:
             if node_id not in candidates:
                 sig = self.step_db.get_signature(node_id)
                 if sig:
                     candidates.append(node_id)
                     logger.info(
-                        "[solver] Signature '%s' (id=%d) needs decomposition (post-mortem analysis): "
-                        "failing across step types",
+                        "[solver] Signature '%s' (id=%d) candidate for decomposition (destructive interference)",
                         sig.step_type, node_id
                     )
+        # Clear the flagged nodes list after processing
+        self._postmortem_flagged_nodes = []
 
         # Flush any batched centroid propagations after problem is graded
         # This ensures parent umbrellas have accurate centroids for next problem
@@ -3180,10 +3583,13 @@ Expression:"""
         """
         try:
             # Use planner to decompose the step
+            # Build context string from problem and known values
+            context_str = f"Original problem: {problem}"
+            if context:
+                context_str += f"\nKnown values: {context}"
             sub_plan = await self.planner.decompose(
                 step.task,
-                problem_context=problem,
-                known_values=context,
+                context=context_str,
             )
 
             if not sub_plan or not sub_plan.steps:
@@ -3209,9 +3615,12 @@ Expression:"""
                 sub_embedding = cached_embed(normalized_task, self.embedder)
 
                 # Use route_with_confidence to check for existing match
+                # Pass dag_step_type for step-node stats lookup
+                sub_dag_step_type = getattr(sub_step, 'dsl_hint', None) or sub_step.task
                 routing_result = self.step_db.route_with_confidence(
                     sub_embedding,
                     min_similarity=adaptive_threshold,
+                    dag_step_type=sub_dag_step_type,
                 )
 
                 if routing_result.signature is None or routing_result.best_similarity < adaptive_threshold:

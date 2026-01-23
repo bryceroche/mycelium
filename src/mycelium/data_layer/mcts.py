@@ -13,7 +13,7 @@ import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from mycelium.data_layer import get_db
 from mycelium.config import (
@@ -153,12 +153,17 @@ def grade_dag(dag_id: str, success: bool) -> None:
 # =============================================================================
 
 
-def create_dag_steps(dag_id: str, steps: list[tuple[str, int, int, bool]]) -> list[str]:
+def create_dag_steps(dag_id: str, steps: list[tuple[str, int, int, bool, Optional[str]]]) -> list[str]:
     """Create DAG steps for a plan.
 
     Args:
         dag_id: Parent DAG ID
-        steps: List of (step_desc, step_num, branch_num, is_atomic)
+        steps: List of (step_desc, step_num, branch_num, is_atomic, dsl_hint)
+            - step_desc: Natural language description of the step
+            - step_num: Sequential order (1..n)
+            - branch_num: Parallel branch ID
+            - is_atomic: Whether step can be decomposed further
+            - dsl_hint: Operation type hint (e.g., "compute_sum") for stats normalization
 
     Returns:
         List of dag_step_ids
@@ -167,15 +172,22 @@ def create_dag_steps(dag_id: str, steps: list[tuple[str, int, int, bool]]) -> li
     conn = get_db()
 
     step_ids = []
-    for step_desc, step_num, branch_num, is_atomic in steps:
+    for step_tuple in steps:
+        # Support both old 4-tuple and new 5-tuple format for backward compatibility
+        if len(step_tuple) == 5:
+            step_desc, step_num, branch_num, is_atomic, dsl_hint = step_tuple
+        else:
+            step_desc, step_num, branch_num, is_atomic = step_tuple
+            dsl_hint = None
+
         dag_step_id = f"step-{uuid.uuid4().hex[:12]}"
         conn.execute(
             """
-            INSERT INTO mcts_dag_steps (dag_step_id, dag_id, step_desc, step_num,
-                                        branch_num, is_atomic, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO mcts_dag_steps (dag_step_id, dag_id, step_desc, dsl_hint,
+                                        step_num, branch_num, is_atomic, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (dag_step_id, dag_id, step_desc, step_num, branch_num, 1 if is_atomic else 0, now),
+            (dag_step_id, dag_id, step_desc, dsl_hint, step_num, branch_num, 1 if is_atomic else 0, now),
         )
         step_ids.append(dag_step_id)
 
@@ -690,6 +702,547 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
         )
 
     return stats
+
+
+# =============================================================================
+# STEP-NODE STATS (Materialized (dag_step_type, node_id) performance)
+# =============================================================================
+# Per CLAUDE.md: "The combination of (dag_step_id, node_id) is what we're learning"
+# This closes the feedback loop: post-mortem → dag_step_node_stats → routing UCB1
+
+
+def update_dag_step_node_stats(
+    dag_step_type: str,
+    node_id: int,
+    won: bool,
+    amplitude_post: float,
+) -> None:
+    """Upsert stats for a (dag_step_type, node_id) pair.
+
+    Called during post-mortem to materialize (step, node) performance.
+    Routing then queries these stats to make better decisions.
+
+    Args:
+        dag_step_type: The step type (e.g., "compute_sum", "compute_product")
+        node_id: The signature ID that handled this step
+        won: Whether the thread won (correct answer)
+        amplitude_post: The post-observation amplitude for this step
+    """
+    from mycelium.config import (
+        STEP_NODE_STATS_ENABLED,
+        STEP_NODE_STATS_PRIOR_WINS,
+        STEP_NODE_STATS_PRIOR_USES,
+    )
+
+    if not STEP_NODE_STATS_ENABLED:
+        return
+
+    # Validate dag_step_type
+    if not dag_step_type or not isinstance(dag_step_type, str):
+        logger.warning("[mcts] Invalid dag_step_type: %r, skipping stats update", dag_step_type)
+        return
+    # Truncate excessively long step types (sanity check)
+    if len(dag_step_type) > 200:
+        dag_step_type = dag_step_type[:200]
+
+    conn = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+    win_inc = 1 if won else 0
+    loss_inc = 0 if won else 1
+
+    # Step 1: Simple upsert - just increment raw counters
+    conn.execute(
+        """
+        INSERT INTO dag_step_node_stats (
+            dag_step_type, node_id, uses, wins, losses,
+            amplitude_post_sum, last_updated
+        )
+        VALUES (?, ?, 1, ?, ?, ?, ?)
+        ON CONFLICT(dag_step_type, node_id) DO UPDATE SET
+            uses = uses + 1,
+            wins = wins + ?,
+            losses = losses + ?,
+            amplitude_post_sum = amplitude_post_sum + ?,
+            last_updated = ?
+        """,
+        (
+            dag_step_type,
+            node_id,
+            win_inc,
+            loss_inc,
+            amplitude_post,
+            now,
+            # ON CONFLICT values:
+            win_inc,
+            loss_inc,
+            amplitude_post,
+            now,
+        ),
+    )
+
+    # Step 2: Compute derived fields (win_rate, avg_amplitude_post) in Python
+    # This is clearer than complex inline SQL and applies Bayesian priors correctly
+    conn.execute(
+        """
+        UPDATE dag_step_node_stats
+        SET win_rate = CAST(wins + ? AS REAL) / (uses + ?),
+            avg_amplitude_post = amplitude_post_sum / uses
+        WHERE dag_step_type = ? AND node_id = ?
+        """,
+        (
+            STEP_NODE_STATS_PRIOR_WINS,
+            STEP_NODE_STATS_PRIOR_USES,
+            dag_step_type,
+            node_id,
+        ),
+    )
+
+    logger.debug(
+        "[mcts] Updated step-node stats: %s/node_%d won=%s amp_post=%.2f",
+        dag_step_type, node_id, won, amplitude_post
+    )
+
+
+def get_dag_step_node_stats_batch(
+    dag_step_type: str,
+    node_ids: list[int],
+) -> dict[int, dict]:
+    """Batch query stats for multiple (dag_step_type, node_id) pairs.
+
+    Used by routing to efficiently fetch step-specific performance data.
+
+    Args:
+        dag_step_type: The step type to query
+        node_ids: List of node IDs to fetch stats for
+
+    Returns:
+        Dict mapping node_id → stats dict with keys:
+        - uses, wins, losses, win_rate, avg_amplitude_post
+    """
+    from mycelium.config import STEP_NODE_STATS_ENABLED
+
+    if not STEP_NODE_STATS_ENABLED or not node_ids:
+        return {}
+
+    # Validate dag_step_type
+    if not dag_step_type or not isinstance(dag_step_type, str):
+        return {}
+
+    conn = get_db()
+
+    # Build placeholders for IN clause
+    placeholders = ",".join("?" * len(node_ids))
+
+    cursor = conn.execute(
+        f"""
+        SELECT node_id, uses, wins, losses, win_rate, avg_amplitude_post
+        FROM dag_step_node_stats
+        WHERE dag_step_type = ? AND node_id IN ({placeholders})
+        """,
+        [dag_step_type] + list(node_ids),
+    )
+
+    # Use named column access for clarity and safety
+    # Column names match SELECT order: node_id, uses, wins, losses, win_rate, avg_amplitude_post
+    result = {}
+    for row in cursor.fetchall():
+        # row is a sqlite3.Row which supports both index and name access
+        result[row["node_id"]] = {
+            "uses": row["uses"],
+            "wins": row["wins"],
+            "losses": row["losses"],
+            "win_rate": row["win_rate"],
+            "avg_amplitude_post": row["avg_amplitude_post"],
+        }
+
+    return result
+
+
+def get_dag_step_node_stats_single(
+    dag_step_type: str,
+    node_id: int,
+) -> Optional[dict]:
+    """Get stats for a single (dag_step_type, node_id) pair.
+
+    Args:
+        dag_step_type: The step type
+        node_id: The signature ID
+
+    Returns:
+        Stats dict or None if no data exists
+    """
+    batch = get_dag_step_node_stats_batch(dag_step_type, [node_id])
+    return batch.get(node_id)
+
+
+def propagate_step_node_stats(dag_id: str) -> dict:
+    """Propagate post-mortem results to dag_step_node_stats table.
+
+    Called after amplitude_post is computed to materialize (step, node) stats.
+    These stats are then used by routing UCB1 to make better decisions.
+
+    Args:
+        dag_id: The DAG to process
+
+    Returns:
+        Dict with propagation statistics
+    """
+    from mycelium.config import STEP_NODE_STATS_ENABLED
+
+    if not STEP_NODE_STATS_ENABLED:
+        return {"pairs_updated": 0, "skipped": True}
+
+    conn = get_db()
+
+    # Get all thread_steps with their thread outcomes and dag_step info
+    # Use dsl_hint (operation type) when available, fall back to step_desc
+    # Per mycelium-mgbs: dsl_hint provides better normalization than NL descriptions
+    cursor = conn.execute(
+        """
+        SELECT
+            ts.node_id,
+            ts.amplitude_post,
+            t.success as thread_won,
+            ds.dsl_hint,
+            ds.step_desc
+        FROM mcts_thread_steps ts
+        JOIN mcts_threads t ON ts.thread_id = t.thread_id
+        JOIN mcts_dag_steps ds ON ts.dag_step_id = ds.dag_step_id
+        WHERE ts.dag_id = ? AND ts.amplitude_post IS NOT NULL AND ts.node_id IS NOT NULL
+        """,
+        (dag_id,),
+    )
+
+    stats = {"pairs_updated": 0}
+
+    for row in cursor.fetchall():
+        node_id, amplitude_post, thread_won, dsl_hint, step_desc = row
+
+        # Use dsl_hint (e.g., "compute_sum") for better normalization
+        # Fall back to step_desc if dsl_hint not available
+        dag_step_type = dsl_hint or step_desc or "unknown"
+
+        update_dag_step_node_stats(
+            dag_step_type=dag_step_type,
+            node_id=node_id,
+            won=bool(thread_won),
+            amplitude_post=amplitude_post,
+        )
+        stats["pairs_updated"] += 1
+
+    if stats["pairs_updated"] > 0:
+        logger.info(
+            "[mcts] Step-node stats propagated for DAG %s: %d pairs updated",
+            dag_id, stats["pairs_updated"]
+        )
+
+    return stats
+
+
+# =============================================================================
+# DAG_STEP EMBEDDINGS: Semantic similarity for decomposition decisions
+# =============================================================================
+# Per CLAUDE.md: Track (dag_step, leaf_node) pairs and use statistics to decide
+# which to decompose on failure. If leaf_node is strong, decompose the dag_step.
+# If similar dag_steps succeed with other nodes, decompose the leaf_node.
+
+
+@dataclass
+class DecompositionDecision:
+    """Result of analyzing which component to decompose on failure."""
+    target: str  # "dag_step", "leaf_node", or "both"
+    confidence: float  # 0-1, how confident we are in this decision
+    reason: str  # Human-readable explanation
+    node_win_rate: Optional[float] = None  # Leaf node's overall win rate
+    similar_step_win_rate: Optional[float] = None  # Win rate of similar dag_steps
+
+
+def store_dag_step_embedding(
+    dag_id: str,
+    dag_step_id: str,
+    step_desc: str,
+    embedding: "np.ndarray",
+    node_id: Optional[int] = None,
+) -> int:
+    """Store embedding for a dag_step.
+
+    Called when a dag_step is created/executed to enable similarity lookups.
+
+    Args:
+        dag_id: The DAG this step belongs to
+        dag_step_id: Unique step ID
+        step_desc: The step description (task)
+        embedding: The embedding vector
+        node_id: Which leaf_node handled it (None if not yet executed)
+
+    Returns:
+        The ID of the inserted row
+    """
+    from datetime import datetime, timezone
+    from mycelium.step_signatures.db import pack_embedding
+
+    conn = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+    embedding_packed = pack_embedding(embedding)
+
+    # Use the ConnectionManager's execute which auto-commits
+    cursor = conn.execute(
+        """INSERT INTO dag_step_embeddings
+           (dag_id, dag_step_id, step_desc, embedding, node_id, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (dag_id, dag_step_id, step_desc, embedding_packed, node_id, now),
+    )
+    return cursor.lastrowid
+
+
+def update_dag_step_embedding_outcome(
+    dag_step_id: str,
+    node_id: int,
+    success: bool,
+) -> None:
+    """Update the outcome for a dag_step embedding record.
+
+    Called after thread grading to record whether the step succeeded.
+
+    Args:
+        dag_step_id: The step ID
+        node_id: The leaf_node that handled it
+        success: Whether the step succeeded
+    """
+    conn = get_db()
+    # ConnectionManager.execute() auto-commits
+    conn.execute(
+        """UPDATE dag_step_embeddings
+           SET node_id = ?, success = ?
+           WHERE dag_step_id = ?""",
+        (node_id, 1 if success else 0, dag_step_id),
+    )
+
+
+def find_similar_dag_steps(
+    embedding: "np.ndarray",
+    limit: int = 20,
+    min_similarity: float = 0.7,
+) -> list[dict]:
+    """Find dag_steps similar to the given embedding.
+
+    Used to check: "Have we seen steps like this before? How did they do?"
+
+    Args:
+        embedding: The embedding to compare against
+        limit: Maximum number of results
+        min_similarity: Minimum cosine similarity threshold
+
+    Returns:
+        List of dicts with: dag_step_id, step_desc, node_id, success, similarity
+    """
+    import numpy as np
+    from mycelium.step_signatures.db import unpack_embedding
+
+    conn = get_db()
+    cursor = conn.execute(
+        """SELECT dag_step_id, step_desc, embedding, node_id, success
+           FROM dag_step_embeddings
+           WHERE embedding IS NOT NULL AND success IS NOT NULL"""
+    )
+
+    results = []
+    embedding_norm = np.linalg.norm(embedding)
+    if embedding_norm == 0:
+        return results
+
+    for row in cursor.fetchall():
+        dag_step_id, step_desc, emb_packed, node_id, success = row
+        stored_emb = unpack_embedding(emb_packed)
+        if stored_emb is None:
+            continue
+
+        stored_norm = np.linalg.norm(stored_emb)
+        if stored_norm == 0:
+            continue
+
+        similarity = float(np.dot(embedding, stored_emb) / (embedding_norm * stored_norm))
+
+        if similarity >= min_similarity:
+            results.append({
+                "dag_step_id": dag_step_id,
+                "step_desc": step_desc,
+                "node_id": node_id,
+                "success": success,
+                "similarity": similarity,
+            })
+
+    # Sort by similarity descending
+    results.sort(key=lambda x: x["similarity"], reverse=True)
+    return results[:limit]
+
+
+def get_node_aggregate_stats(node_id: int) -> dict:
+    """Get aggregate stats for a leaf_node across ALL dag_steps.
+
+    Used to check: "Is this node generally strong, regardless of step type?"
+
+    Args:
+        node_id: The leaf_node signature ID
+
+    Returns:
+        Dict with: total_uses, total_wins, total_losses, overall_win_rate
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """SELECT SUM(uses), SUM(wins), SUM(losses)
+           FROM dag_step_node_stats
+           WHERE node_id = ?""",
+        (node_id,),
+    )
+    row = cursor.fetchone()
+
+    uses = row[0] or 0
+    wins = row[1] or 0
+    losses = row[2] or 0
+
+    # Bayesian prior: assume 50% with 2 pseudo-observations
+    prior_alpha = 1.0
+    prior_beta = 1.0
+    win_rate = (wins + prior_alpha) / (uses + prior_alpha + prior_beta) if uses > 0 else 0.5
+
+    return {
+        "total_uses": uses,
+        "total_wins": wins,
+        "total_losses": losses,
+        "overall_win_rate": win_rate,
+    }
+
+
+def get_similar_steps_win_rate(
+    embedding: "np.ndarray",
+    exclude_node_id: Optional[int] = None,
+    min_similarity: float = 0.7,
+) -> dict:
+    """Get win rate of similar dag_steps, optionally excluding a specific node.
+
+    Used to check: "Do steps like this usually succeed with OTHER nodes?"
+
+    Args:
+        embedding: The step's embedding
+        exclude_node_id: Node to exclude (the one that failed)
+        min_similarity: Minimum similarity threshold
+
+    Returns:
+        Dict with: total_similar, wins, losses, win_rate, best_nodes (nodes that succeeded)
+    """
+    similar = find_similar_dag_steps(embedding, limit=50, min_similarity=min_similarity)
+
+    # Filter out the failing node if specified
+    if exclude_node_id is not None:
+        similar = [s for s in similar if s["node_id"] != exclude_node_id]
+
+    if not similar:
+        return {
+            "total_similar": 0,
+            "wins": 0,
+            "losses": 0,
+            "win_rate": 0.5,
+            "best_nodes": [],
+        }
+
+    wins = sum(1 for s in similar if s["success"] == 1)
+    losses = sum(1 for s in similar if s["success"] == 0)
+    total = wins + losses
+
+    # Bayesian prior
+    prior_alpha = 1.0
+    prior_beta = 1.0
+    win_rate = (wins + prior_alpha) / (total + prior_alpha + prior_beta) if total > 0 else 0.5
+
+    # Find nodes that succeeded with similar steps
+    best_nodes = list(set(s["node_id"] for s in similar if s["success"] == 1))
+
+    return {
+        "total_similar": len(similar),
+        "wins": wins,
+        "losses": losses,
+        "win_rate": win_rate,
+        "best_nodes": best_nodes,
+    }
+
+
+def decide_decomposition_target(
+    step_embedding: "np.ndarray",
+    node_id: int,
+    node_win_threshold: float = 0.7,
+    similar_win_threshold: float = 0.6,
+) -> DecompositionDecision:
+    """Decide whether to decompose the dag_step or leaf_node on failure.
+
+    The key insight: blame the weak link in the (dag_step, leaf_node) pair.
+
+    Decision logic:
+    1. If leaf_node has high win rate overall → decompose dag_step (wrong formulation)
+    2. If similar dag_steps succeed with other nodes → decompose leaf_node (wrong operation)
+    3. Both weak → decompose both (or the weaker one)
+
+    Args:
+        step_embedding: Embedding of the failing dag_step
+        node_id: The leaf_node that failed
+        node_win_threshold: Win rate above which node is considered "strong"
+        similar_win_threshold: Win rate above which similar steps are "usually successful"
+
+    Returns:
+        DecompositionDecision with target and reasoning
+    """
+    # Get node's overall performance
+    node_stats = get_node_aggregate_stats(node_id)
+    node_win_rate = node_stats["overall_win_rate"]
+    node_uses = node_stats["total_uses"]
+
+    # Get similar steps' performance (excluding this node)
+    similar_stats = get_similar_steps_win_rate(
+        step_embedding, exclude_node_id=node_id, min_similarity=0.7
+    )
+    similar_win_rate = similar_stats["win_rate"]
+    similar_count = similar_stats["total_similar"]
+
+    # Decision logic
+    node_is_strong = node_win_rate >= node_win_threshold and node_uses >= 3
+    similar_usually_succeed = similar_win_rate >= similar_win_threshold and similar_count >= 2
+
+    if node_is_strong and not similar_usually_succeed:
+        # Strong node, weak/unknown step pattern → decompose the step
+        return DecompositionDecision(
+            target="dag_step",
+            confidence=min(0.9, node_win_rate),
+            reason=f"Node is strong ({node_win_rate:.0%} win rate, {node_uses} uses), step pattern is weak",
+            node_win_rate=node_win_rate,
+            similar_step_win_rate=similar_win_rate,
+        )
+    elif similar_usually_succeed and not node_is_strong:
+        # Similar steps succeed elsewhere, this node is weak → decompose the node
+        return DecompositionDecision(
+            target="leaf_node",
+            confidence=min(0.9, similar_win_rate),
+            reason=f"Similar steps succeed ({similar_win_rate:.0%} with other nodes), this node is weak ({node_win_rate:.0%})",
+            node_win_rate=node_win_rate,
+            similar_step_win_rate=similar_win_rate,
+        )
+    elif node_is_strong and similar_usually_succeed:
+        # Both are strong but still failed → likely a novel combination, try both
+        return DecompositionDecision(
+            target="both",
+            confidence=0.5,
+            reason=f"Both node ({node_win_rate:.0%}) and step pattern ({similar_win_rate:.0%}) are strong - novel combination",
+            node_win_rate=node_win_rate,
+            similar_step_win_rate=similar_win_rate,
+        )
+    else:
+        # Both weak or insufficient data → decompose dag_step first (safer default)
+        return DecompositionDecision(
+            target="dag_step",
+            confidence=0.4,
+            reason=f"Insufficient data (node: {node_uses} uses, similar: {similar_count} steps) - defaulting to step decomposition",
+            node_win_rate=node_win_rate,
+            similar_step_win_rate=similar_win_rate,
+        )
 
 
 # =============================================================================
@@ -1346,6 +1899,8 @@ _KEY_DSL_REGEN_COUNT = "postmortem_dsl_regen_count"
 _KEY_HIGH_CONF_WRONG_NODES = "postmortem_high_conf_wrong_nodes"
 _KEY_PROBLEM_COUNT = "postmortem_problem_count"
 _KEY_NODES_FOR_SPLIT = "postmortem_nodes_for_split"
+_KEY_POSTMORTEM_RUN_COUNT = "postmortem_run_count"
+_KEY_BATCH_OPS_RUN_COUNT = "postmortem_batch_ops_count"
 
 
 @dataclass
@@ -1360,6 +1915,8 @@ class PostmortemState:
     _nodes_for_split: list[int] = field(default=None, repr=False)
     _high_conf_wrong_nodes: list[int] = field(default=None, repr=False)
     _dsl_regen_problem_count: int = field(default=None, repr=False)
+    _postmortem_run_count: int = field(default=None, repr=False)
+    _batch_ops_run_count: int = field(default=None, repr=False)
 
     @property
     def problem_count(self) -> int:
@@ -1386,6 +1943,34 @@ class PostmortemState:
         if self._dsl_regen_problem_count is None:
             self._dsl_regen_problem_count = int(_get_db_state_value(_KEY_DSL_REGEN_COUNT, "0"))
         return self._dsl_regen_problem_count
+
+    @property
+    def postmortem_run_count(self) -> int:
+        """Total number of times post-mortem analysis has run."""
+        if self._postmortem_run_count is None:
+            self._postmortem_run_count = int(_get_db_state_value(_KEY_POSTMORTEM_RUN_COUNT, "0"))
+        return self._postmortem_run_count
+
+    def increment_run_count(self) -> int:
+        """Increment and persist the post-mortem run count. Returns new count."""
+        current = self.postmortem_run_count
+        self._postmortem_run_count = current + 1
+        _set_db_state_value(_KEY_POSTMORTEM_RUN_COUNT, str(self._postmortem_run_count))
+        return self._postmortem_run_count
+
+    @property
+    def batch_ops_run_count(self) -> int:
+        """Total number of times batch operations (merge/split) have run."""
+        if self._batch_ops_run_count is None:
+            self._batch_ops_run_count = int(_get_db_state_value(_KEY_BATCH_OPS_RUN_COUNT, "0"))
+        return self._batch_ops_run_count
+
+    def increment_batch_ops_count(self) -> int:
+        """Increment and persist the batch ops run count. Returns new count."""
+        current = self.batch_ops_run_count
+        self._batch_ops_run_count = current + 1
+        _set_db_state_value(_KEY_BATCH_OPS_RUN_COUNT, str(self._batch_ops_run_count))
+        return self._batch_ops_run_count
 
     def reset_merge_split(self) -> None:
         """Reset state after merge/split batch processing."""
@@ -1496,6 +2081,10 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     # Get singleton state (thread-safe)
     state = get_postmortem_state()
 
+    # Increment the run counter (tracks total post-mortem runs)
+    run_count = state.increment_run_count()
+    logger.debug("[mcts] Post-mortem run #%d", run_count)
+
     # First run standard postmortem (amplitude_post computation) - cheap, always run
     amplitude_stats = run_postmortem(dag_id)
 
@@ -1515,6 +2104,10 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     # Per beads mycelium-itkn: Propagate amplitude_post to signature stats
     # This closes the loop from post-mortem analysis to signature learning
     credit_stats = propagate_amplitude_to_signature_stats(dag_id, step_db)
+
+    # Propagate to (dag_step_type, node_id) stats table
+    # This enables routing UCB1 to use step-specific performance data
+    step_node_stats = propagate_step_node_stats(dag_id)
 
     # Per beads mycelium-2rss: Divergence-point analysis for targeted blame
     # Compare winning vs losing thread paths to find exactly where failure occurred
@@ -1543,6 +2136,10 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     )
 
     if should_run_batch_ops:
+        # Increment batch ops counter
+        batch_ops_count = state.increment_batch_ops_count()
+        logger.info("[mcts] Batch operations run #%d (every %d problems)", batch_ops_count, MERGE_SPLIT_BATCH_SIZE)
+
         # Run merge/split with accumulated data
         merge_split_result = run_merge_split_from_interference(
             step_db,
@@ -1582,6 +2179,7 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
 
     return {
         **amplitude_stats,
+        "postmortem_run_count": run_count,
         "interference_patterns": interference_result.patterns_processed,
         "constructive_interference": interference_result.constructive_count,
         "destructive_interference": interference_result.destructive_count,
@@ -1596,6 +2194,7 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         "retirement_merged_up": retirement_result.get("merged_up", 0),
         "batch_counter": state.problem_count,
         "next_merge_split_in": MERGE_SPLIT_BATCH_SIZE - state.problem_count if MERGE_SPLIT_BATCH_SIZE > 0 else -1,
+        "batch_ops_run_count": state.batch_ops_run_count,
         # DSL regeneration info (per beads mycelium-flbq)
         "dsl_regen_nodes_accumulated": len(state.high_conf_wrong_nodes),
         "dsl_regen_ready": should_trigger_dsl_regen(),
@@ -2101,30 +2700,35 @@ def analyze_decomposition_needs(min_attempts: int = 3, max_win_rate: float = 0.5
     nodes_to_decompose = []
     steps_to_decompose = []
 
-    # Get signature info for nodes
-    with db.connection() as conn:
-        for node_id, stats in node_stats.items():
-            if stats["win_rate"] <= max_win_rate:
-                # Get node details
-                cursor = conn.execute(
-                    "SELECT step_type, dsl_type, dsl_script FROM step_signatures WHERE id = ?",
-                    (node_id,)
-                )
-                row = cursor.fetchone()
-                if row:
-                    step_type, dsl_type, dsl_script = row
-                    # Check if it's an orphan router (no DSL)
-                    is_orphan = dsl_type == "router" and not dsl_script
-                    reason = "orphan router (no DSL)" if is_orphan else f"failing across all steps ({stats['win_rate']*100:.0f}% win rate)"
+    # Get signature info for failing nodes (batch query to avoid N+1)
+    failing_node_ids = [nid for nid, stats in node_stats.items() if stats["win_rate"] <= max_win_rate]
 
-                    nodes_to_decompose.append(DecompositionRecommendation(
-                        target_type="node",
-                        target_id=node_id,
-                        target_desc=step_type,
-                        reason=reason,
-                        win_rate=stats["win_rate"],
-                        attempts=stats["total"],
-                    ))
+    if failing_node_ids:
+        with db.connection() as conn:
+            # Batch query all failing nodes at once
+            placeholders = ",".join("?" * len(failing_node_ids))
+            cursor = conn.execute(
+                f"SELECT id, step_type, dsl_type, dsl_script FROM step_signatures WHERE id IN ({placeholders})",
+                failing_node_ids
+            )
+            node_details = {row[0]: (row[1], row[2], row[3]) for row in cursor.fetchall()}
+
+        for node_id in failing_node_ids:
+            stats = node_stats[node_id]
+            if node_id in node_details:
+                step_type, dsl_type, dsl_script = node_details[node_id]
+                # Check if it's an orphan router (no DSL)
+                is_orphan = dsl_type == "router" and not dsl_script
+                reason = "orphan router (no DSL)" if is_orphan else f"failing across all steps ({stats['win_rate']*100:.0f}% win rate)"
+
+                nodes_to_decompose.append(DecompositionRecommendation(
+                    target_type="node",
+                    target_id=node_id,
+                    target_desc=step_type,
+                    reason=reason,
+                    win_rate=stats["win_rate"],
+                    attempts=stats["total"],
+                ))
 
     # Analyze failing steps
     for step_id, stats in step_stats.items():
@@ -2162,6 +2766,66 @@ def get_failing_nodes_for_decomposition(min_attempts: int = 3, max_win_rate: flo
     return [rec.target_id for rec in result["nodes_to_decompose"]]
 
 
+def get_high_variance_nodes_for_decomposition(
+    min_samples: int = 5,
+    max_variance: float = 0.02,
+) -> list[tuple[int, float]]:
+    """Get list of node IDs that need decomposition based on embedding variance.
+
+    High variance in cosine similarities indicates the signature is too generic -
+    it's catching diverse problem types that should be specialized into children.
+
+    Per CLAUDE.md: Tree depth emerges from problem structure, not magic numbers.
+
+    Args:
+        min_samples: Minimum similarity samples to consider (avoid noise from small N)
+        max_variance: Variance threshold above which to flag for decomposition.
+                      Cosine similarity is [0,1], so variance is typically small.
+                      0.02 = std dev of ~0.14 in similarity scores.
+
+    Returns:
+        List of (node_id, variance) tuples for nodes needing decomposition
+    """
+    db = get_db()
+    high_variance_nodes = []
+
+    with db.connection() as conn:
+        # Query signatures with high variance that are NOT already umbrellas
+        # (umbrellas route, they don't execute - so variance there is expected)
+        cursor = conn.execute("""
+            SELECT id, similarity_count, similarity_mean, similarity_m2,
+                   step_type, is_semantic_umbrella
+            FROM step_signatures
+            WHERE similarity_count >= ?
+              AND is_semantic_umbrella = 0
+              AND is_archived = 0
+        """, (min_samples,))
+
+        for row in cursor.fetchall():
+            sig_id = row[0]
+            count = row[1]
+            mean = row[2] or 0.0
+            m2 = row[3] or 0.0
+            step_type = row[4]
+            is_umbrella = row[5]
+
+            # Compute variance using Welford's formula
+            if count >= 2:
+                variance = m2 / count
+            else:
+                variance = 0.0
+
+            # Flag if variance exceeds threshold
+            if variance > max_variance:
+                logger.info(
+                    "[mcts] High variance node %d (%s): variance=%.4f mean=%.3f samples=%d",
+                    sig_id, step_type, variance, mean, count
+                )
+                high_variance_nodes.append((sig_id, variance))
+
+    return high_variance_nodes
+
+
 def get_failing_steps_for_decomposition(min_attempts: int = 3, max_win_rate: float = 0.5) -> list[tuple[str, str]]:
     """Get list of (dag_step_id, step_desc) tuples that need decomposition.
 
@@ -2169,6 +2833,47 @@ def get_failing_steps_for_decomposition(min_attempts: int = 3, max_win_rate: flo
     """
     result = analyze_decomposition_needs(min_attempts, max_win_rate)
     return [(rec.target_id, rec.target_desc) for rec in result["steps_to_decompose"]]
+
+
+def get_mcts_win_rates(min_attempts: int = 1) -> dict[int, dict]:
+    """Get MCTS win rates for all nodes with sufficient data.
+
+    Returns actual win rates from mcts_thread_steps, which tracks
+    step-level outcomes (success/failure). This is ground truth for
+    operational correctness, as opposed to signature.success_rate which
+    includes partial credit.
+
+    Args:
+        min_attempts: Minimum step attempts to include a node
+
+    Returns:
+        Dict mapping node_id to {"total": int, "wins": int, "win_rate": float}
+    """
+    db = get_db()
+    node_stats = {}
+
+    with db.connection() as conn:
+        cursor = conn.execute("""
+            SELECT
+                t.node_id,
+                COUNT(*) as total,
+                SUM(CASE WHEN t.step_success = 1 THEN 1 ELSE 0 END) as wins
+            FROM mcts_thread_steps t
+            WHERE t.node_id IS NOT NULL
+            GROUP BY t.node_id
+            HAVING COUNT(*) >= ?
+        """, (min_attempts,))
+
+        for row in cursor.fetchall():
+            node_id, total, wins = row
+            win_rate = wins / total if total > 0 else 0
+            node_stats[node_id] = {
+                "total": total,
+                "wins": wins,
+                "win_rate": win_rate,
+            }
+
+    return node_stats
 
 
 # =============================================================================
@@ -2602,8 +3307,20 @@ def diagnose_failure(
     import numpy as np
     from mycelium.config import (
         DIAGNOSTIC_REROUTE_SIMILARITY_MIN,
+        DIAGNOSTIC_REROUTE_LOOKBACK_DAYS,
         DIAGNOSTIC_GOOD_SIG_ACCURACY,
     )
+
+    # Guard against None step_db
+    if step_db is None:
+        return DiagnosticResult(
+            decompose_step_score=0.0,
+            decompose_sig_score=0.0,
+            reroute_score=0.0,
+            accuracy=0.0,
+            confidence=0.0,
+            step_distance=0.0,
+        )
 
     # Get signature stats
     sig = step_db.get_signature(signature_id)
@@ -2664,14 +3381,18 @@ def diagnose_failure(
             exclude_signature_id=signature_id,
             min_similarity=DIAGNOSTIC_REROUTE_SIMILARITY_MIN,
             limit=3,
+            lookback_days=DIAGNOSTIC_REROUTE_LOOKBACK_DAYS,
         )
         if similar_successes:
             # Best alternative similarity
             best_alt_similarity = similar_successes[0].get("similarity", 0.0)
             reroute_score = best_alt_similarity * confidence
-    except (AttributeError, TypeError):
-        # Method may not exist yet - that's OK
-        reroute_score = 0.0
+    except AttributeError:
+        # Method not implemented on step_db - expected during migration
+        logger.debug("[diagnostic] find_similar_successful_steps not available")
+    except Exception as e:
+        # Unexpected error - log but don't crash diagnosis
+        logger.warning("[diagnostic] Error finding similar successful steps: %s", e)
 
     result = DiagnosticResult(
         decompose_step_score=decompose_step_score,
@@ -2700,7 +3421,7 @@ def diagnose_failure(
 def run_diagnostic_postmortem(
     dag_id: str,
     step_db,
-    step_embeddings: dict[str, any] = None,
+    step_embeddings: dict[str, Any] = None,
 ) -> dict:
     """Run diagnostic post-mortem on a completed DAG.
 
@@ -2749,6 +3470,9 @@ def run_diagnostic_postmortem(
     routing_misses = []
 
     for (dag_step_id, node_id), failure_count in pair_failures.items():
+        # Note: Using >= is intentional. failure_count is always an integer,
+        # and at cold start (THRESHOLD_MIN=1.0) we want a single failure to trigger.
+        # Using > would require 2 failures minimum even at cold start.
         if failure_count >= failure_threshold:
             # Run diagnosis
             step_emb = pair_embeddings.get((dag_step_id, node_id))
@@ -2797,3 +3521,223 @@ def run_diagnostic_postmortem(
         "signatures_to_decompose": list(set(sigs_to_decompose)),
         "routing_misses": routing_misses,
     }
+
+
+# =============================================================================
+# DIAGNOSTIC EXPLORATION: Re-run failing problems to pinpoint (step, node) blame
+# =============================================================================
+# Per beads mycelium-g1hh: When we detect repeated failures, re-run the problem
+# with forced MCTS exploration to generate multiple threads, then use divergence
+# analysis to pinpoint the exact (dag_step, node) pair that's failing.
+
+
+def get_problems_for_diagnostic_exploration(
+    min_failures: int = 3,
+    max_win_rate: float = 0.3,
+) -> list[dict]:
+    """Find problems that should be re-run with diagnostic exploration.
+
+    Looks for:
+    1. DAGs where thread lost (wrong final answer)
+    2. (dag_step_type, node) pairs with low win rate
+    3. Problems that haven't been diagnosed yet
+
+    Args:
+        min_failures: Minimum failures for a (step, node) pair to trigger
+        max_win_rate: Maximum win rate to be considered failing
+
+    Returns:
+        List of dicts with problem_id, problem_desc, ground_truth, failing_pairs
+    """
+    db = get_db()
+
+    # Find failing (dag_step_type, node) pairs
+    with db.connection() as conn:
+        cursor = conn.execute("""
+            SELECT dag_step_type, node_id, uses, wins, losses, win_rate
+            FROM dag_step_node_stats
+            WHERE uses >= ? AND win_rate <= ?
+            ORDER BY win_rate ASC, losses DESC
+        """, (min_failures, max_win_rate))
+
+        failing_pairs = []
+        for row in cursor.fetchall():
+            failing_pairs.append({
+                "dag_step_type": row[0],
+                "node_id": row[1],
+                "uses": row[2],
+                "wins": row[3],
+                "losses": row[4],
+                "win_rate": row[5],
+            })
+
+    if not failing_pairs:
+        return []
+
+    # Find problems that used these failing pairs and lost
+    problems = []
+    with db.connection() as conn:
+        for pair in failing_pairs[:5]:  # Limit to top 5 failing pairs
+            cursor = conn.execute("""
+                SELECT DISTINCT
+                    d.dag_id,
+                    d.problem_id,
+                    d.problem_desc,
+                    d.ground_truth
+                FROM mcts_dags d
+                JOIN mcts_threads t ON d.dag_id = t.dag_id
+                JOIN mcts_thread_steps ts ON t.thread_id = ts.thread_id
+                JOIN mcts_dag_steps ds ON ts.dag_step_id = ds.dag_step_id
+                WHERE t.success = 0
+                  AND ts.node_id = ?
+                  AND (ds.dsl_hint = ? OR ds.step_desc LIKE ?)
+                ORDER BY d.created_at DESC
+                LIMIT 3
+            """, (pair["node_id"], pair["dag_step_type"], f"%{pair['dag_step_type']}%"))
+
+            for row in cursor.fetchall():
+                problems.append({
+                    "dag_id": row[0],
+                    "problem_id": row[1],
+                    "problem_desc": row[2],
+                    "ground_truth": row[3],
+                    "failing_pair": pair,
+                })
+
+    # Deduplicate by problem_id
+    seen = set()
+    unique_problems = []
+    for p in problems:
+        if p["problem_id"] not in seen:
+            seen.add(p["problem_id"])
+            unique_problems.append(p)
+
+    logger.info(
+        "[mcts] Found %d problems for diagnostic exploration (%d failing pairs)",
+        len(unique_problems), len(failing_pairs)
+    )
+
+    return unique_problems
+
+
+@dataclass
+class DiagnosticExplorationResult:
+    """Result of diagnostic exploration on a single problem."""
+    problem_id: str
+    threads_generated: int
+    winning_threads: int
+    losing_threads: int
+    divergence_points: int
+    blamed_nodes: list[int]  # Nodes identified as causing failures
+    blamed_steps: list[str]  # dag_step_ids identified as problematic
+    confidence: float  # How confident we are in the diagnosis (0-1)
+
+
+async def run_diagnostic_exploration(
+    problem_desc: str,
+    ground_truth: str,
+    num_rollouts: int = 5,
+    exploration_c: float = 2.0,
+) -> DiagnosticExplorationResult:
+    """Re-run a problem with forced exploration to diagnose failures.
+
+    This generates multiple threads exploring different paths, then uses
+    divergence analysis to pinpoint the exact (dag_step, node) pairs causing failures.
+
+    Args:
+        problem_desc: The problem text
+        ground_truth: The correct answer
+        num_rollouts: Number of threads to generate
+        exploration_c: Exploration constant (higher = more exploration)
+
+    Returns:
+        DiagnosticResult with identified failing pairs
+    """
+    from mycelium.solver import Solver
+    from mycelium.step_signatures import StepSignatureDB
+
+    # Create solver with high exploration
+    step_db = StepSignatureDB()
+    solver = Solver(db_path=step_db.db_path)
+
+    # Run multiple times with forced exploration
+    dag_ids = []
+    for i in range(num_rollouts):
+        try:
+            # Solve with ground_truth for grading
+            result = await solver.solve(problem_desc, ground_truth=ground_truth)
+            if solver._current_dag_id:
+                dag_ids.append(solver._current_dag_id)
+        except Exception as e:
+            logger.warning("[diagnostic] Rollout %d failed: %s", i, e)
+
+    if not dag_ids:
+        return DiagnosticExplorationResult(
+            problem_id=problem_desc[:50],
+            threads_generated=0,
+            winning_threads=0,
+            losing_threads=0,
+            divergence_points=0,
+            blamed_nodes=[],
+            blamed_steps=[],
+            confidence=0.0,
+        )
+
+    # Analyze divergence across all DAGs
+    all_blamed_nodes = set()
+    all_blamed_steps = set()
+    total_divergence_points = 0
+    winning_count = 0
+    losing_count = 0
+
+    for dag_id in dag_ids:
+        # Get thread outcomes
+        paths = get_thread_paths(dag_id)
+        winning_count += sum(1 for p in paths if p.success == 1)
+        losing_count += sum(1 for p in paths if p.success == 0)
+
+        # Find divergence points
+        divergence_points = find_divergence_points(dag_id)
+        total_divergence_points += len(divergence_points)
+
+        # Collect blamed nodes from divergence
+        for dp in divergence_points:
+            if dp.losing_node_at_divergence:
+                all_blamed_nodes.add(dp.losing_node_at_divergence)
+            if dp.divergence_dag_step_id:
+                all_blamed_steps.add(dp.divergence_dag_step_id)
+            # Also check suffix
+            for step_id, node_id in dp.losing_suffix:
+                all_blamed_nodes.add(node_id)
+                all_blamed_steps.add(step_id)
+
+    # Calculate confidence based on data quality
+    total_threads = winning_count + losing_count
+    if total_threads == 0:
+        confidence = 0.0
+    elif winning_count == 0 or losing_count == 0:
+        confidence = 0.3  # No comparison possible
+    else:
+        # Higher confidence with more divergence points and balanced win/loss
+        balance = min(winning_count, losing_count) / max(winning_count, losing_count)
+        confidence = min(0.9, 0.5 + (total_divergence_points * 0.1) + (balance * 0.3))
+
+    result = DiagnosticExplorationResult(
+        problem_id=problem_desc[:50],
+        threads_generated=total_threads,
+        winning_threads=winning_count,
+        losing_threads=losing_count,
+        divergence_points=total_divergence_points,
+        blamed_nodes=list(all_blamed_nodes),
+        blamed_steps=list(all_blamed_steps),
+        confidence=confidence,
+    )
+
+    logger.info(
+        "[diagnostic] Exploration complete: %d threads (%d win, %d lose), "
+        "%d divergence points, blamed %d nodes, confidence=%.2f",
+        result.threads_generated, result.winning_threads, result.losing_threads,
+        result.divergence_points, len(result.blamed_nodes), result.confidence
+    )
+
+    return result

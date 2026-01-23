@@ -30,67 +30,16 @@ Instead of embedding problem text and comparing to signature text, we:
 3. **Compare to computation graph embeddings** stored on signatures
 
 ### Computation Graphs
-
 A computation graph is a structural representation of what a DSL actually computes:
 
-```
-DSL: return amount * rate
-Graph: MUL(param_0, param_1) → result
-
-DSL: return sum(items)
-Graph: REDUCE_SUM(param_0) → result
-
-DSL: return (price * quantity) + tax
-Graph: ADD(MUL(param_0, param_1), param_2) → result
-```
 
 The graph is:
 - **Parameter-agnostic**: Variable names don't matter, structure does
 - **Implementation-agnostic**: Same graph regardless of Python vs SymPy
 - **Operationally meaningful**: Two DSLs with the same graph do the same thing
 
-### Routing Flow
-
-```
-Problem: "What is 15% of 80?"
-    │
-    ▼ (LLM extracts operation needed)
-"multiply a value by a percentage"
-    │
-    ▼ (embed operation description)
-    │
-    ▼ (compare to graph embeddings)
-Match: signature with graph MUL(p0, p1)
-    │
-    ▼ (extract parameters from problem)
-{value: 80, percentage: 0.15}
-    │
-    ▼ (execute DSL)
-Result: 12
-```
-
-### Why This Works
-
-| Text Embedding | Graph Embedding |
-|----------------|-----------------|
-| "add tax" ≈ "add items" (same word) | ADD(a, MUL(b,c)) ≠ REDUCE_SUM(list) |
-| Clusters by vocabulary | Clusters by computation structure |
-| Needs centroid drift to fix | Correct from first successful execution |
-
 ### Generic DSL Parameters
-
 DSLs must be templates with generic parameters, not hardcoded values:
-
-```python
-# Good: generic template
-def compute(amount, rate):
-    return amount * rate
-
-# Bad: hardcoded values
-def compute():
-    return 100 * 0.08
-```
-
 The `param_descriptions` and `clarifying_questions` guide parameter extraction from problem text at runtime.
 
 ### Cold Start
@@ -104,7 +53,7 @@ The `param_descriptions` and `clarifying_questions` guide parameter extraction f
 
 Future similar operations route here by graph similarity.
 
-## The Insight: MCTS Rollouts as Ground Truth
+## MCTS Rollouts as Ground Truth
 
 **MCTS rollout outcomes provide ground truth for operational equivalence.**
 
@@ -223,15 +172,14 @@ Train 3 problems in parallel and they don't need to know about each other.
 Optional Inference in parallel for parallel dag tasks? Not dag of dags
 
 ## Architecture Overview
-Google deployment vm
-SQLite db
-Vertex apis
-embedding model 3k dimensions
-Gemini 2.5 pro training
-Gemini 1.5 flash inference
-Mycelium application
+- Google Cloud VM
+- SQLite DB
+- Vertex AI APIs
+- gemini-embedding-001 (3072 dimensions)
+- Gemini 2.5 Pro (training)
+- Gemini 2.0 Flash (inference)
 
-Big bang function accounting for the first five levels need to be empty. Sigmoid asymptomatic approaching 10k signatures
+Big bang: aggressive signature creation early, sigmoid tapering toward 10k signatures.
 
 
 ## LLM Call Rule
@@ -253,14 +201,6 @@ Big bang function accounting for the first five levels need to be empty. Sigmoid
   ## With Fresh DB
   A **smooth and continuous** learning process is key.
 
-  Start with **easy** problems (GSM8K or MATH L1-L2).
-  Need some successes to learn from; failures alone don't teach what works.
-  System is designed to aggressively **branch out early**, tapering off later.
-
-
-## With Fresh DB
-
-  A **smooth and continuous** learning process is key.
   Start with **easy** problems (GSM8K or MATH L1-L2).
   Need some successes to learn from; failures alone don't teach what works.
   System is designed to aggressively **branch out early**, tapering off later.
@@ -375,6 +315,175 @@ Structure emerges from failure patterns, not our guesses about what similarity i
 - Decomposition creates children (umbrella learner)
 - Step type incompatible with dsl_hint (e.g., sum step matched to product signature)
 
+## Two-Phase Decomposition + Batch Expression Writing (v1.8.0)
+
+**The 2-LLM-Call Architecture**: Decompose once, batch-write expressions once. 100% accuracy on GSM8K.
+
+### The Problem: Parameter Attribution Errors
+
+Before this fix, the planner would misattribute values. Example:
+
+```
+Problem: "Josh buys a house for $80k, puts in $50k repairs. Value increases by 150%."
+
+WRONG decomposition:
+  Step 1: total_investment = 80000 + 50000 = 130000
+  Step 2: new_value = 130000 × 1.5 = 195000  ← WRONG! 150% applied to investment, not house
+  Result: $65,000 profit (incorrect)
+
+CORRECT decomposition:
+  Step 1: total_investment = 80000 + 50000 = 130000
+  Step 2: new_value = 80000 × 2.5 = 200000  ← 150% increase means ×2.5 on ORIGINAL house
+  Result: $70,000 profit (correct)
+```
+
+The planner didn't track which value (house price vs total investment) the percentage applied to.
+
+### The Solution: Two-Phase Decomposition
+
+Force the LLM to explicitly name and attribute every value BEFORE building the DAG.
+
+**Phase 1: VALUE EXTRACTION**
+```
+VALUES:
+purchase_price: 80000 — original cost of the house
+repair_cost: 50000 — amount spent on repairs
+increase_rate: 2.5 — 150% increase means multiply by 2.5
+```
+
+**Phase 2: DAG BUILDING**
+```
+STEPS:
+- step_id: step_1
+  task: Calculate total investment
+  dsl_hint: compute_sum
+  values: {a: purchase_price, b: repair_cost}
+  depends_on: []
+
+- step_id: step_2
+  task: Calculate new house value
+  dsl_hint: compute_product
+  values: {a: purchase_price, b: increase_rate}  ← Explicit attribution!
+  depends_on: []
+```
+
+### Batch Expression Writing with JSON Mode
+
+After decomposition, a single LLM call writes ALL DSL expressions:
+
+```python
+# Prompt contains all steps with their exact parameter names
+# Response is JSON: {"step_1": {"expression": "a + b", "params_used": ["a", "b"]}, ...}
+
+response = await client.generate(
+    messages,
+    temperature=0.0,
+    response_format={"type": "json_object"},  # Reliable parsing
+)
+```
+
+**Why batch?**
+- LLM sees full context of all steps and their parameters
+- Eliminates parameter name mismatches (LLM uses exact names from context)
+- Reduces total LLM calls from 1+N to just 2
+
+### The Complete Flow
+
+```
+Problem Text
+     │
+     ▼ (LLM Call #1: Two-Phase Decomposition)
+┌─────────────────────────────────────┐
+│ Phase 1: Extract & name all values  │
+│ Phase 2: Build DAG with explicit    │
+│          value references           │
+└─────────────────────────────────────┘
+     │
+     ▼ (Route each step to signatures - NO LLM)
+     │
+     ▼ (LLM Call #2: Batch Expression Writing)
+┌─────────────────────────────────────┐
+│ For each (step, signature) pair:    │
+│   Write DSL expression using exact  │
+│   parameter names from context      │
+└─────────────────────────────────────┘
+     │
+     ▼ (Execute DSL - NO LLM)
+     │
+     ▼
+   Result
+```
+
+**Total: 2 LLM calls** regardless of problem complexity.
+
+### Cold-Start Protection
+
+New umbrella signatures (uses=0) skip auto-decomposition. This prevents cascading decomposition before the system has any execution data to learn from.
+
+```python
+if signature.uses == 0:
+    logger.info("Skipping auto-decompose for new umbrella (cold-start)")
+```
+
+## DAG Plan Validation: Data Flow Analysis (v1.8.1)
+
+**Catch bad plans before execution by validating data flow.**
+
+### The Problem: Undefined Variables
+
+Some problems can't be solved forward—they require algebra (working backwards). The planner might generate steps that reference undefined variables:
+
+```
+Problem: "She sold 1/3 at green house, 2 more at red, half the rest at orange. She has 5 left. How many did she start with?"
+
+BAD PLAN (undefined variable):
+  Step 1: after_green = total × (2/3)  ← 'total' is UNDEFINED!
+  Step 2: after_red = after_green - 2
+  ...
+```
+
+The `total` variable doesn't exist yet—it's what we're trying to find.
+
+### The Solution: Data Flow Validation
+
+Every step's inputs MUST be either:
+1. **Literal numbers** from the problem (like 80000, 0.5, 3)
+2. **Step references** pointing to prior step outputs (like `{step_1}`)
+
+The planner validates this at parse time:
+
+```python
+# Pattern to detect undefined variable names
+variable_pattern = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+
+for step in self.steps:
+    for key, value in step.extracted_values.items():
+        if isinstance(value, str) and variable_pattern.match(value):
+            # This is an undefined variable name, not a number or step ref
+            errors.append(f"Step '{step.id}' has undefined variable '{value}'")
+```
+
+### Work-Backwards Detection
+
+When data flow validation fails, it signals an **algebra problem** that needs work-backwards logic:
+
+```
+CORRECT PLAN (work backwards from known result):
+  Step 1: before_orange = 5 × 2 = 10       ← Start from known (5 left)
+  Step 2: before_red = 10 + 2 = 12         ← Reverse the operations
+  Step 3: before_green = 12 × (3/2) = 18   ← Invert 1/3 sold → 2/3 remained
+  Result: 18 vacuums
+```
+
+The prompt now includes explicit instructions and examples for detecting and handling work-backwards problems.
+
+### Why This Matters
+
+- **Catches impossible plans early** - Before wasting LLM calls on execution
+- **Provides clear signal** - Undefined variable = rethink the approach
+- **No arbitrary thresholds** - Binary check: inputs defined or not
+- **Enables targeted decomposition** - Failed validation → route to algebra handling
+
 ## Learning Mechanisms
 Centroid Averaging
 Cluster Centroid - Average of all descendant leaf embeddings 
@@ -390,41 +499,29 @@ This lets umbrella signatures accumulate credit from their children's successes,
 ## Brainstorming Ideas
 
   ### Routing & Signatures
-  - Umbrella signature routing should not require an LLM call
-  - Attempt to route first - decompose on failure
-  - Mandate injection of DSL on signature hit
+  - ✅ Umbrella routing without LLM call (embedding similarity)
+  - ✅ Route first, decompose on failure
+  - ✅ DSL injection on signature hit
   - Confirm DSL auto generation on signature creation
 
   ### Learning & Adaptation
   - Rewrite DSL if centroid avg outside confidence bounds
-  - LLM rewrite DSL script
+  - ✅ Batch DSL rewriting with JSON mode (v1.8.0)
   - Centroid averaging based off avg of children
   - Credit propagation guided by decay by depth function
 
   ### Decomposition
-  - Signatures decompose when post-mortem detects destructive interference (not on individual failures)
-  - It's okay for node to decompose bc it provides signal for future post-mortems
-  - Bi-directional natural language communication between signatures and decomposer is key (query each other)
-
-  ### Cold Start
-  - Cold-start adaptive branching more aggressive during cold start - big bang
+  - Signatures decompose when post-mortem detects destructive interference
+  - Bi-directional NL communication between signatures and decomposer
 
   ### Infrastructure
   - Move all magic numbers to config
   - DB audit for signature step level stats
-  - OpenAI API for cleaner JSON response
-  - Rich step level descriptions
+  - ✅ JSON mode for reliable LLM responses (v1.8.0)
 
   ### Philosophy
   - Everything must be automated - system must be independent
   - Smooth refactoring - not all at once
-
-
-## Operational Embedding First
-**Route by computation graph embeddings, not text similarity.**
-
-Text embeddings cluster by vocabulary. Computation graph embeddings cluster by what operations actually do. Always match against the graph.
-
 
 ## How to use Beads
 
@@ -458,8 +555,4 @@ Don't fix and forget - always track issues in beads.
 5. `bd sync` to sync changes
 
 See `AGENTS.md` for detailed guidance.
-
-
-
-
 

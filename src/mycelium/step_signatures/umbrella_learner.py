@@ -264,7 +264,7 @@ class UmbrellaLearner:
         Criteria for both:
         - uses >= UMBRELLA_MIN_USES_FOR_EVALUATION (enough data)
         - operational_failures > 0 (flagged by MCTS post-mortem)
-        - failure_rate > adaptive_split_threshold (failing)
+        - MCTS win_rate <= max_success_rate (actually failing per ground truth)
 
         Per CLAUDE.md: "Do not decompose a leaf node until instructed by the
         MCTS rollout post-mortem analysis." Decomposition is triggered by
@@ -273,8 +273,13 @@ class UmbrellaLearner:
         The split threshold is adaptive based on global accuracy:
         - Low accuracy (cold start): lenient threshold (tolerate more failures)
         - High accuracy (mature): strict threshold (split confidently)
+
+        NOTE: Uses MCTS win rates (ground truth) instead of signature.success_rate
+        (which includes partial credit). This ensures we only decompose signatures
+        that are actually failing operationally.
         """
         from mycelium.mcts.adaptive import AdaptiveExploration
+        from mycelium.data_layer.mcts import get_mcts_win_rates
 
         all_sigs = self.db.get_all_signatures()
 
@@ -284,17 +289,42 @@ class UmbrellaLearner:
         # Convert failure threshold to max success rate
         max_success_rate = 1.0 - split_threshold
 
+        # Adaptive min_uses: lower during cold start, higher when mature
+        # This ensures we evaluate failing signatures quickly during early learning
+        from mycelium.config import DECOMP_MIN_ATTEMPTS_COLD, DECOMP_MIN_ATTEMPTS_MATURE
+        from mycelium.mcts.adaptive import AdaptiveExploration
+        adaptive = AdaptiveExploration.get_instance()
+        accuracy = adaptive.global_accuracy
+        adaptive_min_uses = int(
+            DECOMP_MIN_ATTEMPTS_COLD + accuracy * (DECOMP_MIN_ATTEMPTS_MATURE - DECOMP_MIN_ATTEMPTS_COLD)
+        )
+        adaptive_min_uses = max(1, adaptive_min_uses)
+
+        # Get MCTS win rates for ground truth filtering
+        # This is the actual step-level win rate, not partial credit
+        mcts_stats = get_mcts_win_rates(min_attempts=adaptive_min_uses)
+
         candidates = []
         for sig in all_sigs:
-            # Skip if not enough uses
-            if sig.uses < UMBRELLA_MIN_USES_FOR_EVALUATION:
+            # Skip if not enough uses (adaptive threshold)
+            if sig.uses < adaptive_min_uses:
                 continue
             # CRITICAL: Per CLAUDE.md, only decompose when flagged by MCTS post-mortem
             # operational_failures > 0 means destructive interference was detected
             if sig.operational_failures <= 0:
                 continue
-            # Skip if success rate is acceptable
-            if sig.success_rate > max_success_rate:
+
+            # Use MCTS win rate (ground truth) instead of sig.success_rate (partial credit)
+            # Fall back to sig.success_rate if no MCTS data (cold start)
+            mcts_data = mcts_stats.get(sig.id)
+            if mcts_data:
+                actual_win_rate = mcts_data["win_rate"]
+            else:
+                # No MCTS data - use signature success rate as fallback
+                actual_win_rate = sig.success_rate
+
+            # Skip if win rate is acceptable
+            if actual_win_rate > max_success_rate:
                 continue
 
             # Category 1: decompose type not yet promoted to umbrella
@@ -304,19 +334,23 @@ class UmbrellaLearner:
             )
 
             # Category 2: auto-demoted router umbrellas without children
-            # These were math/other DSLs that failed and got promoted to umbrella,
-            # but never had children created for them
-            is_orphan_umbrella = False
-            if sig.is_semantic_umbrella and sig.dsl_type == "router":
-                children = self.db.get_children(sig.id, for_routing=True)
-                is_orphan_umbrella = len(children) == 0
+            # NOTE: We DON'T include orphan umbrellas for abstract decomposition here.
+            # Abstract decomposition (decomposing generic description like "compute_product")
+            # creates children with placeholder variables (X, Y) that can't execute.
+            # Orphan umbrellas get children through CONCRETE problem solving, when actual
+            # values route through them and create new leaf signatures.
+            # is_orphan_umbrella logic removed - let them stay as orphans until concrete use.
 
-            if is_decompose_candidate or is_orphan_umbrella:
+            # Category 3: high-variance leaves flagged for decomposition
+            # NOTE: Also not included - abstract decomposition creates broken umbrellas.
+            # High-variance leaves should be decomposed during CONCRETE problem solving.
+
+            if is_decompose_candidate:
                 candidates.append(sig)
-                logger.debug(
-                    "[umbrella] Candidate: '%s' (uses=%d, success=%.1f%%, threshold=%.1f%%, op_fail=%d, orphan=%s)",
-                    sig.step_type, sig.uses, sig.success_rate * 100, max_success_rate * 100,
-                    sig.operational_failures, is_orphan_umbrella
+                logger.info(
+                    "[umbrella] Candidate: '%s' (id=%d, reason=decompose_type, mcts_win=%.1f%%, variance=%.4f, op_fail=%d)",
+                    sig.step_type, sig.id, actual_win_rate * 100, sig.similarity_variance,
+                    sig.operational_failures
                 )
 
         return candidates
@@ -382,8 +416,10 @@ class UmbrellaLearner:
             )
 
         # Use planner to decompose the step description
+        # skip_validation=True because we're creating templates, not concrete plans
+        # The umbrella children are generic operation patterns, not specific calculations
         problem = f"Break down this step into smaller sub-steps: {signature.description}"
-        plan = await self.planner.decompose(problem)
+        plan = await self.planner.decompose(problem, skip_validation=True)
 
         if len(plan.steps) <= 1:
             # Signature description is already atomic - try decomposing actual failing steps
@@ -397,7 +433,7 @@ class UmbrellaLearner:
                 # Try decomposing each failing step
                 for step_desc in failing_steps[:3]:  # Limit to 3 to avoid explosion
                     step_problem = f"Break down this math step into simpler sub-steps: {step_desc}"
-                    step_plan = await self.planner.decompose(step_problem)
+                    step_plan = await self.planner.decompose(step_problem, skip_validation=True)
                     if len(step_plan.steps) > 1:
                         logger.info(
                             "[umbrella] Decomposed failing step '%s' into %d sub-steps",

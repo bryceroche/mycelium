@@ -38,13 +38,27 @@ STEPS:
   task: [ONE atomic operation - verb + what]
   operation: [add/subtract/multiply/divide]
   values:
-    name: value_name_or_number
+    semantic_name: ACTUAL_NUMBER_or_{step_N}
   dsl_hint: +|-|*|/
   depends_on: []
 
+=== DATA FLOW RULE (CRITICAL!) ===
+Every step's values MUST be either:
+1. ACTUAL NUMBERS from Phase 1 (like 80000, 0.5, 3)
+2. Step references (like "{step_1}") pointing to a prior step's output
+
+NEVER use undefined variables! If a step needs a value that isn't known, you CANNOT compute it forward.
+
+ALGEBRA DETECTION: If the problem gives a RESULT and asks for an INPUT (like "she has 5 left, how many did she start with?"), you must WORK BACKWARDS:
+- Identify what operations were done (in order)
+- Reverse them starting from the known result
+- Each step inverts the original operation (add↔subtract, multiply↔divide)
+
 RULES:
 - ONE OPERATION PER STEP (critical!)
-- Use value names from Phase 1 (semantic names preferred)
+- Use SEMANTIC NAMES as keys (e.g., "base", "rate", "quantity")
+- Values must be ACTUAL NUMBERS (like 80000) or step references (like "{step_2}")
+- NEVER use Phase 1 variable names as values - use the actual numbers!
 - Reference prior results as "{step_N}"
 - For "increased by X%": multiply base by (1 + X/100)
 
@@ -81,6 +95,49 @@ STEPS:
     investment: "{step_1}"
   dsl_hint: -
   depends_on: [step_1, step_2]
+
+=== WORK-BACKWARDS EXAMPLE (Algebra) ===
+Problem: "She sold 1/3 at green house, 2 more at red house, half the rest at orange house. She has 5 left. How many did she start with?"
+
+This requires WORKING BACKWARDS from 5:
+- 5 left after orange (where she sold HALF of what remained)
+- So before orange: 5 × 2 = 10
+- 10 after red (where she sold 2)
+- So before red: 10 + 2 = 12
+- 12 after green (where she sold 1/3, meaning 2/3 remained)
+- So before green (total): 12 ÷ (2/3) = 12 × (3/2) = 18
+
+VALUES:
+remaining_after_orange: 5 — vacuums left at the end
+sold_at_red: 2 — fixed number sold at red house
+fraction_remaining_after_green: 0.6667 — 2/3 remained after selling 1/3
+orange_kept_fraction: 0.5 — half remained after orange (she sold half)
+
+STEPS:
+- id: step_1
+  task: Calculate vacuums before orange (double the remaining, since half was sold)
+  operation: divide
+  values:
+    remaining: 5
+    fraction_kept: 0.5
+  dsl_hint: /
+  depends_on: []
+- id: step_2
+  task: Calculate vacuums before red (add back the 2 sold)
+  operation: add
+  values:
+    after_red: "{step_1}"
+    sold_at_red: 2
+  dsl_hint: +
+  depends_on: [step_1]
+- id: step_3
+  task: Calculate original total (divide by 2/3 since 1/3 was sold at green)
+  operation: divide
+  values:
+    after_green: "{step_2}"
+    fraction_remaining: 0.6667
+  dsl_hint: /
+  depends_on: [step_2]
 """
 
 SIGNATURE_HINTS_TEMPLATE = """
@@ -262,16 +319,22 @@ class DAGPlan:
         2. Cyclic dependencies
         3. Invalid step references in extracted_values (e.g., {step_1} pointing to unknown step)
         4. Step references not in depends_on (can't use result from step you don't depend on)
+        5. DATA FLOW: Undefined variables in extracted_values (neither numbers nor step refs)
 
         Returns:
             Tuple of (is_valid, list of error messages)
         """
         import re
         errors = []
+        warnings = []  # Non-fatal issues
         step_ids = {s.id for s in self.steps}
 
         # Pattern to match step references like {step_1}, {step_2}, etc.
         step_ref_pattern = re.compile(r'\{(step_?\d+)\}', re.IGNORECASE)
+
+        # Pattern to detect variable names (not numbers, not step refs)
+        # These indicate undefined values that should have been extracted in Phase 1
+        variable_pattern = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
 
         # Check for missing dependencies
         for step in self.steps:
@@ -306,10 +369,42 @@ class DAGPlan:
                             for d in step.depends_on
                         )
                         if not found_in_deps:
-                            errors.append(
-                                f"Step '{step.id}' references '{{{ref_id}}}' in extracted_values "
-                                f"but doesn't depend on it (depends_on={step.depends_on})"
+                            # Auto-fix: add missing dependency instead of error
+                            # LLM often forgets to add depends_on when referencing step values
+                            step.depends_on.append(normalized_ref)
+                            logger.debug(
+                                f"[planner] Auto-fixed: added '{normalized_ref}' to "
+                                f"depends_on for step '{step.id}' (referenced in extracted_values)"
                             )
+
+        # DATA FLOW VALIDATION: Check for undefined variables in extracted_values
+        # Per CLAUDE.md: Every step's inputs must be defined - either from problem text
+        # (as literal numbers) or from prior step outputs (as {step_N} references).
+        # String values that are neither numbers nor step references indicate undefined
+        # variables - these are values the LLM assumed exist but weren't extracted.
+        for step in self.steps:
+            if not step.extracted_values:
+                continue
+            for key, value in step.extracted_values.items():
+                if not isinstance(value, str):
+                    continue  # Numbers are valid
+                # Check if it's a step reference - those are valid
+                if step_ref_pattern.search(value):
+                    continue  # Step references like {step_1} are valid
+                # Check if it looks like a variable name (not a number)
+                # This catches cases like "total_vacuums" when we don't know the total
+                if variable_pattern.match(value):
+                    # This is a variable name that wasn't resolved to a number
+                    # or step reference - likely an undefined value
+                    errors.append(
+                        f"Step '{step.id}' has undefined variable '{value}' for input '{key}'. "
+                        f"This value must be either a number from the problem or a {{step_N}} reference."
+                    )
+                    logger.warning(
+                        "[planner] DATA FLOW ERROR: Step '%s' uses undefined variable '%s' for '%s'. "
+                        "The problem likely requires algebra (working backwards) or the value wasn't extracted in Phase 1.",
+                        step.id, value, key
+                    )
 
         # Check for cycles using DFS with forward traversal
         # Build adjacency list: step -> list of steps that depend on it
@@ -429,6 +524,7 @@ class Planner:
         problem: str,
         signature_hints: Optional[list[SignatureHint]] = None,
         context: Optional[str] = None,
+        skip_validation: bool = False,
     ) -> DAGPlan:
         """Decompose a problem into a DAG of steps.
 
@@ -439,6 +535,9 @@ class Planner:
                             parameters each needs (from NL interface)
             context: Optional additional context (e.g., original problem when
                     decomposing a sub-step, complexity hints)
+            skip_validation: If True, skip data flow validation. Use this for
+                            template decomposition (e.g., umbrella creation)
+                            where we're creating generic patterns, not concrete plans.
 
         Returns:
             DAGPlan with steps and dependencies
@@ -467,13 +566,21 @@ class Planner:
         steps = self._parse_steps(response)
 
         plan = DAGPlan(steps=steps, problem=problem)
-        is_valid, errors = plan.validate()
-        logger.info(
-            "[planner] Decomposition complete: steps=%d valid=%r",
-            len(steps), is_valid
-        )
-        if errors:
-            logger.warning("[planner] Validation errors: %s", errors)
+
+        # Skip validation for template decomposition (e.g., umbrella creation)
+        if skip_validation:
+            logger.info(
+                "[planner] Decomposition complete: steps=%d (validation skipped - template mode)",
+                len(steps)
+            )
+        else:
+            is_valid, errors = plan.validate()
+            logger.info(
+                "[planner] Decomposition complete: steps=%d valid=%r",
+                len(steps), is_valid
+            )
+            if errors:
+                logger.warning("[planner] Validation errors: %s", errors)
 
         return plan
 

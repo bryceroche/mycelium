@@ -88,7 +88,7 @@ AUTO_DEMOTE_EXCLUDED_TYPES = ["decompose"]  # Don't demote these DSL types
 # Formula: min_uses = 1 + (sig_count // RAMP_DIVISOR), capped at MAX
 # Centroid averaging stabilizes good paths, so we can branch aggressively
 AUTO_DEMOTE_RAMP_DIVISOR = 2000  # Every 2000 sigs, add 1 to MIN_USES (branch fast!)
-AUTO_DEMOTE_MIN_USES_FLOOR = 1   # Start at 1 (branch on first failure)
+AUTO_DEMOTE_MIN_USES_FLOOR = 3   # Start at 3 (give signatures multiple chances before demotion)
 AUTO_DEMOTE_MIN_USES_CAP = 5     # Never require more than 5 failures
 
 # =============================================================================
@@ -146,6 +146,28 @@ COMPUTE_BUDGET_CONFIDENCE_THRESHOLD = 0.5  # Explore alternatives when confidenc
 # UCB1 gap = difference between top-2 UCB1 scores at routing decision
 # High gap = confident (don't branch), Low gap = undecided (branch)
 UCB1_GAP_BRANCH_THRESHOLD = 0.15  # Branch when min_gap < this (undecided)
+
+# Epsilon-greedy exploration: with probability EPSILON, pick random signature
+# This ensures under-visited signatures get attempts even when UCB1 favors exploitation
+EXPLORATION_EPSILON = 0.15  # 15% chance of random exploration (0 = pure UCB1)
+EXPLORATION_EPSILON_DECAY = 0.995  # Decay factor per problem (0.995^100 ≈ 0.6)
+EXPLORATION_EPSILON_MIN = 0.05  # Minimum epsilon floor
+
+# =============================================================================
+# ADAPTIVE DECOMPOSITION THRESHOLDS
+# =============================================================================
+# min_attempts for flagging nodes needing decomposition
+# Lower during cold start (get signal faster), higher when mature (wait for evidence)
+DECOMP_MIN_ATTEMPTS_COLD = 1  # Cold start: flag after just 1 failure
+DECOMP_MIN_ATTEMPTS_MATURE = 3  # Mature: require 3+ attempts before flagging
+DECOMP_MAX_WIN_RATE = 0.5  # Flag nodes with win rate below this
+
+# VARIANCE-BASED DECOMPOSITION (per CLAUDE.md: depth emerges from problem structure)
+# High variance in embedding similarities indicates a signature is too generic
+# It's catching diverse problem types that should specialize into children
+VARIANCE_MIN_SAMPLES = 10  # Minimum samples before variance is meaningful (need more data)
+VARIANCE_DECOMP_THRESHOLD = 0.005  # Variance above this triggers decomposition (more conservative)
+# Note: cosine similarity is [0,1], so variance is typically very small (0.001-0.01)
 
 # Bayesian prior for cold start (assume some successes before any data)
 ROUTING_PRIOR_SUCCESSES = 2
@@ -459,6 +481,20 @@ PARTIAL_CREDIT_HIGH_CONF_THRESHOLD = 0.7  # amplitude >= this in lost thread →
 PARTIAL_CREDIT_WEIGHT = 0.5  # Weight for partial credit (0.5 = half a success)
 
 # =============================================================================
+# STEP-NODE STATS (Materialized (dag_step_type, node_id) performance)
+# =============================================================================
+# Per CLAUDE.md: "The combination of (dag_step_id, node_id) is what we're learning"
+# This closes the feedback loop: post-mortem → dag_step_node_stats → routing UCB1
+
+STEP_NODE_STATS_ENABLED = True  # Track and use (dag_step_type, node_id) stats
+STEP_NODE_STATS_MIN_USES = 3  # Min uses before trusting step-level stats
+STEP_NODE_STATS_WEIGHT = 0.6  # Blend weight (0.6 step + 0.4 signature-level)
+STEP_NODE_STATS_PRIOR_WINS = 1  # Bayesian prior wins (prevents 0/0 division)
+STEP_NODE_STATS_PRIOR_USES = 2  # Bayesian prior uses
+AMPLITUDE_POST_PENALTY_THRESHOLD = 0.6  # avg_amplitude_post below this → penalize routing
+AMPLITUDE_POST_PENALTY_MULT = 0.8  # Multiplicative penalty for low amplitude_post
+
+# =============================================================================
 # MCTS INTERFERENCE PATTERNS (Constructive/Destructive)
 # =============================================================================
 # Per CLAUDE.md: When multiple threads visit the same (dag_step_id, node_id):
@@ -597,6 +633,28 @@ MATURITY_ESCAPE_MAX_MISSES = 1  # Max substeps allowed to miss before creating a
 #
 # Key insight: A signature with 60 successes + 4 failures (93.75%) should NOT
 # be decomposed. We use accuracy (percent), not failure count.
+#
+# CONFIG INTERACTION SUMMARY:
+# ---------------------------
+# 1. FAILURE THRESHOLD determines when to diagnose:
+#    threshold = THRESHOLD_MIN + (THRESHOLD_MAX - THRESHOLD_MIN) * sigmoid(maturity)
+#    Cold start: threshold → MIN (act fast, few failures)
+#    Mature: threshold → MAX (be patient, more failures needed)
+#    Uses MATURITY_SIGMOID_MIDPOINT/STEEPNESS for consistent system-wide maturity
+#
+# 2. ACCURACY + CONFIDENCE determine what to decompose:
+#    confidence = 1 - exp(-uses / CONFIDENCE_HALFLIFE)
+#    decompose_score = (1 - accuracy) * confidence * ACCURACY_WEIGHT
+#                    + step_distance * DISTANCE_WEIGHT
+#
+# 3. VERDICT THRESHOLD determines if we act:
+#    If max(decompose_step, decompose_sig, reroute) < ACTION_THRESHOLD → "wait"
+#    Otherwise, highest score wins
+#
+# 4. STEP VS SIGNATURE decomposition heuristic:
+#    Good sig (accuracy > GOOD_SIG_ACCURACY) + outlier step → decompose step
+#    Bad sig (accuracy < BAD_SIG_ACCURACY) → decompose signature
+#    Middle: blend between both scores
 
 DIAGNOSTIC_POSTMORTEM_ENABLED = True  # Master switch for diagnostic post-mortem
 

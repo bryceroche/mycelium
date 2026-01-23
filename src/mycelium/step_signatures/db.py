@@ -18,7 +18,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone, timedelta
-from typing import Optional, Literal
+from typing import Optional
 
 import numpy as np
 
@@ -323,9 +323,6 @@ class RoutingResult:
     def min_gap(self) -> float:
         """Minimum UCB1 gap across all levels (weakest link)."""
         return min(self.ucb1_gaps) if self.ucb1_gaps else 0.0
-
-
-MatchMode = Literal["cosine", "auto"]
 
 
 class StepSignatureDB:
@@ -1140,11 +1137,16 @@ class StepSignatureDB:
         min_similarity: float = 0.85,
         max_depth: int = None,
         top_k: int = 3,
+        dag_step_type: Optional[str] = None,
     ) -> RoutingResult:
         """Route with confidence scoring for MCTS multi-path exploration.
 
         Enhanced version of route_through_hierarchy that computes confidence
         signals based on UCB1 score gaps between top-k children at each level.
+
+        Per CLAUDE.md: "The combination of (dag_step_id, node_id) is what we're learning."
+        If dag_step_type is provided, step-specific performance stats from
+        dag_step_node_stats are used to improve routing decisions.
 
         Confidence interpretation:
         - High confidence (>0.8): Clear winner, single path likely sufficient
@@ -1156,6 +1158,8 @@ class StepSignatureDB:
             min_similarity: Minimum similarity threshold to follow a route
             max_depth: Maximum depth to traverse (default from config)
             top_k: Number of top alternatives to track at each level
+            dag_step_type: Optional step type for step-node stats lookup
+                (e.g., "compute_sum", "compute_product")
 
         Returns:
             RoutingResult with signature, path, confidence, and alternatives
@@ -1194,18 +1198,41 @@ class StepSignatureDB:
             parent_uses = current.uses or 1
             scored_children = []
 
+            # Fetch step-node stats for all children if dag_step_type provided
+            # This enables routing to use (dag_step_type, node_id) pair performance
+            step_stats_map = {}
+            if dag_step_type:
+                from mycelium.data_layer.mcts import get_dag_step_node_stats_batch
+                child_ids = [c.id for c, _ in children if c.id is not None]
+                step_stats_map = get_dag_step_node_stats_batch(dag_step_type, child_ids)
+                # Debug: Log step-node stats retrieval
+                if step_stats_map:
+                    logger.debug(
+                        "[routing] Step-node stats for '%s': %d/%d children have stats",
+                        dag_step_type[:40], len(step_stats_map), len(child_ids)
+                    )
+                    for sig_id, stats in list(step_stats_map.items())[:3]:  # Log first 3
+                        logger.debug(
+                            "[routing]   sig=%d: uses=%d win_rate=%.2f avg_amp=%.2f",
+                            sig_id, stats.get("uses", 0), stats.get("win_rate", 0),
+                            stats.get("avg_amplitude_post", 1.0)
+                        )
+
             for child_sig, _condition in children:
                 centroid = child_sig.centroid
                 if centroid is None:
                     continue
                 sim = cosine_similarity(embedding, centroid)
                 if sim >= min_similarity * 0.7:  # Lower threshold to capture alternatives
+                    # Get step-node stats for this child (if available)
+                    child_step_stats = step_stats_map.get(child_sig.id)
                     ucb1 = compute_ucb1_score(
                         cosine_sim=sim,
                         uses=child_sig.uses,
                         successes=child_sig.successes,
                         parent_uses=parent_uses,
                         last_used_at=child_sig.last_used_at,
+                        step_node_stats=child_step_stats,
                     )
                     scored_children.append((child_sig, ucb1, sim))
 
@@ -1215,6 +1242,22 @@ class StepSignatureDB:
 
             # Sort by UCB1 score (descending)
             scored_children.sort(key=lambda x: x[1], reverse=True)
+
+            # Epsilon-greedy exploration: occasionally pick random child
+            # This ensures under-visited signatures get attempts even when UCB1 favors exploitation
+            from mycelium.config import EXPLORATION_EPSILON
+            import random
+            if EXPLORATION_EPSILON > 0 and random.random() < EXPLORATION_EPSILON and len(scored_children) > 1:
+                # Pick random child (not necessarily the best)
+                random_idx = random.randint(0, len(scored_children) - 1)
+                # Move selected child to front so it becomes "best"
+                selected = scored_children[random_idx]
+                scored_children[random_idx] = scored_children[0]
+                scored_children[0] = selected
+                logger.debug(
+                    "[routing] Epsilon exploration: picked random child %d (score=%.3f) instead of best (score=%.3f)",
+                    selected[0].id, selected[1], scored_children[1][1] if len(scored_children) > 1 else 0
+                )
 
             # Track top-k alternatives at this level
             level_alts = [(sig, score) for sig, score, _sim in scored_children[:top_k]]
@@ -1273,7 +1316,6 @@ class StepSignatureDB:
         embedding: np.ndarray,
         min_similarity: float = 0.85,
         parent_problem: str = "",
-        match_mode: MatchMode = "cosine",
         origin_depth: int = 0,
         extracted_values: dict = None,
         dsl_hint: str = None,
@@ -1289,7 +1331,6 @@ class StepSignatureDB:
             embedding: Embedding vector for the step
             min_similarity: Minimum cosine similarity for matching
             parent_problem: The parent problem this step came from
-            match_mode: Matching algorithm (cosine or auto)
             dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication
             origin_depth: Decomposition depth at which this step was created
             extracted_values: Dict of semantic param names -> values from planner
@@ -1337,7 +1378,6 @@ class StepSignatureDB:
         embedding: np.ndarray,
         min_similarity: float = 0.85,
         parent_problem: str = "",
-        match_mode: MatchMode = "cosine",
         origin_depth: int = 0,
         extracted_values: dict = None,
         dsl_hint: str = None,
@@ -1354,7 +1394,6 @@ class StepSignatureDB:
             embedding: Embedding vector for the step
             min_similarity: Minimum cosine similarity for matching
             parent_problem: The parent problem this step came from
-            match_mode: Matching algorithm (cosine or auto)
             dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication
             origin_depth: Decomposition depth at which this step was created
             extracted_values: Dict of semantic param names -> values from planner
@@ -2432,7 +2471,9 @@ class StepSignatureDB:
             New embedding count, or None if signature not found
         """
         row = conn.execute(
-            "SELECT embedding_sum, embedding_count, centroid, centroid_bucket FROM step_signatures WHERE id = ?",
+            """SELECT embedding_sum, embedding_count, centroid, centroid_bucket,
+                      similarity_count, similarity_mean, similarity_m2
+               FROM step_signatures WHERE id = ?""",
             (signature_id,)
         ).fetchone()
 
@@ -2453,12 +2494,40 @@ class StepSignatureDB:
         old_centroid = unpack_embedding(row["centroid"])
         old_bucket = row["centroid_bucket"]
 
+        # Variance tracking state (Welford's algorithm)
+        sim_count = row["similarity_count"] or 0
+        sim_mean = row["similarity_mean"] or 0.0
+        sim_m2 = row["similarity_m2"] or 0.0
+
         # Update running sum and count
         new_sum = current_sum + new_embedding
         new_count = current_count + 1
 
         # Compute new centroid
         new_centroid = new_sum / new_count
+
+        # Update variance tracking using Welford's online algorithm
+        # Measures how diverse the embeddings routed to this signature are
+        # High variance = too generic, should decompose
+        if old_centroid is not None:
+            # Compute similarity of new embedding to OLD centroid (before update)
+            similarity = cosine_similarity(new_embedding, old_centroid)
+
+            # Welford's algorithm for online variance computation
+            sim_count += 1
+            delta = similarity - sim_mean
+            sim_mean += delta / sim_count
+            delta2 = similarity - sim_mean
+            sim_m2 += delta * delta2
+
+            # Log high variance signatures (potential decomposition candidates)
+            if sim_count >= 5:
+                variance = sim_m2 / sim_count
+                if variance > 0.01:  # High variance threshold
+                    logger.debug(
+                        "[db] High variance sig %d: count=%d mean=%.3f variance=%.4f",
+                        signature_id, sim_count, sim_mean, variance
+                    )
 
         # Check drift bounds (monitoring - don't reject, just warn)
         if old_centroid is not None:
@@ -2481,56 +2550,69 @@ class StepSignatureDB:
         new_centroid_packed = pack_embedding(new_centroid)
 
         # Try updating with new bucket if changed, fall back to keeping old bucket on collision
+        # All paths include variance tracking fields (similarity_count, similarity_mean, similarity_m2)
         if update_last_used:
             now = datetime.now(timezone.utc).isoformat()
             if bucket_changed:
                 try:
                     conn.execute(
                         """UPDATE step_signatures
-                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, centroid_bucket = ?, last_used_at = ?
+                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, centroid_bucket = ?,
+                               similarity_count = ?, similarity_mean = ?, similarity_m2 = ?, last_used_at = ?
                            WHERE id = ?""",
-                        (new_sum_packed, new_count, new_centroid_packed, new_bucket, now, signature_id),
+                        (new_sum_packed, new_count, new_centroid_packed, new_bucket,
+                         sim_count, sim_mean, sim_m2, now, signature_id),
                     )
                 except sqlite3.IntegrityError:
                     # New bucket collides with existing signature - keep old bucket
                     logger.debug("[db] Bucket collision on update for sig %d, keeping old bucket", signature_id)
                     conn.execute(
                         """UPDATE step_signatures
-                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, last_used_at = ?
+                           SET embedding_sum = ?, embedding_count = ?, centroid = ?,
+                               similarity_count = ?, similarity_mean = ?, similarity_m2 = ?, last_used_at = ?
                            WHERE id = ?""",
-                        (new_sum_packed, new_count, new_centroid_packed, now, signature_id),
+                        (new_sum_packed, new_count, new_centroid_packed,
+                         sim_count, sim_mean, sim_m2, now, signature_id),
                     )
             else:
                 conn.execute(
                     """UPDATE step_signatures
-                       SET embedding_sum = ?, embedding_count = ?, centroid = ?, last_used_at = ?
+                       SET embedding_sum = ?, embedding_count = ?, centroid = ?,
+                           similarity_count = ?, similarity_mean = ?, similarity_m2 = ?, last_used_at = ?
                        WHERE id = ?""",
-                    (new_sum_packed, new_count, new_centroid_packed, now, signature_id),
+                    (new_sum_packed, new_count, new_centroid_packed,
+                     sim_count, sim_mean, sim_m2, now, signature_id),
                 )
         else:
             if bucket_changed:
                 try:
                     conn.execute(
                         """UPDATE step_signatures
-                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, centroid_bucket = ?
+                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, centroid_bucket = ?,
+                               similarity_count = ?, similarity_mean = ?, similarity_m2 = ?
                            WHERE id = ?""",
-                        (new_sum_packed, new_count, new_centroid_packed, new_bucket, signature_id),
+                        (new_sum_packed, new_count, new_centroid_packed, new_bucket,
+                         sim_count, sim_mean, sim_m2, signature_id),
                     )
                 except sqlite3.IntegrityError:
                     # New bucket collides with existing signature - keep old bucket
                     logger.debug("[db] Bucket collision on update for sig %d, keeping old bucket", signature_id)
                     conn.execute(
                         """UPDATE step_signatures
-                           SET embedding_sum = ?, embedding_count = ?, centroid = ?
+                           SET embedding_sum = ?, embedding_count = ?, centroid = ?,
+                               similarity_count = ?, similarity_mean = ?, similarity_m2 = ?
                            WHERE id = ?""",
-                        (new_sum_packed, new_count, new_centroid_packed, signature_id),
+                        (new_sum_packed, new_count, new_centroid_packed,
+                         sim_count, sim_mean, sim_m2, signature_id),
                     )
             else:
                 conn.execute(
                     """UPDATE step_signatures
-                       SET embedding_sum = ?, embedding_count = ?, centroid = ?
+                       SET embedding_sum = ?, embedding_count = ?, centroid = ?,
+                           similarity_count = ?, similarity_mean = ?, similarity_m2 = ?
                        WHERE id = ?""",
-                    (new_sum_packed, new_count, new_centroid_packed, signature_id),
+                    (new_sum_packed, new_count, new_centroid_packed,
+                     sim_count, sim_mean, sim_m2, signature_id),
                 )
 
         if bucket_changed:
@@ -3157,6 +3239,7 @@ class StepSignatureDB:
         exclude_signature_id: int = None,
         min_similarity: float = 0.8,
         limit: int = 5,
+        lookback_days: int = None,
     ) -> list[dict]:
         """Find successful steps from OTHER signatures that are similar to this embedding.
 
@@ -3168,6 +3251,7 @@ class StepSignatureDB:
             exclude_signature_id: Exclude results from this signature (the one that failed)
             min_similarity: Minimum cosine similarity threshold
             limit: Maximum results to return
+            lookback_days: Only consider examples from last N days (None = no limit)
 
         Returns:
             List of dicts with: signature_id, similarity, success_rate, step_desc
@@ -3179,12 +3263,20 @@ class StepSignatureDB:
         if not isinstance(embedding, np.ndarray):
             embedding = np.array(embedding, dtype=np.float32)
 
+        # Build date filter if lookback specified
+        date_filter = ""
+        params = [exclude_signature_id, exclude_signature_id]
+        if lookback_days is not None and lookback_days > 0:
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).isoformat()
+            date_filter = "AND e.created_at >= ?"
+            params.append(cutoff)
+
         # Query step_examples for successful steps with embeddings
         with self._connection() as conn:
             # Join step_examples with step_signatures to get success rate
             # Filter for successful examples from non-excluded signatures
             cursor = conn.execute(
-                """SELECT e.signature_id, e.step_text, e.embedding,
+                f"""SELECT e.signature_id, e.step_text, e.embedding,
                           s.uses, s.successes
                    FROM step_examples e
                    JOIN step_signatures s ON e.signature_id = s.id
@@ -3192,8 +3284,9 @@ class StepSignatureDB:
                      AND e.embedding IS NOT NULL
                      AND s.is_archived = 0
                      AND (? IS NULL OR e.signature_id != ?)
+                     {date_filter}
                    LIMIT 500""",  # Limit scan for performance
-                (exclude_signature_id, exclude_signature_id)
+                params
             )
 
             candidates = []
@@ -4042,8 +4135,8 @@ class StepSignatureDB:
             cursor = conn.execute("""
                 SELECT id, signature_id, centroid, embedding_count, step_type,
                        description, param_descriptions, dsl_script, dsl_type,
-                       uses, successes, is_semantic_umbrella, is_root, depth,
-                       created_at, last_used_at
+                       uses, successes, operational_failures, is_semantic_umbrella,
+                       is_root, depth, created_at, last_used_at
                 FROM step_signatures
             """)
             return [self._row_to_signature_fast(row) for row in cursor.fetchall()]

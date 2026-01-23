@@ -69,3 +69,4 @@ Myceliumv3.txt
 logs/
 *.log
 paper.txt
+*.backup.*
