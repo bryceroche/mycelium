@@ -591,21 +591,22 @@ def run_postmortem(dag_id: str) -> dict:
 
 
 def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
-    """Propagate amplitude_post values to signature stats with partial credit.
+    """Propagate amplitude_post values to signature stats with step-level precision.
 
     Per beads mycelium-itkn + mycelium-7o8i: Close the loop from post-mortem to
-    signature learning, with partial credit for correct steps in failed problems.
+    signature learning, with STEP-LEVEL success for precise blame attribution.
 
-    Key insight: In a failed problem, not all steps are wrong. Steps with high
-    confidence (amplitude) in a failed thread were probably correct - only the
-    step(s) that caused the failure should be blamed.
+    Key insight: In a multi-step problem, only the failing step should be blamed.
+    Steps 1-3 might succeed while step 4 fails - we should credit 1-3 and blame 4.
 
-    Credit logic:
-    1. Thread won + any amplitude → full credit (success)
-    2. Thread lost + high amplitude (≥ 0.7) → PARTIAL credit (benefit of doubt)
-    3. Thread lost + low amplitude (< 0.7) → blame (uncertain and thread failed)
+    Credit logic (priority order):
+    1. step_success=1 (step itself succeeded) → FULL CREDIT (even if thread lost)
+    2. step_success=0 (step itself failed) → BLAME (even if thread won - edge case)
+    3. step_success=NULL + thread won → full credit (fallback)
+    4. step_success=NULL + thread lost + high amplitude → partial credit
+    5. step_success=NULL + thread lost + low amplitude → blame
 
-    This prevents good signatures from being punished for a single bad step.
+    Credit propagates UP to parent routers with decay per CLAUDE.md.
 
     Args:
         dag_id: The DAG to process
@@ -626,19 +627,23 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
 
     conn = get_db()
 
-    # Get per-node stats with thread outcome context
-    # Per beads mycelium-7o8i: Need to know if step was in winning or losing thread
+    # Get per-node stats with STEP-LEVEL success (ts.step_success) as primary signal
+    # Fall back to thread-level (t.success) + amplitude when step_success is NULL
     cursor = conn.execute(
         """
         SELECT
             ts.node_id,
             COUNT(*) as total_steps,
-            -- Steps in winning threads (eligible for full credit)
-            SUM(CASE WHEN t.success = 1 THEN 1 ELSE 0 END) as winning_steps,
-            -- Steps in losing threads with high confidence (eligible for partial credit)
-            SUM(CASE WHEN t.success = 0 AND ts.amplitude >= ? THEN 1 ELSE 0 END) as high_conf_losing_steps,
-            -- Steps in losing threads with low confidence (eligible for blame)
-            SUM(CASE WHEN t.success = 0 AND ts.amplitude < ? THEN 1 ELSE 0 END) as low_conf_losing_steps,
+            -- STEP-LEVEL: Steps that succeeded at execution (most precise signal)
+            SUM(CASE WHEN ts.step_success = 1 THEN 1 ELSE 0 END) as step_succeeded,
+            -- STEP-LEVEL: Steps that failed at execution (precise blame)
+            SUM(CASE WHEN ts.step_success = 0 THEN 1 ELSE 0 END) as step_failed,
+            -- FALLBACK: Steps in winning threads (when step_success is NULL)
+            SUM(CASE WHEN ts.step_success IS NULL AND t.success = 1 THEN 1 ELSE 0 END) as thread_won_no_step,
+            -- FALLBACK: High-confidence steps in losing threads (partial credit)
+            SUM(CASE WHEN ts.step_success IS NULL AND t.success = 0 AND ts.amplitude >= ? THEN 1 ELSE 0 END) as high_conf_losing,
+            -- FALLBACK: Low-confidence steps in losing threads (blame)
+            SUM(CASE WHEN ts.step_success IS NULL AND t.success = 0 AND ts.amplitude < ? THEN 1 ELSE 0 END) as low_conf_losing,
             -- Average amplitude_post for reference
             AVG(ts.amplitude_post) as avg_amplitude_post
         FROM mcts_thread_steps ts
@@ -654,51 +659,77 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
         "successes_credited": 0,
         "partial_credits": 0,
         "failures_credited": 0,
+        "step_level_credit": 0,  # New: track how many used step-level success
+        "step_level_blame": 0,   # New: track how many used step-level failure
     }
 
     for row in cursor.fetchall():
-        node_id, total_steps, winning_steps, high_conf_losing, low_conf_losing, avg_amp = row
+        (node_id, total_steps, step_succeeded, step_failed,
+         thread_won_no_step, high_conf_losing, low_conf_losing, avg_amp) = row
 
-        if total_steps == 0:
+        if total_steps == 0 or node_id is None:
             continue
 
         stats["nodes_processed"] += 1
 
-        # 1. Full credit for winning thread steps
-        if winning_steps > 0:
-            step_db.increment_signature_successes(node_id, count=1)
+        # Priority 1: STEP-LEVEL SUCCESS - step itself succeeded
+        # This is the most precise signal - step executed without error
+        if step_succeeded > 0:
+            step_db.increment_signature_successes(node_id, count=1, propagate_to_parents=True)
             stats["successes_credited"] += 1
+            stats["step_level_credit"] += 1
             logger.debug(
-                "[mcts] Full credit to node %d (%d winning steps)",
-                node_id, winning_steps
+                "[mcts] Step-level credit to node %d (%d steps succeeded)",
+                node_id, step_succeeded
             )
 
-        # 2. Partial credit for high-confidence steps in losing threads
-        # Per mycelium-7o8i: These steps were probably correct, just in a bad chain
+        # Priority 2: STEP-LEVEL FAILURE - step itself failed
+        # This is precise blame - this specific step caused the problem
+        elif step_failed > 0:
+            step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
+            stats["failures_credited"] += 1
+            stats["step_level_blame"] += 1
+            logger.debug(
+                "[mcts] Step-level blame to node %d (%d steps failed)",
+                node_id, step_failed
+            )
+
+        # Priority 3: FALLBACK - thread won but step_success not tracked
+        elif thread_won_no_step > 0:
+            step_db.increment_signature_successes(node_id, count=1, propagate_to_parents=True)
+            stats["successes_credited"] += 1
+            logger.debug(
+                "[mcts] Thread-level credit to node %d (%d steps in winning thread)",
+                node_id, thread_won_no_step
+            )
+
+        # Priority 4: FALLBACK - high-confidence in losing thread (partial credit)
         elif high_conf_losing > 0:
-            # Give partial credit - benefit of the doubt
-            step_db.increment_signature_partial_success(node_id, weight=PARTIAL_CREDIT_WEIGHT)
+            step_db.increment_signature_partial_success(
+                node_id, weight=PARTIAL_CREDIT_WEIGHT, propagate_to_parents=True
+            )
             stats["partial_credits"] += 1
             logger.debug(
                 "[mcts] Partial credit to node %d (%d high-conf losing steps, avg_amp=%.2f)",
                 node_id, high_conf_losing, avg_amp or 0
             )
 
-        # 3. Blame for low-confidence steps in losing threads
-        # These were uncertain AND the thread failed - likely the problem
+        # Priority 5: FALLBACK - low-confidence in losing thread (blame)
         elif low_conf_losing > 0:
-            step_db.increment_signature_failures(node_id, count=1)
+            step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
             stats["failures_credited"] += 1
             logger.debug(
-                "[mcts] Blamed node %d (%d low-conf losing steps, avg_amp=%.2f)",
+                "[mcts] Thread-level blame to node %d (%d low-conf losing steps, avg_amp=%.2f)",
                 node_id, low_conf_losing, avg_amp or 0
             )
 
     if stats["nodes_processed"] > 0:
         logger.info(
-            "[mcts] Credit propagation for DAG %s: %d nodes, +%d full, +%d partial, +%d failures",
+            "[mcts] Credit propagation for DAG %s: %d nodes, +%d full, +%d partial, +%d failures "
+            "(step-level: %d credit, %d blame)",
             dag_id, stats["nodes_processed"],
             stats["successes_credited"], stats["partial_credits"], stats["failures_credited"],
+            stats["step_level_credit"], stats["step_level_blame"],
         )
 
     return stats

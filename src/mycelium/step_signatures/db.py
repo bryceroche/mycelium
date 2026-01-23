@@ -2981,16 +2981,28 @@ class StepSignatureDB:
                     signature_id, failure_count, failure_count, thread_count,
                 )
 
-    def increment_signature_successes(self, signature_id: int, count: int = 1):
+    def increment_signature_successes(
+        self,
+        signature_id: int,
+        count: int = 1,
+        propagate_to_parents: bool = True,
+        _depth: int = 0,
+    ):
         """Increment the successes count for a signature.
 
         Per beads mycelium-itkn: Used by amplitude credit propagation.
+        Per CLAUDE.md: "Parent umbrellas get decay^depth credit (default 0.5 per level)"
 
         Args:
             signature_id: ID of the signature
             count: Amount to increment by (default 1)
+            propagate_to_parents: If True, propagate credit up to parent routers with decay
+            _depth: Internal recursion depth tracker
         """
+        from mycelium.config import PARENT_CREDIT_DECAY, PARENT_CREDIT_MAX_DEPTH, PARENT_CREDIT_MIN
+
         with self._connection() as conn:
+            # Update this signature
             conn.execute(
                 """UPDATE step_signatures
                    SET successes = COALESCE(successes, 0) + ?
@@ -2998,16 +3010,45 @@ class StepSignatureDB:
                 (count, signature_id)
             )
 
-    def increment_signature_failures(self, signature_id: int, count: int = 1):
+            # Propagate to parent with decay
+            if propagate_to_parents and _depth < PARENT_CREDIT_MAX_DEPTH:
+                parent_row = conn.execute(
+                    "SELECT parent_id FROM signature_relationships WHERE child_id = ? LIMIT 1",
+                    (signature_id,)
+                ).fetchone()
+
+                if parent_row and parent_row[0]:
+                    decayed_count = count * PARENT_CREDIT_DECAY
+                    if decayed_count >= PARENT_CREDIT_MIN:
+                        self.increment_signature_successes(
+                            parent_row[0],
+                            count=decayed_count,
+                            propagate_to_parents=True,
+                            _depth=_depth + 1,
+                        )
+
+    def increment_signature_failures(
+        self,
+        signature_id: int,
+        count: int = 1,
+        propagate_to_parents: bool = True,
+        _depth: int = 0,
+    ):
         """Increment the operational_failures count for a signature.
 
         Per beads mycelium-itkn: Used by amplitude credit propagation.
+        Per CLAUDE.md: Failure signal also propagates up with decay.
 
         Args:
             signature_id: ID of the signature
             count: Amount to increment by (default 1)
+            propagate_to_parents: If True, propagate failure up to parent routers with decay
+            _depth: Internal recursion depth tracker
         """
+        from mycelium.config import PARENT_CREDIT_DECAY, PARENT_CREDIT_MAX_DEPTH, PARENT_CREDIT_MIN
+
         with self._connection() as conn:
+            # Update this signature
             conn.execute(
                 """UPDATE step_signatures
                    SET operational_failures = COALESCE(operational_failures, 0) + ?
@@ -3015,7 +3056,30 @@ class StepSignatureDB:
                 (count, signature_id)
             )
 
-    def increment_signature_partial_success(self, signature_id: int, weight: float = 0.5):
+            # Propagate to parent with decay
+            if propagate_to_parents and _depth < PARENT_CREDIT_MAX_DEPTH:
+                parent_row = conn.execute(
+                    "SELECT parent_id FROM signature_relationships WHERE child_id = ? LIMIT 1",
+                    (signature_id,)
+                ).fetchone()
+
+                if parent_row and parent_row[0]:
+                    decayed_count = count * PARENT_CREDIT_DECAY
+                    if decayed_count >= PARENT_CREDIT_MIN:
+                        self.increment_signature_failures(
+                            parent_row[0],
+                            count=decayed_count,
+                            propagate_to_parents=True,
+                            _depth=_depth + 1,
+                        )
+
+    def increment_signature_partial_success(
+        self,
+        signature_id: int,
+        weight: float = 0.5,
+        propagate_to_parents: bool = True,
+        _depth: int = 0,
+    ):
         """Increment successes with a fractional weight (partial credit).
 
         Per beads mycelium-7o8i: Used for correct steps in failed problems.
@@ -3025,7 +3089,11 @@ class StepSignatureDB:
         Args:
             signature_id: ID of the signature
             weight: Fractional credit (default 0.5 = half a success)
+            propagate_to_parents: If True, propagate partial credit up with decay
+            _depth: Internal recursion depth tracker
         """
+        from mycelium.config import PARENT_CREDIT_DECAY, PARENT_CREDIT_MAX_DEPTH, PARENT_CREDIT_MIN
+
         with self._connection() as conn:
             conn.execute(
                 """UPDATE step_signatures
@@ -3033,6 +3101,23 @@ class StepSignatureDB:
                    WHERE id = ?""",
                 (weight, signature_id)
             )
+
+            # Propagate to parent with decay
+            if propagate_to_parents and _depth < PARENT_CREDIT_MAX_DEPTH:
+                parent_row = conn.execute(
+                    "SELECT parent_id FROM signature_relationships WHERE child_id = ? LIMIT 1",
+                    (signature_id,)
+                ).fetchone()
+
+                if parent_row and parent_row[0]:
+                    decayed_weight = weight * PARENT_CREDIT_DECAY
+                    if decayed_weight >= PARENT_CREDIT_MIN:
+                        self.increment_signature_partial_success(
+                            parent_row[0],
+                            weight=decayed_weight,
+                            propagate_to_parents=True,
+                            _depth=_depth + 1,
+                        )
 
     def merge_signatures(
         self,
