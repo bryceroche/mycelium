@@ -3259,6 +3259,92 @@ def run_retirement_check(step_db) -> dict:
     }
 
 
+def collapse_single_child_routers() -> dict:
+    """Collapse router signatures that have only one child.
+
+    Single-child routers add indirection without value. This function:
+    1. Finds routers with exactly one child
+    2. Promotes the child to replace the router in relationships
+    3. Removes the redundant router
+
+    Returns:
+        Dict with collapse statistics
+    """
+    conn = get_db()
+    collapsed = 0
+    collapsed_ids = []
+
+    try:
+        # Find routers (role='router' or is_umbrella=1) with exactly one child
+        cursor = conn.execute("""
+            SELECT sr.parent_id, sr.child_id, s.step_type
+            FROM signature_relationships sr
+            JOIN step_signatures s ON s.id = sr.parent_id
+            WHERE (s.role = 'router' OR s.is_umbrella = 1)
+            GROUP BY sr.parent_id
+            HAVING COUNT(sr.child_id) = 1
+        """)
+        single_child_routers = cursor.fetchall()
+
+        for row in single_child_routers:
+            parent_id = row["parent_id"]
+            child_id = row["child_id"]
+
+            # Skip if parent is the root (id=1 or has no parent)
+            cursor = conn.execute(
+                "SELECT COUNT(*) as cnt FROM signature_relationships WHERE child_id = ?",
+                (parent_id,)
+            )
+            if cursor.fetchone()["cnt"] == 0:
+                # This router has no parent - it's at the root level, don't collapse
+                continue
+
+            # Find grandparent relationships (who points to this router)
+            cursor = conn.execute(
+                "SELECT parent_id FROM signature_relationships WHERE child_id = ?",
+                (parent_id,)
+            )
+            grandparents = [r["parent_id"] for r in cursor.fetchall()]
+
+            # Update grandparent -> router to grandparent -> child
+            for grandparent_id in grandparents:
+                conn.execute("""
+                    UPDATE signature_relationships
+                    SET child_id = ?
+                    WHERE parent_id = ? AND child_id = ?
+                """, (child_id, grandparent_id, parent_id))
+
+            # Remove router -> child relationship
+            conn.execute(
+                "DELETE FROM signature_relationships WHERE parent_id = ? AND child_id = ?",
+                (parent_id, child_id)
+            )
+
+            # Mark router as inactive (don't delete, preserve history)
+            conn.execute(
+                "UPDATE step_signatures SET role = 'collapsed' WHERE id = ?",
+                (parent_id,)
+            )
+
+            collapsed += 1
+            collapsed_ids.append(parent_id)
+            logger.debug(
+                "[mcts] Collapsed single-child router %d, promoted child %d",
+                parent_id, child_id
+            )
+
+        conn.commit()
+
+    except Exception as e:
+        logger.warning("[mcts] Failed to collapse single-child routers: %s", e)
+        conn.rollback()
+
+    return {
+        "collapsed": collapsed,
+        "collapsed_ids": collapsed_ids,
+    }
+
+
 # =============================================================================
 # DIAGNOSTIC POST-MORTEM (Accuracy-driven decomposition decisions)
 # =============================================================================

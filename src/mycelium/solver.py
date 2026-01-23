@@ -3387,7 +3387,7 @@ Rules:
                 await self._batch_write_expressions(step_infos)
 
             # Execute steps in dependency order
-            step_order = self._compute_execution_order(new_plan.steps)
+            step_order = self._get_execution_order(new_plan)
             context = {}
             step_descriptions = {s.id: s.task for s in new_plan.steps}
 

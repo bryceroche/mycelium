@@ -9,19 +9,14 @@ Please always keep this file in the context window.
 
 ## The Core Problem: Lexical vs Operational Similarity
 
-Standard embedding models learn similarity from surface-level patterns—what text "looks like" rather than what it "does."
+Standard embedding models learn similarity from vocabulary, not from operational semantics
 
-In a math DSL, this creates two failure modes:
+`x + y` vs `a + b` → **Lexically similar but operationally different** 
+`x + y` vs `x * y` → **Lexically similar but operationally different** 
 
-| Expression Pair | Lexically | Operationally | Embedding Behavior |
-|-----------------|-----------|---------------|-------------------|
-| `x + y` vs `a + b` | Different | **Identical** (both addition) | May embed far apart |
-| `x + y` vs `x * y` | Similar | **Different** (+ vs *) | May embed close together |
-
-Embeddings trained on natural language don't understand that `+` and `*` are fundamentally different operations, regardless of variable names.
+Embeddings get confused 
 
 ## The Solution: Computation Graph Embeddings
-
 **Route by what operations DO, not what they SOUND LIKE.**
 
 Instead of embedding problem text and comparing to signature text, we:
@@ -278,16 +273,9 @@ The goal is NOT 100% accuracy on every run. The goal is collecting data that mak
 
 ## Always Route to Best Match (No Arbitrary Thresholds)
 
-**ALWAYS_ROUTE_TO_BEST = True** (default)
+**ALWAYS_ROUTE_TO_BEST = True** 
 
 Instead of rejecting matches below arbitrary similarity thresholds, we always route to the best available match and let execution failures drive learning.
-
-### Why No Thresholds?
-
-Thresholds are arbitrary magic numbers that don't add value:
-- We always pick the highest similarity match anyway
-- Thresholds only decide "accept any match or create new"
-- Better to let actual execution results drive that decision
 
 ### The Flow
 
@@ -318,43 +306,11 @@ The planner didn't track which value (house price vs total investment) the perce
 Force the LLM to explicitly name and attribute every value BEFORE building the DAG.
 
 **Phase 1: VALUE EXTRACTION**
-```
-VALUES:
-purchase_price: 80000 — original cost of the house
-repair_cost: 50000 — amount spent on repairs
-increase_rate: 2.5 — 150% increase means multiply by 2.5
-```
-
 **Phase 2: DAG BUILDING**
-```
-STEPS:
-- step_id: step_1
-  task: Calculate total investment
-  dsl_hint: compute_sum
-  values: {a: purchase_price, b: repair_cost}
-  depends_on: []
-
-- step_id: step_2
-  task: Calculate new house value
-  dsl_hint: compute_product
-  values: {a: purchase_price, b: increase_rate}  ← Explicit attribution!
-  depends_on: []
-```
 
 ### Batch Expression Writing with JSON Mode
 
 After decomposition, a single LLM call writes ALL DSL expressions:
-
-```python
-# Prompt contains all steps with their exact parameter names
-# Response is JSON: {"step_1": {"expression": "a + b", "params_used": ["a", "b"]}, ...}
-
-response = await client.generate(
-    messages,
-    temperature=0.0,
-    response_format={"type": "json_object"},  # Reliable parsing
-)
-```
 
 **Why batch?**
 - LLM sees full context of all steps and their parameters
@@ -363,41 +319,19 @@ response = await client.generate(
 
 ### The Complete Flow
 
-```
-Problem Text
-     │
-     ▼ (LLM Call #1: Two-Phase Decomposition)
-┌─────────────────────────────────────┐
-│ Phase 1: Extract & name all values  │
-│ Phase 2: Build DAG with explicit    │
-│          value references           │
-└─────────────────────────────────────┘
-     │
-     ▼ (Route each step to signatures - NO LLM)
-     │
-     ▼ (LLM Call #2: Batch Expression Writing)
-┌─────────────────────────────────────┐
-│ For each (step, signature) pair:    │
-│   Write DSL expression using exact  │
-│   parameter names from context      │
-└─────────────────────────────────────┘
-     │
-     ▼ (Execute DSL - NO LLM)
-     │
-     ▼
-   Result
-```
+LLM Call 1:
+Phase 1: Extract & name all values
+Phase 2: Build DAG with explicit value references
+
+LLM Call 2:
+For each (step, signature) pair: Write DSL expression using exact parameter names from context 
+
 
 **Total: 2 LLM calls** regardless of problem complexity.
 
 ### Cold-Start Protection
 
 New umbrella signatures (uses=0) skip auto-decomposition. This prevents cascading decomposition before the system has any execution data to learn from.
-
-```python
-if signature.uses == 0:
-    logger.info("Skipping auto-decompose for new umbrella (cold-start)")
-```
 
 ## DAG Plan Validation: Data Flow Analysis (v1.8.1)
 
