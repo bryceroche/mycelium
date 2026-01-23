@@ -1678,30 +1678,69 @@ class StepSignatureDB:
                         best_match = None
 
                 if best_match is not None and similarity_ok:
-                    # LEAF REJECTION: Check if leaf should reject this step due to low similarity
-                    # Per CLAUDE.md: leaves define their own boundaries, high rejection rate triggers decomp
+                    # LEAF REJECTION: Check if leaf should reject this step
+                    # Per CLAUDE.md: leaves use graph_embedding (operational), not centroid (semantic)
                     if not best_match.is_semantic_umbrella:
                         from mycelium.data_layer.mcts import (
                             check_and_reject_if_low_similarity,
                             REJECTION_SIM_THRESHOLD,
                         )
-                        if best_sim < REJECTION_SIM_THRESHOLD:
+
+                        # Use graph_embedding similarity if available (operational identity)
+                        # Otherwise fall back to text similarity
+                        rejection_sim = best_sim  # Default to text similarity
+                        has_graph = best_match.graph_embedding is not None
+
+                        if has_graph and dsl_hint:
+                            # Convert dsl_hint to graph embedding for operational comparison
+                            # Per CLAUDE.md: route by what operations DO, not what they SOUND LIKE
+                            try:
+                                op_graph = self._dsl_hint_to_graph(dsl_hint)
+                                if op_graph:
+                                    from mycelium.embedding_cache import cached_embed
+                                    step_graph_emb = cached_embed(op_graph)  # Use singleton embedder
+                                    if step_graph_emb is not None:
+                                        leaf_graph_emb = np.array(best_match.graph_embedding)
+                                        rejection_sim = cosine_similarity(step_graph_emb, leaf_graph_emb)
+                                        logger.debug(
+                                            "[routing] Leaf '%s' graph_sim=%.3f text_sim=%.3f",
+                                            best_match.step_type, rejection_sim, best_sim
+                                        )
+                            except Exception as e:
+                                logger.debug("[db] Graph embedding comparison failed: %s", e)
+
+                        if rejection_sim < REJECTION_SIM_THRESHOLD:
                             was_rejected, rejection_count = check_and_reject_if_low_similarity(
                                 signature_id=best_match.id,
                                 step_text=step_text,
-                                similarity=best_sim,
+                                similarity=rejection_sim,
                                 problem_context=parent_problem,
                             )
                             if was_rejected:
                                 logger.info(
                                     "[db] Leaf '%s' REJECTED step (sim=%.3f < %.3f), rejections=%d: '%s'",
-                                    best_match.step_type, best_sim, REJECTION_SIM_THRESHOLD,
+                                    best_match.step_type, rejection_sim, REJECTION_SIM_THRESHOLD,
                                     rejection_count, step_text[:40]
                                 )
                                 # Fall through to create new signature
                                 best_match = None
 
                 if best_match is not None and similarity_ok:
+                    # Log routing decision with similarity for tuning
+                    is_leaf = not best_match.is_semantic_umbrella
+                    if is_leaf and rejection_sim != best_sim:
+                        # Show both similarities when graph_embedding was used
+                        logger.info(
+                            "[routing] Leaf '%s' ACCEPTED (text=%.3f graph=%.3f): '%s'",
+                            best_match.step_type, best_sim, rejection_sim, step_text[:40]
+                        )
+                    else:
+                        logger.info(
+                            "[routing] %s '%s' ACCEPTED (sim=%.3f): '%s'",
+                            "Leaf" if is_leaf else "Router",
+                            best_match.step_type, best_sim, step_text[:40]
+                        )
+
                     # Found a match - update centroid using shared helper
                     new_count = self._update_centroid_atomic(
                         conn, best_match.id, embedding, update_last_used=True
@@ -4313,6 +4352,38 @@ class StepSignatureDB:
             return True
 
         return False
+
+    def _dsl_hint_to_graph(self, dsl_hint: str) -> str:
+        """Convert a dsl_hint to a canonical computation graph string.
+
+        Used for graph_embedding comparison during leaf rejection.
+        Per CLAUDE.md: route by what operations DO, not what they SOUND LIKE.
+
+        Args:
+            dsl_hint: Operation hint from planner (+, -, *, /)
+
+        Returns:
+            Canonical graph string like "ADD(a, b)" or None if unknown
+        """
+        hint = dsl_hint.strip().lower()
+
+        # Map dsl_hint to canonical graph representation
+        HINT_TO_GRAPH = {
+            "+": "ADD(a, b)",
+            "add": "ADD(a, b)",
+            "sum": "ADD(a, b)",
+            "-": "SUB(a, b)",
+            "subtract": "SUB(a, b)",
+            "difference": "SUB(a, b)",
+            "*": "MUL(a, b)",
+            "multiply": "MUL(a, b)",
+            "product": "MUL(a, b)",
+            "/": "DIV(a, b)",
+            "divide": "DIV(a, b)",
+            "quotient": "DIV(a, b)",
+        }
+
+        return HINT_TO_GRAPH.get(hint)
 
     def _infer_step_type(self, step_text: str, dsl_hint: str = None) -> str:
         """Infer a step type from step text.
