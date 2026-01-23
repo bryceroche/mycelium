@@ -105,32 +105,11 @@ If correlation is negative, embeddings are misleading—clustering by vocab not 
 MCTS rollouts can be modeled as wave function collapse, providing a principled framework for multi-path exploration and credit assignment.
 
 ### Core Concepts
-
-**Superposition**: Before execution, a problem exists in superposition across all possible paths through the tree. Each path has an amplitude (confidence score).
-
-```
-|ψ⟩ = α₁|path₁⟩ + α₂|path₂⟩ + α₃|path₃⟩ + ...
-```
-
-**Wave Collapse**: The wave function collapses at the **final step** where we have ground truth. Only then do we know which thread was correct.
-
 **Selective Branching**: Don't branch on every DAG step—only when **undecided**. Use UCB1 gap to detect uncertainty. High gap = confident, low gap = branch.
 
-### The Key Learning Units
-
-**Two critical pairs drive learning:**
-
-1. **`(dag_step_id, node_id)`** — Step-level routing performance
-   - A node might be great for step 2 but terrible for step 5
-   - Track which signatures work for which step types
-   - Drives UCB1 routing decisions within a plan
-
-2. **`(dag_plan, thread_id)`** — Plan-level execution patterns
-   - Which decomposition strategies work for which problem types
-   - Track which thread paths through a plan succeed
-   - Drives plan selection and thread credit assignment
-
-The first pair tells us "this signature handles addition steps well." The second tells us "this decomposition approach solves percentage problems well."
+### The Key Learning Unit
+**The combination of `(dag_step_id, node_id)` is what we're learning.**
+A node might be great for step 2 but terrible for step 5. Track performance per step-node pair, not just per node.
 
 ### Amplitude Updates (Post-Mortem)
 
@@ -156,7 +135,7 @@ The post-mortem analysis of MCTS rollouts should consider:
 - **Was undecided** - whether we branched due to low confidence
 - **Alternatives considered** - how many other paths were explored
 
-Key insight: Performance is tracked per `(dag_step_id, node_id)` pair AND per `(dag_plan, thread_id)` pair—not just per node or per plan.
+Key insight: Performance is tracked per `(dag_step_id, node_id)` pair, not just per node.
 
 ### Interference Patterns
 
@@ -331,22 +310,7 @@ Structure emerges from failure patterns, not our guesses about what similarity i
 
 ### The Problem: Parameter Attribution Errors
 
-Before this fix, the planner would misattribute values. Example:
-
-```
-Problem: "Josh buys a house for $80k, puts in $50k repairs. Value increases by 150%."
-
-WRONG decomposition:
-  Step 1: total_investment = 80000 + 50000 = 130000
-  Step 2: new_value = 130000 × 1.5 = 195000  ← WRONG! 150% applied to investment, not house
-  Result: $65,000 profit (incorrect)
-
-CORRECT decomposition:
-  Step 1: total_investment = 80000 + 50000 = 130000
-  Step 2: new_value = 80000 × 2.5 = 200000  ← 150% increase means ×2.5 on ORIGINAL house
-  Result: $70,000 profit (correct)
-```
-
+Before this fix, the planner would misattribute values. 
 The planner didn't track which value (house price vs total investment) the percentage applied to.
 
 ### The Solution: Two-Phase Decomposition
@@ -441,18 +405,7 @@ if signature.uses == 0:
 
 ### The Problem: Undefined Variables
 
-Some problems can't be solved forward—they require algebra (working backwards). The planner might generate steps that reference undefined variables:
-
-```
-Problem: "She sold 1/3 at green house, 2 more at red, half the rest at orange. She has 5 left. How many did she start with?"
-
-BAD PLAN (undefined variable):
-  Step 1: after_green = total × (2/3)  ← 'total' is UNDEFINED!
-  Step 2: after_red = after_green - 2
-  ...
-```
-
-The `total` variable doesn't exist yet—it's what we're trying to find.
+Some problems can't be solved forward—they require algebra (working backwards). The planner might generate steps that reference undefined variables
 
 ### The Solution: Data Flow Validation
 
@@ -462,29 +415,9 @@ Every step's inputs MUST be either:
 
 The planner validates this at parse time:
 
-```python
-# Pattern to detect undefined variable names
-variable_pattern = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
-
-for step in self.steps:
-    for key, value in step.extracted_values.items():
-        if isinstance(value, str) and variable_pattern.match(value):
-            # This is an undefined variable name, not a number or step ref
-            errors.append(f"Step '{step.id}' has undefined variable '{value}'")
-```
-
 ### Work-Backwards Detection
 
 When data flow validation fails, it signals an **algebra problem** that needs work-backwards logic:
-
-```
-CORRECT PLAN (work backwards from known result):
-  Step 1: before_orange = 5 × 2 = 10       ← Start from known (5 left)
-  Step 2: before_red = 10 + 2 = 12         ← Reverse the operations
-  Step 3: before_green = 12 × (3/2) = 18   ← Invert 1/3 sold → 2/3 remained
-  Result: 18 vacuums
-```
-
 The prompt now includes explicit instructions and examples for detecting and handling work-backwards problems.
 
 ### Why This Matters

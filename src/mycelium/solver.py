@@ -1212,26 +1212,56 @@ class Solver:
         normalized_task = normalize_step_text(step.task)
         embedding = cached_embed(normalized_task, self.embedder)
 
-        # 2. Find or create signature (use original text for description)
-        # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
-        # Use adaptive threshold: higher during cold start (more signatures), lower when mature
-        # Pass embedder for cold start graph embedding (per CLAUDE.md: route by what ops DO)
-        adaptive_threshold = get_adaptive_match_threshold()
-        signature, is_new = await self.step_db.find_or_create_async(
-            step_text=step.task,  # Keep original for description
-            embedding=embedding,   # Use normalized embedding for matching
-            min_similarity=adaptive_threshold,
-            parent_problem=problem,
-            origin_depth=depth,  # Track decomposition depth
-            extracted_values=getattr(step, 'extracted_values', None),
-            dsl_hint=getattr(step, 'dsl_hint', None),  # LLM → signature communication
-            embedder=self.embedder,  # For cold start graph embedding
-        )
+        # 2. GRAPH-FIRST ROUTING (per mycelium-pl5c)
+        # Check graph routing FIRST - route by what operations DO, not what they SOUND LIKE
+        # If graph routing finds a high-confidence operational match, use it directly
+        # This prevents creating new signatures for operationally identical steps
+        signature = None
+        is_new = False
+        graph_matched = False
+
+        if GRAPH_ROUTING_ENABLED and step.id in self._operation_embeddings:
+            operation_embedding = self._operation_embeddings[step.id]
+            graph_results = self.step_db.route_by_graph_embedding(
+                np.array(operation_embedding),
+                min_similarity=GRAPH_ROUTING_MIN_SIMILARITY,
+                top_k=3,
+            )
+
+            if graph_results:
+                best_sig, best_sim = graph_results[0]
+                # High-confidence graph match - use this signature directly
+                # Threshold: 90% similarity means operationally identical
+                if best_sim >= 0.90:
+                    signature = best_sig
+                    is_new = False
+                    graph_matched = True
+                    # Update the matched signature's centroid with this new text embedding
+                    self.step_db.update_centroid(signature.id, embedding)
+                    logger.info(
+                        "[solver] GRAPH-FIRST match: '%s' → sig %d (%s) sim=%.3f",
+                        step.task[:40], signature.id, signature.step_type, best_sim
+                    )
+
+        # 3. TEXT ROUTING FALLBACK
+        # If graph routing didn't find a match, fall back to text-based routing
+        if signature is None:
+            adaptive_threshold = get_adaptive_match_threshold()
+            signature, is_new = await self.step_db.find_or_create_async(
+                step_text=step.task,  # Keep original for description
+                embedding=embedding,   # Use normalized embedding for matching
+                min_similarity=adaptive_threshold,
+                parent_problem=problem,
+                origin_depth=depth,  # Track decomposition depth
+                extracted_values=getattr(step, 'extracted_values', None),
+                dsl_hint=getattr(step, 'dsl_hint', None),  # LLM → signature communication
+                embedder=self.embedder,  # For cold start graph embedding
+            )
 
         logger.debug(
-            "[solver] Step '%s' → signature '%s' (new=%s, umbrella=%s, dsl_type=%s, threshold=%.2f)",
+            "[solver] Step '%s' → signature '%s' (new=%s, umbrella=%s, dsl_type=%s, graph_matched=%s)",
             step.task[:40], signature.step_type, is_new, signature.is_semantic_umbrella,
-            signature.dsl_type, adaptive_threshold
+            signature.dsl_type, graph_matched
         )
 
         # 2.3. Maturity-based decompose vs create (per mycelium-jaq9)
