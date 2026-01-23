@@ -70,6 +70,7 @@ from mycelium.data_layer.mcts import (
     is_signature_atomic,
     run_atomic_discovery,
     get_tree_health_metrics,
+    collapse_single_child_routers,
 )
 
 db = get_db()
@@ -140,4 +141,5 @@ __all__ = [
     "is_signature_atomic",
     "run_atomic_discovery",
     "get_tree_health_metrics",
+    "collapse_single_child_routers",
 ]

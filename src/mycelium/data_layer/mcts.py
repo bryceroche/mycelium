@@ -2158,6 +2158,15 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
                     retirement_result.get("merged_up", 0),
                 )
 
+        # Collapse single-child routers to prevent chains
+        # Per CLAUDE.md: "healthy tree would have ~5:1 ratio"
+        collapse_result = collapse_single_child_routers()
+        if collapse_result["collapsed"] > 0:
+            logger.info(
+                "[mcts] Collapsed %d single-child routers (chain prevention)",
+                collapse_result["collapsed"],
+            )
+
         # Reset merge/split state
         state.reset_merge_split()
 
@@ -4029,3 +4038,97 @@ def get_tree_health_metrics() -> dict:
             metrics["router_to_children_ratio"] = metrics["avg_children_per_router"]
 
     return metrics
+
+
+def collapse_single_child_routers() -> dict:
+    """Collapse routers with only 1 child to prevent chains.
+
+    A router with 1 child is pointless - it adds depth without branching.
+    For each such router:
+    1. Mark the router as atomic (can't meaningfully decompose)
+    2. Remove the parent-child relationship (child becomes orphan, will get reparented)
+
+    Per CLAUDE.md: "healthy tree would have ~5:1 ratio where each router
+    has roughly five children"
+
+    Returns:
+        Dict with collapse statistics
+    """
+    conn = get_db()
+    stats = {
+        "single_child_routers_found": 0,
+        "collapsed": 0,
+        "collapsed_ids": [],
+    }
+
+    with conn.connection() as c:
+        # Find routers with exactly 1 child
+        cursor = c.execute("""
+            SELECT s.id, s.step_type,
+                   (SELECT child_id FROM signature_relationships r WHERE r.parent_id = s.id LIMIT 1) as child_id
+            FROM step_signatures s
+            WHERE s.is_archived = 0
+              AND s.is_semantic_umbrella = 1
+              AND s.is_atomic = 0
+              AND (SELECT COUNT(*) FROM signature_relationships r WHERE r.parent_id = s.id) = 1
+        """)
+
+        single_child_routers = cursor.fetchall()
+        stats["single_child_routers_found"] = len(single_child_routers)
+
+        for row in single_child_routers:
+            parent_id, step_type, child_id = row
+
+            # Get grandparent (if exists) to reparent child
+            grandparent_cursor = c.execute("""
+                SELECT parent_id FROM signature_relationships WHERE child_id = ?
+            """, (parent_id,))
+            grandparent_row = grandparent_cursor.fetchone()
+            grandparent_id = grandparent_row[0] if grandparent_row else None
+
+            # Remove the parent-child relationship
+            c.execute("""
+                DELETE FROM signature_relationships WHERE parent_id = ? AND child_id = ?
+            """, (parent_id, child_id))
+
+            # Reparent child to grandparent (if exists)
+            if grandparent_id:
+                # Check if relationship already exists
+                existing = c.execute("""
+                    SELECT 1 FROM signature_relationships WHERE parent_id = ? AND child_id = ?
+                """, (grandparent_id, child_id)).fetchone()
+
+                if not existing:
+                    c.execute("""
+                        INSERT INTO signature_relationships (parent_id, child_id, condition, routing_order, created_at)
+                        VALUES (?, ?, ?, 0, datetime('now'))
+                    """, (grandparent_id, child_id, f"reparented from {step_type}"))
+
+                    # Update child's depth
+                    c.execute("""
+                        UPDATE step_signatures SET depth = (
+                            SELECT depth + 1 FROM step_signatures WHERE id = ?
+                        ) WHERE id = ?
+                    """, (grandparent_id, child_id))
+
+            # Mark the router as atomic
+            c.execute("""
+                UPDATE step_signatures
+                SET is_atomic = 1, atomic_reason = 'single_child_collapsed'
+                WHERE id = ?
+            """, (parent_id,))
+
+            stats["collapsed"] += 1
+            stats["collapsed_ids"].append(parent_id)
+            logger.info(
+                "[atomic] Collapsed single-child router %d ('%s') - child %d reparented to %s",
+                parent_id, step_type, child_id, grandparent_id or "orphan"
+            )
+
+    if stats["collapsed"] > 0:
+        logger.info(
+            "[atomic] Collapsed %d single-child routers (prevents chains)",
+            stats["collapsed"]
+        )
+
+    return stats
