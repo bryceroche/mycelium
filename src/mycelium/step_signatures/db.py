@@ -1880,10 +1880,12 @@ class StepSignatureDB:
         parent_for_new = current  # Track where to create new child
         depth = 0
 
+        # Import once outside loop
+        from mycelium.config import ALWAYS_ROUTE_TO_BEST
+
         while depth < max_depth:
             # Check similarity to current node using graph_embedding (operational)
             # Fallback to centroid (semantic) if graph_embedding unavailable
-            from mycelium.config import ALWAYS_ROUTE_TO_BEST
 
             # Get graph_embedding for current node (leaves have fixed, routers have centroid of children)
             current_graph_emb = current.graph_embedding
@@ -1901,13 +1903,10 @@ class StepSignatureDB:
                 sim = cosine_similarity(embedding, current_centroid) if current_centroid is not None else 0.0
                 used_graph = False
 
-            # If current is a leaf, return it
+            # If current is a leaf, return it (always return leaf regardless of threshold)
             if not current.is_semantic_umbrella:
                 if used_graph:
                     logger.debug("[db] Leaf %d routed by graph_embedding (sim=%.3f)", current.id, sim)
-                if ALWAYS_ROUTE_TO_BEST or sim >= min_similarity:
-                    return current, parent_for_new, sim
-                # Still return the leaf even if below threshold
                 return current, parent_for_new, sim
 
             # Get children of current umbrella (exclude archived)
@@ -1923,12 +1922,7 @@ class StepSignatureDB:
 
             if not children:
                 # Umbrella with no children - return current as best match
-                # Use graph_embedding if available, fallback to centroid
-                if step_graph_embedding is not None and current_graph_emb is not None:
-                    sim = cosine_similarity(step_graph_embedding, current_graph_emb)
-                else:
-                    empty_umbrella_centroid = current.centroid
-                    sim = cosine_similarity(embedding, empty_umbrella_centroid) if empty_umbrella_centroid is not None else 0.0
+                # sim already computed above using graph_embedding or centroid
                 return current, current, sim
 
             # MCTS UCB1 Selection: balance exploitation vs exploration
