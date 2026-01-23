@@ -573,6 +573,10 @@ class Solver:
         # Stored after record_problem_outcome() for async processing
         self._pending_reactive_exploration: Optional[dict] = None
 
+        # Phase 1 values for provenance tracking (set per-problem in solve())
+        # Maps value name -> numeric value for resolving $name references
+        self._current_phase1_values: dict[str, Any] = {}
+
     def _create_background_task(self, coro) -> asyncio.Task:
         """Create a background task with proper lifecycle management.
 
@@ -876,6 +880,15 @@ class Solver:
                 problem,
                 signature_hints=signature_hints,
             )
+
+            # Store Phase 1 values for provenance tracking during execution
+            # These are resolved when $name references appear in extracted_values
+            self._current_phase1_values = plan.phase1_values or {}
+            if self._current_phase1_values:
+                logger.debug(
+                    "[solver] Phase 1 values for provenance: %s",
+                    list(self._current_phase1_values.keys())
+                )
 
             # Validate DAG structure before execution
             # Skip validation for single-step plans (no dependencies to check, no cycles possible)
@@ -2205,17 +2218,42 @@ class Solver:
         params = {}
 
         # Add validated extracted values (resolve references)
-        # Note: extracted_values was already validated above using signature's param_descriptions
+        # Supports two reference types:
+        # 1. $name - Phase 1 value reference (e.g., $purchase_price)
+        # 2. {step_N} - Prior step result reference (e.g., {step_1})
         if extracted_values:
             for key, val in extracted_values.items():
-                if isinstance(val, str) and val.startswith('{') and val.endswith('}'):
-                    ref_key = val[1:-1]
-                    if ref_key in context:
+                if isinstance(val, str):
+                    # Check for Phase 1 value reference ($name)
+                    if val.startswith('$'):
+                        ref_name = val[1:]  # Remove $ prefix
+                        if ref_name in self._current_phase1_values:
+                            params[key] = self._current_phase1_values[ref_name]
+                            logger.debug(
+                                "[solver] Resolved $%s → %s (Phase 1 provenance)",
+                                ref_name, params[key]
+                            )
+                        else:
+                            logger.warning(
+                                "[solver] Unknown Phase 1 reference: $%s (available: %s)",
+                                ref_name, list(self._current_phase1_values.keys())
+                            )
+                            params[key] = val  # Keep as-is for error handling
+                    # Check for step reference ({step_N})
+                    elif val.startswith('{') and val.endswith('}'):
+                        ref_key = val[1:-1]
+                        if ref_key in context:
+                            try:
+                                params[key] = float(context[ref_key])
+                            except (ValueError, TypeError):
+                                logger.debug("[solver] Non-numeric ref %s=%s, keeping as-is", ref_key, str(context[ref_key])[:30])
+                                params[key] = context[ref_key]
+                    else:
+                        # Try to parse as number (backwards compatibility)
                         try:
-                            params[key] = float(context[ref_key])
-                        except (ValueError, TypeError):
-                            logger.debug("[solver] Non-numeric ref %s=%s, keeping as-is", ref_key, str(context[ref_key])[:30])
-                            params[key] = context[ref_key]
+                            params[key] = float(val) if '.' in val else int(val)
+                        except ValueError:
+                            params[key] = val
                 else:
                     params[key] = val
 
@@ -2705,20 +2743,35 @@ Rules:
     ) -> dict:
         """Build params dict for a step from extracted_values and context.
 
-        Resolves {step_N} references to actual values from context.
+        Resolves $name (Phase 1) and {step_N} references to actual values.
         """
         params = {}
         extracted_values = getattr(step, 'extracted_values', {}) or {}
 
         # Add validated extracted values (resolve references)
         for key, val in extracted_values.items():
-            if isinstance(val, str) and val.startswith('{') and val.endswith('}'):
-                ref_key = val[1:-1]
-                if ref_key in context:
+            if isinstance(val, str):
+                # Check for Phase 1 value reference ($name)
+                if val.startswith('$'):
+                    ref_name = val[1:]
+                    if ref_name in self._current_phase1_values:
+                        params[key] = self._current_phase1_values[ref_name]
+                    else:
+                        params[key] = val  # Keep as-is
+                # Check for step reference ({step_N})
+                elif val.startswith('{') and val.endswith('}'):
+                    ref_key = val[1:-1]
+                    if ref_key in context:
+                        try:
+                            params[key] = float(context[ref_key])
+                        except (ValueError, TypeError):
+                            params[key] = context[ref_key]
+                else:
+                    # Try to parse as number
                     try:
-                        params[key] = float(context[ref_key])
-                    except (ValueError, TypeError):
-                        params[key] = context[ref_key]
+                        params[key] = float(val) if '.' in val else int(val)
+                    except ValueError:
+                        params[key] = val
             else:
                 params[key] = val
 

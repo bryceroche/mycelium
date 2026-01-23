@@ -402,6 +402,28 @@ CREATE INDEX IF NOT EXISTS idx_dse_dag ON dag_step_embeddings(dag_id);
 CREATE INDEX IF NOT EXISTS idx_dse_dag_step ON dag_step_embeddings(dag_step_id);
 CREATE INDEX IF NOT EXISTS idx_dse_node ON dag_step_embeddings(node_id);
 CREATE INDEX IF NOT EXISTS idx_dse_success ON dag_step_embeddings(success);
+
+-- =============================================================================
+-- DAG_PLAN_STATS: Track success rates of (DAG plan, Thread) pairs
+-- =============================================================================
+-- Per beads mycelium-ogo6: Track which decomposition strategies work.
+-- plan_signature = hash of (step tasks + dependency structure)
+-- A plan that consistently fails suggests the decomposition strategy is wrong.
+-- A plan that consistently succeeds suggests good problem structure.
+CREATE TABLE IF NOT EXISTS dag_plan_stats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plan_signature TEXT UNIQUE NOT NULL,  -- Hash of normalized plan structure
+    step_count INTEGER NOT NULL,          -- Number of steps in plan
+    plan_structure TEXT,                  -- JSON: normalized step descriptions + deps
+    uses INTEGER DEFAULT 0,               -- Total times this plan was used
+    successes INTEGER DEFAULT 0,          -- Times the plan led to correct answer
+    success_rate REAL DEFAULT 0.5,        -- Computed: successes / uses (with prior)
+    first_seen_at TEXT NOT NULL,
+    last_used_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_dps_signature ON dag_plan_stats(plan_signature);
+CREATE INDEX IF NOT EXISTS idx_dps_success_rate ON dag_plan_stats(success_rate);
+CREATE INDEX IF NOT EXISTS idx_dps_uses ON dag_plan_stats(uses);
 """
 
 def get_schema() -> str:

@@ -71,6 +71,14 @@ from mycelium.data_layer.mcts import (
     run_atomic_discovery,
     get_tree_health_metrics,
     collapse_single_child_routers,
+    # DAG plan stats (per beads mycelium-ogo6)
+    compute_plan_signature,
+    record_plan_outcome,
+    get_plan_success_rate,
+    get_plan_stats_summary,
+    get_top_plans,
+    get_worst_plans,
+    evaluate_proposed_plan,
 )
 
 db = get_db()
@@ -142,4 +150,12 @@ __all__ = [
     "run_atomic_discovery",
     "get_tree_health_metrics",
     "collapse_single_child_routers",
+    # DAG plan stats (per beads mycelium-ogo6)
+    "compute_plan_signature",
+    "record_plan_outcome",
+    "get_plan_success_rate",
+    "get_plan_stats_summary",
+    "get_top_plans",
+    "get_worst_plans",
+    "evaluate_proposed_plan",
 ]

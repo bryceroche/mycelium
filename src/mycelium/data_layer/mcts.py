@@ -147,6 +147,324 @@ def grade_dag(dag_id: str, success: bool) -> None:
         (1 if success else 0, now, dag_id),
     )
 
+    # Track plan success rate (per beads mycelium-ogo6)
+    try:
+        record_plan_outcome(dag_id, success)
+    except Exception as e:
+        logger.warning("[mcts] Failed to record plan outcome: %s", e)
+
+
+# =============================================================================
+# DAG PLAN STATS: Track success rates of (DAG plan, Thread) pairs
+# =============================================================================
+# Per beads mycelium-ogo6: Track which decomposition strategies work.
+# A plan_signature = hash of (step tasks + dependency structure)
+
+
+def compute_plan_signature(dag_id: str) -> tuple[str, int, str]:
+    """Compute a hash signature for a DAG plan structure.
+
+    The signature captures:
+    - Number of steps
+    - Normalized step descriptions (lowercase, numbers removed)
+    - Step ordering and dependencies
+
+    Returns:
+        Tuple of (plan_signature, step_count, plan_structure_json)
+    """
+    import hashlib
+    import json
+    import re
+
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT step_desc, step_num, branch_num, dsl_hint
+        FROM mcts_dag_steps
+        WHERE dag_id = ?
+        ORDER BY step_num, branch_num
+        """,
+        (dag_id,),
+    )
+    rows = cursor.fetchall()
+
+    if not rows:
+        return ("empty", 0, "[]")
+
+    # Normalize steps: remove numbers, lowercase, strip
+    def normalize_step(desc: str) -> str:
+        # Remove specific numbers but keep structure
+        normalized = re.sub(r'\b\d+\.?\d*\b', 'N', desc.lower().strip())
+        # Remove extra whitespace
+        normalized = ' '.join(normalized.split())
+        return normalized
+
+    # Build canonical structure
+    plan_structure = []
+    for row in rows:
+        step_desc, step_num, branch_num, dsl_hint = row
+        plan_structure.append({
+            "step_num": step_num,
+            "branch_num": branch_num,
+            "normalized": normalize_step(step_desc),
+            "dsl_hint": dsl_hint or "",
+        })
+
+    # Create stable JSON representation
+    plan_json = json.dumps(plan_structure, sort_keys=True)
+
+    # Hash for quick lookup
+    signature = hashlib.sha256(plan_json.encode()).hexdigest()[:16]
+
+    return (signature, len(rows), plan_json)
+
+
+def record_plan_outcome(dag_id: str, success: bool) -> None:
+    """Record the outcome of a DAG plan for stats tracking.
+
+    Called after grade_dag() to update plan success rates.
+
+    Args:
+        dag_id: The DAG that was graded
+        success: Whether the DAG produced correct answer
+    """
+    now = datetime.now(timezone.utc).isoformat()
+
+    try:
+        signature, step_count, plan_json = compute_plan_signature(dag_id)
+    except Exception as e:
+        logger.warning("[mcts] Failed to compute plan signature for %s: %s", dag_id, e)
+        return
+
+    if signature == "empty":
+        return  # Don't track empty plans
+
+    conn = get_db()
+
+    # Upsert with atomic update
+    conn.execute(
+        """
+        INSERT INTO dag_plan_stats (
+            plan_signature, step_count, plan_structure,
+            uses, successes, success_rate,
+            first_seen_at, last_used_at
+        ) VALUES (?, ?, ?, 1, ?, ?, ?, ?)
+        ON CONFLICT(plan_signature) DO UPDATE SET
+            uses = uses + 1,
+            successes = successes + excluded.successes,
+            success_rate = CAST(successes + excluded.successes AS REAL) / (uses + 1),
+            last_used_at = excluded.last_used_at
+        """,
+        (signature, step_count, plan_json, 1 if success else 0,
+         0.5 if success else 0.0, now, now),
+    )
+
+    logger.debug(
+        "[mcts] Recorded plan outcome: sig=%s steps=%d success=%s",
+        signature[:8], step_count, success
+    )
+
+
+def get_plan_success_rate(plan_signature: str) -> Optional[tuple[float, int]]:
+    """Get success rate and use count for a plan signature.
+
+    Args:
+        plan_signature: The plan signature to look up
+
+    Returns:
+        Tuple of (success_rate, uses) or None if not found
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT success_rate, uses FROM dag_plan_stats
+        WHERE plan_signature = ?
+        """,
+        (plan_signature,),
+    )
+    row = cursor.fetchone()
+    if row:
+        return (row[0], row[1])
+    return None
+
+
+def get_plan_stats_summary() -> dict:
+    """Get summary statistics for plan tracking.
+
+    Returns:
+        Dict with total_plans, total_uses, avg_success_rate, etc.
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT
+            COUNT(*) as total_plans,
+            SUM(uses) as total_uses,
+            AVG(success_rate) as avg_success_rate,
+            MIN(success_rate) as min_success_rate,
+            MAX(success_rate) as max_success_rate
+        FROM dag_plan_stats
+        """
+    )
+    row = cursor.fetchone()
+    if row:
+        return {
+            "total_plans": row[0] or 0,
+            "total_uses": row[1] or 0,
+            "avg_success_rate": row[2] or 0.0,
+            "min_success_rate": row[3] or 0.0,
+            "max_success_rate": row[4] or 0.0,
+        }
+    return {"total_plans": 0, "total_uses": 0, "avg_success_rate": 0.0}
+
+
+def evaluate_proposed_plan(steps: list[dict]) -> Optional[dict]:
+    """Evaluate a proposed plan before execution.
+
+    Given a list of proposed steps (from planner), compute what the
+    plan signature would be and check if we've seen this pattern before.
+
+    This enables "prefer plans that historically work" routing.
+
+    Args:
+        steps: List of step dicts with keys:
+            - task: step description (required)
+            - step_num: sequential order (optional, will use index)
+            - branch_num: parallel branch ID (optional, default 1)
+            - dsl_hint: operation hint (optional)
+
+    Returns:
+        Dict with signature, historical stats, or None if no history
+        {
+            "signature": "abc123...",
+            "step_count": 3,
+            "uses": 10,
+            "successes": 8,
+            "success_rate": 0.8,
+            "is_known_good": True,  # success_rate > 0.6 and uses >= 3
+            "is_known_bad": False,  # success_rate < 0.3 and uses >= 3
+        }
+    """
+    import hashlib
+    import json
+    import re
+
+    if not steps:
+        return None
+
+    # Normalize steps: remove numbers, lowercase, strip
+    def normalize_step(desc: str) -> str:
+        normalized = re.sub(r'\b\d+\.?\d*\b', 'N', desc.lower().strip())
+        normalized = ' '.join(normalized.split())
+        return normalized
+
+    # Build canonical structure (matching compute_plan_signature format)
+    plan_structure = []
+    for i, step in enumerate(steps):
+        task = step.get("task", step.get("step_desc", ""))
+        plan_structure.append({
+            "step_num": step.get("step_num", i + 1),
+            "branch_num": step.get("branch_num", 1),
+            "normalized": normalize_step(task),
+            "dsl_hint": step.get("dsl_hint", ""),
+        })
+
+    # Create stable JSON and hash
+    plan_json = json.dumps(plan_structure, sort_keys=True)
+    signature = hashlib.sha256(plan_json.encode()).hexdigest()[:16]
+
+    # Look up historical stats
+    stats = get_plan_success_rate(signature)
+    if stats is None:
+        return {
+            "signature": signature,
+            "step_count": len(steps),
+            "uses": 0,
+            "successes": 0,
+            "success_rate": 0.5,  # Prior
+            "is_known_good": False,
+            "is_known_bad": False,
+            "is_new": True,
+        }
+
+    success_rate, uses = stats
+    return {
+        "signature": signature,
+        "step_count": len(steps),
+        "uses": uses,
+        "successes": int(success_rate * uses),
+        "success_rate": success_rate,
+        "is_known_good": success_rate > 0.6 and uses >= 3,
+        "is_known_bad": success_rate < 0.3 and uses >= 3,
+        "is_new": False,
+    }
+
+
+def get_top_plans(limit: int = 10, min_uses: int = 3) -> list[dict]:
+    """Get top performing plans by success rate.
+
+    Args:
+        limit: Max plans to return
+        min_uses: Minimum uses required (filter noise)
+
+    Returns:
+        List of plan stats dicts sorted by success_rate desc
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT plan_signature, step_count, uses, successes, success_rate
+        FROM dag_plan_stats
+        WHERE uses >= ?
+        ORDER BY success_rate DESC, uses DESC
+        LIMIT ?
+        """,
+        (min_uses, limit),
+    )
+    return [
+        {
+            "signature": row[0],
+            "step_count": row[1],
+            "uses": row[2],
+            "successes": row[3],
+            "success_rate": row[4],
+        }
+        for row in cursor.fetchall()
+    ]
+
+
+def get_worst_plans(limit: int = 10, min_uses: int = 3) -> list[dict]:
+    """Get worst performing plans by success rate.
+
+    Args:
+        limit: Max plans to return
+        min_uses: Minimum uses required (filter noise)
+
+    Returns:
+        List of plan stats dicts sorted by success_rate asc
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT plan_signature, step_count, uses, successes, success_rate
+        FROM dag_plan_stats
+        WHERE uses >= ?
+        ORDER BY success_rate ASC, uses DESC
+        LIMIT ?
+        """,
+        (min_uses, limit),
+    )
+    return [
+        {
+            "signature": row[0],
+            "step_count": row[1],
+            "uses": row[2],
+            "successes": row[3],
+            "success_rate": row[4],
+        }
+        for row in cursor.fetchall()
+    ]
+
 
 # =============================================================================
 # DAG STEP FUNCTIONS

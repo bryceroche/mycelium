@@ -30,7 +30,7 @@ CRITICAL for percentages:
 - Always identify the BASE that the percentage applies to
 
 === PHASE 2: DECOMPOSITION ===
-Build ATOMIC steps using the extracted values.
+Build ATOMIC steps using the extracted values BY NAME (for provenance tracking).
 
 FORMAT:
 STEPS:
@@ -38,16 +38,18 @@ STEPS:
   task: [ONE atomic operation - verb + what]
   operation: [add/subtract/multiply/divide]
   values:
-    semantic_name: ACTUAL_NUMBER_or_{step_N}
+    param_name: $phase1_value_name OR {step_N}
   dsl_hint: +|-|*|/
   depends_on: []
 
-=== DATA FLOW RULE (CRITICAL!) ===
-Every step's values MUST be either:
-1. ACTUAL NUMBERS from Phase 1 (like 80000, 0.5, 3)
-2. Step references (like "{step_1}") pointing to a prior step's output
+=== VALUE REFERENCES (CRITICAL!) ===
+Every step's values MUST reference:
+1. Phase 1 values by name with $ prefix: $purchase_price, $repair_cost
+2. Prior step results with braces: {step_1}, {step_2}
 
-NEVER use undefined variables! If a step needs a value that isn't known, you CANNOT compute it forward.
+This enables VALUE PROVENANCE TRACKING - we can trace exactly which value from the problem goes where.
+
+NEVER use raw numbers in Phase 2! Always use $name to reference Phase 1 values.
 
 ALGEBRA DETECTION: If the problem gives a RESULT and asks for an INPUT (like "she has 5 left, how many did she start with?"), you must WORK BACKWARDS:
 - Identify what operations were done (in order)
@@ -56,11 +58,10 @@ ALGEBRA DETECTION: If the problem gives a RESULT and asks for an INPUT (like "sh
 
 RULES:
 - ONE OPERATION PER STEP (critical!)
-- Use SEMANTIC NAMES as keys (e.g., "base", "rate", "quantity")
-- Values must be ACTUAL NUMBERS (like 80000) or step references (like "{step_2}")
-- NEVER use Phase 1 variable names as values - use the actual numbers!
-- Reference prior results as "{step_N}"
-- For "increased by X%": multiply base by (1 + X/100)
+- Use SEMANTIC NAMES as param keys (e.g., "base", "rate", "quantity")
+- Reference Phase 1 values with $name (e.g., $purchase_price)
+- Reference prior results with {step_N} (e.g., {step_1})
+- For "increased by X%": multiply base by (1 + X/100), extract multiplier in Phase 1
 
 === EXAMPLE ===
 Problem: "Josh buys a house for $80,000, puts in $50,000 repairs. This increased the value of the house by 150%. How much profit?"
@@ -68,31 +69,31 @@ Problem: "Josh buys a house for $80,000, puts in $50,000 repairs. This increased
 VALUES:
 purchase_price: 80000 — price Josh paid for the house (the BASE for value increase)
 repair_cost: 50000 — cost of repairs (investment, not the base for %)
-increase_pct: 150 — percentage increase applied to HOUSE value, not total investment
+increase_multiplier: 2.5 — 150% increase means multiply by 2.5
 
 STEPS:
 - id: step_1
   task: Calculate total investment
   operation: add
   values:
-    a: 80000
-    b: 50000
+    a: $purchase_price
+    b: $repair_cost
   dsl_hint: +
   depends_on: []
 - id: step_2
   task: Calculate new house value (purchase_price × 2.5 for 150% increase)
   operation: multiply
   values:
-    base: 80000
-    multiplier: 2.5
+    base: $purchase_price
+    multiplier: $increase_multiplier
   dsl_hint: *
   depends_on: []
 - id: step_3
   task: Calculate profit (new value minus investment)
   operation: subtract
   values:
-    new_value: "{step_2}"
-    investment: "{step_1}"
+    new_value: {step_2}
+    investment: {step_1}
   dsl_hint: -
   depends_on: [step_1, step_2]
 
@@ -118,24 +119,24 @@ STEPS:
   task: Calculate vacuums before orange (double the remaining, since half was sold)
   operation: divide
   values:
-    remaining: 5
-    fraction_kept: 0.5
+    remaining: $remaining_after_orange
+    fraction_kept: $orange_kept_fraction
   dsl_hint: /
   depends_on: []
 - id: step_2
   task: Calculate vacuums before red (add back the 2 sold)
   operation: add
   values:
-    after_red: "{step_1}"
-    sold_at_red: 2
+    after_red: {step_1}
+    sold: $sold_at_red
   dsl_hint: +
   depends_on: [step_1]
 - id: step_3
   task: Calculate original total (divide by 2/3 since 1/3 was sold at green)
   operation: divide
   values:
-    after_green: "{step_2}"
-    fraction_remaining: 0.6667
+    after_green: {step_2}
+    fraction_remaining: $fraction_remaining_after_green
   dsl_hint: /
   depends_on: [step_2]
 """
@@ -293,6 +294,8 @@ class DAGPlan:
     depth: int = 0
     # Optional parent step ID (for sub-plans)
     parent_step_id: Optional[str] = None
+    # Phase 1 extracted values: name -> numeric value (for provenance tracking)
+    phase1_values: dict[str, Any] = field(default_factory=dict)
 
     def max_depth(self) -> int:
         """Calculate maximum nesting depth across all steps."""
@@ -310,6 +313,93 @@ class DAGPlan:
         for step in self.steps:
             result.extend(step.flatten())
         return result
+
+    def resolve_value_references(self, step_results: dict[str, Any] = None) -> dict[str, dict[str, Any]]:
+        """Resolve $name and {step_N} references to actual values.
+
+        Args:
+            step_results: Mapping of step_id -> result for {step_N} resolution
+
+        Returns:
+            Dict mapping step_id -> resolved extracted_values
+        """
+        import re
+        step_results = step_results or {}
+        resolved = {}
+        phase1_ref_pattern = re.compile(r'^\$([a-zA-Z_][a-zA-Z0-9_]*)$')
+        step_ref_pattern = re.compile(r'^\{(step_?\d+)\}$', re.IGNORECASE)
+
+        for step in self.steps:
+            step_resolved = {}
+            for key, value in step.extracted_values.items():
+                if isinstance(value, (int, float)):
+                    # Already a number
+                    step_resolved[key] = value
+                elif isinstance(value, str):
+                    # Check for Phase 1 reference ($name)
+                    phase1_match = phase1_ref_pattern.match(value)
+                    if phase1_match:
+                        ref_name = phase1_match.group(1)
+                        if ref_name in self.phase1_values:
+                            step_resolved[key] = self.phase1_values[ref_name]
+                        else:
+                            logger.warning(
+                                "[planner] Step '%s' references unknown Phase 1 value: $%s",
+                                step.id, ref_name
+                            )
+                            step_resolved[key] = value  # Keep as-is for error handling
+                        continue
+
+                    # Check for step reference ({step_N})
+                    step_match = step_ref_pattern.match(value)
+                    if step_match:
+                        ref_step = step_match.group(1)
+                        if ref_step in step_results:
+                            step_resolved[key] = step_results[ref_step]
+                        else:
+                            # Step result not yet available - keep as reference
+                            step_resolved[key] = value
+                        continue
+
+                    # Try to parse as number (backwards compatibility)
+                    try:
+                        if "." in value:
+                            step_resolved[key] = float(value)
+                        else:
+                            step_resolved[key] = int(value)
+                    except ValueError:
+                        # Keep as-is (might be a string value)
+                        step_resolved[key] = value
+                else:
+                    step_resolved[key] = value
+
+            resolved[step.id] = step_resolved
+
+        return resolved
+
+    def validate_value_references(self) -> tuple[bool, list[str]]:
+        """Validate that all $name references exist in Phase 1 values.
+
+        Returns:
+            Tuple of (is_valid, list of error messages)
+        """
+        import re
+        errors = []
+        phase1_ref_pattern = re.compile(r'^\$([a-zA-Z_][a-zA-Z0-9_]*)$')
+
+        for step in self.steps:
+            for key, value in step.extracted_values.items():
+                if isinstance(value, str):
+                    match = phase1_ref_pattern.match(value)
+                    if match:
+                        ref_name = match.group(1)
+                        if ref_name not in self.phase1_values:
+                            errors.append(
+                                f"Step '{step.id}' references undefined value ${ref_name}. "
+                                f"Available Phase 1 values: {list(self.phase1_values.keys())}"
+                            )
+
+        return len(errors) == 0, errors
 
     def validate(self, recursive: bool = True) -> tuple[bool, list[str]]:
         """Validate the DAG structure.
@@ -563,9 +653,9 @@ class Planner:
         ]
 
         response = await self.client.generate(messages, temperature=self.temperature)
-        steps = self._parse_steps(response)
+        steps, phase1_values = self._parse_steps(response)
 
-        plan = DAGPlan(steps=steps, problem=problem)
+        plan = DAGPlan(steps=steps, problem=problem, phase1_values=phase1_values)
 
         # Skip validation for template decomposition (e.g., umbrella creation)
         if skip_validation:
@@ -584,17 +674,20 @@ class Planner:
 
         return plan
 
-    def _parse_steps(self, response: str) -> list[Step]:
+    def _parse_steps(self, response: str) -> tuple[list[Step], dict[str, Any]]:
         """Parse steps from planner response.
 
         Handles two-phase format with VALUES: and STEPS: sections.
         Logs warnings when parsing issues are detected (empty tasks, etc.)
+
+        Returns:
+            Tuple of (steps, phase1_values) for provenance tracking
         """
         steps = []
         current_step = None
         parse_warnings = []
         parsing_values = False  # Track if we're inside a values: block
-        extracted_values_phase1 = {}  # Values from Phase 1 (for logging)
+        extracted_values_phase1 = {}  # Values from Phase 1 (for provenance tracking)
         in_values_section = False  # Track if we're in the VALUES: section
 
         lines = response.split("\n")
@@ -616,10 +709,13 @@ class Planner:
                 continue
 
             # Parse Phase 1 VALUES section (for logging/debugging)
-            # Only parse lines that look like "name: value" or "name: value — description"
-            if in_values_section and ":" in stripped and not stripped.startswith("-"):
-                # Format: "name: value — description"
-                parts = stripped.split("—")[0] if "—" in stripped else stripped
+            # Format: "- name: value — description" or "name: value — description"
+            if in_values_section and ":" in stripped:
+                # Remove leading "- " if present
+                line_content = stripped.lstrip("- ").strip()
+                # Split on em-dash or double-dash for description
+                parts = line_content.split("—")[0] if "—" in line_content else line_content
+                parts = parts.split("--")[0] if "--" in parts else parts
                 if ":" in parts:
                     key, val = parts.split(":", 1)
                     key = key.strip()
@@ -629,12 +725,15 @@ class Planner:
                     if key.lower() in skip_keys:
                         i += 1
                         continue
-                    # Only capture numeric values (skip references and placeholders)
-                    try:
-                        extracted_values_phase1[key] = float(val) if "." in val else int(val)
-                    except ValueError:
-                        # Skip non-numeric values in Phase 1 logging (they're captured in Step parsing)
-                        pass
+                    # Extract numeric value (handle "3 eggs" → 3, "80000" → 80000, "2.5" → 2.5)
+                    # Try to find a number at the start of the value
+                    numeric_match = re.match(r'^([+-]?\d+\.?\d*)', val)
+                    if numeric_match:
+                        num_str = numeric_match.group(1)
+                        try:
+                            extracted_values_phase1[key] = float(num_str) if "." in num_str else int(num_str)
+                        except ValueError:
+                            pass
                 i += 1
                 continue
 
@@ -684,15 +783,20 @@ class Planner:
                     key, val = stripped.split(":", 1)
                     key = key.strip()
                     val = val.strip().strip('"').strip("'")
-                    # Try to parse as number
-                    try:
-                        if "." in val:
-                            current_step.extracted_values[key] = float(val)
-                        else:
-                            current_step.extracted_values[key] = int(val)
-                    except ValueError:
-                        # Keep as string (could be "{step_1}" reference)
+                    # Check if it's a Phase 1 reference ($name) or step reference ({step_N})
+                    if val.startswith("$") or val.startswith("{"):
+                        # Keep as string reference for resolution at execution time
                         current_step.extracted_values[key] = val
+                    else:
+                        # Try to parse as number
+                        try:
+                            if "." in val:
+                                current_step.extracted_values[key] = float(val)
+                            else:
+                                current_step.extracted_values[key] = int(val)
+                        except ValueError:
+                            # Keep as string (could be other reference format)
+                            current_step.extracted_values[key] = val
                 i += 1
                 continue
 
@@ -757,12 +861,17 @@ class Planner:
             steps = [Step(id="solve", task="Solve the problem directly", depends_on=[])]
 
         # Validate the resulting plan structure
-        plan = DAGPlan(steps=steps, problem="")
+        plan = DAGPlan(steps=steps, problem="", phase1_values=extracted_values_phase1)
         is_valid, errors = plan.validate()
         if not is_valid:
             logger.warning(f"Parsed plan has validation errors: {'; '.join(errors)}")
 
-        return steps
+        # Validate Phase 1 value references
+        ref_valid, ref_errors = plan.validate_value_references()
+        if not ref_valid:
+            logger.warning(f"Phase 1 reference errors: {'; '.join(ref_errors)}")
+
+        return steps, extracted_values_phase1
 
 
 # Convenience function
