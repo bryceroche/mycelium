@@ -25,6 +25,12 @@ import numpy as np
 # Version for centroid matrix cache (increment to invalidate old caches)
 _CENTROID_CACHE_VERSION = 1
 
+# Canonical atomic operations for embedding-based complexity detection
+# Per CLAUDE.md: "prefer embedding similarity over keyword matching"
+ATOMIC_OPERATIONS = ["ADD(a, b)", "SUB(a, b)", "MUL(a, b)", "DIV(a, b)"]
+ATOMIC_SIMILARITY_THRESHOLD = 0.70  # Below this, step is unknown/complex
+ATOMIC_GAP_THRESHOLD = 0.03  # Gap between best and 2nd best match; below this = multi-part
+
 
 def _parse_centroid_data(data) -> Optional[np.ndarray]:
     """Parse centroid data which may be JSON string or binary bytes.
@@ -361,6 +367,10 @@ class StepSignatureDB:
         # Batched centroid propagation: track pending updates per signature
         # Key: signature_id, Value: count of pending centroid updates
         self._pending_propagations: dict[int, int] = {}
+
+        # Cached atomic operation embeddings for complexity detection
+        # Per CLAUDE.md: "prefer embedding similarity over keyword matching"
+        self._atomic_embeddings: Optional[list[np.ndarray]] = None
 
         self._init_schema()
 
@@ -1732,34 +1742,40 @@ class StepSignatureDB:
                                 best_match = None
 
                         # Check 2: Multi-part step rejection (needs decomposition)
-                        # Leaves only handle atomic operations - detect via dsl_hint
-                        # Per CLAUDE.md: prefer embedding over keyword matching
+                        # Leaves only handle atomic operations - detect via embedding similarity
+                        # Per CLAUDE.md: "prefer embedding similarity over keyword matching"
                         if best_match is not None and dsl_hint:
-                            # Multi-part dsl_hints contain multiple ops: "+, *" or "add then multiply"
-                            multi_op_indicators = [',', ' and ', ' then ', '+*', '+-', '*/', '-*']
-                            hint_lower = dsl_hint.lower()
-                            is_multi_part = any(ind in hint_lower for ind in multi_op_indicators)
+                            # First check: does dsl_hint map to a known atomic operation?
+                            known_op = self._dsl_hint_to_graph(dsl_hint)
+                            if known_op is not None:
+                                # Known atomic operation (+, -, *, /, add, subtract, etc.) - accept
+                                pass
+                            else:
+                                # Unknown hint - use embedding similarity to detect if atomic
+                                from mycelium.embedding_cache import cached_embed
+                                step_emb_for_atomic_check = cached_embed(dsl_hint)
 
-                            # Also reject if dsl_hint doesn't map to a known atomic operation
-                            if not is_multi_part:
-                                known_op = self._dsl_hint_to_graph(dsl_hint)
-                                if known_op is None and len(dsl_hint) > 5:
-                                    # Long dsl_hint that doesn't map to atomic op = likely complex
-                                    is_multi_part = True
-
-                            if is_multi_part:
-                                logger.info(
-                                    "[db] Leaf '%s' REJECTED multi-part step (hint='%s'): '%s'",
-                                    best_match.step_type, dsl_hint, step_text[:50]
-                                )
-                                # Queue for decomposition
-                                queue_for_decomposition(
-                                    step_text=step_text,
-                                    complexity_reason=f"multi_part_hint_{dsl_hint}",
-                                    problem_context=parent_problem,
-                                )
-                                # Fall through to create new signature (which will be umbrella)
-                                best_match = None
+                                if step_emb_for_atomic_check is not None:
+                                    is_atomic, max_atomic_sim, gap, best_atomic_op = self._is_step_atomic(
+                                        np.array(step_emb_for_atomic_check)
+                                    )
+                                    if not is_atomic:
+                                        # Small gap = matches multiple ops (multi-part like "add then multiply")
+                                        # Low sim = unknown complex operation
+                                        reason = "multi_part" if gap < ATOMIC_GAP_THRESHOLD else "unknown_complex"
+                                        logger.info(
+                                            "[db] Leaf '%s' REJECTED %s step (sim=%.3f, gap=%.3f, best=%s, hint='%s'): '%s'",
+                                            best_match.step_type, reason, max_atomic_sim, gap,
+                                            best_atomic_op, dsl_hint, step_text[:50]
+                                        )
+                                        # Queue for decomposition
+                                        queue_for_decomposition(
+                                            step_text=step_text,
+                                            complexity_reason=f"{reason}_gap_{gap:.3f}",
+                                            problem_context=parent_problem,
+                                        )
+                                        # Fall through to create new signature (which will be umbrella)
+                                        best_match = None
 
                 if best_match is not None and similarity_ok:
                     # Log routing decision with similarity for tuning
@@ -4463,6 +4479,69 @@ class StepSignatureDB:
         }
 
         return HINT_TO_GRAPH.get(hint)
+
+    def _get_atomic_embeddings(self) -> list[np.ndarray]:
+        """Get cached embeddings for atomic operations.
+
+        Lazily computes and caches embeddings for ADD, SUB, MUL, DIV.
+        Per CLAUDE.md: "prefer embedding similarity over keyword matching"
+
+        Returns:
+            List of numpy arrays, one embedding per atomic operation
+        """
+        if self._atomic_embeddings is None:
+            from mycelium.embedding_cache import cached_embed
+            self._atomic_embeddings = []
+            for op in ATOMIC_OPERATIONS:
+                emb = cached_embed(op)
+                if emb is not None:
+                    self._atomic_embeddings.append(np.array(emb))
+            logger.debug("[db] Cached %d atomic operation embeddings", len(self._atomic_embeddings))
+        return self._atomic_embeddings
+
+    def _is_step_atomic(self, step_embedding: np.ndarray) -> tuple[bool, float, float, str]:
+        """Check if a step embedding matches an atomic operation.
+
+        Compares the step's embedding against all atomic operations (ADD, SUB, MUL, DIV).
+        Uses two signals:
+        1. Max similarity - if too low, step is unknown/complex
+        2. Gap between best and 2nd best - if too small, step matches multiple ops (multi-part)
+
+        Per CLAUDE.md: "prefer embedding similarity over keyword matching"
+
+        Args:
+            step_embedding: Embedding of the step (from dsl_hint or step_text)
+
+        Returns:
+            Tuple of (is_atomic, max_similarity, gap, best_match_op)
+            - is_atomic: True if step clearly matches one atomic operation
+            - max_similarity: Similarity to best matching atomic op
+            - gap: Difference between best and 2nd best match (small gap = multi-part)
+            - best_match_op: The atomic operation that matched best
+        """
+        atomic_embeddings = self._get_atomic_embeddings()
+        if not atomic_embeddings or len(atomic_embeddings) < 2:
+            # Not enough atomic embeddings available, assume atomic
+            return True, 1.0, 1.0, "unknown"
+
+        # Compute similarity to all atomic operations
+        similarities = []
+        for i, atomic_emb in enumerate(atomic_embeddings):
+            sim = cosine_similarity(step_embedding, atomic_emb)
+            similarities.append((sim, ATOMIC_OPERATIONS[i]))
+
+        # Sort by similarity descending
+        similarities.sort(key=lambda x: -x[0])
+        best_sim, best_op = similarities[0]
+        second_sim, _ = similarities[1]
+        gap = best_sim - second_sim
+
+        # Step is atomic if:
+        # 1. Max similarity is above threshold (it matches some atomic op)
+        # 2. Gap is above threshold (it clearly matches ONE op, not multiple)
+        is_atomic = best_sim >= ATOMIC_SIMILARITY_THRESHOLD and gap >= ATOMIC_GAP_THRESHOLD
+
+        return is_atomic, best_sim, gap, best_op
 
     def _infer_step_type(self, step_text: str, dsl_hint: str = None) -> str:
         """Infer a step type from step text.
