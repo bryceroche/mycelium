@@ -2234,11 +2234,25 @@ class Solver:
                                 ref_name, params[key]
                             )
                         else:
-                            logger.warning(
-                                "[solver] Unknown Phase 1 reference: $%s (available: %s)",
-                                ref_name, list(self._current_phase1_values.keys())
-                            )
-                            params[key] = val  # Keep as-is for error handling
+                            # Try partial match fallback (e.g., single_glass_price -> glass_price)
+                            matched_key = None
+                            for p1_key in self._current_phase1_values:
+                                # Check if either is a suffix/substring of the other
+                                if p1_key in ref_name or ref_name in p1_key:
+                                    matched_key = p1_key
+                                    break
+                            if matched_key:
+                                params[key] = self._current_phase1_values[matched_key]
+                                logger.debug(
+                                    "[solver] Resolved $%s → %s (partial match: %s)",
+                                    ref_name, params[key], matched_key
+                                )
+                            else:
+                                logger.warning(
+                                    "[solver] Unknown Phase 1 reference: $%s (available: %s)",
+                                    ref_name, list(self._current_phase1_values.keys())
+                                )
+                                params[key] = val  # Keep as-is for error handling
                     # Check for step reference ({step_N})
                     elif val.startswith('{') and val.endswith('}'):
                         ref_key = val[1:-1]
@@ -2757,7 +2771,16 @@ Rules:
                     if ref_name in self._current_phase1_values:
                         params[key] = self._current_phase1_values[ref_name]
                     else:
-                        params[key] = val  # Keep as-is
+                        # Try partial match fallback
+                        matched_key = None
+                        for p1_key in self._current_phase1_values:
+                            if p1_key in ref_name or ref_name in p1_key:
+                                matched_key = p1_key
+                                break
+                        if matched_key:
+                            params[key] = self._current_phase1_values[matched_key]
+                        else:
+                            params[key] = val  # Keep as-is
                 # Check for step reference ({step_N})
                 elif val.startswith('{') and val.endswith('}'):
                     ref_key = val[1:-1]
@@ -3305,6 +3328,9 @@ Rules:
                 len(new_plan.steps), len(failed_steps)
             )
 
+            # Update Phase 1 values for the new plan (for $name resolution)
+            self._current_phase1_values = new_plan.phase1_values or {}
+
             # Execute the new plan
             # Validate DAG structure
             if len(new_plan.steps) > 1:
@@ -3317,7 +3343,24 @@ Rules:
                     return None
 
             # Batch write expressions for all steps
-            await self._batch_write_expressions(new_plan.steps)
+            # Build step_infos dicts from Step objects (same format as main solve())
+            step_infos = []
+            for step in new_plan.steps:
+                params = {}
+                for key, val in (step.extracted_values or {}).items():
+                    if isinstance(val, str) and val.startswith('{') and val.endswith('}'):
+                        params[key] = val[1:-1]  # {step_1} -> step_1
+                    else:
+                        params[key] = val
+                if params:
+                    step_infos.append({
+                        "step_id": step.id,
+                        "task": step.task,
+                        "operation": step.dsl_hint,
+                        "params": params,
+                    })
+            if step_infos:
+                await self._batch_write_expressions(step_infos)
 
             # Execute steps in dependency order
             step_order = self._compute_execution_order(new_plan.steps)
