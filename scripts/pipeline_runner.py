@@ -258,6 +258,18 @@ async def solve_problem(
                     learn_result["decomposed"], learn_result["children_created"]
                 )
 
+        # Auto-trigger reactive exploration for failed problems (per CLAUDE.md)
+        # This explores alternative nodes to find what would have worked, enabling
+        # precise divergence-based blame assignment
+        if not is_correct:
+            reactive_result = await solver.maybe_run_reactive_exploration()
+            if reactive_result.get("winning_path_found"):
+                logger.info(
+                    "[pipeline] Reactive exploration: found winning path, %d divergence points, %d blame assigned",
+                    reactive_result.get("divergence_points", 0),
+                    reactive_result.get("blame_assigned", 0),
+                )
+
         # Auto-trigger DSL regeneration if post-mortem flagged it (per beads mycelium-flbq)
         # This runs mod 10 problems when high-conf-wrong nodes accumulate
         async with LLMClient() as client:

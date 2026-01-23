@@ -154,6 +154,18 @@ EXPLORATION_EPSILON_DECAY = 0.995  # Decay factor per problem (0.995^100 ≈ 0.6
 EXPLORATION_EPSILON_MIN = 0.05  # Minimum epsilon floor
 
 # =============================================================================
+# REACTIVE EXPLORATION (retry on failure)
+# =============================================================================
+# Per CLAUDE.md: "If we got the wrong answer that should trigger a larger MCTS rollout
+# where we explore the tree more widely searching for the right leaf_node, dag_step pairs"
+# When a problem fails, we retry with forced exploration of alternative nodes at each step.
+# If we find a winning path, we compare divergence points for precise blame assignment.
+REACTIVE_EXPLORATION_ENABLED = True  # Enable reactive exploration on failure
+REACTIVE_EXPLORATION_MAX_ALTERNATIVES = 3  # Max alternative nodes to try per step
+REACTIVE_EXPLORATION_MAX_RETRIES = 5  # Max total retry attempts
+REACTIVE_EXPLORATION_MIN_SIMILARITY = 0.5  # Min similarity for alternative candidates
+
+# =============================================================================
 # ADAPTIVE DECOMPOSITION THRESHOLDS
 # =============================================================================
 # min_attempts for flagging nodes needing decomposition

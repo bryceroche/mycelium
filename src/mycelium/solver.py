@@ -569,6 +569,10 @@ class Solver:
         # These have operational_failures > 0 already set
         self._postmortem_flagged_nodes: list[int] = []
 
+        # Reactive exploration context (per CLAUDE.md: explore alternatives on failure)
+        # Stored after record_problem_outcome() for async processing
+        self._pending_reactive_exploration: Optional[dict] = None
+
     def _create_background_task(self, coro) -> asyncio.Task:
         """Create a background task with proper lifecycle management.
 
@@ -2906,6 +2910,307 @@ Rules:
 
         return False
 
+    async def _retry_with_alternatives(
+        self,
+        problem: str,
+        failed_result: SolverResult,
+        ground_truth: str,
+        difficulty: float = None,
+    ) -> Optional[tuple[SolverResult, str]]:
+        """Retry a failed problem exploring alternative nodes at each step.
+
+        Per CLAUDE.md: "If we got the wrong answer that should trigger a larger MCTS
+        rollout where we explore the tree more widely searching for the right
+        leaf_node, dag_step pairs"
+
+        This function re-runs steps from the failed thread, trying alternative
+        signatures at each decision point. If a winning path is found, it returns
+        that result for divergence analysis.
+
+        Args:
+            problem: Original problem text
+            failed_result: The failed SolverResult
+            ground_truth: Correct answer to compare against
+            difficulty: Problem difficulty (for compute budget)
+
+        Returns:
+            Tuple of (winning_result, winning_thread_id) if found, else None
+        """
+        from mycelium.config import (
+            REACTIVE_EXPLORATION_MAX_ALTERNATIVES,
+            REACTIVE_EXPLORATION_MAX_RETRIES,
+            REACTIVE_EXPLORATION_MIN_SIMILARITY,
+        )
+        from mycelium.data_layer.mcts import create_thread, log_thread_step, complete_thread, grade_thread
+        import uuid
+
+        # Get step embeddings and signatures from the failed run
+        failed_steps = failed_result.steps
+        if not failed_steps:
+            return None
+
+        logger.info(
+            "[reactive] Starting reactive exploration for failed problem with %d steps",
+            len(failed_steps)
+        )
+
+        # For each step, get alternative signatures we could have tried
+        step_alternatives: list[list[tuple[int, float]]] = []  # list of (sig_id, similarity) per step
+        for step_result in failed_steps:
+            if step_result.signature_id is None:
+                step_alternatives.append([])
+                continue
+
+            # Get step embedding (should be cached from original run)
+            step_text = normalize_step_text(step_result.task)
+            embedding = cached_embed(step_text, self.embedder)
+
+            # Find similar signatures excluding the one we used
+            similar = self.step_db.find_similar(
+                embedding,
+                threshold=REACTIVE_EXPLORATION_MIN_SIMILARITY,
+                limit=REACTIVE_EXPLORATION_MAX_ALTERNATIVES + 1,
+            )
+
+            # Filter out the signature we already tried
+            alternatives = [
+                (sig.id, sim) for sig, sim in similar
+                if sig.id != step_result.signature_id and not sig.is_semantic_umbrella
+            ][:REACTIVE_EXPLORATION_MAX_ALTERNATIVES]
+
+            step_alternatives.append(alternatives)
+            logger.debug(
+                "[reactive] Step '%s' has %d alternatives: %s",
+                step_result.step_id[:20] if step_result.step_id else "?",
+                len(alternatives),
+                [(a[0], f"{a[1]:.3f}") for a in alternatives]
+            )
+
+        # Try alternative paths (greedy: substitute one step at a time)
+        for retry_num in range(min(REACTIVE_EXPLORATION_MAX_RETRIES, len(failed_steps))):
+            # Find step with most promising alternatives
+            best_step_idx = -1
+            best_alt_sim = 0.0
+            for i, alts in enumerate(step_alternatives):
+                if alts and alts[0][1] > best_alt_sim:
+                    best_alt_sim = alts[0][1]
+                    best_step_idx = i
+
+            if best_step_idx < 0:
+                logger.debug("[reactive] No more alternatives to try")
+                break
+
+            # Pop best alternative for this step
+            alt_sig_id, alt_sim = step_alternatives[best_step_idx].pop(0)
+            failed_step = failed_steps[best_step_idx]
+
+            logger.info(
+                "[reactive] Retry %d: trying sig %d (sim=%.3f) for step '%s' (was sig %d)",
+                retry_num + 1, alt_sig_id, alt_sim,
+                failed_step.step_id[:20] if failed_step.step_id else "?",
+                failed_step.signature_id
+            )
+
+            # Create a new thread for this exploration
+            explore_thread_id = f"explore-{uuid.uuid4().hex[:8]}"
+            if self._current_dag_id:
+                create_thread(
+                    dag_id=self._current_dag_id,
+                    parent_thread_id=self._root_thread_id,
+                    fork_at_step=failed_step.step_id,
+                    fork_reason="reactive_exploration",
+                    thread_id=explore_thread_id,
+                )
+
+            # Get alternative signature
+            alt_sig = self.step_db.get_signature(alt_sig_id)
+            if not alt_sig:
+                continue
+
+            # Try executing with the alternative signature
+            # Build context from previous steps (use original results up to this point)
+            context = {}
+            step_descriptions = {}
+            for i, prev_step in enumerate(failed_steps[:best_step_idx]):
+                if prev_step.result:
+                    context[prev_step.step_id] = prev_step.result
+                step_descriptions[prev_step.step_id] = prev_step.task
+
+            # Create a Step object for execution
+            from mycelium.planner import Step
+            step_obj = Step(
+                id=failed_step.step_id,
+                task=failed_step.task,
+                depends_on=list(context.keys()),
+            )
+            # Copy dsl_hint and extracted_values if available
+            if hasattr(failed_step, 'dsl_hint'):
+                step_obj.dsl_hint = failed_step.dsl_hint
+            if hasattr(failed_step, 'extracted_values'):
+                step_obj.extracted_values = failed_step.extracted_values
+
+            # Try DSL with alternative signature
+            try:
+                dsl_result = await self._try_dsl(alt_sig, step_obj, context, step_descriptions)
+
+                # Log the thread step
+                if self._current_dag_id:
+                    # Find dag_step_id for this step
+                    dag_step_id = getattr(failed_step, 'dag_step_id', None) or failed_step.step_id
+                    log_thread_step(
+                        thread_id=explore_thread_id,
+                        dag_id=self._current_dag_id,
+                        dag_step_id=dag_step_id,
+                        node_id=alt_sig_id,
+                        amplitude=alt_sim,
+                        similarity_score=alt_sim,
+                        was_undecided=1,
+                        alternatives_considered=len(step_alternatives[best_step_idx]) + 1,
+                        step_result=dsl_result[:500] if dsl_result else None,
+                        step_success=1 if dsl_result else 0,
+                    )
+
+                if dsl_result is None:
+                    logger.debug("[reactive] Alternative sig %d failed DSL execution", alt_sig_id)
+                    if self._current_dag_id:
+                        complete_thread(explore_thread_id, final_answer=None)
+                        grade_thread(explore_thread_id, success=False)
+                    continue
+
+                # Execute remaining steps with original signatures
+                remaining_context = dict(context)
+                remaining_context[failed_step.step_id] = dsl_result
+                all_results = [dsl_result]
+
+                for remaining_step in failed_steps[best_step_idx + 1:]:
+                    step_descriptions[remaining_step.step_id] = remaining_step.task
+                    rem_step_obj = Step(
+                        id=remaining_step.step_id,
+                        task=remaining_step.task,
+                        depends_on=[d for d in (remaining_step.depends_on or []) if d in remaining_context],
+                    )
+                    if hasattr(remaining_step, 'dsl_hint'):
+                        rem_step_obj.dsl_hint = remaining_step.dsl_hint
+                    if hasattr(remaining_step, 'extracted_values'):
+                        rem_step_obj.extracted_values = remaining_step.extracted_values
+
+                    rem_sig = self.step_db.get_signature(remaining_step.signature_id)
+                    if rem_sig:
+                        rem_result = await self._try_dsl(rem_sig, rem_step_obj, remaining_context, step_descriptions)
+                        if rem_result:
+                            remaining_context[remaining_step.step_id] = rem_result
+                            all_results.append(rem_result)
+
+                # Check if final answer matches ground truth
+                final_answer = all_results[-1] if all_results else None
+                is_correct = self._answers_match(str(final_answer), ground_truth) if final_answer else False
+
+                if self._current_dag_id:
+                    complete_thread(explore_thread_id, final_answer=str(final_answer) if final_answer else None)
+                    grade_thread(explore_thread_id, success=is_correct)
+
+                if is_correct:
+                    logger.info(
+                        "[reactive] Found winning path via sig %d! (answer=%s)",
+                        alt_sig_id, str(final_answer)[:30] if final_answer else "None"
+                    )
+                    # Create a result for the winning path
+                    winning_result = SolverResult(
+                        problem=problem,
+                        answer=str(final_answer) if final_answer else "",
+                        success=True,
+                        steps=failed_steps,  # Keep original steps for comparison
+                    )
+                    return (winning_result, explore_thread_id)
+
+            except Exception as e:
+                logger.debug("[reactive] Error trying alternative: %s", e)
+                if self._current_dag_id:
+                    complete_thread(explore_thread_id, final_answer=None)
+                    grade_thread(explore_thread_id, success=False)
+                continue
+
+        logger.info("[reactive] No winning path found after %d retries", REACTIVE_EXPLORATION_MAX_RETRIES)
+        return None
+
+    async def _run_reactive_exploration(
+        self,
+        result: SolverResult,
+        ground_truth: str,
+        difficulty: float = None,
+    ) -> dict:
+        """Run reactive exploration when a problem fails.
+
+        Per CLAUDE.md: Compare winning vs losing threads to find divergence points.
+        First divergence is root cause for blame assignment.
+
+        Args:
+            result: The failed SolverResult
+            ground_truth: Correct answer
+            difficulty: Problem difficulty
+
+        Returns:
+            Dict with exploration statistics
+        """
+        from mycelium.data_layer.mcts import find_divergence_points, assign_divergence_blame
+
+        stats = {
+            "reactive_exploration_triggered": True,
+            "winning_path_found": False,
+            "divergence_points": 0,
+            "blame_assigned": 0,
+        }
+
+        # Try to find a winning path
+        winning = await self._retry_with_alternatives(
+            result.problem, result, ground_truth, difficulty
+        )
+
+        if winning is None:
+            logger.info("[reactive] No winning alternative found")
+            return stats
+
+        winning_result, winning_thread_id = winning
+        stats["winning_path_found"] = True
+        logger.info(
+            "[reactive] Found winning thread %s, running divergence analysis",
+            winning_thread_id
+        )
+
+        # Run divergence analysis to compare winning vs losing threads
+        if self._current_dag_id:
+            divergence_points = find_divergence_points(self._current_dag_id)
+            stats["divergence_points"] = len(divergence_points)
+
+            if divergence_points:
+                # Log divergence details
+                for dp in divergence_points[:3]:  # Log first 3
+                    logger.info(
+                        "[reactive] Divergence at step %s (idx=%d): "
+                        "winning node=%s, losing node=%s",
+                        dp.divergence_dag_step_id,
+                        dp.divergence_step_idx,
+                        dp.winning_node_at_divergence,
+                        dp.losing_node_at_divergence,
+                    )
+
+                # Assign targeted blame/credit
+                blame_stats = assign_divergence_blame(self._current_dag_id, self.step_db)
+                stats["blame_assigned"] = (
+                    blame_stats.get("divergence_blame_assigned", 0) +
+                    blame_stats.get("suffix_blame_assigned", 0)
+                )
+                stats.update(blame_stats)
+
+                logger.info(
+                    "[reactive] Divergence blame: %d primary, %d suffix, %d prefix credit",
+                    blame_stats.get("divergence_blame_assigned", 0),
+                    blame_stats.get("suffix_blame_assigned", 0),
+                    blame_stats.get("shared_prefix_credit", 0),
+                )
+
+        return stats
+
     def record_problem_outcome(
         self,
         result: SolverResult,
@@ -3141,6 +3446,21 @@ Rules:
                  for s in result.steps]
             )
 
+            # Store context for reactive exploration (if enabled)
+            # Caller can invoke maybe_run_reactive_exploration() to find winning alternatives
+            from mycelium.config import REACTIVE_EXPLORATION_ENABLED
+            if REACTIVE_EXPLORATION_ENABLED and ground_truth:
+                self._pending_reactive_exploration = {
+                    "result": result,
+                    "ground_truth": ground_truth,
+                    "difficulty": difficulty,
+                }
+                logger.debug("[solver] Reactive exploration pending for failed problem")
+            else:
+                self._pending_reactive_exploration = None
+        else:
+            self._pending_reactive_exploration = None
+
         # Check which signatures might need decomposition
         # Use same thresholds as umbrella_learner for consistency
         # Two categories:
@@ -3302,6 +3622,47 @@ Rules:
         except Exception as e:
             logger.error("[solver] DSL regeneration failed: %s", e)
             self._pending_dsl_regen = False
+            return {"error": str(e)}
+
+    async def maybe_run_reactive_exploration(self) -> dict:
+        """Run reactive exploration if a problem failed.
+
+        Per CLAUDE.md: "If we got the wrong answer that should trigger a larger MCTS
+        rollout where we explore the tree more widely"
+
+        This searches for alternative paths that would have produced the correct answer.
+        When found, uses divergence analysis for precise blame assignment.
+
+        Returns:
+            Dict with exploration statistics, or empty dict if not needed
+        """
+        if not hasattr(self, '_pending_reactive_exploration') or not self._pending_reactive_exploration:
+            return {}
+
+        context = self._pending_reactive_exploration
+        self._pending_reactive_exploration = None
+
+        logger.info("[solver] Running reactive exploration for failed problem")
+
+        try:
+            result = await self._run_reactive_exploration(
+                result=context["result"],
+                ground_truth=context["ground_truth"],
+                difficulty=context.get("difficulty"),
+            )
+
+            if result.get("winning_path_found"):
+                logger.info(
+                    "[solver] Reactive exploration found winning path: %d divergence points, %d blame assigned",
+                    result.get("divergence_points", 0),
+                    result.get("blame_assigned", 0),
+                )
+            else:
+                logger.debug("[solver] Reactive exploration found no winning alternative")
+
+            return result
+        except Exception as e:
+            logger.error("[solver] Reactive exploration failed: %s", e)
             return {"error": str(e)}
 
     def _record_thread_outcomes(
