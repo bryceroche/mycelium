@@ -582,6 +582,7 @@ Rules:
                 # Fall back: find or create new signature
                 # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
                 # CRITICAL: Pass parent_id so new signatures are created under THIS signature, not root!
+                # CRITICAL: Pass exclude_ids to prevent child matching back to parent (circular routing)
                 child_sig, is_new = await self.db.find_or_create_async(
                     step_text=step.task,
                     embedding=embedding,
@@ -591,7 +592,16 @@ Rules:
                     extracted_values=getattr(step, 'extracted_values', None),
                     dsl_hint=getattr(step, 'dsl_hint', None),  # LLM → signature communication
                     parent_id=signature.id,  # Ensure children are created under decomposing signature
+                    exclude_ids={signature.id},  # Prevent child from routing back to parent
                 )
+
+            # Skip if child_sig is None (step was queued for decomposition, not created)
+            if child_sig is None:
+                logger.info(
+                    "[umbrella] Skipping child (queued for decomposition): '%s'",
+                    step.task[:40]
+                )
+                continue
 
             # If signature already has a DIFFERENT parent (matched OR repointed), create a NEW one instead
             # This ensures tree structure can grow deeper

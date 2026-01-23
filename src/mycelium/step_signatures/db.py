@@ -1433,6 +1433,7 @@ class StepSignatureDB:
         extracted_values: dict = None,
         dsl_hint: str = None,
         parent_id: int = None,
+        exclude_ids: set = None,
     ) -> tuple[StepSignature, bool]:
         """Find a matching signature or create a new one.
 
@@ -1448,6 +1449,7 @@ class StepSignatureDB:
             origin_depth: Decomposition depth at which this step was created
             extracted_values: Dict of semantic param names -> values from planner
             parent_id: Explicit parent ID for new signatures (overrides routing)
+            exclude_ids: Signature IDs to exclude from matching (prevent circular routing)
 
         Returns:
             Tuple of (signature, is_new) where is_new=True if newly created
@@ -1470,7 +1472,8 @@ class StepSignatureDB:
             try:
                 return self._find_or_create_atomic(
                     step_text, embedding, min_similarity, parent_problem, origin_depth,
-                    extracted_values=extracted_values, dsl_hint=dsl_hint, parent_id=parent_id
+                    extracted_values=extracted_values, dsl_hint=dsl_hint, parent_id=parent_id,
+                    exclude_ids=exclude_ids
                 )
             except sqlite3.OperationalError as e:
                 if attempt < DB_MAX_RETRIES - 1:
@@ -1496,6 +1499,7 @@ class StepSignatureDB:
         dsl_hint: str = None,
         parent_id: int = None,
         embedder=None,  # Optional sync embedder for graph embedding
+        exclude_ids: set = None,  # Signature IDs to exclude from matching (prevent circular routing)
     ) -> tuple[StepSignature, bool]:
         """Async version of find_or_create with non-blocking retry sleep.
 
@@ -1512,6 +1516,7 @@ class StepSignatureDB:
             extracted_values: Dict of semantic param names -> values from planner
             parent_id: Explicit parent ID for new signatures (overrides routing)
             embedder: Optional sync embedder for computing graph_embedding on new signatures
+            exclude_ids: Signature IDs to exclude from matching (prevent circular routing during decomposition)
 
         Returns:
             Tuple of (signature, is_new) where is_new=True if newly created
@@ -1525,7 +1530,8 @@ class StepSignatureDB:
             try:
                 sig, is_new = self._find_or_create_atomic(
                     step_text, embedding, min_similarity, parent_problem, origin_depth,
-                    extracted_values=extracted_values, dsl_hint=dsl_hint, parent_id=parent_id
+                    extracted_values=extracted_values, dsl_hint=dsl_hint, parent_id=parent_id,
+                    exclude_ids=exclude_ids
                 )
                 break
             except sqlite3.OperationalError as e:
@@ -1632,6 +1638,7 @@ class StepSignatureDB:
         extracted_values: dict = None,
         dsl_hint: str = None,
         parent_id: int = None,
+        exclude_ids: set = None,
     ) -> tuple[StepSignature, bool]:
         """Internal atomic find-or-create with hierarchical routing.
 
@@ -1644,6 +1651,7 @@ class StepSignatureDB:
         Args:
             dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication
             parent_id: Explicit parent ID for new signatures (overrides routing)
+            exclude_ids: Signature IDs to exclude from matching (prevent circular routing)
         """
         with self._connection() as conn:
             conn.execute("BEGIN IMMEDIATE")
@@ -1668,8 +1676,9 @@ class StepSignatureDB:
 
                 # Route through hierarchy to find best match
                 # Pass dsl_hint for graph-based routing (per CLAUDE.md: route by what operations DO)
+                # Pass exclude_ids to prevent circular routing (e.g., child matching back to parent during decomposition)
                 best_match, parent_for_new, best_sim = self._route_hierarchical(
-                    conn, embedding, min_similarity, dsl_hint=dsl_hint
+                    conn, embedding, min_similarity, dsl_hint=dsl_hint, exclude_ids=exclude_ids
                 )
 
                 # ALWAYS_ROUTE_TO_BEST mode: accept any match, let failures drive learning
@@ -1769,13 +1778,18 @@ class StepSignatureDB:
                                             best_atomic_op, dsl_hint, step_text[:50]
                                         )
                                         # Queue for decomposition
-                                        queue_for_decomposition(
-                                            step_text=step_text,
-                                            complexity_reason=f"{reason}_gap_{gap:.3f}",
-                                            problem_context=parent_problem,
-                                        )
-                                        # Fall through to create new signature (which will be umbrella)
-                                        best_match = None
+                                        try:
+                                            queue_for_decomposition(
+                                                step_text=step_text,
+                                                complexity_reason=f"{reason}_gap_{gap:.3f}",
+                                                problem_context=parent_problem,
+                                            )
+                                        except Exception as e:
+                                            logger.warning("[db] Failed to queue multi-part step for decomposition: %s", e)
+                                        # Return None - step is queued for decomposition, don't create signature
+                                        # This prevents infinite retry loops when DB is locked
+                                        conn.commit()
+                                        return None, False
 
                 if best_match is not None and similarity_ok:
                     # Log routing decision with similarity for tuning
@@ -1862,6 +1876,7 @@ class StepSignatureDB:
         embedding: np.ndarray,
         min_similarity: float,
         dsl_hint: str = None,
+        exclude_ids: set = None,
     ) -> tuple[Optional[StepSignature], Optional[StepSignature], float]:
         """Route through hierarchy using graph_embedding (operational similarity).
 
@@ -1878,6 +1893,7 @@ class StepSignatureDB:
             embedding: Text embedding of the step (fallback)
             min_similarity: Minimum similarity threshold
             dsl_hint: Operation hint from planner (+, -, *, /) for graph routing
+            exclude_ids: Signature IDs to exclude from matching (prevent circular routing)
 
         Returns:
             (best_match, parent_for_new, best_similarity)
@@ -1885,6 +1901,8 @@ class StepSignatureDB:
             - parent_for_new: Umbrella where routing stopped (for creating new child)
             - best_similarity: Similarity of best_match
         """
+        # Normalize exclude_ids
+        exclude_ids = exclude_ids or set()
         from mycelium.config import (
             UMBRELLA_MAX_DEPTH, SCAFFOLD_ENABLED, MIN_SIGNATURE_DEPTH,
             SCAFFOLD_FORK_THRESHOLD, SCAFFOLD_FORK_THRESHOLD_COLD_START,
@@ -1955,7 +1973,11 @@ class StepSignatureDB:
                 used_graph = False
 
             # If current is a leaf, return it (always return leaf regardless of threshold)
+            # UNLESS it's in exclude_ids (e.g., parent being decomposed - prevent circular matching)
             if not current.is_semantic_umbrella:
+                if current.id in exclude_ids:
+                    logger.debug("[db] Leaf %d excluded from matching (in exclude_ids)", current.id)
+                    return None, parent_for_new, 0.0
                 if used_graph:
                     logger.debug("[db] Leaf %d routed by graph_embedding (sim=%.3f)", current.id, sim)
                 return current, parent_for_new, sim
@@ -1990,6 +2012,11 @@ class StepSignatureDB:
             null_embedding_children = []
 
             for child in children:
+                # Skip excluded signatures (prevent circular routing during decomposition)
+                if child.id in exclude_ids:
+                    logger.debug("[db] Skipping child %d (in exclude_ids) during routing", child.id)
+                    continue
+
                 # Prefer graph_embedding for routing
                 child_graph_emb = child.graph_embedding
                 if child_graph_emb is not None and not isinstance(child_graph_emb, np.ndarray):
