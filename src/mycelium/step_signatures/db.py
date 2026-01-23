@@ -1047,6 +1047,109 @@ class StepSignatureDB:
                     parent_id
                 )
 
+    def compute_graph_centroid_from_children(
+        self,
+        conn,
+        parent_id: int,
+    ) -> Optional[np.ndarray]:
+        """Compute graph_centroid as average of children's graph_embeddings.
+
+        For routers: graph_embedding = average of children's graph_embeddings
+        This enables graph-space routing through the entire hierarchy.
+
+        Args:
+            conn: Database connection
+            parent_id: ID of the parent signature
+
+        Returns:
+            New graph_centroid as numpy array, or None if no children have embeddings
+        """
+        cursor = conn.execute(
+            """SELECT graph_embedding
+               FROM step_signatures s
+               JOIN signature_relationships r ON s.id = r.child_id
+               WHERE r.parent_id = ?
+                 AND graph_embedding IS NOT NULL
+                 AND graph_embedding != ''""",
+            (parent_id,),
+        )
+        rows = cursor.fetchall()
+
+        if not rows:
+            return None
+
+        embeddings = []
+        for row in rows:
+            try:
+                emb = np.array(json.loads(row["graph_embedding"]))
+                embeddings.append(emb)
+            except (json.JSONDecodeError, ValueError):
+                continue
+
+        if not embeddings:
+            return None
+
+        # Average of children's graph embeddings
+        graph_centroid = np.mean(embeddings, axis=0)
+        return graph_centroid
+
+    def propagate_graph_centroid_to_parents(
+        self,
+        conn,
+        child_id: int,
+    ):
+        """Propagate graph_centroid changes up to parent routers.
+
+        When a child's graph_embedding changes, recompute parents' graph_centroids.
+        Similar to text centroid propagation but for graph embeddings.
+
+        Args:
+            conn: Database connection
+            child_id: ID of the signature whose graph_embedding changed
+        """
+        max_depth = CENTROID_PROPAGATION_MAX_DEPTH
+
+        # Fetch all ancestors
+        cursor = conn.execute(
+            """
+            WITH RECURSIVE ancestors AS (
+                SELECT parent_id, 1 as depth
+                FROM signature_relationships
+                WHERE child_id = ?
+
+                UNION ALL
+
+                SELECT r.parent_id, a.depth + 1
+                FROM signature_relationships r
+                JOIN ancestors a ON r.child_id = a.parent_id
+                WHERE a.depth < ?
+            )
+            SELECT DISTINCT parent_id, MIN(depth) as depth
+            FROM ancestors
+            GROUP BY parent_id
+            ORDER BY depth
+            """,
+            (child_id, max_depth),
+        )
+        ancestors = cursor.fetchall()
+
+        if not ancestors:
+            return
+
+        # Update each ancestor's graph_centroid
+        for parent_id, _ in ancestors:
+            graph_centroid = self.compute_graph_centroid_from_children(conn, parent_id)
+            if graph_centroid is not None:
+                conn.execute(
+                    "UPDATE step_signatures SET graph_embedding = ? WHERE id = ?",
+                    (json.dumps(graph_centroid.tolist()), parent_id),
+                )
+                invalidate_signature_cache(parent_id)
+                logger.debug(
+                    "[db] Propagated graph_centroid to parent %d",
+                    parent_id
+                )
+
     def route_through_hierarchy(
         self,
         embedding: np.ndarray,
@@ -4708,6 +4811,10 @@ class StepSignatureDB:
             invalidate_signature_cache(parent_id)
             invalidate_signature_cache(child_id)
             self.invalidate_centroid_matrix()
+
+            # Propagate graph_centroid to parents (Option B: routers use graph_centroid)
+            self.propagate_graph_centroid_to_parents(conn, child_id)
+
             logger.info(
                 "[db] Added child: parent=%d (depth=%d) → child=%d (depth=%d) (condition='%s')",
                 parent_id, parent_depth, child_id, child_depth, condition[:30]
@@ -4720,6 +4827,9 @@ class StepSignatureDB:
         Umbrellas are routers that dispatch to child signatures based on
         semantic similarity. They don't execute DSLs directly - their job
         is to route problems to the right specialized child.
+
+        Per Option B (tlax): Routers use graph_centroid (avg of children's
+        graph_embeddings) for graph-space routing.
 
         Args:
             signature_id: ID of the signature to promote
@@ -4740,7 +4850,23 @@ class StepSignatureDB:
             )
             if cursor.rowcount > 0:
                 invalidate_signature_cache(signature_id)
-                logger.info("[db] Promoted signature %d to umbrella (router)", signature_id)
+
+                # Compute graph_centroid from children (Option B: routers use graph_centroid)
+                graph_centroid = self.compute_graph_centroid_from_children(conn, signature_id)
+                if graph_centroid is not None:
+                    conn.execute(
+                        "UPDATE step_signatures SET graph_embedding = ? WHERE id = ?",
+                        (json.dumps(graph_centroid.tolist()), signature_id),
+                    )
+                    logger.info(
+                        "[db] Promoted signature %d to umbrella with graph_centroid",
+                        signature_id
+                    )
+                else:
+                    logger.info(
+                        "[db] Promoted signature %d to umbrella (no children with graph_embeddings yet)",
+                        signature_id
+                    )
                 return True
             return False
 
@@ -5169,21 +5295,110 @@ class StepSignatureDB:
         operation_embedding: np.ndarray,
         min_similarity: float = 0.75,
         top_k: int = 5,
+        hierarchical: bool = True,
     ) -> list[tuple[StepSignature, float]]:
         """Route by comparing operation embedding to graph embeddings.
 
-        This is the new routing method per CLAUDE.md:
-        - Extract operation from problem → embed → compare to graph embeddings
+        Per Option B (tlax): ALL routing happens in graph space.
+        - Routers have graph_centroid (avg of children's graph_embeddings)
+        - Leaves have graph_embedding (their computation graph embedded)
         - Routes by what operations DO, not what they SOUND LIKE
 
         Args:
             operation_embedding: Embedding of the extracted operation
             min_similarity: Minimum cosine similarity threshold
             top_k: Maximum number of matches to return
+            hierarchical: If True, traverse hierarchy; if False, flat search
 
         Returns:
             List of (signature, similarity) tuples, sorted by similarity descending
         """
+        from mycelium.config import UMBRELLA_MAX_DEPTH
+
+        if hierarchical:
+            return self._route_by_graph_hierarchical(
+                operation_embedding, min_similarity, top_k, UMBRELLA_MAX_DEPTH
+            )
+        else:
+            return self._route_by_graph_flat(operation_embedding, min_similarity, top_k)
+
+    def _route_by_graph_hierarchical(
+        self,
+        operation_embedding: np.ndarray,
+        min_similarity: float,
+        top_k: int,
+        max_depth: int,
+    ) -> list[tuple[StepSignature, float]]:
+        """Hierarchical graph routing through routers and leaves.
+
+        Traverses the tree using graph_embeddings at each level:
+        - Routers: compare against graph_centroid (avg of children)
+        - Leaves: compare against graph_embedding (computation graph)
+        """
+        root = self.get_root()
+        if root is None:
+            return []
+
+        # BFS through tree, collecting leaf matches
+        matches = []
+        queue = [(root, 1.0)]  # (signature, accumulated_sim)
+        visited = set()
+
+        while queue and len(matches) < top_k * 2:  # Collect extra, then trim
+            current, parent_sim = queue.pop(0)
+
+            if current.id in visited:
+                continue
+            visited.add(current.id)
+
+            # Get graph_embedding for this node
+            graph_emb = current.graph_embedding
+            if graph_emb is None:
+                # Try to load it if not cached
+                with self._connection() as conn:
+                    row = conn.execute(
+                        "SELECT graph_embedding FROM step_signatures WHERE id = ?",
+                        (current.id,)
+                    ).fetchone()
+                    if row and row["graph_embedding"]:
+                        try:
+                            graph_emb = np.array(json.loads(row["graph_embedding"]))
+                        except (json.JSONDecodeError, ValueError):
+                            pass
+
+            if graph_emb is None:
+                # No graph_embedding - skip or use children directly
+                if current.is_semantic_umbrella:
+                    children = self.get_children(current.id, for_routing=True)
+                    for child_sig, _condition in children:
+                        queue.append((child_sig, parent_sim))
+                continue
+
+            # Compute similarity
+            sim = cosine_similarity(operation_embedding, graph_emb)
+
+            if current.is_semantic_umbrella:
+                # Router: if matches, explore children
+                if sim >= min_similarity * 0.8:  # Slightly lower threshold for routers
+                    children = self.get_children(current.id, for_routing=True)
+                    for child_sig, _condition in children:
+                        queue.append((child_sig, sim))
+            else:
+                # Leaf: if matches, add to results
+                if sim >= min_similarity:
+                    matches.append((current, sim))
+
+        # Sort by similarity descending and return top_k
+        matches.sort(key=lambda x: x[1], reverse=True)
+        return matches[:top_k]
+
+    def _route_by_graph_flat(
+        self,
+        operation_embedding: np.ndarray,
+        min_similarity: float,
+        top_k: int,
+    ) -> list[tuple[StepSignature, float]]:
+        """Flat graph routing - search all leaves directly (legacy mode)."""
         matches = []
 
         with self._connection() as conn:
