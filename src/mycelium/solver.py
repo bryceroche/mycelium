@@ -966,7 +966,7 @@ class Solver:
             # Per beads mycelium-mm08: Complex steps block until decomposed into atomic operations
             # This batches across multiple problems - steps queue up, decomposition fires when threshold met
             if TRAINING_MODE:
-                from mycelium.llm_client import LLMClient
+                from mycelium.client import LLMClient
                 async with LLMClient() as client:
                     queue_ids, decomp_results = await self._blocking_decompose_complex_steps(
                         plan=plan,
