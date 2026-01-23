@@ -8,10 +8,14 @@ This is the "smart work once, execute forever" approach:
 2. Once reliable, LLM analyzes the pattern
 3. LLM generates appropriate DSL (math, sympy, or custom)
 4. DSL stored on signature, used for all future matches
+
+IMPORTANT: DSLs must be ATOMIC - single operations only.
+Complex DSLs like "(a + b) * c" indicate the dag_step wasn't decomposed enough.
 """
 
 import json
 import logging
+import re
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -19,6 +23,56 @@ if TYPE_CHECKING:
     from mycelium.client import LLMClient
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# ATOMICITY VALIDATION
+# =============================================================================
+
+# Operators that count toward complexity
+_BINARY_OPERATORS = re.compile(r'(?<![a-zA-Z_])[\+\-\*/](?![a-zA-Z_*])')
+# Match ** (power) as a single operator, not two *
+_POWER_OPERATOR = re.compile(r'\*\*')
+
+
+def is_atomic_dsl(script: str) -> bool:
+    """Check if a DSL script is atomic (single operation).
+
+    Atomic DSLs have exactly one binary operator (+, -, *, /, **).
+    Complex DSLs like "(a + b) * c" are NOT atomic.
+
+    Args:
+        script: The DSL script expression (e.g., "a + b", "a * b")
+
+    Returns:
+        True if atomic (single operation), False if complex
+
+    Examples:
+        >>> is_atomic_dsl("a + b")
+        True
+        >>> is_atomic_dsl("a * b")
+        True
+        >>> is_atomic_dsl("a ** b")
+        True
+        >>> is_atomic_dsl("(a + b) * c")
+        False
+        >>> is_atomic_dsl("a / b - c")
+        False
+    """
+    if not script:
+        return False
+
+    # Normalize: replace ** with a placeholder to count as one operator
+    normalized = _POWER_OPERATOR.sub('@POW@', script)
+
+    # Count binary operators
+    operators = _BINARY_OPERATORS.findall(normalized)
+
+    # Atomic = exactly 0 or 1 binary operators
+    # 0 operators: constants or single-param functions like sqrt(a)
+    # 1 operator: a + b, a * b, etc.
+    return len(operators) <= 1
+
 
 # Prompt for DSL generation
 DSL_GENERATION_PROMPT = '''You are a DSL generator for a math problem solver.
@@ -43,7 +97,7 @@ generate a DSL script that can solve this type of step deterministically.
 1. **math**: Simple arithmetic (no external deps)
    - Operators: +, -, *, /, **, //, %
    - Functions: sqrt, abs, min, max, round, sin, cos, tan, log, exp
-   - Example: `{"type": "math", "script": "(a + b) / 2", "params": ["a", "b"]}`
+   - Example: `{"type": "math", "script": "a * b", "params": ["a", "b"]}`
 
 2. **sympy**: Symbolic algebra (for equations, simplification)
    - Functions: solve, simplify, expand, factor, diff, integrate
@@ -60,14 +114,21 @@ generate a DSL script that can solve this type of step deterministically.
 3. Params should be generic (a, b, c) not specific to examples
 4. Include aliases for common variations of param names
 5. Use the simplest type that works (math > sympy > custom)
+6. **CRITICAL: DSLs must be ATOMIC - exactly ONE operation**
+   - Good: "a + b", "a * b", "a / b", "a ** b", "sqrt(a)"
+   - Bad: "(a + b) * c", "a / b - c", "(a * b) + c"
+   - If a step needs multiple operations, respond with {"type": "none"}
 
 ## Examples
 
-Step: "Calculate 25% of 200"
-DSL: {"type": "math", "script": "(percentage / 100) * base", "params": ["percentage", "base"], "aliases": {"percentage": ["pct", "percent"], "base": ["value", "amount", "total"]}}
+Step: "Multiply width by height"
+DSL: {"type": "math", "script": "a * b", "params": ["a", "b"], "aliases": {"a": ["width", "w"], "b": ["height", "h"]}}
 
 Step: "Solve 2x + 5 = 15 for x"
 DSL: {"type": "sympy", "script": "solve(Eq(a*x + b, c), x)", "params": ["a", "b", "c"], "aliases": {"a": ["coefficient"], "b": ["constant"], "c": ["result"]}}
+
+Step: "Calculate (price + tax) * quantity"
+DSL: {"type": "none"}
 
 Step: "Determine which approach is most efficient"
 DSL: {"type": "none"}
@@ -154,6 +215,14 @@ async def generate_dsl_for_signature(
 
         if dsl["type"] not in ("math", "sympy", "custom"):
             logger.warning("Invalid DSL type: %s", dsl["type"])
+            return None
+
+        # Validate atomicity for math DSLs (sympy/custom may have complex expressions)
+        if dsl["type"] == "math" and not is_atomic_dsl(dsl["script"]):
+            logger.warning(
+                "Rejecting non-atomic DSL for step_type=%s: %s (step needs further decomposition)",
+                step_type, dsl["script"]
+            )
             return None
 
         # Add fallback if not present
