@@ -608,46 +608,75 @@ def log_thread_step(
     step_result: Optional[str] = None,
     step_success: Optional[bool] = None,
     node_depth: Optional[int] = None,
-) -> str:
+) -> tuple[str, int]:
     """Log a thread step execution with wave function amplitude.
 
     This is the core logging function for MCTS post-mortem analysis.
     The (dag_step_id, node_id) combination is what we're learning.
 
+    Two-table strategy for efficiency:
+    - mcts_step_summaries: Always stores minimal data for credit propagation
+    - mcts_thread_steps: Only stores detailed records for failures (debugging)
+
     Args:
         node_depth: Depth of the signature node in the tree (for post-mortem analysis)
 
-    Returns the thread_step_id.
+    Returns:
+        Tuple of (thread_step_id, summary_id) for later amplitude_post updates.
     """
+    from mycelium.config import LOG_DETAILED_STEPS_FAILURES_ONLY
+
     thread_step_id = f"tstep-{uuid.uuid4().hex[:12]}"
     now = datetime.now(timezone.utc).isoformat()
+    step_success_int = (1 if step_success else 0) if step_success is not None else None
 
     conn = get_db()
-    conn.execute(
+
+    # Always insert into summaries table (minimal data for credit propagation)
+    cursor = conn.execute(
         """
-        INSERT INTO mcts_thread_steps (
-            thread_step_id, thread_id, dag_id, dag_step_id, node_id, node_depth,
-            amplitude, similarity_score, was_undecided, ucb1_gap,
-            alternatives_considered, step_result, step_success, created_at
+        INSERT INTO mcts_step_summaries (
+            thread_id, dag_id, dag_step_id, node_id,
+            amplitude, step_success
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (
-            thread_step_id, thread_id, dag_id, dag_step_id, node_id, node_depth,
-            amplitude, similarity_score, 1 if was_undecided else 0, ucb1_gap,
-            alternatives_considered, step_result,
-            (1 if step_success else 0) if step_success is not None else None,
-            now,
-        ),
+        (thread_id, dag_id, dag_step_id, node_id, amplitude, step_success_int),
+    )
+    summary_id = cursor.lastrowid
+
+    # Only insert detailed records for failures (or if optimization is disabled)
+    should_log_details = (
+        not LOG_DETAILED_STEPS_FAILURES_ONLY  # Optimization disabled
+        or step_success is False              # Failure - always log details
+        or step_success is None               # Unknown - log details for safety
     )
 
-    return thread_step_id
+    if should_log_details:
+        conn.execute(
+            """
+            INSERT INTO mcts_thread_steps (
+                thread_step_id, thread_id, dag_id, dag_step_id, node_id, node_depth,
+                amplitude, similarity_score, was_undecided, ucb1_gap,
+                alternatives_considered, step_result, step_success, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                thread_step_id, thread_id, dag_id, dag_step_id, node_id, node_depth,
+                amplitude, similarity_score, 1 if was_undecided else 0, ucb1_gap,
+                alternatives_considered, step_result, step_success_int, now,
+            ),
+        )
+
+    return thread_step_id, summary_id
 
 
 def update_amplitude_post(thread_step_id: str, amplitude_post: float) -> None:
-    """Update the post-observation amplitude for a thread step.
+    """Update the post-observation amplitude for a thread step (detailed table).
 
     Called after wave function collapse (grading).
+    Note: For credit propagation, use update_summary_amplitude_post() instead.
     """
     conn = get_db()
     conn.execute(
@@ -658,8 +687,24 @@ def update_amplitude_post(thread_step_id: str, amplitude_post: float) -> None:
     )
 
 
+def update_summary_amplitude_post(summary_id: int, amplitude_post: float) -> None:
+    """Update amplitude_post in the summaries table (used for credit propagation).
+
+    Args:
+        summary_id: The ID from mcts_step_summaries (returned by log_thread_step)
+        amplitude_post: The post-observation amplitude value
+    """
+    conn = get_db()
+    conn.execute(
+        """
+        UPDATE mcts_step_summaries SET amplitude_post = ? WHERE id = ?
+        """,
+        (amplitude_post, summary_id),
+    )
+
+
 def batch_update_amplitudes(updates: list[tuple[str, float]]) -> None:
-    """Batch update amplitude_post values.
+    """Batch update amplitude_post values in detailed table.
 
     Args:
         updates: List of (thread_step_id, amplitude_post) tuples
@@ -676,6 +721,26 @@ def batch_update_amplitudes(updates: list[tuple[str, float]]) -> None:
             [(amp, tsid) for tsid, amp in updates],
         )
     logger.debug("[mcts] Batch updated %d amplitudes", len(updates))
+
+
+def batch_update_summary_amplitudes(updates: list[tuple[int, float]]) -> None:
+    """Batch update amplitude_post values in summaries table.
+
+    Args:
+        updates: List of (summary_id, amplitude_post) tuples
+    """
+    if not updates:
+        return
+
+    conn = get_db()
+    with conn.connection() as raw_conn:
+        raw_conn.executemany(
+            """
+            UPDATE mcts_step_summaries SET amplitude_post = ? WHERE id = ?
+            """,
+            [(amp, sid) for sid, amp in updates],
+        )
+    logger.debug("[mcts] Batch updated %d summary amplitudes", len(updates))
 
 
 # =============================================================================
@@ -831,25 +896,25 @@ def run_postmortem(dag_id: str) -> dict:
         logger.debug("[mcts] No threads found for DAG %s", dag_id)
         return {"total_steps": 0, "threads_won": 0, "threads_lost": 0}
 
-    # Get all thread_steps for this DAG
+    # Get all step summaries for this DAG (lightweight table for credit propagation)
     cursor = conn.execute(
         """
-        SELECT thread_step_id, thread_id, amplitude
-        FROM mcts_thread_steps
+        SELECT id, thread_id, amplitude
+        FROM mcts_step_summaries
         WHERE dag_id = ?
         """,
         (dag_id,),
     )
-    thread_steps = cursor.fetchall()
+    step_summaries = cursor.fetchall()
 
-    if not thread_steps:
-        logger.debug("[mcts] No thread_steps found for DAG %s", dag_id)
+    if not step_summaries:
+        logger.debug("[mcts] No step_summaries found for DAG %s", dag_id)
         return {"total_steps": 0, "threads_won": 0, "threads_lost": 0}
 
     # Compute amplitude_post for each step
     updates = []
     stats = {
-        "total_steps": len(thread_steps),
+        "total_steps": len(step_summaries),
         "threads_won": sum(1 for s in thread_outcomes.values() if s == 1),
         "threads_lost": sum(1 for s in thread_outcomes.values() if s == 0),
         "high_conf_wrong": 0,
@@ -858,7 +923,7 @@ def run_postmortem(dag_id: str) -> dict:
         "total_low_conf": 0,   # For UCB1 adjustment (mycelium-nirq)
     }
 
-    for thread_step_id, thread_id, amplitude in thread_steps:
+    for summary_id, thread_id, amplitude in step_summaries:
         thread_success = thread_outcomes.get(thread_id)
 
         if thread_success is None:
@@ -893,11 +958,11 @@ def run_postmortem(dag_id: str) -> dict:
 
         # Clamp to configured range
         amplitude_post = max(POSTMORTEM_AMPLITUDE_MIN, min(POSTMORTEM_AMPLITUDE_MAX, amplitude_post))
-        updates.append((thread_step_id, amplitude_post))
+        updates.append((summary_id, amplitude_post))
 
-    # Batch update
+    # Batch update summaries table (used for credit propagation)
     if updates:
-        batch_update_amplitudes(updates)
+        batch_update_summary_amplitudes(updates)
         logger.info(
             "[mcts] Post-mortem for DAG %s: %d steps, %d won, %d lost, "
             "%d high-conf-wrong, %d low-conf-right",
@@ -945,29 +1010,30 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
 
     conn = get_db()
 
-    # Get per-node stats with STEP-LEVEL success (ts.step_success) as primary signal
+    # Get per-node stats with STEP-LEVEL success (ss.step_success) as primary signal
     # Fall back to thread-level (t.success) + amplitude when step_success is NULL
+    # NOTE: Uses mcts_step_summaries (lightweight) instead of mcts_thread_steps (detailed)
     cursor = conn.execute(
         """
         SELECT
-            ts.node_id,
+            ss.node_id,
             COUNT(*) as total_steps,
             -- STEP-LEVEL: Steps that succeeded at execution (most precise signal)
-            SUM(CASE WHEN ts.step_success = 1 THEN 1 ELSE 0 END) as step_succeeded,
+            SUM(CASE WHEN ss.step_success = 1 THEN 1 ELSE 0 END) as step_succeeded,
             -- STEP-LEVEL: Steps that failed at execution (precise blame)
-            SUM(CASE WHEN ts.step_success = 0 THEN 1 ELSE 0 END) as step_failed,
+            SUM(CASE WHEN ss.step_success = 0 THEN 1 ELSE 0 END) as step_failed,
             -- FALLBACK: Steps in winning threads (when step_success is NULL)
-            SUM(CASE WHEN ts.step_success IS NULL AND t.success = 1 THEN 1 ELSE 0 END) as thread_won_no_step,
+            SUM(CASE WHEN ss.step_success IS NULL AND t.success = 1 THEN 1 ELSE 0 END) as thread_won_no_step,
             -- FALLBACK: High-confidence steps in losing threads (partial credit)
-            SUM(CASE WHEN ts.step_success IS NULL AND t.success = 0 AND ts.amplitude >= ? THEN 1 ELSE 0 END) as high_conf_losing,
+            SUM(CASE WHEN ss.step_success IS NULL AND t.success = 0 AND ss.amplitude >= ? THEN 1 ELSE 0 END) as high_conf_losing,
             -- FALLBACK: Low-confidence steps in losing threads (blame)
-            SUM(CASE WHEN ts.step_success IS NULL AND t.success = 0 AND ts.amplitude < ? THEN 1 ELSE 0 END) as low_conf_losing,
+            SUM(CASE WHEN ss.step_success IS NULL AND t.success = 0 AND ss.amplitude < ? THEN 1 ELSE 0 END) as low_conf_losing,
             -- Average amplitude_post for reference
-            AVG(ts.amplitude_post) as avg_amplitude_post
-        FROM mcts_thread_steps ts
-        JOIN mcts_threads t ON ts.thread_id = t.thread_id
-        WHERE ts.dag_id = ? AND ts.amplitude_post IS NOT NULL
-        GROUP BY ts.node_id
+            AVG(ss.amplitude_post) as avg_amplitude_post
+        FROM mcts_step_summaries ss
+        JOIN mcts_threads t ON ss.thread_id = t.thread_id
+        WHERE ss.dag_id = ? AND ss.amplitude_post IS NOT NULL
+        GROUP BY ss.node_id
         """,
         (PARTIAL_CREDIT_HIGH_CONF_THRESHOLD, PARTIAL_CREDIT_HIGH_CONF_THRESHOLD, dag_id),
     )
@@ -1243,21 +1309,22 @@ def propagate_step_node_stats(dag_id: str) -> dict:
 
     conn = get_db()
 
-    # Get all thread_steps with their thread outcomes and dag_step info
+    # Get all step summaries with their thread outcomes and dag_step info
     # Use dsl_hint (operation type) when available, fall back to step_desc
     # Per mycelium-mgbs: dsl_hint provides better normalization than NL descriptions
+    # NOTE: Uses mcts_step_summaries (lightweight) instead of mcts_thread_steps (detailed)
     cursor = conn.execute(
         """
         SELECT
-            ts.node_id,
-            ts.amplitude_post,
+            ss.node_id,
+            ss.amplitude_post,
             t.success as thread_won,
             ds.dsl_hint,
             ds.step_desc
-        FROM mcts_thread_steps ts
-        JOIN mcts_threads t ON ts.thread_id = t.thread_id
-        JOIN mcts_dag_steps ds ON ts.dag_step_id = ds.dag_step_id
-        WHERE ts.dag_id = ? AND ts.amplitude_post IS NOT NULL AND ts.node_id IS NOT NULL
+        FROM mcts_step_summaries ss
+        JOIN mcts_threads t ON ss.thread_id = t.thread_id
+        JOIN mcts_dag_steps ds ON ss.dag_step_id = ds.dag_step_id
+        WHERE ss.dag_id = ? AND ss.amplitude_post IS NOT NULL AND ss.node_id IS NOT NULL
         """,
         (dag_id,),
     )

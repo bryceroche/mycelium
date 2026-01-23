@@ -361,6 +361,29 @@ CREATE INDEX IF NOT EXISTS idx_mcts_thread_steps_undecided ON mcts_thread_steps(
 -- Composite index for post-mortem analysis: (dag_step_id, node_id) is what we're learning
 CREATE INDEX IF NOT EXISTS idx_mcts_thread_steps_learning ON mcts_thread_steps(dag_step_id, node_id);
 
+-- =============================================================================
+-- MCTS_STEP_SUMMARIES: Lightweight table for credit propagation
+-- =============================================================================
+-- Contains minimal data needed for credit propagation and aggregate stats.
+-- mcts_thread_steps (detailed) only stores failures for debugging/analysis.
+-- This separation reduces DB writes while keeping credit propagation working.
+CREATE TABLE IF NOT EXISTS mcts_step_summaries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    thread_id TEXT NOT NULL REFERENCES mcts_threads(thread_id) ON DELETE CASCADE,
+    dag_id TEXT NOT NULL REFERENCES mcts_dags(dag_id) ON DELETE CASCADE,
+    dag_step_id TEXT NOT NULL REFERENCES mcts_dag_steps(dag_step_id),
+    node_id INTEGER NOT NULL REFERENCES step_signatures(id),
+
+    -- Wave function amplitude (minimal data for credit propagation)
+    amplitude REAL DEFAULT 1.0,           -- Prior confidence
+    amplitude_post REAL DEFAULT NULL,     -- Updated after grading
+    step_success INTEGER DEFAULT NULL     -- 1=success, 0=failure, NULL=unknown
+);
+CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_dag ON mcts_step_summaries(dag_id);
+CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_thread ON mcts_step_summaries(thread_id);
+CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_node ON mcts_step_summaries(node_id);
+CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_dag_step ON mcts_step_summaries(dag_step_id);
+
 -- Materialized stats for (dag_step_type, node_id) pairs
 -- This closes the feedback loop: post-mortem → stats → routing decisions
 CREATE TABLE IF NOT EXISTS dag_step_node_stats (

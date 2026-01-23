@@ -508,6 +508,14 @@ PARTIAL_CREDIT_HIGH_CONF_THRESHOLD = 0.7  # amplitude >= this in lost thread →
 PARTIAL_CREDIT_WEIGHT = 0.5  # Weight for partial credit (0.5 = half a success)
 
 # =============================================================================
+# DETAILED LOGGING OPTIMIZATION
+# =============================================================================
+# Only store detailed thread step records (mcts_thread_steps) for failures.
+# Summaries (mcts_step_summaries) are always stored for credit propagation.
+# This reduces DB writes while keeping learning signal intact.
+LOG_DETAILED_STEPS_FAILURES_ONLY = True  # Only log detailed records for failures
+
+# =============================================================================
 # STEP-NODE STATS (Materialized (dag_step_type, node_id) performance)
 # =============================================================================
 # Per CLAUDE.md: "The combination of (dag_step_id, node_id) is what we're learning"
