@@ -15,131 +15,82 @@ from .client import get_client
 from mycelium.config import PLANNER_DEFAULT_MODEL, PLANNER_DEFAULT_TEMPERATURE
 
 
-PLANNER_SYSTEM = """You decompose math problems in TWO PHASES. First extract values, then build steps.
+PLANNER_SYSTEM = """You decompose math problems into atomic steps. Output valid JSON only.
 
-=== PHASE 1: VALUE EXTRACTION ===
-Extract ALL numeric values with semantic meaning. Be explicit about WHAT each value represents.
+PHASE 1: Extract ALL numeric values with semantic names.
+PHASE 2: Build atomic steps that reference Phase 1 values.
 
-FORMAT:
-VALUES:
-name: number — what this value represents (be specific about the SOURCE)
-
-CRITICAL for percentages:
-- "X increased by Y%" → base is X, NOT any derived value
-- "Y% of X" → base is X
-- Always identify the BASE that the percentage applies to
-
-=== PHASE 2: DECOMPOSITION ===
-Build ATOMIC steps using the extracted values BY NAME (for provenance tracking).
-
-FORMAT:
-STEPS:
-- id: step_1
-  task: [ONE atomic operation - verb + what]
-  operation: [add/subtract/multiply/divide]
-  values:
-    param_name: $phase1_value_name OR {step_N}
-  dsl_hint: +|-|*|/
-  depends_on: []
-
-=== VALUE REFERENCES (CRITICAL!) ===
-Every step's values MUST reference:
-1. Phase 1 values by name with $ prefix: $purchase_price, $repair_cost
-2. Prior step results with braces: {step_1}, {step_2}
-
-This enables VALUE PROVENANCE TRACKING - we can trace exactly which value from the problem goes where.
-
-NEVER use raw numbers in Phase 2! Always use $name to reference Phase 1 values.
-
-ALGEBRA DETECTION: If the problem gives a RESULT and asks for an INPUT (like "she has 5 left, how many did she start with?"), you must WORK BACKWARDS:
-- Identify what operations were done (in order)
-- Reverse them starting from the known result
-- Each step inverts the original operation (add↔subtract, multiply↔divide)
+OUTPUT FORMAT (JSON):
+{
+  "values": {
+    "name": number,
+    ...
+  },
+  "steps": [
+    {
+      "id": "step_1",
+      "task": "ONE atomic operation - verb + what",
+      "operation": "add|subtract|multiply|divide",
+      "values": {"param_name": "$phase1_name OR {step_N}"},
+      "dsl_hint": "+|-|*|/",
+      "depends_on": []
+    }
+  ]
+}
 
 RULES:
-- ONE OPERATION PER STEP (critical!)
-- Use SEMANTIC NAMES as param keys (e.g., "base", "rate", "quantity")
-- Reference Phase 1 values with $name (e.g., $purchase_price)
-- Reference prior results with {step_N} (e.g., {step_1})
-- For "increased by X%": multiply base by (1 + X/100), extract multiplier in Phase 1
+1. ONE OPERATION PER STEP
+2. Reference Phase 1 values with $name (e.g., "$purchase_price")
+3. Reference prior step results with {step_N} (e.g., "{step_1}")
+4. NEVER use raw numbers in steps - always reference $names
+5. For "increased by X%": extract multiplier (1 + X/100) in Phase 1
 
-=== EXAMPLE ===
-Problem: "Josh buys a house for $80,000, puts in $50,000 repairs. This increased the value of the house by 150%. How much profit?"
+PERCENTAGE HANDLING:
+- "X increased by Y%" → base is X, multiply by (1 + Y/100)
+- "Y% of X" → base is X, multiply by Y/100
 
-VALUES:
-purchase_price: 80000 — price Josh paid for the house (the BASE for value increase)
-repair_cost: 50000 — cost of repairs (investment, not the base for %)
-increase_multiplier: 2.5 — 150% increase means multiply by 2.5
+ALGEBRA (work backwards):
+- If given a RESULT and asked for INPUT, reverse operations
+- add↔subtract, multiply↔divide
 
-STEPS:
-- id: step_1
-  task: Calculate total investment
-  operation: add
-  values:
-    a: $purchase_price
-    b: $repair_cost
-  dsl_hint: +
-  depends_on: []
-- id: step_2
-  task: Calculate new house value (purchase_price × 2.5 for 150% increase)
-  operation: multiply
-  values:
-    base: $purchase_price
-    multiplier: $increase_multiplier
-  dsl_hint: *
-  depends_on: []
-- id: step_3
-  task: Calculate profit (new value minus investment)
-  operation: subtract
-  values:
-    new_value: {step_2}
-    investment: {step_1}
-  dsl_hint: -
-  depends_on: [step_1, step_2]
+EXAMPLE:
+Problem: "Josh buys a house for $80,000, puts in $50,000 repairs. This increased the value by 150%. How much profit?"
 
-=== WORK-BACKWARDS EXAMPLE (Algebra) ===
-Problem: "She sold 1/3 at green house, 2 more at red house, half the rest at orange house. She has 5 left. How many did she start with?"
+{
+  "values": {
+    "purchase_price": 80000,
+    "repair_cost": 50000,
+    "increase_multiplier": 2.5
+  },
+  "steps": [
+    {
+      "id": "step_1",
+      "task": "Calculate total investment",
+      "operation": "add",
+      "values": {"a": "$purchase_price", "b": "$repair_cost"},
+      "dsl_hint": "+",
+      "depends_on": []
+    },
+    {
+      "id": "step_2",
+      "task": "Calculate new house value",
+      "operation": "multiply",
+      "values": {"base": "$purchase_price", "multiplier": "$increase_multiplier"},
+      "dsl_hint": "*",
+      "depends_on": []
+    },
+    {
+      "id": "step_3",
+      "task": "Calculate profit",
+      "operation": "subtract",
+      "values": {"new_value": "{step_2}", "investment": "{step_1}"},
+      "dsl_hint": "-",
+      "depends_on": ["step_1", "step_2"]
+    }
+  ]
+}
 
-This requires WORKING BACKWARDS from 5:
-- 5 left after orange (where she sold HALF of what remained)
-- So before orange: 5 × 2 = 10
-- 10 after red (where she sold 2)
-- So before red: 10 + 2 = 12
-- 12 after green (where she sold 1/3, meaning 2/3 remained)
-- So before green (total): 12 ÷ (2/3) = 12 × (3/2) = 18
-
-VALUES:
-remaining_after_orange: 5 — vacuums left at the end
-sold_at_red: 2 — fixed number sold at red house
-fraction_remaining_after_green: 0.6667 — 2/3 remained after selling 1/3
-orange_kept_fraction: 0.5 — half remained after orange (she sold half)
-
-STEPS:
-- id: step_1
-  task: Calculate vacuums before orange (double the remaining, since half was sold)
-  operation: divide
-  values:
-    remaining: $remaining_after_orange
-    fraction_kept: $orange_kept_fraction
-  dsl_hint: /
-  depends_on: []
-- id: step_2
-  task: Calculate vacuums before red (add back the 2 sold)
-  operation: add
-  values:
-    after_red: {step_1}
-    sold: $sold_at_red
-  dsl_hint: +
-  depends_on: [step_1]
-- id: step_3
-  task: Calculate original total (divide by 2/3 since 1/3 was sold at green)
-  operation: divide
-  values:
-    after_green: {step_2}
-    fraction_remaining: $fraction_remaining_after_green
-  dsl_hint: /
-  depends_on: [step_2]
-"""
+Output ONLY valid JSON. No explanation."""
 
 SIGNATURE_HINTS_TEMPLATE = """
 Known operations (extract values to match):
@@ -652,7 +603,11 @@ class Planner:
             {"role": "user", "content": user_content},
         ]
 
-        response = await self.client.generate(messages, temperature=self.temperature)
+        response = await self.client.generate(
+            messages,
+            temperature=self.temperature,
+            response_format={"type": "json_object"},
+        )
         steps, phase1_values = self._parse_steps(response)
 
         plan = DAGPlan(steps=steps, problem=problem, phase1_values=phase1_values)
@@ -675,193 +630,65 @@ class Planner:
         return plan
 
     def _parse_steps(self, response: str) -> tuple[list[Step], dict[str, Any]]:
-        """Parse steps from planner response.
+        """Parse steps from planner JSON response.
 
-        Handles two-phase format with VALUES: and STEPS: sections.
-        Logs warnings when parsing issues are detected (empty tasks, etc.)
+        Expects JSON format:
+        {
+            "values": {"name": number, ...},
+            "steps": [{"id": "step_1", "task": "...", ...}, ...]
+        }
 
         Returns:
             Tuple of (steps, phase1_values) for provenance tracking
         """
+        import json
+
         steps = []
-        current_step = None
-        parse_warnings = []
-        parsing_values = False  # Track if we're inside a values: block
-        extracted_values_phase1 = {}  # Values from Phase 1 (for provenance tracking)
-        in_values_section = False  # Track if we're in the VALUES: section
+        phase1_values = {}
 
-        lines = response.split("\n")
-        i = 0
-        while i < len(lines):
-            line = lines[i]
-            stripped = line.strip()
+        try:
+            # Parse JSON response
+            data = json.loads(response.strip())
 
-            # Skip section headers and markers
-            # Section headers are NOT indented (line starts with the header)
-            # Per-step "values:" blocks ARE indented
-            is_section_header = (
-                (line.lstrip() == line and stripped.upper() in ("VALUES:", "STEPS:"))
-                or "===" in stripped
-            )
-            if is_section_header:
-                in_values_section = stripped.upper() == "VALUES:"
-                i += 1
-                continue
+            # Extract Phase 1 values
+            phase1_values = data.get("values", {})
+            if phase1_values:
+                logger.info(
+                    "[planner] Phase 1 values extracted: %s",
+                    ", ".join(f"{k}={v}" for k, v in phase1_values.items())
+                )
 
-            # Parse Phase 1 VALUES section (for logging/debugging)
-            # Format: "- name: value — description" or "name: value — description"
-            if in_values_section and ":" in stripped:
-                # Remove leading "- " if present
-                line_content = stripped.lstrip("- ").strip()
-                # Split on em-dash or double-dash for description
-                parts = line_content.split("—")[0] if "—" in line_content else line_content
-                parts = parts.split("--")[0] if "--" in parts else parts
-                if ":" in parts:
-                    key, val = parts.split(":", 1)
-                    key = key.strip()
-                    val = val.strip()
-                    # Skip if key looks like a step field or is empty
-                    skip_keys = {"dsl_hint", "depends_on", "operation", "id", "task", "values", ""}
-                    if key.lower() in skip_keys:
-                        i += 1
-                        continue
-                    # Extract numeric value (handle "3 eggs" → 3, "80000" → 80000, "2.5" → 2.5)
-                    # Try to find a number at the start of the value
-                    numeric_match = re.match(r'^([+-]?\d+\.?\d*)', val)
-                    if numeric_match:
-                        num_str = numeric_match.group(1)
-                        try:
-                            extracted_values_phase1[key] = float(num_str) if "." in num_str else int(num_str)
-                        except ValueError:
-                            pass
-                i += 1
-                continue
+            # Parse steps
+            for step_data in data.get("steps", []):
+                step_id = step_data.get("id", f"step_{len(steps) + 1}")
+                task = step_data.get("task", "")
 
-            # New step - flexible matching for various formats
-            # Matches: "- id: step_1", "-id: step_1", "id: step_1", "- id:step_1"
-            id_match = re.match(r'^-?\s*id\s*:\s*(.+)$', stripped, re.IGNORECASE)
-            if id_match:
-                parsing_values = False
-                in_values_section = False  # Exit Phase 1 when we hit a step
-                if current_step:
-                    # Validate before appending
-                    if not current_step.task:
-                        parse_warnings.append(f"Step '{current_step.id}' has empty task")
-                    steps.append(current_step)
-                step_id = id_match.group(1).strip()
-                if not step_id:
-                    parse_warnings.append("Found step with empty ID, using 'unnamed'")
-                    step_id = f"unnamed_{len(steps)}"
-                elif not step_id.replace("_", "").isalnum():
-                    parse_warnings.append(f"Step ID '{step_id}' contains invalid characters, sanitizing")
-                    step_id = "".join(c if c.isalnum() or c == "_" else "_" for c in step_id)
-                current_step = Step(id=step_id, task="", depends_on=[])
-                i += 1
-                continue
+                if not task:
+                    logger.warning(f"Step '{step_id}' has empty task")
 
-            # Task description - flexible matching
-            if re.match(r'^\s*task\s*:', stripped, re.IGNORECASE) and current_step:
-                parsing_values = False
-                current_step.task = stripped.split(":", 1)[1].strip()
-                i += 1
-                continue
+                step = Step(
+                    id=step_id,
+                    task=task,
+                    depends_on=step_data.get("depends_on", []),
+                    extracted_values=step_data.get("values", {}),
+                    dsl_hint=step_data.get("dsl_hint"),
+                    operation=step_data.get("operation"),
+                )
+                steps.append(step)
 
-            # Values block start
-            if re.match(r'^\s*values\s*:', stripped, re.IGNORECASE) and current_step:
-                parsing_values = True
-                # Check for inline empty dict: "values: {}"
-                rest = stripped.split(":", 1)[1].strip()
-                if rest == "{}" or rest == "":
-                    current_step.extracted_values = {}
-                i += 1
-                continue
-
-            # Inside values block - parse indented key: value pairs
-            if parsing_values and current_step and stripped and not re.match(r'^-?\s*(id|task|depends_on|dsl_hint|operation)\s*:', stripped, re.IGNORECASE):
-                # Parse key: value
-                if ":" in stripped:
-                    key, val = stripped.split(":", 1)
-                    key = key.strip()
-                    val = val.strip().strip('"').strip("'")
-                    # Check if it's a Phase 1 reference ($name) or step reference ({step_N})
-                    if val.startswith("$") or val.startswith("{"):
-                        # Keep as string reference for resolution at execution time
-                        current_step.extracted_values[key] = val
-                    else:
-                        # Try to parse as number
-                        try:
-                            if "." in val:
-                                current_step.extracted_values[key] = float(val)
-                            else:
-                                current_step.extracted_values[key] = int(val)
-                        except ValueError:
-                            # Keep as string (could be other reference format)
-                            current_step.extracted_values[key] = val
-                i += 1
-                continue
-
-            # Dependencies - flexible matching
-            if re.match(r'^\s*depends_on\s*:', stripped, re.IGNORECASE) and current_step:
-                parsing_values = False
-                deps_str = stripped.split(":", 1)[1].strip()
-                # Parse list like [step_1, step_2] or []
-                deps_str = deps_str.strip("[]")
-                if deps_str:
-                    deps = [d.strip() for d in deps_str.split(",")]
-                    current_step.depends_on = [d for d in deps if d]
-                i += 1
-                continue
-
-            # DSL hint - optional
-            if re.match(r'^\s*dsl_hint\s*:', stripped, re.IGNORECASE) and current_step:
-                parsing_values = False
-                current_step.dsl_hint = stripped.split(":", 1)[1].strip()
-                i += 1
-                continue
-
-            # Operation - extracted during decomposition for graph-based routing
-            if re.match(r'^\s*operation\s*:', stripped, re.IGNORECASE) and current_step:
-                parsing_values = False
-                current_step.operation = stripped.split(":", 1)[1].strip()
-                i += 1
-                continue
-
-            i += 1
-
-        if current_step:
-            if not current_step.task:
-                parse_warnings.append(f"Step '{current_step.id}' has empty task")
-            steps.append(current_step)
-
-        # Log Phase 1 values extraction (for debugging value attribution)
-        if extracted_values_phase1:
-            logger.info(
-                "[planner] Phase 1 values extracted: %s",
-                ", ".join(f"{k}={v}" for k, v in extracted_values_phase1.items())
-            )
-
-        # Log any parsing warnings
-        if parse_warnings:
-            logger.warning(f"Planner parsing issues: {'; '.join(parse_warnings)}")
-
-        # Check for missing operations (needed for graph-based routing)
-        # Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE
-        steps_missing_ops = [s for s in steps if not s.operation and not s.is_composite]
-        if steps_missing_ops:
-            logger.warning(
-                "[planner] %d/%d steps missing 'operation' field (will use fallback extraction): %s",
-                len(steps_missing_ops), len(steps),
-                ", ".join(s.id for s in steps_missing_ops[:3]) + ("..." if len(steps_missing_ops) > 3 else "")
-            )
+        except json.JSONDecodeError as e:
+            logger.warning(f"[planner] JSON parse failed: {e}")
+            logger.warning(f"[planner] Raw response:\n{response[:500]}")
+            # Fallback: try to extract from malformed response
+            steps, phase1_values = self._parse_steps_fallback(response)
 
         # Ensure we have at least one step
         if not steps:
             logger.warning("No steps parsed from planner response, using fallback single step")
-            logger.warning(f"[planner] Raw LLM response that failed parsing:\n{response}")
             steps = [Step(id="solve", task="Solve the problem directly", depends_on=[])]
 
         # Validate the resulting plan structure
-        plan = DAGPlan(steps=steps, problem="", phase1_values=extracted_values_phase1)
+        plan = DAGPlan(steps=steps, problem="", phase1_values=phase1_values)
         is_valid, errors = plan.validate()
         if not is_valid:
             logger.warning(f"Parsed plan has validation errors: {'; '.join(errors)}")
@@ -871,7 +698,44 @@ class Planner:
         if not ref_valid:
             logger.warning(f"Phase 1 reference errors: {'; '.join(ref_errors)}")
 
-        return steps, extracted_values_phase1
+        return steps, phase1_values
+
+    def _parse_steps_fallback(self, response: str) -> tuple[list[Step], dict[str, Any]]:
+        """Fallback parser for malformed JSON responses.
+
+        Attempts to extract JSON from response that may have extra text.
+        """
+        import json
+
+        # Try to find JSON object in response
+        start = response.find("{")
+        end = response.rfind("}") + 1
+
+        if start >= 0 and end > start:
+            try:
+                data = json.loads(response[start:end])
+                phase1_values = data.get("values", {})
+                steps = []
+
+                for step_data in data.get("steps", []):
+                    step = Step(
+                        id=step_data.get("id", f"step_{len(steps) + 1}"),
+                        task=step_data.get("task", ""),
+                        depends_on=step_data.get("depends_on", []),
+                        extracted_values=step_data.get("values", {}),
+                        dsl_hint=step_data.get("dsl_hint"),
+                        operation=step_data.get("operation"),
+                    )
+                    steps.append(step)
+
+                logger.info("[planner] Fallback parser extracted %d steps", len(steps))
+                return steps, phase1_values
+
+            except json.JSONDecodeError:
+                pass
+
+        logger.warning("[planner] Fallback parser also failed")
+        return [], {}
 
 
 # Convenience function
