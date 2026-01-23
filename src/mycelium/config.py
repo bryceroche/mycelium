@@ -88,7 +88,7 @@ AUTO_DEMOTE_EXCLUDED_TYPES = ["decompose"]  # Don't demote these DSL types
 # Formula: min_uses = 1 + (sig_count // RAMP_DIVISOR), capped at MAX
 # Centroid averaging stabilizes good paths, so we can branch aggressively
 AUTO_DEMOTE_RAMP_DIVISOR = 2000  # Every 2000 sigs, add 1 to MIN_USES (branch fast!)
-AUTO_DEMOTE_MIN_USES_FLOOR = 1   # Start at 1 (branch on first failure)
+AUTO_DEMOTE_MIN_USES_FLOOR = 3   # Start at 3 (give signatures multiple chances before demotion)
 AUTO_DEMOTE_MIN_USES_CAP = 5     # Never require more than 5 failures
 
 # =============================================================================
@@ -165,8 +165,8 @@ DECOMP_MAX_WIN_RATE = 0.5  # Flag nodes with win rate below this
 # VARIANCE-BASED DECOMPOSITION (per CLAUDE.md: depth emerges from problem structure)
 # High variance in embedding similarities indicates a signature is too generic
 # It's catching diverse problem types that should specialize into children
-VARIANCE_MIN_SAMPLES = 5  # Minimum samples before variance is meaningful
-VARIANCE_DECOMP_THRESHOLD = 0.001  # Variance above this triggers decomposition
+VARIANCE_MIN_SAMPLES = 10  # Minimum samples before variance is meaningful (need more data)
+VARIANCE_DECOMP_THRESHOLD = 0.005  # Variance above this triggers decomposition (more conservative)
 # Note: cosine similarity is [0,1], so variance is typically very small (0.001-0.01)
 
 # Bayesian prior for cold start (assume some successes before any data)

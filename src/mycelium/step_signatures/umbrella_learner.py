@@ -334,27 +334,22 @@ class UmbrellaLearner:
             )
 
             # Category 2: auto-demoted router umbrellas without children
-            # These were math/other DSLs that failed and got promoted to umbrella,
-            # but never had children created for them
-            is_orphan_umbrella = False
-            if sig.is_semantic_umbrella and sig.dsl_type == "router":
-                children = self.db.get_children(sig.id, for_routing=True)
-                is_orphan_umbrella = len(children) == 0
+            # NOTE: We DON'T include orphan umbrellas for abstract decomposition here.
+            # Abstract decomposition (decomposing generic description like "compute_product")
+            # creates children with placeholder variables (X, Y) that can't execute.
+            # Orphan umbrellas get children through CONCRETE problem solving, when actual
+            # values route through them and create new leaf signatures.
+            # is_orphan_umbrella logic removed - let them stay as orphans until concrete use.
 
             # Category 3: high-variance leaves flagged for decomposition
-            # Per CLAUDE.md: depth emerges from problem structure, not magic numbers
-            # High variance = too generic, catching diverse problems that should specialize
-            is_high_variance_leaf = (
-                not sig.is_semantic_umbrella  # Must be a leaf
-                and sig.similarity_variance > 0  # Has variance data
-            )
+            # NOTE: Also not included - abstract decomposition creates broken umbrellas.
+            # High-variance leaves should be decomposed during CONCRETE problem solving.
 
-            if is_decompose_candidate or is_orphan_umbrella or is_high_variance_leaf:
+            if is_decompose_candidate:
                 candidates.append(sig)
-                reason = "decompose_type" if is_decompose_candidate else ("orphan_umbrella" if is_orphan_umbrella else "high_variance")
                 logger.info(
-                    "[umbrella] Candidate: '%s' (id=%d, reason=%s, mcts_win=%.1f%%, variance=%.4f, op_fail=%d)",
-                    sig.step_type, sig.id, reason, actual_win_rate * 100, sig.similarity_variance,
+                    "[umbrella] Candidate: '%s' (id=%d, reason=decompose_type, mcts_win=%.1f%%, variance=%.4f, op_fail=%d)",
+                    sig.step_type, sig.id, actual_win_rate * 100, sig.similarity_variance,
                     sig.operational_failures
                 )
 
@@ -421,8 +416,10 @@ class UmbrellaLearner:
             )
 
         # Use planner to decompose the step description
+        # skip_validation=True because we're creating templates, not concrete plans
+        # The umbrella children are generic operation patterns, not specific calculations
         problem = f"Break down this step into smaller sub-steps: {signature.description}"
-        plan = await self.planner.decompose(problem)
+        plan = await self.planner.decompose(problem, skip_validation=True)
 
         if len(plan.steps) <= 1:
             # Signature description is already atomic - try decomposing actual failing steps
@@ -436,7 +433,7 @@ class UmbrellaLearner:
                 # Try decomposing each failing step
                 for step_desc in failing_steps[:3]:  # Limit to 3 to avoid explosion
                     step_problem = f"Break down this math step into simpler sub-steps: {step_desc}"
-                    step_plan = await self.planner.decompose(step_problem)
+                    step_plan = await self.planner.decompose(step_problem, skip_validation=True)
                     if len(step_plan.steps) > 1:
                         logger.info(
                             "[umbrella] Decomposed failing step '%s' into %d sub-steps",

@@ -3217,9 +3217,10 @@ Rules:
                         sig.step_type, node_id
                     )
 
-        # VARIANCE-BASED DECOMPOSITION: Flag high-variance signatures
-        # Per CLAUDE.md: Tree depth emerges from problem structure, not magic numbers
-        # High variance = too generic, catching diverse problem types that should specialize
+        # VARIANCE MONITORING (informational only, does not trigger decomposition)
+        # Variance tracking helps identify signatures catching diverse problem types.
+        # However, automatic decomposition based on variance alone creates empty umbrellas
+        # because there's no concrete problem context. Let actual failures drive decomposition.
         from mycelium.data_layer.mcts import get_high_variance_nodes_for_decomposition
         from mycelium.config import VARIANCE_MIN_SAMPLES, VARIANCE_DECOMP_THRESHOLD
 
@@ -3227,21 +3228,11 @@ Rules:
             min_samples=VARIANCE_MIN_SAMPLES,
             max_variance=VARIANCE_DECOMP_THRESHOLD
         )
-        logger.debug(
-            "[solver] get_high_variance_nodes_for_decomposition returned %d nodes",
-            len(high_variance_nodes)
-        )
-        for node_id, variance in high_variance_nodes:
-            if node_id not in candidates:
-                sig = self.step_db.get_signature(node_id)
-                if sig:
-                    self.step_db.flag_for_split(node_id, reason="high_variance")
-                    candidates.append(node_id)
-                    logger.info(
-                        "[solver] Signature '%s' (id=%d) flagged for decomposition (high variance=%.4f): "
-                        "too generic, should specialize into children",
-                        sig.step_type, node_id, variance
-                    )
+        if high_variance_nodes:
+            logger.info(
+                "[solver] High-variance signatures detected (monitoring only): %s",
+                [(nid, f"{var:.4f}") for nid, var in high_variance_nodes[:5]]
+            )
 
         # Also add nodes flagged by interference detection (destructive interference)
         # These already have operational_failures > 0 from record_interference_outcome

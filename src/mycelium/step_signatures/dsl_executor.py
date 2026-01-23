@@ -43,6 +43,7 @@ from mycelium.step_signatures.dsl_types import (
 # Math layer
 from mycelium.step_signatures.math_layer import (
     try_execute_dsl_math,
+    extract_numeric_value as _extract_numeric_value,
 )
 
 # =============================================================================

@@ -524,6 +524,7 @@ class Planner:
         problem: str,
         signature_hints: Optional[list[SignatureHint]] = None,
         context: Optional[str] = None,
+        skip_validation: bool = False,
     ) -> DAGPlan:
         """Decompose a problem into a DAG of steps.
 
@@ -534,6 +535,9 @@ class Planner:
                             parameters each needs (from NL interface)
             context: Optional additional context (e.g., original problem when
                     decomposing a sub-step, complexity hints)
+            skip_validation: If True, skip data flow validation. Use this for
+                            template decomposition (e.g., umbrella creation)
+                            where we're creating generic patterns, not concrete plans.
 
         Returns:
             DAGPlan with steps and dependencies
@@ -562,13 +566,21 @@ class Planner:
         steps = self._parse_steps(response)
 
         plan = DAGPlan(steps=steps, problem=problem)
-        is_valid, errors = plan.validate()
-        logger.info(
-            "[planner] Decomposition complete: steps=%d valid=%r",
-            len(steps), is_valid
-        )
-        if errors:
-            logger.warning("[planner] Validation errors: %s", errors)
+
+        # Skip validation for template decomposition (e.g., umbrella creation)
+        if skip_validation:
+            logger.info(
+                "[planner] Decomposition complete: steps=%d (validation skipped - template mode)",
+                len(steps)
+            )
+        else:
+            is_valid, errors = plan.validate()
+            logger.info(
+                "[planner] Decomposition complete: steps=%d valid=%r",
+                len(steps), is_valid
+            )
+            if errors:
+                logger.warning("[planner] Validation errors: %s", errors)
 
         return plan
 
