@@ -50,6 +50,10 @@ ALWAYS_ROUTE_TO_BEST = True  # If True, ignore thresholds and always use best ma
 
 DSL_TIMEOUT_SEC = 1.0  # Timeout for DSL script execution
 
+# Algebra / SymPy settings for backwards solving
+ALGEBRA_ENABLED = True  # Enable SymPy-based backwards solving
+ALGEBRA_TIMEOUT_SEC = 2.0  # Longer timeout for SymPy (symbolic math is slower)
+
 # DSL Operation Inference threshold (cold-start aware)
 # Ramps from COLD_START to MATURE as signature count grows
 # Cold start: try more DSLs to bootstrap learning

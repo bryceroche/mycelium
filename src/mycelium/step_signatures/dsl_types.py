@@ -31,12 +31,14 @@ class ValueType(Enum):
 class DSLLayer(Enum):
     """Execution layer for DSL scripts.
 
-    Only 3 types allowed:
-    - MATH: Leaf node that executes math DSL
+    4 types allowed:
+    - MATH: Leaf node that executes math DSL (forward computation)
+    - SYMPY: Leaf node that executes sympy DSL (backwards solving / algebra)
     - DECOMPOSE: Leaf node that calls LLM for decomposition
     - ROUTER: Umbrella node that routes to children
     """
     MATH = "math"
+    SYMPY = "sympy"
     DECOMPOSE = "decompose"
     ROUTER = "router"
 

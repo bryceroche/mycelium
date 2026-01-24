@@ -49,9 +49,12 @@ PERCENTAGE HANDLING:
 - "X increased by Y%" → base is X, multiply by (1 + Y/100)
 - "Y% of X" → base is X, multiply by Y/100
 
-ALGEBRA (work backwards):
-- If given a RESULT and asked for INPUT, reverse operations
-- add↔subtract, multiply↔divide
+BACKWARDS PROBLEMS (finding unknown starting values):
+When possible, reframe as forward computation:
+- "X - 3 = 5, find X" → compute 5 + 3 (reverse the operation)
+- "X / 2 = 10, find X" → compute 10 * 2
+
+If you cannot determine all values, use null and mark requires_algebra: true.
 
 EXAMPLE:
 Problem: "Josh buys a house for $80,000, puts in $50,000 repairs. This increased the value by 150%. How much profit?"
@@ -177,6 +180,9 @@ class Step:
     # Example: "multiply two numbers" or "divide then add"
     # Note: Operation embeddings stored separately in solver (not on Step) for memory efficiency
     operation: Optional[str] = None
+    # Flag for algebra problems that couldn't be reframed as forward computation
+    # When True, step will be routed to SymPy solver for backwards solving
+    requires_algebra: bool = False
     # Recursive nesting: sub-plan for composite steps
     sub_plan: Optional["DAGPlan"] = None
 
@@ -422,28 +428,34 @@ class DAGPlan:
         # Per CLAUDE.md: Every step's inputs must be defined - either from problem text
         # (as literal numbers) or from prior step outputs (as {step_N} references).
         # String values that are neither numbers nor step references indicate undefined
-        # variables - these are values the LLM assumed exist but weren't extracted.
+        # variables - these need algebra/backwards solving via SymPy.
         for step in self.steps:
             if not step.extracted_values:
                 continue
             for key, value in step.extracted_values.items():
+                # Check for null values (LLM couldn't extract)
+                if value is None:
+                    step.requires_algebra = True
+                    logger.info(
+                        "[planner] ALGEBRA: Step '%s' has null value for '%s' - will use SymPy",
+                        step.id, key
+                    )
+                    continue
                 if not isinstance(value, str):
                     continue  # Numbers are valid
                 # Check if it's a step reference - those are valid
                 if step_ref_pattern.search(value):
                     continue  # Step references like {step_1} are valid
+                # Check if it's a Phase 1 reference ($name) - those are valid
+                if value.startswith('$'):
+                    continue
                 # Check if it looks like a variable name (not a number)
                 # This catches cases like "total_vacuums" when we don't know the total
                 if variable_pattern.match(value):
-                    # This is a variable name that wasn't resolved to a number
-                    # or step reference - likely an undefined value
-                    errors.append(
-                        f"Step '{step.id}' has undefined variable '{value}' for input '{key}'. "
-                        f"This value must be either a number from the problem or a {{step_N}} reference."
-                    )
-                    logger.warning(
-                        "[planner] DATA FLOW ERROR: Step '%s' uses undefined variable '%s' for '%s'. "
-                        "The problem likely requires algebra (working backwards) or the value wasn't extracted in Phase 1.",
+                    # This is a variable name that wasn't resolved - mark for algebra
+                    step.requires_algebra = True
+                    logger.info(
+                        "[planner] ALGEBRA: Step '%s' has undefined variable '%s' for '%s' - will use SymPy",
                         step.id, value, key
                     )
 
@@ -673,6 +685,7 @@ class Planner:
                     extracted_values=step_data.get("values", {}),
                     dsl_hint=step_data.get("dsl_hint"),
                     operation=step_data.get("operation"),
+                    requires_algebra=step_data.get("requires_algebra", False),
                 )
                 steps.append(step)
 

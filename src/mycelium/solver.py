@@ -2230,6 +2230,16 @@ class Solver:
             list(context.keys()) if context else []
         )
 
+        # Check if step requires algebra (backwards solving)
+        requires_algebra = getattr(step, 'requires_algebra', False)
+        if requires_algebra:
+            logger.info("[solver] Step '%s' requires algebra - trying SymPy solver", step.task[:40])
+            algebra_result = await self._try_algebra_solve(step, context)
+            if algebra_result is not None:
+                logger.info("[solver] Algebra solved: %s → %s", step.task[:40], algebra_result)
+                return algebra_result
+            logger.debug("[solver] Algebra solve failed, falling back to regular DSL")
+
         # Handle extraction-only steps: no dsl_hint but has single extracted value
         # These steps just extract a constant from the problem (e.g., "eggs per day = 16")
         if not dsl_hint and extracted_values:
@@ -2379,6 +2389,83 @@ class Solver:
                 context={"source": "try_dsl", "dsl_hint": getattr(step, 'dsl_hint', None)},
             )
 
+        return None
+
+    async def _try_algebra_solve(
+        self,
+        step,
+        context: dict[str, str],
+    ) -> Optional[str]:
+        """Attempt backwards solving using SymPy.
+
+        Called when a step has undefined variables that require
+        working backwards from known results.
+
+        Args:
+            step: The step requiring algebra
+            context: Results from previous steps
+
+        Returns:
+            Solved value as string, or None on failure
+        """
+        from mycelium.step_signatures.sympy_layer import (
+            build_equation_from_values,
+            try_execute_dsl_sympy,
+        )
+
+        extracted_values = getattr(step, 'extracted_values', {}) or {}
+        operation = getattr(step, 'operation', None) or getattr(step, 'dsl_hint', None) or "unknown"
+
+        # Build values dict with None for unknowns, resolved values for knowns
+        values = {}
+        for key, val in extracted_values.items():
+            if val is None:
+                # This is the unknown we need to solve for
+                values[key] = None
+            elif isinstance(val, str):
+                if val.startswith('{') and val.endswith('}'):
+                    # Step reference - resolve from context
+                    ref_step = val[1:-1]
+                    if ref_step in context:
+                        try:
+                            values[key] = float(context[ref_step])
+                        except (ValueError, TypeError):
+                            values[key] = context[ref_step]
+                    else:
+                        # Step result not available - can't solve
+                        logger.debug("[algebra] Missing step reference: %s", ref_step)
+                        return None
+                elif val.startswith('$'):
+                    # Phase 1 reference - resolve from stored values
+                    ref_name = val[1:]
+                    phase1_val = self._current_phase1_values.get(ref_name)
+                    if phase1_val is not None:
+                        values[key] = phase1_val
+                    else:
+                        # Phase 1 value not found - this is the unknown
+                        values[key] = None
+                else:
+                    # Try to parse as number
+                    try:
+                        values[key] = float(val) if '.' in val else int(val)
+                    except ValueError:
+                        # String that's not a number - might be the unknown
+                        values[key] = None
+            elif isinstance(val, (int, float)):
+                values[key] = val
+            else:
+                values[key] = val
+
+        # Build equation and solve
+        script, unknown = build_equation_from_values(values, operation)
+        if not script:
+            logger.debug("[algebra] Could not build equation for step")
+            return None
+
+        result = try_execute_dsl_sympy(script, values, unknown_var=unknown)
+
+        if result is not None:
+            return str(result)
         return None
 
     async def _prewarm_dsl_cache(self, steps: list) -> None:
