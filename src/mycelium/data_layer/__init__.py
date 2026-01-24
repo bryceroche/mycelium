@@ -58,13 +58,6 @@ from mycelium.data_layer.mcts import (
     store_dag_step_embedding,
     update_dag_step_embedding_outcome,
     find_similar_dag_steps,
-    # Atomic discovery (math primes)
-    AtomicCandidate,
-    discover_atomic_signatures,
-    mark_signature_atomic,
-    unmark_signature_atomic,
-    is_signature_atomic,
-    run_atomic_discovery,
     # DAG plan stats (per beads mycelium-ogo6)
     compute_plan_signature,
     record_plan_outcome,
@@ -152,13 +145,6 @@ __all__ = [
     "store_dag_step_embedding",
     "update_dag_step_embedding_outcome",
     "find_similar_dag_steps",
-    # Atomic discovery (math primes)
-    "AtomicCandidate",
-    "discover_atomic_signatures",
-    "mark_signature_atomic",
-    "unmark_signature_atomic",
-    "is_signature_atomic",
-    "run_atomic_discovery",
     # DAG plan stats (per beads mycelium-ogo6)
     "compute_plan_signature",
     "record_plan_outcome",
