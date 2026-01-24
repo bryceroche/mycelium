@@ -1827,26 +1827,9 @@ class StepSignatureDB:
                 # Use explicit parent_id if provided (e.g., from decomposition), else use routing result
                 actual_parent_id = parent_id if parent_id is not None else (parent_for_new.id if parent_for_new else None)
 
-                # Check if step is too complex - queue for batch decomposition
-                # Per beads mycelium-mm08: Queue complex steps instead of creating many similar decompose-type sigs
-                from mycelium.config import PRE_EXECUTION_COMPLEXITY_DETECTION
-                from mycelium.data_layer.mcts import is_step_complex, queue_for_decomposition
-                is_complex, complexity_reason = (False, "") if not PRE_EXECUTION_COMPLEXITY_DETECTION else is_step_complex(step_text)
-                if is_complex:
-                    try:
-                        from mycelium.step_signatures.utils import pack_embedding
-                        queue_for_decomposition(
-                            step_text=step_text,
-                            complexity_reason=complexity_reason,
-                            embedding=embedding,
-                            problem_context=parent_problem,
-                        )
-                        logger.info(
-                            "[db] Queued complex step for decomposition: reason=%s step='%s'",
-                            complexity_reason, step_text[:40]
-                        )
-                    except Exception as e:
-                        logger.warning("[db] Failed to queue for decomposition: %s", e)
+                # NOTE: Pre-execution complexity detection was removed.
+                # Splitting now happens via divergence detection AFTER execution.
+                # See step_signatures/divergence.py for the new natural splitting approach.
 
                 sig = self._create_signature_atomic(
                     conn, step_text, embedding, parent_problem, origin_depth,

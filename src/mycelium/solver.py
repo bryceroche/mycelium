@@ -3671,74 +3671,79 @@ Rules:
         result: SolverResult,
         stats: dict,
     ) -> None:
-        """Evaluate if leaf nodes need decomposition after dag_step decomp failed.
+        """Evaluate if leaf nodes need splitting based on divergence.
 
-        Per brainstorm: When dag_step decomposition fails, use maturity-based
-        decision to determine if the leaf signatures themselves are the problem.
-
-        Strategy:
-        - Compare each leaf's health to DB average (maturity)
-        - Underperforming leaves with high traffic confidence → flag for decomposition
-        - Healthy leaves or low confidence → accumulate evidence, don't change tree
+        Natural splitting inspired by nature (nautilus, trees, lungs):
+        - Binary split is the atomic operation (like cell division)
+        - Split on DIVERGENCE (success vs failure embedding clusters)
+        - WIDTH vs DEPTH based on semantic distance:
+          - Close embeddings but divergent outcomes -> WIDTH (variants)
+          - Distant embeddings with divergent outcomes -> DEPTH (abstraction)
+        - The tree structure EMERGES, not designed
 
         Args:
             result: The failed SolverResult with step information
             stats: Dict to record statistics about decisions made
         """
-        from mycelium.data_layer.mcts import compute_decomposition_decision
+        from mycelium.step_signatures.divergence import (
+            get_signature_outcome_embeddings,
+            maybe_split_on_divergence,
+        )
 
-        # Get all leaf signatures involved in this failed problem
-        leaf_decisions = []
+        # Get all leaf signatures involved in this problem
+        split_results = []
         for step in result.steps:
             if step.signature_id is None:
                 continue
 
-            # Compute decomposition decision for this leaf
-            # dag_step_decomp_succeeded=False since we're here after it failed
-            decision = compute_decomposition_decision(
-                signature_id=step.signature_id,
-                dag_step_decomp_succeeded=False,
+            # Get the signature
+            sig = self.step_db.get_signature_by_id(step.signature_id)
+            if sig is None or sig.is_semantic_umbrella:
+                continue  # Skip umbrellas (routers don't execute)
+
+            # Get historical success/failure embeddings for this signature
+            success_embeddings, failure_embeddings = get_signature_outcome_embeddings(
+                step.signature_id
             )
 
-            leaf_decisions.append({
-                "signature_id": step.signature_id,
-                "step_task": step.task[:50] if step.task else "",
-                "action": decision.action,
-                "p_decompose_leaf": decision.p_decompose_leaf,
-                "db_maturity": decision.db_maturity,
-                "leaf_health": decision.leaf_health,
-                "reason": decision.reason,
-            })
+            # Check for divergence and maybe split
+            split_result = maybe_split_on_divergence(
+                self.step_db,
+                sig,
+                success_embeddings,
+                failure_embeddings,
+            )
 
-            # If decision is to decompose leaf, flag it
-            if decision.action == "decompose_leaf":
+            if split_result is not None:
+                split_results.append({
+                    "signature_id": step.signature_id,
+                    "step_task": step.task[:50] if step.task else "",
+                    "split_type": split_result.split_type,
+                    "success": split_result.success,
+                    "child_a_id": split_result.child_a_id,
+                    "child_b_id": split_result.child_b_id,
+                    "reason": split_result.reason,
+                })
                 logger.info(
-                    "[decomp-decision] Flagging leaf %d for decomposition: %s",
-                    step.signature_id, decision.reason
+                    "[divergence] Split sig %d (%s): %s -> children %s, %s",
+                    step.signature_id,
+                    split_result.split_type,
+                    split_result.reason,
+                    split_result.child_a_id,
+                    split_result.child_b_id,
                 )
-                # Flag the signature for decomposition
-                try:
-                    from mycelium.data_layer import get_db
-                    conn = get_db()
-                    conn.execute(
-                        "UPDATE step_signatures SET needs_split = 1 WHERE id = ?",
-                        (step.signature_id,)
-                    )
-                except Exception as e:
-                    logger.warning("[decomp-decision] Failed to flag leaf: %s", e)
 
         # Record stats
-        stats["leaf_decomposition_decisions"] = leaf_decisions
-        stats["leaves_flagged_for_decomposition"] = sum(
-            1 for d in leaf_decisions if d["action"] == "decompose_leaf"
-        )
+        stats["divergence_splits"] = split_results
+        stats["signatures_split"] = len([r for r in split_results if r["success"]])
 
-        if leaf_decisions:
-            avg_maturity = sum(d["db_maturity"] for d in leaf_decisions) / len(leaf_decisions)
-            stats["db_maturity"] = avg_maturity
+        if split_results:
             logger.info(
-                "[decomp-decision] Evaluated %d leaves (db_maturity=%.2f): %d flagged for decomposition",
-                len(leaf_decisions), avg_maturity, stats["leaves_flagged_for_decomposition"]
+                "[divergence] Evaluated %d leaves: %d split (width=%d, depth=%d)",
+                len(result.steps),
+                stats["signatures_split"],
+                len([r for r in split_results if r["split_type"] == "width"]),
+                len([r for r in split_results if r["split_type"] == "depth"]),
             )
 
     def record_problem_outcome(
@@ -4228,7 +4233,6 @@ Rules:
         """
         import asyncio
         from mycelium.data_layer.mcts import (
-            is_step_complex,
             queue_for_decomposition,
             get_decomposition_queue_size,
             get_oldest_pending_age_seconds,
@@ -4236,15 +4240,11 @@ Rules:
             are_decompositions_ready,
         )
         from mycelium.embedding_cache import cached_embed
-        from mycelium.config import PRE_EXECUTION_COMPLEXITY_DETECTION
 
-        # 1. Scan plan for complex steps (if enabled)
+        # NOTE: Pre-execution complexity detection was removed.
+        # Splitting now happens via divergence detection AFTER execution.
+        # See step_signatures/divergence.py for the new natural splitting approach.
         complex_steps = []
-        if PRE_EXECUTION_COMPLEXITY_DETECTION:
-            for step in plan.steps:
-                is_complex, complexity_reason = is_step_complex(step.task)
-                if is_complex:
-                    complex_steps.append((step, complexity_reason))
 
         # Even if no complex steps in current plan, check if stale items need processing
         if not complex_steps:

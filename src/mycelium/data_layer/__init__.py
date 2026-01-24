@@ -72,7 +72,6 @@ from mycelium.data_layer.mcts import (
     get_top_plans,
     get_worst_plans,
     # Decomposition queue (per beads mycelium-mm08)
-    is_step_complex,
     check_substeps_match_existing,
     queue_for_decomposition,
     get_pending_decompositions,
@@ -93,11 +92,8 @@ from mycelium.data_layer.mcts import (
     get_leaves_needing_decomposition,
     check_and_reject_if_low_similarity,
     flag_high_rejection_leaves_for_decomposition,
-    # Maturity-based decomposition decisions
-    DecompositionDecision,
+    # DB maturity (for general use)
     compute_db_maturity,
-    get_leaf_stats,
-    compute_decomposition_decision,
 )
 
 db = get_db()
@@ -170,7 +166,6 @@ __all__ = [
     "get_top_plans",
     "get_worst_plans",
     # Decomposition queue
-    "is_step_complex",
     "check_substeps_match_existing",
     "queue_for_decomposition",
     "get_pending_decompositions",
@@ -191,9 +186,6 @@ __all__ = [
     "get_leaves_needing_decomposition",
     "check_and_reject_if_low_similarity",
     "flag_high_rejection_leaves_for_decomposition",
-    # Maturity-based decomposition decisions
-    "DecompositionDecision",
+    # DB maturity
     "compute_db_maturity",
-    "get_leaf_stats",
-    "compute_decomposition_decision",
 ]

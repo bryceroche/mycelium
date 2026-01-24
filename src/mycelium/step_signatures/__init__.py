@@ -87,6 +87,17 @@ from mycelium.step_signatures.operation_extractor import (
     clear_operation_cache,
 )
 
+from mycelium.step_signatures.divergence import (
+    DivergenceResult,
+    SplitResult,
+    detect_divergence,
+    binary_split_wide,
+    binary_split_deep,
+    maybe_split_on_divergence,
+    get_signature_outcome_embeddings,
+    CLOSE_DISTANCE_THRESHOLD,
+)
+
 from mycelium.data_layer.schema import STEP_SCHEMA as STEP_SCHEMA_SQL
 
 __all__ = [
@@ -150,4 +161,13 @@ __all__ = [
     "get_operation_embedding",
     "extract_and_embed_operation",
     "clear_operation_cache",
+    # Divergence-based Natural Splitting
+    "DivergenceResult",
+    "SplitResult",
+    "detect_divergence",
+    "binary_split_wide",
+    "binary_split_deep",
+    "maybe_split_on_divergence",
+    "get_signature_outcome_embeddings",
+    "CLOSE_DISTANCE_THRESHOLD",
 ]

@@ -366,111 +366,10 @@ def get_worst_plans(limit: int = 10, min_uses: int = 3) -> list[dict]:
 # =============================================================================
 # Per beads mycelium-mm08: Queue complex steps instead of decomposing immediately.
 # Batch LLM calls are more efficient than one-at-a-time.
-
-
-def is_step_complex(step_text: str) -> tuple[bool, str]:
-    """Detect if a step is too complex for atomic execution using EMBEDDINGS.
-
-    No keywords - uses similarity distribution to atomic operations.
-
-    Decision logic:
-    - High sim to one op, large gap to others → atomic (not complex)
-    - Moderate sim to MULTIPLE ops (bimodal) → compound (needs decomposition)
-    - Uniformly low sim to all ops → novel (needs new leaf, not decomposition)
-
-    Returns:
-        Tuple of (is_complex, reason) where reason explains why
-        - is_complex=True, reason="compound" → decompose into sub-steps
-        - is_complex=True, reason="novel" → might need new leaf (but try decompose first)
-        - is_complex=False, reason="" → atomic, proceed normally
-    """
-    from mycelium.embedding_cache import cached_embed
-    import numpy as np
-
-    # Get step embedding
-    step_emb = cached_embed(step_text)
-    if step_emb is None:
-        # Fallback: can't embed, assume atomic
-        return False, ""
-
-    step_emb = np.array(step_emb)
-
-    # Get atomic operation embeddings
-    ATOMIC_OPS = ["ADD(a, b)", "SUB(a, b)", "MUL(a, b)", "DIV(a, b)"]
-    op_embeddings = []
-    for op in ATOMIC_OPS:
-        op_emb = cached_embed(op)
-        if op_emb is not None:
-            op_embeddings.append((op, np.array(op_emb)))
-
-    if not op_embeddings:
-        return False, ""
-
-    # Calculate similarities to each atomic op
-    def cosine_sim(a, b):
-        norm_a = np.linalg.norm(a)
-        norm_b = np.linalg.norm(b)
-        if norm_a == 0 or norm_b == 0:
-            return 0.0
-        return float(np.dot(a, b) / (norm_a * norm_b))
-
-    similarities = [(op, cosine_sim(step_emb, emb)) for op, emb in op_embeddings]
-    similarities.sort(key=lambda x: x[1], reverse=True)
-
-    best_op, best_sim = similarities[0]
-    second_op, second_sim = similarities[1] if len(similarities) > 1 else ("", 0.0)
-    worst_sim = similarities[-1][1] if similarities else 0.0
-
-    gap = best_sim - second_sim
-    spread = best_sim - worst_sim  # How spread out are the similarities
-
-    # Thresholds (tuned from empirical data)
-    # Key insight: Need BOTH small gap AND high similarity to detect compound
-    # - Small gap + high sim → COMPOUND (matches multiple ops strongly)
-    # - Small gap + low sim → VAGUE (no clear op in step text, likely atomic)
-    #
-    # Empirical data from compound steps:
-    # - "Calculate total cost and subtract discount": best=0.779, second=0.775
-    # - "Apply tax rate and add shipping": best=0.807, second=0.780
-    HIGH_SIM_THRESHOLD = 0.77  # High similarity to second op for compound
-    LOW_SIM_THRESHOLD = 0.55   # Too low to be any known op
-    SMALL_GAP_THRESHOLD = 0.04  # Gap < this = potentially matches multiple ops
-    COMPOUND_SIM_THRESHOLD = 0.77  # Need high sim to best op for compound
-
-    logger.debug(
-        "[complexity] step='%s' best=%s(%.3f) second=%s(%.3f) gap=%.3f spread=%.3f",
-        step_text[:40], best_op, best_sim, second_op, second_sim, gap, spread
-    )
-
-    # Decision tree (gap + similarity combined):
-    #
-    # 1. COMPOUND: Small gap AND high similarity to BOTH top ops
-    #    This means step genuinely matches multiple operations (e.g., "add then multiply")
-    #    We require high sim to avoid false positives on vague steps
-    if gap < SMALL_GAP_THRESHOLD and best_sim >= COMPOUND_SIM_THRESHOLD and second_sim >= HIGH_SIM_THRESHOLD:
-        logger.info(
-            "[complexity] COMPOUND: '%s' matches %s(%.3f) AND %s(%.3f) gap=%.3f",
-            step_text[:40], best_op, best_sim, second_op, second_sim, gap
-        )
-        return True, "compound"
-
-    # 2. NOVEL: Uniformly low sim to all ops
-    #    Step doesn't match any known operation - might need new leaf
-    if best_sim < LOW_SIM_THRESHOLD:
-        logger.info(
-            "[complexity] NOVEL: '%s' best_sim=%.3f to %s (below %.2f)",
-            step_text[:40], best_sim, best_op, LOW_SIM_THRESHOLD
-        )
-        return True, "novel"
-
-    # 3. ATOMIC: Everything else
-    #    - High sim to one op with large gap → clear single operation
-    #    - Small gap but low sim → vague step text, treat as atomic
-    logger.debug(
-        "[complexity] ATOMIC: '%s' best=%s(%.3f) gap=%.3f",
-        step_text[:40], best_op, best_sim, gap
-    )
-    return False, ""
+#
+# NOTE: is_step_complex() was removed - replaced by divergence-based splitting
+# in step_signatures/divergence.py. Natural splitting happens based on observed
+# success/failure divergence, not pre-execution complexity detection.
 
 
 def check_substeps_match_existing(
@@ -552,7 +451,7 @@ def queue_for_decomposition(
 
     Args:
         step_text: The step to decompose
-        complexity_reason: Why it's being queued (from is_step_complex)
+        complexity_reason: Why it's being queued (e.g., "compound", "novel")
         embedding: Optional embedding for the step
         dag_step_id: Optional link to originating dag_step
         problem_context: Optional problem text for LLM context
@@ -1036,24 +935,10 @@ def flag_high_rejection_leaves_for_decomposition() -> list[dict]:
 
 
 # =============================================================================
-# MATURITY-BASED DECOMPOSITION DECISIONS
+# DB MATURITY
 # =============================================================================
-# Per brainstorm: Use DB maturity (inferred from leaf success rates) to decide
-# between dag_step decomposition vs leaf_node decomposition.
-#
-# Key insight: Bias toward dag_step decomposition (cheap, reversible).
-# Only consider leaf_node decomposition when dag_step decomp fails AND
-# the leaf has poor stats relative to DB average.
-
-
-@dataclass
-class DecompositionDecision:
-    """Result of decomposition decision analysis."""
-    action: str  # "try_dag_step_decomp", "decompose_leaf", "accumulate_evidence", "done"
-    p_decompose_leaf: float  # Probability score for leaf decomposition
-    db_maturity: float  # Inferred DB maturity (0-1)
-    leaf_health: float  # This leaf's health score (0-1)
-    reason: str  # Human-readable explanation
+# Maturity emerges from actual ground-truth performance.
+# Used for various adaptive behaviors in the system.
 
 
 def sigmoid(x: float, k: float = 1.0, midpoint: float = 0.0) -> float:
@@ -1115,163 +1000,9 @@ def compute_db_maturity(rolling_window: int = 100) -> float:
     return maturity
 
 
-def get_leaf_stats(signature_id: int) -> dict:
-    """Get stats for a specific leaf signature.
-
-    Returns:
-        dict with uses, successes, success_rate, traffic_confidence
-    """
-    conn = get_db()
-
-    cursor = conn.execute(
-        """
-        SELECT uses, successes
-        FROM step_signatures
-        WHERE id = ?
-        """,
-        (signature_id,),
-    )
-    row = cursor.fetchone()
-
-    if not row:
-        return {
-            "uses": 0,
-            "successes": 0,
-            "success_rate": 0.5,  # Default uncertain
-            "traffic_confidence": 0.0,
-        }
-
-    uses = row["uses"]
-    successes = row["successes"]
-    # Cap success_rate at 1.0 (successes may be difficulty-weighted)
-    success_rate = min(1.0, successes / uses) if uses > 0 else 0.5
-
-    # Traffic confidence: sigmoid ramp, confident at ~8 uses
-    traffic_confidence = sigmoid(uses, k=0.3, midpoint=8)
-
-    return {
-        "uses": uses,
-        "successes": successes,
-        "success_rate": success_rate,
-        "traffic_confidence": traffic_confidence,
-    }
-
-
-def compute_decomposition_decision(
-    signature_id: int,
-    dag_step_decomp_succeeded: bool | None = None,
-) -> DecompositionDecision:
-    """Decide between dag_step decomposition vs leaf_node decomposition.
-
-    Uses DB maturity (inferred from leaf success rates) and this leaf's
-    stats to make a smooth, continuous decision.
-
-    Strategy:
-    1. Always try dag_step decomposition first (cheap, reversible)
-    2. If dag_step decomp succeeds → done
-    3. If dag_step decomp fails → compare this leaf to DB average:
-       - Leaf worse than average → leaf is the problem, decompose it
-       - Leaf better than average → weird edge case, accumulate evidence
-
-    Args:
-        signature_id: The leaf signature that was matched
-        dag_step_decomp_succeeded: True/False if tried, None if not tried yet
-
-    Returns:
-        DecompositionDecision with action and supporting metrics
-    """
-    # Get DB-wide maturity (emerges from leaf performance)
-    db_maturity = compute_db_maturity()
-
-    # Get this leaf's stats
-    leaf_stats = get_leaf_stats(signature_id)
-
-    # Leaf health: blend actual rate with uncertainty from low traffic
-    # Low traffic → default to 0.5 (uncertain)
-    # High traffic → use actual success rate
-    tc = leaf_stats["traffic_confidence"]
-    raw_rate = leaf_stats["success_rate"]
-    leaf_health = raw_rate * tc + 0.5 * (1 - tc)
-
-    # Step 1: Always try dag_step decomp first
-    if dag_step_decomp_succeeded is None:
-        return DecompositionDecision(
-            action="try_dag_step_decomp",
-            p_decompose_leaf=0.0,
-            db_maturity=db_maturity,
-            leaf_health=leaf_health,
-            reason="Always try dag_step decomposition first (cheap probe)",
-        )
-
-    # Step 2: dag_step decomp succeeded → done
-    if dag_step_decomp_succeeded:
-        return DecompositionDecision(
-            action="done",
-            p_decompose_leaf=0.0,
-            db_maturity=db_maturity,
-            leaf_health=leaf_health,
-            reason="dag_step decomposition succeeded, no tree change needed",
-        )
-
-    # Step 3: dag_step decomp failed → should we decompose the leaf?
-    #
-    # Key insight: Compare THIS leaf to the DB average.
-    # - Leaf worse than average → leaf is the problem
-    # - Leaf at/above average → dag_step is a weird edge case
-
-    # How much worse is this leaf vs DB average?
-    # Positive = leaf underperforming, Negative = leaf is fine
-    leaf_vs_average = db_maturity - leaf_health
-
-    # P(decompose_leaf) increases when:
-    # 1. Leaf is underperforming vs average (leaf_vs_average > 0)
-    # 2. We have traffic confidence in this leaf's stats
-    # 3. DB is less mature (more willing to create new leaves early on)
-
-    underperformance_signal = sigmoid(leaf_vs_average, k=8, midpoint=0.1)
-    maturity_dampener = 1 - (db_maturity * 0.6)  # Mature DB dampens by up to 60%
-
-    p_decompose_leaf = (
-        underperformance_signal
-        * leaf_stats["traffic_confidence"]
-        * maturity_dampener
-    )
-
-    # Clamp to reasonable range
-    p_decompose_leaf = max(0.0, min(1.0, p_decompose_leaf))
-
-    # Decision thresholds
-    if p_decompose_leaf > 0.6:
-        action = "decompose_leaf"
-        reason = (
-            f"Leaf underperforming (health={leaf_health:.2f} vs db_avg={db_maturity:.2f}), "
-            f"confident signal (p={p_decompose_leaf:.2f})"
-        )
-    elif p_decompose_leaf < 0.2:
-        action = "accumulate_evidence"
-        reason = (
-            f"Leaf healthy or insufficient evidence (health={leaf_health:.2f}, "
-            f"traffic_conf={leaf_stats['traffic_confidence']:.2f})"
-        )
-    else:
-        action = "accumulate_evidence"
-        reason = (
-            f"Middle ground, gathering more data (p={p_decompose_leaf:.2f}, "
-            f"health={leaf_health:.2f})"
-        )
-
-    logger.info(
-        "[decomp-decision] sig=%d action=%s p=%.3f (db_maturity=%.2f, leaf_health=%.2f, uses=%d)",
-        signature_id, action, p_decompose_leaf, db_maturity, leaf_health, leaf_stats["uses"]
-    )
-
-    return DecompositionDecision(
-        action=action,
-        p_decompose_leaf=p_decompose_leaf,
-        db_maturity=db_maturity,
-        leaf_health=leaf_health,
-        reason=reason,
-    )
+# NOTE: DecompositionDecision, get_leaf_stats, and compute_decomposition_decision
+# were removed - replaced by divergence-based splitting in step_signatures/divergence.py.
+# Natural splitting happens based on observed success/failure divergence.
 
 
 # =============================================================================
