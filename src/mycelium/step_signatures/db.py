@@ -1590,6 +1590,7 @@ class StepSignatureDB:
                         from mycelium.data_layer.mcts import (
                             check_and_reject_if_low_similarity,
                             queue_for_decomposition,
+                            record_leaf_rejection,
                             REJECTION_SIM_THRESHOLD,
                         )
 
@@ -1655,10 +1656,19 @@ class StepSignatureDB:
                                         # Small gap = matches multiple ops (multi-part like "add then multiply")
                                         # Low sim = unknown complex operation
                                         reason = "multi_part" if gap < ATOMIC_GAP_THRESHOLD else "unknown_complex"
+
+                                        # Record rejection (unified path for all leaf rejections)
+                                        rejection_count = record_leaf_rejection(
+                                            signature_id=best_match.id,
+                                            step_text=step_text,
+                                            similarity=max_atomic_sim,  # Use atomic similarity for tracking
+                                            problem_context=parent_problem,
+                                        )
+
                                         logger.info(
-                                            "[db] Leaf '%s' REJECTED %s step (sim=%.3f, gap=%.3f, best=%s, hint='%s'): '%s'",
+                                            "[db] Leaf '%s' REJECTED %s step (sim=%.3f, gap=%.3f, best=%s, hint='%s', rejections=%d): '%s'",
                                             best_match.step_type, reason, max_atomic_sim, gap,
-                                            best_atomic_op, dsl_hint, step_text[:50]
+                                            best_atomic_op, dsl_hint, rejection_count, step_text[:50]
                                         )
                                         # Queue for decomposition
                                         try:
