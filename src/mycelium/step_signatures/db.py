@@ -2529,75 +2529,11 @@ class StepSignatureDB:
 
             return stats
 
-    def print_structure_stats(self) -> None:
-        """Print a formatted summary of database structure stats."""
-        stats = self.get_structure_stats()
-
-        print("\n" + "=" * 50)
-        print("DATABASE STRUCTURE STATS")
-        print("=" * 50)
-        print(f"Total signatures: {stats['total']}")
-        print(f"Routers: {stats['by_role']['router']} | Leaves: {stats['by_role']['leaf']}")
-        if stats['total'] > 0:
-            ratio = stats['by_role']['router'] / stats['total']
-            print(f"Router ratio: {ratio:.1%}")
-        print(f"Umbrellas: {stats['umbrella_count']} (orphans: {stats['orphan_umbrellas']})")
-        print(f"Overall success rate: {stats['success_rate']:.1%}")
-
-        print("\nBy DSL type:")
-        for dsl_type, count in sorted(stats['by_type'].items()):
-            success = stats['success_by_type'].get(dsl_type, 0)
-            print(f"  {dsl_type:15s} {count:4d} ({success:.0%} success)")
-
-        print("\nDepth histogram:")
-        for depth in sorted(stats['depth_histogram'].keys()):
-            count = stats['depth_histogram'][depth]
-            bar = "█" * min(count, 40)
-            print(f"  {depth:2d}: {count:4d} {bar}")
-
-        print(f"\nAvg depth: {stats['avg_depth']:.1f} | Max depth: {stats['max_depth']}")
-        print("=" * 50)
-
-    # =========================================================================
-    # DSL Rewriter Support
-    # =========================================================================
-
     def get_total_signature_uses(self) -> int:
         """Get total uses across all signatures."""
         with self._connection() as conn:
             row = conn.execute("SELECT SUM(uses) FROM step_signatures").fetchone()
             return row[0] if row and row[0] else 0
-
-    def get_underperforming_signatures(
-        self,
-        min_uses: int = 10,
-        max_success_rate: float = 0.40,
-        limit: int = 20,
-    ) -> list:
-        """Find signatures with low success rate that need DSL rewriting.
-
-        Args:
-            min_uses: Minimum uses to be considered
-            max_success_rate: Maximum success rate to be considered underperforming
-            limit: Maximum results to return
-
-        Returns:
-            List of StepSignature objects
-        """
-        with self._connection() as conn:
-            # Only consider leaf nodes with math DSLs (not decompose/router)
-            rows = conn.execute(
-                """SELECT * FROM step_signatures
-                   WHERE uses >= ?
-                   AND dsl_type = 'math'
-                   AND is_semantic_umbrella = 0
-                   AND CAST(successes AS REAL) / uses <= ?
-                   ORDER BY uses DESC
-                   LIMIT ?""",
-                (min_uses, max_success_rate, limit)
-            ).fetchall()
-
-            return [self._row_to_signature(row) for row in rows]
 
     def reset_signature_stats(self, signature_id: int) -> None:
         """Reset uses and successes for a signature after DSL rewrite."""
@@ -2617,19 +2553,6 @@ class StepSignatureDB:
                 "UPDATE step_signatures SET last_used_at = ? WHERE id = ?",
                 (now, signature_id)
             )
-
-    def count_recently_rewritten(self, hours: int = 24) -> int:
-        """Count signatures rewritten within the given time period."""
-        cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
-        with self._connection() as conn:
-            # This is approximate - uses last_used_at as proxy
-            row = conn.execute(
-                """SELECT COUNT(*) FROM step_signatures
-                   WHERE last_used_at >= ?
-                   AND dsl_type = 'math'""",
-                (cutoff,)
-            ).fetchone()
-            return row[0] if row else 0
 
     # =========================================================================
     # Centroid Management (Running Average Embeddings)
@@ -3900,105 +3823,6 @@ class StepSignatureDB:
 
             return failure_id
 
-    def get_failure_patterns(
-        self,
-        signature_id: int = None,
-        failure_type: str = None,
-        limit: int = 100,
-    ) -> list[dict]:
-        """Get failure patterns for analysis.
-
-        Used to:
-        1. Identify signatures that need decomposition
-        2. Feed planner hints about common failure patterns
-        3. Inform DSL rewriting decisions
-
-        Args:
-            signature_id: Filter by specific signature (None for all)
-            failure_type: Filter by failure type (None for all)
-            limit: Maximum records to return
-
-        Returns:
-            List of failure records with counts grouped by pattern
-        """
-        with self._connection() as conn:
-            if signature_id is not None:
-                cursor = conn.execute(
-                    """SELECT signature_id, failure_type, COUNT(*) as count,
-                              GROUP_CONCAT(DISTINCT error_message) as errors
-                       FROM step_failures
-                       WHERE signature_id = ?
-                       GROUP BY signature_id, failure_type
-                       ORDER BY count DESC
-                       LIMIT ?""",
-                    (signature_id, limit),
-                )
-            elif failure_type is not None:
-                cursor = conn.execute(
-                    """SELECT signature_id, failure_type, COUNT(*) as count,
-                              GROUP_CONCAT(DISTINCT error_message) as errors
-                       FROM step_failures
-                       WHERE failure_type = ?
-                       GROUP BY signature_id, failure_type
-                       ORDER BY count DESC
-                       LIMIT ?""",
-                    (failure_type, limit),
-                )
-            else:
-                cursor = conn.execute(
-                    """SELECT signature_id, failure_type, COUNT(*) as count,
-                              GROUP_CONCAT(DISTINCT error_message) as errors
-                       FROM step_failures
-                       GROUP BY signature_id, failure_type
-                       ORDER BY count DESC
-                       LIMIT ?""",
-                    (limit,),
-                )
-
-            return [
-                {
-                    "signature_id": row["signature_id"],
-                    "failure_type": row["failure_type"],
-                    "count": row["count"],
-                    "errors": row["errors"],
-                }
-                for row in cursor.fetchall()
-            ]
-
-    def get_signatures_needing_decomposition(
-        self,
-        min_failures: int = 3,
-        failure_types: list[str] = None,
-    ) -> list[int]:
-        """Get signatures with repeated failures that may need decomposition.
-
-        Per CLAUDE.md: "Failed signatures get decomposed"
-
-        Args:
-            min_failures: Minimum failure count to consider
-            failure_types: Filter by failure types (default: dsl_error, validation)
-
-        Returns:
-            List of signature IDs that should be considered for decomposition
-        """
-        if failure_types is None:
-            failure_types = ["dsl_error", "validation"]
-
-        placeholders = ",".join("?" * len(failure_types))
-
-        with self._connection() as conn:
-            cursor = conn.execute(
-                f"""SELECT signature_id, COUNT(*) as fail_count
-                    FROM step_failures
-                    WHERE signature_id IS NOT NULL
-                      AND failure_type IN ({placeholders})
-                    GROUP BY signature_id
-                    HAVING fail_count >= ?
-                    ORDER BY fail_count DESC""",
-                (*failure_types, min_failures),
-            )
-            return [row["signature_id"] for row in cursor.fetchall()]
-
     def get_signature_examples(
         self,
         signature_id: int,
@@ -5122,84 +4946,6 @@ class StepSignatureDB:
 
         return best_match
 
-    def detect_upward_restructuring(
-        self,
-        embedding: np.ndarray,
-        difficulty: float,
-        min_similarity: float = 0.6,
-        difficulty_gap_threshold: float = 0.2,
-    ) -> Optional[tuple[StepSignature, float]]:
-        """Detect if a new problem should trigger upward restructuring.
-
-        Upward restructuring occurs when a new problem represents a HIGHER
-        abstraction than existing signatures. This happens when:
-        1. Problem is semantically similar to existing signatures
-        2. Problem difficulty significantly exceeds their max_difficulty_solved
-
-        Key insight from CLAUDE.md: "if we start with gsm8k and increase to
-        MATH L1-L2 that might represent a new node higher up in the tree"
-
-        When detected, the caller should:
-        1. Create a new umbrella signature at the higher abstraction level
-        2. Make the existing signature a child of the new umbrella
-        3. The new umbrella represents the harder class of problems
-
-        Args:
-            embedding: Query embedding of the new problem
-            difficulty: Estimated difficulty of the new problem (0.0-1.0)
-            min_similarity: Minimum similarity to consider signatures
-            difficulty_gap_threshold: Min gap between problem and sig difficulty
-
-        Returns:
-            Tuple of (matched_signature, difficulty_gap) if restructuring needed,
-            None otherwise.
-        """
-        from mycelium.step_signatures.utils import cosine_similarity
-
-        with self._connection() as conn:
-            # Find non-root signatures (we don't restructure above the root)
-            cursor = conn.execute(
-                """SELECT * FROM step_signatures
-                   WHERE is_root = 0
-                   AND is_archived = 0
-                   ORDER BY max_difficulty_solved DESC"""
-            )
-            rows = cursor.fetchall()
-
-        best_candidate = None
-        best_gap = 0.0
-
-        for row in rows:
-            sig_id = row["id"]
-            centroid = get_cached_centroid(sig_id, row.get("centroid"))
-            if centroid is None:
-                continue
-
-            sim = cosine_similarity(embedding, centroid)
-            if sim < min_similarity:
-                continue
-
-            # Check difficulty gap
-            max_diff = row.get("max_difficulty_solved") or 0.0
-            gap = difficulty - max_diff
-
-            if gap >= difficulty_gap_threshold and gap > best_gap:
-                best_candidate = StepSignature.from_row_fast(row)
-                best_gap = gap
-
-        if best_candidate:
-            logger.info(
-                "[db] Upward restructuring detected: sig=%d (%s) max_diff=%.2f, "
-                "problem_diff=%.2f, gap=%.2f",
-                best_candidate.id,
-                best_candidate.step_type[:30],
-                best_candidate.max_difficulty_solved,
-                difficulty,
-                best_gap,
-            )
-
-        return (best_candidate, best_gap) if best_candidate else None
-
     def create_upward_umbrella(
         self,
         child_signature: StepSignature,
@@ -5324,18 +5070,6 @@ class StepSignatureDB:
                 return True
             return False
 
-    def get_umbrella_signatures(self) -> list[StepSignature]:
-        """Get all signatures that are semantic umbrellas (fast variant)."""
-        with self._connection() as conn:
-            cursor = conn.execute("""
-                SELECT id, signature_id, centroid, embedding_count, step_type,
-                       description, param_descriptions, dsl_script, dsl_type,
-                       uses, successes, is_semantic_umbrella, is_root, depth,
-                       created_at, last_used_at
-                FROM step_signatures WHERE is_semantic_umbrella = 1
-            """)
-            return [self._row_to_signature_fast(row) for row in cursor.fetchall()]
-
     def clear_all_data(self) -> dict:
         """Clear all signature data for a fresh start.
 
@@ -5442,32 +5176,6 @@ class StepSignatureDB:
                 (limit,)
             ).fetchall()
             return [(row["id"], row["computation_graph"]) for row in rows]
-
-    def get_signatures_with_graph_embeddings(
-        self, for_routing: bool = True
-    ) -> list[StepSignature]:
-        """Get all signatures that have graph_embeddings for routing.
-
-        Returns signatures optimized for routing (minimal parsing).
-
-        Args:
-            for_routing: If True, use fast parsing (skip most JSON fields)
-
-        Returns:
-            List of signatures with graph_embedding populated
-        """
-        with self._connection() as conn:
-            rows = conn.execute(
-                """SELECT *
-                   FROM step_signatures
-                   WHERE graph_embedding IS NOT NULL
-                     AND graph_embedding != ''
-                     AND is_semantic_umbrella = 0"""  # Only leaf nodes for execution
-            ).fetchall()
-
-            if for_routing:
-                return [self._row_to_signature_for_routing(dict(row)) for row in rows]
-            return [self._row_to_signature(dict(row)) for row in rows]
 
     def route_by_graph_embedding(
         self,

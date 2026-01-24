@@ -21,6 +21,7 @@ from typing import Optional, List, Tuple
 import numpy as np
 
 from mycelium.step_signatures.models import StepSignature
+from mycelium.step_signatures.utils import cosine_similarity
 
 logger = logging.getLogger(__name__)
 
@@ -52,15 +53,6 @@ class SplitResult:
     child_b_id: Optional[int] = None  # Failure cluster child
     split_type: str = ""  # "width" or "depth"
     reason: str = ""
-
-
-def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
-    """Compute cosine similarity between two vectors."""
-    norm_a = np.linalg.norm(a)
-    norm_b = np.linalg.norm(b)
-    if norm_a == 0 or norm_b == 0:
-        return 0.0
-    return float(np.dot(a, b) / (norm_a * norm_b))
 
 
 def cosine_distance(a: np.ndarray, b: np.ndarray) -> float:
