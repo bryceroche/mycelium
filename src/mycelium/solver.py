@@ -3616,6 +3616,11 @@ Rules:
                     stats["step_decomposition_triggered"] = True
                     stats["decomposition_succeeded"] = False
                     logger.info("[reactive] Step decomposition also failed")
+
+                    # dag_step decomposition failed → check if leaf nodes need decomposition
+                    # Per brainstorm: Use maturity-based decision to flag underperforming leaves
+                    await self._evaluate_leaf_decomposition_after_failure(result, stats)
+
                     return stats
             else:
                 return stats
@@ -3660,6 +3665,81 @@ Rules:
                 )
 
         return stats
+
+    async def _evaluate_leaf_decomposition_after_failure(
+        self,
+        result: SolverResult,
+        stats: dict,
+    ) -> None:
+        """Evaluate if leaf nodes need decomposition after dag_step decomp failed.
+
+        Per brainstorm: When dag_step decomposition fails, use maturity-based
+        decision to determine if the leaf signatures themselves are the problem.
+
+        Strategy:
+        - Compare each leaf's health to DB average (maturity)
+        - Underperforming leaves with high traffic confidence → flag for decomposition
+        - Healthy leaves or low confidence → accumulate evidence, don't change tree
+
+        Args:
+            result: The failed SolverResult with step information
+            stats: Dict to record statistics about decisions made
+        """
+        from mycelium.data_layer.mcts import compute_decomposition_decision
+
+        # Get all leaf signatures involved in this failed problem
+        leaf_decisions = []
+        for step in result.steps:
+            if step.signature_id is None:
+                continue
+
+            # Compute decomposition decision for this leaf
+            # dag_step_decomp_succeeded=False since we're here after it failed
+            decision = compute_decomposition_decision(
+                signature_id=step.signature_id,
+                dag_step_decomp_succeeded=False,
+            )
+
+            leaf_decisions.append({
+                "signature_id": step.signature_id,
+                "step_task": step.task[:50] if step.task else "",
+                "action": decision.action,
+                "p_decompose_leaf": decision.p_decompose_leaf,
+                "db_maturity": decision.db_maturity,
+                "leaf_health": decision.leaf_health,
+                "reason": decision.reason,
+            })
+
+            # If decision is to decompose leaf, flag it
+            if decision.action == "decompose_leaf":
+                logger.info(
+                    "[decomp-decision] Flagging leaf %d for decomposition: %s",
+                    step.signature_id, decision.reason
+                )
+                # Flag the signature for decomposition
+                try:
+                    from mycelium.data_layer import get_db
+                    conn = get_db()
+                    conn.execute(
+                        "UPDATE step_signatures SET needs_split = 1 WHERE id = ?",
+                        (step.signature_id,)
+                    )
+                except Exception as e:
+                    logger.warning("[decomp-decision] Failed to flag leaf: %s", e)
+
+        # Record stats
+        stats["leaf_decomposition_decisions"] = leaf_decisions
+        stats["leaves_flagged_for_decomposition"] = sum(
+            1 for d in leaf_decisions if d["action"] == "decompose_leaf"
+        )
+
+        if leaf_decisions:
+            avg_maturity = sum(d["db_maturity"] for d in leaf_decisions) / len(leaf_decisions)
+            stats["db_maturity"] = avg_maturity
+            logger.info(
+                "[decomp-decision] Evaluated %d leaves (db_maturity=%.2f): %d flagged for decomposition",
+                len(leaf_decisions), avg_maturity, stats["leaves_flagged_for_decomposition"]
+            )
 
     def record_problem_outcome(
         self,

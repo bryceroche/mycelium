@@ -1036,6 +1036,252 @@ def flag_high_rejection_leaves_for_decomposition() -> list[dict]:
 
 
 # =============================================================================
+# MATURITY-BASED DECOMPOSITION DECISIONS
+# =============================================================================
+# Per brainstorm: Use DB maturity (inferred from leaf success rates) to decide
+# between dag_step decomposition vs leaf_node decomposition.
+#
+# Key insight: Bias toward dag_step decomposition (cheap, reversible).
+# Only consider leaf_node decomposition when dag_step decomp fails AND
+# the leaf has poor stats relative to DB average.
+
+
+@dataclass
+class DecompositionDecision:
+    """Result of decomposition decision analysis."""
+    action: str  # "try_dag_step_decomp", "decompose_leaf", "accumulate_evidence", "done"
+    p_decompose_leaf: float  # Probability score for leaf decomposition
+    db_maturity: float  # Inferred DB maturity (0-1)
+    leaf_health: float  # This leaf's health score (0-1)
+    reason: str  # Human-readable explanation
+
+
+def sigmoid(x: float, k: float = 1.0, midpoint: float = 0.0) -> float:
+    """Sigmoid function for smooth transitions."""
+    import math
+    try:
+        return 1.0 / (1.0 + math.exp(-k * (x - midpoint)))
+    except OverflowError:
+        return 0.0 if x < midpoint else 1.0
+
+
+def compute_db_maturity() -> float:
+    """Infer DB maturity from leaf node success rates.
+
+    Maturity EMERGES from actual performance:
+    - Mature DB = leaves performing well (good coverage of operations)
+    - Immature DB = leaves struggling (need more building blocks)
+
+    Returns:
+        float: 0.0 (immature) to 1.0 (mature), based on traffic-weighted
+        success rate of confident leaves.
+    """
+    conn = get_db()
+
+    # Get leaf nodes with meaningful traffic (is_semantic_umbrella = 0)
+    MIN_TRAFFIC = 5  # Need enough uses to trust stats
+
+    cursor = conn.execute(
+        """
+        SELECT id, uses, successes
+        FROM step_signatures
+        WHERE is_semantic_umbrella = 0
+          AND uses >= ?
+        """,
+        (MIN_TRAFFIC,),
+    )
+    leaves = cursor.fetchall()
+
+    if not leaves:
+        logger.debug("[maturity] No confident leaves yet, returning 0.0 (immature)")
+        return 0.0  # Cold start → fully immature
+
+    # Traffic-weighted success rate
+    # Note: successes can be > uses due to difficulty weighting, so cap rate at 1.0
+    total_weight = 0
+    weighted_success = 0.0
+
+    for row in leaves:
+        uses = row["uses"]
+        successes = row["successes"]
+        # Cap success_rate at 1.0 (successes may be difficulty-weighted)
+        success_rate = min(1.0, successes / uses) if uses > 0 else 0.0
+
+        weighted_success += success_rate * uses
+        total_weight += uses
+
+    maturity = weighted_success / total_weight if total_weight > 0 else 0.0
+    # Ensure maturity is in [0, 1]
+    maturity = min(1.0, max(0.0, maturity))
+
+    logger.debug(
+        "[maturity] DB maturity=%.3f from %d confident leaves (total_weight=%d)",
+        maturity, len(leaves), total_weight
+    )
+
+    return maturity
+
+
+def get_leaf_stats(signature_id: int) -> dict:
+    """Get stats for a specific leaf signature.
+
+    Returns:
+        dict with uses, successes, success_rate, traffic_confidence
+    """
+    conn = get_db()
+
+    cursor = conn.execute(
+        """
+        SELECT uses, successes
+        FROM step_signatures
+        WHERE id = ?
+        """,
+        (signature_id,),
+    )
+    row = cursor.fetchone()
+
+    if not row:
+        return {
+            "uses": 0,
+            "successes": 0,
+            "success_rate": 0.5,  # Default uncertain
+            "traffic_confidence": 0.0,
+        }
+
+    uses = row["uses"]
+    successes = row["successes"]
+    # Cap success_rate at 1.0 (successes may be difficulty-weighted)
+    success_rate = min(1.0, successes / uses) if uses > 0 else 0.5
+
+    # Traffic confidence: sigmoid ramp, confident at ~8 uses
+    traffic_confidence = sigmoid(uses, k=0.3, midpoint=8)
+
+    return {
+        "uses": uses,
+        "successes": successes,
+        "success_rate": success_rate,
+        "traffic_confidence": traffic_confidence,
+    }
+
+
+def compute_decomposition_decision(
+    signature_id: int,
+    dag_step_decomp_succeeded: bool | None = None,
+) -> DecompositionDecision:
+    """Decide between dag_step decomposition vs leaf_node decomposition.
+
+    Uses DB maturity (inferred from leaf success rates) and this leaf's
+    stats to make a smooth, continuous decision.
+
+    Strategy:
+    1. Always try dag_step decomposition first (cheap, reversible)
+    2. If dag_step decomp succeeds → done
+    3. If dag_step decomp fails → compare this leaf to DB average:
+       - Leaf worse than average → leaf is the problem, decompose it
+       - Leaf better than average → weird edge case, accumulate evidence
+
+    Args:
+        signature_id: The leaf signature that was matched
+        dag_step_decomp_succeeded: True/False if tried, None if not tried yet
+
+    Returns:
+        DecompositionDecision with action and supporting metrics
+    """
+    # Get DB-wide maturity (emerges from leaf performance)
+    db_maturity = compute_db_maturity()
+
+    # Get this leaf's stats
+    leaf_stats = get_leaf_stats(signature_id)
+
+    # Leaf health: blend actual rate with uncertainty from low traffic
+    # Low traffic → default to 0.5 (uncertain)
+    # High traffic → use actual success rate
+    tc = leaf_stats["traffic_confidence"]
+    raw_rate = leaf_stats["success_rate"]
+    leaf_health = raw_rate * tc + 0.5 * (1 - tc)
+
+    # Step 1: Always try dag_step decomp first
+    if dag_step_decomp_succeeded is None:
+        return DecompositionDecision(
+            action="try_dag_step_decomp",
+            p_decompose_leaf=0.0,
+            db_maturity=db_maturity,
+            leaf_health=leaf_health,
+            reason="Always try dag_step decomposition first (cheap probe)",
+        )
+
+    # Step 2: dag_step decomp succeeded → done
+    if dag_step_decomp_succeeded:
+        return DecompositionDecision(
+            action="done",
+            p_decompose_leaf=0.0,
+            db_maturity=db_maturity,
+            leaf_health=leaf_health,
+            reason="dag_step decomposition succeeded, no tree change needed",
+        )
+
+    # Step 3: dag_step decomp failed → should we decompose the leaf?
+    #
+    # Key insight: Compare THIS leaf to the DB average.
+    # - Leaf worse than average → leaf is the problem
+    # - Leaf at/above average → dag_step is a weird edge case
+
+    # How much worse is this leaf vs DB average?
+    # Positive = leaf underperforming, Negative = leaf is fine
+    leaf_vs_average = db_maturity - leaf_health
+
+    # P(decompose_leaf) increases when:
+    # 1. Leaf is underperforming vs average (leaf_vs_average > 0)
+    # 2. We have traffic confidence in this leaf's stats
+    # 3. DB is less mature (more willing to create new leaves early on)
+
+    underperformance_signal = sigmoid(leaf_vs_average, k=8, midpoint=0.1)
+    maturity_dampener = 1 - (db_maturity * 0.6)  # Mature DB dampens by up to 60%
+
+    p_decompose_leaf = (
+        underperformance_signal
+        * leaf_stats["traffic_confidence"]
+        * maturity_dampener
+    )
+
+    # Clamp to reasonable range
+    p_decompose_leaf = max(0.0, min(1.0, p_decompose_leaf))
+
+    # Decision thresholds
+    if p_decompose_leaf > 0.6:
+        action = "decompose_leaf"
+        reason = (
+            f"Leaf underperforming (health={leaf_health:.2f} vs db_avg={db_maturity:.2f}), "
+            f"confident signal (p={p_decompose_leaf:.2f})"
+        )
+    elif p_decompose_leaf < 0.2:
+        action = "accumulate_evidence"
+        reason = (
+            f"Leaf healthy or insufficient evidence (health={leaf_health:.2f}, "
+            f"traffic_conf={leaf_stats['traffic_confidence']:.2f})"
+        )
+    else:
+        action = "accumulate_evidence"
+        reason = (
+            f"Middle ground, gathering more data (p={p_decompose_leaf:.2f}, "
+            f"health={leaf_health:.2f})"
+        )
+
+    logger.info(
+        "[decomp-decision] sig=%d action=%s p=%.3f (db_maturity=%.2f, leaf_health=%.2f, uses=%d)",
+        signature_id, action, p_decompose_leaf, db_maturity, leaf_health, leaf_stats["uses"]
+    )
+
+    return DecompositionDecision(
+        action=action,
+        p_decompose_leaf=p_decompose_leaf,
+        db_maturity=db_maturity,
+        leaf_health=leaf_health,
+        reason=reason,
+    )
+
+
+# =============================================================================
 # DAG STEP FUNCTIONS
 # =============================================================================
 
