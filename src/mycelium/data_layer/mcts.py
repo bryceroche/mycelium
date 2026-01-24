@@ -1065,58 +1065,51 @@ def sigmoid(x: float, k: float = 1.0, midpoint: float = 0.0) -> float:
         return 0.0 if x < midpoint else 1.0
 
 
-def compute_db_maturity() -> float:
-    """Infer DB maturity from leaf node success rates.
+def compute_db_maturity(rolling_window: int = 100) -> float:
+    """Infer DB maturity from rolling window of recent problem outcomes.
 
-    Maturity EMERGES from actual performance:
-    - Mature DB = leaves performing well (good coverage of operations)
-    - Immature DB = leaves struggling (need more building blocks)
+    Maturity EMERGES from actual ground-truth performance:
+    - Uses the last N graded problems (not leaf stats which can be stale)
+    - 70% accuracy on GSM8K → ~0.70 maturity (intuitive!)
+
+    This is much more accurate than leaf success rates because:
+    1. It's ground truth (did we actually solve the problem?)
+    2. It's recent (reflects current performance, not stale history)
+    3. It's directly what we care about
+
+    Args:
+        rolling_window: Number of recent problems to consider (default 100)
 
     Returns:
-        float: 0.0 (immature) to 1.0 (mature), based on traffic-weighted
-        success rate of confident leaves.
+        float: 0.0 (immature/struggling) to 1.0 (mature/working well)
     """
     conn = get_db()
 
-    # Get leaf nodes with meaningful traffic (is_semantic_umbrella = 0)
-    MIN_TRAFFIC = 5  # Need enough uses to trust stats
-
+    # Get the last N graded problems
     cursor = conn.execute(
         """
-        SELECT id, uses, successes
-        FROM step_signatures
-        WHERE is_semantic_umbrella = 0
-          AND uses >= ?
+        SELECT success
+        FROM mcts_dags
+        WHERE success IS NOT NULL
+        ORDER BY graded_at DESC
+        LIMIT ?
         """,
-        (MIN_TRAFFIC,),
+        (rolling_window,),
     )
-    leaves = cursor.fetchall()
+    outcomes = cursor.fetchall()
 
-    if not leaves:
-        logger.debug("[maturity] No confident leaves yet, returning 0.0 (immature)")
+    if not outcomes:
+        logger.debug("[maturity] No graded problems yet, returning 0.0 (cold start)")
         return 0.0  # Cold start → fully immature
 
-    # Traffic-weighted success rate
-    # Note: successes can be > uses due to difficulty weighting, so cap rate at 1.0
-    total_weight = 0
-    weighted_success = 0.0
-
-    for row in leaves:
-        uses = row["uses"]
-        successes = row["successes"]
-        # Cap success_rate at 1.0 (successes may be difficulty-weighted)
-        success_rate = min(1.0, successes / uses) if uses > 0 else 0.0
-
-        weighted_success += success_rate * uses
-        total_weight += uses
-
-    maturity = weighted_success / total_weight if total_weight > 0 else 0.0
-    # Ensure maturity is in [0, 1]
-    maturity = min(1.0, max(0.0, maturity))
+    # Simple rolling accuracy
+    total = len(outcomes)
+    successes = sum(1 for row in outcomes if row["success"] == 1)
+    maturity = successes / total
 
     logger.debug(
-        "[maturity] DB maturity=%.3f from %d confident leaves (total_weight=%d)",
-        maturity, len(leaves), total_weight
+        "[maturity] DB maturity=%.3f from last %d problems (%d/%d correct)",
+        maturity, total, successes, total
     )
 
     return maturity
