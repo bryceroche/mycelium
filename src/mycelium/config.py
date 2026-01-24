@@ -50,10 +50,6 @@ ALWAYS_ROUTE_TO_BEST = True  # If True, ignore thresholds and always use best ma
 
 DSL_TIMEOUT_SEC = 1.0  # Timeout for DSL script execution
 
-# Algebra / SymPy settings for backwards solving
-ALGEBRA_ENABLED = True  # Enable SymPy-based backwards solving
-ALGEBRA_TIMEOUT_SEC = 2.0  # Longer timeout for SymPy (symbolic math is slower)
-
 # Decomposition queue settings
 # Decomposition triggers when EITHER condition is met (whichever comes first):
 DECOMP_MIN_BATCH_SIZE = 5  # Trigger when queue reaches this size
@@ -340,10 +336,6 @@ HINT_MAX_CHILDREN_PER_CLUSTER = 5  # Max child hints per umbrella cluster
 HINT_MAX_DEPTH = 3       # How deep to traverse (1=level-1 only, 2=include grandchildren)
 HINT_MAX_GRANDCHILDREN = 3  # Max grandchildren hints per level-2 umbrella
 
-RECURSIVE_DECOMPOSITION_ENABLED = True  # Enable decomposition for complex steps
-RECURSIVE_MAX_DEPTH = 19  # Max routing depth (1 beyond MIN_SIGNATURE_DEPTH=18)
-RECURSIVE_CONFIDENCE_THRESHOLD = 0.8  # Route deeper when DSL confidence < this
-
 # Umbrella routing depth limits
 _UMBRELLA_MAX_DEPTH_RAW = 20  # Configurable max depth for umbrella routing chains (2 beyond leaves)
 _UMBRELLA_HARD_CAP = 100  # Absolute maximum to prevent unbounded recursion
@@ -355,50 +347,15 @@ NEW_CHILD_SIMILARITY_THRESHOLD = 0.7  # Min similarity to reuse existing child i
                                        # but child at 0.7+ is "close enough" - use instead of duplicating
                                        # This prevents duplicate children for similar steps
 
-# =============================================================================
-# SCAFFOLD STRUCTURE (Pre-allocated tree depth for domain emergence)
-# =============================================================================
-# The universal tree pre-allocates placeholder umbrella DEPTH at startup.
-# This gives the tree vertical room to grow - domains emerge as traffic flows.
-#
-# NO HORIZONTAL PRE-ALLOCATION: We don't pre-create branches. Instead:
-#   - Create a deep chain of placeholder umbrellas (1 per level)
-#   - Branches fork DYNAMICALLY as different problem types arrive
-#   - Each problem that doesn't match existing path creates new branch
-#
-# Structure (initial) - DEEP TREE for maximum headroom:
-#   Level 0: ROOT
-#   Level 1-11: [reserved]        <- massive headroom for future domains
-#   Level 12-17: [forking zone]   <- current problems fork here
-#   Level 18+: LEAF SIGNATURES    <- GSM8K problems land here
-#
-# Structure (after GSM8K + MATH L5 training):
-#   Level 0: ROOT
-#   Level 1-5: [still reserved]              <- room for even harder problems
-#   Level 6-8: [algebra] [geometry] [number_theory]  <- MATH L5 domains
-#   Level 9-11: [sub-domains]                <- quadratic, trig, proofs, etc.
-#   Level 12-17: operation clustering        <- fine-grained categories
-#   Level 18+: LEAF signatures               <- DSL executors
-#
-# Philosophy: Routing is cheap (just embeddings), so depth costs nothing.
-# Better to have tons of headroom than be cramped at the top later.
+# Tree growth settings (organic, no pre-allocation)
+MIN_FORK_DEPTH = 0  # Allow forking at any depth (organic growth)
+SCAFFOLD_ENABLED = False  # Legacy - scaffold removed, tree grows organically
+MIN_SIGNATURE_DEPTH = 0  # Allow leaf signatures at any depth
 
-SCAFFOLD_ENABLED = False  # DISABLED: Let tree grow organically (AlphaGo style)
-SCAFFOLD_LEVELS = 18  # (unused when disabled) Very deep scaffold (18 levels before leaves)
-MIN_SIGNATURE_DEPTH = 0  # Allow leaf signatures at any depth (organic growth)
-MIN_FORK_DEPTH = 0  # Allow forking at any depth (no reserved levels)
-SCAFFOLD_FORK_THRESHOLD = 0.6  # Create new branch if best match below this (mature)
-SCAFFOLD_FORK_THRESHOLD_COLD_START = 0.85  # Higher threshold during cold start (more forking)
-SCAFFOLD_FORK_RAMP_SIGNATURES = 500  # Ramp from cold start to mature over this many sigs
-
-# NO HORIZONTAL SCALING: Initial scaffold is a single chain.
-# Branches fork DYNAMICALLY at runtime when problems diverge.
-#
-# Tree structure:
-#   Level 0: ROOT (never forks)
-#   Level 1-11: Reserved (massive headroom for future domains)
-#   Level 12-17: Forking zone (current problems cluster here)
-#   Level 18+: Leaf signatures (actual DSL executors)
+# Big Bang forking thresholds (used by organic growth, not scaffold)
+SCAFFOLD_FORK_THRESHOLD = 0.80  # Fork threshold at maturity
+SCAFFOLD_FORK_THRESHOLD_COLD_START = 0.70  # Fork threshold during cold start (more aggressive)
+SCAFFOLD_FORK_RAMP_SIGNATURES = 500  # Signatures needed to reach maturity
 
 # =============================================================================
 # BIG BANG - Smooth Fork Probability
@@ -615,7 +572,6 @@ ZERO_LLM_REQUIRE_DSL = True  # Signature must have a working DSL script
 GRAPH_ROUTING_ENABLED = True  # Master switch for graph-based routing
 GRAPH_ROUTING_MIN_SIMILARITY = 0.80  # Minimum similarity for graph match
 GRAPH_ROUTING_BOOST_FACTOR = 0.15  # Boost to UCB1 when graph matches
-GRAPH_ROUTING_REQUIRE_EXTRACTION = True  # Require operation extraction (uses LLM)
 GRAPH_ROUTING_FALLBACK_TO_CENTROID = True  # Fall back to centroid if no graph match
 
 # =============================================================================
@@ -728,19 +684,6 @@ DIAGNOSTIC_REROUTE_LOOKBACK_DAYS = 7  # How far back to search for similar succe
 DIAGNOSTIC_GOOD_SIG_ACCURACY = 0.7  # Accuracy above this = "good signature"
 DIAGNOSTIC_BAD_SIG_ACCURACY = 0.3  # Accuracy below this = "bad signature"
 # Between these values: blend between step and signature decomposition
-
-# =============================================================================
-# DSL AUTO-REWRITER (Fix underperforming DSLs automatically)
-# =============================================================================
-# When a signature has low success rate but high traffic, the rewriter
-# uses LLM to generate an improved DSL script.
-# Per CLAUDE.md: "rewrite DSL if centroid avg outside confidence bounds"
-
-DSL_REWRITER_ENABLED = True  # Master switch for auto-rewriting
-DSL_REWRITER_MIN_USES = 10  # Need enough data to identify failure patterns
-DSL_REWRITER_MAX_SUCCESS_RATE = 0.40  # Rewrite if success rate below this
-DSL_REWRITER_MIN_TRAFFIC_SHARE = 0.005  # Only rewrite high-traffic sigs (0.5%)
-DSL_REWRITER_COOLDOWN_HOURS = 24  # Don't rewrite same sig within this period
 
 # Post-mortem triggered DSL regeneration
 # Per beads mycelium-flbq: When post-mortem detects high failure rate, trigger DSL regen

@@ -473,12 +473,9 @@ class StepSignatureDB:
                 yield conn
 
     def _init_schema(self):
-        """Initialize database schema and scaffold structure."""
+        """Initialize database schema."""
         with self._connection() as conn:
             init_db(conn)
-
-        # Initialize scaffold structure if enabled (creates placeholder umbrellas)
-        self.initialize_scaffold()
 
     # =========================================================================
     # Root Management (Single Entry Point)
@@ -514,120 +511,6 @@ class StepSignatureDB:
                 "SELECT 1 FROM step_signatures WHERE is_root = 1 LIMIT 1"
             ).fetchone()
             return row is not None
-
-    def initialize_scaffold(self) -> bool:
-        """Initialize the pre-allocated scaffold structure for the universal tree.
-
-        Creates placeholder umbrella levels that give the tree "room to grow".
-        Domains emerge as problem traffic flows through and centroids specialize.
-
-        Structure created:
-            Level 0: ROOT (single entry point)
-            Level 1-N: Placeholder umbrellas (SCAFFOLD_LEVELS)
-            Level N+1+: Where actual leaf signatures will be created
-
-        The placeholders start with null centroids. As problems route through,
-        centroids get initialized and refined via averaging.
-
-        Returns:
-            True if scaffold was created, False if already exists or disabled
-        """
-        from mycelium.config import SCAFFOLD_ENABLED, SCAFFOLD_LEVELS
-
-        if not SCAFFOLD_ENABLED:
-            logger.debug("[db] Scaffold disabled, skipping initialization")
-            return False
-
-        now = datetime.now(timezone.utc).isoformat()
-
-        with self._connection() as conn:
-            # Use BEGIN IMMEDIATE for atomic check-and-create to prevent race condition
-            # when multiple workers start simultaneously
-            conn.execute("BEGIN IMMEDIATE")
-            try:
-                # Check if scaffold already exists (has root with children)
-                root_row = conn.execute(
-                    "SELECT id FROM step_signatures WHERE is_root = 1 LIMIT 1"
-                ).fetchone()
-
-                if root_row is not None:
-                    # Root exists, check if it has children (scaffold already created)
-                    child_count = conn.execute(
-                        "SELECT COUNT(*) FROM signature_relationships WHERE parent_id = ?",
-                        (root_row[0],)
-                    ).fetchone()[0]
-                    if child_count > 0:
-                        logger.debug("[db] Scaffold already exists (%d root children)", child_count)
-                        conn.rollback()
-                        return False
-
-                logger.info("[db] Initializing scaffold: %d levels (single chain, no horizontal scaling)", SCAFFOLD_LEVELS)
-
-                if root_row is None:
-                    # Create the root signature
-                    root_sig_id = f"root_{uuid.uuid4().hex[:8]}"
-                    cursor = conn.execute(
-                        """INSERT INTO step_signatures (
-                            signature_id, centroid, centroid_bucket,
-                            step_type, description, dsl_type,
-                            is_semantic_umbrella, is_root, depth, created_at
-                        ) VALUES (?, NULL, NULL, ?, ?, ?, 1, 1, 0, ?)""",
-                        (root_sig_id, "root", "Universal math problem router", "router", now)
-                    )
-                    root_id = cursor.lastrowid
-                    logger.info("[db] Created scaffold root: id=%d", root_id)
-                else:
-                    root_id = root_row[0]
-                    # Ensure root is an umbrella - routers don't execute DSL
-                    conn.execute(
-                        "UPDATE step_signatures SET is_semantic_umbrella = 1, dsl_type = 'router', dsl_script = NULL WHERE id = ?",
-                        (root_id,)
-                    )
-
-                # Create single-chain scaffold: ROOT → L1 → L2 → ... → LN
-                # NO horizontal scaling - branches fork dynamically at runtime
-                current_parent_id = root_id
-
-                for level in range(1, SCAFFOLD_LEVELS + 1):
-                    placeholder_id = f"scaffold_L{level}_{uuid.uuid4().hex[:8]}"
-                    cursor = conn.execute(
-                        """INSERT INTO step_signatures (
-                            signature_id, centroid, centroid_bucket,
-                            step_type, description, dsl_type,
-                            is_semantic_umbrella, is_root, depth, created_at
-                        ) VALUES (?, NULL, NULL, ?, ?, ?, 1, 0, ?, ?)""",
-                        (
-                            placeholder_id,
-                            f"abstract_L{level}",
-                            f"Abstract routing level {level}",
-                            "router",
-                            level,
-                            now,
-                        )
-                    )
-                    child_id = cursor.lastrowid
-
-                    # Create parent-child relationship
-                    conn.execute(
-                        """INSERT INTO signature_relationships (parent_id, child_id, condition, created_at)
-                           VALUES (?, ?, ?, ?)""",
-                        (current_parent_id, child_id, f"scaffold_chain_L{level}", now)
-                    )
-
-                    logger.debug("[db] Created scaffold level %d: id=%d", level, child_id)
-                    current_parent_id = child_id
-
-                conn.commit()
-            except Exception:
-                conn.rollback()
-                raise
-
-        # Invalidate caches
-        self._cached_root = None
-        self.invalidate_centroid_matrix()
-
-        logger.info("[db] Scaffold initialized: single chain of %d levels (branches fork dynamically)", SCAFFOLD_LEVELS)
-        return True
 
     def _create_scaffold_branch(
         self,
