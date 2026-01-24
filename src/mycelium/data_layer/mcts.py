@@ -4244,6 +4244,22 @@ def collapse_single_child_routers() -> dict:
                         WHERE parent_id = ? AND child_id = ?
                     """, (child_id, grandparent_id, parent_id))
 
+                    # FIX: Update child's depth to reflect new parent
+                    # Child's depth should be grandparent's depth + 1
+                    grandparent_depth_row = conn.execute(
+                        "SELECT depth FROM step_signatures WHERE id = ?",
+                        (grandparent_id,)
+                    ).fetchone()
+                    new_depth = (grandparent_depth_row["depth"] + 1) if grandparent_depth_row else 1
+                    conn.execute(
+                        "UPDATE step_signatures SET depth = ? WHERE id = ?",
+                        (new_depth, child_id)
+                    )
+                    logger.debug(
+                        "[mcts] Updated child %d depth to %d (grandparent %d depth + 1)",
+                        child_id, new_depth, grandparent_id
+                    )
+
                 # Mark router as archived (don't delete, preserve history)
                 conn.execute(
                     "UPDATE step_signatures SET is_archived = 1 WHERE id = ?",
@@ -4265,6 +4281,97 @@ def collapse_single_child_routers() -> dict:
     return {
         "collapsed": collapsed,
         "collapsed_ids": collapsed_ids,
+    }
+
+
+def repair_signature_depths() -> dict:
+    """Repair signature depths that became inconsistent after collapse operations.
+
+    This fixes the bug where collapse_single_child_routers() was reparenting
+    signatures without updating their depth to match the new parent.
+
+    For each signature, the correct depth is: parent's depth + 1 (or 0 if root).
+
+    Returns:
+        Dict with repair statistics
+    """
+    db = get_db()
+    repaired = 0
+    repairs = []
+
+    try:
+        with db.connection() as conn:
+            # Get all non-root signatures with their parent depth
+            cursor = conn.execute("""
+                SELECT
+                    s.id,
+                    s.depth as current_depth,
+                    s.is_root,
+                    p.id as parent_id,
+                    p.depth as parent_depth
+                FROM step_signatures s
+                LEFT JOIN signature_relationships r ON r.child_id = s.id
+                LEFT JOIN step_signatures p ON p.id = r.parent_id
+                WHERE s.is_archived = 0
+            """)
+            rows = cursor.fetchall()
+
+            for row in rows:
+                sig_id = row["id"]
+                current_depth = row["current_depth"] or 0
+                is_root = row["is_root"]
+                parent_id = row["parent_id"]
+                parent_depth = row["parent_depth"]
+
+                # Root should always be depth 0
+                if is_root:
+                    if current_depth != 0:
+                        conn.execute(
+                            "UPDATE step_signatures SET depth = 0 WHERE id = ?",
+                            (sig_id,)
+                        )
+                        repairs.append({
+                            "id": sig_id,
+                            "old_depth": current_depth,
+                            "new_depth": 0,
+                            "reason": "root must be depth 0"
+                        })
+                        repaired += 1
+                    continue
+
+                # Non-root with no parent (orphan) - shouldn't exist but handle it
+                if parent_id is None:
+                    expected_depth = 1  # Assume direct child of root
+                else:
+                    expected_depth = (parent_depth or 0) + 1
+
+                if current_depth != expected_depth:
+                    conn.execute(
+                        "UPDATE step_signatures SET depth = ? WHERE id = ?",
+                        (expected_depth, sig_id)
+                    )
+                    repairs.append({
+                        "id": sig_id,
+                        "old_depth": current_depth,
+                        "new_depth": expected_depth,
+                        "parent_id": parent_id,
+                        "parent_depth": parent_depth
+                    })
+                    repaired += 1
+                    logger.info(
+                        "[mcts] Repaired sig %d depth: %d -> %d (parent %s at depth %s)",
+                        sig_id, current_depth, expected_depth, parent_id, parent_depth
+                    )
+
+    except Exception as e:
+        logger.warning("[mcts] Failed to repair signature depths: %s", e)
+
+    if repaired > 0:
+        logger.info("[mcts] Repaired %d signature depths", repaired)
+
+    return {
+        "repaired": repaired,
+        "repairs": repairs,
     }
 
 
