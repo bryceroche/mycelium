@@ -83,13 +83,13 @@ generate a DSL script that can solve this type of step deterministically.
 ## DSL Format
 
 ```json
-{
+{{
   "type": "math|sympy|custom",
   "script": "executable expression",
   "params": ["param1", "param2"],
-  "aliases": {"param1": ["alias1", "alias2"]},
+  "aliases": {{"param1": ["alias1", "alias2"]}},
   "fallback": "decompose"
-}
+}}
 ```
 
 ## DSL Types
@@ -97,41 +97,41 @@ generate a DSL script that can solve this type of step deterministically.
 1. **math**: Simple arithmetic (no external deps)
    - Operators: +, -, *, /, **, //, %
    - Functions: sqrt, abs, min, max, round, sin, cos, tan, log, exp
-   - Example: `{"type": "math", "script": "a * b", "params": ["a", "b"]}`
+   - Example: `{{"type": "math", "script": "a * b", "params": ["a", "b"]}}`
 
 2. **sympy**: Symbolic algebra (for equations, simplification)
    - Functions: solve, simplify, expand, factor, diff, integrate
-   - Example: `{"type": "sympy", "script": "solve(Eq(a*x + b, 0), x)", "params": ["a", "b"]}`
+   - Example: `{{"type": "sympy", "script": "solve(Eq(a*x + b, 0), x)", "params": ["a", "b"]}}`
 
 3. **custom**: Predefined operators
    - apply_quadratic_formula(a, b, c), solve_linear(a, b), complete_square(a, b, c)
-   - Example: `{"type": "custom", "script": "apply_quadratic_formula(a, b, c)", "params": ["a", "b", "c"]}`
+   - Example: `{{"type": "custom", "script": "apply_quadratic_formula(a, b, c)", "params": ["a", "b", "c"]}}`
 
 ## Rules
 
 1. ONLY generate DSL if the pattern is truly deterministic
-2. If the step requires reasoning/judgment, respond with: {"type": "none"}
+2. If the step requires reasoning/judgment, respond with: {{"type": "none"}}
 3. Params should be generic (a, b, c) not specific to examples
 4. Include aliases for common variations of param names
 5. Use the simplest type that works (math > sympy > custom)
 6. **CRITICAL: DSLs must be ATOMIC - exactly ONE operation**
    - Good: "a + b", "a * b", "a / b", "a ** b", "sqrt(a)"
    - Bad: "(a + b) * c", "a / b - c", "(a * b) + c"
-   - If a step needs multiple operations, respond with {"type": "none"}
+   - If a step needs multiple operations, respond with {{"type": "none"}}
 
 ## Examples
 
 Step: "Multiply width by height"
-DSL: {"type": "math", "script": "a * b", "params": ["a", "b"], "aliases": {"a": ["width", "w"], "b": ["height", "h"]}}
+DSL: {{"type": "math", "script": "a * b", "params": ["a", "b"], "aliases": {{"a": ["width", "w"], "b": ["height", "h"]}}}}
 
 Step: "Solve 2x + 5 = 15 for x"
-DSL: {"type": "sympy", "script": "solve(Eq(a*x + b, c), x)", "params": ["a", "b", "c"], "aliases": {"a": ["coefficient"], "b": ["constant"], "c": ["result"]}}
+DSL: {{"type": "sympy", "script": "solve(Eq(a*x + b, c), x)", "params": ["a", "b", "c"], "aliases": {{"a": ["coefficient"], "b": ["constant"], "c": ["result"]}}}}
 
 Step: "Calculate (price + tax) * quantity"
-DSL: {"type": "none"}
+DSL: {{"type": "none"}}
 
 Step: "Determine which approach is most efficient"
-DSL: {"type": "none"}
+DSL: {{"type": "none"}}
 
 Now analyze these examples and generate the DSL:
 
@@ -142,7 +142,7 @@ Description: {description}
 ## Successful Examples
 {examples}
 
-Generate the DSL JSON (or {"type": "none"} if not suitable for DSL):
+Generate the DSL JSON (or {{"type": "none"}} if not suitable for DSL):
 '''
 
 

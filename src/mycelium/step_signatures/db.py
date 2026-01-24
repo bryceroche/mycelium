@@ -4401,6 +4401,36 @@ class StepSignatureDB:
             )
             invalidate_signature_cache(signature_id)
 
+    def update_dsl_script(
+        self,
+        signature_id: int,
+        dsl_script: str,
+    ):
+        """Update the DSL script for a signature and mark as rewritten.
+
+        Called by DSL regeneration to update the script based on learned patterns.
+        Also updates last_rewrite_at timestamp.
+
+        Args:
+            signature_id: ID of the signature to update
+            dsl_script: The new DSL script
+        """
+        from datetime import datetime
+
+        now = datetime.utcnow().isoformat()
+        with self._connection() as conn:
+            conn.execute(
+                """UPDATE step_signatures
+                   SET dsl_script = ?, last_rewrite_at = ?
+                   WHERE id = ?""",
+                (dsl_script, now, signature_id),
+            )
+            invalidate_signature_cache(signature_id)
+            logger.info(
+                "[db] Updated DSL script for signature %d, marked as rewritten",
+                signature_id
+            )
+
     # =========================================================================
     # Helpers
     # =========================================================================
