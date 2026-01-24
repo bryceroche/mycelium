@@ -4072,23 +4072,6 @@ Rules:
                         sig.step_type, node_id
                     )
 
-        # VARIANCE MONITORING (informational only, does not trigger decomposition)
-        # Variance tracking helps identify signatures catching diverse problem types.
-        # However, automatic decomposition based on variance alone creates empty umbrellas
-        # because there's no concrete problem context. Let actual failures drive decomposition.
-        from mycelium.data_layer.mcts import get_high_variance_nodes_for_decomposition
-        from mycelium.config import VARIANCE_MIN_SAMPLES, VARIANCE_DECOMP_THRESHOLD
-
-        high_variance_nodes = get_high_variance_nodes_for_decomposition(
-            min_samples=VARIANCE_MIN_SAMPLES,
-            max_variance=VARIANCE_DECOMP_THRESHOLD
-        )
-        if high_variance_nodes:
-            logger.info(
-                "[solver] High-variance signatures detected (monitoring only): %s",
-                [(nid, f"{var:.4f}") for nid, var in high_variance_nodes[:5]]
-            )
-
         # Also add nodes flagged by interference detection (destructive interference)
         # These already have operational_failures > 0 from record_interference_outcome
         for node_id in self._postmortem_flagged_nodes:

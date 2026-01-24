@@ -3546,66 +3546,6 @@ def get_failing_nodes_for_decomposition(min_attempts: int = 3, max_win_rate: flo
     return [rec.target_id for rec in result["nodes_to_decompose"]]
 
 
-def get_high_variance_nodes_for_decomposition(
-    min_samples: int = 5,
-    max_variance: float = 0.02,
-) -> list[tuple[int, float]]:
-    """Get list of node IDs that need decomposition based on embedding variance.
-
-    High variance in cosine similarities indicates the signature is too generic -
-    it's catching diverse problem types that should be specialized into children.
-
-    Per CLAUDE.md: Tree depth emerges from problem structure, not magic numbers.
-
-    Args:
-        min_samples: Minimum similarity samples to consider (avoid noise from small N)
-        max_variance: Variance threshold above which to flag for decomposition.
-                      Cosine similarity is [0,1], so variance is typically small.
-                      0.02 = std dev of ~0.14 in similarity scores.
-
-    Returns:
-        List of (node_id, variance) tuples for nodes needing decomposition
-    """
-    db = get_db()
-    high_variance_nodes = []
-
-    with db.connection() as conn:
-        # Query signatures with high variance that are NOT already umbrellas
-        # (umbrellas route, they don't execute - so variance there is expected)
-        cursor = conn.execute("""
-            SELECT id, similarity_count, similarity_mean, similarity_m2,
-                   step_type, is_semantic_umbrella
-            FROM step_signatures
-            WHERE similarity_count >= ?
-              AND is_semantic_umbrella = 0
-              AND is_archived = 0
-        """, (min_samples,))
-
-        for row in cursor.fetchall():
-            sig_id = row[0]
-            count = row[1]
-            mean = row[2] or 0.0
-            m2 = row[3] or 0.0
-            step_type = row[4]
-            is_umbrella = row[5]
-
-            # Compute variance using Welford's formula
-            if count >= 2:
-                variance = m2 / count
-            else:
-                variance = 0.0
-
-            # Flag if variance exceeds threshold
-            if variance > max_variance:
-                logger.info(
-                    "[mcts] High variance node %d (%s): variance=%.4f mean=%.3f samples=%d",
-                    sig_id, step_type, variance, mean, count
-                )
-                high_variance_nodes.append((sig_id, variance))
-
-    return high_variance_nodes
-
-
 def get_failing_steps_for_decomposition(min_attempts: int = 3, max_win_rate: float = 0.5) -> list[tuple[str, str]]:
     """Get list of (dag_step_id, step_desc) tuples that need decomposition.
 

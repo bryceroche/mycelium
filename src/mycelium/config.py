@@ -194,13 +194,6 @@ DECOMP_MIN_ATTEMPTS_COLD = 1  # Cold start: flag after just 1 failure
 DECOMP_MIN_ATTEMPTS_MATURE = 3  # Mature: require 3+ attempts before flagging
 DECOMP_MAX_WIN_RATE = 0.5  # Flag nodes with win rate below this
 
-# VARIANCE-BASED DECOMPOSITION (per CLAUDE.md: depth emerges from problem structure)
-# High variance in embedding similarities indicates a signature is too generic
-# It's catching diverse problem types that should specialize into children
-VARIANCE_MIN_SAMPLES = 10  # Minimum samples before variance is meaningful (need more data)
-VARIANCE_DECOMP_THRESHOLD = 0.005  # Variance above this triggers decomposition (more conservative)
-# Note: cosine similarity is [0,1], so variance is typically very small (0.001-0.01)
-
 # Bayesian prior for cold start (assume some successes before any data)
 ROUTING_PRIOR_SUCCESSES = 2
 ROUTING_PRIOR_USES = 4

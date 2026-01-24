@@ -2783,8 +2783,7 @@ class StepSignatureDB:
             New embedding count, or None if signature not found
         """
         row = conn.execute(
-            """SELECT embedding_sum, embedding_count, centroid, centroid_bucket,
-                      similarity_count, similarity_mean, similarity_m2
+            """SELECT embedding_sum, embedding_count, centroid, centroid_bucket
                FROM step_signatures WHERE id = ?""",
             (signature_id,)
         ).fetchone()
@@ -2806,40 +2805,12 @@ class StepSignatureDB:
         old_centroid = unpack_embedding(row["centroid"])
         old_bucket = row["centroid_bucket"]
 
-        # Variance tracking state (Welford's algorithm)
-        sim_count = row["similarity_count"] or 0
-        sim_mean = row["similarity_mean"] or 0.0
-        sim_m2 = row["similarity_m2"] or 0.0
-
         # Update running sum and count
         new_sum = current_sum + new_embedding
         new_count = current_count + 1
 
         # Compute new centroid
         new_centroid = new_sum / new_count
-
-        # Update variance tracking using Welford's online algorithm
-        # Measures how diverse the embeddings routed to this signature are
-        # High variance = too generic, should decompose
-        if old_centroid is not None:
-            # Compute similarity of new embedding to OLD centroid (before update)
-            similarity = cosine_similarity(new_embedding, old_centroid)
-
-            # Welford's algorithm for online variance computation
-            sim_count += 1
-            delta = similarity - sim_mean
-            sim_mean += delta / sim_count
-            delta2 = similarity - sim_mean
-            sim_m2 += delta * delta2
-
-            # Log high variance signatures (potential decomposition candidates)
-            if sim_count >= 5:
-                variance = sim_m2 / sim_count
-                if variance > 0.01:  # High variance threshold
-                    logger.debug(
-                        "[db] High variance sig %d: count=%d mean=%.3f variance=%.4f",
-                        signature_id, sim_count, sim_mean, variance
-                    )
 
         # Check drift bounds (monitoring - don't reject, just warn)
         if old_centroid is not None:
@@ -2862,7 +2833,6 @@ class StepSignatureDB:
         new_centroid_packed = pack_embedding(new_centroid)
 
         # Try updating with new bucket if changed, fall back to keeping old bucket on collision
-        # All paths include variance tracking fields (similarity_count, similarity_mean, similarity_m2)
         if update_last_used:
             now = datetime.now(timezone.utc).isoformat()
             if bucket_changed:
@@ -2870,61 +2840,50 @@ class StepSignatureDB:
                     conn.execute(
                         """UPDATE step_signatures
                            SET embedding_sum = ?, embedding_count = ?, centroid = ?, centroid_bucket = ?,
-                               similarity_count = ?, similarity_mean = ?, similarity_m2 = ?, last_used_at = ?
+                               last_used_at = ?
                            WHERE id = ?""",
-                        (new_sum_packed, new_count, new_centroid_packed, new_bucket,
-                         sim_count, sim_mean, sim_m2, now, signature_id),
+                        (new_sum_packed, new_count, new_centroid_packed, new_bucket, now, signature_id),
                     )
                 except sqlite3.IntegrityError:
                     # New bucket collides with existing signature - keep old bucket
                     logger.debug("[db] Bucket collision on update for sig %d, keeping old bucket", signature_id)
                     conn.execute(
                         """UPDATE step_signatures
-                           SET embedding_sum = ?, embedding_count = ?, centroid = ?,
-                               similarity_count = ?, similarity_mean = ?, similarity_m2 = ?, last_used_at = ?
+                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, last_used_at = ?
                            WHERE id = ?""",
-                        (new_sum_packed, new_count, new_centroid_packed,
-                         sim_count, sim_mean, sim_m2, now, signature_id),
+                        (new_sum_packed, new_count, new_centroid_packed, now, signature_id),
                     )
             else:
                 conn.execute(
                     """UPDATE step_signatures
-                       SET embedding_sum = ?, embedding_count = ?, centroid = ?,
-                           similarity_count = ?, similarity_mean = ?, similarity_m2 = ?, last_used_at = ?
+                       SET embedding_sum = ?, embedding_count = ?, centroid = ?, last_used_at = ?
                        WHERE id = ?""",
-                    (new_sum_packed, new_count, new_centroid_packed,
-                     sim_count, sim_mean, sim_m2, now, signature_id),
+                    (new_sum_packed, new_count, new_centroid_packed, now, signature_id),
                 )
         else:
             if bucket_changed:
                 try:
                     conn.execute(
                         """UPDATE step_signatures
-                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, centroid_bucket = ?,
-                               similarity_count = ?, similarity_mean = ?, similarity_m2 = ?
+                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, centroid_bucket = ?
                            WHERE id = ?""",
-                        (new_sum_packed, new_count, new_centroid_packed, new_bucket,
-                         sim_count, sim_mean, sim_m2, signature_id),
+                        (new_sum_packed, new_count, new_centroid_packed, new_bucket, signature_id),
                     )
                 except sqlite3.IntegrityError:
                     # New bucket collides with existing signature - keep old bucket
                     logger.debug("[db] Bucket collision on update for sig %d, keeping old bucket", signature_id)
                     conn.execute(
                         """UPDATE step_signatures
-                           SET embedding_sum = ?, embedding_count = ?, centroid = ?,
-                               similarity_count = ?, similarity_mean = ?, similarity_m2 = ?
+                           SET embedding_sum = ?, embedding_count = ?, centroid = ?
                            WHERE id = ?""",
-                        (new_sum_packed, new_count, new_centroid_packed,
-                         sim_count, sim_mean, sim_m2, signature_id),
+                        (new_sum_packed, new_count, new_centroid_packed, signature_id),
                     )
             else:
                 conn.execute(
                     """UPDATE step_signatures
-                       SET embedding_sum = ?, embedding_count = ?, centroid = ?,
-                           similarity_count = ?, similarity_mean = ?, similarity_m2 = ?
+                       SET embedding_sum = ?, embedding_count = ?, centroid = ?
                        WHERE id = ?""",
-                    (new_sum_packed, new_count, new_centroid_packed,
-                     sim_count, sim_mean, sim_m2, signature_id),
+                    (new_sum_packed, new_count, new_centroid_packed, signature_id),
                 )
 
         if bucket_changed:

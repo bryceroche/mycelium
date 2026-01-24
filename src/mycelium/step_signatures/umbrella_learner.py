@@ -437,9 +437,8 @@ Rules:
             if is_decompose_candidate:
                 candidates.append(sig)
                 logger.info(
-                    "[umbrella] Candidate: '%s' (id=%d, reason=decompose_type, mcts_win=%.1f%%, variance=%.4f, op_fail=%d)",
-                    sig.step_type, sig.id, actual_win_rate * 100, sig.similarity_variance,
-                    sig.operational_failures
+                    "[umbrella] Candidate: '%s' (id=%d, reason=decompose_type, mcts_win=%.1f%%, op_fail=%d)",
+                    sig.step_type, sig.id, actual_win_rate * 100, sig.operational_failures
                 )
 
         return candidates
