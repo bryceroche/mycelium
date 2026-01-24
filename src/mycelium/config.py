@@ -54,6 +54,11 @@ DSL_TIMEOUT_SEC = 1.0  # Timeout for DSL script execution
 ALGEBRA_ENABLED = True  # Enable SymPy-based backwards solving
 ALGEBRA_TIMEOUT_SEC = 2.0  # Longer timeout for SymPy (symbolic math is slower)
 
+# Decomposition queue settings
+# Decomposition triggers when EITHER condition is met (whichever comes first):
+DECOMP_MIN_BATCH_SIZE = 5  # Trigger when queue reaches this size
+DECOMP_MAX_QUEUE_AGE_SEC = 15.0  # Or when oldest item is this old (seconds)
+
 # DSL Operation Inference threshold (cold-start aware)
 # Ramps from COLD_START to MATURE as signature count grows
 # Cold start: try more DSLs to bootstrap learning

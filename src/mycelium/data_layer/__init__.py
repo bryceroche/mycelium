@@ -76,6 +76,7 @@ from mycelium.data_layer.mcts import (
     queue_for_decomposition,
     get_pending_decompositions,
     get_decomposition_queue_size,
+    get_oldest_pending_age_seconds,
     mark_decomposition_processed,
     get_decomposition_queue_stats,
     # Blocking decomposition coordination
@@ -167,6 +168,7 @@ __all__ = [
     "queue_for_decomposition",
     "get_pending_decompositions",
     "get_decomposition_queue_size",
+    "get_oldest_pending_age_seconds",
     "mark_decomposition_processed",
     "get_decomposition_queue_stats",
     # Blocking decomposition coordination

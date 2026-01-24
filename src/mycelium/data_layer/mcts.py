@@ -511,6 +511,30 @@ def get_decomposition_queue_size() -> int:
     return row[0] if row else 0
 
 
+def get_oldest_pending_age_seconds() -> float:
+    """Get age in seconds of the oldest pending decomposition.
+
+    Returns:
+        Age in seconds, or 0.0 if queue is empty.
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT MIN(queued_at) FROM decomposition_queue
+        WHERE processed_at IS NULL
+        """
+    )
+    row = cursor.fetchone()
+    if not row or not row[0]:
+        return 0.0
+
+    # Parse ISO timestamp
+    oldest_time = datetime.fromisoformat(row[0].replace('Z', '+00:00'))
+    now = datetime.now(timezone.utc)
+    age = (now - oldest_time).total_seconds()
+    return max(0.0, age)
+
+
 def mark_decomposition_processed(
     queue_id: int,
     result_signature_ids: list[int],

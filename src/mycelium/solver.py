@@ -967,12 +967,14 @@ class Solver:
             # This batches across multiple problems - steps queue up, decomposition fires when threshold met
             if TRAINING_MODE:
                 from mycelium.client import LLMClient
+                from mycelium.config import DECOMP_MIN_BATCH_SIZE, DECOMP_MAX_QUEUE_AGE_SEC
                 async with LLMClient() as client:
                     queue_ids, decomp_results = await self._blocking_decompose_complex_steps(
                         plan=plan,
                         problem=problem,
                         client=client,
-                        min_batch_size=5,  # Wait for 5 complex steps across problems
+                        min_batch_size=DECOMP_MIN_BATCH_SIZE,
+                        max_queue_age_sec=DECOMP_MAX_QUEUE_AGE_SEC,
                     )
                     if queue_ids:
                         plan = await self._expand_plan_with_decompositions(
@@ -4118,7 +4120,8 @@ Rules:
         plan,
         problem: str,
         client,
-        min_batch_size: int = 3,
+        min_batch_size: int = 5,
+        max_queue_age_sec: float = 15.0,
         poll_interval: float = 0.5,
         timeout: float = 15.0,
     ) -> tuple[list, dict]:
@@ -4127,11 +4130,16 @@ Rules:
         This implements blocking decomposition: complex steps are queued, we wait
         for batch decomposition to complete, then return decomposed atomic steps.
 
+        Decomposition triggers when EITHER:
+        - Queue size >= min_batch_size, OR
+        - Oldest pending item is >= max_queue_age_sec old
+
         Args:
             plan: The execution plan with steps
             problem: Problem text for context
             client: LLM client for decomposition
             min_batch_size: Minimum queue size before triggering decomposition
+            max_queue_age_sec: Max seconds oldest item can wait before triggering
             poll_interval: Seconds between polling for results
             timeout: Max seconds to wait for decomposition
 
@@ -4143,6 +4151,7 @@ Rules:
             is_step_complex,
             queue_for_decomposition,
             get_decomposition_queue_size,
+            get_oldest_pending_age_seconds,
             get_decomposition_results,
             are_decompositions_ready,
         )
@@ -4182,12 +4191,21 @@ Rules:
                 step.id, queue_id, step.task[:50]
             )
 
-        # 3. Check if threshold met, trigger decomposition if so
+        # 3. Check if threshold met (batch size OR age), trigger decomposition if so
         queue_size = get_decomposition_queue_size()
-        if queue_size >= min_batch_size:
+        oldest_age = get_oldest_pending_age_seconds()
+
+        should_trigger = queue_size >= min_batch_size or oldest_age >= max_queue_age_sec
+
+        if should_trigger and queue_size > 0:
+            trigger_reason = (
+                f"batch size ({queue_size} >= {min_batch_size})"
+                if queue_size >= min_batch_size
+                else f"age ({oldest_age:.1f}s >= {max_queue_age_sec}s)"
+            )
             logger.info(
-                "[solver] Queue threshold met (%d >= %d), triggering batch decomposition",
-                queue_size, min_batch_size
+                "[solver] Decomposition triggered by %s, processing %d items",
+                trigger_reason, queue_size
             )
             # Run decomposition for ALL pending items (not just ours)
             decomp_result = await self.maybe_run_batch_decomposition(
