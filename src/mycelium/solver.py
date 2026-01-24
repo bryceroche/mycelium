@@ -1521,6 +1521,16 @@ class Solver:
         # Problem correctness is tracked separately via update_problem_outcome()
         step_completed = bool(result)
 
+        # 6.0. Update example with result (for DSL regeneration)
+        # This records successful DSL outputs so regenerate_dsl can learn patterns
+        if routed_signature and step_completed and result:
+            self.step_db.update_example_result(
+                signature_id=routed_signature.id,
+                step_text=step.task,
+                result=str(result),
+                success=True,
+            )
+
         # 6.1. MCTS backpropagation: record usage for ALL explored signatures
         # Key insight: This is how multi-path exploration teaches cluster splitting
         # - Winning path signatures get step_completed=True

@@ -4150,6 +4150,50 @@ class StepSignatureDB:
                 })
             return examples
 
+    def update_example_result(
+        self,
+        signature_id: int,
+        step_text: str,
+        result: str,
+        success: bool,
+    ) -> bool:
+        """Update an example with its execution result.
+
+        Called after DSL execution to record the result for DSL regeneration.
+        Finds the most recent example for this signature matching step_text.
+
+        Args:
+            signature_id: ID of the signature
+            step_text: The step text to match
+            result: The DSL execution result
+            success: Whether execution succeeded
+
+        Returns:
+            True if an example was updated, False otherwise
+        """
+        with self._connection() as conn:
+            # Update the most recent example for this signature
+            # Match on first 100 chars of step_text to handle truncation
+            cursor = conn.execute(
+                """UPDATE step_examples
+                   SET result = ?, success = ?
+                   WHERE id = (
+                       SELECT id FROM step_examples
+                       WHERE signature_id = ?
+                         AND substr(step_text, 1, 100) = substr(?, 1, 100)
+                       ORDER BY created_at DESC
+                       LIMIT 1
+                   )""",
+                (result, 1 if success else 0, signature_id, step_text),
+            )
+            updated = cursor.rowcount > 0
+            if updated:
+                logger.debug(
+                    "[db] Updated example result for sig %d: success=%s",
+                    signature_id, success
+                )
+            return updated
+
     def update_problem_outcome(
         self,
         signature_ids: list[int],
