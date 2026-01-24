@@ -674,17 +674,16 @@ Rules:
         child_ids = [sig_id for sig_id, _, _, _ in child_ids]
 
         if len(child_ids) == 1:
-            # Single child = pointless router, mark parent as atomic instead
+            # Single child = pointless router, revert the decomposition
             # Per CLAUDE.md: "healthy tree would have ~5:1 ratio where each router has roughly five children"
             # A router with 1 child is just a chain, not meaningful branching
-            from mycelium.data_layer.mcts import mark_signature_atomic
+            # With divergence-based splitting, atomicity is emergent (no divergence = no split)
             logger.info(
-                "[umbrella] Decomposition produced only 1 child for '%s' - marking as atomic (no chain)",
+                "[umbrella] Decomposition produced only 1 child for '%s' - reverting (no chain)",
                 signature.step_type
             )
             # Remove the single child relationship we just added
             self.db.remove_child(parent_id=signature.id, child_id=child_ids[0])
-            mark_signature_atomic(signature.id, "single_child_decomp")
             return []  # No meaningful decomposition occurred
         elif len(child_ids) >= 2:
             # Multiple children = meaningful branching, promote to umbrella

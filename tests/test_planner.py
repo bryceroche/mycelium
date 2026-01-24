@@ -275,21 +275,28 @@ class TestStepReferenceValidation:
         assert not is_valid
         assert any("step_99" in e and "unknown" in e.lower() for e in errors)
 
-    def test_reference_not_in_depends_on(self):
-        """Reference to step not in depends_on should fail validation."""
+    def test_reference_not_in_depends_on_auto_fixes(self):
+        """Reference to step not in depends_on is auto-fixed (added to depends_on).
+
+        The planner auto-fixes missing dependencies because LLMs often forget to add
+        depends_on when referencing step values in extracted_values.
+        """
+        step3 = Step(
+            id="step_3",
+            task="Third",
+            depends_on=["step_1"],  # Only depends on step_1
+            extracted_values={"from_step_2": "{step_2}"}  # But references step_2
+        )
         plan = make_plan(steps=[
             Step(id="step_1", task="First"),
             Step(id="step_2", task="Second"),
-            Step(
-                id="step_3",
-                task="Third",
-                depends_on=["step_1"],  # Only depends on step_1
-                extracted_values={"from_step_2": "{step_2}"}  # But references step_2
-            ),
+            step3,
         ])
         is_valid, errors = plan.validate()
-        assert not is_valid
-        assert any("step_2" in e and "depend" in e.lower() for e in errors)
+        # Validation passes because missing dependency was auto-fixed
+        assert is_valid, f"Unexpected errors: {errors}"
+        # step_2 should now be in depends_on
+        assert "step_2" in step3.depends_on
 
     def test_multiple_references_all_valid(self):
         """Multiple valid references should pass."""
@@ -472,82 +479,98 @@ class TestStepOperation:
 
 
 class TestPlannerOperationParsing:
-    """Tests for parsing operation field from planner YAML output."""
+    """Tests for parsing operation field from planner JSON output."""
 
     def test_parse_operation_field(self):
         """Planner._parse_steps should extract operation field."""
+        import json
         from mycelium.planner import Planner
 
         planner = Planner()
-        response = """- id: step_1
-  task: Convert meters to km
-  operation: divide two numbers
-  values:
-    meters: 1000000
-    per_km: 1000
-  dsl_hint: /
-  depends_on: []"""
+        response = json.dumps({
+            "steps": [{
+                "id": "step_1",
+                "task": "Convert meters to km",
+                "operation": "divide two numbers",
+                "values": {"meters": 1000000, "per_km": 1000},
+                "dsl_hint": "/",
+                "depends_on": []
+            }]
+        })
 
-        steps = planner._parse_steps(response)
+        steps, _ = planner._parse_steps(response)
         assert len(steps) == 1
         assert steps[0].operation == "divide two numbers"
 
     def test_parse_operation_multiple_steps(self):
         """Parse operations from multiple steps."""
+        import json
         from mycelium.planner import Planner
 
         planner = Planner()
-        response = """- id: step_1
-  task: Find total
-  operation: multiply two numbers
-  values:
-    a: 10
-    b: 5
-  dsl_hint: *
-  depends_on: []
-- id: step_2
-  task: Subtract discount
-  operation: subtract from total
-  values:
-    total: "{step_1}"
-    discount: 15
-  dsl_hint: -
-  depends_on: [step_1]"""
+        response = json.dumps({
+            "steps": [
+                {
+                    "id": "step_1",
+                    "task": "Find total",
+                    "operation": "multiply two numbers",
+                    "values": {"a": 10, "b": 5},
+                    "dsl_hint": "*",
+                    "depends_on": []
+                },
+                {
+                    "id": "step_2",
+                    "task": "Subtract discount",
+                    "operation": "subtract from total",
+                    "values": {"total": "{step_1}", "discount": 15},
+                    "dsl_hint": "-",
+                    "depends_on": ["step_1"]
+                }
+            ]
+        })
 
-        steps = planner._parse_steps(response)
+        steps, _ = planner._parse_steps(response)
         assert len(steps) == 2
         assert steps[0].operation == "multiply two numbers"
         assert steps[1].operation == "subtract from total"
 
     def test_parse_missing_operation_still_works(self):
         """Steps without operation field should parse (backward compatibility)."""
+        import json
         from mycelium.planner import Planner
 
         planner = Planner()
-        response = """- id: step_1
-  task: Do something
-  values:
-    x: 10
-  dsl_hint: +
-  depends_on: []"""
+        response = json.dumps({
+            "steps": [{
+                "id": "step_1",
+                "task": "Do something",
+                "values": {"x": 10},
+                "dsl_hint": "+",
+                "depends_on": []
+            }]
+        })
 
-        steps = planner._parse_steps(response)
+        steps, _ = planner._parse_steps(response)
         assert len(steps) == 1
         assert steps[0].operation is None  # Missing operation -> None
 
     def test_parse_operation_with_colon_in_description(self):
         """Operation descriptions with colons should parse correctly."""
+        import json
         from mycelium.planner import Planner
 
         planner = Planner()
-        response = """- id: step_1
-  task: Calculate ratio
-  operation: divide: first by second
-  values:
-    a: 10
-  depends_on: []"""
+        response = json.dumps({
+            "steps": [{
+                "id": "step_1",
+                "task": "Calculate ratio",
+                "operation": "divide: first by second",
+                "values": {"a": 10},
+                "depends_on": []
+            }]
+        })
 
-        steps = planner._parse_steps(response)
+        steps, _ = planner._parse_steps(response)
         assert len(steps) == 1
-        # Only first colon splits, rest is kept
+        # Colons in operation description should be preserved
         assert steps[0].operation == "divide: first by second"

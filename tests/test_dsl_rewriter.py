@@ -113,20 +113,22 @@ class TestDbHelperMethods:
 
     def test_get_total_signature_uses(self, clean_test_db):
         """Should sum all signature uses."""
+        import uuid
+        from datetime import datetime
         db = StepSignatureDB()
 
-        # Create signatures with different uses
-        for i, uses in enumerate([10, 20, 30]):
-            emb = make_embedding(600 + i)
-            sig, _ = db.find_or_create(
-                step_text=f"Signature {i}",
-                embedding=emb,
-                parent_problem="test",
-            )
-            with db._connection() as conn:
+        # Directly insert signatures to test get_total_signature_uses
+        # without find_or_create routing logic
+        now = datetime.utcnow().isoformat()
+        with db._connection() as conn:
+            for i, uses in enumerate([10, 20, 30]):
+                emb = make_embedding(100 * (i + 1))
+                emb_json = "[" + ",".join(str(x) for x in emb.tolist()) + "]"
                 conn.execute(
-                    "UPDATE step_signatures SET uses = ? WHERE id = ?",
-                    (uses, sig.id)
+                    """INSERT INTO step_signatures
+                       (signature_id, step_type, description, centroid, uses, successes, created_at)
+                       VALUES (?, ?, ?, ?, ?, 0, ?)""",
+                    (str(uuid.uuid4()), f"test_step_{i}", f"Test step {i}", emb_json, uses, now)
                 )
 
         total = db.get_total_signature_uses()
