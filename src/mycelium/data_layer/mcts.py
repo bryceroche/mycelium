@@ -723,7 +723,7 @@ def get_pending_queue_ids() -> list[int]:
 
 
 # Rejection thresholds (per CLAUDE.md: leaves define their own boundaries)
-REJECTION_SIM_THRESHOLD = 0.65  # Below this similarity, leaf rejects the step
+REJECTION_SIM_THRESHOLD = 0.75  # Below this similarity, leaf rejects the step
 REJECTION_COUNT_THRESHOLD = 10  # Min rejections before considering decomposition
 REJECTION_RATE_THRESHOLD = 0.30  # 30% rejection rate triggers decomposition flag
 
