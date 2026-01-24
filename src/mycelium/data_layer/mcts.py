@@ -723,7 +723,7 @@ def get_pending_queue_ids() -> list[int]:
 
 
 # Rejection thresholds (per CLAUDE.md: leaves define their own boundaries)
-REJECTION_SIM_THRESHOLD = 0.75  # Below this similarity, leaf rejects the step
+REJECTION_SIM_THRESHOLD = 0.80  # Below this similarity, leaf rejects the step
 REJECTION_COUNT_THRESHOLD = 10  # Min rejections before considering decomposition
 REJECTION_RATE_THRESHOLD = 0.30  # 30% rejection rate triggers decomposition flag
 
@@ -747,29 +747,44 @@ def record_leaf_rejection(
     Returns:
         Updated rejection_count for the signature
     """
+    import time
     db = get_db()
+    rejection_count = 0
 
-    # Increment rejection count (execute() auto-commits via connection context)
-    db.execute(
-        "UPDATE step_signatures SET rejection_count = rejection_count + 1 WHERE id = ?",
-        (signature_id,),
-    )
+    # Retry with backoff to handle DB lock contention
+    for attempt in range(3):
+        try:
+            # Increment rejection count
+            db.execute(
+                "UPDATE step_signatures SET rejection_count = rejection_count + 1 WHERE id = ?",
+                (signature_id,),
+            )
 
-    # Get updated count
-    cursor = db.execute(
-        "SELECT rejection_count FROM step_signatures WHERE id = ?",
-        (signature_id,),
-    )
-    row = cursor.fetchone()
-    rejection_count = row[0] if row else 0
+            # Get updated count
+            cursor = db.execute(
+                "SELECT rejection_count FROM step_signatures WHERE id = ?",
+                (signature_id,),
+            )
+            row = cursor.fetchone()
+            rejection_count = row[0] if row else 0
+            break  # Success
+        except Exception as e:
+            if "locked" in str(e).lower() and attempt < 2:
+                time.sleep(0.1 * (attempt + 1))  # 100ms, 200ms backoff
+                continue
+            logger.warning("[rejection] DB error recording rejection: %s", e)
+            break
 
-    # Queue the rejected step for decomposition
-    queue_for_decomposition(
-        step_text=step_text,
-        complexity_reason=f"rejected_by_leaf_{signature_id}_sim_{similarity:.3f}",
-        dag_step_id=dag_step_id,
-        problem_context=problem_context,
-    )
+    # Queue the rejected step for decomposition (non-blocking)
+    try:
+        queue_for_decomposition(
+            step_text=step_text,
+            complexity_reason=f"rejected_by_leaf_{signature_id}_sim_{similarity:.3f}",
+            dag_step_id=dag_step_id,
+            problem_context=problem_context,
+        )
+    except Exception as e:
+        logger.warning("[rejection] Failed to queue for decomposition: %s", e)
 
     logger.debug(
         "[rejection] Leaf %d rejected step (sim=%.3f), total rejections=%d",
