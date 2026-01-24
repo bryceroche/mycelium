@@ -1844,9 +1844,8 @@ class StepSignatureDB:
                 conn.commit()
                 parent_desc = f"id={parent_id}" if parent_id is not None else (parent_for_new.step_type if parent_for_new else "root")
                 logger.info(
-                    "[db] Created new signature (child of %s): step='%s' type='%s'%s",
-                    parent_desc, step_text[:40], sig.step_type,
-                    " [queued for decomp]" if is_complex else ""
+                    "[db] Created new signature (child of %s): step='%s' type='%s'",
+                    parent_desc, step_text[:40], sig.step_type
                 )
                 return sig, True
 
