@@ -3707,7 +3707,7 @@ Rules:
                 continue
 
             # Get the signature
-            sig = self.step_db.get_signature_by_id(step.signature_id)
+            sig = self.step_db.get_signature(step.signature_id)
             if sig is None or sig.is_semantic_umbrella:
                 continue  # Skip umbrellas (routers don't execute)
 
