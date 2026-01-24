@@ -4156,13 +4156,15 @@ Rules:
             are_decompositions_ready,
         )
         from mycelium.embedding_cache import cached_embed
+        from mycelium.config import PRE_EXECUTION_COMPLEXITY_DETECTION
 
-        # 1. Scan plan for complex steps
+        # 1. Scan plan for complex steps (if enabled)
         complex_steps = []
-        for step in plan.steps:
-            is_complex, complexity_reason = is_step_complex(step.task)
-            if is_complex:
-                complex_steps.append((step, complexity_reason))
+        if PRE_EXECUTION_COMPLEXITY_DETECTION:
+            for step in plan.steps:
+                is_complex, complexity_reason = is_step_complex(step.task)
+                if is_complex:
+                    complex_steps.append((step, complexity_reason))
 
         # Even if no complex steps in current plan, check if stale items need processing
         if not complex_steps:

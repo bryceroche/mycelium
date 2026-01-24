@@ -73,6 +73,7 @@ from mycelium.data_layer.mcts import (
     get_worst_plans,
     # Decomposition queue (per beads mycelium-mm08)
     is_step_complex,
+    check_substeps_match_existing,
     queue_for_decomposition,
     get_pending_decompositions,
     get_decomposition_queue_size,
@@ -165,6 +166,7 @@ __all__ = [
     "get_worst_plans",
     # Decomposition queue
     "is_step_complex",
+    "check_substeps_match_existing",
     "queue_for_decomposition",
     "get_pending_decompositions",
     "get_decomposition_queue_size",

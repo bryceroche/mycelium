@@ -1829,8 +1829,9 @@ class StepSignatureDB:
 
                 # Check if step is too complex - queue for batch decomposition
                 # Per beads mycelium-mm08: Queue complex steps instead of creating many similar decompose-type sigs
+                from mycelium.config import PRE_EXECUTION_COMPLEXITY_DETECTION
                 from mycelium.data_layer.mcts import is_step_complex, queue_for_decomposition
-                is_complex, complexity_reason = is_step_complex(step_text)
+                is_complex, complexity_reason = (False, "") if not PRE_EXECUTION_COMPLEXITY_DETECTION else is_step_complex(step_text)
                 if is_complex:
                     try:
                         from mycelium.step_signatures.utils import pack_embedding

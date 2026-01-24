@@ -369,41 +369,176 @@ def get_worst_plans(limit: int = 10, min_uses: int = 3) -> list[dict]:
 
 
 def is_step_complex(step_text: str) -> tuple[bool, str]:
-    """Detect if a step is too complex for atomic execution.
+    """Detect if a step is too complex for atomic execution using EMBEDDINGS.
+
+    No keywords - uses similarity distribution to atomic operations.
+
+    Decision logic:
+    - High sim to one op, large gap to others → atomic (not complex)
+    - Moderate sim to MULTIPLE ops (bimodal) → compound (needs decomposition)
+    - Uniformly low sim to all ops → novel (needs new leaf, not decomposition)
 
     Returns:
         Tuple of (is_complex, reason) where reason explains why
+        - is_complex=True, reason="compound" → decompose into sub-steps
+        - is_complex=True, reason="novel" → might need new leaf (but try decompose first)
+        - is_complex=False, reason="" → atomic, proceed normally
     """
-    import re
+    from mycelium.embedding_cache import cached_embed
+    import numpy as np
 
-    step_lower = step_text.lower()
+    # Get step embedding
+    step_emb = cached_embed(step_text)
+    if step_emb is None:
+        # Fallback: can't embed, assume atomic
+        return False, ""
 
-    # Check for multiple math operators (suggests multi-step)
-    operators = ['+', '-', '*', '/', '×', '÷']
-    op_count = sum(1 for op in operators if op in step_text)
-    if op_count >= 2:
-        return True, "multi_op"
+    step_emb = np.array(step_emb)
 
-    # Check for sequential markers
-    sequential_markers = [
-        " then ", " and then ", " after that ", " finally ",
-        " next ", " followed by ", " before "
-    ]
-    for marker in sequential_markers:
-        if marker in step_lower:
-            return True, "sequential"
+    # Get atomic operation embeddings
+    ATOMIC_OPS = ["ADD(a, b)", "SUB(a, b)", "MUL(a, b)", "DIV(a, b)"]
+    op_embeddings = []
+    for op in ATOMIC_OPS:
+        op_emb = cached_embed(op)
+        if op_emb is not None:
+            op_embeddings.append((op, np.array(op_emb)))
 
-    # Check for multiple actions (compound sentences)
-    action_words = ["calculate", "compute", "find", "determine", "add", "subtract", "multiply", "divide"]
-    action_count = sum(1 for word in action_words if word in step_lower)
-    if action_count >= 2:
-        return True, "multi_action"
+    if not op_embeddings:
+        return False, ""
 
-    # Check for very long steps (complexity correlates with length)
-    if len(step_text) > 150:
-        return True, "long_step"
+    # Calculate similarities to each atomic op
+    def cosine_sim(a, b):
+        norm_a = np.linalg.norm(a)
+        norm_b = np.linalg.norm(b)
+        if norm_a == 0 or norm_b == 0:
+            return 0.0
+        return float(np.dot(a, b) / (norm_a * norm_b))
 
+    similarities = [(op, cosine_sim(step_emb, emb)) for op, emb in op_embeddings]
+    similarities.sort(key=lambda x: x[1], reverse=True)
+
+    best_op, best_sim = similarities[0]
+    second_op, second_sim = similarities[1] if len(similarities) > 1 else ("", 0.0)
+    worst_sim = similarities[-1][1] if similarities else 0.0
+
+    gap = best_sim - second_sim
+    spread = best_sim - worst_sim  # How spread out are the similarities
+
+    # Thresholds (tuned from empirical data)
+    # Key insight: Need BOTH small gap AND high similarity to detect compound
+    # - Small gap + high sim → COMPOUND (matches multiple ops strongly)
+    # - Small gap + low sim → VAGUE (no clear op in step text, likely atomic)
+    #
+    # Empirical data from compound steps:
+    # - "Calculate total cost and subtract discount": best=0.779, second=0.775
+    # - "Apply tax rate and add shipping": best=0.807, second=0.780
+    HIGH_SIM_THRESHOLD = 0.77  # High similarity to second op for compound
+    LOW_SIM_THRESHOLD = 0.55   # Too low to be any known op
+    SMALL_GAP_THRESHOLD = 0.04  # Gap < this = potentially matches multiple ops
+    COMPOUND_SIM_THRESHOLD = 0.77  # Need high sim to best op for compound
+
+    logger.debug(
+        "[complexity] step='%s' best=%s(%.3f) second=%s(%.3f) gap=%.3f spread=%.3f",
+        step_text[:40], best_op, best_sim, second_op, second_sim, gap, spread
+    )
+
+    # Decision tree (gap + similarity combined):
+    #
+    # 1. COMPOUND: Small gap AND high similarity to BOTH top ops
+    #    This means step genuinely matches multiple operations (e.g., "add then multiply")
+    #    We require high sim to avoid false positives on vague steps
+    if gap < SMALL_GAP_THRESHOLD and best_sim >= COMPOUND_SIM_THRESHOLD and second_sim >= HIGH_SIM_THRESHOLD:
+        logger.info(
+            "[complexity] COMPOUND: '%s' matches %s(%.3f) AND %s(%.3f) gap=%.3f",
+            step_text[:40], best_op, best_sim, second_op, second_sim, gap
+        )
+        return True, "compound"
+
+    # 2. NOVEL: Uniformly low sim to all ops
+    #    Step doesn't match any known operation - might need new leaf
+    if best_sim < LOW_SIM_THRESHOLD:
+        logger.info(
+            "[complexity] NOVEL: '%s' best_sim=%.3f to %s (below %.2f)",
+            step_text[:40], best_sim, best_op, LOW_SIM_THRESHOLD
+        )
+        return True, "novel"
+
+    # 3. ATOMIC: Everything else
+    #    - High sim to one op with large gap → clear single operation
+    #    - Small gap but low sim → vague step text, treat as atomic
+    logger.debug(
+        "[complexity] ATOMIC: '%s' best=%s(%.3f) gap=%.3f",
+        step_text[:40], best_op, best_sim, gap
+    )
     return False, ""
+
+
+def check_substeps_match_existing(
+    substeps: list[str],
+    step_db,
+    min_similarity: float = 0.70,
+) -> tuple[bool, float, list[tuple[str, float]]]:
+    """Check if decomposed sub-steps would match existing leaf signatures.
+
+    This is the speculative decomposition probe - we check if breaking down
+    a step produces sub-steps that match existing leaves well.
+
+    Args:
+        substeps: List of decomposed step texts
+        step_db: StepSignatureDB instance for similarity checking
+        min_similarity: Threshold for "good match"
+
+    Returns:
+        Tuple of (all_match, avg_similarity, details)
+        - all_match: True if all sub-steps have good matches
+        - avg_similarity: Average similarity across sub-steps
+        - details: List of (substep, best_sim) for debugging
+    """
+    from mycelium.embedding_cache import cached_embed
+    import numpy as np
+
+    if not substeps:
+        return False, 0.0, []
+
+    total_sim = 0.0
+    matches = 0
+    details = []
+
+    for substep in substeps:
+        substep_emb = cached_embed(substep)
+        if substep_emb is None:
+            details.append((substep, 0.0))
+            continue
+
+        # Route through hierarchy to find best match (doesn't create anything)
+        best_sig, path = step_db.route_through_hierarchy(
+            embedding=np.array(substep_emb),
+            min_similarity=0.0,  # Accept any match, we just want the similarity
+        )
+
+        # Calculate similarity to best match
+        if best_sig and best_sig.centroid is not None:
+            from mycelium.step_signatures.db import cosine_similarity
+            best_sim = cosine_similarity(np.array(substep_emb), np.array(best_sig.centroid))
+        else:
+            best_sim = 0.0
+
+        total_sim += best_sim
+        details.append((substep[:40], best_sim))
+        if best_sim >= min_similarity:
+            matches += 1
+
+    avg_sim = total_sim / len(substeps) if substeps else 0.0
+    all_match = matches == len(substeps)
+
+    logger.info(
+        "[speculative_decomp] %d/%d sub-steps match existing leaves (avg_sim=%.3f)",
+        matches, len(substeps), avg_sim
+    )
+    for substep, sim in details:
+        logger.debug("[speculative_decomp]   %.3f: %s", sim, substep)
+
+    return all_match, avg_sim, details
 
 
 def queue_for_decomposition(

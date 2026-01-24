@@ -59,6 +59,11 @@ ALGEBRA_TIMEOUT_SEC = 2.0  # Longer timeout for SymPy (symbolic math is slower)
 DECOMP_MIN_BATCH_SIZE = 5  # Trigger when queue reaches this size
 DECOMP_MAX_QUEUE_AGE_SEC = 15.0  # Or when oldest item is this old (seconds)
 
+# Pre-execution complexity detection
+# When disabled, only post-mortem flags failing steps for decomposition
+# (per CLAUDE.md: "failures are valuable data points")
+PRE_EXECUTION_COMPLEXITY_DETECTION = False  # Disabled: embedding gap detection too aggressive
+
 # DSL Operation Inference threshold (cold-start aware)
 # Ramps from COLD_START to MATURE as signature count grows
 # Cold start: try more DSLs to bootstrap learning
