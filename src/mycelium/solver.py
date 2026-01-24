@@ -4164,7 +4164,20 @@ Rules:
             if is_complex:
                 complex_steps.append((step, complexity_reason))
 
+        # Even if no complex steps in current plan, check if stale items need processing
         if not complex_steps:
+            queue_size = get_decomposition_queue_size()
+            oldest_age = get_oldest_pending_age_seconds()
+            if queue_size > 0 and oldest_age >= max_queue_age_sec:
+                logger.info(
+                    "[solver] No complex steps in plan, but processing stale queue (age=%.1fs)",
+                    oldest_age
+                )
+                await self.maybe_run_batch_decomposition(
+                    client,
+                    batch_size=queue_size,
+                    min_queue_size=1,
+                )
             return [], {}
 
         logger.info(
