@@ -1589,7 +1589,6 @@ class StepSignatureDB:
                     if not best_match.is_semantic_umbrella:
                         from mycelium.data_layer.mcts import (
                             check_and_reject_if_low_similarity,
-                            queue_for_decomposition,
                             record_leaf_rejection,
                             REJECTION_SIM_THRESHOLD,
                         )
@@ -1670,17 +1669,8 @@ class StepSignatureDB:
                                             best_match.step_type, reason, max_atomic_sim, gap,
                                             best_atomic_op, dsl_hint, rejection_count, step_text[:50]
                                         )
-                                        # Queue for decomposition
-                                        try:
-                                            queue_for_decomposition(
-                                                step_text=step_text,
-                                                complexity_reason=f"{reason}_gap_{gap:.3f}",
-                                                problem_context=parent_problem,
-                                            )
-                                        except Exception as e:
-                                            logger.warning("[db] Failed to queue multi-part step for decomposition: %s", e)
-                                        # Return None - step is queued for decomposition, don't create signature
-                                        # This prevents infinite retry loops when DB is locked
+                                        # record_leaf_rejection already queued for decomposition
+                                        # Return None - step is queued, don't create signature
                                         conn.commit()
                                         return None, False
 
