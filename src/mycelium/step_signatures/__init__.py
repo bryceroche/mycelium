@@ -36,11 +36,7 @@ from mycelium.step_signatures.dsl_executor import (
     try_execute_dsl,
 )
 
-from mycelium.step_signatures.stats import (
-    StepExecution,
-    SignatureStats,
-    StepStatsCollector,
-)
+from mycelium.step_signatures.stats import record_step_stats
 
 from mycelium.step_signatures.dsl_rewriter import (
     RewriteCandidate,
@@ -59,15 +55,8 @@ from mycelium.step_signatures.decay import (
 )
 
 from mycelium.step_signatures.operational_alignment import (
-    OperationalAlignmentScore,
-    CentroidDriftMetrics,
-    RoutingOutcome,
     OperationalAlignmentTracker,
-    CentroidDriftAnalyzer,
-    compute_operational_alignment_score,
-    get_alignment_trend,
     record_routing_outcome,
-    print_alignment_report,
 )
 
 from mycelium.step_signatures.graph_extractor import (
@@ -123,9 +112,7 @@ __all__ = [
     "get_signature_cache_stats",
     "STEP_SCHEMA_SQL",
     # Stats module
-    "StepExecution",
-    "SignatureStats",
-    "StepStatsCollector",
+    "record_step_stats",
     # DSL Rewriter
     "RewriteCandidate",
     "generate_improved_dsl",
@@ -139,15 +126,8 @@ __all__ = [
     "get_signature_decay_state",
     "get_decay_summary",
     # Operational Alignment Validation
-    "OperationalAlignmentScore",
-    "CentroidDriftMetrics",
-    "RoutingOutcome",
     "OperationalAlignmentTracker",
-    "CentroidDriftAnalyzer",
-    "compute_operational_alignment_score",
-    "get_alignment_trend",
     "record_routing_outcome",
-    "print_alignment_report",
     # Computation Graph Extraction & Embedding
     "extract_computation_graph",
     "graphs_equivalent",
