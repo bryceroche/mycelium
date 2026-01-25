@@ -1623,6 +1623,7 @@ class StepSignatureDB:
                                 step_text=step_text,
                                 similarity=rejection_sim,
                                 problem_context=parent_problem,
+                                conn=conn,  # Pass connection to avoid lock contention
                             )
                             if was_rejected:
                                 logger.info(
@@ -1662,6 +1663,7 @@ class StepSignatureDB:
                                             step_text=step_text,
                                             similarity=max_atomic_sim,  # Use atomic similarity for tracking
                                             problem_context=parent_problem,
+                                            conn=conn,  # Pass connection to avoid lock contention
                                         )
 
                                         logger.info(

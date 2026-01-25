@@ -446,6 +446,7 @@ def queue_for_decomposition(
     embedding=None,
     dag_step_id: str = None,
     problem_context: str = None,
+    conn=None,
 ) -> int:
     """Add a complex step to the decomposition queue.
 
@@ -455,6 +456,7 @@ def queue_for_decomposition(
         embedding: Optional embedding for the step
         dag_step_id: Optional link to originating dag_step
         problem_context: Optional problem text for LLM context
+        conn: Optional DB connection (reuse caller's connection to avoid locks)
 
     Returns:
         Queue entry ID (or existing ID if already queued)
@@ -463,7 +465,8 @@ def queue_for_decomposition(
     from mycelium.step_signatures.utils import pack_embedding
 
     now = datetime.now(timezone.utc).isoformat()
-    conn = get_db()
+    if conn is None:
+        conn = get_db()
 
     # Check if already queued (pending) with same step_text - avoid duplicates
     cursor = conn.execute(
@@ -734,6 +737,7 @@ def record_leaf_rejection(
     similarity: float,
     dag_step_id: str = None,
     problem_context: str = None,
+    conn=None,
 ) -> int:
     """Record that a leaf signature rejected a dag_step due to low similarity.
 
@@ -743,39 +747,30 @@ def record_leaf_rejection(
         similarity: The similarity score that caused rejection
         dag_step_id: Optional link to the dag_step
         problem_context: Optional problem text for context
+        conn: Optional DB connection (reuse caller's connection to avoid locks)
 
     Returns:
         Updated rejection_count for the signature
     """
-    import time
-    db = get_db()
+    db = conn if conn is not None else get_db()
     rejection_count = 0
 
-    # Retry with backoff to handle DB lock contention
-    # Use longer waits since SQLite WAL still serializes writers
-    for attempt in range(5):
-        try:
-            # Increment rejection count
-            db.execute(
-                "UPDATE step_signatures SET rejection_count = rejection_count + 1 WHERE id = ?",
-                (signature_id,),
-            )
+    try:
+        # Increment rejection count
+        db.execute(
+            "UPDATE step_signatures SET rejection_count = rejection_count + 1 WHERE id = ?",
+            (signature_id,),
+        )
 
-            # Get updated count
-            cursor = db.execute(
-                "SELECT rejection_count FROM step_signatures WHERE id = ?",
-                (signature_id,),
-            )
-            row = cursor.fetchone()
-            rejection_count = row[0] if row else 0
-            break  # Success
-        except Exception as e:
-            if "locked" in str(e).lower() and attempt < 4:
-                wait_time = 0.5 * (2 ** attempt)  # 0.5s, 1s, 2s, 4s exponential backoff
-                time.sleep(wait_time)
-                continue
-            logger.warning("[rejection] DB error recording rejection after %d attempts: %s", attempt + 1, e)
-            break
+        # Get updated count
+        cursor = db.execute(
+            "SELECT rejection_count FROM step_signatures WHERE id = ?",
+            (signature_id,),
+        )
+        row = cursor.fetchone()
+        rejection_count = row[0] if row else 0
+    except Exception as e:
+        logger.warning("[rejection] DB error recording rejection: %s", e)
 
     # Queue the rejected step for decomposition (non-blocking)
     try:
@@ -784,6 +779,7 @@ def record_leaf_rejection(
             complexity_reason=f"rejected_by_leaf_{signature_id}_sim_{similarity:.3f}",
             dag_step_id=dag_step_id,
             problem_context=problem_context,
+            conn=db,  # Pass connection to avoid lock contention
         )
     except Exception as e:
         logger.warning("[rejection] Failed to queue for decomposition: %s", e)
@@ -881,6 +877,7 @@ def check_and_reject_if_low_similarity(
     similarity: float,
     dag_step_id: str = None,
     problem_context: str = None,
+    conn=None,
 ) -> tuple[bool, int]:
     """Check if similarity is below threshold and record rejection if so.
 
@@ -890,6 +887,7 @@ def check_and_reject_if_low_similarity(
         similarity: Cosine similarity to the signature
         dag_step_id: Optional dag_step ID
         problem_context: Optional problem context
+        conn: Optional DB connection (reuse caller's connection to avoid locks)
 
     Returns:
         Tuple of (was_rejected, rejection_count)
@@ -903,6 +901,7 @@ def check_and_reject_if_low_similarity(
         similarity=similarity,
         dag_step_id=dag_step_id,
         problem_context=problem_context,
+        conn=conn,
     )
 
     return True, rejection_count
