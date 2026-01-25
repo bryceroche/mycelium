@@ -13,6 +13,21 @@ Aliases enable fuzzy matching between param names and context keys.
 The LLM generates aliases once at signature creation time, then matching
 is fast dict lookups at runtime.
 
+Architecture (Strategy Pattern):
+================================
+try_execute_dsl()               <- MAIN ENTRY POINT (this module)
+├── DSLLayer.MATH   -> try_execute_dsl_math()   [math_layer.py]
+│   └── AST-based safe eval for forward calculations
+│   └── No eval() - parses Python AST for security
+├── DSLLayer.SYMPY  -> try_execute_dsl_sympy()  [sympy_layer.py]
+│   └── SymPy symbolic solver for backwards solving
+│   └── Solves equations when unknowns present
+└── DSLLayer.DECOMPOSE/ROUTER -> return (None, False)
+    └── No execution - these layers delegate to LLM/children
+
+Note: DSL *regeneration* (rewriting failing scripts) is a separate concern
+handled by maybe_run_dsl_regeneration() in solver.py.
+
 This module re-exports from:
 - dsl_types: DSLLayer, DSLSpec, ValueType
 - math_layer: Math DSL execution
