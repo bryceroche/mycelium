@@ -1271,7 +1271,7 @@ class Solver:
                     is_cold_start = sig_count < COLD_START_SIGNATURE_THRESHOLD
 
                     if not best_sig.is_semantic_umbrella and best_sim < REJECTION_SIM_THRESHOLD and not is_cold_start:
-                        # Leaf rejects this step - try inline decomposition
+                        # Leaf rejects this step - try MCTS alternatives before decomposing
                         record_leaf_rejection(
                             signature_id=best_sig.id,
                             step_text=step.task,
@@ -1279,38 +1279,70 @@ class Solver:
                             problem_context=problem[:500] if problem else None,
                         )
                         logger.info(
-                            "[solver] GRAPH-FIRST REJECTED: '%s' by sig %d (%s) sim=%.3f < %.2f - inline decomposition",
+                            "[solver] GRAPH-FIRST REJECTED: '%s' by sig %d (%s) sim=%.3f < %.2f - trying MCTS alternatives",
                             step.task[:40], best_sig.id, best_sig.step_type, best_sim, REJECTION_SIM_THRESHOLD
                         )
-                        # Inline decomposition: break into sub-steps and execute
-                        decomp_result = await self._decompose_complex_step(
-                            step=step,
-                            problem=problem,
-                            context=context,
-                            step_descriptions=step_descriptions or {},
-                            hint=f"Rejected by leaf '{best_sig.step_type}' (sim={best_sim:.3f}). Break into atomic operations.",
-                            log_tag="inline_decomp",
-                            signature_type="decomposed",
-                            difficulty=difficulty,
-                            thread_id=thread_id,
-                            decomp_depth=decomp_depth,
+
+                        # MCTS fallback: get top-3 alternative leaves
+                        # Per brainstorm: try re-routing sideways before decomposing depth-wise
+                        mcts_candidates = self.step_db.match_step_to_leaves_mcts(
+                            embedding=embedding,
+                            dag_step_type=getattr(step, 'dsl_hint', None) or step.task[:40],
+                            top_k=3,
+                            min_similarity=REJECTION_SIM_THRESHOLD,  # Only consider viable alternatives
                         )
-                        if decomp_result is not None:
-                            logger.info("[solver] Inline decomposition succeeded for '%s'", step.task[:40])
-                            return decomp_result
-                        else:
-                            logger.warning("[solver] Inline decomposition failed for '%s'", step.task[:40])
-                            return StepResult(
-                                step_id=step.id,
-                                task=step.task,
-                                result="[decomposition failed]",
-                                success=False,
-                                signature_id=best_sig.id,
-                                signature_type=best_sig.step_type,
-                                is_new_signature=False,
-                                was_injected=False,
-                                elapsed_ms=(time.time() - start_time) * 1000,
+
+                        # Filter out the already-rejected signature
+                        alt_candidates = [
+                            (sig, ucb1, sim) for sig, ucb1, sim in mcts_candidates
+                            if sig.id != best_sig.id and sim >= REJECTION_SIM_THRESHOLD
+                        ]
+
+                        if alt_candidates:
+                            # Try best alternative (sideways re-routing)
+                            alt_sig, alt_ucb1, alt_sim = alt_candidates[0]
+                            logger.info(
+                                "[solver] MCTS re-route: trying alternative sig %d (%s) ucb1=%.3f sim=%.3f",
+                                alt_sig.id, alt_sig.step_type, alt_ucb1, alt_sim
                             )
+                            # Use alternative signature instead of decomposing
+                            signature = alt_sig
+                            is_new = False
+                            graph_matched = True
+                            self.step_db.update_centroid(signature.id, embedding)
+                        else:
+                            # No viable alternatives - all leaves reject, decompose (depth)
+                            logger.info(
+                                "[solver] No MCTS alternatives above threshold - inline decomposition"
+                            )
+                            decomp_result = await self._decompose_complex_step(
+                                step=step,
+                                problem=problem,
+                                context=context,
+                                step_descriptions=step_descriptions or {},
+                                hint=f"Rejected by all leaves (best sim={best_sim:.3f}). Break into atomic operations.",
+                                log_tag="inline_decomp",
+                                signature_type="decomposed",
+                                difficulty=difficulty,
+                                thread_id=thread_id,
+                                decomp_depth=decomp_depth,
+                            )
+                            if decomp_result is not None:
+                                logger.info("[solver] Inline decomposition succeeded for '%s'", step.task[:40])
+                                return decomp_result
+                            else:
+                                logger.warning("[solver] Inline decomposition failed for '%s'", step.task[:40])
+                                return StepResult(
+                                    step_id=step.id,
+                                    task=step.task,
+                                    result="[decomposition failed]",
+                                    success=False,
+                                    signature_id=best_sig.id,
+                                    signature_type=best_sig.step_type,
+                                    is_new_signature=False,
+                                    was_injected=False,
+                                    elapsed_ms=(time.time() - start_time) * 1000,
+                                )
                     else:
                         # Accept match (cold start or above threshold)
                         if is_cold_start and best_sim < REJECTION_SIM_THRESHOLD:
@@ -1347,38 +1379,60 @@ class Solver:
         # Handle rejection from routing (signature is None means step was rejected)
         if signature is None:
             logger.info(
-                "[solver] Step '%s' rejected by routing - inline decomposition",
+                "[solver] Step '%s' rejected by routing - trying MCTS alternatives",
                 step.task[:40]
             )
-            # Inline decomposition: break into sub-steps and execute
-            decomp_result = await self._decompose_complex_step(
-                step=step,
-                problem=problem,
-                context=context,
-                step_descriptions=step_descriptions or {},
-                hint="Rejected by routing (no match above threshold). Break into atomic operations.",
-                log_tag="inline_decomp",
-                signature_type="decomposed",
-                difficulty=difficulty,
-                thread_id=thread_id,
-                decomp_depth=decomp_depth,
+
+            # MCTS fallback: get top-3 alternative leaves before decomposing
+            from mycelium.data_layer.mcts import REJECTION_SIM_THRESHOLD
+            mcts_candidates = self.step_db.match_step_to_leaves_mcts(
+                embedding=embedding,
+                dag_step_type=getattr(step, 'dsl_hint', None) or step.task[:40],
+                top_k=3,
+                min_similarity=REJECTION_SIM_THRESHOLD,
             )
-            if decomp_result is not None:
-                logger.info("[solver] Inline decomposition succeeded for '%s'", step.task[:40])
-                return decomp_result
-            else:
-                logger.warning("[solver] Inline decomposition failed for '%s'", step.task[:40])
-                return StepResult(
-                    step_id=step.id,
-                    task=step.task,
-                    result="[decomposition failed]",
-                    success=False,
-                    signature_id=None,
-                    signature_type=None,
-                    is_new_signature=False,
-                    was_injected=False,
-                    elapsed_ms=(time.time() - start_time) * 1000,
+
+            if mcts_candidates:
+                # Found viable alternative - use it (sideways re-routing)
+                alt_sig, alt_ucb1, alt_sim = mcts_candidates[0]
+                logger.info(
+                    "[solver] MCTS re-route from routing rejection: sig %d (%s) ucb1=%.3f sim=%.3f",
+                    alt_sig.id, alt_sig.step_type, alt_ucb1, alt_sim
                 )
+                signature = alt_sig
+                is_new = False
+                self.step_db.update_centroid(signature.id, embedding)
+            else:
+                # No alternatives - decompose (depth)
+                logger.info("[solver] No MCTS alternatives - inline decomposition")
+                decomp_result = await self._decompose_complex_step(
+                    step=step,
+                    problem=problem,
+                    context=context,
+                    step_descriptions=step_descriptions or {},
+                    hint="Rejected by routing (no match above threshold). Break into atomic operations.",
+                    log_tag="inline_decomp",
+                    signature_type="decomposed",
+                    difficulty=difficulty,
+                    thread_id=thread_id,
+                    decomp_depth=decomp_depth,
+                )
+                if decomp_result is not None:
+                    logger.info("[solver] Inline decomposition succeeded for '%s'", step.task[:40])
+                    return decomp_result
+                else:
+                    logger.warning("[solver] Inline decomposition failed for '%s'", step.task[:40])
+                    return StepResult(
+                        step_id=step.id,
+                        task=step.task,
+                        result="[decomposition failed]",
+                        success=False,
+                        signature_id=None,
+                        signature_type=None,
+                        is_new_signature=False,
+                        was_injected=False,
+                        elapsed_ms=(time.time() - start_time) * 1000,
+                    )
 
         logger.debug(
             "[solver] Step '%s' → signature '%s' (new=%s, umbrella=%s, dsl_type=%s, graph_matched=%s)",

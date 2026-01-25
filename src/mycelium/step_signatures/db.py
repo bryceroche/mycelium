@@ -4740,6 +4740,112 @@ class StepSignatureDB:
             row = cursor.fetchone()
             return self._row_to_signature(dict(row)) if row else None
 
+    def get_all_leaves(self, min_uses: int = 0) -> list[StepSignature]:
+        """Get all leaf signatures (non-umbrellas) with embeddings.
+
+        Used for MCTS-style leaf matching where we want to find the best
+        leaf for a dag_step regardless of tree routing path.
+
+        Args:
+            min_uses: Minimum use count to include (filters cold signatures)
+
+        Returns:
+            List of leaf signatures with centroid embeddings
+        """
+        with self._connection() as conn:
+            cursor = conn.execute(
+                """SELECT *
+                   FROM step_signatures
+                   WHERE is_semantic_umbrella = 0
+                     AND is_archived = 0
+                     AND centroid IS NOT NULL
+                     AND uses >= ?
+                   ORDER BY uses DESC""",
+                (min_uses,)
+            )
+            return [
+                self._row_to_signature_for_routing(dict(row))
+                for row in cursor.fetchall()
+            ]
+
+    def match_step_to_leaves_mcts(
+        self,
+        embedding: np.ndarray,
+        dag_step_type: str = None,
+        top_k: int = 3,
+        min_similarity: float = 0.5,
+    ) -> list[tuple[StepSignature, float, float]]:
+        """MCTS-style matching: find top-k leaf candidates for a dag_step.
+
+        Instead of routing through tree hierarchy, directly scores all leaves
+        using UCB1 to balance:
+        - Exploitation: similarity + success rate
+        - Exploration: bonus for under-visited leaves
+
+        Per CLAUDE.md: Returns top-k candidates so caller can:
+        1. Try best match first
+        2. On rejection, try alternatives (sideways)
+        3. Only decompose if ALL reject (depth)
+
+        Args:
+            embedding: Step embedding to match
+            dag_step_type: Optional step type for step-node stats lookup
+            top_k: Number of candidates to return (default 3)
+            min_similarity: Minimum similarity threshold to consider
+
+        Returns:
+            List of (leaf, ucb1_score, similarity) tuples, sorted by UCB1 desc
+        """
+        from mycelium.data_layer.mcts import get_dag_step_node_stats_batch
+
+        leaves = self.get_all_leaves(min_uses=0)
+        if not leaves:
+            return []
+
+        # Get step-node stats for all leaves if dag_step_type provided
+        step_stats_map = {}
+        if dag_step_type:
+            leaf_ids = [leaf.id for leaf in leaves if leaf.id is not None]
+            step_stats_map = get_dag_step_node_stats_batch(dag_step_type, leaf_ids)
+
+        # Estimate total visits for exploration bonus
+        total_visits = sum(leaf.uses or 1 for leaf in leaves)
+
+        candidates = []
+        for leaf in leaves:
+            if leaf.centroid is None:
+                continue
+
+            sim = cosine_similarity(embedding, leaf.centroid)
+            if sim < min_similarity:
+                continue
+
+            # Get step-node stats for this leaf
+            leaf_step_stats = step_stats_map.get(leaf.id)
+
+            ucb1 = compute_ucb1_score(
+                cosine_sim=sim,
+                uses=leaf.uses or 0,
+                successes=leaf.successes or 0,
+                parent_uses=total_visits,
+                last_used_at=leaf.last_used_at,
+                step_node_stats=leaf_step_stats,
+            )
+            candidates.append((leaf, ucb1, sim))
+
+        # Sort by UCB1 score descending
+        candidates.sort(key=lambda x: x[1], reverse=True)
+
+        if candidates:
+            logger.debug(
+                "[mcts_match] Top-%d leaves for '%s': %s",
+                top_k,
+                dag_step_type or "unknown",
+                [(c[0].step_type, f"ucb1={c[1]:.3f}", f"sim={c[2]:.3f}") for c in candidates[:top_k]]
+            )
+
+        return candidates[:top_k]
+
     def add_child(
         self,
         parent_id: int,
