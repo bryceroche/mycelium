@@ -1521,7 +1521,7 @@ class Solver:
         routed_signature = signature
 
         if signature.is_semantic_umbrella:
-            child_result = await self._try_umbrella_routing(signature, step, problem, context, step_descriptions, embedding=embedding, children=children)
+            child_result = await self._try_umbrella_routing(signature, step, problem, context, step_descriptions, embedding=operation_embedding, children=children)
             if child_result is not None:
                 result, routed_signature, was_injected = child_result
                 was_routed = True  # Successfully routed through umbrella
@@ -1562,8 +1562,9 @@ class Solver:
             else:
                 # Single-path: just try DSL on routed signature
                 # Compute similarity for amplitude logging (not available from multi-path routing)
-                if routed_signature.centroid is not None:
-                    self._routing_similarity = cosine_similarity(embedding, routed_signature.centroid)
+                # Use graph_embedding for routing (per CLAUDE.md: route by what operations DO)
+                if routed_signature.graph_embedding is not None and operation_embedding is not None:
+                    self._routing_similarity = cosine_similarity(operation_embedding, routed_signature.graph_embedding)
                     self._routing_confidence = self._routing_similarity  # Use similarity as confidence proxy
                 dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
                 if dsl_result is not None:
@@ -1585,7 +1586,7 @@ class Solver:
         # 4.6. If we don't have a result yet, try routing through umbrella
         if result is None and routed_signature.is_semantic_umbrella:
             child_result = await self._try_umbrella_routing(
-                routed_signature, step, problem, context, step_descriptions, embedding=embedding
+                routed_signature, step, problem, context, step_descriptions, embedding=operation_embedding
             )
             if child_result is not None:
                 result, routed_signature, was_injected = child_result
@@ -1610,8 +1611,9 @@ class Solver:
             best_existing_sim = 0.0
 
             for child_sig, _condition in existing_children:
-                if child_sig.centroid is not None:
-                    sim = cosine_similarity(embedding, child_sig.centroid)
+                # Use graph_embedding for routing (per CLAUDE.md: route by what operations DO)
+                if child_sig.graph_embedding is not None and operation_embedding is not None:
+                    sim = cosine_similarity(operation_embedding, child_sig.graph_embedding)
                     if sim > best_existing_sim:
                         best_existing_sim = sim
                         best_existing_child = child_sig
@@ -1632,7 +1634,7 @@ class Solver:
                 )
                 new_child = self.step_db.create_signature(
                     step_text=step.task,
-                    embedding=embedding,
+                    embedding=None,  # Graph-only routing, no text embedding needed
                     parent_id=routed_signature.id,
                     origin_depth=depth + 1,
                     extracted_values=getattr(step, 'extracted_values', None),
@@ -1982,15 +1984,16 @@ class Solver:
         if not children:
             return None
 
-        # Embedding-based routing: compare step embedding to child centroids
+        # Graph-embedding routing: compare operation embedding to child graph_embeddings
+        # Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE
         # This is ~0ms vs ~500ms for LLM routing
         if embedding is not None:
             child_scores = []
             for child_sig, condition in children:
-                # Capture centroid once to avoid TOCTOU race condition
-                centroid = child_sig.centroid
-                if centroid is not None:
-                    sim = cosine_similarity(embedding, centroid)
+                # Use graph_embedding for routing (captures operational semantics)
+                graph_emb = child_sig.graph_embedding
+                if graph_emb is not None:
+                    sim = cosine_similarity(embedding, graph_emb)
                     child_scores.append((child_sig, sim, condition))
 
             # Sort by similarity descending
@@ -4068,10 +4071,15 @@ Rules:
                         incorrect_paths += 1
                         # Record failure for potential cluster splitting
                         # Per CLAUDE.md: "Record every failure—it feeds the refinement loop"
-                        self.step_db.record_operational_failure(
-                            outcome.signature_id,
-                            outcome.answer,
-                            ground_truth,
+                        self.step_db.record_failure(
+                            step_text=step_id,
+                            failure_type="operational",
+                            signature_id=outcome.signature_id,
+                            context={
+                                "produced_answer": outcome.answer,
+                                "expected_answer": ground_truth,
+                            },
+                            increment_operational_failures=True,
                         )
                         logger.debug(
                             "[solver] Path via sig %d was operationally different for step '%s' "

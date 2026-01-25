@@ -364,10 +364,6 @@ class StepSignatureDB:
         # Cached root signature (never changes after creation)
         self._cached_root: Optional[StepSignature] = None
 
-        # Batched centroid propagation: track pending updates per signature
-        # Key: signature_id, Value: count of pending centroid updates
-        self._pending_propagations: dict[int, int] = {}
-
         # Cached atomic operation embeddings for complexity detection
         # Per CLAUDE.md: "prefer embedding similarity over keyword matching"
         self._atomic_embeddings: Optional[list[np.ndarray]] = None
@@ -380,11 +376,7 @@ class StepSignatureDB:
         return self._db_path
 
     def close(self):
-        """Close the database, flushing any pending operations.
-
-        Ensures all batched centroid propagations are written before closing.
-        """
-        self.flush_pending_propagations()
+        """Close the database connection."""
         if self._direct_conn:
             self._direct_conn.close()
             self._direct_conn = None
@@ -567,9 +559,8 @@ class StepSignatureDB:
                 (parent_id, new_id, f"dynamic_fork_L{depth}", now)
             )
 
-            # Invalidate caches
-            invalidate_centroid_cache(new_id)
-            self.invalidate_centroid_matrix()
+            # Invalidate caches (embedding change: new scaffold branch)
+            self._invalidate_on_embedding_change(new_id)
 
             # Return the new branch as a StepSignature
             return StepSignature(
@@ -1516,9 +1507,6 @@ class StepSignatureDB:
                     conn, step_text, embedding, parent_problem, origin_depth,
                     extracted_values=extracted_values, parent_id=parent_id, dsl_hint=dsl_hint
                 )
-                # Propagate new child's centroid up to parent umbrellas
-                if sig.id is not None:
-                    self.propagate_centroid_to_parents(conn, sig.id)
                 conn.commit()
                 logger.info(
                     "[db] Force-created signature: step='%s' type='%s' depth=%d",
@@ -1749,10 +1737,6 @@ class StepSignatureDB:
                     new_count = self._update_centroid_atomic(
                         conn, best_match.id, embedding, update_last_used=True
                     )
-
-                    # Batch propagate centroid change up to parent umbrellas
-                    # Uses batching to reduce overhead on high-traffic matches
-                    self._maybe_propagate_centroid(conn, best_match.id)
 
                     conn.commit()
                     logger.debug(
@@ -2244,17 +2228,10 @@ class StepSignatureDB:
                            VALUES (?, ?, ?, ?, ?)""",
                         (actual_parent_id, row_id, step_type, 0, now),
                     )
-                    # Mark parent as umbrella - routers don't execute DSL, they route
-                    # Clear dsl_script to avoid mismatch between dsl_type='router' and script type='math'
-                    conn.execute(
-                        """UPDATE step_signatures
-                           SET is_semantic_umbrella = 1, dsl_type = 'router', dsl_script = NULL
-                           WHERE id = ?""",
-                        (actual_parent_id,),
-                    )
+                    # Use single pathway for umbrella promotion
+                    self._promote_to_umbrella_internal(conn, actual_parent_id)
                     # Invalidate parent's children cache since we added a new child
                     invalidate_children_cache(actual_parent_id)
-                    invalidate_signature_cache(actual_parent_id)
                     logger.debug(
                         "[db] Added as child: parent_id=%d (depth=%d) -> child_id=%d (depth=%d) (condition='%s')",
                         actual_parent_id, actual_depth - 1, row_id, actual_depth, step_type
@@ -2404,6 +2381,49 @@ class StepSignatureDB:
     def invalidate_root_cache(self):
         """Invalidate cached root signature (call when DB is cleared)."""
         self._cached_root = None
+
+    # =========================================================================
+    # Consolidated Cache Invalidation Helpers
+    # =========================================================================
+    # These semantic helpers ensure consistent cache invalidation for each
+    # operation type. See issue mycelium-mb7s for details.
+
+    def _invalidate_on_embedding_change(self, signature_id: int):
+        """Invalidate when centroid or graph_embedding changes.
+
+        Use this when a signature's embedding data is modified (running average
+        update, graph embedding update, etc.). Invalidates:
+        - Centroid cache (cached centroid data for this signature)
+        - Signature cache (cached StepSignature object)
+        - Centroid matrix (routing matrix needs rebuild)
+        """
+        invalidate_centroid_cache(signature_id)
+        invalidate_signature_cache(signature_id)
+        self.invalidate_centroid_matrix()
+
+    def _invalidate_on_relationship_change(self, parent_id: int, child_id: int):
+        """Invalidate when parent-child relationship is added or removed.
+
+        Use this when signature_relationships table is modified. Invalidates:
+        - Parent's centroid cache (computed from children)
+        - Parent's children cache (children list changed)
+        - Both signatures' caches (depth may change)
+        - Centroid matrix (routing structure changed)
+        """
+        invalidate_centroid_cache(parent_id)
+        invalidate_children_cache(parent_id)
+        invalidate_signature_cache(parent_id)
+        invalidate_signature_cache(child_id)
+        self.invalidate_centroid_matrix()
+
+    def _invalidate_on_dsl_change(self, signature_id: int):
+        """Invalidate when DSL script or signature metadata changes.
+
+        Use this when only signature fields change (DSL script, description,
+        examples, etc.) without affecting embeddings or relationships. Invalidates:
+        - Signature cache (cached StepSignature object)
+        """
+        invalidate_signature_cache(signature_id)
 
     def find_similar(
         self,
@@ -2600,20 +2620,21 @@ class StepSignatureDB:
     def reset_signature_stats(self, signature_id: int) -> None:
         """Reset uses and successes for a signature after DSL rewrite."""
         with self._connection() as conn:
-            conn.execute(
-                "UPDATE step_signatures SET uses = 0, successes = 0 WHERE id = ?",
-                (signature_id,)
+            self._update_signature_fields(
+                conn, signature_id,
+                log_reason="reset_stats",
+                uses=0, successes=0,
             )
-            logger.debug("[db] Reset stats for signature %d", signature_id)
 
     def mark_signature_rewritten(self, signature_id: int) -> None:
         """Mark a signature as recently rewritten (for cooldown tracking)."""
         now = datetime.now(timezone.utc).isoformat()
         with self._connection() as conn:
             # Store in last_used_at for now (could add dedicated column later)
-            conn.execute(
-                "UPDATE step_signatures SET last_used_at = ? WHERE id = ?",
-                (now, signature_id)
+            self._update_signature_fields(
+                conn, signature_id,
+                log_reason="rewritten",
+                last_used_at=now,
             )
 
     # =========================================================================
@@ -2759,10 +2780,8 @@ class StepSignatureDB:
                 signature_id, old_bucket, new_bucket
             )
 
-        # Invalidate caches since centroid changed
-        invalidate_centroid_cache(signature_id)
-        invalidate_signature_cache(signature_id)  # Also invalidate signature cache
-        self.invalidate_centroid_matrix()
+        # Invalidate caches (embedding change: centroid updated)
+        self._invalidate_on_embedding_change(signature_id)
 
         return new_count
 
@@ -2810,44 +2829,6 @@ class StepSignatureDB:
             except Exception:
                 conn.rollback()
                 raise
-
-    def record_operational_failure(
-        self,
-        signature_id: int,
-        produced_answer: str,
-        expected_answer: str,
-    ):
-        """Record an operational failure for a signature path.
-
-        Per CLAUDE.md: "Record every failure—it feeds the refinement loop"
-
-        This tracks when a signature produces a different answer than ground truth,
-        providing signal for potential cluster splitting. Over time, if a signature
-        accumulates many operational failures, it may need to be decomposed into
-        more specific sub-signatures.
-
-        Args:
-            signature_id: ID of the signature that failed operationally
-            produced_answer: What the signature produced
-            expected_answer: The ground truth answer
-        """
-        with self._connection() as conn:
-            # Increment operational failure count
-            # This is separate from regular "uses" - tracks semantic mismatches
-            conn.execute(
-                """UPDATE step_signatures
-                   SET operational_failures = COALESCE(operational_failures, 0) + 1
-                   WHERE id = ?""",
-                (signature_id,)
-            )
-
-            # Log for analysis (could be expanded to store in separate table)
-            logger.debug(
-                "[db] Recorded operational failure for sig %d: produced=%s, expected=%s",
-                signature_id,
-                produced_answer[:30] if produced_answer else "None",
-                expected_answer[:30] if expected_answer else "None",
-            )
 
     def record_interference_outcome(
         self,
@@ -3414,11 +3395,10 @@ class StepSignatureDB:
 
         # No alternatives or check skipped - proceed with flagging
         with self._connection() as conn:
-            conn.execute(
-                """UPDATE step_signatures
-                   SET operational_failures = COALESCE(operational_failures, 0) + 1
-                   WHERE id = ?""",
-                (signature_id,)
+            self._update_signature_fields(
+                conn, signature_id,
+                log_reason=f"flag_for_split:{reason}",
+                operational_failures_increment=True,
             )
 
             logger.info(
@@ -3442,11 +3422,10 @@ class StepSignatureDB:
             True if archived successfully
         """
         with self._connection() as conn:
-            conn.execute(
-                """UPDATE step_signatures
-                   SET is_archived = 1
-                   WHERE id = ?""",
-                (signature_id,)
+            self._update_signature_fields(
+                conn, signature_id,
+                log_reason=f"archive:{reason}",
+                is_archived=1,
             )
 
             logger.info(
@@ -3495,11 +3474,10 @@ class StepSignatureDB:
                 )
 
             # Archive the signature
-            conn.execute(
-                """UPDATE step_signatures
-                   SET is_archived = 1
-                   WHERE id = ?""",
-                (signature_id,)
+            self._update_signature_fields(
+                conn, signature_id,
+                log_reason=f"archive_with_reparent:{reason}",
+                is_archived=1,
             )
 
             logger.info(
@@ -3561,11 +3539,9 @@ class StepSignatureDB:
             # Only increment uses count here, NOT successes
             # Successes and last_used_at are updated by update_problem_outcome() after grading
             # (last_used_at only updates on success to prevent stale signatures staying fresh)
-            conn.execute(
-                """UPDATE step_signatures
-                   SET uses = uses + 1
-                   WHERE id = ?""",
-                (signature_id,),
+            self._update_signature_fields(
+                conn, signature_id,
+                uses_increment=True,
             )
 
             # Update difficulty_stats if difficulty provided
@@ -3619,16 +3595,8 @@ class StepSignatureDB:
                             )
                         else:
                             # No alternatives - proceed with demotion
-                            # Promote to umbrella: clear DSL, set type to router
-                            # Clear dsl_script to avoid type mismatch
-                            conn.execute(
-                                """UPDATE step_signatures
-                                   SET is_semantic_umbrella = 1,
-                                       dsl_type = 'router',
-                                       dsl_script = NULL
-                                   WHERE id = ?""",
-                                (signature_id,),
-                            )
+                            # Use single pathway for umbrella promotion
+                            self._promote_to_umbrella_internal(conn, signature_id)
                             logger.info(
                                 "[db] Auto-demoted sig %d to umbrella/router (%.0f%% after %d uses, step_ok=%s, min=%d, no alternatives)",
                                 signature_id, success_rate * 100, uses, step_completed, min_uses
@@ -3700,6 +3668,7 @@ class StepSignatureDB:
         error_message: str = None,
         signature_id: int = None,
         context: dict = None,
+        increment_operational_failures: bool = False,
     ) -> int:
         """Record a step failure for pattern learning.
 
@@ -3707,6 +3676,10 @@ class StepSignatureDB:
         - Record every failure—it feeds the refinement loop
         - Failed signatures get decomposed
         - Success/failure stats drive routing decisions
+
+        This is the single entry point for recording failures. It always logs
+        to step_failures table, and optionally increments the signature's
+        operational_failures stat (for routing decisions).
 
         Args:
             step_text: The step that failed
@@ -3717,9 +3690,14 @@ class StepSignatureDB:
                 - 'timeout': Operation timed out
                 - 'validation': Result validation failed
                 - 'routing': Umbrella routing failed
+                - 'operational': Signature produced wrong answer vs ground truth
             error_message: The actual error text
             signature_id: ID of signature that failed (None if no match)
             context: Additional context dict (params, expected, problem, etc.)
+                For operational failures, include 'produced_answer' and 'expected_answer'
+            increment_operational_failures: If True and signature_id provided,
+                also increment the signature's operational_failures stat.
+                Use this when the signature is at fault (e.g., wrong answer).
 
         Returns:
             ID of the failure record
@@ -3741,6 +3719,19 @@ class StepSignatureDB:
                 ),
             )
             failure_id = cursor.lastrowid
+
+            # Optionally increment operational_failures stat on the signature
+            # This affects routing decisions (signatures with many failures may be decomposed)
+            # Note: Does NOT propagate to parents - operational failures are local signal
+            if increment_operational_failures and signature_id is not None:
+                self._increment_signature_stat(
+                    conn, signature_id, "operational_failures",
+                    amount=1.0, propagate_to_parents=False
+                )
+                logger.debug(
+                    "[db] Incremented operational_failures for sig %d",
+                    signature_id
+                )
 
             logger.debug(
                 "[db] Recorded failure: type=%s sig=%s step='%s'",
@@ -4039,7 +4030,7 @@ class StepSignatureDB:
                 f"UPDATE step_signatures SET {', '.join(updates)} WHERE id = ?",
                 params,
             )
-            invalidate_signature_cache(signature_id)
+            self._invalidate_on_dsl_change(signature_id)
 
     def update_dsl_script(
         self,
@@ -4065,7 +4056,7 @@ class StepSignatureDB:
                    WHERE id = ?""",
                 (dsl_script, now, signature_id),
             )
-            invalidate_signature_cache(signature_id)
+            self._invalidate_on_dsl_change(signature_id)
             logger.info(
                 "[db] Updated DSL script for signature %d, marked as rewritten",
                 signature_id
@@ -4074,6 +4065,106 @@ class StepSignatureDB:
     # =========================================================================
     # Helpers
     # =========================================================================
+
+    def _update_signature_fields(
+        self,
+        conn,
+        signature_id: int,
+        log_reason: str = None,
+        **field_updates,
+    ) -> bool:
+        """Update signature fields atomically with proper cache invalidation.
+
+        Consolidated helper for all signature field updates. Handles:
+        - Building the UPDATE query dynamically
+        - Cache invalidation based on which fields changed
+        - Common side effects (e.g., propagation for graph fields)
+        - Audit logging
+
+        Args:
+            conn: Database connection (caller's transaction context)
+            signature_id: ID of signature to update
+            log_reason: Optional reason for logging (e.g., "auto_demotion", "postmortem")
+            **field_updates: Field names and values to update, e.g.:
+                - is_semantic_umbrella=True
+                - dsl_type="router"
+                - dsl_script=None
+                - operational_failures=1 (use _increment=True for increment)
+                - last_used_at="2024-01-01T00:00:00"
+
+        Returns:
+            True if update succeeded (rowcount > 0), False otherwise
+
+        Example:
+            self._update_signature_fields(
+                conn, sig_id,
+                log_reason="auto_demotion",
+                is_semantic_umbrella=True,
+                dsl_type="router",
+                dsl_script=None,
+            )
+        """
+        if not field_updates:
+            return False
+
+        # Build UPDATE clause
+        set_clauses = []
+        params = []
+
+        # Fields that need special handling
+        increment_fields = {"operational_failures", "uses", "successes", "rejection_count"}
+
+        for field, value in field_updates.items():
+            # Check for increment syntax: field_increment=True means += 1
+            if field.endswith("_increment") and value:
+                base_field = field.replace("_increment", "")
+                set_clauses.append(f"{base_field} = COALESCE({base_field}, 0) + 1")
+            elif value is None:
+                set_clauses.append(f"{field} = NULL")
+            else:
+                set_clauses.append(f"{field} = ?")
+                params.append(value)
+
+        params.append(signature_id)
+
+        # Execute UPDATE
+        cursor = conn.execute(
+            f"UPDATE step_signatures SET {', '.join(set_clauses)} WHERE id = ?",
+            params,
+        )
+
+        if cursor.rowcount == 0:
+            return False
+
+        # Determine which caches to invalidate based on fields changed
+        fields_changed = set(field_updates.keys())
+
+        # Always invalidate signature cache
+        invalidate_signature_cache(signature_id)
+
+        # Invalidate centroid cache if centroid-related fields changed
+        centroid_fields = {"centroid", "graph_centroid", "graph_embedding"}
+        if fields_changed & centroid_fields:
+            invalidate_centroid_cache(signature_id)
+            self.invalidate_centroid_matrix()
+
+        # Invalidate children cache if parent relationship changed
+        if "is_semantic_umbrella" in fields_changed:
+            invalidate_children_cache(signature_id)
+
+        # Propagate graph centroid if graph_embedding changed
+        if "graph_embedding" in fields_changed:
+            self.propagate_graph_centroid_to_parents(conn, signature_id)
+
+        # Log the update
+        if log_reason:
+            fields_str = ", ".join(f"{k}={v}" for k, v in field_updates.items())
+            logger.debug(
+                "[db] Updated sig %d (%s): %s",
+                signature_id, log_reason, fields_str[:100]
+            )
+
+        return True
 
     def _row_to_signature(self, row) -> StepSignature:
         """Convert a database row to a StepSignature object."""
@@ -4843,35 +4934,57 @@ class StepSignatureDB:
                    VALUES (?, ?, ?, ?, ?)""",
                 (parent_id, child_id, condition, routing_order, now),
             )
-            # Mark parent as umbrella - routers don't execute DSL, they route
-            # Clear dsl_script to avoid mismatch between dsl_type='router' and script type='math'
-            conn.execute(
-                """UPDATE step_signatures
-                   SET is_semantic_umbrella = 1, dsl_type = 'router', dsl_script = NULL
-                   WHERE id = ?""",
-                (parent_id,),
-            )
+            # Use single pathway for umbrella promotion (handles centroid propagation)
+            self._promote_to_umbrella_internal(conn, parent_id)
+
             # Set child's depth = parent_depth + 1
             child_depth = parent_depth + 1
             conn.execute(
                 "UPDATE step_signatures SET depth = ? WHERE id = ?",
                 (child_depth, child_id),
             )
-            # Invalidate caches (new child affects routing and lookups)
-            invalidate_centroid_cache(parent_id)
-            invalidate_children_cache(parent_id)
-            invalidate_signature_cache(parent_id)
-            invalidate_signature_cache(child_id)
-            self.invalidate_centroid_matrix()
-
-            # Propagate graph_centroid to parents (Option B: routers use graph_centroid)
-            self.propagate_graph_centroid_to_parents(conn, child_id)
+            # Invalidate caches (relationship change: new child added)
+            self._invalidate_on_relationship_change(parent_id, child_id)
 
             logger.info(
                 "[db] Added child: parent=%d (depth=%d) → child=%d (depth=%d) (condition='%s')",
                 parent_id, parent_depth, child_id, child_depth, condition[:30]
             )
             return True
+
+    def _promote_to_umbrella_internal(self, conn, signature_id: int) -> bool:
+        """Internal: Mark signature as umbrella within existing transaction.
+
+        This is the SINGLE PATHWAY for umbrella promotion. All code that needs
+        to mark a signature as umbrella should call this function.
+
+        Args:
+            conn: Database connection (existing transaction)
+            signature_id: ID of the signature to promote
+
+        Returns:
+            True if updated, False if signature not found
+        """
+        cursor = conn.execute(
+            """UPDATE step_signatures
+               SET is_semantic_umbrella = 1,
+                   dsl_type = 'router',
+                   dsl_script = NULL
+               WHERE id = ?""",
+            (signature_id,),
+        )
+        if cursor.rowcount > 0:
+            self._invalidate_on_dsl_change(signature_id)
+
+            # Use consolidated centroid update pathway:
+            # include_self=True computes this node's centroid, then propagates to ancestors
+            self.propagate_graph_centroid_to_parents(conn, signature_id, include_self=True)
+            logger.debug(
+                "[db] Promoted signature %d to umbrella with graph_centroid",
+                signature_id
+            )
+            return True
+        return False
 
     def promote_to_umbrella(self, signature_id: int) -> bool:
         """Mark a signature as a semantic umbrella (pure router, no DSL).
@@ -4890,28 +5003,13 @@ class StepSignatureDB:
             True if updated, False if signature not found
         """
         with self._connection() as conn:
-            # Clear DSL and set type to router - umbrellas don't execute, they route
-            # Clear dsl_script to avoid mismatch between dsl_type='router' and script type='math'
-            cursor = conn.execute(
-                """UPDATE step_signatures
-                   SET is_semantic_umbrella = 1,
-                       dsl_type = 'router',
-                       dsl_script = NULL
-                   WHERE id = ?""",
-                (signature_id,),
-            )
-            if cursor.rowcount > 0:
-                invalidate_signature_cache(signature_id)
-
-                # Use consolidated centroid update pathway:
-                # include_self=True computes this node's centroid, then propagates to ancestors
-                self.propagate_graph_centroid_to_parents(conn, signature_id, include_self=True)
+            result = self._promote_to_umbrella_internal(conn, signature_id)
+            if result:
                 logger.info(
                     "[db] Promoted signature %d to umbrella with graph_centroid",
                     signature_id
                 )
-                return True
-            return False
+            return result
 
     def find_deeper_signature(
         self,
@@ -5187,7 +5285,7 @@ class StepSignatureDB:
                 (embedding_json, signature_id),
             )
             if cursor.rowcount > 0:
-                invalidate_signature_cache(signature_id)
+                self._invalidate_on_dsl_change(signature_id)
                 logger.debug("[db] Updated graph_embedding for sig %d", signature_id)
                 # Propagate centroid update to parent routers
                 self.propagate_graph_centroid_to_parents(conn, signature_id)
