@@ -141,6 +141,28 @@ UCB1_ADJUSTMENT_MAX_DELTA = 0.3  # Max adjustment to C (±0.3)
 UCB1_ADJUSTMENT_SENSITIVITY = 0.5  # How quickly to respond to patterns (0-1)
 
 # =============================================================================
+# MATCH SCORING (Graph Embedding + Leaf Statistics)
+# =============================================================================
+# Per CLAUDE.md: Route by what operations DO (graph_embedding), not what they SOUND LIKE.
+# Proven signatures (high traffic, high success, low variance) become "attractors"
+# that consolidate similar operations instead of spawning duplicates.
+
+# Weights for match score components (should sum to ~1.0 for interpretability)
+MATCH_SCORE_SIM_WEIGHT = 0.5       # Graph embedding similarity (operational identity)
+MATCH_SCORE_TRAFFIC_WEIGHT = 0.2   # Traffic confidence (log scale)
+MATCH_SCORE_SUCCESS_WEIGHT = 0.2   # Success rate
+MATCH_SCORE_CONSISTENCY_WEIGHT = 0.1  # Low variance = consistent performer
+
+# Traffic scaling: log(1 + uses) / log(base) saturates at base
+MATCH_SCORE_TRAFFIC_LOG_BASE = 100  # ~100 uses = max traffic boost
+
+# Threshold for accepting a match (score must exceed this)
+MATCH_SCORE_THRESHOLD = 0.4  # Combined score threshold
+
+# Require graph_embedding for new signatures (prevents proliferation)
+REQUIRE_GRAPH_EMBEDDING_ON_CREATE = True
+
+# =============================================================================
 # ADAPTIVE REJECTION (per-leaf similarity thresholds from historical successes)
 # =============================================================================
 # Per mycelium-i601: Leaf nodes learn their own acceptance thresholds from historical

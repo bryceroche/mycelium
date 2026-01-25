@@ -332,6 +332,81 @@ class RoutingResult:
         return min(self.ucb1_gaps) if self.ucb1_gaps else 0.0
 
 
+# =============================================================================
+# MATCH SCORING - Graph Embedding + Leaf Statistics
+# =============================================================================
+# Per CLAUDE.md: Route by what operations DO (graph_embedding), not what they SOUND LIKE.
+# High-traffic, high-success, low-variance signatures become "attractors" that
+# absorb similar operations instead of spawning duplicates.
+
+def compute_match_score(
+    query_graph_emb: np.ndarray,
+    sig_graph_emb: np.ndarray,
+    uses: int,
+    successes: int,
+    similarity_count: int = 0,
+    similarity_m2: float = 0.0,
+) -> tuple[float, float]:
+    """Compute match score combining graph similarity and leaf statistics.
+
+    Proven signatures (high traffic, high success, low variance) get boosted
+    scores, making them "attractors" that consolidate similar operations.
+
+    Args:
+        query_graph_emb: Graph embedding of the incoming step
+        sig_graph_emb: Graph embedding of the candidate signature
+        uses: Total traffic to this signature
+        successes: Successful executions
+        similarity_count: Welford N (number of similarity observations)
+        similarity_m2: Welford M2 (sum of squared deviations)
+
+    Returns:
+        Tuple of (match_score, raw_similarity)
+        - match_score: Combined score (0-1) incorporating all factors
+        - raw_similarity: Pure cosine similarity (for logging)
+    """
+    from mycelium.config import (
+        MATCH_SCORE_SIM_WEIGHT,
+        MATCH_SCORE_TRAFFIC_WEIGHT,
+        MATCH_SCORE_SUCCESS_WEIGHT,
+        MATCH_SCORE_CONSISTENCY_WEIGHT,
+        MATCH_SCORE_TRAFFIC_LOG_BASE,
+    )
+
+    # Raw cosine similarity (operational identity)
+    raw_sim = cosine_similarity(query_graph_emb, sig_graph_emb)
+
+    # Traffic confidence: log scale, saturates around 100 uses
+    # log(1 + uses) / log(base) gives ~1.0 at base uses
+    traffic_factor = min(1.0, math.log(1 + uses) / math.log(MATCH_SCORE_TRAFFIC_LOG_BASE))
+
+    # Success rate: higher = more reliable
+    success_rate = successes / uses if uses > 0 else 0.5  # Prior of 0.5 for cold start
+
+    # Consistency: low variance = reliable, high variance = too generic
+    # variance = M2 / N, consistency = 1 / (1 + variance)
+    if similarity_count > 1:
+        variance = similarity_m2 / similarity_count
+        consistency_factor = 1.0 / (1.0 + variance)
+    else:
+        consistency_factor = 0.5  # Neutral prior for cold start
+
+    # Combined score: weighted combination
+    # Base is similarity, boosted by traffic/success/consistency
+    score = (
+        MATCH_SCORE_SIM_WEIGHT * raw_sim +
+        MATCH_SCORE_TRAFFIC_WEIGHT * traffic_factor +
+        MATCH_SCORE_SUCCESS_WEIGHT * success_rate +
+        MATCH_SCORE_CONSISTENCY_WEIGHT * consistency_factor
+    )
+
+    # Normalize to 0-1 range (weights should sum to 1.0)
+    # But similarity dominates - if sim is low, score should be low
+    score = score * raw_sim  # Multiply by sim to ensure low sim → low score
+
+    return score, raw_sim
+
+
 class StepSignatureDB:
     """SQLite-backed database for step-level signatures.
 
@@ -1171,10 +1246,31 @@ class StepSignatureDB:
                     conn, min_similarity, dsl_hint=dsl_hint, exclude_ids=exclude_ids
                 )
 
-                # ALWAYS_ROUTE_TO_BEST mode: accept any match, let failures drive learning
-                # Per CLAUDE.md: "Let signatures fail. This is how the system learns."
-                from mycelium.config import ALWAYS_ROUTE_TO_BEST
-                similarity_ok = best_sim >= min_similarity if not ALWAYS_ROUTE_TO_BEST else True
+                # Compute match_score using graph_embedding + leaf stats
+                # Per CLAUDE.md: proven signatures (high traffic, success, low variance) are "attractors"
+                from mycelium.config import ALWAYS_ROUTE_TO_BEST, MATCH_SCORE_THRESHOLD
+                match_score = 0.0
+                if best_match is not None and best_match.graph_embedding is not None and dsl_hint:
+                    # Compute step's graph_embedding from dsl_hint
+                    op_graph = self._dsl_hint_to_graph(dsl_hint)
+                    if op_graph:
+                        from mycelium.embedding_cache import cached_embed
+                        step_graph_emb = cached_embed(op_graph)
+                        if step_graph_emb is not None:
+                            sig_graph_emb = np.array(best_match.graph_embedding)
+                            match_score, raw_sim = compute_match_score(
+                                step_graph_emb, sig_graph_emb,
+                                best_match.uses, best_match.successes,
+                                best_match.similarity_count or 0,
+                                best_match.similarity_m2 or 0.0,
+                            )
+                            logger.debug(
+                                "[db] Match score for sig %d: %.3f (raw_sim=%.3f, uses=%d, success_rate=%.2f)",
+                                best_match.id, match_score, raw_sim, best_match.uses, best_match.success_rate
+                            )
+
+                # Accept match if score exceeds threshold (or ALWAYS_ROUTE_TO_BEST mode)
+                similarity_ok = match_score >= MATCH_SCORE_THRESHOLD if not ALWAYS_ROUTE_TO_BEST else True
 
                 if best_match is not None and similarity_ok:
                     # Check if matched signature's step_type is compatible with dsl_hint

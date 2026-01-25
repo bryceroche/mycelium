@@ -90,6 +90,13 @@ class StepSignature:
     successes: int = 0
     operational_failures: int = 0  # MCTS post-mortem: destructive interference flags
 
+    # Embedding Variance Tracking (Welford's algorithm)
+    # Tracks how diverse the problems routed to this signature are
+    # High variance = too generic, should decompose into specialized children
+    similarity_count: int = 0   # N in Welford's algorithm
+    similarity_mean: float = 0.0  # Running mean of cosine similarities
+    similarity_m2: float = 0.0    # M2 for variance: variance = M2/N
+
     # Success Similarity Tracking (for adaptive rejection per mycelium-i601)
     # Uses Welford's algorithm: threshold = success_sim_mean - k * sqrt(success_sim_m2/success_sim_count)
     success_sim_count: int = 0   # N successful matches
@@ -328,6 +335,9 @@ class StepSignature:
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
             operational_failures=row.get("operational_failures", 0) or 0,
+            similarity_count=row.get("similarity_count", 0) or 0,
+            similarity_mean=row.get("similarity_mean", 0.0) or 0.0,
+            similarity_m2=row.get("similarity_m2", 0.0) or 0.0,
             success_sim_count=row.get("success_sim_count", 0) or 0,
             success_sim_mean=row.get("success_sim_mean", 0.0) or 0.0,
             success_sim_m2=row.get("success_sim_m2", 0.0) or 0.0,
@@ -375,6 +385,9 @@ class StepSignature:
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
             operational_failures=row.get("operational_failures", 0) or 0,
+            similarity_count=row.get("similarity_count", 0) or 0,
+            similarity_mean=row.get("similarity_mean", 0.0) or 0.0,
+            similarity_m2=row.get("similarity_m2", 0.0) or 0.0,
             success_sim_count=row.get("success_sim_count", 0) or 0,
             success_sim_mean=row.get("success_sim_mean", 0.0) or 0.0,
             success_sim_m2=row.get("success_sim_m2", 0.0) or 0.0,
@@ -432,6 +445,9 @@ class StepSignature:
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
             operational_failures=row.get("operational_failures", 0) or 0,
+            similarity_count=row.get("similarity_count", 0) or 0,
+            similarity_mean=row.get("similarity_mean", 0.0) or 0.0,
+            similarity_m2=row.get("similarity_m2", 0.0) or 0.0,
             success_sim_count=row.get("success_sim_count", 0) or 0,
             success_sim_mean=row.get("success_sim_mean", 0.0) or 0.0,
             success_sim_m2=row.get("success_sim_m2", 0.0) or 0.0,
