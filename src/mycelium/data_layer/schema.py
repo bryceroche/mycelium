@@ -66,6 +66,14 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     similarity_mean REAL DEFAULT 0.0,       -- Running mean of cosine similarities to centroid
     similarity_m2 REAL DEFAULT 0.0,         -- Sum of squared differences (variance = M2/N)
 
+    -- Success Similarity Tracking (Welford's algorithm for adaptive rejection)
+    -- Tracks similarity scores of SUCCESSFUL matches (for adaptive rejection threshold)
+    -- Per CLAUDE.md: leaf nodes should reject dag_steps when similarity is below
+    -- their historical success distribution: threshold = mean - k*std
+    success_sim_count INTEGER DEFAULT 0,    -- N successful matches
+    success_sim_mean REAL DEFAULT 0.0,      -- Running mean of similarity on success
+    success_sim_m2 REAL DEFAULT 0.0,        -- M2 for variance (std = sqrt(M2/N))
+
     -- Umbrella routing (DAG of DAGs)
     is_semantic_umbrella INTEGER DEFAULT 0,  -- 1 if routes to children
     is_root INTEGER DEFAULT 0,  -- 1 if this is THE root signature (single entry point)
@@ -555,6 +563,21 @@ def migrate_db(conn) -> None:
     if "rejection_count" not in existing_cols:
         migrations.append(
             "ALTER TABLE step_signatures ADD COLUMN rejection_count INTEGER DEFAULT 0"
+        )
+
+    # Add success similarity tracking for adaptive rejection (Welford's algorithm)
+    # Per mycelium-i601: leaves reject when similarity is below historical success distribution
+    if "success_sim_count" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN success_sim_count INTEGER DEFAULT 0"
+        )
+    if "success_sim_mean" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN success_sim_mean REAL DEFAULT 0.0"
+        )
+    if "success_sim_m2" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN success_sim_m2 REAL DEFAULT 0.0"
         )
 
     # Run step_signatures migrations

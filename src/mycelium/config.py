@@ -141,6 +141,21 @@ UCB1_ADJUSTMENT_MAX_DELTA = 0.3  # Max adjustment to C (±0.3)
 UCB1_ADJUSTMENT_SENSITIVITY = 0.5  # How quickly to respond to patterns (0-1)
 
 # =============================================================================
+# ADAPTIVE REJECTION (per-leaf similarity thresholds from historical successes)
+# =============================================================================
+# Per mycelium-i601: Leaf nodes learn their own acceptance thresholds from historical
+# success similarities. Instead of a global threshold, each leaf computes:
+#   threshold = mean(success_similarities) - k * std(success_similarities)
+# This lets specialized leaves become picky, while broad leaves stay permissive.
+
+ADAPTIVE_REJECTION_ENABLED = True  # Enable per-leaf adaptive thresholds
+ADAPTIVE_REJECTION_K = 1.5  # Number of std devs below mean (higher = more permissive)
+ADAPTIVE_REJECTION_MIN_SAMPLES = 5  # Min successful matches before adaptive kicks in
+ADAPTIVE_REJECTION_DEFAULT_THRESHOLD = 0.5  # Fallback threshold for cold-start leaves
+ADAPTIVE_REJECTION_MIN_THRESHOLD = 0.3  # Floor: never reject below this similarity
+ADAPTIVE_REJECTION_MAX_THRESHOLD = 0.95  # Ceiling: never require above this similarity
+
+# =============================================================================
 # MCTS COMPUTE BUDGET (multi-path exploration)
 # =============================================================================
 # Budget controls how many paths to explore during routing.

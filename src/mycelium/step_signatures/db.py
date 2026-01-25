@@ -3651,6 +3651,128 @@ class StepSignatureDB:
 
         return True
 
+    def update_success_similarity(
+        self,
+        signature_id: int,
+        similarity: float,
+    ) -> bool:
+        """Update success similarity stats using Welford's online algorithm.
+
+        Per mycelium-i601: Track similarity scores of SUCCESSFUL matches to compute
+        adaptive rejection threshold: threshold = mean - k * std
+
+        Called by post-mortem when a thread succeeds. The similarity value is the
+        cosine similarity that was used when matching the dag_step to this leaf.
+
+        Uses Welford's algorithm for numerically stable online variance:
+        - delta = x - mean
+        - new_mean = mean + delta/n
+        - delta2 = x - new_mean
+        - new_m2 = m2 + delta * delta2
+
+        Args:
+            signature_id: ID of the leaf signature
+            similarity: Cosine similarity score from successful match
+
+        Returns:
+            True if update succeeded
+        """
+        with self._connection() as conn:
+            # Get current stats
+            row = conn.execute(
+                """SELECT success_sim_count, success_sim_mean, success_sim_m2
+                   FROM step_signatures WHERE id = ?""",
+                (signature_id,)
+            ).fetchone()
+
+            if not row:
+                return False
+
+            n = (row["success_sim_count"] or 0) + 1
+            old_mean = row["success_sim_mean"] or 0.0
+            old_m2 = row["success_sim_m2"] or 0.0
+
+            # Welford's update
+            delta = similarity - old_mean
+            new_mean = old_mean + delta / n
+            delta2 = similarity - new_mean
+            new_m2 = old_m2 + delta * delta2
+
+            # Update stats
+            conn.execute(
+                """UPDATE step_signatures
+                   SET success_sim_count = ?,
+                       success_sim_mean = ?,
+                       success_sim_m2 = ?
+                   WHERE id = ?""",
+                (n, new_mean, new_m2, signature_id)
+            )
+            conn.commit()
+            invalidate_signature_cache(signature_id)
+
+            logger.debug(
+                "[db] Updated success_sim for sig %d: n=%d, mean=%.4f, std=%.4f",
+                signature_id, n, new_mean, (new_m2/n)**0.5 if n > 0 else 0
+            )
+            return True
+
+    def update_success_similarity_batch(
+        self,
+        updates: list[tuple[int, float]],
+    ) -> int:
+        """Batch update success similarity stats for multiple signatures.
+
+        More efficient than calling update_success_similarity() in a loop.
+
+        Args:
+            updates: List of (signature_id, similarity) tuples
+
+        Returns:
+            Number of signatures updated
+        """
+        if not updates:
+            return 0
+
+        updated = 0
+        with self._connection() as conn:
+            for signature_id, similarity in updates:
+                # Get current stats
+                row = conn.execute(
+                    """SELECT success_sim_count, success_sim_mean, success_sim_m2
+                       FROM step_signatures WHERE id = ?""",
+                    (signature_id,)
+                ).fetchone()
+
+                if not row:
+                    continue
+
+                n = (row["success_sim_count"] or 0) + 1
+                old_mean = row["success_sim_mean"] or 0.0
+                old_m2 = row["success_sim_m2"] or 0.0
+
+                # Welford's update
+                delta = similarity - old_mean
+                new_mean = old_mean + delta / n
+                delta2 = similarity - new_mean
+                new_m2 = old_m2 + delta * delta2
+
+                # Update stats
+                conn.execute(
+                    """UPDATE step_signatures
+                       SET success_sim_count = ?,
+                           success_sim_mean = ?,
+                           success_sim_m2 = ?
+                       WHERE id = ?""",
+                    (n, new_mean, new_m2, signature_id)
+                )
+                invalidate_signature_cache(signature_id)
+                updated += 1
+
+            conn.commit()
+
+        logger.debug("[db] Batch updated success_sim for %d signatures", updated)
+        return updated
+
     def _row_to_signature(self, row) -> StepSignature:
         """Convert a database row to a StepSignature object."""
         return StepSignature.from_row(dict(row))
@@ -4263,6 +4385,7 @@ class StepSignatureDB:
         dag_step_type: str = None,
         top_k: int = 3,
         min_similarity: float = 0.5,
+        use_adaptive_threshold: bool = None,  # None = use config default
     ) -> list[tuple[StepSignature, float, float]]:
         """MCTS-style matching: find top-k leaf candidates for a dag_step using graph embeddings.
 
@@ -4274,6 +4397,10 @@ class StepSignatureDB:
         - Exploitation: similarity + success rate
         - Exploration: bonus for under-visited leaves
 
+        Per mycelium-i601: Uses adaptive rejection thresholds per leaf.
+        Each leaf computes its own threshold based on historical success similarities:
+        threshold = mean - 1.5 * std. Cold-start leaves use min_similarity as fallback.
+
         Per CLAUDE.md: Returns top-k candidates so caller can:
         1. Try best match first
         2. On rejection, try alternatives (sideways)
@@ -4283,12 +4410,18 @@ class StepSignatureDB:
             operation_embedding: Operation embedding to match (from step.operation)
             dag_step_type: Optional step type for step-node stats lookup
             top_k: Number of candidates to return (default 3)
-            min_similarity: Minimum similarity threshold to consider
+            min_similarity: Fallback threshold for cold-start leaves
+            use_adaptive_threshold: If True, use per-leaf adaptive thresholds
 
         Returns:
             List of (leaf, ucb1_score, similarity) tuples, sorted by UCB1 desc
         """
         from mycelium.data_layer.mcts import get_dag_step_node_stats_batch
+        from mycelium.config import ADAPTIVE_REJECTION_ENABLED
+
+        # Resolve use_adaptive_threshold: None means use config default
+        if use_adaptive_threshold is None:
+            use_adaptive_threshold = ADAPTIVE_REJECTION_ENABLED
 
         leaves = self.get_all_leaves(min_uses=0)
         if not leaves:
@@ -4304,6 +4437,7 @@ class StepSignatureDB:
         total_visits = sum(leaf.uses or 1 for leaf in leaves)
 
         candidates = []
+        rejections = 0
         for leaf in leaves:
             # Use graph_embedding for matching (operational similarity)
             graph_emb = leaf.graph_embedding
@@ -4313,7 +4447,24 @@ class StepSignatureDB:
                 graph_emb = np.array(graph_emb)
 
             sim = cosine_similarity(operation_embedding, graph_emb)
-            if sim < min_similarity:
+
+            # Per mycelium-i601: Use adaptive threshold based on leaf's historical successes
+            # Cold-start leaves (few samples) fall back to min_similarity
+            if use_adaptive_threshold:
+                from mycelium.config import (
+                    ADAPTIVE_REJECTION_K,
+                    ADAPTIVE_REJECTION_MIN_SAMPLES,
+                )
+                threshold = leaf.get_adaptive_rejection_threshold(
+                    k=ADAPTIVE_REJECTION_K,
+                    min_samples=ADAPTIVE_REJECTION_MIN_SAMPLES,
+                    default_threshold=min_similarity,
+                )
+            else:
+                threshold = min_similarity
+
+            if sim < threshold:
+                rejections += 1
                 continue
 
             # Get step-node stats for this leaf
@@ -4334,10 +4485,17 @@ class StepSignatureDB:
 
         if candidates:
             logger.debug(
-                "[mcts_match] Top-%d leaves for '%s': %s",
+                "[mcts_match] Top-%d leaves for '%s': %s (rejected %d via adaptive threshold)",
                 top_k,
                 dag_step_type or "unknown",
-                [(c[0].step_type, f"ucb1={c[1]:.3f}", f"sim={c[2]:.3f}") for c in candidates[:top_k]]
+                [(c[0].step_type, f"ucb1={c[1]:.3f}", f"sim={c[2]:.3f}") for c in candidates[:top_k]],
+                rejections,
+            )
+        elif rejections > 0:
+            logger.debug(
+                "[mcts_match] All %d leaves rejected for '%s' via adaptive threshold",
+                rejections,
+                dag_step_type or "unknown",
             )
 
         return candidates[:top_k]

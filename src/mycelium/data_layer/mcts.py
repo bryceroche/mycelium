@@ -1674,6 +1674,64 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
     return stats
 
 
+def propagate_success_similarity(dag_id: str, step_db) -> dict:
+    """Propagate similarity scores from successful threads to leaf adaptive thresholds.
+
+    Per mycelium-i601: When a thread succeeds, the similarity scores used during
+    routing should be recorded on the leaf signatures. This feeds into the adaptive
+    rejection threshold: threshold = mean - k * std.
+
+    Only propagates similarity from thread steps where:
+    1. The thread won (t.success = 1)
+    2. A similarity_score was recorded (not NULL)
+
+    Args:
+        dag_id: The DAG to process
+        step_db: StepSignatureDB instance for updating success_sim stats
+
+    Returns:
+        Dict with propagation statistics
+    """
+    from mycelium.config import CREDIT_PROPAGATION_ENABLED
+
+    if not CREDIT_PROPAGATION_ENABLED:
+        return {"updates": 0, "skipped": True}
+
+    conn = get_db()
+
+    # Get (node_id, similarity_score) pairs from winning threads
+    # Use mcts_thread_steps which has the detailed similarity_score column
+    cursor = conn.execute(
+        """
+        SELECT ts.node_id, ts.similarity_score
+        FROM mcts_thread_steps ts
+        JOIN mcts_threads t ON ts.thread_id = t.thread_id
+        WHERE ts.dag_id = ?
+          AND t.success = 1
+          AND ts.similarity_score IS NOT NULL
+          AND ts.node_id IS NOT NULL
+        """,
+        (dag_id,)
+    )
+
+    updates = []
+    for row in cursor.fetchall():
+        node_id = row["node_id"]
+        similarity = row["similarity_score"]
+        if node_id is not None and similarity is not None:
+            updates.append((node_id, similarity))
+
+    if updates:
+        updated_count = step_db.update_success_similarity_batch(updates)
+        logger.debug(
+            "[mcts] Propagated %d success similarities for DAG %s",
+            updated_count, dag_id
+        )
+        return {"updates": updated_count, "skipped": False}
+
+    return {"updates": 0, "skipped": False}
+
+
 # =============================================================================
 # STEP-NODE STATS (Materialized (dag_step_type, node_id) performance)
 # =============================================================================
@@ -2892,6 +2950,10 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     # This closes the loop from post-mortem analysis to signature learning
     credit_stats = propagate_amplitude_to_signature_stats(dag_id, step_db)
 
+    # Per mycelium-i601: Propagate success similarity for adaptive rejection thresholds
+    # When threads win, record their similarity scores on leaves for adaptive thresholds
+    success_sim_stats = propagate_success_similarity(dag_id, step_db)
+
     # Propagate to (dag_step_type, node_id) stats table
     # This enables routing UCB1 to use step-specific performance data
     step_node_stats = propagate_step_node_stats(dag_id)
@@ -3008,6 +3070,8 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         "credit_nodes_processed": credit_stats.get("nodes_processed", 0),
         "credit_successes": credit_stats.get("successes_credited", 0),
         "credit_failures": credit_stats.get("failures_credited", 0),
+        # Success similarity propagation for adaptive rejection (per mycelium-i601)
+        "success_sim_updates": success_sim_stats.get("updates", 0),
         # Divergence-point analysis (per beads mycelium-2rss)
         "divergence_points_found": divergence_stats.get("divergence_points_found", 0),
         "divergence_blame_assigned": divergence_stats.get("divergence_blame_assigned", 0),
