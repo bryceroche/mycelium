@@ -3076,13 +3076,10 @@ class StepSignatureDB:
 
                 if uses >= min_uses:
                     success_rate = successes / uses if uses > 0 else 0
-                    # Only demote if:
-                    # 1. This step failed (step_completed=False), OR
-                    # 2. We have graded history (successes > 0) showing poor success rate
-                    should_demote = (
-                        (not step_completed) or  # This step failed
-                        (successes > 0 and success_rate < AUTO_DEMOTE_MAX_SUCCESS_RATE)  # Historical failures
-                    )
+                    # Only demote based on historical success rate (problem correctness)
+                    # NOT based on step_completed - that conflates DSL failure with multi-path loss
+                    # Multi-path losers get step_completed=False but their DSL didn't actually fail
+                    should_demote = success_rate < AUTO_DEMOTE_MAX_SUCCESS_RATE
                     if should_demote:
                         # MCTS check: only demote if no alternatives exist
                         # If alternatives exist, it's a routing issue, not this leaf's fault
