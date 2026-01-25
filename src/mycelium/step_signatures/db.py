@@ -2292,28 +2292,88 @@ class StepSignatureDB:
         new_embedding: np.ndarray,
         update_last_used: bool = False,
     ) -> Optional[int]:
-        """NO-OP: Text centroid updates removed - routing uses graph_embedding only.
+        """Update text centroid with running average (local only, no propagation).
 
-        Only updates last_used_at if requested. Text centroid updates are skipped.
-        See propagate_graph_centroid_to_parents() for graph-based routing.
+        Uses running average: new_centroid = (old_sum + new_embedding) / (old_count + 1)
 
         Args:
             conn: Database connection
             signature_id: ID of the signature
-            new_embedding: Unused (kept for API compatibility)
+            new_embedding: New embedding to incorporate into centroid
             update_last_used: If True, update last_used_at timestamp
 
         Returns:
-            1 (for API compatibility with callers expecting a count)
+            New embedding_count after update, or None if signature not found
         """
+        # Get current embedding sum and count
+        row = conn.execute(
+            "SELECT embedding_sum, embedding_count FROM step_signatures WHERE id = ?",
+            (signature_id,)
+        ).fetchone()
+
+        if row is None:
+            return None
+
+        # Parse existing embedding sum
+        old_sum = _parse_centroid_data(row["embedding_sum"])
+        old_count = row["embedding_count"] or 1
+
+        if old_sum is None:
+            # If no existing sum, use the new embedding
+            new_sum = new_embedding
+            new_count = 1
+        else:
+            # Running average: add new embedding to sum, increment count
+            new_sum = old_sum + new_embedding
+            new_count = old_count + 1
+
+        # Calculate new centroid
+        new_centroid = new_sum / new_count
+        new_centroid_json = json.dumps(new_centroid.tolist())
+        new_sum_json = json.dumps(new_sum.tolist())
+        new_bucket = compute_centroid_bucket(new_centroid)
+
+        # Update database
         if update_last_used:
             now = datetime.now(timezone.utc).isoformat()
             conn.execute(
-                "UPDATE step_signatures SET last_used_at = ? WHERE id = ?",
-                (now, signature_id),
+                """UPDATE step_signatures
+                   SET centroid = ?, centroid_bucket = ?, embedding_sum = ?, embedding_count = ?, last_used_at = ?
+                   WHERE id = ?""",
+                (new_centroid_json, new_bucket, new_sum_json, new_count, now, signature_id)
             )
-            invalidate_signature_cache(signature_id)
-        return 1
+        else:
+            conn.execute(
+                """UPDATE step_signatures
+                   SET centroid = ?, centroid_bucket = ?, embedding_sum = ?, embedding_count = ?
+                   WHERE id = ?""",
+                (new_centroid_json, new_bucket, new_sum_json, new_count, signature_id)
+            )
+
+        invalidate_signature_cache(signature_id)
+        return new_count
+
+    def update_centroid(self, signature_id: int, new_embedding: np.ndarray) -> Optional[int]:
+        """Update a signature's centroid with a new embedding.
+
+        Public wrapper around _update_centroid_atomic for external use.
+
+        Args:
+            signature_id: ID of the signature to update
+            new_embedding: New embedding to incorporate into centroid
+
+        Returns:
+            New embedding_count after update, or None if signature not found
+        """
+        with self._connection() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                result = self._update_centroid_atomic(conn, signature_id, new_embedding)
+                conn.commit()
+                return result
+            except Exception:
+                conn.rollback()
+                raise
 
     def record_interference_outcome(
         self,
