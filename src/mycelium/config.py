@@ -174,6 +174,8 @@ REACTIVE_EXPLORATION_ENABLED = True  # Enable reactive exploration on failure
 REACTIVE_EXPLORATION_MAX_ALTERNATIVES = 3  # Max alternative nodes to try per step
 REACTIVE_EXPLORATION_MAX_RETRIES = 5  # Max total retry attempts
 REACTIVE_EXPLORATION_MIN_SIMILARITY = 0.5  # Min similarity for alternative candidates
+REACTIVE_EXPLORATION_FULL_RESOLVE = True  # Re-solve entire problem with forced exploration
+REACTIVE_EXPLORATION_NUM_THREADS = 3  # Number of parallel exploration threads to spawn
 
 # Step decomposition fallback: when reactive exploration fails to find a winning path,
 # decompose failing steps into smaller sub-steps and re-solve

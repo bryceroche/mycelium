@@ -568,6 +568,10 @@ class Solver:
         # Stored after record_problem_outcome() for async processing
         self._pending_reactive_exploration: Optional[dict] = None
 
+        # Force exploration flag: when True, bypass UCB1 gap check and always fork
+        # Used during reactive exploration to spawn multiple threads on failure
+        self._force_exploration: bool = False
+
         # Phase 1 values for provenance tracking (set per-problem in solve())
         # Maps value name -> numeric value for resolving $name references
         self._current_phase1_values: dict[str, Any] = {}
@@ -2109,8 +2113,10 @@ class Solver:
         # Selective branching: only branch when undecided (per CLAUDE.md)
         # Use UCB1 gap to detect uncertainty: high gap = confident, low gap = undecided
         # Also respect single-path mode (compute_budget <= 1.0)
-        is_undecided = routing_result.min_gap < UCB1_GAP_BRANCH_THRESHOLD
-        if not is_undecided or compute_budget <= 1.0:
+        # Exception: force_exploration flag bypasses both gap check and budget check (for reactive exploration)
+        is_undecided = routing_result.min_gap < UCB1_GAP_BRANCH_THRESHOLD or self._force_exploration
+        effective_budget = max(compute_budget, 3.0) if self._force_exploration else compute_budget
+        if not is_undecided or effective_budget <= 1.0:
             if routing_result.signature is not None:
                 result = await self._try_dsl(
                     routing_result.signature, step, context, step_descriptions
@@ -2121,10 +2127,11 @@ class Solver:
         # Undecided (low UCB1 gap) + multi-path mode: explore alternatives
         # Mark as undecided for MCTS amplitude tracking
         self._routing_was_undecided = True
-        num_paths = min(int(compute_budget), len(routing_result.alternatives) + 1)
+        num_paths = min(int(effective_budget), len(routing_result.alternatives) + 1)
+        force_tag = " [FORCED]" if self._force_exploration else ""
         logger.info(
-            "[solver] Selective branching: undecided (gap=%.3f < %.3f), exploring %d paths",
-            routing_result.min_gap, UCB1_GAP_BRANCH_THRESHOLD, num_paths
+            "[solver] Selective branching%s: gap=%.3f, exploring %d paths",
+            force_tag, routing_result.min_gap, num_paths
         )
 
         # Collect alternative leaf signatures to try (with similarity scores)
@@ -3687,6 +3694,7 @@ Rules:
             Dict with exploration statistics
         """
         from mycelium.data_layer.mcts import find_divergence_points, assign_divergence_blame
+        from mycelium.config import REACTIVE_EXPLORATION_FULL_RESOLVE
 
         stats = {
             "reactive_exploration_triggered": True,
@@ -3695,10 +3703,30 @@ Rules:
             "blame_assigned": 0,
         }
 
-        # Try to find a winning path
-        winning = await self._retry_with_alternatives(
-            result.problem, result, ground_truth, difficulty
-        )
+        winning = None
+
+        # Try full re-solve with forced exploration first (spawns multiple threads)
+        if REACTIVE_EXPLORATION_FULL_RESOLVE:
+            logger.info("[reactive] Re-solving with forced exploration (spawning multiple threads)")
+            self._force_exploration = True
+            try:
+                explore_result = await self.solve(result.problem, difficulty=difficulty)
+                # Check if any thread found the correct answer
+                if explore_result.answer and self._normalize_answer(explore_result.answer) == self._normalize_answer(ground_truth):
+                    logger.info("[reactive] Full re-solve found winning path!")
+                    winning = (explore_result, self._root_thread_id)
+                    stats["full_resolve_success"] = True
+                else:
+                    logger.info("[reactive] Full re-solve didn't find winning path")
+                    stats["full_resolve_success"] = False
+            finally:
+                self._force_exploration = False
+
+        # Fallback: try single-step alternatives (original approach)
+        if winning is None:
+            winning = await self._retry_with_alternatives(
+                result.problem, result, ground_truth, difficulty
+            )
 
         if winning is None:
             logger.info("[reactive] No winning alternative found, trying step decomposition")

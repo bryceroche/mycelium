@@ -2191,28 +2191,35 @@ class StepSignatureDB:
 
             # If not root, add as child of the appropriate parent
             if not is_first_signature and actual_parent_id is not None:
-                # Add parent-child relationship
-                conn.execute(
-                    """INSERT OR IGNORE INTO signature_relationships
-                       (parent_id, child_id, condition, routing_order, created_at)
-                       VALUES (?, ?, ?, ?, ?)""",
-                    (actual_parent_id, row_id, step_type, 0, now),
-                )
-                # Mark parent as umbrella - routers don't execute DSL, they route
-                # Clear dsl_script to avoid mismatch between dsl_type='router' and script type='math'
-                conn.execute(
-                    """UPDATE step_signatures
-                       SET is_semantic_umbrella = 1, dsl_type = 'router', dsl_script = NULL
-                       WHERE id = ?""",
-                    (actual_parent_id,),
-                )
-                # Invalidate parent's children cache since we added a new child
-                invalidate_children_cache(actual_parent_id)
-                invalidate_signature_cache(actual_parent_id)
-                logger.debug(
-                    "[db] Added as child: parent_id=%d (depth=%d) -> child_id=%d (depth=%d) (condition='%s')",
-                    actual_parent_id, actual_depth - 1, row_id, actual_depth, step_type
-                )
+                # Prevent self-references (circular dependency bug)
+                if actual_parent_id == row_id:
+                    logger.warning(
+                        "[db] Rejecting self-reference in signature creation: parent_id=%d == child_id=%d",
+                        actual_parent_id, row_id
+                    )
+                else:
+                    # Add parent-child relationship
+                    conn.execute(
+                        """INSERT OR IGNORE INTO signature_relationships
+                           (parent_id, child_id, condition, routing_order, created_at)
+                           VALUES (?, ?, ?, ?, ?)""",
+                        (actual_parent_id, row_id, step_type, 0, now),
+                    )
+                    # Mark parent as umbrella - routers don't execute DSL, they route
+                    # Clear dsl_script to avoid mismatch between dsl_type='router' and script type='math'
+                    conn.execute(
+                        """UPDATE step_signatures
+                           SET is_semantic_umbrella = 1, dsl_type = 'router', dsl_script = NULL
+                           WHERE id = ?""",
+                        (actual_parent_id,),
+                    )
+                    # Invalidate parent's children cache since we added a new child
+                    invalidate_children_cache(actual_parent_id)
+                    invalidate_signature_cache(actual_parent_id)
+                    logger.debug(
+                        "[db] Added as child: parent_id=%d (depth=%d) -> child_id=%d (depth=%d) (condition='%s')",
+                        actual_parent_id, actual_depth - 1, row_id, actual_depth, step_type
+                    )
         except sqlite3.IntegrityError as e:
             # Centroid bucket collision - find existing signature by bucket hash
             if "centroid_bucket" in str(e):
