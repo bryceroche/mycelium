@@ -3382,14 +3382,6 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     }
 
 
-def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
-    """Thin wrapper for backward compatibility. Use run_postmortem() instead.
-
-    Calls run_postmortem(dag_id, step_db) with interference enabled, diagnostics disabled.
-    """
-    return run_postmortem(dag_id, step_db=step_db, include_diagnostics=False)
-
-
 # =============================================================================
 # MERGE/SPLIT OPERATIONS (structural tree changes from interference)
 # =============================================================================
@@ -4766,12 +4758,9 @@ def run_diagnostic_postmortem(
     step_db,
     step_embeddings: dict[str, Any] = None,
 ) -> dict:
-    """Run diagnostic post-mortem on a completed DAG.
+    """Thin wrapper for backward compatibility. Use run_postmortem() instead.
 
-    Analyzes failures to determine what should be decomposed:
-    - dag_steps that are too complex
-    - signatures with wrong approaches
-    - routing misses
+    Calls _run_diagnostic_analysis() after checking if diagnostics are enabled.
 
     Args:
         dag_id: The DAG to analyze
@@ -4786,83 +4775,6 @@ def run_diagnostic_postmortem(
     if not DIAGNOSTIC_POSTMORTEM_ENABLED:
         return {"skipped": True, "reason": "DIAGNOSTIC_POSTMORTEM_ENABLED is False"}
 
-    # Get system maturity (signature count)
-    system_maturity = step_db.count_signatures() if step_db else 0
-    failure_threshold = get_diagnostic_failure_threshold(system_maturity)
-
-    # Get thread steps for this DAG
-    thread_steps = get_thread_steps_for_dag(dag_id)
-
-    # Group by (dag_step_id, node_id) to find repeated failures
-    pair_failures = {}  # (dag_step_id, node_id) -> failure count
-    pair_embeddings = {}  # (dag_step_id, node_id) -> step_embedding
-
-    for ts in thread_steps:
-        if ts.step_success == 0:  # Failed step
-            key = (ts.dag_step_id, ts.node_id)
-            pair_failures[key] = pair_failures.get(key, 0) + 1
-
-            # Store embedding if available
-            if step_embeddings and ts.dag_step_id in step_embeddings:
-                pair_embeddings[key] = step_embeddings[ts.dag_step_id]
-
-    # Diagnose pairs that exceed threshold
-    diagnoses = []
-    steps_to_decompose = []
-    sigs_to_decompose = []
-    routing_misses = []
-
-    for (dag_step_id, node_id), failure_count in pair_failures.items():
-        # Note: Using >= is intentional. failure_count is always an integer,
-        # and at cold start (THRESHOLD_MIN=1.0) we want a single failure to trigger.
-        # Using > would require 2 failures minimum even at cold start.
-        if failure_count >= failure_threshold:
-            # Run diagnosis
-            step_emb = pair_embeddings.get((dag_step_id, node_id))
-            diagnosis = diagnose_failure(node_id, step_emb, step_db)
-
-            diagnoses.append({
-                "dag_step_id": dag_step_id,
-                "node_id": node_id,
-                "failure_count": failure_count,
-                "verdict": diagnosis.verdict,
-                "scores": {
-                    "decompose_step": diagnosis.decompose_step_score,
-                    "decompose_sig": diagnosis.decompose_sig_score,
-                    "reroute": diagnosis.reroute_score,
-                },
-                "accuracy": diagnosis.accuracy,
-                "confidence": diagnosis.confidence,
-            })
-
-            # Collect recommendations by verdict
-            if diagnosis.verdict == "decompose_step":
-                steps_to_decompose.append(dag_step_id)
-            elif diagnosis.verdict == "decompose_signature":
-                sigs_to_decompose.append(node_id)
-            elif diagnosis.verdict == "reroute":
-                routing_misses.append((dag_step_id, node_id))
-
-    logger.info(
-        "[diagnostic] Post-mortem for %s: threshold=%.1f, pairs_analyzed=%d, "
-        "steps_decompose=%d, sigs_decompose=%d, reroutes=%d",
-        dag_id,
-        failure_threshold,
-        len(pair_failures),
-        len(steps_to_decompose),
-        len(sigs_to_decompose),
-        len(routing_misses),
-    )
-
-    return {
-        "dag_id": dag_id,
-        "system_maturity": system_maturity,
-        "failure_threshold": failure_threshold,
-        "pairs_analyzed": len(pair_failures),
-        "diagnoses": diagnoses,
-        "steps_to_decompose": list(set(steps_to_decompose)),
-        "signatures_to_decompose": list(set(sigs_to_decompose)),
-        "routing_misses": routing_misses,
-    }
+    return _run_diagnostic_analysis(dag_id, step_db, step_embeddings)
 
 
