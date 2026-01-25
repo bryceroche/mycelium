@@ -56,7 +56,6 @@ from mycelium.config import (
     AUTO_DEMOTE_MIN_USES_FLOOR,
     AUTO_DEMOTE_MIN_USES_CAP,
     CENTROID_PROPAGATION_MAX_DEPTH,
-    CENTROID_PROPAGATION_BATCH_SIZE,
     CENTROID_MAX_DRIFT,
     CENTROID_DRIFT_DECAY,
     DB_MAX_RETRIES,
@@ -2483,7 +2482,7 @@ class StepSignatureDB:
                     return
 
                 conn.commit()
-                invalidate_signature_cache(signature_id)
+                # Note: _update_centroid_atomic already calls _invalidate_on_embedding_change
                 logger.debug(
                     "[db] Updated centroid for sig %d: count=%d",
                     signature_id, new_count
