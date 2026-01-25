@@ -871,17 +871,12 @@ class StepSignatureDB:
         top_k: int = 3,
         dag_step_type: Optional[str] = None,
     ) -> RoutingResult:
-        """Route with confidence scoring for MCTS multi-path exploration using graph embeddings.
+        """Route with confidence scoring for MCTS multi-path exploration.
+
+        Thin wrapper around _route_core() with UCB1 scoring, alternatives
+        tracking, and epsilon-greedy exploration enabled.
 
         Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
-        Uses graph_embedding (not text centroid) for routing decisions.
-
-        Enhanced version of route_through_hierarchy that computes confidence
-        signals based on UCB1 score gaps between top-k children at each level.
-
-        Per CLAUDE.md: "The combination of (dag_step_id, node_id) is what we're learning."
-        If dag_step_type is provided, step-specific performance stats from
-        dag_step_node_stats are used to improve routing decisions.
 
         Confidence interpretation:
         - High confidence (>0.8): Clear winner, single path likely sufficient
@@ -889,159 +884,24 @@ class StepSignatureDB:
         - Low confidence (<0.5): High uncertainty, explore multiple paths
 
         Args:
-            operation_embedding: The operation embedding to route (from step.operation)
-            min_similarity: Minimum similarity threshold to follow a route
-            max_depth: Maximum depth to traverse (default from config)
+            operation_embedding: The operation embedding to route
+            min_similarity: Minimum similarity threshold
+            max_depth: Maximum depth to traverse
             top_k: Number of top alternatives to track at each level
             dag_step_type: Optional step type for step-node stats lookup
-                (e.g., "compute_sum", "compute_product")
 
         Returns:
             RoutingResult with signature, path, confidence, and alternatives
         """
-        from mycelium.config import UMBRELLA_MAX_DEPTH
-
-        # Validate max_depth
-        if max_depth is None:
-            max_depth = UMBRELLA_MAX_DEPTH
-        max_depth = max(1, min(int(max_depth), 100))
-
-        root = self.get_root()
-        if root is None:
-            return RoutingResult(signature=None, path=[], confidence=0.0)
-
-        path = [root]
-        current = root
-        depth = 0
-        ucb1_gaps = []
-        alternatives = []
-        confidence_factors = []
-        best_similarity = None  # Track best cosine similarity at final level
-
-        while depth < max_depth:
-            # If current is not an umbrella, it's a leaf - we're done
-            if not current.is_semantic_umbrella:
-                break
-
-            # Get children of current umbrella
-            children = self.get_children(current.id, for_routing=True)
-            if not children:
-                # Umbrella with no children - treat as leaf
-                break
-
-            # Score all children with UCB1
-            parent_uses = current.uses or 1
-            scored_children = []
-
-            # Fetch step-node stats for all children if dag_step_type provided
-            # This enables routing to use (dag_step_type, node_id) pair performance
-            step_stats_map = {}
-            if dag_step_type:
-                from mycelium.data_layer.mcts import get_dag_step_node_stats_batch
-                child_ids = [c.id for c, _ in children if c.id is not None]
-                step_stats_map = get_dag_step_node_stats_batch(dag_step_type, child_ids)
-                # Debug: Log step-node stats retrieval
-                if step_stats_map:
-                    logger.debug(
-                        "[routing] Step-node stats for '%s': %d/%d children have stats",
-                        dag_step_type[:40], len(step_stats_map), len(child_ids)
-                    )
-                    for sig_id, stats in list(step_stats_map.items())[:3]:  # Log first 3
-                        logger.debug(
-                            "[routing]   sig=%d: uses=%d win_rate=%.2f avg_amp=%.2f",
-                            sig_id, stats.get("uses", 0), stats.get("win_rate", 0),
-                            stats.get("avg_amplitude_post", 1.0)
-                        )
-
-            for child_sig, _condition in children:
-                # Use graph_embedding for routing (operational similarity)
-                graph_emb = child_sig.graph_embedding
-                if graph_emb is None:
-                    continue
-                if not isinstance(graph_emb, np.ndarray):
-                    graph_emb = np.array(graph_emb)
-                sim = cosine_similarity(operation_embedding, graph_emb)
-                if sim >= min_similarity * 0.7:  # Lower threshold to capture alternatives
-                    # Get step-node stats for this child (if available)
-                    child_step_stats = step_stats_map.get(child_sig.id)
-                    ucb1 = compute_ucb1_score(
-                        cosine_sim=sim,
-                        uses=child_sig.uses,
-                        successes=child_sig.successes,
-                        parent_uses=parent_uses,
-                        last_used_at=child_sig.last_used_at,
-                        step_node_stats=child_step_stats,
-                    )
-                    scored_children.append((child_sig, ucb1, sim))
-
-            if not scored_children:
-                # No children match - return current as best effort
-                break
-
-            # Sort by UCB1 score (descending)
-            scored_children.sort(key=lambda x: x[1], reverse=True)
-
-            # Epsilon-greedy exploration: occasionally pick random child
-            # This ensures under-visited signatures get attempts even when UCB1 favors exploitation
-            from mycelium.config import EXPLORATION_EPSILON
-            import random
-            if EXPLORATION_EPSILON > 0 and random.random() < EXPLORATION_EPSILON and len(scored_children) > 1:
-                # Pick random child (not necessarily the best)
-                random_idx = random.randint(0, len(scored_children) - 1)
-                # Move selected child to front so it becomes "best"
-                selected = scored_children[random_idx]
-                scored_children[random_idx] = scored_children[0]
-                scored_children[0] = selected
-                logger.debug(
-                    "[routing] Epsilon exploration: picked random child %d (score=%.3f) instead of best (score=%.3f)",
-                    selected[0].id, selected[1], scored_children[1][1] if len(scored_children) > 1 else 0
-                )
-
-            # Track top-k alternatives at this level
-            level_alts = [(sig, score) for sig, score, _sim in scored_children[:top_k]]
-            alternatives.append(level_alts)
-
-            # Compute confidence from UCB1 gap
-            best_score = scored_children[0][1]
-            if len(scored_children) > 1:
-                second_score = scored_children[1][1]
-                gap = best_score - second_score
-                # Normalize gap to 0-1 (empirically, gaps > 0.3 are very confident)
-                level_confidence = min(1.0, gap / 0.3)
-            else:
-                # Only one option - high confidence by default
-                gap = 1.0
-                level_confidence = 1.0
-
-            ucb1_gaps.append(gap)
-            confidence_factors.append(level_confidence)
-
-            # Check if best child meets similarity threshold
-            best_child, _best_ucb1, best_sim = scored_children[0]
-            best_similarity = best_sim  # Track for MCTS amplitude logging
-            if best_sim < min_similarity:
-                # Best child doesn't meet threshold - stop here
-                break
-
-            # Move to best child
-            path.append(best_child)
-            current = best_child
-            depth += 1
-
-        # Compute overall confidence as product of level confidences
-        # (weakest link determines overall confidence)
-        if confidence_factors:
-            overall_confidence = min(confidence_factors)  # Weakest link
-        else:
-            overall_confidence = 1.0 if current is not None else 0.0
-
-        return RoutingResult(
-            signature=current if not current.is_semantic_umbrella else None,
-            path=path,
-            confidence=overall_confidence,
-            ucb1_gaps=ucb1_gaps,
-            alternatives=alternatives,
-            best_similarity=best_similarity,
+        return self._route_core(
+            operation_embedding,
+            min_similarity=min_similarity,
+            max_depth=max_depth,
+            track_alternatives=True,
+            top_k=top_k,
+            use_ucb1=True,
+            epsilon_exploration=True,
+            dag_step_type=dag_step_type,
         )
 
     # =========================================================================
