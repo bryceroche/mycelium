@@ -1,8 +1,7 @@
 """Tests for centroid/embedding functionality.
 
-NOTE: Routing now uses graph_embedding (computation graph embeddings) instead of
-text centroids. Text centroids are still maintained for historical/debugging purposes
-but are NOT used for routing decisions.
+NOTE: Text centroid running average updates have been removed - _update_centroid_atomic
+is now a NO-OP that only updates last_used_at. Routing uses graph_embedding exclusively.
 
 See commit 373a7e7 "Graph-first routing, remove text centroid learning".
 See CLAUDE.md: "Route by what operations DO, not what they SOUND LIKE."
@@ -35,37 +34,30 @@ def make_embedding(seed: int, variation: float = 0.0) -> np.ndarray:
 class TestCentroidAtomicHelper:
     """Tests for the internal _update_centroid_atomic helper.
 
-    Note: Text centroid updates still happen but are not used for routing.
+    Note: Text centroid updates are now NO-OPs. The helper only updates last_used_at.
     Routing uses graph_embedding (computation graph embeddings).
     """
 
-    def test_atomic_helper_updates_centroid(self, clean_test_db):
-        """The atomic helper updates text centroid with running average."""
+    def test_atomic_helper_returns_one_for_compatibility(self, clean_test_db):
+        """The atomic helper returns 1 for API compatibility (NO-OP for centroid)."""
         db = StepSignatureDB()
 
-        emb1 = make_embedding(7000)
+        emb = make_embedding(7000)
 
         sig, _ = db.find_or_create(
             step_text="Atomic test",
-            embedding=emb1,
+            embedding=emb,
             parent_problem="test",
         )
-        assert sig.embedding_count == 1
 
-        # Update with different embedding
-        emb2 = make_embedding(7001)
+        # Use the atomic helper directly - now a NO-OP that returns 1
         with db._connection() as conn:
             conn.execute("BEGIN IMMEDIATE")
-            new_count = db._update_centroid_atomic(conn, sig.id, emb2)
+            result = db._update_centroid_atomic(conn, sig.id, emb)
             conn.commit()
 
-        assert new_count == 2
-
-        # Verify centroid updated
-        updated = db.get_signature(sig.id)
-        assert updated.embedding_count == 2
-        expected = (emb1 + emb2) / 2
-        np.testing.assert_array_almost_equal(updated.centroid, expected, decimal=5)
+        # Always returns 1 for API compatibility (text centroid updates removed)
+        assert result == 1
 
     def test_atomic_helper_updates_last_used(self, clean_test_db):
         """The atomic helper should update last_used_at when flag is set."""
@@ -111,53 +103,3 @@ class TestSignatureCreation:
         assert sig.embedding_count == 1
         # Initial centroid equals the initial embedding
         np.testing.assert_array_almost_equal(sig.centroid, emb, decimal=5)
-
-    def test_update_centroid_method(self, clean_test_db):
-        """Test the standalone update_centroid method."""
-        db = StepSignatureDB()
-
-        # Create signature
-        emb1 = make_embedding(100)
-
-        sig, _ = db.find_or_create(
-            step_text="Test signature",
-            embedding=emb1,
-            parent_problem="test",
-        )
-        assert sig.embedding_count == 1
-
-        # Manually update centroid with different embedding
-        emb2 = make_embedding(200)
-        db.update_centroid(sig.id, emb2)
-
-        # Verify
-        updated = db.get_signature(sig.id)
-        assert updated.embedding_count == 2
-
-        expected = (emb1 + emb2) / 2
-        np.testing.assert_array_almost_equal(updated.centroid, expected, decimal=5)
-
-    def test_centroid_running_average_multiple(self, clean_test_db):
-        """Test that multiple updates produce correct running average."""
-        db = StepSignatureDB()
-
-        # Create embeddings with different seeds
-        embeddings = [make_embedding(seed) for seed in [10, 20, 30, 40]]
-
-        # Create signature with first embedding
-        sig, _ = db.find_or_create(
-            step_text="Multi update test",
-            embedding=embeddings[0],
-            parent_problem="test",
-        )
-
-        # Add remaining embeddings
-        for emb in embeddings[1:]:
-            db.update_centroid(sig.id, emb)
-
-        # Verify final state
-        updated = db.get_signature(sig.id)
-        assert updated.embedding_count == 4
-
-        expected = sum(embeddings) / 4
-        np.testing.assert_array_almost_equal(updated.centroid, expected, decimal=5)
