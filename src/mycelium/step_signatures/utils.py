@@ -237,6 +237,161 @@ def get_centroid_cache_stats() -> dict:
     }
 
 
+# =============================================================================
+# CACHE MANAGER - Consolidated Cache Invalidation
+# =============================================================================
+# Single entry point for all cache invalidation across the system.
+# See issue mycelium-wrvq for details.
+
+
+class CacheManager:
+    """Consolidated cache invalidation manager.
+
+    Provides a single entry point for coordinating cache invalidation across
+    all caching layers in the system:
+    - Signature cache (LRU with TTL)
+    - Children cache (LRU with TTL)
+    - Centroid cache (parsed embedding cache)
+    - Centroid matrix (batch similarity matrix in db.py)
+    - Root cache (cached root signature in db.py)
+    - Traffic cache (problem count in scoring.py)
+    - Graph embedding cache (in graph_extractor.py)
+    - Operation embedding cache (in operation_extractor.py)
+
+    Usage:
+        cache_manager = get_cache_manager()
+        cache_manager.invalidate_all()  # Nuclear option
+        cache_manager.on_signature_update(sig_id)  # Signature data changed
+        cache_manager.on_embedding_change(sig_id)  # Embedding changed
+        cache_manager.on_relationship_change(parent_id, child_id)  # Links changed
+    """
+
+    _instance: Optional["CacheManager"] = None
+
+    def __init__(self):
+        # References to db instances (registered via register_db)
+        self._db_instances: list = []
+
+    @classmethod
+    def get_instance(cls) -> "CacheManager":
+        """Get singleton CacheManager instance."""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    def register_db(self, db) -> None:
+        """Register a StepSignatureDB instance for matrix/root cache invalidation."""
+        if db not in self._db_instances:
+            self._db_instances.append(db)
+
+    def unregister_db(self, db) -> None:
+        """Unregister a StepSignatureDB instance."""
+        if db in self._db_instances:
+            self._db_instances.remove(db)
+
+    # -------------------------------------------------------------------------
+    # Semantic invalidation methods (preferred API)
+    # -------------------------------------------------------------------------
+
+    def on_signature_update(self, sig_id: int) -> None:
+        """Invalidate caches when a signature's data is updated.
+
+        Call this when signature fields change (description, step_type, etc.)
+        but NOT embeddings or relationships.
+        """
+        invalidate_signature_cache(sig_id)
+
+    def on_embedding_change(self, sig_id: int) -> None:
+        """Invalidate caches when a signature's embedding changes.
+
+        Call this when centroid or graph_embedding is modified.
+        """
+        invalidate_centroid_cache(sig_id)
+        invalidate_signature_cache(sig_id)
+        for db in self._db_instances:
+            db.invalidate_centroid_matrix()
+
+    def on_relationship_change(self, parent_id: int, child_id: int) -> None:
+        """Invalidate caches when parent-child relationship changes.
+
+        Call this when signature_relationships table is modified.
+        """
+        invalidate_centroid_cache(parent_id)
+        invalidate_children_cache(parent_id)
+        invalidate_signature_cache(parent_id)
+        invalidate_signature_cache(child_id)
+        for db in self._db_instances:
+            db.invalidate_centroid_matrix()
+
+    def on_dsl_change(self, sig_id: int) -> None:
+        """Invalidate caches when a signature's DSL changes.
+
+        Call this when only DSL script or metadata changes.
+        """
+        invalidate_signature_cache(sig_id)
+
+    # -------------------------------------------------------------------------
+    # Bulk invalidation methods
+    # -------------------------------------------------------------------------
+
+    def invalidate_all(self) -> None:
+        """Nuclear option: invalidate ALL caches across the system.
+
+        Use sparingly - this clears everything and forces full rebuilds.
+        """
+        # Clear module-level caches in utils.py
+        invalidate_signature_cache()  # Clears both signature and children caches
+        invalidate_centroid_cache()
+
+        # Clear db instance caches
+        for db in self._db_instances:
+            db.invalidate_centroid_matrix()
+            db.invalidate_root_cache()
+
+        # Clear external module caches (lazy imports to avoid cycles)
+        try:
+            from mycelium.step_signatures.scoring import invalidate_traffic_cache
+            invalidate_traffic_cache()
+        except ImportError:
+            pass
+
+        try:
+            from mycelium.step_signatures.graph_extractor import clear_graph_embedding_cache
+            clear_graph_embedding_cache()
+        except ImportError:
+            pass
+
+        try:
+            from mycelium.step_signatures.operation_extractor import clear_operation_cache
+            clear_operation_cache()
+        except ImportError:
+            pass
+
+    def invalidate_routing_caches(self) -> None:
+        """Invalidate caches used for routing decisions.
+
+        Call this when routing behavior might change but signature data is intact.
+        """
+        invalidate_centroid_cache()
+        for db in self._db_instances:
+            db.invalidate_centroid_matrix()
+
+    def get_stats(self) -> dict:
+        """Get statistics for all managed caches."""
+        stats = {
+            "signature_cache": _signature_cache.stats(),
+            "children_cache": _children_cache.stats(),
+            "centroid_cache": get_centroid_cache_stats(),
+            "db_instances_registered": len(self._db_instances),
+        }
+        return stats
+
+
+def get_cache_manager() -> CacheManager:
+    """Get the singleton CacheManager instance."""
+    return CacheManager.get_instance()
+
+
 def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     """Compute cosine similarity between two vectors."""
     norm_a = np.linalg.norm(a)

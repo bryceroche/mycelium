@@ -90,6 +90,8 @@ from mycelium.step_signatures.utils import (
     cache_children,
     invalidate_signature_cache,
     invalidate_children_cache,
+    # Cache manager
+    get_cache_manager,
 )
 
 logger = logging.getLogger(__name__)
@@ -368,6 +370,9 @@ class StepSignatureDB:
         self._atomic_embeddings: Optional[list[np.ndarray]] = None
 
         self._init_schema()
+
+        # Register with CacheManager for coordinated invalidation
+        get_cache_manager().register_db(self)
 
     @property
     def db_path(self) -> str:
@@ -2029,45 +2034,29 @@ class StepSignatureDB:
     # =========================================================================
     # Consolidated Cache Invalidation Helpers
     # =========================================================================
-    # These semantic helpers ensure consistent cache invalidation for each
-    # operation type. See issue mycelium-mb7s for details.
+    # These delegate to CacheManager for coordinated invalidation.
+    # See issue mycelium-wrvq for consolidation details.
 
     def _invalidate_on_embedding_change(self, signature_id: int):
         """Invalidate when centroid or graph_embedding changes.
 
-        Use this when a signature's embedding data is modified (running average
-        update, graph embedding update, etc.). Invalidates:
-        - Centroid cache (cached centroid data for this signature)
-        - Signature cache (cached StepSignature object)
-        - Centroid matrix (routing matrix needs rebuild)
+        Delegates to CacheManager.on_embedding_change().
         """
-        invalidate_centroid_cache(signature_id)
-        invalidate_signature_cache(signature_id)
-        self.invalidate_centroid_matrix()
+        get_cache_manager().on_embedding_change(signature_id)
 
     def _invalidate_on_relationship_change(self, parent_id: int, child_id: int):
         """Invalidate when parent-child relationship is added or removed.
 
-        Use this when signature_relationships table is modified. Invalidates:
-        - Parent's centroid cache (computed from children)
-        - Parent's children cache (children list changed)
-        - Both signatures' caches (depth may change)
-        - Centroid matrix (routing structure changed)
+        Delegates to CacheManager.on_relationship_change().
         """
-        invalidate_centroid_cache(parent_id)
-        invalidate_children_cache(parent_id)
-        invalidate_signature_cache(parent_id)
-        invalidate_signature_cache(child_id)
-        self.invalidate_centroid_matrix()
+        get_cache_manager().on_relationship_change(parent_id, child_id)
 
     def _invalidate_on_dsl_change(self, signature_id: int):
         """Invalidate when DSL script or signature metadata changes.
 
-        Use this when only signature fields change (DSL script, description,
-        examples, etc.) without affecting embeddings or relationships. Invalidates:
-        - Signature cache (cached StepSignature object)
+        Delegates to CacheManager.on_dsl_change().
         """
-        invalidate_signature_cache(signature_id)
+        get_cache_manager().on_dsl_change(signature_id)
 
     def find_similar(
         self,
