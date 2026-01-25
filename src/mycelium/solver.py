@@ -3695,33 +3695,64 @@ Rules:
             Dict with exploration statistics
         """
         from mycelium.data_layer.mcts import find_divergence_points, assign_divergence_blame
-        from mycelium.config import REACTIVE_EXPLORATION_FULL_RESOLVE
+        from mycelium.config import (
+            REACTIVE_EXPLORATION_FULL_RESOLVE,
+            REACTIVE_EXPLORATION_NUM_THREADS,
+            REACTIVE_EXPLORATION_TEMPERATURE,
+        )
+        from mycelium.planner import Planner
 
         stats = {
             "reactive_exploration_triggered": True,
             "winning_path_found": False,
             "divergence_points": 0,
             "blame_assigned": 0,
+            "exploration_threads_spawned": 0,
         }
 
         winning = None
+        all_dag_ids = []  # Collect all DAG IDs for cross-examination
 
-        # Try full re-solve with forced exploration first (spawns multiple threads)
+        # Try N full re-solves with forced exploration (higher temp + epsilon for diversity)
+        # Per mycelium-l703: spawn multiple threads for cross-examination
         if REACTIVE_EXPLORATION_FULL_RESOLVE:
-            logger.info("[reactive] Re-solving with forced exploration (spawning multiple threads)")
+            num_threads = REACTIVE_EXPLORATION_NUM_THREADS
+            logger.info(
+                "[reactive] Spawning %d exploration threads (temp=%.2f)",
+                num_threads, REACTIVE_EXPLORATION_TEMPERATURE
+            )
+
+            # Swap planner to higher-temp version for exploration diversity
+            original_planner = self.planner
+            self.planner = Planner(temperature=REACTIVE_EXPLORATION_TEMPERATURE)
             self._force_exploration = True
+
             try:
-                explore_result = await self.solve(result.problem, ground_truth=ground_truth)
-                # Check if any thread found the correct answer
-                if explore_result.answer and normalize_answer(explore_result.answer) == normalize_answer(ground_truth):
-                    logger.info("[reactive] Full re-solve found winning path!")
-                    winning = (explore_result, self._root_thread_id)
-                    stats["full_resolve_success"] = True
-                else:
-                    logger.info("[reactive] Full re-solve didn't find winning path")
+                for thread_idx in range(num_threads):
+                    stats["exploration_threads_spawned"] += 1
+                    logger.info("[reactive] Running exploration thread %d/%d", thread_idx + 1, num_threads)
+
+                    explore_result = await self.solve(result.problem, ground_truth=ground_truth)
+                    if self._current_dag_id:
+                        all_dag_ids.append(self._current_dag_id)
+
+                    # Check if this thread found the correct answer
+                    if explore_result.answer and normalize_answer(explore_result.answer) == normalize_answer(ground_truth):
+                        logger.info("[reactive] Thread %d found winning path!", thread_idx + 1)
+                        winning = (explore_result, self._root_thread_id)
+                        stats["full_resolve_success"] = True
+                        stats["winning_thread_idx"] = thread_idx + 1
+                        break
+                    else:
+                        logger.info("[reactive] Thread %d didn't find winning path", thread_idx + 1)
+
+                if winning is None:
                     stats["full_resolve_success"] = False
             finally:
                 self._force_exploration = False
+                self.planner = original_planner  # Restore original planner
+
+            stats["total_dags_for_crossexam"] = len(all_dag_ids)
 
         # Fallback: try single-step alternatives (original approach)
         if winning is None:
@@ -3765,41 +3796,61 @@ Rules:
         winning_result, winning_thread_id = winning
         stats["winning_path_found"] = True
         logger.info(
-            "[reactive] Found winning thread %s, running divergence analysis",
-            winning_thread_id
+            "[reactive] Found winning thread %s, running cross-examination across %d DAGs",
+            winning_thread_id, len(all_dag_ids) if all_dag_ids else 1
         )
 
-        # Run divergence analysis to compare winning vs losing threads
-        if self._current_dag_id:
-            divergence_points = find_divergence_points(self._current_dag_id)
-            stats["divergence_points"] = len(divergence_points)
+        # Cross-examine ALL exploration DAGs to find divergence points
+        # Per mycelium-l703: compare winning vs losing threads across all exploration runs
+        dags_to_analyze = all_dag_ids if all_dag_ids else ([self._current_dag_id] if self._current_dag_id else [])
+        total_divergence_points = 0
+        total_blame_assigned = 0
+        all_blame_stats = {}
+
+        for dag_id in dags_to_analyze:
+            divergence_points = find_divergence_points(dag_id)
+            total_divergence_points += len(divergence_points)
 
             if divergence_points:
-                # Log divergence details
-                for dp in divergence_points[:3]:  # Log first 3
+                # Log divergence details (first 3 per DAG)
+                for dp in divergence_points[:3]:
                     logger.info(
-                        "[reactive] Divergence at step %s (idx=%d): "
+                        "[reactive] Divergence in DAG %s at step %s (idx=%d): "
                         "winning node=%s, losing node=%s",
+                        dag_id[:8],
                         dp.divergence_dag_step_id,
                         dp.divergence_step_idx,
                         dp.winning_node_at_divergence,
                         dp.losing_node_at_divergence,
                     )
 
-                # Assign targeted blame/credit
-                blame_stats = assign_divergence_blame(self._current_dag_id, self.step_db)
-                stats["blame_assigned"] = (
+                # Assign targeted blame/credit for this DAG
+                blame_stats = assign_divergence_blame(dag_id, self.step_db)
+                dag_blame = (
                     blame_stats.get("divergence_blame_assigned", 0) +
                     blame_stats.get("suffix_blame_assigned", 0)
                 )
-                stats.update(blame_stats)
+                total_blame_assigned += dag_blame
 
-                logger.info(
-                    "[reactive] Divergence blame: %d primary, %d suffix, %d prefix credit",
-                    blame_stats.get("divergence_blame_assigned", 0),
-                    blame_stats.get("suffix_blame_assigned", 0),
-                    blame_stats.get("shared_prefix_credit", 0),
-                )
+                # Aggregate blame stats
+                for key, val in blame_stats.items():
+                    all_blame_stats[key] = all_blame_stats.get(key, 0) + val
+
+        stats["divergence_points"] = total_divergence_points
+        stats["blame_assigned"] = total_blame_assigned
+        stats.update(all_blame_stats)
+
+        if total_divergence_points > 0:
+            logger.info(
+                "[reactive] Cross-exam complete: %d divergence points across %d DAGs",
+                total_divergence_points, len(dags_to_analyze)
+            )
+            logger.info(
+                "[reactive] Divergence blame: %d primary, %d suffix, %d prefix credit",
+                all_blame_stats.get("divergence_blame_assigned", 0),
+                all_blame_stats.get("suffix_blame_assigned", 0),
+                all_blame_stats.get("shared_prefix_credit", 0),
+            )
 
         return stats
 

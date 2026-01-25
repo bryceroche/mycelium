@@ -176,6 +176,8 @@ REACTIVE_EXPLORATION_MAX_RETRIES = 5  # Max total retry attempts
 REACTIVE_EXPLORATION_MIN_SIMILARITY = 0.5  # Min similarity for alternative candidates
 REACTIVE_EXPLORATION_FULL_RESOLVE = True  # Re-solve entire problem with forced exploration
 REACTIVE_EXPLORATION_NUM_THREADS = 3  # Number of parallel exploration threads to spawn
+REACTIVE_EXPLORATION_TEMPERATURE = 0.3  # Higher temp for diversity (vs 0.0 default)
+REACTIVE_EXPLORATION_EPSILON_BOOST = 0.3  # Boost epsilon during exploration (stacks with base)
 
 # Step decomposition fallback: when reactive exploration fails to find a winning path,
 # decompose failing steps into smaller sub-steps and re-solve
@@ -450,6 +452,18 @@ POSTMORTEM_MILD_PENALTY_MULT = 0.85  # Lost + low confidence: expected uncertain
 POSTMORTEM_STRONG_PENALTY_MULT = 0.5  # Lost + high confidence: harsh penalty
 POSTMORTEM_AMPLITUDE_MIN = 0.0  # Clamp amplitude_post minimum
 POSTMORTEM_AMPLITUDE_MAX = 2.0  # Clamp amplitude_post maximum
+
+# =============================================================================
+# VALUE PREDICTOR (AlphaGo-style learned amplitude_post)
+# =============================================================================
+# Per beads mycelium-8150: Train a predictor instead of using fixed multipliers.
+# Collects (features, outcome) pairs and learns the relationship between
+# confidence signals and actual win probability.
+
+VALUE_PREDICTOR_ENABLED = True  # Use learned predictor when enough data
+VALUE_PREDICTOR_MIN_SAMPLES = 100  # Min samples before using predictor (cold start)
+VALUE_PREDICTOR_LEARNING_RATE = 0.01  # SGD learning rate for online training
+VALUE_PREDICTOR_TRAIN_INTERVAL = 50  # Retrain every N problems
 
 # Credit propagation from amplitude_post to signature stats (per mycelium-itkn)
 # Closes the loop: amplitude_post → signature.successes/operational_failures
