@@ -3495,8 +3495,72 @@ class StepSignatureDB:
             candidates.sort(key=lambda x: x["similarity"], reverse=True)
             return candidates[:limit]
 
-    def flag_for_split(self, signature_id: int, reason: str = "destructive_interference") -> bool:
+    def has_mcts_alternatives(self, signature_id: int, conn=None) -> tuple[bool, Optional[int]]:
+        """Check if alternative leaves exist for a signature's operations.
+
+        This is the core MCTS check used by all leaf decomposition decisions.
+        If alternatives exist with high similarity, the issue is likely routing,
+        not the leaf itself.
+
+        Args:
+            signature_id: ID of the leaf signature to check
+            conn: Optional existing DB connection
+
+        Returns:
+            Tuple of (has_alternatives, best_alternative_id)
+            - has_alternatives: True if viable alternatives exist
+            - best_alternative_id: ID of best alternative (if any)
+        """
+        from mycelium.data_layer.mcts import REJECTION_SIM_THRESHOLD
+
+        use_conn = conn if conn else self._connection().__enter__()
+        try:
+            # Get the signature's centroid
+            cursor = use_conn.execute(
+                "SELECT centroid, is_semantic_umbrella FROM step_signatures WHERE id = ?",
+                (signature_id,),
+            )
+            row = cursor.fetchone()
+
+            if not row or not row[0] or row[1]:  # No centroid or is umbrella
+                return False, None
+
+            centroid = np.frombuffer(row[0], dtype=np.float32)
+
+            # Check if alternative leaves could handle this operation type
+            alternatives = self.match_step_to_leaves_mcts(
+                embedding=centroid,
+                dag_step_type=None,
+                top_k=3,
+                min_similarity=REJECTION_SIM_THRESHOLD,
+            )
+
+            # Filter out self
+            other_alternatives = [
+                (sig, ucb1, sim) for sig, ucb1, sim in alternatives
+                if sig.id != signature_id
+            ]
+
+            if other_alternatives:
+                best_alt = other_alternatives[0]
+                return True, best_alt[0].id
+
+            return False, None
+        finally:
+            if conn is None:
+                use_conn.__exit__(None, None, None)
+
+    def flag_for_split(
+        self,
+        signature_id: int,
+        reason: str = "destructive_interference",
+        skip_mcts_check: bool = False,
+    ) -> bool:
         """Flag a signature for potential decomposition/split.
+
+        MCTS-aware: Before flagging, checks if alternative leaves could handle
+        the operations this leaf handles. If alternatives exist, it's likely
+        a routing issue, not a leaf issue - skip decomposition.
 
         This marks a signature as needing attention due to mixed interference
         results. The actual decomposition is triggered by umbrella_learner.
@@ -3507,13 +3571,24 @@ class StepSignatureDB:
         Args:
             signature_id: ID of signature to flag
             reason: Why it's being flagged
+            skip_mcts_check: If True, bypass MCTS alternative check (force flag)
 
         Returns:
-            True if flagged successfully
+            True if flagged successfully, False if skipped (alternatives exist)
         """
+        # MCTS alternative check: is this a routing issue or a leaf issue?
+        if not skip_mcts_check:
+            has_alts, alt_id = self.has_mcts_alternatives(signature_id)
+            if has_alts:
+                logger.info(
+                    "[db] Skipping flag_for_split for sig %d (%s): "
+                    "alternative sig %d exists (routing issue)",
+                    signature_id, reason, alt_id
+                )
+                return False
+
+        # No alternatives or check skipped - proceed with flagging
         with self._connection() as conn:
-            # Increment operational failures to trigger decomposition consideration
-            # The umbrella learner checks success rate and will decompose low performers
             conn.execute(
                 """UPDATE step_signatures
                    SET operational_failures = COALESCE(operational_failures, 0) + 1
@@ -3522,7 +3597,7 @@ class StepSignatureDB:
             )
 
             logger.info(
-                "[db] Flagged signature %d for split (reason: %s)",
+                "[db] Flagged signature %d for split (reason: %s, no alternatives)",
                 signature_id, reason
             )
 
@@ -3708,20 +3783,31 @@ class StepSignatureDB:
                         (successes > 0 and success_rate < AUTO_DEMOTE_MAX_SUCCESS_RATE)  # Historical failures
                     )
                     if should_demote:
-                        # Promote to umbrella: clear DSL, set type to router
-                        # Clear dsl_script to avoid type mismatch
-                        conn.execute(
-                            """UPDATE step_signatures
-                               SET is_semantic_umbrella = 1,
-                                   dsl_type = 'router',
-                                   dsl_script = NULL
-                               WHERE id = ?""",
-                            (signature_id,),
-                        )
-                        logger.info(
-                            "[db] Auto-demoted sig %d to umbrella/router (%.0f%% after %d uses, step_ok=%s, min=%d)",
-                            signature_id, success_rate * 100, uses, step_completed, min_uses
-                        )
+                        # MCTS check: only demote if no alternatives exist
+                        # If alternatives exist, it's a routing issue, not this leaf's fault
+                        has_alts, alt_id = self.has_mcts_alternatives(signature_id, conn=conn)
+                        if has_alts:
+                            logger.info(
+                                "[db] Skipping auto-demotion for sig %d: "
+                                "alternative sig %d exists (routing issue, not leaf issue)",
+                                signature_id, alt_id
+                            )
+                        else:
+                            # No alternatives - proceed with demotion
+                            # Promote to umbrella: clear DSL, set type to router
+                            # Clear dsl_script to avoid type mismatch
+                            conn.execute(
+                                """UPDATE step_signatures
+                                   SET is_semantic_umbrella = 1,
+                                       dsl_type = 'router',
+                                       dsl_script = NULL
+                                   WHERE id = ?""",
+                                (signature_id,),
+                            )
+                            logger.info(
+                                "[db] Auto-demoted sig %d to umbrella/router (%.0f%% after %d uses, step_ok=%s, min=%d, no alternatives)",
+                                signature_id, success_rate * 100, uses, step_completed, min_uses
+                            )
 
             return uses
 
@@ -5280,6 +5366,8 @@ class StepSignatureDB:
             if cursor.rowcount > 0:
                 invalidate_signature_cache(signature_id)
                 logger.debug("[db] Updated graph_embedding for sig %d", signature_id)
+                # Propagate centroid update to parent routers
+                self.propagate_graph_centroid_to_parents(conn, signature_id)
                 return True
             return False
 
