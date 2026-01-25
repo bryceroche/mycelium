@@ -1252,15 +1252,34 @@ class Solver:
                 # High-confidence graph match - use this signature directly
                 # Threshold: 90% similarity means operationally identical
                 if best_sim >= 0.90:
-                    signature = best_sig
-                    is_new = False
-                    graph_matched = True
-                    # Update the matched signature's centroid with this new text embedding
-                    self.step_db.update_centroid(signature.id, embedding)
-                    logger.info(
-                        "[solver] GRAPH-FIRST match: '%s' → sig %d (%s) sim=%.3f",
-                        step.task[:40], signature.id, signature.step_type, best_sim
+                    # Check rejection threshold for leaf signatures
+                    from mycelium.data_layer.mcts import (
+                        REJECTION_SIM_THRESHOLD,
+                        record_leaf_rejection,
                     )
+                    if not best_sig.is_semantic_umbrella and best_sim < REJECTION_SIM_THRESHOLD:
+                        # Leaf rejects this step - similarity too low
+                        record_leaf_rejection(
+                            signature_id=best_sig.id,
+                            step_text=step.task,
+                            similarity=best_sim,
+                            problem_context=problem[:500] if problem else None,
+                        )
+                        logger.info(
+                            "[solver] GRAPH-FIRST REJECTED: '%s' by sig %d (%s) sim=%.3f < %.2f",
+                            step.task[:40], best_sig.id, best_sig.step_type, best_sim, REJECTION_SIM_THRESHOLD
+                        )
+                        # Fall through to text routing to create new signature
+                    else:
+                        signature = best_sig
+                        is_new = False
+                        graph_matched = True
+                        # Update the matched signature's centroid with this new text embedding
+                        self.step_db.update_centroid(signature.id, embedding)
+                        logger.info(
+                            "[solver] GRAPH-FIRST match: '%s' → sig %d (%s) sim=%.3f",
+                            step.task[:40], signature.id, signature.step_type, best_sim
+                        )
 
         # 3. TEXT ROUTING FALLBACK
         # If graph routing didn't find a match, fall back to text-based routing
