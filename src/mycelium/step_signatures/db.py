@@ -1616,8 +1616,12 @@ class StepSignatureDB:
                             except Exception as e:
                                 logger.debug("[db] Graph embedding comparison failed: %s", e)
 
-                        # Check 1: Low similarity rejection
-                        if rejection_sim < REJECTION_SIM_THRESHOLD:
+                        # Check 1: Low similarity rejection (skip during cold start)
+                        from mycelium.config import COLD_START_SIGNATURE_THRESHOLD
+                        sig_count = self.count_signatures()
+                        is_cold_start = sig_count < COLD_START_SIGNATURE_THRESHOLD
+
+                        if rejection_sim < REJECTION_SIM_THRESHOLD and not is_cold_start:
                             was_rejected, rejection_count = check_and_reject_if_low_similarity(
                                 signature_id=best_match.id,
                                 step_text=step_text,
@@ -1634,6 +1638,11 @@ class StepSignatureDB:
                                 # Step queued for decomposition - don't create new signature
                                 conn.commit()
                                 return None, False
+                        elif rejection_sim < REJECTION_SIM_THRESHOLD and is_cold_start:
+                            logger.debug(
+                                "[db] Cold start: skipping rejection (sig_count=%d < %d)",
+                                sig_count, COLD_START_SIGNATURE_THRESHOLD
+                            )
 
                         # Check 2: Multi-part step rejection (needs decomposition)
                         # Leaves only handle atomic operations - detect via embedding similarity
@@ -1653,9 +1662,10 @@ class StepSignatureDB:
                                     is_atomic, max_atomic_sim, gap, best_atomic_op = self._is_step_atomic(
                                         np.array(step_emb_for_atomic_check)
                                     )
-                                    if not is_atomic:
+                                    if not is_atomic and not is_cold_start:
                                         # Small gap = matches multiple ops (multi-part like "add then multiply")
                                         # Low sim = unknown complex operation
+                                        # Skip during cold start - let vocabulary build first
                                         reason = "multi_part" if gap < ATOMIC_GAP_THRESHOLD else "unknown_complex"
 
                                         # Record rejection (unified path for all leaf rejections)
@@ -1676,6 +1686,11 @@ class StepSignatureDB:
                                         # Return None - step is queued, don't create signature
                                         conn.commit()
                                         return None, False
+                                    elif not is_atomic and is_cold_start:
+                                        logger.debug(
+                                            "[db] Cold start: skipping multi-part rejection (sig_count=%d)",
+                                            sig_count
+                                        )
 
                 if best_match is not None and similarity_ok:
                     # Log routing decision with similarity for tuning

@@ -1259,7 +1259,13 @@ class Solver:
                         REJECTION_SIM_THRESHOLD,
                         record_leaf_rejection,
                     )
-                    if not best_sig.is_semantic_umbrella and best_sim < REJECTION_SIM_THRESHOLD:
+                    from mycelium.config import COLD_START_SIGNATURE_THRESHOLD
+
+                    # Cold start check: skip rejection while building vocabulary
+                    sig_count = self.step_db.count_signatures()
+                    is_cold_start = sig_count < COLD_START_SIGNATURE_THRESHOLD
+
+                    if not best_sig.is_semantic_umbrella and best_sim < REJECTION_SIM_THRESHOLD and not is_cold_start:
                         # Leaf rejects this step - try inline decomposition
                         record_leaf_rejection(
                             signature_id=best_sig.id,
@@ -1301,6 +1307,12 @@ class Solver:
                                 elapsed_ms=(time.time() - start_time) * 1000,
                             )
                     else:
+                        # Accept match (cold start or above threshold)
+                        if is_cold_start and best_sim < REJECTION_SIM_THRESHOLD:
+                            logger.debug(
+                                "[solver] Cold start: accepting low-sim match (sig_count=%d < %d)",
+                                sig_count, COLD_START_SIGNATURE_THRESHOLD
+                            )
                         signature = best_sig
                         is_new = False
                         graph_matched = True

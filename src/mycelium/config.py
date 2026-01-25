@@ -578,6 +578,7 @@ GRAPH_ROUTING_FALLBACK_TO_CENTROID = False  # No centroid fallback - graph-only 
 # INLINE DECOMPOSITION (when leaf rejects a step)
 # =============================================================================
 INLINE_DECOMP_MAX_DEPTH = 3  # Max recursion depth for inline decomposition (prevents infinite loops)
+COLD_START_SIGNATURE_THRESHOLD = 50  # Below this, skip rejection and build vocabulary
 
 # =============================================================================
 # MATURITY-BASED DECOMPOSE VS CREATE (Sigmoid transition)
