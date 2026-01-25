@@ -633,7 +633,7 @@ class Solver:
 
         # Route problem through signature hierarchy
         matched_sig, path = self.step_db.route_through_hierarchy(
-            embedding=problem_embedding,
+            operation_embedding=problem_embedding,
             min_similarity=ZERO_LLM_MIN_SIMILARITY,
         )
 
