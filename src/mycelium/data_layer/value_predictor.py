@@ -1,24 +1,23 @@
 """Value Predictor for amplitude_post computation.
 
-Per beads mycelium-8150: AlphaGo-inspired approach - train a predictor instead
-of using fixed multipliers. Collects (features, outcome) pairs and learns
-the actual relationship between confidence signals and win probability.
+AlphaGo-inspired approach: Learn V(dag_step_type, node_id) - the value of using
+a specific node for a specific step type. Just like AlphaGo learns V(board_position),
+we learn V(step_type, node) = expected probability of success.
 
-Features:
-- amplitude (prior confidence)
-- similarity_score (routing similarity)
-- ucb1_gap (decision confidence)
-- node_success_rate (historical performance)
-- signature_uses (maturity)
+Key insight from AlphaGo:
+- V(state) = expected outcome from this state
+- We learn V(dag_step_type, node_id) = expected outcome when using this node for this step
 
-Target:
-- 1.0 if won (normalize amplitude for credit)
-- 0.0 if lost (normalize amplitude for blame)
+Update rule (TD-learning):
+- V(s) ← V(s) + α * (outcome - V(s))
+- Where α = learning rate, outcome = 1 (won) or 0 (lost)
+
+The value is then used to compute amplitude_post:
+- High V (node works well here) → boost amplitude
+- Low V (node fails here) → penalize amplitude
 """
 
-import json
 import logging
-import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
@@ -32,45 +31,50 @@ from mycelium.config import (
     POSTMORTEM_MILD_PENALTY_MULT,
     POSTMORTEM_STRONG_PENALTY_MULT,
     POSTMORTEM_HIGH_CONF_THRESHOLD,
+    POSTMORTEM_AMPLITUDE_MIN,
+    POSTMORTEM_AMPLITUDE_MAX,
 )
 from mycelium.data_layer import get_db
 
 logger = logging.getLogger(__name__)
 
 
-# Schema for training data collection
+# Schema for position values (AlphaGo-style)
 VALUE_PREDICTOR_SCHEMA = """
-CREATE TABLE IF NOT EXISTS value_predictor_samples (
+-- Core value table: V(dag_step_type, node_id) like AlphaGo's V(position)
+-- This is the learned value of using a specific node for a specific step type
+CREATE TABLE IF NOT EXISTS position_values (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dag_step_type TEXT NOT NULL,          -- The step type (e.g., "compute_sum")
+    node_id INTEGER NOT NULL,             -- The signature/node being evaluated
 
-    -- Input features
-    amplitude REAL NOT NULL,
-    similarity_score REAL,
-    ucb1_gap REAL,
-    was_undecided INTEGER,
-    node_success_rate REAL,
-    node_uses INTEGER,
-    step_idx INTEGER,
-    total_steps INTEGER,
-
-    -- Outcome (ground truth)
-    won INTEGER NOT NULL,  -- 1=thread won, 0=thread lost
+    -- Learned value and statistics
+    value REAL DEFAULT 0.5,               -- V(s) ∈ [0, 1], initialized to 0.5 (neutral)
+    updates INTEGER DEFAULT 0,            -- Number of TD updates (for confidence)
+    total_outcomes REAL DEFAULT 0.0,      -- Sum of outcomes (for avg calculation)
 
     -- Metadata
-    dag_id TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+
+    UNIQUE(dag_step_type, node_id)
+);
+CREATE INDEX IF NOT EXISTS idx_pv_lookup ON position_values(dag_step_type, node_id);
+CREATE INDEX IF NOT EXISTS idx_pv_node ON position_values(node_id);
+CREATE INDEX IF NOT EXISTS idx_pv_value ON position_values(value);
+
+-- Training samples for analysis/debugging (optional, can be pruned)
+CREATE TABLE IF NOT EXISTS value_predictor_samples (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dag_step_type TEXT,
     node_id INTEGER,
+    amplitude REAL NOT NULL,
+    similarity_score REAL,
+    won INTEGER NOT NULL,
+    dag_id TEXT,
     created_at TEXT NOT NULL
 );
-
-CREATE INDEX IF NOT EXISTS idx_vps_created ON value_predictor_samples(created_at);
-CREATE INDEX IF NOT EXISTS idx_vps_won ON value_predictor_samples(won);
-
--- Learned weights table (simple linear model)
-CREATE TABLE IF NOT EXISTS value_predictor_weights (
-    feature_name TEXT PRIMARY KEY,
-    weight REAL NOT NULL,
-    updated_at TEXT NOT NULL
-);
+CREATE INDEX IF NOT EXISTS idx_vps_pair ON value_predictor_samples(dag_step_type, node_id);
 """
 
 
@@ -78,113 +82,166 @@ CREATE TABLE IF NOT EXISTS value_predictor_weights (
 class PredictorSample:
     """Training sample for value predictor."""
 
-    amplitude: float
-    similarity_score: Optional[float]
-    ucb1_gap: Optional[float]
-    was_undecided: bool
-    node_success_rate: Optional[float]
-    node_uses: int
-    step_idx: int
-    total_steps: int
-    won: bool
+    dag_step_type: str  # The "position" - what type of step
+    node_id: int  # The "move" - which node was chosen
+    amplitude: float  # Prior routing confidence
+    similarity_score: Optional[float]  # How well step matched node
+    ucb1_gap: Optional[float]  # Decision confidence
+    was_undecided: bool  # Did we branch?
+    won: bool  # Ground truth outcome
     dag_id: Optional[str] = None
-    node_id: Optional[int] = None
 
 
 class ValuePredictor:
-    """Linear value predictor for amplitude_post.
+    """AlphaGo-style value predictor for (dag_step_type, node_id) pairs.
 
-    Learns weights for features to predict win probability.
-    Falls back to fixed multipliers when insufficient training data.
+    Learns V(step_type, node) = probability of success when using this node
+    for this type of step. Uses TD-learning to update values based on outcomes.
     """
 
-    # Feature names in order (matches weight vector)
-    FEATURES = [
-        "amplitude",
-        "similarity_score",
-        "ucb1_gap",
-        "was_undecided",
-        "node_success_rate",
-        "step_position",  # step_idx / total_steps (normalized)
-        "bias",
-    ]
+    # Prior value for unseen pairs (neutral)
+    PRIOR_VALUE = 0.5
+
+    # Minimum updates before trusting learned value
+    MIN_UPDATES_FOR_TRUST = 3
 
     def __init__(self):
-        """Initialize predictor with default weights."""
-        self._weights: dict[str, float] = {}
-        self._sample_count: int = 0
+        """Initialize predictor."""
         self._initialized: bool = False
+        self._total_samples: int = 0
 
     def _ensure_schema(self) -> None:
-        """Ensure training data tables exist."""
+        """Ensure tables exist."""
         db = get_db()
         with db.connection() as conn:
             conn.executescript(VALUE_PREDICTOR_SCHEMA)
             conn.commit()
 
-    def _load_weights(self) -> dict[str, float]:
-        """Load trained weights from database."""
-        conn = get_db()
-        cursor = conn.execute(
-            "SELECT feature_name, weight FROM value_predictor_weights"
-        )
-        weights = {row[0]: row[1] for row in cursor.fetchall()}
-
-        # Initialize missing features with defaults
-        defaults = {
-            "amplitude": 0.3,  # Higher amplitude -> higher value
-            "similarity_score": 0.2,  # Higher similarity -> higher value
-            "ucb1_gap": 0.1,  # Higher gap (confident) -> higher value
-            "was_undecided": -0.1,  # Undecided -> slightly lower value
-            "node_success_rate": 0.3,  # Historical success matters
-            "step_position": -0.1,  # Later steps slightly riskier
-            "bias": 0.5,  # Start at 50%
-        }
-
-        for feat, default in defaults.items():
-            if feat not in weights:
-                weights[feat] = default
-
-        return weights
-
-    def _save_weights(self, weights: dict[str, float]) -> None:
-        """Save trained weights to database."""
-        conn = get_db()
-        now = datetime.now(timezone.utc).isoformat()
-
-        for feat, weight in weights.items():
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO value_predictor_weights
-                (feature_name, weight, updated_at) VALUES (?, ?, ?)
-                """,
-                (feat, weight, now),
-            )
-
     def _get_sample_count(self) -> int:
-        """Get number of training samples."""
-        conn = get_db()
-        cursor = conn.execute("SELECT COUNT(*) FROM value_predictor_samples")
-        return cursor.fetchone()[0]
+        """Get total number of training samples."""
+        db = get_db()
+        try:
+            cursor = db.execute("SELECT COUNT(*) FROM value_predictor_samples")
+            return cursor.fetchone()[0]
+        except Exception:
+            return 0
 
     def initialize(self) -> None:
-        """Initialize predictor (load weights, check sample count)."""
+        """Initialize predictor (ensure schema, load stats)."""
         if self._initialized:
             return
 
         self._ensure_schema()
-        self._weights = self._load_weights()
-        self._sample_count = self._get_sample_count()
+        self._total_samples = self._get_sample_count()
         self._initialized = True
 
         logger.info(
-            "[value_predictor] Initialized: %d samples, weights=%s",
-            self._sample_count,
-            {k: f"{v:.3f}" for k, v in self._weights.items()}
+            "[value_predictor] Initialized: %d training samples",
+            self._total_samples
         )
 
+    def get_position_value(
+        self,
+        dag_step_type: str,
+        node_id: int,
+    ) -> tuple[float, int]:
+        """Get learned value V(dag_step_type, node_id).
+
+        Returns:
+            Tuple of (value, update_count)
+            - value: learned V ∈ [0, 1], or PRIOR_VALUE if unseen
+            - update_count: number of TD updates (0 if unseen)
+        """
+        if not self._initialized:
+            self.initialize()
+
+        self._ensure_schema()
+
+        db = get_db()
+        cursor = db.execute(
+            """
+            SELECT value, updates FROM position_values
+            WHERE dag_step_type = ? AND node_id = ?
+            """,
+            (dag_step_type, node_id),
+        )
+        row = cursor.fetchone()
+
+        if row is None:
+            return (self.PRIOR_VALUE, 0)
+
+        return (row[0], row[1])
+
+    def update_position_value(
+        self,
+        dag_step_type: str,
+        node_id: int,
+        outcome: float,  # 1.0 for win, 0.0 for loss
+        learning_rate: float = None,
+    ) -> float:
+        """Update V(dag_step_type, node_id) using TD-learning.
+
+        TD update: V(s) ← V(s) + α * (outcome - V(s))
+
+        Args:
+            dag_step_type: The step type
+            node_id: The node that was used
+            outcome: 1.0 if won, 0.0 if lost
+            learning_rate: Optional override for α
+
+        Returns:
+            New value after update
+        """
+        if not self._initialized:
+            self.initialize()
+
+        self._ensure_schema()
+
+        lr = learning_rate or VALUE_PREDICTOR_LEARNING_RATE
+        db = get_db()
+        now = datetime.now(timezone.utc).isoformat()
+
+        # Get current value or create new entry
+        current_value, updates = self.get_position_value(dag_step_type, node_id)
+
+        # TD update: V ← V + α(outcome - V)
+        td_error = outcome - current_value
+        new_value = current_value + lr * td_error
+
+        # Clamp to [0, 1]
+        new_value = max(0.0, min(1.0, new_value))
+
+        # Upsert the value
+        db.execute(
+            """
+            INSERT INTO position_values
+            (dag_step_type, node_id, value, updates, total_outcomes, created_at, updated_at)
+            VALUES (?, ?, ?, 1, ?, ?, ?)
+            ON CONFLICT(dag_step_type, node_id) DO UPDATE SET
+                value = ?,
+                updates = updates + 1,
+                total_outcomes = total_outcomes + ?,
+                updated_at = ?
+            """,
+            (
+                dag_step_type, node_id, new_value, outcome, now, now,
+                new_value, outcome, now,
+            ),
+        )
+
+        logger.debug(
+            "[value_predictor] V(%s, node_%d): %.3f → %.3f (outcome=%.1f, td_error=%.3f)",
+            dag_step_type, node_id, current_value, new_value, outcome, td_error
+        )
+
+        return new_value
+
     def record_sample(self, sample: PredictorSample) -> int:
-        """Record a training sample to database.
+        """Record a training sample and update position value.
+
+        This does TWO things:
+        1. Records sample for analysis/debugging
+        2. Updates V(dag_step_type, node_id) via TD-learning
 
         Returns:
             Row ID of inserted sample
@@ -192,84 +249,124 @@ class ValuePredictor:
         if not self._initialized:
             self.initialize()
 
-        # Always ensure schema exists (handles test isolation with fresh DBs)
         self._ensure_schema()
 
-        conn = get_db()
+        db = get_db()
         now = datetime.now(timezone.utc).isoformat()
 
-        cursor = conn.execute(
+        # Record sample
+        cursor = db.execute(
             """
             INSERT INTO value_predictor_samples
-            (amplitude, similarity_score, ucb1_gap, was_undecided,
-             node_success_rate, node_uses, step_idx, total_steps,
-             won, dag_id, node_id, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (dag_step_type, node_id, amplitude, similarity_score, won, dag_id, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
+                sample.dag_step_type,
+                sample.node_id,
                 sample.amplitude,
                 sample.similarity_score,
-                sample.ucb1_gap,
-                1 if sample.was_undecided else 0,
-                sample.node_success_rate,
-                sample.node_uses,
-                sample.step_idx,
-                sample.total_steps,
                 1 if sample.won else 0,
                 sample.dag_id,
-                sample.node_id,
                 now,
             ),
         )
+        sample_id = cursor.lastrowid
+        self._total_samples += 1
 
-        self._sample_count += 1
-        return cursor.lastrowid
+        # Update position value via TD-learning
+        if sample.dag_step_type and sample.node_id:
+            outcome = 1.0 if sample.won else 0.0
+            self.update_position_value(
+                sample.dag_step_type,
+                sample.node_id,
+                outcome,
+            )
 
-    def _extract_features(self, sample: PredictorSample) -> dict[str, float]:
-        """Extract feature vector from sample."""
-        # Normalize step position (0 = first step, 1 = last step)
-        step_position = sample.step_idx / max(sample.total_steps, 1)
-
-        return {
-            "amplitude": sample.amplitude,
-            "similarity_score": sample.similarity_score or 0.0,
-            "ucb1_gap": sample.ucb1_gap or 0.0,
-            "was_undecided": 1.0 if sample.was_undecided else 0.0,
-            "node_success_rate": sample.node_success_rate or 0.5,
-            "step_position": step_position,
-            "bias": 1.0,
-        }
+        return sample_id
 
     def predict(self, sample: PredictorSample) -> float:
-        """Predict win probability (0-1) for a sample.
+        """Predict win probability for this (dag_step_type, node_id) pair.
 
-        Falls back to fixed multipliers if insufficient training data.
+        Blends learned position value with routing confidence signals.
+
+        Returns:
+            Predicted probability of success ∈ [0, 1]
         """
         if not self._initialized:
             self.initialize()
 
-        # Fall back to fixed multipliers if not enough data
-        if self._sample_count < VALUE_PREDICTOR_MIN_SAMPLES:
-            return self._fixed_multiplier_prediction(sample)
-
-        # Linear prediction: sum(weight_i * feature_i)
-        features = self._extract_features(sample)
-        raw_score = sum(
-            self._weights.get(feat, 0.0) * val
-            for feat, val in features.items()
+        # Get learned position value
+        position_value, updates = self.get_position_value(
+            sample.dag_step_type,
+            sample.node_id,
         )
 
-        # Sigmoid activation for probability output
-        import math
-        probability = 1.0 / (1.0 + math.exp(-raw_score))
+        # If we don't have enough updates, trust routing signals more
+        if updates < self.MIN_UPDATES_FOR_TRUST:
+            # Blend: heavily weight routing confidence during cold start
+            routing_confidence = sample.amplitude
+            blend_weight = updates / self.MIN_UPDATES_FOR_TRUST  # 0 → 1 as updates grow
+            prediction = (1 - blend_weight) * routing_confidence + blend_weight * position_value
+        else:
+            # Trust position value, but still consider routing confidence
+            # Position value is primary (70%), routing confidence secondary (30%)
+            prediction = 0.7 * position_value + 0.3 * sample.amplitude
 
-        return probability
+        return max(0.0, min(1.0, prediction))
 
-    def _fixed_multiplier_prediction(self, sample: PredictorSample) -> float:
-        """Fallback to fixed multiplier logic (pre-predictor behavior).
+    def compute_amplitude_post(
+        self,
+        sample: PredictorSample,
+        use_predictor: bool = True,
+    ) -> float:
+        """Compute amplitude_post using learned position values.
 
-        Returns normalized amplitude_post value.
+        Args:
+            sample: Input features including outcome
+            use_predictor: If True and enough data, use learned values
+
+        Returns:
+            amplitude_post value (clamped to valid range)
         """
+        if use_predictor and VALUE_PREDICTOR_ENABLED and self._total_samples >= VALUE_PREDICTOR_MIN_SAMPLES:
+            # Use learned position value to scale amplitude
+            position_value, updates = self.get_position_value(
+                sample.dag_step_type,
+                sample.node_id,
+            )
+
+            # Scale amplitude based on position value and outcome
+            # High V + won → big boost (predicted correctly)
+            # Low V + lost → expected, mild penalty
+            # High V + lost → prediction was wrong, moderate penalty
+            # Low V + won → pleasant surprise, boost
+
+            if sample.won:
+                if position_value >= 0.5:
+                    # Predicted success, got success → reinforce
+                    scale = 1.0 + (position_value - 0.5) * 0.8  # 1.0 to 1.4
+                else:
+                    # Predicted failure, got success → boost (nice surprise)
+                    scale = 1.0 + (0.5 - position_value) * 0.3  # 1.0 to 1.15
+            else:
+                if position_value < 0.5:
+                    # Predicted failure, got failure → mild penalty (expected)
+                    scale = 0.9 - (0.5 - position_value) * 0.1  # 0.85 to 0.9
+                else:
+                    # Predicted success, got failure → strong penalty
+                    scale = 0.7 - (position_value - 0.5) * 0.4  # 0.5 to 0.7
+
+            amplitude_post = sample.amplitude * scale
+        else:
+            # Fall back to fixed multipliers during cold start
+            amplitude_post = self._fixed_multiplier_fallback(sample)
+
+        # Clamp to valid range
+        return max(POSTMORTEM_AMPLITUDE_MIN, min(POSTMORTEM_AMPLITUDE_MAX, amplitude_post))
+
+    def _fixed_multiplier_fallback(self, sample: PredictorSample) -> float:
+        """Fallback to fixed multiplier logic (pre-predictor behavior)."""
         amp = sample.amplitude
         is_high_conf = amp >= POSTMORTEM_HIGH_CONF_THRESHOLD
 
@@ -282,106 +379,41 @@ class ValuePredictor:
         else:  # not won and is_high_conf
             return amp * POSTMORTEM_STRONG_PENALTY_MULT
 
-    def compute_amplitude_post(
-        self,
-        sample: PredictorSample,
-        use_predictor: bool = True,
-    ) -> float:
-        """Compute amplitude_post using predictor or fixed multipliers.
-
-        Args:
-            sample: Input features and outcome
-            use_predictor: If True and enough data, use learned predictor
-
-        Returns:
-            amplitude_post value (clamped to valid range)
-        """
-        from mycelium.config import POSTMORTEM_AMPLITUDE_MIN, POSTMORTEM_AMPLITUDE_MAX
-
-        if use_predictor and VALUE_PREDICTOR_ENABLED:
-            # Predictor outputs probability, scale to amplitude
-            win_prob = self.predict(sample)
-            # Scale: 0.5 prob -> amp unchanged, 1.0 -> max boost, 0.0 -> max penalty
-            amplitude_post = sample.amplitude * (0.5 + win_prob)
-        else:
-            amplitude_post = self._fixed_multiplier_prediction(sample)
-
-        # Clamp to valid range
-        return max(POSTMORTEM_AMPLITUDE_MIN, min(POSTMORTEM_AMPLITUDE_MAX, amplitude_post))
-
-    def train_batch(self, batch_size: int = 1000) -> dict:
-        """Train on recent samples using online gradient descent.
-
-        Returns:
-            Training statistics
-        """
+    def get_stats(self) -> dict:
+        """Get predictor statistics."""
         if not self._initialized:
             self.initialize()
 
-        conn = get_db()
+        self._ensure_schema()
 
-        # Get recent samples
-        cursor = conn.execute(
+        db = get_db()
+
+        # Count unique positions
+        cursor = db.execute("SELECT COUNT(*) FROM position_values")
+        position_count = cursor.fetchone()[0]
+
+        # Get value distribution
+        cursor = db.execute(
             """
-            SELECT amplitude, similarity_score, ucb1_gap, was_undecided,
-                   node_success_rate, node_uses, step_idx, total_steps, won
-            FROM value_predictor_samples
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (batch_size,),
+            SELECT
+                AVG(value) as avg_value,
+                MIN(value) as min_value,
+                MAX(value) as max_value,
+                AVG(updates) as avg_updates
+            FROM position_values
+            """
         )
-
-        samples = cursor.fetchall()
-        if not samples:
-            return {"samples": 0, "loss": 0.0}
-
-        total_loss = 0.0
-        lr = VALUE_PREDICTOR_LEARNING_RATE
-
-        for row in samples:
-            sample = PredictorSample(
-                amplitude=row[0],
-                similarity_score=row[1],
-                ucb1_gap=row[2],
-                was_undecided=bool(row[3]),
-                node_success_rate=row[4],
-                node_uses=row[5] or 0,
-                step_idx=row[6] or 0,
-                total_steps=row[7] or 1,
-                won=bool(row[8]),
-            )
-
-            # Forward pass
-            features = self._extract_features(sample)
-            prediction = self.predict(sample)
-            target = 1.0 if sample.won else 0.0
-
-            # Loss (mean squared error)
-            error = prediction - target
-            total_loss += error ** 2
-
-            # Backward pass (gradient descent)
-            # d(loss)/d(weight_i) = 2 * error * prediction * (1 - prediction) * feature_i
-            grad_scale = 2 * error * prediction * (1 - prediction)
-
-            for feat, val in features.items():
-                gradient = grad_scale * val
-                self._weights[feat] = self._weights.get(feat, 0.0) - lr * gradient
-
-        # Save updated weights
-        self._save_weights(self._weights)
-
-        avg_loss = total_loss / len(samples)
-        logger.info(
-            "[value_predictor] Trained on %d samples, avg_loss=%.4f",
-            len(samples), avg_loss
-        )
+        row = cursor.fetchone()
 
         return {
-            "samples": len(samples),
-            "loss": avg_loss,
-            "weights": dict(self._weights),
+            "total_samples": self._total_samples,
+            "unique_positions": position_count,
+            "avg_value": row[0] or 0.5,
+            "min_value": row[1] or 0.5,
+            "max_value": row[2] or 0.5,
+            "avg_updates": row[3] or 0,
+            "min_samples_for_predictor": VALUE_PREDICTOR_MIN_SAMPLES,
+            "using_predictor": self._total_samples >= VALUE_PREDICTOR_MIN_SAMPLES,
         }
 
 
@@ -398,79 +430,75 @@ def get_predictor() -> ValuePredictor:
 
 
 def record_predictor_sample(
+    dag_step_type: str,
+    node_id: int,
     amplitude: float,
     won: bool,
     similarity_score: Optional[float] = None,
     ucb1_gap: Optional[float] = None,
     was_undecided: bool = False,
-    node_success_rate: Optional[float] = None,
-    node_uses: int = 0,
-    step_idx: int = 0,
-    total_steps: int = 1,
     dag_id: Optional[str] = None,
-    node_id: Optional[int] = None,
 ) -> int:
     """Convenience function to record a training sample.
+
+    This records the sample AND updates V(dag_step_type, node_id).
 
     Returns:
         Row ID of inserted sample
     """
     sample = PredictorSample(
+        dag_step_type=dag_step_type,
+        node_id=node_id,
         amplitude=amplitude,
         similarity_score=similarity_score,
         ucb1_gap=ucb1_gap,
         was_undecided=was_undecided,
-        node_success_rate=node_success_rate,
-        node_uses=node_uses,
-        step_idx=step_idx,
-        total_steps=total_steps,
         won=won,
         dag_id=dag_id,
-        node_id=node_id,
     )
 
     predictor = get_predictor()
     return predictor.record_sample(sample)
 
 
+def get_position_value(dag_step_type: str, node_id: int) -> tuple[float, int]:
+    """Get learned value V(dag_step_type, node_id).
+
+    Returns:
+        Tuple of (value, update_count)
+    """
+    predictor = get_predictor()
+    return predictor.get_position_value(dag_step_type, node_id)
+
+
 def compute_amplitude_post(
+    dag_step_type: str,
+    node_id: int,
     amplitude: float,
     won: bool,
     similarity_score: Optional[float] = None,
-    ucb1_gap: Optional[float] = None,
-    was_undecided: bool = False,
-    node_success_rate: Optional[float] = None,
-    node_uses: int = 0,
-    step_idx: int = 0,
-    total_steps: int = 1,
     use_predictor: bool = True,
 ) -> float:
-    """Compute amplitude_post using value predictor.
+    """Compute amplitude_post using learned position values.
 
     Args:
+        dag_step_type: The step type (position)
+        node_id: The node that was used (move)
         amplitude: Prior confidence
         won: Whether the thread won
         similarity_score: Routing similarity
-        ucb1_gap: UCB1 decision gap
-        was_undecided: Whether routing was undecided
-        node_success_rate: Historical success rate of node
-        node_uses: Number of times node has been used
-        step_idx: Step index in problem (0-based)
-        total_steps: Total steps in problem
-        use_predictor: If True and enough data, use learned predictor
+        use_predictor: If True and enough data, use learned values
 
     Returns:
         amplitude_post value
     """
     sample = PredictorSample(
+        dag_step_type=dag_step_type,
+        node_id=node_id,
         amplitude=amplitude,
         similarity_score=similarity_score,
-        ucb1_gap=ucb1_gap,
-        was_undecided=was_undecided,
-        node_success_rate=node_success_rate,
-        node_uses=node_uses,
-        step_idx=step_idx,
-        total_steps=total_steps,
+        ucb1_gap=None,
+        was_undecided=False,
         won=won,
     )
 

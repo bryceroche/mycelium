@@ -1488,19 +1488,22 @@ def run_postmortem(dag_id: str) -> dict:
 
     predictor = get_predictor() if VALUE_PREDICTOR_ENABLED else None
 
-    # Query additional features for predictor training (join with thread_steps)
+    # Query additional features for predictor training
+    # Join with dag_steps to get dsl_hint (dag_step_type) - the "position" in AlphaGo terms
     feature_cursor = conn.execute(
         """
-        SELECT ts.thread_id, ts.similarity_score, ts.ucb1_gap, ts.was_undecided, ts.node_id
+        SELECT ts.thread_id, ts.similarity_score, ts.ucb1_gap, ts.was_undecided,
+               ts.node_id, ds.dsl_hint
         FROM mcts_thread_steps ts
+        LEFT JOIN mcts_dag_steps ds ON ts.dag_step_id = ds.dag_step_id
         WHERE ts.dag_id = ?
         """,
         (dag_id,),
     )
-    # Build lookup: thread_id -> (similarity, gap, undecided, node_id)
+    # Build lookup: thread_id -> (similarity, gap, undecided, node_id, dag_step_type)
     thread_features: dict[str, tuple] = {}
     for row in feature_cursor.fetchall():
-        thread_features[row[0]] = (row[1], row[2], row[3], row[4])
+        thread_features[row[0]] = (row[1], row[2], row[3], row[4], row[5])
 
     total_steps = len(step_summaries)
 
@@ -1522,34 +1525,32 @@ def run_postmortem(dag_id: str) -> dict:
             stats["total_low_conf"] += 1
 
         # Get additional features for this thread
-        features = thread_features.get(thread_id, (None, None, 0, None))
-        similarity_score, ucb1_gap, was_undecided, node_id = features
+        features = thread_features.get(thread_id, (None, None, 0, None, None))
+        similarity_score, ucb1_gap, was_undecided, node_id, dag_step_type = features
 
-        # Record training sample for value predictor
-        if VALUE_PREDICTOR_ENABLED:
+        # Record training sample for value predictor (AlphaGo-style)
+        # This learns V(dag_step_type, node_id) = probability of success
+        if VALUE_PREDICTOR_ENABLED and dag_step_type and node_id:
             record_predictor_sample(
+                dag_step_type=dag_step_type,
+                node_id=node_id,
                 amplitude=amp,
                 won=won,
                 similarity_score=similarity_score,
                 ucb1_gap=ucb1_gap,
                 was_undecided=bool(was_undecided),
-                step_idx=step_idx,
-                total_steps=total_steps,
                 dag_id=dag_id,
-                node_id=node_id,
             )
 
         # Compute amplitude_post using predictor or fixed multipliers
-        if predictor is not None:
+        if predictor is not None and dag_step_type and node_id:
             sample = PredictorSample(
+                dag_step_type=dag_step_type,
+                node_id=node_id,
                 amplitude=amp,
                 similarity_score=similarity_score,
                 ucb1_gap=ucb1_gap,
                 was_undecided=bool(was_undecided),
-                node_success_rate=None,  # Would need extra query
-                node_uses=0,
-                step_idx=step_idx,
-                total_steps=total_steps,
                 won=won,
             )
             amplitude_post = predictor.compute_amplitude_post(sample)
