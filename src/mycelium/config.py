@@ -444,8 +444,8 @@ THREAD_MIN_CREDIT = 0.1  # Minimum credit to apply (filter noise from deep forks
 
 POSTMORTEM_ENABLED = True  # Run postmortem analysis after grading
 POSTMORTEM_HIGH_CONF_THRESHOLD = 0.7  # Amplitude >= this is "high confidence"
-POSTMORTEM_REINFORCE_MULT = 1.1  # Won + high confidence: small boost
-POSTMORTEM_BOOST_MULT = 1.4  # Won + low confidence: bigger boost (discovery)
+POSTMORTEM_REINFORCE_MULT = 1.4  # Won + high confidence: biggest boost (confident AND right)
+POSTMORTEM_BOOST_MULT = 1.1  # Won + low confidence: small boost (lucky exploration)
 POSTMORTEM_MILD_PENALTY_MULT = 0.85  # Lost + low confidence: expected uncertainty
 POSTMORTEM_STRONG_PENALTY_MULT = 0.5  # Lost + high confidence: harsh penalty
 POSTMORTEM_AMPLITUDE_MIN = 0.0  # Clamp amplitude_post minimum
