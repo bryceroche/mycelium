@@ -1045,18 +1045,22 @@ class StepSignatureDB:
 
     def route_through_hierarchy(
         self,
-        embedding: np.ndarray,
+        operation_embedding: np.ndarray,
         min_similarity: float = 0.85,
         max_depth: int = None,
     ) -> tuple[Optional[StepSignature], list[StepSignature]]:
-        """Route an embedding through the signature hierarchy.
+        """Route an operation embedding through the signature hierarchy using graph embeddings.
+
+        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        - Routers: compare against graph_centroid (avg of children's graph_embeddings)
+        - Leaves: compare against graph_embedding (computation graph embedded)
 
         Starting from the root, traverse down through umbrella signatures
         by picking the best-matching child at each level until reaching
         a leaf signature or no match is found.
 
         Args:
-            embedding: The query embedding to route
+            operation_embedding: The operation embedding to route (from step.operation)
             min_similarity: Minimum similarity threshold to follow a route
             max_depth: Maximum depth to traverse (default from config)
 
@@ -1091,16 +1095,18 @@ class StepSignatureDB:
                 # Umbrella with no children - treat as leaf
                 return current, path
 
-            # Find best matching child
+            # Find best matching child using graph_embedding (not text centroid)
             best_child = None
             best_score = 0.0
 
             for child_sig, _condition in children:
-                # Capture centroid once to avoid TOCTOU race condition
-                centroid = child_sig.centroid
-                if centroid is None:
+                # Use graph_embedding for routing (operational similarity)
+                graph_emb = child_sig.graph_embedding
+                if graph_emb is None:
                     continue
-                sim = cosine_similarity(embedding, centroid)
+                if not isinstance(graph_emb, np.ndarray):
+                    graph_emb = np.array(graph_emb)
+                sim = cosine_similarity(operation_embedding, graph_emb)
                 if sim >= min_similarity:
                     # Use routing score for tiebreaking
                     score = compute_routing_score(
@@ -1129,13 +1135,16 @@ class StepSignatureDB:
 
     def route_with_confidence(
         self,
-        embedding: np.ndarray,
+        operation_embedding: np.ndarray,
         min_similarity: float = 0.85,
         max_depth: int = None,
         top_k: int = 3,
         dag_step_type: Optional[str] = None,
     ) -> RoutingResult:
-        """Route with confidence scoring for MCTS multi-path exploration.
+        """Route with confidence scoring for MCTS multi-path exploration using graph embeddings.
+
+        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        Uses graph_embedding (not text centroid) for routing decisions.
 
         Enhanced version of route_through_hierarchy that computes confidence
         signals based on UCB1 score gaps between top-k children at each level.
@@ -1150,7 +1159,7 @@ class StepSignatureDB:
         - Low confidence (<0.5): High uncertainty, explore multiple paths
 
         Args:
-            embedding: The query embedding to route
+            operation_embedding: The operation embedding to route (from step.operation)
             min_similarity: Minimum similarity threshold to follow a route
             max_depth: Maximum depth to traverse (default from config)
             top_k: Number of top alternatives to track at each level
@@ -1215,10 +1224,13 @@ class StepSignatureDB:
                         )
 
             for child_sig, _condition in children:
-                centroid = child_sig.centroid
-                if centroid is None:
+                # Use graph_embedding for routing (operational similarity)
+                graph_emb = child_sig.graph_embedding
+                if graph_emb is None:
                     continue
-                sim = cosine_similarity(embedding, centroid)
+                if not isinstance(graph_emb, np.ndarray):
+                    graph_emb = np.array(graph_emb)
+                sim = cosine_similarity(operation_embedding, graph_emb)
                 if sim >= min_similarity * 0.7:  # Lower threshold to capture alternatives
                     # Get step-node stats for this child (if available)
                     child_step_stats = step_stats_map.get(child_sig.id)
@@ -1561,7 +1573,7 @@ class StepSignatureDB:
                 # Pass dsl_hint for graph-based routing (per CLAUDE.md: route by what operations DO)
                 # Pass exclude_ids to prevent circular routing (e.g., child matching back to parent during decomposition)
                 best_match, parent_for_new, best_sim = self._route_hierarchical(
-                    conn, embedding, min_similarity, dsl_hint=dsl_hint, exclude_ids=exclude_ids
+                    conn, min_similarity, dsl_hint=dsl_hint, exclude_ids=exclude_ids
                 )
 
                 # ALWAYS_ROUTE_TO_BEST mode: accept any match, let failures drive learning
@@ -1757,7 +1769,6 @@ class StepSignatureDB:
     def _route_hierarchical(
         self,
         conn,
-        embedding: np.ndarray,
         min_similarity: float,
         dsl_hint: str = None,
         exclude_ids: set = None,
@@ -1768,13 +1779,13 @@ class StepSignatureDB:
         - Routers: use graph_centroid (avg of descendants' graph_embeddings)
         - Leaves: use graph_embedding (fixed operational identity)
 
-        Falls back to text centroid if graph_embedding not available.
+        Graph-only routing: No text centroid fallback. If no graph_embedding
+        is available, similarity is 0.0 (cold start triggers new signature creation).
 
         Uses UCB1 scoring to balance exploitation (high-similarity, high-success)
         with exploration (under-visited signatures that might be better).
 
         Args:
-            embedding: Text embedding of the step (fallback)
             min_similarity: Minimum similarity threshold
             dsl_hint: Operation hint from planner (+, -, *, /) for graph routing
             exclude_ids: Signature IDs to exclude from matching (prevent circular routing)
@@ -2779,51 +2790,21 @@ class StepSignatureDB:
         was_correct: bool,
         confidence: float = 1.0,
     ):
-        """BIPOLAR centroid update based on operational outcome (Scorpion fix).
+        """NO-OP: Text centroid updates removed in favor of graph embeddings.
 
-        This is the key mechanism for splitting vocab-based clusters into
-        operation-based clusters:
-        - SUCCESS: PULL centroid toward embedding (attract)
-        - FAILURE: PUSH centroid away from embedding (repel)
+        Per CLAUDE.md: Graph embeddings are structural (from computation graphs),
+        not learned from problem outcomes. Success/failure signals should only
+        update UCB1 stats (uses, successes), not embeddings.
 
-        Key insight from AlphaGo/MCTS:
-        - High confidence + failure = STRONG negative signal (push hard)
-        - High confidence + success = STRONG positive signal (pull hard)
-        - Centroids drift toward operational meaning, not vocabulary
+        Learning happens through:
+        1. UCB1 scores (uses, successes, win_rate) - tracked elsewhere
+        2. New signature creation when existing signatures fail
+        3. Decomposition when signatures need specialization
 
-        Both success and failure signals propagate to parent signatures,
-        reinforcing good routing paths and weakening bad ones.
-
-        Args:
-            signature_id: ID of the signature to update
-            embedding: The routing embedding from the step (None to skip centroid update)
-            was_correct: Whether this path produced the correct answer
-            confidence: How confident we were in this route (0.0-1.0)
+        This function is kept as a no-op for backward compatibility.
         """
-        # Skip centroid update if no embedding provided
-        if embedding is None:
-            return
-
-        from mycelium.config import SCORPION_REPULSION_WEIGHT, SCORPION_ATTRACTION_WEIGHT
-
-        if was_correct:
-            # SUCCESS: Pull centroid toward this embedding (attract)
-            # Weighted by confidence: high confidence = stronger pull
-            attraction_strength = confidence * SCORPION_ATTRACTION_WEIGHT
-            self._attract_centroid(signature_id, embedding, attraction_strength, propagate_to_parents=True)
-            logger.debug(
-                "[db] SCORPION PULL: sig %d centroid toward embedding (correct, conf=%.2f, strength=%.2f)",
-                signature_id, confidence, attraction_strength
-            )
-        else:
-            # FAILURE: Push centroid away from this embedding (repel)
-            # Weighted by confidence: high confidence + failure = strong repulsion
-            repulsion_strength = confidence * SCORPION_REPULSION_WEIGHT
-            self._repel_centroid(signature_id, embedding, repulsion_strength, propagate_to_parents=True)
-            logger.debug(
-                "[db] SCORPION PUSH: sig %d centroid away from embedding (incorrect, conf=%.2f, strength=%.2f)",
-                signature_id, confidence, repulsion_strength
-            )
+        # No-op: graph embeddings are structural, not learned from outcomes
+        pass
 
     def _attract_centroid(
         self,
@@ -4741,16 +4722,19 @@ class StepSignatureDB:
             return self._row_to_signature(dict(row)) if row else None
 
     def get_all_leaves(self, min_uses: int = 0) -> list[StepSignature]:
-        """Get all leaf signatures (non-umbrellas) with embeddings.
+        """Get all leaf signatures (non-umbrellas) with graph embeddings.
 
         Used for MCTS-style leaf matching where we want to find the best
         leaf for a dag_step regardless of tree routing path.
+
+        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        Filters on graph_embedding (not text centroid).
 
         Args:
             min_uses: Minimum use count to include (filters cold signatures)
 
         Returns:
-            List of leaf signatures with centroid embeddings
+            List of leaf signatures with graph_embeddings
         """
         with self._connection() as conn:
             cursor = conn.execute(
@@ -4758,7 +4742,7 @@ class StepSignatureDB:
                    FROM step_signatures
                    WHERE is_semantic_umbrella = 0
                      AND is_archived = 0
-                     AND centroid IS NOT NULL
+                     AND graph_embedding IS NOT NULL
                      AND uses >= ?
                    ORDER BY uses DESC""",
                 (min_uses,)
@@ -4770,12 +4754,15 @@ class StepSignatureDB:
 
     def match_step_to_leaves_mcts(
         self,
-        embedding: np.ndarray,
+        operation_embedding: np.ndarray,
         dag_step_type: str = None,
         top_k: int = 3,
         min_similarity: float = 0.5,
     ) -> list[tuple[StepSignature, float, float]]:
-        """MCTS-style matching: find top-k leaf candidates for a dag_step.
+        """MCTS-style matching: find top-k leaf candidates for a dag_step using graph embeddings.
+
+        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        Uses graph_embedding (not text centroid) for matching.
 
         Instead of routing through tree hierarchy, directly scores all leaves
         using UCB1 to balance:
@@ -4788,7 +4775,7 @@ class StepSignatureDB:
         3. Only decompose if ALL reject (depth)
 
         Args:
-            embedding: Step embedding to match
+            operation_embedding: Operation embedding to match (from step.operation)
             dag_step_type: Optional step type for step-node stats lookup
             top_k: Number of candidates to return (default 3)
             min_similarity: Minimum similarity threshold to consider
@@ -4813,10 +4800,14 @@ class StepSignatureDB:
 
         candidates = []
         for leaf in leaves:
-            if leaf.centroid is None:
+            # Use graph_embedding for matching (operational similarity)
+            graph_emb = leaf.graph_embedding
+            if graph_emb is None:
                 continue
+            if not isinstance(graph_emb, np.ndarray):
+                graph_emb = np.array(graph_emb)
 
-            sim = cosine_similarity(embedding, leaf.centroid)
+            sim = cosine_similarity(operation_embedding, graph_emb)
             if sim < min_similarity:
                 continue
 

@@ -1233,10 +1233,12 @@ class Solver:
                 thread_id=thread_id,
             )
 
-        # 1. Normalize and embed step (strip numbers for better matching)
-        # Use cached_embed to avoid redundant computation for repeated steps
-        normalized_task = normalize_step_text(step.task)
-        embedding = cached_embed(normalized_task, self.embedder)
+        # 1. Get operation embedding for graph-based routing
+        # Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE
+        # Operation embeddings are pre-computed during decomposition (batch embedded)
+        operation_embedding = None
+        if step.id in self._operation_embeddings:
+            operation_embedding = np.array(self._operation_embeddings[step.id])
 
         # 2. GRAPH-FIRST ROUTING (per mycelium-pl5c)
         # Check graph routing FIRST - route by what operations DO, not what they SOUND LIKE
@@ -1246,10 +1248,9 @@ class Solver:
         is_new = False
         graph_matched = False
 
-        if GRAPH_ROUTING_ENABLED and step.id in self._operation_embeddings:
-            operation_embedding = self._operation_embeddings[step.id]
+        if GRAPH_ROUTING_ENABLED and operation_embedding is not None:
             graph_results = self.step_db.route_by_graph_embedding(
-                np.array(operation_embedding),
+                operation_embedding,
                 min_similarity=GRAPH_ROUTING_MIN_SIMILARITY,
                 top_k=3,
             )
@@ -1286,7 +1287,7 @@ class Solver:
                         # MCTS fallback: get top-3 alternative leaves
                         # Per brainstorm: try re-routing sideways before decomposing depth-wise
                         mcts_candidates = self.step_db.match_step_to_leaves_mcts(
-                            embedding=embedding,
+                            operation_embedding=operation_embedding,
                             dag_step_type=getattr(step, 'dsl_hint', None) or step.task[:40],
                             top_k=3,
                             min_similarity=REJECTION_SIM_THRESHOLD,  # Only consider viable alternatives
