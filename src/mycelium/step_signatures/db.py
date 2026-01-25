@@ -4955,7 +4955,6 @@ class StepSignatureDB:
         operation_embedding: np.ndarray,
         min_similarity: float = 0.75,
         top_k: int = 5,
-        hierarchical: bool = True,
     ) -> list[tuple[StepSignature, float]]:
         """Route by comparing operation embedding to graph embeddings.
 
@@ -4968,19 +4967,15 @@ class StepSignatureDB:
             operation_embedding: Embedding of the extracted operation
             min_similarity: Minimum cosine similarity threshold
             top_k: Maximum number of matches to return
-            hierarchical: If True, traverse hierarchy; if False, flat search
 
         Returns:
             List of (signature, similarity) tuples, sorted by similarity descending
         """
         from mycelium.config import UMBRELLA_MAX_DEPTH
 
-        if hierarchical:
-            return self._route_by_graph_hierarchical(
-                operation_embedding, min_similarity, top_k, UMBRELLA_MAX_DEPTH
-            )
-        else:
-            return self._route_by_graph_flat(operation_embedding, min_similarity, top_k)
+        return self._route_by_graph_hierarchical(
+            operation_embedding, min_similarity, top_k, UMBRELLA_MAX_DEPTH
+        )
 
     def _route_by_graph_hierarchical(
         self,
@@ -5049,55 +5044,5 @@ class StepSignatureDB:
                     matches.append((current, sim))
 
         # Sort by similarity descending and return top_k
-        matches.sort(key=lambda x: x[1], reverse=True)
-        return matches[:top_k]
-
-    def _route_by_graph_flat(
-        self,
-        operation_embedding: np.ndarray,
-        min_similarity: float,
-        top_k: int,
-    ) -> list[tuple[StepSignature, float]]:
-        """Flat graph routing - search all leaves directly (legacy mode)."""
-        matches = []
-
-        with self._connection() as conn:
-            # Get all signatures with graph embeddings (leaf nodes only)
-            rows = conn.execute(
-                """SELECT id, graph_embedding, step_type, description,
-                          dsl_script, dsl_type, computation_graph,
-                          uses, successes, depth, is_semantic_umbrella
-                   FROM step_signatures
-                   WHERE graph_embedding IS NOT NULL
-                     AND graph_embedding != ''
-                     AND is_semantic_umbrella = 0"""
-            ).fetchall()
-
-            for row in rows:
-                try:
-                    graph_emb = np.array(json.loads(row["graph_embedding"]))
-                    sim = cosine_similarity(operation_embedding, graph_emb)
-
-                    if sim >= min_similarity:
-                        # Create minimal signature for routing
-                        sig = StepSignature(
-                            id=row["id"],
-                            step_type=row["step_type"],
-                            description=row["description"],
-                            dsl_script=row["dsl_script"],
-                            dsl_type=row["dsl_type"],
-                            computation_graph=row["computation_graph"],
-                            uses=row["uses"] or 0,
-                            successes=row["successes"] or 0,
-                            depth=row["depth"] or 0,
-                            is_semantic_umbrella=bool(row["is_semantic_umbrella"]),
-                        )
-                        matches.append((sig, sim))
-
-                except (json.JSONDecodeError, ValueError) as e:
-                    logger.warning("[db] Invalid graph_embedding for sig %d: %s", row["id"], e)
-                    continue
-
-        # Sort by similarity descending
         matches.sort(key=lambda x: x[1], reverse=True)
         return matches[:top_k]
