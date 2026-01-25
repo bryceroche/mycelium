@@ -1561,125 +1561,17 @@ def run_postmortem(
     Returns:
         Combined dict with all analysis results. Keys depend on features enabled.
     """
+    from mycelium.config import DIAGNOSTIC_POSTMORTEM_ENABLED
+
     # If no step_db, just compute amplitudes (fast path for tests)
     if step_db is None:
         return _compute_amplitude_post(dag_id)
 
-    # Full post-mortem with interference analysis
-    from mycelium.config import MERGE_SPLIT_BATCH_SIZE, RETIREMENT_ENABLED, DIAGNOSTIC_POSTMORTEM_ENABLED
-    from mycelium.mcts.adaptive import AdaptiveExploration
+    # Delegate to full implementation (avoids code duplication)
+    # run_postmortem_with_interference contains all interference logic including variance decomposition
+    result = run_postmortem_with_interference(dag_id, step_db)
 
-    # Get singleton state (thread-safe)
-    state = get_postmortem_state()
-
-    # Increment the run counter
-    run_count = state.increment_run_count()
-    logger.debug("[mcts] Post-mortem run #%d", run_count)
-
-    # Always compute amplitude_post first
-    amplitude_stats = _compute_amplitude_post(dag_id)
-
-    # Record hit/miss stats for UCB1 adjustment
-    adaptive = AdaptiveExploration.get_instance()
-    adaptive.record_postmortem_stats(
-        high_conf_wrong=amplitude_stats.get("high_conf_wrong", 0),
-        low_conf_right=amplitude_stats.get("low_conf_right", 0),
-        total_high_conf=amplitude_stats.get("total_high_conf", 0),
-        total_low_conf=amplitude_stats.get("total_low_conf", 0),
-    )
-
-    # Initialize result with amplitude stats
-    result = {**amplitude_stats, "postmortem_run_count": run_count}
-
-    if include_interference:
-        # Interference pattern detection and centroid effects
-        interference_result = apply_interference_effects(dag_id, step_db)
-
-        # Credit propagation to signature stats
-        credit_stats = propagate_amplitude_to_signature_stats(dag_id, step_db)
-
-        # Success similarity propagation for adaptive rejection
-        success_sim_stats = propagate_success_similarity(dag_id, step_db)
-
-        # Step-node stats propagation
-        step_node_stats = propagate_step_node_stats(dag_id)
-
-        # Divergence-point analysis
-        divergence_stats = assign_divergence_blame(dag_id, step_db)
-
-        # Accumulate nodes flagged for split
-        state.accumulate_split_nodes(interference_result.nodes_flagged_split)
-
-        # Accumulate high-conf-wrong nodes for DSL regen
-        if amplitude_stats.get("high_conf_wrong", 0) >= POSTMORTEM_DSL_REGEN_MIN_HIGH_CONF_WRONG:
-            problem_nodes = get_problem_nodes_needing_attention(dag_id)
-            state.accumulate_high_conf_wrong(problem_nodes)
-
-        # Check for batch operations (merge/split/retirement)
-        merge_split_result = {"merges_succeeded": 0, "merged_pairs": [], "splits_flagged": 0}
-        retirement_result = {"demoted": 0, "pruned": 0, "merged_up": 0}
-        collapse_result = {"collapsed": 0}
-        rejection_flagged = []
-
-        should_run_batch_ops = (
-            MERGE_SPLIT_BATCH_SIZE > 0 and
-            state.problem_count >= MERGE_SPLIT_BATCH_SIZE
-        )
-
-        if should_run_batch_ops:
-            batch_ops_count = state.increment_batch_ops_count()
-            logger.info("[mcts] Batch operations run #%d", batch_ops_count)
-
-            merge_split_result = run_merge_split_from_interference(
-                step_db,
-                nodes_reinforced=interference_result.nodes_reinforced,
-                nodes_flagged_split=list(set(state.nodes_for_split)),
-            )
-
-            if RETIREMENT_ENABLED:
-                retirement_result = run_retirement_check(step_db)
-
-            collapse_result = collapse_single_child_routers()
-            rejection_flagged = flag_high_rejection_leaves_for_decomposition(step_db) or []
-
-            state.reset_merge_split()
-
-        # Decomposition analysis
-        decomp_analysis = analyze_decomposition_needs(min_attempts=3, max_win_rate=0.5)
-
-        # Add interference results to output
-        result.update({
-            "interference_patterns": interference_result.patterns_processed,
-            "constructive_interference": interference_result.constructive_count,
-            "destructive_interference": interference_result.destructive_count,
-            "nodes_reinforced": interference_result.nodes_reinforced,
-            "nodes_flagged_split": interference_result.nodes_flagged_split,
-            "merges_succeeded": merge_split_result["merges_succeeded"],
-            "merged_pairs": merge_split_result["merged_pairs"],
-            "splits_flagged": merge_split_result["splits_flagged"],
-            "retirement_demoted": retirement_result.get("demoted", 0),
-            "retirement_pruned": retirement_result.get("pruned", 0),
-            "retirement_merged_up": retirement_result.get("merged_up", 0),
-            "batch_counter": state.problem_count,
-            "next_merge_split_in": MERGE_SPLIT_BATCH_SIZE - state.problem_count if MERGE_SPLIT_BATCH_SIZE > 0 else -1,
-            "batch_ops_run_count": state.batch_ops_run_count,
-            "dsl_regen_nodes_accumulated": len(state.high_conf_wrong_nodes),
-            "dsl_regen_ready": should_trigger_dsl_regen(),
-            "credit_nodes_processed": credit_stats.get("nodes_processed", 0),
-            "credit_successes": credit_stats.get("successes_credited", 0),
-            "credit_failures": credit_stats.get("failures_credited", 0),
-            "success_sim_updates": success_sim_stats.get("updates", 0),
-            "divergence_points_found": divergence_stats.get("divergence_points_found", 0),
-            "divergence_blame_assigned": divergence_stats.get("divergence_blame_assigned", 0),
-            "suffix_blame_assigned": divergence_stats.get("suffix_blame_assigned", 0),
-            "shared_prefix_credit": divergence_stats.get("shared_prefix_credit", 0),
-            "nodes_needing_decomposition": [rec.target_id for rec in decomp_analysis["nodes_to_decompose"]],
-            "steps_needing_decomposition": [(rec.target_id, rec.target_desc) for rec in decomp_analysis["steps_to_decompose"]],
-            "collapsed_routers": collapse_result.get("collapsed", 0),
-            "rejection_decomps_flagged": len(rejection_flagged),
-        })
-
-    # Diagnostic post-mortem (failure analysis with verdicts)
+    # Add diagnostic analysis if requested
     if include_diagnostics and DIAGNOSTIC_POSTMORTEM_ENABLED:
         diagnostic_result = _run_diagnostic_analysis(dag_id, step_db, step_embeddings)
         if not diagnostic_result.get("skipped"):
@@ -3488,6 +3380,14 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         # Variance-based decomposition (Welford's algorithm)
         "variance_nodes_flagged": variance_nodes_flagged,
     }
+
+
+def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
+    """Thin wrapper for backward compatibility. Use run_postmortem() instead.
+
+    Calls run_postmortem(dag_id, step_db) with interference enabled, diagnostics disabled.
+    """
+    return run_postmortem(dag_id, step_db=step_db, include_diagnostics=False)
 
 
 # =============================================================================
