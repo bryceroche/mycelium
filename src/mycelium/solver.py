@@ -70,6 +70,7 @@ from mycelium.step_signatures.utils import cosine_similarity
 from mycelium.embedder import Embedder
 from mycelium.embedding_cache import cached_embed, cached_embed_batch
 from mycelium.difficulty import estimate_difficulty
+from mycelium.answer_norm import normalize_answer
 from mycelium.data_layer.mcts import (
     create_dag,
     create_dag_steps,
@@ -3712,7 +3713,7 @@ Rules:
             try:
                 explore_result = await self.solve(result.problem, ground_truth=ground_truth)
                 # Check if any thread found the correct answer
-                if explore_result.answer and self._normalize_answer(explore_result.answer) == self._normalize_answer(ground_truth):
+                if explore_result.answer and normalize_answer(explore_result.answer) == normalize_answer(ground_truth):
                     logger.info("[reactive] Full re-solve found winning path!")
                     winning = (explore_result, self._root_thread_id)
                     stats["full_resolve_success"] = True
