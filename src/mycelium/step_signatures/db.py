@@ -818,16 +818,21 @@ class StepSignatureDB:
         child_id: int,
         visited: set[int] = None,
     ):
-        """Propagate centroid changes up to parent umbrellas (batch approach).
+        """NO-OP: Text centroid propagation removed in favor of graph embeddings.
 
-        Uses recursive CTE to fetch all ancestors up to CENTROID_PROPAGATION_MAX_DEPTH
-        in a single query, then batch-updates all centroids. Reduces N+1 queries to 3.
-
-        Args:
-            conn: Database connection (within transaction)
-            child_id: ID of the signature whose centroid was updated
-            visited: Unused, kept for API compatibility
+        Routing now uses graph_embedding (see propagate_graph_centroid_to_parents).
+        This function is kept for API compatibility but does nothing.
         """
+        # No-op: graph embeddings are used for routing, not text centroids
+        return
+
+    def _propagate_centroid_to_parents_legacy(
+        self,
+        conn,
+        child_id: int,
+        visited: set[int] = None,
+    ):
+        """LEGACY: Text centroid propagation (kept for reference, not used)."""
         max_depth = CENTROID_PROPAGATION_MAX_DEPTH
 
         # 1. Batch-fetch all ancestors up to max_depth using recursive CTE
@@ -1758,10 +1763,6 @@ class StepSignatureDB:
                     extracted_values=extracted_values, dsl_hint=dsl_hint,
                     parent_id=actual_parent_id
                 )
-
-                # Propagate new child's centroid up to parent umbrellas
-                if sig.id is not None:
-                    self.propagate_centroid_to_parents(conn, sig.id)
 
                 conn.commit()
                 parent_desc = f"id={parent_id}" if parent_id is not None else (parent_for_new.step_type if parent_for_new else "root")
@@ -2789,7 +2790,6 @@ class StepSignatureDB:
         self,
         signature_id: int,
         new_embedding: np.ndarray,
-        propagate_to_parents: bool = True,
     ):
         """Update signature centroid with a new embedding (running average).
 
@@ -2804,7 +2804,6 @@ class StepSignatureDB:
         Args:
             signature_id: ID of the signature to update
             new_embedding: The new embedding to add to the running average
-            propagate_to_parents: If True, propagate centroid change up the tree
         """
         with self._connection() as conn:
             # Use BEGIN IMMEDIATE for atomic read-modify-write
@@ -2815,10 +2814,6 @@ class StepSignatureDB:
                 if new_count is None:
                     conn.rollback()
                     return
-
-                # Propagate centroid change up to parent umbrellas (immediate, as caller expects)
-                if propagate_to_parents:
-                    self.propagate_centroid_to_parents(conn, signature_id)
 
                 conn.commit()
                 invalidate_signature_cache(signature_id)
@@ -3104,9 +3099,10 @@ class StepSignatureDB:
                 )
 
             # Archive the absorbed signature
-            conn.execute(
-                "UPDATE step_signatures SET is_archived = 1 WHERE id = ?",
-                (absorbed_id,)
+            self._update_signature_fields(
+                conn, absorbed_id,
+                log_reason="merged_into_survivor",
+                is_archived=1,
             )
 
             # Repoint any children of absorbed to survivor
@@ -3654,11 +3650,10 @@ class StepSignatureDB:
             max_diff = difficulty
 
         # Save updated stats
-        conn.execute(
-            """UPDATE step_signatures
-               SET difficulty_stats = ?, max_difficulty_solved = ?
-               WHERE id = ?""",
-            (json.dumps(stats), max_diff, signature_id),
+        self._update_signature_fields(
+            conn, signature_id,
+            difficulty_stats=json.dumps(stats),
+            max_difficulty_solved=max_diff,
         )
 
     def record_failure(
@@ -4050,11 +4045,11 @@ class StepSignatureDB:
 
         now = datetime.utcnow().isoformat()
         with self._connection() as conn:
-            conn.execute(
-                """UPDATE step_signatures
-                   SET dsl_script = ?, last_rewrite_at = ?
-                   WHERE id = ?""",
-                (dsl_script, now, signature_id),
+            self._update_signature_fields(
+                conn, signature_id,
+                log_reason="dsl_update",
+                dsl_script=dsl_script,
+                last_rewrite_at=now,
             )
             self._invalidate_on_dsl_change(signature_id)
             logger.info(
@@ -4939,9 +4934,10 @@ class StepSignatureDB:
 
             # Set child's depth = parent_depth + 1
             child_depth = parent_depth + 1
-            conn.execute(
-                "UPDATE step_signatures SET depth = ? WHERE id = ?",
-                (child_depth, child_id),
+            self._update_signature_fields(
+                conn, child_id,
+                log_reason="set_child_depth",
+                depth=child_depth,
             )
             # Invalidate caches (relationship change: new child added)
             self._invalidate_on_relationship_change(parent_id, child_id)
@@ -4965,17 +4961,14 @@ class StepSignatureDB:
         Returns:
             True if updated, False if signature not found
         """
-        cursor = conn.execute(
-            """UPDATE step_signatures
-               SET is_semantic_umbrella = 1,
-                   dsl_type = 'router',
-                   dsl_script = NULL
-               WHERE id = ?""",
-            (signature_id,),
+        result = self._update_signature_fields(
+            conn, signature_id,
+            log_reason="promote_to_umbrella",
+            is_semantic_umbrella=1,
+            dsl_type="router",
+            dsl_script=None,
         )
-        if cursor.rowcount > 0:
-            self._invalidate_on_dsl_change(signature_id)
-
+        if result:
             # Use consolidated centroid update pathway:
             # include_self=True computes this node's centroid, then propagates to ancestors
             self.propagate_graph_centroid_to_parents(conn, signature_id, include_self=True)
@@ -5197,13 +5190,13 @@ class StepSignatureDB:
                 remaining = remaining_row[0] if remaining_row else 0
                 if remaining == 0:
                     # Demote from umbrella
-                    conn.execute(
-                        "UPDATE step_signatures SET is_semantic_umbrella = 0 WHERE id = ?",
-                        (parent_id,),
+                    self._update_signature_fields(
+                        conn, parent_id,
+                        log_reason="demote_from_umbrella",
+                        is_semantic_umbrella=0,
                     )
-                # Invalidate parent's centroid cache (child removal affects routing)
-                invalidate_centroid_cache(parent_id)
-                self.invalidate_centroid_matrix()
+                # Invalidate caches (relationship change: child removed)
+                self._invalidate_on_relationship_change(parent_id, child_id)
                 logger.info("[db] Removed child relationship: parent=%d → child=%d", parent_id, child_id)
                 return True
             return False
