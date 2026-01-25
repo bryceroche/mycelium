@@ -907,11 +907,18 @@ def check_and_reject_if_low_similarity(
     return True, rejection_count
 
 
-def flag_high_rejection_leaves_for_decomposition() -> list[dict]:
+def flag_high_rejection_leaves_for_decomposition(step_db=None) -> list[dict]:
     """Find and flag high-rejection leaves for decomposition.
 
     This should be called periodically (e.g., during batch operations).
     Leaves with high rejection rates get promoted to umbrellas and decomposed.
+
+    MCTS-aware: Before flagging, checks if alternative leaves could handle
+    the operations this leaf rejects. If alternatives exist, it's a routing
+    issue, not a leaf issue - don't decompose.
+
+    Args:
+        step_db: Optional StepSignatureDB instance for MCTS alternative check
 
     Returns:
         List of flagged signature stats
@@ -923,10 +930,58 @@ def flag_high_rejection_leaves_for_decomposition() -> list[dict]:
 
     db = get_db()
     flagged = []
+    skipped_routing_issue = []
 
     with db.connection() as conn:
         for leaf in leaves:
             sig_id = leaf["signature_id"]
+
+            # MCTS alternative check: is this a routing issue or a leaf issue?
+            # If other leaves could handle similar operations, it's routing, not the leaf
+            should_decompose = True
+
+            if step_db is not None:
+                # Get the leaf's centroid (what it handles)
+                cursor = conn.execute(
+                    "SELECT centroid FROM step_signatures WHERE id = ?",
+                    (sig_id,),
+                )
+                row = cursor.fetchone()
+                if row and row[0]:
+                    import numpy as np
+                    centroid = np.frombuffer(row[0], dtype=np.float32)
+
+                    # Check if alternative leaves could handle this operation type
+                    alternatives = step_db.match_step_to_leaves_mcts(
+                        embedding=centroid,
+                        dag_step_type=None,  # Generic check
+                        top_k=3,
+                        min_similarity=REJECTION_SIM_THRESHOLD,
+                    )
+
+                    # Filter out self
+                    other_alternatives = [
+                        (sig, ucb1, sim) for sig, ucb1, sim in alternatives
+                        if sig.id != sig_id
+                    ]
+
+                    if other_alternatives:
+                        # Alternatives exist - this is a routing issue, not leaf issue
+                        best_alt = other_alternatives[0]
+                        logger.info(
+                            "[rejection] Skipping leaf %d decomposition: "
+                            "alternative leaf %d (%s) exists with sim=%.3f (routing issue)",
+                            sig_id, best_alt[0].id, best_alt[0].step_type, best_alt[2]
+                        )
+                        skipped_routing_issue.append({
+                            **leaf,
+                            "alternative_id": best_alt[0].id,
+                            "alternative_sim": best_alt[2],
+                        })
+                        should_decompose = False
+
+            if not should_decompose:
+                continue
 
             # Flag for decomposition by marking it as needing split
             # The umbrella_learner will pick this up and decompose it
@@ -941,11 +996,17 @@ def flag_high_rejection_leaves_for_decomposition() -> list[dict]:
 
             if cursor.rowcount > 0:
                 logger.info(
-                    "[rejection] Flagged leaf %d for decomposition: %d rejections, %.1f%% rate",
+                    "[rejection] Flagged leaf %d for decomposition: %d rejections, %.1f%% rate (no alternatives)",
                     sig_id, leaf["rejection_count"], leaf["rejection_rate"] * 100
                 )
                 flagged.append(leaf)
         # Connection context manager handles commit
+
+    if skipped_routing_issue:
+        logger.info(
+            "[rejection] Skipped %d leaves (routing issues, alternatives exist)",
+            len(skipped_routing_issue)
+        )
 
     return flagged
 
@@ -3015,13 +3076,23 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
                 collapse_result["collapsed"],
             )
 
+        # Flag high-rejection leaves for decomposition (MCTS-aware)
+        # Per brainstorm: Only decompose if no alternative leaves could handle rejected steps
+        rejection_flagged = flag_high_rejection_leaves_for_decomposition(step_db)
+        if rejection_flagged:
+            logger.info(
+                "[mcts] Flagged %d high-rejection leaves for decomposition",
+                len(rejection_flagged),
+            )
+
         # Reset merge/split state
         state.reset_merge_split()
 
         logger.info(
-            "[mcts] Batch operations complete: %d merges, %d splits flagged",
+            "[mcts] Batch operations complete: %d merges, %d splits flagged, %d rejection decomps",
             merge_split_result["merges_succeeded"],
             merge_split_result["splits_flagged"],
+            len(rejection_flagged) if rejection_flagged else 0,
         )
 
     # Run decomposition analysis to find nodes/steps needing decomposition
