@@ -333,78 +333,232 @@ class RoutingResult:
 
 
 # =============================================================================
-# MATCH SCORING - Graph Embedding + Leaf Statistics
+# ADAPTIVE SIMILARITY THRESHOLDS (Welford-based)
 # =============================================================================
 # Per CLAUDE.md: Route by what operations DO (graph_embedding), not what they SOUND LIKE.
-# High-traffic, high-success, low-variance signatures become "attractors" that
-# absorb similar operations instead of spawning duplicates.
+# Instead of magic thresholds, we learn what "same" and "similar" mean from data.
+#
+# Two distributions tracked with Welford's algorithm:
+# 1. match_sim_* - similarities when we successfully reuse a signature (dedup threshold)
+# 2. cluster_sim_* - similarities between siblings (cluster threshold)
+#
+# Thresholds computed as: mean - k * stddev (adaptive, no magic numbers)
 
-def compute_match_score(
-    query_graph_emb: np.ndarray,
-    sig_graph_emb: np.ndarray,
-    uses: int,
-    successes: int,
-    similarity_count: int = 0,
-    similarity_m2: float = 0.0,
-) -> tuple[float, float]:
-    """Compute match score combining graph similarity and leaf statistics.
+@dataclass
+class AdaptiveThresholds:
+    """Adaptive similarity thresholds learned from data."""
+    dedup_threshold: float      # Above this = same node (return existing)
+    cluster_threshold: float    # Above this = same cluster (share parent)
+    # Welford stats for dedup (match) similarities
+    match_count: int = 0
+    match_mean: float = 0.0
+    match_m2: float = 0.0
+    # Welford stats for cluster (sibling) similarities
+    cluster_count: int = 0
+    cluster_mean: float = 0.0
+    cluster_m2: float = 0.0
 
-    Proven signatures (high traffic, high success, low variance) get boosted
-    scores, making them "attractors" that consolidate similar operations.
 
-    Args:
-        query_graph_emb: Graph embedding of the incoming step
-        sig_graph_emb: Graph embedding of the candidate signature
-        uses: Total traffic to this signature
-        successes: Successful executions
-        similarity_count: Welford N (number of similarity observations)
-        similarity_m2: Welford M2 (sum of squared deviations)
+def get_adaptive_thresholds(conn) -> AdaptiveThresholds:
+    """Get adaptive thresholds from db_metadata, with cold-start defaults.
 
-    Returns:
-        Tuple of (match_score, raw_similarity)
-        - match_score: Combined score (0-1) incorporating all factors
-        - raw_similarity: Pure cosine similarity (for logging)
+    Cold-start defaults are conservative:
+    - dedup_threshold: 0.95 (very high sim = same node)
+    - cluster_threshold: 0.80 (moderately high sim = same cluster)
+
+    As data accumulates, thresholds adapt to learned distributions.
     """
     from mycelium.config import (
-        MATCH_SCORE_SIM_WEIGHT,
-        MATCH_SCORE_TRAFFIC_WEIGHT,
-        MATCH_SCORE_SUCCESS_WEIGHT,
-        MATCH_SCORE_CONSISTENCY_WEIGHT,
-        MATCH_SCORE_TRAFFIC_LOG_BASE,
+        ADAPTIVE_THRESHOLD_K,  # Number of stddevs below mean
+        COLD_START_DEDUP_THRESHOLD,
+        COLD_START_CLUSTER_THRESHOLD,
+        ADAPTIVE_MIN_SAMPLES,  # Min samples before using learned thresholds
     )
 
-    # Raw cosine similarity (operational identity)
-    raw_sim = cosine_similarity(query_graph_emb, sig_graph_emb)
+    # Read Welford stats from db_metadata
+    cursor = conn.execute(
+        "SELECT key, value FROM db_metadata WHERE key LIKE 'sim_stats_%'"
+    )
+    stats = {row[0]: json.loads(row[1]) for row in cursor}
 
-    # Traffic confidence: log scale, saturates around 100 uses
-    # log(1 + uses) / log(base) gives ~1.0 at base uses
-    traffic_factor = min(1.0, math.log(1 + uses) / math.log(MATCH_SCORE_TRAFFIC_LOG_BASE))
+    match_count = stats.get('sim_stats_match_count', {}).get('value', 0)
+    match_mean = stats.get('sim_stats_match_mean', {}).get('value', 0.0)
+    match_m2 = stats.get('sim_stats_match_m2', {}).get('value', 0.0)
 
-    # Success rate: higher = more reliable
-    success_rate = successes / uses if uses > 0 else 0.5  # Prior of 0.5 for cold start
+    cluster_count = stats.get('sim_stats_cluster_count', {}).get('value', 0)
+    cluster_mean = stats.get('sim_stats_cluster_mean', {}).get('value', 0.0)
+    cluster_m2 = stats.get('sim_stats_cluster_m2', {}).get('value', 0.0)
 
-    # Consistency: low variance = reliable, high variance = too generic
-    # variance = M2 / N, consistency = 1 / (1 + variance)
-    if similarity_count > 1:
-        variance = similarity_m2 / similarity_count
-        consistency_factor = 1.0 / (1.0 + variance)
+    # Compute adaptive thresholds if we have enough data
+    if match_count >= ADAPTIVE_MIN_SAMPLES:
+        match_stddev = math.sqrt(match_m2 / match_count) if match_count > 1 else 0.0
+        dedup_threshold = match_mean - ADAPTIVE_THRESHOLD_K * match_stddev
+        dedup_threshold = max(0.5, min(0.99, dedup_threshold))  # Clamp to reasonable range
     else:
-        consistency_factor = 0.5  # Neutral prior for cold start
+        dedup_threshold = COLD_START_DEDUP_THRESHOLD
 
-    # Combined score: weighted combination
-    # Base is similarity, boosted by traffic/success/consistency
-    score = (
-        MATCH_SCORE_SIM_WEIGHT * raw_sim +
-        MATCH_SCORE_TRAFFIC_WEIGHT * traffic_factor +
-        MATCH_SCORE_SUCCESS_WEIGHT * success_rate +
-        MATCH_SCORE_CONSISTENCY_WEIGHT * consistency_factor
+    if cluster_count >= ADAPTIVE_MIN_SAMPLES:
+        cluster_stddev = math.sqrt(cluster_m2 / cluster_count) if cluster_count > 1 else 0.0
+        cluster_threshold = cluster_mean - ADAPTIVE_THRESHOLD_K * cluster_stddev
+        cluster_threshold = max(0.3, min(0.95, cluster_threshold))  # Clamp to reasonable range
+    else:
+        cluster_threshold = COLD_START_CLUSTER_THRESHOLD
+
+    return AdaptiveThresholds(
+        dedup_threshold=dedup_threshold,
+        cluster_threshold=cluster_threshold,
+        match_count=match_count,
+        match_mean=match_mean,
+        match_m2=match_m2,
+        cluster_count=cluster_count,
+        cluster_mean=cluster_mean,
+        cluster_m2=cluster_m2,
     )
 
-    # Normalize to 0-1 range (weights should sum to 1.0)
-    # But similarity dominates - if sim is low, score should be low
-    score = score * raw_sim  # Multiply by sim to ensure low sim → low score
 
-    return score, raw_sim
+def update_similarity_stats(conn, stat_type: str, similarity: float) -> None:
+    """Update Welford stats for similarity tracking.
+
+    Args:
+        conn: Database connection
+        stat_type: 'match' (for dedup) or 'cluster' (for clustering)
+        similarity: The observed similarity value
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    prefix = f'sim_stats_{stat_type}'
+
+    # Read current stats
+    cursor = conn.execute(
+        "SELECT key, value FROM db_metadata WHERE key LIKE ?",
+        (f'{prefix}_%',)
+    )
+    stats = {row[0]: json.loads(row[1]).get('value', 0) for row in cursor}
+
+    count = stats.get(f'{prefix}_count', 0)
+    mean = stats.get(f'{prefix}_mean', 0.0)
+    m2 = stats.get(f'{prefix}_m2', 0.0)
+
+    # Welford update
+    count += 1
+    delta = similarity - mean
+    mean += delta / count
+    delta2 = similarity - mean
+    m2 += delta * delta2
+
+    # Write back
+    for key, value in [(f'{prefix}_count', count), (f'{prefix}_mean', mean), (f'{prefix}_m2', m2)]:
+        conn.execute(
+            """INSERT INTO db_metadata (key, value, updated_at)
+               VALUES (?, ?, ?)
+               ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = ?""",
+            (key, json.dumps({'value': value}), now, json.dumps({'value': value}), now)
+        )
+
+    logger.debug("[db] Updated %s stats: count=%d, mean=%.3f, stddev=%.3f",
+                 stat_type, count, mean, math.sqrt(m2/count) if count > 1 else 0.0)
+
+
+def find_global_best_match(
+    conn,
+    graph_embedding: np.ndarray,
+    exclude_umbrellas: bool = False,  # Include umbrellas to find canonical operation type
+) -> tuple[Optional["StepSignature"], float]:
+    """Find the globally best matching signature by graph_embedding similarity.
+
+    This searches ALL signatures (not just current routing branch) to find
+    the most similar one. Used for dedup check before creating new signatures.
+
+    Includes umbrellas because they represent canonical operation types.
+    If matched against an umbrella, caller should look for/create leaf under it.
+
+    Args:
+        conn: Database connection
+        graph_embedding: The query graph embedding
+        exclude_umbrellas: If False, includes umbrellas in search (default False)
+
+    Returns:
+        (best_signature, similarity) or (None, 0.0) if no match
+    """
+    # Get all signatures with graph_embeddings (including umbrellas by default)
+    umbrella_filter = "AND is_semantic_umbrella = 0" if exclude_umbrellas else ""
+    cursor = conn.execute(f"""
+        SELECT id, step_type, graph_embedding, is_semantic_umbrella, uses, successes, depth
+        FROM step_signatures
+        WHERE graph_embedding IS NOT NULL {umbrella_filter}
+    """)
+
+    best_sig = None
+    best_sim = 0.0
+
+    for row in cursor:
+        sig_id, step_type, graph_emb_json, is_umbrella, uses, successes, depth = row
+        sig_graph_emb = np.array(json.loads(graph_emb_json))
+
+        sim = cosine_similarity(graph_embedding, sig_graph_emb)
+        if sim > best_sim:
+            best_sim = sim
+            best_sig = StepSignature(
+                id=sig_id,
+                step_type=step_type,
+                graph_embedding=json.loads(graph_emb_json),
+                is_semantic_umbrella=bool(is_umbrella),
+                uses=uses,
+                successes=successes,
+                depth=depth,
+            )
+
+    return best_sig, best_sim
+
+
+def find_best_child_match(
+    conn,
+    umbrella_id: int,
+    graph_embedding: np.ndarray,
+) -> tuple[Optional["StepSignature"], float]:
+    """Find the best matching LEAF child of an umbrella by graph_embedding similarity.
+
+    When we match an umbrella above dedup threshold, we should check if there's
+    already a leaf under it with matching graph_embedding before creating a new one.
+
+    Args:
+        conn: Database connection
+        umbrella_id: The umbrella's signature ID
+        graph_embedding: The query graph embedding
+
+    Returns:
+        (best_leaf, similarity) or (None, 0.0) if no matching leaf found
+    """
+    # Get all leaf children of this umbrella with graph_embeddings
+    cursor = conn.execute("""
+        SELECT s.id, s.step_type, s.graph_embedding, s.uses, s.successes, s.depth
+        FROM step_signatures s
+        JOIN signature_relationships r ON s.id = r.child_id
+        WHERE r.parent_id = ?
+          AND s.is_semantic_umbrella = 0
+          AND s.graph_embedding IS NOT NULL
+    """, (umbrella_id,))
+
+    best_sig = None
+    best_sim = 0.0
+
+    for row in cursor:
+        sig_id, step_type, graph_emb_json, uses, successes, depth = row
+        sig_graph_emb = np.array(json.loads(graph_emb_json))
+
+        sim = cosine_similarity(graph_embedding, sig_graph_emb)
+        if sim > best_sim:
+            best_sim = sim
+            best_sig = StepSignature(
+                id=sig_id,
+                step_type=step_type,
+                graph_embedding=json.loads(graph_emb_json),
+                is_semantic_umbrella=False,
+                uses=uses,
+                successes=successes,
+                depth=depth,
+            )
+
+    return best_sig, best_sim
 
 
 class StepSignatureDB:
@@ -1138,9 +1292,10 @@ class StepSignatureDB:
         parent_id: int = None,
         embedder=None,
     ) -> StepSignature:
-        """Force create a new signature (no matching, always creates new).
+        """Create a new signature with global dedup check.
 
-        Use this when you need a distinct child signature even if similar ones exist.
+        Before creating, checks if a virtually identical signature already exists
+        (by graph_embedding similarity). If so, returns existing to prevent duplicates.
 
         Args:
             step_text: The step description text
@@ -1153,25 +1308,108 @@ class StepSignatureDB:
             embedder: Optional sync embedder for computing graph_embedding
 
         Returns:
-            The newly created StepSignature
+            The newly created or matched StepSignature
         """
         from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
 
         with self._connection() as conn:
             conn.execute("BEGIN IMMEDIATE")
             try:
+                # GLOBAL DEDUP CHECK: Compute graph_embedding first, then check for duplicates
+                # CRITICAL: Use embed_computation_graph_sync for consistency with stored embeddings
+                step_graph_emb = None
+                if dsl_hint:
+                    op_graph = self._dsl_hint_to_graph(dsl_hint)
+                    if op_graph:
+                        from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
+                        from mycelium.embedder import Embedder
+                        embedder_instance = Embedder.get_instance()
+                        step_graph_emb_list = embed_computation_graph_sync(embedder_instance, op_graph)
+                        if step_graph_emb_list:
+                            step_graph_emb = np.array(step_graph_emb_list)
+
+                if step_graph_emb is not None:
+                    global_match, global_sim = find_global_best_match(conn, step_graph_emb)
+                    thresholds = get_adaptive_thresholds(conn)
+
+                    if global_match is not None and global_sim >= thresholds.dedup_threshold:
+                        if not global_match.is_semantic_umbrella:
+                            # DEDUP: Found identical LEAF signature, return it
+                            logger.info(
+                                "[db] DEDUP (create): Found identical leaf (sim=%.3f >= %.3f): '%s' → sig %d (%s)",
+                                global_sim, thresholds.dedup_threshold, step_text[:40], global_match.id, global_match.step_type
+                            )
+                            update_similarity_stats(conn, 'match', global_sim)
+                            self._update_centroid_atomic(conn, global_match.id, embedding, update_last_used=True)
+                            conn.commit()
+                            return global_match
+                        else:
+                            # Matched an UMBRELLA - search its children for matching leaf first
+                            child_match, child_sim = find_best_child_match(
+                                conn, global_match.id, step_graph_emb
+                            )
+                            if child_match is not None and child_sim >= thresholds.dedup_threshold:
+                                # Found matching leaf under umbrella - DEDUP
+                                logger.info(
+                                    "[db] DEDUP (create): Found matching leaf under umbrella (sim=%.3f >= %.3f): '%s' → sig %d (%s)",
+                                    child_sim, thresholds.dedup_threshold, step_text[:40], child_match.id, child_match.step_type
+                                )
+                                update_similarity_stats(conn, 'match', child_sim)
+                                self._update_centroid_atomic(conn, child_match.id, embedding, update_last_used=True)
+                                conn.commit()
+                                return child_match
+                            else:
+                                # No matching leaf found - create new leaf under umbrella
+                                parent_id = global_match.id
+                                logger.info(
+                                    "[db] CLUSTER (create): No matching leaf in umbrella children (best=%.3f), creating under sig %d (%s)",
+                                    child_sim, global_match.id, global_match.step_type
+                                )
+                                update_similarity_stats(conn, 'cluster', global_sim)
+
+                    elif global_match is not None and global_sim >= thresholds.cluster_threshold:
+                        if global_match.is_semantic_umbrella:
+                            # Matched an UMBRELLA - use it as parent
+                            parent_id = global_match.id
+                            logger.info(
+                                "[db] CLUSTER (create): Using umbrella as parent (sim=%.3f >= %.3f): sig %d (%s)",
+                                global_sim, thresholds.cluster_threshold, global_match.id, global_match.step_type
+                            )
+                        else:
+                            # Matched a LEAF - use same parent as the leaf
+                            cursor = conn.execute(
+                                "SELECT parent_id FROM signature_relationships WHERE child_id = ?",
+                                (global_match.id,)
+                            )
+                            row = cursor.fetchone()
+                            if row:
+                                parent_id = row[0]
+                                logger.info(
+                                    "[db] CLUSTER (create): Clustering with leaf (sim=%.3f >= %.3f), under parent %s",
+                                    global_sim, thresholds.cluster_threshold, parent_id
+                                )
+                        update_similarity_stats(conn, 'cluster', global_sim)
+
+                # Create new signature
                 sig = self._create_signature_atomic(
                     conn, step_text, embedding, parent_problem, origin_depth,
                     extracted_values=extracted_values, parent_id=parent_id, dsl_hint=dsl_hint
                 )
+                # CRITICAL: Store graph_embedding we already computed for future dedup
+                if step_graph_emb is not None:
+                    conn.execute(
+                        "UPDATE step_signatures SET graph_embedding = ? WHERE id = ?",
+                        (json.dumps(step_graph_emb.tolist()), sig.id)
+                    )
+                    logger.debug("[db] Stored graph_embedding for new sig %d", sig.id)
                 conn.commit()
                 logger.info(
-                    "[db] Force-created signature: step='%s' type='%s' depth=%d",
+                    "[db] Created signature: step='%s' type='%s' depth=%d",
                     step_text[:40], sig.step_type, origin_depth
                 )
 
-                # Compute graph embedding for new signature (per CLAUDE.md: route by what ops DO)
-                if sig and sig.computation_graph and embedder is not None:
+                # Fallback: Compute graph embedding from signature if we didn't have step_graph_emb
+                if step_graph_emb is None and sig and sig.computation_graph and embedder is not None:
                     try:
                         graph_emb = embed_computation_graph_sync(embedder, sig.computation_graph)
                         if graph_emb:
@@ -1246,31 +1484,11 @@ class StepSignatureDB:
                     conn, min_similarity, dsl_hint=dsl_hint, exclude_ids=exclude_ids
                 )
 
-                # Compute match_score using graph_embedding + leaf stats
-                # Per CLAUDE.md: proven signatures (high traffic, success, low variance) are "attractors"
-                from mycelium.config import ALWAYS_ROUTE_TO_BEST, MATCH_SCORE_THRESHOLD
-                match_score = 0.0
-                if best_match is not None and best_match.graph_embedding is not None and dsl_hint:
-                    # Compute step's graph_embedding from dsl_hint
-                    op_graph = self._dsl_hint_to_graph(dsl_hint)
-                    if op_graph:
-                        from mycelium.embedding_cache import cached_embed
-                        step_graph_emb = cached_embed(op_graph)
-                        if step_graph_emb is not None:
-                            sig_graph_emb = np.array(best_match.graph_embedding)
-                            match_score, raw_sim = compute_match_score(
-                                step_graph_emb, sig_graph_emb,
-                                best_match.uses, best_match.successes,
-                                best_match.similarity_count or 0,
-                                best_match.similarity_m2 or 0.0,
-                            )
-                            logger.debug(
-                                "[db] Match score for sig %d: %.3f (raw_sim=%.3f, uses=%d, success_rate=%.2f)",
-                                best_match.id, match_score, raw_sim, best_match.uses, best_match.success_rate
-                            )
-
-                # Accept match if score exceeds threshold (or ALWAYS_ROUTE_TO_BEST mode)
-                similarity_ok = match_score >= MATCH_SCORE_THRESHOLD if not ALWAYS_ROUTE_TO_BEST else True
+                # Accept match from hierarchical routing
+                # Simplified: no match_score, just use routing result
+                # Global dedup check happens later if no routing match
+                from mycelium.config import ALWAYS_ROUTE_TO_BEST
+                similarity_ok = best_sim >= min_similarity if not ALWAYS_ROUTE_TO_BEST else True
 
                 if best_match is not None and similarity_ok:
                     # Check if matched signature's step_type is compatible with dsl_hint
@@ -1307,9 +1525,12 @@ class StepSignatureDB:
                             try:
                                 op_graph = self._dsl_hint_to_graph(dsl_hint)
                                 if op_graph:
-                                    from mycelium.embedding_cache import cached_embed
-                                    step_graph_emb = cached_embed(op_graph)  # Use singleton embedder
-                                    if step_graph_emb is not None:
+                                    from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
+                                    from mycelium.embedder import Embedder
+                                    embedder_inst = Embedder.get_instance()
+                                    step_graph_emb_list = embed_computation_graph_sync(embedder_inst, op_graph)
+                                    if step_graph_emb_list:
+                                        step_graph_emb = np.array(step_graph_emb_list)
                                         leaf_graph_emb = np.array(best_match.graph_embedding)
                                         rejection_sim = cosine_similarity(step_graph_emb, leaf_graph_emb)
                                         logger.debug(
@@ -1416,6 +1637,21 @@ class StepSignatureDB:
                         conn, best_match.id, embedding, update_last_used=True
                     )
 
+                    # Update match similarity stats (Welford) for adaptive thresholds
+                    # Use graph_embedding similarity if available for more accurate tracking
+                    if dsl_hint and best_match.graph_embedding is not None:
+                        op_graph = self._dsl_hint_to_graph(dsl_hint)
+                        if op_graph:
+                            from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
+                            from mycelium.embedder import Embedder
+                            embedder_inst = Embedder.get_instance()
+                            step_graph_emb_list = embed_computation_graph_sync(embedder_inst, op_graph)
+                            if step_graph_emb_list:
+                                step_graph_emb = np.array(step_graph_emb_list)
+                                sig_graph_emb = np.array(best_match.graph_embedding)
+                                graph_sim = cosine_similarity(step_graph_emb, sig_graph_emb)
+                                update_similarity_stats(conn, 'match', graph_sim)
+
                     conn.commit()
                     logger.debug(
                         "[db] Matched signature (hierarchical): step='%s' sig='%s' sim=%.3f count=%d",
@@ -1423,24 +1659,143 @@ class StepSignatureDB:
                     )
                     return best_match, False
 
-                # No match found - create new child
-                # Use explicit parent_id if provided (e.g., from decomposition), else use routing result
-                actual_parent_id = parent_id if parent_id is not None else (parent_for_new.id if parent_for_new else None)
+                # No match found in routing - apply global dedup check
+                # This prevents creating duplicate signatures with near-identical graph_embeddings
 
-                # NOTE: Pre-execution complexity detection was removed.
-                # Splitting now happens via divergence detection AFTER execution.
-                # See step_signatures/divergence.py for the new natural splitting approach.
+                # Compute graph_embedding for this step
+                # CRITICAL: Use embed_computation_graph_sync for consistency with stored embeddings
+                step_graph_emb = None
+                if dsl_hint:
+                    op_graph = self._dsl_hint_to_graph(dsl_hint)
+                    if op_graph:
+                        from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
+                        from mycelium.embedder import Embedder
+                        embedder = Embedder.get_instance()
+                        step_graph_emb_list = embed_computation_graph_sync(embedder, op_graph)
+                        if step_graph_emb_list:
+                            step_graph_emb = np.array(step_graph_emb_list)
+
+                # Global dedup: search ALL signatures for high-similarity match
+                if step_graph_emb is not None:
+                    global_match, global_sim = find_global_best_match(conn, step_graph_emb)
+                    thresholds = get_adaptive_thresholds(conn)
+
+                    if global_match is not None and global_sim >= thresholds.dedup_threshold:
+                        if not global_match.is_semantic_umbrella:
+                            # DEDUP: Found identical LEAF signature, return it
+                            logger.info(
+                                "[db] DEDUP: Found identical leaf (sim=%.3f >= %.3f): '%s' → sig %d (%s)",
+                                global_sim, thresholds.dedup_threshold, step_text[:40], global_match.id, global_match.step_type
+                            )
+                            update_similarity_stats(conn, 'match', global_sim)
+                            self._update_centroid_atomic(conn, global_match.id, embedding, update_last_used=True)
+                            conn.commit()
+                            return global_match, False
+                        else:
+                            # Matched an UMBRELLA - search its children for matching leaf first
+                            child_match, child_sim = find_best_child_match(
+                                conn, global_match.id, step_graph_emb
+                            )
+                            if child_match is not None and child_sim >= thresholds.dedup_threshold:
+                                # Found matching leaf under umbrella - DEDUP
+                                logger.info(
+                                    "[db] DEDUP: Found matching leaf under umbrella (sim=%.3f >= %.3f): '%s' → sig %d (%s)",
+                                    child_sim, thresholds.dedup_threshold, step_text[:40], child_match.id, child_match.step_type
+                                )
+                                update_similarity_stats(conn, 'match', child_sim)
+                                self._update_centroid_atomic(conn, child_match.id, embedding, update_last_used=True)
+                                conn.commit()
+                                return child_match, False
+                            else:
+                                # No matching leaf found - create new leaf under umbrella
+                                cluster_parent_id = global_match.id
+                                logger.info(
+                                    "[db] CLUSTER: No matching leaf in umbrella children (best=%.3f), creating under sig %d (%s)",
+                                    child_sim, global_match.id, global_match.step_type
+                                )
+                                update_similarity_stats(conn, 'cluster', global_sim)
+
+                                sig = self._create_signature_atomic(
+                                    conn, step_text, embedding, parent_problem, origin_depth,
+                                    extracted_values=extracted_values, dsl_hint=dsl_hint,
+                                    parent_id=cluster_parent_id
+                                )
+                                # CRITICAL: Store graph_embedding for future dedup
+                                if step_graph_emb is not None:
+                                    conn.execute(
+                                        "UPDATE step_signatures SET graph_embedding = ? WHERE id = ?",
+                                        (json.dumps(step_graph_emb.tolist()), sig.id)
+                                    )
+                                    logger.debug("[db] Stored graph_embedding for new sig %d", sig.id)
+                                conn.commit()
+                                logger.info(
+                                    "[db] Created CLUSTERED signature (child of umbrella %s): step='%s' type='%s'",
+                                    global_match.step_type, step_text[:40], sig.step_type
+                                )
+                                return sig, True
+
+                    elif global_match is not None and global_sim >= thresholds.cluster_threshold:
+                        # CLUSTER: Similar signature exists
+                        if global_match.is_semantic_umbrella:
+                            # Matched an UMBRELLA - use it as parent
+                            cluster_parent_id = global_match.id
+                            logger.info(
+                                "[db] CLUSTER: Using umbrella as parent (sim=%.3f >= %.3f): sig %d (%s)",
+                                global_sim, thresholds.cluster_threshold, global_match.id, global_match.step_type
+                            )
+                        else:
+                            # Matched a LEAF - use same parent
+                            cursor = conn.execute(
+                                "SELECT parent_id FROM signature_relationships WHERE child_id = ?",
+                                (global_match.id,)
+                            )
+                            row = cursor.fetchone()
+                            cluster_parent_id = row[0] if row else None
+                            logger.info(
+                                "[db] CLUSTER: Similar leaf found (sim=%.3f >= %.3f), clustering under parent %s",
+                                global_sim, thresholds.cluster_threshold, cluster_parent_id
+                            )
+
+                        update_similarity_stats(conn, 'cluster', global_sim)
+
+                        sig = self._create_signature_atomic(
+                            conn, step_text, embedding, parent_problem, origin_depth,
+                            extracted_values=extracted_values, dsl_hint=dsl_hint,
+                            parent_id=cluster_parent_id
+                        )
+                        # CRITICAL: Store graph_embedding for future dedup
+                        if step_graph_emb is not None:
+                            conn.execute(
+                                "UPDATE step_signatures SET graph_embedding = ? WHERE id = ?",
+                                (json.dumps(step_graph_emb.tolist()), sig.id)
+                            )
+                            logger.debug("[db] Stored graph_embedding for new sig %d", sig.id)
+                        conn.commit()
+                        logger.info(
+                            "[db] Created CLUSTERED signature (sibling of %s): step='%s' type='%s'",
+                            global_match.step_type, step_text[:40], sig.step_type
+                        )
+                        return sig, True
+
+                # No global match above thresholds - create new signature under routing parent
+                actual_parent_id = parent_id if parent_id is not None else (parent_for_new.id if parent_for_new else None)
 
                 sig = self._create_signature_atomic(
                     conn, step_text, embedding, parent_problem, origin_depth,
                     extracted_values=extracted_values, dsl_hint=dsl_hint,
                     parent_id=actual_parent_id
                 )
-
+                # CRITICAL: Store graph_embedding for future dedup
+                if step_graph_emb is not None:
+                    conn.execute(
+                        "UPDATE step_signatures SET graph_embedding = ? WHERE id = ?",
+                        (json.dumps(step_graph_emb.tolist()), sig.id)
+                    )
+                    logger.debug("[db] Stored graph_embedding for new sig %d", sig.id)
                 conn.commit()
                 parent_desc = f"id={parent_id}" if parent_id is not None else (parent_for_new.step_type if parent_for_new else "root")
                 logger.info(
-                    "[db] Created new signature (child of %s): step='%s' type='%s'",
+                    "[db] Created NEW signature (child of %s): step='%s' type='%s'",
                     parent_desc, step_text[:40], sig.step_type
                 )
                 return sig, True
@@ -1507,13 +1862,18 @@ class StepSignatureDB:
 
         # Compute step's graph_embedding from dsl_hint for operational routing
         # Per CLAUDE.md: route by what operations DO, not what they SOUND LIKE
+        # CRITICAL: Use embed_computation_graph_sync for consistency with stored embeddings
         step_graph_embedding = None
         if dsl_hint:
             op_graph = self._dsl_hint_to_graph(dsl_hint)
             if op_graph:
-                from mycelium.embedding_cache import cached_embed
-                step_graph_embedding = cached_embed(op_graph)
-                logger.debug("[db] Computed step_graph_embedding from dsl_hint=%s", dsl_hint)
+                from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
+                from mycelium.embedder import Embedder
+                embedder_inst = Embedder.get_instance()
+                step_graph_emb_list = embed_computation_graph_sync(embedder_inst, op_graph)
+                if step_graph_emb_list:
+                    step_graph_embedding = np.array(step_graph_emb_list)
+                    logger.debug("[db] Computed step_graph_embedding from dsl_hint=%s", dsl_hint)
 
         # Start at root
         root_row = conn.execute(
@@ -3855,19 +4215,21 @@ class StepSignatureDB:
         hint = dsl_hint.strip().lower()
 
         # Map dsl_hint to canonical graph representation
+        # IMPORTANT: Must match the format used in signature computation_graph
+        # Signatures use "ADD(param_0, param_1)" not "ADD(a, b)"
         HINT_TO_GRAPH = {
-            "+": "ADD(a, b)",
-            "add": "ADD(a, b)",
-            "sum": "ADD(a, b)",
-            "-": "SUB(a, b)",
-            "subtract": "SUB(a, b)",
-            "difference": "SUB(a, b)",
-            "*": "MUL(a, b)",
-            "multiply": "MUL(a, b)",
-            "product": "MUL(a, b)",
-            "/": "DIV(a, b)",
-            "divide": "DIV(a, b)",
-            "quotient": "DIV(a, b)",
+            "+": "ADD(param_0, param_1)",
+            "add": "ADD(param_0, param_1)",
+            "sum": "ADD(param_0, param_1)",
+            "-": "SUB(param_0, param_1)",
+            "subtract": "SUB(param_0, param_1)",
+            "difference": "SUB(param_0, param_1)",
+            "*": "MUL(param_0, param_1)",
+            "multiply": "MUL(param_0, param_1)",
+            "product": "MUL(param_0, param_1)",
+            "/": "DIV(param_0, param_1)",
+            "divide": "DIV(param_0, param_1)",
+            "quotient": "DIV(param_0, param_1)",
         }
 
         return HINT_TO_GRAPH.get(hint)
