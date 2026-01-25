@@ -1188,15 +1188,16 @@ def log_thread_step(
     conn = get_db()
 
     # Always insert into summaries table (minimal data for credit propagation)
+    # Per mycelium-i601: Include similarity_score for adaptive rejection threshold learning
     cursor = conn.execute(
         """
         INSERT INTO mcts_step_summaries (
             thread_id, dag_id, dag_step_id, node_id,
-            amplitude, step_success
+            amplitude, step_success, similarity_score
         )
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        (thread_id, dag_id, dag_step_id, node_id, amplitude, step_success_int),
+        (thread_id, dag_id, dag_step_id, node_id, amplitude, step_success_int, similarity_score),
     )
     summary_id = cursor.lastrowid
 
@@ -1700,16 +1701,16 @@ def propagate_success_similarity(dag_id: str, step_db) -> dict:
     conn = get_db()
 
     # Get (node_id, similarity_score) pairs from winning threads
-    # Use mcts_thread_steps which has the detailed similarity_score column
+    # Use mcts_step_summaries (always populated) instead of mcts_thread_steps (failures only)
     cursor = conn.execute(
         """
-        SELECT ts.node_id, ts.similarity_score
-        FROM mcts_thread_steps ts
-        JOIN mcts_threads t ON ts.thread_id = t.thread_id
-        WHERE ts.dag_id = ?
+        SELECT ss.node_id, ss.similarity_score
+        FROM mcts_step_summaries ss
+        JOIN mcts_threads t ON ss.thread_id = t.thread_id
+        WHERE ss.dag_id = ?
           AND t.success = 1
-          AND ts.similarity_score IS NOT NULL
-          AND ts.node_id IS NOT NULL
+          AND ss.similarity_score IS NOT NULL
+          AND ss.node_id IS NOT NULL
         """,
         (dag_id,)
     )

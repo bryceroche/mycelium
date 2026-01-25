@@ -337,7 +337,8 @@ CREATE TABLE IF NOT EXISTS mcts_step_summaries (
     -- Wave function amplitude (minimal data for credit propagation)
     amplitude REAL DEFAULT 1.0,           -- Prior confidence
     amplitude_post REAL DEFAULT NULL,     -- Updated after grading
-    step_success INTEGER DEFAULT NULL     -- 1=success, 0=failure, NULL=unknown
+    step_success INTEGER DEFAULT NULL,    -- 1=success, 0=failure, NULL=unknown
+    similarity_score REAL DEFAULT NULL    -- Cosine similarity used for routing (for adaptive rejection)
 );
 CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_dag ON mcts_step_summaries(dag_id);
 CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_thread ON mcts_step_summaries(thread_id);
@@ -601,6 +602,18 @@ def migrate_db(conn) -> None:
     except Exception as e:
         # Table might not exist yet (fresh DB)
         logger.debug("[schema] mcts_dag_steps migration skipped: %s", e)
+
+    # Migrate mcts_step_summaries table (add similarity_score for adaptive rejection per mycelium-i601)
+    try:
+        cursor = conn.execute("PRAGMA table_info(mcts_step_summaries)")
+        summary_cols = {row[1] for row in cursor.fetchall()}
+        if "similarity_score" not in summary_cols:
+            conn.execute("ALTER TABLE mcts_step_summaries ADD COLUMN similarity_score REAL DEFAULT NULL")
+            conn.commit()
+            logger.info("[schema] Added similarity_score column to mcts_step_summaries")
+    except Exception as e:
+        # Table might not exist yet (fresh DB)
+        logger.debug("[schema] mcts_step_summaries migration skipped: %s", e)
 
     # Add new indexes (safe to run multiple times)
     index_migrations = [
