@@ -1258,7 +1258,7 @@ class Solver:
                         record_leaf_rejection,
                     )
                     if not best_sig.is_semantic_umbrella and best_sim < REJECTION_SIM_THRESHOLD:
-                        # Leaf rejects this step - similarity too low
+                        # Leaf rejects this step - similarity too low, queued for decomposition
                         record_leaf_rejection(
                             signature_id=best_sig.id,
                             step_text=step.task,
@@ -1266,10 +1266,21 @@ class Solver:
                             problem_context=problem[:500] if problem else None,
                         )
                         logger.info(
-                            "[solver] GRAPH-FIRST REJECTED: '%s' by sig %d (%s) sim=%.3f < %.2f",
+                            "[solver] GRAPH-FIRST REJECTED: '%s' by sig %d (%s) sim=%.3f < %.2f - queued for decomposition",
                             step.task[:40], best_sig.id, best_sig.step_type, best_sim, REJECTION_SIM_THRESHOLD
                         )
-                        # Fall through to text routing to create new signature
+                        # Step rejected and queued - return failed result
+                        return StepResult(
+                            step_id=step.id,
+                            task=step.task,
+                            result="[rejected - queued for decomposition]",
+                            success=False,
+                            signature_id=best_sig.id,
+                            signature_type=best_sig.step_type,
+                            is_new_signature=False,
+                            was_injected=False,
+                            elapsed_ms=(time.time() - start_time) * 1000,
+                        )
                     else:
                         signature = best_sig
                         is_new = False
@@ -1294,6 +1305,24 @@ class Solver:
                 extracted_values=getattr(step, 'extracted_values', None),
                 dsl_hint=getattr(step, 'dsl_hint', None),  # LLM → signature communication
                 embedder=self.embedder,  # For cold start graph embedding
+            )
+
+        # Handle rejection from text routing (signature is None means step was rejected)
+        if signature is None:
+            logger.info(
+                "[solver] Step '%s' rejected by text routing - queued for decomposition",
+                step.task[:40]
+            )
+            return StepResult(
+                step_id=step.id,
+                task=step.task,
+                result="[rejected - queued for decomposition]",
+                success=False,
+                signature_id=None,
+                signature_type=None,
+                is_new_signature=False,
+                was_injected=False,
+                elapsed_ms=(time.time() - start_time) * 1000,
             )
 
         logger.debug(

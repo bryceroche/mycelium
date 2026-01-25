@@ -1631,8 +1631,9 @@ class StepSignatureDB:
                                     best_match.step_type, rejection_sim, REJECTION_SIM_THRESHOLD,
                                     rejection_count, step_text[:40]
                                 )
-                                # Fall through to create new signature
-                                best_match = None
+                                # Step queued for decomposition - don't create new signature
+                                conn.commit()
+                                return None, False
 
                         # Check 2: Multi-part step rejection (needs decomposition)
                         # Leaves only handle atomic operations - detect via embedding similarity
