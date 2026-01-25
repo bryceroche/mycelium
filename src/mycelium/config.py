@@ -204,9 +204,8 @@ PARENT_CREDIT_DECAY = 0.5  # Credit multiplier per depth (0.5^1=0.5, 0.5^2=0.25,
 PARENT_CREDIT_MAX_DEPTH = 3  # Max depth to propagate (per CLAUDE.md: "default 3 levels")
 PARENT_CREDIT_MIN = 0.1  # Minimum credit to apply (filter noise)
 
-# Centroid propagation (batch update parent centroids)
-CENTROID_PROPAGATION_MAX_DEPTH = 3  # Max levels to propagate centroid changes (perf optimization)
-CENTROID_PROPAGATION_BATCH_SIZE = 5  # Accumulate N matches before propagating (perf vs freshness tradeoff)
+# Graph centroid propagation (batch update parent graph_embeddings)
+CENTROID_PROPAGATION_MAX_DEPTH = 3  # Max levels to propagate graph_centroid changes (perf optimization)
 
 # Centroid drift bounds (reject updates that would move centroid too far)
 # This prevents a signature from drifting outside its semantic confidence bounds.

@@ -2292,37 +2292,11 @@ class StepSignatureDB:
         new_embedding: np.ndarray,
         update_last_used: bool = False,
     ) -> Optional[int]:
-        """NO-OP for centroid: Text centroid updates removed in favor of graph embeddings.
+        """Update text centroid with running average (local only, no propagation).
 
-        Only updates last_used_at if requested. Centroid updates are skipped.
-        Routing now uses graph_embedding (see propagate_graph_centroid_to_parents).
-
-        Args:
-            conn: Database connection (within transaction)
-            signature_id: ID of the signature
-            new_embedding: Unused (kept for API compatibility)
-            update_last_used: If True, update last_used_at timestamp
-
-        Returns:
-            1 (for API compatibility with callers expecting a count)
-        """
-        if update_last_used:
-            now = datetime.now(timezone.utc).isoformat()
-            conn.execute(
-                "UPDATE step_signatures SET last_used_at = ? WHERE id = ?",
-                (now, signature_id),
-            )
-            invalidate_signature_cache(signature_id)
-        return 1  # Return count for API compatibility
-
-    def _update_centroid_atomic_legacy(
-        self,
-        conn,
-        signature_id: int,
-        new_embedding: np.ndarray,
-        update_last_used: bool = False,
-    ) -> Optional[int]:
-        """LEGACY: Text centroid update (kept for reference, not used).
+        Routing uses graph_embedding (see propagate_graph_centroid_to_parents).
+        This updates the local centroid for local similarity but does NOT
+        propagate to parent umbrellas.
 
         Formula: new_sum = old_sum + new_embedding
                  new_count = old_count + 1

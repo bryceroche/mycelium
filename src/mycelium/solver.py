@@ -4318,10 +4318,6 @@ Rules:
         # Clear the flagged nodes list after processing
         self._postmortem_flagged_nodes = []
 
-        # Flush any batched centroid propagations after problem is graded
-        # This ensures parent umbrellas have accurate centroids for next problem
-        self.step_db.flush_pending_propagations()
-
         return candidates
 
     async def maybe_run_dsl_regeneration(self, client) -> dict:
