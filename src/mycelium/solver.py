@@ -78,8 +78,7 @@ from mycelium.data_layer.mcts import (
     create_thread,
     complete_thread,
     log_thread_step,
-    run_postmortem_with_interference,
-    run_diagnostic_postmortem,
+    run_postmortem,  # Single pathway for all post-mortem analysis
     store_dag_step_embedding,
 )
 
@@ -4187,9 +4186,16 @@ Rules:
 
         # Run post-mortem AFTER threads are graded (so we have success values)
         # Per CLAUDE.md: "High confidence + failure = strong negative signal"
+        # Single call to run_postmortem() handles both interference and diagnostics
         if self._current_dag_id:
             try:
-                postmortem_stats = run_postmortem_with_interference(self._current_dag_id, self.step_db)
+                postmortem_stats = run_postmortem(
+                    self._current_dag_id,
+                    step_db=self.step_db,
+                    step_embeddings=getattr(self, '_step_embeddings', None),
+                    include_interference=True,
+                    include_diagnostics=True,
+                )
                 if postmortem_stats.get("high_conf_wrong", 0) > 0:
                     logger.warning(
                         "[solver] Post-mortem: %d high-confidence wrong in DAG %s",
@@ -4214,7 +4220,6 @@ Rules:
                 nodes_needing = postmortem_stats.get("nodes_needing_decomposition", [])
                 steps_needing = postmortem_stats.get("steps_needing_decomposition", [])
                 # Store nodes flagged by interference for candidate list building
-                # These already have operational_failures > 0 from record_interference_outcome
                 self._postmortem_flagged_nodes = postmortem_stats.get("nodes_flagged_split", [])
                 if nodes_needing:
                     logger.info(
@@ -4232,46 +4237,34 @@ Rules:
                         len(self._postmortem_flagged_nodes), self._postmortem_flagged_nodes
                     )
 
-                # Run diagnostic post-mortem with smooth functions (accuracy-based)
-                # This complements the existing analysis with continuous scoring
-                try:
-                    diagnostic_stats = run_diagnostic_postmortem(
-                        dag_id=self._current_dag_id,
-                        step_db=self.step_db,
-                        step_embeddings=getattr(self, '_step_embeddings', None),
+                # Handle diagnostic results (included in single postmortem call)
+                diag_steps = postmortem_stats.get("steps_to_decompose", [])
+                diag_sigs = postmortem_stats.get("signatures_to_decompose", [])
+                routing_misses = postmortem_stats.get("routing_misses", [])
+
+                if diag_steps or diag_sigs or routing_misses:
+                    logger.info(
+                        "[solver] Diagnostic post-mortem: threshold=%.1f, "
+                        "steps_to_decompose=%d, sigs_to_decompose=%d, routing_misses=%d",
+                        postmortem_stats.get("diagnostic_failure_threshold", 0),
+                        len(diag_steps),
+                        len(diag_sigs),
+                        len(routing_misses),
                     )
-                    if not diagnostic_stats.get("skipped"):
-                        diag_steps = diagnostic_stats.get("steps_to_decompose", [])
-                        diag_sigs = diagnostic_stats.get("signatures_to_decompose", [])
-                        routing_misses = diagnostic_stats.get("routing_misses", [])
 
-                        if diag_steps or diag_sigs or routing_misses:
-                            logger.info(
-                                "[solver] Diagnostic post-mortem: threshold=%.1f, "
-                                "steps_to_decompose=%d, sigs_to_decompose=%d, routing_misses=%d",
-                                diagnostic_stats.get("failure_threshold", 0),
-                                len(diag_steps),
-                                len(diag_sigs),
-                                len(routing_misses),
-                            )
+                    # === ACT ON DECOMPOSITION DECISIONS ===
 
-                        # === ACT ON DECOMPOSITION DECISIONS ===
+                    # 1. Steps to decompose: Mark step patterns for future decomposition
+                    for dag_step_id in diag_steps:
+                        self._mark_step_for_decomposition(dag_step_id)
 
-                        # 1. Steps to decompose: Mark step patterns for future decomposition
-                        # When similar steps come in, we'll decompose them proactively
-                        for dag_step_id in diag_steps:
-                            self._mark_step_for_decomposition(dag_step_id)
+                    # 2. Signatures to decompose: Promote to umbrella or flag for rewrite
+                    for sig_id in diag_sigs:
+                        self._trigger_signature_decomposition(sig_id)
 
-                        # 2. Signatures to decompose: Promote to umbrella or flag for rewrite
-                        for sig_id in diag_sigs:
-                            self._trigger_signature_decomposition(sig_id)
-
-                        # 3. Routing misses: Record bad (step, sig) pairs for routing avoidance
-                        for dag_step_id, sig_id in routing_misses:
-                            self._record_routing_miss(dag_step_id, sig_id)
-
-                except Exception as e:
-                    logger.debug("[solver] Diagnostic post-mortem skipped: %s", e)
+                    # 3. Routing misses: Record bad (step, sig) pairs for routing avoidance
+                    for dag_step_id, sig_id in routing_misses:
+                        self._record_routing_miss(dag_step_id, sig_id)
 
             except Exception as e:
                 logger.error("[solver] Postmortem failed: %s", e)
