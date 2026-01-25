@@ -3710,7 +3710,7 @@ Rules:
             logger.info("[reactive] Re-solving with forced exploration (spawning multiple threads)")
             self._force_exploration = True
             try:
-                explore_result = await self.solve(result.problem, difficulty=difficulty)
+                explore_result = await self.solve(result.problem, ground_truth=ground_truth)
                 # Check if any thread found the correct answer
                 if explore_result.answer and self._normalize_answer(explore_result.answer) == self._normalize_answer(ground_truth):
                     logger.info("[reactive] Full re-solve found winning path!")
