@@ -10,7 +10,6 @@ The model is loaded lazily on first use.
 
 import logging
 import os
-from functools import lru_cache
 from typing import Optional
 
 import numpy as np
@@ -227,22 +226,3 @@ def get_embeddings_batch(texts: list[str], model_name: str = EMBEDDING_MODEL) ->
     from mycelium.embedding_cache import cached_embed_batch
     embedder = Embedder.get_instance(model_name)
     return cached_embed_batch(texts, embedder)
-
-
-# Legacy function for backward compatibility
-@lru_cache(maxsize=1000)
-def embed_text(text: str, model_name: str = EMBEDDING_MODEL) -> tuple[float, ...]:
-    """Embed text with simple LRU caching (legacy).
-
-    Prefer get_embedding() for better caching. This exists for
-    backward compatibility.
-
-    Args:
-        text: Text to embed
-        model_name: Model to use for embedding
-
-    Returns:
-        Tuple of floats (embedding vector).
-    """
-    embedder = Embedder.get_instance(model_name)
-    return tuple(embedder.embed(text).tolist())
