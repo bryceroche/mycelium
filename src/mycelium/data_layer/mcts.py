@@ -723,7 +723,7 @@ def get_pending_queue_ids() -> list[int]:
 
 
 # Rejection thresholds (per CLAUDE.md: leaves define their own boundaries)
-REJECTION_SIM_THRESHOLD = 0.85  # Below this similarity, leaf rejects the step
+REJECTION_SIM_THRESHOLD = 0.92  # Below this similarity, leaf rejects the step
 REJECTION_COUNT_THRESHOLD = 10  # Min rejections before considering decomposition
 REJECTION_RATE_THRESHOLD = 0.30  # 30% rejection rate triggers decomposition flag
 
@@ -752,7 +752,8 @@ def record_leaf_rejection(
     rejection_count = 0
 
     # Retry with backoff to handle DB lock contention
-    for attempt in range(3):
+    # Use longer waits since SQLite WAL still serializes writers
+    for attempt in range(5):
         try:
             # Increment rejection count
             db.execute(
@@ -769,10 +770,11 @@ def record_leaf_rejection(
             rejection_count = row[0] if row else 0
             break  # Success
         except Exception as e:
-            if "locked" in str(e).lower() and attempt < 2:
-                time.sleep(0.1 * (attempt + 1))  # 100ms, 200ms backoff
+            if "locked" in str(e).lower() and attempt < 4:
+                wait_time = 0.5 * (2 ** attempt)  # 0.5s, 1s, 2s, 4s exponential backoff
+                time.sleep(wait_time)
                 continue
-            logger.warning("[rejection] DB error recording rejection: %s", e)
+            logger.warning("[rejection] DB error recording rejection after %d attempts: %s", attempt + 1, e)
             break
 
     # Queue the rejected step for decomposition (non-blocking)
