@@ -1,6 +1,6 @@
 """Mycelium: Recursive problem decomposition with signature-based solution networks."""
 
-__version__ = "1.8.3"
+__version__ = "1.8.12"
 
 from .step_signatures import StepSignature, StepExample
 from .prompt_templates import (
