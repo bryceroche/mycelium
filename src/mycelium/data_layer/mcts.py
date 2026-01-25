@@ -446,6 +446,7 @@ def queue_for_decomposition(
     embedding=None,
     dag_step_id: str = None,
     problem_context: str = None,
+    conn=None,
 ) -> int:
     """Add a complex step to the decomposition queue.
 
@@ -455,6 +456,7 @@ def queue_for_decomposition(
         embedding: Optional embedding for the step
         dag_step_id: Optional link to originating dag_step
         problem_context: Optional problem text for LLM context
+        conn: Optional DB connection (reuse caller's connection to avoid locks)
 
     Returns:
         Queue entry ID (or existing ID if already queued)
@@ -463,7 +465,8 @@ def queue_for_decomposition(
     from mycelium.step_signatures.utils import pack_embedding
 
     now = datetime.now(timezone.utc).isoformat()
-    conn = get_db()
+    if conn is None:
+        conn = get_db()
 
     # Check if already queued (pending) with same step_text - avoid duplicates
     cursor = conn.execute(
@@ -723,7 +726,7 @@ def get_pending_queue_ids() -> list[int]:
 
 
 # Rejection thresholds (per CLAUDE.md: leaves define their own boundaries)
-REJECTION_SIM_THRESHOLD = 0.85  # Below this similarity, leaf rejects the step
+REJECTION_SIM_THRESHOLD = 0.85  # Below this similarity, leaf rejects the step (lowered for latency)
 REJECTION_COUNT_THRESHOLD = 10  # Min rejections before considering decomposition
 REJECTION_RATE_THRESHOLD = 0.30  # 30% rejection rate triggers decomposition flag
 
@@ -734,6 +737,7 @@ def record_leaf_rejection(
     similarity: float,
     dag_step_id: str = None,
     problem_context: str = None,
+    conn=None,
 ) -> int:
     """Record that a leaf signature rejected a dag_step due to low similarity.
 
@@ -743,37 +747,30 @@ def record_leaf_rejection(
         similarity: The similarity score that caused rejection
         dag_step_id: Optional link to the dag_step
         problem_context: Optional problem text for context
+        conn: Optional DB connection (reuse caller's connection to avoid locks)
 
     Returns:
         Updated rejection_count for the signature
     """
-    import time
-    db = get_db()
+    db = conn if conn is not None else get_db()
     rejection_count = 0
 
-    # Retry with backoff to handle DB lock contention
-    for attempt in range(3):
-        try:
-            # Increment rejection count
-            db.execute(
-                "UPDATE step_signatures SET rejection_count = rejection_count + 1 WHERE id = ?",
-                (signature_id,),
-            )
+    try:
+        # Increment rejection count
+        db.execute(
+            "UPDATE step_signatures SET rejection_count = rejection_count + 1 WHERE id = ?",
+            (signature_id,),
+        )
 
-            # Get updated count
-            cursor = db.execute(
-                "SELECT rejection_count FROM step_signatures WHERE id = ?",
-                (signature_id,),
-            )
-            row = cursor.fetchone()
-            rejection_count = row[0] if row else 0
-            break  # Success
-        except Exception as e:
-            if "locked" in str(e).lower() and attempt < 2:
-                time.sleep(0.1 * (attempt + 1))  # 100ms, 200ms backoff
-                continue
-            logger.warning("[rejection] DB error recording rejection: %s", e)
-            break
+        # Get updated count
+        cursor = db.execute(
+            "SELECT rejection_count FROM step_signatures WHERE id = ?",
+            (signature_id,),
+        )
+        row = cursor.fetchone()
+        rejection_count = row[0] if row else 0
+    except Exception as e:
+        logger.warning("[rejection] DB error recording rejection: %s", e)
 
     # Queue the rejected step for decomposition (non-blocking)
     try:
@@ -782,6 +779,7 @@ def record_leaf_rejection(
             complexity_reason=f"rejected_by_leaf_{signature_id}_sim_{similarity:.3f}",
             dag_step_id=dag_step_id,
             problem_context=problem_context,
+            conn=db,  # Pass connection to avoid lock contention
         )
     except Exception as e:
         logger.warning("[rejection] Failed to queue for decomposition: %s", e)
@@ -879,6 +877,7 @@ def check_and_reject_if_low_similarity(
     similarity: float,
     dag_step_id: str = None,
     problem_context: str = None,
+    conn=None,
 ) -> tuple[bool, int]:
     """Check if similarity is below threshold and record rejection if so.
 
@@ -888,6 +887,7 @@ def check_and_reject_if_low_similarity(
         similarity: Cosine similarity to the signature
         dag_step_id: Optional dag_step ID
         problem_context: Optional problem context
+        conn: Optional DB connection (reuse caller's connection to avoid locks)
 
     Returns:
         Tuple of (was_rejected, rejection_count)
@@ -901,16 +901,20 @@ def check_and_reject_if_low_similarity(
         similarity=similarity,
         dag_step_id=dag_step_id,
         problem_context=problem_context,
+        conn=conn,
     )
 
     return True, rejection_count
 
 
-def flag_high_rejection_leaves_for_decomposition() -> list[dict]:
+def flag_high_rejection_leaves_for_decomposition(step_db=None) -> list[dict]:
     """Find and flag high-rejection leaves for decomposition.
 
     This should be called periodically (e.g., during batch operations).
-    Leaves with high rejection rates get promoted to umbrellas and decomposed.
+    Uses the unified flag_for_split pathway which includes MCTS alternative check.
+
+    Args:
+        step_db: StepSignatureDB instance (required for MCTS check in flag_for_split)
 
     Returns:
         List of flagged signature stats
@@ -920,31 +924,28 @@ def flag_high_rejection_leaves_for_decomposition() -> list[dict]:
     if not leaves:
         return []
 
-    db = get_db()
+    if step_db is None:
+        logger.warning("[rejection] step_db required for MCTS-aware leaf decomposition")
+        return []
+
     flagged = []
 
-    with db.connection() as conn:
-        for leaf in leaves:
-            sig_id = leaf["signature_id"]
+    for leaf in leaves:
+        sig_id = leaf["signature_id"]
 
-            # Flag for decomposition by marking it as needing split
-            # The umbrella_learner will pick this up and decompose it
-            cursor = conn.execute(
-                """
-                UPDATE step_signatures
-                SET is_semantic_umbrella = 1
-                WHERE id = ? AND is_semantic_umbrella = 0
-                """,
-                (sig_id,),
+        # Use unified flag_for_split which includes MCTS alternative check
+        was_flagged = step_db.flag_for_split(
+            signature_id=sig_id,
+            reason=f"high_rejection_rate_{leaf['rejection_rate']:.2f}",
+            skip_mcts_check=False,  # Use MCTS check
+        )
+
+        if was_flagged:
+            logger.info(
+                "[rejection] Flagged leaf %d for decomposition: %d rejections, %.1f%% rate",
+                sig_id, leaf["rejection_count"], leaf["rejection_rate"] * 100
             )
-
-            if cursor.rowcount > 0:
-                logger.info(
-                    "[rejection] Flagged leaf %d for decomposition: %d rejections, %.1f%% rate",
-                    sig_id, leaf["rejection_count"], leaf["rejection_rate"] * 100
-                )
-                flagged.append(leaf)
-        # Connection context manager handles commit
+            flagged.append(leaf)
 
     return flagged
 
@@ -1494,7 +1495,7 @@ def run_postmortem(dag_id: str) -> dict:
         else:
             stats["total_low_conf"] += 1
 
-        # Compute amplitude_post based on outcome × confidence (using config multipliers)
+        # Compute amplitude_post based on outcome × confidence (fixed multipliers)
         if won and is_high_conf:
             # Reinforce: confident and right
             amplitude_post = amp * POSTMORTEM_REINFORCE_MULT
@@ -2953,13 +2954,23 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
                 collapse_result["collapsed"],
             )
 
+        # Flag high-rejection leaves for decomposition (MCTS-aware)
+        # Per brainstorm: Only decompose if no alternative leaves could handle rejected steps
+        rejection_flagged = flag_high_rejection_leaves_for_decomposition(step_db)
+        if rejection_flagged:
+            logger.info(
+                "[mcts] Flagged %d high-rejection leaves for decomposition",
+                len(rejection_flagged),
+            )
+
         # Reset merge/split state
         state.reset_merge_split()
 
         logger.info(
-            "[mcts] Batch operations complete: %d merges, %d splits flagged",
+            "[mcts] Batch operations complete: %d merges, %d splits flagged, %d rejection decomps",
             merge_split_result["merges_succeeded"],
             merge_split_result["splits_flagged"],
+            len(rejection_flagged) if rejection_flagged else 0,
         )
 
     # Run decomposition analysis to find nodes/steps needing decomposition

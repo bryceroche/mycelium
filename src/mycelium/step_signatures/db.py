@@ -56,7 +56,6 @@ from mycelium.config import (
     AUTO_DEMOTE_MIN_USES_FLOOR,
     AUTO_DEMOTE_MIN_USES_CAP,
     CENTROID_PROPAGATION_MAX_DEPTH,
-    CENTROID_PROPAGATION_BATCH_SIZE,
     CENTROID_MAX_DRIFT,
     CENTROID_DRIFT_DECAY,
     DB_MAX_RETRIES,
@@ -364,10 +363,6 @@ class StepSignatureDB:
         # Cached root signature (never changes after creation)
         self._cached_root: Optional[StepSignature] = None
 
-        # Batched centroid propagation: track pending updates per signature
-        # Key: signature_id, Value: count of pending centroid updates
-        self._pending_propagations: dict[int, int] = {}
-
         # Cached atomic operation embeddings for complexity detection
         # Per CLAUDE.md: "prefer embedding similarity over keyword matching"
         self._atomic_embeddings: Optional[list[np.ndarray]] = None
@@ -380,11 +375,7 @@ class StepSignatureDB:
         return self._db_path
 
     def close(self):
-        """Close the database, flushing any pending operations.
-
-        Ensures all batched centroid propagations are written before closing.
-        """
-        self.flush_pending_propagations()
+        """Close the database connection."""
         if self._direct_conn:
             self._direct_conn.close()
             self._direct_conn = None
@@ -567,9 +558,8 @@ class StepSignatureDB:
                 (parent_id, new_id, f"dynamic_fork_L{depth}", now)
             )
 
-            # Invalidate caches
-            invalidate_centroid_cache(new_id)
-            self.invalidate_centroid_matrix()
+            # Invalidate caches (embedding change: new scaffold branch)
+            self._invalidate_on_embedding_change(new_id)
 
             # Return the new branch as a StepSignature
             return StepSignature(
@@ -588,357 +578,6 @@ class StepSignatureDB:
         except sqlite3.IntegrityError as e:
             logger.warning("[db] Failed to create scaffold branch: %s", e)
             return None
-
-    def _maybe_propagate_centroid(
-        self,
-        conn,
-        child_id: int,
-        force: bool = False,
-    ) -> bool:
-        """Conditionally propagate centroid to parents using batching.
-
-        Accumulates centroid updates and only propagates when batch size is reached.
-        This reduces overhead from calling propagate_centroid_to_parents on every match.
-
-        Args:
-            conn: Database connection (within transaction)
-            child_id: ID of the signature whose centroid was updated
-            force: If True, propagate immediately regardless of batch size
-
-        Returns:
-            True if propagation was performed, False if deferred
-        """
-        if force or CENTROID_PROPAGATION_BATCH_SIZE <= 1:
-            # Immediate propagation requested or batching disabled
-            self.propagate_centroid_to_parents(conn, child_id)
-            # Clear any pending count for this signature
-            self._pending_propagations.pop(child_id, None)
-            return True
-
-        # Increment pending count for this signature
-        pending = self._pending_propagations.get(child_id, 0) + 1
-        self._pending_propagations[child_id] = pending
-
-        if pending >= CENTROID_PROPAGATION_BATCH_SIZE:
-            # Threshold reached, propagate now
-            self.propagate_centroid_to_parents(conn, child_id)
-            self._pending_propagations.pop(child_id, None)
-            logger.debug(
-                "[db] Batch propagation triggered for sig %d after %d updates",
-                child_id, pending
-            )
-            return True
-
-        logger.debug(
-            "[db] Deferred centroid propagation for sig %d (%d/%d)",
-            child_id, pending, CENTROID_PROPAGATION_BATCH_SIZE
-        )
-        return False
-
-    def flush_pending_propagations(self):
-        """Flush all pending centroid propagations.
-
-        Call this at the end of a batch of operations to ensure all
-        centroid updates are propagated to parent umbrellas.
-
-        Uses batch propagation to avoid N+1 queries when flushing multiple signatures.
-        """
-        if not self._pending_propagations:
-            return
-
-        pending_ids = list(self._pending_propagations.keys())
-        self._pending_propagations.clear()
-
-        with self._connection() as conn:
-            conn.execute("BEGIN IMMEDIATE")
-            try:
-                self._batch_propagate_centroids_to_parents(conn, pending_ids)
-                conn.commit()
-                logger.debug(
-                    "[db] Flushed %d pending centroid propagations (batched)",
-                    len(pending_ids)
-                )
-            except Exception:
-                conn.rollback()
-                raise
-
-    def _batch_propagate_centroids_to_parents(
-        self,
-        conn,
-        child_ids: list[int],
-    ) -> None:
-        """Batch propagate centroid changes for multiple children at once.
-
-        Optimized version that collects all ancestors for all children in one query,
-        avoiding N+1 pattern. Reduces overhead from O(N*3) queries to O(3) queries.
-
-        Args:
-            conn: Database connection (within transaction)
-            child_ids: List of signature IDs whose centroids were updated
-        """
-        if not child_ids:
-            return
-
-        max_depth = CENTROID_PROPAGATION_MAX_DEPTH
-
-        # SQLite has a default limit of 999 parameters. Chunk if needed.
-        # Reserve 1 slot for max_depth parameter.
-        SQLITE_MAX_PARAMS = 998
-        if len(child_ids) > SQLITE_MAX_PARAMS:
-            # Process in chunks, collecting all ancestors
-            all_ancestors: dict[int, int] = {}  # parent_id -> min_depth
-            for i in range(0, len(child_ids), SQLITE_MAX_PARAMS):
-                chunk = child_ids[i:i + SQLITE_MAX_PARAMS]
-                placeholders = ",".join("?" * len(chunk))
-                cursor = conn.execute(
-                    f"""
-                    WITH RECURSIVE ancestors AS (
-                        SELECT parent_id, child_id, 1 as depth
-                        FROM signature_relationships
-                        WHERE child_id IN ({placeholders})
-
-                        UNION ALL
-
-                        SELECT r.parent_id, a.child_id, a.depth + 1
-                        FROM signature_relationships r
-                        JOIN ancestors a ON r.child_id = a.parent_id
-                        WHERE a.depth < ?
-                    )
-                    SELECT DISTINCT parent_id, MIN(depth) as depth
-                    FROM ancestors
-                    GROUP BY parent_id
-                    """,
-                    (*chunk, max_depth),
-                )
-                for row in cursor.fetchall():
-                    pid, depth = row[0], row[1]
-                    if pid not in all_ancestors or depth < all_ancestors[pid]:
-                        all_ancestors[pid] = depth
-            # Convert to sorted list by depth
-            ancestors = sorted(all_ancestors.items(), key=lambda x: x[1])
-        else:
-            # 1. Batch-fetch all ancestors for ALL child_ids using recursive CTE
-            placeholders = ",".join("?" * len(child_ids))
-            cursor = conn.execute(
-                f"""
-                WITH RECURSIVE ancestors AS (
-                    SELECT parent_id, child_id, 1 as depth
-                    FROM signature_relationships
-                    WHERE child_id IN ({placeholders})
-
-                    UNION ALL
-
-                    SELECT r.parent_id, a.child_id, a.depth + 1
-                    FROM signature_relationships r
-                    JOIN ancestors a ON r.child_id = a.parent_id
-                    WHERE a.depth < ?
-                )
-                SELECT DISTINCT parent_id, MIN(depth) as depth
-                FROM ancestors
-                GROUP BY parent_id
-                ORDER BY depth
-                """,
-                (*child_ids, max_depth),
-            )
-            ancestors = cursor.fetchall()
-
-        if not ancestors:
-            return  # No parents (all are root nodes)
-
-        ancestor_ids = [row[0] for row in ancestors]
-
-        # 2. Batch-fetch all children data for ALL ancestors
-        # Also chunk this query to respect SQLite parameter limits
-        children_by_parent: dict[int, list[tuple]] = {}
-        for i in range(0, len(ancestor_ids), SQLITE_MAX_PARAMS):
-            chunk = ancestor_ids[i:i + SQLITE_MAX_PARAMS]
-            ancestor_placeholders = ",".join("?" * len(chunk))
-            cursor = conn.execute(
-                f"""
-                SELECT r.parent_id, s.centroid, s.embedding_count
-                FROM signature_relationships r
-                JOIN step_signatures s ON r.child_id = s.id
-                WHERE r.parent_id IN ({ancestor_placeholders})
-                """,
-                chunk,
-            )
-            for parent_id, centroid, count in cursor.fetchall():
-                if parent_id not in children_by_parent:
-                    children_by_parent[parent_id] = []
-                children_by_parent[parent_id].append((centroid, count))
-
-        # 3. Compute new centroids for each ancestor (process in depth order)
-        updates = []
-        for parent_id, _ in ancestors:
-            children = children_by_parent.get(parent_id, [])
-            if not children:
-                continue
-
-            total_weight = 0
-            centroid_sum = None
-
-            for child_centroid_packed, child_count in children:
-                child_centroid = unpack_embedding(child_centroid_packed)
-                weight = child_count or 1
-                if child_centroid is None:
-                    continue
-
-                if centroid_sum is None:
-                    centroid_sum = child_centroid * weight
-                else:
-                    centroid_sum = centroid_sum + (child_centroid * weight)
-                total_weight += weight
-
-            if centroid_sum is not None and total_weight > 0:
-                new_centroid = centroid_sum / total_weight
-                updates.append((
-                    pack_embedding(new_centroid),
-                    pack_embedding(centroid_sum),
-                    total_weight,
-                    parent_id,
-                ))
-
-        # 4. Batch update all ancestors
-        for packed_centroid, packed_sum, weight, parent_id in updates:
-            try:
-                conn.execute(
-                    """UPDATE step_signatures
-                       SET centroid = ?, embedding_sum = ?, embedding_count = ?
-                       WHERE id = ?""",
-                    (packed_centroid, packed_sum, weight, parent_id),
-                )
-                invalidate_centroid_cache(parent_id)
-                invalidate_signature_cache(parent_id)
-            except sqlite3.IntegrityError:
-                logger.debug(
-                    "[db] Skipped centroid propagation to parent %d (collision)",
-                    parent_id
-                )
-
-        if updates:
-            logger.debug(
-                "[db] Batch propagated centroids to %d ancestors from %d children",
-                len(updates), len(child_ids)
-            )
-
-    def propagate_centroid_to_parents(
-        self,
-        conn,
-        child_id: int,
-        visited: set[int] = None,
-    ):
-        """Propagate centroid changes up to parent umbrellas (batch approach).
-
-        Uses recursive CTE to fetch all ancestors up to CENTROID_PROPAGATION_MAX_DEPTH
-        in a single query, then batch-updates all centroids. Reduces N+1 queries to 3.
-
-        Args:
-            conn: Database connection (within transaction)
-            child_id: ID of the signature whose centroid was updated
-            visited: Unused, kept for API compatibility
-        """
-        max_depth = CENTROID_PROPAGATION_MAX_DEPTH
-
-        # 1. Batch-fetch all ancestors up to max_depth using recursive CTE
-        cursor = conn.execute(
-            """
-            WITH RECURSIVE ancestors AS (
-                SELECT parent_id, 1 as depth
-                FROM signature_relationships
-                WHERE child_id = ?
-
-                UNION ALL
-
-                SELECT r.parent_id, a.depth + 1
-                FROM signature_relationships r
-                JOIN ancestors a ON r.child_id = a.parent_id
-                WHERE a.depth < ?
-            )
-            SELECT DISTINCT parent_id, MIN(depth) as depth
-            FROM ancestors
-            GROUP BY parent_id
-            ORDER BY depth
-            """,
-            (child_id, max_depth),
-        )
-        ancestors = cursor.fetchall()
-
-        if not ancestors:
-            return  # No parents (root node)
-
-        ancestor_ids = [row[0] for row in ancestors]
-
-        # 2. Batch-fetch all children data for all ancestors in one query
-        placeholders = ",".join("?" * len(ancestor_ids))
-        cursor = conn.execute(
-            f"""
-            SELECT r.parent_id, s.centroid, s.embedding_count
-            FROM signature_relationships r
-            JOIN step_signatures s ON r.child_id = s.id
-            WHERE r.parent_id IN ({placeholders})
-            """,
-            ancestor_ids,
-        )
-        children_data = cursor.fetchall()
-
-        # Group children by parent_id
-        children_by_parent: dict[int, list[tuple]] = {}
-        for parent_id, centroid, count in children_data:
-            if parent_id not in children_by_parent:
-                children_by_parent[parent_id] = []
-            children_by_parent[parent_id].append((centroid, count))
-
-        # 3. Compute new centroids for each ancestor (process in depth order)
-        updates = []
-        for parent_id, _ in ancestors:
-            children = children_by_parent.get(parent_id, [])
-            if not children:
-                continue
-
-            total_weight = 0
-            centroid_sum = None
-
-            for child_centroid_packed, child_count in children:
-                child_centroid = unpack_embedding(child_centroid_packed)
-                weight = child_count or 1
-                if child_centroid is None:
-                    continue
-
-                if centroid_sum is None:
-                    centroid_sum = child_centroid * weight
-                else:
-                    centroid_sum = centroid_sum + (child_centroid * weight)
-                total_weight += weight
-
-            if centroid_sum is not None and total_weight > 0:
-                new_centroid = centroid_sum / total_weight
-                updates.append((
-                    pack_embedding(new_centroid),
-                    pack_embedding(centroid_sum),
-                    total_weight,
-                    parent_id,
-                ))
-
-        # 4. Batch update all ancestors
-        for packed_centroid, packed_sum, weight, parent_id in updates:
-            try:
-                conn.execute(
-                    """UPDATE step_signatures
-                       SET centroid = ?, embedding_sum = ?, embedding_count = ?
-                       WHERE id = ?""",
-                    (packed_centroid, packed_sum, weight, parent_id),
-                )
-                invalidate_centroid_cache(parent_id)
-                invalidate_signature_cache(parent_id)
-                logger.debug(
-                    "[db] Propagated centroid to parent %d (weight=%d)",
-                    parent_id, weight
-                )
-            except sqlite3.IntegrityError:
-                logger.debug(
-                    "[db] Skipped centroid propagation to parent %d (collision)",
-                    parent_id
-                )
 
     def compute_graph_centroid_from_children(
         self,
@@ -989,18 +628,35 @@ class StepSignatureDB:
     def propagate_graph_centroid_to_parents(
         self,
         conn,
-        child_id: int,
+        signature_id: int,
+        include_self: bool = False,
     ):
-        """Propagate graph_centroid changes up to parent routers.
+        """Single entry point for graph_centroid updates.
 
-        When a child's graph_embedding changes, recompute parents' graph_centroids.
-        Similar to text centroid propagation but for graph embeddings.
+        Recomputes graph_centroids up the tree when a signature's graph_embedding changes.
+        This is the ONLY function that should update router centroids.
 
         Args:
             conn: Database connection
-            child_id: ID of the signature whose graph_embedding changed
+            signature_id: ID of the signature whose graph_embedding changed
+            include_self: If True, also recompute this signature's centroid first
+                          (used when promoting to umbrella)
         """
         max_depth = CENTROID_PROPAGATION_MAX_DEPTH
+
+        # Optionally recompute this node's own centroid first (for promote_to_umbrella)
+        if include_self:
+            graph_centroid = self.compute_graph_centroid_from_children(conn, signature_id)
+            if graph_centroid is not None:
+                conn.execute(
+                    "UPDATE step_signatures SET graph_embedding = ? WHERE id = ?",
+                    (json.dumps(graph_centroid.tolist()), signature_id),
+                )
+                invalidate_signature_cache(signature_id)
+                logger.debug(
+                    "[db] Computed graph_centroid for sig %d (include_self)",
+                    signature_id
+                )
 
         # Fetch all ancestors
         cursor = conn.execute(
@@ -1022,7 +678,7 @@ class StepSignatureDB:
             GROUP BY parent_id
             ORDER BY depth
             """,
-            (child_id, max_depth),
+            (signature_id, max_depth),
         )
         ancestors = cursor.fetchall()
 
@@ -1045,18 +701,22 @@ class StepSignatureDB:
 
     def route_through_hierarchy(
         self,
-        embedding: np.ndarray,
+        operation_embedding: np.ndarray,
         min_similarity: float = 0.85,
         max_depth: int = None,
     ) -> tuple[Optional[StepSignature], list[StepSignature]]:
-        """Route an embedding through the signature hierarchy.
+        """Route an operation embedding through the signature hierarchy using graph embeddings.
+
+        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        - Routers: compare against graph_centroid (avg of children's graph_embeddings)
+        - Leaves: compare against graph_embedding (computation graph embedded)
 
         Starting from the root, traverse down through umbrella signatures
         by picking the best-matching child at each level until reaching
         a leaf signature or no match is found.
 
         Args:
-            embedding: The query embedding to route
+            operation_embedding: The operation embedding to route (from step.operation)
             min_similarity: Minimum similarity threshold to follow a route
             max_depth: Maximum depth to traverse (default from config)
 
@@ -1091,16 +751,18 @@ class StepSignatureDB:
                 # Umbrella with no children - treat as leaf
                 return current, path
 
-            # Find best matching child
+            # Find best matching child using graph_embedding (not text centroid)
             best_child = None
             best_score = 0.0
 
             for child_sig, _condition in children:
-                # Capture centroid once to avoid TOCTOU race condition
-                centroid = child_sig.centroid
-                if centroid is None:
+                # Use graph_embedding for routing (operational similarity)
+                graph_emb = child_sig.graph_embedding
+                if graph_emb is None:
                     continue
-                sim = cosine_similarity(embedding, centroid)
+                if not isinstance(graph_emb, np.ndarray):
+                    graph_emb = np.array(graph_emb)
+                sim = cosine_similarity(operation_embedding, graph_emb)
                 if sim >= min_similarity:
                     # Use routing score for tiebreaking
                     score = compute_routing_score(
@@ -1129,13 +791,16 @@ class StepSignatureDB:
 
     def route_with_confidence(
         self,
-        embedding: np.ndarray,
+        operation_embedding: np.ndarray,
         min_similarity: float = 0.85,
         max_depth: int = None,
         top_k: int = 3,
         dag_step_type: Optional[str] = None,
     ) -> RoutingResult:
-        """Route with confidence scoring for MCTS multi-path exploration.
+        """Route with confidence scoring for MCTS multi-path exploration using graph embeddings.
+
+        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        Uses graph_embedding (not text centroid) for routing decisions.
 
         Enhanced version of route_through_hierarchy that computes confidence
         signals based on UCB1 score gaps between top-k children at each level.
@@ -1150,7 +815,7 @@ class StepSignatureDB:
         - Low confidence (<0.5): High uncertainty, explore multiple paths
 
         Args:
-            embedding: The query embedding to route
+            operation_embedding: The operation embedding to route (from step.operation)
             min_similarity: Minimum similarity threshold to follow a route
             max_depth: Maximum depth to traverse (default from config)
             top_k: Number of top alternatives to track at each level
@@ -1215,10 +880,13 @@ class StepSignatureDB:
                         )
 
             for child_sig, _condition in children:
-                centroid = child_sig.centroid
-                if centroid is None:
+                # Use graph_embedding for routing (operational similarity)
+                graph_emb = child_sig.graph_embedding
+                if graph_emb is None:
                     continue
-                sim = cosine_similarity(embedding, centroid)
+                if not isinstance(graph_emb, np.ndarray):
+                    graph_emb = np.array(graph_emb)
+                sim = cosine_similarity(operation_embedding, graph_emb)
                 if sim >= min_similarity * 0.7:  # Lower threshold to capture alternatives
                     # Get step-node stats for this child (if available)
                     child_step_stats = step_stats_map.get(child_sig.id)
@@ -1374,7 +1042,7 @@ class StepSignatureDB:
     async def find_or_create_async(
         self,
         step_text: str,
-        embedding: np.ndarray,
+        embedding: Optional[np.ndarray] = None,
         min_similarity: float = 0.85,
         parent_problem: str = "",
         origin_depth: int = 0,
@@ -1386,15 +1054,18 @@ class StepSignatureDB:
     ) -> tuple[StepSignature, bool]:
         """Async version of find_or_create with non-blocking retry sleep.
 
+        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        Routing uses graph_embedding exclusively. Text embedding is optional/legacy.
+
         Use this from async contexts to avoid blocking the event loop during
         database contention retries.
 
         Args:
             step_text: The step description text
-            embedding: Embedding vector for the step
+            embedding: Optional text embedding (legacy, not used for routing)
             min_similarity: Minimum cosine similarity for matching
             parent_problem: The parent problem this step came from
-            dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication
+            dsl_hint: Explicit operation hint from planner (+, -, *, /) for graph routing
             origin_depth: Decomposition depth at which this step was created
             extracted_values: Dict of semantic param names -> values from planner
             parent_id: Explicit parent ID for new signatures (overrides routing)
@@ -1484,9 +1155,6 @@ class StepSignatureDB:
                     conn, step_text, embedding, parent_problem, origin_depth,
                     extracted_values=extracted_values, parent_id=parent_id, dsl_hint=dsl_hint
                 )
-                # Propagate new child's centroid up to parent umbrellas
-                if sig.id is not None:
-                    self.propagate_centroid_to_parents(conn, sig.id)
                 conn.commit()
                 logger.info(
                     "[db] Force-created signature: step='%s' type='%s' depth=%d",
@@ -1514,7 +1182,7 @@ class StepSignatureDB:
     def _find_or_create_atomic(
         self,
         step_text: str,
-        embedding: np.ndarray,
+        embedding: Optional[np.ndarray],
         min_similarity: float,
         parent_problem: str,
         origin_depth: int = 0,
@@ -1525,14 +1193,19 @@ class StepSignatureDB:
     ) -> tuple[StepSignature, bool]:
         """Internal atomic find-or-create with hierarchical routing.
 
-        Routes through the signature hierarchy starting from root:
+        Routes through the signature hierarchy using graph_embedding (operational similarity).
+        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+
+        Flow:
         1. If DB is empty → create root signature
-        2. Route from root → best matching child → recurse until leaf
-        3. If leaf matches above threshold → update centroid and return
+        2. Route from root → best matching child via graph_embedding → recurse until leaf
+        3. If leaf matches above threshold → return existing
         4. If no match → create new child under where routing stopped (or explicit parent_id)
 
         Args:
-            dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication
+            step_text: The step description text
+            embedding: Optional text embedding (legacy, not used for routing - graph_embedding used instead)
+            dsl_hint: Explicit operation hint from planner (+, -, *, /) for graph routing
             parent_id: Explicit parent ID for new signatures (overrides routing)
             exclude_ids: Signature IDs to exclude from matching (prevent circular routing)
         """
@@ -1561,7 +1234,7 @@ class StepSignatureDB:
                 # Pass dsl_hint for graph-based routing (per CLAUDE.md: route by what operations DO)
                 # Pass exclude_ids to prevent circular routing (e.g., child matching back to parent during decomposition)
                 best_match, parent_for_new, best_sim = self._route_hierarchical(
-                    conn, embedding, min_similarity, dsl_hint=dsl_hint, exclude_ids=exclude_ids
+                    conn, min_similarity, dsl_hint=dsl_hint, exclude_ids=exclude_ids
                 )
 
                 # ALWAYS_ROUTE_TO_BEST mode: accept any match, let failures drive learning
@@ -1616,13 +1289,18 @@ class StepSignatureDB:
                             except Exception as e:
                                 logger.debug("[db] Graph embedding comparison failed: %s", e)
 
-                        # Check 1: Low similarity rejection
-                        if rejection_sim < REJECTION_SIM_THRESHOLD:
+                        # Check 1: Low similarity rejection (skip during cold start)
+                        from mycelium.config import COLD_START_SIGNATURE_THRESHOLD
+                        sig_count = self.count_signatures()
+                        is_cold_start = sig_count < COLD_START_SIGNATURE_THRESHOLD
+
+                        if rejection_sim < REJECTION_SIM_THRESHOLD and not is_cold_start:
                             was_rejected, rejection_count = check_and_reject_if_low_similarity(
                                 signature_id=best_match.id,
                                 step_text=step_text,
                                 similarity=rejection_sim,
                                 problem_context=parent_problem,
+                                conn=conn,  # Pass connection to avoid lock contention
                             )
                             if was_rejected:
                                 logger.info(
@@ -1630,8 +1308,14 @@ class StepSignatureDB:
                                     best_match.step_type, rejection_sim, REJECTION_SIM_THRESHOLD,
                                     rejection_count, step_text[:40]
                                 )
-                                # Fall through to create new signature
-                                best_match = None
+                                # Step queued for decomposition - don't create new signature
+                                conn.commit()
+                                return None, False
+                        elif rejection_sim < REJECTION_SIM_THRESHOLD and is_cold_start:
+                            logger.debug(
+                                "[db] Cold start: skipping rejection (sig_count=%d < %d)",
+                                sig_count, COLD_START_SIGNATURE_THRESHOLD
+                            )
 
                         # Check 2: Multi-part step rejection (needs decomposition)
                         # Leaves only handle atomic operations - detect via embedding similarity
@@ -1651,9 +1335,10 @@ class StepSignatureDB:
                                     is_atomic, max_atomic_sim, gap, best_atomic_op = self._is_step_atomic(
                                         np.array(step_emb_for_atomic_check)
                                     )
-                                    if not is_atomic:
+                                    if not is_atomic and not is_cold_start:
                                         # Small gap = matches multiple ops (multi-part like "add then multiply")
                                         # Low sim = unknown complex operation
+                                        # Skip during cold start - let vocabulary build first
                                         reason = "multi_part" if gap < ATOMIC_GAP_THRESHOLD else "unknown_complex"
 
                                         # Record rejection (unified path for all leaf rejections)
@@ -1662,6 +1347,7 @@ class StepSignatureDB:
                                             step_text=step_text,
                                             similarity=max_atomic_sim,  # Use atomic similarity for tracking
                                             problem_context=parent_problem,
+                                            conn=conn,  # Pass connection to avoid lock contention
                                         )
 
                                         logger.info(
@@ -1673,6 +1359,11 @@ class StepSignatureDB:
                                         # Return None - step is queued, don't create signature
                                         conn.commit()
                                         return None, False
+                                    elif not is_atomic and is_cold_start:
+                                        logger.debug(
+                                            "[db] Cold start: skipping multi-part rejection (sig_count=%d)",
+                                            sig_count
+                                        )
 
                 if best_match is not None and similarity_ok:
                     # Log routing decision with similarity for tuning
@@ -1695,10 +1386,6 @@ class StepSignatureDB:
                         conn, best_match.id, embedding, update_last_used=True
                     )
 
-                    # Batch propagate centroid change up to parent umbrellas
-                    # Uses batching to reduce overhead on high-traffic matches
-                    self._maybe_propagate_centroid(conn, best_match.id)
-
                     conn.commit()
                     logger.debug(
                         "[db] Matched signature (hierarchical): step='%s' sig='%s' sim=%.3f count=%d",
@@ -1720,10 +1407,6 @@ class StepSignatureDB:
                     parent_id=actual_parent_id
                 )
 
-                # Propagate new child's centroid up to parent umbrellas
-                if sig.id is not None:
-                    self.propagate_centroid_to_parents(conn, sig.id)
-
                 conn.commit()
                 parent_desc = f"id={parent_id}" if parent_id is not None else (parent_for_new.step_type if parent_for_new else "root")
                 logger.info(
@@ -1739,7 +1422,6 @@ class StepSignatureDB:
     def _route_hierarchical(
         self,
         conn,
-        embedding: np.ndarray,
         min_similarity: float,
         dsl_hint: str = None,
         exclude_ids: set = None,
@@ -1750,13 +1432,13 @@ class StepSignatureDB:
         - Routers: use graph_centroid (avg of descendants' graph_embeddings)
         - Leaves: use graph_embedding (fixed operational identity)
 
-        Falls back to text centroid if graph_embedding not available.
+        Graph-only routing: No text centroid fallback. If no graph_embedding
+        is available, similarity is 0.0 (cold start triggers new signature creation).
 
         Uses UCB1 scoring to balance exploitation (high-similarity, high-success)
         with exploration (under-visited signatures that might be better).
 
         Args:
-            embedding: Text embedding of the step (fallback)
             min_similarity: Minimum similarity threshold
             dsl_hint: Operation hint from planner (+, -, *, /) for graph routing
             exclude_ids: Signature IDs to exclude from matching (prevent circular routing)
@@ -1820,23 +1502,24 @@ class StepSignatureDB:
 
         while depth < max_depth:
             # Check similarity to current node using graph_embedding (operational)
-            # Fallback to centroid (semantic) if graph_embedding unavailable
+            # No text/centroid fallback - graph-only routing per CLAUDE.md
 
             # Get graph_embedding for current node (leaves have fixed, routers have centroid of children)
             current_graph_emb = current.graph_embedding
             if current_graph_emb is not None and not isinstance(current_graph_emb, np.ndarray):
                 current_graph_emb = np.array(current_graph_emb)
 
-            # Determine which embedding to compare against
+            # Determine which embedding to compare against (graph-only routing)
             if step_graph_embedding is not None and current_graph_emb is not None:
-                # Prefer graph_embedding routing (operational similarity)
+                # Graph_embedding routing (operational similarity)
                 sim = cosine_similarity(step_graph_embedding, current_graph_emb)
                 used_graph = True
             else:
-                # Fallback to text centroid routing (semantic similarity)
-                current_centroid = current.centroid
-                sim = cosine_similarity(embedding, current_centroid) if current_centroid is not None else 0.0
+                # No graph_embedding available - cold start, low similarity triggers inline decomposition
+                sim = 0.0
                 used_graph = False
+                if current_graph_emb is None:
+                    logger.debug("[db] Cold start: node %d has no graph_embedding", current.id)
 
             # If current is a leaf, return it (always return leaf regardless of threshold)
             # UNLESS it's in exclude_ids (e.g., parent being decomposed - prevent circular matching)
@@ -1892,11 +1575,8 @@ class StepSignatureDB:
                     # Route by graph_embedding (operational similarity)
                     child_sim = cosine_similarity(step_graph_embedding, child_graph_emb)
                     children_with_embeddings.append((child, child_sim, True))  # True = used graph
-                elif child.centroid is not None:
-                    # Fallback to centroid (semantic similarity)
-                    child_sim = cosine_similarity(embedding, child.centroid)
-                    children_with_embeddings.append((child, child_sim, False))  # False = used text
                 else:
+                    # No graph_embedding - treat as cold start placeholder
                     null_embedding_children.append(child)
 
             # Try children with embeddings (standard UCB1 selection)
@@ -2056,7 +1736,7 @@ class StepSignatureDB:
         self,
         conn,
         step_text: str,
-        embedding: np.ndarray,
+        embedding: Optional[np.ndarray],
         parent_problem: str = "",
         origin_depth: int = 0,
         extracted_values: dict = None,
@@ -2072,6 +1752,8 @@ class StepSignatureDB:
         - Subsequent signatures become children of specified parent (or root if not specified)
 
         Args:
+            step_text: The step description text
+            embedding: Optional text embedding (legacy, for centroid initialization)
             parent_id: ID of parent signature. If None, defaults to root.
             dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication.
         """
@@ -2093,8 +1775,9 @@ class StepSignatureDB:
             actual_parent_id = None  # Creating the root
 
         step_type = self._infer_step_type(step_text, dsl_hint=dsl_hint)
-        centroid_packed = pack_embedding(embedding)
-        centroid_bucket = compute_centroid_bucket(embedding)
+        # Text centroid is legacy - graph_embedding is used for routing
+        centroid_packed = pack_embedding(embedding) if embedding is not None else None
+        centroid_bucket = compute_centroid_bucket(embedding) if embedding is not None else None
 
         # Auto-assign DSL based on step_type, description, planner's extracted_values, and dsl_hint
         # dsl_hint enables bidirectional LLM-signature communication
@@ -2175,28 +1858,28 @@ class StepSignatureDB:
 
             # If not root, add as child of the appropriate parent
             if not is_first_signature and actual_parent_id is not None:
-                # Add parent-child relationship
-                conn.execute(
-                    """INSERT OR IGNORE INTO signature_relationships
-                       (parent_id, child_id, condition, routing_order, created_at)
-                       VALUES (?, ?, ?, ?, ?)""",
-                    (actual_parent_id, row_id, step_type, 0, now),
-                )
-                # Mark parent as umbrella - routers don't execute DSL, they route
-                # Clear dsl_script to avoid mismatch between dsl_type='router' and script type='math'
-                conn.execute(
-                    """UPDATE step_signatures
-                       SET is_semantic_umbrella = 1, dsl_type = 'router', dsl_script = NULL
-                       WHERE id = ?""",
-                    (actual_parent_id,),
-                )
-                # Invalidate parent's children cache since we added a new child
-                invalidate_children_cache(actual_parent_id)
-                invalidate_signature_cache(actual_parent_id)
-                logger.debug(
-                    "[db] Added as child: parent_id=%d (depth=%d) -> child_id=%d (depth=%d) (condition='%s')",
-                    actual_parent_id, actual_depth - 1, row_id, actual_depth, step_type
-                )
+                # Prevent self-references (circular dependency bug)
+                if actual_parent_id == row_id:
+                    logger.warning(
+                        "[db] Rejecting self-reference in signature creation: parent_id=%d == child_id=%d",
+                        actual_parent_id, row_id
+                    )
+                else:
+                    # Add parent-child relationship
+                    conn.execute(
+                        """INSERT OR IGNORE INTO signature_relationships
+                           (parent_id, child_id, condition, routing_order, created_at)
+                           VALUES (?, ?, ?, ?, ?)""",
+                        (actual_parent_id, row_id, step_type, 0, now),
+                    )
+                    # Use single pathway for umbrella promotion
+                    self._promote_to_umbrella_internal(conn, actual_parent_id)
+                    # Invalidate parent's children cache since we added a new child
+                    invalidate_children_cache(actual_parent_id)
+                    logger.debug(
+                        "[db] Added as child: parent_id=%d (depth=%d) -> child_id=%d (depth=%d) (condition='%s')",
+                        actual_parent_id, actual_depth - 1, row_id, actual_depth, step_type
+                    )
         except sqlite3.IntegrityError as e:
             # Centroid bucket collision - find existing signature by bucket hash
             if "centroid_bucket" in str(e):
@@ -2342,6 +2025,49 @@ class StepSignatureDB:
     def invalidate_root_cache(self):
         """Invalidate cached root signature (call when DB is cleared)."""
         self._cached_root = None
+
+    # =========================================================================
+    # Consolidated Cache Invalidation Helpers
+    # =========================================================================
+    # These semantic helpers ensure consistent cache invalidation for each
+    # operation type. See issue mycelium-mb7s for details.
+
+    def _invalidate_on_embedding_change(self, signature_id: int):
+        """Invalidate when centroid or graph_embedding changes.
+
+        Use this when a signature's embedding data is modified (running average
+        update, graph embedding update, etc.). Invalidates:
+        - Centroid cache (cached centroid data for this signature)
+        - Signature cache (cached StepSignature object)
+        - Centroid matrix (routing matrix needs rebuild)
+        """
+        invalidate_centroid_cache(signature_id)
+        invalidate_signature_cache(signature_id)
+        self.invalidate_centroid_matrix()
+
+    def _invalidate_on_relationship_change(self, parent_id: int, child_id: int):
+        """Invalidate when parent-child relationship is added or removed.
+
+        Use this when signature_relationships table is modified. Invalidates:
+        - Parent's centroid cache (computed from children)
+        - Parent's children cache (children list changed)
+        - Both signatures' caches (depth may change)
+        - Centroid matrix (routing structure changed)
+        """
+        invalidate_centroid_cache(parent_id)
+        invalidate_children_cache(parent_id)
+        invalidate_signature_cache(parent_id)
+        invalidate_signature_cache(child_id)
+        self.invalidate_centroid_matrix()
+
+    def _invalidate_on_dsl_change(self, signature_id: int):
+        """Invalidate when DSL script or signature metadata changes.
+
+        Use this when only signature fields change (DSL script, description,
+        examples, etc.) without affecting embeddings or relationships. Invalidates:
+        - Signature cache (cached StepSignature object)
+        """
+        invalidate_signature_cache(signature_id)
 
     def find_similar(
         self,
@@ -2538,20 +2264,21 @@ class StepSignatureDB:
     def reset_signature_stats(self, signature_id: int) -> None:
         """Reset uses and successes for a signature after DSL rewrite."""
         with self._connection() as conn:
-            conn.execute(
-                "UPDATE step_signatures SET uses = 0, successes = 0 WHERE id = ?",
-                (signature_id,)
+            self._update_signature_fields(
+                conn, signature_id,
+                log_reason="reset_stats",
+                uses=0, successes=0,
             )
-            logger.debug("[db] Reset stats for signature %d", signature_id)
 
     def mark_signature_rewritten(self, signature_id: int) -> None:
         """Mark a signature as recently rewritten (for cooldown tracking)."""
         now = datetime.now(timezone.utc).isoformat()
         with self._connection() as conn:
             # Store in last_used_at for now (could add dedicated column later)
-            conn.execute(
-                "UPDATE step_signatures SET last_used_at = ? WHERE id = ?",
-                (now, signature_id)
+            self._update_signature_fields(
+                conn, signature_id,
+                log_reason="rewritten",
+                last_used_at=now,
             )
 
     # =========================================================================
@@ -2565,441 +2292,88 @@ class StepSignatureDB:
         new_embedding: np.ndarray,
         update_last_used: bool = False,
     ) -> Optional[int]:
-        """Update signature centroid within an existing transaction.
+        """Update text centroid with running average (local only, no propagation).
 
-        Internal helper that performs the centroid update without managing
-        its own transaction. Use this within code that already has an open
-        transaction.
-
-        Includes bounded drift monitoring: logs warning if centroid drift exceeds
-        confidence bounds (more examples = tighter bounds).
-
-        Formula: new_sum = old_sum + new_embedding
-                 new_count = old_count + 1
-                 new_centroid = new_sum / new_count
+        Uses running average: new_centroid = (old_sum + new_embedding) / (old_count + 1)
 
         Args:
-            conn: Database connection (within transaction)
-            signature_id: ID of the signature to update
-            new_embedding: The new embedding to add to the running average
-            update_last_used: If True, also update last_used_at timestamp
+            conn: Database connection
+            signature_id: ID of the signature
+            new_embedding: New embedding to incorporate into centroid
+            update_last_used: If True, update last_used_at timestamp
 
         Returns:
-            New embedding count, or None if signature not found
+            New embedding_count after update, or None if signature not found
         """
+        # Get current embedding sum and count
         row = conn.execute(
-            """SELECT embedding_sum, embedding_count, centroid, centroid_bucket
-               FROM step_signatures WHERE id = ?""",
+            "SELECT embedding_sum, embedding_count FROM step_signatures WHERE id = ?",
             (signature_id,)
         ).fetchone()
 
-        if not row:
-            logger.warning("[db] Cannot update centroid: signature %d not found", signature_id)
+        if row is None:
             return None
 
-        # Parse current state
-        if row["embedding_sum"]:
-            current_sum = unpack_embedding(row["embedding_sum"])
-            current_count = row["embedding_count"] or 1
+        # Parse existing embedding sum
+        old_sum = _parse_centroid_data(row["embedding_sum"])
+        old_count = row["embedding_count"] or 1
+
+        if old_sum is None:
+            # If no existing sum, use the new embedding
+            new_sum = new_embedding
+            new_count = 1
         else:
-            # Initialize from fresh centroid if no sum yet (migration case)
-            fresh_centroid = unpack_embedding(row["centroid"])
-            current_sum = fresh_centroid.copy() if fresh_centroid is not None else new_embedding.copy()
-            current_count = 1
+            # Running average: add new embedding to sum, increment count
+            new_sum = old_sum + new_embedding
+            new_count = old_count + 1
 
-        old_centroid = unpack_embedding(row["centroid"])
-        old_bucket = row["centroid_bucket"]
-
-        # Update running sum and count
-        new_sum = current_sum + new_embedding
-        new_count = current_count + 1
-
-        # Compute new centroid
+        # Calculate new centroid
         new_centroid = new_sum / new_count
-
-        # Check drift bounds (monitoring - don't reject, just warn)
-        if old_centroid is not None:
-            drift = 1.0 - cosine_similarity(old_centroid, new_centroid)
-            # Adaptive threshold: tighter bounds with more examples
-            # max_drift * decay^log2(count) - e.g., at count=8: 0.15 * 0.9^3 = 0.109
-            adaptive_threshold = CENTROID_MAX_DRIFT * (CENTROID_DRIFT_DECAY ** math.log2(max(1, current_count)))
-            if drift > adaptive_threshold:
-                logger.warning(
-                    "[db] Centroid drift %.4f exceeds bound %.4f for sig %d (count=%d)",
-                    drift, adaptive_threshold, signature_id, current_count
-                )
-
-        # Compute new bucket and check if it changed
+        new_centroid_json = json.dumps(new_centroid.tolist())
+        new_sum_json = json.dumps(new_sum.tolist())
         new_bucket = compute_centroid_bucket(new_centroid)
-        bucket_changed = new_bucket != old_bucket
 
-        # Pack and store
-        new_sum_packed = pack_embedding(new_sum)
-        new_centroid_packed = pack_embedding(new_centroid)
-
-        # Try updating with new bucket if changed, fall back to keeping old bucket on collision
+        # Update database
         if update_last_used:
             now = datetime.now(timezone.utc).isoformat()
-            if bucket_changed:
-                try:
-                    conn.execute(
-                        """UPDATE step_signatures
-                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, centroid_bucket = ?,
-                               last_used_at = ?
-                           WHERE id = ?""",
-                        (new_sum_packed, new_count, new_centroid_packed, new_bucket, now, signature_id),
-                    )
-                except sqlite3.IntegrityError:
-                    # New bucket collides with existing signature - keep old bucket
-                    logger.debug("[db] Bucket collision on update for sig %d, keeping old bucket", signature_id)
-                    conn.execute(
-                        """UPDATE step_signatures
-                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, last_used_at = ?
-                           WHERE id = ?""",
-                        (new_sum_packed, new_count, new_centroid_packed, now, signature_id),
-                    )
-            else:
-                conn.execute(
-                    """UPDATE step_signatures
-                       SET embedding_sum = ?, embedding_count = ?, centroid = ?, last_used_at = ?
-                       WHERE id = ?""",
-                    (new_sum_packed, new_count, new_centroid_packed, now, signature_id),
-                )
+            conn.execute(
+                """UPDATE step_signatures
+                   SET centroid = ?, centroid_bucket = ?, embedding_sum = ?, embedding_count = ?, last_used_at = ?
+                   WHERE id = ?""",
+                (new_centroid_json, new_bucket, new_sum_json, new_count, now, signature_id)
+            )
         else:
-            if bucket_changed:
-                try:
-                    conn.execute(
-                        """UPDATE step_signatures
-                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, centroid_bucket = ?
-                           WHERE id = ?""",
-                        (new_sum_packed, new_count, new_centroid_packed, new_bucket, signature_id),
-                    )
-                except sqlite3.IntegrityError:
-                    # New bucket collides with existing signature - keep old bucket
-                    logger.debug("[db] Bucket collision on update for sig %d, keeping old bucket", signature_id)
-                    conn.execute(
-                        """UPDATE step_signatures
-                           SET embedding_sum = ?, embedding_count = ?, centroid = ?
-                           WHERE id = ?""",
-                        (new_sum_packed, new_count, new_centroid_packed, signature_id),
-                    )
-            else:
-                conn.execute(
-                    """UPDATE step_signatures
-                       SET embedding_sum = ?, embedding_count = ?, centroid = ?
-                       WHERE id = ?""",
-                    (new_sum_packed, new_count, new_centroid_packed, signature_id),
-                )
-
-        if bucket_changed:
-            logger.debug(
-                "[db] Centroid bucket changed for sig %d: %s -> %s",
-                signature_id, old_bucket, new_bucket
+            conn.execute(
+                """UPDATE step_signatures
+                   SET centroid = ?, centroid_bucket = ?, embedding_sum = ?, embedding_count = ?
+                   WHERE id = ?""",
+                (new_centroid_json, new_bucket, new_sum_json, new_count, signature_id)
             )
 
-        # Invalidate caches since centroid changed
-        invalidate_centroid_cache(signature_id)
-        invalidate_signature_cache(signature_id)  # Also invalidate signature cache
-        self.invalidate_centroid_matrix()
-
+        invalidate_signature_cache(signature_id)
         return new_count
 
-    def update_centroid(
-        self,
-        signature_id: int,
-        new_embedding: np.ndarray,
-        propagate_to_parents: bool = True,
-    ):
-        """Update signature centroid with a new embedding (running average).
+    def update_centroid(self, signature_id: int, new_embedding: np.ndarray) -> Optional[int]:
+        """Update a signature's centroid with a new embedding.
 
-        This is called each time a step matches a signature. The centroid
-        becomes more stable and representative over time as more examples
-        are added.
-
-        Formula: new_sum = old_sum + new_embedding
-                 new_count = old_count + 1
-                 new_centroid = new_sum / new_count
+        Public wrapper around _update_centroid_atomic for external use.
 
         Args:
             signature_id: ID of the signature to update
-            new_embedding: The new embedding to add to the running average
-            propagate_to_parents: If True, propagate centroid change up the tree
+            new_embedding: New embedding to incorporate into centroid
+
+        Returns:
+            New embedding_count after update, or None if signature not found
         """
         with self._connection() as conn:
-            # Use BEGIN IMMEDIATE for atomic read-modify-write
             conn.execute("BEGIN IMMEDIATE")
             try:
-                new_count = self._update_centroid_atomic(conn, signature_id, new_embedding)
-
-                if new_count is None:
-                    conn.rollback()
-                    return
-
-                # Propagate centroid change up to parent umbrellas (immediate, as caller expects)
-                if propagate_to_parents:
-                    self.propagate_centroid_to_parents(conn, signature_id)
-
+                result = self._update_centroid_atomic(conn, signature_id, new_embedding)
                 conn.commit()
-                invalidate_signature_cache(signature_id)
-                logger.debug(
-                    "[db] Updated centroid for sig %d: count=%d",
-                    signature_id, new_count
-                )
+                return result
             except Exception:
                 conn.rollback()
                 raise
-
-    def update_centroid_on_operational_outcome(
-        self,
-        signature_id: int,
-        embedding: np.ndarray,
-        was_correct: bool,
-        confidence: float = 1.0,
-    ):
-        """BIPOLAR centroid update based on operational outcome (Scorpion fix).
-
-        This is the key mechanism for splitting vocab-based clusters into
-        operation-based clusters:
-        - SUCCESS: PULL centroid toward embedding (attract)
-        - FAILURE: PUSH centroid away from embedding (repel)
-
-        Key insight from AlphaGo/MCTS:
-        - High confidence + failure = STRONG negative signal (push hard)
-        - High confidence + success = STRONG positive signal (pull hard)
-        - Centroids drift toward operational meaning, not vocabulary
-
-        Both success and failure signals propagate to parent signatures,
-        reinforcing good routing paths and weakening bad ones.
-
-        Args:
-            signature_id: ID of the signature to update
-            embedding: The routing embedding from the step (None to skip centroid update)
-            was_correct: Whether this path produced the correct answer
-            confidence: How confident we were in this route (0.0-1.0)
-        """
-        # Skip centroid update if no embedding provided
-        if embedding is None:
-            return
-
-        from mycelium.config import SCORPION_REPULSION_WEIGHT, SCORPION_ATTRACTION_WEIGHT
-
-        if was_correct:
-            # SUCCESS: Pull centroid toward this embedding (attract)
-            # Weighted by confidence: high confidence = stronger pull
-            attraction_strength = confidence * SCORPION_ATTRACTION_WEIGHT
-            self._attract_centroid(signature_id, embedding, attraction_strength, propagate_to_parents=True)
-            logger.debug(
-                "[db] SCORPION PULL: sig %d centroid toward embedding (correct, conf=%.2f, strength=%.2f)",
-                signature_id, confidence, attraction_strength
-            )
-        else:
-            # FAILURE: Push centroid away from this embedding (repel)
-            # Weighted by confidence: high confidence + failure = strong repulsion
-            repulsion_strength = confidence * SCORPION_REPULSION_WEIGHT
-            self._repel_centroid(signature_id, embedding, repulsion_strength, propagate_to_parents=True)
-            logger.debug(
-                "[db] SCORPION PUSH: sig %d centroid away from embedding (incorrect, conf=%.2f, strength=%.2f)",
-                signature_id, confidence, repulsion_strength
-            )
-
-    def _attract_centroid(
-        self,
-        signature_id: int,
-        embedding: np.ndarray,
-        strength: float = 0.1,
-        propagate_to_parents: bool = False,
-    ):
-        """Pull centroid TOWARD an embedding (success attraction).
-
-        This strengthens operational clusters by pulling toward successful examples.
-        The centroid moves in the direction of the embedding.
-
-        Args:
-            signature_id: Signature to update
-            embedding: Embedding to attract toward
-            strength: How strongly to pull (0.0-1.0)
-            propagate_to_parents: If True, also update parent centroids (with decay)
-        """
-        with self._connection() as conn:
-            row = conn.execute(
-                """SELECT s.centroid, s.embedding_count, r.parent_id
-                   FROM step_signatures s
-                   LEFT JOIN signature_relationships r ON r.child_id = s.id
-                   WHERE s.id = ?""",
-                (signature_id,)
-            ).fetchone()
-
-            if row is None or row[0] is None:
-                return  # No centroid to attract
-
-            # Centroid is stored as JSON string, not bytes
-            centroid_data = row[0]
-            if isinstance(centroid_data, str):
-                centroid = np.array(json.loads(centroid_data), dtype=np.float32)
-            else:
-                centroid = _parse_centroid_data(centroid_data)
-            count = row[1] or 1
-            parent_id = row[2]
-
-            # Attraction: move centroid toward embedding
-            # direction = embedding - centroid (opposite of repulsion)
-            direction = embedding - centroid
-            direction_norm = np.linalg.norm(direction)
-
-            # Edge case: if centroid == embedding, direction is zero vector
-            # This is correct behavior - no movement needed when already aligned
-            if direction_norm > 0:
-                direction = direction / direction_norm  # Normalize direction
-
-            # Scale attraction by strength and inverse of count (mature signatures resist change)
-            attraction_scale = strength / np.sqrt(count + 1)
-            new_centroid = centroid + attraction_scale * direction
-
-            # Normalize to unit length
-            centroid_norm = np.linalg.norm(new_centroid)
-            if centroid_norm > 0:
-                new_centroid = new_centroid / centroid_norm
-
-            # Update in DB
-            conn.execute(
-                "UPDATE step_signatures SET centroid = ? WHERE id = ?",
-                (new_centroid.tobytes(), signature_id)
-            )
-            conn.commit()
-
-            # Propagate to parents with decay
-            if propagate_to_parents and parent_id is not None:
-                decayed_strength = strength * PARENT_CREDIT_DECAY
-                if decayed_strength >= PARENT_CREDIT_MIN:
-                    self._attract_centroid(parent_id, embedding, decayed_strength, propagate_to_parents=True)
-
-    def _repel_centroid(
-        self,
-        signature_id: int,
-        embedding: np.ndarray,
-        strength: float = 0.1,
-        propagate_to_parents: bool = False,
-    ):
-        """Push centroid AWAY from an embedding (failure repulsion).
-
-        This creates separation between operationally different clusters.
-        The centroid moves in the opposite direction from the embedding.
-
-        Args:
-            signature_id: Signature to update
-            embedding: Embedding to repel from
-            strength: How strongly to push (0.0-1.0)
-            propagate_to_parents: If True, also update parent centroids (with decay)
-        """
-        with self._connection() as conn:
-            row = conn.execute(
-                """SELECT s.centroid, s.embedding_count, r.parent_id
-                   FROM step_signatures s
-                   LEFT JOIN signature_relationships r ON r.child_id = s.id
-                   WHERE s.id = ?""",
-                (signature_id,)
-            ).fetchone()
-
-            if row is None or row[0] is None:
-                return  # No centroid to repel from
-
-            # Centroid is stored as JSON string, not bytes
-            centroid_data = row[0]
-            if isinstance(centroid_data, str):
-                centroid = np.array(json.loads(centroid_data), dtype=np.float32)
-            else:
-                centroid = _parse_centroid_data(centroid_data)
-            count = row[1] or 1
-            parent_id = row[2]
-
-            # Repulsion: move centroid away from embedding
-            # new_centroid = centroid + strength * (centroid - embedding)
-            # This pushes in the opposite direction of the embedding
-            direction = centroid - embedding
-            direction_norm = np.linalg.norm(direction)
-
-            # Edge case: if centroid == embedding, direction is zero vector
-            # This means the centroid is exactly at the failed embedding's position.
-            # We can't determine which direction to push, so we skip the update.
-            # This is rare but possible if a signature was created from this exact embedding.
-            if direction_norm > 0:
-                direction = direction / direction_norm  # Normalize direction
-            else:
-                logger.debug(
-                    "[db] SCORPION: skipping repulsion for sig %d (centroid == embedding)",
-                    signature_id
-                )
-                return
-
-            # Scale repulsion by strength and inverse of count (mature signatures resist change)
-            repulsion_scale = strength / np.sqrt(count + 1)
-            new_centroid = centroid + repulsion_scale * direction
-
-            # Normalize to unit length
-            centroid_norm = np.linalg.norm(new_centroid)
-            if centroid_norm > 0:
-                new_centroid = new_centroid / centroid_norm
-
-            # Update in DB
-            conn.execute(
-                "UPDATE step_signatures SET centroid = ? WHERE id = ?",
-                (new_centroid.tobytes(), signature_id)
-            )
-            conn.commit()
-
-            # Propagate to parents with decay
-            if propagate_to_parents and parent_id is not None:
-                decayed_strength = strength * PARENT_CREDIT_DECAY
-                if decayed_strength >= PARENT_CREDIT_MIN:
-                    self._repel_centroid(parent_id, embedding, decayed_strength, propagate_to_parents=True)
-
-    # Backward compatibility alias
-    def update_centroid_on_operational_success(
-        self,
-        signature_id: int,
-        embedding: np.ndarray,
-        was_correct: bool,
-    ):
-        """Backward-compatible alias for update_centroid_on_operational_outcome."""
-        self.update_centroid_on_operational_outcome(signature_id, embedding, was_correct)
-
-    def record_operational_failure(
-        self,
-        signature_id: int,
-        produced_answer: str,
-        expected_answer: str,
-    ):
-        """Record an operational failure for a signature path.
-
-        Per CLAUDE.md: "Record every failure—it feeds the refinement loop"
-
-        This tracks when a signature produces a different answer than ground truth,
-        providing signal for potential cluster splitting. Over time, if a signature
-        accumulates many operational failures, it may need to be decomposed into
-        more specific sub-signatures.
-
-        Args:
-            signature_id: ID of the signature that failed operationally
-            produced_answer: What the signature produced
-            expected_answer: The ground truth answer
-        """
-        with self._connection() as conn:
-            # Increment operational failure count
-            # This is separate from regular "uses" - tracks semantic mismatches
-            conn.execute(
-                """UPDATE step_signatures
-                   SET operational_failures = COALESCE(operational_failures, 0) + 1
-                   WHERE id = ?""",
-                (signature_id,)
-            )
-
-            # Log for analysis (could be expanded to store in separate table)
-            logger.debug(
-                "[db] Recorded operational failure for sig %d: produced=%s, expected=%s",
-                signature_id,
-                produced_answer[:30] if produced_answer else "None",
-                expected_answer[:30] if expected_answer else "None",
-            )
 
     def record_interference_outcome(
         self,
@@ -3018,6 +2392,9 @@ class StepSignatureDB:
         - Constructive: Boost successes (the node is operationally correct)
         - Destructive: Increment operational_failures (cluster is too generic)
 
+        Note: Interference outcomes do NOT propagate to parents - they are
+        local signals about this specific signature's cluster quality.
+
         Args:
             signature_id: ID of the signature
             interference_type: 'constructive' or 'destructive'
@@ -3029,11 +2406,9 @@ class StepSignatureDB:
                 # Constructive interference: all threads succeeded
                 # This is strong evidence the signature is operationally correct
                 # Boost success count (scaled by thread_count for multi-thread signal)
-                conn.execute(
-                    """UPDATE step_signatures
-                       SET successes = COALESCE(successes, 0) + ?
-                       WHERE id = ?""",
-                    (thread_count, signature_id)
+                self._increment_signature_stat(
+                    conn, signature_id, "successes",
+                    amount=thread_count, propagate_to_parents=False
                 )
                 logger.debug(
                     "[db] Constructive interference: sig %d boosted by %d (all %d threads succeeded)",
@@ -3045,17 +2420,73 @@ class StepSignatureDB:
                 # This signals the cluster is too generic and may need splitting
                 # Record as operational failures to trigger decomposition consideration
                 failure_count = thread_count - success_count
-                conn.execute(
-                    """UPDATE step_signatures
-                       SET operational_failures = COALESCE(operational_failures, 0) + ?
-                       WHERE id = ?""",
-                    (failure_count, signature_id)
+                self._increment_signature_stat(
+                    conn, signature_id, "operational_failures",
+                    amount=failure_count, propagate_to_parents=False
                 )
                 logger.debug(
                     "[db] Destructive interference: sig %d recorded %d failures "
                     "(%d/%d threads failed)",
                     signature_id, failure_count, failure_count, thread_count,
                 )
+
+    def _increment_signature_stat(
+        self,
+        conn,
+        signature_id: int,
+        stat_column: str,
+        amount: float = 1.0,
+        propagate_to_parents: bool = True,
+        _depth: int = 0,
+    ):
+        """Single pathway for all signature stat increments with parent propagation.
+
+        This is the ONLY function that should increment successes/operational_failures
+        with parent credit propagation. All public methods are thin wrappers.
+
+        Pattern follows propagate_graph_centroid_to_parents() - single entry point
+        for updates that need to propagate up the tree.
+
+        Args:
+            conn: Database connection (caller manages transaction)
+            signature_id: ID of the signature to update
+            stat_column: Column to increment ('successes' or 'operational_failures')
+            amount: Amount to increment by (default 1.0)
+            propagate_to_parents: If True, propagate credit up to parent routers with decay
+            _depth: Internal recursion depth tracker
+        """
+        from mycelium.config import PARENT_CREDIT_DECAY, PARENT_CREDIT_MAX_DEPTH, PARENT_CREDIT_MIN
+
+        # Validate stat_column to prevent SQL injection
+        if stat_column not in ("successes", "operational_failures"):
+            raise ValueError(f"Invalid stat_column: {stat_column}")
+
+        # Update this signature
+        conn.execute(
+            f"""UPDATE step_signatures
+               SET {stat_column} = COALESCE({stat_column}, 0) + ?
+               WHERE id = ?""",
+            (amount, signature_id)
+        )
+
+        # Propagate to parent with decay
+        if propagate_to_parents and _depth < PARENT_CREDIT_MAX_DEPTH:
+            parent_row = conn.execute(
+                "SELECT parent_id FROM signature_relationships WHERE child_id = ? LIMIT 1",
+                (signature_id,)
+            ).fetchone()
+
+            if parent_row and parent_row[0]:
+                decayed_amount = amount * PARENT_CREDIT_DECAY
+                if decayed_amount >= PARENT_CREDIT_MIN:
+                    self._increment_signature_stat(
+                        conn,
+                        parent_row[0],
+                        stat_column,
+                        amount=decayed_amount,
+                        propagate_to_parents=True,
+                        _depth=_depth + 1,
+                    )
 
     def increment_signature_successes(
         self,
@@ -3075,33 +2506,11 @@ class StepSignatureDB:
             propagate_to_parents: If True, propagate credit up to parent routers with decay
             _depth: Internal recursion depth tracker
         """
-        from mycelium.config import PARENT_CREDIT_DECAY, PARENT_CREDIT_MAX_DEPTH, PARENT_CREDIT_MIN
-
         with self._connection() as conn:
-            # Update this signature
-            conn.execute(
-                """UPDATE step_signatures
-                   SET successes = COALESCE(successes, 0) + ?
-                   WHERE id = ?""",
-                (count, signature_id)
+            self._increment_signature_stat(
+                conn, signature_id, "successes",
+                amount=count, propagate_to_parents=propagate_to_parents, _depth=_depth
             )
-
-            # Propagate to parent with decay
-            if propagate_to_parents and _depth < PARENT_CREDIT_MAX_DEPTH:
-                parent_row = conn.execute(
-                    "SELECT parent_id FROM signature_relationships WHERE child_id = ? LIMIT 1",
-                    (signature_id,)
-                ).fetchone()
-
-                if parent_row and parent_row[0]:
-                    decayed_count = count * PARENT_CREDIT_DECAY
-                    if decayed_count >= PARENT_CREDIT_MIN:
-                        self.increment_signature_successes(
-                            parent_row[0],
-                            count=decayed_count,
-                            propagate_to_parents=True,
-                            _depth=_depth + 1,
-                        )
 
     def increment_signature_failures(
         self,
@@ -3121,33 +2530,11 @@ class StepSignatureDB:
             propagate_to_parents: If True, propagate failure up to parent routers with decay
             _depth: Internal recursion depth tracker
         """
-        from mycelium.config import PARENT_CREDIT_DECAY, PARENT_CREDIT_MAX_DEPTH, PARENT_CREDIT_MIN
-
         with self._connection() as conn:
-            # Update this signature
-            conn.execute(
-                """UPDATE step_signatures
-                   SET operational_failures = COALESCE(operational_failures, 0) + ?
-                   WHERE id = ?""",
-                (count, signature_id)
+            self._increment_signature_stat(
+                conn, signature_id, "operational_failures",
+                amount=count, propagate_to_parents=propagate_to_parents, _depth=_depth
             )
-
-            # Propagate to parent with decay
-            if propagate_to_parents and _depth < PARENT_CREDIT_MAX_DEPTH:
-                parent_row = conn.execute(
-                    "SELECT parent_id FROM signature_relationships WHERE child_id = ? LIMIT 1",
-                    (signature_id,)
-                ).fetchone()
-
-                if parent_row and parent_row[0]:
-                    decayed_count = count * PARENT_CREDIT_DECAY
-                    if decayed_count >= PARENT_CREDIT_MIN:
-                        self.increment_signature_failures(
-                            parent_row[0],
-                            count=decayed_count,
-                            propagate_to_parents=True,
-                            _depth=_depth + 1,
-                        )
 
     def increment_signature_partial_success(
         self,
@@ -3168,32 +2555,11 @@ class StepSignatureDB:
             propagate_to_parents: If True, propagate partial credit up with decay
             _depth: Internal recursion depth tracker
         """
-        from mycelium.config import PARENT_CREDIT_DECAY, PARENT_CREDIT_MAX_DEPTH, PARENT_CREDIT_MIN
-
         with self._connection() as conn:
-            conn.execute(
-                """UPDATE step_signatures
-                   SET successes = COALESCE(successes, 0) + ?
-                   WHERE id = ?""",
-                (weight, signature_id)
+            self._increment_signature_stat(
+                conn, signature_id, "successes",
+                amount=weight, propagate_to_parents=propagate_to_parents, _depth=_depth
             )
-
-            # Propagate to parent with decay
-            if propagate_to_parents and _depth < PARENT_CREDIT_MAX_DEPTH:
-                parent_row = conn.execute(
-                    "SELECT parent_id FROM signature_relationships WHERE child_id = ? LIMIT 1",
-                    (signature_id,)
-                ).fetchone()
-
-                if parent_row and parent_row[0]:
-                    decayed_weight = weight * PARENT_CREDIT_DECAY
-                    if decayed_weight >= PARENT_CREDIT_MIN:
-                        self.increment_signature_partial_success(
-                            parent_row[0],
-                            weight=decayed_weight,
-                            propagate_to_parents=True,
-                            _depth=_depth + 1,
-                        )
 
     def merge_signatures(
         self,
@@ -3283,9 +2649,10 @@ class StepSignatureDB:
                 )
 
             # Archive the absorbed signature
-            conn.execute(
-                "UPDATE step_signatures SET is_archived = 1 WHERE id = ?",
-                (absorbed_id,)
+            self._update_signature_fields(
+                conn, absorbed_id,
+                log_reason="merged_into_survivor",
+                is_archived=1,
             )
 
             # Repoint any children of absorbed to survivor
@@ -3480,8 +2847,72 @@ class StepSignatureDB:
             candidates.sort(key=lambda x: x["similarity"], reverse=True)
             return candidates[:limit]
 
-    def flag_for_split(self, signature_id: int, reason: str = "destructive_interference") -> bool:
+    def has_mcts_alternatives(self, signature_id: int, conn=None) -> tuple[bool, Optional[int]]:
+        """Check if alternative leaves exist for a signature's operations.
+
+        This is the core MCTS check used by all leaf decomposition decisions.
+        If alternatives exist with high similarity, the issue is likely routing,
+        not the leaf itself.
+
+        Args:
+            signature_id: ID of the leaf signature to check
+            conn: Optional existing DB connection
+
+        Returns:
+            Tuple of (has_alternatives, best_alternative_id)
+            - has_alternatives: True if viable alternatives exist
+            - best_alternative_id: ID of best alternative (if any)
+        """
+        from mycelium.data_layer.mcts import REJECTION_SIM_THRESHOLD
+
+        use_conn = conn if conn else self._connection().__enter__()
+        try:
+            # Get the signature's centroid
+            cursor = use_conn.execute(
+                "SELECT centroid, is_semantic_umbrella FROM step_signatures WHERE id = ?",
+                (signature_id,),
+            )
+            row = cursor.fetchone()
+
+            if not row or not row[0] or row[1]:  # No centroid or is umbrella
+                return False, None
+
+            centroid = np.frombuffer(row[0], dtype=np.float32)
+
+            # Check if alternative leaves could handle this operation type
+            alternatives = self.match_step_to_leaves_mcts(
+                embedding=centroid,
+                dag_step_type=None,
+                top_k=3,
+                min_similarity=REJECTION_SIM_THRESHOLD,
+            )
+
+            # Filter out self
+            other_alternatives = [
+                (sig, ucb1, sim) for sig, ucb1, sim in alternatives
+                if sig.id != signature_id
+            ]
+
+            if other_alternatives:
+                best_alt = other_alternatives[0]
+                return True, best_alt[0].id
+
+            return False, None
+        finally:
+            if conn is None:
+                use_conn.__exit__(None, None, None)
+
+    def flag_for_split(
+        self,
+        signature_id: int,
+        reason: str = "destructive_interference",
+        skip_mcts_check: bool = False,
+    ) -> bool:
         """Flag a signature for potential decomposition/split.
+
+        MCTS-aware: Before flagging, checks if alternative leaves could handle
+        the operations this leaf handles. If alternatives exist, it's likely
+        a routing issue, not a leaf issue - skip decomposition.
 
         This marks a signature as needing attention due to mixed interference
         results. The actual decomposition is triggered by umbrella_learner.
@@ -3492,22 +2923,32 @@ class StepSignatureDB:
         Args:
             signature_id: ID of signature to flag
             reason: Why it's being flagged
+            skip_mcts_check: If True, bypass MCTS alternative check (force flag)
 
         Returns:
-            True if flagged successfully
+            True if flagged successfully, False if skipped (alternatives exist)
         """
+        # MCTS alternative check: is this a routing issue or a leaf issue?
+        if not skip_mcts_check:
+            has_alts, alt_id = self.has_mcts_alternatives(signature_id)
+            if has_alts:
+                logger.info(
+                    "[db] Skipping flag_for_split for sig %d (%s): "
+                    "alternative sig %d exists (routing issue)",
+                    signature_id, reason, alt_id
+                )
+                return False
+
+        # No alternatives or check skipped - proceed with flagging
         with self._connection() as conn:
-            # Increment operational failures to trigger decomposition consideration
-            # The umbrella learner checks success rate and will decompose low performers
-            conn.execute(
-                """UPDATE step_signatures
-                   SET operational_failures = COALESCE(operational_failures, 0) + 1
-                   WHERE id = ?""",
-                (signature_id,)
+            self._update_signature_fields(
+                conn, signature_id,
+                log_reason=f"flag_for_split:{reason}",
+                operational_failures_increment=True,
             )
 
             logger.info(
-                "[db] Flagged signature %d for split (reason: %s)",
+                "[db] Flagged signature %d for split (reason: %s, no alternatives)",
                 signature_id, reason
             )
 
@@ -3527,11 +2968,10 @@ class StepSignatureDB:
             True if archived successfully
         """
         with self._connection() as conn:
-            conn.execute(
-                """UPDATE step_signatures
-                   SET is_archived = 1
-                   WHERE id = ?""",
-                (signature_id,)
+            self._update_signature_fields(
+                conn, signature_id,
+                log_reason=f"archive:{reason}",
+                is_archived=1,
             )
 
             logger.info(
@@ -3580,11 +3020,10 @@ class StepSignatureDB:
                 )
 
             # Archive the signature
-            conn.execute(
-                """UPDATE step_signatures
-                   SET is_archived = 1
-                   WHERE id = ?""",
-                (signature_id,)
+            self._update_signature_fields(
+                conn, signature_id,
+                log_reason=f"archive_with_reparent:{reason}",
+                is_archived=1,
             )
 
             logger.info(
@@ -3646,11 +3085,9 @@ class StepSignatureDB:
             # Only increment uses count here, NOT successes
             # Successes and last_used_at are updated by update_problem_outcome() after grading
             # (last_used_at only updates on success to prevent stale signatures staying fresh)
-            conn.execute(
-                """UPDATE step_signatures
-                   SET uses = uses + 1
-                   WHERE id = ?""",
-                (signature_id,),
+            self._update_signature_fields(
+                conn, signature_id,
+                uses_increment=True,
             )
 
             # Update difficulty_stats if difficulty provided
@@ -3693,20 +3130,23 @@ class StepSignatureDB:
                         (successes > 0 and success_rate < AUTO_DEMOTE_MAX_SUCCESS_RATE)  # Historical failures
                     )
                     if should_demote:
-                        # Promote to umbrella: clear DSL, set type to router
-                        # Clear dsl_script to avoid type mismatch
-                        conn.execute(
-                            """UPDATE step_signatures
-                               SET is_semantic_umbrella = 1,
-                                   dsl_type = 'router',
-                                   dsl_script = NULL
-                               WHERE id = ?""",
-                            (signature_id,),
-                        )
-                        logger.info(
-                            "[db] Auto-demoted sig %d to umbrella/router (%.0f%% after %d uses, step_ok=%s, min=%d)",
-                            signature_id, success_rate * 100, uses, step_completed, min_uses
-                        )
+                        # MCTS check: only demote if no alternatives exist
+                        # If alternatives exist, it's a routing issue, not this leaf's fault
+                        has_alts, alt_id = self.has_mcts_alternatives(signature_id, conn=conn)
+                        if has_alts:
+                            logger.info(
+                                "[db] Skipping auto-demotion for sig %d: "
+                                "alternative sig %d exists (routing issue, not leaf issue)",
+                                signature_id, alt_id
+                            )
+                        else:
+                            # No alternatives - proceed with demotion
+                            # Use single pathway for umbrella promotion
+                            self._promote_to_umbrella_internal(conn, signature_id)
+                            logger.info(
+                                "[db] Auto-demoted sig %d to umbrella/router (%.0f%% after %d uses, step_ok=%s, min=%d, no alternatives)",
+                                signature_id, success_rate * 100, uses, step_completed, min_uses
+                            )
 
             return uses
 
@@ -3760,11 +3200,10 @@ class StepSignatureDB:
             max_diff = difficulty
 
         # Save updated stats
-        conn.execute(
-            """UPDATE step_signatures
-               SET difficulty_stats = ?, max_difficulty_solved = ?
-               WHERE id = ?""",
-            (json.dumps(stats), max_diff, signature_id),
+        self._update_signature_fields(
+            conn, signature_id,
+            difficulty_stats=json.dumps(stats),
+            max_difficulty_solved=max_diff,
         )
 
     def record_failure(
@@ -3774,6 +3213,7 @@ class StepSignatureDB:
         error_message: str = None,
         signature_id: int = None,
         context: dict = None,
+        increment_operational_failures: bool = False,
     ) -> int:
         """Record a step failure for pattern learning.
 
@@ -3781,6 +3221,10 @@ class StepSignatureDB:
         - Record every failure—it feeds the refinement loop
         - Failed signatures get decomposed
         - Success/failure stats drive routing decisions
+
+        This is the single entry point for recording failures. It always logs
+        to step_failures table, and optionally increments the signature's
+        operational_failures stat (for routing decisions).
 
         Args:
             step_text: The step that failed
@@ -3791,9 +3235,14 @@ class StepSignatureDB:
                 - 'timeout': Operation timed out
                 - 'validation': Result validation failed
                 - 'routing': Umbrella routing failed
+                - 'operational': Signature produced wrong answer vs ground truth
             error_message: The actual error text
             signature_id: ID of signature that failed (None if no match)
             context: Additional context dict (params, expected, problem, etc.)
+                For operational failures, include 'produced_answer' and 'expected_answer'
+            increment_operational_failures: If True and signature_id provided,
+                also increment the signature's operational_failures stat.
+                Use this when the signature is at fault (e.g., wrong answer).
 
         Returns:
             ID of the failure record
@@ -3815,6 +3264,19 @@ class StepSignatureDB:
                 ),
             )
             failure_id = cursor.lastrowid
+
+            # Optionally increment operational_failures stat on the signature
+            # This affects routing decisions (signatures with many failures may be decomposed)
+            # Note: Does NOT propagate to parents - operational failures are local signal
+            if increment_operational_failures and signature_id is not None:
+                self._increment_signature_stat(
+                    conn, signature_id, "operational_failures",
+                    amount=1.0, propagate_to_parents=False
+                )
+                logger.debug(
+                    "[db] Incremented operational_failures for sig %d",
+                    signature_id
+                )
 
             logger.debug(
                 "[db] Recorded failure: type=%s sig=%s step='%s'",
@@ -3913,6 +3375,13 @@ class StepSignatureDB:
         Call this after grading a problem to propagate correctness back to
         all signatures that were used. Also propagates credit up to parent
         umbrella signatures with decay.
+
+        NOTE: This function intentionally does NOT use _increment_signature_stat
+        because it has batch-specific semantics:
+        - Bulk SQL update for multiple signatures (efficiency)
+        - Updates last_used_at alongside successes
+        - Parent propagation uses MAX dedup (vs SUM in single-sig recursive)
+        - Parent updates filter by is_semantic_umbrella = 1
 
         DIFFICULTY-WEIGHTED CREDIT: Harder problems provide more valuable signal.
         - difficulty=0.0 (trivial) → 1.0x credit
@@ -4106,7 +3575,7 @@ class StepSignatureDB:
                 f"UPDATE step_signatures SET {', '.join(updates)} WHERE id = ?",
                 params,
             )
-            invalidate_signature_cache(signature_id)
+            self._invalidate_on_dsl_change(signature_id)
 
     def update_dsl_script(
         self,
@@ -4126,13 +3595,13 @@ class StepSignatureDB:
 
         now = datetime.utcnow().isoformat()
         with self._connection() as conn:
-            conn.execute(
-                """UPDATE step_signatures
-                   SET dsl_script = ?, last_rewrite_at = ?
-                   WHERE id = ?""",
-                (dsl_script, now, signature_id),
+            self._update_signature_fields(
+                conn, signature_id,
+                log_reason="dsl_update",
+                dsl_script=dsl_script,
+                last_rewrite_at=now,
             )
-            invalidate_signature_cache(signature_id)
+            self._invalidate_on_dsl_change(signature_id)
             logger.info(
                 "[db] Updated DSL script for signature %d, marked as rewritten",
                 signature_id
@@ -4141,6 +3610,106 @@ class StepSignatureDB:
     # =========================================================================
     # Helpers
     # =========================================================================
+
+    def _update_signature_fields(
+        self,
+        conn,
+        signature_id: int,
+        log_reason: str = None,
+        **field_updates,
+    ) -> bool:
+        """Update signature fields atomically with proper cache invalidation.
+
+        Consolidated helper for all signature field updates. Handles:
+        - Building the UPDATE query dynamically
+        - Cache invalidation based on which fields changed
+        - Common side effects (e.g., propagation for graph fields)
+        - Audit logging
+
+        Args:
+            conn: Database connection (caller's transaction context)
+            signature_id: ID of signature to update
+            log_reason: Optional reason for logging (e.g., "auto_demotion", "postmortem")
+            **field_updates: Field names and values to update, e.g.:
+                - is_semantic_umbrella=True
+                - dsl_type="router"
+                - dsl_script=None
+                - operational_failures=1 (use _increment=True for increment)
+                - last_used_at="2024-01-01T00:00:00"
+
+        Returns:
+            True if update succeeded (rowcount > 0), False otherwise
+
+        Example:
+            self._update_signature_fields(
+                conn, sig_id,
+                log_reason="auto_demotion",
+                is_semantic_umbrella=True,
+                dsl_type="router",
+                dsl_script=None,
+            )
+        """
+        if not field_updates:
+            return False
+
+        # Build UPDATE clause
+        set_clauses = []
+        params = []
+
+        # Fields that need special handling
+        increment_fields = {"operational_failures", "uses", "successes", "rejection_count"}
+
+        for field, value in field_updates.items():
+            # Check for increment syntax: field_increment=True means += 1
+            if field.endswith("_increment") and value:
+                base_field = field.replace("_increment", "")
+                set_clauses.append(f"{base_field} = COALESCE({base_field}, 0) + 1")
+            elif value is None:
+                set_clauses.append(f"{field} = NULL")
+            else:
+                set_clauses.append(f"{field} = ?")
+                params.append(value)
+
+        params.append(signature_id)
+
+        # Execute UPDATE
+        cursor = conn.execute(
+            f"UPDATE step_signatures SET {', '.join(set_clauses)} WHERE id = ?",
+            params,
+        )
+
+        if cursor.rowcount == 0:
+            return False
+
+        # Determine which caches to invalidate based on fields changed
+        fields_changed = set(field_updates.keys())
+
+        # Always invalidate signature cache
+        invalidate_signature_cache(signature_id)
+
+        # Invalidate centroid cache if centroid-related fields changed
+        centroid_fields = {"centroid", "graph_centroid", "graph_embedding"}
+        if fields_changed & centroid_fields:
+            invalidate_centroid_cache(signature_id)
+            self.invalidate_centroid_matrix()
+
+        # Invalidate children cache if parent relationship changed
+        if "is_semantic_umbrella" in fields_changed:
+            invalidate_children_cache(signature_id)
+
+        # Propagate graph centroid if graph_embedding changed
+        if "graph_embedding" in fields_changed:
+            self.propagate_graph_centroid_to_parents(conn, signature_id)
+
+        # Log the update
+        if log_reason:
+            fields_str = ", ".join(f"{k}={v}" for k, v in field_updates.items())
+            logger.debug(
+                "[db] Updated sig %d (%s): %s",
+                signature_id, log_reason, fields_str[:100]
+            )
+
+        return True
 
     def _row_to_signature(self, row) -> StepSignature:
         """Convert a database row to a StepSignature object."""
@@ -4717,6 +4286,122 @@ class StepSignatureDB:
             row = cursor.fetchone()
             return self._row_to_signature(dict(row)) if row else None
 
+    def get_all_leaves(self, min_uses: int = 0) -> list[StepSignature]:
+        """Get all leaf signatures (non-umbrellas) with graph embeddings.
+
+        Used for MCTS-style leaf matching where we want to find the best
+        leaf for a dag_step regardless of tree routing path.
+
+        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        Filters on graph_embedding (not text centroid).
+
+        Args:
+            min_uses: Minimum use count to include (filters cold signatures)
+
+        Returns:
+            List of leaf signatures with graph_embeddings
+        """
+        with self._connection() as conn:
+            cursor = conn.execute(
+                """SELECT *
+                   FROM step_signatures
+                   WHERE is_semantic_umbrella = 0
+                     AND is_archived = 0
+                     AND graph_embedding IS NOT NULL
+                     AND uses >= ?
+                   ORDER BY uses DESC""",
+                (min_uses,)
+            )
+            return [
+                self._row_to_signature_for_routing(dict(row))
+                for row in cursor.fetchall()
+            ]
+
+    def match_step_to_leaves_mcts(
+        self,
+        operation_embedding: np.ndarray,
+        dag_step_type: str = None,
+        top_k: int = 3,
+        min_similarity: float = 0.5,
+    ) -> list[tuple[StepSignature, float, float]]:
+        """MCTS-style matching: find top-k leaf candidates for a dag_step using graph embeddings.
+
+        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        Uses graph_embedding (not text centroid) for matching.
+
+        Instead of routing through tree hierarchy, directly scores all leaves
+        using UCB1 to balance:
+        - Exploitation: similarity + success rate
+        - Exploration: bonus for under-visited leaves
+
+        Per CLAUDE.md: Returns top-k candidates so caller can:
+        1. Try best match first
+        2. On rejection, try alternatives (sideways)
+        3. Only decompose if ALL reject (depth)
+
+        Args:
+            operation_embedding: Operation embedding to match (from step.operation)
+            dag_step_type: Optional step type for step-node stats lookup
+            top_k: Number of candidates to return (default 3)
+            min_similarity: Minimum similarity threshold to consider
+
+        Returns:
+            List of (leaf, ucb1_score, similarity) tuples, sorted by UCB1 desc
+        """
+        from mycelium.data_layer.mcts import get_dag_step_node_stats_batch
+
+        leaves = self.get_all_leaves(min_uses=0)
+        if not leaves:
+            return []
+
+        # Get step-node stats for all leaves if dag_step_type provided
+        step_stats_map = {}
+        if dag_step_type:
+            leaf_ids = [leaf.id for leaf in leaves if leaf.id is not None]
+            step_stats_map = get_dag_step_node_stats_batch(dag_step_type, leaf_ids)
+
+        # Estimate total visits for exploration bonus
+        total_visits = sum(leaf.uses or 1 for leaf in leaves)
+
+        candidates = []
+        for leaf in leaves:
+            # Use graph_embedding for matching (operational similarity)
+            graph_emb = leaf.graph_embedding
+            if graph_emb is None:
+                continue
+            if not isinstance(graph_emb, np.ndarray):
+                graph_emb = np.array(graph_emb)
+
+            sim = cosine_similarity(operation_embedding, graph_emb)
+            if sim < min_similarity:
+                continue
+
+            # Get step-node stats for this leaf
+            leaf_step_stats = step_stats_map.get(leaf.id)
+
+            ucb1 = compute_ucb1_score(
+                cosine_sim=sim,
+                uses=leaf.uses or 0,
+                successes=leaf.successes or 0,
+                parent_uses=total_visits,
+                last_used_at=leaf.last_used_at,
+                step_node_stats=leaf_step_stats,
+            )
+            candidates.append((leaf, ucb1, sim))
+
+        # Sort by UCB1 score descending
+        candidates.sort(key=lambda x: x[1], reverse=True)
+
+        if candidates:
+            logger.debug(
+                "[mcts_match] Top-%d leaves for '%s': %s",
+                top_k,
+                dag_step_type or "unknown",
+                [(c[0].step_type, f"ucb1={c[1]:.3f}", f"sim={c[2]:.3f}") for c in candidates[:top_k]]
+            )
+
+        return candidates[:top_k]
+
     def add_child(
         self,
         parent_id: int,
@@ -4794,35 +4479,55 @@ class StepSignatureDB:
                    VALUES (?, ?, ?, ?, ?)""",
                 (parent_id, child_id, condition, routing_order, now),
             )
-            # Mark parent as umbrella - routers don't execute DSL, they route
-            # Clear dsl_script to avoid mismatch between dsl_type='router' and script type='math'
-            conn.execute(
-                """UPDATE step_signatures
-                   SET is_semantic_umbrella = 1, dsl_type = 'router', dsl_script = NULL
-                   WHERE id = ?""",
-                (parent_id,),
-            )
+            # Use single pathway for umbrella promotion (handles centroid propagation)
+            self._promote_to_umbrella_internal(conn, parent_id)
+
             # Set child's depth = parent_depth + 1
             child_depth = parent_depth + 1
-            conn.execute(
-                "UPDATE step_signatures SET depth = ? WHERE id = ?",
-                (child_depth, child_id),
+            self._update_signature_fields(
+                conn, child_id,
+                log_reason="set_child_depth",
+                depth=child_depth,
             )
-            # Invalidate caches (new child affects routing and lookups)
-            invalidate_centroid_cache(parent_id)
-            invalidate_children_cache(parent_id)
-            invalidate_signature_cache(parent_id)
-            invalidate_signature_cache(child_id)
-            self.invalidate_centroid_matrix()
-
-            # Propagate graph_centroid to parents (Option B: routers use graph_centroid)
-            self.propagate_graph_centroid_to_parents(conn, child_id)
+            # Invalidate caches (relationship change: new child added)
+            self._invalidate_on_relationship_change(parent_id, child_id)
 
             logger.info(
                 "[db] Added child: parent=%d (depth=%d) → child=%d (depth=%d) (condition='%s')",
                 parent_id, parent_depth, child_id, child_depth, condition[:30]
             )
             return True
+
+    def _promote_to_umbrella_internal(self, conn, signature_id: int) -> bool:
+        """Internal: Mark signature as umbrella within existing transaction.
+
+        This is the SINGLE PATHWAY for umbrella promotion. All code that needs
+        to mark a signature as umbrella should call this function.
+
+        Args:
+            conn: Database connection (existing transaction)
+            signature_id: ID of the signature to promote
+
+        Returns:
+            True if updated, False if signature not found
+        """
+        result = self._update_signature_fields(
+            conn, signature_id,
+            log_reason="promote_to_umbrella",
+            is_semantic_umbrella=1,
+            dsl_type="router",
+            dsl_script=None,
+        )
+        if result:
+            # Use consolidated centroid update pathway:
+            # include_self=True computes this node's centroid, then propagates to ancestors
+            self.propagate_graph_centroid_to_parents(conn, signature_id, include_self=True)
+            logger.debug(
+                "[db] Promoted signature %d to umbrella with graph_centroid",
+                signature_id
+            )
+            return True
+        return False
 
     def promote_to_umbrella(self, signature_id: int) -> bool:
         """Mark a signature as a semantic umbrella (pure router, no DSL).
@@ -4841,37 +4546,13 @@ class StepSignatureDB:
             True if updated, False if signature not found
         """
         with self._connection() as conn:
-            # Clear DSL and set type to router - umbrellas don't execute, they route
-            # Clear dsl_script to avoid mismatch between dsl_type='router' and script type='math'
-            cursor = conn.execute(
-                """UPDATE step_signatures
-                   SET is_semantic_umbrella = 1,
-                       dsl_type = 'router',
-                       dsl_script = NULL
-                   WHERE id = ?""",
-                (signature_id,),
-            )
-            if cursor.rowcount > 0:
-                invalidate_signature_cache(signature_id)
-
-                # Compute graph_centroid from children (Option B: routers use graph_centroid)
-                graph_centroid = self.compute_graph_centroid_from_children(conn, signature_id)
-                if graph_centroid is not None:
-                    conn.execute(
-                        "UPDATE step_signatures SET graph_embedding = ? WHERE id = ?",
-                        (json.dumps(graph_centroid.tolist()), signature_id),
-                    )
-                    logger.info(
-                        "[db] Promoted signature %d to umbrella with graph_centroid",
-                        signature_id
-                    )
-                else:
-                    logger.info(
-                        "[db] Promoted signature %d to umbrella (no children with graph_embeddings yet)",
-                        signature_id
-                    )
-                return True
-            return False
+            result = self._promote_to_umbrella_internal(conn, signature_id)
+            if result:
+                logger.info(
+                    "[db] Promoted signature %d to umbrella with graph_centroid",
+                    signature_id
+                )
+            return result
 
     def find_deeper_signature(
         self,
@@ -5059,13 +4740,13 @@ class StepSignatureDB:
                 remaining = remaining_row[0] if remaining_row else 0
                 if remaining == 0:
                     # Demote from umbrella
-                    conn.execute(
-                        "UPDATE step_signatures SET is_semantic_umbrella = 0 WHERE id = ?",
-                        (parent_id,),
+                    self._update_signature_fields(
+                        conn, parent_id,
+                        log_reason="demote_from_umbrella",
+                        is_semantic_umbrella=0,
                     )
-                # Invalidate parent's centroid cache (child removal affects routing)
-                invalidate_centroid_cache(parent_id)
-                self.invalidate_centroid_matrix()
+                # Invalidate caches (relationship change: child removed)
+                self._invalidate_on_relationship_change(parent_id, child_id)
                 logger.info("[db] Removed child relationship: parent=%d → child=%d", parent_id, child_id)
                 return True
             return False
@@ -5147,8 +4828,10 @@ class StepSignatureDB:
                 (embedding_json, signature_id),
             )
             if cursor.rowcount > 0:
-                invalidate_signature_cache(signature_id)
+                self._invalidate_on_dsl_change(signature_id)
                 logger.debug("[db] Updated graph_embedding for sig %d", signature_id)
+                # Propagate centroid update to parent routers
+                self.propagate_graph_centroid_to_parents(conn, signature_id)
                 return True
             return False
 
@@ -5182,7 +4865,6 @@ class StepSignatureDB:
         operation_embedding: np.ndarray,
         min_similarity: float = 0.75,
         top_k: int = 5,
-        hierarchical: bool = True,
     ) -> list[tuple[StepSignature, float]]:
         """Route by comparing operation embedding to graph embeddings.
 
@@ -5195,19 +4877,15 @@ class StepSignatureDB:
             operation_embedding: Embedding of the extracted operation
             min_similarity: Minimum cosine similarity threshold
             top_k: Maximum number of matches to return
-            hierarchical: If True, traverse hierarchy; if False, flat search
 
         Returns:
             List of (signature, similarity) tuples, sorted by similarity descending
         """
         from mycelium.config import UMBRELLA_MAX_DEPTH
 
-        if hierarchical:
-            return self._route_by_graph_hierarchical(
-                operation_embedding, min_similarity, top_k, UMBRELLA_MAX_DEPTH
-            )
-        else:
-            return self._route_by_graph_flat(operation_embedding, min_similarity, top_k)
+        return self._route_by_graph_hierarchical(
+            operation_embedding, min_similarity, top_k, UMBRELLA_MAX_DEPTH
+        )
 
     def _route_by_graph_hierarchical(
         self,
@@ -5276,55 +4954,5 @@ class StepSignatureDB:
                     matches.append((current, sim))
 
         # Sort by similarity descending and return top_k
-        matches.sort(key=lambda x: x[1], reverse=True)
-        return matches[:top_k]
-
-    def _route_by_graph_flat(
-        self,
-        operation_embedding: np.ndarray,
-        min_similarity: float,
-        top_k: int,
-    ) -> list[tuple[StepSignature, float]]:
-        """Flat graph routing - search all leaves directly (legacy mode)."""
-        matches = []
-
-        with self._connection() as conn:
-            # Get all signatures with graph embeddings (leaf nodes only)
-            rows = conn.execute(
-                """SELECT id, graph_embedding, step_type, description,
-                          dsl_script, dsl_type, computation_graph,
-                          uses, successes, depth, is_semantic_umbrella
-                   FROM step_signatures
-                   WHERE graph_embedding IS NOT NULL
-                     AND graph_embedding != ''
-                     AND is_semantic_umbrella = 0"""
-            ).fetchall()
-
-            for row in rows:
-                try:
-                    graph_emb = np.array(json.loads(row["graph_embedding"]))
-                    sim = cosine_similarity(operation_embedding, graph_emb)
-
-                    if sim >= min_similarity:
-                        # Create minimal signature for routing
-                        sig = StepSignature(
-                            id=row["id"],
-                            step_type=row["step_type"],
-                            description=row["description"],
-                            dsl_script=row["dsl_script"],
-                            dsl_type=row["dsl_type"],
-                            computation_graph=row["computation_graph"],
-                            uses=row["uses"] or 0,
-                            successes=row["successes"] or 0,
-                            depth=row["depth"] or 0,
-                            is_semantic_umbrella=bool(row["is_semantic_umbrella"]),
-                        )
-                        matches.append((sig, sim))
-
-                except (json.JSONDecodeError, ValueError) as e:
-                    logger.warning("[db] Invalid graph_embedding for sig %d: %s", row["id"], e)
-                    continue
-
-        # Sort by similarity descending
         matches.sort(key=lambda x: x[1], reverse=True)
         return matches[:top_k]

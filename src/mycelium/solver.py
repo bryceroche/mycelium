@@ -70,6 +70,7 @@ from mycelium.step_signatures.utils import cosine_similarity
 from mycelium.embedder import Embedder
 from mycelium.embedding_cache import cached_embed, cached_embed_batch
 from mycelium.difficulty import estimate_difficulty
+from mycelium.answer_norm import normalize_answer
 from mycelium.data_layer.mcts import (
     create_dag,
     create_dag_steps,
@@ -398,11 +399,11 @@ class PathOutcome:
     """
     signature_id: int
     answer: Optional[str]  # What this path produced (None if failed)
-    embedding: np.ndarray  # The routing embedding for centroid updates
     step_id: str  # Which step this was for
-    embedding_similarity: float = 0.0  # Cosine similarity to signature centroid
+    embedding_similarity: float = 0.0  # Cosine similarity to signature graph_embedding
     dsl_type: str = "unknown"  # DSL type for operational alignment tracking
     thread_id: str = ""  # Thread that explored this path (for multi-path credit)
+    # Note: embedding field removed - centroid updates are no longer used (graph-only routing)
 
 
 @dataclass
@@ -416,7 +417,7 @@ class ThreadContext:
     After grading against ground truth, we know which threads were correct vs incorrect,
     enabling:
     - Positive credit to entire winning thread (not just final step)
-    - Negative credit to losing threads (SCORPION repulsion)
+    - Negative credit to losing threads (UCB1 stats update)
     - Per-signature thread win/loss tracking for cluster analysis
     """
     thread_id: str  # UUID
@@ -568,6 +569,10 @@ class Solver:
         # Stored after record_problem_outcome() for async processing
         self._pending_reactive_exploration: Optional[dict] = None
 
+        # Force exploration flag: when True, bypass UCB1 gap check and always fork
+        # Used during reactive exploration to spawn multiple threads on failure
+        self._force_exploration: bool = False
+
         # Phase 1 values for provenance tracking (set per-problem in solve())
         # Maps value name -> numeric value for resolving $name references
         self._current_phase1_values: dict[str, Any] = {}
@@ -628,7 +633,7 @@ class Solver:
 
         # Route problem through signature hierarchy
         matched_sig, path = self.step_db.route_through_hierarchy(
-            embedding=problem_embedding,
+            operation_embedding=problem_embedding,
             min_similarity=ZERO_LLM_MIN_SIMILARITY,
         )
 
@@ -1185,6 +1190,7 @@ class Solver:
         compute_budget: float = 1.0,
         difficulty: float = None,
         thread_id: str = None,
+        decomp_depth: int = 0,
     ) -> StepResult:
         """Execute a single step.
 
@@ -1205,6 +1211,7 @@ class Solver:
             depth: Recursion depth for composite steps
             compute_budget: MCTS exploration budget (>1 enables multi-path)
             thread_id: Thread ID for multi-path credit tracking (None if not tracking)
+            decomp_depth: Inline decomposition depth (to prevent infinite loops)
         """
         step_descriptions = step_descriptions or {}
         import time
@@ -1226,10 +1233,12 @@ class Solver:
                 thread_id=thread_id,
             )
 
-        # 1. Normalize and embed step (strip numbers for better matching)
-        # Use cached_embed to avoid redundant computation for repeated steps
-        normalized_task = normalize_step_text(step.task)
-        embedding = cached_embed(normalized_task, self.embedder)
+        # 1. Get operation embedding for graph-based routing
+        # Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE
+        # Operation embeddings are pre-computed during decomposition (batch embedded)
+        operation_embedding = None
+        if step.id in self._operation_embeddings:
+            operation_embedding = np.array(self._operation_embeddings[step.id])
 
         # 2. GRAPH-FIRST ROUTING (per mycelium-pl5c)
         # Check graph routing FIRST - route by what operations DO, not what they SOUND LIKE
@@ -1239,10 +1248,9 @@ class Solver:
         is_new = False
         graph_matched = False
 
-        if GRAPH_ROUTING_ENABLED and step.id in self._operation_embeddings:
-            operation_embedding = self._operation_embeddings[step.id]
+        if GRAPH_ROUTING_ENABLED and operation_embedding is not None:
             graph_results = self.step_db.route_by_graph_embedding(
-                np.array(operation_embedding),
+                operation_embedding,
                 min_similarity=GRAPH_ROUTING_MIN_SIMILARITY,
                 top_k=3,
             )
@@ -1257,8 +1265,14 @@ class Solver:
                         REJECTION_SIM_THRESHOLD,
                         record_leaf_rejection,
                     )
-                    if not best_sig.is_semantic_umbrella and best_sim < REJECTION_SIM_THRESHOLD:
-                        # Leaf rejects this step - similarity too low
+                    from mycelium.config import COLD_START_SIGNATURE_THRESHOLD
+
+                    # Cold start check: skip rejection while building vocabulary
+                    sig_count = self.step_db.count_signatures()
+                    is_cold_start = sig_count < COLD_START_SIGNATURE_THRESHOLD
+
+                    if not best_sig.is_semantic_umbrella and best_sim < REJECTION_SIM_THRESHOLD and not is_cold_start:
+                        # Leaf rejects this step - try MCTS alternatives before decomposing
                         record_leaf_rejection(
                             signature_id=best_sig.id,
                             step_text=step.task,
@@ -1266,35 +1280,158 @@ class Solver:
                             problem_context=problem[:500] if problem else None,
                         )
                         logger.info(
-                            "[solver] GRAPH-FIRST REJECTED: '%s' by sig %d (%s) sim=%.3f < %.2f",
+                            "[solver] GRAPH-FIRST REJECTED: '%s' by sig %d (%s) sim=%.3f < %.2f - trying MCTS alternatives",
                             step.task[:40], best_sig.id, best_sig.step_type, best_sim, REJECTION_SIM_THRESHOLD
                         )
-                        # Fall through to text routing to create new signature
+
+                        # MCTS fallback: get top-3 alternative leaves
+                        # Per brainstorm: try re-routing sideways before decomposing depth-wise
+                        mcts_candidates = self.step_db.match_step_to_leaves_mcts(
+                            operation_embedding=operation_embedding,
+                            dag_step_type=getattr(step, 'dsl_hint', None) or step.task[:40],
+                            top_k=3,
+                            min_similarity=REJECTION_SIM_THRESHOLD,  # Only consider viable alternatives
+                        )
+
+                        # Filter out the already-rejected signature
+                        alt_candidates = [
+                            (sig, ucb1, sim) for sig, ucb1, sim in mcts_candidates
+                            if sig.id != best_sig.id and sim >= REJECTION_SIM_THRESHOLD
+                        ]
+
+                        if alt_candidates:
+                            # Try best alternative (sideways re-routing)
+                            alt_sig, alt_ucb1, alt_sim = alt_candidates[0]
+                            logger.info(
+                                "[solver] MCTS re-route: trying alternative sig %d (%s) ucb1=%.3f sim=%.3f",
+                                alt_sig.id, alt_sig.step_type, alt_ucb1, alt_sim
+                            )
+                            # Use alternative signature instead of decomposing
+                            signature = alt_sig
+                            is_new = False
+                            graph_matched = True
+                        else:
+                            # No viable alternatives - all leaves reject, decompose (depth)
+                            logger.info(
+                                "[solver] No MCTS alternatives above threshold - inline decomposition"
+                            )
+                            decomp_result = await self._decompose_complex_step(
+                                step=step,
+                                problem=problem,
+                                context=context,
+                                step_descriptions=step_descriptions or {},
+                                hint=f"Rejected by all leaves (best sim={best_sim:.3f}). Break into atomic operations.",
+                                log_tag="inline_decomp",
+                                signature_type="decomposed",
+                                difficulty=difficulty,
+                                thread_id=thread_id,
+                                decomp_depth=decomp_depth,
+                            )
+                            if decomp_result is not None:
+                                logger.info("[solver] Inline decomposition succeeded for '%s'", step.task[:40])
+                                return decomp_result
+                            else:
+                                logger.warning("[solver] Inline decomposition failed for '%s'", step.task[:40])
+                                return StepResult(
+                                    step_id=step.id,
+                                    task=step.task,
+                                    result="[decomposition failed]",
+                                    success=False,
+                                    signature_id=best_sig.id,
+                                    signature_type=best_sig.step_type,
+                                    is_new_signature=False,
+                                    was_injected=False,
+                                    elapsed_ms=(time.time() - start_time) * 1000,
+                                )
                     else:
+                        # Accept match (cold start or above threshold)
+                        if is_cold_start and best_sim < REJECTION_SIM_THRESHOLD:
+                            logger.debug(
+                                "[solver] Cold start: accepting low-sim match (sig_count=%d < %d)",
+                                sig_count, COLD_START_SIGNATURE_THRESHOLD
+                            )
                         signature = best_sig
                         is_new = False
                         graph_matched = True
-                        # Update the matched signature's centroid with this new text embedding
-                        self.step_db.update_centroid(signature.id, embedding)
                         logger.info(
                             "[solver] GRAPH-FIRST match: '%s' → sig %d (%s) sim=%.3f",
                             step.task[:40], signature.id, signature.step_type, best_sim
                         )
 
-        # 3. TEXT ROUTING FALLBACK
-        # If graph routing didn't find a match, fall back to text-based routing
+        # 3. COLD START / SIGNATURE CREATION
+        # If GRAPH-FIRST didn't match, try to find/create via graph-only routing in db.py
+        # Per CLAUDE.md: routing uses graph_embedding exclusively (no text centroid fallback)
         if signature is None:
             adaptive_threshold = get_adaptive_match_threshold()
             signature, is_new = await self.step_db.find_or_create_async(
                 step_text=step.task,  # Keep original for description
-                embedding=embedding,   # Use normalized embedding for matching
                 min_similarity=adaptive_threshold,
                 parent_problem=problem,
                 origin_depth=depth,  # Track decomposition depth
                 extracted_values=getattr(step, 'extracted_values', None),
-                dsl_hint=getattr(step, 'dsl_hint', None),  # LLM → signature communication
+                dsl_hint=getattr(step, 'dsl_hint', None),  # For graph routing
                 embedder=self.embedder,  # For cold start graph embedding
             )
+
+        # Handle rejection from routing (signature is None means step was rejected)
+        if signature is None:
+            logger.info(
+                "[solver] Step '%s' rejected by routing - trying MCTS alternatives",
+                step.task[:40]
+            )
+
+            # MCTS fallback: get top-3 alternative leaves before decomposing
+            # Only try if we have an operation embedding
+            from mycelium.data_layer.mcts import REJECTION_SIM_THRESHOLD
+            mcts_candidates = []
+            if operation_embedding is not None:
+                mcts_candidates = self.step_db.match_step_to_leaves_mcts(
+                    operation_embedding=operation_embedding,
+                    dag_step_type=getattr(step, 'dsl_hint', None) or step.task[:40],
+                    top_k=3,
+                    min_similarity=REJECTION_SIM_THRESHOLD,
+                )
+
+            if mcts_candidates:
+                # Found viable alternative - use it (sideways re-routing)
+                alt_sig, alt_ucb1, alt_sim = mcts_candidates[0]
+                logger.info(
+                    "[solver] MCTS re-route from routing rejection: sig %d (%s) ucb1=%.3f sim=%.3f",
+                    alt_sig.id, alt_sig.step_type, alt_ucb1, alt_sim
+                )
+                signature = alt_sig
+                is_new = False
+            else:
+                # No alternatives - decompose (depth)
+                logger.info("[solver] No MCTS alternatives - inline decomposition")
+                decomp_result = await self._decompose_complex_step(
+                    step=step,
+                    problem=problem,
+                    context=context,
+                    step_descriptions=step_descriptions or {},
+                    hint="Rejected by routing (no match above threshold). Break into atomic operations.",
+                    log_tag="inline_decomp",
+                    signature_type="decomposed",
+                    difficulty=difficulty,
+                    thread_id=thread_id,
+                    decomp_depth=decomp_depth,
+                )
+                if decomp_result is not None:
+                    logger.info("[solver] Inline decomposition succeeded for '%s'", step.task[:40])
+                    return decomp_result
+                else:
+                    logger.warning("[solver] Inline decomposition failed for '%s'", step.task[:40])
+                    return StepResult(
+                        step_id=step.id,
+                        task=step.task,
+                        result="[decomposition failed]",
+                        success=False,
+                        signature_id=None,
+                        signature_type=None,
+                        is_new_signature=False,
+                        was_injected=False,
+                        elapsed_ms=(time.time() - start_time) * 1000,
+                    )
 
         logger.debug(
             "[solver] Step '%s' → signature '%s' (new=%s, umbrella=%s, dsl_type=%s, graph_matched=%s)",
@@ -1314,7 +1451,7 @@ class Solver:
             )
             # Try to decompose and see if sub-steps match existing signatures
             decompose_result = await self._try_maturity_decomposition(
-                step, signature, problem, context, step_descriptions or {}, embedding, difficulty
+                step, signature, problem, context, step_descriptions or {}, difficulty
             )
             if decompose_result is not None:
                 # Decomposition succeeded - all sub-steps matched existing signatures
@@ -1384,7 +1521,7 @@ class Solver:
         routed_signature = signature
 
         if signature.is_semantic_umbrella:
-            child_result = await self._try_umbrella_routing(signature, step, problem, context, step_descriptions, embedding=embedding, children=children)
+            child_result = await self._try_umbrella_routing(signature, step, problem, context, step_descriptions, embedding=operation_embedding, children=children)
             if child_result is not None:
                 result, routed_signature, was_injected = child_result
                 was_routed = True  # Successfully routed through umbrella
@@ -1411,7 +1548,7 @@ class Solver:
             if compute_budget > 1.0:
                 mp_result, mp_sig, explored_sigs, mp_injected = await self._explore_multiple_paths(
                     step, problem, context, step_descriptions or {},
-                    embedding, compute_budget, thread_id,
+                    operation_embedding, compute_budget, thread_id,
                 )
                 if mp_result is not None:
                     result = mp_result
@@ -1425,8 +1562,9 @@ class Solver:
             else:
                 # Single-path: just try DSL on routed signature
                 # Compute similarity for amplitude logging (not available from multi-path routing)
-                if routed_signature.centroid is not None:
-                    self._routing_similarity = cosine_similarity(embedding, routed_signature.centroid)
+                # Use graph_embedding for routing (per CLAUDE.md: route by what operations DO)
+                if routed_signature.graph_embedding is not None and operation_embedding is not None:
+                    self._routing_similarity = cosine_similarity(operation_embedding, routed_signature.graph_embedding)
                     self._routing_confidence = self._routing_similarity  # Use similarity as confidence proxy
                 dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
                 if dsl_result is not None:
@@ -1448,7 +1586,7 @@ class Solver:
         # 4.6. If we don't have a result yet, try routing through umbrella
         if result is None and routed_signature.is_semantic_umbrella:
             child_result = await self._try_umbrella_routing(
-                routed_signature, step, problem, context, step_descriptions, embedding=embedding
+                routed_signature, step, problem, context, step_descriptions, embedding=operation_embedding
             )
             if child_result is not None:
                 result, routed_signature, was_injected = child_result
@@ -1473,8 +1611,9 @@ class Solver:
             best_existing_sim = 0.0
 
             for child_sig, _condition in existing_children:
-                if child_sig.centroid is not None:
-                    sim = cosine_similarity(embedding, child_sig.centroid)
+                # Use graph_embedding for routing (per CLAUDE.md: route by what operations DO)
+                if child_sig.graph_embedding is not None and operation_embedding is not None:
+                    sim = cosine_similarity(operation_embedding, child_sig.graph_embedding)
                     if sim > best_existing_sim:
                         best_existing_sim = sim
                         best_existing_child = child_sig
@@ -1495,7 +1634,7 @@ class Solver:
                 )
                 new_child = self.step_db.create_signature(
                     step_text=step.task,
-                    embedding=embedding,
+                    embedding=None,  # Graph-only routing, no text embedding needed
                     parent_id=routed_signature.id,
                     origin_depth=depth + 1,
                     extracted_values=getattr(step, 'extracted_values', None),
@@ -1845,15 +1984,16 @@ class Solver:
         if not children:
             return None
 
-        # Embedding-based routing: compare step embedding to child centroids
+        # Graph-embedding routing: compare operation embedding to child graph_embeddings
+        # Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE
         # This is ~0ms vs ~500ms for LLM routing
         if embedding is not None:
             child_scores = []
             for child_sig, condition in children:
-                # Capture centroid once to avoid TOCTOU race condition
-                centroid = child_sig.centroid
-                if centroid is not None:
-                    sim = cosine_similarity(embedding, centroid)
+                # Use graph_embedding for routing (captures operational semantics)
+                graph_emb = child_sig.graph_embedding
+                if graph_emb is not None:
+                    sim = cosine_similarity(embedding, graph_emb)
                     child_scores.append((child_sig, sim, condition))
 
             # Sort by similarity descending
@@ -1927,11 +2067,14 @@ class Solver:
         problem: str,
         context: dict[str, str],
         step_descriptions: dict[str, str],
-        embedding: np.ndarray,
+        operation_embedding: Optional[np.ndarray],
         compute_budget: float = 1.0,
         thread_id: str = None,
     ) -> tuple[Optional[str], StepSignature, list[StepSignature], bool]:
         """MCTS multi-path exploration when confidence is low.
+
+        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        Uses operation_embedding (graph-based) for routing, not text embedding.
 
         Uses route_with_confidence() to get alternatives, then explores
         up to `compute_budget` paths in parallel. Returns best result.
@@ -1948,7 +2091,7 @@ class Solver:
             problem: Original problem text
             context: Results from previous steps
             step_descriptions: Task descriptions for NL param matching
-            embedding: Step embedding for routing
+            operation_embedding: Operation embedding for graph-based routing (may be None)
             compute_budget: Max paths to explore (1.0 = single path)
             thread_id: Thread ID for multi-path credit tracking (None if not tracking)
 
@@ -1962,12 +2105,20 @@ class Solver:
         from mycelium.config import UCB1_GAP_BRANCH_THRESHOLD
         from mycelium.step_signatures.db import RoutingResult
 
+        # Handle case where no operation embedding available
+        if operation_embedding is None:
+            # Can't route without operation embedding - return empty result
+            logger.debug(
+                "[solver] No operation embedding for multi-path - returning empty result"
+            )
+            return (None, None, [], False)
+
         # Get routing result with confidence and alternatives
         # Pass dag_step_type to enable step-node stats lookup for routing decisions
         # Per CLAUDE.md: "(dag_step_id, node_id) is what we're learning"
         dag_step_type = getattr(step, 'dsl_hint', None) or getattr(step, 'task', None)
         routing_result = self.step_db.route_with_confidence(
-            embedding,
+            operation_embedding,
             min_similarity=get_adaptive_match_threshold(),
             top_k=int(compute_budget) + 1,  # Get enough alternatives
             dag_step_type=dag_step_type,
@@ -1985,44 +2136,22 @@ class Solver:
         # Graph routing addresses this by comparing operation embedding to graph embeddings
         graph_matches = {}  # sig_id -> similarity for graph routing boost
         graph_signatures = {}  # sig_id -> StepSignature for graph-only candidates
-        if GRAPH_ROUTING_ENABLED:
+        if GRAPH_ROUTING_ENABLED and operation_embedding is not None:
             try:
-                operation_embedding = None
-
-                # Use pre-extracted operation embedding (batch embedded during decomposition)
-                # Operations are extracted in 1 decomposition call, embedded in 1 batch call
-                # Per CLAUDE.md: "Only call LLM on leaf nodes" - no LLM during routing
-                if step.id in self._operation_embeddings:
-                    operation_embedding = self._operation_embeddings[step.id]
-                    operation = getattr(step, 'operation', None)
+                # Compare to graph embeddings (what DSLs actually compute)
+                graph_routing_results = self.step_db.route_by_graph_embedding(
+                    operation_embedding,
+                    min_similarity=GRAPH_ROUTING_MIN_SIMILARITY,
+                    top_k=5,
+                )
+                # Build lookup for boosting centroid candidates
+                for sig, sim in graph_routing_results:
+                    graph_matches[sig.id] = sim
+                    graph_signatures[sig.id] = sig  # Store signature for graph-only adds
                     logger.debug(
-                        "[solver] Using pre-extracted operation embedding for: %s",
-                        operation[:50] if operation else "?"
+                        "[solver] Graph routing match: sig %d (%s) sim=%.3f",
+                        sig.id, sig.computation_graph[:30] if sig.computation_graph else "?", sim
                     )
-                else:
-                    # No operation embedding available - skip graph routing for this step
-                    # This happens when step.operation wasn't extracted during decomposition
-                    logger.debug(
-                        "[solver] No operation embedding for step %s - skipping graph routing",
-                        step.id
-                    )
-                    operation_embedding = None
-
-                if operation_embedding is not None:
-                    # Compare to graph embeddings (what DSLs actually compute)
-                    graph_routing_results = self.step_db.route_by_graph_embedding(
-                        np.array(operation_embedding),
-                        min_similarity=GRAPH_ROUTING_MIN_SIMILARITY,
-                        top_k=5,
-                    )
-                    # Build lookup for boosting centroid candidates
-                    for sig, sim in graph_routing_results:
-                        graph_matches[sig.id] = sim
-                        graph_signatures[sig.id] = sig  # Store signature for graph-only adds
-                        logger.debug(
-                            "[solver] Graph routing match: sig %d (%s) sim=%.3f",
-                            sig.id, sig.computation_graph[:30] if sig.computation_graph else "?", sim
-                        )
             except Exception as e:
                 # Graph routing is optional - don't fail on errors
                 logger.debug("[solver] Graph routing failed (continuing): %s", e)
@@ -2030,8 +2159,10 @@ class Solver:
         # Selective branching: only branch when undecided (per CLAUDE.md)
         # Use UCB1 gap to detect uncertainty: high gap = confident, low gap = undecided
         # Also respect single-path mode (compute_budget <= 1.0)
-        is_undecided = routing_result.min_gap < UCB1_GAP_BRANCH_THRESHOLD
-        if not is_undecided or compute_budget <= 1.0:
+        # Exception: force_exploration flag bypasses both gap check and budget check (for reactive exploration)
+        is_undecided = routing_result.min_gap < UCB1_GAP_BRANCH_THRESHOLD or self._force_exploration
+        effective_budget = max(compute_budget, 3.0) if self._force_exploration else compute_budget
+        if not is_undecided or effective_budget <= 1.0:
             if routing_result.signature is not None:
                 result = await self._try_dsl(
                     routing_result.signature, step, context, step_descriptions
@@ -2042,10 +2173,11 @@ class Solver:
         # Undecided (low UCB1 gap) + multi-path mode: explore alternatives
         # Mark as undecided for MCTS amplitude tracking
         self._routing_was_undecided = True
-        num_paths = min(int(compute_budget), len(routing_result.alternatives) + 1)
+        num_paths = min(int(effective_budget), len(routing_result.alternatives) + 1)
+        force_tag = " [FORCED]" if self._force_exploration else ""
         logger.info(
-            "[solver] Selective branching: undecided (gap=%.3f < %.3f), exploring %d paths",
-            routing_result.min_gap, UCB1_GAP_BRANCH_THRESHOLD, num_paths
+            "[solver] Selective branching%s: gap=%.3f, exploring %d paths",
+            force_tag, routing_result.min_gap, num_paths
         )
 
         # Collect alternative leaf signatures to try (with similarity scores)
@@ -2193,7 +2325,6 @@ class Solver:
             path_outcomes.append(PathOutcome(
                 signature_id=sig.id,
                 answer=result,
-                embedding=embedding,
                 step_id=step.id,
                 embedding_similarity=score,
                 dsl_type=sig.dsl_type or "unknown",
@@ -3608,18 +3739,70 @@ Rules:
             Dict with exploration statistics
         """
         from mycelium.data_layer.mcts import find_divergence_points, assign_divergence_blame
+        from mycelium.config import (
+            REACTIVE_EXPLORATION_FULL_RESOLVE,
+            REACTIVE_EXPLORATION_NUM_THREADS,
+            REACTIVE_EXPLORATION_TEMPERATURE,
+        )
+        from mycelium.planner import Planner
 
         stats = {
             "reactive_exploration_triggered": True,
             "winning_path_found": False,
             "divergence_points": 0,
             "blame_assigned": 0,
+            "exploration_threads_spawned": 0,
         }
 
-        # Try to find a winning path
-        winning = await self._retry_with_alternatives(
-            result.problem, result, ground_truth, difficulty
-        )
+        winning = None
+        all_dag_ids = []  # Collect all DAG IDs for cross-examination
+
+        # Try N full re-solves with forced exploration (higher temp + epsilon for diversity)
+        # Per mycelium-l703: spawn multiple threads for cross-examination
+        if REACTIVE_EXPLORATION_FULL_RESOLVE:
+            num_threads = REACTIVE_EXPLORATION_NUM_THREADS
+            logger.info(
+                "[reactive] Spawning %d exploration threads (temp=%.2f)",
+                num_threads, REACTIVE_EXPLORATION_TEMPERATURE
+            )
+
+            # Swap planner to higher-temp version for exploration diversity
+            original_planner = self.planner
+            self.planner = Planner(temperature=REACTIVE_EXPLORATION_TEMPERATURE)
+            self._force_exploration = True
+
+            try:
+                for thread_idx in range(num_threads):
+                    stats["exploration_threads_spawned"] += 1
+                    logger.info("[reactive] Running exploration thread %d/%d", thread_idx + 1, num_threads)
+
+                    explore_result = await self.solve(result.problem, ground_truth=ground_truth)
+                    if self._current_dag_id:
+                        all_dag_ids.append(self._current_dag_id)
+
+                    # Check if this thread found the correct answer
+                    if explore_result.answer and normalize_answer(explore_result.answer) == normalize_answer(ground_truth):
+                        logger.info("[reactive] Thread %d found winning path!", thread_idx + 1)
+                        winning = (explore_result, self._root_thread_id)
+                        stats["full_resolve_success"] = True
+                        stats["winning_thread_idx"] = thread_idx + 1
+                        break
+                    else:
+                        logger.info("[reactive] Thread %d didn't find winning path", thread_idx + 1)
+
+                if winning is None:
+                    stats["full_resolve_success"] = False
+            finally:
+                self._force_exploration = False
+                self.planner = original_planner  # Restore original planner
+
+            stats["total_dags_for_crossexam"] = len(all_dag_ids)
+
+        # Fallback: try single-step alternatives (original approach)
+        if winning is None:
+            winning = await self._retry_with_alternatives(
+                result.problem, result, ground_truth, difficulty
+            )
 
         if winning is None:
             logger.info("[reactive] No winning alternative found, trying step decomposition")
@@ -3657,41 +3840,61 @@ Rules:
         winning_result, winning_thread_id = winning
         stats["winning_path_found"] = True
         logger.info(
-            "[reactive] Found winning thread %s, running divergence analysis",
-            winning_thread_id
+            "[reactive] Found winning thread %s, running cross-examination across %d DAGs",
+            winning_thread_id, len(all_dag_ids) if all_dag_ids else 1
         )
 
-        # Run divergence analysis to compare winning vs losing threads
-        if self._current_dag_id:
-            divergence_points = find_divergence_points(self._current_dag_id)
-            stats["divergence_points"] = len(divergence_points)
+        # Cross-examine ALL exploration DAGs to find divergence points
+        # Per mycelium-l703: compare winning vs losing threads across all exploration runs
+        dags_to_analyze = all_dag_ids if all_dag_ids else ([self._current_dag_id] if self._current_dag_id else [])
+        total_divergence_points = 0
+        total_blame_assigned = 0
+        all_blame_stats = {}
+
+        for dag_id in dags_to_analyze:
+            divergence_points = find_divergence_points(dag_id)
+            total_divergence_points += len(divergence_points)
 
             if divergence_points:
-                # Log divergence details
-                for dp in divergence_points[:3]:  # Log first 3
+                # Log divergence details (first 3 per DAG)
+                for dp in divergence_points[:3]:
                     logger.info(
-                        "[reactive] Divergence at step %s (idx=%d): "
+                        "[reactive] Divergence in DAG %s at step %s (idx=%d): "
                         "winning node=%s, losing node=%s",
+                        dag_id[:8],
                         dp.divergence_dag_step_id,
                         dp.divergence_step_idx,
                         dp.winning_node_at_divergence,
                         dp.losing_node_at_divergence,
                     )
 
-                # Assign targeted blame/credit
-                blame_stats = assign_divergence_blame(self._current_dag_id, self.step_db)
-                stats["blame_assigned"] = (
+                # Assign targeted blame/credit for this DAG
+                blame_stats = assign_divergence_blame(dag_id, self.step_db)
+                dag_blame = (
                     blame_stats.get("divergence_blame_assigned", 0) +
                     blame_stats.get("suffix_blame_assigned", 0)
                 )
-                stats.update(blame_stats)
+                total_blame_assigned += dag_blame
 
-                logger.info(
-                    "[reactive] Divergence blame: %d primary, %d suffix, %d prefix credit",
-                    blame_stats.get("divergence_blame_assigned", 0),
-                    blame_stats.get("suffix_blame_assigned", 0),
-                    blame_stats.get("shared_prefix_credit", 0),
-                )
+                # Aggregate blame stats
+                for key, val in blame_stats.items():
+                    all_blame_stats[key] = all_blame_stats.get(key, 0) + val
+
+        stats["divergence_points"] = total_divergence_points
+        stats["blame_assigned"] = total_blame_assigned
+        stats.update(all_blame_stats)
+
+        if total_divergence_points > 0:
+            logger.info(
+                "[reactive] Cross-exam complete: %d divergence points across %d DAGs",
+                total_divergence_points, len(dags_to_analyze)
+            )
+            logger.info(
+                "[reactive] Divergence blame: %d primary, %d suffix, %d prefix credit",
+                all_blame_stats.get("divergence_blame_assigned", 0),
+                all_blame_stats.get("suffix_blame_assigned", 0),
+                all_blame_stats.get("shared_prefix_credit", 0),
+            )
 
         return stats
 
@@ -3840,13 +4043,8 @@ Rules:
                         self._answers_match(outcome.answer, ground_truth)
                     )
 
-                    # Update centroid only for operationally correct paths
-                    # This naturally clusters signatures by operational equivalence
-                    self.step_db.update_centroid_on_operational_success(
-                        outcome.signature_id,
-                        outcome.embedding,
-                        was_correct=path_correct,
-                    )
+                    # Note: Centroid updates removed - graph embeddings are structural (not learned)
+                    # Learning happens through UCB1 stats (uses, successes) tracked elsewhere
 
                     # Record for operational alignment validation
                     # This tracks whether MCTS is actually helping distinguish operations
@@ -3873,10 +4071,15 @@ Rules:
                         incorrect_paths += 1
                         # Record failure for potential cluster splitting
                         # Per CLAUDE.md: "Record every failure—it feeds the refinement loop"
-                        self.step_db.record_operational_failure(
-                            outcome.signature_id,
-                            outcome.answer,
-                            ground_truth,
+                        self.step_db.record_failure(
+                            step_text=step_id,
+                            failure_type="operational",
+                            signature_id=outcome.signature_id,
+                            context={
+                                "produced_answer": outcome.answer,
+                                "expected_answer": ground_truth,
+                            },
+                            increment_operational_failures=True,
                         )
                         logger.debug(
                             "[solver] Path via sig %d was operationally different for step '%s' "
@@ -4114,10 +4317,6 @@ Rules:
                     )
         # Clear the flagged nodes list after processing
         self._postmortem_flagged_nodes = []
-
-        # Flush any batched centroid propagations after problem is graded
-        # This ensures parent umbrellas have accurate centroids for next problem
-        self.step_db.flush_pending_propagations()
 
         return candidates
 
@@ -4595,22 +4794,8 @@ Rules:
                     final_answer=thread.final_answer or "",
                     success=thread_success,
                 )
-
-                # Apply credit/blame to signatures in this thread
-                thread_correct = is_correct if is_correct is not None else (
-                    is_winner and correct
-                )
-
-                # Credit decay based on fork depth
-                credit = THREAD_CREDIT_DECAY_PER_FORK ** thread.fork_depth
-                if credit >= THREAD_MIN_CREDIT:
-                    for sig_id in thread.signature_ids:  # Use property for just IDs
-                        self.step_db.update_centroid_on_operational_outcome(
-                            sig_id,
-                            embedding=None,  # No embedding update here
-                            was_correct=thread_correct,
-                            confidence=credit,
-                        )
+                # Note: Credit/blame to signatures happens via post-mortem analysis
+                # (run_postmortem), not here. UCB1 stats are updated there.
 
             logger.info(
                 "[solver] Recorded %d thread outcomes (winner=%s, threads_correct=%d)",
@@ -4645,6 +4830,7 @@ Rules:
         signature_type: str,
         difficulty: float = None,
         thread_id: str = None,
+        decomp_depth: int = 0,
     ) -> Optional[StepResult]:
         """Decompose a complex step into sub-steps.
 
@@ -4661,12 +4847,23 @@ Rules:
             signature_type: Type to use in StepResult
             difficulty: Problem difficulty for adaptive decomposition
             thread_id: Thread ID for multi-path credit tracking
+            decomp_depth: Current inline decomposition depth (to prevent infinite loops)
 
         Returns:
             StepResult if decomposition and execution succeeded, None otherwise
         """
         import time
+        from mycelium.config import INLINE_DECOMP_MAX_DEPTH
+
         start_time = time.time()
+
+        # Check depth limit to prevent infinite decomposition loops
+        if decomp_depth >= INLINE_DECOMP_MAX_DEPTH:
+            logger.warning(
+                "[%s] Max inline decomposition depth (%d) reached for '%s'",
+                log_tag, INLINE_DECOMP_MAX_DEPTH, step.task[:40]
+            )
+            return None
 
         try:
             # Decompose the step using the planner
@@ -4683,8 +4880,8 @@ Rules:
                 return None
 
             logger.info(
-                "[%s] Decomposed '%s' into %d sub-steps",
-                log_tag, step.task[:40], len(sub_plan.steps)
+                "[%s] Decomposed '%s' into %d sub-steps (depth=%d)",
+                log_tag, step.task[:40], len(sub_plan.steps), decomp_depth
             )
 
             # Execute sub-steps recursively
@@ -4700,6 +4897,7 @@ Rules:
                     depth=1,
                     difficulty=difficulty,
                     thread_id=thread_id,
+                    decomp_depth=decomp_depth + 1,  # Track inline decomposition depth
                 )
                 sub_results.append(sub_result)
                 sub_context[sub_step.id] = sub_result.result
@@ -4730,13 +4928,15 @@ Rules:
         problem: str,
         context: dict[str, str],
         step_descriptions: dict[str, str],
-        embedding: np.ndarray,
         difficulty: float = None,
     ) -> Optional[str]:
         """Try decomposing a step to reuse existing signatures (maturity-based).
 
         Per mycelium-jaq9: When maturity sigmoid suggests decomposition, try to
         break the step into sub-steps that match existing signatures.
+
+        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        Uses operation embeddings (graph-based) for routing, not text embeddings.
 
         Escape hatch: If too many sub-steps don't match existing signatures,
         this recognizes a genuinely novel operation and returns None.
@@ -4747,12 +4947,12 @@ Rules:
             problem: Original problem text
             context: Results from previous steps
             step_descriptions: Task descriptions
-            embedding: Step embedding
             difficulty: Problem difficulty
 
         Returns:
             Combined result string if decomposition succeeds, None if escape hatch triggered
         """
+        from mycelium.step_signatures.db import RoutingResult
         try:
             # Use planner to decompose the step
             # Build context string from problem and known values
@@ -4783,17 +4983,24 @@ Rules:
             results = []
 
             for sub_step in sub_plan.steps:
-                normalized_task = normalize_step_text(sub_step.task)
-                sub_embedding = cached_embed(normalized_task, self.embedder)
+                # Use operation embedding for graph-based routing
+                # Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE
+                sub_operation_embedding = None
+                if sub_step.id in self._operation_embeddings:
+                    sub_operation_embedding = np.array(self._operation_embeddings[sub_step.id])
 
                 # Use route_with_confidence to check for existing match
                 # Pass dag_step_type for step-node stats lookup
                 sub_dag_step_type = getattr(sub_step, 'dsl_hint', None) or sub_step.task
-                routing_result = self.step_db.route_with_confidence(
-                    sub_embedding,
-                    min_similarity=adaptive_threshold,
-                    dag_step_type=sub_dag_step_type,
-                )
+                if sub_operation_embedding is None:
+                    # No operation embedding - treat as miss (can't route without graph embedding)
+                    routing_result = RoutingResult(signature=None, path=[], confidence=0.0)
+                else:
+                    routing_result = self.step_db.route_with_confidence(
+                        sub_operation_embedding,
+                        min_similarity=adaptive_threshold,
+                        dag_step_type=sub_dag_step_type,
+                    )
 
                 if routing_result.signature is None or routing_result.best_similarity < adaptive_threshold:
                     # No match found - count as miss

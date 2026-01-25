@@ -174,6 +174,10 @@ REACTIVE_EXPLORATION_ENABLED = True  # Enable reactive exploration on failure
 REACTIVE_EXPLORATION_MAX_ALTERNATIVES = 3  # Max alternative nodes to try per step
 REACTIVE_EXPLORATION_MAX_RETRIES = 5  # Max total retry attempts
 REACTIVE_EXPLORATION_MIN_SIMILARITY = 0.5  # Min similarity for alternative candidates
+REACTIVE_EXPLORATION_FULL_RESOLVE = True  # Re-solve entire problem with forced exploration
+REACTIVE_EXPLORATION_NUM_THREADS = 3  # Number of parallel exploration threads to spawn
+REACTIVE_EXPLORATION_TEMPERATURE = 0.3  # Higher temp for diversity (vs 0.0 default)
+REACTIVE_EXPLORATION_EPSILON_BOOST = 0.3  # Boost epsilon during exploration (stacks with base)
 
 # Step decomposition fallback: when reactive exploration fails to find a winning path,
 # decompose failing steps into smaller sub-steps and re-solve
@@ -200,9 +204,8 @@ PARENT_CREDIT_DECAY = 0.5  # Credit multiplier per depth (0.5^1=0.5, 0.5^2=0.25,
 PARENT_CREDIT_MAX_DEPTH = 3  # Max depth to propagate (per CLAUDE.md: "default 3 levels")
 PARENT_CREDIT_MIN = 0.1  # Minimum credit to apply (filter noise)
 
-# Centroid propagation (batch update parent centroids)
-CENTROID_PROPAGATION_MAX_DEPTH = 3  # Max levels to propagate centroid changes (perf optimization)
-CENTROID_PROPAGATION_BATCH_SIZE = 5  # Accumulate N matches before propagating (perf vs freshness tradeoff)
+# Graph centroid propagation (batch update parent graph_embeddings)
+CENTROID_PROPAGATION_MAX_DEPTH = 3  # Max levels to propagate graph_centroid changes (perf optimization)
 
 # Centroid drift bounds (reject updates that would move centroid too far)
 # This prevents a signature from drifting outside its semantic confidence bounds.
@@ -389,29 +392,6 @@ SYNTHESIS_STEP_ANCHORS = [
 SYNTHESIS_STEP_THRESHOLD = 0.88  # Similarity threshold to detect synthesis steps (raised from 0.75 to avoid false positives)
 
 # =============================================================================
-# SCORPION FIX (Bipolar signal propagation)
-# =============================================================================
-# Fixes lexical vs operational similarity problem.
-# Embeddings cluster by vocabulary, but we want operational clusters.
-#
-# Solution: Bipolar centroid updates
-#   - SUCCESS: PULL centroid toward embedding (attract)
-#   - FAILURE: PUSH centroid away from embedding (repel)
-#
-# Key insight from AlphaGo/MCTS:
-#   - High confidence + failure = STRONG negative signal
-#   - Centroids drift toward operational meaning, not vocabulary
-#
-# Per CLAUDE.md: "Centroid averaging based off avg of children"
-
-SCORPION_REPULSION_WEIGHT = 0.3  # How strongly to push on failure (0.0-1.0)
-                                  # Higher = more aggressive separation
-                                  # Lower = slower but more stable clustering
-SCORPION_ATTRACTION_WEIGHT = 0.2  # How strongly to pull on success (0.0-1.0)
-                                   # Lower than repulsion: failures are rarer, need stronger signal
-                                   # Success is more common, so gentler pull to avoid overfitting
-
-# =============================================================================
 # THREAD TRACKING (Multi-path credit/blame backpropagation)
 # =============================================================================
 # Tracks complete execution paths ("threads") through DAG for credit attribution.
@@ -442,8 +422,8 @@ THREAD_MIN_CREDIT = 0.1  # Minimum credit to apply (filter noise from deep forks
 
 POSTMORTEM_ENABLED = True  # Run postmortem analysis after grading
 POSTMORTEM_HIGH_CONF_THRESHOLD = 0.7  # Amplitude >= this is "high confidence"
-POSTMORTEM_REINFORCE_MULT = 1.1  # Won + high confidence: small boost
-POSTMORTEM_BOOST_MULT = 1.4  # Won + low confidence: bigger boost (discovery)
+POSTMORTEM_REINFORCE_MULT = 1.4  # Won + high confidence: biggest boost (confident AND right)
+POSTMORTEM_BOOST_MULT = 1.1  # Won + low confidence: small boost (lucky exploration)
 POSTMORTEM_MILD_PENALTY_MULT = 0.85  # Lost + low confidence: expected uncertainty
 POSTMORTEM_STRONG_PENALTY_MULT = 0.5  # Lost + high confidence: harsh penalty
 POSTMORTEM_AMPLITUDE_MIN = 0.0  # Clamp amplitude_post minimum
@@ -572,7 +552,13 @@ ZERO_LLM_REQUIRE_DSL = True  # Signature must have a working DSL script
 GRAPH_ROUTING_ENABLED = True  # Master switch for graph-based routing
 GRAPH_ROUTING_MIN_SIMILARITY = 0.80  # Minimum similarity for graph match
 GRAPH_ROUTING_BOOST_FACTOR = 0.15  # Boost to UCB1 when graph matches
-GRAPH_ROUTING_FALLBACK_TO_CENTROID = True  # Fall back to centroid if no graph match
+GRAPH_ROUTING_FALLBACK_TO_CENTROID = False  # No centroid fallback - graph-only routing
+
+# =============================================================================
+# INLINE DECOMPOSITION (when leaf rejects a step)
+# =============================================================================
+INLINE_DECOMP_MAX_DEPTH = 3  # Max recursion depth for inline decomposition (prevents infinite loops)
+COLD_START_SIGNATURE_THRESHOLD = 100  # Below this, skip rejection and build vocabulary (raised for latency)
 
 # =============================================================================
 # MATURITY-BASED DECOMPOSE VS CREATE (Sigmoid transition)
