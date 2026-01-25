@@ -1751,6 +1751,9 @@ def update_dag_step_node_stats(
     Called during post-mortem to materialize (step, node) performance.
     Routing then queries these stats to make better decisions.
 
+    Uses Welford's online algorithm for numerically stable variance tracking.
+    High variance in amplitude_post = inconsistent performance = decomposition signal.
+
     Args:
         dag_step_type: The step type (e.g., "compute_sum", "compute_product")
         node_id: The signature ID that handled this step
@@ -1779,35 +1782,83 @@ def update_dag_step_node_stats(
     win_inc = 1 if won else 0
     loss_inc = 0 if won else 1
 
-    # Step 1: Simple upsert - just increment raw counters
-    conn.execute(
+    # Step 1: Check if row exists and get current Welford state
+    cursor = conn.execute(
         """
-        INSERT INTO dag_step_node_stats (
-            dag_step_type, node_id, uses, wins, losses,
-            amplitude_post_sum, last_updated
-        )
-        VALUES (?, ?, 1, ?, ?, ?, ?)
-        ON CONFLICT(dag_step_type, node_id) DO UPDATE SET
-            uses = uses + 1,
-            wins = wins + ?,
-            losses = losses + ?,
-            amplitude_post_sum = amplitude_post_sum + ?,
-            last_updated = ?
+        SELECT amp_post_count, amp_post_mean, amp_post_m2
+        FROM dag_step_node_stats
+        WHERE dag_step_type = ? AND node_id = ?
         """,
-        (
-            dag_step_type,
-            node_id,
-            win_inc,
-            loss_inc,
-            amplitude_post,
-            now,
-            # ON CONFLICT values:
-            win_inc,
-            loss_inc,
-            amplitude_post,
-            now,
-        ),
+        (dag_step_type, node_id),
     )
+    row = cursor.fetchone()
+
+    if row is None:
+        # New row: initialize with first observation
+        # Welford's: n=1, mean=x, m2=0
+        conn.execute(
+            """
+            INSERT INTO dag_step_node_stats (
+                dag_step_type, node_id, uses, wins, losses,
+                amplitude_post_sum, amp_post_count, amp_post_mean, amp_post_m2,
+                last_updated
+            )
+            VALUES (?, ?, 1, ?, ?, ?, 1, ?, 0.0, ?)
+            """,
+            (
+                dag_step_type,
+                node_id,
+                win_inc,
+                loss_inc,
+                amplitude_post,  # amplitude_post_sum (legacy)
+                amplitude_post,  # amp_post_mean (Welford's)
+                now,
+            ),
+        )
+    else:
+        # Existing row: update using Welford's algorithm
+        old_count, old_mean, old_m2 = row
+        old_count = old_count or 0
+        old_mean = old_mean or 0.0
+        old_m2 = old_m2 or 0.0
+
+        # Welford's update formula:
+        # n = n + 1
+        # delta = x - mean
+        # mean = mean + delta / n
+        # delta2 = x - mean  (using NEW mean)
+        # m2 = m2 + delta * delta2
+        new_count = old_count + 1
+        delta = amplitude_post - old_mean
+        new_mean = old_mean + delta / new_count
+        delta2 = amplitude_post - new_mean
+        new_m2 = old_m2 + delta * delta2
+
+        conn.execute(
+            """
+            UPDATE dag_step_node_stats
+            SET uses = uses + 1,
+                wins = wins + ?,
+                losses = losses + ?,
+                amplitude_post_sum = amplitude_post_sum + ?,
+                amp_post_count = ?,
+                amp_post_mean = ?,
+                amp_post_m2 = ?,
+                last_updated = ?
+            WHERE dag_step_type = ? AND node_id = ?
+            """,
+            (
+                win_inc,
+                loss_inc,
+                amplitude_post,
+                new_count,
+                new_mean,
+                new_m2,
+                now,
+                dag_step_type,
+                node_id,
+            ),
+        )
 
     # Step 2: Compute derived fields (win_rate, avg_amplitude_post) in Python
     # This is clearer than complex inline SQL and applies Bayesian priors correctly
@@ -1847,6 +1898,7 @@ def get_dag_step_node_stats_batch(
     Returns:
         Dict mapping node_id → stats dict with keys:
         - uses, wins, losses, win_rate, avg_amplitude_post
+        - amp_post_variance, amp_post_std (computed from Welford's stats)
     """
     from mycelium.config import STEP_NODE_STATS_ENABLED
 
@@ -1864,24 +1916,33 @@ def get_dag_step_node_stats_batch(
 
     cursor = conn.execute(
         f"""
-        SELECT node_id, uses, wins, losses, win_rate, avg_amplitude_post
+        SELECT node_id, uses, wins, losses, win_rate, avg_amplitude_post,
+               amp_post_count, amp_post_mean, amp_post_m2
         FROM dag_step_node_stats
         WHERE dag_step_type = ? AND node_id IN ({placeholders})
         """,
         [dag_step_type] + list(node_ids),
     )
 
-    # Use named column access for clarity and safety
-    # Column names match SELECT order: node_id, uses, wins, losses, win_rate, avg_amplitude_post
     result = {}
     for row in cursor.fetchall():
-        # row is a sqlite3.Row which supports both index and name access
+        # Compute variance from Welford's M2: variance = M2 / N
+        amp_count = row["amp_post_count"] or 0
+        amp_m2 = row["amp_post_m2"] or 0.0
+        variance = amp_m2 / amp_count if amp_count > 0 else 0.0
+        std = variance ** 0.5 if variance > 0 else 0.0
+
         result[row["node_id"]] = {
             "uses": row["uses"],
             "wins": row["wins"],
             "losses": row["losses"],
             "win_rate": row["win_rate"],
             "avg_amplitude_post": row["avg_amplitude_post"],
+            # Welford's derived stats
+            "amp_post_count": amp_count,
+            "amp_post_mean": row["amp_post_mean"] or 0.0,
+            "amp_post_variance": variance,
+            "amp_post_std": std,
         }
 
     return result
@@ -1902,6 +1963,78 @@ def get_dag_step_node_stats_single(
     """
     batch = get_dag_step_node_stats_batch(dag_step_type, [node_id])
     return batch.get(node_id)
+
+
+def get_high_variance_step_node_pairs(
+    min_samples: int = 5,
+    variance_threshold: float = 0.1,
+    limit: int = 20,
+) -> list[dict]:
+    """Find (step_type, node_id) pairs with high amplitude_post variance.
+
+    High variance indicates inconsistent performance - sometimes the node works
+    well for this step type, sometimes it doesn't. This is a signal that the
+    node is too generic and should be decomposed into specialized children.
+
+    Per CLAUDE.md: "Destructive interference (mixed success/failure at same node)"
+    triggers decomposition.
+
+    Args:
+        min_samples: Minimum observations before considering variance (cold start)
+        variance_threshold: Minimum variance to flag as "high" (default 0.1)
+        limit: Maximum number of pairs to return
+
+    Returns:
+        List of dicts with: dag_step_type, node_id, variance, std, uses, win_rate
+        Sorted by variance descending (most inconsistent first)
+    """
+    from mycelium.config import STEP_NODE_STATS_ENABLED
+
+    if not STEP_NODE_STATS_ENABLED:
+        return []
+
+    conn = get_db()
+
+    # Query pairs with enough samples and compute variance
+    cursor = conn.execute(
+        """
+        SELECT
+            dag_step_type,
+            node_id,
+            amp_post_count,
+            amp_post_mean,
+            amp_post_m2,
+            uses,
+            win_rate
+        FROM dag_step_node_stats
+        WHERE amp_post_count >= ?
+        ORDER BY amp_post_m2 / amp_post_count DESC
+        LIMIT ?
+        """,
+        (min_samples, limit * 2),  # Fetch extra to filter by threshold
+    )
+
+    results = []
+    for row in cursor.fetchall():
+        count = row["amp_post_count"]
+        m2 = row["amp_post_m2"] or 0.0
+        variance = m2 / count if count > 0 else 0.0
+
+        if variance >= variance_threshold:
+            results.append({
+                "dag_step_type": row["dag_step_type"],
+                "node_id": row["node_id"],
+                "amp_post_variance": variance,
+                "amp_post_std": variance ** 0.5,
+                "amp_post_mean": row["amp_post_mean"],
+                "uses": row["uses"],
+                "win_rate": row["win_rate"],
+            })
+
+        if len(results) >= limit:
+            break
+
+    return results
 
 
 def propagate_step_node_stats(dag_id: str) -> dict:
@@ -3491,12 +3624,13 @@ def increment_dsl_regen_counter() -> int:
 @dataclass
 class DecompositionRecommendation:
     """Recommendation for what to decompose."""
-    target_type: str  # "node" or "step"
+    target_type: str  # "node" or "step" or "pair" (step_type, node_id)
     target_id: int  # node_id or dag_step_id
     target_desc: str  # Description for logging
     reason: str  # Why this needs decomposition
     win_rate: float  # Current success rate
     attempts: int  # Number of attempts
+    variance: float = 0.0  # Amplitude variance (high = inconsistent performance)
 
 
 def analyze_decomposition_needs(min_attempts: int = 3, max_win_rate: float = 0.5) -> dict:
@@ -3616,14 +3750,36 @@ def analyze_decomposition_needs(min_attempts: int = 3, max_win_rate: float = 0.5
                     attempts=stats["total"],
                 ))
 
+    # 4. HIGH-VARIANCE PAIRS: Find (step_type, node) pairs with inconsistent performance
+    # Per CLAUDE.md: "Destructive interference (mixed success/failure at same node)"
+    # High variance = node is too generic for this step type = decompose into specialized children
+    high_variance_pairs = get_high_variance_step_node_pairs(
+        min_samples=min_attempts,
+        variance_threshold=0.1,  # Flag pairs with >0.1 amplitude variance
+        limit=10,
+    )
+    pairs_to_decompose = []
+    for pair in high_variance_pairs:
+        pairs_to_decompose.append(DecompositionRecommendation(
+            target_type="pair",
+            target_id=pair["node_id"],
+            target_desc=f"{pair['dag_step_type']}/node_{pair['node_id']}",
+            reason=f"high variance (std={pair['amp_post_std']:.3f}, {pair['win_rate']*100:.0f}% win rate)",
+            win_rate=pair["win_rate"],
+            attempts=pair["uses"],
+            variance=pair["amp_post_variance"],
+        ))
+
     return {
         "nodes_to_decompose": nodes_to_decompose,
         "steps_to_decompose": steps_to_decompose,
+        "pairs_to_decompose": pairs_to_decompose,
         "stats": {
             "total_nodes_analyzed": len(node_stats),
             "total_steps_analyzed": len(step_stats),
             "nodes_failing": len(nodes_to_decompose),
             "steps_failing": len(steps_to_decompose),
+            "pairs_high_variance": len(pairs_to_decompose),
         }
     }
 

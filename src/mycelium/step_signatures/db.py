@@ -704,95 +704,164 @@ class StepSignatureDB:
                     parent_id
                 )
 
+    # =========================================================================
+    # Consolidated Routing Core
+    # =========================================================================
+
+    def _route_core(
+        self,
+        operation_embedding: np.ndarray,
+        min_similarity: float = 0.85,
+        max_depth: int = None,
+        track_alternatives: bool = False,
+        top_k: int = 3,
+        use_ucb1: bool = True,
+        epsilon_exploration: bool = False,
+        dag_step_type: Optional[str] = None,
+    ) -> RoutingResult:
+        """Core DFS routing through signature hierarchy using graph embeddings.
+
+        SINGLE PATHWAY for DFS routing. All variations use this function.
+        """
+        from mycelium.config import UMBRELLA_MAX_DEPTH
+
+        if max_depth is None:
+            max_depth = UMBRELLA_MAX_DEPTH
+        max_depth = max(1, min(int(max_depth), 100))
+
+        root = self.get_root()
+        if root is None:
+            return RoutingResult(signature=None, path=[], confidence=0.0)
+
+        path = [root]
+        current = root
+        depth = 0
+        ucb1_gaps = []
+        alternatives = []
+        confidence_factors = []
+        best_similarity = None
+
+        while depth < max_depth:
+            if not current.is_semantic_umbrella:
+                break
+
+            children = self.get_children(current.id, for_routing=True)
+            if not children:
+                break
+
+            step_stats_map = {}
+            if dag_step_type and use_ucb1:
+                from mycelium.data_layer.mcts import get_dag_step_node_stats_batch
+                child_ids = [c.id for c, _ in children if c.id is not None]
+                step_stats_map = get_dag_step_node_stats_batch(dag_step_type, child_ids)
+
+            parent_uses = current.uses or 1
+            scored_children = []
+
+            for child_sig, _condition in children:
+                graph_emb = child_sig.graph_embedding
+                if graph_emb is None:
+                    continue
+                if not isinstance(graph_emb, np.ndarray):
+                    graph_emb = np.array(graph_emb)
+
+                sim = cosine_similarity(operation_embedding, graph_emb)
+                threshold = min_similarity * 0.7 if track_alternatives else min_similarity
+
+                if sim >= threshold:
+                    if use_ucb1:
+                        score = compute_ucb1_score(
+                            cosine_sim=sim,
+                            uses=child_sig.uses,
+                            successes=child_sig.successes,
+                            parent_uses=parent_uses,
+                            last_used_at=child_sig.last_used_at,
+                            step_node_stats=step_stats_map.get(child_sig.id),
+                        )
+                    else:
+                        score = compute_routing_score(
+                            sim, child_sig.uses, child_sig.successes, child_sig.last_used_at
+                        )
+                    scored_children.append((child_sig, score, sim))
+
+            if not scored_children:
+                break
+
+            scored_children.sort(key=lambda x: x[1], reverse=True)
+
+            if epsilon_exploration and len(scored_children) > 1:
+                from mycelium.config import EXPLORATION_EPSILON
+                import random
+                if EXPLORATION_EPSILON > 0 and random.random() < EXPLORATION_EPSILON:
+                    idx = random.randint(0, len(scored_children) - 1)
+                    scored_children[0], scored_children[idx] = scored_children[idx], scored_children[0]
+
+            if track_alternatives:
+                alternatives.append([(s, sc) for s, sc, _ in scored_children[:top_k]])
+
+            best_score = scored_children[0][1]
+            if len(scored_children) > 1:
+                gap = best_score - scored_children[1][1]
+                level_confidence = min(1.0, gap / 0.3)
+            else:
+                gap = 1.0
+                level_confidence = 1.0
+
+            ucb1_gaps.append(gap)
+            confidence_factors.append(level_confidence)
+
+            best_child, _, best_sim = scored_children[0]
+            best_similarity = best_sim
+            if best_sim < min_similarity:
+                break
+
+            path.append(best_child)
+            current = best_child
+            depth += 1
+
+        overall_confidence = min(confidence_factors) if confidence_factors else (1.0 if current else 0.0)
+        final_signature = current if not current.is_semantic_umbrella else None
+
+        return RoutingResult(
+            signature=final_signature,
+            path=path,
+            confidence=overall_confidence,
+            ucb1_gaps=ucb1_gaps,
+            alternatives=alternatives if track_alternatives else [],
+            best_similarity=best_similarity,
+        )
+
     def route_through_hierarchy(
         self,
         operation_embedding: np.ndarray,
         min_similarity: float = 0.85,
         max_depth: int = None,
     ) -> tuple[Optional[StepSignature], list[StepSignature]]:
-        """Route an operation embedding through the signature hierarchy using graph embeddings.
+        """Route an operation embedding through the signature hierarchy.
 
-        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
-        - Routers: compare against graph_centroid (avg of children's graph_embeddings)
-        - Leaves: compare against graph_embedding (computation graph embedded)
-
-        Starting from the root, traverse down through umbrella signatures
-        by picking the best-matching child at each level until reaching
-        a leaf signature or no match is found.
+        Thin wrapper around _route_core() for simple routing without alternatives.
 
         Args:
-            operation_embedding: The operation embedding to route (from step.operation)
-            min_similarity: Minimum similarity threshold to follow a route
-            max_depth: Maximum depth to traverse (default from config)
+            operation_embedding: The operation embedding to route
+            min_similarity: Minimum similarity threshold
+            max_depth: Maximum depth to traverse
 
         Returns:
-            Tuple of (best_leaf_signature, path_taken) where:
-            - best_leaf_signature: The leaf signature matched, or None if no match
-            - path_taken: List of signatures traversed from root to leaf
+            Tuple of (best_leaf_signature, path_taken)
         """
-        from mycelium.config import UMBRELLA_MAX_DEPTH
-
-        # Validate max_depth to prevent unbounded recursion
-        if max_depth is None:
-            max_depth = UMBRELLA_MAX_DEPTH
-        max_depth = max(1, min(int(max_depth), 100))  # Hard cap at 100
-
-        root = self.get_root()
-        if root is None:
-            return None, []
-
-        path = [root]
-        current = root
-        depth = 0
-
-        while depth < max_depth:
-            # If current is not an umbrella, it's a leaf - we're done
-            if not current.is_semantic_umbrella:
-                return current, path
-
-            # Get children of current umbrella (fast routing mode - skip JSON parsing)
-            children = self.get_children(current.id, for_routing=True)
-            if not children:
-                # Umbrella with no children - treat as leaf
-                return current, path
-
-            # Find best matching child using graph_embedding (not text centroid)
-            best_child = None
-            best_score = 0.0
-
-            for child_sig, _condition in children:
-                # Use graph_embedding for routing (operational similarity)
-                graph_emb = child_sig.graph_embedding
-                if graph_emb is None:
-                    continue
-                if not isinstance(graph_emb, np.ndarray):
-                    graph_emb = np.array(graph_emb)
-                sim = cosine_similarity(operation_embedding, graph_emb)
-                if sim >= min_similarity:
-                    # Use routing score for tiebreaking
-                    score = compute_routing_score(
-                        sim, child_sig.uses, child_sig.successes, child_sig.last_used_at
-                    )
-                    if score > best_score:
-                        best_child = child_sig
-                        best_score = score
-
-            if best_child is None:
-                # No child matches - return current as "best effort"
-                # (caller will decide whether to create new child)
-                return current, path
-
-            # Move to best child
-            path.append(best_child)
-            current = best_child
-            depth += 1
-
-        # Hit max depth - return current node
-        logger.warning(
-            "[db] Hit max routing depth %d at sig %d",
-            max_depth, current.id
+        result = self._route_core(
+            operation_embedding,
+            min_similarity=min_similarity,
+            max_depth=max_depth,
+            track_alternatives=False,
+            use_ucb1=False,  # Use simple routing score
         )
-        return current, path
+        # Return leaf from path if result.signature is None but path has leaf
+        if result.signature is None and result.path:
+            last = result.path[-1]
+            if not last.is_semantic_umbrella:
+                return last, result.path
+        return result.signature, result.path
 
     def route_with_confidence(
         self,

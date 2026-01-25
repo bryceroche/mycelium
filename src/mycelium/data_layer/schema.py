@@ -355,8 +355,16 @@ CREATE TABLE IF NOT EXISTS dag_step_node_stats (
     wins INTEGER DEFAULT 0,                   -- Times the thread won
     losses INTEGER DEFAULT 0,                 -- Times the thread lost
     win_rate REAL DEFAULT 0.5,                -- Computed: wins / uses (with prior)
-    avg_amplitude_post REAL DEFAULT 1.0,      -- Running avg of amplitude_post
-    amplitude_post_sum REAL DEFAULT 0.0,      -- Sum for incremental avg calculation
+    avg_amplitude_post REAL DEFAULT 1.0,      -- Running avg of amplitude_post (legacy)
+    amplitude_post_sum REAL DEFAULT 0.0,      -- Sum for incremental avg calculation (legacy)
+
+    -- Welford's algorithm for amplitude_post variance tracking
+    -- High variance = inconsistent performance = decomposition signal
+    -- Per CLAUDE.md: "The combination of (dag_step_id, node_id) is what we're learning"
+    amp_post_count INTEGER DEFAULT 0,         -- N in Welford's algorithm
+    amp_post_mean REAL DEFAULT 0.0,           -- Running mean of amplitude_post
+    amp_post_m2 REAL DEFAULT 0.0,             -- M2 for variance: var = M2/N
+
     last_updated TEXT,                        -- ISO timestamp
     UNIQUE(dag_step_type, node_id),
     FOREIGN KEY (node_id) REFERENCES step_signatures(id) ON DELETE CASCADE
@@ -614,6 +622,33 @@ def migrate_db(conn) -> None:
     except Exception as e:
         # Table might not exist yet (fresh DB)
         logger.debug("[schema] mcts_step_summaries migration skipped: %s", e)
+
+    # Migrate dag_step_node_stats table (add Welford's columns for amplitude_post variance)
+    # High variance = inconsistent performance = decomposition signal
+    try:
+        cursor = conn.execute("PRAGMA table_info(dag_step_node_stats)")
+        dsns_cols = {row[1] for row in cursor.fetchall()}
+        dsns_migrations = []
+        if "amp_post_count" not in dsns_cols:
+            dsns_migrations.append(
+                "ALTER TABLE dag_step_node_stats ADD COLUMN amp_post_count INTEGER DEFAULT 0"
+            )
+        if "amp_post_mean" not in dsns_cols:
+            dsns_migrations.append(
+                "ALTER TABLE dag_step_node_stats ADD COLUMN amp_post_mean REAL DEFAULT 0.0"
+            )
+        if "amp_post_m2" not in dsns_cols:
+            dsns_migrations.append(
+                "ALTER TABLE dag_step_node_stats ADD COLUMN amp_post_m2 REAL DEFAULT 0.0"
+            )
+        for sql in dsns_migrations:
+            conn.execute(sql)
+        if dsns_migrations:
+            conn.commit()
+            logger.info("[schema] Added Welford's columns to dag_step_node_stats")
+    except Exception as e:
+        # Table might not exist yet (fresh DB)
+        logger.debug("[schema] dag_step_node_stats migration skipped: %s", e)
 
     # Add new indexes (safe to run multiple times)
     index_migrations = [

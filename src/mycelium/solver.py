@@ -257,47 +257,31 @@ def get_expansion_rate() -> float:
     return expansion
 
 
-def should_force_decompose(depth: int) -> bool:
+def should_force_decompose(depth: int, step_db=None) -> bool:
     """Smooth expansion-based decomposition strategy.
+
+    Thin wrapper around get_decomposition_decision() for signature context.
 
     Uses continuous expansion rate (no toggle) to decide decomposition.
     Per CLAUDE.md: "A SMOOTH and CONTINUOUS learning process is key"
 
-    The expansion rate is driven by:
-    - Accuracy: failing → expand more
-    - Signature count: cold start → extra boost
-
-    Depth also factors in: shallow depths always decompose (routing layer),
-    deeper depths respect the expansion rate (execution layer).
-
     Args:
         depth: Current signature depth in the hierarchy
+        step_db: Optional StepSignatureDB (unused, kept for API compatibility)
 
     Returns:
         True if should force decompose, False if should try DSL execution
     """
-    # Smooth expansion is always enabled per CLAUDE.md (no toggle)
-    # Get smooth expansion rate
-    expansion_rate = get_expansion_rate()
+    # Delegate to unified decision interface
+    decision = get_decomposition_decision(step_db, depth=depth, context="signature")
 
-    # Apply depth decay uniformly from depth 0
-    # This prevents cascade of decomposition at shallow depths
-    # depth_factor: 1.0 at depth 0, decays by DECAY_BASE per depth
-    depth_factor = DEPTH_DECOMPOSE_DECAY_BASE ** depth
-
-    # Combined probability: expansion_rate * depth_factor
-    # High expansion + shallow depth = higher prob
-    # Low expansion OR deep depth = lower prob
-    prob = max(DEPTH_DECOMPOSE_MIN_PROB, expansion_rate * depth_factor)
-
-    if random.random() < prob:
+    if decision.should_decompose:
         logger.debug(
-            "[expansion] Decomposing: depth=%d prob=%.2f (expansion=%.2f, depth_factor=%.2f)",
-            depth, prob, expansion_rate, depth_factor
+            "[expansion] Decomposing: depth=%d prob=%.2f reason=%s",
+            depth, decision.probability, decision.reason
         )
-        return True
 
-    return False
+    return decision.should_decompose
 
 
 def compute_maturity_decompose_prob(step_db) -> float:
@@ -355,6 +339,7 @@ def compute_maturity_decompose_prob(step_db) -> float:
 def should_try_decompose_first(step_db) -> bool:
     """Sample whether to try decomposition before creating new signature.
 
+    Thin wrapper around get_decomposition_decision() for routing context.
     Per mycelium-jaq9: When routing fails, decide based on maturity sigmoid.
 
     Args:
@@ -363,8 +348,106 @@ def should_try_decompose_first(step_db) -> bool:
     Returns:
         True if should try decomposition, False if should create new
     """
-    prob = compute_maturity_decompose_prob(step_db)
-    return random.random() < prob
+    decision = get_decomposition_decision(step_db, context="routing")
+
+    if decision.should_decompose:
+        logger.debug(
+            "[maturity] Decomposing first: prob=%.2f reason=%s",
+            decision.probability, decision.reason
+        )
+
+    return decision.should_decompose
+
+
+# =============================================================================
+# DECOMPOSITION HIERARCHY
+# =============================================================================
+# All decomposition flows through planner.decompose() as the core LLM call.
+#
+# DECISION Functions (when/if to decompose):
+#   - should_force_decompose(depth) → expansion-based for signature building
+#   - should_try_decompose_first(step_db) → maturity-based for routing
+#   - compute_maturity_decompose_prob(step_db) → raw probability calculation
+#   - compute_decompose_score() [mcts.py] → continuous diagnostic score
+#
+# EXECUTION Functions (how to decompose):
+#   - planner.decompose() → THE CORE: breaks problem into DAG via LLM
+#   - _decompose_complex_step() → inline decomposition + execute sub-steps
+#   - _try_maturity_decomposition() → decompose to reuse existing signatures
+#   - _auto_decompose_signature() → build tree by decomposing signatures
+#   - UmbrellaLearner.decompose_signature() → async signature decomposition
+#
+# Call hierarchy:
+#   planner.decompose()
+#   ├── _decompose_complex_step() → execute sub-steps recursively
+#   ├── _try_maturity_decomposition() → route sub-steps through existing
+#   └── UmbrellaLearner.decompose_signature() → create child signatures
+#       └── _auto_decompose_signature() calls UmbrellaLearner
+
+
+@dataclass
+class DecompositionDecision:
+    """Unified decomposition decision result."""
+    should_decompose: bool
+    reason: str  # Why we decided to decompose or not
+    probability: float = 0.0  # Computed probability (for logging/debugging)
+    depth: int = 0  # Depth context if applicable
+
+
+def get_decomposition_decision(
+    step_db,
+    depth: int = 0,
+    context: str = "routing",
+) -> DecompositionDecision:
+    """Unified decomposition decision interface.
+
+    Consolidates all decomposition decision logic into a single entry point.
+    Different contexts use different strategies:
+
+    - "routing": Use maturity sigmoid (more signatures → prefer decompose)
+    - "signature": Use expansion rate + depth decay (tree building)
+    - "diagnostic": Use continuous score (failure analysis)
+
+    Args:
+        step_db: StepSignatureDB for computing metrics
+        depth: Current depth in hierarchy (for signature context)
+        context: Decision context ("routing", "signature", "diagnostic")
+
+    Returns:
+        DecompositionDecision with should_decompose and reason
+    """
+    if context == "routing":
+        # Maturity-based: more signatures → prefer decomposing to reuse
+        prob = compute_maturity_decompose_prob(step_db)
+        should = random.random() < prob
+        return DecompositionDecision(
+            should_decompose=should,
+            reason=f"maturity_sigmoid (prob={prob:.2f})",
+            probability=prob,
+            depth=depth,
+        )
+
+    elif context == "signature":
+        # Expansion-based: use smooth expansion rate with depth decay
+        expansion_rate = get_expansion_rate()
+        depth_factor = DEPTH_DECOMPOSE_DECAY_BASE ** depth
+        prob = max(DEPTH_DECOMPOSE_MIN_PROB, expansion_rate * depth_factor)
+        should = random.random() < prob
+        return DecompositionDecision(
+            should_decompose=should,
+            reason=f"expansion_rate (exp={expansion_rate:.2f}, depth={depth})",
+            probability=prob,
+            depth=depth,
+        )
+
+    else:
+        # Default: don't decompose
+        return DecompositionDecision(
+            should_decompose=False,
+            reason=f"unknown_context:{context}",
+            probability=0.0,
+            depth=depth,
+        )
 
 
 # =============================================================================
