@@ -2866,6 +2866,9 @@ class StepSignatureDB:
         - Constructive: Boost successes (the node is operationally correct)
         - Destructive: Increment operational_failures (cluster is too generic)
 
+        Note: Interference outcomes do NOT propagate to parents - they are
+        local signals about this specific signature's cluster quality.
+
         Args:
             signature_id: ID of the signature
             interference_type: 'constructive' or 'destructive'
@@ -2877,11 +2880,9 @@ class StepSignatureDB:
                 # Constructive interference: all threads succeeded
                 # This is strong evidence the signature is operationally correct
                 # Boost success count (scaled by thread_count for multi-thread signal)
-                conn.execute(
-                    """UPDATE step_signatures
-                       SET successes = COALESCE(successes, 0) + ?
-                       WHERE id = ?""",
-                    (thread_count, signature_id)
+                self._increment_signature_stat(
+                    conn, signature_id, "successes",
+                    amount=thread_count, propagate_to_parents=False
                 )
                 logger.debug(
                     "[db] Constructive interference: sig %d boosted by %d (all %d threads succeeded)",
@@ -2893,17 +2894,73 @@ class StepSignatureDB:
                 # This signals the cluster is too generic and may need splitting
                 # Record as operational failures to trigger decomposition consideration
                 failure_count = thread_count - success_count
-                conn.execute(
-                    """UPDATE step_signatures
-                       SET operational_failures = COALESCE(operational_failures, 0) + ?
-                       WHERE id = ?""",
-                    (failure_count, signature_id)
+                self._increment_signature_stat(
+                    conn, signature_id, "operational_failures",
+                    amount=failure_count, propagate_to_parents=False
                 )
                 logger.debug(
                     "[db] Destructive interference: sig %d recorded %d failures "
                     "(%d/%d threads failed)",
                     signature_id, failure_count, failure_count, thread_count,
                 )
+
+    def _increment_signature_stat(
+        self,
+        conn,
+        signature_id: int,
+        stat_column: str,
+        amount: float = 1.0,
+        propagate_to_parents: bool = True,
+        _depth: int = 0,
+    ):
+        """Single pathway for all signature stat increments with parent propagation.
+
+        This is the ONLY function that should increment successes/operational_failures
+        with parent credit propagation. All public methods are thin wrappers.
+
+        Pattern follows propagate_graph_centroid_to_parents() - single entry point
+        for updates that need to propagate up the tree.
+
+        Args:
+            conn: Database connection (caller manages transaction)
+            signature_id: ID of the signature to update
+            stat_column: Column to increment ('successes' or 'operational_failures')
+            amount: Amount to increment by (default 1.0)
+            propagate_to_parents: If True, propagate credit up to parent routers with decay
+            _depth: Internal recursion depth tracker
+        """
+        from mycelium.config import PARENT_CREDIT_DECAY, PARENT_CREDIT_MAX_DEPTH, PARENT_CREDIT_MIN
+
+        # Validate stat_column to prevent SQL injection
+        if stat_column not in ("successes", "operational_failures"):
+            raise ValueError(f"Invalid stat_column: {stat_column}")
+
+        # Update this signature
+        conn.execute(
+            f"""UPDATE step_signatures
+               SET {stat_column} = COALESCE({stat_column}, 0) + ?
+               WHERE id = ?""",
+            (amount, signature_id)
+        )
+
+        # Propagate to parent with decay
+        if propagate_to_parents and _depth < PARENT_CREDIT_MAX_DEPTH:
+            parent_row = conn.execute(
+                "SELECT parent_id FROM signature_relationships WHERE child_id = ? LIMIT 1",
+                (signature_id,)
+            ).fetchone()
+
+            if parent_row and parent_row[0]:
+                decayed_amount = amount * PARENT_CREDIT_DECAY
+                if decayed_amount >= PARENT_CREDIT_MIN:
+                    self._increment_signature_stat(
+                        conn,
+                        parent_row[0],
+                        stat_column,
+                        amount=decayed_amount,
+                        propagate_to_parents=True,
+                        _depth=_depth + 1,
+                    )
 
     def increment_signature_successes(
         self,
@@ -2923,33 +2980,11 @@ class StepSignatureDB:
             propagate_to_parents: If True, propagate credit up to parent routers with decay
             _depth: Internal recursion depth tracker
         """
-        from mycelium.config import PARENT_CREDIT_DECAY, PARENT_CREDIT_MAX_DEPTH, PARENT_CREDIT_MIN
-
         with self._connection() as conn:
-            # Update this signature
-            conn.execute(
-                """UPDATE step_signatures
-                   SET successes = COALESCE(successes, 0) + ?
-                   WHERE id = ?""",
-                (count, signature_id)
+            self._increment_signature_stat(
+                conn, signature_id, "successes",
+                amount=count, propagate_to_parents=propagate_to_parents, _depth=_depth
             )
-
-            # Propagate to parent with decay
-            if propagate_to_parents and _depth < PARENT_CREDIT_MAX_DEPTH:
-                parent_row = conn.execute(
-                    "SELECT parent_id FROM signature_relationships WHERE child_id = ? LIMIT 1",
-                    (signature_id,)
-                ).fetchone()
-
-                if parent_row and parent_row[0]:
-                    decayed_count = count * PARENT_CREDIT_DECAY
-                    if decayed_count >= PARENT_CREDIT_MIN:
-                        self.increment_signature_successes(
-                            parent_row[0],
-                            count=decayed_count,
-                            propagate_to_parents=True,
-                            _depth=_depth + 1,
-                        )
 
     def increment_signature_failures(
         self,
@@ -2969,33 +3004,11 @@ class StepSignatureDB:
             propagate_to_parents: If True, propagate failure up to parent routers with decay
             _depth: Internal recursion depth tracker
         """
-        from mycelium.config import PARENT_CREDIT_DECAY, PARENT_CREDIT_MAX_DEPTH, PARENT_CREDIT_MIN
-
         with self._connection() as conn:
-            # Update this signature
-            conn.execute(
-                """UPDATE step_signatures
-                   SET operational_failures = COALESCE(operational_failures, 0) + ?
-                   WHERE id = ?""",
-                (count, signature_id)
+            self._increment_signature_stat(
+                conn, signature_id, "operational_failures",
+                amount=count, propagate_to_parents=propagate_to_parents, _depth=_depth
             )
-
-            # Propagate to parent with decay
-            if propagate_to_parents and _depth < PARENT_CREDIT_MAX_DEPTH:
-                parent_row = conn.execute(
-                    "SELECT parent_id FROM signature_relationships WHERE child_id = ? LIMIT 1",
-                    (signature_id,)
-                ).fetchone()
-
-                if parent_row and parent_row[0]:
-                    decayed_count = count * PARENT_CREDIT_DECAY
-                    if decayed_count >= PARENT_CREDIT_MIN:
-                        self.increment_signature_failures(
-                            parent_row[0],
-                            count=decayed_count,
-                            propagate_to_parents=True,
-                            _depth=_depth + 1,
-                        )
 
     def increment_signature_partial_success(
         self,
@@ -3016,32 +3029,11 @@ class StepSignatureDB:
             propagate_to_parents: If True, propagate partial credit up with decay
             _depth: Internal recursion depth tracker
         """
-        from mycelium.config import PARENT_CREDIT_DECAY, PARENT_CREDIT_MAX_DEPTH, PARENT_CREDIT_MIN
-
         with self._connection() as conn:
-            conn.execute(
-                """UPDATE step_signatures
-                   SET successes = COALESCE(successes, 0) + ?
-                   WHERE id = ?""",
-                (weight, signature_id)
+            self._increment_signature_stat(
+                conn, signature_id, "successes",
+                amount=weight, propagate_to_parents=propagate_to_parents, _depth=_depth
             )
-
-            # Propagate to parent with decay
-            if propagate_to_parents and _depth < PARENT_CREDIT_MAX_DEPTH:
-                parent_row = conn.execute(
-                    "SELECT parent_id FROM signature_relationships WHERE child_id = ? LIMIT 1",
-                    (signature_id,)
-                ).fetchone()
-
-                if parent_row and parent_row[0]:
-                    decayed_weight = weight * PARENT_CREDIT_DECAY
-                    if decayed_weight >= PARENT_CREDIT_MIN:
-                        self.increment_signature_partial_success(
-                            parent_row[0],
-                            weight=decayed_weight,
-                            propagate_to_parents=True,
-                            _depth=_depth + 1,
-                        )
 
     def merge_signatures(
         self,
@@ -3847,6 +3839,13 @@ class StepSignatureDB:
         Call this after grading a problem to propagate correctness back to
         all signatures that were used. Also propagates credit up to parent
         umbrella signatures with decay.
+
+        NOTE: This function intentionally does NOT use _increment_signature_stat
+        because it has batch-specific semantics:
+        - Bulk SQL update for multiple signatures (efficiency)
+        - Updates last_used_at alongside successes
+        - Parent propagation uses MAX dedup (vs SUM in single-sig recursive)
+        - Parent updates filter by is_semantic_umbrella = 1
 
         DIFFICULTY-WEIGHTED CREDIT: Harder problems provide more valuable signal.
         - difficulty=0.0 (trivial) → 1.0x credit
