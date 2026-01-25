@@ -479,6 +479,14 @@ STEP_NODE_STATS_PRIOR_USES = 2  # Bayesian prior uses
 AMPLITUDE_POST_PENALTY_THRESHOLD = 0.6  # avg_amplitude_post below this → penalize routing
 AMPLITUDE_POST_PENALTY_MULT = 0.8  # Multiplicative penalty for low amplitude_post
 
+# Variance-based decomposition (Welford's algorithm)
+# High variance = inconsistent performance = node too generic = should decompose
+# Per CLAUDE.md: "Destructive interference (mixed results at same node)" triggers split
+VARIANCE_DECOMPOSE_ENABLED = True  # Flag high-variance nodes for decomposition
+VARIANCE_MIN_SAMPLES = 5  # Min observations before considering variance (cold start)
+VARIANCE_THRESHOLD = 0.1  # Min variance to flag as "high" (needs decomposition)
+VARIANCE_CHECK_LIMIT = 20  # Max nodes to check per postmortem batch
+
 # =============================================================================
 # MCTS INTERFERENCE PATTERNS (Constructive/Destructive)
 # =============================================================================

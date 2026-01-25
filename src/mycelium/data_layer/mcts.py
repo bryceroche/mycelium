@@ -1416,12 +1416,14 @@ def get_dag_step_node_performance(dag_step_id: str, node_id: int) -> dict:
 
 
 # =============================================================================
-# POST-MORTEM ANALYSIS (amplitude_post computation)
+# POST-MORTEM ANALYSIS (Consolidated Single Pathway)
 # =============================================================================
 
 
-def run_postmortem(dag_id: str) -> dict:
-    """Run post-mortem analysis on a completed DAG.
+def _compute_amplitude_post(dag_id: str) -> dict:
+    """Core amplitude_post computation for post-mortem analysis.
+
+    Internal function - use run_postmortem() as the public entry point.
 
     Computes amplitude_post for each thread_step based on thread outcomes.
     Uses config values for thresholds and multipliers.
@@ -1527,6 +1529,246 @@ def run_postmortem(dag_id: str) -> dict:
         )
 
     return stats
+
+
+def run_postmortem(
+    dag_id: str,
+    step_db=None,
+    step_embeddings: dict = None,
+    include_interference: bool = True,
+    include_diagnostics: bool = True,
+) -> dict:
+    """Single pathway for post-mortem analysis on a completed DAG.
+
+    This is the main entry point for all post-mortem analysis. Features are
+    enabled based on parameters provided:
+
+    - Always: amplitude_post computation (confidence × outcome → amplitude adjustments)
+    - If step_db provided: interference detection, credit propagation, merge/split batching
+    - If step_embeddings provided + include_diagnostics: failure diagnosis with verdicts
+
+    Args:
+        dag_id: The DAG to analyze
+        step_db: Optional StepSignatureDB instance. If provided, enables interference
+            detection, credit propagation, and structural operations.
+        step_embeddings: Optional dict mapping dag_step_id to embeddings. Enables
+            enhanced diagnostic analysis with rerouting recommendations.
+        include_interference: If True (default), run interference pattern analysis
+            when step_db is provided.
+        include_diagnostics: If True (default), run diagnostic analysis when step_db
+            is provided.
+
+    Returns:
+        Combined dict with all analysis results. Keys depend on features enabled.
+    """
+    # If no step_db, just compute amplitudes (fast path for tests)
+    if step_db is None:
+        return _compute_amplitude_post(dag_id)
+
+    # Full post-mortem with interference analysis
+    from mycelium.config import MERGE_SPLIT_BATCH_SIZE, RETIREMENT_ENABLED, DIAGNOSTIC_POSTMORTEM_ENABLED
+    from mycelium.mcts.adaptive import AdaptiveExploration
+
+    # Get singleton state (thread-safe)
+    state = get_postmortem_state()
+
+    # Increment the run counter
+    run_count = state.increment_run_count()
+    logger.debug("[mcts] Post-mortem run #%d", run_count)
+
+    # Always compute amplitude_post first
+    amplitude_stats = _compute_amplitude_post(dag_id)
+
+    # Record hit/miss stats for UCB1 adjustment
+    adaptive = AdaptiveExploration.get_instance()
+    adaptive.record_postmortem_stats(
+        high_conf_wrong=amplitude_stats.get("high_conf_wrong", 0),
+        low_conf_right=amplitude_stats.get("low_conf_right", 0),
+        total_high_conf=amplitude_stats.get("total_high_conf", 0),
+        total_low_conf=amplitude_stats.get("total_low_conf", 0),
+    )
+
+    # Initialize result with amplitude stats
+    result = {**amplitude_stats, "postmortem_run_count": run_count}
+
+    if include_interference:
+        # Interference pattern detection and centroid effects
+        interference_result = apply_interference_effects(dag_id, step_db)
+
+        # Credit propagation to signature stats
+        credit_stats = propagate_amplitude_to_signature_stats(dag_id, step_db)
+
+        # Success similarity propagation for adaptive rejection
+        success_sim_stats = propagate_success_similarity(dag_id, step_db)
+
+        # Step-node stats propagation
+        step_node_stats = propagate_step_node_stats(dag_id)
+
+        # Divergence-point analysis
+        divergence_stats = assign_divergence_blame(dag_id, step_db)
+
+        # Accumulate nodes flagged for split
+        state.accumulate_split_nodes(interference_result.nodes_flagged_split)
+
+        # Accumulate high-conf-wrong nodes for DSL regen
+        if amplitude_stats.get("high_conf_wrong", 0) >= POSTMORTEM_DSL_REGEN_MIN_HIGH_CONF_WRONG:
+            problem_nodes = get_problem_nodes_needing_attention(dag_id)
+            state.accumulate_high_conf_wrong(problem_nodes)
+
+        # Check for batch operations (merge/split/retirement)
+        merge_split_result = {"merges_succeeded": 0, "merged_pairs": [], "splits_flagged": 0}
+        retirement_result = {"demoted": 0, "pruned": 0, "merged_up": 0}
+        collapse_result = {"collapsed": 0}
+        rejection_flagged = []
+
+        should_run_batch_ops = (
+            MERGE_SPLIT_BATCH_SIZE > 0 and
+            state.problem_count >= MERGE_SPLIT_BATCH_SIZE
+        )
+
+        if should_run_batch_ops:
+            batch_ops_count = state.increment_batch_ops_count()
+            logger.info("[mcts] Batch operations run #%d", batch_ops_count)
+
+            merge_split_result = run_merge_split_from_interference(
+                step_db,
+                nodes_reinforced=interference_result.nodes_reinforced,
+                nodes_flagged_split=list(set(state.nodes_for_split)),
+            )
+
+            if RETIREMENT_ENABLED:
+                retirement_result = run_retirement_check(step_db)
+
+            collapse_result = collapse_single_child_routers()
+            rejection_flagged = flag_high_rejection_leaves_for_decomposition(step_db) or []
+
+            state.reset_merge_split()
+
+        # Decomposition analysis
+        decomp_analysis = analyze_decomposition_needs(min_attempts=3, max_win_rate=0.5)
+
+        # Add interference results to output
+        result.update({
+            "interference_patterns": interference_result.patterns_processed,
+            "constructive_interference": interference_result.constructive_count,
+            "destructive_interference": interference_result.destructive_count,
+            "nodes_reinforced": interference_result.nodes_reinforced,
+            "nodes_flagged_split": interference_result.nodes_flagged_split,
+            "merges_succeeded": merge_split_result["merges_succeeded"],
+            "merged_pairs": merge_split_result["merged_pairs"],
+            "splits_flagged": merge_split_result["splits_flagged"],
+            "retirement_demoted": retirement_result.get("demoted", 0),
+            "retirement_pruned": retirement_result.get("pruned", 0),
+            "retirement_merged_up": retirement_result.get("merged_up", 0),
+            "batch_counter": state.problem_count,
+            "next_merge_split_in": MERGE_SPLIT_BATCH_SIZE - state.problem_count if MERGE_SPLIT_BATCH_SIZE > 0 else -1,
+            "batch_ops_run_count": state.batch_ops_run_count,
+            "dsl_regen_nodes_accumulated": len(state.high_conf_wrong_nodes),
+            "dsl_regen_ready": should_trigger_dsl_regen(),
+            "credit_nodes_processed": credit_stats.get("nodes_processed", 0),
+            "credit_successes": credit_stats.get("successes_credited", 0),
+            "credit_failures": credit_stats.get("failures_credited", 0),
+            "success_sim_updates": success_sim_stats.get("updates", 0),
+            "divergence_points_found": divergence_stats.get("divergence_points_found", 0),
+            "divergence_blame_assigned": divergence_stats.get("divergence_blame_assigned", 0),
+            "suffix_blame_assigned": divergence_stats.get("suffix_blame_assigned", 0),
+            "shared_prefix_credit": divergence_stats.get("shared_prefix_credit", 0),
+            "nodes_needing_decomposition": [rec.target_id for rec in decomp_analysis["nodes_to_decompose"]],
+            "steps_needing_decomposition": [(rec.target_id, rec.target_desc) for rec in decomp_analysis["steps_to_decompose"]],
+            "collapsed_routers": collapse_result.get("collapsed", 0),
+            "rejection_decomps_flagged": len(rejection_flagged),
+        })
+
+    # Diagnostic post-mortem (failure analysis with verdicts)
+    if include_diagnostics and DIAGNOSTIC_POSTMORTEM_ENABLED:
+        diagnostic_result = _run_diagnostic_analysis(dag_id, step_db, step_embeddings)
+        if not diagnostic_result.get("skipped"):
+            result.update({
+                "diagnostic_system_maturity": diagnostic_result.get("system_maturity", 0),
+                "diagnostic_failure_threshold": diagnostic_result.get("failure_threshold", 0),
+                "diagnostic_pairs_analyzed": diagnostic_result.get("pairs_analyzed", 0),
+                "steps_to_decompose": diagnostic_result.get("steps_to_decompose", []),
+                "signatures_to_decompose": diagnostic_result.get("signatures_to_decompose", []),
+                "routing_misses": diagnostic_result.get("routing_misses", []),
+                "diagnoses": diagnostic_result.get("diagnoses", []),
+            })
+
+    return result
+
+
+def _run_diagnostic_analysis(dag_id: str, step_db, step_embeddings: dict = None) -> dict:
+    """Internal diagnostic analysis for post-mortem.
+
+    Analyzes failures to determine what should be decomposed.
+    Called from run_postmortem() when include_diagnostics=True.
+    """
+    # Get system maturity (signature count)
+    system_maturity = step_db.count_signatures() if step_db else 0
+    failure_threshold = get_diagnostic_failure_threshold(system_maturity)
+
+    # Get thread steps for this DAG
+    thread_steps = get_thread_steps_for_dag(dag_id)
+
+    # Group by (dag_step_id, node_id) to find repeated failures
+    pair_failures = {}
+    pair_embeddings = {}
+
+    for ts in thread_steps:
+        if ts.step_success == 0:
+            key = (ts.dag_step_id, ts.node_id)
+            pair_failures[key] = pair_failures.get(key, 0) + 1
+            if step_embeddings and ts.dag_step_id in step_embeddings:
+                pair_embeddings[key] = step_embeddings[ts.dag_step_id]
+
+    # Diagnose pairs that exceed threshold
+    diagnoses = []
+    steps_to_decompose = []
+    sigs_to_decompose = []
+    routing_misses = []
+
+    for (dag_step_id, node_id), failure_count in pair_failures.items():
+        if failure_count >= failure_threshold:
+            step_emb = pair_embeddings.get((dag_step_id, node_id))
+            diagnosis = diagnose_failure(node_id, step_emb, step_db)
+
+            diagnoses.append({
+                "dag_step_id": dag_step_id,
+                "node_id": node_id,
+                "failure_count": failure_count,
+                "verdict": diagnosis.verdict,
+                "scores": {
+                    "decompose_step": diagnosis.decompose_step_score,
+                    "decompose_sig": diagnosis.decompose_sig_score,
+                    "reroute": diagnosis.reroute_score,
+                },
+                "accuracy": diagnosis.accuracy,
+                "confidence": diagnosis.confidence,
+            })
+
+            if diagnosis.verdict == "decompose_step":
+                steps_to_decompose.append(dag_step_id)
+            elif diagnosis.verdict == "decompose_signature":
+                sigs_to_decompose.append(node_id)
+            elif diagnosis.verdict == "reroute":
+                routing_misses.append((dag_step_id, node_id))
+
+    logger.info(
+        "[diagnostic] Post-mortem for %s: threshold=%.1f, pairs_analyzed=%d, "
+        "steps_decompose=%d, sigs_decompose=%d, reroutes=%d",
+        dag_id, failure_threshold, len(pair_failures),
+        len(steps_to_decompose), len(sigs_to_decompose), len(routing_misses),
+    )
+
+    return {
+        "dag_id": dag_id,
+        "system_maturity": system_maturity,
+        "failure_threshold": failure_threshold,
+        "pairs_analyzed": len(pair_failures),
+        "diagnoses": diagnoses,
+        "steps_to_decompose": steps_to_decompose,
+        "signatures_to_decompose": sigs_to_decompose,
+        "routing_misses": routing_misses,
+    }
 
 
 def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
@@ -3064,8 +3306,8 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     run_count = state.increment_run_count()
     logger.debug("[mcts] Post-mortem run #%d", run_count)
 
-    # First run standard postmortem (amplitude_post computation) - cheap, always run
-    amplitude_stats = run_postmortem(dag_id)
+    # First run amplitude_post computation - cheap, always run
+    amplitude_stats = _compute_amplitude_post(dag_id)
 
     # Record hit/miss stats for UCB1 adjustment (per mycelium-nirq)
     # This feeds into AdaptiveExploration to tune the exploration constant
@@ -3098,6 +3340,35 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
 
     # Accumulate nodes flagged for split (using state object)
     state.accumulate_split_nodes(interference_result.nodes_flagged_split)
+
+    # Variance-based decomposition: flag nodes with high amplitude_post variance
+    # High variance = inconsistent performance = node too generic = should decompose
+    # Per CLAUDE.md: "Destructive interference (mixed results)" triggers split
+    from mycelium.config import (
+        VARIANCE_DECOMPOSE_ENABLED, VARIANCE_MIN_SAMPLES,
+        VARIANCE_THRESHOLD, VARIANCE_CHECK_LIMIT
+    )
+    variance_nodes_flagged = []
+    if VARIANCE_DECOMPOSE_ENABLED:
+        high_variance_pairs = get_high_variance_step_node_pairs(
+            min_samples=VARIANCE_MIN_SAMPLES,
+            variance_threshold=VARIANCE_THRESHOLD,
+            limit=VARIANCE_CHECK_LIMIT,
+        )
+        if high_variance_pairs:
+            variance_node_ids = [p["node_id"] for p in high_variance_pairs]
+            state.accumulate_split_nodes(variance_node_ids)
+            variance_nodes_flagged = variance_node_ids
+            logger.info(
+                "[mcts] Flagged %d high-variance nodes for decomposition (threshold=%.2f)",
+                len(variance_node_ids), VARIANCE_THRESHOLD
+            )
+            for pair in high_variance_pairs[:3]:  # Log top 3 for debugging
+                logger.debug(
+                    "[mcts] High variance: node=%d step=%s var=%.3f std=%.3f uses=%d",
+                    pair["node_id"], pair["dag_step_type"][:30],
+                    pair["amp_post_variance"], pair["amp_post_std"], pair["uses"]
+                )
 
     # Per beads mycelium-flbq: Accumulate high-conf-wrong nodes for DSL regen
     # This tracks nodes that had high confidence but produced wrong answers
