@@ -572,7 +572,12 @@ ZERO_LLM_REQUIRE_DSL = True  # Signature must have a working DSL script
 GRAPH_ROUTING_ENABLED = True  # Master switch for graph-based routing
 GRAPH_ROUTING_MIN_SIMILARITY = 0.80  # Minimum similarity for graph match
 GRAPH_ROUTING_BOOST_FACTOR = 0.15  # Boost to UCB1 when graph matches
-GRAPH_ROUTING_FALLBACK_TO_CENTROID = True  # Fall back to centroid if no graph match
+GRAPH_ROUTING_FALLBACK_TO_CENTROID = False  # No centroid fallback - graph-only routing
+
+# =============================================================================
+# INLINE DECOMPOSITION (when leaf rejects a step)
+# =============================================================================
+INLINE_DECOMP_MAX_DEPTH = 3  # Max recursion depth for inline decomposition (prevents infinite loops)
 
 # =============================================================================
 # MATURITY-BASED DECOMPOSE VS CREATE (Sigmoid transition)

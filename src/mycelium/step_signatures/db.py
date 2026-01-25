@@ -1823,23 +1823,24 @@ class StepSignatureDB:
 
         while depth < max_depth:
             # Check similarity to current node using graph_embedding (operational)
-            # Fallback to centroid (semantic) if graph_embedding unavailable
+            # No text/centroid fallback - graph-only routing per CLAUDE.md
 
             # Get graph_embedding for current node (leaves have fixed, routers have centroid of children)
             current_graph_emb = current.graph_embedding
             if current_graph_emb is not None and not isinstance(current_graph_emb, np.ndarray):
                 current_graph_emb = np.array(current_graph_emb)
 
-            # Determine which embedding to compare against
+            # Determine which embedding to compare against (graph-only routing)
             if step_graph_embedding is not None and current_graph_emb is not None:
-                # Prefer graph_embedding routing (operational similarity)
+                # Graph_embedding routing (operational similarity)
                 sim = cosine_similarity(step_graph_embedding, current_graph_emb)
                 used_graph = True
             else:
-                # Fallback to text centroid routing (semantic similarity)
-                current_centroid = current.centroid
-                sim = cosine_similarity(embedding, current_centroid) if current_centroid is not None else 0.0
+                # No graph_embedding available - cold start, low similarity triggers inline decomposition
+                sim = 0.0
                 used_graph = False
+                if current_graph_emb is None:
+                    logger.debug("[db] Cold start: node %d has no graph_embedding", current.id)
 
             # If current is a leaf, return it (always return leaf regardless of threshold)
             # UNLESS it's in exclude_ids (e.g., parent being decomposed - prevent circular matching)
@@ -1895,11 +1896,8 @@ class StepSignatureDB:
                     # Route by graph_embedding (operational similarity)
                     child_sim = cosine_similarity(step_graph_embedding, child_graph_emb)
                     children_with_embeddings.append((child, child_sim, True))  # True = used graph
-                elif child.centroid is not None:
-                    # Fallback to centroid (semantic similarity)
-                    child_sim = cosine_similarity(embedding, child.centroid)
-                    children_with_embeddings.append((child, child_sim, False))  # False = used text
                 else:
+                    # No graph_embedding - treat as cold start placeholder
                     null_embedding_children.append(child)
 
             # Try children with embeddings (standard UCB1 selection)

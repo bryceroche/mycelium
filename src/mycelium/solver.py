@@ -1185,6 +1185,7 @@ class Solver:
         compute_budget: float = 1.0,
         difficulty: float = None,
         thread_id: str = None,
+        decomp_depth: int = 0,
     ) -> StepResult:
         """Execute a single step.
 
@@ -1205,6 +1206,7 @@ class Solver:
             depth: Recursion depth for composite steps
             compute_budget: MCTS exploration budget (>1 enables multi-path)
             thread_id: Thread ID for multi-path credit tracking (None if not tracking)
+            decomp_depth: Inline decomposition depth (to prevent infinite loops)
         """
         step_descriptions = step_descriptions or {}
         import time
@@ -1258,7 +1260,7 @@ class Solver:
                         record_leaf_rejection,
                     )
                     if not best_sig.is_semantic_umbrella and best_sim < REJECTION_SIM_THRESHOLD:
-                        # Leaf rejects this step - similarity too low, queued for decomposition
+                        # Leaf rejects this step - try inline decomposition
                         record_leaf_rejection(
                             signature_id=best_sig.id,
                             step_text=step.task,
@@ -1266,21 +1268,38 @@ class Solver:
                             problem_context=problem[:500] if problem else None,
                         )
                         logger.info(
-                            "[solver] GRAPH-FIRST REJECTED: '%s' by sig %d (%s) sim=%.3f < %.2f - queued for decomposition",
+                            "[solver] GRAPH-FIRST REJECTED: '%s' by sig %d (%s) sim=%.3f < %.2f - inline decomposition",
                             step.task[:40], best_sig.id, best_sig.step_type, best_sim, REJECTION_SIM_THRESHOLD
                         )
-                        # Step rejected and queued - return failed result
-                        return StepResult(
-                            step_id=step.id,
-                            task=step.task,
-                            result="[rejected - queued for decomposition]",
-                            success=False,
-                            signature_id=best_sig.id,
-                            signature_type=best_sig.step_type,
-                            is_new_signature=False,
-                            was_injected=False,
-                            elapsed_ms=(time.time() - start_time) * 1000,
+                        # Inline decomposition: break into sub-steps and execute
+                        decomp_result = await self._decompose_complex_step(
+                            step=step,
+                            problem=problem,
+                            context=context,
+                            step_descriptions=step_descriptions or {},
+                            hint=f"Rejected by leaf '{best_sig.step_type}' (sim={best_sim:.3f}). Break into atomic operations.",
+                            log_tag="inline_decomp",
+                            signature_type="decomposed",
+                            difficulty=difficulty,
+                            thread_id=thread_id,
+                            decomp_depth=decomp_depth,
                         )
+                        if decomp_result is not None:
+                            logger.info("[solver] Inline decomposition succeeded for '%s'", step.task[:40])
+                            return decomp_result
+                        else:
+                            logger.warning("[solver] Inline decomposition failed for '%s'", step.task[:40])
+                            return StepResult(
+                                step_id=step.id,
+                                task=step.task,
+                                result="[decomposition failed]",
+                                success=False,
+                                signature_id=best_sig.id,
+                                signature_type=best_sig.step_type,
+                                is_new_signature=False,
+                                was_injected=False,
+                                elapsed_ms=(time.time() - start_time) * 1000,
+                            )
                     else:
                         signature = best_sig
                         is_new = False
@@ -1292,13 +1311,14 @@ class Solver:
                             step.task[:40], signature.id, signature.step_type, best_sim
                         )
 
-        # 3. TEXT ROUTING FALLBACK
-        # If graph routing didn't find a match, fall back to text-based routing
+        # 3. COLD START / SIGNATURE CREATION
+        # If GRAPH-FIRST didn't match, try to find/create via graph-only routing in db.py
+        # No text/centroid fallback - routing uses graph_embedding exclusively
         if signature is None:
             adaptive_threshold = get_adaptive_match_threshold()
             signature, is_new = await self.step_db.find_or_create_async(
                 step_text=step.task,  # Keep original for description
-                embedding=embedding,   # Use normalized embedding for matching
+                embedding=embedding,   # Used for centroid stats, not routing
                 min_similarity=adaptive_threshold,
                 parent_problem=problem,
                 origin_depth=depth,  # Track decomposition depth
@@ -1307,23 +1327,41 @@ class Solver:
                 embedder=self.embedder,  # For cold start graph embedding
             )
 
-        # Handle rejection from text routing (signature is None means step was rejected)
+        # Handle rejection from routing (signature is None means step was rejected)
         if signature is None:
             logger.info(
-                "[solver] Step '%s' rejected by text routing - queued for decomposition",
+                "[solver] Step '%s' rejected by routing - inline decomposition",
                 step.task[:40]
             )
-            return StepResult(
-                step_id=step.id,
-                task=step.task,
-                result="[rejected - queued for decomposition]",
-                success=False,
-                signature_id=None,
-                signature_type=None,
-                is_new_signature=False,
-                was_injected=False,
-                elapsed_ms=(time.time() - start_time) * 1000,
+            # Inline decomposition: break into sub-steps and execute
+            decomp_result = await self._decompose_complex_step(
+                step=step,
+                problem=problem,
+                context=context,
+                step_descriptions=step_descriptions or {},
+                hint="Rejected by routing (no match above threshold). Break into atomic operations.",
+                log_tag="inline_decomp",
+                signature_type="decomposed",
+                difficulty=difficulty,
+                thread_id=thread_id,
+                decomp_depth=decomp_depth,
             )
+            if decomp_result is not None:
+                logger.info("[solver] Inline decomposition succeeded for '%s'", step.task[:40])
+                return decomp_result
+            else:
+                logger.warning("[solver] Inline decomposition failed for '%s'", step.task[:40])
+                return StepResult(
+                    step_id=step.id,
+                    task=step.task,
+                    result="[decomposition failed]",
+                    success=False,
+                    signature_id=None,
+                    signature_type=None,
+                    is_new_signature=False,
+                    was_injected=False,
+                    elapsed_ms=(time.time() - start_time) * 1000,
+                )
 
         logger.debug(
             "[solver] Step '%s' → signature '%s' (new=%s, umbrella=%s, dsl_type=%s, graph_matched=%s)",
@@ -4674,6 +4712,7 @@ Rules:
         signature_type: str,
         difficulty: float = None,
         thread_id: str = None,
+        decomp_depth: int = 0,
     ) -> Optional[StepResult]:
         """Decompose a complex step into sub-steps.
 
@@ -4690,12 +4729,23 @@ Rules:
             signature_type: Type to use in StepResult
             difficulty: Problem difficulty for adaptive decomposition
             thread_id: Thread ID for multi-path credit tracking
+            decomp_depth: Current inline decomposition depth (to prevent infinite loops)
 
         Returns:
             StepResult if decomposition and execution succeeded, None otherwise
         """
         import time
+        from mycelium.config import INLINE_DECOMP_MAX_DEPTH
+
         start_time = time.time()
+
+        # Check depth limit to prevent infinite decomposition loops
+        if decomp_depth >= INLINE_DECOMP_MAX_DEPTH:
+            logger.warning(
+                "[%s] Max inline decomposition depth (%d) reached for '%s'",
+                log_tag, INLINE_DECOMP_MAX_DEPTH, step.task[:40]
+            )
+            return None
 
         try:
             # Decompose the step using the planner
@@ -4712,8 +4762,8 @@ Rules:
                 return None
 
             logger.info(
-                "[%s] Decomposed '%s' into %d sub-steps",
-                log_tag, step.task[:40], len(sub_plan.steps)
+                "[%s] Decomposed '%s' into %d sub-steps (depth=%d)",
+                log_tag, step.task[:40], len(sub_plan.steps), decomp_depth
             )
 
             # Execute sub-steps recursively
@@ -4729,6 +4779,7 @@ Rules:
                     depth=1,
                     difficulty=difficulty,
                     thread_id=thread_id,
+                    decomp_depth=decomp_depth + 1,  # Track inline decomposition depth
                 )
                 sub_results.append(sub_result)
                 sub_context[sub_step.id] = sub_result.result
