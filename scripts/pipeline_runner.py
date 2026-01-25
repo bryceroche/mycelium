@@ -27,7 +27,7 @@ from datasets import load_dataset
 from mycelium.solver import Solver
 from mycelium.step_signatures import StepSignatureDB
 from mycelium.client import LLMClient
-from mycelium.answer_norm import answers_equivalent_llm
+from mycelium.answer_norm import answers_equivalent_llm, answers_equivalent, batch_answers_equivalent_llm
 from mycelium.data_layer.mcts import get_plan_stats_summary, get_top_plans, get_worst_plans
 
 
@@ -71,6 +71,8 @@ class ProblemResult:
     error: Optional[str] = None
     # Per-step timing breakdown
     steps: list = field(default_factory=list)
+    # Batched answer checking
+    needs_llm_verify: bool = False  # True if answer needs LLM verification in batch
 
 
 def extract_boxed_answer(solution: str) -> str:
@@ -228,8 +230,14 @@ async def solve_problem(
     compute_budget: float = 1.0,
     benchmark: str = None,
     problem_idx: int = 0,
+    batch_answer_check: bool = False,
 ) -> ProblemResult:
-    """Solve a single problem with the given match mode."""
+    """Solve a single problem with the given match mode.
+
+    Args:
+        batch_answer_check: If True, use fast-path only for answer check.
+            LLM verification will be done in batch later.
+    """
     try:
         # V2 Solver: simplified API (strict DAG mode - no LLM fallback)
         solver = Solver(db_path=db_path)
@@ -242,7 +250,29 @@ async def solve_problem(
         )
 
         # Check if answer matches ground truth
-        is_correct = await answers_equivalent_llm(result.answer, problem["answer"])
+        # With batch_answer_check=True, use fast-path only (defer LLM to batch)
+        if batch_answer_check:
+            # Fast-path check only - LLM will be batched later
+            predicted = result.answer or ""
+            expected = problem["answer"]
+            # Quick checks that don't need LLM
+            if not predicted.strip():
+                is_correct = False
+                needs_llm_verify = False
+            elif predicted.strip().lower() == expected.strip().lower():
+                is_correct = True
+                needs_llm_verify = False
+            elif answers_equivalent(predicted, expected):
+                is_correct = True
+                needs_llm_verify = False
+            else:
+                # Can't determine without LLM - assume False for now, will verify in batch
+                is_correct = False
+                needs_llm_verify = True
+        else:
+            # Original behavior - immediate LLM check
+            is_correct = await answers_equivalent_llm(result.answer, problem["answer"])
+            needs_llm_verify = False
 
         # Propagate correctness back to signatures for lift tracking
         # Returns candidates that may need decomposition
@@ -326,6 +356,7 @@ async def solve_problem(
             matched_and_reused=result.matched_and_reused,
             new_signatures_created=0,  # V2 tracks this differently
             steps=step_timings,
+            needs_llm_verify=needs_llm_verify,
         )
 
     except Exception as e:
@@ -345,11 +376,14 @@ async def solve_problem(
 
 def run_problem_sync(args: tuple) -> dict:
     """Synchronous wrapper for process pool."""
-    problem_idx, problem, match_mode, db_path, compute_budget, benchmark = args
+    problem_idx, problem, match_mode, db_path, compute_budget, benchmark, batch_answer_check = args
     if match_mode == "direct":
         result = asyncio.run(solve_direct(problem))
     else:
-        result = asyncio.run(solve_problem(problem, match_mode, db_path, compute_budget, benchmark, problem_idx=problem_idx))
+        result = asyncio.run(solve_problem(
+            problem, match_mode, db_path, compute_budget, benchmark,
+            problem_idx=problem_idx, batch_answer_check=batch_answer_check
+        ))
     return asdict(result)
 
 
@@ -381,10 +415,12 @@ def run_pipeline(
 
     # Prepare tasks (use single shared database)
     # Include problem index for mod-N batch decomposition triggering
+    # Enable batch_answer_check=True to reduce LLM calls (verify in batches of 10)
+    batch_answer_check = True
     tasks = []
     for mode in modes:
         for idx, problem in enumerate(problems):
-            tasks.append((idx, problem, mode, db_path, compute_budget, dataset))
+            tasks.append((idx, problem, mode, db_path, compute_budget, dataset, batch_answer_check))
 
     logger.info(f"Running {len(tasks)} total tasks ({len(problems)} problems x {len(modes)} modes)")
 
@@ -399,6 +435,35 @@ def run_pipeline(
                 logger.info(f"Completed {i + 1}/{len(tasks)} tasks")
 
     total_time = time.time() - start_time
+
+    # Batch verify answers that need LLM check (mod 10 batching)
+    if batch_answer_check:
+        pending_verify = [
+            (i, r["predicted"], r["ground_truth"], r["problem_id"])
+            for i, r in enumerate(results)
+            if r.get("needs_llm_verify", False)
+        ]
+
+        if pending_verify:
+            logger.info(f"[answer_batch] Verifying {len(pending_verify)} answers that need LLM check")
+
+            # Batch verify in chunks of 10
+            for batch_start in range(0, len(pending_verify), 10):
+                batch = pending_verify[batch_start:batch_start + 10]
+                answer_pairs = [(pred, exp, pid) for _, pred, exp, pid in batch]
+
+                # Run batch verification
+                verdicts = asyncio.run(batch_answers_equivalent_llm(answer_pairs))
+
+                # Update results with verified answers
+                for (result_idx, _, _, _), is_correct in zip(batch, verdicts):
+                    if is_correct:
+                        results[result_idx]["success"] = True
+                        logger.debug(f"[answer_batch] Updated {results[result_idx]['problem_id']}: now correct")
+
+            # Count how many were upgraded to correct
+            upgraded = sum(1 for i, _, _, _ in pending_verify if results[i]["success"])
+            logger.info(f"[answer_batch] Batch verification complete: {upgraded}/{len(pending_verify)} upgraded to correct")
 
     # Aggregate results by mode
     mode_stats = {}

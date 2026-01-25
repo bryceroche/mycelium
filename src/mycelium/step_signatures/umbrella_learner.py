@@ -395,10 +395,6 @@ Rules:
 
         candidates = []
         for sig in all_sigs:
-            # Skip atomic signatures (math primes that should never decompose)
-            # Per CLAUDE.md: system discovers atomic operations based on stats
-            if getattr(sig, 'is_atomic', False):
-                continue
             # Skip if not enough uses (adaptive threshold)
             if sig.uses < adaptive_min_uses:
                 continue
@@ -441,9 +437,8 @@ Rules:
             if is_decompose_candidate:
                 candidates.append(sig)
                 logger.info(
-                    "[umbrella] Candidate: '%s' (id=%d, reason=decompose_type, mcts_win=%.1f%%, variance=%.4f, op_fail=%d)",
-                    sig.step_type, sig.id, actual_win_rate * 100, sig.similarity_variance,
-                    sig.operational_failures
+                    "[umbrella] Candidate: '%s' (id=%d, reason=decompose_type, mcts_win=%.1f%%, op_fail=%d)",
+                    sig.step_type, sig.id, actual_win_rate * 100, sig.operational_failures
                 )
 
         return candidates
@@ -582,6 +577,7 @@ Rules:
                 # Fall back: find or create new signature
                 # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
                 # CRITICAL: Pass parent_id so new signatures are created under THIS signature, not root!
+                # CRITICAL: Pass exclude_ids to prevent child matching back to parent (circular routing)
                 child_sig, is_new = await self.db.find_or_create_async(
                     step_text=step.task,
                     embedding=embedding,
@@ -591,7 +587,16 @@ Rules:
                     extracted_values=getattr(step, 'extracted_values', None),
                     dsl_hint=getattr(step, 'dsl_hint', None),  # LLM → signature communication
                     parent_id=signature.id,  # Ensure children are created under decomposing signature
+                    exclude_ids={signature.id},  # Prevent child from routing back to parent
                 )
+
+            # Skip if child_sig is None (step was queued for decomposition, not created)
+            if child_sig is None:
+                logger.info(
+                    "[umbrella] Skipping child (queued for decomposition): '%s'",
+                    step.task[:40]
+                )
+                continue
 
             # If signature already has a DIFFERENT parent (matched OR repointed), create a NEW one instead
             # This ensures tree structure can grow deeper
@@ -669,17 +674,16 @@ Rules:
         child_ids = [sig_id for sig_id, _, _, _ in child_ids]
 
         if len(child_ids) == 1:
-            # Single child = pointless router, mark parent as atomic instead
+            # Single child = pointless router, revert the decomposition
             # Per CLAUDE.md: "healthy tree would have ~5:1 ratio where each router has roughly five children"
             # A router with 1 child is just a chain, not meaningful branching
-            from mycelium.data_layer.mcts import mark_signature_atomic
+            # With divergence-based splitting, atomicity is emergent (no divergence = no split)
             logger.info(
-                "[umbrella] Decomposition produced only 1 child for '%s' - marking as atomic (no chain)",
+                "[umbrella] Decomposition produced only 1 child for '%s' - reverting (no chain)",
                 signature.step_type
             )
             # Remove the single child relationship we just added
             self.db.remove_child(parent_id=signature.id, child_id=child_ids[0])
-            mark_signature_atomic(signature.id, "single_child_decomp")
             return []  # No meaningful decomposition occurred
         elif len(child_ids) >= 2:
             # Multiple children = meaningful branching, promote to umbrella

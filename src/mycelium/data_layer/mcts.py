@@ -366,44 +366,78 @@ def get_worst_plans(limit: int = 10, min_uses: int = 3) -> list[dict]:
 # =============================================================================
 # Per beads mycelium-mm08: Queue complex steps instead of decomposing immediately.
 # Batch LLM calls are more efficient than one-at-a-time.
+#
+# NOTE: is_step_complex() was removed - replaced by divergence-based splitting
+# in step_signatures/divergence.py. Natural splitting happens based on observed
+# success/failure divergence, not pre-execution complexity detection.
 
 
-def is_step_complex(step_text: str) -> tuple[bool, str]:
-    """Detect if a step is too complex for atomic execution.
+def check_substeps_match_existing(
+    substeps: list[str],
+    step_db,
+    min_similarity: float = 0.70,
+) -> tuple[bool, float, list[tuple[str, float]]]:
+    """Check if decomposed sub-steps would match existing leaf signatures.
+
+    This is the speculative decomposition probe - we check if breaking down
+    a step produces sub-steps that match existing leaves well.
+
+    Args:
+        substeps: List of decomposed step texts
+        step_db: StepSignatureDB instance for similarity checking
+        min_similarity: Threshold for "good match"
 
     Returns:
-        Tuple of (is_complex, reason) where reason explains why
+        Tuple of (all_match, avg_similarity, details)
+        - all_match: True if all sub-steps have good matches
+        - avg_similarity: Average similarity across sub-steps
+        - details: List of (substep, best_sim) for debugging
     """
-    import re
+    from mycelium.embedding_cache import cached_embed
+    import numpy as np
 
-    step_lower = step_text.lower()
+    if not substeps:
+        return False, 0.0, []
 
-    # Check for multiple math operators (suggests multi-step)
-    operators = ['+', '-', '*', '/', '×', '÷']
-    op_count = sum(1 for op in operators if op in step_text)
-    if op_count >= 2:
-        return True, "multi_op"
+    total_sim = 0.0
+    matches = 0
+    details = []
 
-    # Check for sequential markers
-    sequential_markers = [
-        " then ", " and then ", " after that ", " finally ",
-        " next ", " followed by ", " before "
-    ]
-    for marker in sequential_markers:
-        if marker in step_lower:
-            return True, "sequential"
+    for substep in substeps:
+        substep_emb = cached_embed(substep)
+        if substep_emb is None:
+            details.append((substep, 0.0))
+            continue
 
-    # Check for multiple actions (compound sentences)
-    action_words = ["calculate", "compute", "find", "determine", "add", "subtract", "multiply", "divide"]
-    action_count = sum(1 for word in action_words if word in step_lower)
-    if action_count >= 2:
-        return True, "multi_action"
+        # Route through hierarchy to find best match (doesn't create anything)
+        best_sig, path = step_db.route_through_hierarchy(
+            embedding=np.array(substep_emb),
+            min_similarity=0.0,  # Accept any match, we just want the similarity
+        )
 
-    # Check for very long steps (complexity correlates with length)
-    if len(step_text) > 150:
-        return True, "long_step"
+        # Calculate similarity to best match
+        if best_sig and best_sig.centroid is not None:
+            from mycelium.step_signatures.db import cosine_similarity
+            best_sim = cosine_similarity(np.array(substep_emb), np.array(best_sig.centroid))
+        else:
+            best_sim = 0.0
 
-    return False, ""
+        total_sim += best_sim
+        details.append((substep[:40], best_sim))
+        if best_sim >= min_similarity:
+            matches += 1
+
+    avg_sim = total_sim / len(substeps) if substeps else 0.0
+    all_match = matches == len(substeps)
+
+    logger.info(
+        "[speculative_decomp] %d/%d sub-steps match existing leaves (avg_sim=%.3f)",
+        matches, len(substeps), avg_sim
+    )
+    for substep, sim in details:
+        logger.debug("[speculative_decomp]   %.3f: %s", sim, substep)
+
+    return all_match, avg_sim, details
 
 
 def queue_for_decomposition(
@@ -417,7 +451,7 @@ def queue_for_decomposition(
 
     Args:
         step_text: The step to decompose
-        complexity_reason: Why it's being queued (from is_step_complex)
+        complexity_reason: Why it's being queued (e.g., "compound", "novel")
         embedding: Optional embedding for the step
         dag_step_id: Optional link to originating dag_step
         problem_context: Optional problem text for LLM context
@@ -509,6 +543,30 @@ def get_decomposition_queue_size() -> int:
     )
     row = cursor.fetchone()
     return row[0] if row else 0
+
+
+def get_oldest_pending_age_seconds() -> float:
+    """Get age in seconds of the oldest pending decomposition.
+
+    Returns:
+        Age in seconds, or 0.0 if queue is empty.
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        SELECT MIN(queued_at) FROM decomposition_queue
+        WHERE processed_at IS NULL
+        """
+    )
+    row = cursor.fetchone()
+    if not row or not row[0]:
+        return 0.0
+
+    # Parse ISO timestamp
+    oldest_time = datetime.fromisoformat(row[0].replace('Z', '+00:00'))
+    now = datetime.now(timezone.utc)
+    age = (now - oldest_time).total_seconds()
+    return max(0.0, age)
 
 
 def mark_decomposition_processed(
@@ -665,7 +723,7 @@ def get_pending_queue_ids() -> list[int]:
 
 
 # Rejection thresholds (per CLAUDE.md: leaves define their own boundaries)
-REJECTION_SIM_THRESHOLD = 0.65  # Below this similarity, leaf rejects the step
+REJECTION_SIM_THRESHOLD = 0.85  # Below this similarity, leaf rejects the step
 REJECTION_COUNT_THRESHOLD = 10  # Min rejections before considering decomposition
 REJECTION_RATE_THRESHOLD = 0.30  # 30% rejection rate triggers decomposition flag
 
@@ -689,30 +747,44 @@ def record_leaf_rejection(
     Returns:
         Updated rejection_count for the signature
     """
-    conn = get_db()
+    import time
+    db = get_db()
+    rejection_count = 0
 
-    # Increment rejection count
-    conn.execute(
-        "UPDATE step_signatures SET rejection_count = rejection_count + 1 WHERE id = ?",
-        (signature_id,),
-    )
-    conn.commit()
+    # Retry with backoff to handle DB lock contention
+    for attempt in range(3):
+        try:
+            # Increment rejection count
+            db.execute(
+                "UPDATE step_signatures SET rejection_count = rejection_count + 1 WHERE id = ?",
+                (signature_id,),
+            )
 
-    # Get updated count
-    cursor = conn.execute(
-        "SELECT rejection_count FROM step_signatures WHERE id = ?",
-        (signature_id,),
-    )
-    row = cursor.fetchone()
-    rejection_count = row[0] if row else 0
+            # Get updated count
+            cursor = db.execute(
+                "SELECT rejection_count FROM step_signatures WHERE id = ?",
+                (signature_id,),
+            )
+            row = cursor.fetchone()
+            rejection_count = row[0] if row else 0
+            break  # Success
+        except Exception as e:
+            if "locked" in str(e).lower() and attempt < 2:
+                time.sleep(0.1 * (attempt + 1))  # 100ms, 200ms backoff
+                continue
+            logger.warning("[rejection] DB error recording rejection: %s", e)
+            break
 
-    # Queue the rejected step for decomposition
-    queue_for_decomposition(
-        step_text=step_text,
-        complexity_reason=f"rejected_by_leaf_{signature_id}_sim_{similarity:.3f}",
-        dag_step_id=dag_step_id,
-        problem_context=problem_context,
-    )
+    # Queue the rejected step for decomposition (non-blocking)
+    try:
+        queue_for_decomposition(
+            step_text=step_text,
+            complexity_reason=f"rejected_by_leaf_{signature_id}_sim_{similarity:.3f}",
+            dag_step_id=dag_step_id,
+            problem_context=problem_context,
+        )
+    except Exception as e:
+        logger.warning("[rejection] Failed to queue for decomposition: %s", e)
 
     logger.debug(
         "[rejection] Leaf %d rejected step (sim=%.3f), total rejections=%d",
@@ -848,34 +920,104 @@ def flag_high_rejection_leaves_for_decomposition() -> list[dict]:
     if not leaves:
         return []
 
-    conn = get_db()
+    db = get_db()
     flagged = []
 
-    for leaf in leaves:
-        sig_id = leaf["signature_id"]
+    with db.connection() as conn:
+        for leaf in leaves:
+            sig_id = leaf["signature_id"]
 
-        # Flag for decomposition by marking it as needing split
-        # The umbrella_learner will pick this up and decompose it
-        conn.execute(
-            """
-            UPDATE step_signatures
-            SET is_semantic_umbrella = 1
-            WHERE id = ? AND is_semantic_umbrella = 0
-            """,
-            (sig_id,),
-        )
-
-        if conn.total_changes > 0:
-            logger.info(
-                "[rejection] Flagged leaf %d for decomposition: %d rejections, %.1f%% rate",
-                sig_id, leaf["rejection_count"], leaf["rejection_rate"] * 100
+            # Flag for decomposition by marking it as needing split
+            # The umbrella_learner will pick this up and decompose it
+            cursor = conn.execute(
+                """
+                UPDATE step_signatures
+                SET is_semantic_umbrella = 1
+                WHERE id = ? AND is_semantic_umbrella = 0
+                """,
+                (sig_id,),
             )
-            flagged.append(leaf)
 
-    if flagged:
-        conn.commit()
+            if cursor.rowcount > 0:
+                logger.info(
+                    "[rejection] Flagged leaf %d for decomposition: %d rejections, %.1f%% rate",
+                    sig_id, leaf["rejection_count"], leaf["rejection_rate"] * 100
+                )
+                flagged.append(leaf)
+        # Connection context manager handles commit
 
     return flagged
+
+
+# =============================================================================
+# DB MATURITY
+# =============================================================================
+# Maturity emerges from actual ground-truth performance.
+# Used for various adaptive behaviors in the system.
+
+
+def sigmoid(x: float, k: float = 1.0, midpoint: float = 0.0) -> float:
+    """Sigmoid function for smooth transitions."""
+    import math
+    try:
+        return 1.0 / (1.0 + math.exp(-k * (x - midpoint)))
+    except OverflowError:
+        return 0.0 if x < midpoint else 1.0
+
+
+def compute_db_maturity(rolling_window: int = 100) -> float:
+    """Infer DB maturity from rolling window of recent problem outcomes.
+
+    Maturity EMERGES from actual ground-truth performance:
+    - Uses the last N graded problems (not leaf stats which can be stale)
+    - 70% accuracy on GSM8K → ~0.70 maturity (intuitive!)
+
+    This is much more accurate than leaf success rates because:
+    1. It's ground truth (did we actually solve the problem?)
+    2. It's recent (reflects current performance, not stale history)
+    3. It's directly what we care about
+
+    Args:
+        rolling_window: Number of recent problems to consider (default 100)
+
+    Returns:
+        float: 0.0 (immature/struggling) to 1.0 (mature/working well)
+    """
+    conn = get_db()
+
+    # Get the last N graded problems
+    cursor = conn.execute(
+        """
+        SELECT success
+        FROM mcts_dags
+        WHERE success IS NOT NULL
+        ORDER BY graded_at DESC
+        LIMIT ?
+        """,
+        (rolling_window,),
+    )
+    outcomes = cursor.fetchall()
+
+    if not outcomes:
+        logger.debug("[maturity] No graded problems yet, returning 0.0 (cold start)")
+        return 0.0  # Cold start → fully immature
+
+    # Simple rolling accuracy
+    total = len(outcomes)
+    successes = sum(1 for row in outcomes if row["success"] == 1)
+    maturity = successes / total
+
+    logger.debug(
+        "[maturity] DB maturity=%.3f from last %d problems (%d/%d correct)",
+        maturity, total, successes, total
+    )
+
+    return maturity
+
+
+# NOTE: DecompositionDecision, get_leaf_stats, and compute_decomposition_decision
+# were removed - replaced by divergence-based splitting in step_signatures/divergence.py.
+# Natural splitting happens based on observed success/failure divergence.
 
 
 # =============================================================================
@@ -3419,66 +3561,6 @@ def get_failing_nodes_for_decomposition(min_attempts: int = 3, max_win_rate: flo
     return [rec.target_id for rec in result["nodes_to_decompose"]]
 
 
-def get_high_variance_nodes_for_decomposition(
-    min_samples: int = 5,
-    max_variance: float = 0.02,
-) -> list[tuple[int, float]]:
-    """Get list of node IDs that need decomposition based on embedding variance.
-
-    High variance in cosine similarities indicates the signature is too generic -
-    it's catching diverse problem types that should be specialized into children.
-
-    Per CLAUDE.md: Tree depth emerges from problem structure, not magic numbers.
-
-    Args:
-        min_samples: Minimum similarity samples to consider (avoid noise from small N)
-        max_variance: Variance threshold above which to flag for decomposition.
-                      Cosine similarity is [0,1], so variance is typically small.
-                      0.02 = std dev of ~0.14 in similarity scores.
-
-    Returns:
-        List of (node_id, variance) tuples for nodes needing decomposition
-    """
-    db = get_db()
-    high_variance_nodes = []
-
-    with db.connection() as conn:
-        # Query signatures with high variance that are NOT already umbrellas
-        # (umbrellas route, they don't execute - so variance there is expected)
-        cursor = conn.execute("""
-            SELECT id, similarity_count, similarity_mean, similarity_m2,
-                   step_type, is_semantic_umbrella
-            FROM step_signatures
-            WHERE similarity_count >= ?
-              AND is_semantic_umbrella = 0
-              AND is_archived = 0
-        """, (min_samples,))
-
-        for row in cursor.fetchall():
-            sig_id = row[0]
-            count = row[1]
-            mean = row[2] or 0.0
-            m2 = row[3] or 0.0
-            step_type = row[4]
-            is_umbrella = row[5]
-
-            # Compute variance using Welford's formula
-            if count >= 2:
-                variance = m2 / count
-            else:
-                variance = 0.0
-
-            # Flag if variance exceeds threshold
-            if variance > max_variance:
-                logger.info(
-                    "[mcts] High variance node %d (%s): variance=%.4f mean=%.3f samples=%d",
-                    sig_id, step_type, variance, mean, count
-                )
-                high_variance_nodes.append((sig_id, variance))
-
-    return high_variance_nodes
-
-
 def get_failing_steps_for_decomposition(min_attempts: int = 3, max_win_rate: float = 0.5) -> list[tuple[str, str]]:
     """Get list of (dag_step_id, step_desc) tuples that need decomposition.
 
@@ -3787,78 +3869,195 @@ def collapse_single_child_routers() -> dict:
     Returns:
         Dict with collapse statistics
     """
-    conn = get_db()
+    db = get_db()
     collapsed = 0
     collapsed_ids = []
 
     try:
-        # Find routers (role='router' or is_umbrella=1) with exactly one child
-        cursor = conn.execute("""
-            SELECT sr.parent_id, sr.child_id, s.step_type
-            FROM signature_relationships sr
-            JOIN step_signatures s ON s.id = sr.parent_id
-            WHERE (s.role = 'router' OR s.is_umbrella = 1)
-            GROUP BY sr.parent_id
-            HAVING COUNT(sr.child_id) = 1
-        """)
-        single_child_routers = cursor.fetchall()
+        with db.connection() as conn:
+            # Find umbrella routers with exactly one child
+            cursor = conn.execute("""
+                SELECT sr.parent_id, sr.child_id, s.step_type
+                FROM signature_relationships sr
+                JOIN step_signatures s ON s.id = sr.parent_id
+                WHERE s.is_semantic_umbrella = 1
+                  AND s.is_archived = 0
+                GROUP BY sr.parent_id
+                HAVING COUNT(sr.child_id) = 1
+            """)
+            single_child_routers = cursor.fetchall()
 
-        for row in single_child_routers:
-            parent_id = row["parent_id"]
-            child_id = row["child_id"]
+            for row in single_child_routers:
+                parent_id = row["parent_id"]
+                child_id = row["child_id"]
 
-            # Skip if parent is the root (id=1 or has no parent)
-            cursor = conn.execute(
-                "SELECT COUNT(*) as cnt FROM signature_relationships WHERE child_id = ?",
-                (parent_id,)
-            )
-            if cursor.fetchone()["cnt"] == 0:
-                # This router has no parent - it's at the root level, don't collapse
-                continue
+                # Skip if parent is the root (id=1 or has no parent)
+                cursor = conn.execute(
+                    "SELECT COUNT(*) as cnt FROM signature_relationships WHERE child_id = ?",
+                    (parent_id,)
+                )
+                if cursor.fetchone()["cnt"] == 0:
+                    # This router has no parent - it's at the root level, don't collapse
+                    continue
 
-            # Find grandparent relationships (who points to this router)
-            cursor = conn.execute(
-                "SELECT parent_id FROM signature_relationships WHERE child_id = ?",
-                (parent_id,)
-            )
-            grandparents = [r["parent_id"] for r in cursor.fetchall()]
+                # Find grandparent relationships (who points to this router)
+                cursor = conn.execute(
+                    "SELECT parent_id FROM signature_relationships WHERE child_id = ?",
+                    (parent_id,)
+                )
+                grandparents = [r["parent_id"] for r in cursor.fetchall()]
 
-            # Update grandparent -> router to grandparent -> child
-            for grandparent_id in grandparents:
-                conn.execute("""
-                    UPDATE signature_relationships
-                    SET child_id = ?
-                    WHERE parent_id = ? AND child_id = ?
-                """, (child_id, grandparent_id, parent_id))
+                # Skip if multiple grandparents - would violate UNIQUE(child_id) constraint
+                if len(grandparents) > 1:
+                    logger.debug(
+                        "[mcts] Skipping collapse of router %d: multiple grandparents",
+                        parent_id
+                    )
+                    continue
 
-            # Remove router -> child relationship
-            conn.execute(
-                "DELETE FROM signature_relationships WHERE parent_id = ? AND child_id = ?",
-                (parent_id, child_id)
-            )
+                # IMPORTANT: Delete router -> child relationship FIRST
+                # This frees up the child_id for the grandparent relationship
+                conn.execute(
+                    "DELETE FROM signature_relationships WHERE parent_id = ? AND child_id = ?",
+                    (parent_id, child_id)
+                )
 
-            # Mark router as inactive (don't delete, preserve history)
-            conn.execute(
-                "UPDATE step_signatures SET role = 'collapsed' WHERE id = ?",
-                (parent_id,)
-            )
+                # Now update grandparent -> router to grandparent -> child
+                for grandparent_id in grandparents:
+                    conn.execute("""
+                        UPDATE signature_relationships
+                        SET child_id = ?
+                        WHERE parent_id = ? AND child_id = ?
+                    """, (child_id, grandparent_id, parent_id))
 
-            collapsed += 1
-            collapsed_ids.append(parent_id)
-            logger.debug(
-                "[mcts] Collapsed single-child router %d, promoted child %d",
-                parent_id, child_id
-            )
+                    # FIX: Update child's depth to reflect new parent
+                    # Child's depth should be grandparent's depth + 1
+                    grandparent_depth_row = conn.execute(
+                        "SELECT depth FROM step_signatures WHERE id = ?",
+                        (grandparent_id,)
+                    ).fetchone()
+                    new_depth = (grandparent_depth_row["depth"] + 1) if grandparent_depth_row else 1
+                    conn.execute(
+                        "UPDATE step_signatures SET depth = ? WHERE id = ?",
+                        (new_depth, child_id)
+                    )
+                    logger.debug(
+                        "[mcts] Updated child %d depth to %d (grandparent %d depth + 1)",
+                        child_id, new_depth, grandparent_id
+                    )
 
-        conn.commit()
+                # Mark router as archived (don't delete, preserve history)
+                conn.execute(
+                    "UPDATE step_signatures SET is_archived = 1 WHERE id = ?",
+                    (parent_id,)
+                )
+
+                collapsed += 1
+                collapsed_ids.append(parent_id)
+                logger.debug(
+                    "[mcts] Collapsed single-child router %d, promoted child %d",
+                    parent_id, child_id
+                )
+            # Connection context manager handles commit
 
     except Exception as e:
         logger.warning("[mcts] Failed to collapse single-child routers: %s", e)
-        conn.rollback()
+        # Connection context manager handles rollback on exception
 
     return {
         "collapsed": collapsed,
         "collapsed_ids": collapsed_ids,
+    }
+
+
+def repair_signature_depths() -> dict:
+    """Repair signature depths that became inconsistent after collapse operations.
+
+    This fixes the bug where collapse_single_child_routers() was reparenting
+    signatures without updating their depth to match the new parent.
+
+    For each signature, the correct depth is: parent's depth + 1 (or 0 if root).
+
+    Returns:
+        Dict with repair statistics
+    """
+    db = get_db()
+    repaired = 0
+    repairs = []
+
+    try:
+        with db.connection() as conn:
+            # Get all non-root signatures with their parent depth
+            cursor = conn.execute("""
+                SELECT
+                    s.id,
+                    s.depth as current_depth,
+                    s.is_root,
+                    p.id as parent_id,
+                    p.depth as parent_depth
+                FROM step_signatures s
+                LEFT JOIN signature_relationships r ON r.child_id = s.id
+                LEFT JOIN step_signatures p ON p.id = r.parent_id
+                WHERE s.is_archived = 0
+            """)
+            rows = cursor.fetchall()
+
+            for row in rows:
+                sig_id = row["id"]
+                current_depth = row["current_depth"] or 0
+                is_root = row["is_root"]
+                parent_id = row["parent_id"]
+                parent_depth = row["parent_depth"]
+
+                # Root should always be depth 0
+                if is_root:
+                    if current_depth != 0:
+                        conn.execute(
+                            "UPDATE step_signatures SET depth = 0 WHERE id = ?",
+                            (sig_id,)
+                        )
+                        repairs.append({
+                            "id": sig_id,
+                            "old_depth": current_depth,
+                            "new_depth": 0,
+                            "reason": "root must be depth 0"
+                        })
+                        repaired += 1
+                    continue
+
+                # Non-root with no parent (orphan) - shouldn't exist but handle it
+                if parent_id is None:
+                    expected_depth = 1  # Assume direct child of root
+                else:
+                    expected_depth = (parent_depth or 0) + 1
+
+                if current_depth != expected_depth:
+                    conn.execute(
+                        "UPDATE step_signatures SET depth = ? WHERE id = ?",
+                        (expected_depth, sig_id)
+                    )
+                    repairs.append({
+                        "id": sig_id,
+                        "old_depth": current_depth,
+                        "new_depth": expected_depth,
+                        "parent_id": parent_id,
+                        "parent_depth": parent_depth
+                    })
+                    repaired += 1
+                    logger.info(
+                        "[mcts] Repaired sig %d depth: %d -> %d (parent %s at depth %s)",
+                        sig_id, current_depth, expected_depth, parent_id, parent_depth
+                    )
+
+    except Exception as e:
+        logger.warning("[mcts] Failed to repair signature depths: %s", e)
+
+    if repaired > 0:
+        logger.info("[mcts] Repaired %d signature depths", repaired)
+
+    return {
+        "repaired": repaired,
+        "repairs": repairs,
     }
 
 
@@ -4260,219 +4459,5 @@ def run_diagnostic_postmortem(
         "signatures_to_decompose": list(set(sigs_to_decompose)),
         "routing_misses": routing_misses,
     }
-
-
-# =============================================================================
-# ATOMIC DISCOVERY (Math Primes)
-# =============================================================================
-# Per CLAUDE.md: "system discovers which signatures are truly atomic"
-# Signatures become "atomic" when they prove reliable enough to never decompose.
-# This is learned from (dag_step_type, node_id) pair statistics.
-
-
-@dataclass
-class AtomicCandidate:
-    """A signature that qualifies for atomic status."""
-    node_id: int
-    step_type: str
-    uses: int
-    wins: int
-    win_rate: float
-    step_types_count: int  # How many distinct dag_step_types this handles
-    reason: str  # "high_success", "decomp_failed", "specialized"
-
-
-def discover_atomic_signatures(min_uses: int = None, min_success_rate: float = None) -> list[AtomicCandidate]:
-    """Find signatures that qualify for atomic status based on stats.
-
-    A signature is atomic (a "math prime") if:
-    1. High success rate (>= min_success_rate) with enough uses (>= min_uses)
-    2. Specialized: handles 1-2 distinct dag_step_types with high success
-
-    Per CLAUDE.md: "leaf_node + dag_step pairs" - we evaluate the PAIR.
-    A node might be atomic for one step type but not another.
-
-    Args:
-        min_uses: Minimum total uses (default from config)
-        min_success_rate: Minimum win rate (default from config)
-
-    Returns:
-        List of AtomicCandidate objects
-    """
-    from mycelium.config import (
-        ATOMIC_MIN_USES,
-        ATOMIC_MIN_SUCCESS_RATE,
-        ATOMIC_MIN_STEP_TYPES,
-    )
-
-    min_uses = min_uses or ATOMIC_MIN_USES
-    min_success_rate = min_success_rate or ATOMIC_MIN_SUCCESS_RATE
-
-    conn = get_db()
-    candidates = []
-
-    # Find nodes that:
-    # 1. Are NOT already umbrellas or archived
-    # 2. Have enough total uses across all step types
-    # 3. Have high overall win rate
-    # 4. NOT already marked atomic
-    with conn.connection() as c:
-        # Get per-node aggregate stats from dag_step_node_stats
-        cursor = c.execute("""
-            SELECT
-                dsns.node_id,
-                SUM(dsns.uses) as total_uses,
-                SUM(dsns.wins) as total_wins,
-                COUNT(DISTINCT dsns.dag_step_type) as step_types_count,
-                ss.step_type,
-                ss.is_semantic_umbrella,
-                ss.is_archived,
-                ss.is_atomic
-            FROM dag_step_node_stats dsns
-            JOIN step_signatures ss ON dsns.node_id = ss.id
-            WHERE ss.is_archived = 0
-              AND ss.is_atomic = 0
-            GROUP BY dsns.node_id
-            HAVING SUM(dsns.uses) >= ?
-        """, (min_uses,))
-
-        for row in cursor.fetchall():
-            node_id = row[0]
-            total_uses = row[1] or 0
-            total_wins = row[2] or 0
-            step_types_count = row[3] or 0
-            step_type = row[4]
-            is_umbrella = row[5]
-            is_archived = row[6]
-            is_atomic = row[7]
-
-            # Skip umbrellas (routers don't become atomic)
-            if is_umbrella:
-                continue
-
-            # Calculate win rate with Bayesian prior
-            prior_alpha = 1.0
-            prior_beta = 1.0
-            win_rate = (total_wins + prior_alpha) / (total_uses + prior_alpha + prior_beta)
-
-            # Check if qualifies for atomic
-            if win_rate >= min_success_rate:
-                # Determine reason
-                if step_types_count <= ATOMIC_MIN_STEP_TYPES:
-                    reason = "specialized"  # Good at 1-2 specific things
-                else:
-                    reason = "high_success"  # Good at many things
-
-                candidates.append(AtomicCandidate(
-                    node_id=node_id,
-                    step_type=step_type,
-                    uses=total_uses,
-                    wins=total_wins,
-                    win_rate=win_rate,
-                    step_types_count=step_types_count,
-                    reason=reason,
-                ))
-
-    logger.info(
-        "[atomic] Discovered %d atomic candidates (min_uses=%d, min_rate=%.2f)",
-        len(candidates), min_uses, min_success_rate
-    )
-    return candidates
-
-
-def mark_signature_atomic(node_id: int, reason: str) -> bool:
-    """Mark a signature as atomic (a "math prime" that shouldn't decompose).
-
-    Args:
-        node_id: The signature ID
-        reason: Why it's atomic ("high_success", "decomp_failed", "specialized")
-
-    Returns:
-        True if updated, False otherwise
-    """
-    conn = get_db()
-    with conn.connection() as c:
-        cursor = c.execute(
-            "UPDATE step_signatures SET is_atomic = 1, atomic_reason = ? WHERE id = ?",
-            (reason, node_id)
-        )
-        if cursor.rowcount > 0:
-            logger.info("[atomic] Marked signature %d as atomic (reason=%s)", node_id, reason)
-            return True
-    return False
-
-
-def unmark_signature_atomic(node_id: int) -> bool:
-    """Unmark a signature as atomic (revert to decomposable).
-
-    Args:
-        node_id: The signature ID
-
-    Returns:
-        True if updated, False otherwise
-    """
-    conn = get_db()
-    with conn.connection() as c:
-        cursor = c.execute(
-            "UPDATE step_signatures SET is_atomic = 0, atomic_reason = NULL WHERE id = ?",
-            (node_id,)
-        )
-        if cursor.rowcount > 0:
-            logger.info("[atomic] Unmarked signature %d as atomic", node_id)
-            return True
-    return False
-
-
-def is_signature_atomic(node_id: int) -> bool:
-    """Check if a signature is marked atomic.
-
-    Args:
-        node_id: The signature ID
-
-    Returns:
-        True if atomic, False otherwise
-    """
-    conn = get_db()
-    with conn.connection() as c:
-        cursor = c.execute(
-            "SELECT is_atomic FROM step_signatures WHERE id = ?",
-            (node_id,)
-        )
-        row = cursor.fetchone()
-        return bool(row and row[0])
-
-
-def run_atomic_discovery() -> dict:
-    """Discover and mark atomic signatures.
-
-    This should be called as part of the post-mortem pipeline.
-
-    Returns:
-        Dict with discovery statistics
-    """
-    candidates = discover_atomic_signatures()
-    marked = 0
-
-    for candidate in candidates:
-        if mark_signature_atomic(candidate.node_id, candidate.reason):
-            marked += 1
-
-    result = {
-        "candidates_found": len(candidates),
-        "marked_atomic": marked,
-        "reasons": {}
-    }
-
-    # Count by reason
-    for c in candidates:
-        result["reasons"][c.reason] = result["reasons"].get(c.reason, 0) + 1
-
-    if marked > 0:
-        logger.info(
-            "[atomic] Discovery complete: %d candidates, %d marked atomic. Reasons: %s",
-            len(candidates), marked, result["reasons"]
-        )
-
-    return result
 
 

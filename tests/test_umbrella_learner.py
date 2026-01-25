@@ -87,7 +87,26 @@ class TestGetDecompositionCandidates:
         return MagicMock()
 
     @pytest.fixture
-    def learner(self, mock_db):
+    def mock_mcts_win_rates(self, monkeypatch):
+        """Mock get_mcts_win_rates to avoid needing full DB schema."""
+        monkeypatch.setattr(
+            "mycelium.data_layer.mcts.get_mcts_win_rates",
+            lambda **kwargs: {}
+        )
+
+    @pytest.fixture
+    def mock_adaptive(self, monkeypatch):
+        """Mock AdaptiveExploration to control adaptive thresholds."""
+        mock_instance = MagicMock()
+        mock_instance.global_accuracy = 1.0  # Mature system = higher threshold
+        mock_instance.split_threshold = 0.5  # 50% failure rate threshold
+        monkeypatch.setattr(
+            "mycelium.mcts.adaptive.AdaptiveExploration.get_instance",
+            lambda: mock_instance
+        )
+
+    @pytest.fixture
+    def learner(self, mock_db, mock_mcts_win_rates, mock_adaptive):
         learner = UmbrellaLearner.__new__(UmbrellaLearner)
         learner.db = mock_db
         return learner
@@ -187,8 +206,13 @@ class TestGetDecompositionCandidates:
         candidates = learner.get_decomposition_candidates()
         assert candidates == []
 
-    def test_includes_orphan_umbrella(self, learner, mock_db):
-        """Auto-demoted router umbrellas without children should be candidates."""
+    def test_filters_orphan_umbrella(self, learner, mock_db):
+        """Orphan umbrellas should NOT be candidates for abstract decomposition.
+
+        Per code comments: abstract decomposition creates children with placeholder
+        variables that can't execute. Orphan umbrellas get children through CONCRETE
+        problem solving when actual values route through them.
+        """
         # Create an orphan umbrella (auto-demoted from math, no children)
         orphan = StepSignature(
             id=1,
@@ -206,8 +230,8 @@ class TestGetDecompositionCandidates:
 
         candidates = learner.get_decomposition_candidates()
 
-        assert len(candidates) == 1
-        assert candidates[0].id == 1
+        # Orphan umbrellas are filtered - they get children through concrete use
+        assert len(candidates) == 0
 
     def test_filters_umbrella_with_children(self, learner, mock_db):
         """Router umbrellas WITH children should not be candidates."""
@@ -392,6 +416,7 @@ class TestDecomposeSignature:
 
     @pytest.mark.asyncio
     async def test_skips_self_reference(self, learner, mock_db, mock_planner):
+        """Self-references are skipped, and if only 1 child remains, decomposition is reverted."""
         sig = self._make_sig(1)
         mock_planner.decompose.return_value = DAGPlan(
             steps=[
@@ -412,12 +437,13 @@ class TestDecomposeSignature:
 
         result = await learner.decompose_signature(sig)
 
-        # Should only add the non-self-referencing child
-        assert len(result) == 1
-        assert result[0] == 2
+        # After skipping self-reference, only 1 child remains
+        # Single-child decompositions are reverted (no meaningful branching)
+        assert len(result) == 0
 
     @pytest.mark.asyncio
     async def test_skips_synthesis_steps(self, learner, mock_db, mock_planner):
+        """Synthesis steps are skipped, and if only 1 child remains, decomposition is reverted."""
         sig = self._make_sig(1)
         mock_planner.decompose.return_value = DAGPlan(
             steps=[
@@ -433,8 +459,9 @@ class TestDecomposeSignature:
 
         result = await learner.decompose_signature(sig)
 
-        # Only one child (synthesis step skipped)
-        assert len(result) == 1
+        # After skipping synthesis step, only 1 child remains
+        # Single-child decompositions are reverted (no meaningful branching)
+        assert len(result) == 0
 
     @pytest.mark.asyncio
     async def test_repoints_to_existing_deeper_sig(self, learner, mock_db, mock_planner):
@@ -466,7 +493,26 @@ class TestLearnFromFailures:
         return MagicMock()
 
     @pytest.fixture
-    def learner(self, mock_db):
+    def mock_mcts_win_rates(self, monkeypatch):
+        """Mock get_mcts_win_rates to avoid needing full DB schema."""
+        monkeypatch.setattr(
+            "mycelium.data_layer.mcts.get_mcts_win_rates",
+            lambda **kwargs: {}
+        )
+
+    @pytest.fixture
+    def mock_adaptive(self, monkeypatch):
+        """Mock AdaptiveExploration to control adaptive thresholds."""
+        mock_instance = MagicMock()
+        mock_instance.global_accuracy = 0.0  # Cold start for these tests
+        mock_instance.split_threshold = 0.5  # 50% failure rate threshold
+        monkeypatch.setattr(
+            "mycelium.mcts.adaptive.AdaptiveExploration.get_instance",
+            lambda: mock_instance
+        )
+
+    @pytest.fixture
+    def learner(self, mock_db, mock_mcts_win_rates, mock_adaptive):
         learner = UmbrellaLearner.__new__(UmbrellaLearner)
         learner.db = mock_db
         learner.planner = AsyncMock()

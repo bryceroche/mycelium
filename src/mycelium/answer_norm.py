@@ -79,6 +79,115 @@ Reply with ONLY 'YES' or 'NO'. Nothing else."""
         return answers_equivalent(predicted, expected)
 
 
+async def batch_answers_equivalent_llm(
+    answer_pairs: list[tuple[str, str, str]],
+) -> list[bool]:
+    """Batch check multiple answer pairs for equivalence in ONE LLM call.
+
+    This reduces LLM calls from N to 1 when checking multiple answers.
+    Fast-path checks (string equality, numeric equivalence) are done first
+    to minimize what needs LLM judgment.
+
+    Args:
+        answer_pairs: List of (predicted, expected, problem_id) tuples
+
+    Returns:
+        List of booleans indicating equivalence for each pair (same order)
+    """
+    from mycelium.client import ask_llama
+
+    if not answer_pairs:
+        return []
+
+    # Results array (same order as input)
+    results = [None] * len(answer_pairs)
+
+    # First pass: fast-path checks (no LLM needed)
+    needs_llm = []  # (index, predicted, expected)
+    for i, (predicted, expected, problem_id) in enumerate(answer_pairs):
+        # Empty prediction is always wrong
+        if not predicted or not predicted.strip():
+            results[i] = False
+            continue
+
+        # Quick string equality
+        if predicted.strip().lower() == expected.strip().lower():
+            results[i] = True
+            continue
+
+        # Numeric equivalence (handles 3.0 vs 3, 1/2 vs 0.5, etc.)
+        if answers_equivalent(predicted, expected):
+            results[i] = True
+            continue
+
+        # Needs LLM judgment
+        needs_llm.append((i, predicted, expected, problem_id))
+
+    # If all resolved by fast path, we're done
+    if not needs_llm:
+        logger.info("[answer_batch] All %d answers resolved by fast path (0 LLM calls)", len(answer_pairs))
+        return results
+
+    # Second pass: batch LLM check for remaining pairs
+    # Build batch prompt
+    pairs_text = []
+    for idx, (i, predicted, expected, problem_id) in enumerate(needs_llm):
+        pairs_text.append(f"{idx + 1}. Expected: {expected}\n   Predicted: {predicted}")
+
+    prompt = f"""Check if each predicted answer is NUMERICALLY equivalent to the expected answer.
+
+STRICT RULES:
+- Numbers must evaluate to the SAME value (e.g., 0.5 = 1/2 = 50%)
+- Different numbers are NOT equivalent (e.g., 0.83 != 7)
+- Be strict: if in doubt, answer NO
+
+Answer pairs to check:
+{chr(10).join(pairs_text)}
+
+Reply with ONLY a comma-separated list of YES or NO for each pair, in order.
+Example for 3 pairs: YES,NO,YES"""
+
+    try:
+        response = await ask_llama(prompt, temperature=0.0)
+
+        # Parse response - expect comma-separated YES/NO
+        # Handle various formats: "YES, NO, YES" or "YES,NO,YES" or "1. YES 2. NO"
+        response_clean = response.upper().replace(" ", "")
+        verdicts = []
+
+        if "," in response_clean:
+            # Comma-separated
+            parts = response_clean.split(",")
+            verdicts = ["YES" in p for p in parts]
+        else:
+            # Try to extract YES/NO patterns
+            import re
+            matches = re.findall(r'\b(YES|NO)\b', response.upper())
+            verdicts = [m == "YES" for m in matches]
+
+        # Map verdicts back to results
+        for idx, (i, predicted, expected, problem_id) in enumerate(needs_llm):
+            if idx < len(verdicts):
+                results[i] = verdicts[idx]
+            else:
+                # Fallback if parsing failed
+                logger.warning("[answer_batch] Missing verdict for pair %d, falling back to regex", i)
+                results[i] = answers_equivalent(predicted, expected)
+
+        logger.info(
+            "[answer_batch] Checked %d answers: %d fast-path, %d via LLM batch",
+            len(answer_pairs), len(answer_pairs) - len(needs_llm), len(needs_llm)
+        )
+        return results
+
+    except Exception as e:
+        logger.warning("[answer_batch] Batch LLM check failed, falling back to individual: %s", e)
+        # Fallback: use regex for remaining
+        for i, predicted, expected, problem_id in needs_llm:
+            results[i] = answers_equivalent(predicted, expected)
+        return results
+
+
 # =============================================================================
 # Pre-compiled regex patterns (compiled once at module load for performance)
 # =============================================================================

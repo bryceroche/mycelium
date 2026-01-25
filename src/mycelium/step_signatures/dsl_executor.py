@@ -46,6 +46,11 @@ from mycelium.step_signatures.math_layer import (
     extract_numeric_value as _extract_numeric_value,
 )
 
+# SymPy layer (algebra / backwards solving)
+from mycelium.step_signatures.sympy_layer import (
+    try_execute_dsl_sympy,
+)
+
 # =============================================================================
 # Main Entry Point
 # =============================================================================
@@ -128,8 +133,12 @@ def try_execute_dsl(
         with _timeout(timeout_sec):
             if dsl_spec.layer == DSLLayer.MATH:
                 result = try_execute_dsl_math(dsl_spec.script, mapped_inputs)
+            elif dsl_spec.layer == DSLLayer.SYMPY:
+                # Algebra / backwards solving via SymPy
+                unknown_var = dsl_spec.params[0] if dsl_spec.params else "x"
+                result = try_execute_dsl_sympy(dsl_spec.script, mapped_inputs, unknown_var)
             else:
-                # Only MATH layer supported for execution
+                # Only MATH and SYMPY layers supported for execution
                 return None, False
 
             if result is not None:

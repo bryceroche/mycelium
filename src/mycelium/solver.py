@@ -967,12 +967,14 @@ class Solver:
             # This batches across multiple problems - steps queue up, decomposition fires when threshold met
             if TRAINING_MODE:
                 from mycelium.client import LLMClient
+                from mycelium.config import DECOMP_MIN_BATCH_SIZE, DECOMP_MAX_QUEUE_AGE_SEC
                 async with LLMClient() as client:
                     queue_ids, decomp_results = await self._blocking_decompose_complex_steps(
                         plan=plan,
                         problem=problem,
                         client=client,
-                        min_batch_size=5,  # Wait for 5 complex steps across problems
+                        min_batch_size=DECOMP_MIN_BATCH_SIZE,
+                        max_queue_age_sec=DECOMP_MAX_QUEUE_AGE_SEC,
                     )
                     if queue_ids:
                         plan = await self._expand_plan_with_decompositions(
@@ -1250,15 +1252,34 @@ class Solver:
                 # High-confidence graph match - use this signature directly
                 # Threshold: 90% similarity means operationally identical
                 if best_sim >= 0.90:
-                    signature = best_sig
-                    is_new = False
-                    graph_matched = True
-                    # Update the matched signature's centroid with this new text embedding
-                    self.step_db.update_centroid(signature.id, embedding)
-                    logger.info(
-                        "[solver] GRAPH-FIRST match: '%s' → sig %d (%s) sim=%.3f",
-                        step.task[:40], signature.id, signature.step_type, best_sim
+                    # Check rejection threshold for leaf signatures
+                    from mycelium.data_layer.mcts import (
+                        REJECTION_SIM_THRESHOLD,
+                        record_leaf_rejection,
                     )
+                    if not best_sig.is_semantic_umbrella and best_sim < REJECTION_SIM_THRESHOLD:
+                        # Leaf rejects this step - similarity too low
+                        record_leaf_rejection(
+                            signature_id=best_sig.id,
+                            step_text=step.task,
+                            similarity=best_sim,
+                            problem_context=problem[:500] if problem else None,
+                        )
+                        logger.info(
+                            "[solver] GRAPH-FIRST REJECTED: '%s' by sig %d (%s) sim=%.3f < %.2f",
+                            step.task[:40], best_sig.id, best_sig.step_type, best_sim, REJECTION_SIM_THRESHOLD
+                        )
+                        # Fall through to text routing to create new signature
+                    else:
+                        signature = best_sig
+                        is_new = False
+                        graph_matched = True
+                        # Update the matched signature's centroid with this new text embedding
+                        self.step_db.update_centroid(signature.id, embedding)
+                        logger.info(
+                            "[solver] GRAPH-FIRST match: '%s' → sig %d (%s) sim=%.3f",
+                            step.task[:40], signature.id, signature.step_type, best_sim
+                        )
 
         # 3. TEXT ROUTING FALLBACK
         # If graph routing didn't find a match, fall back to text-based routing
@@ -1518,6 +1539,16 @@ class Solver:
         # 6. Record usage (step_completed = returned result, not problem correctness)
         # Problem correctness is tracked separately via update_problem_outcome()
         step_completed = bool(result)
+
+        # 6.0. Update example with result (for DSL regeneration)
+        # This records successful DSL outputs so regenerate_dsl can learn patterns
+        if routed_signature and step_completed and result:
+            self.step_db.update_example_result(
+                signature_id=routed_signature.id,
+                step_text=step.task,
+                result=str(result),
+                success=True,
+            )
 
         # 6.1. MCTS backpropagation: record usage for ALL explored signatures
         # Key insight: This is how multi-path exploration teaches cluster splitting
@@ -2230,6 +2261,16 @@ class Solver:
             list(context.keys()) if context else []
         )
 
+        # Check if step requires algebra (backwards solving)
+        requires_algebra = getattr(step, 'requires_algebra', False)
+        if requires_algebra:
+            logger.info("[solver] Step '%s' requires algebra - trying SymPy solver", step.task[:40])
+            algebra_result = await self._try_algebra_solve(step, context)
+            if algebra_result is not None:
+                logger.info("[solver] Algebra solved: %s → %s", step.task[:40], algebra_result)
+                return algebra_result
+            logger.debug("[solver] Algebra solve failed, falling back to regular DSL")
+
         # Handle extraction-only steps: no dsl_hint but has single extracted value
         # These steps just extract a constant from the problem (e.g., "eggs per day = 16")
         if not dsl_hint and extracted_values:
@@ -2379,6 +2420,83 @@ class Solver:
                 context={"source": "try_dsl", "dsl_hint": getattr(step, 'dsl_hint', None)},
             )
 
+        return None
+
+    async def _try_algebra_solve(
+        self,
+        step,
+        context: dict[str, str],
+    ) -> Optional[str]:
+        """Attempt backwards solving using SymPy.
+
+        Called when a step has undefined variables that require
+        working backwards from known results.
+
+        Args:
+            step: The step requiring algebra
+            context: Results from previous steps
+
+        Returns:
+            Solved value as string, or None on failure
+        """
+        from mycelium.step_signatures.sympy_layer import (
+            build_equation_from_values,
+            try_execute_dsl_sympy,
+        )
+
+        extracted_values = getattr(step, 'extracted_values', {}) or {}
+        operation = getattr(step, 'operation', None) or getattr(step, 'dsl_hint', None) or "unknown"
+
+        # Build values dict with None for unknowns, resolved values for knowns
+        values = {}
+        for key, val in extracted_values.items():
+            if val is None:
+                # This is the unknown we need to solve for
+                values[key] = None
+            elif isinstance(val, str):
+                if val.startswith('{') and val.endswith('}'):
+                    # Step reference - resolve from context
+                    ref_step = val[1:-1]
+                    if ref_step in context:
+                        try:
+                            values[key] = float(context[ref_step])
+                        except (ValueError, TypeError):
+                            values[key] = context[ref_step]
+                    else:
+                        # Step result not available - can't solve
+                        logger.debug("[algebra] Missing step reference: %s", ref_step)
+                        return None
+                elif val.startswith('$'):
+                    # Phase 1 reference - resolve from stored values
+                    ref_name = val[1:]
+                    phase1_val = self._current_phase1_values.get(ref_name)
+                    if phase1_val is not None:
+                        values[key] = phase1_val
+                    else:
+                        # Phase 1 value not found - this is the unknown
+                        values[key] = None
+                else:
+                    # Try to parse as number
+                    try:
+                        values[key] = float(val) if '.' in val else int(val)
+                    except ValueError:
+                        # String that's not a number - might be the unknown
+                        values[key] = None
+            elif isinstance(val, (int, float)):
+                values[key] = val
+            else:
+                values[key] = val
+
+        # Build equation and solve
+        script, unknown = build_equation_from_values(values, operation)
+        if not script:
+            logger.debug("[algebra] Could not build equation for step")
+            return None
+
+        result = try_execute_dsl_sympy(script, values, unknown_var=unknown)
+
+        if result is not None:
+            return str(result)
         return None
 
     async def _prewarm_dsl_cache(self, steps: list) -> None:
@@ -3527,6 +3645,11 @@ Rules:
                     stats["step_decomposition_triggered"] = True
                     stats["decomposition_succeeded"] = False
                     logger.info("[reactive] Step decomposition also failed")
+
+                    # dag_step decomposition failed → check if leaf nodes need decomposition
+                    # Per brainstorm: Use maturity-based decision to flag underperforming leaves
+                    await self._evaluate_leaf_decomposition_after_failure(result, stats)
+
                     return stats
             else:
                 return stats
@@ -3571,6 +3694,86 @@ Rules:
                 )
 
         return stats
+
+    async def _evaluate_leaf_decomposition_after_failure(
+        self,
+        result: SolverResult,
+        stats: dict,
+    ) -> None:
+        """Evaluate if leaf nodes need splitting based on divergence.
+
+        Natural splitting inspired by nature (nautilus, trees, lungs):
+        - Binary split is the atomic operation (like cell division)
+        - Split on DIVERGENCE (success vs failure embedding clusters)
+        - WIDTH vs DEPTH based on semantic distance:
+          - Close embeddings but divergent outcomes -> WIDTH (variants)
+          - Distant embeddings with divergent outcomes -> DEPTH (abstraction)
+        - The tree structure EMERGES, not designed
+
+        Args:
+            result: The failed SolverResult with step information
+            stats: Dict to record statistics about decisions made
+        """
+        from mycelium.step_signatures.divergence import (
+            get_signature_outcome_embeddings,
+            maybe_split_on_divergence,
+        )
+
+        # Get all leaf signatures involved in this problem
+        split_results = []
+        for step in result.steps:
+            if step.signature_id is None:
+                continue
+
+            # Get the signature
+            sig = self.step_db.get_signature(step.signature_id)
+            if sig is None or sig.is_semantic_umbrella:
+                continue  # Skip umbrellas (routers don't execute)
+
+            # Get historical success/failure embeddings for this signature
+            success_embeddings, failure_embeddings = get_signature_outcome_embeddings(
+                step.signature_id
+            )
+
+            # Check for divergence and maybe split
+            split_result = maybe_split_on_divergence(
+                self.step_db,
+                sig,
+                success_embeddings,
+                failure_embeddings,
+            )
+
+            if split_result is not None:
+                split_results.append({
+                    "signature_id": step.signature_id,
+                    "step_task": step.task[:50] if step.task else "",
+                    "split_type": split_result.split_type,
+                    "success": split_result.success,
+                    "child_a_id": split_result.child_a_id,
+                    "child_b_id": split_result.child_b_id,
+                    "reason": split_result.reason,
+                })
+                logger.info(
+                    "[divergence] Split sig %d (%s): %s -> children %s, %s",
+                    step.signature_id,
+                    split_result.split_type,
+                    split_result.reason,
+                    split_result.child_a_id,
+                    split_result.child_b_id,
+                )
+
+        # Record stats
+        stats["divergence_splits"] = split_results
+        stats["signatures_split"] = len([r for r in split_results if r["success"]])
+
+        if split_results:
+            logger.info(
+                "[divergence] Evaluated %d leaves: %d split (width=%d, depth=%d)",
+                len(result.steps),
+                stats["signatures_split"],
+                len([r for r in split_results if r["split_type"] == "width"]),
+                len([r for r in split_results if r["split_type"] == "depth"]),
+            )
 
     def record_problem_outcome(
         self,
@@ -3898,23 +4101,6 @@ Rules:
                         sig.step_type, node_id
                     )
 
-        # VARIANCE MONITORING (informational only, does not trigger decomposition)
-        # Variance tracking helps identify signatures catching diverse problem types.
-        # However, automatic decomposition based on variance alone creates empty umbrellas
-        # because there's no concrete problem context. Let actual failures drive decomposition.
-        from mycelium.data_layer.mcts import get_high_variance_nodes_for_decomposition
-        from mycelium.config import VARIANCE_MIN_SAMPLES, VARIANCE_DECOMP_THRESHOLD
-
-        high_variance_nodes = get_high_variance_nodes_for_decomposition(
-            min_samples=VARIANCE_MIN_SAMPLES,
-            max_variance=VARIANCE_DECOMP_THRESHOLD
-        )
-        if high_variance_nodes:
-            logger.info(
-                "[solver] High-variance signatures detected (monitoring only): %s",
-                [(nid, f"{var:.4f}") for nid, var in high_variance_nodes[:5]]
-            )
-
         # Also add nodes flagged by interference detection (destructive interference)
         # These already have operational_failures > 0 from record_interference_outcome
         for node_id in self._postmortem_flagged_nodes:
@@ -4031,7 +4217,8 @@ Rules:
         plan,
         problem: str,
         client,
-        min_batch_size: int = 3,
+        min_batch_size: int = 5,
+        max_queue_age_sec: float = 15.0,
         poll_interval: float = 0.5,
         timeout: float = 15.0,
     ) -> tuple[list, dict]:
@@ -4040,11 +4227,16 @@ Rules:
         This implements blocking decomposition: complex steps are queued, we wait
         for batch decomposition to complete, then return decomposed atomic steps.
 
+        Decomposition triggers when EITHER:
+        - Queue size >= min_batch_size, OR
+        - Oldest pending item is >= max_queue_age_sec old
+
         Args:
             plan: The execution plan with steps
             problem: Problem text for context
             client: LLM client for decomposition
             min_batch_size: Minimum queue size before triggering decomposition
+            max_queue_age_sec: Max seconds oldest item can wait before triggering
             poll_interval: Seconds between polling for results
             timeout: Max seconds to wait for decomposition
 
@@ -4053,22 +4245,33 @@ Rules:
         """
         import asyncio
         from mycelium.data_layer.mcts import (
-            is_step_complex,
             queue_for_decomposition,
             get_decomposition_queue_size,
+            get_oldest_pending_age_seconds,
             get_decomposition_results,
             are_decompositions_ready,
         )
         from mycelium.embedding_cache import cached_embed
 
-        # 1. Scan plan for complex steps
+        # NOTE: Pre-execution complexity detection was removed.
+        # Splitting now happens via divergence detection AFTER execution.
+        # See step_signatures/divergence.py for the new natural splitting approach.
         complex_steps = []
-        for step in plan.steps:
-            is_complex, complexity_reason = is_step_complex(step.task)
-            if is_complex:
-                complex_steps.append((step, complexity_reason))
 
+        # Even if no complex steps in current plan, check if stale items need processing
         if not complex_steps:
+            queue_size = get_decomposition_queue_size()
+            oldest_age = get_oldest_pending_age_seconds()
+            if queue_size > 0 and oldest_age >= max_queue_age_sec:
+                logger.info(
+                    "[solver] No complex steps in plan, but processing stale queue (age=%.1fs)",
+                    oldest_age
+                )
+                await self.maybe_run_batch_decomposition(
+                    client,
+                    batch_size=queue_size,
+                    min_queue_size=1,
+                )
             return [], {}
 
         logger.info(
@@ -4095,12 +4298,21 @@ Rules:
                 step.id, queue_id, step.task[:50]
             )
 
-        # 3. Check if threshold met, trigger decomposition if so
+        # 3. Check if threshold met (batch size OR age), trigger decomposition if so
         queue_size = get_decomposition_queue_size()
-        if queue_size >= min_batch_size:
+        oldest_age = get_oldest_pending_age_seconds()
+
+        should_trigger = queue_size >= min_batch_size or oldest_age >= max_queue_age_sec
+
+        if should_trigger and queue_size > 0:
+            trigger_reason = (
+                f"batch size ({queue_size} >= {min_batch_size})"
+                if queue_size >= min_batch_size
+                else f"age ({oldest_age:.1f}s >= {max_queue_age_sec}s)"
+            )
             logger.info(
-                "[solver] Queue threshold met (%d >= %d), triggering batch decomposition",
-                queue_size, min_batch_size
+                "[solver] Decomposition triggered by %s, processing %d items",
+                trigger_reason, queue_size
             )
             # Run decomposition for ALL pending items (not just ours)
             decomp_result = await self.maybe_run_batch_decomposition(

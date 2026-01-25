@@ -58,13 +58,6 @@ from mycelium.data_layer.mcts import (
     store_dag_step_embedding,
     update_dag_step_embedding_outcome,
     find_similar_dag_steps,
-    # Atomic discovery (math primes)
-    AtomicCandidate,
-    discover_atomic_signatures,
-    mark_signature_atomic,
-    unmark_signature_atomic,
-    is_signature_atomic,
-    run_atomic_discovery,
     # DAG plan stats (per beads mycelium-ogo6)
     compute_plan_signature,
     record_plan_outcome,
@@ -72,10 +65,11 @@ from mycelium.data_layer.mcts import (
     get_top_plans,
     get_worst_plans,
     # Decomposition queue (per beads mycelium-mm08)
-    is_step_complex,
+    check_substeps_match_existing,
     queue_for_decomposition,
     get_pending_decompositions,
     get_decomposition_queue_size,
+    get_oldest_pending_age_seconds,
     mark_decomposition_processed,
     get_decomposition_queue_stats,
     # Blocking decomposition coordination
@@ -91,6 +85,8 @@ from mycelium.data_layer.mcts import (
     get_leaves_needing_decomposition,
     check_and_reject_if_low_similarity,
     flag_high_rejection_leaves_for_decomposition,
+    # DB maturity (for general use)
+    compute_db_maturity,
 )
 
 db = get_db()
@@ -149,13 +145,6 @@ __all__ = [
     "store_dag_step_embedding",
     "update_dag_step_embedding_outcome",
     "find_similar_dag_steps",
-    # Atomic discovery (math primes)
-    "AtomicCandidate",
-    "discover_atomic_signatures",
-    "mark_signature_atomic",
-    "unmark_signature_atomic",
-    "is_signature_atomic",
-    "run_atomic_discovery",
     # DAG plan stats (per beads mycelium-ogo6)
     "compute_plan_signature",
     "record_plan_outcome",
@@ -163,10 +152,11 @@ __all__ = [
     "get_top_plans",
     "get_worst_plans",
     # Decomposition queue
-    "is_step_complex",
+    "check_substeps_match_existing",
     "queue_for_decomposition",
     "get_pending_decompositions",
     "get_decomposition_queue_size",
+    "get_oldest_pending_age_seconds",
     "mark_decomposition_processed",
     "get_decomposition_queue_stats",
     # Blocking decomposition coordination
@@ -182,4 +172,6 @@ __all__ = [
     "get_leaves_needing_decomposition",
     "check_and_reject_if_low_similarity",
     "flag_high_rejection_leaves_for_decomposition",
+    # DB maturity
+    "compute_db_maturity",
 ]
