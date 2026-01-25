@@ -580,362 +580,6 @@ class StepSignatureDB:
             logger.warning("[db] Failed to create scaffold branch: %s", e)
             return None
 
-    def _maybe_propagate_centroid(
-        self,
-        conn,
-        child_id: int,
-        force: bool = False,
-    ) -> bool:
-        """Conditionally propagate centroid to parents using batching.
-
-        Accumulates centroid updates and only propagates when batch size is reached.
-        This reduces overhead from calling propagate_centroid_to_parents on every match.
-
-        Args:
-            conn: Database connection (within transaction)
-            child_id: ID of the signature whose centroid was updated
-            force: If True, propagate immediately regardless of batch size
-
-        Returns:
-            True if propagation was performed, False if deferred
-        """
-        if force or CENTROID_PROPAGATION_BATCH_SIZE <= 1:
-            # Immediate propagation requested or batching disabled
-            self.propagate_centroid_to_parents(conn, child_id)
-            # Clear any pending count for this signature
-            self._pending_propagations.pop(child_id, None)
-            return True
-
-        # Increment pending count for this signature
-        pending = self._pending_propagations.get(child_id, 0) + 1
-        self._pending_propagations[child_id] = pending
-
-        if pending >= CENTROID_PROPAGATION_BATCH_SIZE:
-            # Threshold reached, propagate now
-            self.propagate_centroid_to_parents(conn, child_id)
-            self._pending_propagations.pop(child_id, None)
-            logger.debug(
-                "[db] Batch propagation triggered for sig %d after %d updates",
-                child_id, pending
-            )
-            return True
-
-        logger.debug(
-            "[db] Deferred centroid propagation for sig %d (%d/%d)",
-            child_id, pending, CENTROID_PROPAGATION_BATCH_SIZE
-        )
-        return False
-
-    def flush_pending_propagations(self):
-        """Flush all pending centroid propagations.
-
-        Call this at the end of a batch of operations to ensure all
-        centroid updates are propagated to parent umbrellas.
-
-        Uses batch propagation to avoid N+1 queries when flushing multiple signatures.
-        """
-        if not self._pending_propagations:
-            return
-
-        pending_ids = list(self._pending_propagations.keys())
-        self._pending_propagations.clear()
-
-        with self._connection() as conn:
-            conn.execute("BEGIN IMMEDIATE")
-            try:
-                self._batch_propagate_centroids_to_parents(conn, pending_ids)
-                conn.commit()
-                logger.debug(
-                    "[db] Flushed %d pending centroid propagations (batched)",
-                    len(pending_ids)
-                )
-            except Exception:
-                conn.rollback()
-                raise
-
-    def _batch_propagate_centroids_to_parents(
-        self,
-        conn,
-        child_ids: list[int],
-    ) -> None:
-        """Batch propagate centroid changes for multiple children at once.
-
-        Optimized version that collects all ancestors for all children in one query,
-        avoiding N+1 pattern. Reduces overhead from O(N*3) queries to O(3) queries.
-
-        Args:
-            conn: Database connection (within transaction)
-            child_ids: List of signature IDs whose centroids were updated
-        """
-        if not child_ids:
-            return
-
-        max_depth = CENTROID_PROPAGATION_MAX_DEPTH
-
-        # SQLite has a default limit of 999 parameters. Chunk if needed.
-        # Reserve 1 slot for max_depth parameter.
-        SQLITE_MAX_PARAMS = 998
-        if len(child_ids) > SQLITE_MAX_PARAMS:
-            # Process in chunks, collecting all ancestors
-            all_ancestors: dict[int, int] = {}  # parent_id -> min_depth
-            for i in range(0, len(child_ids), SQLITE_MAX_PARAMS):
-                chunk = child_ids[i:i + SQLITE_MAX_PARAMS]
-                placeholders = ",".join("?" * len(chunk))
-                cursor = conn.execute(
-                    f"""
-                    WITH RECURSIVE ancestors AS (
-                        SELECT parent_id, child_id, 1 as depth
-                        FROM signature_relationships
-                        WHERE child_id IN ({placeholders})
-
-                        UNION ALL
-
-                        SELECT r.parent_id, a.child_id, a.depth + 1
-                        FROM signature_relationships r
-                        JOIN ancestors a ON r.child_id = a.parent_id
-                        WHERE a.depth < ?
-                    )
-                    SELECT DISTINCT parent_id, MIN(depth) as depth
-                    FROM ancestors
-                    GROUP BY parent_id
-                    """,
-                    (*chunk, max_depth),
-                )
-                for row in cursor.fetchall():
-                    pid, depth = row[0], row[1]
-                    if pid not in all_ancestors or depth < all_ancestors[pid]:
-                        all_ancestors[pid] = depth
-            # Convert to sorted list by depth
-            ancestors = sorted(all_ancestors.items(), key=lambda x: x[1])
-        else:
-            # 1. Batch-fetch all ancestors for ALL child_ids using recursive CTE
-            placeholders = ",".join("?" * len(child_ids))
-            cursor = conn.execute(
-                f"""
-                WITH RECURSIVE ancestors AS (
-                    SELECT parent_id, child_id, 1 as depth
-                    FROM signature_relationships
-                    WHERE child_id IN ({placeholders})
-
-                    UNION ALL
-
-                    SELECT r.parent_id, a.child_id, a.depth + 1
-                    FROM signature_relationships r
-                    JOIN ancestors a ON r.child_id = a.parent_id
-                    WHERE a.depth < ?
-                )
-                SELECT DISTINCT parent_id, MIN(depth) as depth
-                FROM ancestors
-                GROUP BY parent_id
-                ORDER BY depth
-                """,
-                (*child_ids, max_depth),
-            )
-            ancestors = cursor.fetchall()
-
-        if not ancestors:
-            return  # No parents (all are root nodes)
-
-        ancestor_ids = [row[0] for row in ancestors]
-
-        # 2. Batch-fetch all children data for ALL ancestors
-        # Also chunk this query to respect SQLite parameter limits
-        children_by_parent: dict[int, list[tuple]] = {}
-        for i in range(0, len(ancestor_ids), SQLITE_MAX_PARAMS):
-            chunk = ancestor_ids[i:i + SQLITE_MAX_PARAMS]
-            ancestor_placeholders = ",".join("?" * len(chunk))
-            cursor = conn.execute(
-                f"""
-                SELECT r.parent_id, s.centroid, s.embedding_count
-                FROM signature_relationships r
-                JOIN step_signatures s ON r.child_id = s.id
-                WHERE r.parent_id IN ({ancestor_placeholders})
-                """,
-                chunk,
-            )
-            for parent_id, centroid, count in cursor.fetchall():
-                if parent_id not in children_by_parent:
-                    children_by_parent[parent_id] = []
-                children_by_parent[parent_id].append((centroid, count))
-
-        # 3. Compute new centroids for each ancestor (process in depth order)
-        updates = []
-        for parent_id, _ in ancestors:
-            children = children_by_parent.get(parent_id, [])
-            if not children:
-                continue
-
-            total_weight = 0
-            centroid_sum = None
-
-            for child_centroid_packed, child_count in children:
-                child_centroid = unpack_embedding(child_centroid_packed)
-                weight = child_count or 1
-                if child_centroid is None:
-                    continue
-
-                if centroid_sum is None:
-                    centroid_sum = child_centroid * weight
-                else:
-                    centroid_sum = centroid_sum + (child_centroid * weight)
-                total_weight += weight
-
-            if centroid_sum is not None and total_weight > 0:
-                new_centroid = centroid_sum / total_weight
-                updates.append((
-                    pack_embedding(new_centroid),
-                    pack_embedding(centroid_sum),
-                    total_weight,
-                    parent_id,
-                ))
-
-        # 4. Batch update all ancestors
-        for packed_centroid, packed_sum, weight, parent_id in updates:
-            try:
-                conn.execute(
-                    """UPDATE step_signatures
-                       SET centroid = ?, embedding_sum = ?, embedding_count = ?
-                       WHERE id = ?""",
-                    (packed_centroid, packed_sum, weight, parent_id),
-                )
-                invalidate_centroid_cache(parent_id)
-                invalidate_signature_cache(parent_id)
-            except sqlite3.IntegrityError:
-                logger.debug(
-                    "[db] Skipped centroid propagation to parent %d (collision)",
-                    parent_id
-                )
-
-        if updates:
-            logger.debug(
-                "[db] Batch propagated centroids to %d ancestors from %d children",
-                len(updates), len(child_ids)
-            )
-
-    def propagate_centroid_to_parents(
-        self,
-        conn,
-        child_id: int,
-        visited: set[int] = None,
-    ):
-        """NO-OP: Text centroid propagation removed in favor of graph embeddings.
-
-        Routing now uses graph_embedding (see propagate_graph_centroid_to_parents).
-        This function is kept for API compatibility but does nothing.
-        """
-        # No-op: graph embeddings are used for routing, not text centroids
-        return
-
-    def _propagate_centroid_to_parents_legacy(
-        self,
-        conn,
-        child_id: int,
-        visited: set[int] = None,
-    ):
-        """LEGACY: Text centroid propagation (kept for reference, not used)."""
-        max_depth = CENTROID_PROPAGATION_MAX_DEPTH
-
-        # 1. Batch-fetch all ancestors up to max_depth using recursive CTE
-        cursor = conn.execute(
-            """
-            WITH RECURSIVE ancestors AS (
-                SELECT parent_id, 1 as depth
-                FROM signature_relationships
-                WHERE child_id = ?
-
-                UNION ALL
-
-                SELECT r.parent_id, a.depth + 1
-                FROM signature_relationships r
-                JOIN ancestors a ON r.child_id = a.parent_id
-                WHERE a.depth < ?
-            )
-            SELECT DISTINCT parent_id, MIN(depth) as depth
-            FROM ancestors
-            GROUP BY parent_id
-            ORDER BY depth
-            """,
-            (child_id, max_depth),
-        )
-        ancestors = cursor.fetchall()
-
-        if not ancestors:
-            return  # No parents (root node)
-
-        ancestor_ids = [row[0] for row in ancestors]
-
-        # 2. Batch-fetch all children data for all ancestors in one query
-        placeholders = ",".join("?" * len(ancestor_ids))
-        cursor = conn.execute(
-            f"""
-            SELECT r.parent_id, s.centroid, s.embedding_count
-            FROM signature_relationships r
-            JOIN step_signatures s ON r.child_id = s.id
-            WHERE r.parent_id IN ({placeholders})
-            """,
-            ancestor_ids,
-        )
-        children_data = cursor.fetchall()
-
-        # Group children by parent_id
-        children_by_parent: dict[int, list[tuple]] = {}
-        for parent_id, centroid, count in children_data:
-            if parent_id not in children_by_parent:
-                children_by_parent[parent_id] = []
-            children_by_parent[parent_id].append((centroid, count))
-
-        # 3. Compute new centroids for each ancestor (process in depth order)
-        updates = []
-        for parent_id, _ in ancestors:
-            children = children_by_parent.get(parent_id, [])
-            if not children:
-                continue
-
-            total_weight = 0
-            centroid_sum = None
-
-            for child_centroid_packed, child_count in children:
-                child_centroid = unpack_embedding(child_centroid_packed)
-                weight = child_count or 1
-                if child_centroid is None:
-                    continue
-
-                if centroid_sum is None:
-                    centroid_sum = child_centroid * weight
-                else:
-                    centroid_sum = centroid_sum + (child_centroid * weight)
-                total_weight += weight
-
-            if centroid_sum is not None and total_weight > 0:
-                new_centroid = centroid_sum / total_weight
-                updates.append((
-                    pack_embedding(new_centroid),
-                    pack_embedding(centroid_sum),
-                    total_weight,
-                    parent_id,
-                ))
-
-        # 4. Batch update all ancestors
-        for packed_centroid, packed_sum, weight, parent_id in updates:
-            try:
-                conn.execute(
-                    """UPDATE step_signatures
-                       SET centroid = ?, embedding_sum = ?, embedding_count = ?
-                       WHERE id = ?""",
-                    (packed_centroid, packed_sum, weight, parent_id),
-                )
-                invalidate_centroid_cache(parent_id)
-                invalidate_signature_cache(parent_id)
-                logger.debug(
-                    "[db] Propagated centroid to parent %d (weight=%d)",
-                    parent_id, weight
-                )
-            except sqlite3.IntegrityError:
-                logger.debug(
-                    "[db] Skipped centroid propagation to parent %d (collision)",
-                    parent_id
-                )
-
     def compute_graph_centroid_from_children(
         self,
         conn,
@@ -2649,14 +2293,37 @@ class StepSignatureDB:
         new_embedding: np.ndarray,
         update_last_used: bool = False,
     ) -> Optional[int]:
-        """Update signature centroid within an existing transaction.
+        """NO-OP for centroid: Text centroid updates removed in favor of graph embeddings.
 
-        Internal helper that performs the centroid update without managing
-        its own transaction. Use this within code that already has an open
-        transaction.
+        Only updates last_used_at if requested. Centroid updates are skipped.
+        Routing now uses graph_embedding (see propagate_graph_centroid_to_parents).
 
-        Includes bounded drift monitoring: logs warning if centroid drift exceeds
-        confidence bounds (more examples = tighter bounds).
+        Args:
+            conn: Database connection (within transaction)
+            signature_id: ID of the signature
+            new_embedding: Unused (kept for API compatibility)
+            update_last_used: If True, update last_used_at timestamp
+
+        Returns:
+            1 (for API compatibility with callers expecting a count)
+        """
+        if update_last_used:
+            now = datetime.now(timezone.utc).isoformat()
+            conn.execute(
+                "UPDATE step_signatures SET last_used_at = ? WHERE id = ?",
+                (now, signature_id),
+            )
+            invalidate_signature_cache(signature_id)
+        return 1  # Return count for API compatibility
+
+    def _update_centroid_atomic_legacy(
+        self,
+        conn,
+        signature_id: int,
+        new_embedding: np.ndarray,
+        update_last_used: bool = False,
+    ) -> Optional[int]:
+        """LEGACY: Text centroid update (kept for reference, not used).
 
         Formula: new_sum = old_sum + new_embedding
                  new_count = old_count + 1
