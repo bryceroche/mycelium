@@ -106,6 +106,10 @@ class StepSignature:
     is_root: bool = False  # True if this is THE root signature (single entry point)
     depth: int = 0  # Routing depth (0=root, increases with parent-child hops)
 
+    # Atomic operations (cannot be decomposed further)
+    is_atomic: bool = False  # True if decomposition already failed
+    atomic_reason: Optional[str] = None  # "decomp_failed_single_step", "decomp_failed_with_failing_steps"
+
     # Metadata
     created_at: Optional[str] = None
     last_used_at: Optional[str] = None
@@ -332,6 +336,8 @@ class StepSignature:
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,
+            is_atomic=bool(row.get("is_atomic", 0)),
+            atomic_reason=row.get("atomic_reason"),
             created_at=row.get("created_at"),
             last_used_at=row.get("last_used_at"),
         )
@@ -377,6 +383,8 @@ class StepSignature:
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,
+            is_atomic=bool(row.get("is_atomic", 0)),
+            atomic_reason=row.get("atomic_reason"),
             created_at=row.get("created_at"),
             last_used_at=row.get("last_used_at"),
         )
@@ -432,6 +440,8 @@ class StepSignature:
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,
+            is_atomic=bool(row.get("is_atomic", 0)),
+            atomic_reason=row.get("atomic_reason"),
             created_at=row.get("created_at"),
             last_used_at=row.get("last_used_at"),
         )
