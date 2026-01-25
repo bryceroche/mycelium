@@ -1386,7 +1386,7 @@ class StepSignatureDB:
     async def find_or_create_async(
         self,
         step_text: str,
-        embedding: np.ndarray,
+        embedding: Optional[np.ndarray] = None,
         min_similarity: float = 0.85,
         parent_problem: str = "",
         origin_depth: int = 0,
@@ -1398,15 +1398,18 @@ class StepSignatureDB:
     ) -> tuple[StepSignature, bool]:
         """Async version of find_or_create with non-blocking retry sleep.
 
+        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        Routing uses graph_embedding exclusively. Text embedding is optional/legacy.
+
         Use this from async contexts to avoid blocking the event loop during
         database contention retries.
 
         Args:
             step_text: The step description text
-            embedding: Embedding vector for the step
+            embedding: Optional text embedding (legacy, not used for routing)
             min_similarity: Minimum cosine similarity for matching
             parent_problem: The parent problem this step came from
-            dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication
+            dsl_hint: Explicit operation hint from planner (+, -, *, /) for graph routing
             origin_depth: Decomposition depth at which this step was created
             extracted_values: Dict of semantic param names -> values from planner
             parent_id: Explicit parent ID for new signatures (overrides routing)
@@ -1526,7 +1529,7 @@ class StepSignatureDB:
     def _find_or_create_atomic(
         self,
         step_text: str,
-        embedding: np.ndarray,
+        embedding: Optional[np.ndarray],
         min_similarity: float,
         parent_problem: str,
         origin_depth: int = 0,
@@ -1537,14 +1540,19 @@ class StepSignatureDB:
     ) -> tuple[StepSignature, bool]:
         """Internal atomic find-or-create with hierarchical routing.
 
-        Routes through the signature hierarchy starting from root:
+        Routes through the signature hierarchy using graph_embedding (operational similarity).
+        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+
+        Flow:
         1. If DB is empty → create root signature
-        2. Route from root → best matching child → recurse until leaf
-        3. If leaf matches above threshold → update centroid and return
+        2. Route from root → best matching child via graph_embedding → recurse until leaf
+        3. If leaf matches above threshold → return existing
         4. If no match → create new child under where routing stopped (or explicit parent_id)
 
         Args:
-            dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication
+            step_text: The step description text
+            embedding: Optional text embedding (legacy, not used for routing - graph_embedding used instead)
+            dsl_hint: Explicit operation hint from planner (+, -, *, /) for graph routing
             parent_id: Explicit parent ID for new signatures (overrides routing)
             exclude_ids: Signature IDs to exclude from matching (prevent circular routing)
         """
@@ -2083,7 +2091,7 @@ class StepSignatureDB:
         self,
         conn,
         step_text: str,
-        embedding: np.ndarray,
+        embedding: Optional[np.ndarray],
         parent_problem: str = "",
         origin_depth: int = 0,
         extracted_values: dict = None,
@@ -2099,6 +2107,8 @@ class StepSignatureDB:
         - Subsequent signatures become children of specified parent (or root if not specified)
 
         Args:
+            step_text: The step description text
+            embedding: Optional text embedding (legacy, for centroid initialization)
             parent_id: ID of parent signature. If None, defaults to root.
             dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication.
         """
@@ -2120,8 +2130,9 @@ class StepSignatureDB:
             actual_parent_id = None  # Creating the root
 
         step_type = self._infer_step_type(step_text, dsl_hint=dsl_hint)
-        centroid_packed = pack_embedding(embedding)
-        centroid_bucket = compute_centroid_bucket(embedding)
+        # Text centroid is legacy - graph_embedding is used for routing
+        centroid_packed = pack_embedding(embedding) if embedding is not None else None
+        centroid_bucket = compute_centroid_bucket(embedding) if embedding is not None else None
 
         # Auto-assign DSL based on step_type, description, planner's extracted_values, and dsl_hint
         # dsl_hint enables bidirectional LLM-signature communication

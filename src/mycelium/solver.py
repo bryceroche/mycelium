@@ -399,11 +399,11 @@ class PathOutcome:
     """
     signature_id: int
     answer: Optional[str]  # What this path produced (None if failed)
-    embedding: np.ndarray  # The routing embedding for centroid updates
     step_id: str  # Which step this was for
-    embedding_similarity: float = 0.0  # Cosine similarity to signature centroid
+    embedding_similarity: float = 0.0  # Cosine similarity to signature graph_embedding
     dsl_type: str = "unknown"  # DSL type for operational alignment tracking
     thread_id: str = ""  # Thread that explored this path (for multi-path credit)
+    # Note: embedding field removed - centroid updates are no longer used (graph-only routing)
 
 
 @dataclass
@@ -1310,7 +1310,6 @@ class Solver:
                             signature = alt_sig
                             is_new = False
                             graph_matched = True
-                            self.step_db.update_centroid(signature.id, embedding)
                         else:
                             # No viable alternatives - all leaves reject, decompose (depth)
                             logger.info(
@@ -1354,8 +1353,6 @@ class Solver:
                         signature = best_sig
                         is_new = False
                         graph_matched = True
-                        # Update the matched signature's centroid with this new text embedding
-                        self.step_db.update_centroid(signature.id, embedding)
                         logger.info(
                             "[solver] GRAPH-FIRST match: '%s' → sig %d (%s) sim=%.3f",
                             step.task[:40], signature.id, signature.step_type, best_sim
@@ -1363,17 +1360,16 @@ class Solver:
 
         # 3. COLD START / SIGNATURE CREATION
         # If GRAPH-FIRST didn't match, try to find/create via graph-only routing in db.py
-        # No text/centroid fallback - routing uses graph_embedding exclusively
+        # Per CLAUDE.md: routing uses graph_embedding exclusively (no text centroid fallback)
         if signature is None:
             adaptive_threshold = get_adaptive_match_threshold()
             signature, is_new = await self.step_db.find_or_create_async(
                 step_text=step.task,  # Keep original for description
-                embedding=embedding,   # Used for centroid stats, not routing
                 min_similarity=adaptive_threshold,
                 parent_problem=problem,
                 origin_depth=depth,  # Track decomposition depth
                 extracted_values=getattr(step, 'extracted_values', None),
-                dsl_hint=getattr(step, 'dsl_hint', None),  # LLM → signature communication
+                dsl_hint=getattr(step, 'dsl_hint', None),  # For graph routing
                 embedder=self.embedder,  # For cold start graph embedding
             )
 
@@ -1385,13 +1381,16 @@ class Solver:
             )
 
             # MCTS fallback: get top-3 alternative leaves before decomposing
+            # Only try if we have an operation embedding
             from mycelium.data_layer.mcts import REJECTION_SIM_THRESHOLD
-            mcts_candidates = self.step_db.match_step_to_leaves_mcts(
-                embedding=embedding,
-                dag_step_type=getattr(step, 'dsl_hint', None) or step.task[:40],
-                top_k=3,
-                min_similarity=REJECTION_SIM_THRESHOLD,
-            )
+            mcts_candidates = []
+            if operation_embedding is not None:
+                mcts_candidates = self.step_db.match_step_to_leaves_mcts(
+                    operation_embedding=operation_embedding,
+                    dag_step_type=getattr(step, 'dsl_hint', None) or step.task[:40],
+                    top_k=3,
+                    min_similarity=REJECTION_SIM_THRESHOLD,
+                )
 
             if mcts_candidates:
                 # Found viable alternative - use it (sideways re-routing)
@@ -1402,7 +1401,6 @@ class Solver:
                 )
                 signature = alt_sig
                 is_new = False
-                self.step_db.update_centroid(signature.id, embedding)
             else:
                 # No alternatives - decompose (depth)
                 logger.info("[solver] No MCTS alternatives - inline decomposition")
@@ -1453,7 +1451,7 @@ class Solver:
             )
             # Try to decompose and see if sub-steps match existing signatures
             decompose_result = await self._try_maturity_decomposition(
-                step, signature, problem, context, step_descriptions or {}, embedding, difficulty
+                step, signature, problem, context, step_descriptions or {}, difficulty
             )
             if decompose_result is not None:
                 # Decomposition succeeded - all sub-steps matched existing signatures
@@ -1550,7 +1548,7 @@ class Solver:
             if compute_budget > 1.0:
                 mp_result, mp_sig, explored_sigs, mp_injected = await self._explore_multiple_paths(
                     step, problem, context, step_descriptions or {},
-                    embedding, compute_budget, thread_id,
+                    operation_embedding, compute_budget, thread_id,
                 )
                 if mp_result is not None:
                     result = mp_result
@@ -2066,11 +2064,14 @@ class Solver:
         problem: str,
         context: dict[str, str],
         step_descriptions: dict[str, str],
-        embedding: np.ndarray,
+        operation_embedding: Optional[np.ndarray],
         compute_budget: float = 1.0,
         thread_id: str = None,
     ) -> tuple[Optional[str], StepSignature, list[StepSignature], bool]:
         """MCTS multi-path exploration when confidence is low.
+
+        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        Uses operation_embedding (graph-based) for routing, not text embedding.
 
         Uses route_with_confidence() to get alternatives, then explores
         up to `compute_budget` paths in parallel. Returns best result.
@@ -2087,7 +2088,7 @@ class Solver:
             problem: Original problem text
             context: Results from previous steps
             step_descriptions: Task descriptions for NL param matching
-            embedding: Step embedding for routing
+            operation_embedding: Operation embedding for graph-based routing (may be None)
             compute_budget: Max paths to explore (1.0 = single path)
             thread_id: Thread ID for multi-path credit tracking (None if not tracking)
 
@@ -2101,12 +2102,20 @@ class Solver:
         from mycelium.config import UCB1_GAP_BRANCH_THRESHOLD
         from mycelium.step_signatures.db import RoutingResult
 
+        # Handle case where no operation embedding available
+        if operation_embedding is None:
+            # Can't route without operation embedding - return empty result
+            logger.debug(
+                "[solver] No operation embedding for multi-path - returning empty result"
+            )
+            return (None, None, [], False)
+
         # Get routing result with confidence and alternatives
         # Pass dag_step_type to enable step-node stats lookup for routing decisions
         # Per CLAUDE.md: "(dag_step_id, node_id) is what we're learning"
         dag_step_type = getattr(step, 'dsl_hint', None) or getattr(step, 'task', None)
         routing_result = self.step_db.route_with_confidence(
-            embedding,
+            operation_embedding,
             min_similarity=get_adaptive_match_threshold(),
             top_k=int(compute_budget) + 1,  # Get enough alternatives
             dag_step_type=dag_step_type,
@@ -2124,44 +2133,22 @@ class Solver:
         # Graph routing addresses this by comparing operation embedding to graph embeddings
         graph_matches = {}  # sig_id -> similarity for graph routing boost
         graph_signatures = {}  # sig_id -> StepSignature for graph-only candidates
-        if GRAPH_ROUTING_ENABLED:
+        if GRAPH_ROUTING_ENABLED and operation_embedding is not None:
             try:
-                operation_embedding = None
-
-                # Use pre-extracted operation embedding (batch embedded during decomposition)
-                # Operations are extracted in 1 decomposition call, embedded in 1 batch call
-                # Per CLAUDE.md: "Only call LLM on leaf nodes" - no LLM during routing
-                if step.id in self._operation_embeddings:
-                    operation_embedding = self._operation_embeddings[step.id]
-                    operation = getattr(step, 'operation', None)
+                # Compare to graph embeddings (what DSLs actually compute)
+                graph_routing_results = self.step_db.route_by_graph_embedding(
+                    operation_embedding,
+                    min_similarity=GRAPH_ROUTING_MIN_SIMILARITY,
+                    top_k=5,
+                )
+                # Build lookup for boosting centroid candidates
+                for sig, sim in graph_routing_results:
+                    graph_matches[sig.id] = sim
+                    graph_signatures[sig.id] = sig  # Store signature for graph-only adds
                     logger.debug(
-                        "[solver] Using pre-extracted operation embedding for: %s",
-                        operation[:50] if operation else "?"
+                        "[solver] Graph routing match: sig %d (%s) sim=%.3f",
+                        sig.id, sig.computation_graph[:30] if sig.computation_graph else "?", sim
                     )
-                else:
-                    # No operation embedding available - skip graph routing for this step
-                    # This happens when step.operation wasn't extracted during decomposition
-                    logger.debug(
-                        "[solver] No operation embedding for step %s - skipping graph routing",
-                        step.id
-                    )
-                    operation_embedding = None
-
-                if operation_embedding is not None:
-                    # Compare to graph embeddings (what DSLs actually compute)
-                    graph_routing_results = self.step_db.route_by_graph_embedding(
-                        np.array(operation_embedding),
-                        min_similarity=GRAPH_ROUTING_MIN_SIMILARITY,
-                        top_k=5,
-                    )
-                    # Build lookup for boosting centroid candidates
-                    for sig, sim in graph_routing_results:
-                        graph_matches[sig.id] = sim
-                        graph_signatures[sig.id] = sig  # Store signature for graph-only adds
-                        logger.debug(
-                            "[solver] Graph routing match: sig %d (%s) sim=%.3f",
-                            sig.id, sig.computation_graph[:30] if sig.computation_graph else "?", sim
-                        )
             except Exception as e:
                 # Graph routing is optional - don't fail on errors
                 logger.debug("[solver] Graph routing failed (continuing): %s", e)
@@ -2335,7 +2322,6 @@ class Solver:
             path_outcomes.append(PathOutcome(
                 signature_id=sig.id,
                 answer=result,
-                embedding=embedding,
                 step_id=step.id,
                 embedding_similarity=score,
                 dsl_type=sig.dsl_type or "unknown",
@@ -4054,13 +4040,8 @@ Rules:
                         self._answers_match(outcome.answer, ground_truth)
                     )
 
-                    # Update centroid only for operationally correct paths
-                    # This naturally clusters signatures by operational equivalence
-                    self.step_db.update_centroid_on_operational_success(
-                        outcome.signature_id,
-                        outcome.embedding,
-                        was_correct=path_correct,
-                    )
+                    # Note: Centroid updates removed - graph embeddings are structural (not learned)
+                    # Learning happens through UCB1 stats (uses, successes) tracked elsewhere
 
                     # Record for operational alignment validation
                     # This tracks whether MCTS is actually helping distinguish operations
@@ -4957,13 +4938,15 @@ Rules:
         problem: str,
         context: dict[str, str],
         step_descriptions: dict[str, str],
-        embedding: np.ndarray,
         difficulty: float = None,
     ) -> Optional[str]:
         """Try decomposing a step to reuse existing signatures (maturity-based).
 
         Per mycelium-jaq9: When maturity sigmoid suggests decomposition, try to
         break the step into sub-steps that match existing signatures.
+
+        Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        Uses operation embeddings (graph-based) for routing, not text embeddings.
 
         Escape hatch: If too many sub-steps don't match existing signatures,
         this recognizes a genuinely novel operation and returns None.
@@ -4974,12 +4957,12 @@ Rules:
             problem: Original problem text
             context: Results from previous steps
             step_descriptions: Task descriptions
-            embedding: Step embedding
             difficulty: Problem difficulty
 
         Returns:
             Combined result string if decomposition succeeds, None if escape hatch triggered
         """
+        from mycelium.step_signatures.db import RoutingResult
         try:
             # Use planner to decompose the step
             # Build context string from problem and known values
@@ -5010,17 +4993,24 @@ Rules:
             results = []
 
             for sub_step in sub_plan.steps:
-                normalized_task = normalize_step_text(sub_step.task)
-                sub_embedding = cached_embed(normalized_task, self.embedder)
+                # Use operation embedding for graph-based routing
+                # Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE
+                sub_operation_embedding = None
+                if sub_step.id in self._operation_embeddings:
+                    sub_operation_embedding = np.array(self._operation_embeddings[sub_step.id])
 
                 # Use route_with_confidence to check for existing match
                 # Pass dag_step_type for step-node stats lookup
                 sub_dag_step_type = getattr(sub_step, 'dsl_hint', None) or sub_step.task
-                routing_result = self.step_db.route_with_confidence(
-                    sub_embedding,
-                    min_similarity=adaptive_threshold,
-                    dag_step_type=sub_dag_step_type,
-                )
+                if sub_operation_embedding is None:
+                    # No operation embedding - treat as miss (can't route without graph embedding)
+                    routing_result = RoutingResult(signature=None, path=[], confidence=0.0)
+                else:
+                    routing_result = self.step_db.route_with_confidence(
+                        sub_operation_embedding,
+                        min_similarity=adaptive_threshold,
+                        dag_step_type=sub_dag_step_type,
+                    )
 
                 if routing_result.signature is None or routing_result.best_similarity < adaptive_threshold:
                     # No match found - count as miss

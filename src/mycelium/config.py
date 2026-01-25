@@ -453,18 +453,6 @@ POSTMORTEM_STRONG_PENALTY_MULT = 0.5  # Lost + high confidence: harsh penalty
 POSTMORTEM_AMPLITUDE_MIN = 0.0  # Clamp amplitude_post minimum
 POSTMORTEM_AMPLITUDE_MAX = 2.0  # Clamp amplitude_post maximum
 
-# =============================================================================
-# VALUE PREDICTOR (AlphaGo-style learned amplitude_post)
-# =============================================================================
-# Per beads mycelium-8150: Train a predictor instead of using fixed multipliers.
-# Collects (features, outcome) pairs and learns the relationship between
-# confidence signals and actual win probability.
-
-VALUE_PREDICTOR_ENABLED = True  # Use learned predictor when enough data
-VALUE_PREDICTOR_MIN_SAMPLES = 100  # Min samples before using predictor (cold start)
-VALUE_PREDICTOR_LEARNING_RATE = 0.01  # SGD learning rate for online training
-VALUE_PREDICTOR_TRAIN_INTERVAL = 50  # Retrain every N problems
-
 # Credit propagation from amplitude_post to signature stats (per mycelium-itkn)
 # Closes the loop: amplitude_post → signature.successes/operational_failures
 # Works for BOTH single-path and multi-path problems (per mycelium-plm8)

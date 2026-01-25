@@ -1539,36 +1539,7 @@ def run_postmortem(dag_id: str) -> dict:
         "total_low_conf": 0,   # For UCB1 adjustment (mycelium-nirq)
     }
 
-    # Import value predictor (AlphaGo approach per mycelium-8150)
-    from mycelium.config import VALUE_PREDICTOR_ENABLED
-    from mycelium.data_layer.value_predictor import (
-        get_predictor,
-        PredictorSample,
-        record_predictor_sample,
-    )
-
-    predictor = get_predictor() if VALUE_PREDICTOR_ENABLED else None
-
-    # Query additional features for predictor training
-    # Join with dag_steps to get dsl_hint (dag_step_type) - the "position" in AlphaGo terms
-    feature_cursor = conn.execute(
-        """
-        SELECT ts.thread_id, ts.similarity_score, ts.ucb1_gap, ts.was_undecided,
-               ts.node_id, ds.dsl_hint
-        FROM mcts_thread_steps ts
-        LEFT JOIN mcts_dag_steps ds ON ts.dag_step_id = ds.dag_step_id
-        WHERE ts.dag_id = ?
-        """,
-        (dag_id,),
-    )
-    # Build lookup: thread_id -> (similarity, gap, undecided, node_id, dag_step_type)
-    thread_features: dict[str, tuple] = {}
-    for row in feature_cursor.fetchall():
-        thread_features[row[0]] = (row[1], row[2], row[3], row[4], row[5])
-
-    total_steps = len(step_summaries)
-
-    for step_idx, (summary_id, thread_id, amplitude) in enumerate(step_summaries):
+    for summary_id, thread_id, amplitude in step_summaries:
         thread_success = thread_outcomes.get(thread_id)
 
         if thread_success is None:
@@ -1585,56 +1556,24 @@ def run_postmortem(dag_id: str) -> dict:
         else:
             stats["total_low_conf"] += 1
 
-        # Get additional features for this thread
-        features = thread_features.get(thread_id, (None, None, 0, None, None))
-        similarity_score, ucb1_gap, was_undecided, node_id, dag_step_type = features
-
-        # Record training sample for value predictor (AlphaGo-style)
-        # This learns V(dag_step_type, node_id) = probability of success
-        if VALUE_PREDICTOR_ENABLED and dag_step_type and node_id:
-            record_predictor_sample(
-                dag_step_type=dag_step_type,
-                node_id=node_id,
-                amplitude=amp,
-                won=won,
-                similarity_score=similarity_score,
-                ucb1_gap=ucb1_gap,
-                was_undecided=bool(was_undecided),
-                dag_id=dag_id,
-            )
-
-        # Compute amplitude_post using predictor or fixed multipliers
-        if predictor is not None and dag_step_type and node_id:
-            sample = PredictorSample(
-                dag_step_type=dag_step_type,
-                node_id=node_id,
-                amplitude=amp,
-                similarity_score=similarity_score,
-                ucb1_gap=ucb1_gap,
-                was_undecided=bool(was_undecided),
-                won=won,
-            )
-            amplitude_post = predictor.compute_amplitude_post(sample)
-        else:
-            # Fallback to fixed multipliers
-            if won and is_high_conf:
-                amplitude_post = amp * POSTMORTEM_REINFORCE_MULT
-            elif won and not is_high_conf:
-                amplitude_post = amp * POSTMORTEM_BOOST_MULT
-            elif not won and not is_high_conf:
-                amplitude_post = amp * POSTMORTEM_MILD_PENALTY_MULT
-            else:
-                amplitude_post = amp * POSTMORTEM_STRONG_PENALTY_MULT
-
-            # Clamp to configured range
-            amplitude_post = max(POSTMORTEM_AMPLITUDE_MIN, min(POSTMORTEM_AMPLITUDE_MAX, amplitude_post))
-
-        # Track hit/miss stats
-        if won and not is_high_conf:
+        # Compute amplitude_post based on outcome × confidence (fixed multipliers)
+        if won and is_high_conf:
+            # Reinforce: confident and right
+            amplitude_post = amp * POSTMORTEM_REINFORCE_MULT
+        elif won and not is_high_conf:
+            # Boost: discovered something (low confidence but right)
+            amplitude_post = amp * POSTMORTEM_BOOST_MULT
             stats["low_conf_right"] += 1
-        elif not won and is_high_conf:
+        elif not won and not is_high_conf:
+            # Mild penalty: uncertain and wrong (expected)
+            amplitude_post = amp * POSTMORTEM_MILD_PENALTY_MULT
+        else:
+            # Strong penalty: confident and wrong (bad signal)
+            amplitude_post = amp * POSTMORTEM_STRONG_PENALTY_MULT
             stats["high_conf_wrong"] += 1
 
+        # Clamp to configured range
+        amplitude_post = max(POSTMORTEM_AMPLITUDE_MIN, min(POSTMORTEM_AMPLITUDE_MAX, amplitude_post))
         updates.append((summary_id, amplitude_post))
 
     # Batch update summaries table (used for credit propagation)
