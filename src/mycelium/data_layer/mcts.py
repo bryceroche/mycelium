@@ -3485,6 +3485,8 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         # Decomposition analysis (nodes/steps that need decomposition)
         "nodes_needing_decomposition": [rec.target_id for rec in decomp_analysis["nodes_to_decompose"]],
         "steps_needing_decomposition": [(rec.target_id, rec.target_desc) for rec in decomp_analysis["steps_to_decompose"]],
+        # Variance-based decomposition (Welford's algorithm)
+        "variance_nodes_flagged": variance_nodes_flagged,
     }
 
 
