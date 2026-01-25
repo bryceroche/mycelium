@@ -417,7 +417,7 @@ class ThreadContext:
     After grading against ground truth, we know which threads were correct vs incorrect,
     enabling:
     - Positive credit to entire winning thread (not just final step)
-    - Negative credit to losing threads (SCORPION repulsion)
+    - Negative credit to losing threads (UCB1 stats update)
     - Per-signature thread win/loss tracking for cluster analysis
     """
     thread_id: str  # UUID
@@ -4790,22 +4790,8 @@ Rules:
                     final_answer=thread.final_answer or "",
                     success=thread_success,
                 )
-
-                # Apply credit/blame to signatures in this thread
-                thread_correct = is_correct if is_correct is not None else (
-                    is_winner and correct
-                )
-
-                # Credit decay based on fork depth
-                credit = THREAD_CREDIT_DECAY_PER_FORK ** thread.fork_depth
-                if credit >= THREAD_MIN_CREDIT:
-                    for sig_id in thread.signature_ids:  # Use property for just IDs
-                        self.step_db.update_centroid_on_operational_outcome(
-                            sig_id,
-                            embedding=None,  # No embedding update here
-                            was_correct=thread_correct,
-                            confidence=credit,
-                        )
+                # Note: Credit/blame to signatures happens via post-mortem analysis
+                # (run_postmortem), not here. UCB1 stats are updated there.
 
             logger.info(
                 "[solver] Recorded %d thread outcomes (winner=%s, threads_correct=%d)",

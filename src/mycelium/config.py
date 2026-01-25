@@ -393,29 +393,6 @@ SYNTHESIS_STEP_ANCHORS = [
 SYNTHESIS_STEP_THRESHOLD = 0.88  # Similarity threshold to detect synthesis steps (raised from 0.75 to avoid false positives)
 
 # =============================================================================
-# SCORPION FIX (Bipolar signal propagation)
-# =============================================================================
-# Fixes lexical vs operational similarity problem.
-# Embeddings cluster by vocabulary, but we want operational clusters.
-#
-# Solution: Bipolar centroid updates
-#   - SUCCESS: PULL centroid toward embedding (attract)
-#   - FAILURE: PUSH centroid away from embedding (repel)
-#
-# Key insight from AlphaGo/MCTS:
-#   - High confidence + failure = STRONG negative signal
-#   - Centroids drift toward operational meaning, not vocabulary
-#
-# Per CLAUDE.md: "Centroid averaging based off avg of children"
-
-SCORPION_REPULSION_WEIGHT = 0.3  # How strongly to push on failure (0.0-1.0)
-                                  # Higher = more aggressive separation
-                                  # Lower = slower but more stable clustering
-SCORPION_ATTRACTION_WEIGHT = 0.2  # How strongly to pull on success (0.0-1.0)
-                                   # Lower than repulsion: failures are rarer, need stronger signal
-                                   # Success is more common, so gentler pull to avoid overfitting
-
-# =============================================================================
 # THREAD TRACKING (Multi-path credit/blame backpropagation)
 # =============================================================================
 # Tracks complete execution paths ("threads") through DAG for credit attribution.

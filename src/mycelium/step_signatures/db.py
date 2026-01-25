@@ -989,18 +989,35 @@ class StepSignatureDB:
     def propagate_graph_centroid_to_parents(
         self,
         conn,
-        child_id: int,
+        signature_id: int,
+        include_self: bool = False,
     ):
-        """Propagate graph_centroid changes up to parent routers.
+        """Single entry point for graph_centroid updates.
 
-        When a child's graph_embedding changes, recompute parents' graph_centroids.
-        Similar to text centroid propagation but for graph embeddings.
+        Recomputes graph_centroids up the tree when a signature's graph_embedding changes.
+        This is the ONLY function that should update router centroids.
 
         Args:
             conn: Database connection
-            child_id: ID of the signature whose graph_embedding changed
+            signature_id: ID of the signature whose graph_embedding changed
+            include_self: If True, also recompute this signature's centroid first
+                          (used when promoting to umbrella)
         """
         max_depth = CENTROID_PROPAGATION_MAX_DEPTH
+
+        # Optionally recompute this node's own centroid first (for promote_to_umbrella)
+        if include_self:
+            graph_centroid = self.compute_graph_centroid_from_children(conn, signature_id)
+            if graph_centroid is not None:
+                conn.execute(
+                    "UPDATE step_signatures SET graph_embedding = ? WHERE id = ?",
+                    (json.dumps(graph_centroid.tolist()), signature_id),
+                )
+                invalidate_signature_cache(signature_id)
+                logger.debug(
+                    "[db] Computed graph_centroid for sig %d (include_self)",
+                    signature_id
+                )
 
         # Fetch all ancestors
         cursor = conn.execute(
@@ -1022,7 +1039,7 @@ class StepSignatureDB:
             GROUP BY parent_id
             ORDER BY depth
             """,
-            (child_id, max_depth),
+            (signature_id, max_depth),
         )
         ancestors = cursor.fetchall()
 
@@ -2793,190 +2810,6 @@ class StepSignatureDB:
             except Exception:
                 conn.rollback()
                 raise
-
-    def update_centroid_on_operational_outcome(
-        self,
-        signature_id: int,
-        embedding: np.ndarray,
-        was_correct: bool,
-        confidence: float = 1.0,
-    ):
-        """NO-OP: Text centroid updates removed in favor of graph embeddings.
-
-        Per CLAUDE.md: Graph embeddings are structural (from computation graphs),
-        not learned from problem outcomes. Success/failure signals should only
-        update UCB1 stats (uses, successes), not embeddings.
-
-        Learning happens through:
-        1. UCB1 scores (uses, successes, win_rate) - tracked elsewhere
-        2. New signature creation when existing signatures fail
-        3. Decomposition when signatures need specialization
-
-        This function is kept as a no-op for backward compatibility.
-        """
-        # No-op: graph embeddings are structural, not learned from outcomes
-        pass
-
-    def _attract_centroid(
-        self,
-        signature_id: int,
-        embedding: np.ndarray,
-        strength: float = 0.1,
-        propagate_to_parents: bool = False,
-    ):
-        """Pull centroid TOWARD an embedding (success attraction).
-
-        This strengthens operational clusters by pulling toward successful examples.
-        The centroid moves in the direction of the embedding.
-
-        Args:
-            signature_id: Signature to update
-            embedding: Embedding to attract toward
-            strength: How strongly to pull (0.0-1.0)
-            propagate_to_parents: If True, also update parent centroids (with decay)
-        """
-        with self._connection() as conn:
-            row = conn.execute(
-                """SELECT s.centroid, s.embedding_count, r.parent_id
-                   FROM step_signatures s
-                   LEFT JOIN signature_relationships r ON r.child_id = s.id
-                   WHERE s.id = ?""",
-                (signature_id,)
-            ).fetchone()
-
-            if row is None or row[0] is None:
-                return  # No centroid to attract
-
-            # Centroid is stored as JSON string, not bytes
-            centroid_data = row[0]
-            if isinstance(centroid_data, str):
-                centroid = np.array(json.loads(centroid_data), dtype=np.float32)
-            else:
-                centroid = _parse_centroid_data(centroid_data)
-            count = row[1] or 1
-            parent_id = row[2]
-
-            # Attraction: move centroid toward embedding
-            # direction = embedding - centroid (opposite of repulsion)
-            direction = embedding - centroid
-            direction_norm = np.linalg.norm(direction)
-
-            # Edge case: if centroid == embedding, direction is zero vector
-            # This is correct behavior - no movement needed when already aligned
-            if direction_norm > 0:
-                direction = direction / direction_norm  # Normalize direction
-
-            # Scale attraction by strength and inverse of count (mature signatures resist change)
-            attraction_scale = strength / np.sqrt(count + 1)
-            new_centroid = centroid + attraction_scale * direction
-
-            # Normalize to unit length
-            centroid_norm = np.linalg.norm(new_centroid)
-            if centroid_norm > 0:
-                new_centroid = new_centroid / centroid_norm
-
-            # Update in DB
-            conn.execute(
-                "UPDATE step_signatures SET centroid = ? WHERE id = ?",
-                (new_centroid.tobytes(), signature_id)
-            )
-            conn.commit()
-
-            # Propagate to parents with decay
-            if propagate_to_parents and parent_id is not None:
-                decayed_strength = strength * PARENT_CREDIT_DECAY
-                if decayed_strength >= PARENT_CREDIT_MIN:
-                    self._attract_centroid(parent_id, embedding, decayed_strength, propagate_to_parents=True)
-
-    def _repel_centroid(
-        self,
-        signature_id: int,
-        embedding: np.ndarray,
-        strength: float = 0.1,
-        propagate_to_parents: bool = False,
-    ):
-        """Push centroid AWAY from an embedding (failure repulsion).
-
-        This creates separation between operationally different clusters.
-        The centroid moves in the opposite direction from the embedding.
-
-        Args:
-            signature_id: Signature to update
-            embedding: Embedding to repel from
-            strength: How strongly to push (0.0-1.0)
-            propagate_to_parents: If True, also update parent centroids (with decay)
-        """
-        with self._connection() as conn:
-            row = conn.execute(
-                """SELECT s.centroid, s.embedding_count, r.parent_id
-                   FROM step_signatures s
-                   LEFT JOIN signature_relationships r ON r.child_id = s.id
-                   WHERE s.id = ?""",
-                (signature_id,)
-            ).fetchone()
-
-            if row is None or row[0] is None:
-                return  # No centroid to repel from
-
-            # Centroid is stored as JSON string, not bytes
-            centroid_data = row[0]
-            if isinstance(centroid_data, str):
-                centroid = np.array(json.loads(centroid_data), dtype=np.float32)
-            else:
-                centroid = _parse_centroid_data(centroid_data)
-            count = row[1] or 1
-            parent_id = row[2]
-
-            # Repulsion: move centroid away from embedding
-            # new_centroid = centroid + strength * (centroid - embedding)
-            # This pushes in the opposite direction of the embedding
-            direction = centroid - embedding
-            direction_norm = np.linalg.norm(direction)
-
-            # Edge case: if centroid == embedding, direction is zero vector
-            # This means the centroid is exactly at the failed embedding's position.
-            # We can't determine which direction to push, so we skip the update.
-            # This is rare but possible if a signature was created from this exact embedding.
-            if direction_norm > 0:
-                direction = direction / direction_norm  # Normalize direction
-            else:
-                logger.debug(
-                    "[db] SCORPION: skipping repulsion for sig %d (centroid == embedding)",
-                    signature_id
-                )
-                return
-
-            # Scale repulsion by strength and inverse of count (mature signatures resist change)
-            repulsion_scale = strength / np.sqrt(count + 1)
-            new_centroid = centroid + repulsion_scale * direction
-
-            # Normalize to unit length
-            centroid_norm = np.linalg.norm(new_centroid)
-            if centroid_norm > 0:
-                new_centroid = new_centroid / centroid_norm
-
-            # Update in DB
-            conn.execute(
-                "UPDATE step_signatures SET centroid = ? WHERE id = ?",
-                (new_centroid.tobytes(), signature_id)
-            )
-            conn.commit()
-
-            # Propagate to parents with decay
-            if propagate_to_parents and parent_id is not None:
-                decayed_strength = strength * PARENT_CREDIT_DECAY
-                if decayed_strength >= PARENT_CREDIT_MIN:
-                    self._repel_centroid(parent_id, embedding, decayed_strength, propagate_to_parents=True)
-
-    # Backward compatibility alias
-    def update_centroid_on_operational_success(
-        self,
-        signature_id: int,
-        embedding: np.ndarray,
-        was_correct: bool,
-    ):
-        """Backward-compatible alias for update_centroid_on_operational_outcome."""
-        self.update_centroid_on_operational_outcome(signature_id, embedding, was_correct)
 
     def record_operational_failure(
         self,
@@ -5071,22 +4904,13 @@ class StepSignatureDB:
             if cursor.rowcount > 0:
                 invalidate_signature_cache(signature_id)
 
-                # Compute graph_centroid from children (Option B: routers use graph_centroid)
-                graph_centroid = self.compute_graph_centroid_from_children(conn, signature_id)
-                if graph_centroid is not None:
-                    conn.execute(
-                        "UPDATE step_signatures SET graph_embedding = ? WHERE id = ?",
-                        (json.dumps(graph_centroid.tolist()), signature_id),
-                    )
-                    logger.info(
-                        "[db] Promoted signature %d to umbrella with graph_centroid",
-                        signature_id
-                    )
-                else:
-                    logger.info(
-                        "[db] Promoted signature %d to umbrella (no children with graph_embeddings yet)",
-                        signature_id
-                    )
+                # Use consolidated centroid update pathway:
+                # include_self=True computes this node's centroid, then propagates to ancestors
+                self.propagate_graph_centroid_to_parents(conn, signature_id, include_self=True)
+                logger.info(
+                    "[db] Promoted signature %d to umbrella with graph_centroid",
+                    signature_id
+                )
                 return True
             return False
 
