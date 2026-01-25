@@ -2292,178 +2292,28 @@ class StepSignatureDB:
         new_embedding: np.ndarray,
         update_last_used: bool = False,
     ) -> Optional[int]:
-        """Update text centroid with running average (local only, no propagation).
+        """NO-OP: Text centroid updates removed - routing uses graph_embedding only.
 
-        Routing uses graph_embedding (see propagate_graph_centroid_to_parents).
-        This updates the local centroid for local similarity but does NOT
-        propagate to parent umbrellas.
-
-        Formula: new_sum = old_sum + new_embedding
-                 new_count = old_count + 1
-                 new_centroid = new_sum / new_count
+        Only updates last_used_at if requested. Text centroid updates are skipped.
+        See propagate_graph_centroid_to_parents() for graph-based routing.
 
         Args:
-            conn: Database connection (within transaction)
-            signature_id: ID of the signature to update
-            new_embedding: The new embedding to add to the running average
-            update_last_used: If True, also update last_used_at timestamp
+            conn: Database connection
+            signature_id: ID of the signature
+            new_embedding: Unused (kept for API compatibility)
+            update_last_used: If True, update last_used_at timestamp
 
         Returns:
-            New embedding count, or None if signature not found
+            1 (for API compatibility with callers expecting a count)
         """
-        row = conn.execute(
-            """SELECT embedding_sum, embedding_count, centroid, centroid_bucket
-               FROM step_signatures WHERE id = ?""",
-            (signature_id,)
-        ).fetchone()
-
-        if not row:
-            logger.warning("[db] Cannot update centroid: signature %d not found", signature_id)
-            return None
-
-        # Parse current state
-        if row["embedding_sum"]:
-            current_sum = unpack_embedding(row["embedding_sum"])
-            current_count = row["embedding_count"] or 1
-        else:
-            # Initialize from fresh centroid if no sum yet (migration case)
-            fresh_centroid = unpack_embedding(row["centroid"])
-            current_sum = fresh_centroid.copy() if fresh_centroid is not None else new_embedding.copy()
-            current_count = 1
-
-        old_centroid = unpack_embedding(row["centroid"])
-        old_bucket = row["centroid_bucket"]
-
-        # Update running sum and count
-        new_sum = current_sum + new_embedding
-        new_count = current_count + 1
-
-        # Compute new centroid
-        new_centroid = new_sum / new_count
-
-        # Check drift bounds (monitoring - don't reject, just warn)
-        if old_centroid is not None:
-            drift = 1.0 - cosine_similarity(old_centroid, new_centroid)
-            # Adaptive threshold: tighter bounds with more examples
-            # max_drift * decay^log2(count) - e.g., at count=8: 0.15 * 0.9^3 = 0.109
-            adaptive_threshold = CENTROID_MAX_DRIFT * (CENTROID_DRIFT_DECAY ** math.log2(max(1, current_count)))
-            if drift > adaptive_threshold:
-                logger.warning(
-                    "[db] Centroid drift %.4f exceeds bound %.4f for sig %d (count=%d)",
-                    drift, adaptive_threshold, signature_id, current_count
-                )
-
-        # Compute new bucket and check if it changed
-        new_bucket = compute_centroid_bucket(new_centroid)
-        bucket_changed = new_bucket != old_bucket
-
-        # Pack and store
-        new_sum_packed = pack_embedding(new_sum)
-        new_centroid_packed = pack_embedding(new_centroid)
-
-        # Try updating with new bucket if changed, fall back to keeping old bucket on collision
         if update_last_used:
             now = datetime.now(timezone.utc).isoformat()
-            if bucket_changed:
-                try:
-                    conn.execute(
-                        """UPDATE step_signatures
-                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, centroid_bucket = ?,
-                               last_used_at = ?
-                           WHERE id = ?""",
-                        (new_sum_packed, new_count, new_centroid_packed, new_bucket, now, signature_id),
-                    )
-                except sqlite3.IntegrityError:
-                    # New bucket collides with existing signature - keep old bucket
-                    logger.debug("[db] Bucket collision on update for sig %d, keeping old bucket", signature_id)
-                    conn.execute(
-                        """UPDATE step_signatures
-                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, last_used_at = ?
-                           WHERE id = ?""",
-                        (new_sum_packed, new_count, new_centroid_packed, now, signature_id),
-                    )
-            else:
-                conn.execute(
-                    """UPDATE step_signatures
-                       SET embedding_sum = ?, embedding_count = ?, centroid = ?, last_used_at = ?
-                       WHERE id = ?""",
-                    (new_sum_packed, new_count, new_centroid_packed, now, signature_id),
-                )
-        else:
-            if bucket_changed:
-                try:
-                    conn.execute(
-                        """UPDATE step_signatures
-                           SET embedding_sum = ?, embedding_count = ?, centroid = ?, centroid_bucket = ?
-                           WHERE id = ?""",
-                        (new_sum_packed, new_count, new_centroid_packed, new_bucket, signature_id),
-                    )
-                except sqlite3.IntegrityError:
-                    # New bucket collides with existing signature - keep old bucket
-                    logger.debug("[db] Bucket collision on update for sig %d, keeping old bucket", signature_id)
-                    conn.execute(
-                        """UPDATE step_signatures
-                           SET embedding_sum = ?, embedding_count = ?, centroid = ?
-                           WHERE id = ?""",
-                        (new_sum_packed, new_count, new_centroid_packed, signature_id),
-                    )
-            else:
-                conn.execute(
-                    """UPDATE step_signatures
-                       SET embedding_sum = ?, embedding_count = ?, centroid = ?
-                       WHERE id = ?""",
-                    (new_sum_packed, new_count, new_centroid_packed, signature_id),
-                )
-
-        if bucket_changed:
-            logger.debug(
-                "[db] Centroid bucket changed for sig %d: %s -> %s",
-                signature_id, old_bucket, new_bucket
+            conn.execute(
+                "UPDATE step_signatures SET last_used_at = ? WHERE id = ?",
+                (now, signature_id),
             )
-
-        # Invalidate caches (embedding change: centroid updated)
-        self._invalidate_on_embedding_change(signature_id)
-
-        return new_count
-
-    def update_centroid(
-        self,
-        signature_id: int,
-        new_embedding: np.ndarray,
-    ):
-        """Update signature centroid with a new embedding (running average).
-
-        This is called each time a step matches a signature. The centroid
-        becomes more stable and representative over time as more examples
-        are added.
-
-        Formula: new_sum = old_sum + new_embedding
-                 new_count = old_count + 1
-                 new_centroid = new_sum / new_count
-
-        Args:
-            signature_id: ID of the signature to update
-            new_embedding: The new embedding to add to the running average
-        """
-        with self._connection() as conn:
-            # Use BEGIN IMMEDIATE for atomic read-modify-write
-            conn.execute("BEGIN IMMEDIATE")
-            try:
-                new_count = self._update_centroid_atomic(conn, signature_id, new_embedding)
-
-                if new_count is None:
-                    conn.rollback()
-                    return
-
-                conn.commit()
-                # Note: _update_centroid_atomic already calls _invalidate_on_embedding_change
-                logger.debug(
-                    "[db] Updated centroid for sig %d: count=%d",
-                    signature_id, new_count
-                )
-            except Exception:
-                conn.rollback()
-                raise
+            invalidate_signature_cache(signature_id)
+        return 1
 
     def record_interference_outcome(
         self,
