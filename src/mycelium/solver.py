@@ -1637,8 +1637,9 @@ class Solver:
 
         # Try DSL at all depths - if it works, use it
         # Also try for extraction-only steps (no hint but has values)
+        # IMPORTANT: Skip DSL execution for umbrellas - they are routers, not executors
         explored_sigs = []  # Track all signatures explored (for backpropagation)
-        if result is None and (has_dsl_hint or has_extracted_values):
+        if result is None and (has_dsl_hint or has_extracted_values) and not routed_signature.is_semantic_umbrella:
             # Multi-path exploration when budget > 1.0
             # Confidence check happens inside _explore_multiple_paths
             if compute_budget > 1.0:
