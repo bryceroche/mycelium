@@ -749,6 +749,8 @@ class StepSignatureDB:
         Called during routing when a problem doesn't match existing paths well.
         Creates a new placeholder umbrella initialized with the problem's embedding.
 
+        This is a thin wrapper around _create_signature_atomic with is_umbrella=True.
+
         Args:
             conn: Database connection (within transaction)
             parent_id: ID of parent umbrella to branch from
@@ -758,57 +760,19 @@ class StepSignatureDB:
         Returns:
             The new branch signature, or None on failure
         """
-        now = datetime.now(timezone.utc).isoformat()
         branch_id = f"branch_L{depth}_{uuid.uuid4().hex[:8]}"
-        centroid_json = json.dumps(embedding.tolist())
-        centroid_bucket = compute_centroid_bucket(embedding)
 
         try:
-            cursor = conn.execute(
-                """INSERT INTO step_signatures (
-                    signature_id, centroid, centroid_bucket, embedding_sum, embedding_count,
-                    step_type, description, dsl_type,
-                    is_semantic_umbrella, is_root, depth, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?, ?)""",
-                (
-                    branch_id,
-                    centroid_json,
-                    centroid_bucket,
-                    centroid_json,  # embedding_sum = centroid initially
-                    1,
-                    f"branch_L{depth}",
-                    f"Dynamic branch at level {depth}",
-                    "router",
-                    depth,
-                    now,
-                )
+            return self._create_signature_atomic(
+                conn=conn,
+                step_text=f"Dynamic branch at level {depth}",
+                embedding=embedding,
+                parent_id=parent_id,
+                is_umbrella=True,
+                signature_id_override=branch_id,
+                depth_override=depth,
+                skip_example=True,
             )
-            new_id = cursor.lastrowid
-
-            # Create parent-child relationship
-            conn.execute(
-                """INSERT INTO signature_relationships (parent_id, child_id, condition, created_at)
-                   VALUES (?, ?, ?, ?)""",
-                (parent_id, new_id, f"dynamic_fork_L{depth}", now)
-            )
-
-            # Invalidate caches (embedding change: new scaffold branch)
-            self._invalidate_on_embedding_change(new_id)
-
-            # Return the new branch as a StepSignature
-            return StepSignature(
-                id=new_id,
-                signature_id=branch_id,
-                centroid=embedding,
-                embedding_count=1,
-                step_type=f"branch_L{depth}",
-                description=f"Dynamic branch at level {depth}",
-                dsl_type="router",
-                is_semantic_umbrella=True,
-                depth=depth,
-                created_at=now,
-            )
-
         except sqlite3.IntegrityError as e:
             logger.warning("[db] Failed to create scaffold branch: %s", e)
             return None
@@ -2093,10 +2057,21 @@ class StepSignatureDB:
         parent_id: int = None,
         dsl_hint: str = None,
         graph_embedding: Optional[np.ndarray] = None,
+        is_umbrella: bool = False,
+        signature_id_override: str = None,
+        depth_override: int = None,
+        skip_example: bool = False,
+        skip_parent_relationship: bool = False,
     ) -> StepSignature:
         """Create a new signature within an existing transaction.
 
-        Auto-assigns DSL based on step_type, description, extracted_values, and dsl_hint.
+        This is the SINGLE pathway for creating signatures in the database.
+        All signature creation flows through this function.
+
+        For execution signatures (leaves): Auto-assigns DSL based on step_type,
+        description, extracted_values, and dsl_hint.
+
+        For router signatures (umbrellas): Skips DSL generation, sets dsl_type="router".
 
         Hierarchical routing:
         - First signature becomes THE root (is_root=1, is_semantic_umbrella=1)
@@ -2108,8 +2083,13 @@ class StepSignatureDB:
             parent_id: ID of parent signature. If None, defaults to root.
             dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication.
             graph_embedding: Pre-computed graph embedding for dedup. If not provided, computed from computation_graph.
+            is_umbrella: If True, create a router signature (no DSL, dsl_type="router").
+            signature_id_override: Custom signature_id (e.g., "branch_L2_abc123"). If None, generates UUID.
+            depth_override: Explicit depth. If None, computed from parent.
+            skip_example: If True, don't insert into step_examples table.
+            skip_parent_relationship: If True, don't add as child of parent. Useful for upward restructuring.
         """
-        sig_id = str(uuid.uuid4())
+        sig_id = signature_id_override or str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
 
         # Check if this will be the root (first signature in DB)
@@ -2131,17 +2111,23 @@ class StepSignatureDB:
         centroid_packed = pack_embedding(embedding) if embedding is not None else None
         centroid_bucket = compute_centroid_bucket(embedding) if embedding is not None else None
 
-        # Auto-assign DSL based on step_type, description, planner's extracted_values, and dsl_hint
-        # dsl_hint enables bidirectional LLM-signature communication
-        dsl_script, dsl_type = infer_dsl_for_signature(
-            step_type, step_text, extracted_values=extracted_values, dsl_hint=dsl_hint
-        )
+        # Umbrella signatures route, they don't execute - no DSL
+        if is_umbrella:
+            dsl_script = None
+            dsl_type = "router"
+        else:
+            # Auto-assign DSL based on step_type, description, planner's extracted_values, and dsl_hint
+            # dsl_hint enables bidirectional LLM-signature communication
+            dsl_script, dsl_type = infer_dsl_for_signature(
+                step_type, step_text, extracted_values=extracted_values, dsl_hint=dsl_hint
+            )
 
         # Auto-generate NL interface from extracted_values if we created a math DSL
         # The param names ARE the semantic descriptions - use them!
+        # Skip for umbrellas (routers don't need NL interface)
         clarifying_questions = []
         param_descriptions = {}
-        if extracted_values and dsl_type == "math":
+        if not is_umbrella and extracted_values and dsl_type == "math":
             for param_name, value in extracted_values.items():
                 # Convert param_name to readable question/description
                 readable = param_name.replace("_", " ")
@@ -2184,11 +2170,14 @@ class StepSignatureDB:
 
         # Set flags based on whether this is the root
         is_root_flag = 1 if is_first_signature else 0
-        # Root is an umbrella (routes to children), others start as leaves
-        is_umbrella = 1 if is_first_signature else 0
+        # Root is always an umbrella (routes to children)
+        # For non-root, use the is_umbrella parameter
+        is_umbrella_flag = 1 if (is_first_signature or is_umbrella) else 0
 
-        # Calculate depth based on parent
-        if is_first_signature:
+        # Calculate depth based on parent (or use override if provided)
+        if depth_override is not None:
+            actual_depth = depth_override
+        elif is_first_signature:
             actual_depth = 0  # Root is depth 0
         elif actual_parent_id is not None:
             # Get parent's depth
@@ -2210,7 +2199,7 @@ class StepSignatureDB:
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (sig_id, centroid_packed, centroid_bucket, embedding_sum_packed, 1, step_type, step_text,
                  dsl_script, dsl_type, clarifying_json, params_json, actual_depth,
-                 is_root_flag, is_umbrella, computation_graph, graph_emb_packed, now),
+                 is_root_flag, is_umbrella_flag, computation_graph, graph_emb_packed, now),
             )
             row_id = cursor.lastrowid
 
@@ -2227,7 +2216,8 @@ class StepSignatureDB:
                     raise RuntimeError(f"Failed to get row ID after INSERT for signature_id={sig_id}")
 
             # If not root, add as child of the appropriate parent
-            if not is_first_signature and actual_parent_id is not None:
+            # skip_parent_relationship is used for upward restructuring where we add child manually
+            if not is_first_signature and actual_parent_id is not None and not skip_parent_relationship:
                 # Prevent self-references (circular dependency bug)
                 if actual_parent_id == row_id:
                     logger.warning(
@@ -2266,16 +2256,19 @@ class StepSignatureDB:
             # Unknown integrity error - re-raise
             raise
 
-        # Also add as first example
-        conn.execute(
-            """INSERT INTO step_examples
-               (signature_id, step_text, embedding, parent_problem, created_at)
-               VALUES (?, ?, ?, ?, ?)""",
-            (row_id, step_text, pack_embedding(embedding), parent_problem, now),
-        )
+        # Also add as first example (skip for umbrella/router signatures)
+        if not skip_example and not is_umbrella:
+            conn.execute(
+                """INSERT INTO step_examples
+                   (signature_id, step_text, embedding, parent_problem, created_at)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (row_id, step_text, pack_embedding(embedding), parent_problem, now),
+            )
 
         if is_first_signature:
             logger.info("[db] Created ROOT signature: type=%s (first in DB)", step_type)
+        elif is_umbrella:
+            logger.info("[db] Created UMBRELLA signature: id=%d, type=%s, depth=%d", row_id, step_type, actual_depth)
         else:
             logger.debug("[db] Auto-assigned DSL type=%s for step_type=%s", dsl_type, step_type)
 
@@ -2299,7 +2292,7 @@ class StepSignatureDB:
             successes=0,
             depth=actual_depth,
             is_root=is_first_signature,
-            is_semantic_umbrella=is_first_signature,
+            is_semantic_umbrella=bool(is_umbrella_flag),
             created_at=now,
         )
 
@@ -5105,6 +5098,9 @@ class StepSignatureDB:
         This is called when detect_upward_restructuring identifies that a new
         problem represents a higher abstraction level than an existing signature.
 
+        This is a thin wrapper around _create_signature_atomic with is_umbrella=True
+        and skip_parent_relationship=True, then manually adds the child relationship.
+
         The new umbrella:
         1. Becomes the parent of the existing signature
         2. Has a centroid averaged from the existing sig and new problem
@@ -5125,58 +5121,47 @@ class StepSignatureDB:
         else:
             new_centroid = problem_embedding
 
-        # Generate step_type from description
-        step_type = normalize_step_text(description)[:50]
+        sig_id = f"umbrella_{uuid.uuid4().hex[:8]}"
+        target_depth = max(0, child_signature.depth - 1)
 
         with self._connection() as conn:
             now = datetime.now(timezone.utc).isoformat()
-            sig_id = f"umbrella_{uuid.uuid4().hex[:8]}"
-            centroid_json = json.dumps(new_centroid.tolist())
-            centroid_bucket = compute_centroid_bucket(new_centroid)
 
             try:
-                cursor = conn.execute(
-                    """INSERT INTO step_signatures (
-                        signature_id, centroid, centroid_bucket, embedding_sum, embedding_count,
-                        step_type, description, dsl_type,
-                        is_semantic_umbrella, depth, max_difficulty_solved, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (
-                        sig_id,
-                        centroid_json,
-                        centroid_bucket,
-                        centroid_json,  # embedding_sum starts as centroid
-                        2,  # count: child centroid + new problem
-                        step_type,
-                        description,
-                        "router",  # umbrellas route, don't execute
-                        1,  # is_semantic_umbrella
-                        max(0, child_signature.depth - 1),  # one level above child
-                        difficulty,  # starts with the higher difficulty
-                        now,
-                    ),
+                # Create umbrella using unified pathway
+                new_sig = self._create_signature_atomic(
+                    conn=conn,
+                    step_text=description,
+                    embedding=new_centroid,
+                    is_umbrella=True,
+                    signature_id_override=sig_id,
+                    depth_override=target_depth,
+                    skip_example=True,
+                    skip_parent_relationship=True,  # We'll add child manually
                 )
-                new_id = cursor.lastrowid
 
-                # Create parent-child relationship
+                # Create parent-child relationship (new umbrella is PARENT of child_signature)
                 conn.execute(
                     """INSERT INTO signature_relationships (parent_id, child_id, condition, created_at)
                        VALUES (?, ?, ?, ?)""",
-                    (new_id, child_signature.id, f"difficulty <= {child_signature.max_difficulty_solved}", now),
+                    (new_sig.id, child_signature.id, f"difficulty <= {child_signature.max_difficulty_solved}", now),
+                )
+
+                # Update max_difficulty_solved
+                conn.execute(
+                    "UPDATE step_signatures SET max_difficulty_solved = ? WHERE id = ?",
+                    (difficulty, new_sig.id),
                 )
 
                 # Invalidate caches
-                self.invalidate_centroid_matrix()
+                self._invalidate_on_relationship_change(new_sig.id, child_signature.id)
 
                 logger.info(
                     "[db] Created upward umbrella: id=%d, child=%d, depth=%d, max_diff=%.2f",
-                    new_id, child_signature.id, max(0, child_signature.depth - 1), difficulty
+                    new_sig.id, child_signature.id, target_depth, difficulty
                 )
 
-                # Fetch and return the new signature
-                cursor = conn.execute("SELECT * FROM step_signatures WHERE id = ?", (new_id,))
-                row = cursor.fetchone()
-                return StepSignature.from_row_fast(row) if row else None
+                return new_sig
 
             except sqlite3.IntegrityError as e:
                 logger.warning("[db] Failed to create upward umbrella: %s", e)
