@@ -1342,18 +1342,23 @@ class Solver:
                 # High-confidence graph match - use this signature directly
                 # Threshold: 90% similarity means operationally identical
                 if best_sim >= 0.90:
-                    # Check rejection threshold for leaf signatures
-                    from mycelium.data_layer.mcts import (
-                        REJECTION_SIM_THRESHOLD,
-                        record_leaf_rejection,
-                    )
+                    # Check rejection threshold for leaf signatures using adaptive Welford threshold
+                    from mycelium.data_layer.mcts import record_leaf_rejection
                     from mycelium.config import COLD_START_SIGNATURE_THRESHOLD
 
                     # Cold start check: skip rejection while building vocabulary
                     sig_count = self.step_db.count_signatures()
                     is_cold_start = sig_count < COLD_START_SIGNATURE_THRESHOLD
 
-                    if not best_sig.is_semantic_umbrella and best_sim < REJECTION_SIM_THRESHOLD and not is_cold_start:
+                    # Per CLAUDE.md: No magic numbers - use Welford-based adaptive threshold
+                    # threshold = mean - k*stddev of successful match similarities
+                    adaptive_threshold = best_sig.get_adaptive_rejection_threshold(
+                        k=1.5,  # 1.5 stddev below mean = ~93% of normal distribution accepted
+                        min_samples=5,  # Need 5 successes before using adaptive threshold
+                        default_threshold=0.5,  # Permissive cold-start default
+                    )
+
+                    if not best_sig.is_semantic_umbrella and best_sim < adaptive_threshold and not is_cold_start:
                         # Leaf rejects this step - try MCTS alternatives before decomposing
                         record_leaf_rejection(
                             signature_id=best_sig.id,
@@ -1362,24 +1367,30 @@ class Solver:
                             problem_context=problem[:500] if problem else None,
                         )
                         logger.info(
-                            "[solver] GRAPH-FIRST REJECTED: '%s' by sig %d (%s) sim=%.3f < %.2f - trying MCTS alternatives",
-                            step.task[:40], best_sig.id, best_sig.step_type, best_sim, REJECTION_SIM_THRESHOLD
+                            "[solver] GRAPH-FIRST REJECTED: '%s' by sig %d (%s) sim=%.3f < adaptive_threshold=%.3f (n=%d, mean=%.3f) - trying MCTS alternatives",
+                            step.task[:40], best_sig.id, best_sig.step_type, best_sim, adaptive_threshold,
+                            best_sig.success_sim_count, best_sig.success_sim_mean
                         )
 
                         # MCTS fallback: get top-3 alternative leaves
                         # Per brainstorm: try re-routing sideways before decomposing depth-wise
+                        # Use a slightly lower min_similarity to find alternatives
                         mcts_candidates = self.step_db.match_step_to_leaves_mcts(
                             operation_embedding=operation_embedding,
                             dag_step_type=getattr(step, 'dsl_hint', None) or step.task[:40],
                             top_k=3,
-                            min_similarity=REJECTION_SIM_THRESHOLD,  # Only consider viable alternatives
+                            min_similarity=max(0.5, adaptive_threshold - 0.1),  # Allow slightly lower alternatives
                         )
 
                         # Filter out the already-rejected signature
-                        alt_candidates = [
-                            (sig, ucb1, sim) for sig, ucb1, sim in mcts_candidates
-                            if sig.id != best_sig.id and sim >= REJECTION_SIM_THRESHOLD
-                        ]
+                        # Each alternative uses its OWN adaptive threshold
+                        alt_candidates = []
+                        for sig, ucb1, sim in mcts_candidates:
+                            if sig.id == best_sig.id:
+                                continue
+                            alt_threshold = sig.get_adaptive_rejection_threshold(k=1.5, min_samples=5, default_threshold=0.5)
+                            if sim >= alt_threshold:
+                                alt_candidates.append((sig, ucb1, sim))
 
                         if alt_candidates:
                             # Try best alternative (sideways re-routing)
@@ -1427,10 +1438,10 @@ class Solver:
                                 )
                     else:
                         # Accept match (cold start or above threshold)
-                        if is_cold_start and best_sim < REJECTION_SIM_THRESHOLD:
+                        if is_cold_start and best_sim < adaptive_threshold:
                             logger.debug(
-                                "[solver] Cold start: accepting low-sim match (sig_count=%d < %d)",
-                                sig_count, COLD_START_SIGNATURE_THRESHOLD
+                                "[solver] Cold start: accepting low-sim match (sig_count=%d < %d, sim=%.3f < threshold=%.3f)",
+                                sig_count, COLD_START_SIGNATURE_THRESHOLD, best_sim, adaptive_threshold
                             )
                         signature = best_sig
                         is_new = False
@@ -1464,14 +1475,14 @@ class Solver:
 
             # MCTS fallback: get top-3 alternative leaves before decomposing
             # Only try if we have an operation embedding
-            from mycelium.data_layer.mcts import REJECTION_SIM_THRESHOLD
+            # Use permissive min_similarity - each candidate uses its own adaptive threshold
             mcts_candidates = []
             if operation_embedding is not None:
                 mcts_candidates = self.step_db.match_step_to_leaves_mcts(
                     operation_embedding=operation_embedding,
                     dag_step_type=getattr(step, 'dsl_hint', None) or step.task[:40],
                     top_k=3,
-                    min_similarity=REJECTION_SIM_THRESHOLD,
+                    min_similarity=0.5,  # Permissive - adaptive threshold applied per-candidate
                 )
 
             if mcts_candidates:

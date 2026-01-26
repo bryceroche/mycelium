@@ -1456,7 +1456,6 @@ class StepSignatureDB:
                         from mycelium.data_layer.mcts import (
                             check_and_reject_if_low_similarity,
                             record_leaf_rejection,
-                            REJECTION_SIM_THRESHOLD,
                         )
 
                         # Use graph_embedding similarity if available (operational identity)
@@ -1485,12 +1484,18 @@ class StepSignatureDB:
                             except Exception as e:
                                 logger.debug("[db] Graph embedding comparison failed: %s", e)
 
-                        # Check 1: Low similarity rejection (skip during cold start)
+                        # Check 1: Low similarity rejection using adaptive Welford threshold
+                        # Per CLAUDE.md: No magic numbers - threshold = mean - k*stddev
                         from mycelium.config import COLD_START_SIGNATURE_THRESHOLD
                         sig_count = self.count_signatures()
                         is_cold_start = sig_count < COLD_START_SIGNATURE_THRESHOLD
 
-                        if rejection_sim < REJECTION_SIM_THRESHOLD and not is_cold_start:
+                        # Get adaptive threshold from this leaf's success similarity history
+                        adaptive_threshold = best_match.get_adaptive_rejection_threshold(
+                            k=1.5, min_samples=5, default_threshold=0.5
+                        )
+
+                        if rejection_sim < adaptive_threshold and not is_cold_start:
                             was_rejected, rejection_count = check_and_reject_if_low_similarity(
                                 signature_id=best_match.id,
                                 step_text=step_text,
@@ -1500,14 +1505,15 @@ class StepSignatureDB:
                             )
                             if was_rejected:
                                 logger.info(
-                                    "[db] Leaf '%s' REJECTED step (sim=%.3f < %.3f), rejections=%d: '%s'",
-                                    best_match.step_type, rejection_sim, REJECTION_SIM_THRESHOLD,
+                                    "[db] Leaf '%s' REJECTED step (sim=%.3f < adaptive=%.3f, n=%d, mean=%.3f), rejections=%d: '%s'",
+                                    best_match.step_type, rejection_sim, adaptive_threshold,
+                                    best_match.success_sim_count, best_match.success_sim_mean,
                                     rejection_count, step_text[:40]
                                 )
                                 # Step queued for decomposition - don't create new signature
                                 conn.commit()
                                 return None, False
-                        elif rejection_sim < REJECTION_SIM_THRESHOLD and is_cold_start:
+                        elif rejection_sim < adaptive_threshold and is_cold_start:
                             logger.debug(
                                 "[db] Cold start: skipping rejection (sig_count=%d < %d)",
                                 sig_count, COLD_START_SIGNATURE_THRESHOLD
@@ -3151,8 +3157,6 @@ class StepSignatureDB:
             - has_alternatives: True if viable alternatives exist
             - best_alternative_id: ID of best alternative (if any)
         """
-        from mycelium.data_layer.mcts import REJECTION_SIM_THRESHOLD
-
         use_conn = conn if conn else self._connection().__enter__()
         try:
             # Get the signature's centroid
@@ -3168,11 +3172,12 @@ class StepSignatureDB:
             centroid = np.frombuffer(row[0], dtype=np.float32)
 
             # Check if alternative leaves could handle this operation type
+            # Use permissive min_similarity - each candidate has its own adaptive threshold
             alternatives = self.match_step_to_leaves_mcts(
                 embedding=centroid,
                 dag_step_type=None,
                 top_k=3,
-                min_similarity=REJECTION_SIM_THRESHOLD,
+                min_similarity=0.5,  # Permissive - adaptive threshold applied per-candidate
             )
 
             # Filter out self

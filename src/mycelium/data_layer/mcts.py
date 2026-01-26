@@ -726,7 +726,10 @@ def get_pending_queue_ids() -> list[int]:
 
 
 # Rejection thresholds (per CLAUDE.md: leaves define their own boundaries)
-REJECTION_SIM_THRESHOLD = 0.85  # Below this similarity, leaf rejects the step (lowered for latency)
+# DEPRECATED: Now using adaptive Welford-based thresholds per signature
+# Each leaf has success_sim_count/mean/m2 for adaptive threshold = mean - k*stddev
+# This constant is kept for backward compatibility but should not be used
+REJECTION_SIM_THRESHOLD = 0.85  # DEPRECATED - use signature.get_adaptive_rejection_threshold()
 REJECTION_COUNT_THRESHOLD = 10  # Min rejections before considering decomposition
 REJECTION_RATE_THRESHOLD = 0.30  # 30% rejection rate triggers decomposition flag
 
@@ -879,22 +882,24 @@ def check_and_reject_if_low_similarity(
     problem_context: str = None,
     conn=None,
 ) -> tuple[bool, int]:
-    """Check if similarity is below threshold and record rejection if so.
+    """Record a leaf rejection (caller has already decided to reject).
+
+    Note: Caller is responsible for checking the adaptive threshold.
+    This function just records the rejection and queues for decomposition.
 
     Args:
         signature_id: The leaf signature being checked
         step_text: The step being routed
-        similarity: Cosine similarity to the signature
+        similarity: Cosine similarity to the signature (for logging)
         dag_step_id: Optional dag_step ID
         problem_context: Optional problem context
         conn: Optional DB connection (reuse caller's connection to avoid locks)
 
     Returns:
-        Tuple of (was_rejected, rejection_count)
+        Tuple of (was_rejected=True, rejection_count)
     """
-    if similarity >= REJECTION_SIM_THRESHOLD:
-        return False, 0
-
+    # Caller has already decided to reject using adaptive threshold
+    # We just record it and queue for decomposition
     rejection_count = record_leaf_rejection(
         signature_id=signature_id,
         step_text=step_text,
