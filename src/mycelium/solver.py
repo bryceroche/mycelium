@@ -78,8 +78,7 @@ from mycelium.data_layer.mcts import (
     create_thread,
     complete_thread,
     log_thread_step,
-    run_postmortem_with_interference,
-    run_diagnostic_postmortem,
+    run_postmortem,  # Single pathway for all post-mortem analysis
     store_dag_step_embedding,
 )
 
@@ -257,47 +256,31 @@ def get_expansion_rate() -> float:
     return expansion
 
 
-def should_force_decompose(depth: int) -> bool:
+def should_force_decompose(depth: int, step_db=None) -> bool:
     """Smooth expansion-based decomposition strategy.
+
+    Thin wrapper around get_decomposition_decision() for signature context.
 
     Uses continuous expansion rate (no toggle) to decide decomposition.
     Per CLAUDE.md: "A SMOOTH and CONTINUOUS learning process is key"
 
-    The expansion rate is driven by:
-    - Accuracy: failing → expand more
-    - Signature count: cold start → extra boost
-
-    Depth also factors in: shallow depths always decompose (routing layer),
-    deeper depths respect the expansion rate (execution layer).
-
     Args:
         depth: Current signature depth in the hierarchy
+        step_db: Optional StepSignatureDB (unused, kept for API compatibility)
 
     Returns:
         True if should force decompose, False if should try DSL execution
     """
-    # Smooth expansion is always enabled per CLAUDE.md (no toggle)
-    # Get smooth expansion rate
-    expansion_rate = get_expansion_rate()
+    # Delegate to unified decision interface
+    decision = get_decomposition_decision(step_db, depth=depth, context="signature")
 
-    # Apply depth decay uniformly from depth 0
-    # This prevents cascade of decomposition at shallow depths
-    # depth_factor: 1.0 at depth 0, decays by DECAY_BASE per depth
-    depth_factor = DEPTH_DECOMPOSE_DECAY_BASE ** depth
-
-    # Combined probability: expansion_rate * depth_factor
-    # High expansion + shallow depth = higher prob
-    # Low expansion OR deep depth = lower prob
-    prob = max(DEPTH_DECOMPOSE_MIN_PROB, expansion_rate * depth_factor)
-
-    if random.random() < prob:
+    if decision.should_decompose:
         logger.debug(
-            "[expansion] Decomposing: depth=%d prob=%.2f (expansion=%.2f, depth_factor=%.2f)",
-            depth, prob, expansion_rate, depth_factor
+            "[expansion] Decomposing: depth=%d prob=%.2f reason=%s",
+            depth, decision.probability, decision.reason
         )
-        return True
 
-    return False
+    return decision.should_decompose
 
 
 def compute_maturity_decompose_prob(step_db) -> float:
@@ -355,6 +338,7 @@ def compute_maturity_decompose_prob(step_db) -> float:
 def should_try_decompose_first(step_db) -> bool:
     """Sample whether to try decomposition before creating new signature.
 
+    Thin wrapper around get_decomposition_decision() for routing context.
     Per mycelium-jaq9: When routing fails, decide based on maturity sigmoid.
 
     Args:
@@ -363,8 +347,106 @@ def should_try_decompose_first(step_db) -> bool:
     Returns:
         True if should try decomposition, False if should create new
     """
-    prob = compute_maturity_decompose_prob(step_db)
-    return random.random() < prob
+    decision = get_decomposition_decision(step_db, context="routing")
+
+    if decision.should_decompose:
+        logger.debug(
+            "[maturity] Decomposing first: prob=%.2f reason=%s",
+            decision.probability, decision.reason
+        )
+
+    return decision.should_decompose
+
+
+# =============================================================================
+# DECOMPOSITION HIERARCHY
+# =============================================================================
+# All decomposition flows through planner.decompose() as the core LLM call.
+#
+# DECISION Functions (when/if to decompose):
+#   - should_force_decompose(depth) → expansion-based for signature building
+#   - should_try_decompose_first(step_db) → maturity-based for routing
+#   - compute_maturity_decompose_prob(step_db) → raw probability calculation
+#   - compute_decompose_score() [mcts.py] → continuous diagnostic score
+#
+# EXECUTION Functions (how to decompose):
+#   - planner.decompose() → THE CORE: breaks problem into DAG via LLM
+#   - _decompose_complex_step() → inline decomposition + execute sub-steps
+#   - _try_maturity_decomposition() → decompose to reuse existing signatures
+#   - _auto_decompose_signature() → build tree by decomposing signatures
+#   - UmbrellaLearner.decompose_signature() → async signature decomposition
+#
+# Call hierarchy:
+#   planner.decompose()
+#   ├── _decompose_complex_step() → execute sub-steps recursively
+#   ├── _try_maturity_decomposition() → route sub-steps through existing
+#   └── UmbrellaLearner.decompose_signature() → create child signatures
+#       └── _auto_decompose_signature() calls UmbrellaLearner
+
+
+@dataclass
+class DecompositionDecision:
+    """Unified decomposition decision result."""
+    should_decompose: bool
+    reason: str  # Why we decided to decompose or not
+    probability: float = 0.0  # Computed probability (for logging/debugging)
+    depth: int = 0  # Depth context if applicable
+
+
+def get_decomposition_decision(
+    step_db,
+    depth: int = 0,
+    context: str = "routing",
+) -> DecompositionDecision:
+    """Unified decomposition decision interface.
+
+    Consolidates all decomposition decision logic into a single entry point.
+    Different contexts use different strategies:
+
+    - "routing": Use maturity sigmoid (more signatures → prefer decompose)
+    - "signature": Use expansion rate + depth decay (tree building)
+    - "diagnostic": Use continuous score (failure analysis)
+
+    Args:
+        step_db: StepSignatureDB for computing metrics
+        depth: Current depth in hierarchy (for signature context)
+        context: Decision context ("routing", "signature", "diagnostic")
+
+    Returns:
+        DecompositionDecision with should_decompose and reason
+    """
+    if context == "routing":
+        # Maturity-based: more signatures → prefer decomposing to reuse
+        prob = compute_maturity_decompose_prob(step_db)
+        should = random.random() < prob
+        return DecompositionDecision(
+            should_decompose=should,
+            reason=f"maturity_sigmoid (prob={prob:.2f})",
+            probability=prob,
+            depth=depth,
+        )
+
+    elif context == "signature":
+        # Expansion-based: use smooth expansion rate with depth decay
+        expansion_rate = get_expansion_rate()
+        depth_factor = DEPTH_DECOMPOSE_DECAY_BASE ** depth
+        prob = max(DEPTH_DECOMPOSE_MIN_PROB, expansion_rate * depth_factor)
+        should = random.random() < prob
+        return DecompositionDecision(
+            should_decompose=should,
+            reason=f"expansion_rate (exp={expansion_rate:.2f}, depth={depth})",
+            probability=prob,
+            depth=depth,
+        )
+
+    else:
+        # Default: don't decompose
+        return DecompositionDecision(
+            should_decompose=False,
+            reason=f"unknown_context:{context}",
+            probability=0.0,
+            depth=depth,
+        )
 
 
 # =============================================================================
@@ -1260,18 +1342,23 @@ class Solver:
                 # High-confidence graph match - use this signature directly
                 # Threshold: 90% similarity means operationally identical
                 if best_sim >= 0.90:
-                    # Check rejection threshold for leaf signatures
-                    from mycelium.data_layer.mcts import (
-                        REJECTION_SIM_THRESHOLD,
-                        record_leaf_rejection,
-                    )
+                    # Check rejection threshold for leaf signatures using adaptive Welford threshold
+                    from mycelium.data_layer.mcts import record_leaf_rejection
                     from mycelium.config import COLD_START_SIGNATURE_THRESHOLD
 
                     # Cold start check: skip rejection while building vocabulary
                     sig_count = self.step_db.count_signatures()
                     is_cold_start = sig_count < COLD_START_SIGNATURE_THRESHOLD
 
-                    if not best_sig.is_semantic_umbrella and best_sim < REJECTION_SIM_THRESHOLD and not is_cold_start:
+                    # Per CLAUDE.md: No magic numbers - use Welford-based adaptive threshold
+                    # threshold = mean - k*stddev of successful match similarities
+                    adaptive_threshold = best_sig.get_adaptive_rejection_threshold(
+                        k=1.5,  # 1.5 stddev below mean = ~93% of normal distribution accepted
+                        min_samples=5,  # Need 5 successes before using adaptive threshold
+                        default_threshold=0.5,  # Permissive cold-start default
+                    )
+
+                    if not best_sig.is_semantic_umbrella and best_sim < adaptive_threshold and not is_cold_start:
                         # Leaf rejects this step - try MCTS alternatives before decomposing
                         record_leaf_rejection(
                             signature_id=best_sig.id,
@@ -1280,24 +1367,30 @@ class Solver:
                             problem_context=problem[:500] if problem else None,
                         )
                         logger.info(
-                            "[solver] GRAPH-FIRST REJECTED: '%s' by sig %d (%s) sim=%.3f < %.2f - trying MCTS alternatives",
-                            step.task[:40], best_sig.id, best_sig.step_type, best_sim, REJECTION_SIM_THRESHOLD
+                            "[solver] GRAPH-FIRST REJECTED: '%s' by sig %d (%s) sim=%.3f < adaptive_threshold=%.3f (n=%d, mean=%.3f) - trying MCTS alternatives",
+                            step.task[:40], best_sig.id, best_sig.step_type, best_sim, adaptive_threshold,
+                            best_sig.success_sim_count, best_sig.success_sim_mean
                         )
 
                         # MCTS fallback: get top-3 alternative leaves
                         # Per brainstorm: try re-routing sideways before decomposing depth-wise
+                        # Use a slightly lower min_similarity to find alternatives
                         mcts_candidates = self.step_db.match_step_to_leaves_mcts(
                             operation_embedding=operation_embedding,
                             dag_step_type=getattr(step, 'dsl_hint', None) or step.task[:40],
                             top_k=3,
-                            min_similarity=REJECTION_SIM_THRESHOLD,  # Only consider viable alternatives
+                            min_similarity=max(0.5, adaptive_threshold - 0.1),  # Allow slightly lower alternatives
                         )
 
                         # Filter out the already-rejected signature
-                        alt_candidates = [
-                            (sig, ucb1, sim) for sig, ucb1, sim in mcts_candidates
-                            if sig.id != best_sig.id and sim >= REJECTION_SIM_THRESHOLD
-                        ]
+                        # Each alternative uses its OWN adaptive threshold
+                        alt_candidates = []
+                        for sig, ucb1, sim in mcts_candidates:
+                            if sig.id == best_sig.id:
+                                continue
+                            alt_threshold = sig.get_adaptive_rejection_threshold(k=1.5, min_samples=5, default_threshold=0.5)
+                            if sim >= alt_threshold:
+                                alt_candidates.append((sig, ucb1, sim))
 
                         if alt_candidates:
                             # Try best alternative (sideways re-routing)
@@ -1345,10 +1438,10 @@ class Solver:
                                 )
                     else:
                         # Accept match (cold start or above threshold)
-                        if is_cold_start and best_sim < REJECTION_SIM_THRESHOLD:
+                        if is_cold_start and best_sim < adaptive_threshold:
                             logger.debug(
-                                "[solver] Cold start: accepting low-sim match (sig_count=%d < %d)",
-                                sig_count, COLD_START_SIGNATURE_THRESHOLD
+                                "[solver] Cold start: accepting low-sim match (sig_count=%d < %d, sim=%.3f < threshold=%.3f)",
+                                sig_count, COLD_START_SIGNATURE_THRESHOLD, best_sim, adaptive_threshold
                             )
                         signature = best_sig
                         is_new = False
@@ -1382,14 +1475,14 @@ class Solver:
 
             # MCTS fallback: get top-3 alternative leaves before decomposing
             # Only try if we have an operation embedding
-            from mycelium.data_layer.mcts import REJECTION_SIM_THRESHOLD
+            # Use permissive min_similarity - each candidate uses its own adaptive threshold
             mcts_candidates = []
             if operation_embedding is not None:
                 mcts_candidates = self.step_db.match_step_to_leaves_mcts(
                     operation_embedding=operation_embedding,
                     dag_step_type=getattr(step, 'dsl_hint', None) or step.task[:40],
                     top_k=3,
-                    min_similarity=REJECTION_SIM_THRESHOLD,
+                    min_similarity=0.5,  # Permissive - adaptive threshold applied per-candidate
                 )
 
             if mcts_candidates:
@@ -3244,8 +3337,7 @@ Rules:
     def _answers_match(self, answer1: str, answer2: str) -> bool:
         """Check if two answers are equivalent (for operational equivalence).
 
-        Simple numeric comparison for now. Could be extended with LLM judge
-        for more complex equivalence checking.
+        Uses normalize_answer for consistency with pipeline evaluation.
 
         Args:
             answer1: First answer string
@@ -3257,15 +3349,16 @@ Rules:
         if answer1 is None or answer2 is None:
             return False
 
-        # Normalize: strip whitespace, lowercase
-        a1 = answer1.strip().lower()
-        a2 = answer2.strip().lower()
+        # Use normalize_answer for consistency with pipeline evaluation
+        # This handles LaTeX, currency, units, fractions, etc.
+        a1 = normalize_answer(answer1)
+        a2 = normalize_answer(answer2)
 
-        # Direct match
+        # Direct match after normalization
         if a1 == a2:
             return True
 
-        # Try numeric comparison (handles "42" vs "42.0" vs "42.00")
+        # Try numeric comparison as fallback (handles "42" vs "42.0" vs "42.00")
         try:
             n1 = float(a1.replace(",", ""))
             n2 = float(a2.replace(",", ""))
@@ -3755,7 +3848,9 @@ Rules:
         }
 
         winning = None
-        all_dag_ids = []  # Collect all DAG IDs for cross-examination
+        # Save original DAG ID (contains losing threads) for cross-DAG comparison
+        original_dag_id = self._current_dag_id
+        exploration_dag_ids = []  # Collect exploration DAG IDs (may contain winning threads)
 
         # Try N full re-solves with forced exploration (higher temp + epsilon for diversity)
         # Per mycelium-l703: spawn multiple threads for cross-examination
@@ -3778,7 +3873,7 @@ Rules:
 
                     explore_result = await self.solve(result.problem, ground_truth=ground_truth)
                     if self._current_dag_id:
-                        all_dag_ids.append(self._current_dag_id)
+                        exploration_dag_ids.append(self._current_dag_id)
 
                     # Check if this thread found the correct answer
                     if explore_result.answer and normalize_answer(explore_result.answer) == normalize_answer(ground_truth):
@@ -3796,7 +3891,7 @@ Rules:
                 self._force_exploration = False
                 self.planner = original_planner  # Restore original planner
 
-            stats["total_dags_for_crossexam"] = len(all_dag_ids)
+            stats["total_dags_for_crossexam"] = len(exploration_dag_ids) + (1 if original_dag_id else 0)
 
         # Fallback: try single-step alternatives (original approach)
         if winning is None:
@@ -3841,44 +3936,64 @@ Rules:
         stats["winning_path_found"] = True
         logger.info(
             "[reactive] Found winning thread %s, running cross-examination across %d DAGs",
-            winning_thread_id, len(all_dag_ids) if all_dag_ids else 1
+            winning_thread_id, len(exploration_dag_ids) + (1 if original_dag_id else 0)
         )
 
-        # Cross-examine ALL exploration DAGs to find divergence points
-        # Per mycelium-l703: compare winning vs losing threads across all exploration runs
-        dags_to_analyze = all_dag_ids if all_dag_ids else ([self._current_dag_id] if self._current_dag_id else [])
+        # Cross-examine using cross-DAG comparison
+        # Original DAG (losing threads) vs exploration DAGs (potential winning threads)
+        # Per mycelium-l703: compare winning vs losing threads ACROSS DAGs
         total_divergence_points = 0
         total_blame_assigned = 0
         all_blame_stats = {}
 
-        for dag_id in dags_to_analyze:
-            divergence_points = find_divergence_points(dag_id)
-            total_divergence_points += len(divergence_points)
+        if original_dag_id and exploration_dag_ids:
+            # Cross-DAG comparison: original (losers) + exploration (potential winners)
+            logger.info(
+                "[reactive] Cross-DAG comparison: original=%s vs %d exploration DAGs",
+                original_dag_id[:8], len(exploration_dag_ids)
+            )
+            divergence_points = find_divergence_points(
+                dag_id=original_dag_id,
+                cross_dag_ids=exploration_dag_ids
+            )
+            total_divergence_points = len(divergence_points)
 
             if divergence_points:
-                # Log divergence details (first 3 per DAG)
-                for dp in divergence_points[:3]:
+                # Log divergence details (first 5)
+                for dp in divergence_points[:5]:
                     logger.info(
-                        "[reactive] Divergence in DAG %s at step %s (idx=%d): "
+                        "[reactive] Cross-DAG divergence at step %s (idx=%d): "
                         "winning node=%s, losing node=%s",
-                        dag_id[:8],
                         dp.divergence_dag_step_id,
                         dp.divergence_step_idx,
                         dp.winning_node_at_divergence,
                         dp.losing_node_at_divergence,
                     )
 
-                # Assign targeted blame/credit for this DAG
-                blame_stats = assign_divergence_blame(dag_id, self.step_db)
-                dag_blame = (
+                # Assign targeted blame/credit using cross-DAG comparison
+                blame_stats = assign_divergence_blame(
+                    dag_id=original_dag_id,
+                    step_db=self.step_db,
+                    cross_dag_ids=exploration_dag_ids
+                )
+                total_blame_assigned = (
                     blame_stats.get("divergence_blame_assigned", 0) +
                     blame_stats.get("suffix_blame_assigned", 0)
                 )
-                total_blame_assigned += dag_blame
+                all_blame_stats = blame_stats
+        elif original_dag_id:
+            # Fallback: single DAG analysis (within-DAG comparison only)
+            logger.info("[reactive] Single-DAG analysis for %s (no exploration DAGs)", original_dag_id[:8])
+            divergence_points = find_divergence_points(dag_id=original_dag_id)
+            total_divergence_points = len(divergence_points)
 
-                # Aggregate blame stats
-                for key, val in blame_stats.items():
-                    all_blame_stats[key] = all_blame_stats.get(key, 0) + val
+            if divergence_points:
+                blame_stats = assign_divergence_blame(dag_id=original_dag_id, step_db=self.step_db)
+                total_blame_assigned = (
+                    blame_stats.get("divergence_blame_assigned", 0) +
+                    blame_stats.get("suffix_blame_assigned", 0)
+                )
+                all_blame_stats = blame_stats
 
         stats["divergence_points"] = total_divergence_points
         stats["blame_assigned"] = total_blame_assigned
@@ -3886,8 +4001,8 @@ Rules:
 
         if total_divergence_points > 0:
             logger.info(
-                "[reactive] Cross-exam complete: %d divergence points across %d DAGs",
-                total_divergence_points, len(dags_to_analyze)
+                "[reactive] Cross-exam complete: %d divergence points, %d blame assigned",
+                total_divergence_points, total_blame_assigned
             )
             logger.info(
                 "[reactive] Divergence blame: %d primary, %d suffix, %d prefix credit",
@@ -3895,6 +4010,8 @@ Rules:
                 all_blame_stats.get("suffix_blame_assigned", 0),
                 all_blame_stats.get("shared_prefix_credit", 0),
             )
+        else:
+            logger.info("[reactive] No divergence points found (all threads same outcome?)")
 
         return stats
 
@@ -4104,9 +4221,16 @@ Rules:
 
         # Run post-mortem AFTER threads are graded (so we have success values)
         # Per CLAUDE.md: "High confidence + failure = strong negative signal"
+        # Single call to run_postmortem() handles both interference and diagnostics
         if self._current_dag_id:
             try:
-                postmortem_stats = run_postmortem_with_interference(self._current_dag_id, self.step_db)
+                postmortem_stats = run_postmortem(
+                    self._current_dag_id,
+                    step_db=self.step_db,
+                    step_embeddings=getattr(self, '_step_embeddings', None),
+                    include_interference=True,
+                    include_diagnostics=True,
+                )
                 if postmortem_stats.get("high_conf_wrong", 0) > 0:
                     logger.warning(
                         "[solver] Post-mortem: %d high-confidence wrong in DAG %s",
@@ -4131,7 +4255,6 @@ Rules:
                 nodes_needing = postmortem_stats.get("nodes_needing_decomposition", [])
                 steps_needing = postmortem_stats.get("steps_needing_decomposition", [])
                 # Store nodes flagged by interference for candidate list building
-                # These already have operational_failures > 0 from record_interference_outcome
                 self._postmortem_flagged_nodes = postmortem_stats.get("nodes_flagged_split", [])
                 if nodes_needing:
                     logger.info(
@@ -4149,46 +4272,34 @@ Rules:
                         len(self._postmortem_flagged_nodes), self._postmortem_flagged_nodes
                     )
 
-                # Run diagnostic post-mortem with smooth functions (accuracy-based)
-                # This complements the existing analysis with continuous scoring
-                try:
-                    diagnostic_stats = run_diagnostic_postmortem(
-                        dag_id=self._current_dag_id,
-                        step_db=self.step_db,
-                        step_embeddings=getattr(self, '_step_embeddings', None),
+                # Handle diagnostic results (included in single postmortem call)
+                diag_steps = postmortem_stats.get("steps_to_decompose", [])
+                diag_sigs = postmortem_stats.get("signatures_to_decompose", [])
+                routing_misses = postmortem_stats.get("routing_misses", [])
+
+                if diag_steps or diag_sigs or routing_misses:
+                    logger.info(
+                        "[solver] Diagnostic post-mortem: threshold=%.1f, "
+                        "steps_to_decompose=%d, sigs_to_decompose=%d, routing_misses=%d",
+                        postmortem_stats.get("diagnostic_failure_threshold", 0),
+                        len(diag_steps),
+                        len(diag_sigs),
+                        len(routing_misses),
                     )
-                    if not diagnostic_stats.get("skipped"):
-                        diag_steps = diagnostic_stats.get("steps_to_decompose", [])
-                        diag_sigs = diagnostic_stats.get("signatures_to_decompose", [])
-                        routing_misses = diagnostic_stats.get("routing_misses", [])
 
-                        if diag_steps or diag_sigs or routing_misses:
-                            logger.info(
-                                "[solver] Diagnostic post-mortem: threshold=%.1f, "
-                                "steps_to_decompose=%d, sigs_to_decompose=%d, routing_misses=%d",
-                                diagnostic_stats.get("failure_threshold", 0),
-                                len(diag_steps),
-                                len(diag_sigs),
-                                len(routing_misses),
-                            )
+                    # === ACT ON DECOMPOSITION DECISIONS ===
 
-                        # === ACT ON DECOMPOSITION DECISIONS ===
+                    # 1. Steps to decompose: Mark step patterns for future decomposition
+                    for dag_step_id in diag_steps:
+                        self._mark_step_for_decomposition(dag_step_id)
 
-                        # 1. Steps to decompose: Mark step patterns for future decomposition
-                        # When similar steps come in, we'll decompose them proactively
-                        for dag_step_id in diag_steps:
-                            self._mark_step_for_decomposition(dag_step_id)
+                    # 2. Signatures to decompose: Promote to umbrella or flag for rewrite
+                    for sig_id in diag_sigs:
+                        self._trigger_signature_decomposition(sig_id)
 
-                        # 2. Signatures to decompose: Promote to umbrella or flag for rewrite
-                        for sig_id in diag_sigs:
-                            self._trigger_signature_decomposition(sig_id)
-
-                        # 3. Routing misses: Record bad (step, sig) pairs for routing avoidance
-                        for dag_step_id, sig_id in routing_misses:
-                            self._record_routing_miss(dag_step_id, sig_id)
-
-                except Exception as e:
-                    logger.debug("[solver] Diagnostic post-mortem skipped: %s", e)
+                    # 3. Routing misses: Record bad (step, sig) pairs for routing avoidance
+                    for dag_step_id, sig_id in routing_misses:
+                        self._record_routing_miss(dag_step_id, sig_id)
 
             except Exception as e:
                 logger.error("[solver] Postmortem failed: %s", e)
@@ -4786,6 +4897,11 @@ Rules:
                 is_correct = None
                 if ground_truth:
                     is_correct = self._answers_match(thread.final_answer, ground_truth)
+                    # Debug logging for cross-DAG divergence investigation
+                    logger.debug(
+                        "[solver] Thread %s: final_answer=%r, ground_truth=%r, is_correct=%s",
+                        thread_id[:8], thread.final_answer, ground_truth, is_correct
+                    )
 
                 # Update mcts_threads table with final_answer and success
                 thread_success = is_correct if is_correct is not None else None

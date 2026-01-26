@@ -90,6 +90,19 @@ class StepSignature:
     successes: int = 0
     operational_failures: int = 0  # MCTS post-mortem: destructive interference flags
 
+    # Embedding Variance Tracking (Welford's algorithm)
+    # Tracks how diverse the problems routed to this signature are
+    # High variance = too generic, should decompose into specialized children
+    similarity_count: int = 0   # N in Welford's algorithm
+    similarity_mean: float = 0.0  # Running mean of cosine similarities
+    similarity_m2: float = 0.0    # M2 for variance: variance = M2/N
+
+    # Success Similarity Tracking (for adaptive rejection per mycelium-i601)
+    # Uses Welford's algorithm: threshold = success_sim_mean - k * sqrt(success_sim_m2/success_sim_count)
+    success_sim_count: int = 0   # N successful matches
+    success_sim_mean: float = 0.0  # Running mean of similarity on success
+    success_sim_m2: float = 0.0    # M2 for variance calculation
+
     # Difficulty tracking (for universal tree)
     # Format: {"0.2": {"uses": 10, "successes": 8}, "0.8": {"uses": 2, "successes": 0}}
     difficulty_stats: dict[str, dict[str, int]] = field(default_factory=dict)
@@ -99,6 +112,10 @@ class StepSignature:
     is_semantic_umbrella: bool = False  # True if routes to children
     is_root: bool = False  # True if this is THE root signature (single entry point)
     depth: int = 0  # Routing depth (0=root, increases with parent-child hops)
+
+    # Atomic operations (cannot be decomposed further)
+    is_atomic: bool = False  # True if decomposition already failed
+    atomic_reason: Optional[str] = None  # "decomp_failed_single_step", "decomp_failed_with_failing_steps"
 
     # Metadata
     created_at: Optional[str] = None
@@ -111,6 +128,47 @@ class StepSignature:
     @property
     def has_dsl(self) -> bool:
         return bool(self.dsl_script)
+
+    def get_adaptive_rejection_threshold(
+        self,
+        k: float = 1.5,
+        min_samples: int = 5,
+        default_threshold: float = 0.5,
+    ) -> float:
+        """Compute adaptive rejection threshold based on historical success similarities.
+
+        Per mycelium-i601: threshold = mean - k * std
+
+        A leaf rejects dag_steps when similarity falls below this threshold,
+        signaling "I'm not confident handling this operation."
+
+        Args:
+            k: Number of standard deviations below mean (default 1.5)
+            min_samples: Minimum successful matches before adaptive threshold kicks in
+            default_threshold: Fallback when insufficient data (cold start)
+
+        Returns:
+            Similarity threshold below which to reject dag_steps
+        """
+        from mycelium.config import (
+            ADAPTIVE_REJECTION_MIN_THRESHOLD,
+            ADAPTIVE_REJECTION_MAX_THRESHOLD,
+        )
+
+        # Cold start: be permissive until we have enough data
+        if self.success_sim_count < min_samples:
+            return default_threshold
+
+        # Welford's algorithm: variance = M2 / N
+        variance = self.success_sim_m2 / self.success_sim_count
+        std = variance ** 0.5 if variance > 0 else 0.0
+
+        # threshold = mean - k * std
+        # Higher k = more permissive, lower k = more selective
+        threshold = self.success_sim_mean - k * std
+
+        # Clamp to reasonable bounds from config
+        return max(ADAPTIVE_REJECTION_MIN_THRESHOLD, min(ADAPTIVE_REJECTION_MAX_THRESHOLD, threshold))
 
     def get_difficulty_success_rate(self, difficulty: float, tolerance: float = 0.15) -> float:
         """Get success rate for problems at similar difficulty level.
@@ -277,11 +335,19 @@ class StepSignature:
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
             operational_failures=row.get("operational_failures", 0) or 0,
+            similarity_count=row.get("similarity_count", 0) or 0,
+            similarity_mean=row.get("similarity_mean", 0.0) or 0.0,
+            similarity_m2=row.get("similarity_m2", 0.0) or 0.0,
+            success_sim_count=row.get("success_sim_count", 0) or 0,
+            success_sim_mean=row.get("success_sim_mean", 0.0) or 0.0,
+            success_sim_m2=row.get("success_sim_m2", 0.0) or 0.0,
             difficulty_stats=difficulty_stats,
             max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,
+            is_atomic=bool(row.get("is_atomic", 0)),
+            atomic_reason=row.get("atomic_reason"),
             created_at=row.get("created_at"),
             last_used_at=row.get("last_used_at"),
         )
@@ -319,11 +385,19 @@ class StepSignature:
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
             operational_failures=row.get("operational_failures", 0) or 0,
+            similarity_count=row.get("similarity_count", 0) or 0,
+            similarity_mean=row.get("similarity_mean", 0.0) or 0.0,
+            similarity_m2=row.get("similarity_m2", 0.0) or 0.0,
+            success_sim_count=row.get("success_sim_count", 0) or 0,
+            success_sim_mean=row.get("success_sim_mean", 0.0) or 0.0,
+            success_sim_m2=row.get("success_sim_m2", 0.0) or 0.0,
             difficulty_stats={},  # Skip JSON parsing
             max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,
+            is_atomic=bool(row.get("is_atomic", 0)),
+            atomic_reason=row.get("atomic_reason"),
             created_at=row.get("created_at"),
             last_used_at=row.get("last_used_at"),
         )
@@ -371,11 +445,19 @@ class StepSignature:
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
             operational_failures=row.get("operational_failures", 0) or 0,
+            similarity_count=row.get("similarity_count", 0) or 0,
+            similarity_mean=row.get("similarity_mean", 0.0) or 0.0,
+            similarity_m2=row.get("similarity_m2", 0.0) or 0.0,
+            success_sim_count=row.get("success_sim_count", 0) or 0,
+            success_sim_mean=row.get("success_sim_mean", 0.0) or 0.0,
+            success_sim_m2=row.get("success_sim_m2", 0.0) or 0.0,
             difficulty_stats={},  # Skip JSON parsing
             max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,
+            is_atomic=bool(row.get("is_atomic", 0)),
+            atomic_reason=row.get("atomic_reason"),
             created_at=row.get("created_at"),
             last_used_at=row.get("last_used_at"),
         )

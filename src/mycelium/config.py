@@ -141,6 +141,40 @@ UCB1_ADJUSTMENT_MAX_DELTA = 0.3  # Max adjustment to C (±0.3)
 UCB1_ADJUSTMENT_SENSITIVITY = 0.5  # How quickly to respond to patterns (0-1)
 
 # =============================================================================
+# ADAPTIVE SIMILARITY THRESHOLDS (Welford-based, no magic numbers)
+# =============================================================================
+# Per CLAUDE.md: Route by what operations DO (graph_embedding), not what they SOUND LIKE.
+# Instead of hardcoded thresholds, we learn what "same" and "similar" mean from data.
+#
+# Two thresholds:
+# 1. dedup_threshold: Above this = same node (return existing signature)
+# 2. cluster_threshold: Above this = same cluster (share parent)
+#
+# Computed as: mean - k * stddev from observed similarity distributions.
+
+ADAPTIVE_THRESHOLD_K = 2.0  # Stddevs below mean (higher = more permissive)
+ADAPTIVE_MIN_SAMPLES = 10   # Min observations before using learned thresholds
+
+# Cold-start defaults (used until we have enough data)
+COLD_START_DEDUP_THRESHOLD = 0.95    # Very high sim = same node
+COLD_START_CLUSTER_THRESHOLD = 0.80  # Moderately high sim = same cluster
+
+# =============================================================================
+# ADAPTIVE REJECTION (per-leaf similarity thresholds from historical successes)
+# =============================================================================
+# Per mycelium-i601: Leaf nodes learn their own acceptance thresholds from historical
+# success similarities. Instead of a global threshold, each leaf computes:
+#   threshold = mean(success_similarities) - k * std(success_similarities)
+# This lets specialized leaves become picky, while broad leaves stay permissive.
+
+ADAPTIVE_REJECTION_ENABLED = True  # Enable per-leaf adaptive thresholds
+ADAPTIVE_REJECTION_K = 1.5  # Number of std devs below mean (higher = more permissive)
+ADAPTIVE_REJECTION_MIN_SAMPLES = 5  # Min successful matches before adaptive kicks in
+ADAPTIVE_REJECTION_DEFAULT_THRESHOLD = 0.5  # Fallback threshold for cold-start leaves
+ADAPTIVE_REJECTION_MIN_THRESHOLD = 0.3  # Floor: never reject below this similarity
+ADAPTIVE_REJECTION_MAX_THRESHOLD = 0.95  # Ceiling: never require above this similarity
+
+# =============================================================================
 # MCTS COMPUTE BUDGET (multi-path exploration)
 # =============================================================================
 # Budget controls how many paths to explore during routing.
@@ -463,6 +497,23 @@ STEP_NODE_STATS_PRIOR_WINS = 1  # Bayesian prior wins (prevents 0/0 division)
 STEP_NODE_STATS_PRIOR_USES = 2  # Bayesian prior uses
 AMPLITUDE_POST_PENALTY_THRESHOLD = 0.6  # avg_amplitude_post below this → penalize routing
 AMPLITUDE_POST_PENALTY_MULT = 0.8  # Multiplicative penalty for low amplitude_post
+
+# Variance-based decomposition (Welford's algorithm)
+# High variance = inconsistent performance = node too generic = should decompose
+# Per CLAUDE.md: "Destructive interference (mixed results at same node)" triggers split
+VARIANCE_DECOMPOSE_ENABLED = True  # Flag high-variance nodes for decomposition
+VARIANCE_MIN_SAMPLES = 5  # Min observations before considering variance (cold start)
+VARIANCE_THRESHOLD = 0.1  # Min variance to flag as "high" (needs decomposition)
+VARIANCE_CHECK_LIMIT = 20  # Max nodes to check per postmortem batch
+
+# Type refinement (Welford's algorithm at type level)
+# When MULTIPLE nodes have high variance on the SAME dag_step_type:
+#   ONE node high variance → decompose the node (handled above)
+#   MULTIPLE nodes high variance → type is too broad, needs refinement
+# This creates a closed loop where variance signals refine the type taxonomy
+TYPE_REFINEMENT_ENABLED = True  # Enable type refinement detection
+TYPE_REFINEMENT_MIN_NODES = 2  # Min nodes with high variance to flag type for refinement
+TYPE_REFINEMENT_CHECK_LIMIT = 10  # Max types to flag per postmortem batch
 
 # =============================================================================
 # MCTS INTERFERENCE PATTERNS (Constructive/Destructive)

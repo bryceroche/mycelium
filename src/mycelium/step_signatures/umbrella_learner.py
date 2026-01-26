@@ -443,6 +443,37 @@ Rules:
 
         return candidates
 
+    def _mark_as_atomic(self, signature_id: int, reason: str) -> None:
+        """Mark a signature as atomic (cannot be decomposed further).
+
+        This prevents repeated LLM calls trying to decompose the same
+        atomic operations like compute_sum, compute_product, etc.
+
+        Args:
+            signature_id: The signature to mark as atomic
+            reason: Why it's atomic (e.g., "decomp_failed_single_step")
+        """
+        from mycelium.data_layer import get_db
+
+        try:
+            db = get_db()
+            with db.connection() as conn:
+                conn.execute(
+                    """
+                    UPDATE step_signatures
+                    SET is_atomic = 1, atomic_reason = ?
+                    WHERE id = ?
+                    """,
+                    (reason, signature_id),
+                )
+                conn.commit()
+                logger.info(
+                    "[umbrella] Marked signature %d as atomic (reason: %s)",
+                    signature_id, reason
+                )
+        except Exception as e:
+            logger.warning("[umbrella] Failed to mark signature %d as atomic: %s", signature_id, e)
+
     def _get_failing_step_descriptions(self, node_id: int, limit: int = 5) -> list[str]:
         """Get specific step descriptions that failed with this node.
 
@@ -487,6 +518,14 @@ Rules:
         Returns:
             List of child signature IDs created
         """
+        # Skip atomic signatures - they've already failed decomposition
+        if signature.is_atomic:
+            logger.debug(
+                "[umbrella] Skipping atomic signature %d ('%s') - reason: %s",
+                signature.id, signature.step_type, signature.atomic_reason or "unknown"
+            )
+            return []
+
         # Check if already an umbrella WITH children - skip decomposition
         # Skip cache to ensure fresh data in multiprocess environments
         if signature.is_semantic_umbrella:
@@ -531,15 +570,17 @@ Rules:
                         break
                 else:
                     logger.info(
-                        "[umbrella] Cannot decompose '%s' or its failing steps - keeping as decompose",
+                        "[umbrella] Cannot decompose '%s' or its failing steps - marking as atomic",
                         signature.step_type
                     )
+                    self._mark_as_atomic(signature.id, "decomp_failed_with_failing_steps")
                     return []
             else:
                 logger.info(
-                    "[umbrella] Cannot decompose '%s' further (got %d steps) - keeping as decompose",
+                    "[umbrella] Cannot decompose '%s' further (got %d steps) - marking as atomic",
                     signature.step_type, len(plan.steps)
                 )
+                self._mark_as_atomic(signature.id, "decomp_failed_single_step")
                 return []
 
         # Create child signatures from decomposition

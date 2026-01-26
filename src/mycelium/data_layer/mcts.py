@@ -726,7 +726,10 @@ def get_pending_queue_ids() -> list[int]:
 
 
 # Rejection thresholds (per CLAUDE.md: leaves define their own boundaries)
-REJECTION_SIM_THRESHOLD = 0.85  # Below this similarity, leaf rejects the step (lowered for latency)
+# DEPRECATED: Now using adaptive Welford-based thresholds per signature
+# Each leaf has success_sim_count/mean/m2 for adaptive threshold = mean - k*stddev
+# This constant is kept for backward compatibility but should not be used
+REJECTION_SIM_THRESHOLD = 0.85  # DEPRECATED - use signature.get_adaptive_rejection_threshold()
 REJECTION_COUNT_THRESHOLD = 10  # Min rejections before considering decomposition
 REJECTION_RATE_THRESHOLD = 0.30  # 30% rejection rate triggers decomposition flag
 
@@ -879,22 +882,24 @@ def check_and_reject_if_low_similarity(
     problem_context: str = None,
     conn=None,
 ) -> tuple[bool, int]:
-    """Check if similarity is below threshold and record rejection if so.
+    """Record a leaf rejection (caller has already decided to reject).
+
+    Note: Caller is responsible for checking the adaptive threshold.
+    This function just records the rejection and queues for decomposition.
 
     Args:
         signature_id: The leaf signature being checked
         step_text: The step being routed
-        similarity: Cosine similarity to the signature
+        similarity: Cosine similarity to the signature (for logging)
         dag_step_id: Optional dag_step ID
         problem_context: Optional problem context
         conn: Optional DB connection (reuse caller's connection to avoid locks)
 
     Returns:
-        Tuple of (was_rejected, rejection_count)
+        Tuple of (was_rejected=True, rejection_count)
     """
-    if similarity >= REJECTION_SIM_THRESHOLD:
-        return False, 0
-
+    # Caller has already decided to reject using adaptive threshold
+    # We just record it and queue for decomposition
     rejection_count = record_leaf_rejection(
         signature_id=signature_id,
         step_text=step_text,
@@ -1188,15 +1193,16 @@ def log_thread_step(
     conn = get_db()
 
     # Always insert into summaries table (minimal data for credit propagation)
+    # Per mycelium-i601: Include similarity_score for adaptive rejection threshold learning
     cursor = conn.execute(
         """
         INSERT INTO mcts_step_summaries (
             thread_id, dag_id, dag_step_id, node_id,
-            amplitude, step_success
+            amplitude, step_success, similarity_score
         )
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        (thread_id, dag_id, dag_step_id, node_id, amplitude, step_success_int),
+        (thread_id, dag_id, dag_step_id, node_id, amplitude, step_success_int, similarity_score),
     )
     summary_id = cursor.lastrowid
 
@@ -1415,12 +1421,14 @@ def get_dag_step_node_performance(dag_step_id: str, node_id: int) -> dict:
 
 
 # =============================================================================
-# POST-MORTEM ANALYSIS (amplitude_post computation)
+# POST-MORTEM ANALYSIS (Consolidated Single Pathway)
 # =============================================================================
 
 
-def run_postmortem(dag_id: str) -> dict:
-    """Run post-mortem analysis on a completed DAG.
+def _compute_amplitude_post(dag_id: str) -> dict:
+    """Core amplitude_post computation for post-mortem analysis.
+
+    Internal function - use run_postmortem() as the public entry point.
 
     Computes amplitude_post for each thread_step based on thread outcomes.
     Uses config values for thresholds and multipliers.
@@ -1528,6 +1536,138 @@ def run_postmortem(dag_id: str) -> dict:
     return stats
 
 
+def run_postmortem(
+    dag_id: str,
+    step_db=None,
+    step_embeddings: dict = None,
+    include_interference: bool = True,
+    include_diagnostics: bool = True,
+) -> dict:
+    """Single pathway for post-mortem analysis on a completed DAG.
+
+    This is the main entry point for all post-mortem analysis. Features are
+    enabled based on parameters provided:
+
+    - Always: amplitude_post computation (confidence × outcome → amplitude adjustments)
+    - If step_db provided: interference detection, credit propagation, merge/split batching
+    - If step_embeddings provided + include_diagnostics: failure diagnosis with verdicts
+
+    Args:
+        dag_id: The DAG to analyze
+        step_db: Optional StepSignatureDB instance. If provided, enables interference
+            detection, credit propagation, and structural operations.
+        step_embeddings: Optional dict mapping dag_step_id to embeddings. Enables
+            enhanced diagnostic analysis with rerouting recommendations.
+        include_interference: If True (default), run interference pattern analysis
+            when step_db is provided.
+        include_diagnostics: If True (default), run diagnostic analysis when step_db
+            is provided.
+
+    Returns:
+        Combined dict with all analysis results. Keys depend on features enabled.
+    """
+    from mycelium.config import DIAGNOSTIC_POSTMORTEM_ENABLED
+
+    # If no step_db, just compute amplitudes (fast path for tests)
+    if step_db is None:
+        return _compute_amplitude_post(dag_id)
+
+    # Delegate to full implementation (avoids code duplication)
+    # run_postmortem_with_interference contains all interference logic including variance decomposition
+    result = run_postmortem_with_interference(dag_id, step_db)
+
+    # Add diagnostic analysis if requested
+    if include_diagnostics and DIAGNOSTIC_POSTMORTEM_ENABLED:
+        diagnostic_result = _run_diagnostic_analysis(dag_id, step_db, step_embeddings)
+        if not diagnostic_result.get("skipped"):
+            result.update({
+                "diagnostic_system_maturity": diagnostic_result.get("system_maturity", 0),
+                "diagnostic_failure_threshold": diagnostic_result.get("failure_threshold", 0),
+                "diagnostic_pairs_analyzed": diagnostic_result.get("pairs_analyzed", 0),
+                "steps_to_decompose": diagnostic_result.get("steps_to_decompose", []),
+                "signatures_to_decompose": diagnostic_result.get("signatures_to_decompose", []),
+                "routing_misses": diagnostic_result.get("routing_misses", []),
+                "diagnoses": diagnostic_result.get("diagnoses", []),
+            })
+
+    return result
+
+
+def _run_diagnostic_analysis(dag_id: str, step_db, step_embeddings: dict = None) -> dict:
+    """Internal diagnostic analysis for post-mortem.
+
+    Analyzes failures to determine what should be decomposed.
+    Called from run_postmortem() when include_diagnostics=True.
+    """
+    # Get system maturity (signature count)
+    system_maturity = step_db.count_signatures() if step_db else 0
+    failure_threshold = get_diagnostic_failure_threshold(system_maturity)
+
+    # Get thread steps for this DAG
+    thread_steps = get_thread_steps_for_dag(dag_id)
+
+    # Group by (dag_step_id, node_id) to find repeated failures
+    pair_failures = {}
+    pair_embeddings = {}
+
+    for ts in thread_steps:
+        if ts.step_success == 0:
+            key = (ts.dag_step_id, ts.node_id)
+            pair_failures[key] = pair_failures.get(key, 0) + 1
+            if step_embeddings and ts.dag_step_id in step_embeddings:
+                pair_embeddings[key] = step_embeddings[ts.dag_step_id]
+
+    # Diagnose pairs that exceed threshold
+    diagnoses = []
+    steps_to_decompose = []
+    sigs_to_decompose = []
+    routing_misses = []
+
+    for (dag_step_id, node_id), failure_count in pair_failures.items():
+        if failure_count >= failure_threshold:
+            step_emb = pair_embeddings.get((dag_step_id, node_id))
+            diagnosis = diagnose_failure(node_id, step_emb, step_db)
+
+            diagnoses.append({
+                "dag_step_id": dag_step_id,
+                "node_id": node_id,
+                "failure_count": failure_count,
+                "verdict": diagnosis.verdict,
+                "scores": {
+                    "decompose_step": diagnosis.decompose_step_score,
+                    "decompose_sig": diagnosis.decompose_sig_score,
+                    "reroute": diagnosis.reroute_score,
+                },
+                "accuracy": diagnosis.accuracy,
+                "confidence": diagnosis.confidence,
+            })
+
+            if diagnosis.verdict == "decompose_step":
+                steps_to_decompose.append(dag_step_id)
+            elif diagnosis.verdict == "decompose_signature":
+                sigs_to_decompose.append(node_id)
+            elif diagnosis.verdict == "reroute":
+                routing_misses.append((dag_step_id, node_id))
+
+    logger.info(
+        "[diagnostic] Post-mortem for %s: threshold=%.1f, pairs_analyzed=%d, "
+        "steps_decompose=%d, sigs_decompose=%d, reroutes=%d",
+        dag_id, failure_threshold, len(pair_failures),
+        len(steps_to_decompose), len(sigs_to_decompose), len(routing_misses),
+    )
+
+    return {
+        "dag_id": dag_id,
+        "system_maturity": system_maturity,
+        "failure_threshold": failure_threshold,
+        "pairs_analyzed": len(pair_failures),
+        "diagnoses": diagnoses,
+        "steps_to_decompose": steps_to_decompose,
+        "signatures_to_decompose": sigs_to_decompose,
+        "routing_misses": routing_misses,
+    }
+
+
 def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
     """Propagate amplitude_post values to signature stats with step-level precision.
 
@@ -1565,21 +1705,24 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
 
     conn = get_db()
 
-    # Get per-node stats with STEP-LEVEL success (ss.step_success) as primary signal
-    # Fall back to thread-level (t.success) + amplitude when step_success is NULL
+    # Get per-node stats with THREAD-LEVEL success as primary signal
+    # step_success only means DSL executed without error - NOT that problem was correct
+    # Per CLAUDE.md: credit when problem correct, blame when problem wrong
     # NOTE: Uses mcts_step_summaries (lightweight) instead of mcts_thread_steps (detailed)
     cursor = conn.execute(
         """
         SELECT
             ss.node_id,
             COUNT(*) as total_steps,
-            -- STEP-LEVEL: Steps that succeeded at execution (most precise signal)
-            SUM(CASE WHEN ss.step_success = 1 THEN 1 ELSE 0 END) as step_succeeded,
-            -- STEP-LEVEL: Steps that failed at execution (precise blame)
+            -- CREDIT: Step executed AND thread won (problem correct)
+            SUM(CASE WHEN ss.step_success = 1 AND t.success = 1 THEN 1 ELSE 0 END) as step_succeeded_thread_won,
+            -- BLAME: Step executed AND thread lost (problem wrong - step may have caused it)
+            SUM(CASE WHEN ss.step_success = 1 AND t.success = 0 THEN 1 ELSE 0 END) as step_succeeded_thread_lost,
+            -- BLAME: Step failed at execution (DSL error)
             SUM(CASE WHEN ss.step_success = 0 THEN 1 ELSE 0 END) as step_failed,
             -- FALLBACK: Steps in winning threads (when step_success is NULL)
             SUM(CASE WHEN ss.step_success IS NULL AND t.success = 1 THEN 1 ELSE 0 END) as thread_won_no_step,
-            -- FALLBACK: High-confidence steps in losing threads (partial credit)
+            -- FALLBACK: High-confidence steps in losing threads (blame - was confident but wrong)
             SUM(CASE WHEN ss.step_success IS NULL AND t.success = 0 AND ss.amplitude >= ? THEN 1 ELSE 0 END) as high_conf_losing,
             -- FALLBACK: Low-confidence steps in losing threads (blame)
             SUM(CASE WHEN ss.step_success IS NULL AND t.success = 0 AND ss.amplitude < ? THEN 1 ELSE 0 END) as low_conf_losing,
@@ -1603,37 +1746,47 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
     }
 
     for row in cursor.fetchall():
-        (node_id, total_steps, step_succeeded, step_failed,
-         thread_won_no_step, high_conf_losing, low_conf_losing, avg_amp) = row
+        (node_id, total_steps, step_succeeded_thread_won, step_succeeded_thread_lost,
+         step_failed, thread_won_no_step, high_conf_losing, low_conf_losing, avg_amp) = row
 
         if total_steps == 0 or node_id is None:
             continue
 
         stats["nodes_processed"] += 1
 
-        # Priority 1: STEP-LEVEL SUCCESS - step itself succeeded
-        # This is the most precise signal - step executed without error
-        if step_succeeded > 0:
+        # Priority 1: CREDIT - step executed AND problem was correct
+        # Both conditions must be true for credit
+        if step_succeeded_thread_won > 0:
             step_db.increment_signature_successes(node_id, count=1, propagate_to_parents=True)
             stats["successes_credited"] += 1
             stats["step_level_credit"] += 1
             logger.debug(
-                "[mcts] Step-level credit to node %d (%d steps succeeded)",
-                node_id, step_succeeded
+                "[mcts] Credit to node %d (%d steps in winning thread)",
+                node_id, step_succeeded_thread_won
             )
 
-        # Priority 2: STEP-LEVEL FAILURE - step itself failed
-        # This is precise blame - this specific step caused the problem
+        # Priority 2: BLAME - step executed but problem was WRONG
+        # DSL ran fine but final answer was incorrect - this step may have caused it
+        elif step_succeeded_thread_lost > 0:
+            step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
+            stats["failures_credited"] += 1
+            stats["step_level_blame"] += 1
+            logger.debug(
+                "[mcts] Blame to node %d (%d steps in LOSING thread - answer was wrong)",
+                node_id, step_succeeded_thread_lost
+            )
+
+        # Priority 3: BLAME - step itself failed (DSL error)
         elif step_failed > 0:
             step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
             stats["failures_credited"] += 1
             stats["step_level_blame"] += 1
             logger.debug(
-                "[mcts] Step-level blame to node %d (%d steps failed)",
+                "[mcts] Blame to node %d (%d steps failed at DSL execution)",
                 node_id, step_failed
             )
 
-        # Priority 3: FALLBACK - thread won but step_success not tracked
+        # Priority 4: FALLBACK - thread won but step_success not tracked
         elif thread_won_no_step > 0:
             step_db.increment_signature_successes(node_id, count=1, propagate_to_parents=True)
             stats["successes_credited"] += 1
@@ -1642,23 +1795,21 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
                 node_id, thread_won_no_step
             )
 
-        # Priority 4: FALLBACK - high-confidence in losing thread (partial credit)
+        # Priority 5: FALLBACK - high-confidence in losing thread (blame - was confident but wrong)
         elif high_conf_losing > 0:
-            step_db.increment_signature_partial_success(
-                node_id, weight=PARTIAL_CREDIT_WEIGHT, propagate_to_parents=True
-            )
-            stats["partial_credits"] += 1
+            step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
+            stats["failures_credited"] += 1
             logger.debug(
-                "[mcts] Partial credit to node %d (%d high-conf losing steps, avg_amp=%.2f)",
+                "[mcts] Blame to node %d (%d high-conf steps in LOSING thread, avg_amp=%.2f)",
                 node_id, high_conf_losing, avg_amp or 0
             )
 
-        # Priority 5: FALLBACK - low-confidence in losing thread (blame)
+        # Priority 6: FALLBACK - low-confidence in losing thread (blame)
         elif low_conf_losing > 0:
             step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
             stats["failures_credited"] += 1
             logger.debug(
-                "[mcts] Thread-level blame to node %d (%d low-conf losing steps, avg_amp=%.2f)",
+                "[mcts] Blame to node %d (%d low-conf losing steps, avg_amp=%.2f)",
                 node_id, low_conf_losing, avg_amp or 0
             )
 
@@ -1674,6 +1825,64 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
     return stats
 
 
+def propagate_success_similarity(dag_id: str, step_db) -> dict:
+    """Propagate similarity scores from successful threads to leaf adaptive thresholds.
+
+    Per mycelium-i601: When a thread succeeds, the similarity scores used during
+    routing should be recorded on the leaf signatures. This feeds into the adaptive
+    rejection threshold: threshold = mean - k * std.
+
+    Only propagates similarity from thread steps where:
+    1. The thread won (t.success = 1)
+    2. A similarity_score was recorded (not NULL)
+
+    Args:
+        dag_id: The DAG to process
+        step_db: StepSignatureDB instance for updating success_sim stats
+
+    Returns:
+        Dict with propagation statistics
+    """
+    from mycelium.config import CREDIT_PROPAGATION_ENABLED
+
+    if not CREDIT_PROPAGATION_ENABLED:
+        return {"updates": 0, "skipped": True}
+
+    conn = get_db()
+
+    # Get (node_id, similarity_score) pairs from winning threads
+    # Use mcts_step_summaries (always populated) instead of mcts_thread_steps (failures only)
+    cursor = conn.execute(
+        """
+        SELECT ss.node_id, ss.similarity_score
+        FROM mcts_step_summaries ss
+        JOIN mcts_threads t ON ss.thread_id = t.thread_id
+        WHERE ss.dag_id = ?
+          AND t.success = 1
+          AND ss.similarity_score IS NOT NULL
+          AND ss.node_id IS NOT NULL
+        """,
+        (dag_id,)
+    )
+
+    updates = []
+    for row in cursor.fetchall():
+        node_id = row["node_id"]
+        similarity = row["similarity_score"]
+        if node_id is not None and similarity is not None:
+            updates.append((node_id, similarity))
+
+    if updates:
+        updated_count = step_db.update_success_similarity_batch(updates)
+        logger.debug(
+            "[mcts] Propagated %d success similarities for DAG %s",
+            updated_count, dag_id
+        )
+        return {"updates": updated_count, "skipped": False}
+
+    return {"updates": 0, "skipped": False}
+
+
 # =============================================================================
 # STEP-NODE STATS (Materialized (dag_step_type, node_id) performance)
 # =============================================================================
@@ -1686,17 +1895,26 @@ def update_dag_step_node_stats(
     node_id: int,
     won: bool,
     amplitude_post: float,
+    similarity_score: float = None,
 ) -> None:
     """Upsert stats for a (dag_step_type, node_id) pair.
 
     Called during post-mortem to materialize (step, node) performance.
     Routing then queries these stats to make better decisions.
 
+    Uses Welford's online algorithm for numerically stable variance tracking:
+    - OUTCOME VARIANCE (amplitude_post): High variance = inconsistent results
+    - EMBEDDING VARIANCE (similarity_score): High variance = type too broad
+
+    Per CLAUDE.md: leaf_node ≡ dag_step_type should be 1:1 mapping.
+    High variance in either dimension signals the type needs refinement.
+
     Args:
         dag_step_type: The step type (e.g., "compute_sum", "compute_product")
         node_id: The signature ID that handled this step
         won: Whether the thread won (correct answer)
         amplitude_post: The post-observation amplitude for this step
+        similarity_score: Cosine similarity between dag_step embedding and node centroid
     """
     from mycelium.config import (
         STEP_NODE_STATS_ENABLED,
@@ -1720,35 +1938,107 @@ def update_dag_step_node_stats(
     win_inc = 1 if won else 0
     loss_inc = 0 if won else 1
 
-    # Step 1: Simple upsert - just increment raw counters
-    conn.execute(
+    # Step 1: Check if row exists and get current Welford state for both metrics
+    cursor = conn.execute(
         """
-        INSERT INTO dag_step_node_stats (
-            dag_step_type, node_id, uses, wins, losses,
-            amplitude_post_sum, last_updated
-        )
-        VALUES (?, ?, 1, ?, ?, ?, ?)
-        ON CONFLICT(dag_step_type, node_id) DO UPDATE SET
-            uses = uses + 1,
-            wins = wins + ?,
-            losses = losses + ?,
-            amplitude_post_sum = amplitude_post_sum + ?,
-            last_updated = ?
+        SELECT amp_post_count, amp_post_mean, amp_post_m2,
+               sim_count, sim_mean, sim_m2
+        FROM dag_step_node_stats
+        WHERE dag_step_type = ? AND node_id = ?
         """,
-        (
-            dag_step_type,
-            node_id,
-            win_inc,
-            loss_inc,
-            amplitude_post,
-            now,
-            # ON CONFLICT values:
-            win_inc,
-            loss_inc,
-            amplitude_post,
-            now,
-        ),
+        (dag_step_type, node_id),
     )
+    row = cursor.fetchone()
+
+    # Compute Welford's updates for similarity (if provided)
+    # Similarity tracks embedding variance between dag_step_ids and the type
+    has_sim = similarity_score is not None
+
+    if row is None:
+        # New row: initialize with first observation
+        # Welford's: n=1, mean=x, m2=0
+        conn.execute(
+            """
+            INSERT INTO dag_step_node_stats (
+                dag_step_type, node_id, uses, wins, losses,
+                amplitude_post_sum, amp_post_count, amp_post_mean, amp_post_m2,
+                sim_count, sim_mean, sim_m2,
+                last_updated
+            )
+            VALUES (?, ?, 1, ?, ?, ?, 1, ?, 0.0, ?, ?, 0.0, ?)
+            """,
+            (
+                dag_step_type,
+                node_id,
+                win_inc,
+                loss_inc,
+                amplitude_post,  # amplitude_post_sum (legacy)
+                amplitude_post,  # amp_post_mean (Welford's)
+                1 if has_sim else 0,  # sim_count
+                similarity_score if has_sim else 0.0,  # sim_mean
+                now,
+            ),
+        )
+    else:
+        # Existing row: update using Welford's algorithm for both metrics
+        old_amp_count, old_amp_mean, old_amp_m2, old_sim_count, old_sim_mean, old_sim_m2 = row
+        old_amp_count = old_amp_count or 0
+        old_amp_mean = old_amp_mean or 0.0
+        old_amp_m2 = old_amp_m2 or 0.0
+        old_sim_count = old_sim_count or 0
+        old_sim_mean = old_sim_mean or 0.0
+        old_sim_m2 = old_sim_m2 or 0.0
+
+        # Welford's update for amplitude_post (OUTCOME VARIANCE)
+        new_amp_count = old_amp_count + 1
+        amp_delta = amplitude_post - old_amp_mean
+        new_amp_mean = old_amp_mean + amp_delta / new_amp_count
+        amp_delta2 = amplitude_post - new_amp_mean
+        new_amp_m2 = old_amp_m2 + amp_delta * amp_delta2
+
+        # Welford's update for similarity (EMBEDDING VARIANCE)
+        if has_sim:
+            new_sim_count = old_sim_count + 1
+            sim_delta = similarity_score - old_sim_mean
+            new_sim_mean = old_sim_mean + sim_delta / new_sim_count
+            sim_delta2 = similarity_score - new_sim_mean
+            new_sim_m2 = old_sim_m2 + sim_delta * sim_delta2
+        else:
+            new_sim_count = old_sim_count
+            new_sim_mean = old_sim_mean
+            new_sim_m2 = old_sim_m2
+
+        conn.execute(
+            """
+            UPDATE dag_step_node_stats
+            SET uses = uses + 1,
+                wins = wins + ?,
+                losses = losses + ?,
+                amplitude_post_sum = amplitude_post_sum + ?,
+                amp_post_count = ?,
+                amp_post_mean = ?,
+                amp_post_m2 = ?,
+                sim_count = ?,
+                sim_mean = ?,
+                sim_m2 = ?,
+                last_updated = ?
+            WHERE dag_step_type = ? AND node_id = ?
+            """,
+            (
+                win_inc,
+                loss_inc,
+                amplitude_post,
+                new_amp_count,
+                new_amp_mean,
+                new_amp_m2,
+                new_sim_count,
+                new_sim_mean,
+                new_sim_m2,
+                now,
+                dag_step_type,
+                node_id,
+            ),
+        )
 
     # Step 2: Compute derived fields (win_rate, avg_amplitude_post) in Python
     # This is clearer than complex inline SQL and applies Bayesian priors correctly
@@ -1768,8 +2058,8 @@ def update_dag_step_node_stats(
     )
 
     logger.debug(
-        "[mcts] Updated step-node stats: %s/node_%d won=%s amp_post=%.2f",
-        dag_step_type, node_id, won, amplitude_post
+        "[mcts] Updated step-node stats: %s/node_%d won=%s amp_post=%.2f sim=%.2f",
+        dag_step_type, node_id, won, amplitude_post, similarity_score or 0.0
     )
 
 
@@ -1788,6 +2078,7 @@ def get_dag_step_node_stats_batch(
     Returns:
         Dict mapping node_id → stats dict with keys:
         - uses, wins, losses, win_rate, avg_amplitude_post
+        - amp_post_variance, amp_post_std (computed from Welford's stats)
     """
     from mycelium.config import STEP_NODE_STATS_ENABLED
 
@@ -1805,24 +2096,33 @@ def get_dag_step_node_stats_batch(
 
     cursor = conn.execute(
         f"""
-        SELECT node_id, uses, wins, losses, win_rate, avg_amplitude_post
+        SELECT node_id, uses, wins, losses, win_rate, avg_amplitude_post,
+               amp_post_count, amp_post_mean, amp_post_m2
         FROM dag_step_node_stats
         WHERE dag_step_type = ? AND node_id IN ({placeholders})
         """,
         [dag_step_type] + list(node_ids),
     )
 
-    # Use named column access for clarity and safety
-    # Column names match SELECT order: node_id, uses, wins, losses, win_rate, avg_amplitude_post
     result = {}
     for row in cursor.fetchall():
-        # row is a sqlite3.Row which supports both index and name access
+        # Compute variance from Welford's M2: variance = M2 / N
+        amp_count = row["amp_post_count"] or 0
+        amp_m2 = row["amp_post_m2"] or 0.0
+        variance = amp_m2 / amp_count if amp_count > 0 else 0.0
+        std = variance ** 0.5 if variance > 0 else 0.0
+
         result[row["node_id"]] = {
             "uses": row["uses"],
             "wins": row["wins"],
             "losses": row["losses"],
             "win_rate": row["win_rate"],
             "avg_amplitude_post": row["avg_amplitude_post"],
+            # Welford's derived stats
+            "amp_post_count": amp_count,
+            "amp_post_mean": row["amp_post_mean"] or 0.0,
+            "amp_post_variance": variance,
+            "amp_post_std": std,
         }
 
     return result
@@ -1843,6 +2143,213 @@ def get_dag_step_node_stats_single(
     """
     batch = get_dag_step_node_stats_batch(dag_step_type, [node_id])
     return batch.get(node_id)
+
+
+def get_high_variance_step_node_pairs(
+    min_samples: int = 5,
+    variance_threshold: float = 0.1,
+    limit: int = 20,
+) -> list[dict]:
+    """Find (step_type, node_id) pairs with high variance (outcome OR embedding).
+
+    High variance indicates a problem with the (type, node) pairing:
+    - High OUTCOME variance (amp_post): inconsistent results
+    - High EMBEDDING variance (sim): diverse dag_step_ids routed here
+
+    Either signal suggests the node is too generic and should be decomposed.
+
+    Per CLAUDE.md: leaf_node ≡ dag_step_type should be 1:1 mapping.
+    High variance in either dimension signals the type needs refinement.
+
+    Args:
+        min_samples: Minimum observations before considering variance (cold start)
+        variance_threshold: Minimum variance to flag as "high" (default 0.1)
+        limit: Maximum number of pairs to return
+
+    Returns:
+        List of dicts with: dag_step_type, node_id, outcome/embedding variance, uses
+        Sorted by max variance descending (most problematic first)
+    """
+    from mycelium.config import STEP_NODE_STATS_ENABLED
+
+    if not STEP_NODE_STATS_ENABLED:
+        return []
+
+    conn = get_db()
+
+    # Query pairs with enough samples for EITHER metric
+    cursor = conn.execute(
+        """
+        SELECT
+            dag_step_type,
+            node_id,
+            amp_post_count,
+            amp_post_mean,
+            amp_post_m2,
+            sim_count,
+            sim_mean,
+            sim_m2,
+            uses,
+            win_rate
+        FROM dag_step_node_stats
+        WHERE amp_post_count >= ? OR sim_count >= ?
+        """,
+        (min_samples, min_samples),
+    )
+
+    results = []
+    for row in cursor.fetchall():
+        # Compute outcome variance (amplitude_post)
+        amp_count = row["amp_post_count"] or 0
+        amp_m2 = row["amp_post_m2"] or 0.0
+        amp_variance = amp_m2 / amp_count if amp_count > 0 else 0.0
+
+        # Compute embedding variance (similarity)
+        sim_count = row["sim_count"] or 0
+        sim_m2 = row["sim_m2"] or 0.0
+        sim_variance = sim_m2 / sim_count if sim_count > 0 else 0.0
+
+        # Flag if EITHER variance exceeds threshold
+        has_high_outcome_var = amp_count >= min_samples and amp_variance >= variance_threshold
+        has_high_embedding_var = sim_count >= min_samples and sim_variance >= variance_threshold
+
+        if has_high_outcome_var or has_high_embedding_var:
+            max_variance = max(amp_variance, sim_variance)
+            results.append({
+                "dag_step_type": row["dag_step_type"],
+                "node_id": row["node_id"],
+                # Outcome variance (amplitude_post)
+                "amp_post_variance": amp_variance,
+                "amp_post_std": amp_variance ** 0.5,
+                "amp_post_mean": row["amp_post_mean"] or 0.0,
+                "amp_post_count": amp_count,
+                # Embedding variance (similarity)
+                "sim_variance": sim_variance,
+                "sim_std": sim_variance ** 0.5,
+                "sim_mean": row["sim_mean"] or 0.0,
+                "sim_count": sim_count,
+                # Combined metrics
+                "max_variance": max_variance,
+                "has_high_outcome_var": has_high_outcome_var,
+                "has_high_embedding_var": has_high_embedding_var,
+                "uses": row["uses"],
+                "win_rate": row["win_rate"],
+            })
+
+    # Sort by max variance descending (most problematic first)
+    results.sort(key=lambda x: x["max_variance"], reverse=True)
+
+    return results[:limit]
+
+
+def get_types_needing_refinement(
+    min_samples: int = 5,
+    variance_threshold: float = 0.1,
+    min_nodes_for_type_refinement: int = 2,
+) -> list[dict]:
+    """Find dag_step_types that are too broad (multiple nodes have high variance).
+
+    When MULTIPLE nodes have high variance on the SAME dag_step_type, it suggests
+    the type bucket is too broad and should be refined into sub-types.
+
+    Single node with high variance → decompose the node
+    Multiple nodes with high variance on same type → refine the type
+
+    Considers BOTH variance types:
+    - OUTCOME variance (amp_post): inconsistent results
+    - EMBEDDING variance (sim): diverse dag_step_ids routed to same type
+
+    Per CLAUDE.md: leaf_node ≡ dag_step_type should be 1:1 mapping.
+
+    Args:
+        min_samples: Minimum observations per (type, node) pair
+        variance_threshold: Minimum variance to consider "high"
+        min_nodes_for_type_refinement: Min nodes with high variance to flag type
+
+    Returns:
+        List of dicts with: dag_step_type, high_variance_nodes, avg_variance
+        Sorted by number of affected nodes descending
+    """
+    from mycelium.config import STEP_NODE_STATS_ENABLED
+
+    if not STEP_NODE_STATS_ENABLED:
+        return []
+
+    conn = get_db()
+
+    # Get all pairs with enough samples for EITHER metric
+    cursor = conn.execute(
+        """
+        SELECT
+            dag_step_type,
+            node_id,
+            amp_post_count,
+            amp_post_m2,
+            sim_count,
+            sim_m2,
+            uses,
+            win_rate
+        FROM dag_step_node_stats
+        WHERE amp_post_count >= ? OR sim_count >= ?
+        """,
+        (min_samples, min_samples),
+    )
+
+    # Group by dag_step_type, tracking both variance types
+    type_to_nodes: dict[str, list[dict]] = {}
+    for row in cursor.fetchall():
+        # Compute outcome variance
+        amp_count = row["amp_post_count"] or 0
+        amp_m2 = row["amp_post_m2"] or 0.0
+        amp_variance = amp_m2 / amp_count if amp_count > 0 else 0.0
+
+        # Compute embedding variance
+        sim_count = row["sim_count"] or 0
+        sim_m2 = row["sim_m2"] or 0.0
+        sim_variance = sim_m2 / sim_count if sim_count > 0 else 0.0
+
+        # Flag if EITHER variance exceeds threshold (with enough samples)
+        has_high_outcome_var = amp_count >= min_samples and amp_variance >= variance_threshold
+        has_high_embedding_var = sim_count >= min_samples and sim_variance >= variance_threshold
+
+        if has_high_outcome_var or has_high_embedding_var:
+            dag_step_type = row["dag_step_type"]
+            if dag_step_type not in type_to_nodes:
+                type_to_nodes[dag_step_type] = []
+            type_to_nodes[dag_step_type].append({
+                "node_id": row["node_id"],
+                "amp_variance": amp_variance,
+                "sim_variance": sim_variance,
+                "max_variance": max(amp_variance, sim_variance),
+                "has_high_outcome_var": has_high_outcome_var,
+                "has_high_embedding_var": has_high_embedding_var,
+                "uses": row["uses"],
+                "win_rate": row["win_rate"],
+            })
+
+    # Find types with multiple high-variance nodes
+    results = []
+    for dag_step_type, nodes in type_to_nodes.items():
+        if len(nodes) >= min_nodes_for_type_refinement:
+            avg_amp_variance = sum(n["amp_variance"] for n in nodes) / len(nodes)
+            avg_sim_variance = sum(n["sim_variance"] for n in nodes) / len(nodes)
+            nodes_with_outcome_var = sum(1 for n in nodes if n["has_high_outcome_var"])
+            nodes_with_embedding_var = sum(1 for n in nodes if n["has_high_embedding_var"])
+            results.append({
+                "dag_step_type": dag_step_type,
+                "high_variance_node_count": len(nodes),
+                "high_variance_nodes": nodes,
+                "avg_amp_variance": avg_amp_variance,
+                "avg_sim_variance": avg_sim_variance,
+                "avg_variance": max(avg_amp_variance, avg_sim_variance),
+                "nodes_with_outcome_var": nodes_with_outcome_var,
+                "nodes_with_embedding_var": nodes_with_embedding_var,
+            })
+
+    # Sort by number of affected nodes (most problematic types first)
+    results.sort(key=lambda x: x["high_variance_node_count"], reverse=True)
+
+    return results
 
 
 def propagate_step_node_stats(dag_id: str) -> dict:
@@ -1873,6 +2380,7 @@ def propagate_step_node_stats(dag_id: str) -> dict:
         SELECT
             ss.node_id,
             ss.amplitude_post,
+            ss.similarity_score,
             t.success as thread_won,
             ds.dsl_hint,
             ds.step_desc
@@ -1887,7 +2395,7 @@ def propagate_step_node_stats(dag_id: str) -> dict:
     stats = {"pairs_updated": 0}
 
     for row in cursor.fetchall():
-        node_id, amplitude_post, thread_won, dsl_hint, step_desc = row
+        node_id, amplitude_post, similarity_score, thread_won, dsl_hint, step_desc = row
 
         # Use dsl_hint (e.g., "compute_sum") for better normalization
         # Fall back to step_desc if dsl_hint not available
@@ -1898,6 +2406,7 @@ def propagate_step_node_stats(dag_id: str) -> dict:
             node_id=node_id,
             won=bool(thread_won),
             amplitude_post=amplitude_post,
+            similarity_score=similarity_score,
         )
         stats["pairs_updated"] += 1
 
@@ -2089,13 +2598,15 @@ def get_thread_paths(dag_id: str) -> list[ThreadPath]:
     if not thread_outcomes:
         return []
 
-    # Get all steps for all threads, ordered by created_at within each thread
+    # Get all steps for all threads, ordered by id within each thread
+    # Uses mcts_step_summaries (always populated) instead of mcts_thread_steps
+    # (only populated for failures when LOG_DETAILED_STEPS_FAILURES_ONLY=True)
     steps_cursor = conn.execute(
         """
         SELECT thread_id, dag_step_id, node_id
-        FROM mcts_thread_steps
+        FROM mcts_step_summaries
         WHERE dag_id = ?
-        ORDER BY thread_id, created_at
+        ORDER BY thread_id, id
         """,
         (dag_id,),
     )
@@ -2120,35 +2631,54 @@ def get_thread_paths(dag_id: str) -> list[ThreadPath]:
     return paths
 
 
-def find_divergence_points(dag_id: str) -> list[DivergencePoint]:
+def find_divergence_points(dag_id: str, cross_dag_ids: list[str] = None) -> list[DivergencePoint]:
     """Find divergence points between winning and losing threads.
 
     Compares each winning thread against each losing thread to find where
     they share a common prefix but then diverge. This helps identify
     exactly which routing decision led to failure.
 
+    Supports cross-DAG comparison: when reactive exploration spawns new DAGs
+    to find a winning path, we need to compare the winning thread from the
+    exploration DAG against losing threads from the original failing DAG.
+
     Args:
-        dag_id: The DAG to analyze
+        dag_id: The primary DAG to analyze
+        cross_dag_ids: Optional list of additional DAG IDs to include in analysis.
+                      Threads from all DAGs are pooled together for comparison.
 
     Returns:
         List of DivergencePoint objects describing where paths split
     """
-    paths = get_thread_paths(dag_id)
+    # Collect threads from all DAGs (primary + cross-DAG)
+    all_dag_ids = [dag_id]
+    if cross_dag_ids:
+        all_dag_ids.extend(cross_dag_ids)
 
-    if not paths:
+    all_paths = []
+    for did in all_dag_ids:
+        paths = get_thread_paths(did)
+        all_paths.extend(paths)
+
+    if not all_paths:
         return []
 
-    # Separate winning and losing threads
-    winning = [p for p in paths if p.success == 1]
-    losing = [p for p in paths if p.success == 0]
+    # Separate winning and losing threads (across all DAGs)
+    winning = [p for p in all_paths if p.success == 1]
+    losing = [p for p in all_paths if p.success == 0]
 
     if not winning or not losing:
         # Need both to find divergence
         logger.debug(
-            "[mcts] No divergence analysis for DAG %s: %d winning, %d losing threads",
-            dag_id, len(winning), len(losing)
+            "[mcts] No divergence analysis for DAGs %s: %d winning, %d losing threads (all_paths=%d)",
+            [d[:8] for d in all_dag_ids], len(winning), len(losing), len(all_paths)
         )
         return []
+
+    logger.debug(
+        "[mcts] Cross-DAG divergence analysis: %d DAGs, %d winning, %d losing threads",
+        len(all_dag_ids), len(winning), len(losing)
+    )
 
     divergence_points = []
 
@@ -2201,7 +2731,7 @@ def find_divergence_points(dag_id: str) -> list[DivergencePoint]:
     return divergence_points
 
 
-def assign_divergence_blame(dag_id: str, step_db) -> dict:
+def assign_divergence_blame(dag_id: str, step_db, cross_dag_ids: list[str] = None) -> dict:
     """Assign targeted blame/credit based on divergence analysis.
 
     Per beads mycelium-2rss: Uses divergence points to assign more precise
@@ -2214,16 +2744,19 @@ def assign_divergence_blame(dag_id: str, step_db) -> dict:
     The insight is that the divergence point isn't always the root cause -
     sometimes a downstream step in the losing path is the actual problem.
 
+    Supports cross-DAG comparison for reactive exploration (see find_divergence_points).
+
     Args:
-        dag_id: The DAG to analyze
+        dag_id: The primary DAG to analyze
         step_db: StepSignatureDB for stat updates
+        cross_dag_ids: Optional list of additional DAG IDs for cross-DAG comparison
 
     Returns:
         Dict with divergence blame statistics
     """
     from mycelium.config import PARTIAL_CREDIT_WEIGHT
 
-    divergence_points = find_divergence_points(dag_id)
+    divergence_points = find_divergence_points(dag_id, cross_dag_ids=cross_dag_ids)
 
     if not divergence_points:
         return {
@@ -2872,8 +3405,8 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     run_count = state.increment_run_count()
     logger.debug("[mcts] Post-mortem run #%d", run_count)
 
-    # First run standard postmortem (amplitude_post computation) - cheap, always run
-    amplitude_stats = run_postmortem(dag_id)
+    # First run amplitude_post computation - cheap, always run
+    amplitude_stats = _compute_amplitude_post(dag_id)
 
     # Record hit/miss stats for UCB1 adjustment (per mycelium-nirq)
     # This feeds into AdaptiveExploration to tune the exploration constant
@@ -2892,6 +3425,10 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     # This closes the loop from post-mortem analysis to signature learning
     credit_stats = propagate_amplitude_to_signature_stats(dag_id, step_db)
 
+    # Per mycelium-i601: Propagate success similarity for adaptive rejection thresholds
+    # When threads win, record their similarity scores on leaves for adaptive thresholds
+    success_sim_stats = propagate_success_similarity(dag_id, step_db)
+
     # Propagate to (dag_step_type, node_id) stats table
     # This enables routing UCB1 to use step-specific performance data
     step_node_stats = propagate_step_node_stats(dag_id)
@@ -2902,6 +3439,64 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
 
     # Accumulate nodes flagged for split (using state object)
     state.accumulate_split_nodes(interference_result.nodes_flagged_split)
+
+    # Variance-based decomposition: flag nodes with high amplitude_post variance
+    # High variance = inconsistent performance = node too generic = should decompose
+    # Per CLAUDE.md: "Destructive interference (mixed results)" triggers split
+    from mycelium.config import (
+        VARIANCE_DECOMPOSE_ENABLED, VARIANCE_MIN_SAMPLES,
+        VARIANCE_THRESHOLD, VARIANCE_CHECK_LIMIT
+    )
+    variance_nodes_flagged = []
+    if VARIANCE_DECOMPOSE_ENABLED:
+        high_variance_pairs = get_high_variance_step_node_pairs(
+            min_samples=VARIANCE_MIN_SAMPLES,
+            variance_threshold=VARIANCE_THRESHOLD,
+            limit=VARIANCE_CHECK_LIMIT,
+        )
+        if high_variance_pairs:
+            variance_node_ids = [p["node_id"] for p in high_variance_pairs]
+            state.accumulate_split_nodes(variance_node_ids)
+            variance_nodes_flagged = variance_node_ids
+            logger.info(
+                "[mcts] Flagged %d high-variance nodes for decomposition (threshold=%.2f)",
+                len(variance_node_ids), VARIANCE_THRESHOLD
+            )
+            for pair in high_variance_pairs[:3]:  # Log top 3 for debugging
+                logger.debug(
+                    "[mcts] High variance: node=%d step=%s amp_var=%.3f sim_var=%.3f uses=%d",
+                    pair["node_id"], pair["dag_step_type"][:30],
+                    pair["amp_post_variance"], pair["sim_variance"], pair["uses"]
+                )
+
+    # Type refinement: detect dag_step_types that are too broad
+    # Per CLAUDE.md: "Closed loop where variance signals refine type taxonomy"
+    #   ONE node high variance → decompose the node (handled above)
+    #   MULTIPLE nodes high variance → type is too broad, needs refinement
+    from mycelium.config import (
+        TYPE_REFINEMENT_ENABLED, TYPE_REFINEMENT_MIN_NODES,
+        TYPE_REFINEMENT_CHECK_LIMIT
+    )
+    types_needing_refinement = []
+    if TYPE_REFINEMENT_ENABLED:
+        types_needing_refinement = get_types_needing_refinement(
+            min_samples=VARIANCE_MIN_SAMPLES,
+            variance_threshold=VARIANCE_THRESHOLD,
+            min_nodes_for_type_refinement=TYPE_REFINEMENT_MIN_NODES,
+        )[:TYPE_REFINEMENT_CHECK_LIMIT]
+        if types_needing_refinement:
+            logger.info(
+                "[mcts] Flagged %d types for refinement (multiple nodes with high variance)",
+                len(types_needing_refinement)
+            )
+            for type_info in types_needing_refinement[:3]:  # Log top 3 for debugging
+                logger.debug(
+                    "[mcts] Type refinement needed: type=%s nodes=%d amp_var=%.3f sim_var=%.3f",
+                    type_info["dag_step_type"][:40],
+                    type_info["high_variance_node_count"],
+                    type_info["avg_amp_variance"],
+                    type_info["avg_sim_variance"]
+                )
 
     # Per beads mycelium-flbq: Accumulate high-conf-wrong nodes for DSL regen
     # This tracks nodes that had high confidence but produced wrong answers
@@ -3008,6 +3603,8 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         "credit_nodes_processed": credit_stats.get("nodes_processed", 0),
         "credit_successes": credit_stats.get("successes_credited", 0),
         "credit_failures": credit_stats.get("failures_credited", 0),
+        # Success similarity propagation for adaptive rejection (per mycelium-i601)
+        "success_sim_updates": success_sim_stats.get("updates", 0),
         # Divergence-point analysis (per beads mycelium-2rss)
         "divergence_points_found": divergence_stats.get("divergence_points_found", 0),
         "divergence_blame_assigned": divergence_stats.get("divergence_blame_assigned", 0),
@@ -3016,6 +3613,11 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         # Decomposition analysis (nodes/steps that need decomposition)
         "nodes_needing_decomposition": [rec.target_id for rec in decomp_analysis["nodes_to_decompose"]],
         "steps_needing_decomposition": [(rec.target_id, rec.target_desc) for rec in decomp_analysis["steps_to_decompose"]],
+        # Variance-based decomposition (Welford's algorithm)
+        "variance_nodes_flagged": variance_nodes_flagged,
+        # Type refinement (types with multiple high-variance nodes)
+        "types_needing_refinement": [t["dag_step_type"] for t in types_needing_refinement],
+        "type_refinement_details": types_needing_refinement,
     }
 
 
@@ -3426,12 +4028,13 @@ def increment_dsl_regen_counter() -> int:
 @dataclass
 class DecompositionRecommendation:
     """Recommendation for what to decompose."""
-    target_type: str  # "node" or "step"
+    target_type: str  # "node" or "step" or "pair" (step_type, node_id)
     target_id: int  # node_id or dag_step_id
     target_desc: str  # Description for logging
     reason: str  # Why this needs decomposition
     win_rate: float  # Current success rate
     attempts: int  # Number of attempts
+    variance: float = 0.0  # Amplitude variance (high = inconsistent performance)
 
 
 def analyze_decomposition_needs(min_attempts: int = 3, max_win_rate: float = 0.5) -> dict:
@@ -3551,14 +4154,36 @@ def analyze_decomposition_needs(min_attempts: int = 3, max_win_rate: float = 0.5
                     attempts=stats["total"],
                 ))
 
+    # 4. HIGH-VARIANCE PAIRS: Find (step_type, node) pairs with inconsistent performance
+    # Per CLAUDE.md: "Destructive interference (mixed success/failure at same node)"
+    # High variance = node is too generic for this step type = decompose into specialized children
+    high_variance_pairs = get_high_variance_step_node_pairs(
+        min_samples=min_attempts,
+        variance_threshold=0.1,  # Flag pairs with >0.1 amplitude variance
+        limit=10,
+    )
+    pairs_to_decompose = []
+    for pair in high_variance_pairs:
+        pairs_to_decompose.append(DecompositionRecommendation(
+            target_type="pair",
+            target_id=pair["node_id"],
+            target_desc=f"{pair['dag_step_type']}/node_{pair['node_id']}",
+            reason=f"high variance (std={pair['amp_post_std']:.3f}, {pair['win_rate']*100:.0f}% win rate)",
+            win_rate=pair["win_rate"],
+            attempts=pair["uses"],
+            variance=pair["amp_post_variance"],
+        ))
+
     return {
         "nodes_to_decompose": nodes_to_decompose,
         "steps_to_decompose": steps_to_decompose,
+        "pairs_to_decompose": pairs_to_decompose,
         "stats": {
             "total_nodes_analyzed": len(node_stats),
             "total_steps_analyzed": len(step_stats),
             "nodes_failing": len(nodes_to_decompose),
             "steps_failing": len(steps_to_decompose),
+            "pairs_high_variance": len(pairs_to_decompose),
         }
     }
 
@@ -4372,12 +4997,9 @@ def run_diagnostic_postmortem(
     step_db,
     step_embeddings: dict[str, Any] = None,
 ) -> dict:
-    """Run diagnostic post-mortem on a completed DAG.
+    """Thin wrapper for backward compatibility. Use run_postmortem() instead.
 
-    Analyzes failures to determine what should be decomposed:
-    - dag_steps that are too complex
-    - signatures with wrong approaches
-    - routing misses
+    Calls _run_diagnostic_analysis() after checking if diagnostics are enabled.
 
     Args:
         dag_id: The DAG to analyze
@@ -4392,83 +5014,6 @@ def run_diagnostic_postmortem(
     if not DIAGNOSTIC_POSTMORTEM_ENABLED:
         return {"skipped": True, "reason": "DIAGNOSTIC_POSTMORTEM_ENABLED is False"}
 
-    # Get system maturity (signature count)
-    system_maturity = step_db.count_signatures() if step_db else 0
-    failure_threshold = get_diagnostic_failure_threshold(system_maturity)
-
-    # Get thread steps for this DAG
-    thread_steps = get_thread_steps_for_dag(dag_id)
-
-    # Group by (dag_step_id, node_id) to find repeated failures
-    pair_failures = {}  # (dag_step_id, node_id) -> failure count
-    pair_embeddings = {}  # (dag_step_id, node_id) -> step_embedding
-
-    for ts in thread_steps:
-        if ts.step_success == 0:  # Failed step
-            key = (ts.dag_step_id, ts.node_id)
-            pair_failures[key] = pair_failures.get(key, 0) + 1
-
-            # Store embedding if available
-            if step_embeddings and ts.dag_step_id in step_embeddings:
-                pair_embeddings[key] = step_embeddings[ts.dag_step_id]
-
-    # Diagnose pairs that exceed threshold
-    diagnoses = []
-    steps_to_decompose = []
-    sigs_to_decompose = []
-    routing_misses = []
-
-    for (dag_step_id, node_id), failure_count in pair_failures.items():
-        # Note: Using >= is intentional. failure_count is always an integer,
-        # and at cold start (THRESHOLD_MIN=1.0) we want a single failure to trigger.
-        # Using > would require 2 failures minimum even at cold start.
-        if failure_count >= failure_threshold:
-            # Run diagnosis
-            step_emb = pair_embeddings.get((dag_step_id, node_id))
-            diagnosis = diagnose_failure(node_id, step_emb, step_db)
-
-            diagnoses.append({
-                "dag_step_id": dag_step_id,
-                "node_id": node_id,
-                "failure_count": failure_count,
-                "verdict": diagnosis.verdict,
-                "scores": {
-                    "decompose_step": diagnosis.decompose_step_score,
-                    "decompose_sig": diagnosis.decompose_sig_score,
-                    "reroute": diagnosis.reroute_score,
-                },
-                "accuracy": diagnosis.accuracy,
-                "confidence": diagnosis.confidence,
-            })
-
-            # Collect recommendations by verdict
-            if diagnosis.verdict == "decompose_step":
-                steps_to_decompose.append(dag_step_id)
-            elif diagnosis.verdict == "decompose_signature":
-                sigs_to_decompose.append(node_id)
-            elif diagnosis.verdict == "reroute":
-                routing_misses.append((dag_step_id, node_id))
-
-    logger.info(
-        "[diagnostic] Post-mortem for %s: threshold=%.1f, pairs_analyzed=%d, "
-        "steps_decompose=%d, sigs_decompose=%d, reroutes=%d",
-        dag_id,
-        failure_threshold,
-        len(pair_failures),
-        len(steps_to_decompose),
-        len(sigs_to_decompose),
-        len(routing_misses),
-    )
-
-    return {
-        "dag_id": dag_id,
-        "system_maturity": system_maturity,
-        "failure_threshold": failure_threshold,
-        "pairs_analyzed": len(pair_failures),
-        "diagnoses": diagnoses,
-        "steps_to_decompose": list(set(steps_to_decompose)),
-        "signatures_to_decompose": list(set(sigs_to_decompose)),
-        "routing_misses": routing_misses,
-    }
+    return _run_diagnostic_analysis(dag_id, step_db, step_embeddings)
 
 

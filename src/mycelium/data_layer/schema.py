@@ -66,6 +66,14 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     similarity_mean REAL DEFAULT 0.0,       -- Running mean of cosine similarities to centroid
     similarity_m2 REAL DEFAULT 0.0,         -- Sum of squared differences (variance = M2/N)
 
+    -- Success Similarity Tracking (Welford's algorithm for adaptive rejection)
+    -- Tracks similarity scores of SUCCESSFUL matches (for adaptive rejection threshold)
+    -- Per CLAUDE.md: leaf nodes should reject dag_steps when similarity is below
+    -- their historical success distribution: threshold = mean - k*std
+    success_sim_count INTEGER DEFAULT 0,    -- N successful matches
+    success_sim_mean REAL DEFAULT 0.0,      -- Running mean of similarity on success
+    success_sim_m2 REAL DEFAULT 0.0,        -- M2 for variance (std = sqrt(M2/N))
+
     -- Umbrella routing (DAG of DAGs)
     is_semantic_umbrella INTEGER DEFAULT 0,  -- 1 if routes to children
     is_root INTEGER DEFAULT 0,  -- 1 if this is THE root signature (single entry point)
@@ -329,7 +337,8 @@ CREATE TABLE IF NOT EXISTS mcts_step_summaries (
     -- Wave function amplitude (minimal data for credit propagation)
     amplitude REAL DEFAULT 1.0,           -- Prior confidence
     amplitude_post REAL DEFAULT NULL,     -- Updated after grading
-    step_success INTEGER DEFAULT NULL     -- 1=success, 0=failure, NULL=unknown
+    step_success INTEGER DEFAULT NULL,    -- 1=success, 0=failure, NULL=unknown
+    similarity_score REAL DEFAULT NULL    -- Cosine similarity used for routing (for adaptive rejection)
 );
 CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_dag ON mcts_step_summaries(dag_id);
 CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_thread ON mcts_step_summaries(thread_id);
@@ -346,8 +355,23 @@ CREATE TABLE IF NOT EXISTS dag_step_node_stats (
     wins INTEGER DEFAULT 0,                   -- Times the thread won
     losses INTEGER DEFAULT 0,                 -- Times the thread lost
     win_rate REAL DEFAULT 0.5,                -- Computed: wins / uses (with prior)
-    avg_amplitude_post REAL DEFAULT 1.0,      -- Running avg of amplitude_post
-    amplitude_post_sum REAL DEFAULT 0.0,      -- Sum for incremental avg calculation
+    avg_amplitude_post REAL DEFAULT 1.0,      -- Running avg of amplitude_post (legacy)
+    amplitude_post_sum REAL DEFAULT 0.0,      -- Sum for incremental avg calculation (legacy)
+
+    -- Welford's algorithm for amplitude_post variance tracking (OUTCOME VARIANCE)
+    -- High variance = inconsistent performance = decomposition signal
+    -- Per CLAUDE.md: "The combination of (dag_step_id, node_id) is what we're learning"
+    amp_post_count INTEGER DEFAULT 0,         -- N in Welford's algorithm
+    amp_post_mean REAL DEFAULT 0.0,           -- Running mean of amplitude_post
+    amp_post_m2 REAL DEFAULT 0.0,             -- M2 for variance: var = M2/N
+
+    -- Welford's algorithm for similarity variance tracking (EMBEDDING VARIANCE)
+    -- High variance = dag_step_ids routed here have diverse embeddings = type too broad
+    -- Per CLAUDE.md: leaf_node ≡ dag_step_type should be 1:1
+    sim_count INTEGER DEFAULT 0,              -- N in Welford's algorithm
+    sim_mean REAL DEFAULT 0.0,                -- Running mean of similarity scores
+    sim_m2 REAL DEFAULT 0.0,                  -- M2 for variance: var = M2/N
+
     last_updated TEXT,                        -- ISO timestamp
     UNIQUE(dag_step_type, node_id),
     FOREIGN KEY (node_id) REFERENCES step_signatures(id) ON DELETE CASCADE
@@ -557,6 +581,21 @@ def migrate_db(conn) -> None:
             "ALTER TABLE step_signatures ADD COLUMN rejection_count INTEGER DEFAULT 0"
         )
 
+    # Add success similarity tracking for adaptive rejection (Welford's algorithm)
+    # Per mycelium-i601: leaves reject when similarity is below historical success distribution
+    if "success_sim_count" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN success_sim_count INTEGER DEFAULT 0"
+        )
+    if "success_sim_mean" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN success_sim_mean REAL DEFAULT 0.0"
+        )
+    if "success_sim_m2" not in existing_cols:
+        migrations.append(
+            "ALTER TABLE step_signatures ADD COLUMN success_sim_m2 REAL DEFAULT 0.0"
+        )
+
     # Run step_signatures migrations
     for sql in migrations:
         try:
@@ -578,6 +617,72 @@ def migrate_db(conn) -> None:
     except Exception as e:
         # Table might not exist yet (fresh DB)
         logger.debug("[schema] mcts_dag_steps migration skipped: %s", e)
+
+    # Migrate mcts_step_summaries table (add similarity_score for adaptive rejection per mycelium-i601)
+    try:
+        cursor = conn.execute("PRAGMA table_info(mcts_step_summaries)")
+        summary_cols = {row[1] for row in cursor.fetchall()}
+        if "similarity_score" not in summary_cols:
+            conn.execute("ALTER TABLE mcts_step_summaries ADD COLUMN similarity_score REAL DEFAULT NULL")
+            conn.commit()
+            logger.info("[schema] Added similarity_score column to mcts_step_summaries")
+    except Exception as e:
+        # Table might not exist yet (fresh DB)
+        logger.debug("[schema] mcts_step_summaries migration skipped: %s", e)
+
+    # Migrate dag_step_node_stats table (add Welford's columns for amplitude_post variance)
+    # High variance = inconsistent performance = decomposition signal
+    try:
+        cursor = conn.execute("PRAGMA table_info(dag_step_node_stats)")
+        dsns_cols = {row[1] for row in cursor.fetchall()}
+        dsns_migrations = []
+        if "amp_post_count" not in dsns_cols:
+            dsns_migrations.append(
+                "ALTER TABLE dag_step_node_stats ADD COLUMN amp_post_count INTEGER DEFAULT 0"
+            )
+        if "amp_post_mean" not in dsns_cols:
+            dsns_migrations.append(
+                "ALTER TABLE dag_step_node_stats ADD COLUMN amp_post_mean REAL DEFAULT 0.0"
+            )
+        if "amp_post_m2" not in dsns_cols:
+            dsns_migrations.append(
+                "ALTER TABLE dag_step_node_stats ADD COLUMN amp_post_m2 REAL DEFAULT 0.0"
+            )
+        for sql in dsns_migrations:
+            conn.execute(sql)
+        if dsns_migrations:
+            conn.commit()
+            logger.info("[schema] Added Welford's amplitude columns to dag_step_node_stats")
+    except Exception as e:
+        # Table might not exist yet (fresh DB)
+        logger.debug("[schema] dag_step_node_stats amplitude migration skipped: %s", e)
+
+    # Migrate dag_step_node_stats table (add Welford's columns for similarity variance)
+    # High similarity variance = dag_step_ids routed here have diverse embeddings = type too broad
+    try:
+        cursor = conn.execute("PRAGMA table_info(dag_step_node_stats)")
+        dsns_cols = {row[1] for row in cursor.fetchall()}
+        sim_migrations = []
+        if "sim_count" not in dsns_cols:
+            sim_migrations.append(
+                "ALTER TABLE dag_step_node_stats ADD COLUMN sim_count INTEGER DEFAULT 0"
+            )
+        if "sim_mean" not in dsns_cols:
+            sim_migrations.append(
+                "ALTER TABLE dag_step_node_stats ADD COLUMN sim_mean REAL DEFAULT 0.0"
+            )
+        if "sim_m2" not in dsns_cols:
+            sim_migrations.append(
+                "ALTER TABLE dag_step_node_stats ADD COLUMN sim_m2 REAL DEFAULT 0.0"
+            )
+        for sql in sim_migrations:
+            conn.execute(sql)
+        if sim_migrations:
+            conn.commit()
+            logger.info("[schema] Added Welford's similarity columns to dag_step_node_stats")
+    except Exception as e:
+        # Table might not exist yet (fresh DB)
+        logger.debug("[schema] dag_step_node_stats similarity migration skipped: %s", e)
 
     # Add new indexes (safe to run multiple times)
     index_migrations = [
