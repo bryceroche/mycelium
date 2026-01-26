@@ -3876,7 +3876,16 @@ Rules:
                         exploration_dag_ids.append(self._current_dag_id)
 
                     # Check if this thread found the correct answer
-                    if explore_result.answer and normalize_answer(explore_result.answer) == normalize_answer(ground_truth):
+                    is_correct = (
+                        explore_result.answer and
+                        normalize_answer(explore_result.answer) == normalize_answer(ground_truth)
+                    )
+
+                    # CRITICAL: Grade exploration threads so cross-DAG comparison works
+                    # Without this, threads have success=NULL and divergence detection fails
+                    self.record_problem_outcome(explore_result, is_correct, ground_truth=ground_truth)
+
+                    if is_correct:
                         logger.info("[reactive] Thread %d found winning path!", thread_idx + 1)
                         winning = (explore_result, self._root_thread_id)
                         stats["full_resolve_success"] = True
