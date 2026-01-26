@@ -3464,9 +3464,9 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
             )
             for pair in high_variance_pairs[:3]:  # Log top 3 for debugging
                 logger.debug(
-                    "[mcts] High variance: node=%d step=%s var=%.3f std=%.3f uses=%d",
+                    "[mcts] High variance: node=%d step=%s amp_var=%.3f sim_var=%.3f uses=%d",
                     pair["node_id"], pair["dag_step_type"][:30],
-                    pair["amp_post_variance"], pair["amp_post_std"], pair["uses"]
+                    pair["amp_post_variance"], pair["sim_variance"], pair["uses"]
                 )
 
     # Type refinement: detect dag_step_types that are too broad
@@ -3491,10 +3491,11 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
             )
             for type_info in types_needing_refinement[:3]:  # Log top 3 for debugging
                 logger.debug(
-                    "[mcts] Type refinement needed: type=%s nodes=%d avg_var=%.3f",
+                    "[mcts] Type refinement needed: type=%s nodes=%d amp_var=%.3f sim_var=%.3f",
                     type_info["dag_step_type"][:40],
                     type_info["high_variance_node_count"],
-                    type_info["avg_variance"]
+                    type_info["avg_amp_variance"],
+                    type_info["avg_sim_variance"]
                 )
 
     # Per beads mycelium-flbq: Accumulate high-conf-wrong nodes for DSL regen
