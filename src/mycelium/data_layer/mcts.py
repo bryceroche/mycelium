@@ -1705,21 +1705,24 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
 
     conn = get_db()
 
-    # Get per-node stats with STEP-LEVEL success (ss.step_success) as primary signal
-    # Fall back to thread-level (t.success) + amplitude when step_success is NULL
+    # Get per-node stats with THREAD-LEVEL success as primary signal
+    # step_success only means DSL executed without error - NOT that problem was correct
+    # Per CLAUDE.md: credit when problem correct, blame when problem wrong
     # NOTE: Uses mcts_step_summaries (lightweight) instead of mcts_thread_steps (detailed)
     cursor = conn.execute(
         """
         SELECT
             ss.node_id,
             COUNT(*) as total_steps,
-            -- STEP-LEVEL: Steps that succeeded at execution (most precise signal)
-            SUM(CASE WHEN ss.step_success = 1 THEN 1 ELSE 0 END) as step_succeeded,
-            -- STEP-LEVEL: Steps that failed at execution (precise blame)
+            -- CREDIT: Step executed AND thread won (problem correct)
+            SUM(CASE WHEN ss.step_success = 1 AND t.success = 1 THEN 1 ELSE 0 END) as step_succeeded_thread_won,
+            -- BLAME: Step executed AND thread lost (problem wrong - step may have caused it)
+            SUM(CASE WHEN ss.step_success = 1 AND t.success = 0 THEN 1 ELSE 0 END) as step_succeeded_thread_lost,
+            -- BLAME: Step failed at execution (DSL error)
             SUM(CASE WHEN ss.step_success = 0 THEN 1 ELSE 0 END) as step_failed,
             -- FALLBACK: Steps in winning threads (when step_success is NULL)
             SUM(CASE WHEN ss.step_success IS NULL AND t.success = 1 THEN 1 ELSE 0 END) as thread_won_no_step,
-            -- FALLBACK: High-confidence steps in losing threads (partial credit)
+            -- FALLBACK: High-confidence steps in losing threads (blame - was confident but wrong)
             SUM(CASE WHEN ss.step_success IS NULL AND t.success = 0 AND ss.amplitude >= ? THEN 1 ELSE 0 END) as high_conf_losing,
             -- FALLBACK: Low-confidence steps in losing threads (blame)
             SUM(CASE WHEN ss.step_success IS NULL AND t.success = 0 AND ss.amplitude < ? THEN 1 ELSE 0 END) as low_conf_losing,
@@ -1743,37 +1746,47 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
     }
 
     for row in cursor.fetchall():
-        (node_id, total_steps, step_succeeded, step_failed,
-         thread_won_no_step, high_conf_losing, low_conf_losing, avg_amp) = row
+        (node_id, total_steps, step_succeeded_thread_won, step_succeeded_thread_lost,
+         step_failed, thread_won_no_step, high_conf_losing, low_conf_losing, avg_amp) = row
 
         if total_steps == 0 or node_id is None:
             continue
 
         stats["nodes_processed"] += 1
 
-        # Priority 1: STEP-LEVEL SUCCESS - step itself succeeded
-        # This is the most precise signal - step executed without error
-        if step_succeeded > 0:
+        # Priority 1: CREDIT - step executed AND problem was correct
+        # Both conditions must be true for credit
+        if step_succeeded_thread_won > 0:
             step_db.increment_signature_successes(node_id, count=1, propagate_to_parents=True)
             stats["successes_credited"] += 1
             stats["step_level_credit"] += 1
             logger.debug(
-                "[mcts] Step-level credit to node %d (%d steps succeeded)",
-                node_id, step_succeeded
+                "[mcts] Credit to node %d (%d steps in winning thread)",
+                node_id, step_succeeded_thread_won
             )
 
-        # Priority 2: STEP-LEVEL FAILURE - step itself failed
-        # This is precise blame - this specific step caused the problem
+        # Priority 2: BLAME - step executed but problem was WRONG
+        # DSL ran fine but final answer was incorrect - this step may have caused it
+        elif step_succeeded_thread_lost > 0:
+            step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
+            stats["failures_credited"] += 1
+            stats["step_level_blame"] += 1
+            logger.debug(
+                "[mcts] Blame to node %d (%d steps in LOSING thread - answer was wrong)",
+                node_id, step_succeeded_thread_lost
+            )
+
+        # Priority 3: BLAME - step itself failed (DSL error)
         elif step_failed > 0:
             step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
             stats["failures_credited"] += 1
             stats["step_level_blame"] += 1
             logger.debug(
-                "[mcts] Step-level blame to node %d (%d steps failed)",
+                "[mcts] Blame to node %d (%d steps failed at DSL execution)",
                 node_id, step_failed
             )
 
-        # Priority 3: FALLBACK - thread won but step_success not tracked
+        # Priority 4: FALLBACK - thread won but step_success not tracked
         elif thread_won_no_step > 0:
             step_db.increment_signature_successes(node_id, count=1, propagate_to_parents=True)
             stats["successes_credited"] += 1
@@ -1782,23 +1795,21 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
                 node_id, thread_won_no_step
             )
 
-        # Priority 4: FALLBACK - high-confidence in losing thread (partial credit)
+        # Priority 5: FALLBACK - high-confidence in losing thread (blame - was confident but wrong)
         elif high_conf_losing > 0:
-            step_db.increment_signature_partial_success(
-                node_id, weight=PARTIAL_CREDIT_WEIGHT, propagate_to_parents=True
-            )
-            stats["partial_credits"] += 1
+            step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
+            stats["failures_credited"] += 1
             logger.debug(
-                "[mcts] Partial credit to node %d (%d high-conf losing steps, avg_amp=%.2f)",
+                "[mcts] Blame to node %d (%d high-conf steps in LOSING thread, avg_amp=%.2f)",
                 node_id, high_conf_losing, avg_amp or 0
             )
 
-        # Priority 5: FALLBACK - low-confidence in losing thread (blame)
+        # Priority 6: FALLBACK - low-confidence in losing thread (blame)
         elif low_conf_losing > 0:
             step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
             stats["failures_credited"] += 1
             logger.debug(
-                "[mcts] Thread-level blame to node %d (%d low-conf losing steps, avg_amp=%.2f)",
+                "[mcts] Blame to node %d (%d low-conf losing steps, avg_amp=%.2f)",
                 node_id, low_conf_losing, avg_amp or 0
             )
 
