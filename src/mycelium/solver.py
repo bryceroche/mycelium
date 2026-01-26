@@ -158,6 +158,9 @@ def update_accuracy(success: bool) -> float:
     import time
     now = time.time()
 
+    # Defensive: ensure success is a bool (not string/int)
+    success = bool(success)
+
     # Record to AdaptiveExploration for MCTS parameter adaptation
     from mycelium.mcts.adaptive import AdaptiveExploration
     AdaptiveExploration.get_instance().record_result(success)
