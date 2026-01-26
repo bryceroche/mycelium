@@ -506,6 +506,15 @@ VARIANCE_MIN_SAMPLES = 5  # Min observations before considering variance (cold s
 VARIANCE_THRESHOLD = 0.1  # Min variance to flag as "high" (needs decomposition)
 VARIANCE_CHECK_LIMIT = 20  # Max nodes to check per postmortem batch
 
+# Type refinement (Welford's algorithm at type level)
+# When MULTIPLE nodes have high variance on the SAME dag_step_type:
+#   ONE node high variance → decompose the node (handled above)
+#   MULTIPLE nodes high variance → type is too broad, needs refinement
+# This creates a closed loop where variance signals refine the type taxonomy
+TYPE_REFINEMENT_ENABLED = True  # Enable type refinement detection
+TYPE_REFINEMENT_MIN_NODES = 2  # Min nodes with high variance to flag type for refinement
+TYPE_REFINEMENT_CHECK_LIMIT = 10  # Max types to flag per postmortem batch
+
 # =============================================================================
 # MCTS INTERFERENCE PATTERNS (Constructive/Destructive)
 # =============================================================================

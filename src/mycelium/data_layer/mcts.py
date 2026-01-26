@@ -2187,6 +2187,87 @@ def get_high_variance_step_node_pairs(
     return results
 
 
+def get_types_needing_refinement(
+    min_samples: int = 5,
+    variance_threshold: float = 0.1,
+    min_nodes_for_type_refinement: int = 2,
+) -> list[dict]:
+    """Find dag_step_types that are too broad (multiple nodes have high variance).
+
+    When MULTIPLE nodes have high variance on the SAME dag_step_type, it suggests
+    the type bucket is too broad and should be refined into sub-types.
+
+    Single node with high variance → decompose the node
+    Multiple nodes with high variance on same type → refine the type
+
+    Args:
+        min_samples: Minimum observations per (type, node) pair
+        variance_threshold: Minimum variance to consider "high"
+        min_nodes_for_type_refinement: Min nodes with high variance to flag type
+
+    Returns:
+        List of dicts with: dag_step_type, high_variance_nodes, avg_variance
+        Sorted by number of affected nodes descending
+    """
+    from mycelium.config import STEP_NODE_STATS_ENABLED
+
+    if not STEP_NODE_STATS_ENABLED:
+        return []
+
+    conn = get_db()
+
+    # Get all high-variance pairs grouped by dag_step_type
+    cursor = conn.execute(
+        """
+        SELECT
+            dag_step_type,
+            node_id,
+            amp_post_count,
+            amp_post_m2,
+            uses,
+            win_rate
+        FROM dag_step_node_stats
+        WHERE amp_post_count >= ?
+        """,
+        (min_samples,),
+    )
+
+    # Group by dag_step_type
+    type_to_nodes: dict[str, list[dict]] = {}
+    for row in cursor.fetchall():
+        count = row["amp_post_count"]
+        m2 = row["amp_post_m2"] or 0.0
+        variance = m2 / count if count > 0 else 0.0
+
+        if variance >= variance_threshold:
+            dag_step_type = row["dag_step_type"]
+            if dag_step_type not in type_to_nodes:
+                type_to_nodes[dag_step_type] = []
+            type_to_nodes[dag_step_type].append({
+                "node_id": row["node_id"],
+                "variance": variance,
+                "uses": row["uses"],
+                "win_rate": row["win_rate"],
+            })
+
+    # Find types with multiple high-variance nodes
+    results = []
+    for dag_step_type, nodes in type_to_nodes.items():
+        if len(nodes) >= min_nodes_for_type_refinement:
+            avg_variance = sum(n["variance"] for n in nodes) / len(nodes)
+            results.append({
+                "dag_step_type": dag_step_type,
+                "high_variance_node_count": len(nodes),
+                "high_variance_nodes": nodes,
+                "avg_variance": avg_variance,
+            })
+
+    # Sort by number of affected nodes (most problematic types first)
+    results.sort(key=lambda x: x["high_variance_node_count"], reverse=True)
+
+    return results
+
+
 def propagate_step_node_stats(dag_id: str) -> dict:
     """Propagate post-mortem results to dag_step_node_stats table.
 
@@ -2431,13 +2512,15 @@ def get_thread_paths(dag_id: str) -> list[ThreadPath]:
     if not thread_outcomes:
         return []
 
-    # Get all steps for all threads, ordered by created_at within each thread
+    # Get all steps for all threads, ordered by id within each thread
+    # Uses mcts_step_summaries (always populated) instead of mcts_thread_steps
+    # (only populated for failures when LOG_DETAILED_STEPS_FAILURES_ONLY=True)
     steps_cursor = conn.execute(
         """
         SELECT thread_id, dag_step_id, node_id
-        FROM mcts_thread_steps
+        FROM mcts_step_summaries
         WHERE dag_id = ?
-        ORDER BY thread_id, created_at
+        ORDER BY thread_id, id
         """,
         (dag_id,),
     )
@@ -2462,35 +2545,54 @@ def get_thread_paths(dag_id: str) -> list[ThreadPath]:
     return paths
 
 
-def find_divergence_points(dag_id: str) -> list[DivergencePoint]:
+def find_divergence_points(dag_id: str, cross_dag_ids: list[str] = None) -> list[DivergencePoint]:
     """Find divergence points between winning and losing threads.
 
     Compares each winning thread against each losing thread to find where
     they share a common prefix but then diverge. This helps identify
     exactly which routing decision led to failure.
 
+    Supports cross-DAG comparison: when reactive exploration spawns new DAGs
+    to find a winning path, we need to compare the winning thread from the
+    exploration DAG against losing threads from the original failing DAG.
+
     Args:
-        dag_id: The DAG to analyze
+        dag_id: The primary DAG to analyze
+        cross_dag_ids: Optional list of additional DAG IDs to include in analysis.
+                      Threads from all DAGs are pooled together for comparison.
 
     Returns:
         List of DivergencePoint objects describing where paths split
     """
-    paths = get_thread_paths(dag_id)
+    # Collect threads from all DAGs (primary + cross-DAG)
+    all_dag_ids = [dag_id]
+    if cross_dag_ids:
+        all_dag_ids.extend(cross_dag_ids)
 
-    if not paths:
+    all_paths = []
+    for did in all_dag_ids:
+        paths = get_thread_paths(did)
+        all_paths.extend(paths)
+
+    if not all_paths:
         return []
 
-    # Separate winning and losing threads
-    winning = [p for p in paths if p.success == 1]
-    losing = [p for p in paths if p.success == 0]
+    # Separate winning and losing threads (across all DAGs)
+    winning = [p for p in all_paths if p.success == 1]
+    losing = [p for p in all_paths if p.success == 0]
 
     if not winning or not losing:
         # Need both to find divergence
-        logger.debug(
-            "[mcts] No divergence analysis for DAG %s: %d winning, %d losing threads",
-            dag_id, len(winning), len(losing)
+        logger.info(
+            "[mcts] No divergence analysis for DAGs %s: %d winning, %d losing threads (all_paths=%d)",
+            [d[:8] for d in all_dag_ids], len(winning), len(losing), len(all_paths)
         )
         return []
+
+    logger.info(
+        "[mcts] Cross-DAG divergence analysis: %d DAGs, %d winning, %d losing threads",
+        len(all_dag_ids), len(winning), len(losing)
+    )
 
     divergence_points = []
 
@@ -2543,7 +2645,7 @@ def find_divergence_points(dag_id: str) -> list[DivergencePoint]:
     return divergence_points
 
 
-def assign_divergence_blame(dag_id: str, step_db) -> dict:
+def assign_divergence_blame(dag_id: str, step_db, cross_dag_ids: list[str] = None) -> dict:
     """Assign targeted blame/credit based on divergence analysis.
 
     Per beads mycelium-2rss: Uses divergence points to assign more precise
@@ -2556,16 +2658,19 @@ def assign_divergence_blame(dag_id: str, step_db) -> dict:
     The insight is that the divergence point isn't always the root cause -
     sometimes a downstream step in the losing path is the actual problem.
 
+    Supports cross-DAG comparison for reactive exploration (see find_divergence_points).
+
     Args:
-        dag_id: The DAG to analyze
+        dag_id: The primary DAG to analyze
         step_db: StepSignatureDB for stat updates
+        cross_dag_ids: Optional list of additional DAG IDs for cross-DAG comparison
 
     Returns:
         Dict with divergence blame statistics
     """
     from mycelium.config import PARTIAL_CREDIT_WEIGHT
 
-    divergence_points = find_divergence_points(dag_id)
+    divergence_points = find_divergence_points(dag_id, cross_dag_ids=cross_dag_ids)
 
     if not divergence_points:
         return {
@@ -3278,6 +3383,34 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
                     pair["amp_post_variance"], pair["amp_post_std"], pair["uses"]
                 )
 
+    # Type refinement: detect dag_step_types that are too broad
+    # Per CLAUDE.md: "Closed loop where variance signals refine type taxonomy"
+    #   ONE node high variance → decompose the node (handled above)
+    #   MULTIPLE nodes high variance → type is too broad, needs refinement
+    from mycelium.config import (
+        TYPE_REFINEMENT_ENABLED, TYPE_REFINEMENT_MIN_NODES,
+        TYPE_REFINEMENT_CHECK_LIMIT
+    )
+    types_needing_refinement = []
+    if TYPE_REFINEMENT_ENABLED:
+        types_needing_refinement = get_types_needing_refinement(
+            min_samples=VARIANCE_MIN_SAMPLES,
+            variance_threshold=VARIANCE_THRESHOLD,
+            min_nodes_for_type_refinement=TYPE_REFINEMENT_MIN_NODES,
+        )[:TYPE_REFINEMENT_CHECK_LIMIT]
+        if types_needing_refinement:
+            logger.info(
+                "[mcts] Flagged %d types for refinement (multiple nodes with high variance)",
+                len(types_needing_refinement)
+            )
+            for type_info in types_needing_refinement[:3]:  # Log top 3 for debugging
+                logger.debug(
+                    "[mcts] Type refinement needed: type=%s nodes=%d avg_var=%.3f",
+                    type_info["dag_step_type"][:40],
+                    type_info["high_variance_node_count"],
+                    type_info["avg_variance"]
+                )
+
     # Per beads mycelium-flbq: Accumulate high-conf-wrong nodes for DSL regen
     # This tracks nodes that had high confidence but produced wrong answers
     if amplitude_stats.get("high_conf_wrong", 0) >= POSTMORTEM_DSL_REGEN_MIN_HIGH_CONF_WRONG:
@@ -3395,6 +3528,9 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         "steps_needing_decomposition": [(rec.target_id, rec.target_desc) for rec in decomp_analysis["steps_to_decompose"]],
         # Variance-based decomposition (Welford's algorithm)
         "variance_nodes_flagged": variance_nodes_flagged,
+        # Type refinement (types with multiple high-variance nodes)
+        "types_needing_refinement": [t["dag_step_type"] for t in types_needing_refinement],
+        "type_refinement_details": types_needing_refinement,
     }
 
 
