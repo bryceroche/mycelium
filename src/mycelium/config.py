@@ -499,21 +499,18 @@ AMPLITUDE_POST_PENALTY_THRESHOLD = 0.6  # avg_amplitude_post below this → pena
 AMPLITUDE_POST_PENALTY_MULT = 0.8  # Multiplicative penalty for low amplitude_post
 
 # Variance-based decomposition (Welford's algorithm)
-# High variance = inconsistent performance = node too generic = should decompose
-# Per CLAUDE.md: "Destructive interference (mixed results at same node)" triggers split
+# Per CLAUDE.md: leaf_node ≡ dag_step_type (1:1 mapping)
+# The learning unit is (dag_step_id, dag_step_type/node_id)
+#
+# Many dag_step_ids map to each node. Welford's tracks variance:
+# - OUTCOME variance (amp_post): dag_step_ids have inconsistent results
+# - EMBEDDING variance (sim): dag_step_ids are semantically diverse
+#
+# High variance in either → node is too broad → split into children
 VARIANCE_DECOMPOSE_ENABLED = True  # Flag high-variance nodes for decomposition
 VARIANCE_MIN_SAMPLES = 5  # Min observations before considering variance (cold start)
 VARIANCE_THRESHOLD = 0.1  # Min variance to flag as "high" (needs decomposition)
 VARIANCE_CHECK_LIMIT = 20  # Max nodes to check per postmortem batch
-
-# Type refinement (Welford's algorithm at type level)
-# When MULTIPLE nodes have high variance on the SAME dag_step_type:
-#   ONE node high variance → decompose the node (handled above)
-#   MULTIPLE nodes high variance → type is too broad, needs refinement
-# This creates a closed loop where variance signals refine the type taxonomy
-TYPE_REFINEMENT_ENABLED = True  # Enable type refinement detection
-TYPE_REFINEMENT_MIN_NODES = 2  # Min nodes with high variance to flag type for refinement
-TYPE_REFINEMENT_CHECK_LIMIT = 10  # Max types to flag per postmortem batch
 
 # =============================================================================
 # MCTS INTERFERENCE PATTERNS (Constructive/Destructive)

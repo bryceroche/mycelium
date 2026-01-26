@@ -2150,24 +2150,24 @@ def get_high_variance_step_node_pairs(
     variance_threshold: float = 0.1,
     limit: int = 20,
 ) -> list[dict]:
-    """Find (step_type, node_id) pairs with high variance (outcome OR embedding).
+    """Find nodes (dag_step_types) with high variance - candidates for decomposition.
 
-    High variance indicates a problem with the (type, node) pairing:
-    - High OUTCOME variance (amp_post): inconsistent results
-    - High EMBEDDING variance (sim): diverse dag_step_ids routed here
+    Per CLAUDE.md: leaf_node ≡ dag_step_type (1:1 mapping).
+    The learning unit is (dag_step_id, dag_step_type/node_id).
 
-    Either signal suggests the node is too generic and should be decomposed.
+    Many dag_step_ids map to each dag_step_type/node. Welford's tracks variance:
+    - OUTCOME variance (amp_post): dag_step_ids have inconsistent results
+    - EMBEDDING variance (sim): dag_step_ids are semantically diverse
 
-    Per CLAUDE.md: leaf_node ≡ dag_step_type should be 1:1 mapping.
-    High variance in either dimension signals the type needs refinement.
+    High variance in either → node is too broad → split into children.
 
     Args:
         min_samples: Minimum observations before considering variance (cold start)
         variance_threshold: Minimum variance to flag as "high" (default 0.1)
-        limit: Maximum number of pairs to return
+        limit: Maximum number of nodes to return
 
     Returns:
-        List of dicts with: dag_step_type, node_id, outcome/embedding variance, uses
+        List of dicts with: dag_step_type (≡ node), node_id, variances, uses
         Sorted by max variance descending (most problematic first)
     """
     from mycelium.config import STEP_NODE_STATS_ENABLED
@@ -2240,116 +2240,6 @@ def get_high_variance_step_node_pairs(
     results.sort(key=lambda x: x["max_variance"], reverse=True)
 
     return results[:limit]
-
-
-def get_types_needing_refinement(
-    min_samples: int = 5,
-    variance_threshold: float = 0.1,
-    min_nodes_for_type_refinement: int = 2,
-) -> list[dict]:
-    """Find dag_step_types that are too broad (multiple nodes have high variance).
-
-    When MULTIPLE nodes have high variance on the SAME dag_step_type, it suggests
-    the type bucket is too broad and should be refined into sub-types.
-
-    Single node with high variance → decompose the node
-    Multiple nodes with high variance on same type → refine the type
-
-    Considers BOTH variance types:
-    - OUTCOME variance (amp_post): inconsistent results
-    - EMBEDDING variance (sim): diverse dag_step_ids routed to same type
-
-    Per CLAUDE.md: leaf_node ≡ dag_step_type should be 1:1 mapping.
-
-    Args:
-        min_samples: Minimum observations per (type, node) pair
-        variance_threshold: Minimum variance to consider "high"
-        min_nodes_for_type_refinement: Min nodes with high variance to flag type
-
-    Returns:
-        List of dicts with: dag_step_type, high_variance_nodes, avg_variance
-        Sorted by number of affected nodes descending
-    """
-    from mycelium.config import STEP_NODE_STATS_ENABLED
-
-    if not STEP_NODE_STATS_ENABLED:
-        return []
-
-    conn = get_db()
-
-    # Get all pairs with enough samples for EITHER metric
-    cursor = conn.execute(
-        """
-        SELECT
-            dag_step_type,
-            node_id,
-            amp_post_count,
-            amp_post_m2,
-            sim_count,
-            sim_m2,
-            uses,
-            win_rate
-        FROM dag_step_node_stats
-        WHERE amp_post_count >= ? OR sim_count >= ?
-        """,
-        (min_samples, min_samples),
-    )
-
-    # Group by dag_step_type, tracking both variance types
-    type_to_nodes: dict[str, list[dict]] = {}
-    for row in cursor.fetchall():
-        # Compute outcome variance
-        amp_count = row["amp_post_count"] or 0
-        amp_m2 = row["amp_post_m2"] or 0.0
-        amp_variance = amp_m2 / amp_count if amp_count > 0 else 0.0
-
-        # Compute embedding variance
-        sim_count = row["sim_count"] or 0
-        sim_m2 = row["sim_m2"] or 0.0
-        sim_variance = sim_m2 / sim_count if sim_count > 0 else 0.0
-
-        # Flag if EITHER variance exceeds threshold (with enough samples)
-        has_high_outcome_var = amp_count >= min_samples and amp_variance >= variance_threshold
-        has_high_embedding_var = sim_count >= min_samples and sim_variance >= variance_threshold
-
-        if has_high_outcome_var or has_high_embedding_var:
-            dag_step_type = row["dag_step_type"]
-            if dag_step_type not in type_to_nodes:
-                type_to_nodes[dag_step_type] = []
-            type_to_nodes[dag_step_type].append({
-                "node_id": row["node_id"],
-                "amp_variance": amp_variance,
-                "sim_variance": sim_variance,
-                "max_variance": max(amp_variance, sim_variance),
-                "has_high_outcome_var": has_high_outcome_var,
-                "has_high_embedding_var": has_high_embedding_var,
-                "uses": row["uses"],
-                "win_rate": row["win_rate"],
-            })
-
-    # Find types with multiple high-variance nodes
-    results = []
-    for dag_step_type, nodes in type_to_nodes.items():
-        if len(nodes) >= min_nodes_for_type_refinement:
-            avg_amp_variance = sum(n["amp_variance"] for n in nodes) / len(nodes)
-            avg_sim_variance = sum(n["sim_variance"] for n in nodes) / len(nodes)
-            nodes_with_outcome_var = sum(1 for n in nodes if n["has_high_outcome_var"])
-            nodes_with_embedding_var = sum(1 for n in nodes if n["has_high_embedding_var"])
-            results.append({
-                "dag_step_type": dag_step_type,
-                "high_variance_node_count": len(nodes),
-                "high_variance_nodes": nodes,
-                "avg_amp_variance": avg_amp_variance,
-                "avg_sim_variance": avg_sim_variance,
-                "avg_variance": max(avg_amp_variance, avg_sim_variance),
-                "nodes_with_outcome_var": nodes_with_outcome_var,
-                "nodes_with_embedding_var": nodes_with_embedding_var,
-            })
-
-    # Sort by number of affected nodes (most problematic types first)
-    results.sort(key=lambda x: x["high_variance_node_count"], reverse=True)
-
-    return results
 
 
 def propagate_step_node_stats(dag_id: str) -> dict:
@@ -3469,35 +3359,6 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
                     pair["amp_post_variance"], pair["sim_variance"], pair["uses"]
                 )
 
-    # Type refinement: detect dag_step_types that are too broad
-    # Per CLAUDE.md: "Closed loop where variance signals refine type taxonomy"
-    #   ONE node high variance → decompose the node (handled above)
-    #   MULTIPLE nodes high variance → type is too broad, needs refinement
-    from mycelium.config import (
-        TYPE_REFINEMENT_ENABLED, TYPE_REFINEMENT_MIN_NODES,
-        TYPE_REFINEMENT_CHECK_LIMIT
-    )
-    types_needing_refinement = []
-    if TYPE_REFINEMENT_ENABLED:
-        types_needing_refinement = get_types_needing_refinement(
-            min_samples=VARIANCE_MIN_SAMPLES,
-            variance_threshold=VARIANCE_THRESHOLD,
-            min_nodes_for_type_refinement=TYPE_REFINEMENT_MIN_NODES,
-        )[:TYPE_REFINEMENT_CHECK_LIMIT]
-        if types_needing_refinement:
-            logger.info(
-                "[mcts] Flagged %d types for refinement (multiple nodes with high variance)",
-                len(types_needing_refinement)
-            )
-            for type_info in types_needing_refinement[:3]:  # Log top 3 for debugging
-                logger.debug(
-                    "[mcts] Type refinement needed: type=%s nodes=%d amp_var=%.3f sim_var=%.3f",
-                    type_info["dag_step_type"][:40],
-                    type_info["high_variance_node_count"],
-                    type_info["avg_amp_variance"],
-                    type_info["avg_sim_variance"]
-                )
-
     # Per beads mycelium-flbq: Accumulate high-conf-wrong nodes for DSL regen
     # This tracks nodes that had high confidence but produced wrong answers
     if amplitude_stats.get("high_conf_wrong", 0) >= POSTMORTEM_DSL_REGEN_MIN_HIGH_CONF_WRONG:
@@ -3614,10 +3475,8 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         "nodes_needing_decomposition": [rec.target_id for rec in decomp_analysis["nodes_to_decompose"]],
         "steps_needing_decomposition": [(rec.target_id, rec.target_desc) for rec in decomp_analysis["steps_to_decompose"]],
         # Variance-based decomposition (Welford's algorithm)
+        # Per CLAUDE.md: leaf_node ≡ dag_step_type (1:1), high variance → split node
         "variance_nodes_flagged": variance_nodes_flagged,
-        # Type refinement (types with multiple high-variance nodes)
-        "types_needing_refinement": [t["dag_step_type"] for t in types_needing_refinement],
-        "type_refinement_details": types_needing_refinement,
     }
 
 
