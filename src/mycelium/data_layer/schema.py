@@ -358,12 +358,19 @@ CREATE TABLE IF NOT EXISTS dag_step_node_stats (
     avg_amplitude_post REAL DEFAULT 1.0,      -- Running avg of amplitude_post (legacy)
     amplitude_post_sum REAL DEFAULT 0.0,      -- Sum for incremental avg calculation (legacy)
 
-    -- Welford's algorithm for amplitude_post variance tracking
+    -- Welford's algorithm for amplitude_post variance tracking (OUTCOME VARIANCE)
     -- High variance = inconsistent performance = decomposition signal
     -- Per CLAUDE.md: "The combination of (dag_step_id, node_id) is what we're learning"
     amp_post_count INTEGER DEFAULT 0,         -- N in Welford's algorithm
     amp_post_mean REAL DEFAULT 0.0,           -- Running mean of amplitude_post
     amp_post_m2 REAL DEFAULT 0.0,             -- M2 for variance: var = M2/N
+
+    -- Welford's algorithm for similarity variance tracking (EMBEDDING VARIANCE)
+    -- High variance = dag_step_ids routed here have diverse embeddings = type too broad
+    -- Per CLAUDE.md: leaf_node ≡ dag_step_type should be 1:1
+    sim_count INTEGER DEFAULT 0,              -- N in Welford's algorithm
+    sim_mean REAL DEFAULT 0.0,                -- Running mean of similarity scores
+    sim_m2 REAL DEFAULT 0.0,                  -- M2 for variance: var = M2/N
 
     last_updated TEXT,                        -- ISO timestamp
     UNIQUE(dag_step_type, node_id),
@@ -645,10 +652,37 @@ def migrate_db(conn) -> None:
             conn.execute(sql)
         if dsns_migrations:
             conn.commit()
-            logger.info("[schema] Added Welford's columns to dag_step_node_stats")
+            logger.info("[schema] Added Welford's amplitude columns to dag_step_node_stats")
     except Exception as e:
         # Table might not exist yet (fresh DB)
-        logger.debug("[schema] dag_step_node_stats migration skipped: %s", e)
+        logger.debug("[schema] dag_step_node_stats amplitude migration skipped: %s", e)
+
+    # Migrate dag_step_node_stats table (add Welford's columns for similarity variance)
+    # High similarity variance = dag_step_ids routed here have diverse embeddings = type too broad
+    try:
+        cursor = conn.execute("PRAGMA table_info(dag_step_node_stats)")
+        dsns_cols = {row[1] for row in cursor.fetchall()}
+        sim_migrations = []
+        if "sim_count" not in dsns_cols:
+            sim_migrations.append(
+                "ALTER TABLE dag_step_node_stats ADD COLUMN sim_count INTEGER DEFAULT 0"
+            )
+        if "sim_mean" not in dsns_cols:
+            sim_migrations.append(
+                "ALTER TABLE dag_step_node_stats ADD COLUMN sim_mean REAL DEFAULT 0.0"
+            )
+        if "sim_m2" not in dsns_cols:
+            sim_migrations.append(
+                "ALTER TABLE dag_step_node_stats ADD COLUMN sim_m2 REAL DEFAULT 0.0"
+            )
+        for sql in sim_migrations:
+            conn.execute(sql)
+        if sim_migrations:
+            conn.commit()
+            logger.info("[schema] Added Welford's similarity columns to dag_step_node_stats")
+    except Exception as e:
+        # Table might not exist yet (fresh DB)
+        logger.debug("[schema] dag_step_node_stats similarity migration skipped: %s", e)
 
     # Add new indexes (safe to run multiple times)
     index_migrations = [

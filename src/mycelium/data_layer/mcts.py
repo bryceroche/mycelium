@@ -1895,20 +1895,26 @@ def update_dag_step_node_stats(
     node_id: int,
     won: bool,
     amplitude_post: float,
+    similarity_score: float = None,
 ) -> None:
     """Upsert stats for a (dag_step_type, node_id) pair.
 
     Called during post-mortem to materialize (step, node) performance.
     Routing then queries these stats to make better decisions.
 
-    Uses Welford's online algorithm for numerically stable variance tracking.
-    High variance in amplitude_post = inconsistent performance = decomposition signal.
+    Uses Welford's online algorithm for numerically stable variance tracking:
+    - OUTCOME VARIANCE (amplitude_post): High variance = inconsistent results
+    - EMBEDDING VARIANCE (similarity_score): High variance = type too broad
+
+    Per CLAUDE.md: leaf_node ≡ dag_step_type should be 1:1 mapping.
+    High variance in either dimension signals the type needs refinement.
 
     Args:
         dag_step_type: The step type (e.g., "compute_sum", "compute_product")
         node_id: The signature ID that handled this step
         won: Whether the thread won (correct answer)
         amplitude_post: The post-observation amplitude for this step
+        similarity_score: Cosine similarity between dag_step embedding and node centroid
     """
     from mycelium.config import (
         STEP_NODE_STATS_ENABLED,
@@ -1932,16 +1938,21 @@ def update_dag_step_node_stats(
     win_inc = 1 if won else 0
     loss_inc = 0 if won else 1
 
-    # Step 1: Check if row exists and get current Welford state
+    # Step 1: Check if row exists and get current Welford state for both metrics
     cursor = conn.execute(
         """
-        SELECT amp_post_count, amp_post_mean, amp_post_m2
+        SELECT amp_post_count, amp_post_mean, amp_post_m2,
+               sim_count, sim_mean, sim_m2
         FROM dag_step_node_stats
         WHERE dag_step_type = ? AND node_id = ?
         """,
         (dag_step_type, node_id),
     )
     row = cursor.fetchone()
+
+    # Compute Welford's updates for similarity (if provided)
+    # Similarity tracks embedding variance between dag_step_ids and the type
+    has_sim = similarity_score is not None
 
     if row is None:
         # New row: initialize with first observation
@@ -1951,9 +1962,10 @@ def update_dag_step_node_stats(
             INSERT INTO dag_step_node_stats (
                 dag_step_type, node_id, uses, wins, losses,
                 amplitude_post_sum, amp_post_count, amp_post_mean, amp_post_m2,
+                sim_count, sim_mean, sim_m2,
                 last_updated
             )
-            VALUES (?, ?, 1, ?, ?, ?, 1, ?, 0.0, ?)
+            VALUES (?, ?, 1, ?, ?, ?, 1, ?, 0.0, ?, ?, 0.0, ?)
             """,
             (
                 dag_step_type,
@@ -1962,27 +1974,39 @@ def update_dag_step_node_stats(
                 loss_inc,
                 amplitude_post,  # amplitude_post_sum (legacy)
                 amplitude_post,  # amp_post_mean (Welford's)
+                1 if has_sim else 0,  # sim_count
+                similarity_score if has_sim else 0.0,  # sim_mean
                 now,
             ),
         )
     else:
-        # Existing row: update using Welford's algorithm
-        old_count, old_mean, old_m2 = row
-        old_count = old_count or 0
-        old_mean = old_mean or 0.0
-        old_m2 = old_m2 or 0.0
+        # Existing row: update using Welford's algorithm for both metrics
+        old_amp_count, old_amp_mean, old_amp_m2, old_sim_count, old_sim_mean, old_sim_m2 = row
+        old_amp_count = old_amp_count or 0
+        old_amp_mean = old_amp_mean or 0.0
+        old_amp_m2 = old_amp_m2 or 0.0
+        old_sim_count = old_sim_count or 0
+        old_sim_mean = old_sim_mean or 0.0
+        old_sim_m2 = old_sim_m2 or 0.0
 
-        # Welford's update formula:
-        # n = n + 1
-        # delta = x - mean
-        # mean = mean + delta / n
-        # delta2 = x - mean  (using NEW mean)
-        # m2 = m2 + delta * delta2
-        new_count = old_count + 1
-        delta = amplitude_post - old_mean
-        new_mean = old_mean + delta / new_count
-        delta2 = amplitude_post - new_mean
-        new_m2 = old_m2 + delta * delta2
+        # Welford's update for amplitude_post (OUTCOME VARIANCE)
+        new_amp_count = old_amp_count + 1
+        amp_delta = amplitude_post - old_amp_mean
+        new_amp_mean = old_amp_mean + amp_delta / new_amp_count
+        amp_delta2 = amplitude_post - new_amp_mean
+        new_amp_m2 = old_amp_m2 + amp_delta * amp_delta2
+
+        # Welford's update for similarity (EMBEDDING VARIANCE)
+        if has_sim:
+            new_sim_count = old_sim_count + 1
+            sim_delta = similarity_score - old_sim_mean
+            new_sim_mean = old_sim_mean + sim_delta / new_sim_count
+            sim_delta2 = similarity_score - new_sim_mean
+            new_sim_m2 = old_sim_m2 + sim_delta * sim_delta2
+        else:
+            new_sim_count = old_sim_count
+            new_sim_mean = old_sim_mean
+            new_sim_m2 = old_sim_m2
 
         conn.execute(
             """
@@ -1994,6 +2018,9 @@ def update_dag_step_node_stats(
                 amp_post_count = ?,
                 amp_post_mean = ?,
                 amp_post_m2 = ?,
+                sim_count = ?,
+                sim_mean = ?,
+                sim_m2 = ?,
                 last_updated = ?
             WHERE dag_step_type = ? AND node_id = ?
             """,
@@ -2001,9 +2028,12 @@ def update_dag_step_node_stats(
                 win_inc,
                 loss_inc,
                 amplitude_post,
-                new_count,
-                new_mean,
-                new_m2,
+                new_amp_count,
+                new_amp_mean,
+                new_amp_m2,
+                new_sim_count,
+                new_sim_mean,
+                new_sim_m2,
                 now,
                 dag_step_type,
                 node_id,
@@ -2028,8 +2058,8 @@ def update_dag_step_node_stats(
     )
 
     logger.debug(
-        "[mcts] Updated step-node stats: %s/node_%d won=%s amp_post=%.2f",
-        dag_step_type, node_id, won, amplitude_post
+        "[mcts] Updated step-node stats: %s/node_%d won=%s amp_post=%.2f sim=%.2f",
+        dag_step_type, node_id, won, amplitude_post, similarity_score or 0.0
     )
 
 
@@ -2120,14 +2150,16 @@ def get_high_variance_step_node_pairs(
     variance_threshold: float = 0.1,
     limit: int = 20,
 ) -> list[dict]:
-    """Find (step_type, node_id) pairs with high amplitude_post variance.
+    """Find (step_type, node_id) pairs with high variance (outcome OR embedding).
 
-    High variance indicates inconsistent performance - sometimes the node works
-    well for this step type, sometimes it doesn't. This is a signal that the
-    node is too generic and should be decomposed into specialized children.
+    High variance indicates a problem with the (type, node) pairing:
+    - High OUTCOME variance (amp_post): inconsistent results
+    - High EMBEDDING variance (sim): diverse dag_step_ids routed here
 
-    Per CLAUDE.md: "Destructive interference (mixed success/failure at same node)"
-    triggers decomposition.
+    Either signal suggests the node is too generic and should be decomposed.
+
+    Per CLAUDE.md: leaf_node ≡ dag_step_type should be 1:1 mapping.
+    High variance in either dimension signals the type needs refinement.
 
     Args:
         min_samples: Minimum observations before considering variance (cold start)
@@ -2135,8 +2167,8 @@ def get_high_variance_step_node_pairs(
         limit: Maximum number of pairs to return
 
     Returns:
-        List of dicts with: dag_step_type, node_id, variance, std, uses, win_rate
-        Sorted by variance descending (most inconsistent first)
+        List of dicts with: dag_step_type, node_id, outcome/embedding variance, uses
+        Sorted by max variance descending (most problematic first)
     """
     from mycelium.config import STEP_NODE_STATS_ENABLED
 
@@ -2145,7 +2177,7 @@ def get_high_variance_step_node_pairs(
 
     conn = get_db()
 
-    # Query pairs with enough samples and compute variance
+    # Query pairs with enough samples for EITHER metric
     cursor = conn.execute(
         """
         SELECT
@@ -2154,37 +2186,60 @@ def get_high_variance_step_node_pairs(
             amp_post_count,
             amp_post_mean,
             amp_post_m2,
+            sim_count,
+            sim_mean,
+            sim_m2,
             uses,
             win_rate
         FROM dag_step_node_stats
-        WHERE amp_post_count >= ?
-        ORDER BY amp_post_m2 / amp_post_count DESC
-        LIMIT ?
+        WHERE amp_post_count >= ? OR sim_count >= ?
         """,
-        (min_samples, limit * 2),  # Fetch extra to filter by threshold
+        (min_samples, min_samples),
     )
 
     results = []
     for row in cursor.fetchall():
-        count = row["amp_post_count"]
-        m2 = row["amp_post_m2"] or 0.0
-        variance = m2 / count if count > 0 else 0.0
+        # Compute outcome variance (amplitude_post)
+        amp_count = row["amp_post_count"] or 0
+        amp_m2 = row["amp_post_m2"] or 0.0
+        amp_variance = amp_m2 / amp_count if amp_count > 0 else 0.0
 
-        if variance >= variance_threshold:
+        # Compute embedding variance (similarity)
+        sim_count = row["sim_count"] or 0
+        sim_m2 = row["sim_m2"] or 0.0
+        sim_variance = sim_m2 / sim_count if sim_count > 0 else 0.0
+
+        # Flag if EITHER variance exceeds threshold
+        has_high_outcome_var = amp_count >= min_samples and amp_variance >= variance_threshold
+        has_high_embedding_var = sim_count >= min_samples and sim_variance >= variance_threshold
+
+        if has_high_outcome_var or has_high_embedding_var:
+            max_variance = max(amp_variance, sim_variance)
             results.append({
                 "dag_step_type": row["dag_step_type"],
                 "node_id": row["node_id"],
-                "amp_post_variance": variance,
-                "amp_post_std": variance ** 0.5,
-                "amp_post_mean": row["amp_post_mean"],
+                # Outcome variance (amplitude_post)
+                "amp_post_variance": amp_variance,
+                "amp_post_std": amp_variance ** 0.5,
+                "amp_post_mean": row["amp_post_mean"] or 0.0,
+                "amp_post_count": amp_count,
+                # Embedding variance (similarity)
+                "sim_variance": sim_variance,
+                "sim_std": sim_variance ** 0.5,
+                "sim_mean": row["sim_mean"] or 0.0,
+                "sim_count": sim_count,
+                # Combined metrics
+                "max_variance": max_variance,
+                "has_high_outcome_var": has_high_outcome_var,
+                "has_high_embedding_var": has_high_embedding_var,
                 "uses": row["uses"],
                 "win_rate": row["win_rate"],
             })
 
-        if len(results) >= limit:
-            break
+    # Sort by max variance descending (most problematic first)
+    results.sort(key=lambda x: x["max_variance"], reverse=True)
 
-    return results
+    return results[:limit]
 
 
 def get_types_needing_refinement(
@@ -2199,6 +2254,12 @@ def get_types_needing_refinement(
 
     Single node with high variance → decompose the node
     Multiple nodes with high variance on same type → refine the type
+
+    Considers BOTH variance types:
+    - OUTCOME variance (amp_post): inconsistent results
+    - EMBEDDING variance (sim): diverse dag_step_ids routed to same type
+
+    Per CLAUDE.md: leaf_node ≡ dag_step_type should be 1:1 mapping.
 
     Args:
         min_samples: Minimum observations per (type, node) pair
@@ -2216,7 +2277,7 @@ def get_types_needing_refinement(
 
     conn = get_db()
 
-    # Get all high-variance pairs grouped by dag_step_type
+    # Get all pairs with enough samples for EITHER metric
     cursor = conn.execute(
         """
         SELECT
@@ -2224,28 +2285,44 @@ def get_types_needing_refinement(
             node_id,
             amp_post_count,
             amp_post_m2,
+            sim_count,
+            sim_m2,
             uses,
             win_rate
         FROM dag_step_node_stats
-        WHERE amp_post_count >= ?
+        WHERE amp_post_count >= ? OR sim_count >= ?
         """,
-        (min_samples,),
+        (min_samples, min_samples),
     )
 
-    # Group by dag_step_type
+    # Group by dag_step_type, tracking both variance types
     type_to_nodes: dict[str, list[dict]] = {}
     for row in cursor.fetchall():
-        count = row["amp_post_count"]
-        m2 = row["amp_post_m2"] or 0.0
-        variance = m2 / count if count > 0 else 0.0
+        # Compute outcome variance
+        amp_count = row["amp_post_count"] or 0
+        amp_m2 = row["amp_post_m2"] or 0.0
+        amp_variance = amp_m2 / amp_count if amp_count > 0 else 0.0
 
-        if variance >= variance_threshold:
+        # Compute embedding variance
+        sim_count = row["sim_count"] or 0
+        sim_m2 = row["sim_m2"] or 0.0
+        sim_variance = sim_m2 / sim_count if sim_count > 0 else 0.0
+
+        # Flag if EITHER variance exceeds threshold (with enough samples)
+        has_high_outcome_var = amp_count >= min_samples and amp_variance >= variance_threshold
+        has_high_embedding_var = sim_count >= min_samples and sim_variance >= variance_threshold
+
+        if has_high_outcome_var or has_high_embedding_var:
             dag_step_type = row["dag_step_type"]
             if dag_step_type not in type_to_nodes:
                 type_to_nodes[dag_step_type] = []
             type_to_nodes[dag_step_type].append({
                 "node_id": row["node_id"],
-                "variance": variance,
+                "amp_variance": amp_variance,
+                "sim_variance": sim_variance,
+                "max_variance": max(amp_variance, sim_variance),
+                "has_high_outcome_var": has_high_outcome_var,
+                "has_high_embedding_var": has_high_embedding_var,
                 "uses": row["uses"],
                 "win_rate": row["win_rate"],
             })
@@ -2254,12 +2331,19 @@ def get_types_needing_refinement(
     results = []
     for dag_step_type, nodes in type_to_nodes.items():
         if len(nodes) >= min_nodes_for_type_refinement:
-            avg_variance = sum(n["variance"] for n in nodes) / len(nodes)
+            avg_amp_variance = sum(n["amp_variance"] for n in nodes) / len(nodes)
+            avg_sim_variance = sum(n["sim_variance"] for n in nodes) / len(nodes)
+            nodes_with_outcome_var = sum(1 for n in nodes if n["has_high_outcome_var"])
+            nodes_with_embedding_var = sum(1 for n in nodes if n["has_high_embedding_var"])
             results.append({
                 "dag_step_type": dag_step_type,
                 "high_variance_node_count": len(nodes),
                 "high_variance_nodes": nodes,
-                "avg_variance": avg_variance,
+                "avg_amp_variance": avg_amp_variance,
+                "avg_sim_variance": avg_sim_variance,
+                "avg_variance": max(avg_amp_variance, avg_sim_variance),
+                "nodes_with_outcome_var": nodes_with_outcome_var,
+                "nodes_with_embedding_var": nodes_with_embedding_var,
             })
 
     # Sort by number of affected nodes (most problematic types first)
@@ -2296,6 +2380,7 @@ def propagate_step_node_stats(dag_id: str) -> dict:
         SELECT
             ss.node_id,
             ss.amplitude_post,
+            ss.similarity_score,
             t.success as thread_won,
             ds.dsl_hint,
             ds.step_desc
@@ -2310,7 +2395,7 @@ def propagate_step_node_stats(dag_id: str) -> dict:
     stats = {"pairs_updated": 0}
 
     for row in cursor.fetchall():
-        node_id, amplitude_post, thread_won, dsl_hint, step_desc = row
+        node_id, amplitude_post, similarity_score, thread_won, dsl_hint, step_desc = row
 
         # Use dsl_hint (e.g., "compute_sum") for better normalization
         # Fall back to step_desc if dsl_hint not available
@@ -2321,6 +2406,7 @@ def propagate_step_node_stats(dag_id: str) -> dict:
             node_id=node_id,
             won=bool(thread_won),
             amplitude_post=amplitude_post,
+            similarity_score=similarity_score,
         )
         stats["pairs_updated"] += 1
 
