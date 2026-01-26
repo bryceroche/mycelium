@@ -3337,8 +3337,7 @@ Rules:
     def _answers_match(self, answer1: str, answer2: str) -> bool:
         """Check if two answers are equivalent (for operational equivalence).
 
-        Simple numeric comparison for now. Could be extended with LLM judge
-        for more complex equivalence checking.
+        Uses normalize_answer for consistency with pipeline evaluation.
 
         Args:
             answer1: First answer string
@@ -3350,15 +3349,16 @@ Rules:
         if answer1 is None or answer2 is None:
             return False
 
-        # Normalize: strip whitespace, lowercase
-        a1 = answer1.strip().lower()
-        a2 = answer2.strip().lower()
+        # Use normalize_answer for consistency with pipeline evaluation
+        # This handles LaTeX, currency, units, fractions, etc.
+        a1 = normalize_answer(answer1)
+        a2 = normalize_answer(answer2)
 
-        # Direct match
+        # Direct match after normalization
         if a1 == a2:
             return True
 
-        # Try numeric comparison (handles "42" vs "42.0" vs "42.00")
+        # Try numeric comparison as fallback (handles "42" vs "42.0" vs "42.00")
         try:
             n1 = float(a1.replace(",", ""))
             n2 = float(a2.replace(",", ""))
@@ -3848,7 +3848,9 @@ Rules:
         }
 
         winning = None
-        all_dag_ids = []  # Collect all DAG IDs for cross-examination
+        # Save original DAG ID (contains losing threads) for cross-DAG comparison
+        original_dag_id = self._current_dag_id
+        exploration_dag_ids = []  # Collect exploration DAG IDs (may contain winning threads)
 
         # Try N full re-solves with forced exploration (higher temp + epsilon for diversity)
         # Per mycelium-l703: spawn multiple threads for cross-examination
@@ -3871,7 +3873,7 @@ Rules:
 
                     explore_result = await self.solve(result.problem, ground_truth=ground_truth)
                     if self._current_dag_id:
-                        all_dag_ids.append(self._current_dag_id)
+                        exploration_dag_ids.append(self._current_dag_id)
 
                     # Check if this thread found the correct answer
                     if explore_result.answer and normalize_answer(explore_result.answer) == normalize_answer(ground_truth):
@@ -3889,7 +3891,7 @@ Rules:
                 self._force_exploration = False
                 self.planner = original_planner  # Restore original planner
 
-            stats["total_dags_for_crossexam"] = len(all_dag_ids)
+            stats["total_dags_for_crossexam"] = len(exploration_dag_ids) + (1 if original_dag_id else 0)
 
         # Fallback: try single-step alternatives (original approach)
         if winning is None:
@@ -3934,44 +3936,64 @@ Rules:
         stats["winning_path_found"] = True
         logger.info(
             "[reactive] Found winning thread %s, running cross-examination across %d DAGs",
-            winning_thread_id, len(all_dag_ids) if all_dag_ids else 1
+            winning_thread_id, len(exploration_dag_ids) + (1 if original_dag_id else 0)
         )
 
-        # Cross-examine ALL exploration DAGs to find divergence points
-        # Per mycelium-l703: compare winning vs losing threads across all exploration runs
-        dags_to_analyze = all_dag_ids if all_dag_ids else ([self._current_dag_id] if self._current_dag_id else [])
+        # Cross-examine using cross-DAG comparison
+        # Original DAG (losing threads) vs exploration DAGs (potential winning threads)
+        # Per mycelium-l703: compare winning vs losing threads ACROSS DAGs
         total_divergence_points = 0
         total_blame_assigned = 0
         all_blame_stats = {}
 
-        for dag_id in dags_to_analyze:
-            divergence_points = find_divergence_points(dag_id)
-            total_divergence_points += len(divergence_points)
+        if original_dag_id and exploration_dag_ids:
+            # Cross-DAG comparison: original (losers) + exploration (potential winners)
+            logger.info(
+                "[reactive] Cross-DAG comparison: original=%s vs %d exploration DAGs",
+                original_dag_id[:8], len(exploration_dag_ids)
+            )
+            divergence_points = find_divergence_points(
+                dag_id=original_dag_id,
+                cross_dag_ids=exploration_dag_ids
+            )
+            total_divergence_points = len(divergence_points)
 
             if divergence_points:
-                # Log divergence details (first 3 per DAG)
-                for dp in divergence_points[:3]:
+                # Log divergence details (first 5)
+                for dp in divergence_points[:5]:
                     logger.info(
-                        "[reactive] Divergence in DAG %s at step %s (idx=%d): "
+                        "[reactive] Cross-DAG divergence at step %s (idx=%d): "
                         "winning node=%s, losing node=%s",
-                        dag_id[:8],
                         dp.divergence_dag_step_id,
                         dp.divergence_step_idx,
                         dp.winning_node_at_divergence,
                         dp.losing_node_at_divergence,
                     )
 
-                # Assign targeted blame/credit for this DAG
-                blame_stats = assign_divergence_blame(dag_id, self.step_db)
-                dag_blame = (
+                # Assign targeted blame/credit using cross-DAG comparison
+                blame_stats = assign_divergence_blame(
+                    dag_id=original_dag_id,
+                    step_db=self.step_db,
+                    cross_dag_ids=exploration_dag_ids
+                )
+                total_blame_assigned = (
                     blame_stats.get("divergence_blame_assigned", 0) +
                     blame_stats.get("suffix_blame_assigned", 0)
                 )
-                total_blame_assigned += dag_blame
+                all_blame_stats = blame_stats
+        elif original_dag_id:
+            # Fallback: single DAG analysis (within-DAG comparison only)
+            logger.info("[reactive] Single-DAG analysis for %s (no exploration DAGs)", original_dag_id[:8])
+            divergence_points = find_divergence_points(dag_id=original_dag_id)
+            total_divergence_points = len(divergence_points)
 
-                # Aggregate blame stats
-                for key, val in blame_stats.items():
-                    all_blame_stats[key] = all_blame_stats.get(key, 0) + val
+            if divergence_points:
+                blame_stats = assign_divergence_blame(dag_id=original_dag_id, step_db=self.step_db)
+                total_blame_assigned = (
+                    blame_stats.get("divergence_blame_assigned", 0) +
+                    blame_stats.get("suffix_blame_assigned", 0)
+                )
+                all_blame_stats = blame_stats
 
         stats["divergence_points"] = total_divergence_points
         stats["blame_assigned"] = total_blame_assigned
@@ -3979,8 +4001,8 @@ Rules:
 
         if total_divergence_points > 0:
             logger.info(
-                "[reactive] Cross-exam complete: %d divergence points across %d DAGs",
-                total_divergence_points, len(dags_to_analyze)
+                "[reactive] Cross-exam complete: %d divergence points, %d blame assigned",
+                total_divergence_points, total_blame_assigned
             )
             logger.info(
                 "[reactive] Divergence blame: %d primary, %d suffix, %d prefix credit",
@@ -3988,6 +4010,8 @@ Rules:
                 all_blame_stats.get("suffix_blame_assigned", 0),
                 all_blame_stats.get("shared_prefix_credit", 0),
             )
+        else:
+            logger.info("[reactive] No divergence points found (all threads same outcome?)")
 
         return stats
 
@@ -4873,6 +4897,11 @@ Rules:
                 is_correct = None
                 if ground_truth:
                     is_correct = self._answers_match(thread.final_answer, ground_truth)
+                    # Debug logging for cross-DAG divergence investigation
+                    logger.debug(
+                        "[solver] Thread %s: final_answer=%r, ground_truth=%r, is_correct=%s",
+                        thread_id[:8], thread.final_answer, ground_truth, is_correct
+                    )
 
                 # Update mcts_threads table with final_answer and success
                 thread_success = is_correct if is_correct is not None else None

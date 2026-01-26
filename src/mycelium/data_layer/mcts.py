@@ -2669,13 +2669,13 @@ def find_divergence_points(dag_id: str, cross_dag_ids: list[str] = None) -> list
 
     if not winning or not losing:
         # Need both to find divergence
-        logger.info(
+        logger.debug(
             "[mcts] No divergence analysis for DAGs %s: %d winning, %d losing threads (all_paths=%d)",
             [d[:8] for d in all_dag_ids], len(winning), len(losing), len(all_paths)
         )
         return []
 
-    logger.info(
+    logger.debug(
         "[mcts] Cross-DAG divergence analysis: %d DAGs, %d winning, %d losing threads",
         len(all_dag_ids), len(winning), len(losing)
     )
