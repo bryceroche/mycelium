@@ -1390,36 +1390,17 @@ class StepSignatureDB:
                                 )
                         update_similarity_stats(conn, 'cluster', global_sim)
 
-                # Create new signature
+                # Create new signature (graph_embedding computed inside _create_signature_atomic)
                 sig = self._create_signature_atomic(
                     conn, step_text, embedding, parent_problem, origin_depth,
-                    extracted_values=extracted_values, parent_id=parent_id, dsl_hint=dsl_hint
+                    extracted_values=extracted_values, parent_id=parent_id, dsl_hint=dsl_hint,
+                    graph_embedding=step_graph_emb
                 )
-                # CRITICAL: Store graph_embedding we already computed for future dedup
-                if step_graph_emb is not None:
-                    conn.execute(
-                        "UPDATE step_signatures SET graph_embedding = ? WHERE id = ?",
-                        (json.dumps(step_graph_emb.tolist()), sig.id)
-                    )
-                    logger.debug("[db] Stored graph_embedding for new sig %d", sig.id)
                 conn.commit()
                 logger.info(
                     "[db] Created signature: step='%s' type='%s' depth=%d",
                     step_text[:40], sig.step_type, origin_depth
                 )
-
-                # Fallback: Compute graph embedding from signature if we didn't have step_graph_emb
-                if step_graph_emb is None and sig and sig.computation_graph and embedder is not None:
-                    try:
-                        graph_emb = embed_computation_graph_sync(embedder, sig.computation_graph)
-                        if graph_emb:
-                            self.update_graph_embedding(sig.id, graph_emb)
-                            logger.debug(
-                                "[db] Embedded graph for new child sig %d: %s",
-                                sig.id, sig.computation_graph[:30]
-                            )
-                    except Exception as e:
-                        logger.warning("[db] Failed to embed graph for sig %d: %s", sig.id, e)
 
                 return sig
             except Exception:
@@ -1718,15 +1699,8 @@ class StepSignatureDB:
                                 sig = self._create_signature_atomic(
                                     conn, step_text, embedding, parent_problem, origin_depth,
                                     extracted_values=extracted_values, dsl_hint=dsl_hint,
-                                    parent_id=cluster_parent_id
+                                    parent_id=cluster_parent_id, graph_embedding=step_graph_emb
                                 )
-                                # CRITICAL: Store graph_embedding for future dedup
-                                if step_graph_emb is not None:
-                                    conn.execute(
-                                        "UPDATE step_signatures SET graph_embedding = ? WHERE id = ?",
-                                        (json.dumps(step_graph_emb.tolist()), sig.id)
-                                    )
-                                    logger.debug("[db] Stored graph_embedding for new sig %d", sig.id)
                                 conn.commit()
                                 logger.info(
                                     "[db] Created CLUSTERED signature (child of umbrella %s): step='%s' type='%s'",
@@ -1761,15 +1735,8 @@ class StepSignatureDB:
                         sig = self._create_signature_atomic(
                             conn, step_text, embedding, parent_problem, origin_depth,
                             extracted_values=extracted_values, dsl_hint=dsl_hint,
-                            parent_id=cluster_parent_id
+                            parent_id=cluster_parent_id, graph_embedding=step_graph_emb
                         )
-                        # CRITICAL: Store graph_embedding for future dedup
-                        if step_graph_emb is not None:
-                            conn.execute(
-                                "UPDATE step_signatures SET graph_embedding = ? WHERE id = ?",
-                                (json.dumps(step_graph_emb.tolist()), sig.id)
-                            )
-                            logger.debug("[db] Stored graph_embedding for new sig %d", sig.id)
                         conn.commit()
                         logger.info(
                             "[db] Created CLUSTERED signature (sibling of %s): step='%s' type='%s'",
@@ -1783,15 +1750,8 @@ class StepSignatureDB:
                 sig = self._create_signature_atomic(
                     conn, step_text, embedding, parent_problem, origin_depth,
                     extracted_values=extracted_values, dsl_hint=dsl_hint,
-                    parent_id=actual_parent_id
+                    parent_id=actual_parent_id, graph_embedding=step_graph_emb
                 )
-                # CRITICAL: Store graph_embedding for future dedup
-                if step_graph_emb is not None:
-                    conn.execute(
-                        "UPDATE step_signatures SET graph_embedding = ? WHERE id = ?",
-                        (json.dumps(step_graph_emb.tolist()), sig.id)
-                    )
-                    logger.debug("[db] Stored graph_embedding for new sig %d", sig.id)
                 conn.commit()
                 parent_desc = f"id={parent_id}" if parent_id is not None else (parent_for_new.step_type if parent_for_new else "root")
                 logger.info(
@@ -2132,6 +2092,7 @@ class StepSignatureDB:
         extracted_values: dict = None,
         parent_id: int = None,
         dsl_hint: str = None,
+        graph_embedding: Optional[np.ndarray] = None,
     ) -> StepSignature:
         """Create a new signature within an existing transaction.
 
@@ -2146,6 +2107,7 @@ class StepSignatureDB:
             embedding: Optional text embedding (legacy, for centroid initialization)
             parent_id: ID of parent signature. If None, defaults to root.
             dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication.
+            graph_embedding: Pre-computed graph embedding for dedup. If not provided, computed from computation_graph.
         """
         sig_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
@@ -2202,6 +2164,24 @@ class StepSignatureDB:
         if computation_graph:
             logger.debug("[db] Extracted computation graph: %s", computation_graph)
 
+        # Compute graph_embedding if not provided but we have computation_graph
+        # This is the SINGLE pathway for graph_embedding assignment
+        graph_emb_to_store = graph_embedding
+        if graph_emb_to_store is None and computation_graph:
+            try:
+                from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
+                from mycelium.embedder import Embedder
+                embedder_inst = Embedder.get_instance()
+                emb_list = embed_computation_graph_sync(embedder_inst, computation_graph)
+                if emb_list:
+                    graph_emb_to_store = np.array(emb_list)
+                    logger.debug("[db] Computed graph_embedding from computation_graph")
+            except Exception as e:
+                logger.debug("[db] Failed to compute graph_embedding: %s", e)
+
+        # Pack graph_embedding for storage
+        graph_emb_packed = json.dumps(graph_emb_to_store.tolist()) if graph_emb_to_store is not None else None
+
         # Set flags based on whether this is the root
         is_root_flag = 1 if is_first_signature else 0
         # Root is an umbrella (routes to children), others start as leaves
@@ -2226,11 +2206,11 @@ class StepSignatureDB:
                 """INSERT INTO step_signatures
                    (signature_id, centroid, centroid_bucket, embedding_sum, embedding_count, step_type, description,
                     dsl_script, dsl_type, clarifying_questions, param_descriptions, depth,
-                    is_root, is_semantic_umbrella, computation_graph, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    is_root, is_semantic_umbrella, computation_graph, graph_embedding, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (sig_id, centroid_packed, centroid_bucket, embedding_sum_packed, 1, step_type, step_text,
                  dsl_script, dsl_type, clarifying_json, params_json, actual_depth,
-                 is_root_flag, is_umbrella, computation_graph, now),
+                 is_root_flag, is_umbrella, computation_graph, graph_emb_packed, now),
             )
             row_id = cursor.lastrowid
 
@@ -2313,6 +2293,7 @@ class StepSignatureDB:
             dsl_script=dsl_script,
             dsl_type=dsl_type,
             computation_graph=computation_graph,
+            graph_embedding=graph_emb_to_store.tolist() if graph_emb_to_store is not None else None,
             examples=[],
             uses=0,
             successes=0,
@@ -3451,13 +3432,27 @@ class StepSignatureDB:
                                 signature_id, alt_id
                             )
                         else:
-                            # No alternatives - proceed with demotion
-                            # Use single pathway for umbrella promotion
-                            self._promote_to_umbrella_internal(conn, signature_id)
-                            logger.info(
-                                "[db] Auto-demoted sig %d to umbrella/router (%.0f%% after %d uses, step_ok=%s, min=%d, no alternatives)",
-                                signature_id, success_rate * 100, uses, step_completed, min_uses
-                            )
+                            # No alternatives - check if has children before promoting
+                            # An umbrella without children can't route and breaks dedup
+                            child_count_row = conn.execute(
+                                "SELECT COUNT(*) FROM signature_relationships WHERE parent_id = ?",
+                                (signature_id,)
+                            ).fetchone()
+                            has_children = child_count_row and child_count_row[0] > 0
+
+                            if has_children:
+                                # Has children - safe to promote to umbrella/router
+                                self._promote_to_umbrella_internal(conn, signature_id)
+                                logger.info(
+                                    "[db] Auto-demoted sig %d to umbrella/router (%.0f%% after %d uses, step_ok=%s, min=%d, no alternatives)",
+                                    signature_id, success_rate * 100, uses, step_completed, min_uses
+                                )
+                            else:
+                                # No children - keep as leaf, let dedup handle it
+                                logger.info(
+                                    "[db] Skipping auto-demotion for sig %d: no children (would break dedup)",
+                                    signature_id
+                                )
 
             return uses
 
