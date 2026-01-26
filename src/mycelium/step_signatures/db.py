@@ -3201,12 +3201,12 @@ class StepSignatureDB:
             if not row or not row[0] or row[1]:  # No centroid or is umbrella
                 return False, None
 
-            centroid = np.frombuffer(row[0], dtype=np.float32)
+            centroid = _parse_centroid_data(row[0])
 
             # Check if alternative leaves could handle this operation type
             # Use permissive min_similarity - each candidate has its own adaptive threshold
             alternatives = self.match_step_to_leaves_mcts(
-                embedding=centroid,
+                operation_embedding=centroid,
                 dag_step_type=None,
                 top_k=3,
                 min_similarity=0.5,  # Permissive - adaptive threshold applied per-candidate
