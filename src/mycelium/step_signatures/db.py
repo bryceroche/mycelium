@@ -1354,6 +1354,22 @@ class StepSignatureDB:
                                 )
                         update_similarity_stats(conn, 'cluster', global_sim)
 
+                        # SIBLING DEDUP: Before creating, check if sibling already matches
+                        if parent_id is not None and step_graph_emb is not None:
+                            sibling_match, sibling_sim = find_best_child_match(
+                                conn, parent_id, step_graph_emb
+                            )
+                            if sibling_match is not None and sibling_sim >= thresholds.dedup_threshold:
+                                # Found matching sibling, return it instead of creating duplicate
+                                logger.info(
+                                    "[db] SIBLING DEDUP (sync): Found matching sibling (sim=%.3f >= %.3f): '%s' → sig %d (%s)",
+                                    sibling_sim, thresholds.dedup_threshold, step_text[:40], sibling_match.id, sibling_match.step_type
+                                )
+                                update_similarity_stats(conn, 'match', sibling_sim)
+                                self._update_centroid_atomic(conn, sibling_match.id, embedding, update_last_used=True)
+                                conn.commit()
+                                return sibling_match
+
                 # Create new signature (graph_embedding computed inside _create_signature_atomic)
                 sig = self._create_signature_atomic(
                     conn, step_text, embedding, parent_problem, origin_depth,
@@ -1701,6 +1717,22 @@ class StepSignatureDB:
                             )
 
                         update_similarity_stats(conn, 'cluster', global_sim)
+
+                        # SIBLING DEDUP: Before creating, check if sibling already matches
+                        if cluster_parent_id is not None and step_graph_emb is not None:
+                            sibling_match, sibling_sim = find_best_child_match(
+                                conn, cluster_parent_id, step_graph_emb
+                            )
+                            if sibling_match is not None and sibling_sim >= thresholds.dedup_threshold:
+                                # Found matching sibling, return it instead of creating duplicate
+                                logger.info(
+                                    "[db] SIBLING DEDUP: Found matching sibling (sim=%.3f >= %.3f): '%s' → sig %d (%s)",
+                                    sibling_sim, thresholds.dedup_threshold, step_text[:40], sibling_match.id, sibling_match.step_type
+                                )
+                                update_similarity_stats(conn, 'match', sibling_sim)
+                                self._update_centroid_atomic(conn, sibling_match.id, embedding, update_last_used=True)
+                                conn.commit()
+                                return sibling_match, False
 
                         sig = self._create_signature_atomic(
                             conn, step_text, embedding, parent_problem, origin_depth,
