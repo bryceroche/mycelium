@@ -163,6 +163,24 @@ class SignatureHint:
         return "\n".join(lines)
 
 
+# Per CLAUDE.md "New Favorite Pattern": Consolidated operation → dsl_hint mapping
+# This is the single source of truth for inferring dsl_hint from operation
+OPERATION_TO_DSL_HINT = {
+    "add": "+",
+    "subtract": "-",
+    "multiply": "*",
+    "divide": "/",
+    # Common variations
+    "sum": "+",
+    "difference": "-",
+    "product": "*",
+    "quotient": "/",
+    "plus": "+",
+    "minus": "-",
+    "times": "*",
+}
+
+
 @dataclass
 class Step:
     """A single step in the decomposition DAG.
@@ -192,6 +210,38 @@ class Step:
     requires_algebra: bool = False
     # Recursive nesting: sub-plan for composite steps
     sub_plan: Optional["DAGPlan"] = None
+
+    def __post_init__(self):
+        """Infer dsl_hint from operation if missing (per CLAUDE.md New Favorite Pattern)."""
+        # First try: infer from explicit operation field
+        if self.dsl_hint is None and self.operation:
+            op_lower = self.operation.lower()
+            if op_lower in OPERATION_TO_DSL_HINT:
+                self.dsl_hint = OPERATION_TO_DSL_HINT[op_lower]
+                logger.debug("[planner] Inferred dsl_hint='%s' from operation='%s'",
+                           self.dsl_hint, self.operation)
+
+        # Second try: infer from task description (fallback for LLM omissions)
+        if self.dsl_hint is None and self.task:
+            task_lower = self.task.lower()
+            # Check for operation keywords in task description
+            # Per CLAUDE.md: route by what operations DO
+            if any(kw in task_lower for kw in ["subtract", "difference", "minus", "remaining", "left"]):
+                self.dsl_hint = "-"
+                self.operation = self.operation or "subtract"
+                logger.info("[planner] Inferred dsl_hint='-' from task='%s'", self.task[:40])
+            elif any(kw in task_lower for kw in ["add", "sum", "total", "combine", "plus"]):
+                self.dsl_hint = "+"
+                self.operation = self.operation or "add"
+                logger.info("[planner] Inferred dsl_hint='+' from task='%s'", self.task[:40])
+            elif any(kw in task_lower for kw in ["multiply", "product", "times", "per "]):
+                self.dsl_hint = "*"
+                self.operation = self.operation or "multiply"
+                logger.info("[planner] Inferred dsl_hint='*' from task='%s'", self.task[:40])
+            elif any(kw in task_lower for kw in ["divide", "quotient", "ratio", "split", "per unit"]):
+                self.dsl_hint = "/"
+                self.operation = self.operation or "divide"
+                logger.info("[planner] Inferred dsl_hint='/' from task='%s'", self.task[:40])
 
     @property
     def is_composite(self) -> bool:

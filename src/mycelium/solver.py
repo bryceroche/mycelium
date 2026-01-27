@@ -2163,6 +2163,8 @@ class Solver:
         # Also handles extraction-only steps (no hint but has values)
         has_dsl_hint = getattr(step, 'dsl_hint', None) is not None
         has_extracted_values = bool(getattr(step, 'extracted_values', None))
+        logger.info("[solver] DSL check for '%s': has_dsl_hint=%s has_extracted_values=%s",
+                   step.task[:40] if step.task else "None", has_dsl_hint, has_extracted_values)
         if has_dsl_hint or has_extracted_values:
             dsl_result = await self._try_dsl(child_sig, step, context, step_descriptions)
             if dsl_result is not None:
@@ -2475,6 +2477,62 @@ class Solver:
 
         return (best_result, best_sig, explored_sigs, best_result is not None)
 
+    def _evaluate_formula_reference(self, formula: str, context: dict[str, str]) -> Optional[float]:
+        """Evaluate a formula with $references like '$a + $b'.
+
+        Per CLAUDE.md "New Favorite Pattern": consolidated formula evaluation.
+        Handles cases where planner generates formulas in extracted_values.
+
+        Args:
+            formula: Formula string like "$traffic_time + $slow_drive_time"
+            context: Previous step results
+
+        Returns:
+            Computed result, or None on failure
+        """
+        import re
+
+        try:
+            # Replace $references with actual values
+            def replace_ref(match):
+                ref_name = match.group(1)
+                # Try Phase 1 values
+                if ref_name in self._current_phase1_values:
+                    return str(self._current_phase1_values[ref_name])
+                # Try partial match
+                for p1_key in self._current_phase1_values:
+                    if p1_key in ref_name or ref_name in p1_key:
+                        return str(self._current_phase1_values[p1_key])
+                logger.debug("[solver] Formula ref not found: $%s", ref_name)
+                return "0"  # Default to 0 if not found
+
+            # Replace all $name patterns
+            evaluated = re.sub(r'\$(\w+)', replace_ref, formula)
+
+            # Replace {step_N} references with context values
+            def replace_step_ref(match):
+                step_key = match.group(1)
+                if step_key in context:
+                    return str(context[step_key])
+                logger.debug("[solver] Formula step ref not found: {%s}", step_key)
+                return "0"
+
+            evaluated = re.sub(r'\{(\w+)\}', replace_step_ref, evaluated)
+
+            # Safely evaluate the expression
+            # Only allow basic math operations
+            allowed = set('0123456789.+-*/() ')
+            if not all(c in allowed for c in evaluated):
+                logger.warning("[solver] Formula contains invalid chars: %s", evaluated[:50])
+                return None
+
+            result = eval(evaluated)  # Safe: only numeric chars and operators
+            return float(result)
+
+        except Exception as e:
+            logger.debug("[solver] Formula evaluation failed: %s (%s)", formula[:50], e)
+            return None
+
     async def _try_dsl(
         self,
         signature: StepSignature,
@@ -2493,9 +2551,9 @@ class Solver:
         dsl_hint = getattr(step, 'dsl_hint', None)
         extracted_values = getattr(step, 'extracted_values', {}) or {}
 
-        # Debug logging for DSL execution
-        logger.debug(
-            "[solver] _try_dsl: task='%s' dsl_hint=%s extracted_values=%s context_keys=%s",
+        # Debug logging for DSL execution (INFO level to trace empty prediction issues)
+        logger.info(
+            "[solver] _try_dsl START: task='%s' dsl_hint=%s extracted_values=%s context_keys=%s",
             step.task[:40] if step.task else "None",
             dsl_hint,
             extracted_values,
@@ -2547,8 +2605,18 @@ class Solver:
         if extracted_values:
             for key, val in extracted_values.items():
                 if isinstance(val, str):
+                    # Check for formula reference (e.g., "$a + $b", "$x * $y")
+                    # Per CLAUDE.md "New Favorite Pattern": consolidated formula evaluation
+                    if '+' in val or '-' in val or '*' in val or '/' in val:
+                        # Formula with operators - evaluate it
+                        formula_result = self._evaluate_formula_reference(val, context)
+                        if formula_result is not None:
+                            params[key] = formula_result
+                            logger.info("[solver] Resolved formula '%s' → %s", val[:40], formula_result)
+                        else:
+                            logger.warning("[solver] Failed to evaluate formula: %s", val[:50])
                     # Check for Phase 1 value reference ($name)
-                    if val.startswith('$'):
+                    elif val.startswith('$'):
                         ref_name = val[1:]  # Remove $ prefix
                         if ref_name in self._current_phase1_values:
                             params[key] = self._current_phase1_values[ref_name]
@@ -2610,7 +2678,9 @@ class Solver:
                 val = list(params.values())[0]
                 logger.info("[solver] Single-param extraction: %s", val)
                 return str(val)
-            logger.debug("[solver] Need at least 2 params for DSL, got %d", len(params))
+            # Per CLAUDE.md: failures are valuable data - log why DSL failed
+            logger.info("[solver] DSL failed for '%s': need 2+ params, got %d (extracted_values=%s, context_keys=%s)",
+                       step.task[:40] if step.task else "None", len(params), extracted_values, list(context.keys()))
             return None
 
         logger.debug("[solver] _try_dsl: hint=%s, params=%s", dsl_hint, list(params.keys()))
