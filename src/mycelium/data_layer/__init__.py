@@ -87,6 +87,9 @@ from mycelium.data_layer.mcts import (
     flag_high_rejection_leaves_for_decomposition,
     # DB maturity (for general use)
     compute_db_maturity,
+    # Segmentation novelty stats (for TreeGuidedPlanner)
+    get_segmentation_novelty_stats,
+    save_segmentation_novelty_stats,
 )
 
 db = get_db()
@@ -174,4 +177,7 @@ __all__ = [
     "flag_high_rejection_leaves_for_decomposition",
     # DB maturity
     "compute_db_maturity",
+    # Segmentation novelty stats
+    "get_segmentation_novelty_stats",
+    "save_segmentation_novelty_stats",
 ]

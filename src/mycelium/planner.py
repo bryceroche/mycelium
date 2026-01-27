@@ -618,6 +618,18 @@ class DAGPlan:
         return None
 
 
+def _create_planner_without_warning(client=None, temperature: float = PLANNER_DEFAULT_TEMPERATURE):
+    """Create a Planner instance without triggering deprecation warning.
+
+    Used internally by TreeGuidedPlanner for composition/fallback.
+    Per CLAUDE.md "New Favorite Pattern": Reuse existing logic, don't duplicate.
+    """
+    planner = object.__new__(Planner)
+    planner.client = client or get_client()
+    planner.temperature = temperature
+    return planner
+
+
 class Planner:
     """Decompose problems into DAG of subtasks.
 
@@ -978,45 +990,31 @@ class TreeGuidedPlanner:
         self._novelty_k = TREE_GUIDED_NOVELTY_K  # Threshold = mean - k * stddev
 
     def _load_novelty_stats(self):
-        """Load Welford's stats for novelty detection from db_metadata."""
-        if self.step_db is None:
-            return
+        """Load Welford's stats for novelty detection via data layer."""
+        from mycelium.data_layer import get_segmentation_novelty_stats
         try:
-            with self.step_db._connection() as conn:
-                row = conn.execute(
-                    "SELECT value FROM db_metadata WHERE key = 'segmentation_novelty_stats'"
-                ).fetchone()
-                if row:
-                    import json
-                    stats = json.loads(row[0])
-                    self._novelty_count = stats.get('count', 0)
-                    self._novelty_mean = stats.get('mean', 0.0)
-                    self._novelty_m2 = stats.get('m2', 0.0)
-                    logger.debug(
-                        "[planner] Loaded novelty stats: count=%d, mean=%.3f, stddev=%.3f",
-                        self._novelty_count, self._novelty_mean, self._novelty_stddev
-                    )
+            stats = get_segmentation_novelty_stats()
+            if stats:
+                self._novelty_count = stats.get('count', 0)
+                self._novelty_mean = stats.get('mean', 0.0)
+                self._novelty_m2 = stats.get('m2', 0.0)
+                logger.debug(
+                    "[planner] Loaded novelty stats: count=%d, mean=%.3f, stddev=%.3f",
+                    self._novelty_count, self._novelty_mean, self._novelty_stddev
+                )
         except Exception as e:
             logger.debug("[planner] Could not load novelty stats: %s", e)
 
     def _save_novelty_stats(self):
-        """Save Welford's stats for novelty detection to db_metadata."""
-        if self.step_db is None:
-            return
+        """Save Welford's stats for novelty detection via data layer."""
+        from mycelium.data_layer import save_segmentation_novelty_stats
         try:
-            import json
             stats = {
                 'count': self._novelty_count,
                 'mean': self._novelty_mean,
                 'm2': self._novelty_m2,
             }
-            with self.step_db._connection() as conn:
-                conn.execute(
-                    """INSERT OR REPLACE INTO db_metadata (key, value)
-                       VALUES ('segmentation_novelty_stats', ?)""",
-                    (json.dumps(stats),)
-                )
-                conn.commit()
+            save_segmentation_novelty_stats(stats)
         except Exception as e:
             logger.debug("[planner] Could not save novelty stats: %s", e)
 
@@ -1375,101 +1373,38 @@ Refine these steps into concrete operations with values."""
     ) -> DAGPlan:
         """Decompose a problem into a DAG of steps (API-compatible with Planner).
 
-        Uses tree-guided decomposition when step_db/embedder are available,
-        otherwise falls back to standard single-LLM-call approach.
+        Uses tree-guided decomposition when step_db/embedder are available
+        AND no context/signature_hints are provided. Otherwise falls back to
+        standard single-LLM-call approach via composition with Planner.
 
         Args:
             problem: The problem to decompose
-            signature_hints: Optional list of SignatureHint objects (used in fallback mode)
-            context: Optional additional context (used in fallback mode)
+            signature_hints: Optional list of SignatureHint objects (triggers fallback)
+            context: Optional additional context (triggers fallback)
             skip_validation: If True, skip data flow validation
 
         Returns:
             DAGPlan with steps and dependencies
         """
-        # If we have step_db and embedder, and no special context, use tree-guided
-        if self.step_db is not None and self.embedder is not None and not context:
+        # Use tree-guided when we have step_db/embedder AND no special params
+        # signature_hints and context require the old Planner's prompt format
+        use_tree_guided = (
+            self.step_db is not None
+            and self.embedder is not None
+            and not context
+            and not signature_hints
+        )
+
+        if use_tree_guided:
             result = await self.decompose_guided(problem)
             return result.plan
 
-        # Fallback to standard single-LLM-call approach
-        logger.info("[planner] Using fallback decomposition (no step_db or has context)")
-        return await self._decompose_fallback(problem, signature_hints, context, skip_validation)
-
-    async def _decompose_fallback(
-        self,
-        problem: str,
-        signature_hints: Optional[list[SignatureHint]] = None,
-        context: Optional[str] = None,
-        skip_validation: bool = False,
-    ) -> DAGPlan:
-        """Fallback decomposition using single LLM call (same as old Planner)."""
-        logger.debug("[planner] Fallback decomposition: problem='%s...'", problem[:80])
-
-        # Build system prompt with optional signature hints
-        system_prompt = PLANNER_SYSTEM
-        if signature_hints:
-            hints_text = "\n\n".join(hint.to_hint_text() for hint in signature_hints)
-            system_prompt += SIGNATURE_HINTS_TEMPLATE.format(hints=hints_text)
-            logger.debug("[planner] Added %d signature hints", len(signature_hints))
-
-        # Build user message with optional context
-        user_content = problem
-        if context:
-            user_content = f"{context}\n\nDecompose this step: {problem}"
-
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_content},
-        ]
-
-        response = await self.client.generate(
-            messages,
-            temperature=self.temperature,
-            response_format={"type": "json_object"},
-        )
-        steps, phase1_values = self._parse_fallback_steps(response)
-
-        plan = DAGPlan(steps=steps, problem=problem, phase1_values=phase1_values)
-
-        if not skip_validation:
-            is_valid, errors = plan.validate()
-            logger.info("[planner] Fallback decomposition: steps=%d valid=%r", len(steps), is_valid)
-            if errors:
-                logger.warning("[planner] Validation errors: %s", errors)
-
-        return plan
-
-    def _parse_fallback_steps(self, response: str) -> tuple[list[Step], dict[str, Any]]:
-        """Parse steps from fallback LLM response (same format as old Planner)."""
-        import json
-        steps = []
-        phase1_values = {}
-
-        try:
-            data = json.loads(response.strip())
-            phase1_values = data.get("values", {})
-
-            for step_data in data.get("steps", []):
-                step = Step(
-                    id=step_data.get("id", f"step_{len(steps) + 1}"),
-                    task=step_data.get("task", ""),
-                    depends_on=step_data.get("depends_on", []),
-                    extracted_values=step_data.get("values", {}),
-                    dsl_hint=step_data.get("dsl_hint"),
-                    operation=step_data.get("operation"),
-                    requires_algebra=step_data.get("requires_algebra", False),
-                )
-                steps.append(step)
-
-        except json.JSONDecodeError as e:
-            logger.warning("[planner] Fallback JSON parse failed: %s", e)
-            steps = [Step(id="solve", task="Solve the problem directly", depends_on=[])]
-
-        if not steps:
-            steps = [Step(id="solve", task="Solve the problem directly", depends_on=[])]
-
-        return steps, phase1_values
+        # Fallback: compose with Planner (per CLAUDE.md "New Favorite Pattern")
+        # Avoid code duplication by reusing existing Planner logic
+        logger.info("[planner] Using fallback decomposition (context=%s, hints=%s)",
+                   bool(context), bool(signature_hints))
+        fallback = _create_planner_without_warning(self.client, self.temperature)
+        return await fallback.decompose(problem, signature_hints, context, skip_validation)
 
     async def decompose_guided(self, problem: str) -> SegmentationResult:
         """Full tree-guided decomposition with intermediate results.

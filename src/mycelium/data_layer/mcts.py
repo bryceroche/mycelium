@@ -3104,6 +3104,36 @@ def _set_db_state_value(key: str, value: str) -> None:
         )
 
 
+# =============================================================================
+# SEGMENTATION NOVELTY STATS (for TreeGuidedPlanner)
+# =============================================================================
+# Per CLAUDE.md "New Favorite Pattern": Consolidated data layer access
+
+_KEY_SEGMENTATION_NOVELTY = "segmentation_novelty_stats"
+
+
+def get_segmentation_novelty_stats() -> dict:
+    """Get Welford's stats for novelty detection in TreeGuidedPlanner.
+
+    Returns:
+        Dict with 'count', 'mean', 'm2' keys (empty dict if not found)
+    """
+    raw = _get_db_state_value(_KEY_SEGMENTATION_NOVELTY, "{}")
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+
+
+def save_segmentation_novelty_stats(stats: dict) -> None:
+    """Save Welford's stats for novelty detection.
+
+    Args:
+        stats: Dict with 'count', 'mean', 'm2' keys
+    """
+    _set_db_state_value(_KEY_SEGMENTATION_NOVELTY, json.dumps(stats))
+
+
 # Keys for persistent state
 _KEY_DSL_REGEN_COUNT = "postmortem_dsl_regen_count"
 _KEY_HIGH_CONF_WRONG_NODES = "postmortem_high_conf_wrong_nodes"
