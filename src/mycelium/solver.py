@@ -1698,10 +1698,8 @@ class Solver:
                 if routed_signature.graph_embedding is not None and operation_embedding is not None:
                     self._routing_similarity = cosine_similarity(operation_embedding, routed_signature.graph_embedding)
                     self._routing_confidence = self._routing_similarity  # Use similarity as confidence proxy
-                dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
-                if dsl_result is not None:
-                    result = dsl_result.result
-                    self._last_dsl_info = dsl_result  # Store for update_example_result
+                result = await self._execute_dsl_and_record(routed_signature, step, context, step_descriptions)
+                if result is not None:
                     was_injected = True
                     logger.debug("[solver] DSL executed: %s", result[:50] if result else "")
 
@@ -1781,10 +1779,8 @@ class Solver:
                 routed_signature = new_child
 
             # Execute the child's DSL (either existing or newly created)
-            dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
-            if dsl_result is not None:
-                result = dsl_result.result
-                self._last_dsl_info = dsl_result  # Store for update_example_result
+            result = await self._execute_dsl_and_record(routed_signature, step, context, step_descriptions)
+            if result is not None:
                 was_injected = True
                 logger.info("[solver] Child DSL succeeded: %s", result[:30] if result else "")
 
@@ -2197,10 +2193,9 @@ class Solver:
         has_dsl_hint = getattr(step, 'dsl_hint', None) is not None
         has_extracted_values = bool(getattr(step, 'extracted_values', None))
         if has_dsl_hint or has_extracted_values:
-            dsl_result = await self._try_dsl(child_sig, step, context, step_descriptions)
-            if dsl_result is not None:
-                self._last_dsl_info = dsl_result  # Store for update_example_result
-                return (dsl_result.result, child_sig, True)
+            result = await self._execute_dsl_and_record(child_sig, step, context, step_descriptions)
+            if result is not None:
+                return (result, child_sig, True)
 
         # Return child for further processing (may need decomposition on failure)
         return (None, child_sig, False)
@@ -2308,12 +2303,11 @@ class Solver:
         effective_budget = max(compute_budget, 3.0) if self._force_exploration else compute_budget
         if not is_undecided or effective_budget <= 1.0:
             if routing_result.signature is not None:
-                dsl_result = await self._try_dsl(
+                result = await self._execute_dsl_and_record(
                     routing_result.signature, step, context, step_descriptions
                 )
-                if dsl_result is not None:
-                    self._last_dsl_info = dsl_result  # Store for update_example_result
-                    return (dsl_result.result, routing_result.signature, explored_sigs, True)
+                if result is not None:
+                    return (result, routing_result.signature, explored_sigs, True)
                 return (None, routing_result.signature, explored_sigs, False)
             return (None, routing_result.signature, explored_sigs, False)
 
@@ -2400,12 +2394,16 @@ class Solver:
             sig, score = sig_with_score
             dsl_result = await self._try_dsl(sig, step, context, step_descriptions)
             result = dsl_result.result if dsl_result else None
-            # Store DSL info for the first successful result (for update_example_result)
-            if dsl_result and not hasattr(self, '_last_dsl_info'):
-                self._last_dsl_info = dsl_result
             return (sig, score, result, dsl_result)
 
         results = await asyncio.gather(*[try_candidate(c) for c in candidates])
+
+        # Store DSL info from first successful result (primary candidate)
+        # Per CLAUDE.md "New Favorite Pattern": consolidated _last_dsl_info assignment
+        for _, _, result, dsl_result in results:
+            if dsl_result is not None:
+                self._last_dsl_info = dsl_result
+                break
 
         # Store path outcomes for ground truth comparison (operational equivalence learning)
         # Key insight: After problem is graded, we can determine which paths are
@@ -2572,6 +2570,35 @@ class Solver:
         except Exception as e:
             logger.debug("[solver] Formula evaluation failed: %s (%s)", formula[:50], e)
             return None
+
+    async def _execute_dsl_and_record(
+        self,
+        signature: StepSignature,
+        step: Step,
+        context: dict[str, str],
+        step_descriptions: dict[str, str] = None,
+    ) -> Optional[str]:
+        """Execute DSL and store info for example recording.
+
+        Per CLAUDE.md "New Favorite Pattern": Single entry point for DSL execution
+        that consolidates the _last_dsl_info storage instead of scattering it
+        across multiple call sites.
+
+        Args:
+            signature: The signature to execute DSL for
+            step: The step being executed
+            context: Results from previous steps
+            step_descriptions: Descriptions of all steps
+
+        Returns:
+            The result string if DSL succeeded, None otherwise.
+            Side effect: stores DSL info in self._last_dsl_info for later recording.
+        """
+        dsl_result = await self._try_dsl(signature, step, context, step_descriptions)
+        if dsl_result is not None:
+            self._last_dsl_info = dsl_result
+            return dsl_result.result
+        return None
 
     async def _try_dsl(
         self,
