@@ -264,6 +264,7 @@ CREATE TABLE IF NOT EXISTS mcts_dag_steps (
 
 CREATE INDEX IF NOT EXISTS idx_mcts_dag_steps_dag ON mcts_dag_steps(dag_id);
 CREATE INDEX IF NOT EXISTS idx_mcts_dag_steps_step_num ON mcts_dag_steps(dag_id, step_num);
+CREATE INDEX IF NOT EXISTS idx_mcts_dag_steps_dsl_hint ON mcts_dag_steps(dsl_hint);
 
 -- Thread: A single MCTS rollout path through the DAG
 -- Per ideas.md: "Thread ID essential for backpropagation"
@@ -346,6 +347,7 @@ CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_dag ON mcts_step_summaries(da
 CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_thread ON mcts_step_summaries(thread_id);
 CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_node ON mcts_step_summaries(node_id);
 CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_dag_step ON mcts_step_summaries(dag_step_id);
+CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_success ON mcts_step_summaries(step_success);
 
 -- Materialized stats for (dag_step_type, node_id) pairs
 -- This closes the feedback loop: post-mortem → stats → routing decisions
@@ -512,6 +514,7 @@ CREATE TABLE IF NOT EXISTS proposed_signatures (
 
 CREATE INDEX IF NOT EXISTS idx_proposed_status ON proposed_signatures(status);
 CREATE INDEX IF NOT EXISTS idx_proposed_parent ON proposed_signatures(proposed_parent_id);
+CREATE INDEX IF NOT EXISTS idx_proposed_best_match ON proposed_signatures(best_match_id);
 CREATE INDEX IF NOT EXISTS idx_proposed_created ON proposed_signatures(created_at);
 """
 
@@ -847,6 +850,10 @@ def migrate_db(conn) -> None:
         "CREATE INDEX IF NOT EXISTS idx_sig_graph_embedding ON step_signatures(graph_embedding)",
         # Atomic operations index (math primes discovery)
         "CREATE INDEX IF NOT EXISTS idx_sig_is_atomic ON step_signatures(is_atomic)",
+        # MCTS query optimization indexes
+        "CREATE INDEX IF NOT EXISTS idx_mcts_dag_steps_dsl_hint ON mcts_dag_steps(dsl_hint)",
+        "CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_success ON mcts_step_summaries(step_success)",
+        "CREATE INDEX IF NOT EXISTS idx_proposed_best_match ON proposed_signatures(best_match_id)",
     ]
     for sql in index_migrations:
         try:
