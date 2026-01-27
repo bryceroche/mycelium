@@ -8,7 +8,7 @@ Every bug fix, optimization or feature should be implemented with this file in m
 Please always keep this file in the context window.
 
 ## System Independence
-Resist the urge to manually intervene in the tree.  We want the system to be independent.  This means only modifying the python and database code but not the tree.
+Resist the urge to manually intervene in the tree.  We want the system to be independent.  This means only modifying python code and database schema but not the tree.
 
 ## New Favorite Pattern
 We want to consolidate methods - for example all database connections should go through a data layer instead of having multiple database connections.  Same with Signature creation, or leaf_node rejection of dag_steps.  We want to consolidate method calls for features to simplify our codebase and reduce the chance of bugs
@@ -33,8 +33,12 @@ The tree's goal is to match (leaf_node, dag_step) pairs with high similarity and
 ## Core insight: leaf_node ≡ dag_step_type - they should have a 1:1 mapping.
 We use welfords to track both the embedding variance between dag_step_id and dag_step_type and the outcome variance
 
+### The Key Learning Unit
+**The combination of `(dag_step_id, dag_step_type ≡ leaf_node)` is what we're learning.**
+A node might be great for step 2 but terrible for step 5. Track performance per step-node pair, not just per node.
+
 ## Segmentation LLM
-Expirement with segmentation llm to break down problems into dag steps
+LLM breaks problem into dag steps with extracted values. Each step's operation type is mapped to a canonical computation graph, embedded, and routed through the tree using MCTS (UCB1) to select the best leaf_node. Then a single batched LLM call writes arithmetic expressions for all steps using their extracted parameters.
 
 ## Github Minor Releases
 Github minor releases help us checkpoint our progress
@@ -81,10 +85,6 @@ High-traffic signatures become **semantic attractors**: their centroids stabiliz
 - The two-signal interpretation: outcome variance vs embedding variance
 - The closed loop: "ONE node high variance → decompose node, MULTIPLE nodes high variance → refine type"
 
-### The Key Learning Unit
-**The combination of `(dag_step_id, dag_step_type / node_id)` is what we're learning.**
-A node might be great for step 2 but terrible for step 5. Track performance per step-node pair, not just per node.
-
 ## Decomposition Rule
 **Do not decompose a leaf node until instructed by the MCTS rollout post-mortem analysis.**
 
@@ -94,11 +94,8 @@ Start with **easy** problems (GSM8K or MATH L1-L2).
 Need some successes to learn from; failures alone don't teach what works.
 System is designed to aggressively **branch out early**, tapering off later.
 
-## With Mature DB
-If you encounter a DAG step that has **no matching signature** in a mature DB (many signatures, high accuracy), this is a signal:
-
-**The step is likely too complex and needs decomposition.**
-In a mature system, most atomic operations should have signatures. A novel step that doesn't match anything suggests it's a composite operation that should be broken into smaller pieces the system already knows.
+## Tree Maturity
+Decomposing leaf_nodes is a larger commitment than decomposing dag_steps because it changes the structure of the tree.  We should only decompose leaf_nodes when MCTS rollout post-mortem analysis indicates that the node is too complex.
 
 ## Core Principle: Failures Are Valuable Data Points
 **Let signatures fail.** This is how the system learns.
@@ -113,15 +110,12 @@ The goal is NOT 100% accuracy on every run. The goal is collecting data that mak
 **ALWAYS_ROUTE_TO_BEST = True**
 Instead of rejecting matches below arbitrary similarity thresholds, we always route to the best available match and let execution failures drive learning.
 
-
 ### Credit Propagation
 When a problem is solved correctly, success credit propagates up the signature DAG to parent umbrellas with decay:
 - Direct signatures get +1 success
 - Parent umbrellas get `decay^depth` credit (default 0.5 per level)
 - Max propagation depth is configurable (default 3 levels)
 This lets umbrella signatures accumulate credit from their children's successes, improving routing decisions.
-
-
 
 ## How to use Beads
 
