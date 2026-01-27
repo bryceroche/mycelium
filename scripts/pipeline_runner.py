@@ -281,14 +281,8 @@ async def solve_problem(
             result, is_correct, ground_truth=problem["answer"]
         )
 
-        # Auto-trigger umbrella learning if signatures need decomposition
-        if candidates:
-            learn_result = await solver.maybe_learn_umbrellas(candidates)
-            if learn_result.get("decomposed", 0) > 0:
-                logger.info(
-                    "[pipeline] Auto-learned umbrellas: %d decomposed, %d children",
-                    learn_result["decomposed"], learn_result["children_created"]
-                )
+        # NOTE: Umbrella learning removed - periodic tree review (every 10 problems
+        # after cold start) handles tree optimization via maybe_restructure()
 
         # Auto-trigger reactive exploration for failed problems (per CLAUDE.md)
         # This explores alternative nodes to find what would have worked, enabling
