@@ -5240,6 +5240,47 @@ class StepSignatureDB:
                 return True
             return False
 
+    def demote_orphan_umbrellas(self) -> int:
+        """Demote umbrellas with no children back to leaves.
+
+        Per CLAUDE.md: An umbrella is a router that routes to children.
+        If an umbrella has no children, it's a broken state - demote it back to leaf.
+
+        Returns:
+            Number of umbrellas demoted
+        """
+        with self._connection() as conn:
+            # Find orphan umbrellas (umbrellas with no children, not archived)
+            cursor = conn.execute("""
+                SELECT s.id, s.step_type
+                FROM step_signatures s
+                WHERE s.is_semantic_umbrella = 1
+                  AND s.is_archived = 0
+                  AND NOT EXISTS (
+                      SELECT 1 FROM signature_relationships r WHERE r.parent_id = s.id
+                  )
+            """)
+            orphans = cursor.fetchall()
+
+            if not orphans:
+                logger.info("[db] No orphan umbrellas found")
+                return 0
+
+            # Demote each orphan back to leaf
+            demoted = 0
+            for sig_id, step_type in orphans:
+                self._update_signature_fields(
+                    conn, sig_id,
+                    log_reason="demote_orphan_umbrella",
+                    is_semantic_umbrella=0,
+                    dsl_type="math",  # Default to math for execution
+                )
+                demoted += 1
+                logger.info("[db] Demoted orphan umbrella: id=%d type='%s'", sig_id, step_type)
+
+            logger.info("[db] Demoted %d orphan umbrellas back to leaves", demoted)
+            return demoted
+
     def clear_all_data(self) -> dict:
         """Clear all signature data for a fresh start.
 
