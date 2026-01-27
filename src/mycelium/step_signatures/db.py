@@ -1656,6 +1656,9 @@ class StepSignatureDB:
                             )
                             update_similarity_stats(conn, 'match', global_sim)
                             self._update_centroid_atomic(conn, global_match.id, embedding, update_last_used=True)
+                            # Demote any orphan scaffold created during routing (root cause of orphan umbrellas)
+                            if parent_for_new:
+                                self._demote_if_orphan(conn, parent_for_new.id)
                             conn.commit()
                             return global_match, False
                         else:
@@ -1671,6 +1674,9 @@ class StepSignatureDB:
                                 )
                                 update_similarity_stats(conn, 'match', child_sim)
                                 self._update_centroid_atomic(conn, child_match.id, embedding, update_last_used=True)
+                                # Demote any orphan scaffold created during routing
+                                if parent_for_new:
+                                    self._demote_if_orphan(conn, parent_for_new.id)
                                 conn.commit()
                                 return child_match, False
                             else:
@@ -1681,6 +1687,10 @@ class StepSignatureDB:
                                     child_sim, global_match.id, global_match.step_type
                                 )
                                 update_similarity_stats(conn, 'cluster', global_sim)
+
+                                # Demote any orphan scaffold created during routing (creating under different parent)
+                                if parent_for_new and parent_for_new.id != cluster_parent_id:
+                                    self._demote_if_orphan(conn, parent_for_new.id)
 
                                 sig = self._create_signature_atomic(
                                     conn, step_text, embedding, parent_problem, origin_depth,
@@ -1731,8 +1741,15 @@ class StepSignatureDB:
                                 )
                                 update_similarity_stats(conn, 'match', sibling_sim)
                                 self._update_centroid_atomic(conn, sibling_match.id, embedding, update_last_used=True)
+                                # Demote any orphan scaffold created during routing
+                                if parent_for_new:
+                                    self._demote_if_orphan(conn, parent_for_new.id)
                                 conn.commit()
                                 return sibling_match, False
+
+                        # Demote any orphan scaffold created during routing (creating under different parent)
+                        if parent_for_new and parent_for_new.id != cluster_parent_id:
+                            self._demote_if_orphan(conn, parent_for_new.id)
 
                         sig = self._create_signature_atomic(
                             conn, step_text, embedding, parent_problem, origin_depth,
@@ -5280,6 +5297,54 @@ class StepSignatureDB:
 
             logger.info("[db] Demoted %d orphan umbrellas back to leaves", demoted)
             return demoted
+
+    def _demote_if_orphan(self, conn, signature_id: int) -> bool:
+        """Demote a specific signature to leaf if it's an orphan umbrella.
+
+        Called when global dedup redirects to a different parent, leaving
+        a scaffold branch (created during routing) without children.
+
+        Args:
+            conn: Database connection
+            signature_id: ID of signature to check and potentially demote
+
+        Returns:
+            True if signature was demoted, False otherwise
+        """
+        if signature_id is None:
+            return False
+
+        # Check if it's an orphan umbrella (umbrella with no children)
+        cursor = conn.execute("""
+            SELECT s.is_semantic_umbrella, s.step_type,
+                   EXISTS(SELECT 1 FROM signature_relationships r WHERE r.parent_id = s.id) as has_children
+            FROM step_signatures s
+            WHERE s.id = ?
+        """, (signature_id,))
+        row = cursor.fetchone()
+
+        if not row:
+            return False
+
+        is_umbrella = row[0]
+        step_type = row[1]
+        has_children = row[2]
+
+        # Demote if it's an umbrella with no children
+        if is_umbrella and not has_children:
+            self._update_signature_fields(
+                conn, signature_id,
+                log_reason="demote_abandoned_scaffold",
+                is_semantic_umbrella=0,
+                dsl_type="math",  # Default to math for execution
+            )
+            logger.info(
+                "[db] Demoted abandoned scaffold branch: id=%d type='%s'",
+                signature_id, step_type
+            )
+            return True
+
+        return False
 
     def clear_all_data(self) -> dict:
         """Clear all signature data for a fresh start.

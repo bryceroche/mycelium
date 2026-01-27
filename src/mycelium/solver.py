@@ -2164,8 +2164,6 @@ class Solver:
         # Also handles extraction-only steps (no hint but has values)
         has_dsl_hint = getattr(step, 'dsl_hint', None) is not None
         has_extracted_values = bool(getattr(step, 'extracted_values', None))
-        logger.info("[solver] DSL check for '%s': has_dsl_hint=%s has_extracted_values=%s",
-                   step.task[:40] if step.task else "None", has_dsl_hint, has_extracted_values)
         if has_dsl_hint or has_extracted_values:
             dsl_result = await self._try_dsl(child_sig, step, context, step_descriptions)
             if dsl_result is not None:
@@ -2552,9 +2550,9 @@ class Solver:
         dsl_hint = getattr(step, 'dsl_hint', None)
         extracted_values = getattr(step, 'extracted_values', {}) or {}
 
-        # Debug logging for DSL execution (INFO level to trace empty prediction issues)
-        logger.info(
-            "[solver] _try_dsl START: task='%s' dsl_hint=%s extracted_values=%s context_keys=%s",
+        # Debug logging for DSL execution
+        logger.debug(
+            "[solver] _try_dsl: task='%s' dsl_hint=%s extracted_values=%s context_keys=%s",
             step.task[:40] if step.task else "None",
             dsl_hint,
             extracted_values,
