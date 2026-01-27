@@ -24,13 +24,19 @@ from mycelium.config import (
 
 PLANNER_SYSTEM = """You decompose math problems into atomic steps. Output valid JSON only.
 
-PHASE 1: Extract ALL numeric values with semantic names.
+PHASE 1: Extract ALL numeric values with semantic names and UNITS.
 PHASE 2: Build atomic steps that reference Phase 1 values.
+
+CRITICAL: Unit Awareness
+- Each value name MUST match its semantic meaning
+- "distance_miles" for distances, "time_hours" for durations, "price_dollars" for costs
+- NEVER mix units: don't assign a distance value to a time variable!
+- Read the problem carefully to identify WHAT each number represents
 
 OUTPUT FORMAT (JSON):
 {
   "values": {
-    "name": number,
+    "semantic_name_unit": number,
     ...
   },
   "steps": [
@@ -47,10 +53,11 @@ OUTPUT FORMAT (JSON):
 
 RULES:
 1. ONE OPERATION PER STEP
-2. Reference Phase 1 values with $name (e.g., "$purchase_price")
+2. Reference Phase 1 values with $name (e.g., "$purchase_price_dollars")
 3. Reference prior step results with {step_N} (e.g., "{step_1}")
 4. NEVER use raw numbers in steps - always reference $names
 5. For "increased by X%": extract multiplier (1 + X/100) in Phase 1
+6. VALUE NAMES MUST MATCH WHAT THE NUMBER REPRESENTS - read context carefully!
 
 PERCENTAGE HANDLING:
 - "X increased by Y%" → base is X, multiply by (1 + Y/100)
@@ -63,13 +70,13 @@ When possible, reframe as forward computation:
 
 If you cannot determine all values, use null and mark requires_algebra: true.
 
-EXAMPLE:
+EXAMPLE 1 - MONEY:
 Problem: "Josh buys a house for $80,000, puts in $50,000 repairs. This increased the value by 150%. How much profit?"
 
 {
   "values": {
-    "purchase_price": 80000,
-    "repair_cost": 50000,
+    "purchase_price_dollars": 80000,
+    "repair_cost_dollars": 50000,
     "increase_multiplier": 2.5
   },
   "steps": [
@@ -77,7 +84,7 @@ Problem: "Josh buys a house for $80,000, puts in $50,000 repairs. This increased
       "id": "step_1",
       "task": "Calculate total investment",
       "operation": "add",
-      "values": {"a": "$purchase_price", "b": "$repair_cost"},
+      "values": {"a": "$purchase_price_dollars", "b": "$repair_cost_dollars"},
       "dsl_hint": "+",
       "depends_on": []
     },
@@ -85,7 +92,7 @@ Problem: "Josh buys a house for $80,000, puts in $50,000 repairs. This increased
       "id": "step_2",
       "task": "Calculate new house value",
       "operation": "multiply",
-      "values": {"base": "$purchase_price", "multiplier": "$increase_multiplier"},
+      "values": {"base": "$purchase_price_dollars", "multiplier": "$increase_multiplier"},
       "dsl_hint": "*",
       "depends_on": []
     },
@@ -99,6 +106,38 @@ Problem: "Josh buys a house for $80,000, puts in $50,000 repairs. This increased
     }
   ]
 }
+
+EXAMPLE 2 - TIME AND DISTANCE (CAREFUL!):
+Problem: "A car drives 180 miles. The trip takes 4 hours normally, but traffic adds 2 hours and slow zones add 0.5 hours. How much time is left?"
+
+{
+  "values": {
+    "distance_miles": 180,
+    "normal_time_hours": 4,
+    "traffic_delay_hours": 2,
+    "slow_zone_hours": 0.5
+  },
+  "steps": [
+    {
+      "id": "step_1",
+      "task": "Calculate total extra time from delays",
+      "operation": "add",
+      "values": {"a": "$traffic_delay_hours", "b": "$slow_zone_hours"},
+      "dsl_hint": "+",
+      "depends_on": []
+    },
+    {
+      "id": "step_2",
+      "task": "Calculate remaining time after delays",
+      "operation": "subtract",
+      "values": {"total": "$normal_time_hours", "used": "{step_1}"},
+      "dsl_hint": "-",
+      "depends_on": ["step_1"]
+    }
+  ]
+}
+
+NOTE: In Example 2, "180 miles" is DISTANCE, NOT time! Always read what each number represents.
 
 Output ONLY valid JSON. No explanation."""
 
@@ -898,14 +937,20 @@ You are given:
 2. Abstract steps (what operations are needed)
 3. VOCABULARY: Suggested operations from our knowledge base for each step
 
-PHASE 1: Extract ALL numeric values from the problem with semantic names.
+PHASE 1: Extract ALL numeric values from the problem with semantic names AND UNITS.
 PHASE 2: For each step, pick the best matching operation from VOCABULARY (or mark as "novel" if none fit).
 PHASE 3: Fill in the parameter values using $name references.
+
+CRITICAL: Unit Awareness
+- Each value name MUST match its semantic meaning
+- Include units in names: "distance_miles", "time_hours", "price_dollars", "weight_kg"
+- NEVER mix units: don't assign a distance value to a time variable!
+- Read the problem context carefully: "180 miles" is distance, "4 hours" is time
 
 OUTPUT FORMAT (JSON):
 {
   "values": {
-    "semantic_name": number,
+    "semantic_name_unit": number,
     ...
   },
   "steps": [
@@ -915,7 +960,7 @@ OUTPUT FORMAT (JSON):
       "matched_operation": "operation_name from vocabulary OR null if novel",
       "is_novel": false,
       "operation": "add|subtract|multiply|divide",
-      "values": {"param": "$semantic_name OR {step_N}"},
+      "values": {"param": "$semantic_name_unit OR {step_N}"},
       "dsl_hint": "+|-|*|/",
       "depends_on": []
     }
@@ -924,9 +969,10 @@ OUTPUT FORMAT (JSON):
 
 RULES:
 1. PREFER vocabulary operations - only mark is_novel=true if NO vocabulary option fits
-2. Use $name to reference Phase 1 values (e.g., "$purchase_price")
+2. Use $name to reference Phase 1 values (e.g., "$purchase_price_dollars")
 3. Use {step_N} to reference prior step results (e.g., "{step_1}")
 4. matched_operation should be the exact name from VOCABULARY suggestions
+5. VALUE NAMES MUST REFLECT WHAT THE NUMBER REPRESENTS - check units carefully!
 
 Output ONLY valid JSON. No explanation."""
 
