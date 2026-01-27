@@ -7272,7 +7272,7 @@ class StepSignatureDB:
         from mycelium import config
 
         def _do_review(c):
-            stats = {"merges": 0, "moves": 0, "clusters_created": 0, "orphans_cleaned": 0}
+            stats = {"ran": True, "merges": 0, "moves": 0, "clusters_created": 0, "orphans_cleaned": 0}
 
             # 1. Get all umbrella nodes (routers) for review
             umbrellas = self._get_all_umbrellas(conn=c)

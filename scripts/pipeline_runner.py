@@ -289,7 +289,7 @@ async def solve_problem(
         # Periodic tree review (every 10 problems after cold start)
         # Uses Welford stats to deduplicate, relocate outliers, and subcluster
         review_result = solver.step_db.maybe_restructure(problem_idx + 1)
-        if review_result:
+        if review_result and review_result.get("ran"):
             logger.info(
                 "[pipeline] Periodic tree review: %d merges, %d moves, %d subclusters",
                 review_result.get("merges", 0),
