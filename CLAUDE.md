@@ -13,6 +13,9 @@ Resist the urge to manually intervene in the tree.  We want the system to be ind
 ## New Favorite Pattern
 We want to consolidate methods - for example all database connections should go through a data layer instead of having multiple database connections.  Same with Signature creation, or leaf_node rejection of dag_steps.  We want to consolidate method calls for features to simplify our codebase and reduce the chance of bugs
 
+## Negotiation between Tree and Planner
+The tree guided planner should be a back and forth negotiation between the tree and the planner with a bias towards decomposing dag_steps instead of leaf_nodes as decomposing leaf_nodes is a bigger commitment representing a permanant change to the tree structure
+
 ## Terminology
  - Welfords = Algorithm for calculating variance
  - DAG = Directed Acyclic Graph
