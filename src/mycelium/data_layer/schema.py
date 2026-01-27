@@ -135,6 +135,8 @@ CREATE TABLE IF NOT EXISTS step_examples (
     result TEXT,
     success INTEGER DEFAULT 0,
     parent_problem TEXT,
+    expression TEXT,            -- DSL script that was executed (e.g., "a * b")
+    inputs TEXT,                -- JSON: parameter values used (e.g., {"a": 5, "b": 3})
     created_at TEXT NOT NULL
 );
 
@@ -656,6 +658,29 @@ def migrate_db(conn) -> None:
     except Exception as e:
         # Table might not exist yet (fresh DB)
         logger.debug("[schema] dag_step_node_stats amplitude migration skipped: %s", e)
+
+    # Migrate step_examples table (add expression/inputs for DSL learning per mycelium-nvc9)
+    # Per CLAUDE.md: DSL generation needs to see what expressions worked, not just results
+    try:
+        cursor = conn.execute("PRAGMA table_info(step_examples)")
+        example_cols = {row[1] for row in cursor.fetchall()}
+        example_migrations = []
+        if "expression" not in example_cols:
+            example_migrations.append(
+                "ALTER TABLE step_examples ADD COLUMN expression TEXT"
+            )
+        if "inputs" not in example_cols:
+            example_migrations.append(
+                "ALTER TABLE step_examples ADD COLUMN inputs TEXT"
+            )
+        for sql in example_migrations:
+            conn.execute(sql)
+        if example_migrations:
+            conn.commit()
+            logger.info("[schema] Added expression/inputs columns to step_examples")
+    except Exception as e:
+        # Table might not exist yet (fresh DB)
+        logger.debug("[schema] step_examples migration skipped: %s", e)
 
     # Migrate dag_step_node_stats table (add Welford's columns for similarity variance)
     # High similarity variance = dag_step_ids routed here have diverse embeddings = type too broad

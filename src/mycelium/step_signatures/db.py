@@ -3729,11 +3729,11 @@ class StepSignatureDB:
             limit: Maximum number of examples to return
 
         Returns:
-            List of example dicts with step_text, result, success
+            List of example dicts with step_text, result, success, expression, inputs
         """
         with self._connection() as conn:
             cursor = conn.execute(
-                """SELECT step_text, result, success
+                """SELECT step_text, result, success, expression, inputs
                    FROM step_examples
                    WHERE signature_id = ?
                    ORDER BY created_at DESC
@@ -3746,6 +3746,8 @@ class StepSignatureDB:
                     'step_text': row[0],
                     'result': row[1] if row[1] else '',
                     'success': bool(row[2]),
+                    'expression': row[3] if row[3] else '',
+                    'inputs': row[4] if row[4] else '',
                 })
             return examples
 
@@ -3755,6 +3757,8 @@ class StepSignatureDB:
         step_text: str,
         result: str,
         success: bool,
+        expression: str | None = None,
+        inputs: str | None = None,
     ) -> bool:
         """Update an example with its execution result.
 
@@ -3766,6 +3770,8 @@ class StepSignatureDB:
             step_text: The step text to match
             result: The DSL execution result
             success: Whether execution succeeded
+            expression: The DSL script that was executed (e.g., "a * b")
+            inputs: JSON string of parameter values used (e.g., '{"a": 5, "b": 3}')
 
         Returns:
             True if an example was updated, False otherwise
@@ -3775,7 +3781,7 @@ class StepSignatureDB:
             # Match on first 100 chars of step_text to handle truncation
             cursor = conn.execute(
                 """UPDATE step_examples
-                   SET result = ?, success = ?
+                   SET result = ?, success = ?, expression = ?, inputs = ?
                    WHERE id = (
                        SELECT id FROM step_examples
                        WHERE signature_id = ?
@@ -3783,13 +3789,13 @@ class StepSignatureDB:
                        ORDER BY created_at DESC
                        LIMIT 1
                    )""",
-                (result, 1 if success else 0, signature_id, step_text),
+                (result, 1 if success else 0, expression, inputs, signature_id, step_text),
             )
             updated = cursor.rowcount > 0
             if updated:
                 logger.debug(
-                    "[db] Updated example result for sig %d: success=%s",
-                    signature_id, success
+                    "[db] Updated example result for sig %d: success=%s expr=%s",
+                    signature_id, success, expression[:30] if expression else None
                 )
             return updated
 
