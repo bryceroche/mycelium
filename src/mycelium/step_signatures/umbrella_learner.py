@@ -445,28 +445,19 @@ Rules:
         This prevents repeated LLM calls trying to decompose the same
         atomic operations like compute_sum, compute_product, etc.
 
+        Per CLAUDE.md "New Favorite Pattern": Uses consolidated method.
+
         Args:
             signature_id: The signature to mark as atomic
             reason: Why it's atomic (e.g., "decomp_failed_single_step")
         """
-        from mycelium.data_layer import get_db
-
         try:
-            db = get_db()
-            with db.connection() as conn:
-                conn.execute(
-                    """
-                    UPDATE step_signatures
-                    SET is_atomic = 1, atomic_reason = ?
-                    WHERE id = ?
-                    """,
-                    (reason, signature_id),
-                )
-                conn.commit()
-                logger.info(
-                    "[umbrella] Marked signature %d as atomic (reason: %s)",
-                    signature_id, reason
-                )
+            result = self._db.mark_signature_atomic(
+                signature_id=signature_id,
+                reason=reason,
+            )
+            if not result:
+                logger.warning("[umbrella] Failed to mark signature %d as atomic", signature_id)
         except Exception as e:
             logger.warning("[umbrella] Failed to mark signature %d as atomic: %s", signature_id, e)
 

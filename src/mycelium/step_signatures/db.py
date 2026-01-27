@@ -3394,6 +3394,82 @@ class StepSignatureDB:
             with self._connection() as c:
                 return _do_unarchive(c)
 
+    def demote_umbrella_to_leaf(
+        self,
+        signature_id: int,
+        reason: str = "no_children",
+        conn=None,
+    ) -> bool:
+        """Demote an umbrella signature to a leaf signature.
+
+        Per CLAUDE.md "New Favorite Pattern": Consolidated method for umbrella demotion.
+        Ensures cache invalidation, logging, and consistency.
+
+        Used by decay system when umbrella has no healthy children.
+
+        Args:
+            signature_id: ID of umbrella to demote
+            reason: Why demotion is happening
+            conn: Optional connection for transaction support
+
+        Returns:
+            True if demotion succeeded
+        """
+        def _do_demote(c):
+            result = self._update_signature_fields(
+                c, signature_id,
+                log_reason=f"demote_umbrella:{reason}",
+                is_semantic_umbrella=0,
+                dsl_type="decompose",
+            )
+            if result:
+                logger.info("[db] Demoted umbrella %d to leaf (reason: %s)", signature_id, reason)
+            return result
+
+        if conn is not None:
+            return _do_demote(conn)
+        else:
+            with self._connection() as c:
+                return _do_demote(c)
+
+    def mark_signature_atomic(
+        self,
+        signature_id: int,
+        reason: str,
+        conn=None,
+    ) -> bool:
+        """Mark a signature as atomic (non-decomposable).
+
+        Per CLAUDE.md "New Favorite Pattern": Consolidated method for atomic marking.
+        Prevents repeated failed decomposition attempts.
+
+        Used by umbrella learner when decomposition has failed.
+
+        Args:
+            signature_id: ID of signature to mark atomic
+            reason: Why it's atomic (e.g., "single_operation", "decomposition_failed")
+            conn: Optional connection for transaction support
+
+        Returns:
+            True if update succeeded
+        """
+        def _do_mark(c):
+            result = self._update_signature_fields(
+                c, signature_id,
+                log_reason=f"mark_atomic:{reason}",
+                is_atomic=1,
+                atomic_reason=reason,
+            )
+            if result:
+                logger.info("[db] Marked signature %d as atomic (reason: %s)", signature_id, reason)
+            return result
+
+        if conn is not None:
+            return _do_mark(conn)
+        else:
+            with self._connection() as c:
+                return _do_mark(c)
+
     def increment_rejection_count(self, signature_id: int, conn=None) -> int:
         """Increment rejection count and return new value.
 
