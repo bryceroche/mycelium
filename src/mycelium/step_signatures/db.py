@@ -567,12 +567,13 @@ class StepSignatureDB:
     V2: Simplified schema with Natural Language Interface.
     """
 
-    def __init__(self, db_path: str = None):
+    def __init__(self, db_path: str = None, embedder=None):
         """Initialize the database.
 
         Args:
             db_path: Optional path to SQLite database. If provided, creates
                      a direct connection instead of using the global singleton.
+            embedder: Optional Embedder instance. If None, lazily fetches singleton on first use.
         """
         if db_path:
             self._direct_conn = sqlite3.connect(db_path, check_same_thread=False, timeout=30.0)
@@ -598,10 +599,21 @@ class StepSignatureDB:
         # Per CLAUDE.md: "prefer embedding similarity over keyword matching"
         self._atomic_embeddings: Optional[list[np.ndarray]] = None
 
+        # Lazy-loaded embedder (per CLAUDE.md: consolidate method calls)
+        self._embedder = embedder
+
         self._init_schema()
 
         # Register with CacheManager for coordinated invalidation
         get_cache_manager().register_db(self)
+
+    @property
+    def embedder(self):
+        """Get the embedder instance, lazily fetching singleton if needed."""
+        if self._embedder is None:
+            from mycelium.embedder import Embedder
+            self._embedder = Embedder.get_instance()
+        return self._embedder
 
     @property
     def db_path(self) -> str:
@@ -1286,9 +1298,7 @@ class StepSignatureDB:
                     op_graph = self._dsl_hint_to_graph(dsl_hint)
                     if op_graph:
                         from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
-                        from mycelium.embedder import Embedder
-                        embedder_instance = Embedder.get_instance()
-                        step_graph_emb_list = embed_computation_graph_sync(embedder_instance, op_graph)
+                        step_graph_emb_list = embed_computation_graph_sync(self.embedder, op_graph)
                         if step_graph_emb_list:
                             step_graph_emb = np.array(step_graph_emb_list)
 
@@ -1486,9 +1496,7 @@ class StepSignatureDB:
                                 op_graph = self._dsl_hint_to_graph(dsl_hint)
                                 if op_graph:
                                     from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
-                                    from mycelium.embedder import Embedder
-                                    embedder_inst = Embedder.get_instance()
-                                    step_graph_emb_list = embed_computation_graph_sync(embedder_inst, op_graph)
+                                    step_graph_emb_list = embed_computation_graph_sync(self.embedder, op_graph)
                                     if step_graph_emb_list:
                                         step_graph_emb = np.array(step_graph_emb_list)
                                         leaf_graph_emb = np.array(best_match.graph_embedding)
@@ -1610,9 +1618,7 @@ class StepSignatureDB:
                         op_graph = self._dsl_hint_to_graph(dsl_hint)
                         if op_graph:
                             from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
-                            from mycelium.embedder import Embedder
-                            embedder_inst = Embedder.get_instance()
-                            step_graph_emb_list = embed_computation_graph_sync(embedder_inst, op_graph)
+                            step_graph_emb_list = embed_computation_graph_sync(self.embedder, op_graph)
                             if step_graph_emb_list:
                                 step_graph_emb = np.array(step_graph_emb_list)
                                 sig_graph_emb = np.array(best_match.graph_embedding)
@@ -1636,9 +1642,7 @@ class StepSignatureDB:
                     op_graph = self._dsl_hint_to_graph(dsl_hint)
                     if op_graph:
                         from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
-                        from mycelium.embedder import Embedder
-                        embedder = Embedder.get_instance()
-                        step_graph_emb_list = embed_computation_graph_sync(embedder, op_graph)
+                        step_graph_emb_list = embed_computation_graph_sync(self.embedder, op_graph)
                         if step_graph_emb_list:
                             step_graph_emb = np.array(step_graph_emb_list)
 
@@ -1837,9 +1841,7 @@ class StepSignatureDB:
             op_graph = self._dsl_hint_to_graph(dsl_hint)
             if op_graph:
                 from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
-                from mycelium.embedder import Embedder
-                embedder_inst = Embedder.get_instance()
-                step_graph_emb_list = embed_computation_graph_sync(embedder_inst, op_graph)
+                step_graph_emb_list = embed_computation_graph_sync(self.embedder, op_graph)
                 if step_graph_emb_list:
                     step_graph_embedding = np.array(step_graph_emb_list)
                     logger.debug("[db] Computed step_graph_embedding from dsl_hint=%s", dsl_hint)
@@ -2165,7 +2167,8 @@ class StepSignatureDB:
             # Auto-assign DSL based on step_type, description, planner's extracted_values, and dsl_hint
             # dsl_hint enables bidirectional LLM-signature communication
             dsl_script, dsl_type = infer_dsl_for_signature(
-                step_type, step_text, extracted_values=extracted_values, dsl_hint=dsl_hint
+                step_type, step_text, extracted_values=extracted_values, dsl_hint=dsl_hint,
+                embedder=self.embedder
             )
 
         # Auto-generate NL interface from extracted_values if we created a math DSL
@@ -2202,9 +2205,7 @@ class StepSignatureDB:
         if graph_emb_to_store is None and computation_graph:
             try:
                 from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
-                from mycelium.embedder import Embedder
-                embedder_inst = Embedder.get_instance()
-                emb_list = embed_computation_graph_sync(embedder_inst, computation_graph)
+                emb_list = embed_computation_graph_sync(self.embedder, computation_graph)
                 if emb_list:
                     graph_emb_to_store = np.array(emb_list)
                     logger.debug("[db] Computed graph_embedding from computation_graph")
@@ -3365,6 +3366,89 @@ class StepSignatureDB:
             )
 
             return True
+
+    def unarchive_signature(self, signature_id: int, conn=None) -> bool:
+        """Restore an archived signature (un-soft-delete).
+
+        Args:
+            signature_id: ID of signature to restore
+            conn: Optional connection for transaction support
+
+        Returns:
+            True if restored successfully
+        """
+        def _do_unarchive(c):
+            self._update_signature_fields(
+                c, signature_id,
+                log_reason="unarchive",
+                is_archived=0,
+            )
+            logger.info("[db] Unarchived signature %d", signature_id)
+            return True
+
+        if conn is not None:
+            return _do_unarchive(conn)
+        else:
+            with self._connection() as c:
+                return _do_unarchive(c)
+
+    def increment_rejection_count(self, signature_id: int, conn=None) -> int:
+        """Increment rejection count and return new value.
+
+        Args:
+            signature_id: ID of signature that rejected a step
+            conn: Optional connection for transaction support
+
+        Returns:
+            New rejection_count value, or 0 on error
+        """
+        def _do_increment(c):
+            self._update_signature_fields(
+                c, signature_id,
+                log_reason="rejection",
+                rejection_count_increment=True,
+            )
+            # Get updated count
+            cursor = c.execute(
+                "SELECT rejection_count FROM step_signatures WHERE id = ?",
+                (signature_id,),
+            )
+            row = cursor.fetchone()
+            return row[0] if row else 0
+
+        try:
+            if conn is not None:
+                return _do_increment(conn)
+            else:
+                with self._connection() as c:
+                    return _do_increment(c)
+        except Exception as e:
+            logger.warning("[db] Error incrementing rejection count for %d: %s", signature_id, e)
+            return 0
+
+    def update_signature_depth(self, signature_id: int, depth: int, conn=None) -> bool:
+        """Update signature depth.
+
+        Args:
+            signature_id: ID of signature to update
+            depth: New depth value
+            conn: Optional connection for transaction support
+
+        Returns:
+            True if updated successfully
+        """
+        def _do_update(c):
+            return self._update_signature_fields(
+                c, signature_id,
+                log_reason="depth_update",
+                depth=depth,
+            )
+
+        if conn is not None:
+            return _do_update(conn)
+        else:
+            with self._connection() as c:
+                return _do_update(c)
 
     # =========================================================================
     # Usage Recording
