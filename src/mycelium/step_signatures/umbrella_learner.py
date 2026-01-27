@@ -370,6 +370,7 @@ Rules:
         """
         from mycelium.mcts.adaptive import AdaptiveExploration
         from mycelium.data_layer.mcts import get_mcts_win_rates
+        from mycelium.config import DECOMP_MIN_ATTEMPTS_FOR_RATE, DECOMP_SUCCESS_RATE_THRESHOLD
 
         all_sigs = self.db.get_all_signatures()
 
@@ -410,9 +411,9 @@ Rules:
             # Skip signatures with low decomposition success rate (data-driven atomic detection)
             # Per CLAUDE.md: Use Welford stats to guide decisions, not hard-coded flags
             decomp_rate, decomp_attempts = self.db.get_decomp_success_rate(
-                sig.id, min_attempts=config.DECOMP_MIN_ATTEMPTS_FOR_RATE
+                sig.id, min_attempts=DECOMP_MIN_ATTEMPTS_FOR_RATE
             )
-            if decomp_attempts >= config.DECOMP_MIN_ATTEMPTS_FOR_RATE and decomp_rate < config.DECOMP_SUCCESS_RATE_THRESHOLD:
+            if decomp_attempts >= DECOMP_MIN_ATTEMPTS_FOR_RATE and decomp_rate < DECOMP_SUCCESS_RATE_THRESHOLD:
                 logger.debug(
                     "[umbrella] Skipping sig %d ('%s') - decomp success rate %.1f%% < threshold",
                     sig.id, sig.step_type, decomp_rate * 100
@@ -516,11 +517,13 @@ Rules:
         Returns:
             List of child signature IDs created
         """
+        from mycelium.config import DECOMP_MIN_ATTEMPTS_FOR_RATE, DECOMP_SUCCESS_RATE_THRESHOLD
+
         # Skip signatures with low decomposition success rate (data-driven atomic detection)
         decomp_rate, decomp_attempts = self.db.get_decomp_success_rate(
-            signature.id, min_attempts=config.DECOMP_MIN_ATTEMPTS_FOR_RATE
+            signature.id, min_attempts=DECOMP_MIN_ATTEMPTS_FOR_RATE
         )
-        if decomp_attempts >= config.DECOMP_MIN_ATTEMPTS_FOR_RATE and decomp_rate < config.DECOMP_SUCCESS_RATE_THRESHOLD:
+        if decomp_attempts >= DECOMP_MIN_ATTEMPTS_FOR_RATE and decomp_rate < DECOMP_SUCCESS_RATE_THRESHOLD:
             logger.debug(
                 "[umbrella] Skipping sig %d ('%s') - decomp success rate %.1f%% < threshold (attempts=%d)",
                 signature.id, signature.step_type, decomp_rate * 100, decomp_attempts
