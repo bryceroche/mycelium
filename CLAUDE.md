@@ -7,31 +7,21 @@ We want to treate this file as our source of truth.
 Every bug fix, optimization or feature should be implemented with this file in mind.
 Please always keep this file in the context window.
 
-## The Core Problem: Lexical vs Operational Similarity
-
+## A Core Problem: Lexical vs Operational Similarity
 Standard embedding models learn similarity from vocabulary, not from operational semantics
-
 `x + y` vs `a + b` → **Lexically similar but operationally different** 
 `x + y` vs `x * y` → **Lexically similar but operationally different** 
 
-Embeddings get confused 
+The routing implication:
+- Route TO umbrellas using graph centroid similarity (semantic clustering)
+- Route TO leaves using graph_embedding similarity (operational matching)
+
 
 ## The Solution: Computation Graph Embeddings
-**Route by what operations DO, not what they SOUND LIKE.**
-
-Instead of embedding problem text and comparing to signature text, we:
-1. **Extract "what operation is needed"** from the problem text (LLM call)
-2. **Embed that operation description**
-3. **Compare to computation graph embeddings** stored on signatures
-
-### Computation Graphs
-A computation graph is a structural representation of what a DSL actually computes:
-
-
-The graph is:
-- **Parameter-agnostic**: Variable names don't matter, structure does
-- **Implementation-agnostic**: Same graph regardless of Python vs SymPy
-- **Operationally meaningful**: Two DSLs with the same graph do the same thing
+**Extract "what operation is needed and embed operation description**
+The graph is: Parameter-agnostic, Implementation-agnostic, Operationally meaningful
+Leaf nodes - graph embeddings of DSLs
+Router Nodes - centroids of graph embeddings (average of descendant leaf nodes)
 
 ### Generic DSL Parameters
 DSLs must be templates with generic parameters, not hardcoded values:
@@ -48,9 +38,9 @@ The `param_descriptions` and `clarifying_questions` guide parameter extraction f
 
 Future similar operations route here by graph similarity.
 
-## MCTS Rollouts as Ground Truth
+## The job of the tree is to match (leaf_node, dag_step) pairs and (dag_plan, thread_id) pairs
 
-**MCTS rollout outcomes provide ground truth for operational equivalence.**
+## MCTS Rollouts as Ground Truth
 
 When the system routes a problem through a signature and the DSL executes correctly, that's evidence the signature represents the *right operation*. When it fails, that's evidence of operational mismatch.
 
