@@ -1476,17 +1476,8 @@ class StepSignatureDB:
                     conn, min_similarity, dsl_hint=dsl_hint, exclude_ids=exclude_ids
                 )
 
-                # Cold start: force flat structure under root (per mycelium-5cn0)
-                # Still allow matching to existing signatures, but new ones go under root
-                cold_start_active = self.is_cold_start(conn=conn)
-                cold_start_root_id = None
-                if cold_start_active:
-                    root_row = conn.execute(
-                        "SELECT id FROM step_signatures WHERE is_root = 1 LIMIT 1"
-                    ).fetchone()
-                    if root_row:
-                        cold_start_root_id = root_row[0]
-                        logger.debug("[db] Cold start active: new signatures will go under root (id=%d)", cold_start_root_id)
+                # NOTE: Cold start logic moved to propose_signature() per CLAUDE.md New Favorite Pattern
+                # propose_signature is now the SINGLE ENTRY POINT for all signature creation
 
                 # Accept match from hierarchical routing
                 # Simplified: no match_score, just use routing result
@@ -1713,117 +1704,94 @@ class StepSignatureDB:
                                     conn, child_match, False, parent_for_new, global_match.id
                                 )
                             else:
-                                # No matching leaf found - create new leaf under umbrella
-                                cluster_parent_id = global_match.id
-                                # Cold start override: flat structure under root (per mycelium-5cn0)
-                                if cold_start_root_id is not None:
-                                    cluster_parent_id = cold_start_root_id
-                                    logger.info(
-                                        "[db] COLD START: Forcing under root instead of umbrella %d",
-                                        global_match.id
-                                    )
-                                else:
-                                    logger.info(
-                                        "[db] CLUSTER: No matching leaf in umbrella children (best=%.3f), creating under sig %d (%s)",
-                                        child_sim, global_match.id, global_match.step_type
-                                    )
+                                # No matching leaf found - create new leaf
+                                # Per CLAUDE.md New Favorite Pattern: use propose_signature as single entry point
                                 update_similarity_stats(conn, 'cluster', global_sim)
 
-                                sig = self._create_signature_atomic(
-                                    conn, step_text, embedding, parent_problem, origin_depth,
-                                    extracted_values=extracted_values, dsl_hint=dsl_hint,
-                                    parent_id=cluster_parent_id, graph_embedding=step_graph_emb
+                                sig_id, placement = self.propose_signature(
+                                    step_text=step_text,
+                                    embedding=embedding,
+                                    graph_embedding=step_graph_emb,
+                                    proposed_parent_id=global_match.id,
+                                    best_match_id=global_match.id,
+                                    best_match_sim=global_sim,
+                                    dsl_hint=dsl_hint,
+                                    extracted_values=extracted_values,
+                                    origin_depth=origin_depth,
+                                    problem_context=parent_problem,
+                                    conn=conn,
                                 )
+                                sig = self.get_signature(sig_id)
                                 logger.info(
-                                    "[db] Created CLUSTERED signature (child of umbrella %s): step='%s' type='%s'",
-                                    global_match.step_type, step_text[:40], sig.step_type
+                                    "[db] Created signature via propose_signature (placement=%s): step='%s'",
+                                    placement, step_text[:40]
                                 )
                                 return self._finalize_routing_result(
-                                    conn, sig, True, parent_for_new, cluster_parent_id
+                                    conn, sig, True, parent_for_new, sig.id
                                 )
 
                     elif global_match is not None and global_sim >= thresholds.cluster_threshold:
-                        # CLUSTER: Similar signature exists
+                        # CLUSTER: Similar signature exists - determine parent
                         if global_match.is_semantic_umbrella:
-                            # Matched an UMBRELLA - use it as parent
                             cluster_parent_id = global_match.id
-                            logger.info(
-                                "[db] CLUSTER: Using umbrella as parent (sim=%.3f >= %.3f): sig %d (%s)",
-                                global_sim, thresholds.cluster_threshold, global_match.id, global_match.step_type
-                            )
                         else:
-                            # Matched a LEAF - use same parent
                             cursor = conn.execute(
                                 "SELECT parent_id FROM signature_relationships WHERE child_id = ?",
                                 (global_match.id,)
                             )
                             row = cursor.fetchone()
                             cluster_parent_id = row[0] if row else None
-                            logger.info(
-                                "[db] CLUSTER: Similar leaf found (sim=%.3f >= %.3f), clustering under parent %s",
-                                global_sim, thresholds.cluster_threshold, cluster_parent_id
-                            )
-
-                        # Cold start override: flat structure under root (per mycelium-5cn0)
-                        if cold_start_root_id is not None:
-                            logger.info("[db] COLD START: Forcing under root instead of cluster parent %s", cluster_parent_id)
-                            cluster_parent_id = cold_start_root_id
 
                         update_similarity_stats(conn, 'cluster', global_sim)
 
-                        # SIBLING DEDUP: Before creating, check if sibling already matches
-                        if cluster_parent_id is not None and step_graph_emb is not None:
-                            sibling_match, sibling_sim = find_best_child_match(
-                                conn, cluster_parent_id, step_graph_emb
-                            )
-                            if sibling_match is not None and sibling_sim >= thresholds.dedup_threshold:
-                                # Found matching sibling, return it instead of creating duplicate
-                                logger.info(
-                                    "[db] SIBLING DEDUP: Found matching sibling (sim=%.3f >= %.3f): '%s' → sig %d (%s)",
-                                    sibling_sim, thresholds.dedup_threshold, step_text[:40], sibling_match.id, sibling_match.step_type
-                                )
-                                update_similarity_stats(conn, 'match', sibling_sim)
-                                self._update_centroid_atomic(conn, sibling_match.id, embedding, update_last_used=True)
-                                return self._finalize_routing_result(
-                                    conn, sibling_match, False, parent_for_new, cluster_parent_id
-                                )
-
-                        sig = self._create_signature_atomic(
-                            conn, step_text, embedding, parent_problem, origin_depth,
-                            extracted_values=extracted_values, dsl_hint=dsl_hint,
-                            parent_id=cluster_parent_id, graph_embedding=step_graph_emb
+                        # Per CLAUDE.md New Favorite Pattern: use propose_signature as single entry point
+                        # propose_signature handles cold start + Welford-based placement decisions
+                        sig_id, placement = self.propose_signature(
+                            step_text=step_text,
+                            embedding=embedding,
+                            graph_embedding=step_graph_emb,
+                            proposed_parent_id=cluster_parent_id,
+                            best_match_id=global_match.id,
+                            best_match_sim=global_sim,
+                            dsl_hint=dsl_hint,
+                            extracted_values=extracted_values,
+                            origin_depth=origin_depth,
+                            problem_context=parent_problem,
+                            conn=conn,
                         )
+                        sig = self.get_signature(sig_id)
                         logger.info(
-                            "[db] Created CLUSTERED signature (sibling of %s): step='%s' type='%s'",
-                            global_match.step_type, step_text[:40], sig.step_type
+                            "[db] Created signature via propose_signature (placement=%s): step='%s'",
+                            placement, step_text[:40]
                         )
                         return self._finalize_routing_result(
-                            conn, sig, True, parent_for_new, cluster_parent_id
+                            conn, sig, True, parent_for_new, sig.id
                         )
 
-                # No global match above thresholds - create new signature under routing parent
+                # No global match above thresholds - create new signature
+                # Per CLAUDE.md New Favorite Pattern: use propose_signature as single entry point
                 actual_parent_id = parent_id if parent_id is not None else (parent_for_new.id if parent_for_new else None)
 
-                # Cold start override: flat structure under root (per mycelium-5cn0)
-                if cold_start_root_id is not None:
-                    logger.info("[db] COLD START: Forcing under root instead of routing parent %s", actual_parent_id)
-                    actual_parent_id = cold_start_root_id
-
-                sig = self._create_signature_atomic(
-                    conn, step_text, embedding, parent_problem, origin_depth,
-                    extracted_values=extracted_values, dsl_hint=dsl_hint,
-                    parent_id=actual_parent_id, graph_embedding=step_graph_emb
+                sig_id, placement = self.propose_signature(
+                    step_text=step_text,
+                    embedding=embedding,
+                    graph_embedding=step_graph_emb,
+                    proposed_parent_id=actual_parent_id,
+                    best_match_id=None,
+                    best_match_sim=None,
+                    dsl_hint=dsl_hint,
+                    extracted_values=extracted_values,
+                    origin_depth=origin_depth,
+                    problem_context=parent_problem,
+                    conn=conn,
                 )
-                parent_desc = f"id={parent_id}" if parent_id is not None else (parent_for_new.step_type if parent_for_new else "root")
-                if cold_start_root_id is not None:
-                    parent_desc = f"root (cold start)"
+                sig = self.get_signature(sig_id)
                 logger.info(
-                    "[db] Created NEW signature (child of %s): step='%s' type='%s'",
-                    parent_desc, step_text[:40], sig.step_type
+                    "[db] Created NEW signature via propose_signature (placement=%s): step='%s'",
+                    placement, step_text[:40]
                 )
-                # Use consolidated exit point (won't demote since we're using parent_for_new)
                 return self._finalize_routing_result(
-                    conn, sig, True, parent_for_new, actual_parent_id
+                    conn, sig, True, parent_for_new, sig.id
                 )
 
             except Exception:
@@ -6419,11 +6387,16 @@ class StepSignatureDB:
         problem_context: Optional[str] = None,
         conn=None,
     ) -> tuple[int, bool]:
-        """SINGLE ENTRY POINT for proposing new signatures.
+        """SINGLE ENTRY POINT for creating new signatures.
 
-        Per mycelium-xv09: Consolidates signature proposal logic.
-        - Cold start: auto-accepts and creates signature, returns (signature_id, True)
-        - Post cold start: stages proposal, returns (proposal_id, False)
+        Per mycelium-xv09 + CLAUDE.md New Favorite Pattern: Consolidates all
+        signature creation logic into one entry point.
+
+        - Cold start: Creates signature under root (flat structure)
+        - Post cold start: Uses Welford-based placement decision
+
+        Per CLAUDE.md System Independence: Automated placement decisions,
+        no manual tree intervention required.
 
         Args:
             step_text: The step description text
@@ -6439,18 +6412,18 @@ class StepSignatureDB:
             problem_context: Original problem text
 
         Returns:
-            Tuple of (id, was_accepted):
-            - If cold start: (signature_id, True) - signature was created
-            - If post cold start: (proposal_id, False) - proposal was staged
+            Tuple of (signature_id, placement_info):
+            - signature_id: The created (or merged) signature ID
+            - placement_info: String describing placement decision
         """
-        from mycelium.step_signatures.models import ProposedSignature
-
         def _do_propose(c):
+            root = self.get_root()
+            root_id = root.id if root else None
+
             # Check if we're in cold start mode
             if self.is_cold_start(conn=c):
-                # Cold start: auto-accept as root child
-                root = self.get_root()
-                parent_id = proposed_parent_id if proposed_parent_id is not None else (root.id if root else None)
+                # Cold start: auto-accept as root child (flat structure)
+                parent_id = root_id
 
                 sig = self._create_signature_atomic(
                     c,
@@ -6463,37 +6436,104 @@ class StepSignatureDB:
                     origin_depth=origin_depth,
                 )
                 logger.info(
-                    "[proposals] Cold start: auto-accepted signature id=%d type='%s'",
+                    "[proposals] Cold start: created signature id=%d type='%s' under root",
                     sig.id, sig.step_type
                 )
-                return (sig.id, True)
+                return (sig.id, "cold_start_root")
 
-            # Post cold start: stage the proposal
-            now = datetime.now(timezone.utc).isoformat()
+            # Post cold start: use Welford-based placement decision
+            # Per mycelium-br28: decide_signature_placement uses z-scores
+            actual_parent_id = proposed_parent_id if proposed_parent_id is not None else root_id
 
-            # Pack embeddings for storage
-            embedding_packed = pack_embedding(embedding) if embedding is not None else None
-            graph_emb_packed = pack_embedding(graph_embedding) if graph_embedding is not None else None
-            extracted_json = json.dumps(extracted_values) if extracted_values else None
+            if graph_embedding is not None and actual_parent_id is not None:
+                decision, best_sibling, sim = self.decide_signature_placement(
+                    graph_embedding, actual_parent_id, conn=c
+                )
 
-            cursor = c.execute(
-                """INSERT INTO proposed_signatures
-                   (step_text, embedding, graph_embedding, computation_graph,
-                    proposed_parent_id, best_match_id, best_match_sim,
-                    dsl_hint, extracted_values, origin_depth, problem_context,
-                    status, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)""",
-                (step_text, embedding_packed, graph_emb_packed, computation_graph,
-                 proposed_parent_id, best_match_id, best_match_sim,
-                 dsl_hint, extracted_json, origin_depth, problem_context,
-                 now),
+                if decision == PlacementDecision.MERGE and best_sibling is not None:
+                    # Very similar to existing - merge (dedup)
+                    logger.info(
+                        "[proposals] MERGE: dedup to existing sig %d (sim=%.3f)",
+                        best_sibling.id, sim
+                    )
+                    # Update centroid of existing signature
+                    if embedding is not None:
+                        self._update_centroid_atomic(c, best_sibling.id, embedding, update_last_used=True)
+                    return (best_sibling.id, "merge_dedup")
+
+                elif decision == PlacementDecision.CHILD and best_sibling is not None:
+                    # Create as child of best_sibling (sub-cluster)
+                    # First promote best_sibling to umbrella if needed
+                    if not best_sibling.is_semantic_umbrella:
+                        self._promote_to_umbrella_internal(c, best_sibling.id, skip_children_check=True)
+
+                    sig = self._create_signature_atomic(
+                        c,
+                        step_text=step_text,
+                        embedding=embedding,
+                        parent_id=best_sibling.id,
+                        dsl_hint=dsl_hint,
+                        graph_embedding=graph_embedding,
+                        extracted_values=extracted_values,
+                        origin_depth=origin_depth,
+                    )
+                    logger.info(
+                        "[proposals] CHILD: created sig %d under umbrella %d (z-score indicated sub-cluster)",
+                        sig.id, best_sibling.id
+                    )
+                    return (sig.id, "child_subcluster")
+
+                elif decision == PlacementDecision.NEW_CLUSTER:
+                    # Very different from all existing - create under root
+                    sig = self._create_signature_atomic(
+                        c,
+                        step_text=step_text,
+                        embedding=embedding,
+                        parent_id=root_id,
+                        dsl_hint=dsl_hint,
+                        graph_embedding=graph_embedding,
+                        extracted_values=extracted_values,
+                        origin_depth=origin_depth,
+                    )
+                    logger.info(
+                        "[proposals] NEW_CLUSTER: created sig %d under root (very different from siblings)",
+                        sig.id
+                    )
+                    return (sig.id, "new_cluster_root")
+
+                # Default: SIBLING - create under proposed parent
+                sig = self._create_signature_atomic(
+                    c,
+                    step_text=step_text,
+                    embedding=embedding,
+                    parent_id=actual_parent_id,
+                    dsl_hint=dsl_hint,
+                    graph_embedding=graph_embedding,
+                    extracted_values=extracted_values,
+                    origin_depth=origin_depth,
+                )
+                logger.info(
+                    "[proposals] SIBLING: created sig %d under parent %d (normal similarity)",
+                    sig.id, actual_parent_id
+                )
+                return (sig.id, "sibling_normal")
+
+            # Fallback: no graph_embedding or no parent - create under root
+            sig = self._create_signature_atomic(
+                c,
+                step_text=step_text,
+                embedding=embedding,
+                parent_id=root_id,
+                dsl_hint=dsl_hint,
+                graph_embedding=graph_embedding,
+                extracted_values=extracted_values,
+                origin_depth=origin_depth,
             )
-            proposal_id = cursor.lastrowid
             logger.info(
-                "[proposals] Staged proposal id=%d, best_match_sim=%.3f, parent_id=%s",
-                proposal_id, best_match_sim or 0.0, proposed_parent_id
+                "[proposals] FALLBACK: created sig %d under root (no graph_embedding)",
+                sig.id
             )
-            return (proposal_id, False)
+            return (sig.id, "fallback_root")
 
         if conn is not None:
             return _do_propose(conn)
