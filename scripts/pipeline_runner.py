@@ -284,17 +284,10 @@ async def solve_problem(
         # NOTE: Umbrella learning removed - periodic tree review (every 10 problems
         # after cold start) handles tree optimization via maybe_restructure()
 
-        # Auto-trigger reactive exploration for failed problems (per CLAUDE.md)
-        # This explores alternative nodes to find what would have worked, enabling
-        # precise divergence-based blame assignment
-        if not is_correct:
-            reactive_result = await solver.maybe_run_reactive_exploration()
-            if reactive_result.get("winning_path_found"):
-                logger.info(
-                    "[pipeline] Reactive exploration: found winning path, %d divergence points, %d blame assigned",
-                    reactive_result.get("divergence_points", 0),
-                    reactive_result.get("blame_assigned", 0),
-                )
+        # NOTE: Reactive exploration disabled for now - too expensive during cold start
+        # Coarse-grained blame (whole thread) is sufficient; periodic tree review
+        # uses Welford stats to identify problematic signatures
+        # TODO: Re-enable after cold start for fine-grained divergence blame
 
         # Auto-trigger DSL regeneration if post-mortem flagged it (per beads mycelium-flbq)
         # This runs mod 10 problems when high-conf-wrong nodes accumulate
