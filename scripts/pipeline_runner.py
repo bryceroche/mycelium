@@ -281,13 +281,21 @@ async def solve_problem(
             result, is_correct, ground_truth=problem["answer"]
         )
 
-        # NOTE: Umbrella learning removed - periodic tree review (every 10 problems
-        # after cold start) handles tree optimization via maybe_restructure()
+        # NOTE: Umbrella learning removed - periodic tree review handles optimization
 
-        # NOTE: Reactive exploration disabled for now - too expensive during cold start
-        # Coarse-grained blame (whole thread) is sufficient; periodic tree review
-        # uses Welford stats to identify problematic signatures
+        # NOTE: Reactive exploration disabled - coarse-grained blame is sufficient
         # TODO: Re-enable after cold start for fine-grained divergence blame
+
+        # Periodic tree review (every 10 problems after cold start)
+        # Uses Welford stats to deduplicate, relocate outliers, and subcluster
+        review_result = solver.step_db.maybe_restructure(problem_idx + 1)
+        if review_result:
+            logger.info(
+                "[pipeline] Periodic tree review: %d merges, %d moves, %d subclusters",
+                review_result.get("merges", 0),
+                review_result.get("moves", 0),
+                review_result.get("clusters_created", 0),
+            )
 
         # Auto-trigger DSL regeneration if post-mortem flagged it (per beads mycelium-flbq)
         # This runs mod 10 problems when high-conf-wrong nodes accumulate
