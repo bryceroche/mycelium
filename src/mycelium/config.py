@@ -229,6 +229,12 @@ DECOMP_MIN_ATTEMPTS_MATURE = 3  # Mature: require 3+ attempts before flagging
 DECOMP_MAX_WIN_RATE = 0.5  # Flag nodes with win rate below this
 DECOMP_MAX_PER_CYCLE = 5  # Max signatures to decompose per learning cycle (gradual learning)
 
+# Welford-based decomposition success rate (replaces is_atomic flag)
+# If a signature's decomposition success rate falls below this threshold,
+# skip future decomposition attempts (effectively atomic)
+DECOMP_SUCCESS_RATE_THRESHOLD = 0.1  # Skip decomp if success rate < 10%
+DECOMP_MIN_ATTEMPTS_FOR_RATE = 3  # Need at least 3 attempts to calculate meaningful rate
+
 # Bayesian prior for cold start (assume some successes before any data)
 ROUTING_PRIOR_SUCCESSES = 2
 ROUTING_PRIOR_USES = 4

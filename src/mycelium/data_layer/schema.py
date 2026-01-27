@@ -479,6 +479,11 @@ CREATE TABLE IF NOT EXISTS welford_stats (
     exec_n INTEGER DEFAULT 0,             -- Total executions
     exec_successes INTEGER DEFAULT 0,     -- Successful executions
 
+    -- Decomposition success rate (guides whether to attempt decomposition)
+    -- Per CLAUDE.md: "Failures Are Valuable Data Points" - learn which sigs are atomic
+    decomp_attempts INTEGER DEFAULT 0,    -- Times decomposition was attempted
+    decomp_successes INTEGER DEFAULT 0,   -- Times decomposition produced >1 children
+
     -- Metadata
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -793,6 +798,8 @@ def migrate_db(conn) -> None:
                 child_m2 REAL DEFAULT 0.0,
                 exec_n INTEGER DEFAULT 0,
                 exec_successes INTEGER DEFAULT 0,
+                decomp_attempts INTEGER DEFAULT 0,
+                decomp_successes INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
@@ -804,6 +811,27 @@ def migrate_db(conn) -> None:
     except Exception as e:
         # Table already exists or other error
         logger.debug("[schema] welford_stats migration skipped: %s", e)
+
+    # Add decomp columns to welford_stats if missing (data-driven atomic detection)
+    try:
+        cursor = conn.execute("PRAGMA table_info(welford_stats)")
+        welford_cols = {row[1] for row in cursor.fetchall()}
+        welford_migrations = []
+        if "decomp_attempts" not in welford_cols:
+            welford_migrations.append(
+                "ALTER TABLE welford_stats ADD COLUMN decomp_attempts INTEGER DEFAULT 0"
+            )
+        if "decomp_successes" not in welford_cols:
+            welford_migrations.append(
+                "ALTER TABLE welford_stats ADD COLUMN decomp_successes INTEGER DEFAULT 0"
+            )
+        for sql in welford_migrations:
+            conn.execute(sql)
+        if welford_migrations:
+            conn.commit()
+            logger.info("[schema] Added decomp columns to welford_stats")
+    except Exception as e:
+        logger.debug("[schema] welford_stats decomp migration skipped: %s", e)
 
     # Create proposed_signatures table if it doesn't exist (per mycelium-xv09)
     # Staging table for signature proposals before acceptance

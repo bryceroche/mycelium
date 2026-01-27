@@ -6055,6 +6055,94 @@ class StepSignatureDB:
                 c.commit()
                 return result
 
+    def update_welford_decomp(
+        self,
+        signature_id: int,
+        success: bool,
+        conn=None,
+    ) -> bool:
+        """Update decomposition attempt stats.
+
+        Called after every decomposition attempt. Tracks whether decomposing
+        this signature into sub-steps tends to succeed.
+
+        Used to determine if future decomposition attempts are worthwhile:
+        - Low success rate = signature is effectively atomic (don't decompose)
+        - High success rate = decomposition helps
+
+        Args:
+            signature_id: The signature that was decomposed
+            success: Whether decomposition led to successful execution
+
+        Returns:
+            True if update succeeded
+        """
+        def _do_update(c):
+            self._ensure_welford_stats(signature_id, c)
+
+            c.execute(
+                """
+                UPDATE welford_stats
+                SET decomp_attempts = decomp_attempts + 1,
+                    decomp_successes = decomp_successes + ?,
+                    updated_at = datetime('now')
+                WHERE signature_id = ?
+                """,
+                (1 if success else 0, signature_id)
+            )
+            return True
+
+        if conn is not None:
+            return _do_update(conn)
+        else:
+            with self._connection() as c:
+                result = _do_update(c)
+                c.commit()
+                return result
+
+    def get_decomp_success_rate(
+        self,
+        signature_id: int,
+        min_attempts: int = 3,
+        conn=None,
+    ) -> tuple[float, int]:
+        """Get decomposition success rate for a signature.
+
+        Used to decide if decomposition should be attempted.
+
+        Args:
+            signature_id: The signature to check
+            min_attempts: Minimum attempts required for meaningful rate
+
+        Returns:
+            Tuple of (success_rate, attempt_count)
+            Returns (1.0, 0) if insufficient data (allows initial attempts)
+        """
+        def _do_get(c):
+            row = c.execute(
+                """
+                SELECT decomp_attempts, decomp_successes
+                FROM welford_stats
+                WHERE signature_id = ?
+                """,
+                (signature_id,)
+            ).fetchone()
+
+            if not row or row["decomp_attempts"] < min_attempts:
+                # Insufficient data - allow decomposition attempts
+                return (1.0, row["decomp_attempts"] if row else 0)
+
+            attempts = row["decomp_attempts"]
+            successes = row["decomp_successes"]
+            rate = successes / attempts if attempts > 0 else 0.0
+            return (rate, attempts)
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
     def get_welford_stats(
         self,
         signature_id: int,
@@ -6070,7 +6158,9 @@ class StepSignatureDB:
                 """
                 SELECT signature_id, route_n, route_mean, route_m2,
                        child_n, child_mean, child_m2,
-                       exec_n, exec_successes, created_at, updated_at
+                       exec_n, exec_successes,
+                       decomp_attempts, decomp_successes,
+                       created_at, updated_at
                 FROM welford_stats
                 WHERE signature_id = ?
                 """,
