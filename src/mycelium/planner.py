@@ -619,13 +619,23 @@ class DAGPlan:
 
 
 class Planner:
-    """Decompose problems into DAG of subtasks."""
+    """Decompose problems into DAG of subtasks.
+
+    DEPRECATED: Use TreeGuidedPlanner instead for vocabulary-guided decomposition.
+    This class is kept for backwards compatibility but will be removed in a future release.
+    """
 
     def __init__(
         self,
         model: str = PLANNER_DEFAULT_MODEL,
         temperature: float = PLANNER_DEFAULT_TEMPERATURE,
     ):
+        import warnings
+        warnings.warn(
+            "Planner is deprecated. Use TreeGuidedPlanner for vocabulary-guided decomposition.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.client = get_client(model=model)
         self.temperature = temperature
 
@@ -808,10 +818,14 @@ class Planner:
         return [], {}
 
 
-# Convenience function
+# Convenience function (uses TreeGuidedPlanner without vocabulary - fallback mode)
 async def decompose(problem: str) -> DAGPlan:
-    """Decompose a problem into steps."""
-    planner = Planner()
+    """Decompose a problem into steps.
+
+    Note: For vocabulary-guided decomposition, instantiate TreeGuidedPlanner
+    with step_db and embedder directly.
+    """
+    planner = TreeGuidedPlanner()  # No step_db = uses fallback mode
     return await planner.decompose(problem)
 
 
@@ -1352,8 +1366,113 @@ Refine these steps into concrete operations with values."""
 
         return steps, phase1_values
 
+    async def decompose(
+        self,
+        problem: str,
+        signature_hints: Optional[list[SignatureHint]] = None,
+        context: Optional[str] = None,
+        skip_validation: bool = False,
+    ) -> DAGPlan:
+        """Decompose a problem into a DAG of steps (API-compatible with Planner).
+
+        Uses tree-guided decomposition when step_db/embedder are available,
+        otherwise falls back to standard single-LLM-call approach.
+
+        Args:
+            problem: The problem to decompose
+            signature_hints: Optional list of SignatureHint objects (used in fallback mode)
+            context: Optional additional context (used in fallback mode)
+            skip_validation: If True, skip data flow validation
+
+        Returns:
+            DAGPlan with steps and dependencies
+        """
+        # If we have step_db and embedder, and no special context, use tree-guided
+        if self.step_db is not None and self.embedder is not None and not context:
+            result = await self.decompose_guided(problem)
+            return result.plan
+
+        # Fallback to standard single-LLM-call approach
+        logger.info("[planner] Using fallback decomposition (no step_db or has context)")
+        return await self._decompose_fallback(problem, signature_hints, context, skip_validation)
+
+    async def _decompose_fallback(
+        self,
+        problem: str,
+        signature_hints: Optional[list[SignatureHint]] = None,
+        context: Optional[str] = None,
+        skip_validation: bool = False,
+    ) -> DAGPlan:
+        """Fallback decomposition using single LLM call (same as old Planner)."""
+        logger.debug("[planner] Fallback decomposition: problem='%s...'", problem[:80])
+
+        # Build system prompt with optional signature hints
+        system_prompt = PLANNER_SYSTEM
+        if signature_hints:
+            hints_text = "\n\n".join(hint.to_hint_text() for hint in signature_hints)
+            system_prompt += SIGNATURE_HINTS_TEMPLATE.format(hints=hints_text)
+            logger.debug("[planner] Added %d signature hints", len(signature_hints))
+
+        # Build user message with optional context
+        user_content = problem
+        if context:
+            user_content = f"{context}\n\nDecompose this step: {problem}"
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
+        ]
+
+        response = await self.client.generate(
+            messages,
+            temperature=self.temperature,
+            response_format={"type": "json_object"},
+        )
+        steps, phase1_values = self._parse_fallback_steps(response)
+
+        plan = DAGPlan(steps=steps, problem=problem, phase1_values=phase1_values)
+
+        if not skip_validation:
+            is_valid, errors = plan.validate()
+            logger.info("[planner] Fallback decomposition: steps=%d valid=%r", len(steps), is_valid)
+            if errors:
+                logger.warning("[planner] Validation errors: %s", errors)
+
+        return plan
+
+    def _parse_fallback_steps(self, response: str) -> tuple[list[Step], dict[str, Any]]:
+        """Parse steps from fallback LLM response (same format as old Planner)."""
+        import json
+        steps = []
+        phase1_values = {}
+
+        try:
+            data = json.loads(response.strip())
+            phase1_values = data.get("values", {})
+
+            for step_data in data.get("steps", []):
+                step = Step(
+                    id=step_data.get("id", f"step_{len(steps) + 1}"),
+                    task=step_data.get("task", ""),
+                    depends_on=step_data.get("depends_on", []),
+                    extracted_values=step_data.get("values", {}),
+                    dsl_hint=step_data.get("dsl_hint"),
+                    operation=step_data.get("operation"),
+                    requires_algebra=step_data.get("requires_algebra", False),
+                )
+                steps.append(step)
+
+        except json.JSONDecodeError as e:
+            logger.warning("[planner] Fallback JSON parse failed: %s", e)
+            steps = [Step(id="solve", task="Solve the problem directly", depends_on=[])]
+
+        if not steps:
+            steps = [Step(id="solve", task="Solve the problem directly", depends_on=[])]
+
+        return steps, phase1_values
+
     async def decompose_guided(self, problem: str) -> SegmentationResult:
-        """Consolidated entry point for tree-guided decomposition.
+        """Full tree-guided decomposition with intermediate results.
 
         Per CLAUDE.md "New Favorite Pattern": This is the single entry point
         for decomposition that uses tree vocabulary to guide the process.

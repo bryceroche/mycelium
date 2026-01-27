@@ -60,7 +60,7 @@ from mycelium.config import (
     MATURITY_ESCAPE_MIN_SUBSTEPS,
     MATURITY_ESCAPE_MAX_MISSES,
 )
-from mycelium.planner import Planner, Step, DAGPlan
+from mycelium.planner import TreeGuidedPlanner, Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
 from mycelium.step_signatures.db import normalize_step_text
 from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math
@@ -604,11 +604,12 @@ class Solver:
         """
         from mycelium.client import get_client
 
-        self.planner = Planner()  # Uses its own client internally
         self.solver_client = solver_client or get_client()
         self.step_db = StepSignatureDB(db_path=db_path)
         self.embedder = Embedder.get_instance()
         self.min_similarity = min_similarity
+        # TreeGuidedPlanner uses step_db + embedder for vocabulary-guided decomposition
+        self.planner = TreeGuidedPlanner(step_db=self.step_db, embedder=self.embedder)
         self._background_tasks: set[asyncio.Task] = set()  # Track background tasks
         # LRU cache for DSL expressions: (operation, param_names) -> (expr, used_params)
         # Bounded to DSL_EXPR_CACHE_MAX_SIZE to prevent memory growth
@@ -3925,7 +3926,7 @@ Rules:
             REACTIVE_EXPLORATION_NUM_THREADS,
             REACTIVE_EXPLORATION_TEMPERATURE,
         )
-        from mycelium.planner import Planner
+        from mycelium.planner import TreeGuidedPlanner
 
         stats = {
             "reactive_exploration_triggered": True,
@@ -3951,7 +3952,11 @@ Rules:
 
             # Swap planner to higher-temp version for exploration diversity
             original_planner = self.planner
-            self.planner = Planner(temperature=REACTIVE_EXPLORATION_TEMPERATURE)
+            self.planner = TreeGuidedPlanner(
+                step_db=self.step_db,
+                embedder=self.embedder,
+                temperature=REACTIVE_EXPLORATION_TEMPERATURE,
+            )
             self._force_exploration = True
 
             try:

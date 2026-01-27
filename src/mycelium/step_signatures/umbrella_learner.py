@@ -25,7 +25,7 @@ from mycelium.config import (
     SYNTHESIS_STEP_ANCHORS,
     SYNTHESIS_STEP_THRESHOLD,
 )
-from mycelium.planner import Planner
+from mycelium.planner import TreeGuidedPlanner
 from mycelium.step_signatures.db import StepSignatureDB
 from mycelium.step_signatures.models import StepSignature
 from mycelium.step_signatures.utils import cosine_similarity
@@ -141,8 +141,9 @@ class UmbrellaLearner:
 
     def __init__(self, db: StepSignatureDB = None, client=None):
         self.db = db or StepSignatureDB()
-        self.planner = Planner()
         self.embedder = Embedder.get_instance()
+        # TreeGuidedPlanner uses db + embedder for vocabulary-guided decomposition
+        self.planner = TreeGuidedPlanner(step_db=self.db, embedder=self.embedder)
         self._client = client  # Lazy load
 
     @property
