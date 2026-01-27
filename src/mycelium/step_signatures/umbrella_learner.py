@@ -452,7 +452,7 @@ Rules:
             reason: Why it's atomic (e.g., "decomp_failed_single_step")
         """
         try:
-            result = self._db.mark_signature_atomic(
+            result = self.db.mark_signature_atomic(
                 signature_id=signature_id,
                 reason=reason,
             )
