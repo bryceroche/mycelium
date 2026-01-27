@@ -1223,9 +1223,14 @@ class Solver:
             # 3. Synthesize final answer
             final_answer = await self._synthesize(problem, step_results, context)
 
-            # Update root thread's final_answer for thread tracking
-            if self._root_thread_id and self._root_thread_id in self._active_threads:
-                self._active_threads[self._root_thread_id].final_answer = final_answer
+            # Update ALL threads' final_answer for thread tracking
+            # Per CLAUDE.md: consolidate methods - all threads get the same final answer
+            # so grading in _record_thread_outcomes compares correctly against ground_truth
+            # (Bug fix: fork threads previously had step results, not problem final answers)
+            for thread_id in self._problem_threads:
+                thread = self._active_threads.get(thread_id)
+                if thread:
+                    thread.final_answer = final_answer
 
             elapsed_ms = (time.time() - start_time) * 1000
             logger.info(
