@@ -5378,12 +5378,13 @@ class StepSignatureDB:
             now = datetime.now(timezone.utc).isoformat()
 
             try:
-                # Create umbrella using unified pathway
+                # Per CLAUDE.md System Independence: Create as LEAF first, then promote
+                # to umbrella AFTER child relationship exists (prevents orphan umbrellas)
                 new_sig = self._create_signature_atomic(
                     conn=conn,
                     step_text=description,
                     embedding=new_centroid,
-                    is_umbrella=True,
+                    is_umbrella=False,  # Start as leaf, promote after child added
                     signature_id_override=sig_id,
                     depth_override=target_depth,
                     skip_example=True,
@@ -5396,6 +5397,9 @@ class StepSignatureDB:
                        VALUES (?, ?, ?, ?)""",
                     (new_sig.id, child_signature.id, f"difficulty <= {child_signature.max_difficulty_solved}", now),
                 )
+
+                # NOW promote to umbrella (child exists, safe from orphan state)
+                self._promote_to_umbrella_internal(conn, new_sig.id)
 
                 # Update max_difficulty_solved
                 conn.execute(
@@ -5411,6 +5415,8 @@ class StepSignatureDB:
                     new_sig.id, child_signature.id, target_depth, difficulty
                 )
 
+                # Refresh signature object (is_semantic_umbrella changed)
+                new_sig = new_sig._replace(is_semantic_umbrella=True, dsl_type="router")
                 return new_sig
 
             except sqlite3.IntegrityError as e:
