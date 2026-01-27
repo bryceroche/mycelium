@@ -1895,9 +1895,10 @@ class StepSignatureDB:
             children = [self._row_to_signature(row) for row in cursor.fetchall()]
 
             if not children:
-                # Umbrella with no children - return current as best match
-                # sim already computed above using graph_embedding or centroid
-                return current, current, sim
+                # Umbrella with no children - no leaf found, caller should create one
+                # Return None for best_match (not the umbrella!), keep current as parent_for_new
+                # Bug fix: was returning umbrella as best_match, should return None
+                return None, current, sim
 
             # MCTS UCB1 Selection: balance exploitation vs exploration
             # parent_uses = current node's uses (N in UCB1 formula)
