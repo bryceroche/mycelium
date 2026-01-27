@@ -1034,6 +1034,18 @@ class TreeGuidedPlanner:
 
         return steps
 
+    # Canonical computation graphs for each operation type
+    # Per CLAUDE.md: "Route by what operations DO, not what they SOUND LIKE"
+    CANONICAL_GRAPHS = {
+        "add": "ADD(param_0, param_1)",
+        "subtract": "SUB(param_0, param_1)",
+        "multiply": "MUL(param_0, param_1)",
+        "divide": "DIV(param_0, param_1)",
+        "percentage": "MUL(param_0, DIV(param_1, CONST(100)))",
+        "compare": "COMPARE(param_0, param_1)",
+        "other": None,  # Fall back to description embedding
+    }
+
     async def suggest_operations_batch(
         self,
         abstract_steps: list[AbstractStep],
@@ -1045,7 +1057,8 @@ class TreeGuidedPlanner:
         No LLM calls - just embedding + tree routing.
 
         Per CLAUDE.md: "Route by what operations DO, not what they SOUND LIKE"
-        Uses graph_embedding for operational similarity.
+        Uses GRAPH embeddings (canonical computation graphs) for operational similarity,
+        NOT text embeddings of descriptions.
 
         Args:
             abstract_steps: List of abstract steps from segmentation
@@ -1055,6 +1068,7 @@ class TreeGuidedPlanner:
             Dict mapping step_id -> list of OperationSuggestion
         """
         from mycelium.embedding_cache import cached_embed_batch
+        from mycelium.step_signatures.graph_extractor import graph_to_natural_language
 
         if self.step_db is None or self.embedder is None:
             logger.warning("[planner] No step_db or embedder - skipping suggestions")
@@ -1065,12 +1079,33 @@ class TreeGuidedPlanner:
 
         suggestions = {}
 
-        # Batch embed all step descriptions (with caching)
-        descriptions = [step.description for step in abstract_steps]
-        embeddings_dict = cached_embed_batch(descriptions, self.embedder)
-        embeddings = [embeddings_dict[desc] for desc in descriptions]
+        # Convert operation_types to canonical graph natural language descriptions
+        # This is what we embed - the OPERATION, not the description
+        graph_texts = []
+        for step in abstract_steps:
+            canonical_graph = self.CANONICAL_GRAPHS.get(step.operation_type)
+            if canonical_graph:
+                # Convert graph to natural language for embedding
+                # e.g., "ADD(param_0, param_1)" -> "add first value and second value"
+                nl_text = graph_to_natural_language(canonical_graph)
+                graph_texts.append(nl_text)
+                logger.debug(
+                    "[planner] Step '%s' (%s) -> graph '%s' -> '%s'",
+                    step.id, step.operation_type, canonical_graph, nl_text
+                )
+            else:
+                # Unknown operation type - fall back to description
+                graph_texts.append(step.description)
+                logger.debug(
+                    "[planner] Step '%s' (%s) -> fallback to description",
+                    step.id, step.operation_type
+                )
 
-        # For each step, route through tree to find matching leaves
+        # Batch embed all graph texts (with caching)
+        embeddings_dict = cached_embed_batch(graph_texts, self.embedder)
+        embeddings = [embeddings_dict[text] for text in graph_texts]
+
+        # For each step, route through tree to find matching leaves by GRAPH embedding
         for step, embedding in zip(abstract_steps, embeddings):
             step_suggestions = []
 
@@ -1078,7 +1113,7 @@ class TreeGuidedPlanner:
             # Per CLAUDE.md: route by graph_embedding (operational), not text centroid
             matches = self.step_db.match_step_to_leaves_mcts(
                 operation_embedding=embedding,
-                dag_step_type=step.description,
+                dag_step_type=step.operation_type,  # Use operation type, not description
                 top_k=top_k,
                 min_similarity=0.3,  # Permissive - we'll filter by novelty threshold
             )
