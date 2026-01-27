@@ -2417,7 +2417,7 @@ class Solver:
         # Limit forks per step to prevent thread explosion
         max_forks = min(len(results), THREAD_MAX_FORKS_PER_STEP)
 
-        for i, (sig, score, result, dsl_result) in enumerate(results):
+        for i, (sig, score, result, _dsl_result) in enumerate(results):
             # Create fork thread for each alternative (if thread tracking enabled)
             fork_thread_id = ""
             if parent_thread and THREAD_TRACKING_ENABLED and len(results) > 1:
@@ -2490,7 +2490,7 @@ class Solver:
         # Find first success (or None if all failed)
         best_sig = candidates[0][0]  # First candidate's signature
         best_result = None
-        for sig, _score, result in results:
+        for sig, _score, result, _dsl in results:
             if result is not None:
                 best_sig = sig
                 best_result = result
