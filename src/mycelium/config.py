@@ -634,6 +634,13 @@ WELFORD_SIBLING_THRESHOLD = -2.0  # z-score above which to add as sibling (norma
 WELFORD_CHILD_THRESHOLD = -3.0    # z-score above which to add as child (somewhat different)
 # Below CHILD_THRESHOLD: new cluster under root (very different)
 
+# Periodic tree review thresholds (per periodic tree review plan)
+# These guide deduplication, outlier detection, and sub-clustering
+RESTRUCTURE_VARIANCE_THRESHOLD = 0.15  # Subcluster if child_std > this (heterogeneous cluster)
+RESTRUCTURE_MIN_CHILDREN_FOR_SPLIT = 4  # Need this many children to consider splitting
+RESTRUCTURE_MERGE_FLOOR = 0.95  # Never merge signatures below this similarity (safety floor)
+RESTRUCTURE_OUTLIER_IMPROVEMENT = 0.1  # Move outlier if new cluster is 10%+ better fit
+
 # =============================================================================
 # MATURITY-BASED DECOMPOSE VS CREATE (Sigmoid transition)
 # =============================================================================

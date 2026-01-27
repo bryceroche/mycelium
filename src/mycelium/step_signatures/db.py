@@ -1041,6 +1041,10 @@ class StepSignatureDB:
             if best_sim < min_similarity:
                 break
 
+            # Record routing similarity for Welford stats (per periodic tree review plan)
+            # This tracks the distribution of similarities at each routing decision
+            self.update_welford_route(current.id, best_sim)
+
             path.append(best_child)
             current = best_child
             depth += 1
@@ -6282,6 +6286,10 @@ class StepSignatureDB:
                 )
                 return PlacementDecision.SIBLING, None, 0.0
 
+            # Update parent's child similarity distribution (per periodic tree review plan)
+            # This tracks the distribution of inter-child similarities for this cluster
+            self.update_welford_child(parent_id, best_sim, conn=c)
+
             # 4. Compute z-score relative to parent's child similarity distribution
             child_mean = stats.get("child_mean", 0.0)
             child_m2 = stats.get("child_m2", 0.0)
@@ -6899,9 +6907,9 @@ class StepSignatureDB:
                     "orphans_cleaned": 0,
                 }
 
-            # Run restructure pass
-            logger.info("[restructure] Running auto-restructure at problem %d", problem_count)
-            return self._run_restructure_pass(conn=c)
+            # Run comprehensive tree review (includes old restructure + dedup + outlier handling)
+            logger.info("[review] Running periodic tree review at problem %d", problem_count)
+            return self.run_periodic_tree_review(conn=c)
 
         if conn is not None:
             return _do_maybe(conn)
@@ -7242,6 +7250,546 @@ class StepSignatureDB:
                 except Exception:
                     c.rollback()
                     raise
+
+    # =========================================================================
+    # PERIODIC TREE REVIEW (per periodic tree review plan)
+    # =========================================================================
+    # Comprehensive tree review that runs every RESTRUCTURE_INTERVAL problems
+    # Uses Welford stats to guide: deduplication, outlier relocation, sub-clustering
+
+    def run_periodic_tree_review(self, conn=None) -> dict:
+        """Comprehensive tree review using Welford stats.
+
+        Per CLAUDE.md: System independence - automated optimization.
+        Reviews all umbrella nodes (not just root) for:
+        - Deduplication (very similar signatures → merge)
+        - Outlier detection (poor fits → relocate)
+        - Sub-clustering (high variance → split)
+
+        Returns:
+            Dict with review stats: merges, moves, clusters_created, orphans_cleaned
+        """
+        from mycelium import config
+
+        def _do_review(c):
+            stats = {"merges": 0, "moves": 0, "clusters_created": 0, "orphans_cleaned": 0}
+
+            # 1. Get all umbrella nodes (routers) for review
+            umbrellas = self._get_all_umbrellas(conn=c)
+            logger.info("[review] Starting periodic tree review: %d umbrellas to check", len(umbrellas))
+
+            for umbrella in umbrellas:
+                # 2. Get Welford stats for this cluster
+                welford = self.get_welford_stats(umbrella.id, conn=c)
+
+                # 3. Get children with embeddings
+                children = self._get_children_with_embeddings(umbrella.id, conn=c)
+
+                if len(children) < 2:
+                    continue  # Nothing to review
+
+                # 4. Compute pairwise similarities
+                sim_matrix = self._compute_pairwise_similarities(children)
+
+                # 5. DEDUPLICATION: Merge very similar signatures
+                merge_threshold = self._compute_merge_threshold(welford)
+                merges = self._merge_duplicates(children, sim_matrix, merge_threshold, conn=c)
+                stats["merges"] += merges
+
+                # Refresh children list after merges (some may have been archived)
+                if merges > 0:
+                    children = self._get_children_with_embeddings(umbrella.id, conn=c)
+                    if len(children) < 2:
+                        continue
+                    sim_matrix = self._compute_pairwise_similarities(children)
+
+                # 6. OUTLIER DETECTION: Find nodes that don't fit
+                outlier_threshold = self._compute_outlier_threshold(welford)
+                outliers = self._detect_outliers_in_cluster(children, sim_matrix, outlier_threshold)
+                moves = self._relocate_outliers(outliers, umbrella.id, conn=c)
+                stats["moves"] += moves
+
+                # 7. SUB-CLUSTERING: Split if high variance indicates heterogeneity
+                if self._should_subcluster(welford, children):
+                    # Refresh children after any moves
+                    children = self._get_children_with_embeddings(umbrella.id, conn=c)
+                    if len(children) >= config.RESTRUCTURE_MIN_CHILDREN_FOR_SPLIT:
+                        sim_matrix = self._compute_pairwise_similarities(children)
+                        new_clusters = self._create_subclusters_for_umbrella(
+                            umbrella.id, children, sim_matrix, welford, conn=c
+                        )
+                        stats["clusters_created"] += new_clusters
+
+            # 8. Cleanup orphan umbrellas
+            stats["orphans_cleaned"] = self._cleanup_orphan_umbrellas(conn=c)
+
+            logger.info(
+                "[review] Tree review complete: %d merges, %d moves, %d clusters, %d orphans cleaned",
+                stats["merges"], stats["moves"], stats["clusters_created"], stats["orphans_cleaned"]
+            )
+
+            return stats
+
+        if conn is not None:
+            return _do_review(conn)
+        else:
+            with self._connection() as c:
+                c.execute("BEGIN IMMEDIATE")
+                try:
+                    result = _do_review(c)
+                    c.commit()
+                    return result
+                except Exception:
+                    c.rollback()
+                    raise
+
+    def _get_all_umbrellas(self, conn=None) -> list["StepSignature"]:
+        """Get all umbrella (router) signatures for tree review.
+
+        Returns:
+            List of StepSignature objects that are semantic umbrellas
+        """
+        def _do_get(c):
+            cursor = c.execute(
+                """SELECT * FROM step_signatures
+                   WHERE is_semantic_umbrella = 1 AND is_archived = 0"""
+            )
+            return [StepSignature.from_row(dict(row)) for row in cursor]
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def _compute_merge_threshold(self, welford: Optional[dict]) -> float:
+        """Compute merge threshold from cluster's Welford stats.
+
+        Very high similarity relative to cluster's distribution = duplicate.
+        Uses z-score: merge if sim > mean + 3*std
+
+        Args:
+            welford: Welford stats dict or None
+
+        Returns:
+            Similarity threshold for merging
+        """
+        from mycelium.config import RESTRUCTURE_MERGE_FLOOR
+
+        if welford is None or welford.get("child_n", 0) < 3:
+            return 0.98  # Default: very conservative during cold start
+
+        child_mean = welford.get("child_mean", 0.85)
+        child_std = self._welford_std_from_stats(welford, "child")
+
+        # Merge threshold: 3 sigma above mean (very similar = duplicate)
+        threshold = min(0.99, child_mean + 3 * child_std)
+        return max(RESTRUCTURE_MERGE_FLOOR, threshold)  # Floor to avoid false merges
+
+    def _compute_outlier_threshold(self, welford: Optional[dict]) -> float:
+        """Compute outlier threshold from cluster's Welford stats.
+
+        Very low similarity relative to cluster = outlier, should move.
+        Uses z-score: outlier if avg_sim < mean - 2*std
+
+        Args:
+            welford: Welford stats dict or None
+
+        Returns:
+            Similarity threshold for outlier detection
+        """
+        if welford is None or welford.get("child_n", 0) < 3:
+            return 0.5  # Default: lenient during cold start
+
+        child_mean = welford.get("child_mean", 0.85)
+        child_std = self._welford_std_from_stats(welford, "child")
+
+        # Outlier threshold: 2 sigma below mean
+        threshold = max(0.3, child_mean - 2 * child_std)
+        return threshold
+
+    def _welford_std_from_stats(self, welford: dict, stat_type: str) -> float:
+        """Compute standard deviation from Welford stats dict.
+
+        Args:
+            welford: Stats dict with {stat_type}_n and {stat_type}_m2
+            stat_type: "route", "child", etc.
+
+        Returns:
+            Sample standard deviation
+        """
+        import math
+        n = welford.get(f"{stat_type}_n", 0)
+        m2 = welford.get(f"{stat_type}_m2", 0.0)
+        if n < 2:
+            return 0.0
+        variance = m2 / (n - 1)
+        return math.sqrt(variance) if variance > 0 else 0.0
+
+    def _should_subcluster(self, welford: Optional[dict], children: list) -> bool:
+        """Decide if cluster should be split based on Welford variance.
+
+        High variance = heterogeneous cluster = needs sub-clustering.
+
+        Args:
+            welford: Welford stats for the umbrella
+            children: List of children with embeddings
+
+        Returns:
+            True if cluster should be split
+        """
+        from mycelium.config import RESTRUCTURE_VARIANCE_THRESHOLD, RESTRUCTURE_MIN_CHILDREN_FOR_SPLIT
+
+        if welford is None or len(children) < RESTRUCTURE_MIN_CHILDREN_FOR_SPLIT:
+            return False  # Need enough children to split meaningfully
+
+        child_std = self._welford_std_from_stats(welford, "child")
+
+        # High variance threshold
+        return child_std > RESTRUCTURE_VARIANCE_THRESHOLD
+
+    def _merge_duplicates(
+        self,
+        children: list[tuple[int, str, np.ndarray]],
+        sim_matrix: np.ndarray,
+        threshold: float,
+        conn=None,
+    ) -> int:
+        """Merge signatures with similarity above threshold.
+
+        Keeps the signature with more usage (higher exec_n).
+        Archives the merged signature.
+
+        Args:
+            children: List of (sig_id, step_type, embedding) tuples
+            sim_matrix: Pairwise similarity matrix
+            threshold: Similarity threshold for merging
+            conn: Database connection
+
+        Returns:
+            Number of merges performed
+        """
+        merged_count = 0
+        merged_ids = set()
+
+        for i in range(len(children)):
+            if children[i][0] in merged_ids:
+                continue
+
+            for j in range(i + 1, len(children)):
+                if children[j][0] in merged_ids:
+                    continue
+
+                if sim_matrix[i][j] >= threshold:
+                    # Merge: keep the one with more usage
+                    keeper_id, merged_id = self._choose_keeper_by_usage(
+                        children[i][0], children[j][0], conn
+                    )
+                    success = self._merge_signatures_internal(keeper_id, merged_id, conn)
+                    if success:
+                        merged_ids.add(merged_id)
+                        merged_count += 1
+                        logger.info(
+                            "[review] Merged duplicate: %d -> %d (sim=%.3f)",
+                            merged_id, keeper_id, sim_matrix[i][j]
+                        )
+
+        return merged_count
+
+    def _choose_keeper_by_usage(self, sig_a_id: int, sig_b_id: int, conn) -> tuple[int, int]:
+        """Choose which signature to keep based on usage stats.
+
+        Returns:
+            Tuple of (keeper_id, merged_id)
+        """
+        stats_a = self.get_welford_stats(sig_a_id, conn=conn)
+        stats_b = self.get_welford_stats(sig_b_id, conn=conn)
+
+        usage_a = (stats_a.get("exec_n", 0) if stats_a else 0)
+        usage_b = (stats_b.get("exec_n", 0) if stats_b else 0)
+
+        if usage_a >= usage_b:
+            return (sig_a_id, sig_b_id)
+        return (sig_b_id, sig_a_id)
+
+    def _merge_signatures_internal(self, keeper_id: int, merged_id: int, conn) -> bool:
+        """Merge two signatures, keeping one and archiving the other.
+
+        - Updates keeper's centroid (average with merged)
+        - Reparents any children of merged to keeper
+        - Removes merged from tree
+        - Archives merged signature
+
+        Args:
+            keeper_id: Signature to keep
+            merged_id: Signature to archive
+            conn: Database connection
+
+        Returns:
+            True if merge succeeded
+        """
+        try:
+            keeper = self.get_signature(keeper_id)
+            merged = self.get_signature(merged_id)
+            if not keeper or not merged:
+                return False
+
+            # Update keeper's graph centroid (average with merged)
+            if keeper.graph_embedding is not None and merged.graph_embedding is not None:
+                keeper_emb = np.array(keeper.graph_embedding)
+                merged_emb = np.array(merged.graph_embedding)
+                new_centroid = (keeper_emb + merged_emb) / 2
+                conn.execute(
+                    "UPDATE step_signatures SET graph_embedding = ? WHERE id = ?",
+                    (pack_embedding(new_centroid), keeper_id)
+                )
+
+            # Reparent any children of merged to keeper
+            conn.execute(
+                "UPDATE signature_relationships SET parent_id = ? WHERE parent_id = ?",
+                (keeper_id, merged_id)
+            )
+
+            # If merged had children, keeper becomes umbrella
+            cursor = conn.execute(
+                "SELECT COUNT(*) FROM signature_relationships WHERE parent_id = ?",
+                (keeper_id,)
+            )
+            child_count = cursor.fetchone()[0]
+            if child_count > 0 and not keeper.is_semantic_umbrella:
+                self._promote_to_umbrella_internal(conn, keeper_id, skip_children_check=True)
+
+            # Remove merged from its parent
+            conn.execute(
+                "DELETE FROM signature_relationships WHERE child_id = ?",
+                (merged_id,)
+            )
+
+            # Archive merged signature (don't delete - preserve history)
+            conn.execute(
+                "UPDATE step_signatures SET is_archived = 1 WHERE id = ?",
+                (merged_id,)
+            )
+
+            # Propagate centroid changes
+            self.propagate_graph_centroid_to_parents(conn, keeper_id, include_self=True)
+
+            return True
+        except Exception as e:
+            logger.warning("[review] Failed to merge %d -> %d: %s", merged_id, keeper_id, e)
+            return False
+
+    def _detect_outliers_in_cluster(
+        self,
+        children: list[tuple[int, str, np.ndarray]],
+        sim_matrix: np.ndarray,
+        threshold: float,
+    ) -> list[tuple[int, float]]:
+        """Find children whose avg similarity to siblings is below threshold.
+
+        Args:
+            children: List of (sig_id, step_type, embedding) tuples
+            sim_matrix: Pairwise similarity matrix
+            threshold: Outlier threshold
+
+        Returns:
+            List of (sig_id, avg_similarity) for outliers
+        """
+        outliers = []
+        n = len(children)
+
+        for i in range(n):
+            # Compute average similarity to all siblings
+            sims = [sim_matrix[i][j] for j in range(n) if i != j]
+            avg_sim = sum(sims) / len(sims) if sims else 0
+
+            if avg_sim < threshold:
+                outliers.append((children[i][0], avg_sim))
+
+        return outliers
+
+    def _relocate_outliers(
+        self,
+        outliers: list[tuple[int, float]],
+        current_parent_id: int,
+        conn=None,
+    ) -> int:
+        """Move outliers to better-fitting clusters or root.
+
+        Args:
+            outliers: List of (sig_id, avg_similarity) tuples
+            current_parent_id: ID of current parent umbrella
+            conn: Database connection
+
+        Returns:
+            Number of signatures moved
+        """
+        from mycelium.config import RESTRUCTURE_OUTLIER_IMPROVEMENT
+
+        moved = 0
+
+        for sig_id, avg_sim in outliers:
+            # Find best matching cluster for this signature
+            best_parent_id, best_sim = self._find_best_cluster_for_signature(sig_id, current_parent_id, conn)
+
+            if best_parent_id is not None and best_sim > avg_sim + RESTRUCTURE_OUTLIER_IMPROVEMENT:
+                # Found better home - move it
+                success = self._move_signature_to_parent(sig_id, best_parent_id, conn)
+                if success:
+                    moved += 1
+                    logger.info(
+                        "[review] Moved outlier %d to cluster %d (old_sim=%.3f, new_sim=%.3f)",
+                        sig_id, best_parent_id, avg_sim, best_sim
+                    )
+            elif avg_sim < 0.5:
+                # Very poor fit everywhere - move to root as new cluster seed
+                root = self.get_root()
+                if root and root.id != current_parent_id:
+                    success = self._move_signature_to_parent(sig_id, root.id, conn)
+                    if success:
+                        moved += 1
+                        logger.info("[review] Moved outlier %d to root (avg_sim=%.3f)", sig_id, avg_sim)
+
+        return moved
+
+    def _find_best_cluster_for_signature(
+        self,
+        sig_id: int,
+        exclude_parent_id: int,
+        conn=None,
+    ) -> tuple[Optional[int], float]:
+        """Find the best-fitting cluster for a signature.
+
+        Compares signature's graph_embedding to all umbrella centroids.
+
+        Args:
+            sig_id: Signature to find home for
+            exclude_parent_id: Don't consider this parent (current parent)
+            conn: Database connection
+
+        Returns:
+            Tuple of (best_parent_id, similarity) or (None, 0)
+        """
+        sig = self.get_signature(sig_id)
+        if sig is None or sig.graph_embedding is None:
+            return (None, 0.0)
+
+        sig_emb = np.array(sig.graph_embedding)
+
+        # Get all umbrellas
+        umbrellas = self._get_all_umbrellas(conn=conn)
+
+        best_parent_id = None
+        best_sim = 0.0
+
+        for umbrella in umbrellas:
+            if umbrella.id == exclude_parent_id:
+                continue
+            if umbrella.graph_embedding is None:
+                continue
+
+            umb_emb = np.array(umbrella.graph_embedding)
+            sim = cosine_similarity(sig_emb, umb_emb)
+
+            if sim > best_sim:
+                best_sim = sim
+                best_parent_id = umbrella.id
+
+        return (best_parent_id, best_sim)
+
+    def _move_signature_to_parent(self, sig_id: int, new_parent_id: int, conn) -> bool:
+        """Move a signature from current parent to new parent.
+
+        Args:
+            sig_id: Signature to move
+            new_parent_id: New parent ID
+            conn: Database connection
+
+        Returns:
+            True if move succeeded
+        """
+        try:
+            # Get current parent
+            old_parent = self.get_parent(sig_id)
+            old_parent_id = old_parent.id if old_parent else None
+
+            # Remove from old parent
+            conn.execute(
+                "DELETE FROM signature_relationships WHERE child_id = ?",
+                (sig_id,)
+            )
+
+            # Get signature for condition
+            sig = self.get_signature(sig_id)
+            condition = sig.step_type if sig else ""
+
+            # Add to new parent
+            conn.execute(
+                "INSERT INTO signature_relationships (parent_id, child_id, condition) VALUES (?, ?, ?)",
+                (new_parent_id, sig_id, condition)
+            )
+
+            # Update depth
+            new_parent = self.get_signature(new_parent_id)
+            new_depth = (new_parent.depth + 1) if new_parent and new_parent.depth else 1
+            conn.execute(
+                "UPDATE step_signatures SET depth = ? WHERE id = ?",
+                (new_depth, sig_id)
+            )
+
+            # Propagate centroid changes to both old and new parents
+            if old_parent_id:
+                self.propagate_graph_centroid_to_parents(conn, old_parent_id, include_self=True)
+            self.propagate_graph_centroid_to_parents(conn, new_parent_id, include_self=True)
+
+            return True
+        except Exception as e:
+            logger.warning("[review] Failed to move sig %d to parent %d: %s", sig_id, new_parent_id, e)
+            return False
+
+    def _create_subclusters_for_umbrella(
+        self,
+        parent_id: int,
+        children: list[tuple[int, str, np.ndarray]],
+        sim_matrix: np.ndarray,
+        welford: Optional[dict],
+        conn=None,
+    ) -> int:
+        """Split heterogeneous umbrella into tighter sub-clusters.
+
+        Uses existing union-find clustering with adaptive threshold.
+
+        Args:
+            parent_id: The umbrella to split
+            children: List of (sig_id, step_type, embedding) tuples
+            sim_matrix: Pairwise similarity matrix
+            welford: Welford stats for adaptive threshold
+            conn: Database connection
+
+        Returns:
+            Number of new clusters created
+        """
+        # Compute adaptive threshold from Welford stats
+        if welford:
+            child_mean = welford.get("child_mean", 0.85)
+            child_std = self._welford_std_from_stats(welford, "child")
+            # Threshold: mean + 0.5*std (tighter than current cluster)
+            cluster_threshold = min(0.95, child_mean + 0.5 * child_std)
+        else:
+            cluster_threshold = 0.90
+
+        # Detect sub-clusters using union-find
+        clusters = self._detect_clusters(children, sim_matrix, cluster_threshold)
+
+        # Only create umbrellas for clusters with 2+ members
+        clusters_created = 0
+        for cluster in clusters:
+            if len(cluster) >= 2:
+                success = self._create_umbrella_for_cluster(cluster, parent_id, conn=conn)
+                if success:
+                    clusters_created += 1
+
+        return clusters_created
 
 
 # =============================================================================

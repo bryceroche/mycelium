@@ -1857,6 +1857,11 @@ class Solver:
                 difficulty=difficulty,
             )
 
+        # Record execution outcome in Welford stats (per periodic tree review plan)
+        # This tracks the execution success rate for each signature
+        if routed_signature:
+            self.step_db.update_welford_exec(routed_signature.id, success=step_completed)
+
         # 7. Regenerate DSL on mod 10 uses (continuous learning)
         # Background task: don't block the hot path
         if uses > 0 and uses % 10 == 0:
