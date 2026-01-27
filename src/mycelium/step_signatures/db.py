@@ -4127,6 +4127,16 @@ class StepSignatureDB:
         if "is_semantic_umbrella" in fields_changed:
             invalidate_children_cache(signature_id)
 
+        # Invalidate parent's children cache if depth changed (tree structure changed)
+        if "depth" in fields_changed:
+            # Find and invalidate parent's children cache
+            parent_row = conn.execute(
+                "SELECT parent_id FROM signature_relationships WHERE child_id = ?",
+                (signature_id,)
+            ).fetchone()
+            if parent_row and parent_row[0]:
+                invalidate_children_cache(parent_row[0])
+
         # Propagate graph centroid if graph_embedding changed
         if "graph_embedding" in fields_changed:
             self.propagate_graph_centroid_to_parents(conn, signature_id)
@@ -5088,19 +5098,37 @@ class StepSignatureDB:
             )
             return True
 
-    def _promote_to_umbrella_internal(self, conn, signature_id: int) -> bool:
+    def _promote_to_umbrella_internal(self, conn, signature_id: int, skip_children_check: bool = False) -> bool:
         """Internal: Mark signature as umbrella within existing transaction.
 
         This is the SINGLE PATHWAY for umbrella promotion. All code that needs
         to mark a signature as umbrella should call this function.
 
+        Per CLAUDE.md System Independence: Don't create umbrellas without children.
+        This function validates children exist before promoting (unless skip_children_check=True
+        for cases where children are being added in the same transaction).
+
         Args:
             conn: Database connection (existing transaction)
             signature_id: ID of the signature to promote
+            skip_children_check: If True, skip validation (caller guarantees children exist/will exist)
 
         Returns:
-            True if updated, False if signature not found
+            True if updated, False if signature not found or no children
         """
+        # Validate children exist (unless caller explicitly skips check)
+        if not skip_children_check:
+            child_count = conn.execute(
+                "SELECT COUNT(*) FROM signature_relationships WHERE parent_id = ?",
+                (signature_id,)
+            ).fetchone()[0]
+            if child_count == 0:
+                logger.warning(
+                    "[db] Refusing to promote sig %d to umbrella: no children (would create orphan)",
+                    signature_id
+                )
+                return False
+
         result = self._update_signature_fields(
             conn, signature_id,
             log_reason="promote_to_umbrella",
