@@ -469,6 +469,10 @@ class StepResult:
     was_injected: bool = False  # True if DSL was used
     was_routed: bool = False  # True if routed through umbrella
     elapsed_ms: float = 0.0
+    # Preserve step data for reactive exploration retries
+    dsl_hint: Optional[str] = None
+    extracted_values: Optional[dict] = None
+    depends_on: Optional[list[str]] = None
 
 
 @dataclass
@@ -1900,6 +1904,10 @@ class Solver:
             was_injected=was_injected,
             was_routed=was_routed,
             elapsed_ms=elapsed_ms,
+            # Preserve step data for reactive exploration retries
+            dsl_hint=getattr(step, 'dsl_hint', None),
+            extracted_values=getattr(step, 'extracted_values', None),
+            depends_on=step.depends_on,
         )
 
     async def _execute_composite_step(
@@ -3501,17 +3509,17 @@ Rules:
                     context[prev_step.step_id] = prev_step.result
                 step_descriptions[prev_step.step_id] = prev_step.task
 
-            # Create a Step object for execution
+            # Create a Step object for execution (using preserved data from StepResult)
             from mycelium.planner import Step
             step_obj = Step(
                 id=failed_step.step_id,
                 task=failed_step.task,
-                depends_on=list(context.keys()),
+                depends_on=failed_step.depends_on or list(context.keys()),
             )
-            # Copy dsl_hint and extracted_values if available
-            if hasattr(failed_step, 'dsl_hint'):
+            # Copy dsl_hint and extracted_values from preserved StepResult fields
+            if failed_step.dsl_hint:
                 step_obj.dsl_hint = failed_step.dsl_hint
-            if hasattr(failed_step, 'extracted_values'):
+            if failed_step.extracted_values:
                 step_obj.extracted_values = failed_step.extracted_values
 
             # Try DSL with alternative signature
@@ -3555,9 +3563,10 @@ Rules:
                         task=remaining_step.task,
                         depends_on=[d for d in (remaining_step.depends_on or []) if d in remaining_context],
                     )
-                    if hasattr(remaining_step, 'dsl_hint'):
+                    # Copy dsl_hint and extracted_values from preserved StepResult fields
+                    if remaining_step.dsl_hint:
                         rem_step_obj.dsl_hint = remaining_step.dsl_hint
-                    if hasattr(remaining_step, 'extracted_values'):
+                    if remaining_step.extracted_values:
                         rem_step_obj.extracted_values = remaining_step.extracted_values
 
                     rem_sig = self.step_db.get_signature(remaining_step.signature_id)
