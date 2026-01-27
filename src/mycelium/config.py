@@ -626,6 +626,7 @@ COLD_START_SIGNATURE_THRESHOLD = 100  # Below this, skip rejection and build voc
 
 COLD_START_PROBLEMS_THRESHOLD = 20  # Problems before restructuring begins (per mycelium-5cn0)
 RESTRUCTURE_INTERVAL = 10  # Run restructure every N problems (per mycelium-heh3)
+UMBRELLA_LEARNING_INTERVAL = 5  # Run umbrella learning every N problems after cold start
 
 # Welford-based decision thresholds (z-scores)
 # Per mycelium-br28: Principled thresholds based on observed data, not magic numbers

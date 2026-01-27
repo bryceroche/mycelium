@@ -5510,16 +5510,41 @@ Rules:
 
         Call this after record_problem_outcome() with its return value.
 
+        Per CLAUDE.md: "aggressive branching early, tapering off later"
+        - Skip during cold start (first 20 problems)
+        - After cold start, batch every UMBRELLA_LEARNING_INTERVAL problems
+        The periodic tree review handles optimization.
+
         Args:
             candidates: Signature IDs that may need decomposition
 
         Returns:
             Dict with learning statistics (empty if no candidates)
         """
+        from mycelium.config import UMBRELLA_LEARNING_INTERVAL
+
         if not candidates:
             return {"candidates": 0, "decomposed": 0, "children_created": 0}
 
-        logger.info("[solver] Auto-triggering umbrella learning for %d candidates", len(candidates))
+        # Skip during cold start - let periodic tree review handle optimization
+        if self.step_db.is_cold_start():
+            logger.debug(
+                "[solver] Skipping umbrella learning during cold start (%d candidates deferred)",
+                len(candidates)
+            )
+            return {"candidates": len(candidates), "decomposed": 0, "children_created": 0, "skipped": "cold_start"}
+
+        # After cold start, batch every N problems to reduce LLM calls
+        problems_solved = self.step_db.get_total_problems_solved()
+        if problems_solved % UMBRELLA_LEARNING_INTERVAL != 0:
+            logger.debug(
+                "[solver] Deferring umbrella learning until problem %d (%d candidates)",
+                (problems_solved // UMBRELLA_LEARNING_INTERVAL + 1) * UMBRELLA_LEARNING_INTERVAL,
+                len(candidates)
+            )
+            return {"candidates": len(candidates), "decomposed": 0, "children_created": 0, "skipped": "batched"}
+
+        logger.info("[solver] Auto-triggering umbrella learning for %d candidates (problem %d)", len(candidates), problems_solved)
         return await self.learn_umbrellas()
 
     async def _regenerate_dsl_background(self, signature_id: int, uses: int) -> None:
