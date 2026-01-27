@@ -784,6 +784,13 @@ TREE_GUIDED_NOVELTY_MIN_SAMPLES = 10
 # Default novelty threshold during cold start (before enough samples)
 TREE_GUIDED_NOVELTY_DEFAULT_THRESHOLD = 0.5
 
+# Tree-Planner Negotiation (per CLAUDE.md line 16-17)
+# When enabled, planner and tree negotiate dag_step decomposition iteratively
+# Bias: prefer decomposing dag_steps (cheap) over leaf_nodes (permanent tree change)
+TREE_PLANNER_NEGOTIATION_ENABLED = os.getenv("TREE_PLANNER_NEGOTIATION", "true").lower() == "true"
+TREE_PLANNER_NEGOTIATION_MAX_ROUNDS = 2
+TREE_PLANNER_NEGOTIATION_SIMILARITY_THRESHOLD = 0.7
+
 # Model configuration - set via TRAINING_MODE env var
 # TRAINING_MODE=true  -> use beefy models for learning
 # TRAINING_MODE=false -> use lightweight models for inference

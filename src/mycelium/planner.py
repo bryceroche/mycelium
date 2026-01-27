@@ -1458,12 +1458,22 @@ Refine these steps into concrete operations with values."""
         Per CLAUDE.md "New Favorite Pattern": This is the single entry point
         for decomposition that uses tree vocabulary to guide the process.
 
-        Flow:
+        Per CLAUDE.md "Negotiation between Tree and Planner":
+        When enabled, uses iterative negotiation to refine dag_steps based
+        on tree vocabulary, biasing towards dag_step decomposition (cheap)
+        over leaf_node decomposition (permanent tree change).
+
+        Flow (standard):
         1. segment(problem) -> abstract steps (1 LLM call)
         2. suggest_operations_batch(steps) -> vocabulary matches (0 LLM calls)
         3. refine(problem, steps, suggestions) -> concrete plan (1 LLM call)
 
-        Total: 2 LLM calls, batched by design.
+        Flow (negotiated):
+        1. segment(problem) -> abstract steps (1 LLM call)
+        2. Tree evaluates matches, provides decomposition hints
+        3. Planner refines poor-matching steps using hints (0-1 LLM calls)
+        4. Iterate until good matches or max rounds
+        5. Final refine (1 LLM call)
 
         Args:
             problem: The math problem to decompose
@@ -1471,7 +1481,23 @@ Refine these steps into concrete operations with values."""
         Returns:
             SegmentationResult with abstract steps, suggestions, and final plan
         """
-        logger.info("[planner] Tree-guided decomposition starting")
+        from mycelium.config import (
+            TREE_PLANNER_NEGOTIATION_ENABLED,
+            TREE_PLANNER_NEGOTIATION_MAX_ROUNDS,
+            TREE_PLANNER_NEGOTIATION_SIMILARITY_THRESHOLD,
+        )
+
+        # Use negotiation when enabled and we have step_db
+        if TREE_PLANNER_NEGOTIATION_ENABLED and self.step_db is not None:
+            logger.info("[planner] Using Tree-Planner negotiation")
+            return await self.decompose_negotiated(
+                problem,
+                max_rounds=TREE_PLANNER_NEGOTIATION_MAX_ROUNDS,
+                similarity_threshold=TREE_PLANNER_NEGOTIATION_SIMILARITY_THRESHOLD,
+            )
+
+        # Standard flow (no negotiation)
+        logger.info("[planner] Tree-guided decomposition starting (no negotiation)")
 
         # Phase 1: Segment into abstract steps
         abstract_steps = await self.segment(problem)
@@ -1495,3 +1521,181 @@ Refine these steps into concrete operations with values."""
             suggestions=suggestions,
             plan=plan,
         )
+
+    async def decompose_negotiated(
+        self,
+        problem: str,
+        max_rounds: int = 2,
+        similarity_threshold: float = 0.7,
+    ) -> SegmentationResult:
+        """Tree-Planner negotiation for dag_step refinement.
+
+        Per CLAUDE.md "Negotiation between Tree and Planner":
+        Back and forth negotiation with bias towards decomposing dag_steps
+        (cheap, per-problem) over leaf_nodes (permanent tree change).
+
+        Flow:
+        1. Segment problem into abstract steps
+        2. Tree evaluates matches
+        3. For poor matches: Tree provides decomposition hints
+        4. Planner refines those dag_steps using hints
+        5. Iterate until good matches or max_rounds
+
+        Args:
+            problem: The math problem to decompose
+            max_rounds: Maximum negotiation rounds (default 2)
+            similarity_threshold: Below this, step needs decomposition
+
+        Returns:
+            SegmentationResult with final plan
+        """
+        from mycelium.embedding_cache import cached_embed_batch
+        from mycelium.step_signatures.graph_extractor import graph_to_natural_language
+
+        logger.info("[planner] Starting Tree-Planner negotiation (max_rounds=%d)", max_rounds)
+
+        # Phase 1: Initial segmentation
+        abstract_steps = await self.segment(problem)
+
+        for round_num in range(max_rounds):
+            # Phase 2: Get operation embeddings
+            graph_texts = []
+            for step in abstract_steps:
+                canonical_graph = self.CANONICAL_GRAPHS.get(step.operation_type)
+                if canonical_graph:
+                    graph_texts.append(graph_to_natural_language(canonical_graph))
+                else:
+                    graph_texts.append(step.description)
+
+            embeddings_dict = cached_embed_batch(graph_texts, self.embedder)
+            embeddings = [embeddings_dict[text] for text in graph_texts]
+
+            # Phase 3: Tree evaluates matches and provides hints
+            poor_matches = []
+            all_hints = {}
+
+            for step, embedding in zip(abstract_steps, embeddings):
+                hints = self.step_db.get_decomposition_hints(
+                    step_description=step.description,
+                    operation_embedding=embedding,
+                    similarity_threshold=similarity_threshold,
+                )
+                all_hints[step.id] = hints
+
+                if hints['needs_decomposition']:
+                    poor_matches.append((step, hints))
+
+            # If all matches are good, we're done negotiating
+            if not poor_matches:
+                logger.info(
+                    "[planner] Negotiation round %d: All %d steps have good matches",
+                    round_num + 1, len(abstract_steps)
+                )
+                break
+
+            logger.info(
+                "[planner] Negotiation round %d: %d/%d steps need decomposition",
+                round_num + 1, len(poor_matches), len(abstract_steps)
+            )
+
+            # Phase 4: Re-segment poor matches with vocabulary hints
+            if round_num < max_rounds - 1:  # Don't refine on last round
+                abstract_steps = await self._refine_abstract_steps_with_hints(
+                    problem, abstract_steps, poor_matches
+                )
+
+        # Final phase: Get suggestions and refine to concrete plan
+        suggestions = await self.suggest_operations_batch(abstract_steps)
+        plan = await self.refine(problem, abstract_steps, suggestions)
+
+        # Log negotiation outcome
+        novel_count = sum(1 for s in plan.steps if getattr(s, '_is_novel', False))
+        logger.info(
+            "[planner] Negotiation complete: %d steps (%d vocabulary, %d novel)",
+            len(plan.steps), len(plan.steps) - novel_count, novel_count
+        )
+
+        return SegmentationResult(
+            abstract_steps=abstract_steps,
+            suggestions=suggestions,
+            plan=plan,
+        )
+
+    async def _refine_abstract_steps_with_hints(
+        self,
+        problem: str,
+        abstract_steps: list[AbstractStep],
+        poor_matches: list[tuple[AbstractStep, dict]],
+    ) -> list[AbstractStep]:
+        """Re-segment steps that had poor matches using tree vocabulary hints.
+
+        Per CLAUDE.md: Bias towards decomposing dag_steps (cheap) over
+        leaf_nodes (permanent). Uses existing vocabulary to guide decomposition.
+
+        Args:
+            problem: Original problem text
+            abstract_steps: Current abstract steps
+            poor_matches: List of (step, hints) for steps needing decomposition
+
+        Returns:
+            Updated list of abstract steps
+        """
+        if not poor_matches:
+            return abstract_steps
+
+        # Build refinement prompt with vocabulary hints
+        poor_step_ids = {step.id for step, _ in poor_matches}
+
+        # Collect vocabulary hints
+        vocab_hints = []
+        for step, hints in poor_matches:
+            vocab_str = ", ".join(hints.get('suggested_decomposition', []))
+            if vocab_str:
+                vocab_hints.append(f"- '{step.description}' -> consider decomposing into: {vocab_str}")
+
+        if not vocab_hints:
+            return abstract_steps
+
+        # Ask LLM to refine the problematic steps
+        refine_prompt = f"""You previously segmented this problem:
+
+PROBLEM:
+{problem}
+
+CURRENT STEPS:
+{chr(10).join(f"- {s.id}: {s.description} ({s.operation_type})" for s in abstract_steps)}
+
+The following steps are too complex and don't match our vocabulary well:
+{chr(10).join(vocab_hints)}
+
+Please re-segment ONLY the problematic steps into smaller, atomic operations.
+Keep the good steps as-is. Return the updated step list.
+
+Respond in JSON:
+{{"steps": [{{"id": "step_1", "description": "...", "operation_type": "add|subtract|multiply|divide|other", "depends_on": []}}]}}
+"""
+
+        messages = [
+            {"role": "system", "content": "You help decompose complex steps into simpler operations. Keep atomic steps that work well."},
+            {"role": "user", "content": refine_prompt},
+        ]
+
+        try:
+            response = await self.client.generate(
+                messages,
+                temperature=self.temperature,
+                response_format={"type": "json_object"},
+            )
+            refined_steps = self._parse_abstract_steps(response)
+
+            if refined_steps and len(refined_steps) >= len(abstract_steps):
+                logger.info(
+                    "[planner] Refined %d steps -> %d steps using vocabulary hints",
+                    len(abstract_steps), len(refined_steps)
+                )
+                return refined_steps
+
+        except Exception as e:
+            logger.warning("[planner] Refinement with hints failed: %s", e)
+
+        return abstract_steps

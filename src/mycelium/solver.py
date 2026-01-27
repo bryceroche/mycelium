@@ -977,18 +977,11 @@ class Solver:
             if zero_llm_result is not None:
                 return zero_llm_result
 
-            # 1. Plan: Decompose into steps (with signature hints for NL interface)
-            signature_hints = self.step_db.get_signature_hints(
-                limit=HINT_LIMIT,
-                problem_embedding=problem_embedding,
-                min_similarity=HINT_MIN_SIMILARITY,
-            )
-
-            # Decompose problem into steps
-            plan = await self.planner.decompose(
-                problem,
-                signature_hints=signature_hints,
-            )
+            # 1. Plan: Decompose into steps
+            # Per CLAUDE.md "Negotiation between Tree and Planner":
+            # TreeGuidedPlanner handles vocabulary internally through negotiation.
+            # Don't pass signature_hints - let the planner negotiate with the tree.
+            plan = await self.planner.decompose(problem)
 
             # Store Phase 1 values for provenance tracking during execution
             # These are resolved when $name references appear in extracted_values

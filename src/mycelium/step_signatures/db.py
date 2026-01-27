@@ -5008,6 +5008,91 @@ class StepSignatureDB:
 
         return candidates[:top_k]
 
+    def get_decomposition_hints(
+        self,
+        step_description: str,
+        operation_embedding: np.ndarray,
+        similarity_threshold: float = 0.7,
+    ) -> dict:
+        """Get hints for decomposing a dag_step using existing vocabulary.
+
+        Per CLAUDE.md "Negotiation between Tree and Planner":
+        Bias towards decomposing dag_steps (cheap, per-problem) over
+        decomposing leaf_nodes (permanent tree change).
+
+        When a dag_step has a poor match, this method suggests how to
+        break it down into operations that already exist in the tree.
+
+        Args:
+            step_description: The step that needs decomposition
+            operation_embedding: The step's operation embedding
+            similarity_threshold: Below this, step is considered "poor match"
+
+        Returns:
+            Dict with:
+            - 'needs_decomposition': bool
+            - 'best_match': (step_type, similarity) or None
+            - 'vocabulary': list of available operations
+            - 'suggested_decomposition': list of operation names that might compose this step
+        """
+        leaves = self.get_all_leaves(min_uses=0)
+
+        # Find best match
+        best_match = None
+        best_sim = 0.0
+
+        # Collect vocabulary and similarities
+        vocabulary = []
+        for leaf in leaves:
+            graph_emb = leaf.graph_embedding
+            if graph_emb is None:
+                continue
+            if not isinstance(graph_emb, np.ndarray):
+                graph_emb = np.array(graph_emb)
+
+            sim = cosine_similarity(operation_embedding, graph_emb)
+            vocabulary.append((leaf.step_type, sim, leaf.uses or 0))
+
+            if sim > best_sim:
+                best_sim = sim
+                best_match = (leaf.step_type, sim)
+
+        # Sort vocabulary by similarity (descending)
+        vocabulary.sort(key=lambda x: x[1], reverse=True)
+
+        # Determine if decomposition is needed
+        needs_decomposition = best_sim < similarity_threshold
+
+        # Suggest decomposition based on existing vocabulary
+        # Look for complementary operations (e.g., if step is "compute and subtract",
+        # suggest "compute_product" + "compute_difference")
+        suggested_decomposition = []
+        if needs_decomposition:
+            # Top 3 operations by similarity might be components
+            for step_type, sim, uses in vocabulary[:5]:
+                if sim > 0.4:  # Minimum relevance
+                    suggested_decomposition.append(step_type)
+
+        result = {
+            'needs_decomposition': needs_decomposition,
+            'best_match': best_match,
+            'vocabulary': [(v[0], v[2]) for v in vocabulary[:10]],  # (step_type, uses)
+            'suggested_decomposition': suggested_decomposition,
+            'similarity_threshold': similarity_threshold,
+        }
+
+        if needs_decomposition:
+            logger.debug(
+                "[db] Decomposition hints for '%s': best_match=%s (sim=%.3f < %.3f), vocab=%s",
+                step_description[:40],
+                best_match[0] if best_match else None,
+                best_sim,
+                similarity_threshold,
+                suggested_decomposition,
+            )
+
+        return result
+
     def add_child(
         self,
         parent_id: int,
