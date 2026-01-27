@@ -446,6 +446,44 @@ CREATE TABLE IF NOT EXISTS decomposition_queue (
 );
 CREATE INDEX IF NOT EXISTS idx_decomp_queue_processed ON decomposition_queue(processed_at);
 CREATE INDEX IF NOT EXISTS idx_decomp_queue_queued ON decomposition_queue(queued_at);
+
+-- =============================================================================
+-- WELFORD_STATS: Per-signature statistics for restructuring decisions
+-- =============================================================================
+-- Per mycelium-bjrf: Consolidated Welford stats for tree restructuring.
+-- Cold start (first 20 problems): collect stats, flat structure under root.
+-- After cold start: use these stats to guide sibling/child/merge decisions.
+--
+-- Three tracked distributions per signature:
+-- 1. route_* - similarities when routing TO this node (how well does routing work?)
+-- 2. child_* - similarities BETWEEN children (for umbrellas: how tight is cluster?)
+-- 3. exec_* - execution success rate (is this node reliable?)
+CREATE TABLE IF NOT EXISTS welford_stats (
+    signature_id INTEGER PRIMARY KEY REFERENCES step_signatures(id) ON DELETE CASCADE,
+
+    -- Routing similarity stats (how well does routing work to this node?)
+    -- Updated every time a step is routed to this signature
+    route_n INTEGER DEFAULT 0,            -- N in Welford's algorithm
+    route_mean REAL DEFAULT 0.0,          -- Running mean of routing similarities
+    route_m2 REAL DEFAULT 0.0,            -- Sum of squared differences (variance = M2/(N-1))
+
+    -- Child cluster stats (for umbrellas: how tight is the cluster?)
+    -- Updated when adding/removing children, tracks inter-child similarities
+    child_n INTEGER DEFAULT 0,            -- N pairs compared
+    child_mean REAL DEFAULT 0.0,          -- Mean similarity between children
+    child_m2 REAL DEFAULT 0.0,            -- M2 for variance
+
+    -- Execution success rate (simple ratio, not Welford)
+    exec_n INTEGER DEFAULT 0,             -- Total executions
+    exec_successes INTEGER DEFAULT 0,     -- Successful executions
+
+    -- Metadata
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_welford_route_n ON welford_stats(route_n);
+CREATE INDEX IF NOT EXISTS idx_welford_exec_n ON welford_stats(exec_n);
 """
 
 def get_schema() -> str:
@@ -708,6 +746,32 @@ def migrate_db(conn) -> None:
     except Exception as e:
         # Table might not exist yet (fresh DB)
         logger.debug("[schema] dag_step_node_stats similarity migration skipped: %s", e)
+
+    # Create welford_stats table if it doesn't exist (per mycelium-bjrf)
+    # This table consolidates per-signature stats for tree restructuring decisions
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS welford_stats (
+                signature_id INTEGER PRIMARY KEY REFERENCES step_signatures(id) ON DELETE CASCADE,
+                route_n INTEGER DEFAULT 0,
+                route_mean REAL DEFAULT 0.0,
+                route_m2 REAL DEFAULT 0.0,
+                child_n INTEGER DEFAULT 0,
+                child_mean REAL DEFAULT 0.0,
+                child_m2 REAL DEFAULT 0.0,
+                exec_n INTEGER DEFAULT 0,
+                exec_successes INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_welford_route_n ON welford_stats(route_n)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_welford_exec_n ON welford_stats(exec_n)")
+        conn.commit()
+        logger.info("[schema] Created welford_stats table")
+    except Exception as e:
+        # Table already exists or other error
+        logger.debug("[schema] welford_stats migration skipped: %s", e)
 
     # Add new indexes (safe to run multiple times)
     index_migrations = [

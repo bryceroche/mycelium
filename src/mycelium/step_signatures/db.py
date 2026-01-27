@@ -5863,6 +5863,304 @@ class StepSignatureDB:
         matches.sort(key=lambda x: x[1], reverse=True)
         return matches[:top_k]
 
+    # =========================================================================
+    # WELFORD STATS (per mycelium-bjrf)
+    # =========================================================================
+    # Consolidated stats for tree restructuring decisions.
+    # Per CLAUDE.md "New Favorite Pattern": single entry points for stats updates.
+
+    def _ensure_welford_stats(self, signature_id: int, conn) -> None:
+        """Ensure a welford_stats row exists for this signature."""
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO welford_stats (signature_id, created_at, updated_at)
+            VALUES (?, datetime('now'), datetime('now'))
+            """,
+            (signature_id,)
+        )
+
+    def update_welford_route(
+        self,
+        signature_id: int,
+        similarity: float,
+        conn=None,
+    ) -> bool:
+        """Update routing similarity stats using Welford's algorithm.
+
+        Called every time a step is routed to this signature.
+        Tracks: how consistent are the similarities when routing here?
+
+        Per mycelium-bjrf: used by restructuring to detect:
+        - High variance = routing is inconsistent = maybe split
+        - Low variance = routing is stable = good cluster
+
+        Args:
+            signature_id: The signature being routed to
+            similarity: The cosine similarity used in routing decision
+
+        Returns:
+            True if update succeeded
+        """
+        def _do_update(c):
+            self._ensure_welford_stats(signature_id, c)
+
+            row = c.execute(
+                "SELECT route_n, route_mean, route_m2 FROM welford_stats WHERE signature_id = ?",
+                (signature_id,)
+            ).fetchone()
+
+            if not row:
+                return False
+
+            n = row["route_n"] + 1
+            old_mean = row["route_mean"]
+            old_m2 = row["route_m2"]
+
+            # Welford's update
+            delta = similarity - old_mean
+            new_mean = old_mean + delta / n
+            delta2 = similarity - new_mean
+            new_m2 = old_m2 + delta * delta2
+
+            c.execute(
+                """
+                UPDATE welford_stats
+                SET route_n = ?, route_mean = ?, route_m2 = ?, updated_at = datetime('now')
+                WHERE signature_id = ?
+                """,
+                (n, new_mean, new_m2, signature_id)
+            )
+            return True
+
+        if conn is not None:
+            return _do_update(conn)
+        else:
+            with self._connection() as c:
+                result = _do_update(c)
+                c.commit()
+                return result
+
+    def update_welford_child(
+        self,
+        signature_id: int,
+        similarity: float,
+        conn=None,
+    ) -> bool:
+        """Update child cluster similarity stats using Welford's algorithm.
+
+        Called when measuring similarity between children of an umbrella.
+        Tracks: how tight is this umbrella's cluster?
+
+        Per mycelium-bjrf: used by restructuring to detect:
+        - High variance = children are dissimilar = maybe over-clustered
+        - Low variance = children are similar = good umbrella
+
+        Args:
+            signature_id: The umbrella signature
+            similarity: Similarity between two of its children
+
+        Returns:
+            True if update succeeded
+        """
+        def _do_update(c):
+            self._ensure_welford_stats(signature_id, c)
+
+            row = c.execute(
+                "SELECT child_n, child_mean, child_m2 FROM welford_stats WHERE signature_id = ?",
+                (signature_id,)
+            ).fetchone()
+
+            if not row:
+                return False
+
+            n = row["child_n"] + 1
+            old_mean = row["child_mean"]
+            old_m2 = row["child_m2"]
+
+            # Welford's update
+            delta = similarity - old_mean
+            new_mean = old_mean + delta / n
+            delta2 = similarity - new_mean
+            new_m2 = old_m2 + delta * delta2
+
+            c.execute(
+                """
+                UPDATE welford_stats
+                SET child_n = ?, child_mean = ?, child_m2 = ?, updated_at = datetime('now')
+                WHERE signature_id = ?
+                """,
+                (n, new_mean, new_m2, signature_id)
+            )
+            return True
+
+        if conn is not None:
+            return _do_update(conn)
+        else:
+            with self._connection() as c:
+                result = _do_update(c)
+                c.commit()
+                return result
+
+    def update_welford_exec(
+        self,
+        signature_id: int,
+        success: bool,
+        conn=None,
+    ) -> bool:
+        """Update execution success stats.
+
+        Called after every step execution. Simple success rate tracking.
+
+        Per mycelium-bjrf: used by restructuring to detect:
+        - Low success rate = signature needs refinement
+        - High success rate = signature is reliable
+
+        Args:
+            signature_id: The signature that was executed
+            success: Whether execution succeeded
+
+        Returns:
+            True if update succeeded
+        """
+        def _do_update(c):
+            self._ensure_welford_stats(signature_id, c)
+
+            c.execute(
+                """
+                UPDATE welford_stats
+                SET exec_n = exec_n + 1,
+                    exec_successes = exec_successes + ?,
+                    updated_at = datetime('now')
+                WHERE signature_id = ?
+                """,
+                (1 if success else 0, signature_id)
+            )
+            return True
+
+        if conn is not None:
+            return _do_update(conn)
+        else:
+            with self._connection() as c:
+                result = _do_update(c)
+                c.commit()
+                return result
+
+    def get_welford_stats(
+        self,
+        signature_id: int,
+        conn=None,
+    ) -> Optional[dict]:
+        """Get Welford stats for a signature.
+
+        Returns:
+            Dict with route_*, child_*, exec_* stats, or None if not found
+        """
+        def _do_get(c):
+            row = c.execute(
+                """
+                SELECT signature_id, route_n, route_mean, route_m2,
+                       child_n, child_mean, child_m2,
+                       exec_n, exec_successes, created_at, updated_at
+                FROM welford_stats
+                WHERE signature_id = ?
+                """,
+                (signature_id,)
+            ).fetchone()
+
+            if not row:
+                return None
+
+            return dict(row)
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def get_welford_variance(
+        self,
+        signature_id: int,
+        stat_type: str = "route",
+        conn=None,
+    ) -> float:
+        """Get variance from Welford stats.
+
+        Args:
+            signature_id: The signature
+            stat_type: "route" or "child"
+
+        Returns:
+            Sample variance (M2 / (N-1)), or 0.0 if insufficient data
+        """
+        stats = self.get_welford_stats(signature_id, conn=conn)
+        if not stats:
+            return 0.0
+
+        n = stats.get(f"{stat_type}_n", 0)
+        m2 = stats.get(f"{stat_type}_m2", 0.0)
+
+        if n < 2:
+            return 0.0
+
+        return m2 / (n - 1)
+
+    def get_welford_std(
+        self,
+        signature_id: int,
+        stat_type: str = "route",
+        conn=None,
+    ) -> float:
+        """Get standard deviation from Welford stats.
+
+        Args:
+            signature_id: The signature
+            stat_type: "route" or "child"
+
+        Returns:
+            Sample standard deviation, or 0.0 if insufficient data
+        """
+        import math
+        variance = self.get_welford_variance(signature_id, stat_type, conn=conn)
+        return math.sqrt(variance) if variance > 0 else 0.0
+
+    def get_total_problems_solved(self, conn=None) -> int:
+        """Get total number of problems solved (for cold start detection).
+
+        Per mycelium-5cn0: Cold start = first 20 problems.
+        During cold start, all leaves are flat under root collecting stats.
+
+        Returns:
+            Count of distinct successful problem_ids in mcts_dags
+        """
+        def _do_get(c):
+            row = c.execute(
+                "SELECT COUNT(DISTINCT problem_id) FROM mcts_dags WHERE success = 1"
+            ).fetchone()
+            return row[0] if row else 0
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def is_cold_start(self, conn=None) -> bool:
+        """Check if we're in cold start mode.
+
+        Per mycelium-5cn0: Cold start = first 20 problems.
+        During cold start:
+        - All new signatures auto-accepted as ROOT children
+        - No umbrella promotions
+        - No sibling vs child decisions
+        - Just collect Welford stats
+
+        Returns:
+            True if total_problems_solved < COLD_START_THRESHOLD
+        """
+        from mycelium.config import COLD_START_PROBLEMS_THRESHOLD
+        return self.get_total_problems_solved(conn=conn) < COLD_START_PROBLEMS_THRESHOLD
+
 
 # =============================================================================
 # SINGLETON ACCESSOR

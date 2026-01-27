@@ -610,6 +610,25 @@ INLINE_DECOMP_MAX_DEPTH = 3  # Max recursion depth for inline decomposition (pre
 COLD_START_SIGNATURE_THRESHOLD = 100  # Below this, skip rejection and build vocabulary (raised for latency)
 
 # =============================================================================
+# WELFORD-BASED TREE RESTRUCTURING (per mycelium-bjrf)
+# =============================================================================
+# Cold start: first N problems create flat leaves under root, collecting Welford stats
+# After cold start: use Welford stats to guide sibling/child/merge decisions
+# Restructure runs periodically (every RESTRUCTURE_INTERVAL problems)
+#
+# Per CLAUDE.md "System Independence": fully automated, no manual intervention
+
+COLD_START_PROBLEMS_THRESHOLD = 20  # Problems before restructuring begins (per mycelium-5cn0)
+RESTRUCTURE_INTERVAL = 10  # Run restructure every N problems (per mycelium-heh3)
+
+# Welford-based decision thresholds (z-scores)
+# Per mycelium-br28: Principled thresholds based on observed data, not magic numbers
+WELFORD_MERGE_THRESHOLD = 3.0     # z-score above which to merge (very similar to existing)
+WELFORD_SIBLING_THRESHOLD = -2.0  # z-score above which to add as sibling (normal range)
+WELFORD_CHILD_THRESHOLD = -3.0    # z-score above which to add as child (somewhat different)
+# Below CHILD_THRESHOLD: new cluster under root (very different)
+
+# =============================================================================
 # MATURITY-BASED DECOMPOSE VS CREATE (Sigmoid transition)
 # =============================================================================
 # When routing fails (no matching signature), the system must decide:
