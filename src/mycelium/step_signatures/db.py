@@ -1656,11 +1656,9 @@ class StepSignatureDB:
                             )
                             update_similarity_stats(conn, 'match', global_sim)
                             self._update_centroid_atomic(conn, global_match.id, embedding, update_last_used=True)
-                            # Demote any orphan scaffold created during routing (root cause of orphan umbrellas)
-                            if parent_for_new:
-                                self._demote_if_orphan(conn, parent_for_new.id)
-                            conn.commit()
-                            return global_match, False
+                            return self._finalize_routing_result(
+                                conn, global_match, False, parent_for_new, global_match.id
+                            )
                         else:
                             # Matched an UMBRELLA - search its children for matching leaf first
                             child_match, child_sim = find_best_child_match(
@@ -1674,11 +1672,9 @@ class StepSignatureDB:
                                 )
                                 update_similarity_stats(conn, 'match', child_sim)
                                 self._update_centroid_atomic(conn, child_match.id, embedding, update_last_used=True)
-                                # Demote any orphan scaffold created during routing
-                                if parent_for_new:
-                                    self._demote_if_orphan(conn, parent_for_new.id)
-                                conn.commit()
-                                return child_match, False
+                                return self._finalize_routing_result(
+                                    conn, child_match, False, parent_for_new, global_match.id
+                                )
                             else:
                                 # No matching leaf found - create new leaf under umbrella
                                 cluster_parent_id = global_match.id
@@ -1688,21 +1684,18 @@ class StepSignatureDB:
                                 )
                                 update_similarity_stats(conn, 'cluster', global_sim)
 
-                                # Demote any orphan scaffold created during routing (creating under different parent)
-                                if parent_for_new and parent_for_new.id != cluster_parent_id:
-                                    self._demote_if_orphan(conn, parent_for_new.id)
-
                                 sig = self._create_signature_atomic(
                                     conn, step_text, embedding, parent_problem, origin_depth,
                                     extracted_values=extracted_values, dsl_hint=dsl_hint,
                                     parent_id=cluster_parent_id, graph_embedding=step_graph_emb
                                 )
-                                conn.commit()
                                 logger.info(
                                     "[db] Created CLUSTERED signature (child of umbrella %s): step='%s' type='%s'",
                                     global_match.step_type, step_text[:40], sig.step_type
                                 )
-                                return sig, True
+                                return self._finalize_routing_result(
+                                    conn, sig, True, parent_for_new, cluster_parent_id
+                                )
 
                     elif global_match is not None and global_sim >= thresholds.cluster_threshold:
                         # CLUSTER: Similar signature exists
@@ -1741,27 +1734,22 @@ class StepSignatureDB:
                                 )
                                 update_similarity_stats(conn, 'match', sibling_sim)
                                 self._update_centroid_atomic(conn, sibling_match.id, embedding, update_last_used=True)
-                                # Demote any orphan scaffold created during routing
-                                if parent_for_new:
-                                    self._demote_if_orphan(conn, parent_for_new.id)
-                                conn.commit()
-                                return sibling_match, False
-
-                        # Demote any orphan scaffold created during routing (creating under different parent)
-                        if parent_for_new and parent_for_new.id != cluster_parent_id:
-                            self._demote_if_orphan(conn, parent_for_new.id)
+                                return self._finalize_routing_result(
+                                    conn, sibling_match, False, parent_for_new, cluster_parent_id
+                                )
 
                         sig = self._create_signature_atomic(
                             conn, step_text, embedding, parent_problem, origin_depth,
                             extracted_values=extracted_values, dsl_hint=dsl_hint,
                             parent_id=cluster_parent_id, graph_embedding=step_graph_emb
                         )
-                        conn.commit()
                         logger.info(
                             "[db] Created CLUSTERED signature (sibling of %s): step='%s' type='%s'",
                             global_match.step_type, step_text[:40], sig.step_type
                         )
-                        return sig, True
+                        return self._finalize_routing_result(
+                            conn, sig, True, parent_for_new, cluster_parent_id
+                        )
 
                 # No global match above thresholds - create new signature under routing parent
                 actual_parent_id = parent_id if parent_id is not None else (parent_for_new.id if parent_for_new else None)
@@ -1771,13 +1759,15 @@ class StepSignatureDB:
                     extracted_values=extracted_values, dsl_hint=dsl_hint,
                     parent_id=actual_parent_id, graph_embedding=step_graph_emb
                 )
-                conn.commit()
                 parent_desc = f"id={parent_id}" if parent_id is not None else (parent_for_new.step_type if parent_for_new else "root")
                 logger.info(
                     "[db] Created NEW signature (child of %s): step='%s' type='%s'",
                     parent_desc, step_text[:40], sig.step_type
                 )
-                return sig, True
+                # Use consolidated exit point (won't demote since we're using parent_for_new)
+                return self._finalize_routing_result(
+                    conn, sig, True, parent_for_new, actual_parent_id
+                )
 
             except Exception:
                 conn.rollback()
@@ -5345,6 +5335,40 @@ class StepSignatureDB:
             return True
 
         return False
+
+    def _finalize_routing_result(
+        self,
+        conn,
+        result_sig: "StepSignature",
+        was_created: bool,
+        parent_for_new: Optional["StepSignature"],
+        actual_parent_id: Optional[int],
+    ) -> tuple["StepSignature", bool]:
+        """Finalize routing: demote orphan scaffolds if unused, then commit.
+
+        Per CLAUDE.md "New Favorite Pattern": consolidate method calls for features
+        to simplify codebase and reduce bugs. This is the SINGLE exit point for
+        routing results that need orphan cleanup.
+
+        Args:
+            conn: Database connection
+            result_sig: The signature being returned
+            was_created: Whether result_sig was newly created
+            parent_for_new: The parent from routing (may be orphan scaffold)
+            actual_parent_id: The parent actually used (may differ from parent_for_new)
+
+        Returns:
+            Tuple of (result_sig, was_created)
+        """
+        # Demote orphan scaffold if routing created one but we used a different parent
+        if parent_for_new is not None:
+            used_routing_parent = (actual_parent_id is not None and
+                                   actual_parent_id == parent_for_new.id)
+            if not used_routing_parent:
+                self._demote_if_orphan(conn, parent_for_new.id)
+
+        conn.commit()
+        return result_sig, was_created
 
     def clear_all_data(self) -> dict:
         """Clear all signature data for a fresh start.
