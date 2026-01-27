@@ -1254,6 +1254,18 @@ class Solver:
                 matched_and_reused, steps_with_injection, steps_with_routing
             )
 
+            # Auto-restructure check (per mycelium-heh3, CLAUDE.md System Independence)
+            # Runs every N problems after cold start to reorganize tree structure
+            if TRAINING_MODE:
+                problem_count = self.step_db.get_total_problems_solved()
+                restructure_result = self.step_db.maybe_restructure(problem_count)
+                if restructure_result.get("ran"):
+                    logger.info(
+                        "[solver] Restructure: %d clusters, %d orphans cleaned",
+                        restructure_result.get("clusters_created", 0),
+                        restructure_result.get("orphans_cleaned", 0)
+                    )
+
             return SolverResult(
                 problem=problem,
                 answer=final_answer,

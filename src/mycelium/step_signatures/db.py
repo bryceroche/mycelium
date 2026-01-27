@@ -6805,6 +6805,394 @@ class StepSignatureDB:
             with self._connection() as c:
                 return _do_get(c)
 
+    # =========================================================================
+    # AUTO-RESTRUCTURE (mycelium-heh3)
+    # =========================================================================
+    # Per CLAUDE.md System Independence: Fully automated tree restructuring.
+    # Per CLAUDE.md New Favorite Pattern: Single entry point (maybe_restructure).
+
+    def maybe_restructure(self, problem_count: int, conn=None) -> dict:
+        """SINGLE ENTRY POINT: Check if restructure should run and execute if needed.
+
+        Per mycelium-heh3: Auto-restructure process runs every N problems.
+        Per CLAUDE.md System Independence: Fully automated, no manual intervention.
+
+        Args:
+            problem_count: Current total problems solved
+            conn: Optional database connection
+
+        Returns:
+            Dict with restructure results:
+            - ran: bool (whether restructure ran)
+            - reason: str (why it did/didn't run)
+            - clusters_created: int (umbrellas created)
+            - orphans_cleaned: int (orphan umbrellas removed)
+        """
+        from mycelium.config import COLD_START_PROBLEMS_THRESHOLD, RESTRUCTURE_INTERVAL
+
+        def _do_maybe(c):
+            # Skip during cold start - collecting stats
+            if problem_count < COLD_START_PROBLEMS_THRESHOLD:
+                return {
+                    "ran": False,
+                    "reason": f"cold_start (problem {problem_count} < {COLD_START_PROBLEMS_THRESHOLD})",
+                    "clusters_created": 0,
+                    "orphans_cleaned": 0,
+                }
+
+            # Only run at intervals
+            if problem_count % RESTRUCTURE_INTERVAL != 0:
+                return {
+                    "ran": False,
+                    "reason": f"not_interval (problem {problem_count} % {RESTRUCTURE_INTERVAL} != 0)",
+                    "clusters_created": 0,
+                    "orphans_cleaned": 0,
+                }
+
+            # Run restructure pass
+            logger.info("[restructure] Running auto-restructure at problem %d", problem_count)
+            return self._run_restructure_pass(conn=c)
+
+        if conn is not None:
+            return _do_maybe(conn)
+        else:
+            with self._connection() as c:
+                c.execute("BEGIN IMMEDIATE")
+                try:
+                    result = _do_maybe(c)
+                    c.commit()
+                    return result
+                except Exception:
+                    c.rollback()
+                    raise
+
+    def _run_restructure_pass(self, conn=None) -> dict:
+        """Internal: Execute a full restructure pass.
+
+        Steps:
+        1. Get all root children with graph embeddings
+        2. Compute pairwise similarities
+        3. Detect clusters using Welford-guided thresholds
+        4. Create umbrellas for clusters with >1 member
+        5. Cleanup orphan umbrellas
+
+        Returns:
+            Dict with restructure results
+        """
+        def _do_pass(c):
+            # 1. Get root children with embeddings
+            root = self.get_root()
+            if root is None:
+                logger.warning("[restructure] No root found, skipping")
+                return {"ran": True, "reason": "no_root", "clusters_created": 0, "orphans_cleaned": 0}
+
+            children = self._get_children_with_embeddings(root.id, conn=c)
+            if len(children) < 2:
+                logger.info("[restructure] Not enough children (%d) for clustering", len(children))
+                return {"ran": True, "reason": f"too_few_children ({len(children)})", "clusters_created": 0, "orphans_cleaned": 0}
+
+            logger.info("[restructure] Analyzing %d root children for clustering", len(children))
+
+            # 2. Compute pairwise similarities
+            sim_matrix = self._compute_pairwise_similarities(children)
+
+            # 3. Detect clusters using Welford-guided threshold
+            # Get root's Welford stats for adaptive threshold
+            stats = self.get_welford_stats(root.id, conn=c)
+            if stats and stats.get("child_count", 0) > 5:
+                # Use 2 * std as cluster threshold (similar items)
+                child_std = self.get_welford_std(root.id, "child", conn=c)
+                cluster_threshold = max(0.85, 1.0 - 2 * child_std) if child_std else 0.90
+            else:
+                # Cold start fallback
+                cluster_threshold = 0.90
+
+            logger.debug("[restructure] Cluster threshold: %.3f", cluster_threshold)
+
+            clusters = self._detect_clusters(children, sim_matrix, cluster_threshold)
+            logger.info("[restructure] Detected %d clusters", len(clusters))
+
+            # 4. Create umbrellas for clusters with >1 member
+            clusters_created = 0
+            for cluster in clusters:
+                if len(cluster) > 1:
+                    success = self._create_umbrella_for_cluster(cluster, root.id, conn=c)
+                    if success:
+                        clusters_created += 1
+
+            # 5. Cleanup orphan umbrellas
+            orphans_cleaned = self._cleanup_orphan_umbrellas(conn=c)
+
+            logger.info(
+                "[restructure] Complete: %d clusters created, %d orphans cleaned",
+                clusters_created, orphans_cleaned
+            )
+
+            return {
+                "ran": True,
+                "reason": "success",
+                "clusters_created": clusters_created,
+                "orphans_cleaned": orphans_cleaned,
+            }
+
+        if conn is not None:
+            return _do_pass(conn)
+        else:
+            with self._connection() as c:
+                return _do_pass(c)
+
+    def _get_children_with_embeddings(self, parent_id: int, conn=None) -> list[tuple[int, str, np.ndarray]]:
+        """Get all children of a signature that have graph embeddings.
+
+        Returns:
+            List of (signature_id, step_type, graph_embedding) tuples
+        """
+        def _do_get(c):
+            cursor = c.execute(
+                """SELECT s.id, s.step_type, s.graph_embedding
+                   FROM step_signatures s
+                   JOIN signature_relationships r ON s.id = r.child_id
+                   WHERE r.parent_id = ? AND s.graph_embedding IS NOT NULL""",
+                (parent_id,)
+            )
+            results = []
+            for row in cursor:
+                sig_id, step_type, emb_blob = row
+                if emb_blob:
+                    emb = unpack_embedding(emb_blob)
+                    if emb is not None:
+                        results.append((sig_id, step_type, emb))
+            return results
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def _compute_pairwise_similarities(self, children: list[tuple[int, str, np.ndarray]]) -> np.ndarray:
+        """Compute pairwise cosine similarities between children.
+
+        Args:
+            children: List of (sig_id, step_type, embedding) tuples
+
+        Returns:
+            NxN similarity matrix
+        """
+        n = len(children)
+        sim_matrix = np.zeros((n, n))
+
+        for i in range(n):
+            for j in range(i, n):
+                if i == j:
+                    sim_matrix[i][j] = 1.0
+                else:
+                    sim = cosine_similarity(children[i][2], children[j][2])
+                    sim_matrix[i][j] = sim
+                    sim_matrix[j][i] = sim
+
+        return sim_matrix
+
+    def _detect_clusters(
+        self,
+        children: list[tuple[int, str, np.ndarray]],
+        sim_matrix: np.ndarray,
+        threshold: float
+    ) -> list[list[tuple[int, str, np.ndarray]]]:
+        """Detect clusters of similar signatures using single-linkage clustering.
+
+        Uses union-find for efficient cluster detection.
+
+        Args:
+            children: List of (sig_id, step_type, embedding) tuples
+            sim_matrix: Pairwise similarity matrix
+            threshold: Minimum similarity for clustering
+
+        Returns:
+            List of clusters, each cluster is a list of (sig_id, step_type, embedding)
+        """
+        n = len(children)
+        if n == 0:
+            return []
+
+        # Union-find for clustering
+        parent = list(range(n))
+
+        def find(x):
+            if parent[x] != x:
+                parent[x] = find(parent[x])
+            return parent[x]
+
+        def union(x, y):
+            px, py = find(x), find(y)
+            if px != py:
+                parent[px] = py
+
+        # Union similar items
+        for i in range(n):
+            for j in range(i + 1, n):
+                if sim_matrix[i][j] >= threshold:
+                    union(i, j)
+
+        # Group by cluster
+        clusters_map = {}
+        for i in range(n):
+            root = find(i)
+            if root not in clusters_map:
+                clusters_map[root] = []
+            clusters_map[root].append(children[i])
+
+        return list(clusters_map.values())
+
+    def _create_umbrella_for_cluster(
+        self,
+        cluster: list[tuple[int, str, np.ndarray]],
+        current_parent_id: int,
+        conn=None
+    ) -> bool:
+        """Create an umbrella signature and move cluster members under it.
+
+        Args:
+            cluster: List of (sig_id, step_type, embedding) tuples to cluster
+            current_parent_id: Current parent (will be umbrella's parent)
+            conn: Database connection
+
+        Returns:
+            True if umbrella created successfully
+        """
+        def _do_create(c):
+            if len(cluster) < 2:
+                return False
+
+            # Generate umbrella name from cluster step types
+            step_types = [item[1] for item in cluster]
+            common_prefix = self._find_common_prefix(step_types)
+            umbrella_name = f"cluster:{common_prefix}" if common_prefix else f"cluster:{len(cluster)}_ops"
+
+            # Compute centroid embedding for umbrella
+            embeddings = [item[2] for item in cluster]
+            centroid = np.mean(embeddings, axis=0)
+
+            # Create umbrella signature
+            umbrella = self._create_signature_atomic(
+                c,
+                step_text=umbrella_name,
+                embedding=centroid,  # Use centroid as text embedding
+                parent_problem="",
+                origin_depth=0,
+                parent_id=current_parent_id,
+                graph_embedding=centroid,  # graph_centroid = centroid of children
+            )
+
+            # Promote to umbrella (skip children check - we're adding them next)
+            self._promote_to_umbrella_internal(c, umbrella.id, skip_children_check=True)
+
+            # Reparent cluster members under umbrella
+            for sig_id, step_type, _ in cluster:
+                # Remove old parent relationship
+                c.execute(
+                    "DELETE FROM signature_relationships WHERE child_id = ?",
+                    (sig_id,)
+                )
+                # Add new parent relationship
+                c.execute(
+                    "INSERT INTO signature_relationships (parent_id, child_id) VALUES (?, ?)",
+                    (umbrella.id, sig_id)
+                )
+
+            # Propagate centroid up
+            self.propagate_graph_centroid_to_parents(c, umbrella.id, include_self=True)
+
+            logger.info(
+                "[restructure] Created umbrella '%s' (id=%d) with %d children: %s",
+                umbrella_name, umbrella.id, len(cluster),
+                [item[1][:20] for item in cluster]
+            )
+            return True
+
+        if conn is not None:
+            return _do_create(conn)
+        else:
+            with self._connection() as c:
+                c.execute("BEGIN IMMEDIATE")
+                try:
+                    result = _do_create(c)
+                    c.commit()
+                    return result
+                except Exception:
+                    c.rollback()
+                    raise
+
+    def _find_common_prefix(self, strings: list[str]) -> str:
+        """Find common prefix of a list of strings."""
+        if not strings:
+            return ""
+        prefix = strings[0]
+        for s in strings[1:]:
+            while not s.startswith(prefix) and prefix:
+                prefix = prefix[:-1]
+        # Clean up trailing underscores/spaces
+        return prefix.rstrip("_- ")
+
+    def _cleanup_orphan_umbrellas(self, conn=None) -> int:
+        """Remove umbrella signatures that have no children.
+
+        Per CLAUDE.md: Don't create umbrellas without children.
+        This cleans up any orphaned umbrellas from previous operations.
+
+        Returns:
+            Number of orphan umbrellas removed
+        """
+        def _do_cleanup(c):
+            # Find umbrellas with no children
+            cursor = c.execute(
+                """SELECT s.id, s.step_type FROM step_signatures s
+                   WHERE s.is_semantic_umbrella = 1
+                   AND s.is_root = 0
+                   AND NOT EXISTS (
+                       SELECT 1 FROM signature_relationships r WHERE r.parent_id = s.id
+                   )"""
+            )
+            orphans = cursor.fetchall()
+
+            if not orphans:
+                return 0
+
+            orphan_ids = [row[0] for row in orphans]
+            logger.info(
+                "[restructure] Found %d orphan umbrellas: %s",
+                len(orphans), [(row[0], row[1][:30]) for row in orphans]
+            )
+
+            # Remove orphans
+            for orphan_id in orphan_ids:
+                # Remove from relationships (as child)
+                c.execute(
+                    "DELETE FROM signature_relationships WHERE child_id = ?",
+                    (orphan_id,)
+                )
+                # Delete signature
+                c.execute(
+                    "DELETE FROM step_signatures WHERE id = ?",
+                    (orphan_id,)
+                )
+
+            logger.info("[restructure] Cleaned up %d orphan umbrellas", len(orphan_ids))
+            return len(orphan_ids)
+
+        if conn is not None:
+            return _do_cleanup(conn)
+        else:
+            with self._connection() as c:
+                c.execute("BEGIN IMMEDIATE")
+                try:
+                    result = _do_cleanup(c)
+                    c.commit()
+                    return result
+                except Exception:
+                    c.rollback()
+                    raise
+
 
 # =============================================================================
 # SINGLETON ACCESSOR
