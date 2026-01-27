@@ -18,6 +18,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone, timedelta
+from enum import Enum
 from typing import Optional
 
 import numpy as np
@@ -357,6 +358,24 @@ class AdaptiveThresholds:
     cluster_count: int = 0
     cluster_mean: float = 0.0
     cluster_m2: float = 0.0
+
+
+class PlacementDecision(Enum):
+    """Welford-based placement decision for new signatures.
+
+    Per mycelium-br28: After cold start, use z-scores relative to parent's
+    child similarity distribution to decide placement.
+
+    Decision logic (z-score thresholds from config):
+    - MERGE: z > WELFORD_MERGE_THRESHOLD (very similar to existing sibling)
+    - SIBLING: z > WELFORD_SIBLING_THRESHOLD (normal range, add as peer)
+    - CHILD: z > WELFORD_CHILD_THRESHOLD (somewhat different, create sub-cluster)
+    - NEW_CLUSTER: z <= WELFORD_CHILD_THRESHOLD (very different, new cluster under root)
+    """
+    SIBLING = "sibling"       # Normal: add as sibling (child of same parent)
+    CHILD = "child"           # Somewhat different: create sub-cluster
+    MERGE = "merge"           # Very similar: merge into existing signature
+    NEW_CLUSTER = "new_cluster"  # Very different: new cluster under root
 
 
 def get_adaptive_thresholds(conn) -> AdaptiveThresholds:
@@ -4932,6 +4951,66 @@ class StepSignatureDB:
             row = cursor.fetchone()
             return self._row_to_signature(dict(row)) if row else None
 
+    def _find_best_sibling(
+        self,
+        new_embedding: np.ndarray,
+        parent_id: int,
+        conn=None,
+    ) -> tuple[Optional["StepSignature"], float]:
+        """Find the best matching sibling (child of same parent) by graph_embedding similarity.
+
+        Per mycelium-br28: Helper for decide_signature_placement().
+        Compares new_embedding against all children of parent_id that have graph_embeddings.
+
+        Args:
+            new_embedding: The new signature's graph_embedding
+            parent_id: The parent's signature ID (siblings are children of this parent)
+            conn: Optional database connection
+
+        Returns:
+            (best_sibling, similarity) tuple, or (None, 0.0) if no siblings with embeddings
+        """
+        def _do_find(c):
+            # Get all children of parent with graph_embeddings
+            cursor = c.execute(
+                """SELECT s.id, s.step_type, s.graph_embedding, s.is_semantic_umbrella,
+                          s.uses, s.successes, s.depth
+                   FROM step_signatures s
+                   JOIN signature_relationships r ON s.id = r.child_id
+                   WHERE r.parent_id = ?
+                     AND s.graph_embedding IS NOT NULL
+                     AND s.is_archived = 0""",
+                (parent_id,)
+            )
+
+            best_sig = None
+            best_sim = 0.0
+
+            for row in cursor:
+                sig_id, step_type, graph_emb_json, is_umbrella, uses, successes, depth = row
+                sig_graph_emb = np.array(json.loads(graph_emb_json))
+
+                sim = cosine_similarity(new_embedding, sig_graph_emb)
+                if sim > best_sim:
+                    best_sim = sim
+                    best_sig = StepSignature(
+                        id=sig_id,
+                        step_type=step_type,
+                        graph_embedding=json.loads(graph_emb_json),
+                        is_semantic_umbrella=bool(is_umbrella),
+                        uses=uses,
+                        successes=successes,
+                        depth=depth,
+                    )
+
+            return best_sig, best_sim
+
+        if conn is not None:
+            return _do_find(conn)
+        else:
+            with self._connection() as c:
+                return _do_find(c)
+
     def get_all_leaves(self, min_uses: int = 0) -> list[StepSignature]:
         """Get all leaf signatures (non-umbrellas) with graph embeddings.
 
@@ -6124,6 +6203,120 @@ class StepSignatureDB:
         variance = self.get_welford_variance(signature_id, stat_type, conn=conn)
         return math.sqrt(variance) if variance > 0 else 0.0
 
+    def decide_signature_placement(
+        self,
+        new_embedding: np.ndarray,
+        parent_id: int,
+        conn=None,
+    ) -> tuple["PlacementDecision", Optional["StepSignature"], float]:
+        """Decide placement for new signature using Welford-based z-scores.
+
+        Per mycelium-br28: After cold start, use z-scores relative to parent's
+        child_* Welford stats to determine if new signature is:
+        - SIBLING: normal similarity (within 2 sigma of mean)
+        - CHILD: somewhat different (2-3 sigma below mean)
+        - MERGE: very similar (>3 sigma above mean)
+        - NEW_CLUSTER: very different (>3 sigma below mean)
+
+        The decision uses the parent's child similarity distribution to determine
+        what is "normal" for this cluster. Z-score thresholds are defined in config.
+
+        Args:
+            new_embedding: The new signature's graph_embedding
+            parent_id: The prospective parent's signature ID
+
+        Returns:
+            (decision, best_sibling, similarity) tuple where:
+            - decision: PlacementDecision enum value
+            - best_sibling: The most similar existing sibling (for MERGE), or None
+            - similarity: Cosine similarity to best_sibling
+        """
+        from mycelium.config import (
+            WELFORD_MERGE_THRESHOLD,      # 3.0 - z-score above which to merge
+            WELFORD_SIBLING_THRESHOLD,    # -2.0 - z-score above which to add as sibling
+            WELFORD_CHILD_THRESHOLD,      # -3.0 - z-score above which to add as child
+        )
+
+        def _do_decide(c):
+            # 1. Get parent's Welford stats for child similarities
+            stats = self.get_welford_stats(parent_id, conn=c)
+
+            # 2. Handle insufficient data (cold start for this parent)
+            # During cold start, default to SIBLING placement
+            if stats is None or stats.get("child_n", 0) < 2:
+                logger.debug(
+                    "[placement] parent_id=%d has insufficient Welford data (n=%d), defaulting to SIBLING",
+                    parent_id, stats.get("child_n", 0) if stats else 0
+                )
+                return PlacementDecision.SIBLING, None, 0.0
+
+            # 3. Find best matching sibling
+            best_sibling, best_sim = self._find_best_sibling(new_embedding, parent_id, conn=c)
+
+            # If no siblings with embeddings, default to SIBLING
+            if best_sibling is None:
+                logger.debug(
+                    "[placement] parent_id=%d has no siblings with embeddings, defaulting to SIBLING",
+                    parent_id
+                )
+                return PlacementDecision.SIBLING, None, 0.0
+
+            # 4. Compute z-score relative to parent's child similarity distribution
+            child_mean = stats.get("child_mean", 0.0)
+            child_m2 = stats.get("child_m2", 0.0)
+            child_n = stats.get("child_n", 0)
+
+            # Sample standard deviation
+            std_sim = math.sqrt(child_m2 / max(1, child_n - 1)) if child_n > 1 else 0.0
+            std_sim = max(0.01, std_sim)  # Avoid division by zero
+
+            z_score = (best_sim - child_mean) / std_sim
+
+            logger.debug(
+                "[placement] parent_id=%d best_sibling=%d sim=%.3f "
+                "child_mean=%.3f child_std=%.3f z_score=%.2f",
+                parent_id, best_sibling.id, best_sim, child_mean, std_sim, z_score
+            )
+
+            # 5. Decision based on z-score thresholds
+            if z_score > WELFORD_MERGE_THRESHOLD:
+                # Very similar to existing sibling - consider merging
+                logger.info(
+                    "[placement] MERGE: z=%.2f > %.1f, merge with sibling %d (sim=%.3f)",
+                    z_score, WELFORD_MERGE_THRESHOLD, best_sibling.id, best_sim
+                )
+                return PlacementDecision.MERGE, best_sibling, best_sim
+
+            elif z_score > WELFORD_SIBLING_THRESHOLD:
+                # Normal range - add as sibling (peer to existing children)
+                logger.debug(
+                    "[placement] SIBLING: z=%.2f in normal range [%.1f, %.1f]",
+                    z_score, WELFORD_SIBLING_THRESHOLD, WELFORD_MERGE_THRESHOLD
+                )
+                return PlacementDecision.SIBLING, best_sibling, best_sim
+
+            elif z_score > WELFORD_CHILD_THRESHOLD:
+                # Somewhat different - create sub-cluster under best sibling
+                logger.info(
+                    "[placement] CHILD: z=%.2f in [%.1f, %.1f], create sub-cluster",
+                    z_score, WELFORD_CHILD_THRESHOLD, WELFORD_SIBLING_THRESHOLD
+                )
+                return PlacementDecision.CHILD, best_sibling, best_sim
+
+            else:
+                # Very different - new cluster under root
+                logger.info(
+                    "[placement] NEW_CLUSTER: z=%.2f < %.1f, too different for this cluster",
+                    z_score, WELFORD_CHILD_THRESHOLD
+                )
+                return PlacementDecision.NEW_CLUSTER, best_sibling, best_sim
+
+        if conn is not None:
+            return _do_decide(conn)
+        else:
+            with self._connection() as c:
+                return _do_decide(c)
+
     def get_total_problems_solved(self, conn=None) -> int:
         """Get total number of problems solved (for cold start detection).
 
@@ -6160,6 +6353,414 @@ class StepSignatureDB:
         """
         from mycelium.config import COLD_START_PROBLEMS_THRESHOLD
         return self.get_total_problems_solved(conn=conn) < COLD_START_PROBLEMS_THRESHOLD
+
+    # =========================================================================
+    # PROPOSED SIGNATURES STAGING (per mycelium-xv09)
+    # =========================================================================
+    # Per CLAUDE.md "New Favorite Pattern": Single entry point for proposing signatures.
+    # During cold start: auto-accept as root children.
+    # After cold start: stage for Welford-based decision.
+
+    def propose_signature(
+        self,
+        step_text: str,
+        embedding: Optional[np.ndarray],
+        graph_embedding: Optional[np.ndarray] = None,
+        computation_graph: Optional[str] = None,
+        proposed_parent_id: Optional[int] = None,
+        best_match_id: Optional[int] = None,
+        best_match_sim: Optional[float] = None,
+        dsl_hint: Optional[str] = None,
+        extracted_values: Optional[dict] = None,
+        origin_depth: int = 0,
+        problem_context: Optional[str] = None,
+        conn=None,
+    ) -> tuple[int, bool]:
+        """SINGLE ENTRY POINT for proposing new signatures.
+
+        Per mycelium-xv09: Consolidates signature proposal logic.
+        - Cold start: auto-accepts and creates signature, returns (signature_id, True)
+        - Post cold start: stages proposal, returns (proposal_id, False)
+
+        Args:
+            step_text: The step description text
+            embedding: Text embedding (for centroid)
+            graph_embedding: Computation graph embedding (for routing)
+            computation_graph: Structural graph representation
+            proposed_parent_id: Suggested parent from routing
+            best_match_id: Most similar existing signature
+            best_match_sim: Similarity to best match
+            dsl_hint: Operation hint from planner
+            extracted_values: Extracted parameter values
+            origin_depth: Depth where proposal originated
+            problem_context: Original problem text
+
+        Returns:
+            Tuple of (id, was_accepted):
+            - If cold start: (signature_id, True) - signature was created
+            - If post cold start: (proposal_id, False) - proposal was staged
+        """
+        from mycelium.step_signatures.models import ProposedSignature
+
+        def _do_propose(c):
+            # Check if we're in cold start mode
+            if self.is_cold_start(conn=c):
+                # Cold start: auto-accept as root child
+                root = self.get_root()
+                parent_id = proposed_parent_id if proposed_parent_id is not None else (root.id if root else None)
+
+                sig = self._create_signature_atomic(
+                    c,
+                    step_text=step_text,
+                    embedding=embedding,
+                    parent_id=parent_id,
+                    dsl_hint=dsl_hint,
+                    graph_embedding=graph_embedding,
+                    extracted_values=extracted_values,
+                    origin_depth=origin_depth,
+                )
+                logger.info(
+                    "[proposals] Cold start: auto-accepted signature id=%d type='%s'",
+                    sig.id, sig.step_type
+                )
+                return (sig.id, True)
+
+            # Post cold start: stage the proposal
+            now = datetime.now(timezone.utc).isoformat()
+
+            # Pack embeddings for storage
+            embedding_packed = pack_embedding(embedding) if embedding is not None else None
+            graph_emb_packed = pack_embedding(graph_embedding) if graph_embedding is not None else None
+            extracted_json = json.dumps(extracted_values) if extracted_values else None
+
+            cursor = c.execute(
+                """INSERT INTO proposed_signatures
+                   (step_text, embedding, graph_embedding, computation_graph,
+                    proposed_parent_id, best_match_id, best_match_sim,
+                    dsl_hint, extracted_values, origin_depth, problem_context,
+                    status, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)""",
+                (step_text, embedding_packed, graph_emb_packed, computation_graph,
+                 proposed_parent_id, best_match_id, best_match_sim,
+                 dsl_hint, extracted_json, origin_depth, problem_context,
+                 now),
+            )
+            proposal_id = cursor.lastrowid
+            logger.info(
+                "[proposals] Staged proposal id=%d, best_match_sim=%.3f, parent_id=%s",
+                proposal_id, best_match_sim or 0.0, proposed_parent_id
+            )
+            return (proposal_id, False)
+
+        if conn is not None:
+            return _do_propose(conn)
+        else:
+            with self._connection() as c:
+                c.execute("BEGIN IMMEDIATE")
+                try:
+                    result = _do_propose(c)
+                    c.commit()
+                    return result
+                except Exception:
+                    c.rollback()
+                    raise
+
+    def accept_proposal(
+        self,
+        proposal_id: int,
+        parent_id: Optional[int] = None,
+        reason: str = "welford_accepted",
+        conn=None,
+    ) -> Optional[int]:
+        """Accept a staged proposal and create signature.
+
+        Args:
+            proposal_id: ID of the proposal to accept
+            parent_id: Override parent (defaults to proposal's proposed_parent_id)
+            reason: Why the proposal was accepted
+
+        Returns:
+            Created signature ID, or None if proposal not found
+        """
+        from mycelium.step_signatures.models import ProposedSignature
+
+        def _do_accept(c):
+            # Fetch the proposal
+            row = c.execute(
+                "SELECT * FROM proposed_signatures WHERE id = ? AND status = 'pending'",
+                (proposal_id,)
+            ).fetchone()
+
+            if not row:
+                logger.warning("[proposals] Proposal id=%d not found or not pending", proposal_id)
+                return None
+
+            proposal = ProposedSignature.from_row(dict(row))
+
+            # Determine parent
+            actual_parent_id = parent_id if parent_id is not None else proposal.proposed_parent_id
+            if actual_parent_id is None:
+                root = self.get_root()
+                actual_parent_id = root.id if root else None
+
+            # Create the signature
+            sig = self._create_signature_atomic(
+                c,
+                step_text=proposal.step_text,
+                embedding=proposal.embedding,
+                parent_id=actual_parent_id,
+                dsl_hint=proposal.dsl_hint,
+                graph_embedding=proposal.graph_embedding,
+                extracted_values=proposal.extracted_values,
+                origin_depth=proposal.origin_depth,
+            )
+
+            # Update proposal status
+            now = datetime.now(timezone.utc).isoformat()
+            c.execute(
+                """UPDATE proposed_signatures
+                   SET status = 'accepted', decision_reason = ?, decided_at = ?
+                   WHERE id = ?""",
+                (reason, now, proposal_id),
+            )
+
+            logger.info(
+                "[proposals] Accepted proposal id=%d -> signature id=%d, reason='%s'",
+                proposal_id, sig.id, reason
+            )
+            return sig.id
+
+        if conn is not None:
+            return _do_accept(conn)
+        else:
+            with self._connection() as c:
+                c.execute("BEGIN IMMEDIATE")
+                try:
+                    result = _do_accept(c)
+                    c.commit()
+                    return result
+                except Exception:
+                    c.rollback()
+                    raise
+
+    def reject_proposal(
+        self,
+        proposal_id: int,
+        reason: str,
+        conn=None,
+    ) -> bool:
+        """Reject a staged proposal.
+
+        Args:
+            proposal_id: ID of the proposal to reject
+            reason: Why the proposal was rejected
+
+        Returns:
+            True if rejection succeeded, False if proposal not found
+        """
+        def _do_reject(c):
+            now = datetime.now(timezone.utc).isoformat()
+            cursor = c.execute(
+                """UPDATE proposed_signatures
+                   SET status = 'rejected', decision_reason = ?, decided_at = ?
+                   WHERE id = ? AND status = 'pending'""",
+                (reason, now, proposal_id),
+            )
+            if cursor.rowcount > 0:
+                logger.info("[proposals] Rejected proposal id=%d, reason='%s'", proposal_id, reason)
+                return True
+            else:
+                logger.warning("[proposals] Proposal id=%d not found or not pending", proposal_id)
+                return False
+
+        if conn is not None:
+            return _do_reject(conn)
+        else:
+            with self._connection() as c:
+                result = _do_reject(c)
+                c.commit()
+                return result
+
+    def merge_proposal(
+        self,
+        proposal_id: int,
+        merge_into_sig_id: int,
+        reason: str = "welford_merged",
+        conn=None,
+    ) -> bool:
+        """Merge a proposal into an existing signature.
+
+        Updates the target signature's centroid with the proposal's embedding
+        using running average (embedding_sum / embedding_count).
+
+        Args:
+            proposal_id: ID of the proposal to merge
+            merge_into_sig_id: ID of signature to merge into
+            reason: Why the proposal was merged
+
+        Returns:
+            True if merge succeeded, False if proposal or signature not found
+        """
+        from mycelium.step_signatures.models import ProposedSignature
+
+        def _do_merge(c):
+            # Fetch the proposal
+            row = c.execute(
+                "SELECT * FROM proposed_signatures WHERE id = ? AND status = 'pending'",
+                (proposal_id,)
+            ).fetchone()
+
+            if not row:
+                logger.warning("[proposals] Proposal id=%d not found or not pending", proposal_id)
+                return False
+
+            proposal = ProposedSignature.from_row(dict(row))
+
+            if proposal.embedding is None:
+                logger.warning("[proposals] Proposal id=%d has no embedding, cannot merge", proposal_id)
+                return False
+
+            # Fetch target signature
+            sig_row = c.execute(
+                "SELECT id, embedding_sum, embedding_count FROM step_signatures WHERE id = ?",
+                (merge_into_sig_id,)
+            ).fetchone()
+
+            if not sig_row:
+                logger.warning("[proposals] Target signature id=%d not found", merge_into_sig_id)
+                return False
+
+            # Update centroid using running average
+            old_sum = unpack_embedding(sig_row["embedding_sum"])
+            old_count = sig_row["embedding_count"] or 1
+
+            if old_sum is not None:
+                new_sum = old_sum + proposal.embedding
+            else:
+                new_sum = proposal.embedding
+            new_count = old_count + 1
+            new_centroid = new_sum / new_count
+
+            # Pack for storage
+            centroid_packed = pack_embedding(new_centroid)
+            sum_packed = pack_embedding(new_sum)
+            centroid_bucket = compute_centroid_bucket(new_centroid)
+
+            c.execute(
+                """UPDATE step_signatures
+                   SET centroid = ?, centroid_bucket = ?, embedding_sum = ?, embedding_count = ?
+                   WHERE id = ?""",
+                (centroid_packed, centroid_bucket, sum_packed, new_count, merge_into_sig_id),
+            )
+
+            # Update proposal status
+            now = datetime.now(timezone.utc).isoformat()
+            c.execute(
+                """UPDATE proposed_signatures
+                   SET status = 'merged', decision_reason = ?, decided_at = ?
+                   WHERE id = ?""",
+                (f"{reason}:into_sig_{merge_into_sig_id}", now, proposal_id),
+            )
+
+            # Invalidate caches
+            invalidate_centroid_cache(merge_into_sig_id)
+            invalidate_signature_cache(merge_into_sig_id)
+            self.invalidate_centroid_matrix()
+
+            logger.info(
+                "[proposals] Merged proposal id=%d into signature id=%d (count=%d)",
+                proposal_id, merge_into_sig_id, new_count
+            )
+            return True
+
+        if conn is not None:
+            return _do_merge(conn)
+        else:
+            with self._connection() as c:
+                c.execute("BEGIN IMMEDIATE")
+                try:
+                    result = _do_merge(c)
+                    c.commit()
+                    return result
+                except Exception:
+                    c.rollback()
+                    raise
+
+    def get_pending_proposals(
+        self,
+        limit: int = 100,
+        conn=None,
+    ) -> list:
+        """Get all pending proposals for review.
+
+        Args:
+            limit: Maximum number of proposals to return
+
+        Returns:
+            List of ProposedSignature objects
+        """
+        from mycelium.step_signatures.models import ProposedSignature
+
+        def _do_get(c):
+            cursor = c.execute(
+                """SELECT * FROM proposed_signatures
+                   WHERE status = 'pending'
+                   ORDER BY created_at ASC
+                   LIMIT ?""",
+                (limit,)
+            )
+            return [ProposedSignature.from_row(dict(row)) for row in cursor]
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def get_proposal_stats(self, conn=None) -> dict:
+        """Get summary statistics about proposals.
+
+        Returns:
+            Dict with counts by status and other stats
+        """
+        def _do_get(c):
+            # Count by status
+            cursor = c.execute(
+                """SELECT status, COUNT(*) as count
+                   FROM proposed_signatures
+                   GROUP BY status"""
+            )
+            status_counts = {row["status"]: row["count"] for row in cursor}
+
+            # Get total and recent counts
+            total = sum(status_counts.values())
+            pending = status_counts.get("pending", 0)
+            accepted = status_counts.get("accepted", 0)
+            rejected = status_counts.get("rejected", 0)
+            merged = status_counts.get("merged", 0)
+
+            # Recent activity (last 24 hours)
+            cursor = c.execute(
+                """SELECT COUNT(*) FROM proposed_signatures
+                   WHERE created_at > datetime('now', '-1 day')"""
+            )
+            recent = cursor.fetchone()[0]
+
+            return {
+                "total": total,
+                "pending": pending,
+                "accepted": accepted,
+                "rejected": rejected,
+                "merged": merged,
+                "recent_24h": recent,
+                "acceptance_rate": accepted / (accepted + rejected) if (accepted + rejected) > 0 else 0.0,
+            }
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
 
 
 # =============================================================================

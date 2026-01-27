@@ -10,6 +10,7 @@ Signatures now speak natural language:
 from mycelium.step_signatures.models import (
     StepSignature,
     StepExample,
+    ProposedSignature,
 )
 
 from mycelium.step_signatures.utils import (
@@ -92,6 +93,7 @@ from mycelium.data_layer.schema import STEP_SCHEMA as STEP_SCHEMA_SQL
 __all__ = [
     "StepSignature",
     "StepExample",
+    "ProposedSignature",
     "StepSignatureDB",
     "RoutingResult",
     "DSLSpec",

@@ -484,6 +484,35 @@ CREATE TABLE IF NOT EXISTS welford_stats (
 
 CREATE INDEX IF NOT EXISTS idx_welford_route_n ON welford_stats(route_n);
 CREATE INDEX IF NOT EXISTS idx_welford_exec_n ON welford_stats(exec_n);
+
+-- =============================================================================
+-- PROPOSED_SIGNATURES: Staging table for new signature candidates
+-- =============================================================================
+-- Per mycelium-xv09: Signature proposals are staged before acceptance.
+-- During cold start (first 20 problems): auto-accept as root children.
+-- After cold start: use Welford stats to decide accept/reject/merge.
+CREATE TABLE IF NOT EXISTS proposed_signatures (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    step_text TEXT NOT NULL,
+    embedding BLOB,
+    graph_embedding BLOB,
+    computation_graph TEXT,
+    proposed_parent_id INTEGER REFERENCES step_signatures(id),
+    best_match_id INTEGER REFERENCES step_signatures(id),
+    best_match_sim REAL,
+    dsl_hint TEXT,
+    extracted_values TEXT,
+    status TEXT DEFAULT 'pending',  -- pending, accepted, rejected, merged
+    decision_reason TEXT,
+    origin_depth INTEGER DEFAULT 0,
+    problem_context TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    decided_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_proposed_status ON proposed_signatures(status);
+CREATE INDEX IF NOT EXISTS idx_proposed_parent ON proposed_signatures(proposed_parent_id);
+CREATE INDEX IF NOT EXISTS idx_proposed_created ON proposed_signatures(created_at);
 """
 
 def get_schema() -> str:
@@ -772,6 +801,38 @@ def migrate_db(conn) -> None:
     except Exception as e:
         # Table already exists or other error
         logger.debug("[schema] welford_stats migration skipped: %s", e)
+
+    # Create proposed_signatures table if it doesn't exist (per mycelium-xv09)
+    # Staging table for signature proposals before acceptance
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS proposed_signatures (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                step_text TEXT NOT NULL,
+                embedding BLOB,
+                graph_embedding BLOB,
+                computation_graph TEXT,
+                proposed_parent_id INTEGER REFERENCES step_signatures(id),
+                best_match_id INTEGER REFERENCES step_signatures(id),
+                best_match_sim REAL,
+                dsl_hint TEXT,
+                extracted_values TEXT,
+                status TEXT DEFAULT 'pending',
+                decision_reason TEXT,
+                origin_depth INTEGER DEFAULT 0,
+                problem_context TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                decided_at TIMESTAMP
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_proposed_status ON proposed_signatures(status)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_proposed_parent ON proposed_signatures(proposed_parent_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_proposed_created ON proposed_signatures(created_at)")
+        conn.commit()
+        logger.info("[schema] Created proposed_signatures table")
+    except Exception as e:
+        # Table already exists or other error
+        logger.debug("[schema] proposed_signatures migration skipped: %s", e)
 
     # Add new indexes (safe to run multiple times)
     index_migrations = [
