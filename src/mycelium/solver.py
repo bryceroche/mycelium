@@ -808,12 +808,13 @@ class Solver:
         except Exception as e:
             logger.debug("[zero-llm] DSL execution failed: %s", e)
             # Record failure for pattern learning (per CLAUDE.md: failures are valuable data)
-            self.step_db.record_failure(
-                step_text=problem[:200],
+            self._record_failure(
+                step_text=problem,
                 failure_type="dsl_error",
                 error_message=str(e),
-                signature_id=sig.id if sig else None,
-                context={"source": "zero_llm", "problem": problem[:500]},
+                signature=sig,
+                source="zero_llm",
+                problem=problem,
             )
 
         return None
@@ -988,11 +989,12 @@ class Solver:
                 is_valid, errors = plan.validate()
             if not is_valid:
                 # Record validation failure (per CLAUDE.md: failures are valuable data)
-                self.step_db.record_failure(
-                    step_text=problem[:200],
+                self._record_failure(
+                    step_text=problem,
                     failure_type="validation",
                     error_message=f"Invalid DAG: {'; '.join(errors)}",
-                    context={"source": "planner", "problem": problem[:500]},
+                    source="planner",
+                    problem=problem,
                 )
                 return SolverResult(
                     problem=problem,
@@ -1004,11 +1006,12 @@ class Solver:
 
             if not plan.steps:
                 # Record planning failure (per CLAUDE.md: failures are valuable data)
-                self.step_db.record_failure(
-                    step_text=problem[:200],
+                self._record_failure(
+                    step_text=problem,
                     failure_type="validation",
                     error_message="Planning failed: no steps generated",
-                    context={"source": "planner", "problem": problem[:500]},
+                    source="planner",
+                    problem=problem,
                 )
                 return SolverResult(
                     problem=problem,
@@ -1257,11 +1260,12 @@ class Solver:
         except Exception as e:
             logger.exception("[solver] Error solving problem")
             # Record exception (per CLAUDE.md: failures are valuable data)
-            self.step_db.record_failure(
-                step_text=problem[:200],
+            self._record_failure(
+                step_text=problem,
                 failure_type="llm_error",
                 error_message=str(e),
-                context={"source": "solver_exception", "problem": problem[:500]},
+                source="solver_exception",
+                problem=problem,
             )
             # Grade DAG as failed on exception (training mode only)
             if self._current_dag_id:
@@ -1769,16 +1773,13 @@ class Solver:
                 step.task[:50]
             )
             # Record failure for pattern learning (per CLAUDE.md: failures are valuable data)
-            self.step_db.record_failure(
+            self._record_failure(
                 step_text=step.task,
                 failure_type="dsl_error",
                 error_message="DSL execution returned None",
-                signature_id=routed_signature.id if routed_signature else None,
-                context={
-                    "problem": problem[:200] if problem else None,
-                    "was_routed": was_routed,
-                    "is_new": is_new,
-                },
+                signature=routed_signature,
+                problem=problem,
+                extra_context={"was_routed": was_routed, "is_new": is_new},
             )
             result = ""  # Empty result = failure
 
@@ -2127,12 +2128,13 @@ class Solver:
                     best_sim
                 )
                 # Record routing failure (per CLAUDE.md: failures are valuable data)
-                self.step_db.record_failure(
-                    step_text=step.task[:200],
+                self._record_failure(
+                    step_text=step.task,
                     failure_type="routing",
                     error_message=f"No good embedding match (best={best_sim:.3f})",
-                    signature_id=umbrella.id,
-                    context={"umbrella": umbrella.step_type, "best_sim": best_sim},
+                    signature=umbrella,
+                    source="umbrella_routing",
+                    extra_context={"umbrella": umbrella.step_type, "best_sim": best_sim},
                 )
                 return None
         else:
@@ -2143,12 +2145,13 @@ class Solver:
                 "[solver] Umbrella routing: no embedding available, cannot route"
             )
             # Record routing failure (per CLAUDE.md: failures are valuable data)
-            self.step_db.record_failure(
-                step_text=step.task[:200],
+            self._record_failure(
+                step_text=step.task,
                 failure_type="routing",
                 error_message="No embedding available for routing",
-                signature_id=umbrella.id,
-                context={"umbrella": umbrella.step_type},
+                signature=umbrella,
+                source="umbrella_routing",
+                extra_context={"umbrella": umbrella.step_type},
             )
             return None
 
@@ -2466,12 +2469,13 @@ class Solver:
             logger.debug("[solver] Multi-path: all %d paths failed DSL", len(candidates))
             # Record failure for all explored paths (per CLAUDE.md: failures are valuable data)
             for sig in explored_sigs:
-                self.step_db.record_failure(
-                    step_text=step.task[:200],
+                self._record_failure(
+                    step_text=step.task,
                     failure_type="dsl_error",
                     error_message=f"Multi-path DSL failed ({len(candidates)} paths explored)",
-                    signature_id=sig.id,
-                    context={"source": "multi_path", "paths_explored": len(candidates)},
+                    signature=sig,
+                    source="multi_path",
+                    extra_context={"paths_explored": len(candidates)},
                 )
 
         return (best_result, best_sig, explored_sigs, best_result is not None)
@@ -2722,12 +2726,13 @@ class Solver:
         except Exception as e:
             logger.debug("[solver] DSL execution failed: %s", e)
             # Record failure (per CLAUDE.md: failures are valuable data)
-            self.step_db.record_failure(
-                step_text=step.task[:200],
+            self._record_failure(
+                step_text=step.task,
                 failure_type="dsl_error",
                 error_message=str(e),
-                signature_id=signature.id if signature else None,
-                context={"source": "try_dsl", "dsl_hint": getattr(step, 'dsl_hint', None)},
+                signature=signature,
+                source="try_dsl",
+                extra_context={"dsl_hint": getattr(step, "dsl_hint", None)},
             )
 
         return None
@@ -2996,6 +3001,77 @@ class Solver:
             )
         except Exception as e:
             logger.warning("[solver] Failed to record routing miss: %s", e)
+
+    def _record_failure(
+        self,
+        step_text: str,
+        failure_type: str,
+        error_message: str = None,
+        signature=None,
+        source: str = None,
+        problem: str = None,
+        extra_context: dict = None,
+        is_operational: bool = False,
+    ) -> int:
+        """Record a step failure for pattern learning.
+
+        Consolidates all failure recording to ensure consistent:
+        - Text truncation (200 chars for step_text, 500 for problem in context)
+        - Context formatting with source identification
+        - Signature ID extraction from objects or ints
+        - Operational failure stat tracking
+
+        Per CLAUDE.md: "Failures Are Valuable Data Points"
+        - Record every failure—it feeds the post-mortem analysis
+        - Accumulated failure patterns trigger decomposition
+        - Success/failure stats drive routing decisions
+
+        Args:
+            step_text: The step/problem text that failed
+            failure_type: Category of failure:
+                - 'dsl_error': DSL execution failed
+                - 'validation': Plan/result validation failed
+                - 'llm_error': LLM call failed
+                - 'routing': Umbrella routing failed
+                - 'operational': Signature produced wrong answer
+            error_message: The error text/description
+            signature: Optional signature (StepSignature object or int ID) that failed
+            source: Identifier for where the failure originated (e.g., "zero_llm", "try_dsl")
+            problem: Optional problem text to include in context (truncated to 500 chars)
+            extra_context: Additional context dict to merge
+            is_operational: If True, increments operational_failures stat on signature
+
+        Returns:
+            ID of the failure record
+        """
+        # Truncate step_text to 200 chars
+        step_text_truncated = step_text[:200] if step_text else ""
+
+        # Extract signature ID from object or use int directly
+        signature_id = None
+        if signature is not None:
+            if isinstance(signature, int):
+                signature_id = signature
+            else:
+                signature_id = getattr(signature, "id", None)
+
+        # Build context dict
+        context = {}
+        if source:
+            context["source"] = source
+        if problem:
+            context["problem"] = problem[:500]
+        if extra_context:
+            context.update(extra_context)
+
+        return self.step_db.record_failure(
+            step_text=step_text_truncated,
+            failure_type=failure_type,
+            error_message=error_message,
+            signature_id=signature_id,
+            context=context if context else None,
+            increment_operational_failures=is_operational,
+        )
 
     def _prewarm_operation_embeddings(self, steps: list) -> None:
         """Batch embed all step operations for graph-based routing.
@@ -4288,15 +4364,16 @@ Rules:
                         incorrect_paths += 1
                         # Record failure for potential cluster splitting
                         # Per CLAUDE.md: "Record every failure—it feeds the refinement loop"
-                        self.step_db.record_failure(
+                        self._record_failure(
                             step_text=step_id,
                             failure_type="operational",
-                            signature_id=outcome.signature_id,
-                            context={
+                            signature=outcome.signature_id,
+                            source="thread_outcome",
+                            extra_context={
                                 "produced_answer": outcome.answer,
                                 "expected_answer": ground_truth,
                             },
-                            increment_operational_failures=True,
+                            is_operational=True,
                         )
                         logger.debug(
                             "[solver] Path via sig %d was operationally different for step '%s' "
