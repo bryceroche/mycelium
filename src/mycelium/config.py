@@ -760,6 +760,29 @@ CLIENT_BASE_RETRY_DELAY = 1.0
 CLIENT_MAX_RETRY_DELAY = 30.0
 PLANNER_DEFAULT_TEMPERATURE = 0.0  # Zero for deterministic decomposition
 
+# =============================================================================
+# TREE-GUIDED DECOMPOSITION (Segmentation LLM)
+# =============================================================================
+# Per CLAUDE.md: "Route by what operations DO, not what they SOUND LIKE"
+# Two-phase decomposition guided by signature tree vocabulary.
+
+# Enable tree-guided decomposition (set False to use legacy single-pass planner)
+TREE_GUIDED_DECOMPOSITION_ENABLED = os.getenv("TREE_GUIDED_DECOMPOSITION", "false").lower() == "true"
+
+# Number of vocabulary suggestions to show per step
+TREE_GUIDED_TOP_K_SUGGESTIONS = 3
+
+# Welford's k-factor for novelty threshold: threshold = mean - k * stddev
+# Higher k = more permissive (fewer steps marked as novel)
+# Lower k = stricter (more steps marked as novel, encourages vocabulary reuse)
+TREE_GUIDED_NOVELTY_K = 1.5
+
+# Minimum samples before using Welford's threshold (cold start protection)
+TREE_GUIDED_NOVELTY_MIN_SAMPLES = 10
+
+# Default novelty threshold during cold start (before enough samples)
+TREE_GUIDED_NOVELTY_DEFAULT_THRESHOLD = 0.5
+
 # Model configuration - set via TRAINING_MODE env var
 # TRAINING_MODE=true  -> use beefy models for learning
 # TRAINING_MODE=false -> use lightweight models for inference
