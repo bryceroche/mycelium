@@ -369,10 +369,15 @@ async def regenerate_dsl(
         logger.debug("[dsl_regen] No examples for signature %d", signature_id)
         return False
 
-    # Only regenerate if we have successful examples
+    # Only regenerate if we have enough successful examples
+    # Per CLAUDE.md: need sufficient data to learn from
+    MIN_EXAMPLES_FOR_REGEN = 3
     successful = [e for e in examples if e.get('success', False)]
-    if not successful:
-        logger.debug("[dsl_regen] No successful examples for signature %d", signature_id)
+    if len(successful) < MIN_EXAMPLES_FOR_REGEN:
+        logger.debug(
+            "[dsl_regen] Not enough successful examples for signature %d (%d < %d)",
+            signature_id, len(successful), MIN_EXAMPLES_FOR_REGEN
+        )
         return False
 
     # Generate new DSL
