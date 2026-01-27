@@ -9,18 +9,23 @@ Embeddings are expensive to compute (~50ms each). This module provides:
 
 Per CLAUDE.md: "everything must be automated - system must be independent"
 The system should avoid redundant computation automatically.
+
+Per CLAUDE.md "New Favorite Pattern": Uses dedicated connection manager
+following the same pattern as data_layer/connection.py.
 """
 
 import hashlib
 import logging
 import sqlite3
+import threading
 import time
 from collections import OrderedDict
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
-from typing import Optional
+from typing import Generator, Optional
 
 import numpy as np
 
@@ -36,6 +41,59 @@ from mycelium.config import (
 from mycelium.data_layer.connection import configure_connection
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# EMBEDDING CACHE CONNECTION MANAGER
+# =============================================================================
+# Per CLAUDE.md "New Favorite Pattern": Follows same pattern as main ConnectionManager
+# but for the separate embedding cache database.
+
+class EmbeddingCacheConnectionManager:
+    """Thread-safe connection manager for embedding cache DB.
+
+    Follows the same pattern as data_layer/connection.py's ConnectionManager
+    but manages connections to the embedding_cache.db file.
+    """
+
+    def __init__(self, db_path: Path):
+        self._db_path = db_path
+        self._local = threading.local()
+        self._lock = threading.Lock()
+
+    @property
+    def db_path(self) -> Path:
+        return self._db_path
+
+    def _get_connection(self) -> sqlite3.Connection:
+        """Get thread-local connection, creating if needed."""
+        if not hasattr(self._local, "conn") or self._local.conn is None:
+            self._local.conn = sqlite3.connect(
+                str(self._db_path), check_same_thread=False, timeout=30.0
+            )
+            configure_connection(self._local.conn, enable_foreign_keys=False)
+        return self._local.conn
+
+    @contextmanager
+    def connection(self) -> Generator[sqlite3.Connection, None, None]:
+        """Get connection with automatic commit/rollback."""
+        conn = self._get_connection()
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
+    def close(self):
+        """Close thread-local connection if open."""
+        if hasattr(self._local, "conn") and self._local.conn is not None:
+            try:
+                self._local.conn.close()
+            except Exception as e:
+                logger.warning("[embedding_cache] Error closing connection: %s", e)
+            finally:
+                self._local.conn = None
 
 
 # =============================================================================
@@ -273,11 +331,15 @@ class DiskCache:
     """SQLite-backed persistent cache for embeddings.
 
     Survives process restarts. Used as L2 cache behind LRU.
+
+    Per CLAUDE.md "New Favorite Pattern": Uses dedicated connection manager
+    for thread-safe access to embedding_cache.db.
     """
 
     def __init__(self, db_path: Optional[Path] = None, auto_prune: bool = True):
         self.db_path = db_path or Path(DB_PATH).parent / "embedding_cache.db"
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._conn_mgr = EmbeddingCacheConnectionManager(self.db_path)
         self._init_db()
 
         # Auto-prune old entries on startup to prevent unbounded growth
@@ -286,30 +348,21 @@ class DiskCache:
 
     def _init_db(self) -> None:
         """Initialize the cache database."""
-        conn = sqlite3.connect(str(self.db_path), timeout=30.0)
-        configure_connection(conn, enable_foreign_keys=False)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS embedding_cache (
-                text_hash TEXT PRIMARY KEY,
-                text TEXT NOT NULL,
-                embedding BLOB NOT NULL,
-                created_at TEXT NOT NULL,
-                last_accessed_at TEXT NOT NULL,
-                access_count INTEGER DEFAULT 1
-            )
-        """)
-        conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_cache_accessed
-            ON embedding_cache(last_accessed_at)
-        """)
-        conn.commit()
-        conn.close()
-
-    def _connection(self):
-        """Get DB connection."""
-        conn = sqlite3.connect(str(self.db_path), timeout=30.0)
-        configure_connection(conn, enable_foreign_keys=False)
-        return conn
+        with self._conn_mgr.connection() as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS embedding_cache (
+                    text_hash TEXT PRIMARY KEY,
+                    text TEXT NOT NULL,
+                    embedding BLOB NOT NULL,
+                    created_at TEXT NOT NULL,
+                    last_accessed_at TEXT NOT NULL,
+                    access_count INTEGER DEFAULT 1
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_cache_accessed
+                ON embedding_cache(last_accessed_at)
+            """)
 
     def get(self, text: str) -> Optional[np.ndarray]:
         """Get embedding from disk cache.
@@ -324,25 +377,22 @@ class DiskCache:
         now = datetime.now(timezone.utc).isoformat()
 
         try:
-            conn = self._connection()
-            row = conn.execute(
-                "SELECT embedding FROM embedding_cache WHERE text_hash = ?",
-                (key,)
-            ).fetchone()
+            with self._conn_mgr.connection() as conn:
+                row = conn.execute(
+                    "SELECT embedding FROM embedding_cache WHERE text_hash = ?",
+                    (key,)
+                ).fetchone()
 
-            if row:
-                # Update access time and count
-                conn.execute("""
-                    UPDATE embedding_cache
-                    SET last_accessed_at = ?, access_count = access_count + 1
-                    WHERE text_hash = ?
-                """, (now, key))
-                conn.commit()
-                conn.close()
-                return unpack_embedding(row["embedding"])
+                if row:
+                    # Update access time and count
+                    conn.execute("""
+                        UPDATE embedding_cache
+                        SET last_accessed_at = ?, access_count = access_count + 1
+                        WHERE text_hash = ?
+                    """, (now, key))
+                    return unpack_embedding(row["embedding"])
 
-            conn.close()
-            return None
+                return None
 
         except sqlite3.Error as e:
             logger.warning("[embedding_cache] Disk read error: %s", e)
@@ -360,17 +410,15 @@ class DiskCache:
         data = pack_embedding(embedding)
 
         try:
-            conn = self._connection()
-            conn.execute("""
-                INSERT INTO embedding_cache
-                    (text_hash, text, embedding, created_at, last_accessed_at)
-                VALUES (?, ?, ?, ?, ?)
-                ON CONFLICT(text_hash) DO UPDATE SET
-                    last_accessed_at = excluded.last_accessed_at,
-                    access_count = access_count + 1
-            """, (key, text, data, now, now))
-            conn.commit()
-            conn.close()
+            with self._conn_mgr.connection() as conn:
+                conn.execute("""
+                    INSERT INTO embedding_cache
+                        (text_hash, text, embedding, created_at, last_accessed_at)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(text_hash) DO UPDATE SET
+                        last_accessed_at = excluded.last_accessed_at,
+                        access_count = access_count + 1
+                """, (key, text, data, now, now))
         except sqlite3.Error as e:
             logger.warning("[embedding_cache] Disk write error: %s", e)
 
@@ -391,31 +439,29 @@ class DiskCache:
         now = datetime.now(timezone.utc).isoformat()
 
         try:
-            conn = self._connection()
-            placeholders = ",".join("?" * len(keys))
-            rows = conn.execute(
-                f"SELECT text_hash, embedding FROM embedding_cache WHERE text_hash IN ({placeholders})",
-                list(keys.keys())
-            ).fetchall()
+            with self._conn_mgr.connection() as conn:
+                placeholders = ",".join("?" * len(keys))
+                rows = conn.execute(
+                    f"SELECT text_hash, embedding FROM embedding_cache WHERE text_hash IN ({placeholders})",
+                    list(keys.keys())
+                ).fetchall()
 
-            found_keys = []
-            for row in rows:
-                text = keys[row["text_hash"]]
-                results[text] = unpack_embedding(row["embedding"])
-                found_keys.append(row["text_hash"])
+                found_keys = []
+                for row in rows:
+                    text = keys[row["text_hash"]]
+                    results[text] = unpack_embedding(row["embedding"])
+                    found_keys.append(row["text_hash"])
 
-            # Update access times
-            if found_keys:
-                placeholders = ",".join("?" * len(found_keys))
-                conn.execute(f"""
-                    UPDATE embedding_cache
-                    SET last_accessed_at = ?, access_count = access_count + 1
-                    WHERE text_hash IN ({placeholders})
-                """, [now] + found_keys)
-                conn.commit()
+                # Update access times
+                if found_keys:
+                    placeholders = ",".join("?" * len(found_keys))
+                    conn.execute(f"""
+                        UPDATE embedding_cache
+                        SET last_accessed_at = ?, access_count = access_count + 1
+                        WHERE text_hash IN ({placeholders})
+                    """, [now] + found_keys)
 
-            conn.close()
-            return results
+                return results
 
         except sqlite3.Error as e:
             logger.warning("[embedding_cache] Disk batch read error: %s", e)
@@ -433,30 +479,27 @@ class DiskCache:
         now = datetime.now(timezone.utc).isoformat()
 
         try:
-            conn = self._connection()
-            for text, embedding in items.items():
-                key = text_hash(text)
-                data = pack_embedding(embedding)
-                conn.execute("""
-                    INSERT INTO embedding_cache
-                        (text_hash, text, embedding, created_at, last_accessed_at)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(text_hash) DO UPDATE SET
-                        last_accessed_at = excluded.last_accessed_at,
-                        access_count = access_count + 1
-                """, (key, text, data, now, now))
-            conn.commit()
-            conn.close()
+            with self._conn_mgr.connection() as conn:
+                for text, embedding in items.items():
+                    key = text_hash(text)
+                    data = pack_embedding(embedding)
+                    conn.execute("""
+                        INSERT INTO embedding_cache
+                            (text_hash, text, embedding, created_at, last_accessed_at)
+                        VALUES (?, ?, ?, ?, ?)
+                        ON CONFLICT(text_hash) DO UPDATE SET
+                            last_accessed_at = excluded.last_accessed_at,
+                            access_count = access_count + 1
+                    """, (key, text, data, now, now))
         except sqlite3.Error as e:
             logger.warning("[embedding_cache] Disk batch write error: %s", e)
 
     def count(self) -> int:
         """Get number of entries in disk cache."""
         try:
-            conn = self._connection()
-            row = conn.execute("SELECT COUNT(*) as cnt FROM embedding_cache").fetchone()
-            conn.close()
-            return row["cnt"]
+            with self._conn_mgr.connection() as conn:
+                row = conn.execute("SELECT COUNT(*) as cnt FROM embedding_cache").fetchone()
+                return row["cnt"]
         except sqlite3.Error as e:
             logger.warning("[embedding_cache] Failed to get disk count: %s", e)
             return 0
@@ -474,16 +517,14 @@ class DiskCache:
         cutoff = (datetime.now(timezone.utc) - timedelta(days=ttl_days)).isoformat()
 
         try:
-            conn = self._connection()
-            cursor = conn.execute(
-                "DELETE FROM embedding_cache WHERE last_accessed_at < ?",
-                (cutoff,)
-            )
-            count = cursor.rowcount
-            conn.commit()
-            conn.close()
-            logger.info("[embedding_cache] Pruned %d old entries (>%d days)", count, ttl_days)
-            return count
+            with self._conn_mgr.connection() as conn:
+                cursor = conn.execute(
+                    "DELETE FROM embedding_cache WHERE last_accessed_at < ?",
+                    (cutoff,)
+                )
+                count = cursor.rowcount
+                logger.info("[embedding_cache] Pruned %d old entries (>%d days)", count, ttl_days)
+                return count
         except sqlite3.Error as e:
             logger.warning("[embedding_cache] Prune error: %s", e)
             return 0
@@ -491,10 +532,8 @@ class DiskCache:
     def clear(self) -> None:
         """Clear all entries from disk cache."""
         try:
-            conn = self._connection()
-            conn.execute("DELETE FROM embedding_cache")
-            conn.commit()
-            conn.close()
+            with self._conn_mgr.connection() as conn:
+                conn.execute("DELETE FROM embedding_cache")
         except sqlite3.Error as e:
             logger.warning("[embedding_cache] Clear error: %s", e)
 
@@ -742,17 +781,17 @@ class EmbeddingCache:
         logger.info("[embedding_cache] Warming cache from signatures...")
 
         try:
-            conn = sqlite3.connect(db_path, timeout=30.0)
-            configure_connection(conn, enable_foreign_keys=False)
+            # Use main data layer for signature DB access
+            # Per CLAUDE.md "New Favorite Pattern": Centralized connections
+            from mycelium.data_layer import get_db
+            db = get_db()
 
-            # Get all signature descriptions and their centroids
-            rows = conn.execute("""
+            rows = db.fetchall("""
                 SELECT description, centroid
                 FROM step_signatures
                 WHERE centroid IS NOT NULL
                 LIMIT 10000
-            """).fetchall()
-            conn.close()
+            """)
 
             count = 0
             for row in rows:

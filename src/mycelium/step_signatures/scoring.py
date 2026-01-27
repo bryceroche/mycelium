@@ -11,10 +11,7 @@ MCTS-style UCB1 scoring enables exploration/exploitation balance:
 import logging
 import math
 import re
-import sqlite3
 import time
-
-from mycelium.data_layer import configure_connection
 
 logger = logging.getLogger(__name__)
 from datetime import datetime, timezone
@@ -71,22 +68,24 @@ def get_total_problems_solved(db_path: str = DB_PATH) -> int:
 
     Returns cached value if fresh, otherwise queries DB and updates cache.
     This is called frequently during routing, so we cache aggressively.
+
+    Note: db_path param kept for API compatibility but ignored (uses data layer).
     """
+    import sqlite3
     now = time.time()
 
     # Return cached value if still valid
     if now < _total_problems_cache["expires_at"]:
         return _total_problems_cache["value"]
 
-    # Query DB for fresh value
+    # Query DB for fresh value via data layer
+    # Lazy import to avoid circular dependency
+    from mycelium.data_layer import get_db
     try:
-        conn = sqlite3.connect(db_path, timeout=30.0)
-        configure_connection(conn, enable_foreign_keys=False)
-        row = conn.execute(
+        db = get_db()
+        row = db.fetchone(
             "SELECT value FROM db_metadata WHERE key = 'total_problems_solved'"
-        ).fetchone()
-        conn.close()
-
+        )
         value = int(row["value"]) if row else 0
     except (sqlite3.Error, ValueError, TypeError) as e:
         logger.warning("[scoring] Failed to get total problems: %s", e)
@@ -103,27 +102,30 @@ def increment_total_problems(db_path: str = DB_PATH) -> int:
     """Increment total problems counter and return new value.
 
     Called once per problem completion. Also updates the cache.
+
+    Note: db_path param kept for API compatibility but ignored (uses data layer).
     """
+    import sqlite3
+    # Lazy import to avoid circular dependency
+    from mycelium.data_layer import get_db
     try:
-        conn = sqlite3.connect(db_path, timeout=30.0)
-        configure_connection(conn, enable_foreign_keys=False)
+        db = get_db()
         now_iso = datetime.now(timezone.utc).isoformat()
 
-        # Upsert the counter
-        conn.execute("""
-            INSERT INTO db_metadata (key, value, updated_at)
-            VALUES ('total_problems_solved', '1', ?)
-            ON CONFLICT(key) DO UPDATE SET
-                value = CAST(CAST(value AS INTEGER) + 1 AS TEXT),
-                updated_at = ?
-        """, (now_iso, now_iso))
-        conn.commit()
+        with db.connection() as conn:
+            # Upsert the counter
+            conn.execute("""
+                INSERT INTO db_metadata (key, value, updated_at)
+                VALUES ('total_problems_solved', '1', ?)
+                ON CONFLICT(key) DO UPDATE SET
+                    value = CAST(CAST(value AS INTEGER) + 1 AS TEXT),
+                    updated_at = ?
+            """, (now_iso, now_iso))
 
-        # Get new value
-        row = conn.execute(
-            "SELECT value FROM db_metadata WHERE key = 'total_problems_solved'"
-        ).fetchone()
-        conn.close()
+            # Get new value
+            row = conn.execute(
+                "SELECT value FROM db_metadata WHERE key = 'total_problems_solved'"
+            ).fetchone()
 
         new_value = int(row["value"]) if row else 1
 
