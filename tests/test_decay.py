@@ -141,7 +141,7 @@ class TestDecayManager:
 
     def test_init(self, manager):
         """Manager should initialize properly."""
-        assert manager.db_path is not None
+        assert manager._db is not None
         assert manager._last_run_at == 0
 
     def test_ensure_decay_table(self, manager):

@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from mycelium.data_layer import get_db
+# NOTE: get_step_db is imported lazily inside functions to avoid circular import
 from mycelium.config import (
     POSTMORTEM_ENABLED,
     POSTMORTEM_HIGH_CONF_THRESHOLD,
@@ -755,25 +756,9 @@ def record_leaf_rejection(
     Returns:
         Updated rejection_count for the signature
     """
-    db = conn if conn is not None else get_db()
-    rejection_count = 0
-
-    try:
-        # Increment rejection count
-        db.execute(
-            "UPDATE step_signatures SET rejection_count = rejection_count + 1 WHERE id = ?",
-            (signature_id,),
-        )
-
-        # Get updated count
-        cursor = db.execute(
-            "SELECT rejection_count FROM step_signatures WHERE id = ?",
-            (signature_id,),
-        )
-        row = cursor.fetchone()
-        rejection_count = row[0] if row else 0
-    except Exception as e:
-        logger.warning("[rejection] DB error recording rejection: %s", e)
+    from mycelium.step_signatures.db import get_step_db
+    step_db = get_step_db()
+    rejection_count = step_db.increment_rejection_count(signature_id, conn=conn)
 
     # Queue the rejected step for decomposition (non-blocking)
     try:
@@ -782,7 +767,7 @@ def record_leaf_rejection(
             complexity_reason=f"rejected_by_leaf_{signature_id}_sim_{similarity:.3f}",
             dag_step_id=dag_step_id,
             problem_context=problem_context,
-            conn=db,  # Pass connection to avoid lock contention
+            conn=conn,  # Pass connection to avoid lock contention
         )
     except Exception as e:
         logger.warning("[rejection] Failed to queue for decomposition: %s", e)
@@ -4394,12 +4379,14 @@ def collapse_single_child_routers() -> dict:
     Returns:
         Dict with collapse statistics
     """
-    db = get_db()
+    # Lazy import to avoid circular dependency
+    from mycelium.step_signatures.db import get_step_db
+    db = get_step_db()
     collapsed = 0
     collapsed_ids = []
 
     try:
-        with db.connection() as conn:
+        with db._connection() as conn:
             # Find umbrella routers with exactly one child
             cursor = conn.execute("""
                 SELECT sr.parent_id, sr.child_id, s.step_type
@@ -4462,20 +4449,14 @@ def collapse_single_child_routers() -> dict:
                         (grandparent_id,)
                     ).fetchone()
                     new_depth = (grandparent_depth_row["depth"] + 1) if grandparent_depth_row else 1
-                    conn.execute(
-                        "UPDATE step_signatures SET depth = ? WHERE id = ?",
-                        (new_depth, child_id)
-                    )
+                    db.update_signature_depth(child_id, new_depth, conn=conn)
                     logger.debug(
                         "[mcts] Updated child %d depth to %d (grandparent %d depth + 1)",
                         child_id, new_depth, grandparent_id
                     )
 
                 # Mark router as archived (don't delete, preserve history)
-                conn.execute(
-                    "UPDATE step_signatures SET is_archived = 1 WHERE id = ?",
-                    (parent_id,)
-                )
+                db.archive_signature(parent_id, reason="collapse_single_child")
 
                 collapsed += 1
                 collapsed_ids.append(parent_id)
@@ -4506,12 +4487,14 @@ def repair_signature_depths() -> dict:
     Returns:
         Dict with repair statistics
     """
-    db = get_db()
+    # Lazy import to avoid circular dependency
+    from mycelium.step_signatures.db import get_step_db
+    db = get_step_db()
     repaired = 0
     repairs = []
 
     try:
-        with db.connection() as conn:
+        with db._connection() as conn:
             # Get all non-root signatures with their parent depth
             cursor = conn.execute("""
                 SELECT
@@ -4537,10 +4520,7 @@ def repair_signature_depths() -> dict:
                 # Root should always be depth 0
                 if is_root:
                     if current_depth != 0:
-                        conn.execute(
-                            "UPDATE step_signatures SET depth = 0 WHERE id = ?",
-                            (sig_id,)
-                        )
+                        db.update_signature_depth(sig_id, 0, conn=conn)
                         repairs.append({
                             "id": sig_id,
                             "old_depth": current_depth,
@@ -4557,10 +4537,7 @@ def repair_signature_depths() -> dict:
                     expected_depth = (parent_depth or 0) + 1
 
                 if current_depth != expected_depth:
-                    conn.execute(
-                        "UPDATE step_signatures SET depth = ? WHERE id = ?",
-                        (expected_depth, sig_id)
-                    )
+                    db.update_signature_depth(sig_id, expected_depth, conn=conn)
                     repairs.append({
                         "id": sig_id,
                         "old_depth": current_depth,

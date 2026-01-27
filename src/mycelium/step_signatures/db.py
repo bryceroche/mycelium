@@ -759,9 +759,11 @@ class StepSignatureDB:
         """Create a new scaffold branch (fork) for a divergent problem type.
 
         Called during routing when a problem doesn't match existing paths well.
-        Creates a new placeholder umbrella initialized with the problem's embedding.
+        Creates a new placeholder LEAF that can be promoted to umbrella when
+        children are added.
 
-        This is a thin wrapper around _create_signature_atomic with is_umbrella=True.
+        Per CLAUDE.md System Independence: Don't create umbrellas without children.
+        The signature will be promoted to umbrella when children are actually added.
 
         Args:
             conn: Database connection (within transaction)
@@ -780,7 +782,7 @@ class StepSignatureDB:
                 step_text=f"Dynamic branch at level {depth}",
                 embedding=embedding,
                 parent_id=parent_id,
-                is_umbrella=True,
+                is_umbrella=False,  # Per CLAUDE.md: create as leaf, promote when children added
                 signature_id_override=branch_id,
                 depth_override=depth,
                 skip_example=True,
@@ -5659,3 +5661,37 @@ class StepSignatureDB:
         # Sort by similarity descending and return top_k
         matches.sort(key=lambda x: x[1], reverse=True)
         return matches[:top_k]
+
+
+# =============================================================================
+# SINGLETON ACCESSOR
+# =============================================================================
+
+_step_db: Optional[StepSignatureDB] = None
+
+
+def get_step_db() -> StepSignatureDB:
+    """Get the singleton StepSignatureDB instance.
+
+    Per CLAUDE.md "New Favorite Pattern": Consolidate database access through
+    a single data layer. Use this instead of creating new StepSignatureDB()
+    instances throughout the codebase.
+
+    Returns:
+        StepSignatureDB: The singleton instance
+    """
+    global _step_db
+    if _step_db is None:
+        _step_db = StepSignatureDB()
+        logger.debug("[db] Created singleton StepSignatureDB instance")
+    return _step_db
+
+
+def reset_step_db() -> None:
+    """Reset the singleton StepSignatureDB instance.
+
+    Primarily for testing - allows tests to get a fresh instance.
+    """
+    global _step_db
+    _step_db = None
+    logger.debug("[db] Reset singleton StepSignatureDB instance")

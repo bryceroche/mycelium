@@ -29,7 +29,7 @@ from mycelium.step_signatures.utils import (
     get_signature_cache_stats,
 )
 
-from mycelium.step_signatures.db import StepSignatureDB, RoutingResult
+from mycelium.step_signatures.db import StepSignatureDB, RoutingResult, get_step_db, reset_step_db
 
 from mycelium.step_signatures.dsl_executor import (
     DSLSpec,

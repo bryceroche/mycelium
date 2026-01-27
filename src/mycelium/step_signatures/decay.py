@@ -13,14 +13,13 @@ pull their weight gradually fade, making room for better ones.
 """
 
 import logging
-import sqlite3
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from enum import Enum
 from typing import Optional
 
-from mycelium.data_layer import configure_connection
+from mycelium.step_signatures.db import get_step_db
 from mycelium.step_signatures.utils import invalidate_centroid_cache
 from mycelium.config import (
     DB_PATH,
@@ -187,15 +186,21 @@ class DecayManager:
     """
 
     def __init__(self, db_path: str = DB_PATH):
-        self.db_path = db_path
+        """Initialize DecayManager.
+
+        Args:
+            db_path: Kept for API compatibility but ignored (uses data layer).
+        """
+        self._db = get_step_db()
         self._last_run_at: float = 0
         self._decay_states: dict[int, DecayState] = {}
 
     def _connection(self):
-        """Get DB connection with proper settings."""
-        conn = sqlite3.connect(self.db_path, timeout=30.0)
-        configure_connection(conn, enable_foreign_keys=False)
-        return conn
+        """Get DB connection via data layer.
+
+        Per CLAUDE.md "New Favorite Pattern": Centralized connection management.
+        """
+        return self._db._connection()
 
     def _utc_now_iso(self) -> str:
         """Current UTC timestamp in ISO format."""
@@ -523,23 +528,8 @@ class DecayManager:
         try:
             with self._connection() as conn:
                 if action.action == "archive":
-                    # Soft-delete the signature
-                    conn.execute(
-                        "UPDATE step_signatures SET is_archived = 1 WHERE id = ?",
-                        (action.signature_id,)
-                    )
-                    # Invalidate centroid cache for archived sig and its parent
-                    invalidate_centroid_cache(action.signature_id)
-                    parent_row = conn.execute(
-                        "SELECT parent_id FROM signature_relationships WHERE child_id = ?",
-                        (action.signature_id,)
-                    ).fetchone()
-                    if parent_row:
-                        invalidate_centroid_cache(parent_row["parent_id"])
-                    logger.info(
-                        "[decay] Archived signature %d: %s",
-                        action.signature_id, action.reason
-                    )
+                    # Soft-delete the signature via consolidated db method
+                    self._db.archive_signature(action.signature_id, reason=action.reason)
 
                 elif action.action == "demote":
                     # If umbrella with no healthy children, demote to leaf
@@ -729,14 +719,11 @@ class DecayManager:
         should be given another chance.
         """
         try:
-            with self._connection() as conn:
-                # Un-archive in main table
-                conn.execute(
-                    "UPDATE step_signatures SET is_archived = 0 WHERE id = ?",
-                    (sig_id,)
-                )
+            # Un-archive via consolidated db method (handles cache invalidation)
+            self._db.unarchive_signature(sig_id)
 
-                # Reset decay state
+            # Reset decay state
+            with self._connection() as conn:
                 now = self._utc_now_iso()
                 conn.execute("""
                     UPDATE signature_decay
@@ -747,18 +734,7 @@ class DecayManager:
                         updated_at = ?
                     WHERE signature_id = ?
                 """, (now, now, sig_id))
-
                 conn.commit()
-
-            # Invalidate centroid cache for restored sig and its parent
-            invalidate_centroid_cache(sig_id)
-            with self._connection() as conn:
-                parent_row = conn.execute(
-                    "SELECT parent_id FROM signature_relationships WHERE child_id = ?",
-                    (sig_id,)
-                ).fetchone()
-                if parent_row:
-                    invalidate_centroid_cache(parent_row["parent_id"])
 
             logger.info("[decay] Restored signature %d from archive", sig_id)
             return True
