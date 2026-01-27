@@ -7535,14 +7535,16 @@ class StepSignatureDB:
                 return False
 
             # Update keeper's graph centroid (average with merged)
+            # Per CLAUDE.md "New Favorite Pattern": Use consistent JSON format for graph_embedding
             if keeper.graph_embedding is not None and merged.graph_embedding is not None:
                 keeper_emb = np.array(keeper.graph_embedding)
                 merged_emb = np.array(merged.graph_embedding)
                 new_centroid = (keeper_emb + merged_emb) / 2
                 conn.execute(
                     "UPDATE step_signatures SET graph_embedding = ? WHERE id = ?",
-                    (pack_embedding(new_centroid), keeper_id)
+                    (json.dumps(new_centroid.tolist()), keeper_id)
                 )
+                invalidate_signature_cache(keeper_id)
 
             # Reparent any children of merged to keeper
             conn.execute(
