@@ -1476,6 +1476,18 @@ class StepSignatureDB:
                     conn, min_similarity, dsl_hint=dsl_hint, exclude_ids=exclude_ids
                 )
 
+                # Cold start: force flat structure under root (per mycelium-5cn0)
+                # Still allow matching to existing signatures, but new ones go under root
+                cold_start_active = self.is_cold_start(conn=conn)
+                cold_start_root_id = None
+                if cold_start_active:
+                    root_row = conn.execute(
+                        "SELECT id FROM step_signatures WHERE is_root = 1 LIMIT 1"
+                    ).fetchone()
+                    if root_row:
+                        cold_start_root_id = root_row[0]
+                        logger.debug("[db] Cold start active: new signatures will go under root (id=%d)", cold_start_root_id)
+
                 # Accept match from hierarchical routing
                 # Simplified: no match_score, just use routing result
                 # Global dedup check happens later if no routing match
@@ -1703,10 +1715,18 @@ class StepSignatureDB:
                             else:
                                 # No matching leaf found - create new leaf under umbrella
                                 cluster_parent_id = global_match.id
-                                logger.info(
-                                    "[db] CLUSTER: No matching leaf in umbrella children (best=%.3f), creating under sig %d (%s)",
-                                    child_sim, global_match.id, global_match.step_type
-                                )
+                                # Cold start override: flat structure under root (per mycelium-5cn0)
+                                if cold_start_root_id is not None:
+                                    cluster_parent_id = cold_start_root_id
+                                    logger.info(
+                                        "[db] COLD START: Forcing under root instead of umbrella %d",
+                                        global_match.id
+                                    )
+                                else:
+                                    logger.info(
+                                        "[db] CLUSTER: No matching leaf in umbrella children (best=%.3f), creating under sig %d (%s)",
+                                        child_sim, global_match.id, global_match.step_type
+                                    )
                                 update_similarity_stats(conn, 'cluster', global_sim)
 
                                 sig = self._create_signature_atomic(
@@ -1744,6 +1764,11 @@ class StepSignatureDB:
                                 global_sim, thresholds.cluster_threshold, cluster_parent_id
                             )
 
+                        # Cold start override: flat structure under root (per mycelium-5cn0)
+                        if cold_start_root_id is not None:
+                            logger.info("[db] COLD START: Forcing under root instead of cluster parent %s", cluster_parent_id)
+                            cluster_parent_id = cold_start_root_id
+
                         update_similarity_stats(conn, 'cluster', global_sim)
 
                         # SIBLING DEDUP: Before creating, check if sibling already matches
@@ -1779,12 +1804,19 @@ class StepSignatureDB:
                 # No global match above thresholds - create new signature under routing parent
                 actual_parent_id = parent_id if parent_id is not None else (parent_for_new.id if parent_for_new else None)
 
+                # Cold start override: flat structure under root (per mycelium-5cn0)
+                if cold_start_root_id is not None:
+                    logger.info("[db] COLD START: Forcing under root instead of routing parent %s", actual_parent_id)
+                    actual_parent_id = cold_start_root_id
+
                 sig = self._create_signature_atomic(
                     conn, step_text, embedding, parent_problem, origin_depth,
                     extracted_values=extracted_values, dsl_hint=dsl_hint,
                     parent_id=actual_parent_id, graph_embedding=step_graph_emb
                 )
                 parent_desc = f"id={parent_id}" if parent_id is not None else (parent_for_new.step_type if parent_for_new else "root")
+                if cold_start_root_id is not None:
+                    parent_desc = f"root (cold start)"
                 logger.info(
                     "[db] Created NEW signature (child of %s): step='%s' type='%s'",
                     parent_desc, step_text[:40], sig.step_type
@@ -5354,14 +5386,25 @@ class StepSignatureDB:
         This function validates children exist before promoting (unless skip_children_check=True
         for cases where children are being added in the same transaction).
 
+        Per mycelium-5cn0: No umbrella promotions during cold start. The first N problems
+        create a flat structure under root to collect Welford stats before restructuring.
+
         Args:
             conn: Database connection (existing transaction)
             signature_id: ID of the signature to promote
             skip_children_check: If True, skip validation (caller guarantees children exist/will exist)
 
         Returns:
-            True if updated, False if signature not found or no children
+            True if updated, False if signature not found, no children, or cold start active
         """
+        # Cold start check: no umbrella promotions during cold start (per mycelium-5cn0)
+        if self.is_cold_start(conn=conn):
+            logger.debug(
+                "[db] Refusing to promote sig %d to umbrella: cold start active (flat structure)",
+                signature_id
+            )
+            return False
+
         # Validate children exist (unless caller explicitly skips check)
         if not skip_children_check:
             child_count = conn.execute(
