@@ -227,6 +227,7 @@ STEP_DECOMPOSITION_MIN_STEPS = 2  # Min steps in failed result to attempt decomp
 DECOMP_MIN_ATTEMPTS_COLD = 1  # Cold start: flag after just 1 failure
 DECOMP_MIN_ATTEMPTS_MATURE = 3  # Mature: require 3+ attempts before flagging
 DECOMP_MAX_WIN_RATE = 0.5  # Flag nodes with win rate below this
+DECOMP_MAX_PER_CYCLE = 5  # Max signatures to decompose per learning cycle (gradual learning)
 
 # Bayesian prior for cold start (assume some successes before any data)
 ROUTING_PRIOR_SUCCESSES = 2

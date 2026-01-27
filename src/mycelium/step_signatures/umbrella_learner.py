@@ -346,18 +346,14 @@ Rules:
     def get_decomposition_candidates(self) -> list[StepSignature]:
         """Find signatures that should be decomposed.
 
-        Two categories:
-        1. Failing guidance signatures (dsl_type="decompose", not yet umbrella)
-        2. Auto-demoted router umbrellas with NO children (need actual decomposition)
-
-        Criteria for both:
-        - uses >= UMBRELLA_MIN_USES_FOR_EVALUATION (enough data)
-        - operational_failures > 0 (flagged by MCTS post-mortem)
-        - MCTS win_rate <= max_success_rate (actually failing per ground truth)
-
         Per CLAUDE.md: "Do not decompose a leaf node until instructed by the
-        MCTS rollout post-mortem analysis." Decomposition is triggered by
-        destructive interference patterns, not by low success rate alone.
+        MCTS rollout post-mortem analysis." The MCTS signal is operational_failures > 0.
+
+        Criteria (consolidated per CLAUDE.md "new favorite pattern"):
+        - uses >= adaptive_min_uses (enough data)
+        - operational_failures > 0 (MCTS post-mortem flagged this node)
+        - MCTS win_rate <= max_success_rate (actually failing per ground truth)
+        - Not already an umbrella (no point decomposing routers)
 
         The split threshold is adaptive based on global accuracy:
         - Low accuracy (cold start): lenient threshold (tolerate more failures)
@@ -366,6 +362,10 @@ Rules:
         NOTE: Uses MCTS win rates (ground truth) instead of signature.success_rate
         (which includes partial credit). This ensures we only decompose signatures
         that are actually failing operationally.
+
+        IMPORTANT: We decompose ANY leaf type with high MCTS failures, not just
+        dsl_type="decompose". The MCTS post-mortem signal (operational_failures)
+        is the source of truth, not arbitrary type filtering.
         """
         from mycelium.mcts.adaptive import AdaptiveExploration
         from mycelium.data_layer.mcts import get_mcts_win_rates
@@ -381,8 +381,6 @@ Rules:
         # Adaptive min_uses: lower during cold start, higher when mature
         # This ensures we evaluate failing signatures quickly during early learning
         from mycelium.config import DECOMP_MIN_ATTEMPTS_COLD, DECOMP_MIN_ATTEMPTS_MATURE
-        from mycelium.mcts.adaptive import AdaptiveExploration
-        adaptive = AdaptiveExploration.get_instance()
         accuracy = adaptive.global_accuracy
         adaptive_min_uses = int(
             DECOMP_MIN_ATTEMPTS_COLD + accuracy * (DECOMP_MIN_ATTEMPTS_MATURE - DECOMP_MIN_ATTEMPTS_COLD)
@@ -398,9 +396,18 @@ Rules:
             # Skip if not enough uses (adaptive threshold)
             if sig.uses < adaptive_min_uses:
                 continue
+
             # CRITICAL: Per CLAUDE.md, only decompose when flagged by MCTS post-mortem
             # operational_failures > 0 means destructive interference was detected
             if sig.operational_failures <= 0:
+                continue
+
+            # Skip umbrellas - they're already routers, decomposing them makes no sense
+            if sig.is_semantic_umbrella:
+                continue
+
+            # Skip already-atomic signatures (marked as non-decomposable)
+            if sig.is_atomic:
                 continue
 
             # Use MCTS win rate (ground truth) instead of sig.success_rate (partial credit)
@@ -416,30 +423,18 @@ Rules:
             if actual_win_rate > max_success_rate:
                 continue
 
-            # Category 1: decompose type not yet promoted to umbrella
-            is_decompose_candidate = (
-                sig.dsl_type == "decompose"
-                and not sig.is_semantic_umbrella
+            # This signature has:
+            # 1. Enough uses (data)
+            # 2. MCTS flagged it (operational_failures > 0)
+            # 3. Low win rate (actually failing)
+            # 4. Not already an umbrella or atomic
+            # → It's a decomposition candidate regardless of dsl_type
+            candidates.append(sig)
+            logger.info(
+                "[umbrella] Candidate: '%s' (id=%d, type=%s, dsl=%s, mcts_win=%.1f%%, op_fail=%d)",
+                sig.step_type, sig.id, sig.step_type, sig.dsl_type,
+                actual_win_rate * 100, sig.operational_failures
             )
-
-            # Category 2: auto-demoted router umbrellas without children
-            # NOTE: We DON'T include orphan umbrellas for abstract decomposition here.
-            # Abstract decomposition (decomposing generic description like "compute_product")
-            # creates children with placeholder variables (X, Y) that can't execute.
-            # Orphan umbrellas get children through CONCRETE problem solving, when actual
-            # values route through them and create new leaf signatures.
-            # is_orphan_umbrella logic removed - let them stay as orphans until concrete use.
-
-            # Category 3: high-variance leaves flagged for decomposition
-            # NOTE: Also not included - abstract decomposition creates broken umbrellas.
-            # High-variance leaves should be decomposed during CONCRETE problem solving.
-
-            if is_decompose_candidate:
-                candidates.append(sig)
-                logger.info(
-                    "[umbrella] Candidate: '%s' (id=%d, reason=decompose_type, mcts_win=%.1f%%, op_fail=%d)",
-                    sig.step_type, sig.id, actual_win_rate * 100, sig.operational_failures
-                )
 
         return candidates
 
@@ -739,19 +734,34 @@ Rules:
     async def learn_from_failures(self) -> dict:
         """Main entry point: find failing guidance sigs and decompose them.
 
+        Per CLAUDE.md "system independence": decompose gradually, letting the
+        system learn incrementally rather than all at once.
+
         Returns:
             Dict with learning statistics
         """
+        from mycelium.config import DECOMP_MAX_PER_CYCLE
+
         candidates = self.get_decomposition_candidates()
 
         if not candidates:
             logger.debug("[umbrella] No decomposition candidates found")
             return {"candidates": 0, "decomposed": 0, "children_created": 0}
 
+        # Sort by operational_failures (highest first) - tackle worst offenders first
+        candidates.sort(key=lambda s: s.operational_failures, reverse=True)
+
+        # Rate limit: only decompose top N per cycle (gradual learning)
+        to_decompose = candidates[:DECOMP_MAX_PER_CYCLE]
+        logger.info(
+            "[umbrella] Processing %d of %d candidates (max %d per cycle)",
+            len(to_decompose), len(candidates), DECOMP_MAX_PER_CYCLE
+        )
+
         decomposed = 0
         total_children = 0
 
-        for sig in candidates:
+        for sig in to_decompose:
             try:
                 child_ids = await self.decompose_signature(sig)
                 if child_ids:
@@ -765,6 +775,7 @@ Rules:
 
         result = {
             "candidates": len(candidates),
+            "processed": len(to_decompose),
             "decomposed": decomposed,
             "children_created": total_children,
         }
