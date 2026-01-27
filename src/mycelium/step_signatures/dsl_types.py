@@ -114,10 +114,13 @@ class DSLSpec:
             data["purpose"] = self.purpose
         return json.dumps(data)
 
-    def get_purpose_embedding(self):
+    def get_purpose_embedding(self, embedder=None):
         """Get or compute the purpose embedding (lazy).
 
         If no purpose is set, infers one from the script.
+
+        Args:
+            embedder: Optional Embedder instance. If None, fetches singleton.
         """
         if self._purpose_embedding is not None:
             return self._purpose_embedding
@@ -129,7 +132,8 @@ class DSLSpec:
 
         # Compute embedding
         from mycelium.embedder import Embedder
-        embedder = Embedder.get_instance()
+        if embedder is None:
+            embedder = Embedder.get_instance()
         self._purpose_embedding = embedder.embed(purpose_text)
         return self._purpose_embedding
 
@@ -142,10 +146,14 @@ class DSLSpec:
         # The script IS the purpose - let embeddings find semantic matches
         return f"compute: {self.script[:60]}"
 
-    def get_param_role_embedding(self, param: str):
+    def get_param_role_embedding(self, param: str, embedder=None):
         """Get or compute embedding for a parameter's semantic role.
 
         If no role is defined, infers one from the param name and script context.
+
+        Args:
+            param: Parameter name to get role embedding for.
+            embedder: Optional Embedder instance. If None, fetches singleton.
         """
         if param in self._param_role_embeddings:
             return self._param_role_embeddings[param]
@@ -157,7 +165,8 @@ class DSLSpec:
 
         # Compute embedding
         from mycelium.embedder import Embedder
-        embedder = Embedder.get_instance()
+        if embedder is None:
+            embedder = Embedder.get_instance()
         embedding = embedder.embed(role_text)
         self._param_role_embeddings[param] = embedding
         return embedding

@@ -227,6 +227,7 @@ STEP_DECOMPOSITION_MIN_STEPS = 2  # Min steps in failed result to attempt decomp
 DECOMP_MIN_ATTEMPTS_COLD = 1  # Cold start: flag after just 1 failure
 DECOMP_MIN_ATTEMPTS_MATURE = 3  # Mature: require 3+ attempts before flagging
 DECOMP_MAX_WIN_RATE = 0.5  # Flag nodes with win rate below this
+DECOMP_MAX_PER_CYCLE = 5  # Max signatures to decompose per learning cycle (gradual learning)
 
 # Bayesian prior for cold start (assume some successes before any data)
 ROUTING_PRIOR_SUCCESSES = 2
@@ -499,21 +500,18 @@ AMPLITUDE_POST_PENALTY_THRESHOLD = 0.6  # avg_amplitude_post below this → pena
 AMPLITUDE_POST_PENALTY_MULT = 0.8  # Multiplicative penalty for low amplitude_post
 
 # Variance-based decomposition (Welford's algorithm)
-# High variance = inconsistent performance = node too generic = should decompose
-# Per CLAUDE.md: "Destructive interference (mixed results at same node)" triggers split
+# Per CLAUDE.md: leaf_node ≡ dag_step_type (1:1 mapping)
+# The learning unit is (dag_step_id, dag_step_type/node_id)
+#
+# Many dag_step_ids map to each node. Welford's tracks variance:
+# - OUTCOME variance (amp_post): dag_step_ids have inconsistent results
+# - EMBEDDING variance (sim): dag_step_ids are semantically diverse
+#
+# High variance in either → node is too broad → split into children
 VARIANCE_DECOMPOSE_ENABLED = True  # Flag high-variance nodes for decomposition
 VARIANCE_MIN_SAMPLES = 5  # Min observations before considering variance (cold start)
 VARIANCE_THRESHOLD = 0.1  # Min variance to flag as "high" (needs decomposition)
 VARIANCE_CHECK_LIMIT = 20  # Max nodes to check per postmortem batch
-
-# Type refinement (Welford's algorithm at type level)
-# When MULTIPLE nodes have high variance on the SAME dag_step_type:
-#   ONE node high variance → decompose the node (handled above)
-#   MULTIPLE nodes high variance → type is too broad, needs refinement
-# This creates a closed loop where variance signals refine the type taxonomy
-TYPE_REFINEMENT_ENABLED = True  # Enable type refinement detection
-TYPE_REFINEMENT_MIN_NODES = 2  # Min nodes with high variance to flag type for refinement
-TYPE_REFINEMENT_CHECK_LIMIT = 10  # Max types to flag per postmortem batch
 
 # =============================================================================
 # MCTS INTERFERENCE PATTERNS (Constructive/Destructive)
@@ -762,6 +760,29 @@ CLIENT_CONNECT_TIMEOUT = 10.0
 CLIENT_BASE_RETRY_DELAY = 1.0
 CLIENT_MAX_RETRY_DELAY = 30.0
 PLANNER_DEFAULT_TEMPERATURE = 0.0  # Zero for deterministic decomposition
+
+# =============================================================================
+# TREE-GUIDED DECOMPOSITION (Segmentation LLM)
+# =============================================================================
+# Per CLAUDE.md: "Route by what operations DO, not what they SOUND LIKE"
+# Two-phase decomposition guided by signature tree vocabulary.
+
+# Enable tree-guided decomposition (set False to use legacy single-pass planner)
+TREE_GUIDED_DECOMPOSITION_ENABLED = os.getenv("TREE_GUIDED_DECOMPOSITION", "false").lower() == "true"
+
+# Number of vocabulary suggestions to show per step
+TREE_GUIDED_TOP_K_SUGGESTIONS = 3
+
+# Welford's k-factor for novelty threshold: threshold = mean - k * stddev
+# Higher k = more permissive (fewer steps marked as novel)
+# Lower k = stricter (more steps marked as novel, encourages vocabulary reuse)
+TREE_GUIDED_NOVELTY_K = 1.5
+
+# Minimum samples before using Welford's threshold (cold start protection)
+TREE_GUIDED_NOVELTY_MIN_SAMPLES = 10
+
+# Default novelty threshold during cold start (before enough samples)
+TREE_GUIDED_NOVELTY_DEFAULT_THRESHOLD = 0.5
 
 # Model configuration - set via TRAINING_MODE env var
 # TRAINING_MODE=true  -> use beefy models for learning

@@ -126,6 +126,7 @@ def infer_dsl_for_signature(
     db=None,
     extracted_values: dict = None,
     dsl_hint: str = None,
+    embedder=None,
 ) -> tuple[Optional[str], str]:
     """Infer DSL script and type for a new signature.
 
@@ -141,6 +142,7 @@ def infer_dsl_for_signature(
         db: Optional signature database for similarity lookup
         extracted_values: Dict of semantic param names -> values from planner
         dsl_hint: Explicit operation hint from planner (+, -, *, /)
+        embedder: Optional Embedder instance. If None, fetches singleton when needed.
 
     Returns:
         Tuple of (dsl_script_json, dsl_type)
@@ -156,13 +158,13 @@ def infer_dsl_for_signature(
     # Priority 1: Generate DSL from extracted_values structure
     # The planner already extracted semantic param names - use them!
     if extracted_values:
-        dsl = _infer_dsl_from_values(step_type, description, extracted_values)
+        dsl = _infer_dsl_from_values(step_type, description, extracted_values, embedder=embedder)
         if dsl:
             return dsl
 
     # Priority 2: Find similar successful signatures
     if db is not None:
-        similar_dsl = _find_similar_successful_dsl(step_type, description, db)
+        similar_dsl = _find_similar_successful_dsl(step_type, description, db, embedder=embedder)
         if similar_dsl:
             return similar_dsl
 
@@ -220,6 +222,7 @@ def _infer_dsl_from_values(
     step_type: str,
     description: str,
     extracted_values: dict,
+    embedder=None,
 ) -> Optional[tuple[str, str]]:
     """Generate DSL from planner's extracted values using semantic similarity.
 
@@ -230,6 +233,7 @@ def _infer_dsl_from_values(
         step_type: The signature's step type
         description: The step description
         extracted_values: Dict of semantic param names -> values
+        embedder: Optional Embedder instance. If None, fetches singleton.
 
     Returns:
         (dsl_json, dsl_type) or None if can't infer
@@ -264,7 +268,10 @@ def _infer_dsl_from_values(
     # Pass param names - they carry semantic hints (dividend/divisor → divide)
     # Use cold-start aware threshold (low when few sigs, high when mature)
     threshold = get_dsl_inference_threshold()
-    op_info = _infer_operation_semantic(step_type, description, len(params), param_names=params, min_similarity=threshold)
+    op_info = _infer_operation_semantic(
+        step_type, description, len(params),
+        param_names=params, min_similarity=threshold, embedder=embedder
+    )
 
     # Fallback: if semantic matching fails but we have exactly 2 numeric values,
     # try multiplication first (most common operation for rate * quantity patterns)
@@ -370,15 +377,20 @@ _param_anchor_embeddings = None
 _desc_anchor_embeddings = None
 
 
-def _get_param_anchor_embeddings():
-    """Get embeddings for param name anchors."""
+def _get_param_anchor_embeddings(embedder=None):
+    """Get embeddings for param name anchors.
+
+    Args:
+        embedder: Optional Embedder instance. If None, fetches singleton.
+    """
     global _param_anchor_embeddings
     if _param_anchor_embeddings is not None:
         return _param_anchor_embeddings
 
     try:
         from mycelium.embedder import Embedder
-        embedder = Embedder.get_instance()
+        if embedder is None:
+            embedder = Embedder.get_instance()
 
         _param_anchor_embeddings = {}
         for op, anchor_text in _PARAM_ANCHORS.items():
@@ -390,15 +402,20 @@ def _get_param_anchor_embeddings():
         return {}
 
 
-def _get_desc_anchor_embeddings():
-    """Get embeddings for description anchors."""
+def _get_desc_anchor_embeddings(embedder=None):
+    """Get embeddings for description anchors.
+
+    Args:
+        embedder: Optional Embedder instance. If None, fetches singleton.
+    """
     global _desc_anchor_embeddings
     if _desc_anchor_embeddings is not None:
         return _desc_anchor_embeddings
 
     try:
         from mycelium.embedder import Embedder
-        embedder = Embedder.get_instance()
+        if embedder is None:
+            embedder = Embedder.get_instance()
 
         _desc_anchor_embeddings = {}
         for op, anchor_text in _DESCRIPTION_ANCHORS.items():
@@ -416,6 +433,7 @@ def _infer_operation_semantic(
     num_params: int,
     param_names: list = None,
     min_similarity: float = 0.5,
+    embedder=None,
 ) -> Optional[tuple[str, str]]:
     """Infer math operation using dual-channel semantic embedding.
 
@@ -434,6 +452,7 @@ def _infer_operation_semantic(
         num_params: Number of available parameters
         param_names: List of parameter names
         min_similarity: Minimum similarity to accept a match
+        embedder: Optional Embedder instance. If None, fetches singleton.
 
     Returns:
         (operator, operation_name) or None
@@ -442,9 +461,10 @@ def _infer_operation_semantic(
         from mycelium.embedder import Embedder
         import numpy as np
 
-        embedder = Embedder.get_instance()
-        param_anchors = _get_param_anchor_embeddings()
-        desc_anchors = _get_desc_anchor_embeddings()
+        if embedder is None:
+            embedder = Embedder.get_instance()
+        param_anchors = _get_param_anchor_embeddings(embedder)
+        desc_anchors = _get_desc_anchor_embeddings(embedder)
 
         if not param_anchors or not desc_anchors:
             return None
@@ -555,6 +575,7 @@ def _find_similar_successful_dsl(
     db,
     min_success_rate: float = 0.6,
     min_uses: int = 3,
+    embedder=None,
 ) -> Optional[tuple[str, str]]:
     """Find a successful DSL from semantically similar signatures.
 
@@ -563,6 +584,9 @@ def _find_similar_successful_dsl(
     2. Good success rate (DSL actually works)
     3. Enough uses to be reliable
 
+    Args:
+        embedder: Optional Embedder instance. If None, fetches singleton.
+
     Returns:
         (dsl_script_json, dsl_type) or None if no good match
     """
@@ -570,7 +594,8 @@ def _find_similar_successful_dsl(
         from mycelium.embedder import Embedder
         import numpy as np
 
-        embedder = Embedder.get_instance()
+        if embedder is None:
+            embedder = Embedder.get_instance()
 
         # Get embedding for this description
         query_embedding = embedder.embed(f"{step_type}: {description}")

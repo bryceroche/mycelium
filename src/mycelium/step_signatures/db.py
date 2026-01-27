@@ -567,12 +567,13 @@ class StepSignatureDB:
     V2: Simplified schema with Natural Language Interface.
     """
 
-    def __init__(self, db_path: str = None):
+    def __init__(self, db_path: str = None, embedder=None):
         """Initialize the database.
 
         Args:
             db_path: Optional path to SQLite database. If provided, creates
                      a direct connection instead of using the global singleton.
+            embedder: Optional Embedder instance. If None, lazily fetches singleton on first use.
         """
         if db_path:
             self._direct_conn = sqlite3.connect(db_path, check_same_thread=False, timeout=30.0)
@@ -598,10 +599,21 @@ class StepSignatureDB:
         # Per CLAUDE.md: "prefer embedding similarity over keyword matching"
         self._atomic_embeddings: Optional[list[np.ndarray]] = None
 
+        # Lazy-loaded embedder (per CLAUDE.md: consolidate method calls)
+        self._embedder = embedder
+
         self._init_schema()
 
         # Register with CacheManager for coordinated invalidation
         get_cache_manager().register_db(self)
+
+    @property
+    def embedder(self):
+        """Get the embedder instance, lazily fetching singleton if needed."""
+        if self._embedder is None:
+            from mycelium.embedder import Embedder
+            self._embedder = Embedder.get_instance()
+        return self._embedder
 
     @property
     def db_path(self) -> str:
@@ -747,9 +759,11 @@ class StepSignatureDB:
         """Create a new scaffold branch (fork) for a divergent problem type.
 
         Called during routing when a problem doesn't match existing paths well.
-        Creates a new placeholder umbrella initialized with the problem's embedding.
+        Creates a new placeholder LEAF that can be promoted to umbrella when
+        children are added.
 
-        This is a thin wrapper around _create_signature_atomic with is_umbrella=True.
+        Per CLAUDE.md System Independence: Don't create umbrellas without children.
+        The signature will be promoted to umbrella when children are actually added.
 
         Args:
             conn: Database connection (within transaction)
@@ -768,7 +782,7 @@ class StepSignatureDB:
                 step_text=f"Dynamic branch at level {depth}",
                 embedding=embedding,
                 parent_id=parent_id,
-                is_umbrella=True,
+                is_umbrella=False,  # Per CLAUDE.md: create as leaf, promote when children added
                 signature_id_override=branch_id,
                 depth_override=depth,
                 skip_example=True,
@@ -1286,9 +1300,7 @@ class StepSignatureDB:
                     op_graph = self._dsl_hint_to_graph(dsl_hint)
                     if op_graph:
                         from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
-                        from mycelium.embedder import Embedder
-                        embedder_instance = Embedder.get_instance()
-                        step_graph_emb_list = embed_computation_graph_sync(embedder_instance, op_graph)
+                        step_graph_emb_list = embed_computation_graph_sync(self.embedder, op_graph)
                         if step_graph_emb_list:
                             step_graph_emb = np.array(step_graph_emb_list)
 
@@ -1486,9 +1498,7 @@ class StepSignatureDB:
                                 op_graph = self._dsl_hint_to_graph(dsl_hint)
                                 if op_graph:
                                     from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
-                                    from mycelium.embedder import Embedder
-                                    embedder_inst = Embedder.get_instance()
-                                    step_graph_emb_list = embed_computation_graph_sync(embedder_inst, op_graph)
+                                    step_graph_emb_list = embed_computation_graph_sync(self.embedder, op_graph)
                                     if step_graph_emb_list:
                                         step_graph_emb = np.array(step_graph_emb_list)
                                         leaf_graph_emb = np.array(best_match.graph_embedding)
@@ -1610,9 +1620,7 @@ class StepSignatureDB:
                         op_graph = self._dsl_hint_to_graph(dsl_hint)
                         if op_graph:
                             from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
-                            from mycelium.embedder import Embedder
-                            embedder_inst = Embedder.get_instance()
-                            step_graph_emb_list = embed_computation_graph_sync(embedder_inst, op_graph)
+                            step_graph_emb_list = embed_computation_graph_sync(self.embedder, op_graph)
                             if step_graph_emb_list:
                                 step_graph_emb = np.array(step_graph_emb_list)
                                 sig_graph_emb = np.array(best_match.graph_embedding)
@@ -1636,9 +1644,7 @@ class StepSignatureDB:
                     op_graph = self._dsl_hint_to_graph(dsl_hint)
                     if op_graph:
                         from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
-                        from mycelium.embedder import Embedder
-                        embedder = Embedder.get_instance()
-                        step_graph_emb_list = embed_computation_graph_sync(embedder, op_graph)
+                        step_graph_emb_list = embed_computation_graph_sync(self.embedder, op_graph)
                         if step_graph_emb_list:
                             step_graph_emb = np.array(step_graph_emb_list)
 
@@ -1656,8 +1662,9 @@ class StepSignatureDB:
                             )
                             update_similarity_stats(conn, 'match', global_sim)
                             self._update_centroid_atomic(conn, global_match.id, embedding, update_last_used=True)
-                            conn.commit()
-                            return global_match, False
+                            return self._finalize_routing_result(
+                                conn, global_match, False, parent_for_new, global_match.id
+                            )
                         else:
                             # Matched an UMBRELLA - search its children for matching leaf first
                             child_match, child_sim = find_best_child_match(
@@ -1671,8 +1678,9 @@ class StepSignatureDB:
                                 )
                                 update_similarity_stats(conn, 'match', child_sim)
                                 self._update_centroid_atomic(conn, child_match.id, embedding, update_last_used=True)
-                                conn.commit()
-                                return child_match, False
+                                return self._finalize_routing_result(
+                                    conn, child_match, False, parent_for_new, global_match.id
+                                )
                             else:
                                 # No matching leaf found - create new leaf under umbrella
                                 cluster_parent_id = global_match.id
@@ -1687,12 +1695,13 @@ class StepSignatureDB:
                                     extracted_values=extracted_values, dsl_hint=dsl_hint,
                                     parent_id=cluster_parent_id, graph_embedding=step_graph_emb
                                 )
-                                conn.commit()
                                 logger.info(
                                     "[db] Created CLUSTERED signature (child of umbrella %s): step='%s' type='%s'",
                                     global_match.step_type, step_text[:40], sig.step_type
                                 )
-                                return sig, True
+                                return self._finalize_routing_result(
+                                    conn, sig, True, parent_for_new, cluster_parent_id
+                                )
 
                     elif global_match is not None and global_sim >= thresholds.cluster_threshold:
                         # CLUSTER: Similar signature exists
@@ -1731,20 +1740,22 @@ class StepSignatureDB:
                                 )
                                 update_similarity_stats(conn, 'match', sibling_sim)
                                 self._update_centroid_atomic(conn, sibling_match.id, embedding, update_last_used=True)
-                                conn.commit()
-                                return sibling_match, False
+                                return self._finalize_routing_result(
+                                    conn, sibling_match, False, parent_for_new, cluster_parent_id
+                                )
 
                         sig = self._create_signature_atomic(
                             conn, step_text, embedding, parent_problem, origin_depth,
                             extracted_values=extracted_values, dsl_hint=dsl_hint,
                             parent_id=cluster_parent_id, graph_embedding=step_graph_emb
                         )
-                        conn.commit()
                         logger.info(
                             "[db] Created CLUSTERED signature (sibling of %s): step='%s' type='%s'",
                             global_match.step_type, step_text[:40], sig.step_type
                         )
-                        return sig, True
+                        return self._finalize_routing_result(
+                            conn, sig, True, parent_for_new, cluster_parent_id
+                        )
 
                 # No global match above thresholds - create new signature under routing parent
                 actual_parent_id = parent_id if parent_id is not None else (parent_for_new.id if parent_for_new else None)
@@ -1754,13 +1765,15 @@ class StepSignatureDB:
                     extracted_values=extracted_values, dsl_hint=dsl_hint,
                     parent_id=actual_parent_id, graph_embedding=step_graph_emb
                 )
-                conn.commit()
                 parent_desc = f"id={parent_id}" if parent_id is not None else (parent_for_new.step_type if parent_for_new else "root")
                 logger.info(
                     "[db] Created NEW signature (child of %s): step='%s' type='%s'",
                     parent_desc, step_text[:40], sig.step_type
                 )
-                return sig, True
+                # Use consolidated exit point (won't demote since we're using parent_for_new)
+                return self._finalize_routing_result(
+                    conn, sig, True, parent_for_new, actual_parent_id
+                )
 
             except Exception:
                 conn.rollback()
@@ -1830,9 +1843,7 @@ class StepSignatureDB:
             op_graph = self._dsl_hint_to_graph(dsl_hint)
             if op_graph:
                 from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
-                from mycelium.embedder import Embedder
-                embedder_inst = Embedder.get_instance()
-                step_graph_emb_list = embed_computation_graph_sync(embedder_inst, op_graph)
+                step_graph_emb_list = embed_computation_graph_sync(self.embedder, op_graph)
                 if step_graph_emb_list:
                     step_graph_embedding = np.array(step_graph_emb_list)
                     logger.debug("[db] Computed step_graph_embedding from dsl_hint=%s", dsl_hint)
@@ -1895,9 +1906,10 @@ class StepSignatureDB:
             children = [self._row_to_signature(row) for row in cursor.fetchall()]
 
             if not children:
-                # Umbrella with no children - return current as best match
-                # sim already computed above using graph_embedding or centroid
-                return current, current, sim
+                # Umbrella with no children - no leaf found, caller should create one
+                # Return None for best_match (not the umbrella!), keep current as parent_for_new
+                # Bug fix: was returning umbrella as best_match, should return None
+                return None, current, sim
 
             # MCTS UCB1 Selection: balance exploitation vs exploration
             # parent_uses = current node's uses (N in UCB1 formula)
@@ -2157,7 +2169,8 @@ class StepSignatureDB:
             # Auto-assign DSL based on step_type, description, planner's extracted_values, and dsl_hint
             # dsl_hint enables bidirectional LLM-signature communication
             dsl_script, dsl_type = infer_dsl_for_signature(
-                step_type, step_text, extracted_values=extracted_values, dsl_hint=dsl_hint
+                step_type, step_text, extracted_values=extracted_values, dsl_hint=dsl_hint,
+                embedder=self.embedder
             )
 
         # Auto-generate NL interface from extracted_values if we created a math DSL
@@ -2194,9 +2207,7 @@ class StepSignatureDB:
         if graph_emb_to_store is None and computation_graph:
             try:
                 from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
-                from mycelium.embedder import Embedder
-                embedder_inst = Embedder.get_instance()
-                emb_list = embed_computation_graph_sync(embedder_inst, computation_graph)
+                emb_list = embed_computation_graph_sync(self.embedder, computation_graph)
                 if emb_list:
                     graph_emb_to_store = np.array(emb_list)
                     logger.debug("[db] Computed graph_embedding from computation_graph")
@@ -3201,12 +3212,12 @@ class StepSignatureDB:
             if not row or not row[0] or row[1]:  # No centroid or is umbrella
                 return False, None
 
-            centroid = np.frombuffer(row[0], dtype=np.float32)
+            centroid = _parse_centroid_data(row[0])
 
             # Check if alternative leaves could handle this operation type
             # Use permissive min_similarity - each candidate has its own adaptive threshold
             alternatives = self.match_step_to_leaves_mcts(
-                embedding=centroid,
+                operation_embedding=centroid,
                 dag_step_type=None,
                 top_k=3,
                 min_similarity=0.5,  # Permissive - adaptive threshold applied per-candidate
@@ -3357,6 +3368,89 @@ class StepSignatureDB:
             )
 
             return True
+
+    def unarchive_signature(self, signature_id: int, conn=None) -> bool:
+        """Restore an archived signature (un-soft-delete).
+
+        Args:
+            signature_id: ID of signature to restore
+            conn: Optional connection for transaction support
+
+        Returns:
+            True if restored successfully
+        """
+        def _do_unarchive(c):
+            self._update_signature_fields(
+                c, signature_id,
+                log_reason="unarchive",
+                is_archived=0,
+            )
+            logger.info("[db] Unarchived signature %d", signature_id)
+            return True
+
+        if conn is not None:
+            return _do_unarchive(conn)
+        else:
+            with self._connection() as c:
+                return _do_unarchive(c)
+
+    def increment_rejection_count(self, signature_id: int, conn=None) -> int:
+        """Increment rejection count and return new value.
+
+        Args:
+            signature_id: ID of signature that rejected a step
+            conn: Optional connection for transaction support
+
+        Returns:
+            New rejection_count value, or 0 on error
+        """
+        def _do_increment(c):
+            self._update_signature_fields(
+                c, signature_id,
+                log_reason="rejection",
+                rejection_count_increment=True,
+            )
+            # Get updated count
+            cursor = c.execute(
+                "SELECT rejection_count FROM step_signatures WHERE id = ?",
+                (signature_id,),
+            )
+            row = cursor.fetchone()
+            return row[0] if row else 0
+
+        try:
+            if conn is not None:
+                return _do_increment(conn)
+            else:
+                with self._connection() as c:
+                    return _do_increment(c)
+        except Exception as e:
+            logger.warning("[db] Error incrementing rejection count for %d: %s", signature_id, e)
+            return 0
+
+    def update_signature_depth(self, signature_id: int, depth: int, conn=None) -> bool:
+        """Update signature depth.
+
+        Args:
+            signature_id: ID of signature to update
+            depth: New depth value
+            conn: Optional connection for transaction support
+
+        Returns:
+            True if updated successfully
+        """
+        def _do_update(c):
+            return self._update_signature_fields(
+                c, signature_id,
+                log_reason="depth_update",
+                depth=depth,
+            )
+
+        if conn is not None:
+            return _do_update(conn)
+        else:
+            with self._connection() as c:
+                return _do_update(c)
 
     # =========================================================================
     # Usage Recording
@@ -3635,11 +3729,11 @@ class StepSignatureDB:
             limit: Maximum number of examples to return
 
         Returns:
-            List of example dicts with step_text, result, success
+            List of example dicts with step_text, result, success, expression, inputs
         """
         with self._connection() as conn:
             cursor = conn.execute(
-                """SELECT step_text, result, success
+                """SELECT step_text, result, success, expression, inputs
                    FROM step_examples
                    WHERE signature_id = ?
                    ORDER BY created_at DESC
@@ -3652,6 +3746,8 @@ class StepSignatureDB:
                     'step_text': row[0],
                     'result': row[1] if row[1] else '',
                     'success': bool(row[2]),
+                    'expression': row[3] if row[3] else '',
+                    'inputs': row[4] if row[4] else '',
                 })
             return examples
 
@@ -3661,6 +3757,8 @@ class StepSignatureDB:
         step_text: str,
         result: str,
         success: bool,
+        expression: str | None = None,
+        inputs: str | None = None,
     ) -> bool:
         """Update an example with its execution result.
 
@@ -3672,6 +3770,8 @@ class StepSignatureDB:
             step_text: The step text to match
             result: The DSL execution result
             success: Whether execution succeeded
+            expression: The DSL script that was executed (e.g., "a * b")
+            inputs: JSON string of parameter values used (e.g., '{"a": 5, "b": 3}')
 
         Returns:
             True if an example was updated, False otherwise
@@ -3681,7 +3781,7 @@ class StepSignatureDB:
             # Match on first 100 chars of step_text to handle truncation
             cursor = conn.execute(
                 """UPDATE step_examples
-                   SET result = ?, success = ?
+                   SET result = ?, success = ?, expression = ?, inputs = ?
                    WHERE id = (
                        SELECT id FROM step_examples
                        WHERE signature_id = ?
@@ -3689,13 +3789,13 @@ class StepSignatureDB:
                        ORDER BY created_at DESC
                        LIMIT 1
                    )""",
-                (result, 1 if success else 0, signature_id, step_text),
+                (result, 1 if success else 0, expression, inputs, signature_id, step_text),
             )
             updated = cursor.rowcount > 0
             if updated:
                 logger.debug(
-                    "[db] Updated example result for sig %d: success=%s",
-                    signature_id, success
+                    "[db] Updated example result for sig %d: success=%s expr=%s",
+                    signature_id, success, expression[:30] if expression else None
                 )
             return updated
 
@@ -4032,6 +4132,16 @@ class StepSignatureDB:
         # Invalidate children cache if parent relationship changed
         if "is_semantic_umbrella" in fields_changed:
             invalidate_children_cache(signature_id)
+
+        # Invalidate parent's children cache if depth changed (tree structure changed)
+        if "depth" in fields_changed:
+            # Find and invalidate parent's children cache
+            parent_row = conn.execute(
+                "SELECT parent_id FROM signature_relationships WHERE child_id = ?",
+                (signature_id,)
+            ).fetchone()
+            if parent_row and parent_row[0]:
+                invalidate_children_cache(parent_row[0])
 
         # Propagate graph centroid if graph_embedding changed
         if "graph_embedding" in fields_changed:
@@ -4994,19 +5104,37 @@ class StepSignatureDB:
             )
             return True
 
-    def _promote_to_umbrella_internal(self, conn, signature_id: int) -> bool:
+    def _promote_to_umbrella_internal(self, conn, signature_id: int, skip_children_check: bool = False) -> bool:
         """Internal: Mark signature as umbrella within existing transaction.
 
         This is the SINGLE PATHWAY for umbrella promotion. All code that needs
         to mark a signature as umbrella should call this function.
 
+        Per CLAUDE.md System Independence: Don't create umbrellas without children.
+        This function validates children exist before promoting (unless skip_children_check=True
+        for cases where children are being added in the same transaction).
+
         Args:
             conn: Database connection (existing transaction)
             signature_id: ID of the signature to promote
+            skip_children_check: If True, skip validation (caller guarantees children exist/will exist)
 
         Returns:
-            True if updated, False if signature not found
+            True if updated, False if signature not found or no children
         """
+        # Validate children exist (unless caller explicitly skips check)
+        if not skip_children_check:
+            child_count = conn.execute(
+                "SELECT COUNT(*) FROM signature_relationships WHERE parent_id = ?",
+                (signature_id,)
+            ).fetchone()[0]
+            if child_count == 0:
+                logger.warning(
+                    "[db] Refusing to promote sig %d to umbrella: no children (would create orphan)",
+                    signature_id
+                )
+                return False
+
         result = self._update_signature_fields(
             conn, signature_id,
             log_reason="promote_to_umbrella",
@@ -5239,6 +5367,129 @@ class StepSignatureDB:
                 return True
             return False
 
+    def demote_orphan_umbrellas(self) -> int:
+        """Demote umbrellas with no children back to leaves.
+
+        Per CLAUDE.md: An umbrella is a router that routes to children.
+        If an umbrella has no children, it's a broken state - demote it back to leaf.
+
+        Returns:
+            Number of umbrellas demoted
+        """
+        with self._connection() as conn:
+            # Find orphan umbrellas (umbrellas with no children, not archived)
+            cursor = conn.execute("""
+                SELECT s.id, s.step_type
+                FROM step_signatures s
+                WHERE s.is_semantic_umbrella = 1
+                  AND s.is_archived = 0
+                  AND NOT EXISTS (
+                      SELECT 1 FROM signature_relationships r WHERE r.parent_id = s.id
+                  )
+            """)
+            orphans = cursor.fetchall()
+
+            if not orphans:
+                logger.info("[db] No orphan umbrellas found")
+                return 0
+
+            # Demote each orphan back to leaf
+            demoted = 0
+            for sig_id, step_type in orphans:
+                self._update_signature_fields(
+                    conn, sig_id,
+                    log_reason="demote_orphan_umbrella",
+                    is_semantic_umbrella=0,
+                    dsl_type="math",  # Default to math for execution
+                )
+                demoted += 1
+                logger.info("[db] Demoted orphan umbrella: id=%d type='%s'", sig_id, step_type)
+
+            logger.info("[db] Demoted %d orphan umbrellas back to leaves", demoted)
+            return demoted
+
+    def _demote_if_orphan(self, conn, signature_id: int) -> bool:
+        """Demote a specific signature to leaf if it's an orphan umbrella.
+
+        Called when global dedup redirects to a different parent, leaving
+        a scaffold branch (created during routing) without children.
+
+        Args:
+            conn: Database connection
+            signature_id: ID of signature to check and potentially demote
+
+        Returns:
+            True if signature was demoted, False otherwise
+        """
+        if signature_id is None:
+            return False
+
+        # Check if it's an orphan umbrella (umbrella with no children)
+        cursor = conn.execute("""
+            SELECT s.is_semantic_umbrella, s.step_type,
+                   EXISTS(SELECT 1 FROM signature_relationships r WHERE r.parent_id = s.id) as has_children
+            FROM step_signatures s
+            WHERE s.id = ?
+        """, (signature_id,))
+        row = cursor.fetchone()
+
+        if not row:
+            return False
+
+        is_umbrella = row[0]
+        step_type = row[1]
+        has_children = row[2]
+
+        # Demote if it's an umbrella with no children
+        if is_umbrella and not has_children:
+            self._update_signature_fields(
+                conn, signature_id,
+                log_reason="demote_abandoned_scaffold",
+                is_semantic_umbrella=0,
+                dsl_type="math",  # Default to math for execution
+            )
+            logger.info(
+                "[db] Demoted abandoned scaffold branch: id=%d type='%s'",
+                signature_id, step_type
+            )
+            return True
+
+        return False
+
+    def _finalize_routing_result(
+        self,
+        conn,
+        result_sig: "StepSignature",
+        was_created: bool,
+        parent_for_new: Optional["StepSignature"],
+        actual_parent_id: Optional[int],
+    ) -> tuple["StepSignature", bool]:
+        """Finalize routing: demote orphan scaffolds if unused, then commit.
+
+        Per CLAUDE.md "New Favorite Pattern": consolidate method calls for features
+        to simplify codebase and reduce bugs. This is the SINGLE exit point for
+        routing results that need orphan cleanup.
+
+        Args:
+            conn: Database connection
+            result_sig: The signature being returned
+            was_created: Whether result_sig was newly created
+            parent_for_new: The parent from routing (may be orphan scaffold)
+            actual_parent_id: The parent actually used (may differ from parent_for_new)
+
+        Returns:
+            Tuple of (result_sig, was_created)
+        """
+        # Demote orphan scaffold if routing created one but we used a different parent
+        if parent_for_new is not None:
+            used_routing_parent = (actual_parent_id is not None and
+                                   actual_parent_id == parent_for_new.id)
+            if not used_routing_parent:
+                self._demote_if_orphan(conn, parent_for_new.id)
+
+        conn.commit()
+        return result_sig, was_created
+
     def clear_all_data(self) -> dict:
         """Clear all signature data for a fresh start.
 
@@ -5444,3 +5695,37 @@ class StepSignatureDB:
         # Sort by similarity descending and return top_k
         matches.sort(key=lambda x: x[1], reverse=True)
         return matches[:top_k]
+
+
+# =============================================================================
+# SINGLETON ACCESSOR
+# =============================================================================
+
+_step_db: Optional[StepSignatureDB] = None
+
+
+def get_step_db() -> StepSignatureDB:
+    """Get the singleton StepSignatureDB instance.
+
+    Per CLAUDE.md "New Favorite Pattern": Consolidate database access through
+    a single data layer. Use this instead of creating new StepSignatureDB()
+    instances throughout the codebase.
+
+    Returns:
+        StepSignatureDB: The singleton instance
+    """
+    global _step_db
+    if _step_db is None:
+        _step_db = StepSignatureDB()
+        logger.debug("[db] Created singleton StepSignatureDB instance")
+    return _step_db
+
+
+def reset_step_db() -> None:
+    """Reset the singleton StepSignatureDB instance.
+
+    Primarily for testing - allows tests to get a fresh instance.
+    """
+    global _step_db
+    _step_db = None
+    logger.debug("[db] Reset singleton StepSignatureDB instance")

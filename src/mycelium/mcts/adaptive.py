@@ -136,7 +136,8 @@ class AdaptiveExploration:
         Args:
             success: Whether the problem was solved correctly
         """
-        self.recent_results.append(success)
+        # Defensive: ensure success is a bool (sum() needs numeric values)
+        self.recent_results.append(bool(success))
         self._total_problems += 1
         if success:
             self._total_successes += 1

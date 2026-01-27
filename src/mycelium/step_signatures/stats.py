@@ -2,23 +2,23 @@
 
 Per CLAUDE.md: 'db audit for signature step level stats'
 Records step execution metrics for potential future analysis.
+
+Per CLAUDE.md "New Favorite Pattern": Uses centralized data layer for DB access.
 """
 
 import json
 import logging
 import random
-import sqlite3
 from datetime import datetime, timezone
 from typing import Optional
 
 from mycelium.config import STEP_STATS_ENABLED, STEP_STATS_SAMPLE_RATE
-from mycelium.data_layer import configure_connection
 
 logger = logging.getLogger(__name__)
 
 
 def record_step_stats(
-    db_path: str,
+    db_path: str,  # Kept for API compatibility but ignored (uses data layer)
     step_text: str,
     latency_ms: float,
     signature_id: Optional[int] = None,
@@ -65,35 +65,34 @@ def record_step_stats(
     route_path_json = json.dumps(route_path) if route_path else None
 
     try:
-        conn = sqlite3.connect(db_path, timeout=30.0)
-        configure_connection(conn, enable_foreign_keys=False)
-
-        cursor = conn.execute(
-            """INSERT INTO step_stats
-               (signature_id, step_text, latency_ms, embed_latency_ms,
-                route_latency_ms, exec_latency_ms, routing_depth, was_routed,
-                route_path, embed_cache_hit, success, used_dsl, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                signature_id,
-                step_text[:500],
-                latency_ms,
-                embed_latency_ms,
-                route_latency_ms,
-                exec_latency_ms,
-                routing_depth,
-                1 if was_routed else 0,
-                route_path_json,
-                1 if embed_cache_hit else 0,
-                1 if success else 0,
-                1 if used_dsl else 0,
-                now,
-            ),
-        )
-        conn.commit()
-        row_id = cursor.lastrowid
-        conn.close()
-        return row_id
+        # Per CLAUDE.md "New Favorite Pattern": Use centralized data layer
+        # Lazy import to avoid circular dependency
+        from mycelium.data_layer import get_db
+        db = get_db()
+        with db.connection() as conn:
+            cursor = conn.execute(
+                """INSERT INTO step_stats
+                   (signature_id, step_text, latency_ms, embed_latency_ms,
+                    route_latency_ms, exec_latency_ms, routing_depth, was_routed,
+                    route_path, embed_cache_hit, success, used_dsl, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    signature_id,
+                    step_text[:500],
+                    latency_ms,
+                    embed_latency_ms,
+                    route_latency_ms,
+                    exec_latency_ms,
+                    routing_depth,
+                    1 if was_routed else 0,
+                    route_path_json,
+                    1 if embed_cache_hit else 0,
+                    1 if success else 0,
+                    1 if used_dsl else 0,
+                    now,
+                ),
+            )
+            return cursor.lastrowid
 
     except Exception as e:
         logger.warning("[step_stats] Failed to record: %s", e)

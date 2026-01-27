@@ -141,7 +141,7 @@ class TestDecayManager:
 
     def test_init(self, manager):
         """Manager should initialize properly."""
-        assert manager.db_path is not None
+        assert manager._db is not None
         assert manager._last_run_at == 0
 
     def test_ensure_decay_table(self, manager):
@@ -182,17 +182,28 @@ class TestDecayManager:
 
     def test_save_and_load_decay_state(self, manager):
         """Should persist and retrieve decay state."""
+        import numpy as np
+        from mycelium.step_signatures.db import StepSignatureDB
+
+        # Create StepSignatureDB first to initialize step_signatures table
+        # (signature_decay has FK to step_signatures)
+        db = StepSignatureDB()
+        sig = db.create_signature(
+            step_text="test signature for decay",
+            embedding=np.random.randn(3072).astype(np.float32),
+        )
+
         manager._ensure_decay_table()
 
         state = DecayState(
-            signature_id=1,
+            signature_id=sig.id,
             status=DecayStatus.WARNING,
             current_traffic_share=0.005,
             recovery_attempts=2,
         )
         manager._save_decay_state(state)
 
-        loaded = manager._load_decay_state(1)
+        loaded = manager._load_decay_state(sig.id)
         assert loaded is not None
         assert loaded.status == DecayStatus.WARNING
         assert loaded.current_traffic_share == 0.005
@@ -228,6 +239,7 @@ class TestDecayIntegration:
         """Create DB with some signatures."""
         import numpy as np
         from mycelium.step_signatures.db import StepSignatureDB
+        from mycelium.config import EMBEDDING_DIM
 
         db = StepSignatureDB()
 
@@ -237,12 +249,11 @@ class TestDecayIntegration:
             (10, 5),    # Medium traffic
             (2, 1),     # Low traffic (will decay)
         ]):
-            emb = np.random.randn(768)
+            emb = np.random.randn(EMBEDDING_DIM).astype(np.float32)
             emb = emb / np.linalg.norm(emb)
-            sig, _ = db.find_or_create(
+            sig = db.create_signature(
                 step_text=f"Test signature {i}",
                 embedding=emb,
-                parent_problem="test",
             )
             with db._connection() as conn:
                 conn.execute(

@@ -166,12 +166,21 @@ async def generate_dsl_for_signature(
     if not examples:
         return None
 
-    # Format examples for prompt
-    examples_str = "\n".join(
-        f"- Step: {ex.get('step_text', '')}\n  Result: {ex.get('result', '')}"
-        for ex in examples[:5]  # Limit to 5 examples
-        if ex.get('success', False)
-    )
+    # Format examples for prompt (per beads mycelium-nvc9: include expression/inputs)
+    examples_lines = []
+    for ex in examples[:5]:  # Limit to 5 examples
+        if not ex.get('success', False):
+            continue
+        lines = [f"- Step: {ex.get('step_text', '')}"]
+        # Include expression if available (shows what worked)
+        if ex.get('expression'):
+            lines.append(f"  Expression: {ex.get('expression')}")
+        # Include inputs if available (shows actual parameter values)
+        if ex.get('inputs'):
+            lines.append(f"  Inputs: {ex.get('inputs')}")
+        lines.append(f"  Result: {ex.get('result', '')}")
+        examples_lines.append("\n".join(lines))
+    examples_str = "\n".join(examples_lines)
 
     if not examples_str:
         return None
@@ -369,10 +378,15 @@ async def regenerate_dsl(
         logger.debug("[dsl_regen] No examples for signature %d", signature_id)
         return False
 
-    # Only regenerate if we have successful examples
+    # Only regenerate if we have enough successful examples
+    # Per CLAUDE.md: need sufficient data to learn from
+    MIN_EXAMPLES_FOR_REGEN = 3
     successful = [e for e in examples if e.get('success', False)]
-    if not successful:
-        logger.debug("[dsl_regen] No successful examples for signature %d", signature_id)
+    if len(successful) < MIN_EXAMPLES_FOR_REGEN:
+        logger.debug(
+            "[dsl_regen] Not enough successful examples for signature %d (%d < %d)",
+            signature_id, len(successful), MIN_EXAMPLES_FOR_REGEN
+        )
         return False
 
     # Generate new DSL

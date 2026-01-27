@@ -134,12 +134,13 @@ class TestGetDecompositionCandidates:
         candidates = learner.get_decomposition_candidates()
         assert candidates == []
 
-    def test_filters_non_decompose_type(self, learner, mock_db):
-        # Signatures with dsl_type != "decompose" should be excluded
+    def test_filters_no_operational_failures(self, learner, mock_db):
+        # Signatures WITHOUT operational_failures should be excluded
+        # Per CLAUDE.md: Use MCTS signal (operational_failures > 0), not dsl_type
         mock_db.get_all_signatures.return_value = [
-            self._make_sig(1, "math", uses=10, successes=2),
-            self._make_sig(2, "sympy", uses=10, successes=2),
-            self._make_sig(3, "python", uses=10, successes=2),
+            self._make_sig(1, "math", uses=10, successes=2, operational_failures=0),
+            self._make_sig(2, "sympy", uses=10, successes=2, operational_failures=0),
+            self._make_sig(3, "python", uses=10, successes=2, operational_failures=0),
         ]
         candidates = learner.get_decomposition_candidates()
         assert candidates == []
@@ -183,7 +184,7 @@ class TestGetDecompositionCandidates:
     def test_multiple_candidates(self, learner, mock_db):
         mock_db.get_all_signatures.return_value = [
             self._make_sig(1, "decompose", uses=10, successes=2),  # Valid
-            self._make_sig(2, "math", uses=10, successes=2),  # Wrong type
+            self._make_sig(2, "math", uses=10, successes=2, operational_failures=0),  # No MCTS signal
             self._make_sig(3, "decompose", uses=1, successes=0),  # Not enough uses
             self._make_sig(4, "decompose", uses=10, successes=9),  # Too successful
             self._make_sig(5, "decompose", uses=5, successes=0),  # Valid

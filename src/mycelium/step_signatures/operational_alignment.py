@@ -2,20 +2,24 @@
 
 Records routing outcomes for potential future analysis.
 Per CLAUDE.md: MCTS rollouts provide ground truth for operational equivalence.
+
+Per CLAUDE.md "New Favorite Pattern": Uses centralized data layer for DB access.
 """
 
 import logging
-import sqlite3
 from datetime import datetime, timezone
 from typing import Optional
 
-from mycelium.data_layer import configure_connection
+from mycelium.data_layer import get_db
 
 logger = logging.getLogger(__name__)
 
 
 class OperationalAlignmentTracker:
-    """Records routing outcomes to database."""
+    """Records routing outcomes to database.
+
+    Per CLAUDE.md "New Favorite Pattern": Uses centralized data layer.
+    """
 
     SCHEMA = """
     CREATE TABLE IF NOT EXISTS operational_alignment_outcomes (
@@ -34,27 +38,22 @@ class OperationalAlignmentTracker:
     CREATE INDEX IF NOT EXISTS idx_oao_correct ON operational_alignment_outcomes(was_correct);
     """
 
-    def __init__(self, db_path: str):
-        """Initialize tracker with database path."""
-        self.db_path = db_path
-        self._ensure_schema()
+    def __init__(self, db_path: str = None):
+        """Initialize tracker.
 
-    def _get_connection(self) -> sqlite3.Connection:
-        """Get a new database connection."""
-        conn = sqlite3.connect(self.db_path, timeout=30.0)
-        configure_connection(conn, enable_foreign_keys=False)
-        return conn
+        Args:
+            db_path: Kept for API compatibility but ignored (uses data layer).
+        """
+        self._db = get_db()
+        self._ensure_schema()
 
     def _ensure_schema(self):
         """Ensure tracking tables exist."""
-        conn = self._get_connection()
         try:
-            conn.executescript(self.SCHEMA)
-            conn.commit()
+            with self._db.connection() as conn:
+                conn.executescript(self.SCHEMA)
         except Exception as e:
             logger.warning("[alignment] Schema creation failed: %s", e)
-        finally:
-            conn.close()
 
     def record_outcome(
         self,
@@ -79,8 +78,7 @@ class OperationalAlignmentTracker:
             Row ID of the inserted record
         """
         now = datetime.now(timezone.utc).isoformat()
-        conn = self._get_connection()
-        try:
+        with self._db.connection() as conn:
             cursor = conn.execute(
                 """INSERT INTO operational_alignment_outcomes
                    (signature_id, step_text, embedding_similarity, was_correct,
@@ -89,10 +87,7 @@ class OperationalAlignmentTracker:
                 (signature_id, step_text[:500], embedding_similarity,
                  1 if was_correct else 0, dsl_type, problem_id, now)
             )
-            conn.commit()
             return cursor.lastrowid
-        finally:
-            conn.close()
 
 
 def record_routing_outcome(

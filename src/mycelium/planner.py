@@ -12,18 +12,31 @@ from typing import Any, Optional
 logger = logging.getLogger(__name__)
 
 from .client import get_client
-from mycelium.config import PLANNER_DEFAULT_MODEL, PLANNER_DEFAULT_TEMPERATURE
+from mycelium.config import (
+    PLANNER_DEFAULT_MODEL,
+    PLANNER_DEFAULT_TEMPERATURE,
+    TREE_GUIDED_TOP_K_SUGGESTIONS,
+    TREE_GUIDED_NOVELTY_K,
+    TREE_GUIDED_NOVELTY_MIN_SAMPLES,
+    TREE_GUIDED_NOVELTY_DEFAULT_THRESHOLD,
+)
 
 
 PLANNER_SYSTEM = """You decompose math problems into atomic steps. Output valid JSON only.
 
-PHASE 1: Extract ALL numeric values with semantic names.
+PHASE 1: Extract ALL numeric values with semantic names and UNITS.
 PHASE 2: Build atomic steps that reference Phase 1 values.
+
+CRITICAL: Unit Awareness
+- Each value name MUST match its semantic meaning
+- "distance_miles" for distances, "time_hours" for durations, "price_dollars" for costs
+- NEVER mix units: don't assign a distance value to a time variable!
+- Read the problem carefully to identify WHAT each number represents
 
 OUTPUT FORMAT (JSON):
 {
   "values": {
-    "name": number,
+    "semantic_name_unit": number,
     ...
   },
   "steps": [
@@ -40,10 +53,11 @@ OUTPUT FORMAT (JSON):
 
 RULES:
 1. ONE OPERATION PER STEP
-2. Reference Phase 1 values with $name (e.g., "$purchase_price")
+2. Reference Phase 1 values with $name (e.g., "$purchase_price_dollars")
 3. Reference prior step results with {step_N} (e.g., "{step_1}")
 4. NEVER use raw numbers in steps - always reference $names
 5. For "increased by X%": extract multiplier (1 + X/100) in Phase 1
+6. VALUE NAMES MUST MATCH WHAT THE NUMBER REPRESENTS - read context carefully!
 
 PERCENTAGE HANDLING:
 - "X increased by Y%" → base is X, multiply by (1 + Y/100)
@@ -56,13 +70,13 @@ When possible, reframe as forward computation:
 
 If you cannot determine all values, use null and mark requires_algebra: true.
 
-EXAMPLE:
+EXAMPLE 1 - MONEY:
 Problem: "Josh buys a house for $80,000, puts in $50,000 repairs. This increased the value by 150%. How much profit?"
 
 {
   "values": {
-    "purchase_price": 80000,
-    "repair_cost": 50000,
+    "purchase_price_dollars": 80000,
+    "repair_cost_dollars": 50000,
     "increase_multiplier": 2.5
   },
   "steps": [
@@ -70,7 +84,7 @@ Problem: "Josh buys a house for $80,000, puts in $50,000 repairs. This increased
       "id": "step_1",
       "task": "Calculate total investment",
       "operation": "add",
-      "values": {"a": "$purchase_price", "b": "$repair_cost"},
+      "values": {"a": "$purchase_price_dollars", "b": "$repair_cost_dollars"},
       "dsl_hint": "+",
       "depends_on": []
     },
@@ -78,7 +92,7 @@ Problem: "Josh buys a house for $80,000, puts in $50,000 repairs. This increased
       "id": "step_2",
       "task": "Calculate new house value",
       "operation": "multiply",
-      "values": {"base": "$purchase_price", "multiplier": "$increase_multiplier"},
+      "values": {"base": "$purchase_price_dollars", "multiplier": "$increase_multiplier"},
       "dsl_hint": "*",
       "depends_on": []
     },
@@ -92,6 +106,38 @@ Problem: "Josh buys a house for $80,000, puts in $50,000 repairs. This increased
     }
   ]
 }
+
+EXAMPLE 2 - TIME AND DISTANCE (CAREFUL!):
+Problem: "A car drives 180 miles. The trip takes 4 hours normally, but traffic adds 2 hours and slow zones add 0.5 hours. How much time is left?"
+
+{
+  "values": {
+    "distance_miles": 180,
+    "normal_time_hours": 4,
+    "traffic_delay_hours": 2,
+    "slow_zone_hours": 0.5
+  },
+  "steps": [
+    {
+      "id": "step_1",
+      "task": "Calculate total extra time from delays",
+      "operation": "add",
+      "values": {"a": "$traffic_delay_hours", "b": "$slow_zone_hours"},
+      "dsl_hint": "+",
+      "depends_on": []
+    },
+    {
+      "id": "step_2",
+      "task": "Calculate remaining time after delays",
+      "operation": "subtract",
+      "values": {"total": "$normal_time_hours", "used": "{step_1}"},
+      "dsl_hint": "-",
+      "depends_on": ["step_1"]
+    }
+  ]
+}
+
+NOTE: In Example 2, "180 miles" is DISTANCE, NOT time! Always read what each number represents.
 
 Output ONLY valid JSON. No explanation."""
 
@@ -156,6 +202,24 @@ class SignatureHint:
         return "\n".join(lines)
 
 
+# Per CLAUDE.md "New Favorite Pattern": Consolidated operation → dsl_hint mapping
+# This is the single source of truth for inferring dsl_hint from operation
+OPERATION_TO_DSL_HINT = {
+    "add": "+",
+    "subtract": "-",
+    "multiply": "*",
+    "divide": "/",
+    # Common variations
+    "sum": "+",
+    "difference": "-",
+    "product": "*",
+    "quotient": "/",
+    "plus": "+",
+    "minus": "-",
+    "times": "*",
+}
+
+
 @dataclass
 class Step:
     """A single step in the decomposition DAG.
@@ -185,6 +249,38 @@ class Step:
     requires_algebra: bool = False
     # Recursive nesting: sub-plan for composite steps
     sub_plan: Optional["DAGPlan"] = None
+
+    def __post_init__(self):
+        """Infer dsl_hint from operation if missing (per CLAUDE.md New Favorite Pattern)."""
+        # First try: infer from explicit operation field
+        if self.dsl_hint is None and self.operation:
+            op_lower = self.operation.lower()
+            if op_lower in OPERATION_TO_DSL_HINT:
+                self.dsl_hint = OPERATION_TO_DSL_HINT[op_lower]
+                logger.debug("[planner] Inferred dsl_hint='%s' from operation='%s'",
+                           self.dsl_hint, self.operation)
+
+        # Second try: infer from task description (fallback for LLM omissions)
+        if self.dsl_hint is None and self.task:
+            task_lower = self.task.lower()
+            # Check for operation keywords in task description
+            # Per CLAUDE.md: route by what operations DO
+            if any(kw in task_lower for kw in ["subtract", "difference", "minus", "remaining", "left"]):
+                self.dsl_hint = "-"
+                self.operation = self.operation or "subtract"
+                logger.info("[planner] Inferred dsl_hint='-' from task='%s'", self.task[:40])
+            elif any(kw in task_lower for kw in ["add", "sum", "total", "combine", "plus"]):
+                self.dsl_hint = "+"
+                self.operation = self.operation or "add"
+                logger.info("[planner] Inferred dsl_hint='+' from task='%s'", self.task[:40])
+            elif any(kw in task_lower for kw in ["multiply", "product", "times", "per "]):
+                self.dsl_hint = "*"
+                self.operation = self.operation or "multiply"
+                logger.info("[planner] Inferred dsl_hint='*' from task='%s'", self.task[:40])
+            elif any(kw in task_lower for kw in ["divide", "quotient", "ratio", "split", "per unit"]):
+                self.dsl_hint = "/"
+                self.operation = self.operation or "divide"
+                logger.info("[planner] Inferred dsl_hint='/' from task='%s'", self.task[:40])
 
     @property
     def is_composite(self) -> bool:
@@ -561,14 +657,36 @@ class DAGPlan:
         return None
 
 
+def _create_planner_without_warning(client=None, temperature: float = PLANNER_DEFAULT_TEMPERATURE):
+    """Create a Planner instance without triggering deprecation warning.
+
+    Used internally by TreeGuidedPlanner for composition/fallback.
+    Per CLAUDE.md "New Favorite Pattern": Reuse existing logic, don't duplicate.
+    """
+    planner = object.__new__(Planner)
+    planner.client = client or get_client()
+    planner.temperature = temperature
+    return planner
+
+
 class Planner:
-    """Decompose problems into DAG of subtasks."""
+    """Decompose problems into DAG of subtasks.
+
+    DEPRECATED: Use TreeGuidedPlanner instead for vocabulary-guided decomposition.
+    This class is kept for backwards compatibility but will be removed in a future release.
+    """
 
     def __init__(
         self,
         model: str = PLANNER_DEFAULT_MODEL,
         temperature: float = PLANNER_DEFAULT_TEMPERATURE,
     ):
+        import warnings
+        warnings.warn(
+            "Planner is deprecated. Use TreeGuidedPlanner for vocabulary-guided decomposition.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.client = get_client(model=model)
         self.temperature = temperature
 
@@ -751,8 +869,629 @@ class Planner:
         return [], {}
 
 
-# Convenience function
+# Convenience function (uses TreeGuidedPlanner without vocabulary - fallback mode)
 async def decompose(problem: str) -> DAGPlan:
-    """Decompose a problem into steps."""
-    planner = Planner()
+    """Decompose a problem into steps.
+
+    Note: For vocabulary-guided decomposition, instantiate TreeGuidedPlanner
+    with step_db and embedder directly.
+    """
+    planner = TreeGuidedPlanner()  # No step_db = uses fallback mode
     return await planner.decompose(problem)
+
+
+# =============================================================================
+# TREE-GUIDED DECOMPOSITION (Segmentation LLM)
+# =============================================================================
+# Per CLAUDE.md: "Route by what operations DO, not what they SOUND LIKE"
+#
+# Two-phase approach:
+# 1. SEGMENT: Break problem into abstract steps (no values, just operations)
+# 2. REFINE: Match steps to tree vocabulary, extract values
+#
+# This uses the signature tree to guide decomposition, ensuring we decompose
+# INTO existing vocabulary when possible, only creating novel operations when
+# truly needed (detected via Welford's algorithm on similarity distribution).
+# =============================================================================
+
+SEGMENT_SYSTEM = """You segment math problems into abstract operation steps. Output valid JSON only.
+
+Your job is to identify WHAT OPERATIONS are needed, not the specific values.
+
+OUTPUT FORMAT (JSON):
+{
+  "steps": [
+    {
+      "id": "step_1",
+      "description": "brief description of what this step computes",
+      "operation_type": "add|subtract|multiply|divide|percentage|compare|other",
+      "depends_on": []
+    }
+  ]
+}
+
+RULES:
+1. ONE OPERATION PER STEP - keep steps atomic
+2. Focus on the OPERATION TYPE, not the specific numbers
+3. Use depends_on to show which steps feed into others
+4. description should be generic (e.g., "compute total cost" not "compute 80000 + 50000")
+
+EXAMPLE:
+Problem: "Josh buys a house for $80,000, puts in $50,000 repairs. This increased the value by 150%. How much profit?"
+
+{
+  "steps": [
+    {"id": "step_1", "description": "compute total investment", "operation_type": "add", "depends_on": []},
+    {"id": "step_2", "description": "compute new value after increase", "operation_type": "multiply", "depends_on": []},
+    {"id": "step_3", "description": "compute profit from sale", "operation_type": "subtract", "depends_on": ["step_1", "step_2"]}
+  ]
+}
+
+Output ONLY valid JSON. No explanation."""
+
+
+REFINE_SYSTEM = """You refine abstract steps into concrete operations with values. Output valid JSON only.
+
+You are given:
+1. The original problem
+2. Abstract steps (what operations are needed)
+3. VOCABULARY: Suggested operations from our knowledge base for each step
+
+PHASE 1: Extract ALL numeric values from the problem with semantic names AND UNITS.
+PHASE 2: For each step, pick the best matching operation from VOCABULARY (or mark as "novel" if none fit).
+PHASE 3: Fill in the parameter values using $name references.
+
+CRITICAL: Unit Awareness
+- Each value name MUST match its semantic meaning
+- Include units in names: "distance_miles", "time_hours", "price_dollars", "weight_kg"
+- NEVER mix units: don't assign a distance value to a time variable!
+- Read the problem context carefully: "180 miles" is distance, "4 hours" is time
+
+OUTPUT FORMAT (JSON):
+{
+  "values": {
+    "semantic_name_unit": number,
+    ...
+  },
+  "steps": [
+    {
+      "id": "step_1",
+      "task": "concrete task description",
+      "matched_operation": "operation_name from vocabulary OR null if novel",
+      "is_novel": false,
+      "operation": "add|subtract|multiply|divide",
+      "values": {"param": "$semantic_name_unit OR {step_N}"},
+      "dsl_hint": "+|-|*|/",
+      "depends_on": []
+    }
+  ]
+}
+
+RULES:
+1. PREFER vocabulary operations - only mark is_novel=true if NO vocabulary option fits
+2. Use $name to reference Phase 1 values (e.g., "$purchase_price_dollars")
+3. Use {step_N} to reference prior step results (e.g., "{step_1}")
+4. matched_operation should be the exact name from VOCABULARY suggestions
+5. VALUE NAMES MUST REFLECT WHAT THE NUMBER REPRESENTS - check units carefully!
+
+Output ONLY valid JSON. No explanation."""
+
+
+@dataclass
+class AbstractStep:
+    """An abstract step from segmentation (no values, just operation type)."""
+    id: str
+    description: str
+    operation_type: str  # add, subtract, multiply, divide, percentage, compare, other
+    depends_on: list[str] = field(default_factory=list)
+
+
+@dataclass
+class OperationSuggestion:
+    """A vocabulary suggestion for an abstract step."""
+    operation_name: str  # e.g., "compute_sum"
+    similarity: float    # cosine similarity to step description
+    signature_id: int    # ID in signature tree
+    is_novel: bool = False  # True if below novelty threshold
+
+
+@dataclass
+class SegmentationResult:
+    """Result of tree-guided segmentation."""
+    abstract_steps: list[AbstractStep]
+    suggestions: dict[str, list[OperationSuggestion]]  # step_id -> suggestions
+    plan: Optional[DAGPlan] = None  # Final refined plan
+
+
+class TreeGuidedPlanner:
+    """Planner that uses signature tree vocabulary to guide decomposition.
+
+    Per CLAUDE.md "New Favorite Pattern": This is the consolidated entry point
+    for tree-guided decomposition. All decomposition should flow through here.
+
+    Flow:
+    1. segment(problem) -> abstract steps (1 LLM call)
+    2. suggest_operations(steps) -> vocabulary matches (0 LLM calls, uses tree)
+    3. refine(problem, steps, suggestions) -> concrete plan (1 LLM call)
+
+    Total: 2 LLM calls regardless of step count (batched by design).
+    """
+
+    def __init__(
+        self,
+        step_db=None,  # StepSignatureDB for vocabulary lookup
+        embedder=None,  # For embedding step descriptions
+        model: str = PLANNER_DEFAULT_MODEL,
+        temperature: float = PLANNER_DEFAULT_TEMPERATURE,
+    ):
+        self.step_db = step_db
+        self.embedder = embedder
+        self.client = get_client(model=model)
+        self.temperature = temperature
+
+        # Welford's stats for novelty detection (loaded from db)
+        self._novelty_count = 0
+        self._novelty_mean = 0.0
+        self._novelty_m2 = 0.0
+        self._novelty_k = TREE_GUIDED_NOVELTY_K  # Threshold = mean - k * stddev
+
+    def _load_novelty_stats(self):
+        """Load Welford's stats for novelty detection via data layer."""
+        from mycelium.data_layer import get_segmentation_novelty_stats
+        try:
+            stats = get_segmentation_novelty_stats()
+            if stats:
+                self._novelty_count = stats.get('count', 0)
+                self._novelty_mean = stats.get('mean', 0.0)
+                self._novelty_m2 = stats.get('m2', 0.0)
+                logger.debug(
+                    "[planner] Loaded novelty stats: count=%d, mean=%.3f, stddev=%.3f",
+                    self._novelty_count, self._novelty_mean, self._novelty_stddev
+                )
+        except Exception as e:
+            logger.debug("[planner] Could not load novelty stats: %s", e)
+
+    def _save_novelty_stats(self):
+        """Save Welford's stats for novelty detection via data layer."""
+        from mycelium.data_layer import save_segmentation_novelty_stats
+        try:
+            stats = {
+                'count': self._novelty_count,
+                'mean': self._novelty_mean,
+                'm2': self._novelty_m2,
+            }
+            save_segmentation_novelty_stats(stats)
+        except Exception as e:
+            logger.debug("[planner] Could not save novelty stats: %s", e)
+
+    @property
+    def _novelty_stddev(self) -> float:
+        """Compute standard deviation from Welford's M2."""
+        if self._novelty_count < 2:
+            return 0.3  # Default stddev during cold start
+        return (self._novelty_m2 / self._novelty_count) ** 0.5
+
+    @property
+    def novelty_threshold(self) -> float:
+        """Threshold below which a match is considered 'novel'.
+
+        Uses Welford's algorithm: threshold = mean - k * stddev
+        Per CLAUDE.md: No arbitrary magic numbers.
+        """
+        if self._novelty_count < TREE_GUIDED_NOVELTY_MIN_SAMPLES:
+            # Cold start: use permissive default from config
+            return TREE_GUIDED_NOVELTY_DEFAULT_THRESHOLD
+        return max(0.3, self._novelty_mean - self._novelty_k * self._novelty_stddev)
+
+    def _update_novelty_stats(self, similarity: float):
+        """Update Welford's running stats with a new similarity observation."""
+        self._novelty_count += 1
+        delta = similarity - self._novelty_mean
+        self._novelty_mean += delta / self._novelty_count
+        delta2 = similarity - self._novelty_mean
+        self._novelty_m2 += delta * delta2
+
+    async def segment(self, problem: str) -> list[AbstractStep]:
+        """Segment problem into abstract steps (Phase 1).
+
+        This is a single LLM call that identifies WHAT operations are needed,
+        without extracting specific values. The tree will guide value extraction.
+
+        Args:
+            problem: The math problem to segment
+
+        Returns:
+            List of AbstractStep objects describing needed operations
+        """
+        logger.debug("[planner] Segmenting problem: '%s...'", problem[:80])
+
+        messages = [
+            {"role": "system", "content": SEGMENT_SYSTEM},
+            {"role": "user", "content": problem},
+        ]
+
+        response = await self.client.generate(
+            messages,
+            temperature=self.temperature,
+            response_format={"type": "json_object"},
+        )
+
+        steps = self._parse_abstract_steps(response)
+        logger.info("[planner] Segmentation complete: %d abstract steps", len(steps))
+        return steps
+
+    def _parse_abstract_steps(self, response: str) -> list[AbstractStep]:
+        """Parse abstract steps from segmentation response."""
+        import json
+        steps = []
+
+        try:
+            data = json.loads(response.strip())
+            for step_data in data.get("steps", []):
+                step = AbstractStep(
+                    id=step_data.get("id", f"step_{len(steps) + 1}"),
+                    description=step_data.get("description", ""),
+                    operation_type=step_data.get("operation_type", "other"),
+                    depends_on=step_data.get("depends_on", []),
+                )
+                steps.append(step)
+        except json.JSONDecodeError as e:
+            logger.warning("[planner] Segment JSON parse failed: %s", e)
+            # Fallback: single step
+            steps = [AbstractStep(id="step_1", description="solve problem", operation_type="other")]
+
+        return steps
+
+    # Canonical computation graphs for each operation type
+    # Per CLAUDE.md: "Route by what operations DO, not what they SOUND LIKE"
+    CANONICAL_GRAPHS = {
+        "add": "ADD(param_0, param_1)",
+        "subtract": "SUB(param_0, param_1)",
+        "multiply": "MUL(param_0, param_1)",
+        "divide": "DIV(param_0, param_1)",
+        "percentage": "MUL(param_0, DIV(param_1, CONST(100)))",
+        "compare": "COMPARE(param_0, param_1)",
+        "other": None,  # Fall back to description embedding
+    }
+
+    async def suggest_operations_batch(
+        self,
+        abstract_steps: list[AbstractStep],
+        top_k: int = TREE_GUIDED_TOP_K_SUGGESTIONS,
+    ) -> dict[str, list[OperationSuggestion]]:
+        """Find vocabulary matches for all abstract steps (batched).
+
+        This uses the signature tree to suggest matching operations.
+        No LLM calls - just embedding + tree routing.
+
+        Per CLAUDE.md: "Route by what operations DO, not what they SOUND LIKE"
+        Uses GRAPH embeddings (canonical computation graphs) for operational similarity,
+        NOT text embeddings of descriptions.
+
+        Args:
+            abstract_steps: List of abstract steps from segmentation
+            top_k: Number of suggestions per step
+
+        Returns:
+            Dict mapping step_id -> list of OperationSuggestion
+        """
+        from mycelium.embedding_cache import cached_embed_batch
+        from mycelium.step_signatures.graph_extractor import graph_to_natural_language
+
+        if self.step_db is None or self.embedder is None:
+            logger.warning("[planner] No step_db or embedder - skipping suggestions")
+            return {step.id: [] for step in abstract_steps}
+
+        # Load novelty stats for threshold calculation
+        self._load_novelty_stats()
+
+        suggestions = {}
+
+        # Convert operation_types to canonical graph natural language descriptions
+        # This is what we embed - the OPERATION, not the description
+        graph_texts = []
+        for step in abstract_steps:
+            canonical_graph = self.CANONICAL_GRAPHS.get(step.operation_type)
+            if canonical_graph:
+                # Convert graph to natural language for embedding
+                # e.g., "ADD(param_0, param_1)" -> "add first value and second value"
+                nl_text = graph_to_natural_language(canonical_graph)
+                graph_texts.append(nl_text)
+                logger.debug(
+                    "[planner] Step '%s' (%s) -> graph '%s' -> '%s'",
+                    step.id, step.operation_type, canonical_graph, nl_text
+                )
+            else:
+                # Unknown operation type - fall back to description
+                graph_texts.append(step.description)
+                logger.debug(
+                    "[planner] Step '%s' (%s) -> fallback to description",
+                    step.id, step.operation_type
+                )
+
+        # Batch embed all graph texts (with caching)
+        embeddings_dict = cached_embed_batch(graph_texts, self.embedder)
+        embeddings = [embeddings_dict[text] for text in graph_texts]
+
+        # For each step, route through tree to find matching leaves by GRAPH embedding
+        for step, embedding in zip(abstract_steps, embeddings):
+            step_suggestions = []
+
+            # Use tree routing to find matching operations
+            # Per CLAUDE.md: route by graph_embedding (operational), not text centroid
+            matches = self.step_db.match_step_to_leaves_mcts(
+                operation_embedding=embedding,
+                dag_step_type=step.operation_type,  # Use operation type, not description
+                top_k=top_k,
+                min_similarity=0.3,  # Permissive - we'll filter by novelty threshold
+            )
+
+            for sig, ucb1_score, similarity in matches:
+                is_novel = similarity < self.novelty_threshold
+                suggestion = OperationSuggestion(
+                    operation_name=sig.step_type,
+                    similarity=similarity,
+                    signature_id=sig.id,
+                    is_novel=is_novel,
+                )
+                step_suggestions.append(suggestion)
+
+                # Update Welford's stats with this similarity (for learning threshold)
+                if not is_novel:
+                    self._update_novelty_stats(similarity)
+
+            # If no matches found, mark as novel
+            if not step_suggestions:
+                step_suggestions.append(OperationSuggestion(
+                    operation_name="novel_operation",
+                    similarity=0.0,
+                    signature_id=-1,
+                    is_novel=True,
+                ))
+
+            suggestions[step.id] = step_suggestions
+            logger.debug(
+                "[planner] Step '%s' suggestions: %s",
+                step.id,
+                [(s.operation_name, f"{s.similarity:.2f}") for s in step_suggestions[:3]]
+            )
+
+        # Save updated novelty stats
+        self._save_novelty_stats()
+
+        return suggestions
+
+    async def refine(
+        self,
+        problem: str,
+        abstract_steps: list[AbstractStep],
+        suggestions: dict[str, list[OperationSuggestion]],
+    ) -> DAGPlan:
+        """Refine abstract steps into concrete plan with values (Phase 2).
+
+        This is a single LLM call that:
+        1. Extracts Phase 1 values from the problem
+        2. Matches each step to a vocabulary operation (or marks as novel)
+        3. Fills in parameter values
+
+        Args:
+            problem: The original problem text
+            abstract_steps: Abstract steps from segmentation
+            suggestions: Vocabulary suggestions per step from tree routing
+
+        Returns:
+            Concrete DAGPlan ready for execution
+        """
+        logger.debug("[planner] Refining %d steps with vocabulary suggestions", len(abstract_steps))
+
+        # Build vocabulary section for prompt
+        vocabulary_text = self._format_vocabulary(abstract_steps, suggestions)
+
+        # Build user message with problem + steps + vocabulary
+        user_content = f"""PROBLEM:
+{problem}
+
+ABSTRACT STEPS:
+{self._format_abstract_steps(abstract_steps)}
+
+VOCABULARY (suggested operations for each step):
+{vocabulary_text}
+
+Refine these steps into concrete operations with values."""
+
+        messages = [
+            {"role": "system", "content": REFINE_SYSTEM},
+            {"role": "user", "content": user_content},
+        ]
+
+        response = await self.client.generate(
+            messages,
+            temperature=self.temperature,
+            response_format={"type": "json_object"},
+        )
+
+        steps, phase1_values = self._parse_refined_steps(response, suggestions)
+
+        plan = DAGPlan(steps=steps, problem=problem, phase1_values=phase1_values)
+
+        # Validate
+        is_valid, errors = plan.validate()
+        logger.info(
+            "[planner] Refinement complete: %d steps, valid=%r, novel=%d",
+            len(steps),
+            is_valid,
+            sum(1 for s in steps if getattr(s, '_is_novel', False))
+        )
+        if errors:
+            logger.warning("[planner] Validation errors: %s", errors)
+
+        return plan
+
+    def _format_vocabulary(
+        self,
+        abstract_steps: list[AbstractStep],
+        suggestions: dict[str, list[OperationSuggestion]],
+    ) -> str:
+        """Format vocabulary suggestions for the refine prompt."""
+        lines = []
+        for step in abstract_steps:
+            step_suggestions = suggestions.get(step.id, [])
+            if step_suggestions:
+                suggestion_strs = [
+                    f"{s.operation_name} (sim={s.similarity:.2f}{'*' if s.is_novel else ''})"
+                    for s in step_suggestions[:3]
+                ]
+                lines.append(f"{step.id}: {', '.join(suggestion_strs)}")
+            else:
+                lines.append(f"{step.id}: [no suggestions - create novel operation]")
+        return "\n".join(lines)
+
+    def _format_abstract_steps(self, abstract_steps: list[AbstractStep]) -> str:
+        """Format abstract steps for the refine prompt."""
+        lines = []
+        for step in abstract_steps:
+            deps = f" (depends: {step.depends_on})" if step.depends_on else ""
+            lines.append(f"{step.id}: {step.description} [{step.operation_type}]{deps}")
+        return "\n".join(lines)
+
+    def _parse_refined_steps(
+        self,
+        response: str,
+        suggestions: dict[str, list[OperationSuggestion]],
+    ) -> tuple[list[Step], dict[str, Any]]:
+        """Parse refined steps from LLM response."""
+        import json
+        steps = []
+        phase1_values = {}
+
+        try:
+            data = json.loads(response.strip())
+            phase1_values = data.get("values", {})
+
+            if phase1_values:
+                logger.info(
+                    "[planner] Phase 1 values extracted: %s",
+                    ", ".join(f"{k}={v}" for k, v in phase1_values.items())
+                )
+
+            for step_data in data.get("steps", []):
+                step_id = step_data.get("id", f"step_{len(steps) + 1}")
+
+                # Track if this step matched vocabulary or is novel
+                matched_op = step_data.get("matched_operation")
+                is_novel = step_data.get("is_novel", matched_op is None)
+
+                # Find signature_id from suggestions if matched
+                signature_id = None
+                if matched_op and step_id in suggestions:
+                    for s in suggestions[step_id]:
+                        if s.operation_name == matched_op:
+                            signature_id = s.signature_id
+                            break
+
+                step = Step(
+                    id=step_id,
+                    task=step_data.get("task", ""),
+                    depends_on=step_data.get("depends_on", []),
+                    extracted_values=step_data.get("values", {}),
+                    dsl_hint=step_data.get("dsl_hint"),
+                    operation=step_data.get("operation"),
+                )
+                # Store metadata for routing
+                step._is_novel = is_novel
+                step._matched_operation = matched_op
+                step._suggested_signature_id = signature_id
+
+                steps.append(step)
+
+        except json.JSONDecodeError as e:
+            logger.warning("[planner] Refine JSON parse failed: %s", e)
+            steps = [Step(id="solve", task="Solve the problem directly", depends_on=[])]
+
+        return steps, phase1_values
+
+    async def decompose(
+        self,
+        problem: str,
+        signature_hints: Optional[list[SignatureHint]] = None,
+        context: Optional[str] = None,
+        skip_validation: bool = False,
+    ) -> DAGPlan:
+        """Decompose a problem into a DAG of steps (API-compatible with Planner).
+
+        Uses tree-guided decomposition when step_db/embedder are available
+        AND no context/signature_hints are provided. Otherwise falls back to
+        standard single-LLM-call approach via composition with Planner.
+
+        Args:
+            problem: The problem to decompose
+            signature_hints: Optional list of SignatureHint objects (triggers fallback)
+            context: Optional additional context (triggers fallback)
+            skip_validation: If True, skip data flow validation
+
+        Returns:
+            DAGPlan with steps and dependencies
+        """
+        # Use tree-guided when we have step_db/embedder AND no special params
+        # signature_hints and context require the old Planner's prompt format
+        use_tree_guided = (
+            self.step_db is not None
+            and self.embedder is not None
+            and not context
+            and not signature_hints
+        )
+
+        if use_tree_guided:
+            result = await self.decompose_guided(problem)
+            return result.plan
+
+        # Fallback: compose with Planner (per CLAUDE.md "New Favorite Pattern")
+        # Avoid code duplication by reusing existing Planner logic
+        logger.info("[planner] Using fallback decomposition (context=%s, hints=%s)",
+                   bool(context), bool(signature_hints))
+        fallback = _create_planner_without_warning(self.client, self.temperature)
+        return await fallback.decompose(problem, signature_hints, context, skip_validation)
+
+    async def decompose_guided(self, problem: str) -> SegmentationResult:
+        """Full tree-guided decomposition with intermediate results.
+
+        Per CLAUDE.md "New Favorite Pattern": This is the single entry point
+        for decomposition that uses tree vocabulary to guide the process.
+
+        Flow:
+        1. segment(problem) -> abstract steps (1 LLM call)
+        2. suggest_operations_batch(steps) -> vocabulary matches (0 LLM calls)
+        3. refine(problem, steps, suggestions) -> concrete plan (1 LLM call)
+
+        Total: 2 LLM calls, batched by design.
+
+        Args:
+            problem: The math problem to decompose
+
+        Returns:
+            SegmentationResult with abstract steps, suggestions, and final plan
+        """
+        logger.info("[planner] Tree-guided decomposition starting")
+
+        # Phase 1: Segment into abstract steps
+        abstract_steps = await self.segment(problem)
+
+        # Phase 2: Get vocabulary suggestions from tree (no LLM)
+        suggestions = await self.suggest_operations_batch(abstract_steps)
+
+        # Phase 3: Refine with vocabulary guidance
+        plan = await self.refine(problem, abstract_steps, suggestions)
+
+        # Log novelty metrics
+        novel_count = sum(1 for s in plan.steps if getattr(s, '_is_novel', False))
+        vocab_count = len(plan.steps) - novel_count
+        logger.info(
+            "[planner] Tree-guided decomposition complete: %d steps (%d vocabulary, %d novel)",
+            len(plan.steps), vocab_count, novel_count
+        )
+
+        return SegmentationResult(
+            abstract_steps=abstract_steps,
+            suggestions=suggestions,
+            plan=plan,
+        )
