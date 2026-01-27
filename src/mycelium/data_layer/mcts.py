@@ -1569,11 +1569,24 @@ def run_postmortem(
                 "diagnostic_system_maturity": diagnostic_result.get("system_maturity", 0),
                 "diagnostic_failure_threshold": diagnostic_result.get("failure_threshold", 0),
                 "diagnostic_pairs_analyzed": diagnostic_result.get("pairs_analyzed", 0),
-                "steps_to_decompose": diagnostic_result.get("steps_to_decompose", []),
                 "signatures_to_decompose": diagnostic_result.get("signatures_to_decompose", []),
                 "routing_misses": diagnostic_result.get("routing_misses", []),
                 "diagnoses": diagnostic_result.get("diagnoses", []),
             })
+
+    # Per CLAUDE.md "New Favorite Pattern": Consolidate step decomposition from all sources
+    # into a single deduplicated list. Sources:
+    # 1. steps_needing_decomposition: from analyze_decomposition_needs() - tuples (dag_step_id, desc)
+    # 2. steps_to_decompose: from diagnostic analysis - plain dag_step_ids
+    all_step_ids = set()
+    # Add from decomposition analysis (tuples)
+    for dag_step_id, _desc in result.get("steps_needing_decomposition", []):
+        all_step_ids.add(dag_step_id)
+    # Add from diagnostic analysis (plain ids)
+    if include_diagnostics and DIAGNOSTIC_POSTMORTEM_ENABLED:
+        for dag_step_id in diagnostic_result.get("steps_to_decompose", []) if not diagnostic_result.get("skipped") else []:
+            all_step_ids.add(dag_step_id)
+    result["all_steps_to_decompose"] = list(all_step_ids)
 
     return result
 

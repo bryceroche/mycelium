@@ -15,6 +15,7 @@ Key difference from V1: Signatures speak natural language.
 
 import asyncio
 import hashlib
+import json
 import logging
 import re
 from collections import OrderedDict
@@ -476,6 +477,19 @@ class StepResult:
 
 
 @dataclass
+class DSLResult:
+    """Result of DSL execution with expression/inputs for learning.
+
+    Per mycelium-nvc9: DSL examples need to include the actual expression
+    and inputs used, not just the result, so DSL regeneration can learn
+    what worked.
+    """
+    result: Optional[str]  # The computed result (e.g., "15")
+    expression: Optional[str] = None  # The DSL expression (e.g., "a * b")
+    inputs: Optional[str] = None  # JSON: input values (e.g., '{"a": 5, "b": 3}')
+
+
+@dataclass
 class PathOutcome:
     """Outcome of a single path during multi-path MCTS exploration.
 
@@ -666,6 +680,10 @@ class Solver:
         # Phase 1 values for provenance tracking (set per-problem in solve())
         # Maps value name -> numeric value for resolving $name references
         self._current_phase1_values: dict[str, Any] = {}
+
+        # DSL execution tracking for example storage (per beads mycelium-nvc9)
+        # Stores DSLResult from last successful DSL execution for learning
+        self._last_dsl_info: Optional[DSLResult] = None
 
     def _create_background_task(self, coro) -> asyncio.Task:
         """Create a background task with proper lifecycle management.
@@ -1324,6 +1342,9 @@ class Solver:
         self._routing_ucb1_gap = None
         self._routing_was_undecided = False
 
+        # Clear DSL tracking from previous step (per beads mycelium-nvc9)
+        self._last_dsl_info = None
+
         # 0. Handle composite steps (recursive DAG of DAGs)
         if step.is_composite:
             return await self._execute_composite_step(
@@ -1679,7 +1700,8 @@ class Solver:
                     self._routing_confidence = self._routing_similarity  # Use similarity as confidence proxy
                 dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
                 if dsl_result is not None:
-                    result = dsl_result
+                    result = dsl_result.result
+                    self._last_dsl_info = dsl_result  # Store for update_example_result
                     was_injected = True
                     logger.debug("[solver] DSL executed: %s", result[:50] if result else "")
 
@@ -1761,7 +1783,8 @@ class Solver:
             # Execute the child's DSL (either existing or newly created)
             dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
             if dsl_result is not None:
-                result = dsl_result
+                result = dsl_result.result
+                self._last_dsl_info = dsl_result  # Store for update_example_result
                 was_injected = True
                 logger.info("[solver] Child DSL succeeded: %s", result[:30] if result else "")
 
@@ -1789,13 +1812,19 @@ class Solver:
 
         # 6.0. Update example with result (for DSL regeneration)
         # This records successful DSL outputs so regenerate_dsl can learn patterns
+        # Per beads mycelium-nvc9: include expression/inputs for better learning
         if routed_signature and step_completed and result:
+            dsl_info = getattr(self, '_last_dsl_info', None)
             self.step_db.update_example_result(
                 signature_id=routed_signature.id,
                 step_text=step.task,
                 result=str(result),
                 success=True,
+                expression=dsl_info.expression if dsl_info else None,
+                inputs=dsl_info.inputs if dsl_info else None,
             )
+            # Clear the stored DSL info for next step
+            self._last_dsl_info = None
 
         # 6.1. MCTS backpropagation: record usage for ALL explored signatures
         # Key insight: This is how multi-path exploration teaches cluster splitting
@@ -2170,7 +2199,8 @@ class Solver:
         if has_dsl_hint or has_extracted_values:
             dsl_result = await self._try_dsl(child_sig, step, context, step_descriptions)
             if dsl_result is not None:
-                return (dsl_result, child_sig, True)
+                self._last_dsl_info = dsl_result  # Store for update_example_result
+                return (dsl_result.result, child_sig, True)
 
         # Return child for further processing (may need decomposition on failure)
         return (None, child_sig, False)
@@ -2278,10 +2308,13 @@ class Solver:
         effective_budget = max(compute_budget, 3.0) if self._force_exploration else compute_budget
         if not is_undecided or effective_budget <= 1.0:
             if routing_result.signature is not None:
-                result = await self._try_dsl(
+                dsl_result = await self._try_dsl(
                     routing_result.signature, step, context, step_descriptions
                 )
-                return (result, routing_result.signature, explored_sigs, result is not None)
+                if dsl_result is not None:
+                    self._last_dsl_info = dsl_result  # Store for update_example_result
+                    return (dsl_result.result, routing_result.signature, explored_sigs, True)
+                return (None, routing_result.signature, explored_sigs, False)
             return (None, routing_result.signature, explored_sigs, False)
 
         # Undecided (low UCB1 gap) + multi-path mode: explore alternatives
@@ -2365,8 +2398,12 @@ class Solver:
         # Try DSL on each candidate in parallel
         async def try_candidate(sig_with_score):
             sig, score = sig_with_score
-            result = await self._try_dsl(sig, step, context, step_descriptions)
-            return (sig, score, result)
+            dsl_result = await self._try_dsl(sig, step, context, step_descriptions)
+            result = dsl_result.result if dsl_result else None
+            # Store DSL info for the first successful result (for update_example_result)
+            if dsl_result and not hasattr(self, '_last_dsl_info'):
+                self._last_dsl_info = dsl_result
+            return (sig, score, result, dsl_result)
 
         results = await asyncio.gather(*[try_candidate(c) for c in candidates])
 
@@ -2382,7 +2419,7 @@ class Solver:
         # Limit forks per step to prevent thread explosion
         max_forks = min(len(results), THREAD_MAX_FORKS_PER_STEP)
 
-        for i, (sig, score, result) in enumerate(results):
+        for i, (sig, score, result, dsl_result) in enumerate(results):
             # Create fork thread for each alternative (if thread tracking enabled)
             fork_thread_id = ""
             if parent_thread and THREAD_TRACKING_ENABLED and len(results) > 1:
@@ -2542,13 +2579,17 @@ class Solver:
         step: Step,
         context: dict[str, str],
         step_descriptions: dict[str, str] = None,
-    ) -> Optional[str]:
+    ) -> Optional[DSLResult]:
         """Try to execute a DSL script.
 
         LLM writes the arithmetic expression using available param names.
         No heuristic mapping - LLM always picks the right params for the task.
 
         Also handles extraction-only steps (no dsl_hint, just extracted_values).
+
+        Returns:
+            DSLResult with result, expression, and inputs (for DSL learning).
+            None if DSL execution failed or was not applicable.
         """
         # Get operation hint from planner
         dsl_hint = getattr(step, 'dsl_hint', None)
@@ -2570,7 +2611,7 @@ class Solver:
             algebra_result = await self._try_algebra_solve(step, context)
             if algebra_result is not None:
                 logger.info("[solver] Algebra solved: %s → %s", step.task[:40], algebra_result)
-                return algebra_result
+                return DSLResult(result=algebra_result, expression="algebra_solve", inputs=None)
             logger.debug("[solver] Algebra solve failed, falling back to regular DSL")
 
         # Handle extraction-only steps: no dsl_hint but has single extracted value
@@ -2580,13 +2621,13 @@ class Solver:
             for key, val in extracted_values.items():
                 if isinstance(val, (int, float)):
                     logger.info("[solver] Extraction-only step: %s = %s", key, val)
-                    return str(val)
+                    return DSLResult(result=str(val), expression="extract", inputs=json.dumps({key: val}))
                 elif isinstance(val, str) and val and not (val.startswith('{') and val.endswith('}')):
                     # Non-empty string value that's not a reference
                     try:
                         num_val = float(val)
                         logger.info("[solver] Extraction-only step: %s = %s", key, num_val)
-                        return str(num_val)
+                        return DSLResult(result=str(num_val), expression="extract", inputs=json.dumps({key: num_val}))
                     except ValueError:
                         logger.debug("[solver] Non-numeric string value for %s: %s", key, val[:50])
             logger.debug("[solver] No extractable value found in extracted_values")
@@ -2678,9 +2719,10 @@ class Solver:
             # Single param = extraction step, just return the value
             # This handles cases where planner provides dsl_hint but only 1 value
             if len(params) == 1:
+                key = list(params.keys())[0]
                 val = list(params.values())[0]
                 logger.info("[solver] Single-param extraction: %s", val)
-                return str(val)
+                return DSLResult(result=str(val), expression="extract", inputs=json.dumps({key: val}))
             # Per CLAUDE.md: failures are valuable data - log why DSL failed
             logger.info("[solver] DSL failed for '%s': need 2+ params, got %d (extracted_values=%s, context_keys=%s)",
                        step.task[:40] if step.task else "None", len(params), extracted_values, list(context.keys()))
@@ -2718,8 +2760,14 @@ class Solver:
                 logger.debug("[solver] DSL exec: result=%s, success=%s", result, success)
 
                 if success and result is not None:
+                    # Build {param: value} from used_params, extracting only used values
+                    used_inputs = {p: params.get(p) for p in used_params if p in params}
                     logger.info("[solver] DSL success: %s → %s", step.task[:30], result)
-                    return str(result)
+                    return DSLResult(
+                        result=str(result),
+                        expression=script,
+                        inputs=json.dumps(used_inputs),
+                    )
             else:
                 logger.debug("[solver] LLM returned no expression")
 
@@ -3675,6 +3723,7 @@ Rules:
             # Try DSL with alternative signature
             try:
                 dsl_result = await self._try_dsl(alt_sig, step_obj, context, step_descriptions)
+                result_str = dsl_result.result if dsl_result else None
 
                 # Log the thread step (only if we have a valid dag_step_id)
                 if self._current_dag_id:
@@ -3690,8 +3739,8 @@ Rules:
                             similarity_score=alt_sim,
                             was_undecided=1,
                             alternatives_considered=len(step_alternatives[best_step_idx]) + 1,
-                            step_result=dsl_result[:500] if dsl_result else None,
-                            step_success=1 if dsl_result else 0,
+                            step_result=result_str[:500] if result_str else None,
+                            step_success=1 if result_str else 0,
                         )
 
                 if dsl_result is None:
@@ -3703,8 +3752,8 @@ Rules:
 
                 # Execute remaining steps with original signatures
                 remaining_context = dict(context)
-                remaining_context[failed_step.step_id] = dsl_result
-                all_results = [dsl_result]
+                remaining_context[failed_step.step_id] = result_str
+                all_results = [result_str]
 
                 for remaining_step in failed_steps[best_step_idx + 1:]:
                     step_descriptions[remaining_step.step_id] = remaining_step.task
@@ -3721,10 +3770,10 @@ Rules:
 
                     rem_sig = self.step_db.get_signature(remaining_step.signature_id)
                     if rem_sig:
-                        rem_result = await self._try_dsl(rem_sig, rem_step_obj, remaining_context, step_descriptions)
-                        if rem_result:
-                            remaining_context[remaining_step.step_id] = rem_result
-                            all_results.append(rem_result)
+                        rem_dsl_result = await self._try_dsl(rem_sig, rem_step_obj, remaining_context, step_descriptions)
+                        if rem_dsl_result:
+                            remaining_context[remaining_step.step_id] = rem_dsl_result.result
+                            all_results.append(rem_dsl_result.result)
 
                 # Check if final answer matches ground truth
                 final_answer = all_results[-1] if all_results else None
@@ -4449,17 +4498,17 @@ Rules:
                         len(self._postmortem_flagged_nodes), self._postmortem_flagged_nodes
                     )
 
-                # Handle diagnostic results (included in single postmortem call)
-                diag_steps = postmortem_stats.get("steps_to_decompose", [])
+                # Handle decomposition decisions from post-mortem
+                # Per CLAUDE.md "New Favorite Pattern": Use consolidated list from data layer
+                all_steps = postmortem_stats.get("all_steps_to_decompose", [])
                 diag_sigs = postmortem_stats.get("signatures_to_decompose", [])
                 routing_misses = postmortem_stats.get("routing_misses", [])
 
-                if diag_steps or diag_sigs or routing_misses:
+                if all_steps or diag_sigs or routing_misses:
                     logger.info(
-                        "[solver] Diagnostic post-mortem: threshold=%.1f, "
-                        "steps_to_decompose=%d, sigs_to_decompose=%d, routing_misses=%d",
-                        postmortem_stats.get("diagnostic_failure_threshold", 0),
-                        len(diag_steps),
+                        "[solver] Post-mortem decomposition: "
+                        "steps=%d, sigs=%d, routing_misses=%d",
+                        len(all_steps),
                         len(diag_sigs),
                         len(routing_misses),
                     )
@@ -4467,7 +4516,8 @@ Rules:
                     # === ACT ON DECOMPOSITION DECISIONS ===
 
                     # 1. Steps to decompose: Mark step patterns for future decomposition
-                    for dag_step_id in diag_steps:
+                    #    (consolidated from both decomposition analysis and diagnostics)
+                    for dag_step_id in all_steps:
                         self._mark_step_for_decomposition(dag_step_id)
 
                     # 2. Signatures to decompose: Promote to umbrella or flag for rewrite
