@@ -1571,19 +1571,27 @@ Refine these steps into concrete operations with values."""
             embeddings = [embeddings_dict[text] for text in graph_texts]
 
             # Phase 3: Tree evaluates matches and provides hints
+            # Per CLAUDE.md "Cluster Boundaries": Welford stats guide accept/reject
             poor_matches = []
             all_hints = {}
 
-            for step, embedding in zip(abstract_steps, embeddings):
+            for step_idx, (step, embedding) in enumerate(zip(abstract_steps, embeddings)):
+                # step_position is 1-indexed (step_1, step_2, etc.)
+                step_position = step_idx + 1
                 hints = self.step_db.get_decomposition_hints(
                     step_description=step.description,
                     operation_embedding=embedding,
                     similarity_threshold=similarity_threshold,
+                    step_position=step_position,
                 )
                 all_hints[step.id] = hints
 
                 if hints['needs_decomposition']:
                     poor_matches.append((step, hints))
+                    logger.debug(
+                        "[planner] Step %d '%s' needs decomposition: %s",
+                        step_position, step.description[:30], hints.get('rejection_reason')
+                    )
 
             # If all matches are good, we're done negotiating
             if not poor_matches:

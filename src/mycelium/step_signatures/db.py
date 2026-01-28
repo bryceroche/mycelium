@@ -5129,12 +5129,17 @@ class StepSignatureDB:
         step_description: str,
         operation_embedding: np.ndarray,
         similarity_threshold: float = 0.7,
+        step_position: Optional[int] = None,
     ) -> dict:
         """Get hints for decomposing a dag_step using existing vocabulary.
 
         Per CLAUDE.md "Negotiation between Tree and Planner":
         Bias towards decomposing dag_steps (cheap, per-problem) over
         decomposing leaf_nodes (permanent tree change).
+
+        Per CLAUDE.md "Cluster Boundaries":
+        Uses adaptive z-score thresholds from Welford stats, not hard-coded values.
+        Rejection based on: similarity + historical (node, position) performance.
 
         When a dag_step has a poor match, this method suggests how to
         break it down into operations that already exist in the tree.
@@ -5143,19 +5148,22 @@ class StepSignatureDB:
             step_description: The step that needs decomposition
             operation_embedding: The step's operation embedding
             similarity_threshold: Below this, step is considered "poor match"
+            step_position: Position in plan (1, 2, 3...) for position-aware stats
 
         Returns:
             Dict with:
             - 'needs_decomposition': bool
-            - 'best_match': (step_type, similarity) or None
+            - 'best_match': (step_type, similarity, node_id) or None
             - 'vocabulary': list of available operations
             - 'suggested_decomposition': list of operation names that might compose this step
+            - 'rejection_reason': why decomposition is needed (if applicable)
         """
         leaves = self.get_all_leaves(min_uses=0)
 
         # Find best match
         best_match = None
         best_sim = 0.0
+        best_node_id = None
 
         # Collect vocabulary and similarities
         vocabulary = []
@@ -5167,25 +5175,65 @@ class StepSignatureDB:
                 graph_emb = np.array(graph_emb)
 
             sim = cosine_similarity(operation_embedding, graph_emb)
-            vocabulary.append((leaf.step_type, sim, leaf.uses or 0))
+            vocabulary.append((leaf.step_type, sim, leaf.uses or 0, leaf.id))
 
             if sim > best_sim:
                 best_sim = sim
-                best_match = (leaf.step_type, sim)
+                best_match = (leaf.step_type, sim, leaf.id)
+                best_node_id = leaf.id
 
         # Sort vocabulary by similarity (descending)
         vocabulary.sort(key=lambda x: x[1], reverse=True)
 
-        # Determine if decomposition is needed
-        needs_decomposition = best_sim < similarity_threshold
+        # === ADAPTIVE Z-SCORE REJECTION LOGIC ===
+        needs_decomposition = False
+        rejection_reason = None
+
+        # 1. Similarity-based rejection (baseline)
+        if best_sim < similarity_threshold:
+            needs_decomposition = True
+            rejection_reason = f"low_similarity ({best_sim:.3f} < {similarity_threshold})"
+
+        # 2. Welford-based rejection (adaptive thresholds)
+        elif best_node_id is not None and step_position is not None:
+            # Get stats for this (node, position) pair
+            position_stats = self.get_node_position_stats(best_node_id, step_position)
+
+            if position_stats and position_stats["n"] >= 5:
+                # Enough observations for reliable z-score
+
+                # Method A: Self-comparison (node vs its own history)
+                node_overall = self.get_node_stats_all_positions(best_node_id)
+                if node_overall["n"] >= 5 and node_overall["std"] > 0.01:
+                    # Z-score: how does this position compare to node's overall performance?
+                    z_self = (position_stats["mean_success"] - node_overall["mean_success"]) / node_overall["std"]
+                    if z_self < -2.0:
+                        # This node performs 2+ std worse at this position than usual
+                        needs_decomposition = True
+                        rejection_reason = f"position_underperform (z={z_self:.2f}, pos_success={position_stats['mean_success']:.2f})"
+
+                # Method B: Cluster comparison (node vs siblings)
+                if not needs_decomposition:
+                    cluster_stats = self.get_cluster_stats(best_node_id)
+                    if cluster_stats["sibling_count"] >= 3 and cluster_stats["cluster_std"] > 0.01:
+                        # Z-score: how does this node compare to siblings?
+                        z_cluster = (position_stats["mean_success"] - cluster_stats["cluster_mean"]) / cluster_stats["cluster_std"]
+                        if z_cluster < -2.0:
+                            # This node performs 2+ std worse than sibling average
+                            needs_decomposition = True
+                            rejection_reason = f"cluster_underperform (z={z_cluster:.2f}, cluster_mean={cluster_stats['cluster_mean']:.2f})"
+
+                # Method C: Absolute failure rate (floor check)
+                if not needs_decomposition and position_stats["mean_success"] < 0.3:
+                    # Even with adaptive thresholds, < 30% success is too low
+                    needs_decomposition = True
+                    rejection_reason = f"high_failure_rate ({position_stats['mean_success']:.2f})"
 
         # Suggest decomposition based on existing vocabulary
-        # Look for complementary operations (e.g., if step is "compute and subtract",
-        # suggest "compute_product" + "compute_difference")
         suggested_decomposition = []
         if needs_decomposition:
-            # Top 3 operations by similarity might be components
-            for step_type, sim, uses in vocabulary[:5]:
+            # Top operations by similarity might be components
+            for step_type, sim, uses, node_id in vocabulary[:5]:
                 if sim > 0.4:  # Minimum relevance
                     suggested_decomposition.append(step_type)
 
@@ -5195,16 +5243,16 @@ class StepSignatureDB:
             'vocabulary': [(v[0], v[2]) for v in vocabulary[:10]],  # (step_type, uses)
             'suggested_decomposition': suggested_decomposition,
             'similarity_threshold': similarity_threshold,
+            'rejection_reason': rejection_reason,
         }
 
         if needs_decomposition:
-            logger.debug(
-                "[db] Decomposition hints for '%s': best_match=%s (sim=%.3f < %.3f), vocab=%s",
+            logger.info(
+                "[db] Decomposition hints for '%s': reason=%s, best_match=%s (sim=%.3f)",
                 step_description[:40],
+                rejection_reason,
                 best_match[0] if best_match else None,
                 best_sim,
-                similarity_threshold,
-                suggested_decomposition,
             )
 
         return result
@@ -6719,6 +6767,228 @@ class StepSignatureDB:
                 "total_observations": 0,
                 "avg_success_rate": 0.0,
                 "low_performers": 0,
+            }
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def get_node_position_stats(
+        self,
+        node_id: int,
+        step_position: int,
+        conn=None,
+    ) -> Optional[dict]:
+        """Get aggregated Welford stats for (node_id, step_position) across ALL plans.
+
+        Per CLAUDE.md "Cluster Boundaries": Welford statistics guide tree structure.
+        This aggregates stats for a node at a specific position regardless of plan.
+
+        Args:
+            node_id: Which signature
+            step_position: Position in plan (1, 2, 3...)
+
+        Returns:
+            Dict with aggregated n, mean_success, variance, std, or None if no data
+        """
+        def _do_get(c):
+            # Aggregate across all plans for this (node, position) pair
+            row = c.execute(
+                """
+                SELECT
+                    SUM(n) as total_n,
+                    SUM(n * mean_success) as weighted_success_sum,
+                    COUNT(*) as plan_count
+                FROM plan_step_stats
+                WHERE node_id = ? AND step_position = ?
+                """,
+                (node_id, step_position)
+            ).fetchone()
+
+            if not row or not row["total_n"] or row["total_n"] == 0:
+                return None
+
+            total_n = row["total_n"]
+            weighted_mean = row["weighted_success_sum"] / total_n if total_n > 0 else 0.5
+
+            # Get variance by computing weighted M2 sum
+            rows = c.execute(
+                """
+                SELECT n, mean_success, m2
+                FROM plan_step_stats
+                WHERE node_id = ? AND step_position = ? AND n > 0
+                """,
+                (node_id, step_position)
+            ).fetchall()
+
+            # Combine Welford stats using parallel algorithm
+            combined_m2 = 0.0
+            for r in rows:
+                n_i = r["n"]
+                mean_i = r["mean_success"]
+                m2_i = r["m2"]
+                # Delta between this batch mean and combined mean
+                delta = mean_i - weighted_mean
+                combined_m2 += m2_i + delta * delta * n_i
+
+            variance = combined_m2 / (total_n - 1) if total_n >= 2 else 0.0
+            std = variance ** 0.5
+
+            return {
+                "node_id": node_id,
+                "step_position": step_position,
+                "n": total_n,
+                "mean_success": weighted_mean,
+                "variance": variance,
+                "std": std,
+                "plan_count": row["plan_count"],
+            }
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def get_node_stats_all_positions(
+        self,
+        node_id: int,
+        conn=None,
+    ) -> dict:
+        """Get this node's aggregated stats across all positions.
+
+        Returns the node's overall mean_success and std for self-comparison.
+
+        Args:
+            node_id: Which signature
+
+        Returns:
+            Dict with overall n, mean_success, variance, std
+        """
+        def _do_get(c):
+            row = c.execute(
+                """
+                SELECT
+                    SUM(n) as total_n,
+                    SUM(n * mean_success) as weighted_success_sum
+                FROM plan_step_stats
+                WHERE node_id = ?
+                """,
+                (node_id,)
+            ).fetchone()
+
+            if not row or not row["total_n"] or row["total_n"] == 0:
+                return {"n": 0, "mean_success": 0.5, "variance": 0.0, "std": 0.0}
+
+            total_n = row["total_n"]
+            weighted_mean = row["weighted_success_sum"] / total_n if total_n > 0 else 0.5
+
+            # Get variance
+            rows = c.execute(
+                """
+                SELECT n, mean_success, m2
+                FROM plan_step_stats
+                WHERE node_id = ? AND n > 0
+                """,
+                (node_id,)
+            ).fetchall()
+
+            combined_m2 = 0.0
+            for r in rows:
+                delta = r["mean_success"] - weighted_mean
+                combined_m2 += r["m2"] + delta * delta * r["n"]
+
+            variance = combined_m2 / (total_n - 1) if total_n >= 2 else 0.0
+            std = variance ** 0.5
+
+            return {
+                "node_id": node_id,
+                "n": total_n,
+                "mean_success": weighted_mean,
+                "variance": variance,
+                "std": std,
+            }
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def get_cluster_stats(
+        self,
+        node_id: int,
+        conn=None,
+    ) -> dict:
+        """Get sibling node stats for cluster-relative z-score comparison.
+
+        Per CLAUDE.md "Cluster Boundaries": Compare node against its peers.
+
+        Args:
+            node_id: Which signature
+
+        Returns:
+            Dict with cluster_mean, cluster_std, sibling_count
+        """
+        def _do_get(c):
+            # Get parent of this node
+            parent_row = c.execute(
+                """
+                SELECT parent_id FROM signature_relationships WHERE child_id = ?
+                """,
+                (node_id,)
+            ).fetchone()
+
+            if not parent_row:
+                return {"cluster_mean": 0.5, "cluster_std": 0.25, "sibling_count": 0}
+
+            parent_id = parent_row["parent_id"]
+
+            # Get all sibling leaf nodes under same parent
+            siblings = c.execute(
+                """
+                SELECT sr.child_id as node_id
+                FROM signature_relationships sr
+                JOIN step_signatures ss ON sr.child_id = ss.id
+                WHERE sr.parent_id = ? AND ss.is_semantic_umbrella = 0
+                """,
+                (parent_id,)
+            ).fetchall()
+
+            if not siblings:
+                return {"cluster_mean": 0.5, "cluster_std": 0.25, "sibling_count": 0}
+
+            # Get mean_success for each sibling
+            sibling_means = []
+            for sib in siblings:
+                sib_stats = c.execute(
+                    """
+                    SELECT SUM(n) as total_n, SUM(n * mean_success) as weighted_sum
+                    FROM plan_step_stats WHERE node_id = ?
+                    """,
+                    (sib["node_id"],)
+                ).fetchone()
+
+                if sib_stats and sib_stats["total_n"] and sib_stats["total_n"] > 0:
+                    sib_mean = sib_stats["weighted_sum"] / sib_stats["total_n"]
+                    sibling_means.append(sib_mean)
+
+            if not sibling_means:
+                return {"cluster_mean": 0.5, "cluster_std": 0.25, "sibling_count": len(siblings)}
+
+            cluster_mean = sum(sibling_means) / len(sibling_means)
+            if len(sibling_means) >= 2:
+                variance = sum((m - cluster_mean) ** 2 for m in sibling_means) / (len(sibling_means) - 1)
+                cluster_std = variance ** 0.5
+            else:
+                cluster_std = 0.25  # Default std when not enough siblings
+
+            return {
+                "cluster_mean": cluster_mean,
+                "cluster_std": max(cluster_std, 0.05),  # Floor to avoid division by zero
+                "sibling_count": len(siblings),
             }
 
         if conn is not None:
