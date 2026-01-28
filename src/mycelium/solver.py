@@ -228,14 +228,16 @@ def get_expansion_rate() -> float:
         Expansion rate in [0.05, 1.0]
     """
     import math
+    from mycelium.config import EXPANSION_SIGMOID_MIDPOINT, EXPANSION_SIGMOID_STEEPNESS
 
     accuracy = get_accuracy()
     reuse_rate = get_reuse_rate()
     sig_count = get_signature_count()
 
     # 1. Accuracy-driven sigmoid: base expansion from performance
-    # At accuracy=0: ~1.0, at 0.7: 0.5, at 1.0: ~0
-    accuracy_factor = 1.0 / (1.0 + math.exp((accuracy - 0.7) / 0.15))
+    # Per mycelium-7khj: use config instead of hardcoded threshold
+    # At accuracy=midpoint: 0.5, at accuracy=1.0: ~0
+    accuracy_factor = 1.0 / (1.0 + math.exp((accuracy - EXPANSION_SIGMOID_MIDPOINT) / EXPANSION_SIGMOID_STEEPNESS))
 
     # 2. Reuse modulation: low reuse = fragmenting, slow down
     # At cold start (few sigs), ignore reuse (give it time to build up)
@@ -1471,8 +1473,9 @@ class Solver:
             if graph_results:
                 best_sig, best_sim = graph_results[0]
                 # High-confidence graph match - use this signature directly
-                # Threshold: 90% similarity means operationally identical
-                if best_sim >= 0.90:
+                # Per mycelium-7khj: use config instead of hardcoded threshold
+                from mycelium.config import GRAPH_ROUTING_HIGH_CONFIDENCE
+                if best_sim >= GRAPH_ROUTING_HIGH_CONFIDENCE:
                     # Check rejection threshold for leaf signatures using adaptive Welford threshold
                     from mycelium.data_layer.mcts import record_leaf_rejection
                     from mycelium.config import COLD_START_SIGNATURE_THRESHOLD

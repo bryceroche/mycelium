@@ -28,7 +28,9 @@ logger = logging.getLogger(__name__)
 # Thresholds for width vs depth decision
 # Close = same abstraction level, different variants
 # Distant = different abstraction levels
-CLOSE_DISTANCE_THRESHOLD = 0.20  # cosine distance < 0.20 = close (similarity > 0.80)
+# Per mycelium-7khj: centralize thresholds in config
+from mycelium.config import DIVERGENCE_CLOSE_DISTANCE
+CLOSE_DISTANCE_THRESHOLD = DIVERGENCE_CLOSE_DISTANCE  # Re-export for backward compat
 MIN_SAMPLES_FOR_SPLIT = 2  # Need at least 2 samples to detect divergence
 
 

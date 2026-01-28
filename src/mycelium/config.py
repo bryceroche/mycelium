@@ -665,6 +665,7 @@ ZERO_LLM_REQUIRE_DSL = True  # Signature must have a working DSL script
 
 GRAPH_ROUTING_ENABLED = True  # Master switch for graph-based routing
 GRAPH_ROUTING_MIN_SIMILARITY = 0.80  # Minimum similarity for graph match
+GRAPH_ROUTING_HIGH_CONFIDENCE = 0.90  # High-confidence graph match (skip planner)
 GRAPH_ROUTING_BOOST_FACTOR = 0.15  # Boost to UCB1 when graph matches
 GRAPH_ROUTING_FALLBACK_TO_CENTROID = False  # No centroid fallback - graph-only routing
 
@@ -706,6 +707,9 @@ RESTRUCTURE_OUTLIER_IMPROVEMENT = 0.1  # Move outlier if new cluster is 10%+ bet
 MAX_CHILDREN_PER_PARENT = 20  # Force subcluster consideration above this fan-out
 RESTRUCTURE_CV_THRESHOLD = 0.3  # CV (std/mean) above which cluster is heterogeneous
 
+# Divergence splitting (per mycelium-7khj: move magic numbers to config)
+DIVERGENCE_CLOSE_DISTANCE = 0.20  # cosine distance < this = close (similarity > 0.80)
+
 # =============================================================================
 # MATURITY-BASED DECOMPOSE VS CREATE (Sigmoid transition)
 # =============================================================================
@@ -729,6 +733,12 @@ MATURITY_ACCURACY_WEIGHT = 2.0  # How much accuracy (0-1) shifts the decision
                                  # accuracy=0.8 adds 2.0*0.8=1.6 to maturity_score
 MATURITY_MIN_DECOMPOSE_PROB = 0.1  # Floor: always some chance to decompose
 MATURITY_MAX_DECOMPOSE_PROB = 0.9  # Ceiling: always some chance to create new
+
+# Expansion rate sigmoid (accuracy-driven tree growth)
+# Per mycelium-7khj: move hardcoded expansion parameters to config
+# expansion = 1 / (1 + exp((accuracy - midpoint) / steepness))
+EXPANSION_SIGMOID_MIDPOINT = 0.7  # Accuracy at which expansion = 0.5
+EXPANSION_SIGMOID_STEEPNESS = 0.15  # How sharply expansion drops with accuracy
 
 # Escape hatch: If decomposed sub-steps ALSO don't match, create new atomic
 # This recognizes genuinely novel operations that can't be built from existing sigs
