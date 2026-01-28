@@ -3917,7 +3917,7 @@ class StepSignatureDB:
             difficulty: Problem difficulty for weighted credit (0.0-1.0)
         """
         # Increment global problem counter (for traffic-based decay)
-        increment_total_problems(self.db_path)
+        increment_total_problems()
 
         if decay_factor is None:
             decay_factor = PARENT_CREDIT_DECAY
