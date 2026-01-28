@@ -1099,18 +1099,40 @@ class Solver:
 
             # 1.5. BATCH EXPRESSION WRITING (single LLM call for all steps)
             # Collect step info for batch expression writing
-            # For steps with {step_N} references, we'll resolve them during execution
+            # Phase 1 values ($name) are resolved NOW, step refs ({step_N}) stay as placeholders
             step_infos = []
             for step in plan.steps:
                 if not step.dsl_hint:
                     continue
-                # Build params from extracted_values (without context resolution yet)
+                # Build params from extracted_values with Phase 1 resolution
                 params = {}
                 for key, val in (step.extracted_values or {}).items():
-                    if isinstance(val, str) and val.startswith('{') and val.endswith('}'):
-                        # Reference to previous step - use step_N as placeholder (no angle brackets!)
-                        # LLM will use this in expression, which must be valid Python
-                        params[key] = val[1:-1]  # {step_1} -> step_1
+                    if isinstance(val, str):
+                        if val.startswith('{') and val.endswith('}'):
+                            # Reference to previous step - use step_N as placeholder
+                            params[key] = val[1:-1]  # {step_1} -> step_1
+                        elif val.startswith('$'):
+                            # Phase 1 reference - resolve to actual numeric value
+                            ref_name = val[1:]
+                            if ref_name in self._current_phase1_values:
+                                params[key] = self._current_phase1_values[ref_name]
+                            else:
+                                # Partial match fallback
+                                matched_key = None
+                                for p1_key in self._current_phase1_values:
+                                    if p1_key in ref_name or ref_name in p1_key:
+                                        matched_key = p1_key
+                                        break
+                                if matched_key:
+                                    params[key] = self._current_phase1_values[matched_key]
+                                else:
+                                    logger.warning(
+                                        "[solver] Batch expr: unknown Phase 1 ref $%s (available: %s)",
+                                        ref_name, list(self._current_phase1_values.keys())
+                                    )
+                                    params[key] = val  # Keep as-is for debugging
+                        else:
+                            params[key] = val
                     else:
                         params[key] = val
                 if params:
