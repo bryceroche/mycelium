@@ -3,6 +3,7 @@
 from mycelium.data_layer.connection import (
     ConnectionManager,
     configure_connection,
+    create_connection_manager,
     get_db,
     reset_db,
     EMBEDDING_DIM,
@@ -103,6 +104,7 @@ __all__ = [
     "db",
     "get_db",
     "reset_db",
+    "create_connection_manager",
     "ConnectionManager",
     "configure_connection",
     "EMBEDDING_DIM",

@@ -73,7 +73,7 @@ from mycelium.step_signatures.scoring import (
 from mycelium.step_signatures.dsl_templates import infer_dsl_for_signature
 from mycelium.step_signatures.graph_extractor import extract_computation_graph
 
-from mycelium.data_layer import get_db, configure_connection
+from mycelium.data_layer import get_db, configure_connection, create_connection_manager
 from mycelium.data_layer.schema import init_db
 from mycelium.step_signatures.models import StepSignature
 from mycelium.step_signatures.utils import (
@@ -641,19 +641,20 @@ class StepSignatureDB:
     def __init__(self, db_path: str = None, embedder=None):
         """Initialize the database.
 
+        Per CLAUDE.md "New Favorite Pattern": All database connections go through the data layer.
+
         Args:
             db_path: Optional path to SQLite database. If provided, creates
-                     a direct connection instead of using the global singleton.
+                     a ConnectionManager for that path instead of using the global singleton.
             embedder: Optional Embedder instance. If None, lazily fetches singleton on first use.
         """
         if db_path:
-            self._direct_conn = sqlite3.connect(db_path, check_same_thread=False, timeout=30.0)
-            configure_connection(self._direct_conn, enable_foreign_keys=False)
-            self._db = None
+            # Per mycelium-7eqw: Use data layer's create_connection_manager instead of direct sqlite3.connect
+            # This consolidates all DB connection logic through the data layer
+            self._db = create_connection_manager(db_path)
             self._db_path = db_path
         else:
             self._db = get_db()
-            self._direct_conn = None
             # Use default DB path from config when using global singleton
             from mycelium.config import DB_PATH
             self._db_path = DB_PATH
@@ -693,9 +694,8 @@ class StepSignatureDB:
 
     def close(self):
         """Close the database connection."""
-        if self._direct_conn:
-            self._direct_conn.close()
-            self._direct_conn = None
+        if self._db:
+            self._db.close()
 
     @property
     def _centroid_cache_path(self) -> str:
@@ -772,13 +772,12 @@ class StepSignatureDB:
 
     @contextmanager
     def _connection(self):
-        """Get a database connection."""
-        if self._direct_conn:
-            yield self._direct_conn
-            self._direct_conn.commit()
-        else:
-            with self._db.connection() as conn:
-                yield conn
+        """Get a database connection.
+
+        Per CLAUDE.md "New Favorite Pattern": Single connection pathway through data layer.
+        """
+        with self._db.connection() as conn:
+            yield conn
 
     def _init_schema(self):
         """Initialize database schema."""

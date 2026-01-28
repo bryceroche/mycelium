@@ -58,12 +58,24 @@ def configure_connection(conn: sqlite3.Connection, enable_foreign_keys: bool = T
 
 
 class ConnectionManager:
-    """SQLite connection manager with thread-local connections."""
+    """SQLite connection manager with thread-local connections.
+
+    Can be used as:
+    - Singleton (default): ConnectionManager() returns the same instance
+    - Factory: create_connection_manager(db_path) creates a new instance
+    """
 
     _instance: Optional["ConnectionManager"] = None
     _lock = threading.Lock()
 
-    def __new__(cls) -> "ConnectionManager":
+    def __new__(cls, _use_singleton: bool = True) -> "ConnectionManager":
+        if not _use_singleton:
+            # Factory mode: create a new instance
+            instance = super().__new__(cls)
+            instance._initialized = False
+            return instance
+
+        # Singleton mode
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
@@ -71,11 +83,11 @@ class ConnectionManager:
                     cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self):
+    def __init__(self, _use_singleton: bool = True, db_path: str = None):
         with self._lock:
             if self._initialized:
                 return
-            self._db_path = os.getenv("MYCELIUM_DB_PATH", DEFAULT_DB_PATH)
+            self._db_path = db_path or os.getenv("MYCELIUM_DB_PATH", DEFAULT_DB_PATH)
             self._local = threading.local()
             self._initialized = True
 
@@ -184,3 +196,20 @@ def reset_db():
     global _db
     ConnectionManager.reset()
     _db = None
+
+
+def create_connection_manager(db_path: str) -> ConnectionManager:
+    """Create a non-singleton ConnectionManager for a specific path.
+
+    Use this when you need a connection to a database other than the default.
+    The returned manager has the same interface as get_db() but is independent.
+
+    Per CLAUDE.md "New Favorite Pattern": All DB connections through data layer.
+
+    Args:
+        db_path: Path to the SQLite database file.
+
+    Returns:
+        A ConnectionManager instance for the specified path.
+    """
+    return ConnectionManager(_use_singleton=False, db_path=db_path)
