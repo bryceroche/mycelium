@@ -21,6 +21,12 @@ from mycelium.config import (
     DSL_OPERATION_INFERENCE_RAMP_SIGS,
     DSL_EXOTIC_THRESHOLD_BONUS,
     DSL_EXOTIC_THRESHOLD_MAX,
+    # Per CLAUDE.md "The Flow": thresholds from config
+    DSL_TEMPLATE_MIN_SIMILARITY,
+    DSL_TEMPLATE_MATCH_THRESHOLD,
+    DSL_PARAM_WEIGHT_SEMANTIC,
+    DSL_PARAM_WEIGHT_DEFAULT,
+    DSL_MIN_SUCCESS_RATE,
 )
 from mycelium.embedding_cache import cached_embed
 
@@ -433,7 +439,7 @@ def _infer_operation_semantic(
     description: str,
     num_params: int,
     param_names: list = None,
-    min_similarity: float = 0.5,
+    min_similarity: float = DSL_TEMPLATE_MIN_SIMILARITY,
     embedder=None,
 ) -> Optional[tuple[str, str]]:
     """Infer math operation using dual-channel semantic embedding.
@@ -504,9 +510,10 @@ def _infer_operation_semantic(
                 desc_sims[op] = sim
 
         # Combine channels with weighting
-        # Semantic params (dividend, factor) are strong signals: weight 0.7
-        # Generic params (a, b) are weak signals: weight 0.3
-        param_weight = 0.7 if semantic_params else 0.3
+        # Semantic params (dividend, factor) are strong signals
+        # Generic params (a, b) are weak signals
+        # Per CLAUDE.md "The Flow": weights from config, not magic numbers
+        param_weight = DSL_PARAM_WEIGHT_SEMANTIC if semantic_params else DSL_PARAM_WEIGHT_DEFAULT
         desc_weight = 1.0 - param_weight
 
         combined_sims = {}
@@ -575,7 +582,7 @@ def _find_similar_successful_dsl(
     step_type: str,
     description: str,
     db,
-    min_success_rate: float = 0.6,
+    min_success_rate: float = DSL_MIN_SUCCESS_RATE,
     min_uses: int = 3,
     embedder=None,
 ) -> Optional[tuple[str, str]]:
@@ -630,8 +637,8 @@ def _find_similar_successful_dsl(
                 best_similarity = similarity
                 best_match = sig
 
-        # Threshold for accepting a match (0.7 = reasonably similar)
-        if best_match and best_similarity >= 0.7:
+        # Threshold for accepting a match (per CLAUDE.md "The Flow": from config)
+        if best_match and best_similarity >= DSL_TEMPLATE_MATCH_THRESHOLD:
             logger.info(
                 "[dsl_infer] Found similar DSL: '%s' -> '%s' (sim=%.3f)",
                 step_type, best_match.step_type, best_similarity

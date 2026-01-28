@@ -73,8 +73,14 @@ from mycelium.config import (
     # Atomic operation detection (per CLAUDE.md "The Flow")
     ATOMIC_SIMILARITY_THRESHOLD,
     ATOMIC_GAP_THRESHOLD,
-    # Similarity thresholds
+    # Similarity thresholds (per CLAUDE.md "The Flow": thresholds from config)
     MIN_MATCH_THRESHOLD,
+    FORK_GAP_SCALING_FACTOR,
+    ROUTING_MIN_SIMILARITY,
+    ROUTING_MIN_SIMILARITY_PERMISSIVE,
+    ROUTING_BEST_MATCH_MIN_SIMILARITY,
+    PLACEMENT_MIN_SIMILARITY,
+    HINT_ALTERNATIVES_MIN_SIMILARITY,
 )
 
 # Import from focused modules (scoring and DSL templates)
@@ -206,6 +212,7 @@ def compute_fork_probability(
         BIG_BANG_HYSTERESIS_BONUS,
         BIG_BANG_MIN_FORK_PROB,
         BIG_BANG_MAX_FORK_PROB,
+        FORK_GAP_SCALING_FACTOR,
         MIN_FORK_DEPTH,
     )
 
@@ -230,7 +237,7 @@ def compute_fork_probability(
     # 2. SIMILARITY GAP: How far below threshold is the best match?
     # Larger gap → more reason to fork (problem is divergent)
     gap = fork_threshold - best_similarity
-    gap_factor = max(0.0, min(1.0, gap * 2.0))  # Scale to 0-1 range
+    gap_factor = max(0.0, min(1.0, gap * FORK_GAP_SCALING_FACTOR))  # Scale to 0-1 range
 
     # 3. MATURITY MODULATION: Less aggressive forking as system matures
     # Cold start (maturity=0): fork more aggressively
@@ -3151,7 +3158,7 @@ class StepSignatureDB:
         self,
         embedding,
         exclude_signature_id: int = None,
-        min_similarity: float = 0.8,
+        min_similarity: float = ROUTING_BEST_MATCH_MIN_SIMILARITY,
         limit: int = 5,
         lookback_days: int = None,
     ) -> list[dict]:
@@ -4697,7 +4704,7 @@ class StepSignatureDB:
         self,
         limit: int = 20,
         problem_embedding: np.ndarray = None,
-        min_similarity: float = 0.3,
+        min_similarity: float = HINT_ALTERNATIVES_MIN_SIMILARITY,
     ) -> list:
         """Get hierarchical signature hints for the decomposer.
 
@@ -5134,7 +5141,7 @@ class StepSignatureDB:
         operation_embedding: np.ndarray,
         dag_step_type: str = None,
         top_k: int = 3,
-        min_similarity: float = 0.5,
+        min_similarity: float = ROUTING_MIN_SIMILARITY_PERMISSIVE,
         use_adaptive_threshold: bool = None,  # None = use config default
     ) -> list[tuple[StepSignature, float, float]]:
         """MCTS-style matching: find top-k leaf candidates for a dag_step using graph embeddings.
@@ -5593,7 +5600,7 @@ class StepSignatureDB:
         self,
         embedding: np.ndarray,
         min_depth: int,
-        min_similarity: float = 0.75,
+        min_similarity: float = PLACEMENT_MIN_SIMILARITY,
         exclude_ids: set[int] = None,
     ) -> Optional[StepSignature]:
         """Find existing signature at deeper depth for repointing.

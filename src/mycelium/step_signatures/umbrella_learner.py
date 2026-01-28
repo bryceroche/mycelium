@@ -24,6 +24,9 @@ from mycelium.config import (
     UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION,
     SYNTHESIS_STEP_ANCHORS,
     SYNTHESIS_STEP_THRESHOLD,
+    # Per CLAUDE.md "The Flow": thresholds from config
+    UMBRELLA_REPOINT_SIMILARITY,
+    MIN_MATCH_THRESHOLD,
 )
 from mycelium.planner import TreeGuidedPlanner
 from mycelium.step_signatures.db import StepSignatureDB
@@ -603,10 +606,11 @@ Rules:
                 continue
 
             # First: try to repoint to existing deeper signature
+            # Per CLAUDE.md "The Flow": threshold from config, not magic numbers
             child_sig = self.db.find_deeper_signature(
                 embedding=embedding,
                 min_depth=min_child_depth,
-                min_similarity=0.75,  # Slightly lower threshold for repointing
+                min_similarity=UMBRELLA_REPOINT_SIMILARITY,
                 exclude_ids={signature.id},  # Don't repoint to self
             )
             is_new = False
@@ -623,10 +627,11 @@ Rules:
                 # Pass extracted_values and dsl_hint from planner for bidirectional LLM-signature communication
                 # CRITICAL: Pass parent_id so new signatures are created under THIS signature, not root!
                 # CRITICAL: Pass exclude_ids to prevent child matching back to parent (circular routing)
+                # Per CLAUDE.md "The Flow": threshold from config, not magic numbers
                 child_sig, is_new = await self.db.find_or_create_async(
                     step_text=step.task,
                     embedding=embedding,
-                    min_similarity=0.85,
+                    min_similarity=MIN_MATCH_THRESHOLD,
                     parent_problem=signature.description,
                     origin_depth=min_child_depth,  # Set proper depth for new sigs
                     extracted_values=getattr(step, 'extracted_values', None),

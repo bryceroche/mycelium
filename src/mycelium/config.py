@@ -50,6 +50,21 @@ MIN_MATCH_RAMP_SIGNATURES = 50  # Signatures needed to reach mature threshold
 ATOMIC_SIMILARITY_THRESHOLD = 0.70  # Below this = unknown/complex operation
 ATOMIC_GAP_THRESHOLD = 0.03  # Gap between best and 2nd best match; below this = multi-part
 
+# Fork probability scaling (per CLAUDE.md "The Flow": thresholds from config)
+FORK_GAP_SCALING_FACTOR = 2.0  # Multiplier for gap → probability conversion
+
+# Signature routing thresholds (per CLAUDE.md "The Flow")
+# These are the default min_similarity values for various routing functions
+ROUTING_MIN_SIMILARITY = 0.85  # Default min_similarity for main routing (db.py, solver.py)
+ROUTING_MIN_SIMILARITY_PERMISSIVE = 0.5  # Permissive threshold for alternative/candidate search
+ROUTING_BEST_MATCH_MIN_SIMILARITY = 0.8  # find_best_match threshold
+
+# Signature placement thresholds (db.py find_deeper_signature, decide_signature_placement)
+PLACEMENT_MIN_SIMILARITY = 0.75  # Threshold for placement decisions and deeper routing
+
+# Hint alternatives threshold (get_signature_hints)
+HINT_ALTERNATIVES_MIN_SIMILARITY = 0.3  # Minimum for hint alternatives
+
 # =============================================================================
 # DSL EXECUTION
 # =============================================================================
@@ -483,6 +498,8 @@ NEW_CHILD_SIMILARITY_THRESHOLD = 0.7  # Min similarity to reuse existing child i
                                        # Higher than UMBRELLA_ROUTING_THRESHOLD: routing failed at 0.5,
                                        # but child at 0.7+ is "close enough" - use instead of duplicating
                                        # This prevents duplicate children for similar steps
+UMBRELLA_REPOINT_SIMILARITY = 0.75  # Threshold for repointing to existing deeper signature
+                                     # Slightly lower than MIN_MATCH_THRESHOLD for flexibility
 
 # Tree growth settings (organic, no pre-allocation)
 MIN_FORK_DEPTH = 0  # Allow forking at any depth (organic growth)
