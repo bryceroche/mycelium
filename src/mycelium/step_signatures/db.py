@@ -8035,7 +8035,7 @@ class StepSignatureDB:
             # 3. Detect clusters using Welford-guided threshold
             # Get root's Welford stats for adaptive threshold
             stats = self.get_welford_stats(root.id, conn=c)
-            if stats and stats.get("child_count", 0) > 5:
+            if stats and stats.get("child_n", 0) > 5:
                 # Use 2 * std as cluster threshold (similar items)
                 child_std = self.get_welford_std(root.id, "child", conn=c)
                 cluster_threshold = max(0.85, 1.0 - 2 * child_std) if child_std else 0.90

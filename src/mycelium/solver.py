@@ -2187,6 +2187,9 @@ class Solver:
                     "[solver] Umbrella routing (embedding): '%s' → '%s' (sim=%.3f)",
                     umbrella.step_type, best_child.step_type, best_sim
                 )
+                # Per CLAUDE.md "System Independence": Update Welford route stats
+                # This tracks the umbrella's routing similarity distribution for adaptive thresholds
+                self.step_db.update_welford_route(umbrella.id, best_sim)
                 child_sig = best_child
             else:
                 logger.debug(
