@@ -493,6 +493,39 @@ CREATE INDEX IF NOT EXISTS idx_welford_route_n ON welford_stats(route_n);
 CREATE INDEX IF NOT EXISTS idx_welford_exec_n ON welford_stats(exec_n);
 
 -- =============================================================================
+-- PLAN_STEP_STATS: Statistical blame accumulation for (plan, position, node)
+-- =============================================================================
+-- Per CLAUDE.md: "Failures Are Valuable Data Points" - accumulate blame statistically.
+-- Tracks success rate at each step position within a plan structure.
+-- This enables:
+-- 1. Identifying which step positions consistently fail
+-- 2. Detecting which nodes are problematic at certain positions
+-- 3. Order-aware tracking (same node at step 1 vs step 5 may differ)
+-- 4. Plan-aware routing (avoid nodes that fail in certain plan contexts)
+CREATE TABLE IF NOT EXISTS plan_step_stats (
+    plan_signature TEXT NOT NULL,         -- Hash of plan structure (from dag_plan_stats)
+    step_position INTEGER NOT NULL,       -- 1, 2, 3... (order in plan)
+    node_id INTEGER NOT NULL,             -- Which signature handled this step
+
+    -- Welford's algorithm for success rate tracking
+    n INTEGER DEFAULT 0,                  -- Number of observations
+    mean_success REAL DEFAULT 0.5,        -- Running mean of success (0=fail, 1=success)
+    m2 REAL DEFAULT 0.0,                  -- Sum of squared differences (variance = M2/(N-1))
+
+    -- Metadata
+    first_seen_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    last_updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (plan_signature, step_position, node_id),
+    FOREIGN KEY (node_id) REFERENCES step_signatures(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_pss_plan ON plan_step_stats(plan_signature);
+CREATE INDEX IF NOT EXISTS idx_pss_node ON plan_step_stats(node_id);
+CREATE INDEX IF NOT EXISTS idx_pss_position ON plan_step_stats(step_position);
+CREATE INDEX IF NOT EXISTS idx_pss_mean_success ON plan_step_stats(mean_success);
+
+-- =============================================================================
 -- PROPOSED_SIGNATURES: Staging table for new signature candidates
 -- =============================================================================
 -- Per mycelium-xv09: Signature proposals are staged before acceptance.
@@ -864,6 +897,33 @@ def migrate_db(conn) -> None:
     except Exception as e:
         # Table already exists or other error
         logger.debug("[schema] proposed_signatures migration skipped: %s", e)
+
+    # Create plan_step_stats table if it doesn't exist (statistical blame accumulation)
+    # Per CLAUDE.md: "Failures Are Valuable Data Points" - accumulate blame statistically
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS plan_step_stats (
+                plan_signature TEXT NOT NULL,
+                step_position INTEGER NOT NULL,
+                node_id INTEGER NOT NULL,
+                n INTEGER DEFAULT 0,
+                mean_success REAL DEFAULT 0.5,
+                m2 REAL DEFAULT 0.0,
+                first_seen_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                last_updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (plan_signature, step_position, node_id),
+                FOREIGN KEY (node_id) REFERENCES step_signatures(id) ON DELETE CASCADE
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_plan ON plan_step_stats(plan_signature)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_node ON plan_step_stats(node_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_position ON plan_step_stats(step_position)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_mean_success ON plan_step_stats(mean_success)")
+        conn.commit()
+        logger.info("[schema] Created plan_step_stats table")
+    except Exception as e:
+        # Table already exists or other error
+        logger.debug("[schema] plan_step_stats migration skipped: %s", e)
 
     # Add new indexes (safe to run multiple times)
     index_migrations = [

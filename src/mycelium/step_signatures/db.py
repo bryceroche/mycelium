@@ -6228,6 +6228,453 @@ class StepSignatureDB:
         variance = self.get_welford_variance(signature_id, stat_type, conn=conn)
         return math.sqrt(variance) if variance > 0 else 0.0
 
+    # =========================================================================
+    # PLAN_STEP_STATS: Statistical blame accumulation for (plan, position, node)
+    # =========================================================================
+    # Per CLAUDE.md: "Failures Are Valuable Data Points" - accumulate blame statistically
+
+    def update_plan_step_stats(
+        self,
+        plan_signature: str,
+        step_position: int,
+        node_id: int,
+        success: bool,
+        conn=None,
+    ) -> bool:
+        """Update Welford stats for (plan, position, node) success rate.
+
+        Called after grading a problem. Records whether each step in the plan
+        succeeded based on the overall problem outcome.
+
+        Per CLAUDE.md: "Failures Are Valuable Data Points" - accumulate blame
+        without reactive exploration. This enables:
+        - Identifying which step positions consistently fail
+        - Detecting which nodes are problematic at certain positions
+        - Order-aware tracking (same node at step 1 vs step 5 may differ)
+
+        Args:
+            plan_signature: Hash of plan structure (from dag_plan_stats)
+            step_position: Position in plan (1, 2, 3...)
+            node_id: Which signature handled this step
+            success: Whether the problem was solved correctly
+
+        Returns:
+            True if update succeeded
+        """
+        success_val = 1.0 if success else 0.0
+
+        def _do_update(c):
+            # Check if row exists
+            row = c.execute(
+                """
+                SELECT n, mean_success, m2
+                FROM plan_step_stats
+                WHERE plan_signature = ? AND step_position = ? AND node_id = ?
+                """,
+                (plan_signature, step_position, node_id)
+            ).fetchone()
+
+            if row:
+                # Update existing row with Welford's algorithm
+                n = row["n"] + 1
+                old_mean = row["mean_success"]
+                old_m2 = row["m2"]
+
+                delta = success_val - old_mean
+                new_mean = old_mean + delta / n
+                delta2 = success_val - new_mean
+                new_m2 = old_m2 + delta * delta2
+
+                c.execute(
+                    """
+                    UPDATE plan_step_stats
+                    SET n = ?, mean_success = ?, m2 = ?, last_updated_at = datetime('now')
+                    WHERE plan_signature = ? AND step_position = ? AND node_id = ?
+                    """,
+                    (n, new_mean, new_m2, plan_signature, step_position, node_id)
+                )
+            else:
+                # Insert new row (first observation: n=1, mean=success_val, m2=0)
+                c.execute(
+                    """
+                    INSERT INTO plan_step_stats
+                        (plan_signature, step_position, node_id, n, mean_success, m2)
+                    VALUES (?, ?, ?, 1, ?, 0.0)
+                    """,
+                    (plan_signature, step_position, node_id, success_val)
+                )
+            return True
+
+        if conn is not None:
+            return _do_update(conn)
+        else:
+            with self._connection() as c:
+                result = _do_update(c)
+                c.commit()
+                return result
+
+    def get_plan_step_stats(
+        self,
+        plan_signature: str,
+        step_position: int,
+        node_id: int,
+        conn=None,
+    ) -> Optional[dict]:
+        """Get Welford stats for a specific (plan, position, node) combo.
+
+        Args:
+            plan_signature: Hash of plan structure
+            step_position: Position in plan
+            node_id: Which signature
+
+        Returns:
+            Dict with n, mean_success, m2, variance, std, or None if not found
+        """
+        def _do_get(c):
+            row = c.execute(
+                """
+                SELECT plan_signature, step_position, node_id, n, mean_success, m2,
+                       first_seen_at, last_updated_at
+                FROM plan_step_stats
+                WHERE plan_signature = ? AND step_position = ? AND node_id = ?
+                """,
+                (plan_signature, step_position, node_id)
+            ).fetchone()
+
+            if not row:
+                return None
+
+            result = dict(row)
+            n = result["n"]
+            m2 = result["m2"]
+
+            # Compute variance and std
+            if n >= 2:
+                result["variance"] = m2 / (n - 1)
+                result["std"] = (result["variance"]) ** 0.5
+            else:
+                result["variance"] = 0.0
+                result["std"] = 0.0
+
+            return result
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def get_plan_step_stats_for_plan(
+        self,
+        plan_signature: str,
+        conn=None,
+    ) -> list[dict]:
+        """Get all step stats for a plan, ordered by position.
+
+        Useful for understanding which positions are problematic.
+
+        Args:
+            plan_signature: Hash of plan structure
+
+        Returns:
+            List of stats dicts, ordered by step_position
+        """
+        def _do_get(c):
+            rows = c.execute(
+                """
+                SELECT pss.plan_signature, pss.step_position, pss.node_id,
+                       pss.n, pss.mean_success, pss.m2,
+                       pss.first_seen_at, pss.last_updated_at,
+                       ss.step_type
+                FROM plan_step_stats pss
+                LEFT JOIN step_signatures ss ON pss.node_id = ss.id
+                WHERE pss.plan_signature = ?
+                ORDER BY pss.step_position
+                """,
+                (plan_signature,)
+            ).fetchall()
+
+            results = []
+            for row in rows:
+                result = dict(row)
+                n = result["n"]
+                m2 = result["m2"]
+                if n >= 2:
+                    result["variance"] = m2 / (n - 1)
+                    result["std"] = (result["variance"]) ** 0.5
+                else:
+                    result["variance"] = 0.0
+                    result["std"] = 0.0
+                results.append(result)
+
+            return results
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def get_low_performing_plan_steps(
+        self,
+        min_observations: int = 5,
+        max_success_rate: float = 0.5,
+        conn=None,
+    ) -> list[dict]:
+        """Find (plan, position, node) combinations with low success rates.
+
+        Used to identify problematic patterns that need attention.
+        Per CLAUDE.md: "Failures Are Valuable Data Points"
+
+        Args:
+            min_observations: Minimum n to be considered significant
+            max_success_rate: Maximum mean_success to be flagged as low
+
+        Returns:
+            List of stats dicts for problematic combinations
+        """
+        def _do_get(c):
+            rows = c.execute(
+                """
+                SELECT pss.plan_signature, pss.step_position, pss.node_id,
+                       pss.n, pss.mean_success, pss.m2,
+                       pss.first_seen_at, pss.last_updated_at,
+                       ss.step_type, ss.description
+                FROM plan_step_stats pss
+                LEFT JOIN step_signatures ss ON pss.node_id = ss.id
+                WHERE pss.n >= ? AND pss.mean_success <= ?
+                ORDER BY pss.mean_success ASC, pss.n DESC
+                """,
+                (min_observations, max_success_rate)
+            ).fetchall()
+
+            results = []
+            for row in rows:
+                result = dict(row)
+                n = result["n"]
+                m2 = result["m2"]
+                if n >= 2:
+                    result["variance"] = m2 / (n - 1)
+                    result["std"] = (result["variance"]) ** 0.5
+                else:
+                    result["variance"] = 0.0
+                    result["std"] = 0.0
+                results.append(result)
+
+            return results
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def get_node_success_by_position(
+        self,
+        node_id: int,
+        conn=None,
+    ) -> dict[int, dict]:
+        """Get success rates for a node grouped by step position.
+
+        Useful for detecting if a node performs differently at different positions.
+        E.g., a "compute_sum" node might work well at step 1 but fail at step 5.
+
+        Args:
+            node_id: The signature to analyze
+
+        Returns:
+            Dict mapping step_position -> stats dict
+        """
+        def _do_get(c):
+            rows = c.execute(
+                """
+                SELECT step_position, n, mean_success, m2
+                FROM plan_step_stats
+                WHERE node_id = ?
+                ORDER BY step_position
+                """,
+                (node_id,)
+            ).fetchall()
+
+            results = {}
+            for row in rows:
+                pos = row["step_position"]
+                n = row["n"]
+                m2 = row["m2"]
+
+                results[pos] = {
+                    "n": n,
+                    "mean_success": row["mean_success"],
+                    "m2": m2,
+                    "variance": m2 / (n - 1) if n >= 2 else 0.0,
+                    "std": (m2 / (n - 1)) ** 0.5 if n >= 2 else 0.0,
+                }
+
+            return results
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def should_avoid_node_at_position(
+        self,
+        node_id: int,
+        step_position: int,
+        plan_signature: Optional[str] = None,
+        min_observations: int = 5,
+        max_success_rate: float = 0.3,
+        conn=None,
+    ) -> tuple[bool, Optional[dict]]:
+        """Check if a node should be avoided at a specific position.
+
+        Used during routing to warn about historically problematic combinations.
+        Per CLAUDE.md: "Failures Are Valuable Data Points"
+
+        Args:
+            node_id: The signature to check
+            step_position: Position in the plan
+            plan_signature: Optional - check specific plan, else check across all plans
+            min_observations: Minimum n to be considered significant
+            max_success_rate: Below this = should avoid
+
+        Returns:
+            Tuple of (should_avoid, stats_dict)
+        """
+        def _do_check(c):
+            if plan_signature:
+                # Check specific (plan, position, node) combo
+                stats = self.get_plan_step_stats(
+                    plan_signature, step_position, node_id, conn=c
+                )
+                if stats and stats["n"] >= min_observations:
+                    if stats["mean_success"] <= max_success_rate:
+                        return (True, stats)
+                return (False, stats)
+            else:
+                # Check node at this position across ALL plans
+                row = c.execute(
+                    """
+                    SELECT SUM(n) as total_n,
+                           SUM(n * mean_success) / SUM(n) as weighted_mean
+                    FROM plan_step_stats
+                    WHERE node_id = ? AND step_position = ? AND n > 0
+                    """,
+                    (node_id, step_position)
+                ).fetchone()
+
+                if row and row["total_n"] and row["total_n"] >= min_observations:
+                    weighted_mean = row["weighted_mean"]
+                    if weighted_mean <= max_success_rate:
+                        return (True, {
+                            "n": row["total_n"],
+                            "mean_success": weighted_mean,
+                            "scope": "all_plans"
+                        })
+                    return (False, {
+                        "n": row["total_n"],
+                        "mean_success": weighted_mean,
+                        "scope": "all_plans"
+                    })
+                return (False, None)
+
+        if conn is not None:
+            return _do_check(conn)
+        else:
+            with self._connection() as c:
+                return _do_check(c)
+
+    def get_best_nodes_for_position(
+        self,
+        step_position: int,
+        min_observations: int = 3,
+        limit: int = 5,
+        conn=None,
+    ) -> list[dict]:
+        """Get the best performing nodes at a specific position.
+
+        Useful for suggesting alternatives when a node is flagged as problematic.
+
+        Args:
+            step_position: Position in the plan
+            min_observations: Minimum n to be considered
+            limit: Max nodes to return
+
+        Returns:
+            List of dicts with node_id, mean_success, n, sorted by success desc
+        """
+        def _do_get(c):
+            rows = c.execute(
+                """
+                SELECT node_id,
+                       SUM(n) as total_n,
+                       SUM(n * mean_success) / SUM(n) as weighted_mean
+                FROM plan_step_stats
+                WHERE step_position = ? AND n > 0
+                GROUP BY node_id
+                HAVING total_n >= ?
+                ORDER BY weighted_mean DESC
+                LIMIT ?
+                """,
+                (step_position, min_observations, limit)
+            ).fetchall()
+
+            return [
+                {
+                    "node_id": row["node_id"],
+                    "n": row["total_n"],
+                    "mean_success": row["weighted_mean"],
+                }
+                for row in rows
+            ]
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def get_plan_step_stats_summary(self, conn=None) -> dict:
+        """Get summary of plan_step_stats table.
+
+        Useful for debugging and monitoring.
+
+        Returns:
+            Dict with total entries, avg success rate, problematic combos count
+        """
+        def _do_get(c):
+            row = c.execute(
+                """
+                SELECT
+                    COUNT(*) as total_entries,
+                    SUM(n) as total_observations,
+                    AVG(mean_success) as avg_success_rate,
+                    COUNT(CASE WHEN n >= 5 AND mean_success < 0.5 THEN 1 END) as low_performers
+                FROM plan_step_stats
+                """
+            ).fetchone()
+
+            if row:
+                return {
+                    "total_entries": row["total_entries"] or 0,
+                    "total_observations": row["total_observations"] or 0,
+                    "avg_success_rate": row["avg_success_rate"] or 0.0,
+                    "low_performers": row["low_performers"] or 0,
+                }
+            return {
+                "total_entries": 0,
+                "total_observations": 0,
+                "avg_success_rate": 0.0,
+                "low_performers": 0,
+            }
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
     def decide_signature_placement(
         self,
         new_embedding: np.ndarray,
