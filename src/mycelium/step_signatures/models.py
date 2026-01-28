@@ -17,6 +17,8 @@ import logging
 import numpy as np
 from typing import Union
 
+from mycelium.config import ADAPTIVE_REJECTION_DEFAULT_THRESHOLD
+
 logger = logging.getLogger(__name__)
 
 
@@ -133,7 +135,7 @@ class StepSignature:
         self,
         k: float = 1.5,
         min_samples: int = 5,
-        default_threshold: float = 0.5,
+        default_threshold: float = ADAPTIVE_REJECTION_DEFAULT_THRESHOLD,
     ) -> float:
         """Compute adaptive rejection threshold based on historical success similarities.
 

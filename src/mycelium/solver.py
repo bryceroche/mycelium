@@ -1508,7 +1508,6 @@ class Solver:
                         # MCTS fallback: get top-3 alternative leaves
                         # Per brainstorm: try re-routing sideways before decomposing depth-wise
                         # Use a slightly lower min_similarity to find alternatives
-                        from mycelium.config import ROUTING_MIN_SIMILARITY_PERMISSIVE
                         mcts_candidates = self.step_db.match_step_to_leaves_mcts(
                             operation_embedding=operation_embedding,
                             dag_step_type=getattr(step, 'dsl_hint', None) or step.task[:40],

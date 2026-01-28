@@ -65,6 +65,13 @@ PLACEMENT_MIN_SIMILARITY = 0.75  # Threshold for placement decisions and deeper 
 # Hint alternatives threshold (get_signature_hints)
 HINT_ALTERNATIVES_MIN_SIMILARITY = 0.3  # Minimum for hint alternatives
 
+# Welford-adaptive similarity thresholds (per CLAUDE.md "The Flow")
+# Instead of static 0.85, adapt based on observed similarity distribution
+ADAPTIVE_THRESHOLD_MIN_SAMPLES = 50  # Minimum Welford observations before using adaptive
+ADAPTIVE_THRESHOLD_K = 1.5  # Standard deviations below mean (captures ~93% of good matches)
+ADAPTIVE_THRESHOLD_MIN = 0.70  # Floor - never go below this
+ADAPTIVE_THRESHOLD_MAX = 0.95  # Ceiling - never go above this
+
 # =============================================================================
 # DSL EXECUTION
 # =============================================================================

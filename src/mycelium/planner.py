@@ -21,6 +21,9 @@ from mycelium.config import (
     TREE_GUIDED_NOVELTY_K,
     TREE_GUIDED_NOVELTY_MIN_SAMPLES,
     TREE_GUIDED_NOVELTY_DEFAULT_THRESHOLD,
+    # Similarity thresholds (per CLAUDE.md "The Flow")
+    HINT_ALTERNATIVES_MIN_SIMILARITY,
+    TREE_PLANNER_NEGOTIATION_SIMILARITY_THRESHOLD,
 )
 
 
@@ -1225,7 +1228,7 @@ class TreeGuidedPlanner:
                 operation_embedding=embedding,
                 dag_step_type=step.operation_type,  # Use operation type, not description
                 top_k=top_k,
-                min_similarity=0.3,  # Permissive - we'll filter by novelty threshold
+                min_similarity=HINT_ALTERNATIVES_MIN_SIMILARITY,  # Permissive - we'll filter by novelty threshold
             )
 
             for sig, ucb1_score, similarity in matches:
@@ -1528,7 +1531,7 @@ Refine these steps into concrete operations with values."""
         self,
         problem: str,
         max_rounds: int = 2,
-        similarity_threshold: float = 0.7,
+        similarity_threshold: float = TREE_PLANNER_NEGOTIATION_SIMILARITY_THRESHOLD,
     ) -> SegmentationResult:
         """Tree-Planner negotiation for dag_step refinement.
 

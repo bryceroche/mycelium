@@ -82,6 +82,11 @@ from mycelium.config import (
     PLACEMENT_MIN_SIMILARITY,
     HINT_ALTERNATIVES_MIN_SIMILARITY,
     NEW_CHILD_SIMILARITY_THRESHOLD,
+    # Welford-adaptive thresholds (per CLAUDE.md "The Flow")
+    ADAPTIVE_THRESHOLD_MIN_SAMPLES,
+    ADAPTIVE_THRESHOLD_K,
+    ADAPTIVE_THRESHOLD_MIN,
+    ADAPTIVE_THRESHOLD_MAX,
 )
 
 # Import from focused modules (scoring and DSL templates)
@@ -1004,13 +1009,64 @@ class StepSignatureDB:
                 )
 
     # =========================================================================
+    # Welford-Adaptive Similarity Threshold (per CLAUDE.md "The Flow")
+    # =========================================================================
+
+    def _get_adaptive_similarity_threshold(
+        self,
+        context: str = "match",
+        fallback: float = None,
+    ) -> float:
+        """Get Welford-adaptive similarity threshold.
+
+        Per CLAUDE.md "The Flow": Database Statistics -> Welford -> Tree Structure.
+        Instead of static 0.85, adapt based on observed similarity distribution.
+
+        Args:
+            context: Welford stats prefix - 'match' (routing) or 'cluster' (clustering)
+            fallback: Fallback if insufficient data (default: MIN_MATCH_THRESHOLD)
+
+        Returns:
+            Adaptive threshold clamped to [ADAPTIVE_THRESHOLD_MIN, ADAPTIVE_THRESHOLD_MAX]
+        """
+        from mycelium.data_layer.state_manager import get_state_manager
+
+        if fallback is None:
+            fallback = MIN_MATCH_THRESHOLD
+
+        # Get Welford stats for this context
+        stats = get_state_manager().get_welford_stats(f"sim_stats_{context}")
+
+        # Need sufficient samples for reliable estimate
+        if stats.count < ADAPTIVE_THRESHOLD_MIN_SAMPLES:
+            logger.debug(
+                "[db] Adaptive threshold: insufficient samples (%d < %d), using fallback %.3f",
+                stats.count, ADAPTIVE_THRESHOLD_MIN_SAMPLES, fallback
+            )
+            return fallback
+
+        # Adaptive: mean - k * std (captures ~93% of good matches at k=1.5)
+        # This ensures we don't reject matches that are within normal variance
+        adaptive = stats.mean - ADAPTIVE_THRESHOLD_K * stats.stddev
+
+        # Clamp to reasonable range
+        clamped = max(ADAPTIVE_THRESHOLD_MIN, min(ADAPTIVE_THRESHOLD_MAX, adaptive))
+
+        logger.debug(
+            "[db] Adaptive threshold: mean=%.3f, std=%.3f, raw=%.3f, clamped=%.3f (n=%d)",
+            stats.mean, stats.stddev, adaptive, clamped, stats.count
+        )
+
+        return clamped
+
+    # =========================================================================
     # Consolidated Routing Core
     # =========================================================================
 
     def _route_core(
         self,
         operation_embedding: np.ndarray,
-        min_similarity: float = MIN_MATCH_THRESHOLD,
+        min_similarity: Optional[float] = None,
         max_depth: int = None,
         track_alternatives: bool = False,
         top_k: int = 3,
@@ -1023,12 +1079,19 @@ class StepSignatureDB:
 
         SINGLE PATHWAY for DFS routing. All variations use this function.
 
+        Per CLAUDE.md "The Flow": min_similarity defaults to Welford-adaptive threshold.
+
         Args:
+            min_similarity: Minimum similarity threshold. None = use adaptive (recommended)
             step_position: Optional step position (1, 2, 3...) for position-aware
                 routing. When provided, uses plan_step_stats to penalize nodes
                 that historically fail at this position.
         """
         from mycelium.config import UMBRELLA_MAX_DEPTH
+
+        # Resolve adaptive threshold if not specified
+        if min_similarity is None:
+            min_similarity = self._get_adaptive_similarity_threshold("match")
 
         if max_depth is None:
             max_depth = UMBRELLA_MAX_DEPTH
@@ -1171,16 +1234,18 @@ class StepSignatureDB:
     def route_through_hierarchy(
         self,
         operation_embedding: np.ndarray,
-        min_similarity: float = MIN_MATCH_THRESHOLD,
+        min_similarity: Optional[float] = None,
         max_depth: int = None,
     ) -> tuple[Optional[StepSignature], list[StepSignature]]:
         """Route an operation embedding through the signature hierarchy.
 
         Thin wrapper around _route_core() for simple routing without alternatives.
 
+        Per CLAUDE.md "The Flow": min_similarity defaults to Welford-adaptive threshold.
+
         Args:
             operation_embedding: The operation embedding to route
-            min_similarity: Minimum similarity threshold
+            min_similarity: Minimum similarity threshold. None = use adaptive (recommended)
             max_depth: Maximum depth to traverse
 
         Returns:
@@ -1203,7 +1268,7 @@ class StepSignatureDB:
     def route_with_confidence(
         self,
         operation_embedding: np.ndarray,
-        min_similarity: float = MIN_MATCH_THRESHOLD,
+        min_similarity: Optional[float] = None,
         max_depth: int = None,
         top_k: int = 3,
         dag_step_type: Optional[str] = None,
@@ -1215,6 +1280,7 @@ class StepSignatureDB:
         tracking, and epsilon-greedy exploration enabled.
 
         Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        Per CLAUDE.md "The Flow": min_similarity defaults to Welford-adaptive threshold.
 
         Confidence interpretation:
         - High confidence (>0.8): Clear winner, single path likely sufficient
@@ -1223,7 +1289,7 @@ class StepSignatureDB:
 
         Args:
             operation_embedding: The operation embedding to route
-            min_similarity: Minimum similarity threshold
+            min_similarity: Minimum similarity threshold. None = use adaptive (recommended)
             max_depth: Maximum depth to traverse
             top_k: Number of top alternatives to track at each level
             dag_step_type: Optional step type for step-node stats lookup
@@ -1272,7 +1338,7 @@ class StepSignatureDB:
         self,
         step_text: str,
         embedding: np.ndarray,
-        min_similarity: float = MIN_MATCH_THRESHOLD,
+        min_similarity: Optional[float] = None,
         parent_problem: str = "",
         origin_depth: int = 0,
         extracted_values: dict = None,
@@ -1285,10 +1351,12 @@ class StepSignatureDB:
         Lazy NL: New signatures have empty clarifying_questions and param_descriptions.
         These get filled in later as the system learns.
 
+        Per CLAUDE.md "The Flow": min_similarity defaults to Welford-adaptive threshold.
+
         Args:
             step_text: The step description text
             embedding: Embedding vector for the step
-            min_similarity: Minimum cosine similarity for matching
+            min_similarity: Minimum cosine similarity for matching. None = use adaptive (recommended)
             parent_problem: The parent problem this step came from
             dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication
             origin_depth: Decomposition depth at which this step was created
@@ -1303,6 +1371,10 @@ class StepSignatureDB:
             This method uses blocking time.sleep() for retries. Use find_or_create_async()
             in async contexts to avoid blocking the event loop.
         """
+        # Resolve adaptive threshold if not specified
+        if min_similarity is None:
+            min_similarity = self._get_adaptive_similarity_threshold("match")
+
         # Warn if called from async context - use find_or_create_async instead
         try:
             asyncio.get_running_loop()
@@ -1337,7 +1409,7 @@ class StepSignatureDB:
         self,
         step_text: str,
         embedding: Optional[np.ndarray] = None,
-        min_similarity: float = MIN_MATCH_THRESHOLD,
+        min_similarity: Optional[float] = None,
         parent_problem: str = "",
         origin_depth: int = 0,
         extracted_values: dict = None,
@@ -1349,6 +1421,7 @@ class StepSignatureDB:
         """Async version of find_or_create with non-blocking retry sleep.
 
         Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        Per CLAUDE.md "The Flow": min_similarity defaults to Welford-adaptive threshold.
         Routing uses graph_embedding exclusively. Text embedding is optional/legacy.
 
         Use this from async contexts to avoid blocking the event loop during
@@ -1357,7 +1430,7 @@ class StepSignatureDB:
         Args:
             step_text: The step description text
             embedding: Optional text embedding (legacy, not used for routing)
-            min_similarity: Minimum cosine similarity for matching
+            min_similarity: Minimum cosine similarity for matching. None = use adaptive (recommended)
             parent_problem: The parent problem this step came from
             dsl_hint: Explicit operation hint from planner (+, -, *, /) for graph routing
             origin_depth: Decomposition depth at which this step was created
@@ -1370,6 +1443,10 @@ class StepSignatureDB:
             Tuple of (signature, is_new) where is_new=True if newly created
         """
         from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
+
+        # Resolve adaptive threshold if not specified
+        if min_similarity is None:
+            min_similarity = self._get_adaptive_similarity_threshold("match")
 
         sig = None
         is_new = False
@@ -3069,7 +3146,7 @@ class StepSignatureDB:
         self,
         min_success_rate: float = 0.7,
         min_uses: int = 5,
-        min_similarity: float = MIN_MATCH_THRESHOLD,
+        min_similarity: Optional[float] = None,
         limit: int = 10,
     ) -> list[tuple[int, int, float]]:
         """Find pairs of signatures that are candidates for merging.
@@ -3079,15 +3156,20 @@ class StepSignatureDB:
         - Have similar centroids (semantically similar)
         - Are not already archived
 
+        Per CLAUDE.md "The Flow": min_similarity defaults to Welford-adaptive threshold.
+
         Args:
             min_success_rate: Minimum success rate for both signatures
             min_uses: Minimum uses for both signatures (need data to trust)
-            min_similarity: Minimum cosine similarity between centroids
+            min_similarity: Minimum cosine similarity. None = use adaptive (recommended)
             limit: Maximum number of pairs to return
 
         Returns:
             List of (sig1_id, sig2_id, similarity) tuples, ordered by similarity desc
         """
+        # Resolve adaptive threshold if not specified
+        if min_similarity is None:
+            min_similarity = self._get_adaptive_similarity_threshold("cluster")
         with self._connection() as conn:
             # Get candidate signatures (high success rate, enough uses)
             cursor = conn.execute(

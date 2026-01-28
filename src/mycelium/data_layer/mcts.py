@@ -2248,7 +2248,7 @@ def get_dag_step_node_stats_single(
 
 def get_high_variance_step_node_pairs(
     min_samples: int = 5,
-    variance_threshold: float = 0.1,
+    variance_threshold: float = VARIANCE_THRESHOLD,
     limit: int = 20,
 ) -> list[dict]:
     """Find nodes (dag_step_types) with high variance - candidates for decomposition.
@@ -4148,7 +4148,7 @@ def analyze_decomposition_needs(min_attempts: int = 3, max_win_rate: float = 0.5
     # High variance = node is too generic for this step type = decompose into specialized children
     high_variance_pairs = get_high_variance_step_node_pairs(
         min_samples=min_attempts,
-        variance_threshold=0.1,  # Flag pairs with >0.1 amplitude variance
+        variance_threshold=VARIANCE_THRESHOLD,  # Flag pairs with >threshold amplitude variance
         limit=10,
     )
     pairs_to_decompose = []
