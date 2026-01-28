@@ -682,6 +682,48 @@ class EmbeddingCache:
         self.put(text, embedding)
         return embedding
 
+    async def get_or_compute_async(
+        self,
+        text: str,
+        compute_fn,
+    ) -> np.ndarray:
+        """Async version of get_or_compute.
+
+        Per CLAUDE.md "New Favorite Pattern": Single entry point for async
+        cached embedding lookups.
+
+        Args:
+            text: Text to embed
+            compute_fn: Async function to compute embedding if not cached.
+                        Should accept text and return list[float] or np.ndarray.
+
+        Returns:
+            Embedding array (from cache or freshly computed)
+        """
+        # Try cache first (sync - cache is in-memory/disk)
+        embedding = self.get(text)
+        if embedding is not None:
+            return embedding
+
+        # Compute async and cache
+        with self._lock:
+            self._stats.computes += 1
+            start = time.time()
+
+        result = await compute_fn(text)
+
+        # Convert list to numpy if needed
+        if isinstance(result, list):
+            embedding = np.array(result, dtype=np.float32)
+        else:
+            embedding = result
+
+        with self._lock:
+            self._stats.total_compute_time_ms += (time.time() - start) * 1000
+
+        self.put(text, embedding)
+        return embedding
+
     def get_batch(
         self,
         texts: list[str],
@@ -890,6 +932,25 @@ def cached_embed(text: str, embedder=None) -> np.ndarray:
 
     cache = get_embedding_cache()
     return cache.get_or_compute(text, embedder.embed)
+
+
+async def cached_embed_async(text: str, embed_fn) -> np.ndarray:
+    """Async version of cached_embed.
+
+    Per CLAUDE.md "New Favorite Pattern": Single entry point for async
+    cached embedding lookups.
+
+    Args:
+        text: Text to embed
+        embed_fn: Async function that takes text and returns embedding.
+                  Typically `embedding_client.embed` where client has
+                  async embed() method.
+
+    Returns:
+        Embedding array
+    """
+    cache = get_embedding_cache()
+    return await cache.get_or_compute_async(text, embed_fn)
 
 
 def cached_embed_batch(texts: list[str], embedder=None) -> dict[str, np.ndarray]:

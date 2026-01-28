@@ -360,12 +360,8 @@ class CacheManager:
             clear_graph_embedding_cache()
         except ImportError:
             pass
-
-        try:
-            from mycelium.step_signatures.operation_extractor import clear_operation_cache
-            clear_operation_cache()
-        except ImportError:
-            pass
+        # Note: operation_extractor cache removed per mycelium-ocal
+        # All embedding now goes through embedding_cache.py (New Favorite Pattern)
 
     def invalidate_routing_caches(self) -> None:
         """Invalidate caches used for routing decisions.
