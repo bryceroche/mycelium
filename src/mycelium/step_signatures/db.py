@@ -435,6 +435,91 @@ def get_adaptive_thresholds(conn) -> AdaptiveThresholds:
     )
 
 
+def get_global_exec_success_floor(conn, k: float = 2.0, min_samples: int = 10) -> float:
+    """Compute adaptive failure rate floor from aggregated Welford exec stats.
+
+    Per CLAUDE.md "System Independence": Use learned stats instead of magic numbers.
+
+    Aggregates exec_n and exec_successes across all signatures to compute
+    a global success rate distribution. The floor is: mean - k*std
+
+    Args:
+        conn: Database connection
+        k: Number of stddevs below mean for floor (default 2.0)
+        min_samples: Minimum total observations before using adaptive floor
+
+    Returns:
+        Adaptive success rate floor (below which = "too low")
+        During cold start, returns conservative default of 0.3
+    """
+    # Aggregate exec stats across all signatures
+    row = conn.execute(
+        """
+        SELECT
+            SUM(exec_n) as total_n,
+            SUM(exec_successes) as total_successes
+        FROM welford_stats
+        WHERE exec_n > 0
+        """
+    ).fetchone()
+
+    if not row or row["total_n"] is None or row["total_n"] < min_samples:
+        # Cold start: use conservative default
+        return 0.3
+
+    total_n = row["total_n"]
+    total_successes = row["total_successes"] or 0
+
+    # Global success rate
+    global_mean = total_successes / total_n if total_n > 0 else 0.5
+
+    # Compute variance using aggregate method:
+    # For binomial (success/fail), variance = p * (1-p) / n per signature
+    # Aggregate variance is harder, so we'll use per-signature success rates
+    rates_row = conn.execute(
+        """
+        SELECT
+            AVG(CAST(exec_successes AS FLOAT) / exec_n) as mean_rate,
+            COUNT(*) as n_sigs
+        FROM welford_stats
+        WHERE exec_n >= 3
+        """
+    ).fetchone()
+
+    if not rates_row or rates_row["n_sigs"] < 3:
+        # Not enough signatures with data, use simple floor
+        floor = max(0.1, global_mean - 0.2)  # 20% below mean, min 0.1
+        return floor
+
+    # Compute variance of per-signature success rates
+    var_row = conn.execute(
+        """
+        SELECT
+            AVG((CAST(exec_successes AS FLOAT) / exec_n - ?) * (CAST(exec_successes AS FLOAT) / exec_n - ?)) as var
+        FROM welford_stats
+        WHERE exec_n >= 3
+        """,
+        (rates_row["mean_rate"], rates_row["mean_rate"])
+    ).fetchone()
+
+    if not var_row or var_row["var"] is None:
+        floor = max(0.1, global_mean - 0.2)
+        return floor
+
+    std = math.sqrt(var_row["var"]) if var_row["var"] > 0 else 0.1
+
+    # Floor = mean - k * std, clamped to [0.1, 0.5]
+    floor = global_mean - k * std
+    floor = max(0.1, min(0.5, floor))
+
+    logger.debug(
+        "[exec_floor] Global exec floor: %.3f (mean=%.3f, std=%.3f, n=%d)",
+        floor, global_mean, std, total_n
+    )
+
+    return floor
+
+
 def update_similarity_stats(conn, stat_type: str, similarity: float) -> None:
     """Update Welford stats for similarity tracking.
 
@@ -5146,7 +5231,7 @@ class StepSignatureDB:
         self,
         step_description: str,
         operation_embedding: np.ndarray,
-        similarity_threshold: float = 0.7,
+        similarity_threshold: Optional[float] = None,
         step_position: Optional[int] = None,
     ) -> dict:
         """Get hints for decomposing a dag_step using existing vocabulary.
@@ -5155,8 +5240,9 @@ class StepSignatureDB:
         Bias towards decomposing dag_steps (cheap, per-problem) over
         decomposing leaf_nodes (permanent tree change).
 
-        Per CLAUDE.md "Cluster Boundaries":
+        Per CLAUDE.md "Cluster Boundaries" & "System Independence":
         Uses adaptive z-score thresholds from Welford stats, not hard-coded values.
+        similarity_threshold: If None, uses adaptive cluster_threshold from global match stats.
         Rejection based on: similarity + historical (node, position) performance.
 
         When a dag_step has a poor match, this method suggests how to
@@ -5176,6 +5262,20 @@ class StepSignatureDB:
             - 'suggested_decomposition': list of operation names that might compose this step
             - 'rejection_reason': why decomposition is needed (if applicable)
         """
+        # Per CLAUDE.md "System Independence": Compute adaptive thresholds from Welford stats
+        # instead of hard-coded magic numbers
+        with self._connection() as conn:
+            adaptive = get_adaptive_thresholds(conn)
+            exec_success_floor = get_global_exec_success_floor(conn)
+
+        # Use adaptive cluster_threshold if no explicit threshold provided
+        if similarity_threshold is None:
+            similarity_threshold = adaptive.cluster_threshold
+            logger.debug(
+                "[decomp_hints] Using adaptive thresholds: similarity=%.3f, exec_floor=%.3f (match_count=%d)",
+                similarity_threshold, exec_success_floor, adaptive.match_count
+            )
+
         leaves = self.get_all_leaves(min_uses=0)
 
         # Find best match
@@ -5251,11 +5351,11 @@ class StepSignatureDB:
                         needs_decomposition = True
                         rejection_reason = f"high_cv (cv={cv:.2f}, std={position_stats['std']:.2f}, mean={position_stats['mean_success']:.2f})"
 
-                # Method D: Absolute failure rate (floor check)
-                if not needs_decomposition and position_stats["mean_success"] < 0.3:
-                    # Even with adaptive thresholds, < 30% success is too low
+                # Method D: Adaptive failure rate floor (per CLAUDE.md "System Independence")
+                # Uses global exec success distribution: floor = mean - 2*std
+                if not needs_decomposition and position_stats["mean_success"] < exec_success_floor:
                     needs_decomposition = True
-                    rejection_reason = f"high_failure_rate ({position_stats['mean_success']:.2f})"
+                    rejection_reason = f"high_failure_rate ({position_stats['mean_success']:.2f} < floor={exec_success_floor:.2f})"
 
         # Suggest decomposition based on existing vocabulary
         suggested_decomposition = []
