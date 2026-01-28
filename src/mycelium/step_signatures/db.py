@@ -7159,6 +7159,53 @@ class StepSignatureDB:
     # During cold start: auto-accept as root children.
     # After cold start: stage for Welford-based decision.
 
+    # -------------------------------------------------------------------------
+    # Private helpers for proposed_signatures table (consolidation pattern)
+    # -------------------------------------------------------------------------
+
+    def _fetch_pending_proposal(self, proposal_id: int, conn) -> Optional["ProposedSignature"]:
+        """Fetch a single pending proposal by ID. Consolidated SQL helper."""
+        from mycelium.step_signatures.models import ProposedSignature
+
+        row = conn.execute(
+            "SELECT * FROM proposed_signatures WHERE id = ? AND status = 'pending'",
+            (proposal_id,)
+        ).fetchone()
+
+        if not row:
+            return None
+        return ProposedSignature.from_row(dict(row))
+
+    def _update_proposal_status(
+        self, proposal_id: int, status: str, reason: str, conn
+    ) -> bool:
+        """Update proposal status. Consolidated SQL helper."""
+        now = datetime.now(timezone.utc).isoformat()
+        cursor = conn.execute(
+            """UPDATE proposed_signatures
+               SET status = ?, decision_reason = ?, decided_at = ?
+               WHERE id = ? AND status = 'pending'""",
+            (status, reason, now, proposal_id),
+        )
+        return cursor.rowcount > 0
+
+    def _fetch_pending_proposals(self, limit: int, conn) -> list["ProposedSignature"]:
+        """Fetch pending proposals ordered by created_at. Consolidated SQL helper."""
+        from mycelium.step_signatures.models import ProposedSignature
+
+        cursor = conn.execute(
+            """SELECT * FROM proposed_signatures
+               WHERE status = 'pending'
+               ORDER BY created_at ASC
+               LIMIT ?""",
+            (limit,)
+        )
+        return [ProposedSignature.from_row(dict(row)) for row in cursor]
+
+    # -------------------------------------------------------------------------
+    # Public API for proposals
+    # -------------------------------------------------------------------------
+
     def stage_proposal(
         self,
         step_text: str,
@@ -7251,34 +7298,6 @@ class StepSignatureDB:
                 result = _do_stage(c)
                 c.commit()
                 return result
-
-    def get_pending_proposals(self, limit: int = 50, conn=None) -> list["ProposedSignature"]:
-        """Get pending proposals for review.
-
-        Args:
-            limit: Max proposals to return
-
-        Returns:
-            List of ProposedSignature objects with status='pending'
-        """
-        from mycelium.step_signatures.models import ProposedSignature
-
-        def _do_get(c):
-            rows = c.execute(
-                """SELECT * FROM proposed_signatures
-                   WHERE status = 'pending'
-                   ORDER BY created_at ASC
-                   LIMIT ?""",
-                (limit,)
-            ).fetchall()
-
-            return [ProposedSignature.from_row(dict(row)) for row in rows]
-
-        if conn is not None:
-            return _do_get(conn)
-        else:
-            with self._connection() as c:
-                return _do_get(c)
 
     def propose_signature(
         self,
@@ -7473,20 +7492,12 @@ class StepSignatureDB:
         Returns:
             Created signature ID, or None if proposal not found
         """
-        from mycelium.step_signatures.models import ProposedSignature
-
         def _do_accept(c):
-            # Fetch the proposal
-            row = c.execute(
-                "SELECT * FROM proposed_signatures WHERE id = ? AND status = 'pending'",
-                (proposal_id,)
-            ).fetchone()
-
-            if not row:
+            # Fetch using consolidated helper
+            proposal = self._fetch_pending_proposal(proposal_id, c)
+            if not proposal:
                 logger.warning("[proposals] Proposal id=%d not found or not pending", proposal_id)
                 return None
-
-            proposal = ProposedSignature.from_row(dict(row))
 
             # Determine parent
             actual_parent_id = parent_id if parent_id is not None else proposal.proposed_parent_id
@@ -7506,14 +7517,8 @@ class StepSignatureDB:
                 origin_depth=proposal.origin_depth,
             )
 
-            # Update proposal status
-            now = datetime.now(timezone.utc).isoformat()
-            c.execute(
-                """UPDATE proposed_signatures
-                   SET status = 'accepted', decision_reason = ?, decided_at = ?
-                   WHERE id = ?""",
-                (reason, now, proposal_id),
-            )
+            # Update using consolidated helper
+            self._update_proposal_status(proposal_id, "accepted", reason, c)
 
             logger.info(
                 "[proposals] Accepted proposal id=%d -> signature id=%d, reason='%s'",
@@ -7550,19 +7555,13 @@ class StepSignatureDB:
             True if rejection succeeded, False if proposal not found
         """
         def _do_reject(c):
-            now = datetime.now(timezone.utc).isoformat()
-            cursor = c.execute(
-                """UPDATE proposed_signatures
-                   SET status = 'rejected', decision_reason = ?, decided_at = ?
-                   WHERE id = ? AND status = 'pending'""",
-                (reason, now, proposal_id),
-            )
-            if cursor.rowcount > 0:
+            # Use consolidated helper
+            success = self._update_proposal_status(proposal_id, "rejected", reason, c)
+            if success:
                 logger.info("[proposals] Rejected proposal id=%d, reason='%s'", proposal_id, reason)
-                return True
             else:
                 logger.warning("[proposals] Proposal id=%d not found or not pending", proposal_id)
-                return False
+            return success
 
         if conn is not None:
             return _do_reject(conn)
@@ -7592,20 +7591,12 @@ class StepSignatureDB:
         Returns:
             True if merge succeeded, False if proposal or signature not found
         """
-        from mycelium.step_signatures.models import ProposedSignature
-
         def _do_merge(c):
-            # Fetch the proposal
-            row = c.execute(
-                "SELECT * FROM proposed_signatures WHERE id = ? AND status = 'pending'",
-                (proposal_id,)
-            ).fetchone()
-
-            if not row:
+            # Fetch using consolidated helper
+            proposal = self._fetch_pending_proposal(proposal_id, c)
+            if not proposal:
                 logger.warning("[proposals] Proposal id=%d not found or not pending", proposal_id)
                 return False
-
-            proposal = ProposedSignature.from_row(dict(row))
 
             if proposal.embedding is None:
                 logger.warning("[proposals] Proposal id=%d has no embedding, cannot merge", proposal_id)
@@ -7644,14 +7635,9 @@ class StepSignatureDB:
                 (centroid_packed, centroid_bucket, sum_packed, new_count, merge_into_sig_id),
             )
 
-            # Update proposal status
-            now = datetime.now(timezone.utc).isoformat()
-            c.execute(
-                """UPDATE proposed_signatures
-                   SET status = 'merged', decision_reason = ?, decided_at = ?
-                   WHERE id = ?""",
-                (f"{reason}:into_sig_{merge_into_sig_id}", now, proposal_id),
-            )
+            # Update using consolidated helper (with extended reason)
+            merge_reason = f"{reason}:into_sig_{merge_into_sig_id}"
+            self._update_proposal_status(proposal_id, "merged", merge_reason, c)
 
             # Invalidate caches
             invalidate_centroid_cache(merge_into_sig_id)
@@ -7690,23 +7676,12 @@ class StepSignatureDB:
         Returns:
             List of ProposedSignature objects
         """
-        from mycelium.step_signatures.models import ProposedSignature
-
-        def _do_get(c):
-            cursor = c.execute(
-                """SELECT * FROM proposed_signatures
-                   WHERE status = 'pending'
-                   ORDER BY created_at ASC
-                   LIMIT ?""",
-                (limit,)
-            )
-            return [ProposedSignature.from_row(dict(row)) for row in cursor]
-
+        # Use consolidated helper
         if conn is not None:
-            return _do_get(conn)
+            return self._fetch_pending_proposals(limit, conn)
         else:
             with self._connection() as c:
-                return _do_get(c)
+                return self._fetch_pending_proposals(limit, c)
 
     def get_proposal_stats(self, conn=None) -> dict:
         """Get summary statistics about proposals.
