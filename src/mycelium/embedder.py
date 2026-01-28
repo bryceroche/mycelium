@@ -98,51 +98,47 @@ class OpenAIEmbedder:
 
 
 class GeminiEmbedder:
-    """Generate embeddings using Google Gemini API."""
+    """Generate embeddings using Google Gemini API (new google.genai SDK)."""
 
     def __init__(self, model_name: str = "gemini-embedding-001"):
         self.model_name = model_name
         self._client = None
 
     def _get_client(self):
-        """Lazy load the Gemini client."""
+        """Lazy load the Gemini client using new google.genai SDK."""
         if self._client is None:
-            import google.generativeai as genai
+            from google import genai
             api_key = os.getenv("GOOGLE_API_KEY")
             if not api_key:
                 raise ValueError("GOOGLE_API_KEY environment variable not set")
-            genai.configure(api_key=api_key)
-            self._client = genai
+            self._client = genai.Client(api_key=api_key)
             logger.info(f"[embedder] Gemini client configured for model: {self.model_name}")
         return self._client
 
     def embed(self, text: str) -> np.ndarray:
         """Generate embedding for a single text."""
         client = self._get_client()
-        result = client.embed_content(
-            model=f"models/{self.model_name}" if not self.model_name.startswith("models/") else self.model_name,
-            content=text,
-            task_type="SEMANTIC_SIMILARITY",
+        result = client.models.embed_content(
+            model=self.model_name,
+            contents=text,
         )
-        return np.array(result['embedding'], dtype=np.float32)
+        return np.array(result.embeddings[0].values, dtype=np.float32)
 
     def embed_batch(self, texts: list[str]) -> np.ndarray:
         """Generate embeddings for multiple texts."""
         client = self._get_client()
-        model_name = f"models/{self.model_name}" if not self.model_name.startswith("models/") else self.model_name
         embeddings = []
         for text in texts:
-            result = client.embed_content(
-                model=model_name,
-                content=text,
-                task_type="SEMANTIC_SIMILARITY",
+            result = client.models.embed_content(
+                model=self.model_name,
+                contents=text,
             )
-            embeddings.append(result['embedding'])
+            embeddings.append(result.embeddings[0].values)
         return np.array(embeddings, dtype=np.float32)
 
     @property
     def embedding_dim(self) -> int:
-        """Get embedding dimension (Gemini embedding-001 is 768)."""
+        """Get embedding dimension (gemini-embedding-001 outputs 3072)."""
         return EMBEDDING_DIM
 
 

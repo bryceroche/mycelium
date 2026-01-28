@@ -5377,6 +5377,30 @@ class StepSignatureDB:
             - 'suggested_decomposition': list of operation names that might compose this step
             - 'rejection_reason': why decomposition is needed (if applicable)
         """
+        # Defensive check: validate embedding dimension
+        from mycelium.config import EMBEDDING_DIM
+        if operation_embedding is None or len(operation_embedding.shape) == 0:
+            logger.warning("[decomp_hints] Invalid embedding: None or scalar")
+            return {
+                'needs_decomposition': True,
+                'best_match': None,
+                'vocabulary': [],
+                'suggested_decomposition': [],
+                'rejection_reason': 'invalid_embedding',
+            }
+        if operation_embedding.shape[0] != EMBEDDING_DIM:
+            logger.warning(
+                "[decomp_hints] Embedding dimension mismatch: got %s, expected %d",
+                operation_embedding.shape, EMBEDDING_DIM
+            )
+            return {
+                'needs_decomposition': True,
+                'best_match': None,
+                'vocabulary': [],
+                'suggested_decomposition': [],
+                'rejection_reason': f'embedding_dim_mismatch_{operation_embedding.shape[0]}',
+            }
+
         # Per CLAUDE.md "System Independence": Compute adaptive thresholds from Welford stats
         # instead of hard-coded magic numbers
         with self._connection() as conn:
