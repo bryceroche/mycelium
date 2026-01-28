@@ -216,21 +216,29 @@ EXPLORATION_EPSILON_DECAY = 0.995  # Decay factor per problem (0.995^100 ≈ 0.6
 EXPLORATION_EPSILON_MIN = 0.05  # Minimum epsilon floor
 
 # =============================================================================
-# REACTIVE EXPLORATION (retry on failure)
+# REACTIVE EXPLORATION (retry on failure) - DISABLED BY DEFAULT
 # =============================================================================
-# Per CLAUDE.md: "If we got the wrong answer that should trigger a larger MCTS rollout
-# where we explore the tree more widely searching for the right leaf_node, dag_step pairs"
-# When a problem fails, we retry with adaptive exploration via Welford-guided thresholds.
-# If we find a winning path, we compare divergence points for precise blame assignment.
+# Per mycelium-tnil + CLAUDE.md "System Independence":
+# "Let signatures fail. This is how the system learns."
+# "Record every failure—it feeds the post-mortem analysis"
+# "Accumulated failure patterns (not individual failures) trigger decomposition"
 #
-# Per mycelium-02nn "System Independence": Reactive exploration uses adaptive thresholds
-# (REACTIVE_EXPLORATION_GAP_MULT, REACTIVE_EXPLORATION_BUDGET_MULT) instead of
-# imperative _force_exploration flag. This keeps control Welford-guided.
-REACTIVE_EXPLORATION_ENABLED = True  # Enable reactive exploration on failure
+# Reactive exploration (retrying with different seeds) MASKS failures instead of
+# learning from them. The proper flow per "The Flow":
+#   1. Problem fails → failure recorded in DB
+#   2. Post-mortem runs on the failing DAG (already has multiple MCTS threads)
+#   3. Welford stats accumulate from failures
+#   4. Eventually triggers decomposition when variance is high
+#
+# Retrying just hopes to get lucky, doesn't learn. MCTS already explores
+# multiple paths during the first solve - that's sufficient exploration.
+#
+# These configs are kept for optional use but DISABLED by default.
+REACTIVE_EXPLORATION_ENABLED = False  # DISABLED: Let failures stand, system learns
 REACTIVE_EXPLORATION_MAX_ALTERNATIVES = 3  # Max alternative nodes to try per step
 REACTIVE_EXPLORATION_MAX_RETRIES = 5  # Max total retry attempts
 REACTIVE_EXPLORATION_MIN_SIMILARITY = 0.5  # Min similarity for alternative candidates
-REACTIVE_EXPLORATION_FULL_RESOLVE = True  # Re-solve entire problem with adaptive exploration
+REACTIVE_EXPLORATION_FULL_RESOLVE = False  # DISABLED: Don't re-solve, let failures stand
 REACTIVE_EXPLORATION_NUM_THREADS = 3  # Number of parallel exploration threads to spawn
 REACTIVE_EXPLORATION_TEMPERATURE = 0.3  # Higher temp for diversity (vs 0.0 default)
 REACTIVE_EXPLORATION_EPSILON_BOOST = 0.3  # Boost epsilon during exploration (stacks with base)
@@ -238,15 +246,17 @@ REACTIVE_EXPLORATION_EPSILON_BOOST = 0.3  # Boost epsilon during exploration (st
 # =============================================================================
 # ADAPTIVE REACTIVE EXPLORATION MULTIPLIERS (Welford-guided, per mycelium-02nn)
 # =============================================================================
+# NOTE: Only used when REACTIVE_EXPLORATION_ENABLED = True (disabled by default)
+#
 # Per CLAUDE.md "The Flow": DB Statistics → Welford → Tree Structure
 # Multipliers adjust based on whether reactive exploration is finding winning paths.
 #
-# Logic:
+# Logic (when reactive exploration IS enabled):
 # - Low success rate → need more exploration → increase multipliers
 # - High success rate → current settings work → maintain or decrease
 # - Welford tracks variance to detect when adjustments are needed
 
-ADAPTIVE_REACTIVE_ENABLED = True  # Use Welford-guided multipliers
+ADAPTIVE_REACTIVE_ENABLED = True  # Use Welford-guided multipliers (when reactive enabled)
 ADAPTIVE_REACTIVE_MIN_SAMPLES = 5  # Min reactive explorations before adapting
 
 # Fallback multipliers (used during cold start)
