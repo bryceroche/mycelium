@@ -925,6 +925,82 @@ def migrate_db(conn) -> None:
         # Table already exists or other error
         logger.debug("[schema] plan_step_stats migration skipped: %s", e)
 
+    # Create ucb1_gap_stats table (per mycelium-02nn: Welford-guided exploration)
+    # Tracks UCB1 gap values that led to correct vs incorrect routing decisions
+    # Used to compute adaptive gap threshold: threshold = mean - k * std
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS ucb1_gap_stats (
+                id INTEGER PRIMARY KEY CHECK (id = 1),  -- singleton row
+
+                -- Gaps from successful routing decisions
+                success_n INTEGER DEFAULT 0,
+                success_mean REAL DEFAULT 0.0,
+                success_m2 REAL DEFAULT 0.0,
+
+                -- Gaps from failed routing decisions
+                failure_n INTEGER DEFAULT 0,
+                failure_mean REAL DEFAULT 0.0,
+                failure_m2 REAL DEFAULT 0.0,
+
+                -- Combined stats (for overall threshold)
+                total_n INTEGER DEFAULT 0,
+                total_mean REAL DEFAULT 0.0,
+                total_m2 REAL DEFAULT 0.0,
+
+                -- Metadata
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        # Initialize singleton row
+        conn.execute("""
+            INSERT OR IGNORE INTO ucb1_gap_stats (id) VALUES (1)
+        """)
+        conn.commit()
+        logger.info("[schema] Created ucb1_gap_stats table")
+    except Exception as e:
+        logger.debug("[schema] ucb1_gap_stats migration skipped: %s", e)
+
+    # Create reactive_exploration_stats table (per mycelium-02nn enhancement)
+    # Tracks reactive exploration outcomes for Welford-adaptive multipliers
+    # Per CLAUDE.md "The Flow": DB Statistics → Welford → Tree Structure
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS reactive_exploration_stats (
+                id INTEGER PRIMARY KEY CHECK (id = 1),  -- singleton row
+
+                -- Welford stats for reactive exploration success rate
+                -- Tracks whether reactive exploration finds winning paths
+                n INTEGER DEFAULT 0,                  -- Total reactive explorations
+                success_mean REAL DEFAULT 0.0,        -- Mean success rate (0-1)
+                success_m2 REAL DEFAULT 0.0,          -- Welford M2 for variance
+
+                -- Welford stats for gap multiplier effectiveness
+                -- Tracks what gap_mult values led to success
+                gap_mult_n INTEGER DEFAULT 0,
+                gap_mult_mean REAL DEFAULT 2.0,       -- Mean effective gap multiplier
+                gap_mult_m2 REAL DEFAULT 0.0,
+
+                -- Welford stats for budget multiplier effectiveness
+                budget_mult_n INTEGER DEFAULT 0,
+                budget_mult_mean REAL DEFAULT 1.5,    -- Mean effective budget multiplier
+                budget_mult_m2 REAL DEFAULT 0.0,
+
+                -- Metadata
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        # Initialize singleton row
+        conn.execute("""
+            INSERT OR IGNORE INTO reactive_exploration_stats (id) VALUES (1)
+        """)
+        conn.commit()
+        logger.info("[schema] Created reactive_exploration_stats table")
+    except Exception as e:
+        logger.debug("[schema] reactive_exploration_stats migration skipped: %s", e)
+
     # Add new indexes (safe to run multiple times)
     index_migrations = [
         "CREATE INDEX IF NOT EXISTS idx_sig_is_root ON step_signatures(is_root)",

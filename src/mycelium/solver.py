@@ -228,14 +228,16 @@ def get_expansion_rate() -> float:
         Expansion rate in [0.05, 1.0]
     """
     import math
+    from mycelium.config import EXPANSION_SIGMOID_MIDPOINT, EXPANSION_SIGMOID_STEEPNESS
 
     accuracy = get_accuracy()
     reuse_rate = get_reuse_rate()
     sig_count = get_signature_count()
 
     # 1. Accuracy-driven sigmoid: base expansion from performance
-    # At accuracy=0: ~1.0, at 0.7: 0.5, at 1.0: ~0
-    accuracy_factor = 1.0 / (1.0 + math.exp((accuracy - 0.7) / 0.15))
+    # Per mycelium-7khj: use config instead of hardcoded threshold
+    # At accuracy=midpoint: 0.5, at accuracy=1.0: ~0
+    accuracy_factor = 1.0 / (1.0 + math.exp((accuracy - EXPANSION_SIGMOID_MIDPOINT) / EXPANSION_SIGMOID_STEEPNESS))
 
     # 2. Reuse modulation: low reuse = fragmenting, slow down
     # At cold start (few sigs), ignore reuse (give it time to build up)
@@ -677,9 +679,15 @@ class Solver:
         # Stored after record_problem_outcome() for async processing
         self._pending_reactive_exploration: Optional[dict] = None
 
-        # Force exploration flag: when True, bypass UCB1 gap check and always fork
-        # Used during reactive exploration to spawn multiple threads on failure
-        self._force_exploration: bool = False
+        # Reactive exploration mode: when True, use adaptive multipliers for exploration
+        # Per mycelium-02nn: Replaces _force_exploration with Welford-guided thresholds
+        # This multiplies gap threshold (more lenient) and budget (explore more paths)
+        self._reactive_exploration_mode: bool = False
+
+        # Current reactive exploration multipliers (Welford-adaptive, set when entering mode)
+        # Per CLAUDE.md "The Flow": These come from DB Statistics → Welford
+        self._reactive_gap_mult: float = 2.0
+        self._reactive_budget_mult: float = 1.5
 
         # Phase 1 values for provenance tracking (set per-problem in solve())
         # Maps value name -> numeric value for resolving $name references
@@ -716,6 +724,57 @@ class Solver:
         if not_done:
             logger.warning("[solver] %d background tasks did not complete in time", len(not_done))
         return pending
+
+    def _get_adaptive_gap_threshold(self) -> float:
+        """Get adaptive UCB1 gap threshold for branching decisions.
+
+        Per mycelium-02nn: Uses Welford stats to compute adaptive threshold.
+        In reactive exploration mode, multiplies threshold using Welford-adaptive multipliers.
+
+        Per CLAUDE.md "The Flow": DB Statistics → Welford → Tree Structure
+
+        Returns:
+            Gap threshold (branch when min_gap < threshold)
+        """
+        # Get base threshold from Welford stats
+        base_threshold = self.step_db.get_adaptive_gap_threshold()
+
+        # In reactive exploration, use Welford-adaptive multiplier
+        if self._reactive_exploration_mode:
+            threshold = base_threshold * self._reactive_gap_mult
+            logger.debug(
+                "[solver] Reactive exploration: gap threshold %.3f -> %.3f (mult=%.2f)",
+                base_threshold, threshold, self._reactive_gap_mult
+            )
+            return threshold
+
+        return base_threshold
+
+    def _get_effective_budget(self, base_budget: float) -> float:
+        """Get effective compute budget, boosted during reactive exploration.
+
+        Per mycelium-02nn: In reactive exploration mode, boost budget using
+        Welford-adaptive multipliers.
+
+        Per CLAUDE.md "The Flow": DB Statistics → Welford → Tree Structure
+
+        Args:
+            base_budget: The base compute budget
+
+        Returns:
+            Effective budget (possibly boosted)
+        """
+        from mycelium.config import REACTIVE_EXPLORATION_MIN_BUDGET
+
+        if self._reactive_exploration_mode:
+            boosted = max(base_budget * self._reactive_budget_mult, REACTIVE_EXPLORATION_MIN_BUDGET)
+            logger.debug(
+                "[solver] Reactive exploration: budget %.1f -> %.1f (mult=%.2f, min=%.1f)",
+                base_budget, boosted, self._reactive_budget_mult, REACTIVE_EXPLORATION_MIN_BUDGET
+            )
+            return boosted
+
+        return base_budget
 
     def _try_zero_llm_solve(
         self,
@@ -1414,35 +1473,32 @@ class Solver:
             if graph_results:
                 best_sig, best_sim = graph_results[0]
                 # High-confidence graph match - use this signature directly
-                # Threshold: 90% similarity means operationally identical
-                if best_sim >= 0.90:
+                # Per mycelium-7khj: use config instead of hardcoded threshold
+                from mycelium.config import GRAPH_ROUTING_HIGH_CONFIDENCE
+                if best_sim >= GRAPH_ROUTING_HIGH_CONFIDENCE:
                     # Check rejection threshold for leaf signatures using adaptive Welford threshold
-                    from mycelium.data_layer.mcts import record_leaf_rejection
+                    # Per CLAUDE.md "New Favorite Pattern": use consolidated check_rejection
+                    from mycelium.step_signatures.rejection_utils import check_rejection
                     from mycelium.config import COLD_START_SIGNATURE_THRESHOLD
 
                     # Cold start check: skip rejection while building vocabulary
                     sig_count = self.step_db.count_signatures()
                     is_cold_start = sig_count < COLD_START_SIGNATURE_THRESHOLD
 
-                    # Per CLAUDE.md: No magic numbers - use Welford-based adaptive threshold
-                    # threshold = mean - k*stddev of successful match similarities
-                    adaptive_threshold = best_sig.get_adaptive_rejection_threshold(
-                        k=1.5,  # 1.5 stddev below mean = ~93% of normal distribution accepted
-                        min_samples=5,  # Need 5 successes before using adaptive threshold
-                        default_threshold=0.5,  # Permissive cold-start default
+                    # Check rejection using unified utility (uses config for k, min_samples, default_threshold)
+                    rejection_result = check_rejection(
+                        signature=best_sig,
+                        similarity=best_sim,
+                        is_cold_start=is_cold_start,
+                        step_text=step.task,
+                        problem_context=problem[:500] if problem else None,
                     )
 
-                    if not best_sig.is_semantic_umbrella and best_sim < adaptive_threshold and not is_cold_start:
+                    if not best_sig.is_semantic_umbrella and rejection_result.rejected:
                         # Leaf rejects this step - try MCTS alternatives before decomposing
-                        record_leaf_rejection(
-                            signature_id=best_sig.id,
-                            step_text=step.task,
-                            similarity=best_sim,
-                            problem_context=problem[:500] if problem else None,
-                        )
                         logger.info(
                             "[solver] GRAPH-FIRST REJECTED: '%s' by sig %d (%s) sim=%.3f < adaptive_threshold=%.3f (n=%d, mean=%.3f) - trying MCTS alternatives",
-                            step.task[:40], best_sig.id, best_sig.step_type, best_sim, adaptive_threshold,
+                            step.task[:40], best_sig.id, best_sig.step_type, best_sim, rejection_result.threshold,
                             best_sig.success_sim_count, best_sig.success_sim_mean
                         )
 
@@ -1453,17 +1509,23 @@ class Solver:
                             operation_embedding=operation_embedding,
                             dag_step_type=getattr(step, 'dsl_hint', None) or step.task[:40],
                             top_k=3,
-                            min_similarity=max(0.5, adaptive_threshold - 0.1),  # Allow slightly lower alternatives
+                            min_similarity=max(0.5, rejection_result.threshold - 0.1),  # Allow slightly lower alternatives
                         )
 
                         # Filter out the already-rejected signature
-                        # Each alternative uses its OWN adaptive threshold
+                        # Each alternative uses its OWN adaptive threshold via check_rejection
                         alt_candidates = []
                         for sig, ucb1, sim in mcts_candidates:
                             if sig.id == best_sig.id:
                                 continue
-                            alt_threshold = sig.get_adaptive_rejection_threshold(k=1.5, min_samples=5, default_threshold=0.5)
-                            if sim >= alt_threshold:
+                            # Check alternative without recording (just threshold check)
+                            alt_result = check_rejection(
+                                signature=sig,
+                                similarity=sim,
+                                is_cold_start=is_cold_start,
+                                record=False,  # Don't record - just checking threshold
+                            )
+                            if not alt_result.rejected:
                                 alt_candidates.append((sig, ucb1, sim))
 
                         if alt_candidates:
@@ -2187,6 +2249,9 @@ class Solver:
                     "[solver] Umbrella routing (embedding): '%s' → '%s' (sim=%.3f)",
                     umbrella.step_type, best_child.step_type, best_sim
                 )
+                # Per CLAUDE.md "System Independence": Update Welford route stats
+                # This tracks the umbrella's routing similarity distribution for adaptive thresholds
+                self.step_db.update_welford_route(umbrella.id, best_sim)
                 child_sig = best_child
             else:
                 logger.debug(
@@ -2282,7 +2347,6 @@ class Solver:
             - explored_sigs: All signatures explored (for backpropagation)
             - was_injected: Whether result came from DSL execution
         """
-        from mycelium.config import UCB1_GAP_BRANCH_THRESHOLD
         from mycelium.step_signatures.db import RoutingResult
 
         # Handle case where no operation embedding available
@@ -2340,9 +2404,10 @@ class Solver:
         # Selective branching: only branch when undecided (per CLAUDE.md)
         # Use UCB1 gap to detect uncertainty: high gap = confident, low gap = undecided
         # Also respect single-path mode (compute_budget <= 1.0)
-        # Exception: force_exploration flag bypasses both gap check and budget check (for reactive exploration)
-        is_undecided = routing_result.min_gap < UCB1_GAP_BRANCH_THRESHOLD or self._force_exploration
-        effective_budget = max(compute_budget, 3.0) if self._force_exploration else compute_budget
+        # Per mycelium-02nn: Use adaptive threshold (Welford-guided) instead of static
+        adaptive_gap_threshold = self._get_adaptive_gap_threshold()
+        effective_budget = self._get_effective_budget(compute_budget)
+        is_undecided = routing_result.min_gap < adaptive_gap_threshold
         if not is_undecided or effective_budget <= 1.0:
             if routing_result.signature is not None:
                 result = await self._execute_dsl_and_record(
@@ -2357,10 +2422,10 @@ class Solver:
         # Mark as undecided for MCTS amplitude tracking
         self._routing_was_undecided = True
         num_paths = min(int(effective_budget), len(routing_result.alternatives) + 1)
-        force_tag = " [FORCED]" if self._force_exploration else ""
+        reactive_tag = " [REACTIVE]" if self._reactive_exploration_mode else ""
         logger.info(
-            "[solver] Selective branching%s: gap=%.3f, exploring %d paths",
-            force_tag, routing_result.min_gap, num_paths
+            "[solver] Selective branching%s: gap=%.3f (threshold=%.3f), exploring %d paths",
+            reactive_tag, routing_result.min_gap, adaptive_gap_threshold, num_paths
         )
 
         # Collect alternative leaf signatures to try (with similarity scores)
@@ -4149,7 +4214,17 @@ Rules:
                 embedder=self.embedder,
                 temperature=REACTIVE_EXPLORATION_TEMPERATURE,
             )
-            self._force_exploration = True
+
+            # Per mycelium-02nn + CLAUDE.md "The Flow": Get Welford-adaptive multipliers
+            # DB Statistics → Welford → Tree Structure (via multipliers)
+            self._reactive_gap_mult, self._reactive_budget_mult = (
+                self.step_db.get_adaptive_reactive_multipliers()
+            )
+            logger.info(
+                "[reactive] Using adaptive multipliers: gap=%.2f, budget=%.2f",
+                self._reactive_gap_mult, self._reactive_budget_mult
+            )
+            self._reactive_exploration_mode = True
 
             try:
                 for thread_idx in range(num_threads):
@@ -4182,8 +4257,21 @@ Rules:
                 if winning is None:
                     stats["full_resolve_success"] = False
             finally:
-                self._force_exploration = False
+                self._reactive_exploration_mode = False
                 self.planner = original_planner  # Restore original planner
+
+            # Per CLAUDE.md "The Flow": Record outcome to update Welford stats
+            # This feeds back into DB Statistics → Welford → future multipliers
+            found_winner = winning is not None
+            self.step_db.update_reactive_exploration_stats(
+                found_winner=found_winner,
+                gap_mult_used=self._reactive_gap_mult,
+                budget_mult_used=self._reactive_budget_mult,
+            )
+            logger.info(
+                "[reactive] Recorded exploration outcome: found_winner=%s (gap=%.2f, budget=%.2f)",
+                found_winner, self._reactive_gap_mult, self._reactive_budget_mult
+            )
 
             stats["total_dags_for_crossexam"] = len(exploration_dag_ids) + (1 if original_dag_id else 0)
 

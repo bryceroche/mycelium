@@ -928,44 +928,6 @@ def get_leaves_needing_decomposition(limit: int = 10) -> list[dict]:
     return results
 
 
-def check_and_reject_if_low_similarity(
-    signature_id: int,
-    step_text: str,
-    similarity: float,
-    dag_step_id: str = None,
-    problem_context: str = None,
-    conn=None,
-) -> tuple[bool, int]:
-    """Record a leaf rejection (caller has already decided to reject).
-
-    Note: Caller is responsible for checking the adaptive threshold.
-    This function just records the rejection and queues for decomposition.
-
-    Args:
-        signature_id: The leaf signature being checked
-        step_text: The step being routed
-        similarity: Cosine similarity to the signature (for logging)
-        dag_step_id: Optional dag_step ID
-        problem_context: Optional problem context
-        conn: Optional DB connection (reuse caller's connection to avoid locks)
-
-    Returns:
-        Tuple of (was_rejected=True, rejection_count)
-    """
-    # Caller has already decided to reject using adaptive threshold
-    # We just record it and queue for decomposition
-    rejection_count = record_leaf_rejection(
-        signature_id=signature_id,
-        step_text=step_text,
-        similarity=similarity,
-        dag_step_id=dag_step_id,
-        problem_context=problem_context,
-        conn=conn,
-    )
-
-    return True, rejection_count
-
-
 def flag_high_rejection_leaves_for_decomposition(step_db=None) -> list[dict]:
     """Find and flag high-rejection leaves for decomposition.
 
@@ -1887,6 +1849,73 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
             dag_id, stats["nodes_processed"],
             stats["successes_credited"], stats["partial_credits"], stats["failures_credited"],
             stats["step_level_credit"], stats["step_level_blame"],
+        )
+
+    return stats
+
+
+def propagate_ucb1_gap_stats(dag_id: str, step_db) -> dict:
+    """Propagate UCB1 gap values to global Welford stats based on thread outcomes.
+
+    Per mycelium-02nn: Updates ucb1_gap_stats table with gap values from routing
+    decisions that led to successful vs failed threads. This enables adaptive
+    gap threshold computation.
+
+    Gap outcomes are classified by thread success:
+    - Thread won (success=1): gap led to correct answer → update success stats
+    - Thread lost (success=0): gap may have led to wrong answer → update failure stats
+
+    Args:
+        dag_id: The DAG to process
+        step_db: StepSignatureDB instance for updating gap stats
+
+    Returns:
+        Dict with propagation statistics
+    """
+    from mycelium.config import ADAPTIVE_GAP_ENABLED
+
+    if not ADAPTIVE_GAP_ENABLED:
+        return {"gaps_processed": 0, "success_gaps": 0, "failure_gaps": 0, "skipped": True}
+
+    conn = get_db()
+
+    # Get (ucb1_gap, thread_success) pairs from step summaries
+    # Use mcts_step_summaries which has ucb1_gap values
+    cursor = conn.execute(
+        """
+        SELECT ss.ucb1_gap, t.success
+        FROM mcts_step_summaries ss
+        JOIN mcts_threads t ON ss.thread_id = t.thread_id
+        WHERE ss.dag_id = ?
+          AND ss.ucb1_gap IS NOT NULL
+          AND t.success IS NOT NULL
+        """,
+        (dag_id,),
+    )
+
+    stats = {
+        "gaps_processed": 0,
+        "success_gaps": 0,
+        "failure_gaps": 0,
+    }
+
+    for row in cursor:
+        gap = row[0]
+        success = row[1] == 1
+
+        # Update gap stats via step_db (which has the consolidated method)
+        step_db.update_ucb1_gap_stats(gap, success)
+
+        stats["gaps_processed"] += 1
+        if success:
+            stats["success_gaps"] += 1
+        else:
+            stats["failure_gaps"] += 1
+
+    if stats["gaps_processed"] > 0:
+        logger.debug(
+            "[mcts] UCB1 gap stats for DAG %s: %d gaps processed (%d success, %d failure)",
+            dag_id, stats["gaps_processed"], stats["success_gaps"], stats["failure_gaps"]
         )
 
     return stats
@@ -3144,39 +3173,33 @@ def apply_interference_effects(
 # =============================================================================
 # POSTMORTEM STATE MANAGEMENT (Database-backed for cross-process persistence)
 # =============================================================================
+# Per CLAUDE.md "New Favorite Pattern": Uses StateManager for db_metadata access
 
 import json
 
+from mycelium.data_layer.state_manager import get_state_manager, StateManager
+
 
 def _get_db_state_value(key: str, default: str = "0") -> str:
-    """Get a value from db_metadata table."""
-    db = get_db()
-    with db.connection() as conn:
-        row = conn.execute(
-            "SELECT value FROM db_metadata WHERE key = ?", (key,)
-        ).fetchone()
-        return row["value"] if row else default
+    """Get a value from db_metadata table.
+
+    Delegates to StateManager for consolidated access.
+    """
+    return get_state_manager().get(key, default)
 
 
 def _set_db_state_value(key: str, value: str) -> None:
-    """Set a value in db_metadata table (upsert)."""
-    db = get_db()
-    now = datetime.now(timezone.utc).isoformat()
-    with db.connection() as conn:
-        conn.execute(
-            """INSERT INTO db_metadata (key, value, updated_at)
-               VALUES (?, ?, ?)
-               ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at""",
-            (key, value, now)
-        )
+    """Set a value in db_metadata table (upsert).
+
+    Delegates to StateManager for consolidated access.
+    """
+    get_state_manager().set(key, value)
 
 
 # =============================================================================
 # SEGMENTATION NOVELTY STATS (for TreeGuidedPlanner)
 # =============================================================================
 # Per CLAUDE.md "New Favorite Pattern": Consolidated data layer access
-
-_KEY_SEGMENTATION_NOVELTY = "segmentation_novelty_stats"
 
 
 def get_segmentation_novelty_stats() -> dict:
@@ -3185,11 +3208,7 @@ def get_segmentation_novelty_stats() -> dict:
     Returns:
         Dict with 'count', 'mean', 'm2' keys (empty dict if not found)
     """
-    raw = _get_db_state_value(_KEY_SEGMENTATION_NOVELTY, "{}")
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        return {}
+    return get_state_manager().get_json(StateManager.KEY_SEGMENTATION_NOVELTY, {})
 
 
 def save_segmentation_novelty_stats(stats: dict) -> None:
@@ -3198,7 +3217,7 @@ def save_segmentation_novelty_stats(stats: dict) -> None:
     Args:
         stats: Dict with 'count', 'mean', 'm2' keys
     """
-    _set_db_state_value(_KEY_SEGMENTATION_NOVELTY, json.dumps(stats))
+    get_state_manager().set_json(StateManager.KEY_SEGMENTATION_NOVELTY, stats)
 
 
 # Keys for persistent state
@@ -3416,6 +3435,10 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     # When threads win, record their similarity scores on leaves for adaptive thresholds
     success_sim_stats = propagate_success_similarity(dag_id, step_db)
 
+    # Per mycelium-02nn: Propagate UCB1 gap values for adaptive gap threshold
+    # Updates global Welford stats based on gap values from successful/failed threads
+    gap_stats = propagate_ucb1_gap_stats(dag_id, step_db)
+
     # Propagate to (dag_step_type, node_id) stats table
     # This enables routing UCB1 to use step-specific performance data
     step_node_stats = propagate_step_node_stats(dag_id)
@@ -3563,6 +3586,10 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         "credit_failures": credit_stats.get("failures_credited", 0),
         # Success similarity propagation for adaptive rejection (per mycelium-i601)
         "success_sim_updates": success_sim_stats.get("updates", 0),
+        # UCB1 gap stats for adaptive exploration (per mycelium-02nn)
+        "gap_stats_processed": gap_stats.get("gaps_processed", 0),
+        "gap_stats_success": gap_stats.get("success_gaps", 0),
+        "gap_stats_failure": gap_stats.get("failure_gaps", 0),
         # Divergence-point analysis (per beads mycelium-2rss)
         "divergence_points_found": divergence_stats.get("divergence_points_found", 0),
         "divergence_blame_assigned": divergence_stats.get("divergence_blame_assigned", 0),

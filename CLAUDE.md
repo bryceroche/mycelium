@@ -1,3 +1,18 @@
+# The Big 3
+1. System Independence
+2. New Favorite Pattern
+3. The Flow
+
+## System Independence
+Resist the urge to manually intervene in the tree.  We want the system to be independent.  This means only modifying python code and database schema but not the tree.  we do want the mycelium system to be able to restructure the tree -- we just dont want to be tempted to make those adjustments ourselves. for example we have a periodic tree review that restructures the tree -- that is okay.  but we shouldn't be going into the tree structure and cleaning up orphaned umbrealla routers ourselves for example  
+
+## New Favorite Pattern
+We want to consolidate methods - for example all database connections should go through a data layer instead of having multiple database connections.  Same with Signature creation, or leaf_node rejection of dag_steps.  We want to consolidate method calls for features to simplify our codebase and reduce the chance of bugs
+
+## The Flow
+Database Statistics → Welford → Tree Structure 
+Accurate database statistics are our source of truth which power the Welford algorithm which guides the tree structure and all decisions such as cluster boundaries, when to add a node as a sibling or child, when to decompose a leaf node into an umbrella router.
+
 # Claude Code Instructions
 
 Bryce is the user.  He likes to make edits to this file.  Please do not overwrite his edits.
@@ -6,12 +21,6 @@ This file is critically important to the project.
 We want to treate this file as our source of truth.
 Every bug fix, optimization or new feature should be implemented with this file in mind.
 Please always keep this file in the context window.
-
-## System Independence
-Resist the urge to manually intervene in the tree.  We want the system to be independent.  This means only modifying python code and database schema but not the tree.
-
-## New Favorite Pattern
-We want to consolidate methods - for example all database connections should go through a data layer instead of having multiple database connections.  Same with Signature creation, or leaf_node rejection of dag_steps.  We want to consolidate method calls for features to simplify our codebase and reduce the chance of bugs
 
 ## Negotiation between Tree and Planner
 The tree guided planner should be a back and forth negotiation between the tree and the planner with a bias towards decomposing dag_steps instead of leaf_nodes as decomposing leaf_nodes is a bigger commitment representing a permanant change to the tree structure
@@ -111,10 +120,6 @@ Decomposing leaf_nodes is a larger commitment than decomposing dag_steps because
 - Success/failure stats drive routing decisions
 
 The goal is NOT 100% accuracy on every run. The goal is collecting data that makes the system smarter over time. A failed DSL provides valuable signal for post-mortem analysis.
-
-## Always Route to Best Match (No Arbitrary Thresholds)
-**ALWAYS_ROUTE_TO_BEST = True**
-Instead of rejecting matches below arbitrary similarity thresholds, we always route to the best available match and let execution failures drive learning.
 
 ### Credit Propagation
 When a problem is solved correctly, success credit propagates up the signature DAG to parent umbrellas with decay:

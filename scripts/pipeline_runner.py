@@ -88,26 +88,31 @@ def extract_boxed_answer(solution: str) -> str:
     return ""
 
 
-def load_problems_gsm8k(num_problems: int) -> list[dict]:
+def load_problems_gsm8k(num_problems: int, seed: int = None) -> list[dict]:
     """Load problems from GSM8K dataset."""
     logger.info(f"Loading {num_problems} problems from GSM8K...")
 
     dataset = load_dataset("gsm8k", "main", split="test")
 
-    problems = []
+    # Build full list first
+    all_problems = []
     for i, item in enumerate(dataset):
-        if i >= num_problems:
-            break
-
         answer = item["answer"].split("####")[-1].strip()
-
-        problems.append({
+        all_problems.append({
             "id": f"gsm8k_{i}",
             "problem": item["question"],
             "answer": answer,
             "level": "grade_school",
         })
 
+    # Shuffle with seed for reproducible but varied selection
+    import random
+    if seed is not None:
+        random.seed(seed)
+        logger.info(f"Using seed {seed} for reproducible problem selection")
+    random.shuffle(all_problems)
+
+    problems = all_problems[:num_problems]
     logger.info(f"Loaded {len(problems)} problems")
     return problems
 
@@ -166,7 +171,7 @@ def load_problems_math(num_problems: int, levels: list[int], seed: int = None) -
 def load_problems(num_problems: int, dataset: str = "gsm8k", levels: list[int] = None, seed: int = None) -> list[dict]:
     """Load problems from specified dataset."""
     if dataset == "gsm8k":
-        return load_problems_gsm8k(num_problems)
+        return load_problems_gsm8k(num_problems, seed=seed)
     elif dataset == "math":
         levels = levels or [1, 2, 3, 4, 5]
         return load_problems_math(num_problems, levels, seed=seed)

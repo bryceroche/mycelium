@@ -84,7 +84,10 @@ class TestGetDecompositionCandidates:
 
     @pytest.fixture
     def mock_db(self):
-        return MagicMock()
+        mock = MagicMock()
+        # Default return for get_decomp_success_rate: allow decomposition (cold start default)
+        mock.get_decomp_success_rate.return_value = (1.0, 0)
+        return mock
 
     @pytest.fixture
     def mock_mcts_win_rates(self, monkeypatch):
@@ -332,6 +335,8 @@ class TestDecomposeSignature:
     def mock_db(self):
         db = MagicMock()
         db.get_children.return_value = []
+        # Default return for get_decomp_success_rate: allow decomposition (cold start default)
+        db.get_decomp_success_rate.return_value = (1.0, 0)
         return db
 
     @pytest.fixture
@@ -491,7 +496,10 @@ class TestLearnFromFailures:
 
     @pytest.fixture
     def mock_db(self):
-        return MagicMock()
+        mock = MagicMock()
+        # Default return for get_decomp_success_rate: allow decomposition (cold start default)
+        mock.get_decomp_success_rate.return_value = (1.0, 0)
+        return mock
 
     @pytest.fixture
     def mock_mcts_win_rates(self, monkeypatch):

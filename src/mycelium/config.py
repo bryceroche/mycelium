@@ -46,12 +46,6 @@ MIN_MATCH_THRESHOLD = 0.85  # Mature threshold - reduce signature fragmentation
 MIN_MATCH_THRESHOLD_COLD_START = 0.92  # Cold start threshold - create more signatures
 MIN_MATCH_RAMP_SIGNATURES = 50  # Signatures needed to reach mature threshold
 
-# Always Route Mode: Remove arbitrary thresholds, always route to best match
-# Per CLAUDE.md: "Let signatures fail. This is how the system learns."
-# Instead of rejecting matches below threshold, we accept best match and let
-# execution failures drive decomposition/restructuring.
-ALWAYS_ROUTE_TO_BEST = True  # If True, ignore thresholds and always use best match
-
 # =============================================================================
 # DSL EXECUTION
 # =============================================================================
@@ -197,7 +191,23 @@ COMPUTE_BUDGET_CONFIDENCE_THRESHOLD = 0.5  # Explore alternatives when confidenc
 # Selective branching: only branch when undecided (per CLAUDE.md)
 # UCB1 gap = difference between top-2 UCB1 scores at routing decision
 # High gap = confident (don't branch), Low gap = undecided (branch)
-UCB1_GAP_BRANCH_THRESHOLD = 0.15  # Branch when min_gap < this (undecided)
+UCB1_GAP_BRANCH_THRESHOLD = 0.15  # Branch when min_gap < this (undecided) - cold start fallback
+
+# =============================================================================
+# ADAPTIVE UCB1 GAP THRESHOLD (Welford-guided, per mycelium-02nn)
+# =============================================================================
+# Per CLAUDE.md "System Independence": Replace manual _force_exploration flag
+# with Welford-guided adaptive thresholds based on historical gap outcomes.
+#
+# Tracks UCB1 gap values from routing decisions that led to success vs failure.
+# Adaptive threshold: gap_mean - k * gap_std (from successful routings)
+# This lets the system learn optimal branching thresholds from experience.
+
+ADAPTIVE_GAP_ENABLED = True  # Use Welford-guided gap threshold instead of static
+ADAPTIVE_GAP_K = 1.5  # k stddevs below mean for adaptive threshold
+ADAPTIVE_GAP_MIN_SAMPLES = 10  # Min samples before using learned threshold
+ADAPTIVE_GAP_MIN_THRESHOLD = 0.05  # Floor: never set threshold below this
+ADAPTIVE_GAP_MAX_THRESHOLD = 0.5  # Ceiling: never set threshold above this
 
 # Epsilon-greedy exploration: with probability EPSILON, pick random signature
 # This ensures under-visited signatures get attempts even when UCB1 favors exploitation
@@ -206,20 +216,64 @@ EXPLORATION_EPSILON_DECAY = 0.995  # Decay factor per problem (0.995^100 ≈ 0.6
 EXPLORATION_EPSILON_MIN = 0.05  # Minimum epsilon floor
 
 # =============================================================================
-# REACTIVE EXPLORATION (retry on failure)
+# REACTIVE EXPLORATION (retry on failure) - DISABLED BY DEFAULT
 # =============================================================================
-# Per CLAUDE.md: "If we got the wrong answer that should trigger a larger MCTS rollout
-# where we explore the tree more widely searching for the right leaf_node, dag_step pairs"
-# When a problem fails, we retry with forced exploration of alternative nodes at each step.
-# If we find a winning path, we compare divergence points for precise blame assignment.
-REACTIVE_EXPLORATION_ENABLED = True  # Enable reactive exploration on failure
+# Per mycelium-tnil + CLAUDE.md "System Independence":
+# "Let signatures fail. This is how the system learns."
+# "Record every failure—it feeds the post-mortem analysis"
+# "Accumulated failure patterns (not individual failures) trigger decomposition"
+#
+# Reactive exploration (retrying with different seeds) MASKS failures instead of
+# learning from them. The proper flow per "The Flow":
+#   1. Problem fails → failure recorded in DB
+#   2. Post-mortem runs on the failing DAG (already has multiple MCTS threads)
+#   3. Welford stats accumulate from failures
+#   4. Eventually triggers decomposition when variance is high
+#
+# Retrying just hopes to get lucky, doesn't learn. MCTS already explores
+# multiple paths during the first solve - that's sufficient exploration.
+#
+# These configs are kept for optional use but DISABLED by default.
+REACTIVE_EXPLORATION_ENABLED = False  # DISABLED: Let failures stand, system learns
 REACTIVE_EXPLORATION_MAX_ALTERNATIVES = 3  # Max alternative nodes to try per step
 REACTIVE_EXPLORATION_MAX_RETRIES = 5  # Max total retry attempts
 REACTIVE_EXPLORATION_MIN_SIMILARITY = 0.5  # Min similarity for alternative candidates
-REACTIVE_EXPLORATION_FULL_RESOLVE = True  # Re-solve entire problem with forced exploration
+REACTIVE_EXPLORATION_FULL_RESOLVE = False  # DISABLED: Don't re-solve, let failures stand
 REACTIVE_EXPLORATION_NUM_THREADS = 3  # Number of parallel exploration threads to spawn
 REACTIVE_EXPLORATION_TEMPERATURE = 0.3  # Higher temp for diversity (vs 0.0 default)
 REACTIVE_EXPLORATION_EPSILON_BOOST = 0.3  # Boost epsilon during exploration (stacks with base)
+
+# =============================================================================
+# ADAPTIVE REACTIVE EXPLORATION MULTIPLIERS (Welford-guided, per mycelium-02nn)
+# =============================================================================
+# NOTE: Only used when REACTIVE_EXPLORATION_ENABLED = True (disabled by default)
+#
+# Per CLAUDE.md "The Flow": DB Statistics → Welford → Tree Structure
+# Multipliers adjust based on whether reactive exploration is finding winning paths.
+#
+# Logic (when reactive exploration IS enabled):
+# - Low success rate → need more exploration → increase multipliers
+# - High success rate → current settings work → maintain or decrease
+# - Welford tracks variance to detect when adjustments are needed
+
+ADAPTIVE_REACTIVE_ENABLED = True  # Use Welford-guided multipliers (when reactive enabled)
+ADAPTIVE_REACTIVE_MIN_SAMPLES = 5  # Min reactive explorations before adapting
+
+# Fallback multipliers (used during cold start)
+REACTIVE_EXPLORATION_GAP_MULT = 2.0  # Default gap threshold multiplier
+REACTIVE_EXPLORATION_BUDGET_MULT = 1.5  # Default budget multiplier
+REACTIVE_EXPLORATION_MIN_BUDGET = 3.0  # Minimum budget during reactive exploration
+
+# Multiplier adjustment bounds
+REACTIVE_EXPLORATION_GAP_MULT_MIN = 1.2  # Floor: at least 20% more lenient
+REACTIVE_EXPLORATION_GAP_MULT_MAX = 4.0  # Ceiling: at most 4x more lenient
+REACTIVE_EXPLORATION_BUDGET_MULT_MIN = 1.2  # Floor: at least 20% more budget
+REACTIVE_EXPLORATION_BUDGET_MULT_MAX = 3.0  # Ceiling: at most 3x budget
+
+# Adjustment sensitivity (how much success rate affects multipliers)
+# At 0% success: multipliers increase toward MAX
+# At 100% success: multipliers decrease toward MIN
+REACTIVE_EXPLORATION_ADJUST_K = 1.5  # k stddevs for adjustment (higher = more conservative)
 
 # Step decomposition fallback: when reactive exploration fails to find a winning path,
 # decompose failing steps into smaller sub-steps and re-solve
@@ -621,6 +675,7 @@ ZERO_LLM_REQUIRE_DSL = True  # Signature must have a working DSL script
 
 GRAPH_ROUTING_ENABLED = True  # Master switch for graph-based routing
 GRAPH_ROUTING_MIN_SIMILARITY = 0.80  # Minimum similarity for graph match
+GRAPH_ROUTING_HIGH_CONFIDENCE = 0.90  # High-confidence graph match (skip planner)
 GRAPH_ROUTING_BOOST_FACTOR = 0.15  # Boost to UCB1 when graph matches
 GRAPH_ROUTING_FALLBACK_TO_CENTROID = False  # No centroid fallback - graph-only routing
 
@@ -657,6 +712,14 @@ RESTRUCTURE_MIN_CHILDREN_FOR_SPLIT = 4  # Need this many children to consider sp
 RESTRUCTURE_MERGE_FLOOR = 0.95  # Never merge signatures below this similarity (safety floor)
 RESTRUCTURE_OUTLIER_IMPROVEMENT = 0.1  # Move outlier if new cluster is 10%+ better fit
 
+# Welford-guided cluster boundaries (per CLAUDE.md "System Independence")
+# These use relative measures (CV) rather than absolute thresholds
+MAX_CHILDREN_PER_PARENT = 20  # Force subcluster consideration above this fan-out
+RESTRUCTURE_CV_THRESHOLD = 0.3  # CV (std/mean) above which cluster is heterogeneous
+
+# Divergence splitting (per mycelium-7khj: move magic numbers to config)
+DIVERGENCE_CLOSE_DISTANCE = 0.20  # cosine distance < this = close (similarity > 0.80)
+
 # =============================================================================
 # MATURITY-BASED DECOMPOSE VS CREATE (Sigmoid transition)
 # =============================================================================
@@ -680,6 +743,12 @@ MATURITY_ACCURACY_WEIGHT = 2.0  # How much accuracy (0-1) shifts the decision
                                  # accuracy=0.8 adds 2.0*0.8=1.6 to maturity_score
 MATURITY_MIN_DECOMPOSE_PROB = 0.1  # Floor: always some chance to decompose
 MATURITY_MAX_DECOMPOSE_PROB = 0.9  # Ceiling: always some chance to create new
+
+# Expansion rate sigmoid (accuracy-driven tree growth)
+# Per mycelium-7khj: move hardcoded expansion parameters to config
+# expansion = 1 / (1 + exp((accuracy - midpoint) / steepness))
+EXPANSION_SIGMOID_MIDPOINT = 0.7  # Accuracy at which expansion = 0.5
+EXPANSION_SIGMOID_STEEPNESS = 0.15  # How sharply expansion drops with accuracy
 
 # Escape hatch: If decomposed sub-steps ALSO don't match, create new atomic
 # This recognizes genuinely novel operations that can't be built from existing sigs

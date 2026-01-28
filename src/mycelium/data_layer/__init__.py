@@ -13,6 +13,12 @@ from mycelium.data_layer.schema import (
     get_schema,
     init_db,
 )
+# StateManager for db_metadata access (per CLAUDE.md New Favorite Pattern)
+from mycelium.data_layer.state_manager import (
+    StateManager,
+    WelfordStats,
+    get_state_manager,
+)
 
 # MCTS Wave Function data access
 from mycelium.data_layer.mcts import (
@@ -83,7 +89,6 @@ from mycelium.data_layer.mcts import (
     record_leaf_rejection,
     get_leaf_rejection_stats,
     get_leaves_needing_decomposition,
-    check_and_reject_if_low_similarity,
     flag_high_rejection_leaves_for_decomposition,
     # DB maturity (for general use)
     compute_db_maturity,
@@ -105,6 +110,10 @@ __all__ = [
     "STEP_SCHEMA",
     "get_schema",
     "init_db",
+    # StateManager (per CLAUDE.md New Favorite Pattern)
+    "StateManager",
+    "WelfordStats",
+    "get_state_manager",
     # MCTS Wave Function
     "MCTSDag",
     "MCTSDagStep",
@@ -173,7 +182,6 @@ __all__ = [
     "record_leaf_rejection",
     "get_leaf_rejection_stats",
     "get_leaves_needing_decomposition",
-    "check_and_reject_if_low_similarity",
     "flag_high_rejection_leaves_for_decomposition",
     # DB maturity
     "compute_db_maturity",

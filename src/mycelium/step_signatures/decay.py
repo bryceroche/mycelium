@@ -256,12 +256,12 @@ class DecayManager:
             conn.commit()
 
     def _get_total_problems(self) -> int:
-        """Get total problems solved from metadata."""
-        with self._connection() as conn:
-            row = conn.execute(
-                "SELECT value FROM db_metadata WHERE key = 'total_problems_solved'"
-            ).fetchone()
-            return int(row["value"]) if row else 0
+        """Get total problems solved from metadata.
+
+        Per CLAUDE.md New Favorite Pattern: Consolidated db_metadata access.
+        """
+        from mycelium.data_layer.state_manager import get_state_manager, StateManager
+        return get_state_manager().get_int(StateManager.KEY_TOTAL_PROBLEMS)
 
     def _get_all_signature_stats(self) -> list[dict]:
         """Get uses for all non-archived signatures."""
