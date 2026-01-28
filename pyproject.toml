@@ -1,6 +1,6 @@
 [project]
 name = "mycelium"
-version = "0.1.0"
+version = "0.1.1"
 description = "Recursive problem decomposition with signature-based solution networks"
 readme = "README.md"
 requires-python = ">=3.11"
