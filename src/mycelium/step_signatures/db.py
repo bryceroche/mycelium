@@ -5223,12 +5223,15 @@ class StepSignatureDB:
                             needs_decomposition = True
                             rejection_reason = f"cluster_underperform (z={z_cluster:.2f}, cluster_mean={cluster_stats['cluster_mean']:.2f})"
 
-                # Method C: High variance check (unstable performance)
-                # Per CLAUDE.md: Variance signals node is unreliable at this position
-                if not needs_decomposition and position_stats["variance"] > 0.20:
-                    # High variance means inconsistent results - node is unstable
-                    needs_decomposition = True
-                    rejection_reason = f"high_variance (var={position_stats['variance']:.2f}, mean={position_stats['mean_success']:.2f})"
+                # Method C: Coefficient of Variation check (adaptive instability)
+                # Per CLAUDE.md "Cluster Boundaries": Adaptive thresholds, not hard-coded
+                # CV = std / mean; CV > 1.0 means std larger than mean = very unstable
+                if not needs_decomposition and position_stats["mean_success"] > 0.1:
+                    cv = position_stats["std"] / position_stats["mean_success"]
+                    if cv > 1.0:
+                        # Results are all over the place - node is unreliable at this position
+                        needs_decomposition = True
+                        rejection_reason = f"high_cv (cv={cv:.2f}, std={position_stats['std']:.2f}, mean={position_stats['mean_success']:.2f})"
 
                 # Method D: Absolute failure rate (floor check)
                 if not needs_decomposition and position_stats["mean_success"] < 0.3:
