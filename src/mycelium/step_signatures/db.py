@@ -7744,11 +7744,31 @@ class StepSignatureDB:
     # Per CLAUDE.md System Independence: Fully automated tree restructuring.
     # Per CLAUDE.md New Favorite Pattern: Single entry point (maybe_restructure).
 
+    def _get_last_restructure_count(self, conn) -> int:
+        """Get last restructure problem count from db_metadata."""
+        row = conn.execute(
+            "SELECT value FROM db_metadata WHERE key = 'last_restructure_count'"
+        ).fetchone()
+        return int(row["value"]) if row else 0
+
+    def _set_last_restructure_count(self, conn, count: int) -> None:
+        """Set last restructure problem count in db_metadata."""
+        now = datetime.now(timezone.utc).isoformat()
+        conn.execute(
+            """INSERT INTO db_metadata (key, value, updated_at)
+               VALUES ('last_restructure_count', ?, ?)
+               ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = ?""",
+            (str(count), now, str(count), now)
+        )
+
     def maybe_restructure(self, problem_count: int, conn=None) -> dict:
         """SINGLE ENTRY POINT: Check if restructure should run and execute if needed.
 
         Per mycelium-heh3: Auto-restructure process runs every N problems.
         Per CLAUDE.md System Independence: Fully automated, no manual intervention.
+
+        Uses last_restructure_count tracking instead of mod check for robustness.
+        This ensures we never miss a restructure window if counts skip over intervals.
 
         Args:
             problem_count: Current total problems solved
@@ -7773,18 +7793,26 @@ class StepSignatureDB:
                     "orphans_cleaned": 0,
                 }
 
-            # Only run at intervals
-            if problem_count % RESTRUCTURE_INTERVAL != 0:
+            # Check if we've passed the interval since last restructure
+            last_count = self._get_last_restructure_count(c)
+            next_trigger = max(last_count + RESTRUCTURE_INTERVAL, COLD_START_PROBLEMS_THRESHOLD)
+
+            if problem_count < next_trigger:
                 return {
                     "ran": False,
-                    "reason": f"not_interval (problem {problem_count} % {RESTRUCTURE_INTERVAL} != 0)",
+                    "reason": f"not_due (problem {problem_count} < {next_trigger}, last={last_count})",
                     "clusters_created": 0,
                     "orphans_cleaned": 0,
                 }
 
-            # Run comprehensive tree review (includes old restructure + dedup + outlier handling)
-            logger.info("[review] Running periodic tree review at problem %d", problem_count)
-            return self.run_periodic_tree_review(conn=c)
+            # Run comprehensive tree review
+            logger.info("[review] Running periodic tree review at problem %d (last=%d)", problem_count, last_count)
+            result = self.run_periodic_tree_review(conn=c)
+
+            # Update last restructure count
+            self._set_last_restructure_count(c, problem_count)
+
+            return result
 
         if conn is not None:
             return _do_maybe(conn)
