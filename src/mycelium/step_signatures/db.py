@@ -3378,11 +3378,13 @@ class StepSignatureDB:
         child_ids: list[int],
         reason: str = "retirement",
     ) -> bool:
-        """Archive a signature and reparent its children atomically.
+        """DEPRECATED: Archive a signature and reparent its children atomically.
 
-        This handles the multi-step operation of re-parenting children to a
-        grandparent and then archiving the signature, all within a single
-        transaction to ensure consistency.
+        Per CLAUDE.md System Independence (mycelium-zlza): Immediate reparenting
+        bypasses Welford-guided decisions in periodic review. Use archive_signature()
+        instead - orphan children will be adopted by run_periodic_tree_review().
+
+        This function is kept for backwards compatibility but logs a warning.
 
         Args:
             signature_id: ID of signature to archive
@@ -3393,6 +3395,18 @@ class StepSignatureDB:
         Returns:
             True if archived successfully
         """
+        import warnings
+        warnings.warn(
+            "archive_signature_with_reparent is deprecated per CLAUDE.md System Independence. "
+            "Use archive_signature() instead - periodic review will adopt orphan children.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        logger.warning(
+            "[db] DEPRECATED: archive_signature_with_reparent called for sig %d. "
+            "Use archive_signature() - periodic review handles orphan adoption.",
+            signature_id
+        )
         with self._connection() as conn:
             # Per CLAUDE.md "System Independence": Invalidate Welford stats
             # when tree structure changes (reparenting + archive)

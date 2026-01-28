@@ -4367,24 +4367,9 @@ def process_retirement_candidates(
 
             elif action == "prune":
                 # Soft delete - archive the signature
-                # Use transaction for atomic re-parent + archive
-                parent = step_db.get_parent(sig_id)
-                children = step_db.get_children(sig_id, for_routing=True)
-
-                # Perform re-parent and archive atomically via step_db method
-                # Note: step_db.archive_signature_with_reparent handles transaction
-                if parent is not None and children:
-                    success = step_db.archive_signature_with_reparent(
-                        sig_id,
-                        parent_id=parent.id,
-                        child_ids=[c.id for c in children],
-                        reason="retirement_prune"
-                    )
-                    if success:
-                        logger.info("[mcts] Reparented %d children of sig %d to parent %d", len(children), sig_id, parent.id)
-                else:
-                    # No children to reparent, just archive
-                    success = step_db.archive_signature(sig_id, reason="retirement_prune")
+                # Per CLAUDE.md System Independence: just archive, let periodic review
+                # adopt orphan children via _adopt_orphan_children()
+                success = step_db.archive_signature(sig_id, reason="retirement_prune")
 
                 if success:
                     pruned_ids.append(sig_id)
