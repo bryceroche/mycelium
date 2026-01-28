@@ -18,6 +18,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
 
+from mycelium.embedding_cache import cached_embed
+
 logger = logging.getLogger(__name__)
 
 
@@ -131,10 +133,11 @@ class DSLSpec:
             return None
 
         # Compute embedding
+        # Per CLAUDE.md "New Favorite Pattern": Use cached_embed
         from mycelium.embedder import Embedder
         if embedder is None:
             embedder = Embedder.get_instance()
-        self._purpose_embedding = embedder.embed(purpose_text)
+        self._purpose_embedding = cached_embed(purpose_text, embedder)
         return self._purpose_embedding
 
     def _infer_purpose_from_script(self) -> str:
@@ -164,10 +167,11 @@ class DSLSpec:
             return None
 
         # Compute embedding
+        # Per CLAUDE.md "New Favorite Pattern": Use cached_embed
         from mycelium.embedder import Embedder
         if embedder is None:
             embedder = Embedder.get_instance()
-        embedding = embedder.embed(role_text)
+        embedding = cached_embed(role_text, embedder)
         self._param_role_embeddings[param] = embedding
         return embedding
 

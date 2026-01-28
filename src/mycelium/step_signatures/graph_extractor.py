@@ -18,6 +18,8 @@ import json
 import logging
 from typing import Optional
 
+from mycelium.embedding_cache import cached_embed
+
 logger = logging.getLogger(__name__)
 
 # Map Python AST operators to graph node names
@@ -494,7 +496,8 @@ def embed_computation_graph_sync(
 
     try:
         # Use sync embedder
-        embedding_array = embedder.embed(nl_description)
+        # Per CLAUDE.md "New Favorite Pattern": Use cached_embed
+        embedding_array = cached_embed(nl_description, embedder)
         embedding = embedding_array.tolist()
 
         # Cache

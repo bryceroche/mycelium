@@ -420,7 +420,7 @@ def _get_desc_anchor_embeddings(embedder=None):
 
         _desc_anchor_embeddings = {}
         for op, anchor_text in _DESCRIPTION_ANCHORS.items():
-            _desc_anchor_embeddings[op] = embedder.embed(anchor_text)
+            _desc_anchor_embeddings[op] = cached_embed(anchor_text, embedder)
 
         return _desc_anchor_embeddings
     except Exception as e:
@@ -477,10 +477,11 @@ def _infer_operation_semantic(
             semantic_params = avg_len > 3  # Names like "dividend" vs "a"
 
         # Channel 1: Param names similarity (if we have params)
+        # Per CLAUDE.md "New Favorite Pattern": Use cached_embed
         param_sims = {}
         if param_names:
             param_text = " ".join(p.replace("_", " ") for p in param_names)
-            param_emb = embedder.embed(param_text)
+            param_emb = cached_embed(param_text, embedder)
 
             for op, anchor_emb in param_anchors.items():
                 sim = float(np.dot(param_emb, anchor_emb) / (
@@ -494,7 +495,7 @@ def _infer_operation_semantic(
         if description:
             desc_text += " " + description[:100]
         if desc_text.strip():
-            desc_emb = embedder.embed(desc_text)
+            desc_emb = cached_embed(desc_text, embedder)
 
             for op, anchor_emb in desc_anchors.items():
                 sim = float(np.dot(desc_emb, anchor_emb) / (
@@ -598,8 +599,8 @@ def _find_similar_successful_dsl(
         if embedder is None:
             embedder = Embedder.get_instance()
 
-        # Get embedding for this description
-        query_embedding = embedder.embed(f"{step_type}: {description}")
+        # Per CLAUDE.md "New Favorite Pattern": Use cached_embed
+        query_embedding = cached_embed(f"{step_type}: {description}", embedder)
 
         # Query signatures with successful DSLs
         candidates = db.get_signatures_with_successful_dsls(
@@ -616,9 +617,9 @@ def _find_similar_successful_dsl(
         best_similarity = 0.0
 
         for sig in candidates:
-            # Get or compute signature embedding
+            # Per CLAUDE.md "New Favorite Pattern": Use cached_embed
             sig_text = f"{sig.step_type}: {sig.description}"
-            sig_embedding = embedder.embed(sig_text)
+            sig_embedding = cached_embed(sig_text, embedder)
 
             # Compute cosine similarity
             similarity = float(np.dot(query_embedding, sig_embedding) / (

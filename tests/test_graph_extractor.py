@@ -11,6 +11,7 @@ from mycelium.step_signatures.graph_extractor import (
     embed_computation_graph_sync,
     clear_graph_embedding_cache,
 )
+from mycelium.embedding_cache import EmbeddingCache
 
 
 class TestExtractComputationGraph:
@@ -151,8 +152,13 @@ class TestEmbedComputationGraphSync:
     """Tests for sync graph embedding."""
 
     def setup_method(self):
-        """Clear cache before each test."""
+        """Clear caches before each test."""
         clear_graph_embedding_cache()
+        # Also clear the EmbeddingCache to ensure fresh state
+        # (both memory and disk caches)
+        cache = EmbeddingCache.get_instance()
+        cache.clear()
+        EmbeddingCache.reset_instance()
 
     def test_embed_returns_list(self):
         """Test that embedding returns a list."""
