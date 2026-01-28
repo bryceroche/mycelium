@@ -1477,32 +1477,28 @@ class Solver:
                 from mycelium.config import GRAPH_ROUTING_HIGH_CONFIDENCE
                 if best_sim >= GRAPH_ROUTING_HIGH_CONFIDENCE:
                     # Check rejection threshold for leaf signatures using adaptive Welford threshold
-                    from mycelium.data_layer.mcts import record_leaf_rejection
+                    # Per CLAUDE.md "New Favorite Pattern": use consolidated check_rejection
+                    from mycelium.step_signatures.rejection_utils import check_rejection
                     from mycelium.config import COLD_START_SIGNATURE_THRESHOLD
 
                     # Cold start check: skip rejection while building vocabulary
                     sig_count = self.step_db.count_signatures()
                     is_cold_start = sig_count < COLD_START_SIGNATURE_THRESHOLD
 
-                    # Per CLAUDE.md: No magic numbers - use Welford-based adaptive threshold
-                    # threshold = mean - k*stddev of successful match similarities
-                    adaptive_threshold = best_sig.get_adaptive_rejection_threshold(
-                        k=1.5,  # 1.5 stddev below mean = ~93% of normal distribution accepted
-                        min_samples=5,  # Need 5 successes before using adaptive threshold
-                        default_threshold=0.5,  # Permissive cold-start default
+                    # Check rejection using unified utility (uses config for k, min_samples, default_threshold)
+                    rejection_result = check_rejection(
+                        signature=best_sig,
+                        similarity=best_sim,
+                        is_cold_start=is_cold_start,
+                        step_text=step.task,
+                        problem_context=problem[:500] if problem else None,
                     )
 
-                    if not best_sig.is_semantic_umbrella and best_sim < adaptive_threshold and not is_cold_start:
+                    if not best_sig.is_semantic_umbrella and rejection_result.rejected:
                         # Leaf rejects this step - try MCTS alternatives before decomposing
-                        record_leaf_rejection(
-                            signature_id=best_sig.id,
-                            step_text=step.task,
-                            similarity=best_sim,
-                            problem_context=problem[:500] if problem else None,
-                        )
                         logger.info(
                             "[solver] GRAPH-FIRST REJECTED: '%s' by sig %d (%s) sim=%.3f < adaptive_threshold=%.3f (n=%d, mean=%.3f) - trying MCTS alternatives",
-                            step.task[:40], best_sig.id, best_sig.step_type, best_sim, adaptive_threshold,
+                            step.task[:40], best_sig.id, best_sig.step_type, best_sim, rejection_result.threshold,
                             best_sig.success_sim_count, best_sig.success_sim_mean
                         )
 
@@ -1513,17 +1509,23 @@ class Solver:
                             operation_embedding=operation_embedding,
                             dag_step_type=getattr(step, 'dsl_hint', None) or step.task[:40],
                             top_k=3,
-                            min_similarity=max(0.5, adaptive_threshold - 0.1),  # Allow slightly lower alternatives
+                            min_similarity=max(0.5, rejection_result.threshold - 0.1),  # Allow slightly lower alternatives
                         )
 
                         # Filter out the already-rejected signature
-                        # Each alternative uses its OWN adaptive threshold
+                        # Each alternative uses its OWN adaptive threshold via check_rejection
                         alt_candidates = []
                         for sig, ucb1, sim in mcts_candidates:
                             if sig.id == best_sig.id:
                                 continue
-                            alt_threshold = sig.get_adaptive_rejection_threshold(k=1.5, min_samples=5, default_threshold=0.5)
-                            if sim >= alt_threshold:
+                            # Check alternative without recording (just threshold check)
+                            alt_result = check_rejection(
+                                signature=sig,
+                                similarity=sim,
+                                is_cold_start=is_cold_start,
+                                record=False,  # Don't record - just checking threshold
+                            )
+                            if not alt_result.rejected:
                                 alt_candidates.append((sig, ucb1, sim))
 
                         if alt_candidates:
