@@ -649,6 +649,10 @@ class Solver:
         self._routing_ucb1_gap: Optional[float] = None
         self._routing_was_undecided: bool = False
 
+        # Position-aware routing context (per plan_step_stats)
+        # Set during step execution, used in route_with_confidence for position penalties
+        self._current_step_position: Optional[int] = None  # 1, 2, 3... (None = unknown)
+
         # MCTS DAG tracking (set per-problem in solve())
         self._current_dag_id: Optional[str] = None
         self._dag_step_ids: dict[str, str] = {}  # step.id -> dag_step_id
@@ -1035,6 +1039,7 @@ class Solver:
             # Log DAG steps to mcts_dag_steps table (training mode only)
             # Per beads issue: wire up step logging when DAG plan is generated
             # Use execution order to get proper step_num (level) and branch_num (position in level)
+            self._step_positions = {}  # step.id -> level_num (for position-aware routing)
             if TRAINING_MODE and self._current_dag_id:
                 execution_levels = plan.get_execution_order()
                 dag_step_tuples = []
@@ -1045,6 +1050,8 @@ class Solver:
                             (step.task, level_num, branch_num, step.is_atomic, step.dsl_hint)
                         )
                         step_order.append(step)
+                        # Track position for position-aware routing
+                        self._step_positions[step.id] = level_num
                 dag_step_ids = create_dag_steps(self._current_dag_id, dag_step_tuples)
                 # Store mapping for thread step logging
                 self._dag_step_ids = {
@@ -1154,6 +1161,8 @@ class Solver:
 
                 # Execute ready steps in parallel
                 async def execute_one(step):
+                    # Set current step position for position-aware routing
+                    self._current_step_position = self._step_positions.get(step.id)
                     step_context = {
                         dep: context[dep]
                         for dep in step.depends_on
@@ -2271,6 +2280,7 @@ class Solver:
             min_similarity=get_adaptive_match_threshold(),
             top_k=int(compute_budget) + 1,  # Get enough alternatives
             dag_step_type=dag_step_type,
+            step_position=self._current_step_position,  # Position-aware routing
         )
 
         # Store routing context for MCTS amplitude logging

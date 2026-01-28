@@ -944,10 +944,16 @@ class StepSignatureDB:
         use_ucb1: bool = True,
         epsilon_exploration: bool = False,
         dag_step_type: Optional[str] = None,
+        step_position: Optional[int] = None,
     ) -> RoutingResult:
         """Core DFS routing through signature hierarchy using graph embeddings.
 
         SINGLE PATHWAY for DFS routing. All variations use this function.
+
+        Args:
+            step_position: Optional step position (1, 2, 3...) for position-aware
+                routing. When provided, uses plan_step_stats to penalize nodes
+                that historically fail at this position.
         """
         from mycelium.config import UMBRELLA_MAX_DEPTH
 
@@ -981,6 +987,20 @@ class StepSignatureDB:
                 child_ids = [c.id for c, _ in children if c.id is not None]
                 step_stats_map = get_dag_step_node_stats_batch(dag_step_type, child_ids)
 
+            # Position-aware stats: look up historical success at this step position
+            # Per CLAUDE.md: "Failures Are Valuable Data Points" - use position stats
+            position_stats_map = {}
+            if step_position is not None and use_ucb1:
+                from mycelium.config import POSITION_STATS_ENABLED, POSITION_STATS_MIN_OBS
+                if POSITION_STATS_ENABLED:
+                    child_ids = [c.id for c, _ in children if c.id is not None]
+                    for child_id in child_ids:
+                        pos_stats = self.get_node_success_by_position(child_id)
+                        if step_position in pos_stats:
+                            stats = pos_stats[step_position]
+                            if stats["n"] >= POSITION_STATS_MIN_OBS:
+                                position_stats_map[child_id] = stats
+
             parent_uses = current.uses or 1
             scored_children = []
 
@@ -1004,6 +1024,20 @@ class StepSignatureDB:
                             last_used_at=child_sig.last_used_at,
                             step_node_stats=step_stats_map.get(child_sig.id),
                         )
+                        # Apply position-aware penalty if we have stats for this position
+                        if child_sig.id in position_stats_map:
+                            pos_stats = position_stats_map[child_sig.id]
+                            pos_success = pos_stats["mean_success"]
+                            # Penalty: multiply score by position success rate
+                            # Low success at this position = lower score
+                            from mycelium.config import POSITION_STATS_WEIGHT
+                            position_factor = POSITION_STATS_WEIGHT * pos_success + (1 - POSITION_STATS_WEIGHT)
+                            score *= position_factor
+                            logger.debug(
+                                "[routing] Position penalty applied: node=%d pos=%d "
+                                "pos_success=%.2f factor=%.2f",
+                                child_sig.id, step_position, pos_success, position_factor
+                            )
                     else:
                         score = compute_routing_score(
                             sim, child_sig.uses, child_sig.successes, child_sig.last_used_at
@@ -1100,6 +1134,7 @@ class StepSignatureDB:
         max_depth: int = None,
         top_k: int = 3,
         dag_step_type: Optional[str] = None,
+        step_position: Optional[int] = None,
     ) -> RoutingResult:
         """Route with confidence scoring for MCTS multi-path exploration.
 
@@ -1119,6 +1154,7 @@ class StepSignatureDB:
             max_depth: Maximum depth to traverse
             top_k: Number of top alternatives to track at each level
             dag_step_type: Optional step type for step-node stats lookup
+            step_position: Optional step position (1, 2, 3...) for position-aware routing
 
         Returns:
             RoutingResult with signature, path, confidence, and alternatives
@@ -1132,6 +1168,7 @@ class StepSignatureDB:
             use_ucb1=True,
             epsilon_exploration=True,
             dag_step_type=dag_step_type,
+            step_position=step_position,
         )
 
     # =========================================================================

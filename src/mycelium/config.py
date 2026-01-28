@@ -505,6 +505,13 @@ STEP_NODE_STATS_PRIOR_USES = 2  # Bayesian prior uses
 AMPLITUDE_POST_PENALTY_THRESHOLD = 0.6  # avg_amplitude_post below this → penalize routing
 AMPLITUDE_POST_PENALTY_MULT = 0.8  # Multiplicative penalty for low amplitude_post
 
+# POSITION-AWARE ROUTING (plan_step_stats)
+# Per CLAUDE.md: "Failures Are Valuable Data Points" - track success by step position
+# Same node at step 1 vs step 5 may have very different success rates
+POSITION_STATS_ENABLED = True  # Use plan_step_stats for position-aware routing
+POSITION_STATS_MIN_OBS = 3  # Minimum observations to trust position stats
+POSITION_STATS_WEIGHT = 0.5  # Penalty weight (0.5 = at 0% success, score *= 0.5)
+
 # Variance-based decomposition (Welford's algorithm)
 # Per CLAUDE.md: leaf_node ≡ dag_step_type (1:1 mapping)
 # The learning unit is (dag_step_id, dag_step_type/node_id)
