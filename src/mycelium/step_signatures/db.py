@@ -28,9 +28,8 @@ _CENTROID_CACHE_VERSION = 1
 
 # Canonical atomic operations for embedding-based complexity detection
 # Per CLAUDE.md: "prefer embedding similarity over keyword matching"
+# Thresholds now imported from config.py per CLAUDE.md "The Flow"
 ATOMIC_OPERATIONS = ["ADD(a, b)", "SUB(a, b)", "MUL(a, b)", "DIV(a, b)"]
-ATOMIC_SIMILARITY_THRESHOLD = 0.70  # Below this, step is unknown/complex
-ATOMIC_GAP_THRESHOLD = 0.03  # Gap between best and 2nd best match; below this = multi-part
 
 
 class SignatureStat(Enum):
@@ -71,6 +70,11 @@ from mycelium.config import (
     CENTROID_DRIFT_DECAY,
     DB_MAX_RETRIES,
     DB_BASE_RETRY_DELAY,
+    # Atomic operation detection (per CLAUDE.md "The Flow")
+    ATOMIC_SIMILARITY_THRESHOLD,
+    ATOMIC_GAP_THRESHOLD,
+    # Similarity thresholds
+    MIN_MATCH_THRESHOLD,
 )
 
 # Import from focused modules (scoring and DSL templates)
@@ -998,7 +1002,7 @@ class StepSignatureDB:
     def _route_core(
         self,
         operation_embedding: np.ndarray,
-        min_similarity: float = 0.85,
+        min_similarity: float = MIN_MATCH_THRESHOLD,
         max_depth: int = None,
         track_alternatives: bool = False,
         top_k: int = 3,
@@ -1159,7 +1163,7 @@ class StepSignatureDB:
     def route_through_hierarchy(
         self,
         operation_embedding: np.ndarray,
-        min_similarity: float = 0.85,
+        min_similarity: float = MIN_MATCH_THRESHOLD,
         max_depth: int = None,
     ) -> tuple[Optional[StepSignature], list[StepSignature]]:
         """Route an operation embedding through the signature hierarchy.
@@ -1191,7 +1195,7 @@ class StepSignatureDB:
     def route_with_confidence(
         self,
         operation_embedding: np.ndarray,
-        min_similarity: float = 0.85,
+        min_similarity: float = MIN_MATCH_THRESHOLD,
         max_depth: int = None,
         top_k: int = 3,
         dag_step_type: Optional[str] = None,
@@ -1260,7 +1264,7 @@ class StepSignatureDB:
         self,
         step_text: str,
         embedding: np.ndarray,
-        min_similarity: float = 0.85,
+        min_similarity: float = MIN_MATCH_THRESHOLD,
         parent_problem: str = "",
         origin_depth: int = 0,
         extracted_values: dict = None,
@@ -1325,7 +1329,7 @@ class StepSignatureDB:
         self,
         step_text: str,
         embedding: Optional[np.ndarray] = None,
-        min_similarity: float = 0.85,
+        min_similarity: float = MIN_MATCH_THRESHOLD,
         parent_problem: str = "",
         origin_depth: int = 0,
         extracted_values: dict = None,
@@ -3057,7 +3061,7 @@ class StepSignatureDB:
         self,
         min_success_rate: float = 0.7,
         min_uses: int = 5,
-        min_similarity: float = 0.85,
+        min_similarity: float = MIN_MATCH_THRESHOLD,
         limit: int = 10,
     ) -> list[tuple[int, int, float]]:
         """Find pairs of signatures that are candidates for merging.

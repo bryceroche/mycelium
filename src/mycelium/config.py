@@ -46,6 +46,10 @@ MIN_MATCH_THRESHOLD = 0.85  # Mature threshold - reduce signature fragmentation
 MIN_MATCH_THRESHOLD_COLD_START = 0.92  # Cold start threshold - create more signatures
 MIN_MATCH_RAMP_SIGNATURES = 50  # Signatures needed to reach mature threshold
 
+# Atomic operation detection (per CLAUDE.md: route by what operations DO)
+ATOMIC_SIMILARITY_THRESHOLD = 0.70  # Below this = unknown/complex operation
+ATOMIC_GAP_THRESHOLD = 0.03  # Gap between best and 2nd best match; below this = multi-part
+
 # =============================================================================
 # DSL EXECUTION
 # =============================================================================
@@ -74,6 +78,13 @@ DSL_OPERATION_INFERENCE_RAMP_SIGS = 100  # Signatures needed to reach mature thr
 # Exotic operations (**, factorial, perm, etc.) require higher confidence than basic (+, -, *, /)
 DSL_EXOTIC_THRESHOLD_BONUS = 0.05  # Require 5% higher similarity for exotic ops
 DSL_EXOTIC_THRESHOLD_MAX = 0.92  # Cap exotic threshold to ensure it's achievable
+
+# DSL Template Matching (per CLAUDE.md "The Flow": thresholds from config, not magic numbers)
+DSL_TEMPLATE_MIN_SIMILARITY = 0.5  # Minimum similarity for DSL template consideration
+DSL_TEMPLATE_MATCH_THRESHOLD = 0.7  # Threshold for "good enough" DSL match
+DSL_PARAM_WEIGHT_SEMANTIC = 0.7  # Weight when semantic params available
+DSL_PARAM_WEIGHT_DEFAULT = 0.3  # Weight otherwise
+DSL_MIN_SUCCESS_RATE = 0.6  # Minimum success rate for DSL selection
 
 # =============================================================================
 # UMBRELLA PROMOTION (failing signatures → decompose into children)
