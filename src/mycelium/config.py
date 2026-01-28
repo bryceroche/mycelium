@@ -46,12 +46,6 @@ MIN_MATCH_THRESHOLD = 0.85  # Mature threshold - reduce signature fragmentation
 MIN_MATCH_THRESHOLD_COLD_START = 0.92  # Cold start threshold - create more signatures
 MIN_MATCH_RAMP_SIGNATURES = 50  # Signatures needed to reach mature threshold
 
-# Always Route Mode: Remove arbitrary thresholds, always route to best match
-# Per CLAUDE.md: "Let signatures fail. This is how the system learns."
-# Instead of rejecting matches below threshold, we accept best match and let
-# execution failures drive decomposition/restructuring.
-ALWAYS_ROUTE_TO_BEST = True  # If True, ignore thresholds and always use best match
-
 # =============================================================================
 # DSL EXECUTION
 # =============================================================================

@@ -1528,8 +1528,8 @@ class StepSignatureDB:
                 # Accept match from hierarchical routing
                 # Simplified: no match_score, just use routing result
                 # Global dedup check happens later if no routing match
-                from mycelium.config import ALWAYS_ROUTE_TO_BEST
-                similarity_ok = best_sim >= min_similarity if not ALWAYS_ROUTE_TO_BEST else True
+                # Use Welford-guided thresholds (per mycelium-808f)
+                similarity_ok = best_sim >= min_similarity
 
                 if best_match is not None and similarity_ok:
                     # Check if matched signature's step_type is compatible with dsl_hint
@@ -1925,9 +1925,6 @@ class StepSignatureDB:
         parent_for_new = current  # Track where to create new child
         depth = 0
 
-        # Import once outside loop
-        from mycelium.config import ALWAYS_ROUTE_TO_BEST
-
         while depth < max_depth:
             # Check similarity to current node using graph_embedding (operational)
             # No text/centroid fallback - graph-only routing per CLAUDE.md
@@ -2009,8 +2006,9 @@ class StepSignatureDB:
                     null_embedding_children.append(child)
 
             # Try children with embeddings (standard UCB1 selection)
+            # Use Welford-guided thresholds (per mycelium-808f)
             for child, child_sim, used_graph in children_with_embeddings:
-                if ALWAYS_ROUTE_TO_BEST or child_sim >= min_similarity:
+                if child_sim >= min_similarity:
                     score = compute_ucb1_score(
                         child_sim,
                         child.uses,

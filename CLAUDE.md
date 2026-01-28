@@ -112,10 +112,6 @@ Decomposing leaf_nodes is a larger commitment than decomposing dag_steps because
 
 The goal is NOT 100% accuracy on every run. The goal is collecting data that makes the system smarter over time. A failed DSL provides valuable signal for post-mortem analysis.
 
-## Always Route to Best Match (No Arbitrary Thresholds)
-**ALWAYS_ROUTE_TO_BEST = True**
-Instead of rejecting matches below arbitrary similarity thresholds, we always route to the best available match and let execution failures drive learning.
-
 ### Credit Propagation
 When a problem is solved correctly, success credit propagates up the signature DAG to parent umbrellas with decay:
 - Direct signatures get +1 success
