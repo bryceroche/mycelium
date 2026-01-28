@@ -211,8 +211,15 @@ ADAPTIVE_REJECTION_MAX_THRESHOLD = 0.95  # Ceiling: never require above this sim
 
 # Rejection decomposition thresholds (per CLAUDE.md "The Flow")
 # When signatures accumulate rejections, flag for potential decomposition
-REJECTION_COUNT_THRESHOLD = 10  # Min rejections before considering decomposition
+# Cold-start ramping: be more aggressive early (flag quickly), patient later (wait for evidence)
+REJECTION_COUNT_THRESHOLD_COLD = 3  # Cold start: flag after just 3 rejections (get signal fast)
+REJECTION_COUNT_THRESHOLD_MATURE = 10  # Mature: require 10+ rejections before flagging
+REJECTION_COUNT_RAMP_SIGNATURES = 500  # Signatures at which we transition from cold to mature
 REJECTION_RATE_THRESHOLD = 0.30  # 30% rejection rate triggers decomposition flag
+
+# Computed at runtime via get_rejection_count_threshold()
+# For backward compatibility, expose the mature value as the default
+REJECTION_COUNT_THRESHOLD = REJECTION_COUNT_THRESHOLD_MATURE
 
 # =============================================================================
 # MCTS COMPUTE BUDGET (multi-path exploration)

@@ -38,7 +38,10 @@ from mycelium.config import (
     ATOMIC_SIMILARITY_THRESHOLD,
     NEW_CHILD_SIMILARITY_THRESHOLD,
     VARIANCE_THRESHOLD,
-    REJECTION_COUNT_THRESHOLD,
+    # Rejection decomposition thresholds (per CLAUDE.md "The Flow")
+    REJECTION_COUNT_THRESHOLD_COLD,
+    REJECTION_COUNT_THRESHOLD_MATURE,
+    REJECTION_COUNT_RAMP_SIGNATURES,
     REJECTION_RATE_THRESHOLD,
 )
 
@@ -107,6 +110,98 @@ class MCTSThreadStep:
     step_result: Optional[str] = None
     step_success: Optional[int] = None
     created_at: Optional[str] = None
+
+
+# =============================================================================
+# REJECTION DECISION (Per CLAUDE.md "New Favorite Pattern": Consolidated)
+# =============================================================================
+
+
+@dataclass
+class RejectionDecision:
+    """Result of rejecting a dag_step.
+
+    Per CLAUDE.md "New Favorite Pattern": Single return struct for all rejection info.
+    Callers get everything they need without coordinating multiple functions.
+    """
+    signature_id: int
+    rejection_count: int
+    rejection_rate: float
+    should_decompose: bool
+    was_queued: bool = False  # True if step was queued for decomposition
+    count_threshold: int = 0  # Current threshold (varies with system maturity)
+
+
+def reject_dag_step(
+    signature_id: int,
+    similarity: float,
+    step_text: str = None,
+    dag_step_id: str = None,
+    problem_context: str = None,
+    reason: str = None,
+    conn=None,
+) -> RejectionDecision:
+    """Single entry point for all dag_step rejections.
+
+    Per CLAUDE.md "New Favorite Pattern": Consolidate rejection pathways.
+    This replaces the need to coordinate multiple functions:
+    - increment_rejection_count()
+    - get_leaf_rejection_stats()
+    - queue_for_decomposition()
+    - flag_high_rejection_leaves_for_decomposition()
+
+    Args:
+        signature_id: The leaf signature that rejected
+        similarity: The similarity score that caused rejection
+        step_text: Text of the rejected step (needed for decomposition queue)
+        dag_step_id: Optional link to the dag_step
+        problem_context: Optional problem text for decomposition context
+        reason: Why rejection happened (e.g., "below_threshold", "multi_part")
+        conn: Optional DB connection (reuse to avoid locks)
+
+    Returns:
+        RejectionDecision with all rejection info
+    """
+    from mycelium.step_signatures.db import get_step_db
+    step_db = get_step_db()
+
+    # 1. Record rejection to DB
+    rejection_count = step_db.increment_rejection_count(signature_id, conn=conn)
+
+    # 2. Get stats to check decomposition threshold
+    stats = get_leaf_rejection_stats(signature_id)
+    should_decompose = stats.get("should_decompose", False)
+    count_threshold = stats.get("count_threshold", REJECTION_COUNT_THRESHOLD_MATURE)
+
+    # 3. Queue for decomposition if threshold exceeded AND we have step text
+    was_queued = False
+    if should_decompose and step_text:
+        try:
+            queue_for_decomposition(
+                step_text=step_text,
+                complexity_reason=reason or f"rejected_by_leaf_{signature_id}_sim_{similarity:.3f}",
+                dag_step_id=dag_step_id,
+                problem_context=problem_context,
+                conn=conn,
+            )
+            was_queued = True
+        except Exception as e:
+            logger.warning("[rejection] Failed to queue for decomposition: %s", e)
+
+    logger.debug(
+        "[rejection] Leaf %d rejected step (sim=%.3f), count=%d, rate=%.2f, decompose=%s",
+        signature_id, similarity, rejection_count, stats.get("rejection_rate", 0),
+        should_decompose
+    )
+
+    return RejectionDecision(
+        signature_id=signature_id,
+        rejection_count=rejection_count,
+        rejection_rate=stats.get("rejection_rate", 0.0),
+        should_decompose=should_decompose,
+        was_queued=was_queued,
+        count_threshold=count_threshold,
+    )
 
 
 # =============================================================================
@@ -802,8 +897,34 @@ def get_pending_queue_ids() -> list[int]:
 
 
 # Rejection thresholds - now imported from config.py per CLAUDE.md "The Flow"
-# REJECTION_COUNT_THRESHOLD and REJECTION_RATE_THRESHOLD imported at module top
+# Cold-start ramping: be more aggressive early, patient later
 # DEPRECATED: REJECTION_SIM_THRESHOLD - use signature.get_adaptive_rejection_threshold() instead
+
+
+def get_rejection_count_threshold() -> int:
+    """Get cold-start aware rejection count threshold.
+
+    Per CLAUDE.md "The Flow": Thresholds adapt based on system maturity.
+    - Cold start (few signatures): flag quickly (3 rejections) to get signal fast
+    - Mature (many signatures): wait for more evidence (10 rejections)
+
+    Returns:
+        int: Minimum rejections before considering decomposition
+    """
+    from mycelium.step_signatures.db import get_step_db
+    step_db = get_step_db()
+    sig_count = step_db.get_signature_count()
+
+    # Linear interpolation from cold to mature
+    if sig_count >= REJECTION_COUNT_RAMP_SIGNATURES:
+        return REJECTION_COUNT_THRESHOLD_MATURE
+
+    # Ramp from cold to mature as signature count grows
+    progress = sig_count / REJECTION_COUNT_RAMP_SIGNATURES
+    threshold = REJECTION_COUNT_THRESHOLD_COLD + progress * (
+        REJECTION_COUNT_THRESHOLD_MATURE - REJECTION_COUNT_THRESHOLD_COLD
+    )
+    return int(threshold)
 
 
 def record_leaf_rejection(
@@ -879,10 +1000,12 @@ def get_leaf_rejection_stats(signature_id: int) -> dict:
     total_attempts = uses + rejection_count
     rejection_rate = rejection_count / total_attempts if total_attempts > 0 else 0.0
 
-    # Determine if this leaf should be decomposed
+    # Determine if this leaf should be decomposed using adaptive threshold
+    # Per CLAUDE.md "The Flow": cold-start aware thresholds
+    count_threshold = get_rejection_count_threshold()
     should_decompose = (
         not is_umbrella  # Only leaves, not umbrellas
-        and rejection_count >= REJECTION_COUNT_THRESHOLD
+        and rejection_count >= count_threshold
         and rejection_rate >= REJECTION_RATE_THRESHOLD
     )
 
@@ -892,6 +1015,7 @@ def get_leaf_rejection_stats(signature_id: int) -> dict:
         "uses": uses,
         "total_attempts": total_attempts,
         "rejection_rate": rejection_rate,
+        "count_threshold": count_threshold,  # Include for debugging
         "should_decompose": should_decompose,
     }
 
@@ -899,9 +1023,12 @@ def get_leaf_rejection_stats(signature_id: int) -> dict:
 def get_leaves_needing_decomposition(limit: int = 10) -> list[dict]:
     """Find leaf signatures with high rejection rates that need decomposition.
 
+    Per CLAUDE.md "The Flow": Uses adaptive threshold based on system maturity.
+
     Returns:
         List of leaf stats dicts for signatures that should be decomposed
     """
+    count_threshold = get_rejection_count_threshold()
     conn = get_db()
     cursor = conn.execute(
         """
@@ -913,7 +1040,7 @@ def get_leaves_needing_decomposition(limit: int = 10) -> list[dict]:
         ORDER BY rejection_count DESC
         LIMIT ?
         """,
-        (REJECTION_COUNT_THRESHOLD, REJECTION_RATE_THRESHOLD, limit),
+        (count_threshold, REJECTION_RATE_THRESHOLD, limit),
     )
 
     results = []

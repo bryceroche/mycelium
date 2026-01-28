@@ -90,6 +90,7 @@ from mycelium.data_layer.mcts import (
     are_decompositions_ready,
     get_pending_queue_ids,
     # Leaf rejection tracking (thresholds now from config.py per "The Flow")
+    get_rejection_count_threshold,  # Adaptive threshold based on system maturity
     record_leaf_rejection,
     get_leaf_rejection_stats,
     get_leaves_needing_decomposition,
@@ -181,8 +182,8 @@ __all__ = [
     "are_decompositions_ready",
     "get_pending_queue_ids",
     # Leaf rejection tracking (thresholds from config.py per "The Flow")
-    "REJECTION_COUNT_THRESHOLD",
-    "REJECTION_RATE_THRESHOLD",
+    # Note: REJECTION_*_THRESHOLD constants should be imported from config.py directly
+    "get_rejection_count_threshold",  # Adaptive threshold function
     "record_leaf_rejection",
     "get_leaf_rejection_stats",
     "get_leaves_needing_decomposition",
