@@ -9,6 +9,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+import numpy as np
+
 logger = logging.getLogger(__name__)
 
 from .client import get_client
@@ -1610,6 +1612,43 @@ Refine these steps into concrete operations with values."""
             if round_num < max_rounds - 1:  # Don't refine on last round
                 abstract_steps = await self._refine_abstract_steps_with_hints(
                     problem, abstract_steps, poor_matches
+                )
+
+        # Phase 5: Stage proposals for steps that couldn't be refined
+        # Per CLAUDE.md: When refinement fails, stage for periodic tree review
+        if poor_matches and self.step_db is not None:
+            logger.info(
+                "[planner] Staging %d proposals (refinement couldn't simplify further)",
+                len(poor_matches)
+            )
+            for step, hints in poor_matches:
+                # Get embedding for this step
+                canonical_graph = self.CANONICAL_GRAPHS.get(step.operation_type)
+                if canonical_graph:
+                    from mycelium.step_signatures.graph_extractor import graph_to_natural_language
+                    graph_text = graph_to_natural_language(canonical_graph)
+                else:
+                    graph_text = step.description
+
+                graph_embedding = cached_embed_batch([graph_text], self.embedder).get(graph_text)
+                if graph_embedding is not None:
+                    graph_embedding = np.array(graph_embedding)
+
+                # Extract best match info from hints
+                best_match = hints.get('best_match')
+                best_match_id = best_match[2] if best_match and len(best_match) > 2 else None
+                best_match_sim = best_match[1] if best_match and len(best_match) > 1 else None
+
+                # Stage the proposal
+                self.step_db.stage_proposal(
+                    step_text=step.description,
+                    graph_embedding=graph_embedding,
+                    proposed_parent_id=None,  # Let tree review decide
+                    best_match_id=best_match_id,
+                    best_match_sim=best_match_sim,
+                    dsl_hint=step.operation_type,
+                    problem_context=problem[:200] if problem else None,
+                    rejection_reason=hints.get('rejection_reason'),
                 )
 
         # Final phase: Get suggestions and refine to concrete plan

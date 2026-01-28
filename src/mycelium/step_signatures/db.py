@@ -7159,6 +7159,127 @@ class StepSignatureDB:
     # During cold start: auto-accept as root children.
     # After cold start: stage for Welford-based decision.
 
+    def stage_proposal(
+        self,
+        step_text: str,
+        embedding: Optional[np.ndarray] = None,
+        graph_embedding: Optional[np.ndarray] = None,
+        computation_graph: Optional[str] = None,
+        proposed_parent_id: Optional[int] = None,
+        best_match_id: Optional[int] = None,
+        best_match_sim: Optional[float] = None,
+        dsl_hint: Optional[str] = None,
+        extracted_values: Optional[dict] = None,
+        origin_depth: int = 0,
+        problem_context: Optional[str] = None,
+        rejection_reason: Optional[str] = None,
+        conn=None,
+    ) -> int:
+        """Stage a signature proposal for later review by periodic tree review.
+
+        Per CLAUDE.md "Negotiation between Tree and Planner":
+        When refinement fails (can't decompose further), stage the proposal
+        for review. Periodic tree review will use Welford stats to decide
+        whether to accept (child or sibling) or reject.
+
+        Args:
+            step_text: The step description text
+            embedding: Text embedding (for centroid)
+            graph_embedding: Computation graph embedding (for routing)
+            computation_graph: Structural graph representation
+            proposed_parent_id: Suggested parent from routing
+            best_match_id: Most similar existing signature
+            best_match_sim: Similarity to best match
+            dsl_hint: Operation hint from planner
+            extracted_values: Extracted parameter values
+            origin_depth: Depth where proposal originated
+            problem_context: Original problem text (for context)
+            rejection_reason: Why this step was rejected during negotiation
+
+        Returns:
+            The proposal ID
+        """
+        import json
+
+        def _do_stage(c):
+            # Serialize embeddings as blobs
+            embedding_blob = embedding.tobytes() if embedding is not None else None
+            graph_embedding_blob = graph_embedding.tobytes() if graph_embedding is not None else None
+            extracted_values_json = json.dumps(extracted_values) if extracted_values else None
+
+            # Include rejection reason in problem_context for review
+            context = problem_context or ""
+            if rejection_reason:
+                context = f"[REJECTION: {rejection_reason}] {context}"
+
+            cursor = c.execute(
+                """INSERT INTO proposed_signatures
+                   (step_text, embedding, graph_embedding, computation_graph,
+                    proposed_parent_id, best_match_id, best_match_sim,
+                    dsl_hint, extracted_values, status, origin_depth, problem_context)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)""",
+                (
+                    step_text,
+                    embedding_blob,
+                    graph_embedding_blob,
+                    computation_graph,
+                    proposed_parent_id,
+                    best_match_id,
+                    best_match_sim,
+                    dsl_hint,
+                    extracted_values_json,
+                    origin_depth,
+                    context,
+                ),
+            )
+            proposal_id = cursor.lastrowid
+
+            logger.info(
+                "[proposals] Staged proposal id=%d: step='%s' best_match=%s (sim=%.3f) reason='%s'",
+                proposal_id,
+                step_text[:40],
+                best_match_id,
+                best_match_sim or 0.0,
+                rejection_reason or "none",
+            )
+            return proposal_id
+
+        if conn is not None:
+            return _do_stage(conn)
+        else:
+            with self._connection() as c:
+                result = _do_stage(c)
+                c.commit()
+                return result
+
+    def get_pending_proposals(self, limit: int = 50, conn=None) -> list["ProposedSignature"]:
+        """Get pending proposals for review.
+
+        Args:
+            limit: Max proposals to return
+
+        Returns:
+            List of ProposedSignature objects with status='pending'
+        """
+        from mycelium.step_signatures.models import ProposedSignature
+
+        def _do_get(c):
+            rows = c.execute(
+                """SELECT * FROM proposed_signatures
+                   WHERE status = 'pending'
+                   ORDER BY created_at ASC
+                   LIMIT ?""",
+                (limit,)
+            ).fetchall()
+
+            return [ProposedSignature.from_row(dict(row)) for row in rows]
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
     def propose_signature(
         self,
         step_text: str,
@@ -8020,6 +8141,181 @@ class StepSignatureDB:
                     c.rollback()
                     raise
 
+    def _process_pending_proposals(self, conn=None) -> dict:
+        """Process staged proposals using Welford stats to decide placement.
+
+        Per CLAUDE.md "Negotiation between Tree and Planner":
+        Proposals are staged when refinement fails. This method reviews them
+        using Welford stats to decide:
+        - ACCEPT as sibling: Normal similarity, reasonable performance expected
+        - ACCEPT as child: Sub-cluster under best match
+        - REJECT: Pattern already well-covered or consistently fails
+
+        Uses adaptive z-scores just like negotiation rejection.
+
+        Returns:
+            Dict with accepted and rejected counts
+        """
+        from mycelium.step_signatures.models import ProposedSignature
+
+        def _do_process(c):
+            stats = {"accepted": 0, "rejected": 0, "deferred": 0}
+
+            # Get pending proposals (oldest first)
+            proposals = self.get_pending_proposals(limit=20, conn=c)
+            if not proposals:
+                return stats
+
+            logger.info("[proposals] Processing %d pending proposals", len(proposals))
+
+            for proposal in proposals:
+                # Get best match info
+                best_match_id = proposal.best_match_id
+                best_match_sim = proposal.best_match_sim or 0.0
+
+                # Decision criteria using Welford stats
+                decision = self._decide_proposal_fate(proposal, conn=c)
+
+                if decision["action"] == "accept":
+                    # Accept and create signature
+                    parent_id = decision.get("parent_id")
+                    reason = decision.get("reason", "welford_accepted")
+
+                    sig_id = self.accept_proposal(
+                        proposal.id,
+                        parent_id=parent_id,
+                        reason=reason,
+                        conn=c,
+                    )
+                    if sig_id:
+                        stats["accepted"] += 1
+                        logger.info(
+                            "[proposals] Accepted proposal %d -> sig %d (parent=%s, reason=%s)",
+                            proposal.id, sig_id, parent_id, reason
+                        )
+
+                elif decision["action"] == "reject":
+                    # Reject proposal
+                    reason = decision.get("reason", "welford_rejected")
+                    self.reject_proposal(proposal.id, reason=reason, conn=c)
+                    stats["rejected"] += 1
+                    logger.info(
+                        "[proposals] Rejected proposal %d: %s",
+                        proposal.id, reason
+                    )
+
+                else:
+                    # Defer - not enough data yet
+                    stats["deferred"] += 1
+
+            return stats
+
+        if conn is not None:
+            return _do_process(conn)
+        else:
+            with self._connection() as c:
+                c.execute("BEGIN IMMEDIATE")
+                try:
+                    result = _do_process(c)
+                    c.commit()
+                    return result
+                except Exception:
+                    c.rollback()
+                    raise
+
+    def _decide_proposal_fate(self, proposal: "ProposedSignature", conn=None) -> dict:
+        """Decide whether to accept/reject a proposal using Welford stats.
+
+        Per CLAUDE.md "Cluster Boundaries": Welford statistics guide
+        accept/reject decisions. Uses adaptive z-scores.
+
+        Returns:
+            Dict with 'action' (accept/reject/defer) and 'reason'
+        """
+        def _do_decide(c):
+            best_match_id = proposal.best_match_id
+            best_match_sim = proposal.best_match_sim or 0.0
+
+            # If no best match, accept as root child
+            if best_match_id is None:
+                root = self.get_root()
+                return {
+                    "action": "accept",
+                    "parent_id": root.id if root else None,
+                    "reason": "no_existing_match"
+                }
+
+            # Get best match's overall performance
+            match_stats = self.get_node_stats_all_positions(best_match_id, conn=c)
+
+            # Get cluster stats for comparison
+            cluster_stats = self.get_cluster_stats(best_match_id, conn=c)
+
+            # Decision logic using adaptive thresholds:
+
+            # 1. Very high similarity -> merge/dedup (reject proposal, use existing)
+            if best_match_sim >= 0.97:
+                return {
+                    "action": "reject",
+                    "reason": f"high_similarity_dedup (sim={best_match_sim:.3f})"
+                }
+
+            # 2. Check if best match performs well (z-score relative to cluster)
+            if match_stats["n"] >= 5 and cluster_stats["sibling_count"] >= 2:
+                if cluster_stats["cluster_std"] > 0.01:
+                    z_score = (match_stats["mean_success"] - cluster_stats["cluster_mean"]) / cluster_stats["cluster_std"]
+
+                    # Best match is significantly underperforming -> accept proposal as sibling
+                    if z_score < -1.5:
+                        # Get parent of best match
+                        best_match_parent = self.get_parent(best_match_id)
+                        parent_id = best_match_parent.id if best_match_parent else None
+
+                        return {
+                            "action": "accept",
+                            "parent_id": parent_id,
+                            "reason": f"sibling_alternative (best_match z={z_score:.2f} underperforms)"
+                        }
+
+                    # Best match performs well and similar -> reject (covered)
+                    if z_score > -0.5 and best_match_sim >= 0.85:
+                        return {
+                            "action": "reject",
+                            "reason": f"well_covered (sim={best_match_sim:.3f}, match z={z_score:.2f})"
+                        }
+
+            # 3. Moderate similarity -> accept as child (sub-cluster)
+            if best_match_sim >= 0.75:
+                return {
+                    "action": "accept",
+                    "parent_id": best_match_id,  # Child of best match
+                    "reason": f"child_subcluster (sim={best_match_sim:.3f})"
+                }
+
+            # 4. Low similarity -> accept as sibling under same parent
+            if best_match_sim >= 0.5:
+                best_match_parent = self.get_parent(best_match_id)
+                parent_id = best_match_parent.id if best_match_parent else None
+                return {
+                    "action": "accept",
+                    "parent_id": parent_id,
+                    "reason": f"sibling_new_pattern (sim={best_match_sim:.3f})"
+                }
+
+            # 5. Very low similarity -> accept under root (new cluster)
+            root = self.get_root()
+            return {
+                "action": "accept",
+                "parent_id": root.id if root else None,
+                "reason": f"new_cluster (sim={best_match_sim:.3f})"
+            }
+
+        if conn is not None:
+            return _do_decide(conn)
+        else:
+            with self._connection() as c:
+                return _do_decide(c)
+
     # =========================================================================
     # PERIODIC TREE REVIEW (per periodic tree review plan)
     # =========================================================================
@@ -8092,9 +8388,15 @@ class StepSignatureDB:
             # 8. Cleanup orphan umbrellas
             stats["orphans_cleaned"] = self._cleanup_orphan_umbrellas(conn=c)
 
+            # 9. Process pending proposals (staged signatures from failed refinement)
+            proposals_result = self._process_pending_proposals(conn=c)
+            stats["proposals_accepted"] = proposals_result.get("accepted", 0)
+            stats["proposals_rejected"] = proposals_result.get("rejected", 0)
+
             logger.info(
-                "[review] Tree review complete: %d merges, %d moves, %d clusters, %d orphans cleaned",
-                stats["merges"], stats["moves"], stats["clusters_created"], stats["orphans_cleaned"]
+                "[review] Tree review complete: %d merges, %d moves, %d clusters, %d orphans, %d proposals accepted, %d rejected",
+                stats["merges"], stats["moves"], stats["clusters_created"], stats["orphans_cleaned"],
+                stats["proposals_accepted"], stats["proposals_rejected"]
             )
 
             return stats
