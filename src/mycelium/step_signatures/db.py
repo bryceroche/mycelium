@@ -7045,17 +7045,27 @@ class StepSignatureDB:
             # 1. Get parent's Welford stats for child similarities
             stats = self.get_welford_stats(parent_id, conn=c)
 
-            # 2. Handle insufficient data (cold start for this parent)
-            # During cold start, default to SIBLING placement
+            # 2. Find best matching sibling (needed for both Welford update and decision)
+            best_sibling, best_sim = self._find_best_sibling(new_embedding, parent_id, conn=c)
+
+            # 3. Update parent's child similarity distribution (per CLAUDE.md "System Independence")
+            # CRITICAL: Update Welford stats BEFORE early return to bootstrap stats during cold start
+            # This tracks inter-child similarity distribution for adaptive threshold decisions
+            if best_sibling is not None:
+                self.update_welford_child(parent_id, best_sim, conn=c)
+                logger.debug(
+                    "[placement] Updated Welford child stats for parent %d: sim=%.3f",
+                    parent_id, best_sim
+                )
+
+            # 4. Handle insufficient data (cold start for this parent)
+            # During cold start, default to SIBLING placement but stats are now being collected
             if stats is None or stats.get("child_n", 0) < 2:
                 logger.debug(
                     "[placement] parent_id=%d has insufficient Welford data (n=%d), defaulting to SIBLING",
                     parent_id, stats.get("child_n", 0) if stats else 0
                 )
-                return PlacementDecision.SIBLING, None, 0.0
-
-            # 3. Find best matching sibling
-            best_sibling, best_sim = self._find_best_sibling(new_embedding, parent_id, conn=c)
+                return PlacementDecision.SIBLING, best_sibling, best_sim if best_sibling else 0.0
 
             # If no siblings with embeddings, default to SIBLING
             if best_sibling is None:
@@ -7064,10 +7074,6 @@ class StepSignatureDB:
                     parent_id
                 )
                 return PlacementDecision.SIBLING, None, 0.0
-
-            # Update parent's child similarity distribution (per periodic tree review plan)
-            # This tracks the distribution of inter-child similarities for this cluster
-            self.update_welford_child(parent_id, best_sim, conn=c)
 
             # 4. Compute z-score relative to parent's child similarity distribution
             child_mean = stats.get("child_mean", 0.0)
@@ -8049,16 +8055,19 @@ class StepSignatureDB:
             self._promote_to_umbrella_internal(c, umbrella.id, skip_children_check=True)
 
             # Reparent cluster members under umbrella
+            now = datetime.now(timezone.utc).isoformat()
             for sig_id, step_type, _ in cluster:
                 # Remove old parent relationship
                 c.execute(
                     "DELETE FROM signature_relationships WHERE child_id = ?",
                     (sig_id,)
                 )
-                # Add new parent relationship
+                # Add new parent relationship (condition = step_type)
                 c.execute(
-                    "INSERT INTO signature_relationships (parent_id, child_id) VALUES (?, ?)",
-                    (umbrella.id, sig_id)
+                    """INSERT INTO signature_relationships
+                       (parent_id, child_id, condition, created_at)
+                       VALUES (?, ?, ?, ?)""",
+                    (umbrella.id, sig_id, step_type or "clustered", now)
                 )
 
             # Propagate centroid up
@@ -8335,6 +8344,141 @@ class StepSignatureDB:
     # Comprehensive tree review that runs every RESTRUCTURE_INTERVAL problems
     # Uses Welford stats to guide: deduplication, outlier relocation, sub-clustering
 
+    def _backfill_missing_embeddings(self, conn) -> int:
+        """Backfill graph_embedding for signatures missing them.
+
+        Per CLAUDE.md "System Independence": Automated maintenance, no manual intervention.
+        Ensures all signatures have embeddings before tree review can subcluster them.
+
+        For math signatures: Extract computation_graph from DSL, embed it
+        For decompose signatures: Embed the description (no computation graph)
+
+        Returns:
+            Number of signatures updated
+        """
+        from mycelium.step_signatures.graph_extractor import (
+            extract_computation_graph,
+            embed_computation_graph_sync,
+        )
+        from mycelium.embedder import get_embedding
+
+        updated = 0
+
+        # Find signatures missing graph_embedding
+        rows = conn.execute(
+            """SELECT id, dsl_script, description, dsl_type
+               FROM step_signatures
+               WHERE (graph_embedding IS NULL OR graph_embedding = '')
+                 AND is_archived = 0
+               LIMIT 100"""
+        ).fetchall()
+
+        for row in rows:
+            sig_id = row["id"]
+            dsl_script = row["dsl_script"]
+            description = row["description"]
+            dsl_type = row["dsl_type"]
+
+            try:
+                graph_embedding = None
+                computation_graph = None
+
+                # For math signatures: extract and embed computation graph
+                if dsl_type == "math" and dsl_script:
+                    computation_graph = extract_computation_graph(dsl_script)
+                    if computation_graph:
+                        graph_embedding = embed_computation_graph_sync(computation_graph)
+
+                # For decompose signatures (or if math extraction failed): embed description
+                if graph_embedding is None and description:
+                    emb = get_embedding(description)
+                    if emb is not None:
+                        graph_embedding = emb
+
+                if graph_embedding is None:
+                    continue
+
+                # Update signature
+                updates = ["graph_embedding = ?"]
+                values = [json.dumps(graph_embedding.tolist() if hasattr(graph_embedding, 'tolist') else list(graph_embedding))]
+
+                if computation_graph:
+                    updates.append("computation_graph = ?")
+                    values.append(computation_graph)
+
+                values.append(sig_id)
+                conn.execute(
+                    f"UPDATE step_signatures SET {', '.join(updates)} WHERE id = ?",
+                    tuple(values)
+                )
+                updated += 1
+
+            except Exception as e:
+                logger.warning("[backfill] Failed to backfill sig %d: %s", sig_id, e)
+                continue
+
+        if updated > 0:
+            logger.info("[backfill] Updated %d signatures with embeddings", updated)
+
+        return updated
+
+    def _backfill_welford_child_stats(self, conn) -> int:
+        """Backfill Welford child stats for umbrellas missing them.
+
+        Per CLAUDE.md "System Independence": Automated maintenance.
+        Computes pairwise similarities among children and updates Welford stats.
+        This bootstraps stats for existing umbrellas that were created before
+        Welford tracking was added.
+
+        Returns:
+            Number of umbrellas updated
+        """
+        # Find umbrellas with children but no child stats
+        rows = conn.execute(
+            """SELECT u.id, COUNT(sr.child_id) as num_children
+               FROM step_signatures u
+               JOIN signature_relationships sr ON sr.parent_id = u.id
+               LEFT JOIN welford_stats ws ON ws.signature_id = u.id
+               WHERE u.is_semantic_umbrella = 1
+                 AND u.is_archived = 0
+                 AND (ws.child_n IS NULL OR ws.child_n = 0)
+               GROUP BY u.id
+               HAVING COUNT(sr.child_id) >= 2
+               LIMIT 20"""
+        ).fetchall()
+
+        updated = 0
+        for row in rows:
+            umbrella_id = row[0]
+            try:
+                # Get children with embeddings
+                children = self._get_children_with_embeddings(umbrella_id, conn=conn)
+                if len(children) < 2:
+                    continue
+
+                # Compute pairwise similarities and update Welford stats
+                sim_matrix = self._compute_pairwise_similarities(children)
+                n = len(children)
+
+                for i in range(n):
+                    for j in range(i + 1, n):
+                        self.update_welford_child(umbrella_id, sim_matrix[i][j], conn=conn)
+
+                updated += 1
+                logger.debug(
+                    "[backfill] Updated Welford child stats for umbrella %d (%d pairs)",
+                    umbrella_id, n * (n - 1) // 2
+                )
+
+            except Exception as e:
+                logger.warning("[backfill] Failed to backfill Welford for umbrella %d: %s", umbrella_id, e)
+                continue
+
+        if updated > 0:
+            logger.info("[backfill] Updated Welford child stats for %d umbrellas", updated)
+
+        return updated
+
     def run_periodic_tree_review(self, conn=None) -> dict:
         """Comprehensive tree review using Welford stats.
 
@@ -8350,7 +8494,14 @@ class StepSignatureDB:
         from mycelium import config
 
         def _do_review(c):
-            stats = {"ran": True, "merges": 0, "moves": 0, "clusters_created": 0, "orphans_cleaned": 0}
+            stats = {"ran": True, "merges": 0, "moves": 0, "clusters_created": 0, "orphans_cleaned": 0,
+                     "embeddings_backfilled": 0, "welford_backfilled": 0}
+
+            # 0a. BACKFILL: Ensure all signatures have embeddings (system independence)
+            stats["embeddings_backfilled"] = self._backfill_missing_embeddings(c)
+
+            # 0b. BACKFILL: Ensure all umbrellas have Welford child stats (system independence)
+            stats["welford_backfilled"] = self._backfill_welford_child_stats(c)
 
             # 1. Get all umbrella nodes (routers) for review
             umbrellas = self._get_all_umbrellas(conn=c)
@@ -8360,8 +8511,19 @@ class StepSignatureDB:
                 # 2. Get Welford stats for this cluster
                 welford = self.get_welford_stats(umbrella.id, conn=c)
 
-                # 3. Get children with embeddings
+                # 3. Get total child count (for fan-out check) and children with embeddings
+                total_children = c.execute(
+                    "SELECT COUNT(*) FROM signature_relationships WHERE parent_id = ?",
+                    (umbrella.id,)
+                ).fetchone()[0]
                 children = self._get_children_with_embeddings(umbrella.id, conn=c)
+
+                # Log if many children lack embeddings (limits subclustering ability)
+                if total_children > 0 and len(children) < total_children * 0.5:
+                    logger.warning(
+                        "[review] Umbrella %d has %d total children but only %d with embeddings",
+                        umbrella.id, total_children, len(children)
+                    )
 
                 if len(children) < 2:
                     continue  # Nothing to review
@@ -8387,8 +8549,13 @@ class StepSignatureDB:
                 moves = self._relocate_outliers(outliers, umbrella.id, conn=c)
                 stats["moves"] += moves
 
-                # 7. SUB-CLUSTERING: Split if high variance indicates heterogeneity
-                if self._should_subcluster(welford, children):
+                # 7. SUB-CLUSTERING: Split if Welford stats indicate heterogeneity
+                should_split, split_reason = self._should_subcluster(welford, children, total_children)
+                if should_split:
+                    logger.info(
+                        "[review] Subclustering umbrella %d: %s",
+                        umbrella.id, split_reason
+                    )
                     # Refresh children after any moves
                     children = self._get_children_with_embeddings(umbrella.id, conn=c)
                     if len(children) >= config.RESTRUCTURE_MIN_CHILDREN_FOR_SPLIT:
@@ -8510,27 +8677,73 @@ class StepSignatureDB:
         variance = m2 / (n - 1)
         return math.sqrt(variance) if variance > 0 else 0.0
 
-    def _should_subcluster(self, welford: Optional[dict], children: list) -> bool:
-        """Decide if cluster should be split based on Welford variance.
+    def _should_subcluster(
+        self, welford: Optional[dict], children: list, total_children: int = None
+    ) -> tuple[bool, str]:
+        """Decide if cluster should be split based on Welford stats.
 
-        High variance = heterogeneous cluster = needs sub-clustering.
+        Per CLAUDE.md "System Independence": Use Welford-guided adaptive thresholds.
+
+        Split conditions (checked in order):
+        1. High fan-out: total_children > MAX_CHILDREN_PER_PARENT (too many for efficient routing)
+        2. High CV: child_std/child_mean > CV_THRESHOLD (relative heterogeneity)
+        3. High variance: child_std > VARIANCE_THRESHOLD (absolute heterogeneity)
 
         Args:
             welford: Welford stats for the umbrella
-            children: List of children with embeddings
+            children: List of children with embeddings (for similarity computation)
+            total_children: Total children count from relationships (for fan-out check)
 
         Returns:
-            True if cluster should be split
+            Tuple of (should_split, reason_string)
         """
-        from mycelium.config import RESTRUCTURE_VARIANCE_THRESHOLD, RESTRUCTURE_MIN_CHILDREN_FOR_SPLIT
+        from mycelium.config import (
+            RESTRUCTURE_VARIANCE_THRESHOLD,
+            RESTRUCTURE_MIN_CHILDREN_FOR_SPLIT,
+            MAX_CHILDREN_PER_PARENT,
+            RESTRUCTURE_CV_THRESHOLD,
+        )
 
-        if welford is None or len(children) < RESTRUCTURE_MIN_CHILDREN_FOR_SPLIT:
-            return False  # Need enough children to split meaningfully
+        num_children_with_embeddings = len(children)
+        # Use total_children for fan-out check if provided, else fall back to children with embeddings
+        num_children_total = total_children if total_children is not None else num_children_with_embeddings
 
+        # Condition 1: High fan-out forces split regardless of Welford stats
+        # Per CLAUDE.md: System should automatically balance tree structure
+        # Check total children (not just ones with embeddings) for fan-out
+        if num_children_total > MAX_CHILDREN_PER_PARENT:
+            if num_children_with_embeddings < RESTRUCTURE_MIN_CHILDREN_FOR_SPLIT:
+                return False, f"high_fanout_but_no_embeddings (total={num_children_total}, with_emb={num_children_with_embeddings})"
+            return True, f"high_fanout ({num_children_total} > {MAX_CHILDREN_PER_PARENT})"
+
+        # Minimum children with embeddings required to split meaningfully
+        if num_children_with_embeddings < RESTRUCTURE_MIN_CHILDREN_FOR_SPLIT:
+            return False, f"too_few_children ({num_children_with_embeddings} < {RESTRUCTURE_MIN_CHILDREN_FOR_SPLIT})"
+
+        # Need Welford stats for remaining checks
+        if welford is None:
+            return False, "no_welford_stats"
+
+        child_n = welford.get("child_n", 0)
+        if child_n < 3:
+            return False, f"insufficient_welford_data (n={child_n})"
+
+        child_mean = welford.get("child_mean", 0.0)
         child_std = self._welford_std_from_stats(welford, "child")
 
-        # High variance threshold
-        return child_std > RESTRUCTURE_VARIANCE_THRESHOLD
+        # Condition 2: High Coefficient of Variation (relative heterogeneity)
+        # CV = std/mean; high CV means children vary significantly relative to mean similarity
+        # Per CLAUDE.md: Prefer adaptive thresholds over hard-coded values
+        if child_mean > 0.1:  # Avoid division issues with very low mean
+            cv = child_std / child_mean
+            if cv > RESTRUCTURE_CV_THRESHOLD:
+                return True, f"high_cv (cv={cv:.3f} > {RESTRUCTURE_CV_THRESHOLD}, std={child_std:.3f}, mean={child_mean:.3f})"
+
+        # Condition 3: High absolute variance (fallback)
+        if child_std > RESTRUCTURE_VARIANCE_THRESHOLD:
+            return True, f"high_variance (std={child_std:.3f} > {RESTRUCTURE_VARIANCE_THRESHOLD})"
+
+        return False, f"cohesive_cluster (cv={child_std/child_mean:.3f}, std={child_std:.3f}, n={num_children_with_embeddings})"
 
     def _merge_duplicates(
         self,
@@ -8855,14 +9068,49 @@ class StepSignatureDB:
         Returns:
             Number of new clusters created
         """
-        # Compute adaptive threshold from Welford stats
-        if welford:
-            child_mean = welford.get("child_mean", 0.85)
-            child_std = self._welford_std_from_stats(welford, "child")
-            # Threshold: mean + 0.5*std (tighter than current cluster)
-            cluster_threshold = min(0.95, child_mean + 0.5 * child_std)
+        import math
+
+        # Per CLAUDE.md "System Independence": Welford-guided adaptive thresholds
+        # To SPLIT a heterogeneous cluster into tighter groups:
+        # - Use threshold = mean + k*std when std is meaningful (k > 0)
+        # - Fall back to percentile when std is too small (tight distribution)
+        # - Goal: create meaningful splits without fragmenting into singletons
+
+        n = len(children)
+        if n < 2:
+            return 0
+
+        # Compute mean and std from actual similarity matrix (Welford-style)
+        sims = [sim_matrix[i][j] for i in range(n) for j in range(i + 1, n)]
+        if not sims:
+            return 0
+
+        # Online Welford computation for mean and std
+        mean_sim = sum(sims) / len(sims)
+        variance = sum((s - mean_sim) ** 2 for s in sims) / len(sims) if len(sims) > 1 else 0
+        std_sim = math.sqrt(variance)
+        cv = std_sim / mean_sim if mean_sim > 0 else 0  # Coefficient of variation
+
+        # Choose threshold strategy based on distribution characteristics
+        if cv > 0.1:
+            # High CV: Welford-guided threshold works well
+            cluster_threshold = min(0.95, mean_sim + 2.0 * std_sim)
+            method = "welford"
         else:
-            cluster_threshold = 0.90
+            # Low CV (tight distribution): Use percentile-based threshold
+            # Top 3% creates meaningful clusters without over-fragmenting
+            sorted_sims = sorted(sims, reverse=True)
+            percentile_idx = max(1, int(len(sorted_sims) * 0.03))  # Top 3%
+            cluster_threshold = sorted_sims[percentile_idx]
+            method = "percentile_3"
+
+        # Ensure threshold is in reasonable range
+        cluster_threshold = max(0.85, min(0.95, cluster_threshold))
+
+        logger.info(
+            "[subcluster] %s threshold %.3f (mean=%.3f, std=%.3f, cv=%.3f, n=%d)",
+            method, cluster_threshold, mean_sim, std_sim, cv, len(sims)
+        )
 
         # Detect sub-clusters using union-find
         clusters = self._detect_clusters(children, sim_matrix, cluster_threshold)

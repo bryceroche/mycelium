@@ -657,6 +657,11 @@ RESTRUCTURE_MIN_CHILDREN_FOR_SPLIT = 4  # Need this many children to consider sp
 RESTRUCTURE_MERGE_FLOOR = 0.95  # Never merge signatures below this similarity (safety floor)
 RESTRUCTURE_OUTLIER_IMPROVEMENT = 0.1  # Move outlier if new cluster is 10%+ better fit
 
+# Welford-guided cluster boundaries (per CLAUDE.md "System Independence")
+# These use relative measures (CV) rather than absolute thresholds
+MAX_CHILDREN_PER_PARENT = 20  # Force subcluster consideration above this fan-out
+RESTRUCTURE_CV_THRESHOLD = 0.3  # CV (std/mean) above which cluster is heterogeneous
+
 # =============================================================================
 # MATURITY-BASED DECOMPOSE VS CREATE (Sigmoid transition)
 # =============================================================================
