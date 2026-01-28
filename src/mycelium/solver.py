@@ -1955,6 +1955,14 @@ class Solver:
         if routed_signature:
             self.step_db.update_welford_exec(routed_signature.id, success=step_completed)
 
+            # Accumulate embedding drift on successful matches (per mycelium-ieq4)
+            # Per CLAUDE.md: "High-traffic signatures become semantic attractors"
+            if step_completed and step.id in self._operation_embeddings:
+                self.step_db.accumulate_embedding_drift(
+                    signature_id=routed_signature.id,
+                    success_embedding=self._operation_embeddings[step.id],
+                )
+
         # 7. Regenerate DSL on mod 10 uses (continuous learning)
         # Background task: don't block the hot path
         if uses > 0 and uses % 10 == 0:

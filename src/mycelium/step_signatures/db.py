@@ -6928,6 +6928,315 @@ class StepSignatureDB:
         return (gap_mult, budget_mult)
 
     # =========================================================================
+    # EMBEDDING DRIFT: Semantic Attractor Updates (per mycelium-ieq4)
+    # =========================================================================
+    # Per CLAUDE.md: "High-traffic signatures become semantic attractors"
+    # Accumulate successful dag_step embeddings for batch drift updates.
+
+    def accumulate_embedding_drift(
+        self,
+        signature_id: int,
+        success_embedding: list[float],
+        conn=None,
+    ) -> bool:
+        """Accumulate a successful dag_step embedding for later drift update.
+
+        Called on successful (leaf_node, dag_step) matches. Embeddings are
+        accumulated and averaged during periodic batch drift updates.
+
+        Args:
+            signature_id: The leaf node signature ID
+            success_embedding: The dag_step's graph embedding that succeeded
+            conn: Optional connection
+
+        Returns:
+            True if accumulated successfully
+        """
+        def _do_accumulate(c):
+            # Check if we have existing accumulator for this signature
+            row = c.execute("""
+                SELECT embedding_sum, success_count
+                FROM pending_embedding_drifts
+                WHERE signature_id = ?
+            """, (signature_id,)).fetchone()
+
+            if row:
+                # Add to existing sum
+                import json
+                existing_sum = json.loads(row["embedding_sum"])
+                new_sum = [a + b for a, b in zip(existing_sum, success_embedding)]
+                new_count = row["success_count"] + 1
+
+                c.execute("""
+                    UPDATE pending_embedding_drifts
+                    SET embedding_sum = ?, success_count = ?, updated_at = datetime('now')
+                    WHERE signature_id = ?
+                """, (json.dumps(new_sum), new_count, signature_id))
+            else:
+                # Create new accumulator
+                import json
+                c.execute("""
+                    INSERT INTO pending_embedding_drifts (signature_id, embedding_sum, success_count)
+                    VALUES (?, ?, 1)
+                """, (signature_id, json.dumps(success_embedding)))
+
+            c.connection.commit()
+            return True
+
+        try:
+            if conn:
+                return _do_accumulate(conn)
+            with self._connection() as c:
+                return _do_accumulate(c)
+        except Exception as e:
+            logger.warning("[db] Failed to accumulate embedding drift: %s", e)
+            return False
+
+    def get_pending_embedding_drifts(self, min_successes: int = 1, conn=None) -> list[dict]:
+        """Get all pending embedding drifts ready for batch update.
+
+        Args:
+            min_successes: Minimum success count to include
+            conn: Optional connection
+
+        Returns:
+            List of dicts with signature_id, avg_embedding, success_count
+        """
+        def _do_get(c):
+            rows = c.execute("""
+                SELECT signature_id, embedding_sum, success_count
+                FROM pending_embedding_drifts
+                WHERE success_count >= ?
+            """, (min_successes,)).fetchall()
+
+            results = []
+            import json
+            for row in rows:
+                embedding_sum = json.loads(row["embedding_sum"])
+                count = row["success_count"]
+                # Compute average embedding
+                avg_embedding = [x / count for x in embedding_sum]
+                results.append({
+                    "signature_id": row["signature_id"],
+                    "avg_embedding": avg_embedding,
+                    "success_count": count,
+                })
+            return results
+
+        if conn:
+            return _do_get(conn)
+        with self._connection() as c:
+            return _do_get(c)
+
+    def clear_pending_embedding_drifts(self, signature_ids: list[int] = None, conn=None) -> int:
+        """Clear pending embedding drifts after batch update.
+
+        Args:
+            signature_ids: Specific IDs to clear, or None for all
+            conn: Optional connection
+
+        Returns:
+            Number of rows cleared
+        """
+        def _do_clear(c):
+            if signature_ids:
+                placeholders = ",".join("?" * len(signature_ids))
+                result = c.execute(f"""
+                    DELETE FROM pending_embedding_drifts
+                    WHERE signature_id IN ({placeholders})
+                """, signature_ids)
+            else:
+                result = c.execute("DELETE FROM pending_embedding_drifts")
+            c.connection.commit()
+            return result.rowcount
+
+        if conn:
+            return _do_clear(conn)
+        with self._connection() as c:
+            return _do_clear(c)
+
+    def apply_embedding_drift_batch(self, conn=None) -> dict:
+        """Apply Welford-adaptive embedding drift to leaf nodes.
+
+        Vectorized batch update using NumPy for performance.
+        Called during periodic tree review (every ~50 problems).
+
+        Per CLAUDE.md "The Flow": DB Statistics → Welford → Tree Structure
+
+        Returns:
+            Dict with update stats: nodes_updated, avg_drift_magnitude
+        """
+        from mycelium.config import (
+            EMBEDDING_DRIFT_ENABLED,
+            EMBEDDING_DRIFT_MIN_SUCCESSES,
+            EMBEDDING_DRIFT_VARIANCE_K,
+        )
+
+        if not EMBEDDING_DRIFT_ENABLED:
+            return {"nodes_updated": 0, "skipped": "drift_disabled"}
+
+        def _do_apply(c):
+            import numpy as np
+
+            # Get pending drifts with sufficient successes
+            pending = self.get_pending_embedding_drifts(
+                min_successes=EMBEDDING_DRIFT_MIN_SUCCESSES, conn=c
+            )
+
+            if not pending:
+                return {"nodes_updated": 0, "skipped": "no_pending_drifts"}
+
+            # Get current embeddings and Welford stats for these signatures
+            sig_ids = [p["signature_id"] for p in pending]
+            placeholders = ",".join("?" * len(sig_ids))
+
+            rows = c.execute(f"""
+                SELECT s.id, s.graph_embedding,
+                       COALESCE(w.embedding_n, 0) as emb_n,
+                       COALESCE(w.embedding_mean, 0) as emb_mean,
+                       COALESCE(w.embedding_m2, 0) as emb_m2
+                FROM step_signatures s
+                LEFT JOIN welford_stats w ON s.id = w.signature_id
+                WHERE s.id IN ({placeholders})
+                  AND s.graph_embedding IS NOT NULL
+            """, sig_ids).fetchall()
+
+            if not rows:
+                return {"nodes_updated": 0, "skipped": "no_valid_signatures"}
+
+            # Build lookup for pending data
+            pending_lookup = {p["signature_id"]: p for p in pending}
+
+            # Vectorized computation
+            updates = []
+            drift_magnitudes = []
+
+            for row in rows:
+                sig_id = row["id"]
+                if sig_id not in pending_lookup:
+                    continue
+
+                # Parse current embedding
+                import json
+                current_emb = np.array(json.loads(row["graph_embedding"]), dtype=np.float32)
+                success_emb = np.array(pending_lookup[sig_id]["avg_embedding"], dtype=np.float32)
+
+                # Compute Welford-adaptive alpha
+                # α = 1 - (k / (k + variance))
+                # High variance → lower α → faster drift
+                emb_n = row["emb_n"]
+                emb_m2 = row["emb_m2"]
+                if emb_n > 1:
+                    variance = emb_m2 / (emb_n - 1)
+                else:
+                    variance = 1.0  # High variance for new nodes = fast drift
+
+                k = EMBEDDING_DRIFT_VARIANCE_K
+                alpha = 1.0 - (k / (k + variance))
+                alpha = max(0.5, min(0.99, alpha))  # Clamp to reasonable range
+
+                # EMA update: new = α * old + (1-α) * success
+                new_emb = alpha * current_emb + (1 - alpha) * success_emb
+
+                # Track drift magnitude
+                drift_mag = float(np.linalg.norm(new_emb - current_emb))
+                drift_magnitudes.append(drift_mag)
+
+                updates.append({
+                    "id": sig_id,
+                    "new_embedding": json.dumps(new_emb.tolist()),
+                    "alpha": alpha,
+                })
+
+            # Apply updates
+            for upd in updates:
+                c.execute("""
+                    UPDATE step_signatures
+                    SET graph_embedding = ?, updated_at = datetime('now')
+                    WHERE id = ?
+                """, (upd["new_embedding"], upd["id"]))
+
+            # Clear processed drifts
+            processed_ids = [u["id"] for u in updates]
+            self.clear_pending_embedding_drifts(processed_ids, conn=c)
+
+            c.connection.commit()
+
+            avg_drift = sum(drift_magnitudes) / len(drift_magnitudes) if drift_magnitudes else 0.0
+
+            logger.info(
+                "[db] Embedding drift applied: %d nodes updated, avg_drift=%.4f",
+                len(updates), avg_drift
+            )
+
+            return {
+                "nodes_updated": len(updates),
+                "avg_drift_magnitude": avg_drift,
+                "updates": [{"id": u["id"], "alpha": u["alpha"]} for u in updates],
+            }
+
+        if conn:
+            return _do_apply(conn)
+        with self._connection() as c:
+            return _do_apply(c)
+
+    def recompute_router_centroids(self, conn=None) -> int:
+        """Recompute router centroids as average of children graph embeddings.
+
+        Called after embedding drift updates to propagate changes up the tree.
+
+        Returns:
+            Number of routers updated
+        """
+        def _do_recompute(c):
+            import numpy as np
+            import json
+
+            # Get all router nodes (non-leaf with children)
+            routers = c.execute("""
+                SELECT DISTINCT p.id
+                FROM step_signatures p
+                JOIN step_signatures ch ON ch.parent_id = p.id
+                WHERE p.is_archived = 0
+            """).fetchall()
+
+            updated = 0
+            for row in routers:
+                router_id = row["id"]
+
+                # Get children graph embeddings
+                children = c.execute("""
+                    SELECT graph_embedding
+                    FROM step_signatures
+                    WHERE parent_id = ? AND graph_embedding IS NOT NULL AND is_archived = 0
+                """, (router_id,)).fetchall()
+
+                if not children:
+                    continue
+
+                # Compute centroid (mean of children)
+                embeddings = [np.array(json.loads(ch["graph_embedding"]), dtype=np.float32)
+                              for ch in children]
+                centroid = np.mean(embeddings, axis=0)
+
+                # Update router
+                c.execute("""
+                    UPDATE step_signatures
+                    SET graph_embedding = ?, updated_at = datetime('now')
+                    WHERE id = ?
+                """, (json.dumps(centroid.tolist()), router_id))
+                updated += 1
+
+            c.connection.commit()
+            logger.info("[db] Recomputed %d router centroids", updated)
+            return updated
+
+        if conn:
+            return _do_recompute(conn)
+        with self._connection() as c:
+            return _do_recompute(c)
+
+    # =========================================================================
     # PLAN_STEP_STATS: Statistical blame accumulation for (plan, position, node)
     # =========================================================================
     # Per CLAUDE.md: "Failures Are Valuable Data Points" - accumulate blame statistically
@@ -9235,10 +9544,24 @@ class StepSignatureDB:
             stats["proposals_accepted"] = proposals_result.get("accepted", 0)
             stats["proposals_rejected"] = proposals_result.get("rejected", 0)
 
+            # 11. Apply embedding drift batch update (per mycelium-ieq4)
+            # Per CLAUDE.md: "High-traffic signatures become semantic attractors"
+            drift_result = self.apply_embedding_drift_batch(conn=c)
+            stats["drift_nodes_updated"] = drift_result.get("nodes_updated", 0)
+            stats["drift_avg_magnitude"] = drift_result.get("avg_drift_magnitude", 0.0)
+
+            # 12. Recompute router centroids after drift updates
+            if stats["drift_nodes_updated"] > 0:
+                stats["routers_recomputed"] = self.recompute_router_centroids(conn=c)
+            else:
+                stats["routers_recomputed"] = 0
+
             logger.info(
-                "[review] Tree review complete: %d merges, %d moves, %d clusters, %d adopted, %d orphan umbrellas, %d proposals accepted, %d rejected",
+                "[review] Tree review complete: %d merges, %d moves, %d clusters, %d adopted, "
+                "%d orphan umbrellas, %d proposals accepted, %d rejected, %d drift updates (avg=%.4f), %d routers recomputed",
                 stats["merges"], stats["moves"], stats["clusters_created"], stats["orphans_adopted"],
-                stats["orphans_cleaned"], stats["proposals_accepted"], stats["proposals_rejected"]
+                stats["orphans_cleaned"], stats["proposals_accepted"], stats["proposals_rejected"],
+                stats["drift_nodes_updated"], stats["drift_avg_magnitude"], stats["routers_recomputed"]
             )
 
             return stats
@@ -9816,7 +10139,11 @@ def reset_step_db() -> None:
     """Reset the singleton StepSignatureDB instance.
 
     Primarily for testing - allows tests to get a fresh instance.
+    Also clears all caches to ensure fresh state.
     """
     global _step_db
     _step_db = None
-    logger.debug("[db] Reset singleton StepSignatureDB instance")
+    # Clear signature and children caches to avoid stale data between tests
+    from mycelium.step_signatures.utils import invalidate_signature_cache
+    invalidate_signature_cache()
+    logger.debug("[db] Reset singleton StepSignatureDB instance and caches")

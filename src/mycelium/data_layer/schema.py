@@ -1001,6 +1001,33 @@ def migrate_db(conn) -> None:
     except Exception as e:
         logger.debug("[schema] reactive_exploration_stats migration skipped: %s", e)
 
+    # Create pending_embedding_drifts table (per mycelium-ieq4)
+    # Accumulates successful dag_step embeddings for batch drift updates
+    # Per CLAUDE.md: "High-traffic signatures become semantic attractors"
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS pending_embedding_drifts (
+                signature_id INTEGER PRIMARY KEY,
+
+                -- Accumulated embedding sum (JSON array of floats)
+                -- We sum embeddings, then divide by count for average
+                embedding_sum TEXT NOT NULL,
+
+                -- Number of successful matches accumulated
+                success_count INTEGER DEFAULT 0,
+
+                -- Metadata
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+                FOREIGN KEY (signature_id) REFERENCES step_signatures(id)
+            )
+        """)
+        conn.commit()
+        logger.info("[schema] Created pending_embedding_drifts table")
+    except Exception as e:
+        logger.debug("[schema] pending_embedding_drifts migration skipped: %s", e)
+
     # Add new indexes (safe to run multiple times)
     index_migrations = [
         "CREATE INDEX IF NOT EXISTS idx_sig_is_root ON step_signatures(is_root)",

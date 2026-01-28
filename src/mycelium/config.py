@@ -403,6 +403,24 @@ CENTROID_CACHE_MAX_SIZE = 10000  # Max entries for centroid embedding cache
 GRAPH_EMBEDDING_CACHE_MAX_SIZE = 500  # Max entries for graph embedding cache
 
 # =============================================================================
+# EMBEDDING DRIFT (Semantic Attractors)
+# =============================================================================
+# Per CLAUDE.md: "High-traffic signatures become semantic attractors: their
+# centroids stabilize around operational meaning rather than vocabulary."
+#
+# On successful (leaf_node, dag_step) matches, leaf node graph embeddings
+# drift toward the successful dag_step embeddings using Welford-adaptive EMA:
+#   α = 1 - (k / (k + variance))
+#   new_embedding = α * old_embedding + (1-α) * success_embedding
+#
+# High variance nodes drift faster (exploring), low variance nodes are sticky.
+
+EMBEDDING_DRIFT_ENABLED = True  # Enable embedding drift during tree review
+EMBEDDING_DRIFT_INTERVAL = 50  # Problems between drift updates
+EMBEDDING_DRIFT_VARIANCE_K = 1.0  # Welford α sensitivity (higher = slower drift)
+EMBEDDING_DRIFT_MIN_SUCCESSES = 3  # Min successes before applying drift
+
+# =============================================================================
 # DEPTH-AWARE DECOMPOSITION
 # =============================================================================
 # Force decomposition at shallow depths to build out the tree structure.
