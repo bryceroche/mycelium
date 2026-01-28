@@ -142,10 +142,11 @@ def get_system_maturity(sig_count: int) -> float:
     Returns:
         Maturity value between 0 (fresh) and 1 (mature)
     """
-    from mycelium.config import BIG_BANG_TARGET_SIGNATURES
+    from mycelium.config import BIG_BANG_TARGET_SIGNATURES, BIG_BANG_TAU_DIVISOR
 
     # Smooth exponential curve: rises quickly at first, asymptotes to 1
-    tau = BIG_BANG_TARGET_SIGNATURES / 3.0  # ~3tau to reach 95%
+    # Per config: TAU_DIVISOR = 3.0 means system reaches 95% maturity at TARGET_SIGNATURES
+    tau = BIG_BANG_TARGET_SIGNATURES / BIG_BANG_TAU_DIVISOR
     maturity = 1.0 - math.exp(-sig_count / tau)
     return maturity
 

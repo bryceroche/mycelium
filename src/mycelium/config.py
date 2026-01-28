@@ -559,6 +559,21 @@ BIG_BANG_FORK_CENTER_DRIFT_RATE = 0.8  # How fast fork center drifts toward root
 BIG_BANG_MIN_FORK_PROB = 0.05  # Floor probability (always some chance to fork)
 BIG_BANG_MAX_FORK_PROB = 0.95  # Ceiling probability (never 100% certain to fork)
 
+# Maturity exponential decay formula: maturity = 1 - exp(-sig_count / tau)
+# where tau = BIG_BANG_TARGET_SIGNATURES / TAU_DIVISOR
+# At sig_count = 3*tau, maturity reaches ~95% (since 1 - exp(-3) ≈ 0.95)
+# TAU_DIVISOR = 3.0 means system reaches 95% maturity at TARGET_SIGNATURES
+BIG_BANG_TAU_DIVISOR = 3.0
+
+# =============================================================================
+# WELFORD MINIMUM SAMPLES (per CLAUDE.md "The Flow")
+# =============================================================================
+# Different operations require different confidence levels before using Welford stats.
+# Lower = more aggressive (act on less data), Higher = more conservative.
+
+WELFORD_MIN_SAMPLES_BASIC = 5  # Basic operations (routing, threshold decisions)
+WELFORD_MIN_SAMPLES_STRUCTURE = 5  # Tree structure changes (decomposition, merging)
+
 # Synthesis step detection (for umbrella learner)
 # These are anchors for steps that aggregate/combine results (should be skipped)
 SYNTHESIS_STEP_ANCHORS = [
