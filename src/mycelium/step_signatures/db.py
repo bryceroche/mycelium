@@ -3284,6 +3284,15 @@ class StepSignatureDB:
             True if archived successfully
         """
         with self._connection() as conn:
+            # Per CLAUDE.md "System Independence": Invalidate parent's Welford stats
+            # when tree structure changes (child archived)
+            parent_row = conn.execute(
+                "SELECT parent_id FROM signature_relationships WHERE child_id = ?",
+                (signature_id,)
+            ).fetchone()
+            if parent_row:
+                self.reset_welford_child_stats(parent_row["parent_id"], conn=conn)
+
             self._update_signature_fields(
                 conn, signature_id,
                 log_reason=f"archive:{reason}",
@@ -3320,6 +3329,15 @@ class StepSignatureDB:
             True if archived successfully
         """
         with self._connection() as conn:
+            # Per CLAUDE.md "System Independence": Invalidate Welford stats
+            # when tree structure changes (reparenting + archive)
+
+            # Reset child stats for the signature being archived (its stats are now stale)
+            self.reset_welford_child_stats(signature_id, conn=conn)
+
+            # Reset child stats for the new parent (it's getting new children)
+            self.reset_welford_child_stats(parent_id, conn=conn)
+
             # Re-parent all children to the grandparent
             for child_id in child_ids:
                 conn.execute(
@@ -5973,8 +5991,22 @@ class StepSignatureDB:
             sim = cosine_similarity(operation_embedding, graph_emb)
 
             if current.is_semantic_umbrella:
-                # Router: if matches, explore children
-                if sim >= min_similarity * 0.8:  # Slightly lower threshold for routers
+                # Per CLAUDE.md "System Independence": Welford-guided adaptive threshold
+                # Routers with high route_mean are selective - use higher threshold
+                router_threshold = min_similarity * 0.8  # Default
+                with self._connection() as conn:
+                    stats = self.get_welford_stats(current.id, conn=conn)
+                    if stats and stats.get("route_n", 0) >= 5:
+                        route_mean = stats.get("route_mean", 0.0)
+                        route_std = self._welford_std_from_stats(stats, "route")
+                        # Adaptive threshold: route_mean - 1.5*std (accept if within 1.5 std)
+                        adaptive_threshold = max(min_similarity * 0.7, route_mean - 1.5 * route_std)
+                        router_threshold = min(0.95, adaptive_threshold)
+
+                if sim >= router_threshold:
+                    # Update Welford route stats (per CLAUDE.md "System Independence")
+                    self.update_welford_route(current.id, sim)
+
                     children = self.get_children(current.id, for_routing=True)
                     for child_sig, _condition in children:
                         queue.append((child_sig, sim))
@@ -6211,6 +6243,43 @@ class StepSignatureDB:
         else:
             with self._connection() as c:
                 result = _do_update(c)
+                c.commit()
+                return result
+
+    def reset_welford_child_stats(
+        self,
+        signature_id: int,
+        conn=None,
+    ) -> bool:
+        """Reset Welford child stats for a signature.
+
+        Per CLAUDE.md "System Independence": Invalidate stale stats when tree structure changes.
+        Called when a signature is archived, reparented, or its children change.
+        Stats will be rebuilt by the next tree review backfill.
+
+        Args:
+            signature_id: The signature whose child stats should be reset
+
+        Returns:
+            True if reset succeeded
+        """
+        def _do_reset(c):
+            c.execute(
+                """
+                UPDATE welford_stats
+                SET child_n = 0, child_mean = 0.0, child_m2 = 0.0, updated_at = datetime('now')
+                WHERE signature_id = ?
+                """,
+                (signature_id,)
+            )
+            logger.debug("[welford] Reset child stats for signature %d", signature_id)
+            return True
+
+        if conn is not None:
+            return _do_reset(conn)
+        else:
+            with self._connection() as c:
+                result = _do_reset(c)
                 c.commit()
                 return result
 
