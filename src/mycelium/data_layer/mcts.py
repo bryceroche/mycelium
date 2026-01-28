@@ -38,6 +38,8 @@ from mycelium.config import (
     ATOMIC_SIMILARITY_THRESHOLD,
     NEW_CHILD_SIMILARITY_THRESHOLD,
     VARIANCE_THRESHOLD,
+    REJECTION_COUNT_THRESHOLD,
+    REJECTION_RATE_THRESHOLD,
 )
 
 logger = logging.getLogger(__name__)
@@ -799,13 +801,9 @@ def get_pending_queue_ids() -> list[int]:
 # =============================================================================
 
 
-# Rejection thresholds (per CLAUDE.md: leaves define their own boundaries)
-# DEPRECATED: Now using adaptive Welford-based thresholds per signature
-# Each leaf has success_sim_count/mean/m2 for adaptive threshold = mean - k*stddev
-# This constant is kept for backward compatibility but should not be used
-REJECTION_SIM_THRESHOLD = 0.85  # DEPRECATED - use signature.get_adaptive_rejection_threshold()
-REJECTION_COUNT_THRESHOLD = 10  # Min rejections before considering decomposition
-REJECTION_RATE_THRESHOLD = 0.30  # 30% rejection rate triggers decomposition flag
+# Rejection thresholds - now imported from config.py per CLAUDE.md "The Flow"
+# REJECTION_COUNT_THRESHOLD and REJECTION_RATE_THRESHOLD imported at module top
+# DEPRECATED: REJECTION_SIM_THRESHOLD - use signature.get_adaptive_rejection_threshold() instead
 
 
 def record_leaf_rejection(

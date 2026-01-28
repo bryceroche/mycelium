@@ -209,6 +209,11 @@ ADAPTIVE_REJECTION_DEFAULT_THRESHOLD = 0.5  # Fallback threshold for cold-start 
 ADAPTIVE_REJECTION_MIN_THRESHOLD = 0.3  # Floor: never reject below this similarity
 ADAPTIVE_REJECTION_MAX_THRESHOLD = 0.95  # Ceiling: never require above this similarity
 
+# Rejection decomposition thresholds (per CLAUDE.md "The Flow")
+# When signatures accumulate rejections, flag for potential decomposition
+REJECTION_COUNT_THRESHOLD = 10  # Min rejections before considering decomposition
+REJECTION_RATE_THRESHOLD = 0.30  # 30% rejection rate triggers decomposition flag
+
 # =============================================================================
 # MCTS COMPUTE BUDGET (multi-path exploration)
 # =============================================================================
