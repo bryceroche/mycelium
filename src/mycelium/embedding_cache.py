@@ -284,7 +284,9 @@ class DiskCache:
     def __init__(self, db_path: Optional[Path] = None, auto_prune: bool = True):
         self.db_path = db_path or Path(DB_PATH).parent / "embedding_cache.db"
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn_mgr = create_connection_manager(str(self.db_path))
+        # Per CLAUDE.md "New Favorite Pattern": Use data_layer connection factory
+        # Disable foreign keys - embedding cache is a simple key-value store
+        self._conn_mgr = create_connection_manager(str(self.db_path), enable_foreign_keys=False)
         self._init_db()
 
         # Auto-prune old entries on startup to prevent unbounded growth
