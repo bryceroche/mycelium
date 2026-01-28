@@ -6506,6 +6506,185 @@ class StepSignatureDB:
         return math.sqrt(variance) if variance > 0 else 0.0
 
     # =========================================================================
+    # UCB1 GAP STATS: Welford-guided exploration thresholds (per mycelium-02nn)
+    # =========================================================================
+    # Per CLAUDE.md "System Independence": Replace _force_exploration with
+    # Welford-guided adaptive thresholds based on historical gap outcomes.
+
+    def update_ucb1_gap_stats(
+        self,
+        gap: float,
+        success: bool,
+        conn=None,
+    ) -> bool:
+        """Update Welford stats for UCB1 gap outcomes.
+
+        Records UCB1 gap values that led to successful or failed routing
+        decisions. Used to compute adaptive gap threshold.
+
+        Per mycelium-02nn: "Track gap values that led to correct vs incorrect
+        routing. Use Welford to compute adaptive gap threshold."
+
+        Args:
+            gap: The UCB1 gap value from routing decision
+            success: Whether the routing decision led to correct answer
+
+        Returns:
+            True if update succeeded
+        """
+        def _do_update(c):
+            # Get current stats (singleton row)
+            row = c.execute("""
+                SELECT success_n, success_mean, success_m2,
+                       failure_n, failure_mean, failure_m2,
+                       total_n, total_mean, total_m2
+                FROM ucb1_gap_stats WHERE id = 1
+            """).fetchone()
+
+            if not row:
+                # Initialize if missing (shouldn't happen after migration)
+                c.execute("INSERT OR IGNORE INTO ucb1_gap_stats (id) VALUES (1)")
+                row = c.execute("""
+                    SELECT success_n, success_mean, success_m2,
+                           failure_n, failure_mean, failure_m2,
+                           total_n, total_mean, total_m2
+                    FROM ucb1_gap_stats WHERE id = 1
+                """).fetchone()
+
+            # Update success or failure stats
+            if success:
+                n = row["success_n"] + 1
+                old_mean = row["success_mean"]
+                old_m2 = row["success_m2"]
+                delta = gap - old_mean
+                new_mean = old_mean + delta / n
+                delta2 = gap - new_mean
+                new_m2 = old_m2 + delta * delta2
+
+                c.execute("""
+                    UPDATE ucb1_gap_stats
+                    SET success_n = ?, success_mean = ?, success_m2 = ?,
+                        updated_at = datetime('now')
+                    WHERE id = 1
+                """, (n, new_mean, new_m2))
+            else:
+                n = row["failure_n"] + 1
+                old_mean = row["failure_mean"]
+                old_m2 = row["failure_m2"]
+                delta = gap - old_mean
+                new_mean = old_mean + delta / n
+                delta2 = gap - new_mean
+                new_m2 = old_m2 + delta * delta2
+
+                c.execute("""
+                    UPDATE ucb1_gap_stats
+                    SET failure_n = ?, failure_mean = ?, failure_m2 = ?,
+                        updated_at = datetime('now')
+                    WHERE id = 1
+                """, (n, new_mean, new_m2))
+
+            # Also update total stats
+            total_n = row["total_n"] + 1
+            total_old_mean = row["total_mean"]
+            total_old_m2 = row["total_m2"]
+            total_delta = gap - total_old_mean
+            total_new_mean = total_old_mean + total_delta / total_n
+            total_delta2 = gap - total_new_mean
+            total_new_m2 = total_old_m2 + total_delta * total_delta2
+
+            c.execute("""
+                UPDATE ucb1_gap_stats
+                SET total_n = ?, total_mean = ?, total_m2 = ?
+                WHERE id = 1
+            """, (total_n, total_new_mean, total_new_m2))
+
+            c.connection.commit()
+            return True
+
+        if conn:
+            return _do_update(conn)
+        with self._connection() as c:
+            return _do_update(c)
+
+    def get_ucb1_gap_stats(self, conn=None) -> Optional[dict]:
+        """Get UCB1 gap statistics for adaptive threshold calculation.
+
+        Returns:
+            Dictionary with gap stats, or None if no data
+        """
+        def _do_get(c):
+            row = c.execute("""
+                SELECT success_n, success_mean, success_m2,
+                       failure_n, failure_mean, failure_m2,
+                       total_n, total_mean, total_m2,
+                       created_at, updated_at
+                FROM ucb1_gap_stats WHERE id = 1
+            """).fetchone()
+            if row:
+                return dict(row)
+            return None
+
+        if conn:
+            return _do_get(conn)
+        with self._connection() as c:
+            return _do_get(c)
+
+    def get_adaptive_gap_threshold(self, conn=None) -> float:
+        """Compute adaptive UCB1 gap threshold from Welford stats.
+
+        Per mycelium-02nn: threshold = success_mean - k * success_std
+        This uses gaps from successful routings to set the branching threshold.
+
+        Falls back to static UCB1_GAP_BRANCH_THRESHOLD during cold start.
+
+        Returns:
+            Adaptive gap threshold
+        """
+        import math
+        from mycelium.config import (
+            ADAPTIVE_GAP_ENABLED,
+            ADAPTIVE_GAP_K,
+            ADAPTIVE_GAP_MIN_SAMPLES,
+            ADAPTIVE_GAP_MIN_THRESHOLD,
+            ADAPTIVE_GAP_MAX_THRESHOLD,
+            UCB1_GAP_BRANCH_THRESHOLD,
+        )
+
+        if not ADAPTIVE_GAP_ENABLED:
+            return UCB1_GAP_BRANCH_THRESHOLD
+
+        stats = self.get_ucb1_gap_stats(conn=conn)
+        if not stats or stats.get("success_n", 0) < ADAPTIVE_GAP_MIN_SAMPLES:
+            # Cold start: use static threshold
+            return UCB1_GAP_BRANCH_THRESHOLD
+
+        # Compute threshold from successful routings
+        success_n = stats["success_n"]
+        success_mean = stats["success_mean"]
+        success_m2 = stats["success_m2"]
+
+        # Compute sample variance and std
+        if success_n > 1:
+            variance = success_m2 / (success_n - 1)
+            std = math.sqrt(variance) if variance > 0 else 0.0
+        else:
+            std = 0.0
+
+        # Adaptive threshold: mean - k * std
+        # Lower threshold = more branching (for uncertain decisions)
+        threshold = success_mean - ADAPTIVE_GAP_K * std
+
+        # Clamp to bounds
+        threshold = max(ADAPTIVE_GAP_MIN_THRESHOLD, min(ADAPTIVE_GAP_MAX_THRESHOLD, threshold))
+
+        logger.debug(
+            "[db] Adaptive gap threshold: %.3f (success_mean=%.3f, std=%.3f, n=%d)",
+            threshold, success_mean, std, success_n
+        )
+
+        return threshold
+
+    # =========================================================================
     # PLAN_STEP_STATS: Statistical blame accumulation for (plan, position, node)
     # =========================================================================
     # Per CLAUDE.md: "Failures Are Valuable Data Points" - accumulate blame statistically

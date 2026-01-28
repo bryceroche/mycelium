@@ -1892,6 +1892,73 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
     return stats
 
 
+def propagate_ucb1_gap_stats(dag_id: str, step_db) -> dict:
+    """Propagate UCB1 gap values to global Welford stats based on thread outcomes.
+
+    Per mycelium-02nn: Updates ucb1_gap_stats table with gap values from routing
+    decisions that led to successful vs failed threads. This enables adaptive
+    gap threshold computation.
+
+    Gap outcomes are classified by thread success:
+    - Thread won (success=1): gap led to correct answer → update success stats
+    - Thread lost (success=0): gap may have led to wrong answer → update failure stats
+
+    Args:
+        dag_id: The DAG to process
+        step_db: StepSignatureDB instance for updating gap stats
+
+    Returns:
+        Dict with propagation statistics
+    """
+    from mycelium.config import ADAPTIVE_GAP_ENABLED
+
+    if not ADAPTIVE_GAP_ENABLED:
+        return {"gaps_processed": 0, "success_gaps": 0, "failure_gaps": 0, "skipped": True}
+
+    conn = get_db()
+
+    # Get (ucb1_gap, thread_success) pairs from step summaries
+    # Use mcts_step_summaries which has ucb1_gap values
+    cursor = conn.execute(
+        """
+        SELECT ss.ucb1_gap, t.success
+        FROM mcts_step_summaries ss
+        JOIN mcts_threads t ON ss.thread_id = t.thread_id
+        WHERE ss.dag_id = ?
+          AND ss.ucb1_gap IS NOT NULL
+          AND t.success IS NOT NULL
+        """,
+        (dag_id,),
+    )
+
+    stats = {
+        "gaps_processed": 0,
+        "success_gaps": 0,
+        "failure_gaps": 0,
+    }
+
+    for row in cursor:
+        gap = row[0]
+        success = row[1] == 1
+
+        # Update gap stats via step_db (which has the consolidated method)
+        step_db.update_ucb1_gap_stats(gap, success)
+
+        stats["gaps_processed"] += 1
+        if success:
+            stats["success_gaps"] += 1
+        else:
+            stats["failure_gaps"] += 1
+
+    if stats["gaps_processed"] > 0:
+        logger.debug(
+            "[mcts] UCB1 gap stats for DAG %s: %d gaps processed (%d success, %d failure)",
+            dag_id, stats["gaps_processed"], stats["success_gaps"], stats["failure_gaps"]
+        )
+
+    return stats
+
+
 def propagate_success_similarity(dag_id: str, step_db) -> dict:
     """Propagate similarity scores from successful threads to leaf adaptive thresholds.
 
@@ -3416,6 +3483,10 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
     # When threads win, record their similarity scores on leaves for adaptive thresholds
     success_sim_stats = propagate_success_similarity(dag_id, step_db)
 
+    # Per mycelium-02nn: Propagate UCB1 gap values for adaptive gap threshold
+    # Updates global Welford stats based on gap values from successful/failed threads
+    gap_stats = propagate_ucb1_gap_stats(dag_id, step_db)
+
     # Propagate to (dag_step_type, node_id) stats table
     # This enables routing UCB1 to use step-specific performance data
     step_node_stats = propagate_step_node_stats(dag_id)
@@ -3563,6 +3634,10 @@ def run_postmortem_with_interference(dag_id: str, step_db) -> dict:
         "credit_failures": credit_stats.get("failures_credited", 0),
         # Success similarity propagation for adaptive rejection (per mycelium-i601)
         "success_sim_updates": success_sim_stats.get("updates", 0),
+        # UCB1 gap stats for adaptive exploration (per mycelium-02nn)
+        "gap_stats_processed": gap_stats.get("gaps_processed", 0),
+        "gap_stats_success": gap_stats.get("success_gaps", 0),
+        "gap_stats_failure": gap_stats.get("failure_gaps", 0),
         # Divergence-point analysis (per beads mycelium-2rss)
         "divergence_points_found": divergence_stats.get("divergence_points_found", 0),
         "divergence_blame_assigned": divergence_stats.get("divergence_blame_assigned", 0),

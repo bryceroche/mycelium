@@ -191,7 +191,23 @@ COMPUTE_BUDGET_CONFIDENCE_THRESHOLD = 0.5  # Explore alternatives when confidenc
 # Selective branching: only branch when undecided (per CLAUDE.md)
 # UCB1 gap = difference between top-2 UCB1 scores at routing decision
 # High gap = confident (don't branch), Low gap = undecided (branch)
-UCB1_GAP_BRANCH_THRESHOLD = 0.15  # Branch when min_gap < this (undecided)
+UCB1_GAP_BRANCH_THRESHOLD = 0.15  # Branch when min_gap < this (undecided) - cold start fallback
+
+# =============================================================================
+# ADAPTIVE UCB1 GAP THRESHOLD (Welford-guided, per mycelium-02nn)
+# =============================================================================
+# Per CLAUDE.md "System Independence": Replace manual _force_exploration flag
+# with Welford-guided adaptive thresholds based on historical gap outcomes.
+#
+# Tracks UCB1 gap values from routing decisions that led to success vs failure.
+# Adaptive threshold: gap_mean - k * gap_std (from successful routings)
+# This lets the system learn optimal branching thresholds from experience.
+
+ADAPTIVE_GAP_ENABLED = True  # Use Welford-guided gap threshold instead of static
+ADAPTIVE_GAP_K = 1.5  # k stddevs below mean for adaptive threshold
+ADAPTIVE_GAP_MIN_SAMPLES = 10  # Min samples before using learned threshold
+ADAPTIVE_GAP_MIN_THRESHOLD = 0.05  # Floor: never set threshold below this
+ADAPTIVE_GAP_MAX_THRESHOLD = 0.5  # Ceiling: never set threshold above this
 
 # Epsilon-greedy exploration: with probability EPSILON, pick random signature
 # This ensures under-visited signatures get attempts even when UCB1 favors exploitation
@@ -204,16 +220,27 @@ EXPLORATION_EPSILON_MIN = 0.05  # Minimum epsilon floor
 # =============================================================================
 # Per CLAUDE.md: "If we got the wrong answer that should trigger a larger MCTS rollout
 # where we explore the tree more widely searching for the right leaf_node, dag_step pairs"
-# When a problem fails, we retry with forced exploration of alternative nodes at each step.
+# When a problem fails, we retry with adaptive exploration via Welford-guided thresholds.
 # If we find a winning path, we compare divergence points for precise blame assignment.
+#
+# Per mycelium-02nn "System Independence": Reactive exploration uses adaptive thresholds
+# (REACTIVE_EXPLORATION_GAP_MULT, REACTIVE_EXPLORATION_BUDGET_MULT) instead of
+# imperative _force_exploration flag. This keeps control Welford-guided.
 REACTIVE_EXPLORATION_ENABLED = True  # Enable reactive exploration on failure
 REACTIVE_EXPLORATION_MAX_ALTERNATIVES = 3  # Max alternative nodes to try per step
 REACTIVE_EXPLORATION_MAX_RETRIES = 5  # Max total retry attempts
 REACTIVE_EXPLORATION_MIN_SIMILARITY = 0.5  # Min similarity for alternative candidates
-REACTIVE_EXPLORATION_FULL_RESOLVE = True  # Re-solve entire problem with forced exploration
+REACTIVE_EXPLORATION_FULL_RESOLVE = True  # Re-solve entire problem with adaptive exploration
 REACTIVE_EXPLORATION_NUM_THREADS = 3  # Number of parallel exploration threads to spawn
 REACTIVE_EXPLORATION_TEMPERATURE = 0.3  # Higher temp for diversity (vs 0.0 default)
 REACTIVE_EXPLORATION_EPSILON_BOOST = 0.3  # Boost epsilon during exploration (stacks with base)
+
+# Adaptive exploration multipliers (per mycelium-02nn)
+# During reactive exploration, multiply adaptive gap threshold to be more permissive
+# and boost compute budget to explore more paths
+REACTIVE_EXPLORATION_GAP_MULT = 2.0  # Multiply gap threshold by this during exploration
+REACTIVE_EXPLORATION_BUDGET_MULT = 1.5  # Multiply compute budget by this during exploration
+REACTIVE_EXPLORATION_MIN_BUDGET = 3.0  # Minimum budget during reactive exploration
 
 # Step decomposition fallback: when reactive exploration fails to find a winning path,
 # decompose failing steps into smaller sub-steps and re-solve

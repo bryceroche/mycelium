@@ -925,6 +925,43 @@ def migrate_db(conn) -> None:
         # Table already exists or other error
         logger.debug("[schema] plan_step_stats migration skipped: %s", e)
 
+    # Create ucb1_gap_stats table (per mycelium-02nn: Welford-guided exploration)
+    # Tracks UCB1 gap values that led to correct vs incorrect routing decisions
+    # Used to compute adaptive gap threshold: threshold = mean - k * std
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS ucb1_gap_stats (
+                id INTEGER PRIMARY KEY CHECK (id = 1),  -- singleton row
+
+                -- Gaps from successful routing decisions
+                success_n INTEGER DEFAULT 0,
+                success_mean REAL DEFAULT 0.0,
+                success_m2 REAL DEFAULT 0.0,
+
+                -- Gaps from failed routing decisions
+                failure_n INTEGER DEFAULT 0,
+                failure_mean REAL DEFAULT 0.0,
+                failure_m2 REAL DEFAULT 0.0,
+
+                -- Combined stats (for overall threshold)
+                total_n INTEGER DEFAULT 0,
+                total_mean REAL DEFAULT 0.0,
+                total_m2 REAL DEFAULT 0.0,
+
+                -- Metadata
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        # Initialize singleton row
+        conn.execute("""
+            INSERT OR IGNORE INTO ucb1_gap_stats (id) VALUES (1)
+        """)
+        conn.commit()
+        logger.info("[schema] Created ucb1_gap_stats table")
+    except Exception as e:
+        logger.debug("[schema] ucb1_gap_stats migration skipped: %s", e)
+
     # Add new indexes (safe to run multiple times)
     index_migrations = [
         "CREATE INDEX IF NOT EXISTS idx_sig_is_root ON step_signatures(is_root)",

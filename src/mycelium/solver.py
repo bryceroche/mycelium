@@ -677,9 +677,10 @@ class Solver:
         # Stored after record_problem_outcome() for async processing
         self._pending_reactive_exploration: Optional[dict] = None
 
-        # Force exploration flag: when True, bypass UCB1 gap check and always fork
-        # Used during reactive exploration to spawn multiple threads on failure
-        self._force_exploration: bool = False
+        # Reactive exploration mode: when True, use adaptive multipliers for exploration
+        # Per mycelium-02nn: Replaces _force_exploration with Welford-guided thresholds
+        # This multiplies gap threshold (more lenient) and budget (explore more paths)
+        self._reactive_exploration_mode: bool = False
 
         # Phase 1 values for provenance tracking (set per-problem in solve())
         # Maps value name -> numeric value for resolving $name references
@@ -716,6 +717,60 @@ class Solver:
         if not_done:
             logger.warning("[solver] %d background tasks did not complete in time", len(not_done))
         return pending
+
+    def _get_adaptive_gap_threshold(self) -> float:
+        """Get adaptive UCB1 gap threshold for branching decisions.
+
+        Per mycelium-02nn: Uses Welford stats to compute adaptive threshold.
+        In reactive exploration mode, multiplies threshold for more lenient branching.
+
+        Returns:
+            Gap threshold (branch when min_gap < threshold)
+        """
+        from mycelium.config import (
+            REACTIVE_EXPLORATION_GAP_MULT,
+        )
+
+        # Get base threshold from Welford stats
+        base_threshold = self.step_db.get_adaptive_gap_threshold()
+
+        # In reactive exploration, be more lenient (higher threshold = more branching)
+        if self._reactive_exploration_mode:
+            threshold = base_threshold * REACTIVE_EXPLORATION_GAP_MULT
+            logger.debug(
+                "[solver] Reactive exploration: gap threshold %.3f -> %.3f (mult=%.1f)",
+                base_threshold, threshold, REACTIVE_EXPLORATION_GAP_MULT
+            )
+            return threshold
+
+        return base_threshold
+
+    def _get_effective_budget(self, base_budget: float) -> float:
+        """Get effective compute budget, boosted during reactive exploration.
+
+        Per mycelium-02nn: In reactive exploration mode, boost budget to explore
+        more alternative paths.
+
+        Args:
+            base_budget: The base compute budget
+
+        Returns:
+            Effective budget (possibly boosted)
+        """
+        from mycelium.config import (
+            REACTIVE_EXPLORATION_BUDGET_MULT,
+            REACTIVE_EXPLORATION_MIN_BUDGET,
+        )
+
+        if self._reactive_exploration_mode:
+            boosted = max(base_budget * REACTIVE_EXPLORATION_BUDGET_MULT, REACTIVE_EXPLORATION_MIN_BUDGET)
+            logger.debug(
+                "[solver] Reactive exploration: budget %.1f -> %.1f (mult=%.1f, min=%.1f)",
+                base_budget, boosted, REACTIVE_EXPLORATION_BUDGET_MULT, REACTIVE_EXPLORATION_MIN_BUDGET
+            )
+            return boosted
+
+        return base_budget
 
     def _try_zero_llm_solve(
         self,
@@ -2285,7 +2340,6 @@ class Solver:
             - explored_sigs: All signatures explored (for backpropagation)
             - was_injected: Whether result came from DSL execution
         """
-        from mycelium.config import UCB1_GAP_BRANCH_THRESHOLD
         from mycelium.step_signatures.db import RoutingResult
 
         # Handle case where no operation embedding available
@@ -2343,9 +2397,10 @@ class Solver:
         # Selective branching: only branch when undecided (per CLAUDE.md)
         # Use UCB1 gap to detect uncertainty: high gap = confident, low gap = undecided
         # Also respect single-path mode (compute_budget <= 1.0)
-        # Exception: force_exploration flag bypasses both gap check and budget check (for reactive exploration)
-        is_undecided = routing_result.min_gap < UCB1_GAP_BRANCH_THRESHOLD or self._force_exploration
-        effective_budget = max(compute_budget, 3.0) if self._force_exploration else compute_budget
+        # Per mycelium-02nn: Use adaptive threshold (Welford-guided) instead of static
+        adaptive_gap_threshold = self._get_adaptive_gap_threshold()
+        effective_budget = self._get_effective_budget(compute_budget)
+        is_undecided = routing_result.min_gap < adaptive_gap_threshold
         if not is_undecided or effective_budget <= 1.0:
             if routing_result.signature is not None:
                 result = await self._execute_dsl_and_record(
@@ -2360,10 +2415,10 @@ class Solver:
         # Mark as undecided for MCTS amplitude tracking
         self._routing_was_undecided = True
         num_paths = min(int(effective_budget), len(routing_result.alternatives) + 1)
-        force_tag = " [FORCED]" if self._force_exploration else ""
+        reactive_tag = " [REACTIVE]" if self._reactive_exploration_mode else ""
         logger.info(
-            "[solver] Selective branching%s: gap=%.3f, exploring %d paths",
-            force_tag, routing_result.min_gap, num_paths
+            "[solver] Selective branching%s: gap=%.3f (threshold=%.3f), exploring %d paths",
+            reactive_tag, routing_result.min_gap, adaptive_gap_threshold, num_paths
         )
 
         # Collect alternative leaf signatures to try (with similarity scores)
@@ -4152,7 +4207,8 @@ Rules:
                 embedder=self.embedder,
                 temperature=REACTIVE_EXPLORATION_TEMPERATURE,
             )
-            self._force_exploration = True
+            # Per mycelium-02nn: Use adaptive multipliers instead of force flag
+            self._reactive_exploration_mode = True
 
             try:
                 for thread_idx in range(num_threads):
@@ -4185,7 +4241,7 @@ Rules:
                 if winning is None:
                     stats["full_resolve_success"] = False
             finally:
-                self._force_exploration = False
+                self._reactive_exploration_mode = False
                 self.planner = original_planner  # Restore original planner
 
             stats["total_dags_for_crossexam"] = len(exploration_dag_ids) + (1 if original_dag_id else 0)
