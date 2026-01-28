@@ -90,8 +90,11 @@ from mycelium.data_layer.mcts import (
     are_decompositions_ready,
     get_pending_queue_ids,
     # Leaf rejection tracking (thresholds now from config.py per "The Flow")
+    # Per CLAUDE.md "New Favorite Pattern": Consolidated rejection via reject_dag_step
+    RejectionDecision,
+    reject_dag_step,  # Single entry point for all rejections
     get_rejection_count_threshold,  # Adaptive threshold based on system maturity
-    record_leaf_rejection,
+    record_leaf_rejection,  # Legacy - prefer reject_dag_step
     get_leaf_rejection_stats,
     get_leaves_needing_decomposition,
     flag_high_rejection_leaves_for_decomposition,
@@ -182,9 +185,11 @@ __all__ = [
     "are_decompositions_ready",
     "get_pending_queue_ids",
     # Leaf rejection tracking (thresholds from config.py per "The Flow")
-    # Note: REJECTION_*_THRESHOLD constants should be imported from config.py directly
+    # Per CLAUDE.md "New Favorite Pattern": Consolidated rejection via reject_dag_step
+    "RejectionDecision",
+    "reject_dag_step",  # Single entry point for all rejections
     "get_rejection_count_threshold",  # Adaptive threshold function
-    "record_leaf_rejection",
+    "record_leaf_rejection",  # Legacy - prefer reject_dag_step
     "get_leaf_rejection_stats",
     "get_leaves_needing_decomposition",
     "flag_high_rejection_leaves_for_decomposition",
