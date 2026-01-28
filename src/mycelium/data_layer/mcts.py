@@ -43,6 +43,10 @@ from mycelium.config import (
     REJECTION_COUNT_THRESHOLD_MATURE,
     REJECTION_COUNT_RAMP_SIGNATURES,
     REJECTION_RATE_THRESHOLD,
+    # Welford-guided rejection rate threshold
+    REJECTION_RATE_WELFORD_ENABLED,
+    REJECTION_RATE_WELFORD_K,
+    REJECTION_RATE_MIN_SAMPLES,
 )
 
 logger = logging.getLogger(__name__)
@@ -927,6 +931,73 @@ def get_rejection_count_threshold() -> int:
     return int(threshold)
 
 
+def get_adaptive_rejection_rate_threshold() -> float:
+    """Get Welford-guided rejection rate threshold.
+
+    Per CLAUDE.md "The Flow": Database Statistics → Welford → Tree Structure.
+    Instead of hardcoded 30%, compute adaptive threshold from rejection rate distribution.
+
+    Logic: Threshold = mean + k*std (signatures with rates above this are outliers).
+    Higher rejection rates = worse, so flagging above mean+k*std catches problematic nodes.
+
+    Returns:
+        float: Adaptive rejection rate threshold, or fallback if not enough data
+    """
+    if not REJECTION_RATE_WELFORD_ENABLED:
+        return REJECTION_RATE_THRESHOLD
+
+    conn = get_db()
+    # Get rejection rates from all signatures with enough attempts
+    cursor = conn.execute(
+        """
+        SELECT
+            rejection_count * 1.0 / (uses + rejection_count) as rejection_rate
+        FROM step_signatures
+        WHERE is_semantic_umbrella = 0
+          AND (uses + rejection_count) >= ?
+          AND rejection_count > 0
+        """,
+        (REJECTION_RATE_MIN_SAMPLES,),
+    )
+    rows = cursor.fetchall()
+
+    if len(rows) < 5:
+        # Not enough data for Welford, use fallback
+        return REJECTION_RATE_THRESHOLD
+
+    # Welford's online algorithm for mean and variance
+    n = 0
+    mean = 0.0
+    m2 = 0.0
+
+    for row in rows:
+        rate = row[0]
+        n += 1
+        delta = rate - mean
+        mean += delta / n
+        delta2 = rate - mean
+        m2 += delta * delta2
+
+    if n < 2:
+        return REJECTION_RATE_THRESHOLD
+
+    variance = m2 / (n - 1)  # Sample variance
+    std = variance ** 0.5 if variance > 0 else 0.0
+
+    # Threshold = mean + k*std (higher rate = worse, flag outliers above mean)
+    adaptive_threshold = mean + REJECTION_RATE_WELFORD_K * std
+
+    # Clamp to reasonable bounds
+    adaptive_threshold = max(0.10, min(0.80, adaptive_threshold))
+
+    logger.debug(
+        "[rejection] Welford rate threshold: %.3f (mean=%.3f, std=%.3f, n=%d)",
+        adaptive_threshold, mean, std, n
+    )
+
+    return adaptive_threshold
+
+
 def record_leaf_rejection(
     signature_id: int,
     step_text: str,
@@ -981,13 +1052,14 @@ def get_leaf_rejection_stats(signature_id: int) -> dict:
     total_attempts = uses + rejection_count
     rejection_rate = rejection_count / total_attempts if total_attempts > 0 else 0.0
 
-    # Determine if this leaf should be decomposed using adaptive threshold
-    # Per CLAUDE.md "The Flow": cold-start aware thresholds
+    # Determine if this leaf should be decomposed using adaptive thresholds
+    # Per CLAUDE.md "The Flow": Database Statistics → Welford → Tree Structure
     count_threshold = get_rejection_count_threshold()
+    rate_threshold = get_adaptive_rejection_rate_threshold()
     should_decompose = (
         not is_umbrella  # Only leaves, not umbrellas
         and rejection_count >= count_threshold
-        and rejection_rate >= REJECTION_RATE_THRESHOLD
+        and rejection_rate >= rate_threshold
     )
 
     return {
@@ -996,6 +1068,7 @@ def get_leaf_rejection_stats(signature_id: int) -> dict:
         "uses": uses,
         "total_attempts": total_attempts,
         "rejection_rate": rejection_rate,
+        "rate_threshold": rate_threshold,  # Include for debugging
         "count_threshold": count_threshold,  # Include for debugging
         "should_decompose": should_decompose,
     }
@@ -1004,13 +1077,16 @@ def get_leaf_rejection_stats(signature_id: int) -> dict:
 def get_leaves_needing_decomposition(limit: int = 10) -> list[dict]:
     """Find leaf signatures with high rejection rates that need decomposition.
 
-    Per CLAUDE.md "The Flow": Uses adaptive threshold based on system maturity.
+    Per CLAUDE.md "The Flow": Uses Welford-guided adaptive thresholds.
+    Per CLAUDE.md "New Favorite Pattern": Uses consolidated threshold functions.
 
     Returns:
         List of leaf stats dicts for signatures that should be decomposed
     """
     count_threshold = get_rejection_count_threshold()
+    rate_threshold = get_adaptive_rejection_rate_threshold()
     conn = get_db()
+
     cursor = conn.execute(
         """
         SELECT id, rejection_count, uses
@@ -1021,7 +1097,7 @@ def get_leaves_needing_decomposition(limit: int = 10) -> list[dict]:
         ORDER BY rejection_count DESC
         LIMIT ?
         """,
-        (count_threshold, REJECTION_RATE_THRESHOLD, limit),
+        (count_threshold, rate_threshold, limit),
     )
 
     results = []
@@ -1033,6 +1109,7 @@ def get_leaves_needing_decomposition(limit: int = 10) -> list[dict]:
             "rejection_count": rejection_count,
             "uses": uses,
             "rejection_rate": rejection_count / total if total > 0 else 0,
+            "rate_threshold": rate_threshold,  # Include for debugging
         })
 
     return results

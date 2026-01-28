@@ -215,7 +215,14 @@ ADAPTIVE_REJECTION_MAX_THRESHOLD = 0.95  # Ceiling: never require above this sim
 REJECTION_COUNT_THRESHOLD_COLD = 3  # Cold start: flag after just 3 rejections (get signal fast)
 REJECTION_COUNT_THRESHOLD_MATURE = 10  # Mature: require 10+ rejections before flagging
 REJECTION_COUNT_RAMP_SIGNATURES = 500  # Signatures at which we transition from cold to mature
-REJECTION_RATE_THRESHOLD = 0.30  # 30% rejection rate triggers decomposition flag
+
+# Welford-guided rejection rate threshold (per CLAUDE.md "The Flow")
+# Instead of hardcoded 30%, compute adaptive threshold from rejection rate distribution
+# Threshold = mean + k*std (signatures with rates above this are flagged)
+REJECTION_RATE_WELFORD_ENABLED = True  # Use Welford-guided threshold vs fixed
+REJECTION_RATE_WELFORD_K = 1.5  # Std devs above mean to flag (higher = more selective)
+REJECTION_RATE_MIN_SAMPLES = 5  # Min attempts (uses + rejections) before including in distribution
+REJECTION_RATE_THRESHOLD = 0.30  # Fallback fixed threshold (used if Welford disabled or not enough data)
 
 # Computed at runtime via get_rejection_count_threshold()
 # For backward compatibility, expose the mature value as the default
