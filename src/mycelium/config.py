@@ -29,6 +29,14 @@ import os
 TRAINING_MODE = os.getenv("MYCELIUM_TRAINING_MODE", "true").lower() in ("true", "1", "yes")
 
 # =============================================================================
+# DATABASE PROTECTION
+# =============================================================================
+# After cold start, the DB contains valuable learned data. Protect it!
+# Set DB_PROTECTED=True to prevent accidental deletion via CLI or scripts.
+# Override with MYCELIUM_DB_PROTECTED=false if you really need to clear it.
+DB_PROTECTED = os.getenv("MYCELIUM_DB_PROTECTED", "true").lower() in ("true", "1", "yes")
+
+# =============================================================================
 # SIGNATURE MATCHING
 # =============================================================================
 

@@ -5708,12 +5708,27 @@ class StepSignatureDB:
         conn.commit()
         return result_sig, was_created
 
-    def clear_all_data(self) -> dict:
+    def clear_all_data(self, force: bool = False) -> dict:
         """Clear all signature data for a fresh start.
+
+        Args:
+            force: If True, bypass DB_PROTECTED check
 
         Returns:
             Dict with counts of deleted rows
+
+        Raises:
+            RuntimeError: If DB_PROTECTED=True and force=False
         """
+        from mycelium.config import DB_PROTECTED
+
+        if DB_PROTECTED and not force:
+            raise RuntimeError(
+                "Database is protected (DB_PROTECTED=True). "
+                "Set MYCELIUM_DB_PROTECTED=false or pass force=True to clear. "
+                "This protection exists because the DB contains valuable learned data."
+            )
+
         with self._connection() as conn:
             # Get counts before deletion (defensive None checks for race conditions)
             sig_row = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()

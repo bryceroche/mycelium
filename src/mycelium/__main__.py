@@ -95,6 +95,20 @@ async def info_command(args):
 
 async def clear_command(args):
     """Clear the signature database."""
+    from mycelium.config import DB_PROTECTED
+
+    # Check protection first
+    if DB_PROTECTED and not args.force:
+        print("ERROR: Database is protected (DB_PROTECTED=True)")
+        print("")
+        print("The database contains valuable learned data from 100+ problems.")
+        print("To clear it anyway, use one of these options:")
+        print("  1. mycelium clear --force")
+        print("  2. Set environment variable: MYCELIUM_DB_PROTECTED=false")
+        print("")
+        print("Consider backing up first: cp mycelium.db mycelium.db.backup")
+        return
+
     if not args.force:
         confirm = input("This will delete all signatures. Are you sure? [y/N]: ")
         if confirm.lower() != 'y':
@@ -103,7 +117,7 @@ async def clear_command(args):
 
     from mycelium.step_signatures import StepSignatureDB
     step_db = StepSignatureDB()
-    result = step_db.clear_all_data()
+    result = step_db.clear_all_data(force=True)  # Already confirmed, bypass check
     print(f"Database cleared: {result}")
 
 
