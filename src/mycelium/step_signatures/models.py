@@ -474,3 +474,82 @@ class StepExample:
     success: bool = False
     parent_problem: str = ""
     created_at: Optional[str] = None
+
+
+@dataclass
+class ProposedSignature:
+    """A proposed signature awaiting acceptance decision.
+
+    Per mycelium-xv09: Signatures are staged before acceptance.
+    During cold start: auto-accept as root children.
+    After cold start: use Welford stats to decide accept/reject/merge.
+
+    Statuses:
+    - pending: Awaiting decision
+    - accepted: Converted to real signature
+    - rejected: Discarded (too similar to existing, or low quality)
+    - merged: Merged into existing signature (updated centroid)
+    """
+    id: Optional[int] = None
+    step_text: str = ""
+    embedding: Optional[np.ndarray] = None
+    graph_embedding: Optional[np.ndarray] = None
+    computation_graph: Optional[str] = None
+    proposed_parent_id: Optional[int] = None  # Suggested parent (from routing)
+    best_match_id: Optional[int] = None  # Most similar existing signature
+    best_match_sim: Optional[float] = None  # Similarity to best match
+    dsl_hint: Optional[str] = None  # Operation hint from planner
+    extracted_values: Optional[dict] = None  # JSON: extracted parameters
+    status: str = "pending"  # pending, accepted, rejected, merged
+    decision_reason: Optional[str] = None  # Why accepted/rejected/merged
+    origin_depth: int = 0  # Depth where proposal originated
+    problem_context: Optional[str] = None  # Original problem text
+    created_at: Optional[str] = None
+    decided_at: Optional[str] = None
+
+    @classmethod
+    def from_row(cls, row: dict) -> "ProposedSignature":
+        """Create from database row."""
+        from mycelium.step_signatures.utils import unpack_embedding
+
+        # Parse embedding fields
+        embedding = None
+        if row.get("embedding"):
+            try:
+                embedding = unpack_embedding(row["embedding"])
+            except Exception as e:
+                logger.warning("[models] Invalid embedding for proposal %s: %s", row.get("id", "?"), e)
+
+        graph_embedding = None
+        if row.get("graph_embedding"):
+            try:
+                graph_embedding = unpack_embedding(row["graph_embedding"])
+            except Exception as e:
+                logger.warning("[models] Invalid graph_embedding for proposal %s: %s", row.get("id", "?"), e)
+
+        # Parse extracted_values JSON
+        extracted_values = None
+        if row.get("extracted_values"):
+            try:
+                extracted_values = json.loads(row["extracted_values"])
+            except json.JSONDecodeError as e:
+                logger.warning("[models] Invalid extracted_values JSON for proposal %s: %s", row.get("id", "?"), e)
+
+        return cls(
+            id=row.get("id"),
+            step_text=row.get("step_text", ""),
+            embedding=embedding,
+            graph_embedding=graph_embedding,
+            computation_graph=row.get("computation_graph"),
+            proposed_parent_id=row.get("proposed_parent_id"),
+            best_match_id=row.get("best_match_id"),
+            best_match_sim=row.get("best_match_sim"),
+            dsl_hint=row.get("dsl_hint"),
+            extracted_values=extracted_values,
+            status=row.get("status", "pending"),
+            decision_reason=row.get("decision_reason"),
+            origin_depth=row.get("origin_depth", 0) or 0,
+            problem_context=row.get("problem_context"),
+            created_at=row.get("created_at"),
+            decided_at=row.get("decided_at"),
+        )

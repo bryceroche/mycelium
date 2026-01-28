@@ -18,6 +18,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone, timedelta
+from enum import Enum
 from typing import Optional
 
 import numpy as np
@@ -357,6 +358,24 @@ class AdaptiveThresholds:
     cluster_count: int = 0
     cluster_mean: float = 0.0
     cluster_m2: float = 0.0
+
+
+class PlacementDecision(Enum):
+    """Welford-based placement decision for new signatures.
+
+    Per mycelium-br28: After cold start, use z-scores relative to parent's
+    child similarity distribution to decide placement.
+
+    Decision logic (z-score thresholds from config):
+    - MERGE: z > WELFORD_MERGE_THRESHOLD (very similar to existing sibling)
+    - SIBLING: z > WELFORD_SIBLING_THRESHOLD (normal range, add as peer)
+    - CHILD: z > WELFORD_CHILD_THRESHOLD (somewhat different, create sub-cluster)
+    - NEW_CLUSTER: z <= WELFORD_CHILD_THRESHOLD (very different, new cluster under root)
+    """
+    SIBLING = "sibling"       # Normal: add as sibling (child of same parent)
+    CHILD = "child"           # Somewhat different: create sub-cluster
+    MERGE = "merge"           # Very similar: merge into existing signature
+    NEW_CLUSTER = "new_cluster"  # Very different: new cluster under root
 
 
 def get_adaptive_thresholds(conn) -> AdaptiveThresholds:
@@ -925,10 +944,16 @@ class StepSignatureDB:
         use_ucb1: bool = True,
         epsilon_exploration: bool = False,
         dag_step_type: Optional[str] = None,
+        step_position: Optional[int] = None,
     ) -> RoutingResult:
         """Core DFS routing through signature hierarchy using graph embeddings.
 
         SINGLE PATHWAY for DFS routing. All variations use this function.
+
+        Args:
+            step_position: Optional step position (1, 2, 3...) for position-aware
+                routing. When provided, uses plan_step_stats to penalize nodes
+                that historically fail at this position.
         """
         from mycelium.config import UMBRELLA_MAX_DEPTH
 
@@ -962,6 +987,20 @@ class StepSignatureDB:
                 child_ids = [c.id for c, _ in children if c.id is not None]
                 step_stats_map = get_dag_step_node_stats_batch(dag_step_type, child_ids)
 
+            # Position-aware stats: look up historical success at this step position
+            # Per CLAUDE.md: "Failures Are Valuable Data Points" - use position stats
+            position_stats_map = {}
+            if step_position is not None and use_ucb1:
+                from mycelium.config import POSITION_STATS_ENABLED, POSITION_STATS_MIN_OBS
+                if POSITION_STATS_ENABLED:
+                    child_ids = [c.id for c, _ in children if c.id is not None]
+                    for child_id in child_ids:
+                        pos_stats = self.get_node_success_by_position(child_id)
+                        if step_position in pos_stats:
+                            stats = pos_stats[step_position]
+                            if stats["n"] >= POSITION_STATS_MIN_OBS:
+                                position_stats_map[child_id] = stats
+
             parent_uses = current.uses or 1
             scored_children = []
 
@@ -985,6 +1024,20 @@ class StepSignatureDB:
                             last_used_at=child_sig.last_used_at,
                             step_node_stats=step_stats_map.get(child_sig.id),
                         )
+                        # Apply position-aware penalty if we have stats for this position
+                        if child_sig.id in position_stats_map:
+                            pos_stats = position_stats_map[child_sig.id]
+                            pos_success = pos_stats["mean_success"]
+                            # Penalty: multiply score by position success rate
+                            # Low success at this position = lower score
+                            from mycelium.config import POSITION_STATS_WEIGHT
+                            position_factor = POSITION_STATS_WEIGHT * pos_success + (1 - POSITION_STATS_WEIGHT)
+                            score *= position_factor
+                            logger.debug(
+                                "[routing] Position penalty applied: node=%d pos=%d "
+                                "pos_success=%.2f factor=%.2f",
+                                child_sig.id, step_position, pos_success, position_factor
+                            )
                     else:
                         score = compute_routing_score(
                             sim, child_sig.uses, child_sig.successes, child_sig.last_used_at
@@ -1021,6 +1074,10 @@ class StepSignatureDB:
             best_similarity = best_sim
             if best_sim < min_similarity:
                 break
+
+            # Record routing similarity for Welford stats (per periodic tree review plan)
+            # This tracks the distribution of similarities at each routing decision
+            self.update_welford_route(current.id, best_sim)
 
             path.append(best_child)
             current = best_child
@@ -1077,6 +1134,7 @@ class StepSignatureDB:
         max_depth: int = None,
         top_k: int = 3,
         dag_step_type: Optional[str] = None,
+        step_position: Optional[int] = None,
     ) -> RoutingResult:
         """Route with confidence scoring for MCTS multi-path exploration.
 
@@ -1096,6 +1154,7 @@ class StepSignatureDB:
             max_depth: Maximum depth to traverse
             top_k: Number of top alternatives to track at each level
             dag_step_type: Optional step type for step-node stats lookup
+            step_position: Optional step position (1, 2, 3...) for position-aware routing
 
         Returns:
             RoutingResult with signature, path, confidence, and alternatives
@@ -1109,6 +1168,7 @@ class StepSignatureDB:
             use_ucb1=True,
             epsilon_exploration=True,
             dag_step_type=dag_step_type,
+            step_position=step_position,
         )
 
     # =========================================================================
@@ -1270,10 +1330,10 @@ class StepSignatureDB:
         parent_id: int = None,
         embedder=None,
     ) -> StepSignature:
-        """Create a new signature with global dedup check.
+        """Create a new signature via consolidated propose_signature pathway.
 
-        Before creating, checks if a virtually identical signature already exists
-        (by graph_embedding similarity). If so, returns existing to prevent duplicates.
+        Per CLAUDE.md New Favorite Pattern: Routes through propose_signature()
+        which handles cold start, Welford-based placement, and dedup.
 
         Args:
             step_text: The step description text
@@ -1286,118 +1346,38 @@ class StepSignatureDB:
             embedder: Optional sync embedder for computing graph_embedding
 
         Returns:
-            The newly created or matched StepSignature
+            The created or matched StepSignature
         """
         from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
 
-        with self._connection() as conn:
-            conn.execute("BEGIN IMMEDIATE")
-            try:
-                # GLOBAL DEDUP CHECK: Compute graph_embedding first, then check for duplicates
-                # CRITICAL: Use embed_computation_graph_sync for consistency with stored embeddings
-                step_graph_emb = None
-                if dsl_hint:
-                    op_graph = self._dsl_hint_to_graph(dsl_hint)
-                    if op_graph:
-                        from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
-                        step_graph_emb_list = embed_computation_graph_sync(self.embedder, op_graph)
-                        if step_graph_emb_list:
-                            step_graph_emb = np.array(step_graph_emb_list)
+        # Compute graph_embedding from dsl_hint if provided
+        step_graph_emb = None
+        if dsl_hint:
+            op_graph = self._dsl_hint_to_graph(dsl_hint)
+            if op_graph:
+                step_graph_emb_list = embed_computation_graph_sync(self.embedder, op_graph)
+                if step_graph_emb_list:
+                    step_graph_emb = np.array(step_graph_emb_list)
 
-                if step_graph_emb is not None:
-                    global_match, global_sim = find_global_best_match(conn, step_graph_emb)
-                    thresholds = get_adaptive_thresholds(conn)
+        # Use consolidated propose_signature pathway
+        # Handles: cold start, Welford decisions, dedup (MERGE), placement
+        sig_id, placement = self.propose_signature(
+            step_text=step_text,
+            embedding=embedding,
+            graph_embedding=step_graph_emb,
+            proposed_parent_id=parent_id,
+            dsl_hint=dsl_hint,
+            extracted_values=extracted_values,
+            origin_depth=origin_depth,
+            problem_context=parent_problem,
+        )
 
-                    if global_match is not None and global_sim >= thresholds.dedup_threshold:
-                        if not global_match.is_semantic_umbrella:
-                            # DEDUP: Found identical LEAF signature, return it
-                            logger.info(
-                                "[db] DEDUP (create): Found identical leaf (sim=%.3f >= %.3f): '%s' → sig %d (%s)",
-                                global_sim, thresholds.dedup_threshold, step_text[:40], global_match.id, global_match.step_type
-                            )
-                            update_similarity_stats(conn, 'match', global_sim)
-                            self._update_centroid_atomic(conn, global_match.id, embedding, update_last_used=True)
-                            conn.commit()
-                            return global_match
-                        else:
-                            # Matched an UMBRELLA - search its children for matching leaf first
-                            child_match, child_sim = find_best_child_match(
-                                conn, global_match.id, step_graph_emb
-                            )
-                            if child_match is not None and child_sim >= thresholds.dedup_threshold:
-                                # Found matching leaf under umbrella - DEDUP
-                                logger.info(
-                                    "[db] DEDUP (create): Found matching leaf under umbrella (sim=%.3f >= %.3f): '%s' → sig %d (%s)",
-                                    child_sim, thresholds.dedup_threshold, step_text[:40], child_match.id, child_match.step_type
-                                )
-                                update_similarity_stats(conn, 'match', child_sim)
-                                self._update_centroid_atomic(conn, child_match.id, embedding, update_last_used=True)
-                                conn.commit()
-                                return child_match
-                            else:
-                                # No matching leaf found - create new leaf under umbrella
-                                parent_id = global_match.id
-                                logger.info(
-                                    "[db] CLUSTER (create): No matching leaf in umbrella children (best=%.3f), creating under sig %d (%s)",
-                                    child_sim, global_match.id, global_match.step_type
-                                )
-                                update_similarity_stats(conn, 'cluster', global_sim)
-
-                    elif global_match is not None and global_sim >= thresholds.cluster_threshold:
-                        if global_match.is_semantic_umbrella:
-                            # Matched an UMBRELLA - use it as parent
-                            parent_id = global_match.id
-                            logger.info(
-                                "[db] CLUSTER (create): Using umbrella as parent (sim=%.3f >= %.3f): sig %d (%s)",
-                                global_sim, thresholds.cluster_threshold, global_match.id, global_match.step_type
-                            )
-                        else:
-                            # Matched a LEAF - use same parent as the leaf
-                            cursor = conn.execute(
-                                "SELECT parent_id FROM signature_relationships WHERE child_id = ?",
-                                (global_match.id,)
-                            )
-                            row = cursor.fetchone()
-                            if row:
-                                parent_id = row[0]
-                                logger.info(
-                                    "[db] CLUSTER (create): Clustering with leaf (sim=%.3f >= %.3f), under parent %s",
-                                    global_sim, thresholds.cluster_threshold, parent_id
-                                )
-                        update_similarity_stats(conn, 'cluster', global_sim)
-
-                        # SIBLING DEDUP: Before creating, check if sibling already matches
-                        if parent_id is not None and step_graph_emb is not None:
-                            sibling_match, sibling_sim = find_best_child_match(
-                                conn, parent_id, step_graph_emb
-                            )
-                            if sibling_match is not None and sibling_sim >= thresholds.dedup_threshold:
-                                # Found matching sibling, return it instead of creating duplicate
-                                logger.info(
-                                    "[db] SIBLING DEDUP (sync): Found matching sibling (sim=%.3f >= %.3f): '%s' → sig %d (%s)",
-                                    sibling_sim, thresholds.dedup_threshold, step_text[:40], sibling_match.id, sibling_match.step_type
-                                )
-                                update_similarity_stats(conn, 'match', sibling_sim)
-                                self._update_centroid_atomic(conn, sibling_match.id, embedding, update_last_used=True)
-                                conn.commit()
-                                return sibling_match
-
-                # Create new signature (graph_embedding computed inside _create_signature_atomic)
-                sig = self._create_signature_atomic(
-                    conn, step_text, embedding, parent_problem, origin_depth,
-                    extracted_values=extracted_values, parent_id=parent_id, dsl_hint=dsl_hint,
-                    graph_embedding=step_graph_emb
-                )
-                conn.commit()
-                logger.info(
-                    "[db] Created signature: step='%s' type='%s' depth=%d",
-                    step_text[:40], sig.step_type, origin_depth
-                )
-
-                return sig
-            except Exception:
-                conn.rollback()
-                raise
+        sig = self.get_signature(sig_id)
+        logger.info(
+            "[db] create_signature via propose_signature (placement=%s): step='%s' type='%s'",
+            placement, step_text[:40], sig.step_type
+        )
+        return sig
 
     def _find_or_create_atomic(
         self,
@@ -1456,6 +1436,9 @@ class StepSignatureDB:
                 best_match, parent_for_new, best_sim = self._route_hierarchical(
                     conn, min_similarity, dsl_hint=dsl_hint, exclude_ids=exclude_ids
                 )
+
+                # NOTE: Cold start logic moved to propose_signature() per CLAUDE.md New Favorite Pattern
+                # propose_signature is now the SINGLE ENTRY POINT for all signature creation
 
                 # Accept match from hierarchical routing
                 # Simplified: no match_score, just use routing result
@@ -1682,97 +1665,94 @@ class StepSignatureDB:
                                     conn, child_match, False, parent_for_new, global_match.id
                                 )
                             else:
-                                # No matching leaf found - create new leaf under umbrella
-                                cluster_parent_id = global_match.id
-                                logger.info(
-                                    "[db] CLUSTER: No matching leaf in umbrella children (best=%.3f), creating under sig %d (%s)",
-                                    child_sim, global_match.id, global_match.step_type
-                                )
+                                # No matching leaf found - create new leaf
+                                # Per CLAUDE.md New Favorite Pattern: use propose_signature as single entry point
                                 update_similarity_stats(conn, 'cluster', global_sim)
 
-                                sig = self._create_signature_atomic(
-                                    conn, step_text, embedding, parent_problem, origin_depth,
-                                    extracted_values=extracted_values, dsl_hint=dsl_hint,
-                                    parent_id=cluster_parent_id, graph_embedding=step_graph_emb
+                                sig_id, placement = self.propose_signature(
+                                    step_text=step_text,
+                                    embedding=embedding,
+                                    graph_embedding=step_graph_emb,
+                                    proposed_parent_id=global_match.id,
+                                    best_match_id=global_match.id,
+                                    best_match_sim=global_sim,
+                                    dsl_hint=dsl_hint,
+                                    extracted_values=extracted_values,
+                                    origin_depth=origin_depth,
+                                    problem_context=parent_problem,
+                                    conn=conn,
                                 )
+                                sig = self.get_signature(sig_id)
                                 logger.info(
-                                    "[db] Created CLUSTERED signature (child of umbrella %s): step='%s' type='%s'",
-                                    global_match.step_type, step_text[:40], sig.step_type
+                                    "[db] Created signature via propose_signature (placement=%s): step='%s'",
+                                    placement, step_text[:40]
                                 )
                                 return self._finalize_routing_result(
-                                    conn, sig, True, parent_for_new, cluster_parent_id
+                                    conn, sig, True, parent_for_new, sig.id
                                 )
 
                     elif global_match is not None and global_sim >= thresholds.cluster_threshold:
-                        # CLUSTER: Similar signature exists
+                        # CLUSTER: Similar signature exists - determine parent
                         if global_match.is_semantic_umbrella:
-                            # Matched an UMBRELLA - use it as parent
                             cluster_parent_id = global_match.id
-                            logger.info(
-                                "[db] CLUSTER: Using umbrella as parent (sim=%.3f >= %.3f): sig %d (%s)",
-                                global_sim, thresholds.cluster_threshold, global_match.id, global_match.step_type
-                            )
                         else:
-                            # Matched a LEAF - use same parent
                             cursor = conn.execute(
                                 "SELECT parent_id FROM signature_relationships WHERE child_id = ?",
                                 (global_match.id,)
                             )
                             row = cursor.fetchone()
                             cluster_parent_id = row[0] if row else None
-                            logger.info(
-                                "[db] CLUSTER: Similar leaf found (sim=%.3f >= %.3f), clustering under parent %s",
-                                global_sim, thresholds.cluster_threshold, cluster_parent_id
-                            )
 
                         update_similarity_stats(conn, 'cluster', global_sim)
 
-                        # SIBLING DEDUP: Before creating, check if sibling already matches
-                        if cluster_parent_id is not None and step_graph_emb is not None:
-                            sibling_match, sibling_sim = find_best_child_match(
-                                conn, cluster_parent_id, step_graph_emb
-                            )
-                            if sibling_match is not None and sibling_sim >= thresholds.dedup_threshold:
-                                # Found matching sibling, return it instead of creating duplicate
-                                logger.info(
-                                    "[db] SIBLING DEDUP: Found matching sibling (sim=%.3f >= %.3f): '%s' → sig %d (%s)",
-                                    sibling_sim, thresholds.dedup_threshold, step_text[:40], sibling_match.id, sibling_match.step_type
-                                )
-                                update_similarity_stats(conn, 'match', sibling_sim)
-                                self._update_centroid_atomic(conn, sibling_match.id, embedding, update_last_used=True)
-                                return self._finalize_routing_result(
-                                    conn, sibling_match, False, parent_for_new, cluster_parent_id
-                                )
-
-                        sig = self._create_signature_atomic(
-                            conn, step_text, embedding, parent_problem, origin_depth,
-                            extracted_values=extracted_values, dsl_hint=dsl_hint,
-                            parent_id=cluster_parent_id, graph_embedding=step_graph_emb
+                        # Per CLAUDE.md New Favorite Pattern: use propose_signature as single entry point
+                        # propose_signature handles cold start + Welford-based placement decisions
+                        sig_id, placement = self.propose_signature(
+                            step_text=step_text,
+                            embedding=embedding,
+                            graph_embedding=step_graph_emb,
+                            proposed_parent_id=cluster_parent_id,
+                            best_match_id=global_match.id,
+                            best_match_sim=global_sim,
+                            dsl_hint=dsl_hint,
+                            extracted_values=extracted_values,
+                            origin_depth=origin_depth,
+                            problem_context=parent_problem,
+                            conn=conn,
                         )
+                        sig = self.get_signature(sig_id)
                         logger.info(
-                            "[db] Created CLUSTERED signature (sibling of %s): step='%s' type='%s'",
-                            global_match.step_type, step_text[:40], sig.step_type
+                            "[db] Created signature via propose_signature (placement=%s): step='%s'",
+                            placement, step_text[:40]
                         )
                         return self._finalize_routing_result(
-                            conn, sig, True, parent_for_new, cluster_parent_id
+                            conn, sig, True, parent_for_new, sig.id
                         )
 
-                # No global match above thresholds - create new signature under routing parent
+                # No global match above thresholds - create new signature
+                # Per CLAUDE.md New Favorite Pattern: use propose_signature as single entry point
                 actual_parent_id = parent_id if parent_id is not None else (parent_for_new.id if parent_for_new else None)
 
-                sig = self._create_signature_atomic(
-                    conn, step_text, embedding, parent_problem, origin_depth,
-                    extracted_values=extracted_values, dsl_hint=dsl_hint,
-                    parent_id=actual_parent_id, graph_embedding=step_graph_emb
+                sig_id, placement = self.propose_signature(
+                    step_text=step_text,
+                    embedding=embedding,
+                    graph_embedding=step_graph_emb,
+                    proposed_parent_id=actual_parent_id,
+                    best_match_id=None,
+                    best_match_sim=None,
+                    dsl_hint=dsl_hint,
+                    extracted_values=extracted_values,
+                    origin_depth=origin_depth,
+                    problem_context=parent_problem,
+                    conn=conn,
                 )
-                parent_desc = f"id={parent_id}" if parent_id is not None else (parent_for_new.step_type if parent_for_new else "root")
+                sig = self.get_signature(sig_id)
                 logger.info(
-                    "[db] Created NEW signature (child of %s): step='%s' type='%s'",
-                    parent_desc, step_text[:40], sig.step_type
+                    "[db] Created NEW signature via propose_signature (placement=%s): step='%s'",
+                    placement, step_text[:40]
                 )
-                # Use consolidated exit point (won't demote since we're using parent_for_new)
                 return self._finalize_routing_result(
-                    conn, sig, True, parent_for_new, actual_parent_id
+                    conn, sig, True, parent_for_new, sig.id
                 )
 
             except Exception:
@@ -3394,6 +3374,82 @@ class StepSignatureDB:
             with self._connection() as c:
                 return _do_unarchive(c)
 
+    def demote_umbrella_to_leaf(
+        self,
+        signature_id: int,
+        reason: str = "no_children",
+        conn=None,
+    ) -> bool:
+        """Demote an umbrella signature to a leaf signature.
+
+        Per CLAUDE.md "New Favorite Pattern": Consolidated method for umbrella demotion.
+        Ensures cache invalidation, logging, and consistency.
+
+        Used by decay system when umbrella has no healthy children.
+
+        Args:
+            signature_id: ID of umbrella to demote
+            reason: Why demotion is happening
+            conn: Optional connection for transaction support
+
+        Returns:
+            True if demotion succeeded
+        """
+        def _do_demote(c):
+            result = self._update_signature_fields(
+                c, signature_id,
+                log_reason=f"demote_umbrella:{reason}",
+                is_semantic_umbrella=0,
+                dsl_type="decompose",
+            )
+            if result:
+                logger.info("[db] Demoted umbrella %d to leaf (reason: %s)", signature_id, reason)
+            return result
+
+        if conn is not None:
+            return _do_demote(conn)
+        else:
+            with self._connection() as c:
+                return _do_demote(c)
+
+    def mark_signature_atomic(
+        self,
+        signature_id: int,
+        reason: str,
+        conn=None,
+    ) -> bool:
+        """Mark a signature as atomic (non-decomposable).
+
+        Per CLAUDE.md "New Favorite Pattern": Consolidated method for atomic marking.
+        Prevents repeated failed decomposition attempts.
+
+        Used by umbrella learner when decomposition has failed.
+
+        Args:
+            signature_id: ID of signature to mark atomic
+            reason: Why it's atomic (e.g., "single_operation", "decomposition_failed")
+            conn: Optional connection for transaction support
+
+        Returns:
+            True if update succeeded
+        """
+        def _do_mark(c):
+            result = self._update_signature_fields(
+                c, signature_id,
+                log_reason=f"mark_atomic:{reason}",
+                is_atomic=1,
+                atomic_reason=reason,
+            )
+            if result:
+                logger.info("[db] Marked signature %d as atomic (reason: %s)", signature_id, reason)
+            return result
+
+        if conn is not None:
+            return _do_mark(conn)
+        else:
+            with self._connection() as c:
+                return _do_mark(c)
+
     def increment_rejection_count(self, signature_id: int, conn=None) -> int:
         """Increment rejection count and return new value.
 
@@ -4856,6 +4912,66 @@ class StepSignatureDB:
             row = cursor.fetchone()
             return self._row_to_signature(dict(row)) if row else None
 
+    def _find_best_sibling(
+        self,
+        new_embedding: np.ndarray,
+        parent_id: int,
+        conn=None,
+    ) -> tuple[Optional["StepSignature"], float]:
+        """Find the best matching sibling (child of same parent) by graph_embedding similarity.
+
+        Per mycelium-br28: Helper for decide_signature_placement().
+        Compares new_embedding against all children of parent_id that have graph_embeddings.
+
+        Args:
+            new_embedding: The new signature's graph_embedding
+            parent_id: The parent's signature ID (siblings are children of this parent)
+            conn: Optional database connection
+
+        Returns:
+            (best_sibling, similarity) tuple, or (None, 0.0) if no siblings with embeddings
+        """
+        def _do_find(c):
+            # Get all children of parent with graph_embeddings
+            cursor = c.execute(
+                """SELECT s.id, s.step_type, s.graph_embedding, s.is_semantic_umbrella,
+                          s.uses, s.successes, s.depth
+                   FROM step_signatures s
+                   JOIN signature_relationships r ON s.id = r.child_id
+                   WHERE r.parent_id = ?
+                     AND s.graph_embedding IS NOT NULL
+                     AND s.is_archived = 0""",
+                (parent_id,)
+            )
+
+            best_sig = None
+            best_sim = 0.0
+
+            for row in cursor:
+                sig_id, step_type, graph_emb_json, is_umbrella, uses, successes, depth = row
+                sig_graph_emb = np.array(json.loads(graph_emb_json))
+
+                sim = cosine_similarity(new_embedding, sig_graph_emb)
+                if sim > best_sim:
+                    best_sim = sim
+                    best_sig = StepSignature(
+                        id=sig_id,
+                        step_type=step_type,
+                        graph_embedding=json.loads(graph_emb_json),
+                        is_semantic_umbrella=bool(is_umbrella),
+                        uses=uses,
+                        successes=successes,
+                        depth=depth,
+                    )
+
+            return best_sig, best_sim
+
+        if conn is not None:
+            return _do_find(conn)
+        else:
+            with self._connection() as c:
+                return _do_find(c)
+
     def get_all_leaves(self, min_uses: int = 0) -> list[StepSignature]:
         """Get all leaf signatures (non-umbrellas) with graph embeddings.
 
@@ -5008,6 +5124,91 @@ class StepSignatureDB:
 
         return candidates[:top_k]
 
+    def get_decomposition_hints(
+        self,
+        step_description: str,
+        operation_embedding: np.ndarray,
+        similarity_threshold: float = 0.7,
+    ) -> dict:
+        """Get hints for decomposing a dag_step using existing vocabulary.
+
+        Per CLAUDE.md "Negotiation between Tree and Planner":
+        Bias towards decomposing dag_steps (cheap, per-problem) over
+        decomposing leaf_nodes (permanent tree change).
+
+        When a dag_step has a poor match, this method suggests how to
+        break it down into operations that already exist in the tree.
+
+        Args:
+            step_description: The step that needs decomposition
+            operation_embedding: The step's operation embedding
+            similarity_threshold: Below this, step is considered "poor match"
+
+        Returns:
+            Dict with:
+            - 'needs_decomposition': bool
+            - 'best_match': (step_type, similarity) or None
+            - 'vocabulary': list of available operations
+            - 'suggested_decomposition': list of operation names that might compose this step
+        """
+        leaves = self.get_all_leaves(min_uses=0)
+
+        # Find best match
+        best_match = None
+        best_sim = 0.0
+
+        # Collect vocabulary and similarities
+        vocabulary = []
+        for leaf in leaves:
+            graph_emb = leaf.graph_embedding
+            if graph_emb is None:
+                continue
+            if not isinstance(graph_emb, np.ndarray):
+                graph_emb = np.array(graph_emb)
+
+            sim = cosine_similarity(operation_embedding, graph_emb)
+            vocabulary.append((leaf.step_type, sim, leaf.uses or 0))
+
+            if sim > best_sim:
+                best_sim = sim
+                best_match = (leaf.step_type, sim)
+
+        # Sort vocabulary by similarity (descending)
+        vocabulary.sort(key=lambda x: x[1], reverse=True)
+
+        # Determine if decomposition is needed
+        needs_decomposition = best_sim < similarity_threshold
+
+        # Suggest decomposition based on existing vocabulary
+        # Look for complementary operations (e.g., if step is "compute and subtract",
+        # suggest "compute_product" + "compute_difference")
+        suggested_decomposition = []
+        if needs_decomposition:
+            # Top 3 operations by similarity might be components
+            for step_type, sim, uses in vocabulary[:5]:
+                if sim > 0.4:  # Minimum relevance
+                    suggested_decomposition.append(step_type)
+
+        result = {
+            'needs_decomposition': needs_decomposition,
+            'best_match': best_match,
+            'vocabulary': [(v[0], v[2]) for v in vocabulary[:10]],  # (step_type, uses)
+            'suggested_decomposition': suggested_decomposition,
+            'similarity_threshold': similarity_threshold,
+        }
+
+        if needs_decomposition:
+            logger.debug(
+                "[db] Decomposition hints for '%s': best_match=%s (sim=%.3f < %.3f), vocab=%s",
+                step_description[:40],
+                best_match[0] if best_match else None,
+                best_sim,
+                similarity_threshold,
+                suggested_decomposition,
+            )
+
+        return result
+
     def add_child(
         self,
         parent_id: int,
@@ -5114,14 +5315,25 @@ class StepSignatureDB:
         This function validates children exist before promoting (unless skip_children_check=True
         for cases where children are being added in the same transaction).
 
+        Per mycelium-5cn0: No umbrella promotions during cold start. The first N problems
+        create a flat structure under root to collect Welford stats before restructuring.
+
         Args:
             conn: Database connection (existing transaction)
             signature_id: ID of the signature to promote
             skip_children_check: If True, skip validation (caller guarantees children exist/will exist)
 
         Returns:
-            True if updated, False if signature not found or no children
+            True if updated, False if signature not found, no children, or cold start active
         """
+        # Cold start check: no umbrella promotions during cold start (per mycelium-5cn0)
+        if self.is_cold_start(conn=conn):
+            logger.debug(
+                "[db] Refusing to promote sig %d to umbrella: cold start active (flat structure)",
+                signature_id
+            )
+            return False
+
         # Validate children exist (unless caller explicitly skips check)
         if not skip_children_check:
             child_count = conn.execute(
@@ -5293,12 +5505,13 @@ class StepSignatureDB:
             now = datetime.now(timezone.utc).isoformat()
 
             try:
-                # Create umbrella using unified pathway
+                # Per CLAUDE.md System Independence: Create as LEAF first, then promote
+                # to umbrella AFTER child relationship exists (prevents orphan umbrellas)
                 new_sig = self._create_signature_atomic(
                     conn=conn,
                     step_text=description,
                     embedding=new_centroid,
-                    is_umbrella=True,
+                    is_umbrella=False,  # Start as leaf, promote after child added
                     signature_id_override=sig_id,
                     depth_override=target_depth,
                     skip_example=True,
@@ -5311,6 +5524,9 @@ class StepSignatureDB:
                        VALUES (?, ?, ?, ?)""",
                     (new_sig.id, child_signature.id, f"difficulty <= {child_signature.max_difficulty_solved}", now),
                 )
+
+                # NOW promote to umbrella (child exists, safe from orphan state)
+                self._promote_to_umbrella_internal(conn, new_sig.id)
 
                 # Update max_difficulty_solved
                 conn.execute(
@@ -5326,6 +5542,8 @@ class StepSignatureDB:
                     new_sig.id, child_signature.id, target_depth, difficulty
                 )
 
+                # Refresh signature object (is_semantic_umbrella changed)
+                new_sig = new_sig._replace(is_semantic_umbrella=True, dsl_type="router")
                 return new_sig
 
             except sqlite3.IntegrityError as e:
@@ -5490,12 +5708,27 @@ class StepSignatureDB:
         conn.commit()
         return result_sig, was_created
 
-    def clear_all_data(self) -> dict:
+    def clear_all_data(self, force: bool = False) -> dict:
         """Clear all signature data for a fresh start.
+
+        Args:
+            force: If True, bypass DB_PROTECTED check
 
         Returns:
             Dict with counts of deleted rows
+
+        Raises:
+            RuntimeError: If DB_PROTECTED=True and force=False
         """
+        from mycelium.config import DB_PROTECTED
+
+        if DB_PROTECTED and not force:
+            raise RuntimeError(
+                "Database is protected (DB_PROTECTED=True). "
+                "Set MYCELIUM_DB_PROTECTED=false or pass force=True to clear. "
+                "This protection exists because the DB contains valuable learned data."
+            )
+
         with self._connection() as conn:
             # Get counts before deletion (defensive None checks for race conditions)
             sig_row = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()
@@ -5695,6 +5928,2369 @@ class StepSignatureDB:
         # Sort by similarity descending and return top_k
         matches.sort(key=lambda x: x[1], reverse=True)
         return matches[:top_k]
+
+    # =========================================================================
+    # WELFORD STATS (per mycelium-bjrf)
+    # =========================================================================
+    # Consolidated stats for tree restructuring decisions.
+    # Per CLAUDE.md "New Favorite Pattern": single entry points for stats updates.
+
+    def _ensure_welford_stats(self, signature_id: int, conn) -> None:
+        """Ensure a welford_stats row exists for this signature."""
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO welford_stats (signature_id, created_at, updated_at)
+            VALUES (?, datetime('now'), datetime('now'))
+            """,
+            (signature_id,)
+        )
+
+    def update_welford_route(
+        self,
+        signature_id: int,
+        similarity: float,
+        conn=None,
+    ) -> bool:
+        """Update routing similarity stats using Welford's algorithm.
+
+        Called every time a step is routed to this signature.
+        Tracks: how consistent are the similarities when routing here?
+
+        Per mycelium-bjrf: used by restructuring to detect:
+        - High variance = routing is inconsistent = maybe split
+        - Low variance = routing is stable = good cluster
+
+        Args:
+            signature_id: The signature being routed to
+            similarity: The cosine similarity used in routing decision
+
+        Returns:
+            True if update succeeded
+        """
+        def _do_update(c):
+            self._ensure_welford_stats(signature_id, c)
+
+            row = c.execute(
+                "SELECT route_n, route_mean, route_m2 FROM welford_stats WHERE signature_id = ?",
+                (signature_id,)
+            ).fetchone()
+
+            if not row:
+                return False
+
+            n = row["route_n"] + 1
+            old_mean = row["route_mean"]
+            old_m2 = row["route_m2"]
+
+            # Welford's update
+            delta = similarity - old_mean
+            new_mean = old_mean + delta / n
+            delta2 = similarity - new_mean
+            new_m2 = old_m2 + delta * delta2
+
+            c.execute(
+                """
+                UPDATE welford_stats
+                SET route_n = ?, route_mean = ?, route_m2 = ?, updated_at = datetime('now')
+                WHERE signature_id = ?
+                """,
+                (n, new_mean, new_m2, signature_id)
+            )
+            return True
+
+        if conn is not None:
+            return _do_update(conn)
+        else:
+            with self._connection() as c:
+                result = _do_update(c)
+                c.commit()
+                return result
+
+    def update_welford_child(
+        self,
+        signature_id: int,
+        similarity: float,
+        conn=None,
+    ) -> bool:
+        """Update child cluster similarity stats using Welford's algorithm.
+
+        Called when measuring similarity between children of an umbrella.
+        Tracks: how tight is this umbrella's cluster?
+
+        Per mycelium-bjrf: used by restructuring to detect:
+        - High variance = children are dissimilar = maybe over-clustered
+        - Low variance = children are similar = good umbrella
+
+        Args:
+            signature_id: The umbrella signature
+            similarity: Similarity between two of its children
+
+        Returns:
+            True if update succeeded
+        """
+        def _do_update(c):
+            self._ensure_welford_stats(signature_id, c)
+
+            row = c.execute(
+                "SELECT child_n, child_mean, child_m2 FROM welford_stats WHERE signature_id = ?",
+                (signature_id,)
+            ).fetchone()
+
+            if not row:
+                return False
+
+            n = row["child_n"] + 1
+            old_mean = row["child_mean"]
+            old_m2 = row["child_m2"]
+
+            # Welford's update
+            delta = similarity - old_mean
+            new_mean = old_mean + delta / n
+            delta2 = similarity - new_mean
+            new_m2 = old_m2 + delta * delta2
+
+            c.execute(
+                """
+                UPDATE welford_stats
+                SET child_n = ?, child_mean = ?, child_m2 = ?, updated_at = datetime('now')
+                WHERE signature_id = ?
+                """,
+                (n, new_mean, new_m2, signature_id)
+            )
+            return True
+
+        if conn is not None:
+            return _do_update(conn)
+        else:
+            with self._connection() as c:
+                result = _do_update(c)
+                c.commit()
+                return result
+
+    def update_welford_exec(
+        self,
+        signature_id: int,
+        success: bool,
+        conn=None,
+    ) -> bool:
+        """Update execution success stats.
+
+        Called after every step execution. Simple success rate tracking.
+
+        Per mycelium-bjrf: used by restructuring to detect:
+        - Low success rate = signature needs refinement
+        - High success rate = signature is reliable
+
+        Args:
+            signature_id: The signature that was executed
+            success: Whether execution succeeded
+
+        Returns:
+            True if update succeeded
+        """
+        def _do_update(c):
+            self._ensure_welford_stats(signature_id, c)
+
+            c.execute(
+                """
+                UPDATE welford_stats
+                SET exec_n = exec_n + 1,
+                    exec_successes = exec_successes + ?,
+                    updated_at = datetime('now')
+                WHERE signature_id = ?
+                """,
+                (1 if success else 0, signature_id)
+            )
+            return True
+
+        if conn is not None:
+            return _do_update(conn)
+        else:
+            with self._connection() as c:
+                result = _do_update(c)
+                c.commit()
+                return result
+
+    def update_welford_decomp(
+        self,
+        signature_id: int,
+        success: bool,
+        conn=None,
+    ) -> bool:
+        """Update decomposition attempt stats.
+
+        Called after every decomposition attempt. Tracks whether decomposing
+        this signature into sub-steps tends to succeed.
+
+        Used to determine if future decomposition attempts are worthwhile:
+        - Low success rate = signature is effectively atomic (don't decompose)
+        - High success rate = decomposition helps
+
+        Args:
+            signature_id: The signature that was decomposed
+            success: Whether decomposition led to successful execution
+
+        Returns:
+            True if update succeeded
+        """
+        def _do_update(c):
+            self._ensure_welford_stats(signature_id, c)
+
+            c.execute(
+                """
+                UPDATE welford_stats
+                SET decomp_attempts = decomp_attempts + 1,
+                    decomp_successes = decomp_successes + ?,
+                    updated_at = datetime('now')
+                WHERE signature_id = ?
+                """,
+                (1 if success else 0, signature_id)
+            )
+            return True
+
+        if conn is not None:
+            return _do_update(conn)
+        else:
+            with self._connection() as c:
+                result = _do_update(c)
+                c.commit()
+                return result
+
+    def get_decomp_success_rate(
+        self,
+        signature_id: int,
+        min_attempts: int = 3,
+        conn=None,
+    ) -> tuple[float, int]:
+        """Get decomposition success rate for a signature.
+
+        Used to decide if decomposition should be attempted.
+
+        Args:
+            signature_id: The signature to check
+            min_attempts: Minimum attempts required for meaningful rate
+
+        Returns:
+            Tuple of (success_rate, attempt_count)
+            Returns (1.0, 0) if insufficient data (allows initial attempts)
+        """
+        def _do_get(c):
+            row = c.execute(
+                """
+                SELECT decomp_attempts, decomp_successes
+                FROM welford_stats
+                WHERE signature_id = ?
+                """,
+                (signature_id,)
+            ).fetchone()
+
+            if not row or row["decomp_attempts"] < min_attempts:
+                # Insufficient data - allow decomposition attempts
+                return (1.0, row["decomp_attempts"] if row else 0)
+
+            attempts = row["decomp_attempts"]
+            successes = row["decomp_successes"]
+            rate = successes / attempts if attempts > 0 else 0.0
+            return (rate, attempts)
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def get_welford_stats(
+        self,
+        signature_id: int,
+        conn=None,
+    ) -> Optional[dict]:
+        """Get Welford stats for a signature.
+
+        Returns:
+            Dict with route_*, child_*, exec_* stats, or None if not found
+        """
+        def _do_get(c):
+            row = c.execute(
+                """
+                SELECT signature_id, route_n, route_mean, route_m2,
+                       child_n, child_mean, child_m2,
+                       exec_n, exec_successes,
+                       decomp_attempts, decomp_successes,
+                       created_at, updated_at
+                FROM welford_stats
+                WHERE signature_id = ?
+                """,
+                (signature_id,)
+            ).fetchone()
+
+            if not row:
+                return None
+
+            return dict(row)
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def get_welford_variance(
+        self,
+        signature_id: int,
+        stat_type: str = "route",
+        conn=None,
+    ) -> float:
+        """Get variance from Welford stats.
+
+        Args:
+            signature_id: The signature
+            stat_type: "route" or "child"
+
+        Returns:
+            Sample variance (M2 / (N-1)), or 0.0 if insufficient data
+        """
+        stats = self.get_welford_stats(signature_id, conn=conn)
+        if not stats:
+            return 0.0
+
+        n = stats.get(f"{stat_type}_n", 0)
+        m2 = stats.get(f"{stat_type}_m2", 0.0)
+
+        if n < 2:
+            return 0.0
+
+        return m2 / (n - 1)
+
+    def get_welford_std(
+        self,
+        signature_id: int,
+        stat_type: str = "route",
+        conn=None,
+    ) -> float:
+        """Get standard deviation from Welford stats.
+
+        Args:
+            signature_id: The signature
+            stat_type: "route" or "child"
+
+        Returns:
+            Sample standard deviation, or 0.0 if insufficient data
+        """
+        import math
+        variance = self.get_welford_variance(signature_id, stat_type, conn=conn)
+        return math.sqrt(variance) if variance > 0 else 0.0
+
+    # =========================================================================
+    # PLAN_STEP_STATS: Statistical blame accumulation for (plan, position, node)
+    # =========================================================================
+    # Per CLAUDE.md: "Failures Are Valuable Data Points" - accumulate blame statistically
+
+    def update_plan_step_stats(
+        self,
+        plan_signature: str,
+        step_position: int,
+        node_id: int,
+        success: bool,
+        conn=None,
+    ) -> bool:
+        """Update Welford stats for (plan, position, node) success rate.
+
+        Called after grading a problem. Records whether each step in the plan
+        succeeded based on the overall problem outcome.
+
+        Per CLAUDE.md: "Failures Are Valuable Data Points" - accumulate blame
+        without reactive exploration. This enables:
+        - Identifying which step positions consistently fail
+        - Detecting which nodes are problematic at certain positions
+        - Order-aware tracking (same node at step 1 vs step 5 may differ)
+
+        Args:
+            plan_signature: Hash of plan structure (from dag_plan_stats)
+            step_position: Position in plan (1, 2, 3...)
+            node_id: Which signature handled this step
+            success: Whether the problem was solved correctly
+
+        Returns:
+            True if update succeeded
+        """
+        success_val = 1.0 if success else 0.0
+
+        def _do_update(c):
+            # Check if row exists
+            row = c.execute(
+                """
+                SELECT n, mean_success, m2
+                FROM plan_step_stats
+                WHERE plan_signature = ? AND step_position = ? AND node_id = ?
+                """,
+                (plan_signature, step_position, node_id)
+            ).fetchone()
+
+            if row:
+                # Update existing row with Welford's algorithm
+                n = row["n"] + 1
+                old_mean = row["mean_success"]
+                old_m2 = row["m2"]
+
+                delta = success_val - old_mean
+                new_mean = old_mean + delta / n
+                delta2 = success_val - new_mean
+                new_m2 = old_m2 + delta * delta2
+
+                c.execute(
+                    """
+                    UPDATE plan_step_stats
+                    SET n = ?, mean_success = ?, m2 = ?, last_updated_at = datetime('now')
+                    WHERE plan_signature = ? AND step_position = ? AND node_id = ?
+                    """,
+                    (n, new_mean, new_m2, plan_signature, step_position, node_id)
+                )
+            else:
+                # Insert new row (first observation: n=1, mean=success_val, m2=0)
+                c.execute(
+                    """
+                    INSERT INTO plan_step_stats
+                        (plan_signature, step_position, node_id, n, mean_success, m2)
+                    VALUES (?, ?, ?, 1, ?, 0.0)
+                    """,
+                    (plan_signature, step_position, node_id, success_val)
+                )
+            return True
+
+        if conn is not None:
+            return _do_update(conn)
+        else:
+            with self._connection() as c:
+                result = _do_update(c)
+                c.commit()
+                return result
+
+    def get_plan_step_stats(
+        self,
+        plan_signature: str,
+        step_position: int,
+        node_id: int,
+        conn=None,
+    ) -> Optional[dict]:
+        """Get Welford stats for a specific (plan, position, node) combo.
+
+        Args:
+            plan_signature: Hash of plan structure
+            step_position: Position in plan
+            node_id: Which signature
+
+        Returns:
+            Dict with n, mean_success, m2, variance, std, or None if not found
+        """
+        def _do_get(c):
+            row = c.execute(
+                """
+                SELECT plan_signature, step_position, node_id, n, mean_success, m2,
+                       first_seen_at, last_updated_at
+                FROM plan_step_stats
+                WHERE plan_signature = ? AND step_position = ? AND node_id = ?
+                """,
+                (plan_signature, step_position, node_id)
+            ).fetchone()
+
+            if not row:
+                return None
+
+            result = dict(row)
+            n = result["n"]
+            m2 = result["m2"]
+
+            # Compute variance and std
+            if n >= 2:
+                result["variance"] = m2 / (n - 1)
+                result["std"] = (result["variance"]) ** 0.5
+            else:
+                result["variance"] = 0.0
+                result["std"] = 0.0
+
+            return result
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def get_plan_step_stats_for_plan(
+        self,
+        plan_signature: str,
+        conn=None,
+    ) -> list[dict]:
+        """Get all step stats for a plan, ordered by position.
+
+        Useful for understanding which positions are problematic.
+
+        Args:
+            plan_signature: Hash of plan structure
+
+        Returns:
+            List of stats dicts, ordered by step_position
+        """
+        def _do_get(c):
+            rows = c.execute(
+                """
+                SELECT pss.plan_signature, pss.step_position, pss.node_id,
+                       pss.n, pss.mean_success, pss.m2,
+                       pss.first_seen_at, pss.last_updated_at,
+                       ss.step_type
+                FROM plan_step_stats pss
+                LEFT JOIN step_signatures ss ON pss.node_id = ss.id
+                WHERE pss.plan_signature = ?
+                ORDER BY pss.step_position
+                """,
+                (plan_signature,)
+            ).fetchall()
+
+            results = []
+            for row in rows:
+                result = dict(row)
+                n = result["n"]
+                m2 = result["m2"]
+                if n >= 2:
+                    result["variance"] = m2 / (n - 1)
+                    result["std"] = (result["variance"]) ** 0.5
+                else:
+                    result["variance"] = 0.0
+                    result["std"] = 0.0
+                results.append(result)
+
+            return results
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def get_low_performing_plan_steps(
+        self,
+        min_observations: int = 5,
+        max_success_rate: float = 0.5,
+        conn=None,
+    ) -> list[dict]:
+        """Find (plan, position, node) combinations with low success rates.
+
+        Used to identify problematic patterns that need attention.
+        Per CLAUDE.md: "Failures Are Valuable Data Points"
+
+        Args:
+            min_observations: Minimum n to be considered significant
+            max_success_rate: Maximum mean_success to be flagged as low
+
+        Returns:
+            List of stats dicts for problematic combinations
+        """
+        def _do_get(c):
+            rows = c.execute(
+                """
+                SELECT pss.plan_signature, pss.step_position, pss.node_id,
+                       pss.n, pss.mean_success, pss.m2,
+                       pss.first_seen_at, pss.last_updated_at,
+                       ss.step_type, ss.description
+                FROM plan_step_stats pss
+                LEFT JOIN step_signatures ss ON pss.node_id = ss.id
+                WHERE pss.n >= ? AND pss.mean_success <= ?
+                ORDER BY pss.mean_success ASC, pss.n DESC
+                """,
+                (min_observations, max_success_rate)
+            ).fetchall()
+
+            results = []
+            for row in rows:
+                result = dict(row)
+                n = result["n"]
+                m2 = result["m2"]
+                if n >= 2:
+                    result["variance"] = m2 / (n - 1)
+                    result["std"] = (result["variance"]) ** 0.5
+                else:
+                    result["variance"] = 0.0
+                    result["std"] = 0.0
+                results.append(result)
+
+            return results
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def get_node_success_by_position(
+        self,
+        node_id: int,
+        conn=None,
+    ) -> dict[int, dict]:
+        """Get success rates for a node grouped by step position.
+
+        Useful for detecting if a node performs differently at different positions.
+        E.g., a "compute_sum" node might work well at step 1 but fail at step 5.
+
+        Args:
+            node_id: The signature to analyze
+
+        Returns:
+            Dict mapping step_position -> stats dict
+        """
+        def _do_get(c):
+            rows = c.execute(
+                """
+                SELECT step_position, n, mean_success, m2
+                FROM plan_step_stats
+                WHERE node_id = ?
+                ORDER BY step_position
+                """,
+                (node_id,)
+            ).fetchall()
+
+            results = {}
+            for row in rows:
+                pos = row["step_position"]
+                n = row["n"]
+                m2 = row["m2"]
+
+                results[pos] = {
+                    "n": n,
+                    "mean_success": row["mean_success"],
+                    "m2": m2,
+                    "variance": m2 / (n - 1) if n >= 2 else 0.0,
+                    "std": (m2 / (n - 1)) ** 0.5 if n >= 2 else 0.0,
+                }
+
+            return results
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def should_avoid_node_at_position(
+        self,
+        node_id: int,
+        step_position: int,
+        plan_signature: Optional[str] = None,
+        min_observations: int = 5,
+        max_success_rate: float = 0.3,
+        conn=None,
+    ) -> tuple[bool, Optional[dict]]:
+        """Check if a node should be avoided at a specific position.
+
+        Used during routing to warn about historically problematic combinations.
+        Per CLAUDE.md: "Failures Are Valuable Data Points"
+
+        Args:
+            node_id: The signature to check
+            step_position: Position in the plan
+            plan_signature: Optional - check specific plan, else check across all plans
+            min_observations: Minimum n to be considered significant
+            max_success_rate: Below this = should avoid
+
+        Returns:
+            Tuple of (should_avoid, stats_dict)
+        """
+        def _do_check(c):
+            if plan_signature:
+                # Check specific (plan, position, node) combo
+                stats = self.get_plan_step_stats(
+                    plan_signature, step_position, node_id, conn=c
+                )
+                if stats and stats["n"] >= min_observations:
+                    if stats["mean_success"] <= max_success_rate:
+                        return (True, stats)
+                return (False, stats)
+            else:
+                # Check node at this position across ALL plans
+                row = c.execute(
+                    """
+                    SELECT SUM(n) as total_n,
+                           SUM(n * mean_success) / SUM(n) as weighted_mean
+                    FROM plan_step_stats
+                    WHERE node_id = ? AND step_position = ? AND n > 0
+                    """,
+                    (node_id, step_position)
+                ).fetchone()
+
+                if row and row["total_n"] and row["total_n"] >= min_observations:
+                    weighted_mean = row["weighted_mean"]
+                    if weighted_mean <= max_success_rate:
+                        return (True, {
+                            "n": row["total_n"],
+                            "mean_success": weighted_mean,
+                            "scope": "all_plans"
+                        })
+                    return (False, {
+                        "n": row["total_n"],
+                        "mean_success": weighted_mean,
+                        "scope": "all_plans"
+                    })
+                return (False, None)
+
+        if conn is not None:
+            return _do_check(conn)
+        else:
+            with self._connection() as c:
+                return _do_check(c)
+
+    def get_best_nodes_for_position(
+        self,
+        step_position: int,
+        min_observations: int = 3,
+        limit: int = 5,
+        conn=None,
+    ) -> list[dict]:
+        """Get the best performing nodes at a specific position.
+
+        Useful for suggesting alternatives when a node is flagged as problematic.
+
+        Args:
+            step_position: Position in the plan
+            min_observations: Minimum n to be considered
+            limit: Max nodes to return
+
+        Returns:
+            List of dicts with node_id, mean_success, n, sorted by success desc
+        """
+        def _do_get(c):
+            rows = c.execute(
+                """
+                SELECT node_id,
+                       SUM(n) as total_n,
+                       SUM(n * mean_success) / SUM(n) as weighted_mean
+                FROM plan_step_stats
+                WHERE step_position = ? AND n > 0
+                GROUP BY node_id
+                HAVING total_n >= ?
+                ORDER BY weighted_mean DESC
+                LIMIT ?
+                """,
+                (step_position, min_observations, limit)
+            ).fetchall()
+
+            return [
+                {
+                    "node_id": row["node_id"],
+                    "n": row["total_n"],
+                    "mean_success": row["weighted_mean"],
+                }
+                for row in rows
+            ]
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def get_plan_step_stats_summary(self, conn=None) -> dict:
+        """Get summary of plan_step_stats table.
+
+        Useful for debugging and monitoring.
+
+        Returns:
+            Dict with total entries, avg success rate, problematic combos count
+        """
+        def _do_get(c):
+            row = c.execute(
+                """
+                SELECT
+                    COUNT(*) as total_entries,
+                    SUM(n) as total_observations,
+                    AVG(mean_success) as avg_success_rate,
+                    COUNT(CASE WHEN n >= 5 AND mean_success < 0.5 THEN 1 END) as low_performers
+                FROM plan_step_stats
+                """
+            ).fetchone()
+
+            if row:
+                return {
+                    "total_entries": row["total_entries"] or 0,
+                    "total_observations": row["total_observations"] or 0,
+                    "avg_success_rate": row["avg_success_rate"] or 0.0,
+                    "low_performers": row["low_performers"] or 0,
+                }
+            return {
+                "total_entries": 0,
+                "total_observations": 0,
+                "avg_success_rate": 0.0,
+                "low_performers": 0,
+            }
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def decide_signature_placement(
+        self,
+        new_embedding: np.ndarray,
+        parent_id: int,
+        conn=None,
+    ) -> tuple["PlacementDecision", Optional["StepSignature"], float]:
+        """Decide placement for new signature using Welford-based z-scores.
+
+        Per mycelium-br28: After cold start, use z-scores relative to parent's
+        child_* Welford stats to determine if new signature is:
+        - SIBLING: normal similarity (within 2 sigma of mean)
+        - CHILD: somewhat different (2-3 sigma below mean)
+        - MERGE: very similar (>3 sigma above mean)
+        - NEW_CLUSTER: very different (>3 sigma below mean)
+
+        The decision uses the parent's child similarity distribution to determine
+        what is "normal" for this cluster. Z-score thresholds are defined in config.
+
+        Args:
+            new_embedding: The new signature's graph_embedding
+            parent_id: The prospective parent's signature ID
+
+        Returns:
+            (decision, best_sibling, similarity) tuple where:
+            - decision: PlacementDecision enum value
+            - best_sibling: The most similar existing sibling (for MERGE), or None
+            - similarity: Cosine similarity to best_sibling
+        """
+        from mycelium.config import (
+            WELFORD_MERGE_THRESHOLD,      # 3.0 - z-score above which to merge
+            WELFORD_SIBLING_THRESHOLD,    # -2.0 - z-score above which to add as sibling
+            WELFORD_CHILD_THRESHOLD,      # -3.0 - z-score above which to add as child
+        )
+
+        def _do_decide(c):
+            # 1. Get parent's Welford stats for child similarities
+            stats = self.get_welford_stats(parent_id, conn=c)
+
+            # 2. Handle insufficient data (cold start for this parent)
+            # During cold start, default to SIBLING placement
+            if stats is None or stats.get("child_n", 0) < 2:
+                logger.debug(
+                    "[placement] parent_id=%d has insufficient Welford data (n=%d), defaulting to SIBLING",
+                    parent_id, stats.get("child_n", 0) if stats else 0
+                )
+                return PlacementDecision.SIBLING, None, 0.0
+
+            # 3. Find best matching sibling
+            best_sibling, best_sim = self._find_best_sibling(new_embedding, parent_id, conn=c)
+
+            # If no siblings with embeddings, default to SIBLING
+            if best_sibling is None:
+                logger.debug(
+                    "[placement] parent_id=%d has no siblings with embeddings, defaulting to SIBLING",
+                    parent_id
+                )
+                return PlacementDecision.SIBLING, None, 0.0
+
+            # Update parent's child similarity distribution (per periodic tree review plan)
+            # This tracks the distribution of inter-child similarities for this cluster
+            self.update_welford_child(parent_id, best_sim, conn=c)
+
+            # 4. Compute z-score relative to parent's child similarity distribution
+            child_mean = stats.get("child_mean", 0.0)
+            child_m2 = stats.get("child_m2", 0.0)
+            child_n = stats.get("child_n", 0)
+
+            # Sample standard deviation
+            std_sim = math.sqrt(child_m2 / max(1, child_n - 1)) if child_n > 1 else 0.0
+            std_sim = max(0.01, std_sim)  # Avoid division by zero
+
+            z_score = (best_sim - child_mean) / std_sim
+
+            logger.debug(
+                "[placement] parent_id=%d best_sibling=%d sim=%.3f "
+                "child_mean=%.3f child_std=%.3f z_score=%.2f",
+                parent_id, best_sibling.id, best_sim, child_mean, std_sim, z_score
+            )
+
+            # 5. Decision based on z-score thresholds
+            if z_score > WELFORD_MERGE_THRESHOLD:
+                # Very similar to existing sibling - consider merging
+                logger.info(
+                    "[placement] MERGE: z=%.2f > %.1f, merge with sibling %d (sim=%.3f)",
+                    z_score, WELFORD_MERGE_THRESHOLD, best_sibling.id, best_sim
+                )
+                return PlacementDecision.MERGE, best_sibling, best_sim
+
+            elif z_score > WELFORD_SIBLING_THRESHOLD:
+                # Normal range - add as sibling (peer to existing children)
+                logger.debug(
+                    "[placement] SIBLING: z=%.2f in normal range [%.1f, %.1f]",
+                    z_score, WELFORD_SIBLING_THRESHOLD, WELFORD_MERGE_THRESHOLD
+                )
+                return PlacementDecision.SIBLING, best_sibling, best_sim
+
+            elif z_score > WELFORD_CHILD_THRESHOLD:
+                # Somewhat different - create sub-cluster under best sibling
+                logger.info(
+                    "[placement] CHILD: z=%.2f in [%.1f, %.1f], create sub-cluster",
+                    z_score, WELFORD_CHILD_THRESHOLD, WELFORD_SIBLING_THRESHOLD
+                )
+                return PlacementDecision.CHILD, best_sibling, best_sim
+
+            else:
+                # Very different - new cluster under root
+                logger.info(
+                    "[placement] NEW_CLUSTER: z=%.2f < %.1f, too different for this cluster",
+                    z_score, WELFORD_CHILD_THRESHOLD
+                )
+                return PlacementDecision.NEW_CLUSTER, best_sibling, best_sim
+
+        if conn is not None:
+            return _do_decide(conn)
+        else:
+            with self._connection() as c:
+                return _do_decide(c)
+
+    def get_total_problems_solved(self, conn=None) -> int:
+        """Get total number of problems solved (for cold start detection).
+
+        Per mycelium-5cn0: Cold start = first 20 problems.
+        During cold start, all leaves are flat under root collecting stats.
+
+        Returns:
+            Count of distinct successful problem_ids in mcts_dags
+        """
+        def _do_get(c):
+            row = c.execute(
+                "SELECT COUNT(DISTINCT problem_id) FROM mcts_dags WHERE success = 1"
+            ).fetchone()
+            return row[0] if row else 0
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def is_cold_start(self, conn=None) -> bool:
+        """Check if we're in cold start mode.
+
+        Per mycelium-5cn0: Cold start = first 20 problems.
+        During cold start:
+        - All new signatures auto-accepted as ROOT children
+        - No umbrella promotions
+        - No sibling vs child decisions
+        - Just collect Welford stats
+
+        Returns:
+            True if total_problems_solved < COLD_START_THRESHOLD
+        """
+        from mycelium.config import COLD_START_PROBLEMS_THRESHOLD
+        return self.get_total_problems_solved(conn=conn) < COLD_START_PROBLEMS_THRESHOLD
+
+    # =========================================================================
+    # PROPOSED SIGNATURES STAGING (per mycelium-xv09)
+    # =========================================================================
+    # Per CLAUDE.md "New Favorite Pattern": Single entry point for proposing signatures.
+    # During cold start: auto-accept as root children.
+    # After cold start: stage for Welford-based decision.
+
+    def propose_signature(
+        self,
+        step_text: str,
+        embedding: Optional[np.ndarray],
+        graph_embedding: Optional[np.ndarray] = None,
+        computation_graph: Optional[str] = None,
+        proposed_parent_id: Optional[int] = None,
+        best_match_id: Optional[int] = None,
+        best_match_sim: Optional[float] = None,
+        dsl_hint: Optional[str] = None,
+        extracted_values: Optional[dict] = None,
+        origin_depth: int = 0,
+        problem_context: Optional[str] = None,
+        conn=None,
+    ) -> tuple[int, bool]:
+        """SINGLE ENTRY POINT for creating new signatures.
+
+        Per mycelium-xv09 + CLAUDE.md New Favorite Pattern: Consolidates all
+        signature creation logic into one entry point.
+
+        - Cold start: Creates signature under root (flat structure)
+        - Post cold start: Uses Welford-based placement decision
+
+        Per CLAUDE.md System Independence: Automated placement decisions,
+        no manual tree intervention required.
+
+        Args:
+            step_text: The step description text
+            embedding: Text embedding (for centroid)
+            graph_embedding: Computation graph embedding (for routing)
+            computation_graph: Structural graph representation
+            proposed_parent_id: Suggested parent from routing
+            best_match_id: Most similar existing signature
+            best_match_sim: Similarity to best match
+            dsl_hint: Operation hint from planner
+            extracted_values: Extracted parameter values
+            origin_depth: Depth where proposal originated
+            problem_context: Original problem text
+
+        Returns:
+            Tuple of (signature_id, placement_info):
+            - signature_id: The created (or merged) signature ID
+            - placement_info: String describing placement decision
+        """
+        def _do_propose(c):
+            root = self.get_root()
+            root_id = root.id if root else None
+
+            # Check if we're in cold start mode
+            if self.is_cold_start(conn=c):
+                # Cold start: auto-accept as root child (flat structure)
+                parent_id = root_id
+
+                sig = self._create_signature_atomic(
+                    c,
+                    step_text=step_text,
+                    embedding=embedding,
+                    parent_id=parent_id,
+                    dsl_hint=dsl_hint,
+                    graph_embedding=graph_embedding,
+                    extracted_values=extracted_values,
+                    origin_depth=origin_depth,
+                )
+                logger.info(
+                    "[proposals] Cold start: created signature id=%d type='%s' under root",
+                    sig.id, sig.step_type
+                )
+                return (sig.id, "cold_start_root")
+
+            # Post cold start: use Welford-based placement decision
+            # Per mycelium-br28: decide_signature_placement uses z-scores
+            actual_parent_id = proposed_parent_id if proposed_parent_id is not None else root_id
+
+            if graph_embedding is not None and actual_parent_id is not None:
+                decision, best_sibling, sim = self.decide_signature_placement(
+                    graph_embedding, actual_parent_id, conn=c
+                )
+
+                if decision == PlacementDecision.MERGE and best_sibling is not None:
+                    # Very similar to existing - merge (dedup)
+                    logger.info(
+                        "[proposals] MERGE: dedup to existing sig %d (sim=%.3f)",
+                        best_sibling.id, sim
+                    )
+                    # Update centroid of existing signature
+                    if embedding is not None:
+                        self._update_centroid_atomic(c, best_sibling.id, embedding, update_last_used=True)
+                    return (best_sibling.id, "merge_dedup")
+
+                elif decision == PlacementDecision.CHILD and best_sibling is not None:
+                    # Create as child of best_sibling (sub-cluster)
+                    # First promote best_sibling to umbrella if needed
+                    if not best_sibling.is_semantic_umbrella:
+                        self._promote_to_umbrella_internal(c, best_sibling.id, skip_children_check=True)
+
+                    sig = self._create_signature_atomic(
+                        c,
+                        step_text=step_text,
+                        embedding=embedding,
+                        parent_id=best_sibling.id,
+                        dsl_hint=dsl_hint,
+                        graph_embedding=graph_embedding,
+                        extracted_values=extracted_values,
+                        origin_depth=origin_depth,
+                    )
+                    logger.info(
+                        "[proposals] CHILD: created sig %d under umbrella %d (z-score indicated sub-cluster)",
+                        sig.id, best_sibling.id
+                    )
+                    return (sig.id, "child_subcluster")
+
+                elif decision == PlacementDecision.NEW_CLUSTER:
+                    # Very different from all existing - create under root
+                    sig = self._create_signature_atomic(
+                        c,
+                        step_text=step_text,
+                        embedding=embedding,
+                        parent_id=root_id,
+                        dsl_hint=dsl_hint,
+                        graph_embedding=graph_embedding,
+                        extracted_values=extracted_values,
+                        origin_depth=origin_depth,
+                    )
+                    logger.info(
+                        "[proposals] NEW_CLUSTER: created sig %d under root (very different from siblings)",
+                        sig.id
+                    )
+                    return (sig.id, "new_cluster_root")
+
+                # Default: SIBLING - create under proposed parent
+                sig = self._create_signature_atomic(
+                    c,
+                    step_text=step_text,
+                    embedding=embedding,
+                    parent_id=actual_parent_id,
+                    dsl_hint=dsl_hint,
+                    graph_embedding=graph_embedding,
+                    extracted_values=extracted_values,
+                    origin_depth=origin_depth,
+                )
+                logger.info(
+                    "[proposals] SIBLING: created sig %d under parent %d (normal similarity)",
+                    sig.id, actual_parent_id
+                )
+                return (sig.id, "sibling_normal")
+
+            # Fallback: no graph_embedding or no parent - create under root
+            sig = self._create_signature_atomic(
+                c,
+                step_text=step_text,
+                embedding=embedding,
+                parent_id=root_id,
+                dsl_hint=dsl_hint,
+                graph_embedding=graph_embedding,
+                extracted_values=extracted_values,
+                origin_depth=origin_depth,
+            )
+            logger.info(
+                "[proposals] FALLBACK: created sig %d under root (no graph_embedding)",
+                sig.id
+            )
+            return (sig.id, "fallback_root")
+
+        if conn is not None:
+            return _do_propose(conn)
+        else:
+            with self._connection() as c:
+                c.execute("BEGIN IMMEDIATE")
+                try:
+                    result = _do_propose(c)
+                    c.commit()
+                    return result
+                except Exception:
+                    c.rollback()
+                    raise
+
+    def accept_proposal(
+        self,
+        proposal_id: int,
+        parent_id: Optional[int] = None,
+        reason: str = "welford_accepted",
+        conn=None,
+    ) -> Optional[int]:
+        """Accept a staged proposal and create signature.
+
+        Args:
+            proposal_id: ID of the proposal to accept
+            parent_id: Override parent (defaults to proposal's proposed_parent_id)
+            reason: Why the proposal was accepted
+
+        Returns:
+            Created signature ID, or None if proposal not found
+        """
+        from mycelium.step_signatures.models import ProposedSignature
+
+        def _do_accept(c):
+            # Fetch the proposal
+            row = c.execute(
+                "SELECT * FROM proposed_signatures WHERE id = ? AND status = 'pending'",
+                (proposal_id,)
+            ).fetchone()
+
+            if not row:
+                logger.warning("[proposals] Proposal id=%d not found or not pending", proposal_id)
+                return None
+
+            proposal = ProposedSignature.from_row(dict(row))
+
+            # Determine parent
+            actual_parent_id = parent_id if parent_id is not None else proposal.proposed_parent_id
+            if actual_parent_id is None:
+                root = self.get_root()
+                actual_parent_id = root.id if root else None
+
+            # Create the signature
+            sig = self._create_signature_atomic(
+                c,
+                step_text=proposal.step_text,
+                embedding=proposal.embedding,
+                parent_id=actual_parent_id,
+                dsl_hint=proposal.dsl_hint,
+                graph_embedding=proposal.graph_embedding,
+                extracted_values=proposal.extracted_values,
+                origin_depth=proposal.origin_depth,
+            )
+
+            # Update proposal status
+            now = datetime.now(timezone.utc).isoformat()
+            c.execute(
+                """UPDATE proposed_signatures
+                   SET status = 'accepted', decision_reason = ?, decided_at = ?
+                   WHERE id = ?""",
+                (reason, now, proposal_id),
+            )
+
+            logger.info(
+                "[proposals] Accepted proposal id=%d -> signature id=%d, reason='%s'",
+                proposal_id, sig.id, reason
+            )
+            return sig.id
+
+        if conn is not None:
+            return _do_accept(conn)
+        else:
+            with self._connection() as c:
+                c.execute("BEGIN IMMEDIATE")
+                try:
+                    result = _do_accept(c)
+                    c.commit()
+                    return result
+                except Exception:
+                    c.rollback()
+                    raise
+
+    def reject_proposal(
+        self,
+        proposal_id: int,
+        reason: str,
+        conn=None,
+    ) -> bool:
+        """Reject a staged proposal.
+
+        Args:
+            proposal_id: ID of the proposal to reject
+            reason: Why the proposal was rejected
+
+        Returns:
+            True if rejection succeeded, False if proposal not found
+        """
+        def _do_reject(c):
+            now = datetime.now(timezone.utc).isoformat()
+            cursor = c.execute(
+                """UPDATE proposed_signatures
+                   SET status = 'rejected', decision_reason = ?, decided_at = ?
+                   WHERE id = ? AND status = 'pending'""",
+                (reason, now, proposal_id),
+            )
+            if cursor.rowcount > 0:
+                logger.info("[proposals] Rejected proposal id=%d, reason='%s'", proposal_id, reason)
+                return True
+            else:
+                logger.warning("[proposals] Proposal id=%d not found or not pending", proposal_id)
+                return False
+
+        if conn is not None:
+            return _do_reject(conn)
+        else:
+            with self._connection() as c:
+                result = _do_reject(c)
+                c.commit()
+                return result
+
+    def merge_proposal(
+        self,
+        proposal_id: int,
+        merge_into_sig_id: int,
+        reason: str = "welford_merged",
+        conn=None,
+    ) -> bool:
+        """Merge a proposal into an existing signature.
+
+        Updates the target signature's centroid with the proposal's embedding
+        using running average (embedding_sum / embedding_count).
+
+        Args:
+            proposal_id: ID of the proposal to merge
+            merge_into_sig_id: ID of signature to merge into
+            reason: Why the proposal was merged
+
+        Returns:
+            True if merge succeeded, False if proposal or signature not found
+        """
+        from mycelium.step_signatures.models import ProposedSignature
+
+        def _do_merge(c):
+            # Fetch the proposal
+            row = c.execute(
+                "SELECT * FROM proposed_signatures WHERE id = ? AND status = 'pending'",
+                (proposal_id,)
+            ).fetchone()
+
+            if not row:
+                logger.warning("[proposals] Proposal id=%d not found or not pending", proposal_id)
+                return False
+
+            proposal = ProposedSignature.from_row(dict(row))
+
+            if proposal.embedding is None:
+                logger.warning("[proposals] Proposal id=%d has no embedding, cannot merge", proposal_id)
+                return False
+
+            # Fetch target signature
+            sig_row = c.execute(
+                "SELECT id, embedding_sum, embedding_count FROM step_signatures WHERE id = ?",
+                (merge_into_sig_id,)
+            ).fetchone()
+
+            if not sig_row:
+                logger.warning("[proposals] Target signature id=%d not found", merge_into_sig_id)
+                return False
+
+            # Update centroid using running average
+            old_sum = unpack_embedding(sig_row["embedding_sum"])
+            old_count = sig_row["embedding_count"] or 1
+
+            if old_sum is not None:
+                new_sum = old_sum + proposal.embedding
+            else:
+                new_sum = proposal.embedding
+            new_count = old_count + 1
+            new_centroid = new_sum / new_count
+
+            # Pack for storage
+            centroid_packed = pack_embedding(new_centroid)
+            sum_packed = pack_embedding(new_sum)
+            centroid_bucket = compute_centroid_bucket(new_centroid)
+
+            c.execute(
+                """UPDATE step_signatures
+                   SET centroid = ?, centroid_bucket = ?, embedding_sum = ?, embedding_count = ?
+                   WHERE id = ?""",
+                (centroid_packed, centroid_bucket, sum_packed, new_count, merge_into_sig_id),
+            )
+
+            # Update proposal status
+            now = datetime.now(timezone.utc).isoformat()
+            c.execute(
+                """UPDATE proposed_signatures
+                   SET status = 'merged', decision_reason = ?, decided_at = ?
+                   WHERE id = ?""",
+                (f"{reason}:into_sig_{merge_into_sig_id}", now, proposal_id),
+            )
+
+            # Invalidate caches
+            invalidate_centroid_cache(merge_into_sig_id)
+            invalidate_signature_cache(merge_into_sig_id)
+            self.invalidate_centroid_matrix()
+
+            logger.info(
+                "[proposals] Merged proposal id=%d into signature id=%d (count=%d)",
+                proposal_id, merge_into_sig_id, new_count
+            )
+            return True
+
+        if conn is not None:
+            return _do_merge(conn)
+        else:
+            with self._connection() as c:
+                c.execute("BEGIN IMMEDIATE")
+                try:
+                    result = _do_merge(c)
+                    c.commit()
+                    return result
+                except Exception:
+                    c.rollback()
+                    raise
+
+    def get_pending_proposals(
+        self,
+        limit: int = 100,
+        conn=None,
+    ) -> list:
+        """Get all pending proposals for review.
+
+        Args:
+            limit: Maximum number of proposals to return
+
+        Returns:
+            List of ProposedSignature objects
+        """
+        from mycelium.step_signatures.models import ProposedSignature
+
+        def _do_get(c):
+            cursor = c.execute(
+                """SELECT * FROM proposed_signatures
+                   WHERE status = 'pending'
+                   ORDER BY created_at ASC
+                   LIMIT ?""",
+                (limit,)
+            )
+            return [ProposedSignature.from_row(dict(row)) for row in cursor]
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def get_proposal_stats(self, conn=None) -> dict:
+        """Get summary statistics about proposals.
+
+        Returns:
+            Dict with counts by status and other stats
+        """
+        def _do_get(c):
+            # Count by status
+            cursor = c.execute(
+                """SELECT status, COUNT(*) as count
+                   FROM proposed_signatures
+                   GROUP BY status"""
+            )
+            status_counts = {row["status"]: row["count"] for row in cursor}
+
+            # Get total and recent counts
+            total = sum(status_counts.values())
+            pending = status_counts.get("pending", 0)
+            accepted = status_counts.get("accepted", 0)
+            rejected = status_counts.get("rejected", 0)
+            merged = status_counts.get("merged", 0)
+
+            # Recent activity (last 24 hours)
+            cursor = c.execute(
+                """SELECT COUNT(*) FROM proposed_signatures
+                   WHERE created_at > datetime('now', '-1 day')"""
+            )
+            recent = cursor.fetchone()[0]
+
+            return {
+                "total": total,
+                "pending": pending,
+                "accepted": accepted,
+                "rejected": rejected,
+                "merged": merged,
+                "recent_24h": recent,
+                "acceptance_rate": accepted / (accepted + rejected) if (accepted + rejected) > 0 else 0.0,
+            }
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    # =========================================================================
+    # AUTO-RESTRUCTURE (mycelium-heh3)
+    # =========================================================================
+    # Per CLAUDE.md System Independence: Fully automated tree restructuring.
+    # Per CLAUDE.md New Favorite Pattern: Single entry point (maybe_restructure).
+
+    def maybe_restructure(self, problem_count: int, conn=None) -> dict:
+        """SINGLE ENTRY POINT: Check if restructure should run and execute if needed.
+
+        Per mycelium-heh3: Auto-restructure process runs every N problems.
+        Per CLAUDE.md System Independence: Fully automated, no manual intervention.
+
+        Args:
+            problem_count: Current total problems solved
+            conn: Optional database connection
+
+        Returns:
+            Dict with restructure results:
+            - ran: bool (whether restructure ran)
+            - reason: str (why it did/didn't run)
+            - clusters_created: int (umbrellas created)
+            - orphans_cleaned: int (orphan umbrellas removed)
+        """
+        from mycelium.config import COLD_START_PROBLEMS_THRESHOLD, RESTRUCTURE_INTERVAL
+
+        def _do_maybe(c):
+            # Skip during cold start - collecting stats
+            if problem_count < COLD_START_PROBLEMS_THRESHOLD:
+                return {
+                    "ran": False,
+                    "reason": f"cold_start (problem {problem_count} < {COLD_START_PROBLEMS_THRESHOLD})",
+                    "clusters_created": 0,
+                    "orphans_cleaned": 0,
+                }
+
+            # Only run at intervals
+            if problem_count % RESTRUCTURE_INTERVAL != 0:
+                return {
+                    "ran": False,
+                    "reason": f"not_interval (problem {problem_count} % {RESTRUCTURE_INTERVAL} != 0)",
+                    "clusters_created": 0,
+                    "orphans_cleaned": 0,
+                }
+
+            # Run comprehensive tree review (includes old restructure + dedup + outlier handling)
+            logger.info("[review] Running periodic tree review at problem %d", problem_count)
+            return self.run_periodic_tree_review(conn=c)
+
+        if conn is not None:
+            return _do_maybe(conn)
+        else:
+            with self._connection() as c:
+                c.execute("BEGIN IMMEDIATE")
+                try:
+                    result = _do_maybe(c)
+                    c.commit()
+                    return result
+                except Exception:
+                    c.rollback()
+                    raise
+
+    def _run_restructure_pass(self, conn=None) -> dict:
+        """Internal: Execute a full restructure pass.
+
+        Steps:
+        1. Get all root children with graph embeddings
+        2. Compute pairwise similarities
+        3. Detect clusters using Welford-guided thresholds
+        4. Create umbrellas for clusters with >1 member
+        5. Cleanup orphan umbrellas
+
+        Returns:
+            Dict with restructure results
+        """
+        def _do_pass(c):
+            # 1. Get root children with embeddings
+            root = self.get_root()
+            if root is None:
+                logger.warning("[restructure] No root found, skipping")
+                return {"ran": True, "reason": "no_root", "clusters_created": 0, "orphans_cleaned": 0}
+
+            children = self._get_children_with_embeddings(root.id, conn=c)
+            if len(children) < 2:
+                logger.info("[restructure] Not enough children (%d) for clustering", len(children))
+                return {"ran": True, "reason": f"too_few_children ({len(children)})", "clusters_created": 0, "orphans_cleaned": 0}
+
+            logger.info("[restructure] Analyzing %d root children for clustering", len(children))
+
+            # 2. Compute pairwise similarities
+            sim_matrix = self._compute_pairwise_similarities(children)
+
+            # 3. Detect clusters using Welford-guided threshold
+            # Get root's Welford stats for adaptive threshold
+            stats = self.get_welford_stats(root.id, conn=c)
+            if stats and stats.get("child_count", 0) > 5:
+                # Use 2 * std as cluster threshold (similar items)
+                child_std = self.get_welford_std(root.id, "child", conn=c)
+                cluster_threshold = max(0.85, 1.0 - 2 * child_std) if child_std else 0.90
+            else:
+                # Cold start fallback
+                cluster_threshold = 0.90
+
+            logger.debug("[restructure] Cluster threshold: %.3f", cluster_threshold)
+
+            clusters = self._detect_clusters(children, sim_matrix, cluster_threshold)
+            logger.info("[restructure] Detected %d clusters", len(clusters))
+
+            # 4. Create umbrellas for clusters with >1 member
+            clusters_created = 0
+            for cluster in clusters:
+                if len(cluster) > 1:
+                    success = self._create_umbrella_for_cluster(cluster, root.id, conn=c)
+                    if success:
+                        clusters_created += 1
+
+            # 5. Cleanup orphan umbrellas
+            orphans_cleaned = self._cleanup_orphan_umbrellas(conn=c)
+
+            logger.info(
+                "[restructure] Complete: %d clusters created, %d orphans cleaned",
+                clusters_created, orphans_cleaned
+            )
+
+            return {
+                "ran": True,
+                "reason": "success",
+                "clusters_created": clusters_created,
+                "orphans_cleaned": orphans_cleaned,
+            }
+
+        if conn is not None:
+            return _do_pass(conn)
+        else:
+            with self._connection() as c:
+                return _do_pass(c)
+
+    def _get_children_with_embeddings(self, parent_id: int, conn=None) -> list[tuple[int, str, np.ndarray]]:
+        """Get all children of a signature that have graph embeddings.
+
+        Returns:
+            List of (signature_id, step_type, graph_embedding) tuples
+        """
+        def _do_get(c):
+            cursor = c.execute(
+                """SELECT s.id, s.step_type, s.graph_embedding
+                   FROM step_signatures s
+                   JOIN signature_relationships r ON s.id = r.child_id
+                   WHERE r.parent_id = ? AND s.graph_embedding IS NOT NULL""",
+                (parent_id,)
+            )
+            results = []
+            for row in cursor:
+                sig_id, step_type, emb_blob = row
+                if emb_blob:
+                    emb = unpack_embedding(emb_blob)
+                    if emb is not None:
+                        results.append((sig_id, step_type, emb))
+            return results
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def _compute_pairwise_similarities(self, children: list[tuple[int, str, np.ndarray]]) -> np.ndarray:
+        """Compute pairwise cosine similarities between children.
+
+        Args:
+            children: List of (sig_id, step_type, embedding) tuples
+
+        Returns:
+            NxN similarity matrix
+        """
+        n = len(children)
+        sim_matrix = np.zeros((n, n))
+
+        for i in range(n):
+            for j in range(i, n):
+                if i == j:
+                    sim_matrix[i][j] = 1.0
+                else:
+                    sim = cosine_similarity(children[i][2], children[j][2])
+                    sim_matrix[i][j] = sim
+                    sim_matrix[j][i] = sim
+
+        return sim_matrix
+
+    def _detect_clusters(
+        self,
+        children: list[tuple[int, str, np.ndarray]],
+        sim_matrix: np.ndarray,
+        threshold: float
+    ) -> list[list[tuple[int, str, np.ndarray]]]:
+        """Detect clusters of similar signatures using single-linkage clustering.
+
+        Uses union-find for efficient cluster detection.
+
+        Args:
+            children: List of (sig_id, step_type, embedding) tuples
+            sim_matrix: Pairwise similarity matrix
+            threshold: Minimum similarity for clustering
+
+        Returns:
+            List of clusters, each cluster is a list of (sig_id, step_type, embedding)
+        """
+        n = len(children)
+        if n == 0:
+            return []
+
+        # Union-find for clustering
+        parent = list(range(n))
+
+        def find(x):
+            if parent[x] != x:
+                parent[x] = find(parent[x])
+            return parent[x]
+
+        def union(x, y):
+            px, py = find(x), find(y)
+            if px != py:
+                parent[px] = py
+
+        # Union similar items
+        for i in range(n):
+            for j in range(i + 1, n):
+                if sim_matrix[i][j] >= threshold:
+                    union(i, j)
+
+        # Group by cluster
+        clusters_map = {}
+        for i in range(n):
+            root = find(i)
+            if root not in clusters_map:
+                clusters_map[root] = []
+            clusters_map[root].append(children[i])
+
+        return list(clusters_map.values())
+
+    def _create_umbrella_for_cluster(
+        self,
+        cluster: list[tuple[int, str, np.ndarray]],
+        current_parent_id: int,
+        conn=None
+    ) -> bool:
+        """Create an umbrella signature and move cluster members under it.
+
+        Args:
+            cluster: List of (sig_id, step_type, embedding) tuples to cluster
+            current_parent_id: Current parent (will be umbrella's parent)
+            conn: Database connection
+
+        Returns:
+            True if umbrella created successfully
+        """
+        def _do_create(c):
+            if len(cluster) < 2:
+                return False
+
+            # Generate umbrella name from cluster step types
+            step_types = [item[1] for item in cluster]
+            common_prefix = self._find_common_prefix(step_types)
+            umbrella_name = f"cluster:{common_prefix}" if common_prefix else f"cluster:{len(cluster)}_ops"
+
+            # Compute centroid embedding for umbrella
+            embeddings = [item[2] for item in cluster]
+            centroid = np.mean(embeddings, axis=0)
+
+            # Create umbrella signature
+            umbrella = self._create_signature_atomic(
+                c,
+                step_text=umbrella_name,
+                embedding=centroid,  # Use centroid as text embedding
+                parent_problem="",
+                origin_depth=0,
+                parent_id=current_parent_id,
+                graph_embedding=centroid,  # graph_centroid = centroid of children
+            )
+
+            # Promote to umbrella (skip children check - we're adding them next)
+            self._promote_to_umbrella_internal(c, umbrella.id, skip_children_check=True)
+
+            # Reparent cluster members under umbrella
+            for sig_id, step_type, _ in cluster:
+                # Remove old parent relationship
+                c.execute(
+                    "DELETE FROM signature_relationships WHERE child_id = ?",
+                    (sig_id,)
+                )
+                # Add new parent relationship
+                c.execute(
+                    "INSERT INTO signature_relationships (parent_id, child_id) VALUES (?, ?)",
+                    (umbrella.id, sig_id)
+                )
+
+            # Propagate centroid up
+            self.propagate_graph_centroid_to_parents(c, umbrella.id, include_self=True)
+
+            logger.info(
+                "[restructure] Created umbrella '%s' (id=%d) with %d children: %s",
+                umbrella_name, umbrella.id, len(cluster),
+                [item[1][:20] for item in cluster]
+            )
+            return True
+
+        if conn is not None:
+            return _do_create(conn)
+        else:
+            with self._connection() as c:
+                c.execute("BEGIN IMMEDIATE")
+                try:
+                    result = _do_create(c)
+                    c.commit()
+                    return result
+                except Exception:
+                    c.rollback()
+                    raise
+
+    def _find_common_prefix(self, strings: list[str]) -> str:
+        """Find common prefix of a list of strings."""
+        if not strings:
+            return ""
+        prefix = strings[0]
+        for s in strings[1:]:
+            while not s.startswith(prefix) and prefix:
+                prefix = prefix[:-1]
+        # Clean up trailing underscores/spaces
+        return prefix.rstrip("_- ")
+
+    def _cleanup_orphan_umbrellas(self, conn=None) -> int:
+        """Remove umbrella signatures that have no children.
+
+        Per CLAUDE.md: Don't create umbrellas without children.
+        This cleans up any orphaned umbrellas from previous operations.
+
+        Returns:
+            Number of orphan umbrellas removed
+        """
+        def _do_cleanup(c):
+            # Find umbrellas with no children
+            cursor = c.execute(
+                """SELECT s.id, s.step_type FROM step_signatures s
+                   WHERE s.is_semantic_umbrella = 1
+                   AND s.is_root = 0
+                   AND NOT EXISTS (
+                       SELECT 1 FROM signature_relationships r WHERE r.parent_id = s.id
+                   )"""
+            )
+            orphans = cursor.fetchall()
+
+            if not orphans:
+                return 0
+
+            orphan_ids = [row[0] for row in orphans]
+            logger.info(
+                "[restructure] Found %d orphan umbrellas: %s",
+                len(orphans), [(row[0], row[1][:30]) for row in orphans]
+            )
+
+            # Remove orphans
+            for orphan_id in orphan_ids:
+                # Remove from relationships (as child)
+                c.execute(
+                    "DELETE FROM signature_relationships WHERE child_id = ?",
+                    (orphan_id,)
+                )
+                # Delete signature
+                c.execute(
+                    "DELETE FROM step_signatures WHERE id = ?",
+                    (orphan_id,)
+                )
+
+            logger.info("[restructure] Cleaned up %d orphan umbrellas", len(orphan_ids))
+            return len(orphan_ids)
+
+        if conn is not None:
+            return _do_cleanup(conn)
+        else:
+            with self._connection() as c:
+                c.execute("BEGIN IMMEDIATE")
+                try:
+                    result = _do_cleanup(c)
+                    c.commit()
+                    return result
+                except Exception:
+                    c.rollback()
+                    raise
+
+    # =========================================================================
+    # PERIODIC TREE REVIEW (per periodic tree review plan)
+    # =========================================================================
+    # Comprehensive tree review that runs every RESTRUCTURE_INTERVAL problems
+    # Uses Welford stats to guide: deduplication, outlier relocation, sub-clustering
+
+    def run_periodic_tree_review(self, conn=None) -> dict:
+        """Comprehensive tree review using Welford stats.
+
+        Per CLAUDE.md: System independence - automated optimization.
+        Reviews all umbrella nodes (not just root) for:
+        - Deduplication (very similar signatures → merge)
+        - Outlier detection (poor fits → relocate)
+        - Sub-clustering (high variance → split)
+
+        Returns:
+            Dict with review stats: merges, moves, clusters_created, orphans_cleaned
+        """
+        from mycelium import config
+
+        def _do_review(c):
+            stats = {"ran": True, "merges": 0, "moves": 0, "clusters_created": 0, "orphans_cleaned": 0}
+
+            # 1. Get all umbrella nodes (routers) for review
+            umbrellas = self._get_all_umbrellas(conn=c)
+            logger.info("[review] Starting periodic tree review: %d umbrellas to check", len(umbrellas))
+
+            for umbrella in umbrellas:
+                # 2. Get Welford stats for this cluster
+                welford = self.get_welford_stats(umbrella.id, conn=c)
+
+                # 3. Get children with embeddings
+                children = self._get_children_with_embeddings(umbrella.id, conn=c)
+
+                if len(children) < 2:
+                    continue  # Nothing to review
+
+                # 4. Compute pairwise similarities
+                sim_matrix = self._compute_pairwise_similarities(children)
+
+                # 5. DEDUPLICATION: Merge very similar signatures
+                merge_threshold = self._compute_merge_threshold(welford)
+                merges = self._merge_duplicates(children, sim_matrix, merge_threshold, conn=c)
+                stats["merges"] += merges
+
+                # Refresh children list after merges (some may have been archived)
+                if merges > 0:
+                    children = self._get_children_with_embeddings(umbrella.id, conn=c)
+                    if len(children) < 2:
+                        continue
+                    sim_matrix = self._compute_pairwise_similarities(children)
+
+                # 6. OUTLIER DETECTION: Find nodes that don't fit
+                outlier_threshold = self._compute_outlier_threshold(welford)
+                outliers = self._detect_outliers_in_cluster(children, sim_matrix, outlier_threshold)
+                moves = self._relocate_outliers(outliers, umbrella.id, conn=c)
+                stats["moves"] += moves
+
+                # 7. SUB-CLUSTERING: Split if high variance indicates heterogeneity
+                if self._should_subcluster(welford, children):
+                    # Refresh children after any moves
+                    children = self._get_children_with_embeddings(umbrella.id, conn=c)
+                    if len(children) >= config.RESTRUCTURE_MIN_CHILDREN_FOR_SPLIT:
+                        sim_matrix = self._compute_pairwise_similarities(children)
+                        new_clusters = self._create_subclusters_for_umbrella(
+                            umbrella.id, children, sim_matrix, welford, conn=c
+                        )
+                        stats["clusters_created"] += new_clusters
+
+            # 8. Cleanup orphan umbrellas
+            stats["orphans_cleaned"] = self._cleanup_orphan_umbrellas(conn=c)
+
+            logger.info(
+                "[review] Tree review complete: %d merges, %d moves, %d clusters, %d orphans cleaned",
+                stats["merges"], stats["moves"], stats["clusters_created"], stats["orphans_cleaned"]
+            )
+
+            return stats
+
+        if conn is not None:
+            return _do_review(conn)
+        else:
+            with self._connection() as c:
+                c.execute("BEGIN IMMEDIATE")
+                try:
+                    result = _do_review(c)
+                    c.commit()
+                    return result
+                except Exception:
+                    c.rollback()
+                    raise
+
+    def _get_all_umbrellas(self, conn=None) -> list["StepSignature"]:
+        """Get all umbrella (router) signatures for tree review.
+
+        Returns:
+            List of StepSignature objects that are semantic umbrellas
+        """
+        def _do_get(c):
+            cursor = c.execute(
+                """SELECT * FROM step_signatures
+                   WHERE is_semantic_umbrella = 1 AND is_archived = 0"""
+            )
+            return [StepSignature.from_row(dict(row)) for row in cursor]
+
+        if conn is not None:
+            return _do_get(conn)
+        else:
+            with self._connection() as c:
+                return _do_get(c)
+
+    def _compute_merge_threshold(self, welford: Optional[dict]) -> float:
+        """Compute merge threshold from cluster's Welford stats.
+
+        Very high similarity relative to cluster's distribution = duplicate.
+        Uses z-score: merge if sim > mean + 3*std
+
+        Args:
+            welford: Welford stats dict or None
+
+        Returns:
+            Similarity threshold for merging
+        """
+        from mycelium.config import RESTRUCTURE_MERGE_FLOOR
+
+        if welford is None or welford.get("child_n", 0) < 3:
+            return 0.98  # Default: very conservative during cold start
+
+        child_mean = welford.get("child_mean", 0.85)
+        child_std = self._welford_std_from_stats(welford, "child")
+
+        # Merge threshold: 3 sigma above mean (very similar = duplicate)
+        threshold = min(0.99, child_mean + 3 * child_std)
+        return max(RESTRUCTURE_MERGE_FLOOR, threshold)  # Floor to avoid false merges
+
+    def _compute_outlier_threshold(self, welford: Optional[dict]) -> float:
+        """Compute outlier threshold from cluster's Welford stats.
+
+        Very low similarity relative to cluster = outlier, should move.
+        Uses z-score: outlier if avg_sim < mean - 2*std
+
+        Args:
+            welford: Welford stats dict or None
+
+        Returns:
+            Similarity threshold for outlier detection
+        """
+        if welford is None or welford.get("child_n", 0) < 3:
+            return 0.5  # Default: lenient during cold start
+
+        child_mean = welford.get("child_mean", 0.85)
+        child_std = self._welford_std_from_stats(welford, "child")
+
+        # Outlier threshold: 2 sigma below mean
+        threshold = max(0.3, child_mean - 2 * child_std)
+        return threshold
+
+    def _welford_std_from_stats(self, welford: dict, stat_type: str) -> float:
+        """Compute standard deviation from Welford stats dict.
+
+        Args:
+            welford: Stats dict with {stat_type}_n and {stat_type}_m2
+            stat_type: "route", "child", etc.
+
+        Returns:
+            Sample standard deviation
+        """
+        import math
+        n = welford.get(f"{stat_type}_n", 0)
+        m2 = welford.get(f"{stat_type}_m2", 0.0)
+        if n < 2:
+            return 0.0
+        variance = m2 / (n - 1)
+        return math.sqrt(variance) if variance > 0 else 0.0
+
+    def _should_subcluster(self, welford: Optional[dict], children: list) -> bool:
+        """Decide if cluster should be split based on Welford variance.
+
+        High variance = heterogeneous cluster = needs sub-clustering.
+
+        Args:
+            welford: Welford stats for the umbrella
+            children: List of children with embeddings
+
+        Returns:
+            True if cluster should be split
+        """
+        from mycelium.config import RESTRUCTURE_VARIANCE_THRESHOLD, RESTRUCTURE_MIN_CHILDREN_FOR_SPLIT
+
+        if welford is None or len(children) < RESTRUCTURE_MIN_CHILDREN_FOR_SPLIT:
+            return False  # Need enough children to split meaningfully
+
+        child_std = self._welford_std_from_stats(welford, "child")
+
+        # High variance threshold
+        return child_std > RESTRUCTURE_VARIANCE_THRESHOLD
+
+    def _merge_duplicates(
+        self,
+        children: list[tuple[int, str, np.ndarray]],
+        sim_matrix: np.ndarray,
+        threshold: float,
+        conn=None,
+    ) -> int:
+        """Merge signatures with similarity above threshold.
+
+        Keeps the signature with more usage (higher exec_n).
+        Archives the merged signature.
+
+        Args:
+            children: List of (sig_id, step_type, embedding) tuples
+            sim_matrix: Pairwise similarity matrix
+            threshold: Similarity threshold for merging
+            conn: Database connection
+
+        Returns:
+            Number of merges performed
+        """
+        merged_count = 0
+        merged_ids = set()
+
+        for i in range(len(children)):
+            if children[i][0] in merged_ids:
+                continue
+
+            for j in range(i + 1, len(children)):
+                if children[j][0] in merged_ids:
+                    continue
+
+                if sim_matrix[i][j] >= threshold:
+                    # Merge: keep the one with more usage
+                    keeper_id, merged_id = self._choose_keeper_by_usage(
+                        children[i][0], children[j][0], conn
+                    )
+                    success = self._merge_signatures_internal(keeper_id, merged_id, conn)
+                    if success:
+                        merged_ids.add(merged_id)
+                        merged_count += 1
+                        logger.info(
+                            "[review] Merged duplicate: %d -> %d (sim=%.3f)",
+                            merged_id, keeper_id, sim_matrix[i][j]
+                        )
+
+        return merged_count
+
+    def _choose_keeper_by_usage(self, sig_a_id: int, sig_b_id: int, conn) -> tuple[int, int]:
+        """Choose which signature to keep based on usage stats.
+
+        Returns:
+            Tuple of (keeper_id, merged_id)
+        """
+        stats_a = self.get_welford_stats(sig_a_id, conn=conn)
+        stats_b = self.get_welford_stats(sig_b_id, conn=conn)
+
+        usage_a = (stats_a.get("exec_n", 0) if stats_a else 0)
+        usage_b = (stats_b.get("exec_n", 0) if stats_b else 0)
+
+        if usage_a >= usage_b:
+            return (sig_a_id, sig_b_id)
+        return (sig_b_id, sig_a_id)
+
+    def _merge_signatures_internal(self, keeper_id: int, merged_id: int, conn) -> bool:
+        """Merge two signatures, keeping one and archiving the other.
+
+        - Updates keeper's centroid (average with merged)
+        - Reparents any children of merged to keeper
+        - Removes merged from tree
+        - Archives merged signature
+
+        Args:
+            keeper_id: Signature to keep
+            merged_id: Signature to archive
+            conn: Database connection
+
+        Returns:
+            True if merge succeeded
+        """
+        try:
+            keeper = self.get_signature(keeper_id)
+            merged = self.get_signature(merged_id)
+            if not keeper or not merged:
+                return False
+
+            # Update keeper's graph centroid (average with merged)
+            # Per CLAUDE.md "New Favorite Pattern": Use consistent JSON format for graph_embedding
+            if keeper.graph_embedding is not None and merged.graph_embedding is not None:
+                keeper_emb = np.array(keeper.graph_embedding)
+                merged_emb = np.array(merged.graph_embedding)
+                new_centroid = (keeper_emb + merged_emb) / 2
+                conn.execute(
+                    "UPDATE step_signatures SET graph_embedding = ? WHERE id = ?",
+                    (json.dumps(new_centroid.tolist()), keeper_id)
+                )
+                invalidate_signature_cache(keeper_id)
+
+            # Reparent any children of merged to keeper
+            conn.execute(
+                "UPDATE signature_relationships SET parent_id = ? WHERE parent_id = ?",
+                (keeper_id, merged_id)
+            )
+
+            # If merged had children, keeper becomes umbrella
+            cursor = conn.execute(
+                "SELECT COUNT(*) FROM signature_relationships WHERE parent_id = ?",
+                (keeper_id,)
+            )
+            child_count = cursor.fetchone()[0]
+            if child_count > 0 and not keeper.is_semantic_umbrella:
+                self._promote_to_umbrella_internal(conn, keeper_id, skip_children_check=True)
+
+            # Remove merged from its parent
+            conn.execute(
+                "DELETE FROM signature_relationships WHERE child_id = ?",
+                (merged_id,)
+            )
+
+            # Archive merged signature (don't delete - preserve history)
+            conn.execute(
+                "UPDATE step_signatures SET is_archived = 1 WHERE id = ?",
+                (merged_id,)
+            )
+
+            # Propagate centroid changes
+            self.propagate_graph_centroid_to_parents(conn, keeper_id, include_self=True)
+
+            return True
+        except Exception as e:
+            logger.warning("[review] Failed to merge %d -> %d: %s", merged_id, keeper_id, e)
+            return False
+
+    def _detect_outliers_in_cluster(
+        self,
+        children: list[tuple[int, str, np.ndarray]],
+        sim_matrix: np.ndarray,
+        threshold: float,
+    ) -> list[tuple[int, float]]:
+        """Find children whose avg similarity to siblings is below threshold.
+
+        Args:
+            children: List of (sig_id, step_type, embedding) tuples
+            sim_matrix: Pairwise similarity matrix
+            threshold: Outlier threshold
+
+        Returns:
+            List of (sig_id, avg_similarity) for outliers
+        """
+        outliers = []
+        n = len(children)
+
+        for i in range(n):
+            # Compute average similarity to all siblings
+            sims = [sim_matrix[i][j] for j in range(n) if i != j]
+            avg_sim = sum(sims) / len(sims) if sims else 0
+
+            if avg_sim < threshold:
+                outliers.append((children[i][0], avg_sim))
+
+        return outliers
+
+    def _relocate_outliers(
+        self,
+        outliers: list[tuple[int, float]],
+        current_parent_id: int,
+        conn=None,
+    ) -> int:
+        """Move outliers to better-fitting clusters or root.
+
+        Args:
+            outliers: List of (sig_id, avg_similarity) tuples
+            current_parent_id: ID of current parent umbrella
+            conn: Database connection
+
+        Returns:
+            Number of signatures moved
+        """
+        from mycelium.config import RESTRUCTURE_OUTLIER_IMPROVEMENT
+
+        moved = 0
+
+        for sig_id, avg_sim in outliers:
+            # Find best matching cluster for this signature
+            best_parent_id, best_sim = self._find_best_cluster_for_signature(sig_id, current_parent_id, conn)
+
+            if best_parent_id is not None and best_sim > avg_sim + RESTRUCTURE_OUTLIER_IMPROVEMENT:
+                # Found better home - move it
+                success = self._move_signature_to_parent(sig_id, best_parent_id, conn)
+                if success:
+                    moved += 1
+                    logger.info(
+                        "[review] Moved outlier %d to cluster %d (old_sim=%.3f, new_sim=%.3f)",
+                        sig_id, best_parent_id, avg_sim, best_sim
+                    )
+            elif avg_sim < 0.5:
+                # Very poor fit everywhere - move to root as new cluster seed
+                root = self.get_root()
+                if root and root.id != current_parent_id:
+                    success = self._move_signature_to_parent(sig_id, root.id, conn)
+                    if success:
+                        moved += 1
+                        logger.info("[review] Moved outlier %d to root (avg_sim=%.3f)", sig_id, avg_sim)
+
+        return moved
+
+    def _find_best_cluster_for_signature(
+        self,
+        sig_id: int,
+        exclude_parent_id: int,
+        conn=None,
+    ) -> tuple[Optional[int], float]:
+        """Find the best-fitting cluster for a signature.
+
+        Compares signature's graph_embedding to all umbrella centroids.
+
+        Args:
+            sig_id: Signature to find home for
+            exclude_parent_id: Don't consider this parent (current parent)
+            conn: Database connection
+
+        Returns:
+            Tuple of (best_parent_id, similarity) or (None, 0)
+        """
+        sig = self.get_signature(sig_id)
+        if sig is None or sig.graph_embedding is None:
+            return (None, 0.0)
+
+        sig_emb = np.array(sig.graph_embedding)
+
+        # Get all umbrellas
+        umbrellas = self._get_all_umbrellas(conn=conn)
+
+        best_parent_id = None
+        best_sim = 0.0
+
+        for umbrella in umbrellas:
+            if umbrella.id == exclude_parent_id:
+                continue
+            if umbrella.graph_embedding is None:
+                continue
+
+            umb_emb = np.array(umbrella.graph_embedding)
+            sim = cosine_similarity(sig_emb, umb_emb)
+
+            if sim > best_sim:
+                best_sim = sim
+                best_parent_id = umbrella.id
+
+        return (best_parent_id, best_sim)
+
+    def _move_signature_to_parent(self, sig_id: int, new_parent_id: int, conn) -> bool:
+        """Move a signature from current parent to new parent.
+
+        Args:
+            sig_id: Signature to move
+            new_parent_id: New parent ID
+            conn: Database connection
+
+        Returns:
+            True if move succeeded
+        """
+        try:
+            # Get current parent
+            old_parent = self.get_parent(sig_id)
+            old_parent_id = old_parent.id if old_parent else None
+
+            # Remove from old parent
+            conn.execute(
+                "DELETE FROM signature_relationships WHERE child_id = ?",
+                (sig_id,)
+            )
+
+            # Get signature for condition
+            sig = self.get_signature(sig_id)
+            condition = sig.step_type if sig else ""
+
+            # Add to new parent
+            conn.execute(
+                "INSERT INTO signature_relationships (parent_id, child_id, condition) VALUES (?, ?, ?)",
+                (new_parent_id, sig_id, condition)
+            )
+
+            # Update depth
+            new_parent = self.get_signature(new_parent_id)
+            new_depth = (new_parent.depth + 1) if new_parent and new_parent.depth else 1
+            conn.execute(
+                "UPDATE step_signatures SET depth = ? WHERE id = ?",
+                (new_depth, sig_id)
+            )
+
+            # Propagate centroid changes to both old and new parents
+            if old_parent_id:
+                self.propagate_graph_centroid_to_parents(conn, old_parent_id, include_self=True)
+            self.propagate_graph_centroid_to_parents(conn, new_parent_id, include_self=True)
+
+            return True
+        except Exception as e:
+            logger.warning("[review] Failed to move sig %d to parent %d: %s", sig_id, new_parent_id, e)
+            return False
+
+    def _create_subclusters_for_umbrella(
+        self,
+        parent_id: int,
+        children: list[tuple[int, str, np.ndarray]],
+        sim_matrix: np.ndarray,
+        welford: Optional[dict],
+        conn=None,
+    ) -> int:
+        """Split heterogeneous umbrella into tighter sub-clusters.
+
+        Uses existing union-find clustering with adaptive threshold.
+
+        Args:
+            parent_id: The umbrella to split
+            children: List of (sig_id, step_type, embedding) tuples
+            sim_matrix: Pairwise similarity matrix
+            welford: Welford stats for adaptive threshold
+            conn: Database connection
+
+        Returns:
+            Number of new clusters created
+        """
+        # Compute adaptive threshold from Welford stats
+        if welford:
+            child_mean = welford.get("child_mean", 0.85)
+            child_std = self._welford_std_from_stats(welford, "child")
+            # Threshold: mean + 0.5*std (tighter than current cluster)
+            cluster_threshold = min(0.95, child_mean + 0.5 * child_std)
+        else:
+            cluster_threshold = 0.90
+
+        # Detect sub-clusters using union-find
+        clusters = self._detect_clusters(children, sim_matrix, cluster_threshold)
+
+        # Only create umbrellas for clusters with 2+ members
+        clusters_created = 0
+        for cluster in clusters:
+            if len(cluster) >= 2:
+                success = self._create_umbrella_for_cluster(cluster, parent_id, conn=conn)
+                if success:
+                    clusters_created += 1
+
+        return clusters_created
 
 
 # =============================================================================

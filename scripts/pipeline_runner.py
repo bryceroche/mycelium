@@ -281,26 +281,21 @@ async def solve_problem(
             result, is_correct, ground_truth=problem["answer"]
         )
 
-        # Auto-trigger umbrella learning if signatures need decomposition
-        if candidates:
-            learn_result = await solver.maybe_learn_umbrellas(candidates)
-            if learn_result.get("decomposed", 0) > 0:
-                logger.info(
-                    "[pipeline] Auto-learned umbrellas: %d decomposed, %d children",
-                    learn_result["decomposed"], learn_result["children_created"]
-                )
+        # NOTE: Umbrella learning removed - periodic tree review handles optimization
 
-        # Auto-trigger reactive exploration for failed problems (per CLAUDE.md)
-        # This explores alternative nodes to find what would have worked, enabling
-        # precise divergence-based blame assignment
-        if not is_correct:
-            reactive_result = await solver.maybe_run_reactive_exploration()
-            if reactive_result.get("winning_path_found"):
-                logger.info(
-                    "[pipeline] Reactive exploration: found winning path, %d divergence points, %d blame assigned",
-                    reactive_result.get("divergence_points", 0),
-                    reactive_result.get("blame_assigned", 0),
-                )
+        # NOTE: Reactive exploration disabled - coarse-grained blame is sufficient
+        # TODO: Re-enable after cold start for fine-grained divergence blame
+
+        # Periodic tree review (every 10 problems after cold start)
+        # Uses Welford stats to deduplicate, relocate outliers, and subcluster
+        review_result = solver.step_db.maybe_restructure(problem_idx + 1)
+        if review_result and review_result.get("ran"):
+            logger.info(
+                "[pipeline] Periodic tree review: %d merges, %d moves, %d subclusters",
+                review_result.get("merges", 0),
+                review_result.get("moves", 0),
+                review_result.get("clusters_created", 0),
+            )
 
         # Auto-trigger DSL regeneration if post-mortem flagged it (per beads mycelium-flbq)
         # This runs mod 10 problems when high-conf-wrong nodes accumulate
@@ -690,7 +685,17 @@ def main():
         default=1.0,
         help="MCTS compute budget: 1.0=single-path, 2.0+=multi-path exploration (default: 1.0)",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug logging (shows signature placement, routing decisions, etc.)",
+    )
     args = parser.parse_args()
+
+    # Set debug logging if requested
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logging.getLogger("mycelium").setLevel(logging.DEBUG)
 
     run_pipeline(
         num_problems=args.problems,

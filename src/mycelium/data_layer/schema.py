@@ -264,6 +264,7 @@ CREATE TABLE IF NOT EXISTS mcts_dag_steps (
 
 CREATE INDEX IF NOT EXISTS idx_mcts_dag_steps_dag ON mcts_dag_steps(dag_id);
 CREATE INDEX IF NOT EXISTS idx_mcts_dag_steps_step_num ON mcts_dag_steps(dag_id, step_num);
+CREATE INDEX IF NOT EXISTS idx_mcts_dag_steps_dsl_hint ON mcts_dag_steps(dsl_hint);
 
 -- Thread: A single MCTS rollout path through the DAG
 -- Per ideas.md: "Thread ID essential for backpropagation"
@@ -346,6 +347,7 @@ CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_dag ON mcts_step_summaries(da
 CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_thread ON mcts_step_summaries(thread_id);
 CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_node ON mcts_step_summaries(node_id);
 CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_dag_step ON mcts_step_summaries(dag_step_id);
+CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_success ON mcts_step_summaries(step_success);
 
 -- Materialized stats for (dag_step_type, node_id) pairs
 -- This closes the feedback loop: post-mortem → stats → routing decisions
@@ -446,6 +448,112 @@ CREATE TABLE IF NOT EXISTS decomposition_queue (
 );
 CREATE INDEX IF NOT EXISTS idx_decomp_queue_processed ON decomposition_queue(processed_at);
 CREATE INDEX IF NOT EXISTS idx_decomp_queue_queued ON decomposition_queue(queued_at);
+
+-- =============================================================================
+-- WELFORD_STATS: Per-signature statistics for restructuring decisions
+-- =============================================================================
+-- Per mycelium-bjrf: Consolidated Welford stats for tree restructuring.
+-- Cold start (first 20 problems): collect stats, flat structure under root.
+-- After cold start: use these stats to guide sibling/child/merge decisions.
+--
+-- Three tracked distributions per signature:
+-- 1. route_* - similarities when routing TO this node (how well does routing work?)
+-- 2. child_* - similarities BETWEEN children (for umbrellas: how tight is cluster?)
+-- 3. exec_* - execution success rate (is this node reliable?)
+CREATE TABLE IF NOT EXISTS welford_stats (
+    signature_id INTEGER PRIMARY KEY REFERENCES step_signatures(id) ON DELETE CASCADE,
+
+    -- Routing similarity stats (how well does routing work to this node?)
+    -- Updated every time a step is routed to this signature
+    route_n INTEGER DEFAULT 0,            -- N in Welford's algorithm
+    route_mean REAL DEFAULT 0.0,          -- Running mean of routing similarities
+    route_m2 REAL DEFAULT 0.0,            -- Sum of squared differences (variance = M2/(N-1))
+
+    -- Child cluster stats (for umbrellas: how tight is the cluster?)
+    -- Updated when adding/removing children, tracks inter-child similarities
+    child_n INTEGER DEFAULT 0,            -- N pairs compared
+    child_mean REAL DEFAULT 0.0,          -- Mean similarity between children
+    child_m2 REAL DEFAULT 0.0,            -- M2 for variance
+
+    -- Execution success rate (simple ratio, not Welford)
+    exec_n INTEGER DEFAULT 0,             -- Total executions
+    exec_successes INTEGER DEFAULT 0,     -- Successful executions
+
+    -- Decomposition success rate (guides whether to attempt decomposition)
+    -- Per CLAUDE.md: "Failures Are Valuable Data Points" - learn which sigs are atomic
+    decomp_attempts INTEGER DEFAULT 0,    -- Times decomposition was attempted
+    decomp_successes INTEGER DEFAULT 0,   -- Times decomposition produced >1 children
+
+    -- Metadata
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_welford_route_n ON welford_stats(route_n);
+CREATE INDEX IF NOT EXISTS idx_welford_exec_n ON welford_stats(exec_n);
+
+-- =============================================================================
+-- PLAN_STEP_STATS: Statistical blame accumulation for (plan, position, node)
+-- =============================================================================
+-- Per CLAUDE.md: "Failures Are Valuable Data Points" - accumulate blame statistically.
+-- Tracks success rate at each step position within a plan structure.
+-- This enables:
+-- 1. Identifying which step positions consistently fail
+-- 2. Detecting which nodes are problematic at certain positions
+-- 3. Order-aware tracking (same node at step 1 vs step 5 may differ)
+-- 4. Plan-aware routing (avoid nodes that fail in certain plan contexts)
+CREATE TABLE IF NOT EXISTS plan_step_stats (
+    plan_signature TEXT NOT NULL,         -- Hash of plan structure (from dag_plan_stats)
+    step_position INTEGER NOT NULL,       -- 1, 2, 3... (order in plan)
+    node_id INTEGER NOT NULL,             -- Which signature handled this step
+
+    -- Welford's algorithm for success rate tracking
+    n INTEGER DEFAULT 0,                  -- Number of observations
+    mean_success REAL DEFAULT 0.5,        -- Running mean of success (0=fail, 1=success)
+    m2 REAL DEFAULT 0.0,                  -- Sum of squared differences (variance = M2/(N-1))
+
+    -- Metadata
+    first_seen_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    last_updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (plan_signature, step_position, node_id),
+    FOREIGN KEY (node_id) REFERENCES step_signatures(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_pss_plan ON plan_step_stats(plan_signature);
+CREATE INDEX IF NOT EXISTS idx_pss_node ON plan_step_stats(node_id);
+CREATE INDEX IF NOT EXISTS idx_pss_position ON plan_step_stats(step_position);
+CREATE INDEX IF NOT EXISTS idx_pss_mean_success ON plan_step_stats(mean_success);
+
+-- =============================================================================
+-- PROPOSED_SIGNATURES: Staging table for new signature candidates
+-- =============================================================================
+-- Per mycelium-xv09: Signature proposals are staged before acceptance.
+-- During cold start (first 20 problems): auto-accept as root children.
+-- After cold start: use Welford stats to decide accept/reject/merge.
+CREATE TABLE IF NOT EXISTS proposed_signatures (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    step_text TEXT NOT NULL,
+    embedding BLOB,
+    graph_embedding BLOB,
+    computation_graph TEXT,
+    proposed_parent_id INTEGER REFERENCES step_signatures(id),
+    best_match_id INTEGER REFERENCES step_signatures(id),
+    best_match_sim REAL,
+    dsl_hint TEXT,
+    extracted_values TEXT,
+    status TEXT DEFAULT 'pending',  -- pending, accepted, rejected, merged
+    decision_reason TEXT,
+    origin_depth INTEGER DEFAULT 0,
+    problem_context TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    decided_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_proposed_status ON proposed_signatures(status);
+CREATE INDEX IF NOT EXISTS idx_proposed_parent ON proposed_signatures(proposed_parent_id);
+CREATE INDEX IF NOT EXISTS idx_proposed_best_match ON proposed_signatures(best_match_id);
+CREATE INDEX IF NOT EXISTS idx_proposed_created ON proposed_signatures(created_at);
 """
 
 def get_schema() -> str:
@@ -709,6 +817,114 @@ def migrate_db(conn) -> None:
         # Table might not exist yet (fresh DB)
         logger.debug("[schema] dag_step_node_stats similarity migration skipped: %s", e)
 
+    # Create welford_stats table if it doesn't exist (per mycelium-bjrf)
+    # This table consolidates per-signature stats for tree restructuring decisions
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS welford_stats (
+                signature_id INTEGER PRIMARY KEY REFERENCES step_signatures(id) ON DELETE CASCADE,
+                route_n INTEGER DEFAULT 0,
+                route_mean REAL DEFAULT 0.0,
+                route_m2 REAL DEFAULT 0.0,
+                child_n INTEGER DEFAULT 0,
+                child_mean REAL DEFAULT 0.0,
+                child_m2 REAL DEFAULT 0.0,
+                exec_n INTEGER DEFAULT 0,
+                exec_successes INTEGER DEFAULT 0,
+                decomp_attempts INTEGER DEFAULT 0,
+                decomp_successes INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_welford_route_n ON welford_stats(route_n)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_welford_exec_n ON welford_stats(exec_n)")
+        conn.commit()
+        logger.info("[schema] Created welford_stats table")
+    except Exception as e:
+        # Table already exists or other error
+        logger.debug("[schema] welford_stats migration skipped: %s", e)
+
+    # Add decomp columns to welford_stats if missing (data-driven atomic detection)
+    try:
+        cursor = conn.execute("PRAGMA table_info(welford_stats)")
+        welford_cols = {row[1] for row in cursor.fetchall()}
+        welford_migrations = []
+        if "decomp_attempts" not in welford_cols:
+            welford_migrations.append(
+                "ALTER TABLE welford_stats ADD COLUMN decomp_attempts INTEGER DEFAULT 0"
+            )
+        if "decomp_successes" not in welford_cols:
+            welford_migrations.append(
+                "ALTER TABLE welford_stats ADD COLUMN decomp_successes INTEGER DEFAULT 0"
+            )
+        for sql in welford_migrations:
+            conn.execute(sql)
+        if welford_migrations:
+            conn.commit()
+            logger.info("[schema] Added decomp columns to welford_stats")
+    except Exception as e:
+        logger.debug("[schema] welford_stats decomp migration skipped: %s", e)
+
+    # Create proposed_signatures table if it doesn't exist (per mycelium-xv09)
+    # Staging table for signature proposals before acceptance
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS proposed_signatures (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                step_text TEXT NOT NULL,
+                embedding BLOB,
+                graph_embedding BLOB,
+                computation_graph TEXT,
+                proposed_parent_id INTEGER REFERENCES step_signatures(id),
+                best_match_id INTEGER REFERENCES step_signatures(id),
+                best_match_sim REAL,
+                dsl_hint TEXT,
+                extracted_values TEXT,
+                status TEXT DEFAULT 'pending',
+                decision_reason TEXT,
+                origin_depth INTEGER DEFAULT 0,
+                problem_context TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                decided_at TIMESTAMP
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_proposed_status ON proposed_signatures(status)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_proposed_parent ON proposed_signatures(proposed_parent_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_proposed_created ON proposed_signatures(created_at)")
+        conn.commit()
+        logger.info("[schema] Created proposed_signatures table")
+    except Exception as e:
+        # Table already exists or other error
+        logger.debug("[schema] proposed_signatures migration skipped: %s", e)
+
+    # Create plan_step_stats table if it doesn't exist (statistical blame accumulation)
+    # Per CLAUDE.md: "Failures Are Valuable Data Points" - accumulate blame statistically
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS plan_step_stats (
+                plan_signature TEXT NOT NULL,
+                step_position INTEGER NOT NULL,
+                node_id INTEGER NOT NULL,
+                n INTEGER DEFAULT 0,
+                mean_success REAL DEFAULT 0.5,
+                m2 REAL DEFAULT 0.0,
+                first_seen_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                last_updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (plan_signature, step_position, node_id),
+                FOREIGN KEY (node_id) REFERENCES step_signatures(id) ON DELETE CASCADE
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_plan ON plan_step_stats(plan_signature)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_node ON plan_step_stats(node_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_position ON plan_step_stats(step_position)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_mean_success ON plan_step_stats(mean_success)")
+        conn.commit()
+        logger.info("[schema] Created plan_step_stats table")
+    except Exception as e:
+        # Table already exists or other error
+        logger.debug("[schema] plan_step_stats migration skipped: %s", e)
+
     # Add new indexes (safe to run multiple times)
     index_migrations = [
         "CREATE INDEX IF NOT EXISTS idx_sig_is_root ON step_signatures(is_root)",
@@ -722,6 +938,10 @@ def migrate_db(conn) -> None:
         "CREATE INDEX IF NOT EXISTS idx_sig_graph_embedding ON step_signatures(graph_embedding)",
         # Atomic operations index (math primes discovery)
         "CREATE INDEX IF NOT EXISTS idx_sig_is_atomic ON step_signatures(is_atomic)",
+        # MCTS query optimization indexes
+        "CREATE INDEX IF NOT EXISTS idx_mcts_dag_steps_dsl_hint ON mcts_dag_steps(dsl_hint)",
+        "CREATE INDEX IF NOT EXISTS idx_mcts_step_summaries_success ON mcts_step_summaries(step_success)",
+        "CREATE INDEX IF NOT EXISTS idx_proposed_best_match ON proposed_signatures(best_match_id)",
     ]
     for sql in index_migrations:
         try:

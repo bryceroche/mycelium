@@ -265,6 +265,75 @@ def record_plan_outcome(dag_id: str, success: bool) -> None:
         signature[:8], step_count, success
     )
 
+    # Update plan_step_stats for statistical blame accumulation
+    # Per CLAUDE.md: "Failures Are Valuable Data Points"
+    try:
+        _update_plan_step_stats(dag_id, signature, success)
+    except Exception as e:
+        logger.warning("[mcts] Failed to update plan_step_stats: %s", e)
+
+
+def _update_plan_step_stats(dag_id: str, plan_signature: str, success: bool) -> None:
+    """Update Welford stats for each (plan, position, node) in the DAG.
+
+    Called after record_plan_outcome to accumulate statistical blame.
+    Per CLAUDE.md: "Failures Are Valuable Data Points" - accumulate blame
+    without reactive exploration.
+
+    Args:
+        dag_id: The DAG that was graded
+        plan_signature: Hash of the plan structure
+        success: Whether the problem was solved correctly
+    """
+    # Import step_db lazily to avoid circular imports
+    from mycelium.step_signatures import get_step_db
+
+    conn = get_db()
+
+    # Get step-to-node mappings for this DAG
+    # Join dag_steps (for step_num) with step_summaries (for node_id)
+    cursor = conn.execute(
+        """
+        SELECT DISTINCT ds.step_num, ss.node_id
+        FROM mcts_step_summaries ss
+        JOIN mcts_dag_steps ds ON ss.dag_step_id = ds.dag_step_id
+        WHERE ss.dag_id = ? AND ss.node_id IS NOT NULL
+        ORDER BY ds.step_num
+        """,
+        (dag_id,),
+    )
+    step_node_pairs = cursor.fetchall()
+
+    if not step_node_pairs:
+        logger.debug("[mcts] No step-node pairs found for dag %s", dag_id)
+        return
+
+    # Update stats for each (plan, position, node) combination
+    step_db = get_step_db()
+    updated_count = 0
+
+    for row in step_node_pairs:
+        step_num, node_id = row[0], row[1]
+        try:
+            step_db.update_plan_step_stats(
+                plan_signature=plan_signature,
+                step_position=step_num,
+                node_id=node_id,
+                success=success,
+            )
+            updated_count += 1
+        except Exception as e:
+            logger.warning(
+                "[mcts] Failed to update plan_step_stats for pos=%d node=%d: %s",
+                step_num, node_id, e
+            )
+
+    if updated_count > 0:
+        logger.debug(
+            "[mcts] Updated %d plan_step_stats entries for plan=%s success=%s",
+            updated_count, plan_signature[:8], success
+        )
+
 
 def get_plan_stats_summary() -> dict:
     """Get summary statistics for plan tracking.

@@ -370,6 +370,7 @@ Rules:
         """
         from mycelium.mcts.adaptive import AdaptiveExploration
         from mycelium.data_layer.mcts import get_mcts_win_rates
+        from mycelium.config import DECOMP_MIN_ATTEMPTS_FOR_RATE, DECOMP_SUCCESS_RATE_THRESHOLD
 
         all_sigs = self.db.get_all_signatures()
 
@@ -407,8 +408,16 @@ Rules:
             if sig.is_semantic_umbrella:
                 continue
 
-            # Skip already-atomic signatures (marked as non-decomposable)
-            if sig.is_atomic:
+            # Skip signatures with low decomposition success rate (data-driven atomic detection)
+            # Per CLAUDE.md: Use Welford stats to guide decisions, not hard-coded flags
+            decomp_rate, decomp_attempts = self.db.get_decomp_success_rate(
+                sig.id, min_attempts=DECOMP_MIN_ATTEMPTS_FOR_RATE
+            )
+            if decomp_attempts >= DECOMP_MIN_ATTEMPTS_FOR_RATE and decomp_rate < DECOMP_SUCCESS_RATE_THRESHOLD:
+                logger.debug(
+                    "[umbrella] Skipping sig %d ('%s') - decomp success rate %.1f%% < threshold",
+                    sig.id, sig.step_type, decomp_rate * 100
+                )
                 continue
 
             # Use MCTS win rate (ground truth) instead of sig.success_rate (partial credit)
@@ -439,36 +448,30 @@ Rules:
 
         return candidates
 
-    def _mark_as_atomic(self, signature_id: int, reason: str) -> None:
-        """Mark a signature as atomic (cannot be decomposed further).
+    def _record_decomp_outcome(self, signature_id: int, success: bool, reason: str = "") -> None:
+        """Record decomposition attempt outcome in Welford stats.
 
-        This prevents repeated LLM calls trying to decompose the same
-        atomic operations like compute_sum, compute_product, etc.
+        Per CLAUDE.md: Use data-driven approach instead of hard-coded is_atomic flag.
+        Multiple failed decomposition attempts will naturally lower the success rate,
+        causing future decomposition attempts to be skipped.
 
         Args:
-            signature_id: The signature to mark as atomic
-            reason: Why it's atomic (e.g., "decomp_failed_single_step")
+            signature_id: The signature that was decomposed
+            success: Whether decomposition led to successful execution
+            reason: Context for logging (e.g., "decomp_failed_single_step")
         """
-        from mycelium.data_layer import get_db
-
         try:
-            db = get_db()
-            with db.connection() as conn:
-                conn.execute(
-                    """
-                    UPDATE step_signatures
-                    SET is_atomic = 1, atomic_reason = ?
-                    WHERE id = ?
-                    """,
-                    (reason, signature_id),
-                )
-                conn.commit()
-                logger.info(
-                    "[umbrella] Marked signature %d as atomic (reason: %s)",
+            self.db.update_welford_decomp(signature_id, success)
+            if not success:
+                logger.debug(
+                    "[umbrella] Recorded decomp failure for sig %d (reason: %s)",
                     signature_id, reason
                 )
         except Exception as e:
-            logger.warning("[umbrella] Failed to mark signature %d as atomic: %s", signature_id, e)
+            logger.warning(
+                "[umbrella] Failed to record decomp outcome for sig %d: %s",
+                signature_id, e
+            )
 
     def _get_failing_step_descriptions(self, node_id: int, limit: int = 5) -> list[str]:
         """Get specific step descriptions that failed with this node.
@@ -514,11 +517,16 @@ Rules:
         Returns:
             List of child signature IDs created
         """
-        # Skip atomic signatures - they've already failed decomposition
-        if signature.is_atomic:
+        from mycelium.config import DECOMP_MIN_ATTEMPTS_FOR_RATE, DECOMP_SUCCESS_RATE_THRESHOLD
+
+        # Skip signatures with low decomposition success rate (data-driven atomic detection)
+        decomp_rate, decomp_attempts = self.db.get_decomp_success_rate(
+            signature.id, min_attempts=DECOMP_MIN_ATTEMPTS_FOR_RATE
+        )
+        if decomp_attempts >= DECOMP_MIN_ATTEMPTS_FOR_RATE and decomp_rate < DECOMP_SUCCESS_RATE_THRESHOLD:
             logger.debug(
-                "[umbrella] Skipping atomic signature %d ('%s') - reason: %s",
-                signature.id, signature.step_type, signature.atomic_reason or "unknown"
+                "[umbrella] Skipping sig %d ('%s') - decomp success rate %.1f%% < threshold (attempts=%d)",
+                signature.id, signature.step_type, decomp_rate * 100, decomp_attempts
             )
             return []
 
@@ -566,17 +574,17 @@ Rules:
                         break
                 else:
                     logger.info(
-                        "[umbrella] Cannot decompose '%s' or its failing steps - marking as atomic",
+                        "[umbrella] Cannot decompose '%s' or its failing steps - recording failure",
                         signature.step_type
                     )
-                    self._mark_as_atomic(signature.id, "decomp_failed_with_failing_steps")
+                    self._record_decomp_outcome(signature.id, success=False, reason="decomp_failed_with_failing_steps")
                     return []
             else:
                 logger.info(
-                    "[umbrella] Cannot decompose '%s' further (got %d steps) - marking as atomic",
+                    "[umbrella] Cannot decompose '%s' further (got %d steps) - recording failure",
                     signature.step_type, len(plan.steps)
                 )
-                self._mark_as_atomic(signature.id, "decomp_failed_single_step")
+                self._record_decomp_outcome(signature.id, success=False, reason="decomp_failed_single_step")
                 return []
 
         # Create child signatures from decomposition
@@ -721,6 +729,8 @@ Rules:
             )
             # Remove the single child relationship we just added
             self.db.remove_child(parent_id=signature.id, child_id=child_ids[0])
+            # Record failure - single child means decomposition didn't help
+            self._record_decomp_outcome(signature.id, success=False, reason="decomp_single_child")
             return []  # No meaningful decomposition occurred
         elif len(child_ids) >= 2:
             # Multiple children = meaningful branching, promote to umbrella
@@ -729,6 +739,11 @@ Rules:
                 "[umbrella] Promoted '%s' to umbrella with %d children",
                 signature.step_type, len(child_ids)
             )
+            # Record success - decomposition created meaningful structure
+            self._record_decomp_outcome(signature.id, success=True, reason="decomp_success")
+        else:
+            # No children created at all - record failure
+            self._record_decomp_outcome(signature.id, success=False, reason="decomp_no_children")
 
         return child_ids
 

@@ -649,6 +649,10 @@ class Solver:
         self._routing_ucb1_gap: Optional[float] = None
         self._routing_was_undecided: bool = False
 
+        # Position-aware routing context (per plan_step_stats)
+        # Set during step execution, used in route_with_confidence for position penalties
+        self._current_step_position: Optional[int] = None  # 1, 2, 3... (None = unknown)
+
         # MCTS DAG tracking (set per-problem in solve())
         self._current_dag_id: Optional[str] = None
         self._dag_step_ids: dict[str, str] = {}  # step.id -> dag_step_id
@@ -977,18 +981,11 @@ class Solver:
             if zero_llm_result is not None:
                 return zero_llm_result
 
-            # 1. Plan: Decompose into steps (with signature hints for NL interface)
-            signature_hints = self.step_db.get_signature_hints(
-                limit=HINT_LIMIT,
-                problem_embedding=problem_embedding,
-                min_similarity=HINT_MIN_SIMILARITY,
-            )
-
-            # Decompose problem into steps
-            plan = await self.planner.decompose(
-                problem,
-                signature_hints=signature_hints,
-            )
+            # 1. Plan: Decompose into steps
+            # Per CLAUDE.md "Negotiation between Tree and Planner":
+            # TreeGuidedPlanner handles vocabulary internally through negotiation.
+            # Don't pass signature_hints - let the planner negotiate with the tree.
+            plan = await self.planner.decompose(problem)
 
             # Store Phase 1 values for provenance tracking during execution
             # These are resolved when $name references appear in extracted_values
@@ -1042,6 +1039,7 @@ class Solver:
             # Log DAG steps to mcts_dag_steps table (training mode only)
             # Per beads issue: wire up step logging when DAG plan is generated
             # Use execution order to get proper step_num (level) and branch_num (position in level)
+            self._step_positions = {}  # step.id -> level_num (for position-aware routing)
             if TRAINING_MODE and self._current_dag_id:
                 execution_levels = plan.get_execution_order()
                 dag_step_tuples = []
@@ -1052,6 +1050,8 @@ class Solver:
                             (step.task, level_num, branch_num, step.is_atomic, step.dsl_hint)
                         )
                         step_order.append(step)
+                        # Track position for position-aware routing
+                        self._step_positions[step.id] = level_num
                 dag_step_ids = create_dag_steps(self._current_dag_id, dag_step_tuples)
                 # Store mapping for thread step logging
                 self._dag_step_ids = {
@@ -1099,18 +1099,40 @@ class Solver:
 
             # 1.5. BATCH EXPRESSION WRITING (single LLM call for all steps)
             # Collect step info for batch expression writing
-            # For steps with {step_N} references, we'll resolve them during execution
+            # Phase 1 values ($name) are resolved NOW, step refs ({step_N}) stay as placeholders
             step_infos = []
             for step in plan.steps:
                 if not step.dsl_hint:
                     continue
-                # Build params from extracted_values (without context resolution yet)
+                # Build params from extracted_values with Phase 1 resolution
                 params = {}
                 for key, val in (step.extracted_values or {}).items():
-                    if isinstance(val, str) and val.startswith('{') and val.endswith('}'):
-                        # Reference to previous step - use step_N as placeholder (no angle brackets!)
-                        # LLM will use this in expression, which must be valid Python
-                        params[key] = val[1:-1]  # {step_1} -> step_1
+                    if isinstance(val, str):
+                        if val.startswith('{') and val.endswith('}'):
+                            # Reference to previous step - use step_N as placeholder
+                            params[key] = val[1:-1]  # {step_1} -> step_1
+                        elif val.startswith('$'):
+                            # Phase 1 reference - resolve to actual numeric value
+                            ref_name = val[1:]
+                            if ref_name in self._current_phase1_values:
+                                params[key] = self._current_phase1_values[ref_name]
+                            else:
+                                # Partial match fallback
+                                matched_key = None
+                                for p1_key in self._current_phase1_values:
+                                    if p1_key in ref_name or ref_name in p1_key:
+                                        matched_key = p1_key
+                                        break
+                                if matched_key:
+                                    params[key] = self._current_phase1_values[matched_key]
+                                else:
+                                    logger.warning(
+                                        "[solver] Batch expr: unknown Phase 1 ref $%s (available: %s)",
+                                        ref_name, list(self._current_phase1_values.keys())
+                                    )
+                                    params[key] = val  # Keep as-is for debugging
+                        else:
+                            params[key] = val
                     else:
                         params[key] = val
                 if params:
@@ -1161,6 +1183,8 @@ class Solver:
 
                 # Execute ready steps in parallel
                 async def execute_one(step):
+                    # Set current step position for position-aware routing
+                    self._current_step_position = self._step_positions.get(step.id)
                     step_context = {
                         dep: context[dep]
                         for dep in step.depends_on
@@ -1260,6 +1284,18 @@ class Solver:
                 elapsed_ms, len(step_results), signatures_new, signatures_matched,
                 matched_and_reused, steps_with_injection, steps_with_routing
             )
+
+            # Auto-restructure check (per mycelium-heh3, CLAUDE.md System Independence)
+            # Runs every N problems after cold start to reorganize tree structure
+            if TRAINING_MODE:
+                problem_count = self.step_db.get_total_problems_solved()
+                restructure_result = self.step_db.maybe_restructure(problem_count)
+                if restructure_result.get("ran"):
+                    logger.info(
+                        "[solver] Restructure: %d clusters, %d orphans cleaned",
+                        restructure_result.get("clusters_created", 0),
+                        restructure_result.get("orphans_cleaned", 0)
+                    )
 
             return SolverResult(
                 problem=problem,
@@ -1698,10 +1734,8 @@ class Solver:
                 if routed_signature.graph_embedding is not None and operation_embedding is not None:
                     self._routing_similarity = cosine_similarity(operation_embedding, routed_signature.graph_embedding)
                     self._routing_confidence = self._routing_similarity  # Use similarity as confidence proxy
-                dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
-                if dsl_result is not None:
-                    result = dsl_result.result
-                    self._last_dsl_info = dsl_result  # Store for update_example_result
+                result = await self._execute_dsl_and_record(routed_signature, step, context, step_descriptions)
+                if result is not None:
                     was_injected = True
                     logger.debug("[solver] DSL executed: %s", result[:50] if result else "")
 
@@ -1781,10 +1815,8 @@ class Solver:
                 routed_signature = new_child
 
             # Execute the child's DSL (either existing or newly created)
-            dsl_result = await self._try_dsl(routed_signature, step, context, step_descriptions)
-            if dsl_result is not None:
-                result = dsl_result.result
-                self._last_dsl_info = dsl_result  # Store for update_example_result
+            result = await self._execute_dsl_and_record(routed_signature, step, context, step_descriptions)
+            if result is not None:
                 was_injected = True
                 logger.info("[solver] Child DSL succeeded: %s", result[:30] if result else "")
 
@@ -1855,6 +1887,11 @@ class Solver:
                 was_injected=was_injected,
                 difficulty=difficulty,
             )
+
+        # Record execution outcome in Welford stats (per periodic tree review plan)
+        # This tracks the execution success rate for each signature
+        if routed_signature:
+            self.step_db.update_welford_exec(routed_signature.id, success=step_completed)
 
         # 7. Regenerate DSL on mod 10 uses (continuous learning)
         # Background task: don't block the hot path
@@ -2197,10 +2234,9 @@ class Solver:
         has_dsl_hint = getattr(step, 'dsl_hint', None) is not None
         has_extracted_values = bool(getattr(step, 'extracted_values', None))
         if has_dsl_hint or has_extracted_values:
-            dsl_result = await self._try_dsl(child_sig, step, context, step_descriptions)
-            if dsl_result is not None:
-                self._last_dsl_info = dsl_result  # Store for update_example_result
-                return (dsl_result.result, child_sig, True)
+            result = await self._execute_dsl_and_record(child_sig, step, context, step_descriptions)
+            if result is not None:
+                return (result, child_sig, True)
 
         # Return child for further processing (may need decomposition on failure)
         return (None, child_sig, False)
@@ -2266,6 +2302,7 @@ class Solver:
             min_similarity=get_adaptive_match_threshold(),
             top_k=int(compute_budget) + 1,  # Get enough alternatives
             dag_step_type=dag_step_type,
+            step_position=self._current_step_position,  # Position-aware routing
         )
 
         # Store routing context for MCTS amplitude logging
@@ -2308,12 +2345,11 @@ class Solver:
         effective_budget = max(compute_budget, 3.0) if self._force_exploration else compute_budget
         if not is_undecided or effective_budget <= 1.0:
             if routing_result.signature is not None:
-                dsl_result = await self._try_dsl(
+                result = await self._execute_dsl_and_record(
                     routing_result.signature, step, context, step_descriptions
                 )
-                if dsl_result is not None:
-                    self._last_dsl_info = dsl_result  # Store for update_example_result
-                    return (dsl_result.result, routing_result.signature, explored_sigs, True)
+                if result is not None:
+                    return (result, routing_result.signature, explored_sigs, True)
                 return (None, routing_result.signature, explored_sigs, False)
             return (None, routing_result.signature, explored_sigs, False)
 
@@ -2400,12 +2436,16 @@ class Solver:
             sig, score = sig_with_score
             dsl_result = await self._try_dsl(sig, step, context, step_descriptions)
             result = dsl_result.result if dsl_result else None
-            # Store DSL info for the first successful result (for update_example_result)
-            if dsl_result and not hasattr(self, '_last_dsl_info'):
-                self._last_dsl_info = dsl_result
             return (sig, score, result, dsl_result)
 
         results = await asyncio.gather(*[try_candidate(c) for c in candidates])
+
+        # Store DSL info from first successful result (primary candidate)
+        # Per CLAUDE.md "New Favorite Pattern": consolidated _last_dsl_info assignment
+        for _, _, result, dsl_result in results:
+            if dsl_result is not None:
+                self._last_dsl_info = dsl_result
+                break
 
         # Store path outcomes for ground truth comparison (operational equivalence learning)
         # Key insight: After problem is graded, we can determine which paths are
@@ -2419,7 +2459,7 @@ class Solver:
         # Limit forks per step to prevent thread explosion
         max_forks = min(len(results), THREAD_MAX_FORKS_PER_STEP)
 
-        for i, (sig, score, result, dsl_result) in enumerate(results):
+        for i, (sig, score, result, _dsl_result) in enumerate(results):
             # Create fork thread for each alternative (if thread tracking enabled)
             fork_thread_id = ""
             if parent_thread and THREAD_TRACKING_ENABLED and len(results) > 1:
@@ -2492,7 +2532,7 @@ class Solver:
         # Find first success (or None if all failed)
         best_sig = candidates[0][0]  # First candidate's signature
         best_result = None
-        for sig, _score, result in results:
+        for sig, _score, result, _dsl in results:
             if result is not None:
                 best_sig = sig
                 best_result = result
@@ -2572,6 +2612,35 @@ class Solver:
         except Exception as e:
             logger.debug("[solver] Formula evaluation failed: %s (%s)", formula[:50], e)
             return None
+
+    async def _execute_dsl_and_record(
+        self,
+        signature: StepSignature,
+        step: Step,
+        context: dict[str, str],
+        step_descriptions: dict[str, str] = None,
+    ) -> Optional[str]:
+        """Execute DSL and store info for example recording.
+
+        Per CLAUDE.md "New Favorite Pattern": Single entry point for DSL execution
+        that consolidates the _last_dsl_info storage instead of scattering it
+        across multiple call sites.
+
+        Args:
+            signature: The signature to execute DSL for
+            step: The step being executed
+            context: Results from previous steps
+            step_descriptions: Descriptions of all steps
+
+        Returns:
+            The result string if DSL succeeded, None otherwise.
+            Side effect: stores DSL info in self._last_dsl_info for later recording.
+        """
+        dsl_result = await self._try_dsl(signature, step, context, step_descriptions)
+        if dsl_result is not None:
+            self._last_dsl_info = dsl_result
+            return dsl_result.result
+        return None
 
     async def _try_dsl(
         self,
@@ -5473,16 +5542,41 @@ Rules:
 
         Call this after record_problem_outcome() with its return value.
 
+        Per CLAUDE.md: "aggressive branching early, tapering off later"
+        - Skip during cold start (first 20 problems)
+        - After cold start, batch every UMBRELLA_LEARNING_INTERVAL problems
+        The periodic tree review handles optimization.
+
         Args:
             candidates: Signature IDs that may need decomposition
 
         Returns:
             Dict with learning statistics (empty if no candidates)
         """
+        from mycelium.config import UMBRELLA_LEARNING_INTERVAL
+
         if not candidates:
             return {"candidates": 0, "decomposed": 0, "children_created": 0}
 
-        logger.info("[solver] Auto-triggering umbrella learning for %d candidates", len(candidates))
+        # Skip during cold start - let periodic tree review handle optimization
+        if self.step_db.is_cold_start():
+            logger.debug(
+                "[solver] Skipping umbrella learning during cold start (%d candidates deferred)",
+                len(candidates)
+            )
+            return {"candidates": len(candidates), "decomposed": 0, "children_created": 0, "skipped": "cold_start"}
+
+        # After cold start, batch every N problems to reduce LLM calls
+        problems_solved = self.step_db.get_total_problems_solved()
+        if problems_solved % UMBRELLA_LEARNING_INTERVAL != 0:
+            logger.debug(
+                "[solver] Deferring umbrella learning until problem %d (%d candidates)",
+                (problems_solved // UMBRELLA_LEARNING_INTERVAL + 1) * UMBRELLA_LEARNING_INTERVAL,
+                len(candidates)
+            )
+            return {"candidates": len(candidates), "decomposed": 0, "children_created": 0, "skipped": "batched"}
+
+        logger.info("[solver] Auto-triggering umbrella learning for %d candidates (problem %d)", len(candidates), problems_solved)
         return await self.learn_umbrellas()
 
     async def _regenerate_dsl_background(self, signature_id: int, uses: int) -> None:

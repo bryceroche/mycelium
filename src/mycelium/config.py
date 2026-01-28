@@ -29,6 +29,14 @@ import os
 TRAINING_MODE = os.getenv("MYCELIUM_TRAINING_MODE", "true").lower() in ("true", "1", "yes")
 
 # =============================================================================
+# DATABASE PROTECTION
+# =============================================================================
+# After cold start, the DB contains valuable learned data. Protect it!
+# Set DB_PROTECTED=True to prevent accidental deletion via CLI or scripts.
+# Override with MYCELIUM_DB_PROTECTED=false if you really need to clear it.
+DB_PROTECTED = os.getenv("MYCELIUM_DB_PROTECTED", "true").lower() in ("true", "1", "yes")
+
+# =============================================================================
 # SIGNATURE MATCHING
 # =============================================================================
 
@@ -228,6 +236,12 @@ DECOMP_MIN_ATTEMPTS_COLD = 1  # Cold start: flag after just 1 failure
 DECOMP_MIN_ATTEMPTS_MATURE = 3  # Mature: require 3+ attempts before flagging
 DECOMP_MAX_WIN_RATE = 0.5  # Flag nodes with win rate below this
 DECOMP_MAX_PER_CYCLE = 5  # Max signatures to decompose per learning cycle (gradual learning)
+
+# Welford-based decomposition success rate (replaces is_atomic flag)
+# If a signature's decomposition success rate falls below this threshold,
+# skip future decomposition attempts (effectively atomic)
+DECOMP_SUCCESS_RATE_THRESHOLD = 0.1  # Skip decomp if success rate < 10%
+DECOMP_MIN_ATTEMPTS_FOR_RATE = 3  # Need at least 3 attempts to calculate meaningful rate
 
 # Bayesian prior for cold start (assume some successes before any data)
 ROUTING_PRIOR_SUCCESSES = 2
@@ -499,6 +513,13 @@ STEP_NODE_STATS_PRIOR_USES = 2  # Bayesian prior uses
 AMPLITUDE_POST_PENALTY_THRESHOLD = 0.6  # avg_amplitude_post below this → penalize routing
 AMPLITUDE_POST_PENALTY_MULT = 0.8  # Multiplicative penalty for low amplitude_post
 
+# POSITION-AWARE ROUTING (plan_step_stats)
+# Per CLAUDE.md: "Failures Are Valuable Data Points" - track success by step position
+# Same node at step 1 vs step 5 may have very different success rates
+POSITION_STATS_ENABLED = True  # Use plan_step_stats for position-aware routing
+POSITION_STATS_MIN_OBS = 3  # Minimum observations to trust position stats
+POSITION_STATS_WEIGHT = 0.5  # Penalty weight (0.5 = at 0% success, score *= 0.5)
+
 # Variance-based decomposition (Welford's algorithm)
 # Per CLAUDE.md: leaf_node ≡ dag_step_type (1:1 mapping)
 # The learning unit is (dag_step_id, dag_step_type/node_id)
@@ -608,6 +629,33 @@ GRAPH_ROUTING_FALLBACK_TO_CENTROID = False  # No centroid fallback - graph-only 
 # =============================================================================
 INLINE_DECOMP_MAX_DEPTH = 3  # Max recursion depth for inline decomposition (prevents infinite loops)
 COLD_START_SIGNATURE_THRESHOLD = 100  # Below this, skip rejection and build vocabulary (raised for latency)
+
+# =============================================================================
+# WELFORD-BASED TREE RESTRUCTURING (per mycelium-bjrf)
+# =============================================================================
+# Cold start: first N problems create flat leaves under root, collecting Welford stats
+# After cold start: use Welford stats to guide sibling/child/merge decisions
+# Restructure runs periodically (every RESTRUCTURE_INTERVAL problems)
+#
+# Per CLAUDE.md "System Independence": fully automated, no manual intervention
+
+COLD_START_PROBLEMS_THRESHOLD = 20  # Problems before restructuring begins (per mycelium-5cn0)
+RESTRUCTURE_INTERVAL = 10  # Run restructure every N problems (per mycelium-heh3)
+UMBRELLA_LEARNING_INTERVAL = 5  # Run umbrella learning every N problems after cold start
+
+# Welford-based decision thresholds (z-scores)
+# Per mycelium-br28: Principled thresholds based on observed data, not magic numbers
+WELFORD_MERGE_THRESHOLD = 3.0     # z-score above which to merge (very similar to existing)
+WELFORD_SIBLING_THRESHOLD = -2.0  # z-score above which to add as sibling (normal range)
+WELFORD_CHILD_THRESHOLD = -3.0    # z-score above which to add as child (somewhat different)
+# Below CHILD_THRESHOLD: new cluster under root (very different)
+
+# Periodic tree review thresholds (per periodic tree review plan)
+# These guide deduplication, outlier detection, and sub-clustering
+RESTRUCTURE_VARIANCE_THRESHOLD = 0.15  # Subcluster if child_std > this (heterogeneous cluster)
+RESTRUCTURE_MIN_CHILDREN_FOR_SPLIT = 4  # Need this many children to consider splitting
+RESTRUCTURE_MERGE_FLOOR = 0.95  # Never merge signatures below this similarity (safety floor)
+RESTRUCTURE_OUTLIER_IMPROVEMENT = 0.1  # Move outlier if new cluster is 10%+ better fit
 
 # =============================================================================
 # MATURITY-BASED DECOMPOSE VS CREATE (Sigmoid transition)
@@ -783,6 +831,13 @@ TREE_GUIDED_NOVELTY_MIN_SAMPLES = 10
 
 # Default novelty threshold during cold start (before enough samples)
 TREE_GUIDED_NOVELTY_DEFAULT_THRESHOLD = 0.5
+
+# Tree-Planner Negotiation (per CLAUDE.md line 16-17)
+# When enabled, planner and tree negotiate dag_step decomposition iteratively
+# Bias: prefer decomposing dag_steps (cheap) over leaf_nodes (permanent tree change)
+TREE_PLANNER_NEGOTIATION_ENABLED = os.getenv("TREE_PLANNER_NEGOTIATION", "true").lower() == "true"
+TREE_PLANNER_NEGOTIATION_MAX_ROUNDS = 2
+TREE_PLANNER_NEGOTIATION_SIMILARITY_THRESHOLD = 0.7
 
 # Model configuration - set via TRAINING_MODE env var
 # TRAINING_MODE=true  -> use beefy models for learning

@@ -548,14 +548,11 @@ class DecayManager:
                         """, (action.signature_id,)).fetchone()["cnt"]
 
                         if child_count == 0:
-                            conn.execute("""
-                                UPDATE step_signatures
-                                SET is_semantic_umbrella = 0, dsl_type = 'decompose'
-                                WHERE id = ?
-                            """, (action.signature_id,))
-                            logger.info(
-                                "[decay] Demoted umbrella %d to leaf (no healthy children)",
-                                action.signature_id
+                            # Per CLAUDE.md "New Favorite Pattern": use consolidated method
+                            self._db.demote_umbrella_to_leaf(
+                                signature_id=action.signature_id,
+                                reason="no_healthy_children",
+                                conn=conn,
                             )
 
                 elif action.action == "warn":
