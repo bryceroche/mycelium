@@ -34,6 +34,10 @@ from mycelium.config import (
     POSTMORTEM_DSL_REGEN_ENABLED,
     POSTMORTEM_DSL_REGEN_MIN_HIGH_CONF_WRONG,
     POSTMORTEM_DSL_REGEN_BATCH_SIZE,
+    # Per CLAUDE.md "The Flow": thresholds from config
+    ATOMIC_SIMILARITY_THRESHOLD,
+    NEW_CHILD_SIMILARITY_THRESHOLD,
+    VARIANCE_THRESHOLD,
 )
 
 logger = logging.getLogger(__name__)
@@ -445,7 +449,7 @@ def get_worst_plans(limit: int = 10, min_uses: int = 3) -> list[dict]:
 def check_substeps_match_existing(
     substeps: list[str],
     step_db,
-    min_similarity: float = 0.70,
+    min_similarity: float = ATOMIC_SIMILARITY_THRESHOLD,
 ) -> tuple[bool, float, list[tuple[str, float]]]:
     """Check if decomposed sub-steps would match existing leaf signatures.
 
@@ -2473,7 +2477,7 @@ def update_dag_step_embedding_outcome(
 def find_similar_dag_steps(
     embedding: "np.ndarray",
     limit: int = 20,
-    min_similarity: float = 0.7,
+    min_similarity: float = ATOMIC_SIMILARITY_THRESHOLD,
 ) -> list[dict]:
     """Find dag_steps similar to the given embedding.
 

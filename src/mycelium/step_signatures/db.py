@@ -81,6 +81,7 @@ from mycelium.config import (
     ROUTING_BEST_MATCH_MIN_SIMILARITY,
     PLACEMENT_MIN_SIMILARITY,
     HINT_ALTERNATIVES_MIN_SIMILARITY,
+    NEW_CHILD_SIMILARITY_THRESHOLD,
 )
 
 # Import from focused modules (scoring and DSL templates)
@@ -2509,7 +2510,7 @@ class StepSignatureDB:
     def find_similar(
         self,
         embedding: np.ndarray,
-        threshold: float = 0.7,
+        threshold: float = NEW_CHILD_SIMILARITY_THRESHOLD,
         limit: int = 10,
     ) -> list[tuple[StepSignature, float]]:
         """Find signatures similar to the given embedding.
@@ -3276,7 +3277,7 @@ class StepSignatureDB:
                 operation_embedding=centroid,
                 dag_step_type=None,
                 top_k=3,
-                min_similarity=0.5,  # Permissive - adaptive threshold applied per-candidate
+                min_similarity=ROUTING_MIN_SIMILARITY_PERMISSIVE,  # Permissive - adaptive threshold applied per-candidate
             )
 
             # Filter out self
