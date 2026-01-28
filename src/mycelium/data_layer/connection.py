@@ -68,7 +68,8 @@ class ConnectionManager:
     _instance: Optional["ConnectionManager"] = None
     _lock = threading.Lock()
 
-    def __new__(cls, _use_singleton: bool = True) -> "ConnectionManager":
+    def __new__(cls, _use_singleton: bool = True, **kwargs) -> "ConnectionManager":
+        # Note: **kwargs accepts db_path, enable_foreign_keys for __init__
         if not _use_singleton:
             # Factory mode: create a new instance
             instance = super().__new__(cls)
@@ -83,11 +84,12 @@ class ConnectionManager:
                     cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self, _use_singleton: bool = True, db_path: str = None):
+    def __init__(self, _use_singleton: bool = True, db_path: str = None, enable_foreign_keys: bool = True):
         with self._lock:
             if self._initialized:
                 return
             self._db_path = db_path or os.getenv("MYCELIUM_DB_PATH", DEFAULT_DB_PATH)
+            self._enable_foreign_keys = enable_foreign_keys
             self._local = threading.local()
             self._initialized = True
 
@@ -104,7 +106,7 @@ class ConnectionManager:
             self._local.conn = sqlite3.connect(
                 self._db_path, check_same_thread=False, timeout=30.0
             )
-            configure_connection(self._local.conn, enable_foreign_keys=True)
+            configure_connection(self._local.conn, enable_foreign_keys=self._enable_foreign_keys)
         return self._local.conn
 
     @contextmanager
@@ -198,7 +200,7 @@ def reset_db():
     _db = None
 
 
-def create_connection_manager(db_path: str) -> ConnectionManager:
+def create_connection_manager(db_path: str, enable_foreign_keys: bool = True) -> ConnectionManager:
     """Create a non-singleton ConnectionManager for a specific path.
 
     Use this when you need a connection to a database other than the default.
@@ -208,8 +210,10 @@ def create_connection_manager(db_path: str) -> ConnectionManager:
 
     Args:
         db_path: Path to the SQLite database file.
+        enable_foreign_keys: Whether to enable foreign key constraints (default True).
+            Set False for caches like embedding_cache.db that don't need FK.
 
     Returns:
         A ConnectionManager instance for the specified path.
     """
-    return ConnectionManager(_use_singleton=False, db_path=db_path)
+    return ConnectionManager(_use_singleton=False, db_path=db_path, enable_foreign_keys=enable_foreign_keys)
