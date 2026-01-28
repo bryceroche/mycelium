@@ -60,6 +60,9 @@ from mycelium.config import (
     MATURITY_MAX_DECOMPOSE_PROB,
     MATURITY_ESCAPE_MIN_SUBSTEPS,
     MATURITY_ESCAPE_MAX_MISSES,
+    # Routing similarity thresholds (per CLAUDE.md "The Flow")
+    ROUTING_MIN_SIMILARITY,
+    ROUTING_MIN_SIMILARITY_PERMISSIVE,
 )
 from mycelium.planner import TreeGuidedPlanner, Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
@@ -1505,11 +1508,12 @@ class Solver:
                         # MCTS fallback: get top-3 alternative leaves
                         # Per brainstorm: try re-routing sideways before decomposing depth-wise
                         # Use a slightly lower min_similarity to find alternatives
+                        from mycelium.config import ROUTING_MIN_SIMILARITY_PERMISSIVE
                         mcts_candidates = self.step_db.match_step_to_leaves_mcts(
                             operation_embedding=operation_embedding,
                             dag_step_type=getattr(step, 'dsl_hint', None) or step.task[:40],
                             top_k=3,
-                            min_similarity=max(0.5, rejection_result.threshold - 0.1),  # Allow slightly lower alternatives
+                            min_similarity=max(ROUTING_MIN_SIMILARITY_PERMISSIVE, rejection_result.threshold - 0.1),  # Allow slightly lower alternatives
                         )
 
                         # Filter out the already-rejected signature
@@ -1618,7 +1622,7 @@ class Solver:
                     operation_embedding=operation_embedding,
                     dag_step_type=getattr(step, 'dsl_hint', None) or step.task[:40],
                     top_k=3,
-                    min_similarity=0.5,  # Permissive - adaptive threshold applied per-candidate
+                    min_similarity=ROUTING_MIN_SIMILARITY_PERMISSIVE,  # Permissive - adaptive threshold applied per-candidate
                 )
 
             if mcts_candidates:
@@ -5213,7 +5217,7 @@ Rules:
                         sig, is_new = self.step_db.find_or_create(
                             step_text=atomic_step,
                             embedding=embedding,
-                            min_similarity=0.85,
+                            min_similarity=MIN_MATCH_THRESHOLD,
                             parent_problem=item.get('problem_context', ''),
                         )
                         created_ids.append(sig.id)

@@ -6041,7 +6041,7 @@ class StepSignatureDB:
     def route_by_graph_embedding(
         self,
         operation_embedding: np.ndarray,
-        min_similarity: float = 0.75,
+        min_similarity: float = PLACEMENT_MIN_SIMILARITY,
         top_k: int = 5,
     ) -> list[tuple[StepSignature, float]]:
         """Route by comparing operation embedding to graph embeddings.
