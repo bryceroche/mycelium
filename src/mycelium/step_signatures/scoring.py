@@ -53,14 +53,9 @@ def utc_now_iso() -> str:
 
 
 # =============================================================================
-# CACHED TOTAL PROBLEMS COUNTER
+# TOTAL PROBLEMS COUNTER (via StateManager)
 # =============================================================================
-# Module-level cache to avoid DB hits on every routing decision
-
-_total_problems_cache = {
-    "value": 0,
-    "expires_at": 0.0,
-}
+# Per CLAUDE.md New Favorite Pattern: Consolidated db_metadata access
 
 
 def get_total_problems_solved(db_path: str = DB_PATH) -> int:
@@ -69,33 +64,11 @@ def get_total_problems_solved(db_path: str = DB_PATH) -> int:
     Returns cached value if fresh, otherwise queries DB and updates cache.
     This is called frequently during routing, so we cache aggressively.
 
-    Note: db_path param kept for API compatibility but ignored (uses data layer).
+    Note: db_path param kept for API compatibility but ignored (uses StateManager).
     """
-    import sqlite3
-    now = time.time()
-
-    # Return cached value if still valid
-    if now < _total_problems_cache["expires_at"]:
-        return _total_problems_cache["value"]
-
-    # Query DB for fresh value via data layer
     # Lazy import to avoid circular dependency
-    from mycelium.data_layer import get_db
-    try:
-        db = get_db()
-        row = db.fetchone(
-            "SELECT value FROM db_metadata WHERE key = 'total_problems_solved'"
-        )
-        value = int(row["value"]) if row else 0
-    except (sqlite3.Error, ValueError, TypeError) as e:
-        logger.warning("[scoring] Failed to get total problems: %s", e)
-        value = 0
-
-    # Update cache
-    _total_problems_cache["value"] = value
-    _total_problems_cache["expires_at"] = now + TRAFFIC_CACHE_TTL
-
-    return value
+    from mycelium.data_layer.state_manager import get_state_manager, StateManager
+    return get_state_manager().get_int(StateManager.KEY_TOTAL_PROBLEMS)
 
 
 def increment_total_problems(db_path: str = DB_PATH) -> int:
@@ -103,45 +76,18 @@ def increment_total_problems(db_path: str = DB_PATH) -> int:
 
     Called once per problem completion. Also updates the cache.
 
-    Note: db_path param kept for API compatibility but ignored (uses data layer).
+    Note: db_path param kept for API compatibility but ignored (uses StateManager).
     """
-    import sqlite3
     # Lazy import to avoid circular dependency
-    from mycelium.data_layer import get_db
-    try:
-        db = get_db()
-        now_iso = datetime.now(timezone.utc).isoformat()
-
-        with db.connection() as conn:
-            # Upsert the counter
-            conn.execute("""
-                INSERT INTO db_metadata (key, value, updated_at)
-                VALUES ('total_problems_solved', '1', ?)
-                ON CONFLICT(key) DO UPDATE SET
-                    value = CAST(CAST(value AS INTEGER) + 1 AS TEXT),
-                    updated_at = ?
-            """, (now_iso, now_iso))
-
-            # Get new value
-            row = conn.execute(
-                "SELECT value FROM db_metadata WHERE key = 'total_problems_solved'"
-            ).fetchone()
-
-        new_value = int(row["value"]) if row else 1
-
-        # Update cache immediately
-        _total_problems_cache["value"] = new_value
-        _total_problems_cache["expires_at"] = time.time() + TRAFFIC_CACHE_TTL
-
-        return new_value
-    except (sqlite3.Error, ValueError, TypeError) as e:
-        logger.warning("[scoring] Failed to increment total problems: %s", e)
-        return 0
+    from mycelium.data_layer.state_manager import get_state_manager, StateManager
+    return get_state_manager().increment(StateManager.KEY_TOTAL_PROBLEMS)
 
 
 def invalidate_traffic_cache() -> None:
     """Force cache refresh on next access."""
-    _total_problems_cache["expires_at"] = 0.0
+    # Lazy import to avoid circular dependency
+    from mycelium.data_layer.state_manager import get_state_manager, StateManager
+    get_state_manager().invalidate_cache(StateManager.KEY_TOTAL_PROBLEMS)
 
 
 # =============================================================================

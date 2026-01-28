@@ -13,6 +13,12 @@ from mycelium.data_layer.schema import (
     get_schema,
     init_db,
 )
+# StateManager for db_metadata access (per CLAUDE.md New Favorite Pattern)
+from mycelium.data_layer.state_manager import (
+    StateManager,
+    WelfordStats,
+    get_state_manager,
+)
 
 # MCTS Wave Function data access
 from mycelium.data_layer.mcts import (
@@ -104,6 +110,10 @@ __all__ = [
     "STEP_SCHEMA",
     "get_schema",
     "init_db",
+    # StateManager (per CLAUDE.md New Favorite Pattern)
+    "StateManager",
+    "WelfordStats",
+    "get_state_manager",
     # MCTS Wave Function
     "MCTSDag",
     "MCTSDagStep",

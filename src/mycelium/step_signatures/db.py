@@ -386,6 +386,8 @@ def get_adaptive_thresholds(conn) -> AdaptiveThresholds:
     - cluster_threshold: 0.80 (moderately high sim = same cluster)
 
     As data accumulates, thresholds adapt to learned distributions.
+
+    Per CLAUDE.md New Favorite Pattern: Uses StateManager for db_metadata access.
     """
     from mycelium.config import (
         ADAPTIVE_THRESHOLD_K,  # Number of stddevs below mean
@@ -393,32 +395,22 @@ def get_adaptive_thresholds(conn) -> AdaptiveThresholds:
         COLD_START_CLUSTER_THRESHOLD,
         ADAPTIVE_MIN_SAMPLES,  # Min samples before using learned thresholds
     )
+    from mycelium.data_layer.state_manager import get_state_manager, StateManager
 
-    # Read Welford stats from db_metadata
-    cursor = conn.execute(
-        "SELECT key, value FROM db_metadata WHERE key LIKE 'sim_stats_%'"
-    )
-    stats = {row[0]: json.loads(row[1]) for row in cursor}
-
-    match_count = stats.get('sim_stats_match_count', {}).get('value', 0)
-    match_mean = stats.get('sim_stats_match_mean', {}).get('value', 0.0)
-    match_m2 = stats.get('sim_stats_match_m2', {}).get('value', 0.0)
-
-    cluster_count = stats.get('sim_stats_cluster_count', {}).get('value', 0)
-    cluster_mean = stats.get('sim_stats_cluster_mean', {}).get('value', 0.0)
-    cluster_m2 = stats.get('sim_stats_cluster_m2', {}).get('value', 0.0)
+    # Read Welford stats via StateManager
+    sm = get_state_manager()
+    match_stats = sm.get_welford_stats(StateManager.PREFIX_SIM_STATS_MATCH)
+    cluster_stats = sm.get_welford_stats(StateManager.PREFIX_SIM_STATS_CLUSTER)
 
     # Compute adaptive thresholds if we have enough data
-    if match_count >= ADAPTIVE_MIN_SAMPLES:
-        match_stddev = math.sqrt(match_m2 / match_count) if match_count > 1 else 0.0
-        dedup_threshold = match_mean - ADAPTIVE_THRESHOLD_K * match_stddev
+    if match_stats.count >= ADAPTIVE_MIN_SAMPLES:
+        dedup_threshold = match_stats.mean - ADAPTIVE_THRESHOLD_K * match_stats.stddev
         dedup_threshold = max(0.5, min(0.99, dedup_threshold))  # Clamp to reasonable range
     else:
         dedup_threshold = COLD_START_DEDUP_THRESHOLD
 
-    if cluster_count >= ADAPTIVE_MIN_SAMPLES:
-        cluster_stddev = math.sqrt(cluster_m2 / cluster_count) if cluster_count > 1 else 0.0
-        cluster_threshold = cluster_mean - ADAPTIVE_THRESHOLD_K * cluster_stddev
+    if cluster_stats.count >= ADAPTIVE_MIN_SAMPLES:
+        cluster_threshold = cluster_stats.mean - ADAPTIVE_THRESHOLD_K * cluster_stats.stddev
         cluster_threshold = max(0.3, min(0.95, cluster_threshold))  # Clamp to reasonable range
     else:
         cluster_threshold = COLD_START_CLUSTER_THRESHOLD
@@ -426,12 +418,12 @@ def get_adaptive_thresholds(conn) -> AdaptiveThresholds:
     return AdaptiveThresholds(
         dedup_threshold=dedup_threshold,
         cluster_threshold=cluster_threshold,
-        match_count=match_count,
-        match_mean=match_mean,
-        match_m2=match_m2,
-        cluster_count=cluster_count,
-        cluster_mean=cluster_mean,
-        cluster_m2=cluster_m2,
+        match_count=match_stats.count,
+        match_mean=match_stats.mean,
+        match_m2=match_stats.m2,
+        cluster_count=cluster_stats.count,
+        cluster_mean=cluster_stats.mean,
+        cluster_m2=cluster_stats.m2,
     )
 
 
@@ -523,43 +515,18 @@ def get_global_exec_success_floor(conn, k: float = 2.0, min_samples: int = 10) -
 def update_similarity_stats(conn, stat_type: str, similarity: float) -> None:
     """Update Welford stats for similarity tracking.
 
+    Per CLAUDE.md New Favorite Pattern: Uses StateManager for db_metadata access.
+    Per CLAUDE.md The Flow: Database Statistics -> Welford -> Tree Structure.
+
     Args:
-        conn: Database connection
+        conn: Database connection (kept for API compat, StateManager manages its own)
         stat_type: 'match' (for dedup) or 'cluster' (for clustering)
         similarity: The observed similarity value
     """
-    now = datetime.now(timezone.utc).isoformat()
+    from mycelium.data_layer.state_manager import get_state_manager
+
     prefix = f'sim_stats_{stat_type}'
-
-    # Read current stats
-    cursor = conn.execute(
-        "SELECT key, value FROM db_metadata WHERE key LIKE ?",
-        (f'{prefix}_%',)
-    )
-    stats = {row[0]: json.loads(row[1]).get('value', 0) for row in cursor}
-
-    count = stats.get(f'{prefix}_count', 0)
-    mean = stats.get(f'{prefix}_mean', 0.0)
-    m2 = stats.get(f'{prefix}_m2', 0.0)
-
-    # Welford update
-    count += 1
-    delta = similarity - mean
-    mean += delta / count
-    delta2 = similarity - mean
-    m2 += delta * delta2
-
-    # Write back
-    for key, value in [(f'{prefix}_count', count), (f'{prefix}_mean', mean), (f'{prefix}_m2', m2)]:
-        conn.execute(
-            """INSERT INTO db_metadata (key, value, updated_at)
-               VALUES (?, ?, ?)
-               ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = ?""",
-            (key, json.dumps({'value': value}), now, json.dumps({'value': value}), now)
-        )
-
-    logger.debug("[db] Updated %s stats: count=%d, mean=%.3f, stddev=%.3f",
-                 stat_type, count, mean, math.sqrt(m2/count) if count > 1 else 0.0)
+    get_state_manager().update_welford_stats(prefix, similarity)
 
 
 def find_global_best_match(
@@ -1549,6 +1516,8 @@ class StepSignatureDB:
                     # 2. Multi-part step (needs decomposition)
                     # Per CLAUDE.md: leaves use graph_embedding (operational), not centroid (semantic)
                     if not best_match.is_semantic_umbrella:
+                        # Per CLAUDE.md "New Favorite Pattern": use consolidated check_rejection
+                        from mycelium.step_signatures.rejection_utils import check_rejection
                         from mycelium.data_layer.mcts import record_leaf_rejection
 
                         # Use graph_embedding similarity if available (operational identity)
@@ -1576,39 +1545,31 @@ class StepSignatureDB:
                                 logger.debug("[db] Graph embedding comparison failed: %s", e)
 
                         # Check 1: Low similarity rejection using adaptive Welford threshold
-                        # Per CLAUDE.md: No magic numbers - threshold = mean - k*stddev
+                        # Per CLAUDE.md "New Favorite Pattern": consolidated to check_rejection
                         from mycelium.config import COLD_START_SIGNATURE_THRESHOLD
                         sig_count = self.count_signatures()
                         is_cold_start = sig_count < COLD_START_SIGNATURE_THRESHOLD
 
-                        # Get adaptive threshold from this leaf's success similarity history
-                        adaptive_threshold = best_match.get_adaptive_rejection_threshold(
-                            k=1.5, min_samples=5, default_threshold=0.5
+                        # Check rejection using unified utility (uses config for k, min_samples, default_threshold)
+                        rejection_result = check_rejection(
+                            signature=best_match,
+                            similarity=rejection_sim,
+                            is_cold_start=is_cold_start,
+                            step_text=step_text,
+                            problem_context=parent_problem,
+                            conn=conn,
                         )
 
-                        if rejection_sim < adaptive_threshold and not is_cold_start:
-                            # Per CLAUDE.md "New Favorite Pattern": Use record_leaf_rejection() directly
-                            rejection_count = record_leaf_rejection(
-                                signature_id=best_match.id,
-                                step_text=step_text,
-                                similarity=rejection_sim,
-                                problem_context=parent_problem,
-                                conn=conn,  # Pass connection to avoid lock contention
-                            )
+                        if rejection_result.rejected:
                             logger.info(
-                                "[db] Leaf '%s' REJECTED step (sim=%.3f < adaptive=%.3f, n=%d, mean=%.3f), rejections=%d: '%s'",
-                                best_match.step_type, rejection_sim, adaptive_threshold,
+                                "[db] Leaf '%s' REJECTED step (sim=%.3f < adaptive=%.3f, n=%d, mean=%.3f): '%s'",
+                                best_match.step_type, rejection_sim, rejection_result.threshold,
                                 best_match.success_sim_count, best_match.success_sim_mean,
-                                rejection_count, step_text[:40]
+                                step_text[:40]
                             )
                             # Step queued for decomposition - don't create new signature
                             conn.commit()
                             return None, False
-                        elif rejection_sim < adaptive_threshold and is_cold_start:
-                            logger.debug(
-                                "[db] Cold start: skipping rejection (sig_count=%d < %d)",
-                                sig_count, COLD_START_SIGNATURE_THRESHOLD
-                            )
 
                         # Check 2: Multi-part step rejection (needs decomposition)
                         # Leaves only handle atomic operations - detect via embedding similarity
@@ -8316,21 +8277,20 @@ class StepSignatureDB:
     # Per CLAUDE.md New Favorite Pattern: Single entry point (maybe_restructure).
 
     def _get_last_restructure_count(self, conn) -> int:
-        """Get last restructure problem count from db_metadata."""
-        row = conn.execute(
-            "SELECT value FROM db_metadata WHERE key = 'last_restructure_count'"
-        ).fetchone()
-        return int(row["value"]) if row else 0
+        """Get last restructure problem count from db_metadata.
+
+        Per CLAUDE.md New Favorite Pattern: Uses StateManager for db_metadata access.
+        """
+        from mycelium.data_layer.state_manager import get_state_manager
+        return get_state_manager().get_last_restructure_count()
 
     def _set_last_restructure_count(self, conn, count: int) -> None:
-        """Set last restructure problem count in db_metadata."""
-        now = datetime.now(timezone.utc).isoformat()
-        conn.execute(
-            """INSERT INTO db_metadata (key, value, updated_at)
-               VALUES ('last_restructure_count', ?, ?)
-               ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = ?""",
-            (str(count), now, str(count), now)
-        )
+        """Set last restructure problem count in db_metadata.
+
+        Per CLAUDE.md New Favorite Pattern: Uses StateManager for db_metadata access.
+        """
+        from mycelium.data_layer.state_manager import get_state_manager
+        get_state_manager().set_last_restructure_count(count)
 
     def maybe_restructure(self, problem_count: int, conn=None) -> dict:
         """SINGLE ENTRY POINT: Check if restructure should run and execute if needed.

@@ -3173,39 +3173,33 @@ def apply_interference_effects(
 # =============================================================================
 # POSTMORTEM STATE MANAGEMENT (Database-backed for cross-process persistence)
 # =============================================================================
+# Per CLAUDE.md "New Favorite Pattern": Uses StateManager for db_metadata access
 
 import json
 
+from mycelium.data_layer.state_manager import get_state_manager, StateManager
+
 
 def _get_db_state_value(key: str, default: str = "0") -> str:
-    """Get a value from db_metadata table."""
-    db = get_db()
-    with db.connection() as conn:
-        row = conn.execute(
-            "SELECT value FROM db_metadata WHERE key = ?", (key,)
-        ).fetchone()
-        return row["value"] if row else default
+    """Get a value from db_metadata table.
+
+    Delegates to StateManager for consolidated access.
+    """
+    return get_state_manager().get(key, default)
 
 
 def _set_db_state_value(key: str, value: str) -> None:
-    """Set a value in db_metadata table (upsert)."""
-    db = get_db()
-    now = datetime.now(timezone.utc).isoformat()
-    with db.connection() as conn:
-        conn.execute(
-            """INSERT INTO db_metadata (key, value, updated_at)
-               VALUES (?, ?, ?)
-               ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at""",
-            (key, value, now)
-        )
+    """Set a value in db_metadata table (upsert).
+
+    Delegates to StateManager for consolidated access.
+    """
+    get_state_manager().set(key, value)
 
 
 # =============================================================================
 # SEGMENTATION NOVELTY STATS (for TreeGuidedPlanner)
 # =============================================================================
 # Per CLAUDE.md "New Favorite Pattern": Consolidated data layer access
-
-_KEY_SEGMENTATION_NOVELTY = "segmentation_novelty_stats"
 
 
 def get_segmentation_novelty_stats() -> dict:
@@ -3214,11 +3208,7 @@ def get_segmentation_novelty_stats() -> dict:
     Returns:
         Dict with 'count', 'mean', 'm2' keys (empty dict if not found)
     """
-    raw = _get_db_state_value(_KEY_SEGMENTATION_NOVELTY, "{}")
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        return {}
+    return get_state_manager().get_json(StateManager.KEY_SEGMENTATION_NOVELTY, {})
 
 
 def save_segmentation_novelty_stats(stats: dict) -> None:
@@ -3227,7 +3217,7 @@ def save_segmentation_novelty_stats(stats: dict) -> None:
     Args:
         stats: Dict with 'count', 'mean', 'm2' keys
     """
-    _set_db_state_value(_KEY_SEGMENTATION_NOVELTY, json.dumps(stats))
+    get_state_manager().set_json(StateManager.KEY_SEGMENTATION_NOVELTY, stats)
 
 
 # Keys for persistent state
