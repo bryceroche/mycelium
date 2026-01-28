@@ -238,10 +238,11 @@ class TestDecayIntegration:
     def db_with_signatures(self, clean_test_db):
         """Create DB with some signatures."""
         import numpy as np
-        from mycelium.step_signatures.db import StepSignatureDB
+        from mycelium.step_signatures.db import get_step_db
         from mycelium.config import EMBEDDING_DIM
 
-        db = StepSignatureDB()
+        # Use singleton to ensure DecayManager sees the same DB
+        db = get_step_db()
 
         # Create a few signatures with different usage patterns
         for i, (uses, successes) in enumerate([
@@ -264,38 +265,29 @@ class TestDecayIntegration:
                 )
 
         # Set total problems high enough to exit cold start
-        with db._connection() as conn:
-            conn.execute("""
-                INSERT INTO db_metadata (key, value, updated_at)
-                VALUES ('total_problems_solved', '1000', datetime('now'))
-                ON CONFLICT(key) DO UPDATE SET value = '1000'
-            """)
-            conn.commit()
+        # Use StateManager to ensure cache is properly updated
+        from mycelium.data_layer.state_manager import get_state_manager, StateManager
+        get_state_manager().set(StateManager.KEY_TOTAL_PROBLEMS, 1000)
 
         return db
 
     def test_decay_cycle_with_signatures(self, db_with_signatures):
         """Should analyze signatures and produce report."""
-        from mycelium.config import DB_PATH
+        import os
         from mycelium.data_layer.schema import migrate_db
         import sqlite3
 
-        manager = DecayManager(db_path=DB_PATH)
+        # Use the temp DB path set by clean_test_db fixture, not config.DB_PATH
+        db_path = os.environ["MYCELIUM_DB_PATH"]
+        manager = DecayManager(db_path=db_path)
 
         # Run migrations to add is_archived column
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(db_path)
         migrate_db(conn)
         conn.close()
 
-        # Manually ensure we're past cold start by setting total_problems
+        # Ensure decay table exists and total_problems is set (fixture already set via StateManager)
         manager._ensure_decay_table()
-        with manager._connection() as conn:
-            conn.execute("""
-                INSERT INTO db_metadata (key, value, updated_at)
-                VALUES ('total_problems_solved', '1000', datetime('now'))
-                ON CONFLICT(key) DO UPDATE SET value = '1000'
-            """)
-            conn.commit()
 
         report = manager.run_decay_cycle(force=True)
 
