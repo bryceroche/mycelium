@@ -105,20 +105,20 @@ def check_rejection(
         should_decompose = False
 
         # Record rejection for learning if requested
+        # Per CLAUDE.md "New Favorite Pattern": Use consolidated reject_dag_step()
         if record and step_text is not None:
-            from mycelium.data_layer.mcts import record_leaf_rejection, get_leaf_rejection_stats
-            rejection_count = record_leaf_rejection(
+            from mycelium.data_layer.mcts import reject_dag_step
+            decision = reject_dag_step(
                 signature_id=signature.id,
-                step_text=step_text,
                 similarity=similarity,
+                step_text=step_text,
                 dag_step_id=dag_step_id,
                 problem_context=problem_context,
+                reason="below_threshold",
                 conn=conn,
             )
-
-            # Check decomposition threshold (per CLAUDE.md "The Flow")
-            stats = get_leaf_rejection_stats(signature.id)
-            should_decompose = stats.get("should_decompose", False)
+            rejection_count = decision.rejection_count
+            should_decompose = decision.should_decompose
 
         logger.debug(
             "[rejection] Sig %d (%s) rejected: sim=%.3f < threshold=%.3f "

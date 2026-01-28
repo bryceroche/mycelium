@@ -935,41 +935,22 @@ def record_leaf_rejection(
     problem_context: str = None,
     conn=None,
 ) -> int:
-    """Record that a leaf signature rejected a dag_step due to low similarity.
+    """DEPRECATED: Use reject_dag_step() instead.
 
-    Args:
-        signature_id: The leaf signature that rejected
-        step_text: The step that was rejected
-        similarity: The similarity score that caused rejection
-        dag_step_id: Optional link to the dag_step
-        problem_context: Optional problem text for context
-        conn: Optional DB connection (reuse caller's connection to avoid locks)
+    Per CLAUDE.md "New Favorite Pattern": All rejection handling goes through
+    reject_dag_step() which provides a unified RejectionDecision struct.
 
-    Returns:
-        Updated rejection_count for the signature
+    This function is kept for backward compatibility but delegates to reject_dag_step().
     """
-    from mycelium.step_signatures.db import get_step_db
-    step_db = get_step_db()
-    rejection_count = step_db.increment_rejection_count(signature_id, conn=conn)
-
-    # Queue the rejected step for decomposition (non-blocking)
-    try:
-        queue_for_decomposition(
-            step_text=step_text,
-            complexity_reason=f"rejected_by_leaf_{signature_id}_sim_{similarity:.3f}",
-            dag_step_id=dag_step_id,
-            problem_context=problem_context,
-            conn=conn,  # Pass connection to avoid lock contention
-        )
-    except Exception as e:
-        logger.warning("[rejection] Failed to queue for decomposition: %s", e)
-
-    logger.debug(
-        "[rejection] Leaf %d rejected step (sim=%.3f), total rejections=%d",
-        signature_id, similarity, rejection_count
+    decision = reject_dag_step(
+        signature_id=signature_id,
+        similarity=similarity,
+        step_text=step_text,
+        dag_step_id=dag_step_id,
+        problem_context=problem_context,
+        conn=conn,
     )
-
-    return rejection_count
+    return decision.rejection_count
 
 
 def get_leaf_rejection_stats(signature_id: int) -> dict:

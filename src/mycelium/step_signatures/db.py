@@ -1638,7 +1638,7 @@ class StepSignatureDB:
                     if not best_match.is_semantic_umbrella:
                         # Per CLAUDE.md "New Favorite Pattern": use consolidated check_rejection
                         from mycelium.step_signatures.rejection_utils import check_rejection
-                        from mycelium.data_layer.mcts import record_leaf_rejection
+                        from mycelium.data_layer.mcts import reject_dag_step
 
                         # Use graph_embedding similarity if available (operational identity)
                         # Otherwise fall back to text similarity
@@ -1710,21 +1710,22 @@ class StepSignatureDB:
                                         # Skip during cold start - let vocabulary build first
                                         reason = "multi_part" if gap < ATOMIC_GAP_THRESHOLD else "unknown_complex"
 
-                                        # Record rejection (unified path for all leaf rejections)
-                                        rejection_count = record_leaf_rejection(
+                                        # Per CLAUDE.md "New Favorite Pattern": Use consolidated reject_dag_step()
+                                        decision = reject_dag_step(
                                             signature_id=best_match.id,
-                                            step_text=step_text,
                                             similarity=max_atomic_sim,  # Use atomic similarity for tracking
+                                            step_text=step_text,
                                             problem_context=parent_problem,
+                                            reason=reason,
                                             conn=conn,  # Pass connection to avoid lock contention
                                         )
 
                                         logger.info(
                                             "[db] Leaf '%s' REJECTED %s step (sim=%.3f, gap=%.3f, best=%s, hint='%s', rejections=%d): '%s'",
                                             best_match.step_type, reason, max_atomic_sim, gap,
-                                            best_atomic_op, dsl_hint, rejection_count, step_text[:50]
+                                            best_atomic_op, dsl_hint, decision.rejection_count, step_text[:50]
                                         )
-                                        # record_leaf_rejection already queued for decomposition
+                                        # reject_dag_step already queued for decomposition
                                         # Return None - step is queued, don't create signature
                                         conn.commit()
                                         return None, False
