@@ -235,12 +235,35 @@ REACTIVE_EXPLORATION_NUM_THREADS = 3  # Number of parallel exploration threads t
 REACTIVE_EXPLORATION_TEMPERATURE = 0.3  # Higher temp for diversity (vs 0.0 default)
 REACTIVE_EXPLORATION_EPSILON_BOOST = 0.3  # Boost epsilon during exploration (stacks with base)
 
-# Adaptive exploration multipliers (per mycelium-02nn)
-# During reactive exploration, multiply adaptive gap threshold to be more permissive
-# and boost compute budget to explore more paths
-REACTIVE_EXPLORATION_GAP_MULT = 2.0  # Multiply gap threshold by this during exploration
-REACTIVE_EXPLORATION_BUDGET_MULT = 1.5  # Multiply compute budget by this during exploration
+# =============================================================================
+# ADAPTIVE REACTIVE EXPLORATION MULTIPLIERS (Welford-guided, per mycelium-02nn)
+# =============================================================================
+# Per CLAUDE.md "The Flow": DB Statistics → Welford → Tree Structure
+# Multipliers adjust based on whether reactive exploration is finding winning paths.
+#
+# Logic:
+# - Low success rate → need more exploration → increase multipliers
+# - High success rate → current settings work → maintain or decrease
+# - Welford tracks variance to detect when adjustments are needed
+
+ADAPTIVE_REACTIVE_ENABLED = True  # Use Welford-guided multipliers
+ADAPTIVE_REACTIVE_MIN_SAMPLES = 5  # Min reactive explorations before adapting
+
+# Fallback multipliers (used during cold start)
+REACTIVE_EXPLORATION_GAP_MULT = 2.0  # Default gap threshold multiplier
+REACTIVE_EXPLORATION_BUDGET_MULT = 1.5  # Default budget multiplier
 REACTIVE_EXPLORATION_MIN_BUDGET = 3.0  # Minimum budget during reactive exploration
+
+# Multiplier adjustment bounds
+REACTIVE_EXPLORATION_GAP_MULT_MIN = 1.2  # Floor: at least 20% more lenient
+REACTIVE_EXPLORATION_GAP_MULT_MAX = 4.0  # Ceiling: at most 4x more lenient
+REACTIVE_EXPLORATION_BUDGET_MULT_MIN = 1.2  # Floor: at least 20% more budget
+REACTIVE_EXPLORATION_BUDGET_MULT_MAX = 3.0  # Ceiling: at most 3x budget
+
+# Adjustment sensitivity (how much success rate affects multipliers)
+# At 0% success: multipliers increase toward MAX
+# At 100% success: multipliers decrease toward MIN
+REACTIVE_EXPLORATION_ADJUST_K = 1.5  # k stddevs for adjustment (higher = more conservative)
 
 # Step decomposition fallback: when reactive exploration fails to find a winning path,
 # decompose failing steps into smaller sub-steps and re-solve

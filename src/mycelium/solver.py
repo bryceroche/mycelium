@@ -682,6 +682,11 @@ class Solver:
         # This multiplies gap threshold (more lenient) and budget (explore more paths)
         self._reactive_exploration_mode: bool = False
 
+        # Current reactive exploration multipliers (Welford-adaptive, set when entering mode)
+        # Per CLAUDE.md "The Flow": These come from DB Statistics → Welford
+        self._reactive_gap_mult: float = 2.0
+        self._reactive_budget_mult: float = 1.5
+
         # Phase 1 values for provenance tracking (set per-problem in solve())
         # Maps value name -> numeric value for resolving $name references
         self._current_phase1_values: dict[str, Any] = {}
@@ -722,24 +727,22 @@ class Solver:
         """Get adaptive UCB1 gap threshold for branching decisions.
 
         Per mycelium-02nn: Uses Welford stats to compute adaptive threshold.
-        In reactive exploration mode, multiplies threshold for more lenient branching.
+        In reactive exploration mode, multiplies threshold using Welford-adaptive multipliers.
+
+        Per CLAUDE.md "The Flow": DB Statistics → Welford → Tree Structure
 
         Returns:
             Gap threshold (branch when min_gap < threshold)
         """
-        from mycelium.config import (
-            REACTIVE_EXPLORATION_GAP_MULT,
-        )
-
         # Get base threshold from Welford stats
         base_threshold = self.step_db.get_adaptive_gap_threshold()
 
-        # In reactive exploration, be more lenient (higher threshold = more branching)
+        # In reactive exploration, use Welford-adaptive multiplier
         if self._reactive_exploration_mode:
-            threshold = base_threshold * REACTIVE_EXPLORATION_GAP_MULT
+            threshold = base_threshold * self._reactive_gap_mult
             logger.debug(
-                "[solver] Reactive exploration: gap threshold %.3f -> %.3f (mult=%.1f)",
-                base_threshold, threshold, REACTIVE_EXPLORATION_GAP_MULT
+                "[solver] Reactive exploration: gap threshold %.3f -> %.3f (mult=%.2f)",
+                base_threshold, threshold, self._reactive_gap_mult
             )
             return threshold
 
@@ -748,8 +751,10 @@ class Solver:
     def _get_effective_budget(self, base_budget: float) -> float:
         """Get effective compute budget, boosted during reactive exploration.
 
-        Per mycelium-02nn: In reactive exploration mode, boost budget to explore
-        more alternative paths.
+        Per mycelium-02nn: In reactive exploration mode, boost budget using
+        Welford-adaptive multipliers.
+
+        Per CLAUDE.md "The Flow": DB Statistics → Welford → Tree Structure
 
         Args:
             base_budget: The base compute budget
@@ -757,16 +762,13 @@ class Solver:
         Returns:
             Effective budget (possibly boosted)
         """
-        from mycelium.config import (
-            REACTIVE_EXPLORATION_BUDGET_MULT,
-            REACTIVE_EXPLORATION_MIN_BUDGET,
-        )
+        from mycelium.config import REACTIVE_EXPLORATION_MIN_BUDGET
 
         if self._reactive_exploration_mode:
-            boosted = max(base_budget * REACTIVE_EXPLORATION_BUDGET_MULT, REACTIVE_EXPLORATION_MIN_BUDGET)
+            boosted = max(base_budget * self._reactive_budget_mult, REACTIVE_EXPLORATION_MIN_BUDGET)
             logger.debug(
-                "[solver] Reactive exploration: budget %.1f -> %.1f (mult=%.1f, min=%.1f)",
-                base_budget, boosted, REACTIVE_EXPLORATION_BUDGET_MULT, REACTIVE_EXPLORATION_MIN_BUDGET
+                "[solver] Reactive exploration: budget %.1f -> %.1f (mult=%.2f, min=%.1f)",
+                base_budget, boosted, self._reactive_budget_mult, REACTIVE_EXPLORATION_MIN_BUDGET
             )
             return boosted
 
@@ -4207,7 +4209,16 @@ Rules:
                 embedder=self.embedder,
                 temperature=REACTIVE_EXPLORATION_TEMPERATURE,
             )
-            # Per mycelium-02nn: Use adaptive multipliers instead of force flag
+
+            # Per mycelium-02nn + CLAUDE.md "The Flow": Get Welford-adaptive multipliers
+            # DB Statistics → Welford → Tree Structure (via multipliers)
+            self._reactive_gap_mult, self._reactive_budget_mult = (
+                self.step_db.get_adaptive_reactive_multipliers()
+            )
+            logger.info(
+                "[reactive] Using adaptive multipliers: gap=%.2f, budget=%.2f",
+                self._reactive_gap_mult, self._reactive_budget_mult
+            )
             self._reactive_exploration_mode = True
 
             try:
@@ -4243,6 +4254,19 @@ Rules:
             finally:
                 self._reactive_exploration_mode = False
                 self.planner = original_planner  # Restore original planner
+
+            # Per CLAUDE.md "The Flow": Record outcome to update Welford stats
+            # This feeds back into DB Statistics → Welford → future multipliers
+            found_winner = winning is not None
+            self.step_db.update_reactive_exploration_stats(
+                found_winner=found_winner,
+                gap_mult_used=self._reactive_gap_mult,
+                budget_mult_used=self._reactive_budget_mult,
+            )
+            logger.info(
+                "[reactive] Recorded exploration outcome: found_winner=%s (gap=%.2f, budget=%.2f)",
+                found_winner, self._reactive_gap_mult, self._reactive_budget_mult
+            )
 
             stats["total_dags_for_crossexam"] = len(exploration_dag_ids) + (1 if original_dag_id else 0)
 

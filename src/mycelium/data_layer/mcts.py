@@ -928,44 +928,6 @@ def get_leaves_needing_decomposition(limit: int = 10) -> list[dict]:
     return results
 
 
-def check_and_reject_if_low_similarity(
-    signature_id: int,
-    step_text: str,
-    similarity: float,
-    dag_step_id: str = None,
-    problem_context: str = None,
-    conn=None,
-) -> tuple[bool, int]:
-    """Record a leaf rejection (caller has already decided to reject).
-
-    Note: Caller is responsible for checking the adaptive threshold.
-    This function just records the rejection and queues for decomposition.
-
-    Args:
-        signature_id: The leaf signature being checked
-        step_text: The step being routed
-        similarity: Cosine similarity to the signature (for logging)
-        dag_step_id: Optional dag_step ID
-        problem_context: Optional problem context
-        conn: Optional DB connection (reuse caller's connection to avoid locks)
-
-    Returns:
-        Tuple of (was_rejected=True, rejection_count)
-    """
-    # Caller has already decided to reject using adaptive threshold
-    # We just record it and queue for decomposition
-    rejection_count = record_leaf_rejection(
-        signature_id=signature_id,
-        step_text=step_text,
-        similarity=similarity,
-        dag_step_id=dag_step_id,
-        problem_context=problem_context,
-        conn=conn,
-    )
-
-    return True, rejection_count
-
-
 def flag_high_rejection_leaves_for_decomposition(step_db=None) -> list[dict]:
     """Find and flag high-rejection leaves for decomposition.
 

@@ -13,7 +13,7 @@ Please always keep this file in the context window.
 3. The Flow
 
 ## System Independence
-Resist the urge to manually intervene in the tree.  We want the system to be independent.  This means only modifying python code and database schema but not the tree.
+Resist the urge to manually intervene in the tree.  We want the system to be independent.  This means only modifying python code and database schema but not the tree.  we do want the mycelium system to be able to restructure the tree -- we just dont want to be tempted to make those adjustments ourselves.  you know what i mean?  for example I think we have a periodic tree review that restructures the tree -- that is okay.  but you and I shouldnt' be going into the tree structure and cleaning up orphaned umbrealla routers for example  
 
 ## New Favorite Pattern
 We want to consolidate methods - for example all database connections should go through a data layer instead of having multiple database connections.  Same with Signature creation, or leaf_node rejection of dag_steps.  We want to consolidate method calls for features to simplify our codebase and reduce the chance of bugs

@@ -1549,10 +1549,7 @@ class StepSignatureDB:
                     # 2. Multi-part step (needs decomposition)
                     # Per CLAUDE.md: leaves use graph_embedding (operational), not centroid (semantic)
                     if not best_match.is_semantic_umbrella:
-                        from mycelium.data_layer.mcts import (
-                            check_and_reject_if_low_similarity,
-                            record_leaf_rejection,
-                        )
+                        from mycelium.data_layer.mcts import record_leaf_rejection
 
                         # Use graph_embedding similarity if available (operational identity)
                         # Otherwise fall back to text similarity
@@ -1590,23 +1587,23 @@ class StepSignatureDB:
                         )
 
                         if rejection_sim < adaptive_threshold and not is_cold_start:
-                            was_rejected, rejection_count = check_and_reject_if_low_similarity(
+                            # Per CLAUDE.md "New Favorite Pattern": Use record_leaf_rejection() directly
+                            rejection_count = record_leaf_rejection(
                                 signature_id=best_match.id,
                                 step_text=step_text,
                                 similarity=rejection_sim,
                                 problem_context=parent_problem,
                                 conn=conn,  # Pass connection to avoid lock contention
                             )
-                            if was_rejected:
-                                logger.info(
-                                    "[db] Leaf '%s' REJECTED step (sim=%.3f < adaptive=%.3f, n=%d, mean=%.3f), rejections=%d: '%s'",
-                                    best_match.step_type, rejection_sim, adaptive_threshold,
-                                    best_match.success_sim_count, best_match.success_sim_mean,
-                                    rejection_count, step_text[:40]
-                                )
-                                # Step queued for decomposition - don't create new signature
-                                conn.commit()
-                                return None, False
+                            logger.info(
+                                "[db] Leaf '%s' REJECTED step (sim=%.3f < adaptive=%.3f, n=%d, mean=%.3f), rejections=%d: '%s'",
+                                best_match.step_type, rejection_sim, adaptive_threshold,
+                                best_match.success_sim_count, best_match.success_sim_mean,
+                                rejection_count, step_text[:40]
+                            )
+                            # Step queued for decomposition - don't create new signature
+                            conn.commit()
+                            return None, False
                         elif rejection_sim < adaptive_threshold and is_cold_start:
                             logger.debug(
                                 "[db] Cold start: skipping rejection (sig_count=%d < %d)",
@@ -6683,6 +6680,228 @@ class StepSignatureDB:
         )
 
         return threshold
+
+    # =========================================================================
+    # REACTIVE EXPLORATION STATS: Welford-adaptive multipliers (per mycelium-02nn)
+    # =========================================================================
+    # Per CLAUDE.md "The Flow": DB Statistics → Welford → Tree Structure
+    # Tracks reactive exploration outcomes to adapt gap/budget multipliers.
+
+    def update_reactive_exploration_stats(
+        self,
+        found_winner: bool,
+        gap_mult_used: float,
+        budget_mult_used: float,
+        conn=None,
+    ) -> bool:
+        """Update Welford stats for reactive exploration outcomes.
+
+        Records whether reactive exploration found a winning path and what
+        multipliers were used. Used to adapt future multipliers.
+
+        Per CLAUDE.md "The Flow": This is the DB Statistics part of the flow.
+
+        Args:
+            found_winner: Whether reactive exploration found a winning path
+            gap_mult_used: The gap multiplier that was used
+            budget_mult_used: The budget multiplier that was used
+
+        Returns:
+            True if update succeeded
+        """
+        def _do_update(c):
+            # Get current stats (singleton row)
+            row = c.execute("""
+                SELECT n, success_mean, success_m2,
+                       gap_mult_n, gap_mult_mean, gap_mult_m2,
+                       budget_mult_n, budget_mult_mean, budget_mult_m2
+                FROM reactive_exploration_stats WHERE id = 1
+            """).fetchone()
+
+            if not row:
+                # Initialize if missing
+                c.execute("INSERT OR IGNORE INTO reactive_exploration_stats (id) VALUES (1)")
+                row = c.execute("""
+                    SELECT n, success_mean, success_m2,
+                           gap_mult_n, gap_mult_mean, gap_mult_m2,
+                           budget_mult_n, budget_mult_mean, budget_mult_m2
+                    FROM reactive_exploration_stats WHERE id = 1
+                """).fetchone()
+
+            # Update success rate stats (Welford)
+            success_val = 1.0 if found_winner else 0.0
+            n = row["n"] + 1
+            old_mean = row["success_mean"]
+            old_m2 = row["success_m2"]
+            delta = success_val - old_mean
+            new_mean = old_mean + delta / n
+            delta2 = success_val - new_mean
+            new_m2 = old_m2 + delta * delta2
+
+            c.execute("""
+                UPDATE reactive_exploration_stats
+                SET n = ?, success_mean = ?, success_m2 = ?,
+                    updated_at = datetime('now')
+                WHERE id = 1
+            """, (n, new_mean, new_m2))
+
+            # If found winner, record the multipliers that worked (Welford)
+            if found_winner:
+                # Update gap_mult stats
+                gap_n = row["gap_mult_n"] + 1
+                gap_old_mean = row["gap_mult_mean"]
+                gap_old_m2 = row["gap_mult_m2"]
+                gap_delta = gap_mult_used - gap_old_mean
+                gap_new_mean = gap_old_mean + gap_delta / gap_n
+                gap_delta2 = gap_mult_used - gap_new_mean
+                gap_new_m2 = gap_old_m2 + gap_delta * gap_delta2
+
+                c.execute("""
+                    UPDATE reactive_exploration_stats
+                    SET gap_mult_n = ?, gap_mult_mean = ?, gap_mult_m2 = ?
+                    WHERE id = 1
+                """, (gap_n, gap_new_mean, gap_new_m2))
+
+                # Update budget_mult stats
+                budget_n = row["budget_mult_n"] + 1
+                budget_old_mean = row["budget_mult_mean"]
+                budget_old_m2 = row["budget_mult_m2"]
+                budget_delta = budget_mult_used - budget_old_mean
+                budget_new_mean = budget_old_mean + budget_delta / budget_n
+                budget_delta2 = budget_mult_used - budget_new_mean
+                budget_new_m2 = budget_old_m2 + budget_delta * budget_delta2
+
+                c.execute("""
+                    UPDATE reactive_exploration_stats
+                    SET budget_mult_n = ?, budget_mult_mean = ?, budget_mult_m2 = ?
+                    WHERE id = 1
+                """, (budget_n, budget_new_mean, budget_new_m2))
+
+            c.connection.commit()
+            logger.debug(
+                "[db] Reactive exploration stats updated: found_winner=%s, n=%d, success_rate=%.2f",
+                found_winner, n, new_mean
+            )
+            return True
+
+        if conn:
+            return _do_update(conn)
+        with self._connection() as c:
+            return _do_update(c)
+
+    def get_reactive_exploration_stats(self, conn=None) -> Optional[dict]:
+        """Get reactive exploration statistics.
+
+        Returns:
+            Dictionary with reactive exploration stats, or None if no data
+        """
+        def _do_get(c):
+            row = c.execute("""
+                SELECT n, success_mean, success_m2,
+                       gap_mult_n, gap_mult_mean, gap_mult_m2,
+                       budget_mult_n, budget_mult_mean, budget_mult_m2,
+                       created_at, updated_at
+                FROM reactive_exploration_stats WHERE id = 1
+            """).fetchone()
+            if row:
+                return dict(row)
+            return None
+
+        if conn:
+            return _do_get(conn)
+        with self._connection() as c:
+            return _do_get(c)
+
+    def get_adaptive_reactive_multipliers(self, conn=None) -> tuple[float, float]:
+        """Compute adaptive reactive exploration multipliers from Welford stats.
+
+        Per CLAUDE.md "The Flow": This is the Welford → Tree Structure part.
+        Uses success rate to adjust multipliers:
+        - Low success rate → need more exploration → increase multipliers
+        - High success rate → current settings work → use learned means
+
+        Returns:
+            Tuple of (gap_mult, budget_mult)
+        """
+        import math
+        from mycelium.config import (
+            ADAPTIVE_REACTIVE_ENABLED,
+            ADAPTIVE_REACTIVE_MIN_SAMPLES,
+            REACTIVE_EXPLORATION_GAP_MULT,
+            REACTIVE_EXPLORATION_BUDGET_MULT,
+            REACTIVE_EXPLORATION_GAP_MULT_MIN,
+            REACTIVE_EXPLORATION_GAP_MULT_MAX,
+            REACTIVE_EXPLORATION_BUDGET_MULT_MIN,
+            REACTIVE_EXPLORATION_BUDGET_MULT_MAX,
+            REACTIVE_EXPLORATION_ADJUST_K,
+        )
+
+        # Cold start: use default multipliers
+        if not ADAPTIVE_REACTIVE_ENABLED:
+            return (REACTIVE_EXPLORATION_GAP_MULT, REACTIVE_EXPLORATION_BUDGET_MULT)
+
+        stats = self.get_reactive_exploration_stats(conn=conn)
+        if not stats or stats.get("n", 0) < ADAPTIVE_REACTIVE_MIN_SAMPLES:
+            return (REACTIVE_EXPLORATION_GAP_MULT, REACTIVE_EXPLORATION_BUDGET_MULT)
+
+        # Get success rate and variance
+        n = stats["n"]
+        success_mean = stats["success_mean"]
+        success_m2 = stats["success_m2"]
+
+        if n > 1:
+            variance = success_m2 / (n - 1)
+            std = math.sqrt(variance) if variance > 0 else 0.0
+        else:
+            std = 0.0
+
+        # Adaptive logic:
+        # - If success rate is HIGH (exploration is working): use learned multipliers
+        # - If success rate is LOW (exploration isn't helping): increase multipliers
+        # - Use variance to determine confidence in adjustment
+
+        # Compute adjustment factor based on success rate
+        # success_mean=1.0 → factor=0 (no extra boost needed)
+        # success_mean=0.0 → factor=1 (max boost needed)
+        # Adjust by k*std for conservative bounds
+        failure_rate = 1.0 - success_mean
+        adjustment = failure_rate + REACTIVE_EXPLORATION_ADJUST_K * std
+
+        # Interpolate between MIN and MAX based on adjustment
+        # adjustment=0 → use MIN (or learned mean)
+        # adjustment=1+ → use MAX
+        adjustment = min(1.0, max(0.0, adjustment))
+
+        # For gap_mult: if we have successful data, blend learned mean with adjustment
+        if stats.get("gap_mult_n", 0) >= 3:
+            learned_gap = stats["gap_mult_mean"]
+            gap_mult = learned_gap + adjustment * (REACTIVE_EXPLORATION_GAP_MULT_MAX - learned_gap)
+        else:
+            # Interpolate between default and max
+            gap_mult = REACTIVE_EXPLORATION_GAP_MULT + adjustment * (
+                REACTIVE_EXPLORATION_GAP_MULT_MAX - REACTIVE_EXPLORATION_GAP_MULT
+            )
+
+        # For budget_mult: same logic
+        if stats.get("budget_mult_n", 0) >= 3:
+            learned_budget = stats["budget_mult_mean"]
+            budget_mult = learned_budget + adjustment * (REACTIVE_EXPLORATION_BUDGET_MULT_MAX - learned_budget)
+        else:
+            budget_mult = REACTIVE_EXPLORATION_BUDGET_MULT + adjustment * (
+                REACTIVE_EXPLORATION_BUDGET_MULT_MAX - REACTIVE_EXPLORATION_BUDGET_MULT
+            )
+
+        # Clamp to bounds
+        gap_mult = max(REACTIVE_EXPLORATION_GAP_MULT_MIN, min(REACTIVE_EXPLORATION_GAP_MULT_MAX, gap_mult))
+        budget_mult = max(REACTIVE_EXPLORATION_BUDGET_MULT_MIN, min(REACTIVE_EXPLORATION_BUDGET_MULT_MAX, budget_mult))
+
+        logger.debug(
+            "[db] Adaptive reactive multipliers: gap=%.2f, budget=%.2f "
+            "(success_rate=%.2f, std=%.2f, n=%d)",
+            gap_mult, budget_mult, success_mean, std, n
+        )
+
+        return (gap_mult, budget_mult)
 
     # =========================================================================
     # PLAN_STEP_STATS: Statistical blame accumulation for (plan, position, node)

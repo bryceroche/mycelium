@@ -83,7 +83,6 @@ from mycelium.data_layer.mcts import (
     record_leaf_rejection,
     get_leaf_rejection_stats,
     get_leaves_needing_decomposition,
-    check_and_reject_if_low_similarity,
     flag_high_rejection_leaves_for_decomposition,
     # DB maturity (for general use)
     compute_db_maturity,
@@ -173,7 +172,6 @@ __all__ = [
     "record_leaf_rejection",
     "get_leaf_rejection_stats",
     "get_leaves_needing_decomposition",
-    "check_and_reject_if_low_similarity",
     "flag_high_rejection_leaves_for_decomposition",
     # DB maturity
     "compute_db_maturity",
