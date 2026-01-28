@@ -14,7 +14,7 @@ import numpy as np
 # Global centroid cache - keyed by signature_id
 # Using a simple dict with manual eviction for flexibility
 _centroid_cache: dict[int, np.ndarray] = {}
-_CENTROID_CACHE_MAX_SIZE = 10000
+# CENTROID_CACHE_MAX_SIZE imported from config.py (per "The Flow": no magic numbers)
 
 
 # =============================================================================
@@ -118,6 +118,7 @@ from mycelium.config import (
     SIGNATURE_CACHE_MAX_SIZE,
     SIGNATURE_CACHE_TTL_SECONDS,
     CHILDREN_CACHE_MAX_SIZE,
+    CENTROID_CACHE_MAX_SIZE,
 )
 
 # Cache for get_signature(id) -> StepSignature
@@ -207,9 +208,9 @@ def get_cached_centroid(sig_id: int, centroid_json: str) -> np.ndarray:
     centroid = unpack_embedding(centroid_json)
     if centroid is not None:
         # Simple eviction: clear half when full
-        if len(_centroid_cache) >= _CENTROID_CACHE_MAX_SIZE:
+        if len(_centroid_cache) >= CENTROID_CACHE_MAX_SIZE:
             # Keep most recent half (roughly)
-            keys_to_remove = list(_centroid_cache.keys())[:_CENTROID_CACHE_MAX_SIZE // 2]
+            keys_to_remove = list(_centroid_cache.keys())[:CENTROID_CACHE_MAX_SIZE // 2]
             for k in keys_to_remove:
                 del _centroid_cache[k]
         _centroid_cache[sig_id] = centroid
@@ -233,7 +234,7 @@ def get_centroid_cache_stats() -> dict:
     """Get cache statistics for monitoring."""
     return {
         "size": len(_centroid_cache),
-        "max_size": _CENTROID_CACHE_MAX_SIZE,
+        "max_size": CENTROID_CACHE_MAX_SIZE,
     }
 
 

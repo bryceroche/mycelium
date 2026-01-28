@@ -19,6 +19,7 @@ import logging
 from typing import Optional
 
 from mycelium.embedding_cache import cached_embed
+from mycelium.config import GRAPH_EMBEDDING_CACHE_MAX_SIZE
 
 logger = logging.getLogger(__name__)
 
@@ -392,8 +393,8 @@ def graph_to_natural_language(graph: str) -> str:
 
 
 # Graph embedding cache
+# GRAPH_EMBEDDING_CACHE_MAX_SIZE imported from config.py (per "The Flow": no magic numbers)
 _graph_embedding_cache: dict[str, list[float]] = {}
-_GRAPH_CACHE_MAX_SIZE = 500
 
 
 def clear_graph_embedding_cache() -> None:
@@ -440,8 +441,8 @@ def embed_computation_graph_sync(
         embedding = embedding_array.tolist()
 
         # Cache
-        if len(_graph_embedding_cache) >= _GRAPH_CACHE_MAX_SIZE:
-            keys_to_remove = list(_graph_embedding_cache.keys())[:_GRAPH_CACHE_MAX_SIZE // 10]
+        if len(_graph_embedding_cache) >= GRAPH_EMBEDDING_CACHE_MAX_SIZE:
+            keys_to_remove = list(_graph_embedding_cache.keys())[:GRAPH_EMBEDDING_CACHE_MAX_SIZE // 10]
             for k in keys_to_remove:
                 del _graph_embedding_cache[k]
 

@@ -399,6 +399,8 @@ DSL_EXPR_CACHE_MAX_SIZE = 1000  # Max entries in DSL expression cache
 SIGNATURE_CACHE_MAX_SIZE = 1000  # Max entries in signature lookup cache
 SIGNATURE_CACHE_TTL_SECONDS = 60.0  # TTL for cached entries (seconds)
 CHILDREN_CACHE_MAX_SIZE = 500  # Max entries for get_children cache
+CENTROID_CACHE_MAX_SIZE = 10000  # Max entries for centroid embedding cache
+GRAPH_EMBEDDING_CACHE_MAX_SIZE = 500  # Max entries for graph embedding cache
 
 # =============================================================================
 # DEPTH-AWARE DECOMPOSITION
