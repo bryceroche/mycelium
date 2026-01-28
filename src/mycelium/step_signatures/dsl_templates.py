@@ -22,6 +22,7 @@ from mycelium.config import (
     DSL_EXOTIC_THRESHOLD_BONUS,
     DSL_EXOTIC_THRESHOLD_MAX,
 )
+from mycelium.embedding_cache import cached_embed
 
 logger = logging.getLogger(__name__)
 
@@ -394,7 +395,7 @@ def _get_param_anchor_embeddings(embedder=None):
 
         _param_anchor_embeddings = {}
         for op, anchor_text in _PARAM_ANCHORS.items():
-            _param_anchor_embeddings[op] = embedder.embed(anchor_text)
+            _param_anchor_embeddings[op] = cached_embed(anchor_text, embedder)
 
         return _param_anchor_embeddings
     except Exception as e:

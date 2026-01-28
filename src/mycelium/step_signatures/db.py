@@ -1400,16 +1400,8 @@ class StepSignatureDB:
         Returns:
             The created or matched StepSignature
         """
-        from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
-
-        # Compute graph_embedding from dsl_hint if provided
-        step_graph_emb = None
-        if dsl_hint:
-            op_graph = self._dsl_hint_to_graph(dsl_hint)
-            if op_graph:
-                step_graph_emb_list = embed_computation_graph_sync(self.embedder, op_graph)
-                if step_graph_emb_list:
-                    step_graph_emb = np.array(step_graph_emb_list)
+        # Per CLAUDE.md "New Favorite Pattern": Use consolidated helper
+        step_graph_emb = self._get_graph_embedding_from_hint(dsl_hint)
 
         # Use consolidated propose_signature pathway
         # Handles: cold start, Welford decisions, dedup (MERGE), placement
@@ -1526,21 +1518,16 @@ class StepSignatureDB:
                         has_graph = best_match.graph_embedding is not None
 
                         if has_graph and dsl_hint:
-                            # Convert dsl_hint to graph embedding for operational comparison
-                            # Per CLAUDE.md: route by what operations DO, not what they SOUND LIKE
+                            # Per CLAUDE.md "New Favorite Pattern": Use consolidated helper
                             try:
-                                op_graph = self._dsl_hint_to_graph(dsl_hint)
-                                if op_graph:
-                                    from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
-                                    step_graph_emb_list = embed_computation_graph_sync(self.embedder, op_graph)
-                                    if step_graph_emb_list:
-                                        step_graph_emb = np.array(step_graph_emb_list)
-                                        leaf_graph_emb = np.array(best_match.graph_embedding)
-                                        rejection_sim = cosine_similarity(step_graph_emb, leaf_graph_emb)
-                                        logger.debug(
-                                            "[routing] Leaf '%s' graph_sim=%.3f text_sim=%.3f",
-                                            best_match.step_type, rejection_sim, best_sim
-                                        )
+                                step_graph_emb = self._get_graph_embedding_from_hint(dsl_hint)
+                                if step_graph_emb is not None:
+                                    leaf_graph_emb = np.array(best_match.graph_embedding)
+                                    rejection_sim = cosine_similarity(step_graph_emb, leaf_graph_emb)
+                                    logger.debug(
+                                        "[routing] Leaf '%s' graph_sim=%.3f text_sim=%.3f",
+                                        best_match.step_type, rejection_sim, best_sim
+                                    )
                             except Exception as e:
                                 logger.debug("[db] Graph embedding comparison failed: %s", e)
 
@@ -1643,15 +1630,12 @@ class StepSignatureDB:
                     # Update match similarity stats (Welford) for adaptive thresholds
                     # Use graph_embedding similarity if available for more accurate tracking
                     if dsl_hint and best_match.graph_embedding is not None:
-                        op_graph = self._dsl_hint_to_graph(dsl_hint)
-                        if op_graph:
-                            from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
-                            step_graph_emb_list = embed_computation_graph_sync(self.embedder, op_graph)
-                            if step_graph_emb_list:
-                                step_graph_emb = np.array(step_graph_emb_list)
-                                sig_graph_emb = np.array(best_match.graph_embedding)
-                                graph_sim = cosine_similarity(step_graph_emb, sig_graph_emb)
-                                update_similarity_stats(conn, 'match', graph_sim)
+                        # Per CLAUDE.md "New Favorite Pattern": Use consolidated helper
+                        step_graph_emb = self._get_graph_embedding_from_hint(dsl_hint)
+                        if step_graph_emb is not None:
+                            sig_graph_emb = np.array(best_match.graph_embedding)
+                            graph_sim = cosine_similarity(step_graph_emb, sig_graph_emb)
+                            update_similarity_stats(conn, 'match', graph_sim)
 
                     conn.commit()
                     logger.debug(
@@ -1664,15 +1648,8 @@ class StepSignatureDB:
                 # This prevents creating duplicate signatures with near-identical graph_embeddings
 
                 # Compute graph_embedding for this step
-                # CRITICAL: Use embed_computation_graph_sync for consistency with stored embeddings
-                step_graph_emb = None
-                if dsl_hint:
-                    op_graph = self._dsl_hint_to_graph(dsl_hint)
-                    if op_graph:
-                        from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
-                        step_graph_emb_list = embed_computation_graph_sync(self.embedder, op_graph)
-                        if step_graph_emb_list:
-                            step_graph_emb = np.array(step_graph_emb_list)
+                # Per CLAUDE.md "New Favorite Pattern": Use consolidated helper
+                step_graph_emb = self._get_graph_embedding_from_hint(dsl_hint)
 
                 # Global dedup: search ALL signatures for high-similarity match
                 if step_graph_emb is not None:
@@ -1858,18 +1835,10 @@ class StepSignatureDB:
         logger.debug("[db] Fork threshold: %.3f (sigs=%d, cold_start=%.2f, mature=%.2f)",
                      fork_threshold, sig_count, SCAFFOLD_FORK_THRESHOLD_COLD_START, SCAFFOLD_FORK_THRESHOLD)
 
-        # Compute step's graph_embedding from dsl_hint for operational routing
-        # Per CLAUDE.md: route by what operations DO, not what they SOUND LIKE
-        # CRITICAL: Use embed_computation_graph_sync for consistency with stored embeddings
-        step_graph_embedding = None
-        if dsl_hint:
-            op_graph = self._dsl_hint_to_graph(dsl_hint)
-            if op_graph:
-                from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
-                step_graph_emb_list = embed_computation_graph_sync(self.embedder, op_graph)
-                if step_graph_emb_list:
-                    step_graph_embedding = np.array(step_graph_emb_list)
-                    logger.debug("[db] Computed step_graph_embedding from dsl_hint=%s", dsl_hint)
+        # Per CLAUDE.md "New Favorite Pattern": Use consolidated helper
+        step_graph_embedding = self._get_graph_embedding_from_hint(dsl_hint)
+        if step_graph_embedding is not None:
+            logger.debug("[db] Computed step_graph_embedding from dsl_hint=%s", dsl_hint)
 
         # Start at root
         root_row = conn.execute(
@@ -4483,6 +4452,31 @@ class StepSignatureDB:
         }
 
         return HINT_TO_GRAPH.get(hint)
+
+    def _get_graph_embedding_from_hint(self, dsl_hint: Optional[str]) -> Optional[np.ndarray]:
+        """Convert DSL hint to graph embedding.
+
+        Per CLAUDE.md "New Favorite Pattern": Consolidates repeated pattern of
+        _dsl_hint_to_graph() + embed_computation_graph_sync().
+
+        Args:
+            dsl_hint: DSL operation hint like "+", "multiply", etc.
+
+        Returns:
+            Graph embedding as numpy array, or None if conversion fails
+        """
+        if not dsl_hint:
+            return None
+
+        graph = self._dsl_hint_to_graph(dsl_hint)
+        if not graph:
+            return None
+
+        from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
+        emb_list = embed_computation_graph_sync(self.embedder, graph)
+        if emb_list:
+            return np.array(emb_list)
+        return None
 
     def _get_atomic_embeddings(self) -> list[np.ndarray]:
         """Get cached embeddings for atomic operations.
