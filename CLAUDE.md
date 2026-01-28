@@ -11,7 +11,7 @@ We want to consolidate methods - for example all database connections should go 
 
 ## The Flow
 Database Statistics → Welford → Tree Structure 
-Accurate database statistics are our source of truth which power the Welford algorithm which guides the tree structure and all decisions such as cluster boundaries, when to add a node as a sibling or child, when to decompose a leaf node into an umbrella router.
+Accurate database statistics power the Welford algorithm which guides the tree structure and all decisions such as cluster boundaries, when to add a node as a sibling or child, when to decompose a leaf node into an umbrella router.  Also we want to minimize usage of magic numbers.
 
 # Claude Code Instructions
 
