@@ -685,7 +685,17 @@ def main():
         default=1.0,
         help="MCTS compute budget: 1.0=single-path, 2.0+=multi-path exploration (default: 1.0)",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug logging (shows signature placement, routing decisions, etc.)",
+    )
     args = parser.parse_args()
+
+    # Set debug logging if requested
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logging.getLogger("mycelium").setLevel(logging.DEBUG)
 
     run_pipeline(
         num_problems=args.problems,
