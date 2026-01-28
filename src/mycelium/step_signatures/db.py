@@ -33,6 +33,16 @@ ATOMIC_SIMILARITY_THRESHOLD = 0.70  # Below this, step is unknown/complex
 ATOMIC_GAP_THRESHOLD = 0.03  # Gap between best and 2nd best match; below this = multi-part
 
 
+class SignatureStat(Enum):
+    """Types of signature statistics that can be incremented.
+
+    Per CLAUDE.md "New Favorite Pattern": Single enum for all stat types
+    to consolidate the increment_signature_stat() API.
+    """
+    SUCCESS = "successes"
+    FAILURE = "operational_failures"
+
+
 def _parse_centroid_data(data) -> Optional[np.ndarray]:
     """Parse centroid data which may be JSON string or binary bytes.
 
@@ -1225,6 +1235,26 @@ class StepSignatureDB:
     # =========================================================================
     # Core: Find or Create
     # =========================================================================
+    #
+    # CONSOLIDATED SIGNATURE CREATION PATTERN (per CLAUDE.md "New Favorite Pattern")
+    #
+    # All signature creation flows through these layers:
+    #
+    #   PUBLIC APIS:
+    #   ├── find_or_create()      → Routes first, creates if no match
+    #   ├── find_or_create_async() → Async version of above
+    #   └── create_signature()    → Skips routing, direct creation with parent_id
+    #
+    #   INTERNAL LAYERS:
+    #   ├── propose_signature()   → SINGLE ENTRY for placement decisions
+    #   │                           (cold start, Welford-based, dedup/merge)
+    #   └── _create_signature_atomic() → SINGLE ENTRY for INSERT
+    #
+    # Use cases:
+    # - find_or_create: Normal routing - find existing match OR create new
+    # - create_signature: Explicit creation - knows parent, skips routing
+    #
+    # =========================================================================
 
     def find_or_create(
         self,
@@ -1461,14 +1491,24 @@ class StepSignatureDB:
                 ).fetchone()
 
                 if root_row is None:
-                    # Empty DB - create root signature
-                    sig = self._create_signature_atomic(
-                        conn, step_text, embedding, parent_problem, origin_depth,
-                        extracted_values=extracted_values, dsl_hint=dsl_hint
+                    # Empty DB - create root signature via propose_signature
+                    # Per CLAUDE.md "New Favorite Pattern": ALL creation through propose_signature
+                    step_graph_emb = self._get_graph_embedding_from_hint(dsl_hint)
+                    sig_id, placement = self.propose_signature(
+                        step_text=step_text,
+                        embedding=embedding,
+                        graph_embedding=step_graph_emb,
+                        proposed_parent_id=None,  # No parent for root
+                        dsl_hint=dsl_hint,
+                        extracted_values=extracted_values,
+                        origin_depth=origin_depth,
+                        problem_context=parent_problem,
+                        conn=conn,
                     )
+                    sig = self.get_signature(sig_id)
                     conn.commit()
                     logger.info(
-                        "[db] Created ROOT signature: step='%s' type='%s'",
+                        "[db] Created ROOT signature via propose_signature: step='%s' type='%s'",
                         step_text[:40], sig.step_type
                     )
                     return sig, True
@@ -2814,6 +2854,35 @@ class StepSignatureDB:
                         _depth=_depth + 1,
                     )
 
+    def increment_signature_stat(
+        self,
+        signature_id: int,
+        stat_type: SignatureStat,
+        *,
+        amount: float = 1.0,
+        propagate_to_parents: bool = True,
+    ):
+        """Single entry point for all signature stat updates.
+
+        Per CLAUDE.md "New Favorite Pattern": Consolidated pathway for all stat increments.
+        Per CLAUDE.md "Credit Propagation": Automatically propagates to parents with decay.
+
+        Args:
+            signature_id: ID of the signature to update
+            stat_type: SignatureStat.SUCCESS or SignatureStat.FAILURE
+            amount: Amount to increment by (default 1.0, use fractional for partial credit)
+            propagate_to_parents: If True, propagate credit up to parent routers with decay
+        """
+        with self._connection() as conn:
+            self._increment_signature_stat(
+                conn, signature_id, stat_type.value,
+                amount=amount, propagate_to_parents=propagate_to_parents, _depth=0
+            )
+
+    # -------------------------------------------------------------------------
+    # DEPRECATED: Old wrapper methods - use increment_signature_stat() instead
+    # -------------------------------------------------------------------------
+
     def increment_signature_successes(
         self,
         signature_id: int,
@@ -2821,22 +2890,18 @@ class StepSignatureDB:
         propagate_to_parents: bool = True,
         _depth: int = 0,
     ):
-        """Increment the successes count for a signature.
-
-        Per beads mycelium-itkn: Used by amplitude credit propagation.
-        Per CLAUDE.md: "Parent umbrellas get decay^depth credit (default 0.5 per level)"
-
-        Args:
-            signature_id: ID of the signature
-            count: Amount to increment by (default 1)
-            propagate_to_parents: If True, propagate credit up to parent routers with decay
-            _depth: Internal recursion depth tracker
-        """
-        with self._connection() as conn:
-            self._increment_signature_stat(
-                conn, signature_id, "successes",
-                amount=count, propagate_to_parents=propagate_to_parents, _depth=_depth
-            )
+        """DEPRECATED: Use increment_signature_stat(id, SignatureStat.SUCCESS) instead."""
+        import warnings
+        warnings.warn(
+            "increment_signature_successes() is deprecated. "
+            "Use increment_signature_stat(id, SignatureStat.SUCCESS, amount=count) instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        self.increment_signature_stat(
+            signature_id, SignatureStat.SUCCESS,
+            amount=count, propagate_to_parents=propagate_to_parents
+        )
 
     def increment_signature_failures(
         self,
@@ -2845,22 +2910,18 @@ class StepSignatureDB:
         propagate_to_parents: bool = True,
         _depth: int = 0,
     ):
-        """Increment the operational_failures count for a signature.
-
-        Per beads mycelium-itkn: Used by amplitude credit propagation.
-        Per CLAUDE.md: Failure signal also propagates up with decay.
-
-        Args:
-            signature_id: ID of the signature
-            count: Amount to increment by (default 1)
-            propagate_to_parents: If True, propagate failure up to parent routers with decay
-            _depth: Internal recursion depth tracker
-        """
-        with self._connection() as conn:
-            self._increment_signature_stat(
-                conn, signature_id, "operational_failures",
-                amount=count, propagate_to_parents=propagate_to_parents, _depth=_depth
-            )
+        """DEPRECATED: Use increment_signature_stat(id, SignatureStat.FAILURE) instead."""
+        import warnings
+        warnings.warn(
+            "increment_signature_failures() is deprecated. "
+            "Use increment_signature_stat(id, SignatureStat.FAILURE, amount=count) instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        self.increment_signature_stat(
+            signature_id, SignatureStat.FAILURE,
+            amount=count, propagate_to_parents=propagate_to_parents
+        )
 
     def increment_signature_partial_success(
         self,
@@ -2869,23 +2930,18 @@ class StepSignatureDB:
         propagate_to_parents: bool = True,
         _depth: int = 0,
     ):
-        """Increment successes with a fractional weight (partial credit).
-
-        Per beads mycelium-7o8i: Used for correct steps in failed problems.
-        Steps with high confidence in losing threads get partial credit rather
-        than full blame - they were probably correct, just in a bad chain.
-
-        Args:
-            signature_id: ID of the signature
-            weight: Fractional credit (default 0.5 = half a success)
-            propagate_to_parents: If True, propagate partial credit up with decay
-            _depth: Internal recursion depth tracker
-        """
-        with self._connection() as conn:
-            self._increment_signature_stat(
-                conn, signature_id, "successes",
-                amount=weight, propagate_to_parents=propagate_to_parents, _depth=_depth
-            )
+        """DEPRECATED: Use increment_signature_stat(id, SignatureStat.SUCCESS, amount=weight) instead."""
+        import warnings
+        warnings.warn(
+            "increment_signature_partial_success() is deprecated. "
+            "Use increment_signature_stat(id, SignatureStat.SUCCESS, amount=weight) instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        self.increment_signature_stat(
+            signature_id, SignatureStat.SUCCESS,
+            amount=weight, propagate_to_parents=propagate_to_parents
+        )
 
     def merge_signatures(
         self,
@@ -8623,20 +8679,24 @@ class StepSignatureDB:
         return prefix.rstrip("_- ")
 
     def _cleanup_orphan_umbrellas(self, conn=None) -> int:
-        """Remove umbrella signatures that have no children.
+        """Archive umbrella signatures that have no children.
+
+        Per CLAUDE.md System Independence: Uses soft-delete (is_archived=1) to
+        preserve learning history. Permanent deletion loses valuable data.
 
         Per CLAUDE.md: Don't create umbrellas without children.
         This cleans up any orphaned umbrellas from previous operations.
 
         Returns:
-            Number of orphan umbrellas removed
+            Number of orphan umbrellas archived
         """
         def _do_cleanup(c):
-            # Find umbrellas with no children
+            # Find non-archived umbrellas with no children
             cursor = c.execute(
                 """SELECT s.id, s.step_type FROM step_signatures s
                    WHERE s.is_semantic_umbrella = 1
                    AND s.is_root = 0
+                   AND (s.is_archived = 0 OR s.is_archived IS NULL)
                    AND NOT EXISTS (
                        SELECT 1 FROM signature_relationships r WHERE r.parent_id = s.id
                    )"""
@@ -8652,20 +8712,20 @@ class StepSignatureDB:
                 len(orphans), [(row[0], row[1][:30]) for row in orphans]
             )
 
-            # Remove orphans
+            # Archive orphans (soft-delete per CLAUDE.md System Independence)
             for orphan_id in orphan_ids:
-                # Remove from relationships (as child)
+                # Remove from relationships (as child) - clean up graph structure
                 c.execute(
                     "DELETE FROM signature_relationships WHERE child_id = ?",
                     (orphan_id,)
                 )
-                # Delete signature
+                # Soft-delete: archive instead of permanent delete
                 c.execute(
-                    "DELETE FROM step_signatures WHERE id = ?",
+                    "UPDATE step_signatures SET is_archived = 1 WHERE id = ?",
                     (orphan_id,)
                 )
 
-            logger.info("[restructure] Cleaned up %d orphan umbrellas", len(orphan_ids))
+            logger.info("[restructure] Archived %d orphan umbrellas", len(orphan_ids))
             return len(orphan_ids)
 
         if conn is not None:
@@ -8675,6 +8735,71 @@ class StepSignatureDB:
                 c.execute("BEGIN IMMEDIATE")
                 try:
                     result = _do_cleanup(c)
+                    c.commit()
+                    return result
+                except Exception:
+                    c.rollback()
+                    raise
+
+    def _adopt_orphan_children(self, conn=None) -> int:
+        """Adopt orphan children (non-root nodes without parents) under root.
+
+        Per CLAUDE.md System Independence: When a parent is archived, its children
+        may become orphans. Instead of immediate reparenting (which bypasses
+        Welford-guided decisions), we defer to periodic review to adopt orphans.
+
+        Orphan children are attached to root, where subsequent periodic reviews
+        can use Welford stats to place them in appropriate clusters.
+
+        Returns:
+            Number of orphan children adopted
+        """
+        def _do_adopt(c):
+            # Get root ID
+            root = self.get_root()
+            if not root:
+                logger.warning("[review] No root found, cannot adopt orphans")
+                return 0
+
+            # Find non-root, non-archived signatures that have no parent
+            cursor = c.execute(
+                """SELECT s.id, s.step_type FROM step_signatures s
+                   WHERE s.is_root = 0
+                   AND (s.is_archived = 0 OR s.is_archived IS NULL)
+                   AND NOT EXISTS (
+                       SELECT 1 FROM signature_relationships r WHERE r.child_id = s.id
+                   )"""
+            )
+            orphans = cursor.fetchall()
+
+            if not orphans:
+                return 0
+
+            orphan_ids = [row[0] for row in orphans]
+            logger.info(
+                "[review] Found %d orphan children (no parent): %s",
+                len(orphans), [(row[0], row[1][:30]) for row in orphans]
+            )
+
+            # Adopt orphans under root
+            for orphan_id in orphan_ids:
+                c.execute(
+                    """INSERT OR IGNORE INTO signature_relationships
+                       (parent_id, child_id, condition, routing_order)
+                       VALUES (?, ?, 'adopted_orphan', 0)""",
+                    (root.id, orphan_id)
+                )
+
+            logger.info("[review] Adopted %d orphan children under root", len(orphan_ids))
+            return len(orphan_ids)
+
+        if conn is not None:
+            return _do_adopt(conn)
+        else:
+            with self._connection() as c:
+                c.execute("BEGIN IMMEDIATE")
+                try:
+                    result = _do_adopt(c)
                     c.commit()
                     return result
                 except Exception:
@@ -9007,12 +9132,13 @@ class StepSignatureDB:
         - Sub-clustering (high variance → split)
 
         Returns:
-            Dict with review stats: merges, moves, clusters_created, orphans_cleaned
+            Dict with review stats: merges, moves, clusters_created, orphans_adopted, orphans_cleaned
         """
         from mycelium import config
 
         def _do_review(c):
-            stats = {"ran": True, "merges": 0, "moves": 0, "clusters_created": 0, "orphans_cleaned": 0,
+            stats = {"ran": True, "merges": 0, "moves": 0, "clusters_created": 0,
+                     "orphans_adopted": 0, "orphans_cleaned": 0,
                      "embeddings_backfilled": 0, "welford_backfilled": 0}
 
             # 0a. BACKFILL: Ensure all signatures have embeddings (system independence)
@@ -9083,18 +9209,22 @@ class StepSignatureDB:
                         )
                         stats["clusters_created"] += new_clusters
 
-            # 8. Cleanup orphan umbrellas
+            # 8. Adopt orphan children (nodes without parents) under root
+            # Per CLAUDE.md System Independence: deferred reparenting via periodic review
+            stats["orphans_adopted"] = self._adopt_orphan_children(conn=c)
+
+            # 9. Cleanup orphan umbrellas (empty routers)
             stats["orphans_cleaned"] = self._cleanup_orphan_umbrellas(conn=c)
 
-            # 9. Process pending proposals (staged signatures from failed refinement)
+            # 10. Process pending proposals (staged signatures from failed refinement)
             proposals_result = self._process_pending_proposals(conn=c)
             stats["proposals_accepted"] = proposals_result.get("accepted", 0)
             stats["proposals_rejected"] = proposals_result.get("rejected", 0)
 
             logger.info(
-                "[review] Tree review complete: %d merges, %d moves, %d clusters, %d orphans, %d proposals accepted, %d rejected",
-                stats["merges"], stats["moves"], stats["clusters_created"], stats["orphans_cleaned"],
-                stats["proposals_accepted"], stats["proposals_rejected"]
+                "[review] Tree review complete: %d merges, %d moves, %d clusters, %d adopted, %d orphan umbrellas, %d proposals accepted, %d rejected",
+                stats["merges"], stats["moves"], stats["clusters_created"], stats["orphans_adopted"],
+                stats["orphans_cleaned"], stats["proposals_accepted"], stats["proposals_rejected"]
             )
 
             return stats

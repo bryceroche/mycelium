@@ -1727,6 +1727,7 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
         PARTIAL_CREDIT_HIGH_CONF_THRESHOLD,
         PARTIAL_CREDIT_WEIGHT,
     )
+    from mycelium.step_signatures.db import SignatureStat
 
     if not CREDIT_PROPAGATION_ENABLED:
         return {"nodes_processed": 0, "successes_credited": 0, "failures_credited": 0,
@@ -1786,7 +1787,7 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
         # Priority 1: CREDIT - step executed AND problem was correct
         # Both conditions must be true for credit
         if step_succeeded_thread_won > 0:
-            step_db.increment_signature_successes(node_id, count=1, propagate_to_parents=True)
+            step_db.increment_signature_stat(node_id, SignatureStat.SUCCESS, amount=1, propagate_to_parents=True)
             stats["successes_credited"] += 1
             stats["step_level_credit"] += 1
             logger.debug(
@@ -1797,7 +1798,7 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
         # Priority 2: BLAME - step executed but problem was WRONG
         # DSL ran fine but final answer was incorrect - this step may have caused it
         elif step_succeeded_thread_lost > 0:
-            step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
+            step_db.increment_signature_stat(node_id, SignatureStat.FAILURE, amount=1, propagate_to_parents=True)
             stats["failures_credited"] += 1
             stats["step_level_blame"] += 1
             logger.debug(
@@ -1807,7 +1808,7 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
 
         # Priority 3: BLAME - step itself failed (DSL error)
         elif step_failed > 0:
-            step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
+            step_db.increment_signature_stat(node_id, SignatureStat.FAILURE, amount=1, propagate_to_parents=True)
             stats["failures_credited"] += 1
             stats["step_level_blame"] += 1
             logger.debug(
@@ -1817,7 +1818,7 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
 
         # Priority 4: FALLBACK - thread won but step_success not tracked
         elif thread_won_no_step > 0:
-            step_db.increment_signature_successes(node_id, count=1, propagate_to_parents=True)
+            step_db.increment_signature_stat(node_id, SignatureStat.SUCCESS, amount=1, propagate_to_parents=True)
             stats["successes_credited"] += 1
             logger.debug(
                 "[mcts] Thread-level credit to node %d (%d steps in winning thread)",
@@ -1826,7 +1827,7 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
 
         # Priority 5: FALLBACK - high-confidence in losing thread (blame - was confident but wrong)
         elif high_conf_losing > 0:
-            step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
+            step_db.increment_signature_stat(node_id, SignatureStat.FAILURE, amount=1, propagate_to_parents=True)
             stats["failures_credited"] += 1
             logger.debug(
                 "[mcts] Blame to node %d (%d high-conf steps in LOSING thread, avg_amp=%.2f)",
@@ -1835,7 +1836,7 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
 
         # Priority 6: FALLBACK - low-confidence in losing thread (blame)
         elif low_conf_losing > 0:
-            step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
+            step_db.increment_signature_stat(node_id, SignatureStat.FAILURE, amount=1, propagate_to_parents=True)
             stats["failures_credited"] += 1
             logger.debug(
                 "[mcts] Blame to node %d (%d low-conf losing steps, avg_amp=%.2f)",
@@ -2741,6 +2742,7 @@ def assign_divergence_blame(dag_id: str, step_db, cross_dag_ids: list[str] = Non
         Dict with divergence blame statistics
     """
     from mycelium.config import PARTIAL_CREDIT_WEIGHT
+    from mycelium.step_signatures.db import SignatureStat
 
     divergence_points = find_divergence_points(dag_id, cross_dag_ids=cross_dag_ids)
 
@@ -2776,7 +2778,7 @@ def assign_divergence_blame(dag_id: str, step_db, cross_dag_ids: list[str] = Non
                 if i < len(losing_path.steps):
                     node_id = losing_path.steps[i][1]
                     if node_id not in credited_nodes:
-                        step_db.increment_signature_partial_success(node_id, weight=PARTIAL_CREDIT_WEIGHT)
+                        step_db.increment_signature_stat(node_id, SignatureStat.SUCCESS, amount=PARTIAL_CREDIT_WEIGHT)
                         credited_nodes.add(node_id)
                         stats["shared_prefix_credit"] += 1
 
@@ -2784,7 +2786,7 @@ def assign_divergence_blame(dag_id: str, step_db, cross_dag_ids: list[str] = Non
         if dp.losing_node_at_divergence is not None:
             node_id = dp.losing_node_at_divergence
             if node_id not in blamed_nodes:
-                step_db.increment_signature_failures(node_id, count=1)
+                step_db.increment_signature_stat(node_id, SignatureStat.FAILURE, amount=1)
                 blamed_nodes.add(node_id)
                 stats["divergence_blame_assigned"] += 1
                 logger.debug(
@@ -2800,7 +2802,7 @@ def assign_divergence_blame(dag_id: str, step_db, cross_dag_ids: list[str] = Non
                 if node_id not in blamed_nodes and node_id not in credited_nodes:
                     # Give partial blame (0.5 weight) since these might not be
                     # the root cause - they might just be victims of early bad routing
-                    step_db.increment_signature_failures(node_id, count=1)
+                    step_db.increment_signature_stat(node_id, SignatureStat.FAILURE, amount=1)
                     blamed_nodes.add(node_id)
                     stats["suffix_blame_assigned"] += 1
                     logger.debug(
