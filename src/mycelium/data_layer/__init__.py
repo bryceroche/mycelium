@@ -21,6 +21,12 @@ from mycelium.data_layer.state_manager import (
     get_state_manager,
 )
 
+# Thresholds re-exported from config per CLAUDE.md "The Flow"
+from mycelium.config import (
+    REJECTION_COUNT_THRESHOLD,
+    REJECTION_RATE_THRESHOLD,
+)
+
 # MCTS Wave Function data access
 from mycelium.data_layer.mcts import (
     MCTSDag,
@@ -83,10 +89,7 @@ from mycelium.data_layer.mcts import (
     get_decomposition_results,
     are_decompositions_ready,
     get_pending_queue_ids,
-    # Leaf rejection tracking
-    REJECTION_SIM_THRESHOLD,
-    REJECTION_COUNT_THRESHOLD,
-    REJECTION_RATE_THRESHOLD,
+    # Leaf rejection tracking (thresholds now from config.py per "The Flow")
     record_leaf_rejection,
     get_leaf_rejection_stats,
     get_leaves_needing_decomposition,
@@ -177,8 +180,7 @@ __all__ = [
     "get_decomposition_results",
     "are_decompositions_ready",
     "get_pending_queue_ids",
-    # Leaf rejection tracking
-    "REJECTION_SIM_THRESHOLD",
+    # Leaf rejection tracking (thresholds from config.py per "The Flow")
     "REJECTION_COUNT_THRESHOLD",
     "REJECTION_RATE_THRESHOLD",
     "record_leaf_rejection",
