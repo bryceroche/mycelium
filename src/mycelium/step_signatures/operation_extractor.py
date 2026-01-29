@@ -2,24 +2,22 @@
 
 Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
 
-This module extracts the computational operation needed from problem text.
-The extracted operation is then embedded and compared against computation
-graph embeddings for routing.
+This module provides the prompt template for operation extraction.
+Actual embedding is done through embedding_cache.py (per "New Favorite Pattern").
 
 Flow:
-    Problem text → LLM extracts operation → Embed operation → Compare to graph embeddings
+    Problem text → LLM extracts operation → cached_embed_batch() → Compare to graph embeddings
 
 Example:
     "Calculate 25% of 200" → "multiply percentage by base then divide by 100"
     → embed → matches MUL(DIV(param_0, CONST(100)), param_1)
+
+Note: Async embedding functions were removed per mycelium-ocal as they bypassed
+the centralized embedding cache. Use cached_embed() / cached_embed_batch() from
+embedding_cache.py for all embedding needs.
 """
 
-import json
 import logging
-from typing import Optional, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from mycelium.client import LLMClient
 
 logger = logging.getLogger(__name__)
 
@@ -63,169 +61,3 @@ Now extract the operation for this problem:
 
 Problem: {problem_text}
 Operation:'''
-
-
-async def extract_operation_needed(
-    client,  # LLMClient
-    problem_text: str,
-    timeout: float = 10.0,
-) -> Optional[str]:
-    """Extract the computational operation needed from problem text.
-
-    This is the key for routing: we embed this operation description and
-    compare it to computation graph embeddings to find matching signatures.
-
-    Args:
-        client: LLM client for extraction
-        problem_text: The problem or step text
-        timeout: Request timeout in seconds
-
-    Returns:
-        Operation description (e.g., "multiply base by exponent power") or None
-
-    Example:
-        >>> op = await extract_operation_needed(client, "Calculate 2^8")
-        >>> op
-        'raise base to exponent power'
-    """
-    if not problem_text or not problem_text.strip():
-        return None
-
-    # Clean and truncate input
-    problem_text = problem_text.strip()
-    if len(problem_text) > 500:
-        problem_text = problem_text[:500] + "..."
-
-    prompt = OPERATION_EXTRACTION_PROMPT.format(problem_text=problem_text)
-
-    try:
-        messages = [
-            {
-                "role": "system",
-                "content": "You extract computational operations. Respond with only the operation description, nothing else."
-            },
-            {"role": "user", "content": prompt},
-        ]
-
-        response = await client.generate(messages, temperature=0.0)
-
-        if not response:
-            logger.warning("[op_extract] Empty response from LLM")
-            return None
-
-        # Clean up response
-        operation = response.strip()
-
-        # Remove any quotes that might wrap the response
-        if operation.startswith('"') and operation.endswith('"'):
-            operation = operation[1:-1]
-        if operation.startswith("'") and operation.endswith("'"):
-            operation = operation[1:-1]
-
-        # Validate - should be a reasonable length
-        if len(operation) < 3:
-            logger.warning("[op_extract] Operation too short: %s", operation)
-            return None
-        if len(operation) > 200:
-            # Truncate overly verbose responses
-            operation = operation[:200]
-
-        logger.debug("[op_extract] Extracted operation: %s", operation)
-        return operation
-
-    except Exception as e:
-        logger.error("[op_extract] Failed to extract operation: %s", e)
-        return None
-
-
-# Cache for operation embeddings
-# Key: operation description, Value: embedding vector
-_operation_embedding_cache: dict[str, list[float]] = {}
-_CACHE_MAX_SIZE = 1000
-
-
-async def get_operation_embedding(
-    embedding_client,  # Embedding client (e.g., gemini)
-    operation: str,
-) -> Optional[list[float]]:
-    """Get embedding for an operation description, with caching.
-
-    Args:
-        embedding_client: Client for embedding generation
-        operation: Operation description to embed
-
-    Returns:
-        Embedding vector or None
-    """
-    global _operation_embedding_cache
-
-    if not operation:
-        return None
-
-    # Normalize for cache lookup
-    cache_key = operation.lower().strip()
-
-    # Check cache
-    if cache_key in _operation_embedding_cache:
-        logger.debug("[op_embed] Cache hit for: %s", cache_key[:50])
-        return _operation_embedding_cache[cache_key]
-
-    # Generate embedding
-    try:
-        embedding = await embedding_client.embed(operation)
-
-        if embedding:
-            # Cache with LRU-like behavior
-            if len(_operation_embedding_cache) >= _CACHE_MAX_SIZE:
-                # Remove oldest entries (first 10%)
-                keys_to_remove = list(_operation_embedding_cache.keys())[:_CACHE_MAX_SIZE // 10]
-                for k in keys_to_remove:
-                    del _operation_embedding_cache[k]
-
-            _operation_embedding_cache[cache_key] = embedding
-            logger.debug("[op_embed] Cached embedding for: %s", cache_key[:50])
-
-        return embedding
-
-    except Exception as e:
-        logger.error("[op_embed] Failed to embed operation: %s", e)
-        return None
-
-
-def clear_operation_cache() -> None:
-    """Clear the operation embedding cache."""
-    global _operation_embedding_cache
-    _operation_embedding_cache.clear()
-    logger.debug("[op_embed] Cache cleared")
-
-
-async def extract_and_embed_operation(
-    llm_client,
-    embedding_client,
-    problem_text: str,
-) -> tuple[Optional[str], Optional[list[float]]]:
-    """Extract operation from problem and embed it in one call.
-
-    Convenience function combining extraction and embedding.
-
-    Args:
-        llm_client: LLM client for operation extraction
-        embedding_client: Client for embedding generation
-        problem_text: The problem or step text
-
-    Returns:
-        Tuple of (operation_description, embedding) or (None, None)
-
-    Example:
-        >>> op, emb = await extract_and_embed_operation(llm, gemini, "Calculate 2^8")
-        >>> op
-        'raise base to exponent power'
-        >>> len(emb)
-        3072
-    """
-    operation = await extract_operation_needed(llm_client, problem_text)
-    if not operation:
-        return None, None
-
-    embedding = await get_operation_embedding(embedding_client, operation)
-    return operation, embedding

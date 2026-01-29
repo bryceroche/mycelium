@@ -64,17 +64,12 @@ from mycelium.step_signatures.graph_extractor import (
     extract_computation_graph,
     graphs_equivalent,
     graph_to_natural_language,
-    embed_computation_graph,
     embed_computation_graph_sync,
     clear_graph_embedding_cache,
-    populate_graph_embeddings,
 )
 
 from mycelium.step_signatures.operation_extractor import (
-    extract_operation_needed,
-    get_operation_embedding,
-    extract_and_embed_operation,
-    clear_operation_cache,
+    OPERATION_EXTRACTION_PROMPT,
 )
 
 from mycelium.step_signatures.divergence import (
@@ -134,15 +129,10 @@ __all__ = [
     "extract_computation_graph",
     "graphs_equivalent",
     "graph_to_natural_language",
-    "embed_computation_graph",
     "embed_computation_graph_sync",
     "clear_graph_embedding_cache",
-    "populate_graph_embeddings",
-    # Operation Extraction (for routing)
-    "extract_operation_needed",
-    "get_operation_embedding",
-    "extract_and_embed_operation",
-    "clear_operation_cache",
+    # Operation Extraction (prompt template only - use cached_embed for embedding)
+    "OPERATION_EXTRACTION_PROMPT",
     # Divergence-based Natural Splitting
     "DivergenceResult",
     "SplitResult",

@@ -22,18 +22,25 @@ logger = logging.getLogger(__name__)
 class RejectionResult:
     """Result of a rejection check.
 
+    Per CLAUDE.md "New Favorite Pattern": Single result struct with all
+    rejection-related info so callers don't need to coordinate multiple calls.
+
     Attributes:
         rejected: Whether the step was rejected
         signature: The signature (None if rejected)
         similarity: The similarity score
         threshold: The adaptive threshold used for comparison
         reason: Why rejection happened (None if not rejected)
+        rejection_count: Current rejection count for signature (if rejected)
+        should_decompose: Whether signature has hit decomposition threshold
     """
     rejected: bool
     signature: Optional["StepSignature"]
     similarity: float
     threshold: float
     reason: Optional[str] = None
+    rejection_count: int = 0
+    should_decompose: bool = False
 
 
 def check_rejection(
@@ -94,23 +101,31 @@ def check_rejection(
 
     # Check if similarity is below threshold
     if similarity < threshold:
+        rejection_count = 0
+        should_decompose = False
+
         # Record rejection for learning if requested
+        # Per CLAUDE.md "New Favorite Pattern": Use consolidated reject_dag_step()
         if record and step_text is not None:
-            from mycelium.data_layer.mcts import record_leaf_rejection
-            record_leaf_rejection(
+            from mycelium.data_layer.mcts import reject_dag_step
+            decision = reject_dag_step(
                 signature_id=signature.id,
-                step_text=step_text,
                 similarity=similarity,
+                step_text=step_text,
                 dag_step_id=dag_step_id,
                 problem_context=problem_context,
+                reason="below_threshold",
                 conn=conn,
             )
+            rejection_count = decision.rejection_count
+            should_decompose = decision.should_decompose
 
         logger.debug(
             "[rejection] Sig %d (%s) rejected: sim=%.3f < threshold=%.3f "
-            "(n=%d, mean=%.3f)",
+            "(n=%d, mean=%.3f, total_rejections=%d, should_decompose=%s)",
             signature.id, signature.step_type, similarity, threshold,
             signature.success_sim_count, signature.success_sim_mean,
+            rejection_count, should_decompose,
         )
 
         return RejectionResult(
@@ -119,6 +134,8 @@ def check_rejection(
             similarity=similarity,
             threshold=threshold,
             reason="below_threshold",
+            rejection_count=rejection_count,
+            should_decompose=should_decompose,
         )
 
     # Accepted

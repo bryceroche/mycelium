@@ -60,6 +60,9 @@ from mycelium.config import (
     MATURITY_MAX_DECOMPOSE_PROB,
     MATURITY_ESCAPE_MIN_SUBSTEPS,
     MATURITY_ESCAPE_MAX_MISSES,
+    # Routing similarity thresholds (per CLAUDE.md "The Flow")
+    ROUTING_MIN_SIMILARITY,
+    ROUTING_MIN_SIMILARITY_PERMISSIVE,
 )
 from mycelium.planner import TreeGuidedPlanner, Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
@@ -1509,7 +1512,7 @@ class Solver:
                             operation_embedding=operation_embedding,
                             dag_step_type=getattr(step, 'dsl_hint', None) or step.task[:40],
                             top_k=3,
-                            min_similarity=max(0.5, rejection_result.threshold - 0.1),  # Allow slightly lower alternatives
+                            min_similarity=max(ROUTING_MIN_SIMILARITY_PERMISSIVE, rejection_result.threshold - 0.1),  # Allow slightly lower alternatives
                         )
 
                         # Filter out the already-rejected signature
@@ -1618,7 +1621,7 @@ class Solver:
                     operation_embedding=operation_embedding,
                     dag_step_type=getattr(step, 'dsl_hint', None) or step.task[:40],
                     top_k=3,
-                    min_similarity=0.5,  # Permissive - adaptive threshold applied per-candidate
+                    min_similarity=ROUTING_MIN_SIMILARITY_PERMISSIVE,  # Permissive - adaptive threshold applied per-candidate
                 )
 
             if mcts_candidates:
@@ -1954,6 +1957,14 @@ class Solver:
         # This tracks the execution success rate for each signature
         if routed_signature:
             self.step_db.update_welford_exec(routed_signature.id, success=step_completed)
+
+            # Accumulate embedding drift on successful matches (per mycelium-ieq4)
+            # Per CLAUDE.md: "High-traffic signatures become semantic attractors"
+            if step_completed and step.id in self._operation_embeddings:
+                self.step_db.accumulate_embedding_drift(
+                    signature_id=routed_signature.id,
+                    success_embedding=self._operation_embeddings[step.id],
+                )
 
         # 7. Regenerate DSL on mod 10 uses (continuous learning)
         # Background task: don't block the hot path
@@ -5205,7 +5216,7 @@ Rules:
                         sig, is_new = self.step_db.find_or_create(
                             step_text=atomic_step,
                             embedding=embedding,
-                            min_similarity=0.85,
+                            min_similarity=MIN_MATCH_THRESHOLD,
                             parent_problem=item.get('problem_context', ''),
                         )
                         created_ids.append(sig.id)

@@ -21,6 +21,9 @@ from mycelium.config import (
     TREE_GUIDED_NOVELTY_K,
     TREE_GUIDED_NOVELTY_MIN_SAMPLES,
     TREE_GUIDED_NOVELTY_DEFAULT_THRESHOLD,
+    # Similarity thresholds (per CLAUDE.md "The Flow")
+    HINT_ALTERNATIVES_MIN_SIMILARITY,
+    TREE_PLANNER_NEGOTIATION_SIMILARITY_THRESHOLD,
 )
 
 
@@ -1225,7 +1228,7 @@ class TreeGuidedPlanner:
                 operation_embedding=embedding,
                 dag_step_type=step.operation_type,  # Use operation type, not description
                 top_k=top_k,
-                min_similarity=0.3,  # Permissive - we'll filter by novelty threshold
+                min_similarity=HINT_ALTERNATIVES_MIN_SIMILARITY,  # Permissive - we'll filter by novelty threshold
             )
 
             for sig, ucb1_score, similarity in matches:
@@ -1528,7 +1531,7 @@ Refine these steps into concrete operations with values."""
         self,
         problem: str,
         max_rounds: int = 2,
-        similarity_threshold: float = 0.7,
+        similarity_threshold: float = TREE_PLANNER_NEGOTIATION_SIMILARITY_THRESHOLD,
     ) -> SegmentationResult:
         """Tree-Planner negotiation for dag_step refinement.
 
@@ -1571,6 +1574,15 @@ Refine these steps into concrete operations with values."""
 
             embeddings_dict = cached_embed_batch(graph_texts, self.embedder)
             embeddings = [embeddings_dict[text] for text in graph_texts]
+
+            # Validate embedding dimensions
+            from mycelium.config import EMBEDDING_DIM
+            for i, (text, emb) in enumerate(zip(graph_texts, embeddings)):
+                if emb is None or emb.shape[0] != EMBEDDING_DIM:
+                    logger.warning(
+                        "[planner] Bad embedding for step %d: shape=%s, text='%s...'",
+                        i, emb.shape if emb is not None else None, text[:50]
+                    )
 
             # Phase 3: Tree evaluates matches and provides hints
             # Per CLAUDE.md "Cluster Boundaries": Welford stats guide accept/reject

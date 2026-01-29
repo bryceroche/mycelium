@@ -34,6 +34,19 @@ from mycelium.config import (
     POSTMORTEM_DSL_REGEN_ENABLED,
     POSTMORTEM_DSL_REGEN_MIN_HIGH_CONF_WRONG,
     POSTMORTEM_DSL_REGEN_BATCH_SIZE,
+    # Per CLAUDE.md "The Flow": thresholds from config
+    ATOMIC_SIMILARITY_THRESHOLD,
+    NEW_CHILD_SIMILARITY_THRESHOLD,
+    VARIANCE_THRESHOLD,
+    # Rejection decomposition thresholds (per CLAUDE.md "The Flow")
+    REJECTION_COUNT_THRESHOLD_COLD,
+    REJECTION_COUNT_THRESHOLD_MATURE,
+    REJECTION_COUNT_RAMP_SIGNATURES,
+    REJECTION_RATE_THRESHOLD,
+    # Welford-guided rejection rate threshold
+    REJECTION_RATE_WELFORD_ENABLED,
+    REJECTION_RATE_WELFORD_K,
+    REJECTION_RATE_MIN_SAMPLES,
 )
 
 logger = logging.getLogger(__name__)
@@ -101,6 +114,98 @@ class MCTSThreadStep:
     step_result: Optional[str] = None
     step_success: Optional[int] = None
     created_at: Optional[str] = None
+
+
+# =============================================================================
+# REJECTION DECISION (Per CLAUDE.md "New Favorite Pattern": Consolidated)
+# =============================================================================
+
+
+@dataclass
+class RejectionDecision:
+    """Result of rejecting a dag_step.
+
+    Per CLAUDE.md "New Favorite Pattern": Single return struct for all rejection info.
+    Callers get everything they need without coordinating multiple functions.
+    """
+    signature_id: int
+    rejection_count: int
+    rejection_rate: float
+    should_decompose: bool
+    was_queued: bool = False  # True if step was queued for decomposition
+    count_threshold: int = 0  # Current threshold (varies with system maturity)
+
+
+def reject_dag_step(
+    signature_id: int,
+    similarity: float,
+    step_text: str = None,
+    dag_step_id: str = None,
+    problem_context: str = None,
+    reason: str = None,
+    conn=None,
+) -> RejectionDecision:
+    """Single entry point for all dag_step rejections.
+
+    Per CLAUDE.md "New Favorite Pattern": Consolidate rejection pathways.
+    This replaces the need to coordinate multiple functions:
+    - increment_rejection_count()
+    - get_leaf_rejection_stats()
+    - queue_for_decomposition()
+    - flag_high_rejection_leaves_for_decomposition()
+
+    Args:
+        signature_id: The leaf signature that rejected
+        similarity: The similarity score that caused rejection
+        step_text: Text of the rejected step (needed for decomposition queue)
+        dag_step_id: Optional link to the dag_step
+        problem_context: Optional problem text for decomposition context
+        reason: Why rejection happened (e.g., "below_threshold", "multi_part")
+        conn: Optional DB connection (reuse to avoid locks)
+
+    Returns:
+        RejectionDecision with all rejection info
+    """
+    from mycelium.step_signatures.db import get_step_db
+    step_db = get_step_db()
+
+    # 1. Record rejection to DB
+    rejection_count = step_db.increment_rejection_count(signature_id, conn=conn)
+
+    # 2. Get stats to check decomposition threshold
+    stats = get_leaf_rejection_stats(signature_id)
+    should_decompose = stats.get("should_decompose", False)
+    count_threshold = stats.get("count_threshold", REJECTION_COUNT_THRESHOLD_MATURE)
+
+    # 3. Queue for decomposition if threshold exceeded AND we have step text
+    was_queued = False
+    if should_decompose and step_text:
+        try:
+            queue_for_decomposition(
+                step_text=step_text,
+                complexity_reason=reason or f"rejected_by_leaf_{signature_id}_sim_{similarity:.3f}",
+                dag_step_id=dag_step_id,
+                problem_context=problem_context,
+                conn=conn,
+            )
+            was_queued = True
+        except Exception as e:
+            logger.warning("[rejection] Failed to queue for decomposition: %s", e)
+
+    logger.debug(
+        "[rejection] Leaf %d rejected step (sim=%.3f), count=%d, rate=%.2f, decompose=%s",
+        signature_id, similarity, rejection_count, stats.get("rejection_rate", 0),
+        should_decompose
+    )
+
+    return RejectionDecision(
+        signature_id=signature_id,
+        rejection_count=rejection_count,
+        rejection_rate=stats.get("rejection_rate", 0.0),
+        should_decompose=should_decompose,
+        was_queued=was_queued,
+        count_threshold=count_threshold,
+    )
 
 
 # =============================================================================
@@ -445,7 +550,7 @@ def get_worst_plans(limit: int = 10, min_uses: int = 3) -> list[dict]:
 def check_substeps_match_existing(
     substeps: list[str],
     step_db,
-    min_similarity: float = 0.70,
+    min_similarity: float = ATOMIC_SIMILARITY_THRESHOLD,
 ) -> tuple[bool, float, list[tuple[str, float]]]:
     """Check if decomposed sub-steps would match existing leaf signatures.
 
@@ -795,13 +900,102 @@ def get_pending_queue_ids() -> list[int]:
 # =============================================================================
 
 
-# Rejection thresholds (per CLAUDE.md: leaves define their own boundaries)
-# DEPRECATED: Now using adaptive Welford-based thresholds per signature
-# Each leaf has success_sim_count/mean/m2 for adaptive threshold = mean - k*stddev
-# This constant is kept for backward compatibility but should not be used
-REJECTION_SIM_THRESHOLD = 0.85  # DEPRECATED - use signature.get_adaptive_rejection_threshold()
-REJECTION_COUNT_THRESHOLD = 10  # Min rejections before considering decomposition
-REJECTION_RATE_THRESHOLD = 0.30  # 30% rejection rate triggers decomposition flag
+# Rejection thresholds - now imported from config.py per CLAUDE.md "The Flow"
+# Cold-start ramping: be more aggressive early, patient later
+# DEPRECATED: REJECTION_SIM_THRESHOLD - use signature.get_adaptive_rejection_threshold() instead
+
+
+def get_rejection_count_threshold() -> int:
+    """Get cold-start aware rejection count threshold.
+
+    Per CLAUDE.md "The Flow": Thresholds adapt based on system maturity.
+    - Cold start (few signatures): flag quickly (3 rejections) to get signal fast
+    - Mature (many signatures): wait for more evidence (10 rejections)
+
+    Returns:
+        int: Minimum rejections before considering decomposition
+    """
+    from mycelium.step_signatures.db import get_step_db
+    step_db = get_step_db()
+    sig_count = step_db.get_signature_count()
+
+    # Linear interpolation from cold to mature
+    if sig_count >= REJECTION_COUNT_RAMP_SIGNATURES:
+        return REJECTION_COUNT_THRESHOLD_MATURE
+
+    # Ramp from cold to mature as signature count grows
+    progress = sig_count / REJECTION_COUNT_RAMP_SIGNATURES
+    threshold = REJECTION_COUNT_THRESHOLD_COLD + progress * (
+        REJECTION_COUNT_THRESHOLD_MATURE - REJECTION_COUNT_THRESHOLD_COLD
+    )
+    return int(threshold)
+
+
+def get_adaptive_rejection_rate_threshold() -> float:
+    """Get Welford-guided rejection rate threshold.
+
+    Per CLAUDE.md "The Flow": Database Statistics → Welford → Tree Structure.
+    Instead of hardcoded 30%, compute adaptive threshold from rejection rate distribution.
+
+    Logic: Threshold = mean + k*std (signatures with rates above this are outliers).
+    Higher rejection rates = worse, so flagging above mean+k*std catches problematic nodes.
+
+    Returns:
+        float: Adaptive rejection rate threshold, or fallback if not enough data
+    """
+    if not REJECTION_RATE_WELFORD_ENABLED:
+        return REJECTION_RATE_THRESHOLD
+
+    conn = get_db()
+    # Get rejection rates from all signatures with enough attempts
+    cursor = conn.execute(
+        """
+        SELECT
+            rejection_count * 1.0 / (uses + rejection_count) as rejection_rate
+        FROM step_signatures
+        WHERE is_semantic_umbrella = 0
+          AND (uses + rejection_count) >= ?
+          AND rejection_count > 0
+        """,
+        (REJECTION_RATE_MIN_SAMPLES,),
+    )
+    rows = cursor.fetchall()
+
+    if len(rows) < 5:
+        # Not enough data for Welford, use fallback
+        return REJECTION_RATE_THRESHOLD
+
+    # Welford's online algorithm for mean and variance
+    n = 0
+    mean = 0.0
+    m2 = 0.0
+
+    for row in rows:
+        rate = row[0]
+        n += 1
+        delta = rate - mean
+        mean += delta / n
+        delta2 = rate - mean
+        m2 += delta * delta2
+
+    if n < 2:
+        return REJECTION_RATE_THRESHOLD
+
+    variance = m2 / (n - 1)  # Sample variance
+    std = variance ** 0.5 if variance > 0 else 0.0
+
+    # Threshold = mean + k*std (higher rate = worse, flag outliers above mean)
+    adaptive_threshold = mean + REJECTION_RATE_WELFORD_K * std
+
+    # Clamp to reasonable bounds
+    adaptive_threshold = max(0.10, min(0.80, adaptive_threshold))
+
+    logger.debug(
+        "[rejection] Welford rate threshold: %.3f (mean=%.3f, std=%.3f, n=%d)",
+        adaptive_threshold, mean, std, n
+    )
+
+    return adaptive_threshold
 
 
 def record_leaf_rejection(
@@ -812,41 +1006,22 @@ def record_leaf_rejection(
     problem_context: str = None,
     conn=None,
 ) -> int:
-    """Record that a leaf signature rejected a dag_step due to low similarity.
+    """DEPRECATED: Use reject_dag_step() instead.
 
-    Args:
-        signature_id: The leaf signature that rejected
-        step_text: The step that was rejected
-        similarity: The similarity score that caused rejection
-        dag_step_id: Optional link to the dag_step
-        problem_context: Optional problem text for context
-        conn: Optional DB connection (reuse caller's connection to avoid locks)
+    Per CLAUDE.md "New Favorite Pattern": All rejection handling goes through
+    reject_dag_step() which provides a unified RejectionDecision struct.
 
-    Returns:
-        Updated rejection_count for the signature
+    This function is kept for backward compatibility but delegates to reject_dag_step().
     """
-    from mycelium.step_signatures.db import get_step_db
-    step_db = get_step_db()
-    rejection_count = step_db.increment_rejection_count(signature_id, conn=conn)
-
-    # Queue the rejected step for decomposition (non-blocking)
-    try:
-        queue_for_decomposition(
-            step_text=step_text,
-            complexity_reason=f"rejected_by_leaf_{signature_id}_sim_{similarity:.3f}",
-            dag_step_id=dag_step_id,
-            problem_context=problem_context,
-            conn=conn,  # Pass connection to avoid lock contention
-        )
-    except Exception as e:
-        logger.warning("[rejection] Failed to queue for decomposition: %s", e)
-
-    logger.debug(
-        "[rejection] Leaf %d rejected step (sim=%.3f), total rejections=%d",
-        signature_id, similarity, rejection_count
+    decision = reject_dag_step(
+        signature_id=signature_id,
+        similarity=similarity,
+        step_text=step_text,
+        dag_step_id=dag_step_id,
+        problem_context=problem_context,
+        conn=conn,
     )
-
-    return rejection_count
+    return decision.rejection_count
 
 
 def get_leaf_rejection_stats(signature_id: int) -> dict:
@@ -877,11 +1052,14 @@ def get_leaf_rejection_stats(signature_id: int) -> dict:
     total_attempts = uses + rejection_count
     rejection_rate = rejection_count / total_attempts if total_attempts > 0 else 0.0
 
-    # Determine if this leaf should be decomposed
+    # Determine if this leaf should be decomposed using adaptive thresholds
+    # Per CLAUDE.md "The Flow": Database Statistics → Welford → Tree Structure
+    count_threshold = get_rejection_count_threshold()
+    rate_threshold = get_adaptive_rejection_rate_threshold()
     should_decompose = (
         not is_umbrella  # Only leaves, not umbrellas
-        and rejection_count >= REJECTION_COUNT_THRESHOLD
-        and rejection_rate >= REJECTION_RATE_THRESHOLD
+        and rejection_count >= count_threshold
+        and rejection_rate >= rate_threshold
     )
 
     return {
@@ -890,6 +1068,8 @@ def get_leaf_rejection_stats(signature_id: int) -> dict:
         "uses": uses,
         "total_attempts": total_attempts,
         "rejection_rate": rejection_rate,
+        "rate_threshold": rate_threshold,  # Include for debugging
+        "count_threshold": count_threshold,  # Include for debugging
         "should_decompose": should_decompose,
     }
 
@@ -897,10 +1077,16 @@ def get_leaf_rejection_stats(signature_id: int) -> dict:
 def get_leaves_needing_decomposition(limit: int = 10) -> list[dict]:
     """Find leaf signatures with high rejection rates that need decomposition.
 
+    Per CLAUDE.md "The Flow": Uses Welford-guided adaptive thresholds.
+    Per CLAUDE.md "New Favorite Pattern": Uses consolidated threshold functions.
+
     Returns:
         List of leaf stats dicts for signatures that should be decomposed
     """
+    count_threshold = get_rejection_count_threshold()
+    rate_threshold = get_adaptive_rejection_rate_threshold()
     conn = get_db()
+
     cursor = conn.execute(
         """
         SELECT id, rejection_count, uses
@@ -911,7 +1097,7 @@ def get_leaves_needing_decomposition(limit: int = 10) -> list[dict]:
         ORDER BY rejection_count DESC
         LIMIT ?
         """,
-        (REJECTION_COUNT_THRESHOLD, REJECTION_RATE_THRESHOLD, limit),
+        (count_threshold, rate_threshold, limit),
     )
 
     results = []
@@ -923,6 +1109,7 @@ def get_leaves_needing_decomposition(limit: int = 10) -> list[dict]:
             "rejection_count": rejection_count,
             "uses": uses,
             "rejection_rate": rejection_count / total if total > 0 else 0,
+            "rate_threshold": rate_threshold,  # Include for debugging
         })
 
     return results
@@ -1727,6 +1914,7 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
         PARTIAL_CREDIT_HIGH_CONF_THRESHOLD,
         PARTIAL_CREDIT_WEIGHT,
     )
+    from mycelium.step_signatures.db import SignatureStat
 
     if not CREDIT_PROPAGATION_ENABLED:
         return {"nodes_processed": 0, "successes_credited": 0, "failures_credited": 0,
@@ -1786,7 +1974,7 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
         # Priority 1: CREDIT - step executed AND problem was correct
         # Both conditions must be true for credit
         if step_succeeded_thread_won > 0:
-            step_db.increment_signature_successes(node_id, count=1, propagate_to_parents=True)
+            step_db.increment_signature_stat(node_id, SignatureStat.SUCCESS, amount=1, propagate_to_parents=True)
             stats["successes_credited"] += 1
             stats["step_level_credit"] += 1
             logger.debug(
@@ -1797,7 +1985,7 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
         # Priority 2: BLAME - step executed but problem was WRONG
         # DSL ran fine but final answer was incorrect - this step may have caused it
         elif step_succeeded_thread_lost > 0:
-            step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
+            step_db.increment_signature_stat(node_id, SignatureStat.FAILURE, amount=1, propagate_to_parents=True)
             stats["failures_credited"] += 1
             stats["step_level_blame"] += 1
             logger.debug(
@@ -1807,7 +1995,7 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
 
         # Priority 3: BLAME - step itself failed (DSL error)
         elif step_failed > 0:
-            step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
+            step_db.increment_signature_stat(node_id, SignatureStat.FAILURE, amount=1, propagate_to_parents=True)
             stats["failures_credited"] += 1
             stats["step_level_blame"] += 1
             logger.debug(
@@ -1817,7 +2005,7 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
 
         # Priority 4: FALLBACK - thread won but step_success not tracked
         elif thread_won_no_step > 0:
-            step_db.increment_signature_successes(node_id, count=1, propagate_to_parents=True)
+            step_db.increment_signature_stat(node_id, SignatureStat.SUCCESS, amount=1, propagate_to_parents=True)
             stats["successes_credited"] += 1
             logger.debug(
                 "[mcts] Thread-level credit to node %d (%d steps in winning thread)",
@@ -1826,7 +2014,7 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
 
         # Priority 5: FALLBACK - high-confidence in losing thread (blame - was confident but wrong)
         elif high_conf_losing > 0:
-            step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
+            step_db.increment_signature_stat(node_id, SignatureStat.FAILURE, amount=1, propagate_to_parents=True)
             stats["failures_credited"] += 1
             logger.debug(
                 "[mcts] Blame to node %d (%d high-conf steps in LOSING thread, avg_amp=%.2f)",
@@ -1835,7 +2023,7 @@ def propagate_amplitude_to_signature_stats(dag_id: str, step_db) -> dict:
 
         # Priority 6: FALLBACK - low-confidence in losing thread (blame)
         elif low_conf_losing > 0:
-            step_db.increment_signature_failures(node_id, count=1, propagate_to_parents=True)
+            step_db.increment_signature_stat(node_id, SignatureStat.FAILURE, amount=1, propagate_to_parents=True)
             stats["failures_credited"] += 1
             logger.debug(
                 "[mcts] Blame to node %d (%d low-conf losing steps, avg_amp=%.2f)",
@@ -2243,7 +2431,7 @@ def get_dag_step_node_stats_single(
 
 def get_high_variance_step_node_pairs(
     min_samples: int = 5,
-    variance_threshold: float = 0.1,
+    variance_threshold: float = VARIANCE_THRESHOLD,
     limit: int = 20,
 ) -> list[dict]:
     """Find nodes (dag_step_types) with high variance - candidates for decomposition.
@@ -2472,7 +2660,7 @@ def update_dag_step_embedding_outcome(
 def find_similar_dag_steps(
     embedding: "np.ndarray",
     limit: int = 20,
-    min_similarity: float = 0.7,
+    min_similarity: float = ATOMIC_SIMILARITY_THRESHOLD,
 ) -> list[dict]:
     """Find dag_steps similar to the given embedding.
 
@@ -2741,6 +2929,7 @@ def assign_divergence_blame(dag_id: str, step_db, cross_dag_ids: list[str] = Non
         Dict with divergence blame statistics
     """
     from mycelium.config import PARTIAL_CREDIT_WEIGHT
+    from mycelium.step_signatures.db import SignatureStat
 
     divergence_points = find_divergence_points(dag_id, cross_dag_ids=cross_dag_ids)
 
@@ -2776,7 +2965,7 @@ def assign_divergence_blame(dag_id: str, step_db, cross_dag_ids: list[str] = Non
                 if i < len(losing_path.steps):
                     node_id = losing_path.steps[i][1]
                     if node_id not in credited_nodes:
-                        step_db.increment_signature_partial_success(node_id, weight=PARTIAL_CREDIT_WEIGHT)
+                        step_db.increment_signature_stat(node_id, SignatureStat.SUCCESS, amount=PARTIAL_CREDIT_WEIGHT)
                         credited_nodes.add(node_id)
                         stats["shared_prefix_credit"] += 1
 
@@ -2784,7 +2973,7 @@ def assign_divergence_blame(dag_id: str, step_db, cross_dag_ids: list[str] = Non
         if dp.losing_node_at_divergence is not None:
             node_id = dp.losing_node_at_divergence
             if node_id not in blamed_nodes:
-                step_db.increment_signature_failures(node_id, count=1)
+                step_db.increment_signature_stat(node_id, SignatureStat.FAILURE, amount=1)
                 blamed_nodes.add(node_id)
                 stats["divergence_blame_assigned"] += 1
                 logger.debug(
@@ -2800,7 +2989,7 @@ def assign_divergence_blame(dag_id: str, step_db, cross_dag_ids: list[str] = Non
                 if node_id not in blamed_nodes and node_id not in credited_nodes:
                     # Give partial blame (0.5 weight) since these might not be
                     # the root cause - they might just be victims of early bad routing
-                    step_db.increment_signature_failures(node_id, count=1)
+                    step_db.increment_signature_stat(node_id, SignatureStat.FAILURE, amount=1)
                     blamed_nodes.add(node_id)
                     stats["suffix_blame_assigned"] += 1
                     logger.debug(
@@ -4142,7 +4331,7 @@ def analyze_decomposition_needs(min_attempts: int = 3, max_win_rate: float = 0.5
     # High variance = node is too generic for this step type = decompose into specialized children
     high_variance_pairs = get_high_variance_step_node_pairs(
         min_samples=min_attempts,
-        variance_threshold=0.1,  # Flag pairs with >0.1 amplitude variance
+        variance_threshold=VARIANCE_THRESHOLD,  # Flag pairs with >threshold amplitude variance
         limit=10,
     )
     pairs_to_decompose = []
@@ -4365,24 +4554,9 @@ def process_retirement_candidates(
 
             elif action == "prune":
                 # Soft delete - archive the signature
-                # Use transaction for atomic re-parent + archive
-                parent = step_db.get_parent(sig_id)
-                children = step_db.get_children(sig_id, for_routing=True)
-
-                # Perform re-parent and archive atomically via step_db method
-                # Note: step_db.archive_signature_with_reparent handles transaction
-                if parent is not None and children:
-                    success = step_db.archive_signature_with_reparent(
-                        sig_id,
-                        parent_id=parent.id,
-                        child_ids=[c.id for c in children],
-                        reason="retirement_prune"
-                    )
-                    if success:
-                        logger.info("[mcts] Reparented %d children of sig %d to parent %d", len(children), sig_id, parent.id)
-                else:
-                    # No children to reparent, just archive
-                    success = step_db.archive_signature(sig_id, reason="retirement_prune")
+                # Per CLAUDE.md System Independence: just archive, let periodic review
+                # adopt orphan children via _adopt_orphan_children()
+                success = step_db.archive_signature(sig_id, reason="retirement_prune")
 
                 if success:
                     pruned_ids.append(sig_id)

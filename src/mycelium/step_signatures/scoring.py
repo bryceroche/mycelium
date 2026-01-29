@@ -29,7 +29,6 @@ from mycelium.config import (
     TRAFFIC_DECAY_RATE,
     TRAFFIC_CACHE_TTL,
     TRAFFIC_GRACE_PROBLEMS,
-    DB_PATH,
     MCTS_SIMILARITY_WEIGHT,
     MCTS_SUCCESS_WEIGHT,
     MCTS_MIN_VISITS_FOR_UCB,
@@ -58,25 +57,25 @@ def utc_now_iso() -> str:
 # Per CLAUDE.md New Favorite Pattern: Consolidated db_metadata access
 
 
-def get_total_problems_solved(db_path: str = DB_PATH) -> int:
+def get_total_problems_solved() -> int:
     """Get total problems solved with TTL caching.
 
     Returns cached value if fresh, otherwise queries DB and updates cache.
     This is called frequently during routing, so we cache aggressively.
 
-    Note: db_path param kept for API compatibility but ignored (uses StateManager).
+    Per CLAUDE.md "New Favorite Pattern": Uses consolidated StateManager.
     """
     # Lazy import to avoid circular dependency
     from mycelium.data_layer.state_manager import get_state_manager, StateManager
     return get_state_manager().get_int(StateManager.KEY_TOTAL_PROBLEMS)
 
 
-def increment_total_problems(db_path: str = DB_PATH) -> int:
+def increment_total_problems() -> int:
     """Increment total problems counter and return new value.
 
     Called once per problem completion. Also updates the cache.
 
-    Note: db_path param kept for API compatibility but ignored (uses StateManager).
+    Per CLAUDE.md "New Favorite Pattern": Uses consolidated StateManager.
     """
     # Lazy import to avoid circular dependency
     from mycelium.data_layer.state_manager import get_state_manager, StateManager

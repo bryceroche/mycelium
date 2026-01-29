@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from mycelium.config import EMBEDDING_DIM
 from mycelium.embedding_cache import (
     normalize_cache_key,
     text_hash,
@@ -66,16 +67,16 @@ class TestEmbeddingSerialization:
 
     def test_round_trip(self):
         """Pack then unpack should preserve embedding."""
-        original = np.random.randn(768).astype(np.float32)
+        original = np.random.randn(EMBEDDING_DIM).astype(np.float32)
         packed = pack_embedding(original)
         unpacked = unpack_embedding(packed)
         np.testing.assert_array_almost_equal(original, unpacked)
 
     def test_packed_size(self):
-        """Packed embedding should be 768 * 4 bytes."""
-        emb = np.zeros(768, dtype=np.float32)
+        """Packed embedding should be EMBEDDING_DIM * 4 bytes."""
+        emb = np.zeros(EMBEDDING_DIM, dtype=np.float32)
         packed = pack_embedding(emb)
-        assert len(packed) == 768 * 4
+        assert len(packed) == EMBEDDING_DIM * 4
 
 
 class TestCacheStats:
@@ -115,7 +116,7 @@ class TestLRUCache:
 
     def test_put_get(self):
         cache = LRUCache(maxsize=10)
-        emb = np.random.randn(768).astype(np.float32)
+        emb = np.random.randn(EMBEDDING_DIM).astype(np.float32)
         cache.put("test", emb)
         result = cache.get("test")
         np.testing.assert_array_equal(emb, result)
@@ -126,9 +127,9 @@ class TestLRUCache:
 
     def test_eviction(self):
         cache = LRUCache(maxsize=2)
-        cache.put("a", np.zeros(768, dtype=np.float32))
-        cache.put("b", np.ones(768, dtype=np.float32))
-        cache.put("c", np.full(768, 2, dtype=np.float32))
+        cache.put("a", np.zeros(EMBEDDING_DIM, dtype=np.float32))
+        cache.put("b", np.ones(EMBEDDING_DIM, dtype=np.float32))
+        cache.put("c", np.full(EMBEDDING_DIM, 2, dtype=np.float32))
 
         # "a" should be evicted (oldest)
         assert cache.get("a") is None
@@ -137,14 +138,14 @@ class TestLRUCache:
 
     def test_lru_order(self):
         cache = LRUCache(maxsize=2)
-        cache.put("a", np.zeros(768, dtype=np.float32))
-        cache.put("b", np.ones(768, dtype=np.float32))
+        cache.put("a", np.zeros(EMBEDDING_DIM, dtype=np.float32))
+        cache.put("b", np.ones(EMBEDDING_DIM, dtype=np.float32))
 
         # Access "a" to make it most recent
         cache.get("a")
 
         # Add "c" - should evict "b" (now oldest)
-        cache.put("c", np.full(768, 2, dtype=np.float32))
+        cache.put("c", np.full(EMBEDDING_DIM, 2, dtype=np.float32))
 
         assert cache.get("a") is not None
         assert cache.get("b") is None
@@ -153,25 +154,25 @@ class TestLRUCache:
     def test_len(self):
         cache = LRUCache(maxsize=10)
         assert len(cache) == 0
-        cache.put("a", np.zeros(768, dtype=np.float32))
+        cache.put("a", np.zeros(EMBEDDING_DIM, dtype=np.float32))
         assert len(cache) == 1
 
     def test_contains(self):
         cache = LRUCache(maxsize=10)
-        cache.put("a", np.zeros(768, dtype=np.float32))
+        cache.put("a", np.zeros(EMBEDDING_DIM, dtype=np.float32))
         assert "a" in cache
         assert "b" not in cache
 
     def test_clear(self):
         cache = LRUCache(maxsize=10)
-        cache.put("a", np.zeros(768, dtype=np.float32))
+        cache.put("a", np.zeros(EMBEDDING_DIM, dtype=np.float32))
         cache.clear()
         assert len(cache) == 0
 
     def test_get_batch(self):
         cache = LRUCache(maxsize=10)
-        cache.put("a", np.zeros(768, dtype=np.float32))
-        cache.put("b", np.ones(768, dtype=np.float32))
+        cache.put("a", np.zeros(EMBEDDING_DIM, dtype=np.float32))
+        cache.put("b", np.ones(EMBEDDING_DIM, dtype=np.float32))
 
         results = cache.get_batch(["a", "b", "c"])
         assert results["a"] is not None
@@ -181,8 +182,8 @@ class TestLRUCache:
     def test_put_batch(self):
         cache = LRUCache(maxsize=10)
         cache.put_batch({
-            "a": np.zeros(768, dtype=np.float32),
-            "b": np.ones(768, dtype=np.float32),
+            "a": np.zeros(EMBEDDING_DIM, dtype=np.float32),
+            "b": np.ones(EMBEDDING_DIM, dtype=np.float32),
         })
         assert cache.get("a") is not None
         assert cache.get("b") is not None
@@ -199,7 +200,7 @@ class TestDiskCache:
 
     def test_put_get(self, temp_db):
         cache = DiskCache(temp_db)
-        emb = np.random.randn(768).astype(np.float32)
+        emb = np.random.randn(EMBEDDING_DIM).astype(np.float32)
         cache.put("test", emb)
         result = cache.get("test")
         np.testing.assert_array_almost_equal(emb, result)
@@ -210,7 +211,7 @@ class TestDiskCache:
 
     def test_persistence(self, temp_db):
         """Data should survive cache recreation."""
-        emb = np.random.randn(768).astype(np.float32)
+        emb = np.random.randn(EMBEDDING_DIM).astype(np.float32)
 
         cache1 = DiskCache(temp_db)
         cache1.put("test", emb)
@@ -223,20 +224,20 @@ class TestDiskCache:
     def test_count(self, temp_db):
         cache = DiskCache(temp_db)
         assert cache.count() == 0
-        cache.put("a", np.zeros(768, dtype=np.float32))
-        cache.put("b", np.ones(768, dtype=np.float32))
+        cache.put("a", np.zeros(EMBEDDING_DIM, dtype=np.float32))
+        cache.put("b", np.ones(EMBEDDING_DIM, dtype=np.float32))
         assert cache.count() == 2
 
     def test_clear(self, temp_db):
         cache = DiskCache(temp_db)
-        cache.put("a", np.zeros(768, dtype=np.float32))
+        cache.put("a", np.zeros(EMBEDDING_DIM, dtype=np.float32))
         cache.clear()
         assert cache.count() == 0
 
     def test_get_batch(self, temp_db):
         cache = DiskCache(temp_db)
-        cache.put("a", np.zeros(768, dtype=np.float32))
-        cache.put("b", np.ones(768, dtype=np.float32))
+        cache.put("a", np.zeros(EMBEDDING_DIM, dtype=np.float32))
+        cache.put("b", np.ones(EMBEDDING_DIM, dtype=np.float32))
 
         results = cache.get_batch(["a", "b", "c"])
         assert results["a"] is not None
@@ -246,8 +247,8 @@ class TestDiskCache:
     def test_put_batch(self, temp_db):
         cache = DiskCache(temp_db)
         cache.put_batch({
-            "a": np.zeros(768, dtype=np.float32),
-            "b": np.ones(768, dtype=np.float32),
+            "a": np.zeros(EMBEDDING_DIM, dtype=np.float32),
+            "b": np.ones(EMBEDDING_DIM, dtype=np.float32),
         })
         assert cache.get("a") is not None
         assert cache.get("b") is not None
@@ -269,27 +270,27 @@ class TestEmbeddingCache:
         return EmbeddingCache(memory_size=100, persist=True, db_path=temp_db)
 
     def test_get_put(self, cache):
-        emb = np.random.randn(768).astype(np.float32)
+        emb = np.random.randn(EMBEDDING_DIM).astype(np.float32)
         cache.put("test text", emb)
         result = cache.get("test text")
         np.testing.assert_array_almost_equal(emb, result)
 
     def test_normalization(self, cache):
         """Text should be normalized before caching."""
-        emb = np.random.randn(768).astype(np.float32)
+        emb = np.random.randn(EMBEDDING_DIM).astype(np.float32)
         cache.put("  HELLO  WORLD  ", emb)
         # Should find with different whitespace/case
         result = cache.get("hello world")
         np.testing.assert_array_almost_equal(emb, result)
 
     def test_memory_hit(self, cache):
-        emb = np.random.randn(768).astype(np.float32)
+        emb = np.random.randn(EMBEDDING_DIM).astype(np.float32)
         cache.put("test", emb)
         cache.get("test")
         assert cache.stats.memory_hits == 1
 
     def test_disk_hit(self, cache, temp_db):
-        emb = np.random.randn(768).astype(np.float32)
+        emb = np.random.randn(EMBEDDING_DIM).astype(np.float32)
         cache.put("test", emb)
 
         # Clear memory to force disk lookup
@@ -304,7 +305,7 @@ class TestEmbeddingCache:
 
         def compute_fn(text):
             computed.append(text)
-            return np.random.randn(768).astype(np.float32)
+            return np.random.randn(EMBEDDING_DIM).astype(np.float32)
 
         # First call should compute
         emb1 = cache.get_or_compute("test", compute_fn)
@@ -316,7 +317,7 @@ class TestEmbeddingCache:
         np.testing.assert_array_equal(emb1, emb2)
 
     def test_stats(self, cache):
-        cache.put("test", np.zeros(768, dtype=np.float32))
+        cache.put("test", np.zeros(EMBEDDING_DIM, dtype=np.float32))
         cache.get("test")
         cache.get("nonexistent")
 
@@ -326,7 +327,7 @@ class TestEmbeddingCache:
         assert stats.total_requests == 2
 
     def test_get_stats_dict(self, cache):
-        cache.put("test", np.zeros(768, dtype=np.float32))
+        cache.put("test", np.zeros(EMBEDDING_DIM, dtype=np.float32))
         cache.get("test")
 
         stats_dict = cache.get_stats_dict()
@@ -335,7 +336,7 @@ class TestEmbeddingCache:
         assert "overall_hit_rate" in stats_dict
 
     def test_clear(self, cache):
-        cache.put("test", np.zeros(768, dtype=np.float32))
+        cache.put("test", np.zeros(EMBEDDING_DIM, dtype=np.float32))
         cache.clear()
         assert cache.get("test") is None
         assert cache.stats.memory_hits == 0

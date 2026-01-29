@@ -10,22 +10,20 @@ Embeddings are expensive to compute (~50ms each). This module provides:
 Per CLAUDE.md: "everything must be automated - system must be independent"
 The system should avoid redundant computation automatically.
 
-Per CLAUDE.md "New Favorite Pattern": Uses dedicated connection manager
-following the same pattern as data_layer/connection.py.
+Per CLAUDE.md "New Favorite Pattern": Uses data_layer connection factory
+for centralized database connection management.
 """
 
 import hashlib
 import logging
 import sqlite3
-import threading
 import time
 from collections import OrderedDict
-from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
-from typing import Generator, Optional
+from typing import Optional
 
 import numpy as np
 
@@ -38,62 +36,9 @@ from mycelium.config import (
     EMBEDDING_CACHE_WARM_ON_START,
     EMBEDDING_CACHE_TTL_DAYS,
 )
-from mycelium.data_layer.connection import configure_connection
+from mycelium.data_layer.connection import create_connection_manager
 
 logger = logging.getLogger(__name__)
-
-
-# =============================================================================
-# EMBEDDING CACHE CONNECTION MANAGER
-# =============================================================================
-# Per CLAUDE.md "New Favorite Pattern": Follows same pattern as main ConnectionManager
-# but for the separate embedding cache database.
-
-class EmbeddingCacheConnectionManager:
-    """Thread-safe connection manager for embedding cache DB.
-
-    Follows the same pattern as data_layer/connection.py's ConnectionManager
-    but manages connections to the embedding_cache.db file.
-    """
-
-    def __init__(self, db_path: Path):
-        self._db_path = db_path
-        self._local = threading.local()
-        self._lock = threading.Lock()
-
-    @property
-    def db_path(self) -> Path:
-        return self._db_path
-
-    def _get_connection(self) -> sqlite3.Connection:
-        """Get thread-local connection, creating if needed."""
-        if not hasattr(self._local, "conn") or self._local.conn is None:
-            self._local.conn = sqlite3.connect(
-                str(self._db_path), check_same_thread=False, timeout=30.0
-            )
-            configure_connection(self._local.conn, enable_foreign_keys=False)
-        return self._local.conn
-
-    @contextmanager
-    def connection(self) -> Generator[sqlite3.Connection, None, None]:
-        """Get connection with automatic commit/rollback."""
-        conn = self._get_connection()
-        try:
-            yield conn
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-
-    def close(self):
-        """Close thread-local connection if open."""
-        if hasattr(self._local, "conn") and self._local.conn is not None:
-            try:
-                self._local.conn.close()
-            except Exception as e:
-                logger.warning("[embedding_cache] Error closing connection: %s", e)
-            finally:
-                self._local.conn = None
 
 
 # =============================================================================
@@ -211,19 +156,33 @@ def pack_embedding(embedding: np.ndarray) -> bytes:
 
     Returns:
         Packed bytes (EMBEDDING_DIM * 4 bytes)
+
+    Raises:
+        ValueError: If embedding has wrong dimensions
     """
+    if embedding.shape != (EMBEDDING_DIM,):
+        raise ValueError(
+            f"Cannot pack embedding with shape {embedding.shape}, expected ({EMBEDDING_DIM},)"
+        )
     return embedding.astype(np.float32).tobytes()
 
 
-def unpack_embedding(data: bytes) -> np.ndarray:
+def unpack_embedding(data: bytes) -> Optional[np.ndarray]:
     """Unpack bytes to numpy embedding.
 
     Args:
         data: Packed bytes from pack_embedding()
 
     Returns:
-        Float32 numpy array of shape (EMBEDDING_DIM,)
+        Float32 numpy array of shape (EMBEDDING_DIM,), or None if invalid
     """
+    expected_size = EMBEDDING_DIM * 4  # float32 = 4 bytes
+    if len(data) != expected_size:
+        logger.warning(
+            "[embedding_cache] Invalid embedding size: got %d bytes, expected %d",
+            len(data), expected_size
+        )
+        return None
     return np.frombuffer(data, dtype=np.float32).copy()
 
 
@@ -332,14 +291,16 @@ class DiskCache:
 
     Survives process restarts. Used as L2 cache behind LRU.
 
-    Per CLAUDE.md "New Favorite Pattern": Uses dedicated connection manager
+    Per CLAUDE.md "New Favorite Pattern": Uses data_layer connection factory
     for thread-safe access to embedding_cache.db.
     """
 
     def __init__(self, db_path: Optional[Path] = None, auto_prune: bool = True):
         self.db_path = db_path or Path(DB_PATH).parent / "embedding_cache.db"
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn_mgr = EmbeddingCacheConnectionManager(self.db_path)
+        # Per CLAUDE.md "New Favorite Pattern": Use data_layer connection factory
+        # Disable foreign keys - embedding cache is a simple key-value store
+        self._conn_mgr = create_connection_manager(str(self.db_path), enable_foreign_keys=False)
         self._init_db()
 
         # Auto-prune old entries on startup to prevent unbounded growth
@@ -682,6 +643,48 @@ class EmbeddingCache:
         self.put(text, embedding)
         return embedding
 
+    async def get_or_compute_async(
+        self,
+        text: str,
+        compute_fn,
+    ) -> np.ndarray:
+        """Async version of get_or_compute.
+
+        Per CLAUDE.md "New Favorite Pattern": Single entry point for async
+        cached embedding lookups.
+
+        Args:
+            text: Text to embed
+            compute_fn: Async function to compute embedding if not cached.
+                        Should accept text and return list[float] or np.ndarray.
+
+        Returns:
+            Embedding array (from cache or freshly computed)
+        """
+        # Try cache first (sync - cache is in-memory/disk)
+        embedding = self.get(text)
+        if embedding is not None:
+            return embedding
+
+        # Compute async and cache
+        with self._lock:
+            self._stats.computes += 1
+            start = time.time()
+
+        result = await compute_fn(text)
+
+        # Convert list to numpy if needed
+        if isinstance(result, list):
+            embedding = np.array(result, dtype=np.float32)
+        else:
+            embedding = result
+
+        with self._lock:
+            self._stats.total_compute_time_ms += (time.time() - start) * 1000
+
+        self.put(text, embedding)
+        return embedding
+
     def get_batch(
         self,
         texts: list[str],
@@ -890,6 +893,25 @@ def cached_embed(text: str, embedder=None) -> np.ndarray:
 
     cache = get_embedding_cache()
     return cache.get_or_compute(text, embedder.embed)
+
+
+async def cached_embed_async(text: str, embed_fn) -> np.ndarray:
+    """Async version of cached_embed.
+
+    Per CLAUDE.md "New Favorite Pattern": Single entry point for async
+    cached embedding lookups.
+
+    Args:
+        text: Text to embed
+        embed_fn: Async function that takes text and returns embedding.
+                  Typically `embedding_client.embed` where client has
+                  async embed() method.
+
+    Returns:
+        Embedding array
+    """
+    cache = get_embedding_cache()
+    return await cache.get_or_compute_async(text, embed_fn)
 
 
 def cached_embed_batch(texts: list[str], embedder=None) -> dict[str, np.ndarray]:

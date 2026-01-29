@@ -21,6 +21,12 @@ from mycelium.config import (
     DSL_OPERATION_INFERENCE_RAMP_SIGS,
     DSL_EXOTIC_THRESHOLD_BONUS,
     DSL_EXOTIC_THRESHOLD_MAX,
+    # Per CLAUDE.md "The Flow": thresholds from config
+    DSL_TEMPLATE_MIN_SIMILARITY,
+    DSL_TEMPLATE_MATCH_THRESHOLD,
+    DSL_PARAM_WEIGHT_SEMANTIC,
+    DSL_PARAM_WEIGHT_DEFAULT,
+    DSL_MIN_SUCCESS_RATE,
 )
 from mycelium.embedding_cache import cached_embed
 
@@ -420,7 +426,7 @@ def _get_desc_anchor_embeddings(embedder=None):
 
         _desc_anchor_embeddings = {}
         for op, anchor_text in _DESCRIPTION_ANCHORS.items():
-            _desc_anchor_embeddings[op] = embedder.embed(anchor_text)
+            _desc_anchor_embeddings[op] = cached_embed(anchor_text, embedder)
 
         return _desc_anchor_embeddings
     except Exception as e:
@@ -433,7 +439,7 @@ def _infer_operation_semantic(
     description: str,
     num_params: int,
     param_names: list = None,
-    min_similarity: float = 0.5,
+    min_similarity: float = DSL_TEMPLATE_MIN_SIMILARITY,
     embedder=None,
 ) -> Optional[tuple[str, str]]:
     """Infer math operation using dual-channel semantic embedding.
@@ -477,10 +483,11 @@ def _infer_operation_semantic(
             semantic_params = avg_len > 3  # Names like "dividend" vs "a"
 
         # Channel 1: Param names similarity (if we have params)
+        # Per CLAUDE.md "New Favorite Pattern": Use cached_embed
         param_sims = {}
         if param_names:
             param_text = " ".join(p.replace("_", " ") for p in param_names)
-            param_emb = embedder.embed(param_text)
+            param_emb = cached_embed(param_text, embedder)
 
             for op, anchor_emb in param_anchors.items():
                 sim = float(np.dot(param_emb, anchor_emb) / (
@@ -494,7 +501,7 @@ def _infer_operation_semantic(
         if description:
             desc_text += " " + description[:100]
         if desc_text.strip():
-            desc_emb = embedder.embed(desc_text)
+            desc_emb = cached_embed(desc_text, embedder)
 
             for op, anchor_emb in desc_anchors.items():
                 sim = float(np.dot(desc_emb, anchor_emb) / (
@@ -503,9 +510,10 @@ def _infer_operation_semantic(
                 desc_sims[op] = sim
 
         # Combine channels with weighting
-        # Semantic params (dividend, factor) are strong signals: weight 0.7
-        # Generic params (a, b) are weak signals: weight 0.3
-        param_weight = 0.7 if semantic_params else 0.3
+        # Semantic params (dividend, factor) are strong signals
+        # Generic params (a, b) are weak signals
+        # Per CLAUDE.md "The Flow": weights from config, not magic numbers
+        param_weight = DSL_PARAM_WEIGHT_SEMANTIC if semantic_params else DSL_PARAM_WEIGHT_DEFAULT
         desc_weight = 1.0 - param_weight
 
         combined_sims = {}
@@ -574,7 +582,7 @@ def _find_similar_successful_dsl(
     step_type: str,
     description: str,
     db,
-    min_success_rate: float = 0.6,
+    min_success_rate: float = DSL_MIN_SUCCESS_RATE,
     min_uses: int = 3,
     embedder=None,
 ) -> Optional[tuple[str, str]]:
@@ -598,8 +606,8 @@ def _find_similar_successful_dsl(
         if embedder is None:
             embedder = Embedder.get_instance()
 
-        # Get embedding for this description
-        query_embedding = embedder.embed(f"{step_type}: {description}")
+        # Per CLAUDE.md "New Favorite Pattern": Use cached_embed
+        query_embedding = cached_embed(f"{step_type}: {description}", embedder)
 
         # Query signatures with successful DSLs
         candidates = db.get_signatures_with_successful_dsls(
@@ -616,9 +624,9 @@ def _find_similar_successful_dsl(
         best_similarity = 0.0
 
         for sig in candidates:
-            # Get or compute signature embedding
+            # Per CLAUDE.md "New Favorite Pattern": Use cached_embed
             sig_text = f"{sig.step_type}: {sig.description}"
-            sig_embedding = embedder.embed(sig_text)
+            sig_embedding = cached_embed(sig_text, embedder)
 
             # Compute cosine similarity
             similarity = float(np.dot(query_embedding, sig_embedding) / (
@@ -629,8 +637,8 @@ def _find_similar_successful_dsl(
                 best_similarity = similarity
                 best_match = sig
 
-        # Threshold for accepting a match (0.7 = reasonably similar)
-        if best_match and best_similarity >= 0.7:
+        # Threshold for accepting a match (per CLAUDE.md "The Flow": from config)
+        if best_match and best_similarity >= DSL_TEMPLATE_MATCH_THRESHOLD:
             logger.info(
                 "[dsl_infer] Found similar DSL: '%s' -> '%s' (sim=%.3f)",
                 step_type, best_match.step_type, best_similarity

@@ -4,14 +4,15 @@
 3. The Flow
 
 ## System Independence
-Resist the urge to manually intervene in the tree.  We want the system to be independent.  This means only modifying python code and database schema but not the tree.  we do want the mycelium system to be able to restructure the tree -- we just dont want to be tempted to make those adjustments ourselves. for example we have a periodic tree review that restructures the tree -- that is okay.  but we shouldn't be going into the tree structure and cleaning up orphaned umbrealla routers ourselves for example  
-
+The system restructures its own tree via periodic review—that's by design. Resist manually intervening. Modify Python code and database schema, not the tree directly. Don't clean up orphaned umbrella routers yourself; let the system handle it.
+ 
 ## New Favorite Pattern
 We want to consolidate methods - for example all database connections should go through a data layer instead of having multiple database connections.  Same with Signature creation, or leaf_node rejection of dag_steps.  We want to consolidate method calls for features to simplify our codebase and reduce the chance of bugs
 
 ## The Flow
-Database Statistics → Welford → Tree Structure 
-Accurate database statistics are our source of truth which power the Welford algorithm which guides the tree structure and all decisions such as cluster boundaries, when to add a node as a sibling or child, when to decompose a leaf node into an umbrella router.
+Database Statistics → Welford → Tree Structure
+Accurate statistics are the source of truth. Welford variance guides all structural decisions: cluster boundaries, sibling vs child placement, when to decompose leaves into umbrellas. Thresholds come from config, not magic numbers.
+
 
 # Claude Code Instructions
 

@@ -46,6 +46,32 @@ MIN_MATCH_THRESHOLD = 0.85  # Mature threshold - reduce signature fragmentation
 MIN_MATCH_THRESHOLD_COLD_START = 0.92  # Cold start threshold - create more signatures
 MIN_MATCH_RAMP_SIGNATURES = 50  # Signatures needed to reach mature threshold
 
+# Atomic operation detection (per CLAUDE.md: route by what operations DO)
+ATOMIC_SIMILARITY_THRESHOLD = 0.70  # Below this = unknown/complex operation
+ATOMIC_GAP_THRESHOLD = 0.03  # Gap between best and 2nd best match; below this = multi-part
+
+# Fork probability scaling (per CLAUDE.md "The Flow": thresholds from config)
+FORK_GAP_SCALING_FACTOR = 2.0  # Multiplier for gap → probability conversion
+
+# Signature routing thresholds (per CLAUDE.md "The Flow")
+# These are the default min_similarity values for various routing functions
+ROUTING_MIN_SIMILARITY = 0.85  # Default min_similarity for main routing (db.py, solver.py)
+ROUTING_MIN_SIMILARITY_PERMISSIVE = 0.5  # Permissive threshold for alternative/candidate search
+ROUTING_BEST_MATCH_MIN_SIMILARITY = 0.8  # find_best_match threshold
+
+# Signature placement thresholds (db.py find_deeper_signature, decide_signature_placement)
+PLACEMENT_MIN_SIMILARITY = 0.75  # Threshold for placement decisions and deeper routing
+
+# Hint alternatives threshold (get_signature_hints)
+HINT_ALTERNATIVES_MIN_SIMILARITY = 0.3  # Minimum for hint alternatives
+
+# Welford-adaptive similarity thresholds (per CLAUDE.md "The Flow")
+# Instead of static 0.85, adapt based on observed similarity distribution
+ADAPTIVE_THRESHOLD_MIN_SAMPLES = 50  # Minimum Welford observations before using adaptive
+ADAPTIVE_THRESHOLD_K = 1.5  # Standard deviations below mean (captures ~93% of good matches)
+ADAPTIVE_THRESHOLD_MIN = 0.70  # Floor - never go below this
+ADAPTIVE_THRESHOLD_MAX = 0.95  # Ceiling - never go above this
+
 # =============================================================================
 # DSL EXECUTION
 # =============================================================================
@@ -74,6 +100,13 @@ DSL_OPERATION_INFERENCE_RAMP_SIGS = 100  # Signatures needed to reach mature thr
 # Exotic operations (**, factorial, perm, etc.) require higher confidence than basic (+, -, *, /)
 DSL_EXOTIC_THRESHOLD_BONUS = 0.05  # Require 5% higher similarity for exotic ops
 DSL_EXOTIC_THRESHOLD_MAX = 0.92  # Cap exotic threshold to ensure it's achievable
+
+# DSL Template Matching (per CLAUDE.md "The Flow": thresholds from config, not magic numbers)
+DSL_TEMPLATE_MIN_SIMILARITY = 0.5  # Minimum similarity for DSL template consideration
+DSL_TEMPLATE_MATCH_THRESHOLD = 0.7  # Threshold for "good enough" DSL match
+DSL_PARAM_WEIGHT_SEMANTIC = 0.7  # Weight when semantic params available
+DSL_PARAM_WEIGHT_DEFAULT = 0.3  # Weight otherwise
+DSL_MIN_SUCCESS_RATE = 0.6  # Minimum success rate for DSL selection
 
 # =============================================================================
 # UMBRELLA PROMOTION (failing signatures → decompose into children)
@@ -175,6 +208,25 @@ ADAPTIVE_REJECTION_MIN_SAMPLES = 5  # Min successful matches before adaptive kic
 ADAPTIVE_REJECTION_DEFAULT_THRESHOLD = 0.5  # Fallback threshold for cold-start leaves
 ADAPTIVE_REJECTION_MIN_THRESHOLD = 0.3  # Floor: never reject below this similarity
 ADAPTIVE_REJECTION_MAX_THRESHOLD = 0.95  # Ceiling: never require above this similarity
+
+# Rejection decomposition thresholds (per CLAUDE.md "The Flow")
+# When signatures accumulate rejections, flag for potential decomposition
+# Cold-start ramping: be more aggressive early (flag quickly), patient later (wait for evidence)
+REJECTION_COUNT_THRESHOLD_COLD = 3  # Cold start: flag after just 3 rejections (get signal fast)
+REJECTION_COUNT_THRESHOLD_MATURE = 10  # Mature: require 10+ rejections before flagging
+REJECTION_COUNT_RAMP_SIGNATURES = 500  # Signatures at which we transition from cold to mature
+
+# Welford-guided rejection rate threshold (per CLAUDE.md "The Flow")
+# Instead of hardcoded 30%, compute adaptive threshold from rejection rate distribution
+# Threshold = mean + k*std (signatures with rates above this are flagged)
+REJECTION_RATE_WELFORD_ENABLED = True  # Use Welford-guided threshold vs fixed
+REJECTION_RATE_WELFORD_K = 1.5  # Std devs above mean to flag (higher = more selective)
+REJECTION_RATE_MIN_SAMPLES = 5  # Min attempts (uses + rejections) before including in distribution
+REJECTION_RATE_THRESHOLD = 0.30  # Fallback fixed threshold (used if Welford disabled or not enough data)
+
+# Computed at runtime via get_rejection_count_threshold()
+# For backward compatibility, expose the mature value as the default
+REJECTION_COUNT_THRESHOLD = REJECTION_COUNT_THRESHOLD_MATURE
 
 # =============================================================================
 # MCTS COMPUTE BUDGET (multi-path exploration)
@@ -399,6 +451,26 @@ DSL_EXPR_CACHE_MAX_SIZE = 1000  # Max entries in DSL expression cache
 SIGNATURE_CACHE_MAX_SIZE = 1000  # Max entries in signature lookup cache
 SIGNATURE_CACHE_TTL_SECONDS = 60.0  # TTL for cached entries (seconds)
 CHILDREN_CACHE_MAX_SIZE = 500  # Max entries for get_children cache
+CENTROID_CACHE_MAX_SIZE = 10000  # Max entries for centroid embedding cache
+GRAPH_EMBEDDING_CACHE_MAX_SIZE = 500  # Max entries for graph embedding cache
+
+# =============================================================================
+# EMBEDDING DRIFT (Semantic Attractors)
+# =============================================================================
+# Per CLAUDE.md: "High-traffic signatures become semantic attractors: their
+# centroids stabilize around operational meaning rather than vocabulary."
+#
+# On successful (leaf_node, dag_step) matches, leaf node graph embeddings
+# drift toward the successful dag_step embeddings using Welford-adaptive EMA:
+#   α = 1 - (k / (k + variance))
+#   new_embedding = α * old_embedding + (1-α) * success_embedding
+#
+# High variance nodes drift faster (exploring), low variance nodes are sticky.
+
+EMBEDDING_DRIFT_ENABLED = True  # Enable embedding drift during tree review
+EMBEDDING_DRIFT_INTERVAL = 50  # Problems between drift updates
+EMBEDDING_DRIFT_VARIANCE_K = 1.0  # Welford α sensitivity (higher = slower drift)
+EMBEDDING_DRIFT_MIN_SUCCESSES = 3  # Min successes before applying drift
 
 # =============================================================================
 # DEPTH-AWARE DECOMPOSITION
@@ -452,6 +524,8 @@ NEW_CHILD_SIMILARITY_THRESHOLD = 0.7  # Min similarity to reuse existing child i
                                        # Higher than UMBRELLA_ROUTING_THRESHOLD: routing failed at 0.5,
                                        # but child at 0.7+ is "close enough" - use instead of duplicating
                                        # This prevents duplicate children for similar steps
+UMBRELLA_REPOINT_SIMILARITY = 0.75  # Threshold for repointing to existing deeper signature
+                                     # Slightly lower than MIN_MATCH_THRESHOLD for flexibility
 
 # Tree growth settings (organic, no pre-allocation)
 MIN_FORK_DEPTH = 0  # Allow forking at any depth (organic growth)
@@ -484,6 +558,21 @@ BIG_BANG_HYSTERESIS_BONUS = 0.3  # 30% bonus fork probability for levels with ex
 BIG_BANG_FORK_CENTER_DRIFT_RATE = 0.8  # How fast fork center drifts toward root (per maturity unit)
 BIG_BANG_MIN_FORK_PROB = 0.05  # Floor probability (always some chance to fork)
 BIG_BANG_MAX_FORK_PROB = 0.95  # Ceiling probability (never 100% certain to fork)
+
+# Maturity exponential decay formula: maturity = 1 - exp(-sig_count / tau)
+# where tau = BIG_BANG_TARGET_SIGNATURES / TAU_DIVISOR
+# At sig_count = 3*tau, maturity reaches ~95% (since 1 - exp(-3) ≈ 0.95)
+# TAU_DIVISOR = 3.0 means system reaches 95% maturity at TARGET_SIGNATURES
+BIG_BANG_TAU_DIVISOR = 3.0
+
+# =============================================================================
+# WELFORD MINIMUM SAMPLES (per CLAUDE.md "The Flow")
+# =============================================================================
+# Different operations require different confidence levels before using Welford stats.
+# Lower = more aggressive (act on less data), Higher = more conservative.
+
+WELFORD_MIN_SAMPLES_BASIC = 5  # Basic operations (routing, threshold decisions)
+WELFORD_MIN_SAMPLES_STRUCTURE = 5  # Tree structure changes (decomposition, merging)
 
 # Synthesis step detection (for umbrella learner)
 # These are anchors for steps that aggregate/combine results (should be skipped)

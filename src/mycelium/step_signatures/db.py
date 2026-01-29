@@ -28,9 +28,18 @@ _CENTROID_CACHE_VERSION = 1
 
 # Canonical atomic operations for embedding-based complexity detection
 # Per CLAUDE.md: "prefer embedding similarity over keyword matching"
+# Thresholds now imported from config.py per CLAUDE.md "The Flow"
 ATOMIC_OPERATIONS = ["ADD(a, b)", "SUB(a, b)", "MUL(a, b)", "DIV(a, b)"]
-ATOMIC_SIMILARITY_THRESHOLD = 0.70  # Below this, step is unknown/complex
-ATOMIC_GAP_THRESHOLD = 0.03  # Gap between best and 2nd best match; below this = multi-part
+
+
+class SignatureStat(Enum):
+    """Types of signature statistics that can be incremented.
+
+    Per CLAUDE.md "New Favorite Pattern": Single enum for all stat types
+    to consolidate the increment_signature_stat() API.
+    """
+    SUCCESS = "successes"
+    FAILURE = "operational_failures"
 
 
 def _parse_centroid_data(data) -> Optional[np.ndarray]:
@@ -61,6 +70,23 @@ from mycelium.config import (
     CENTROID_DRIFT_DECAY,
     DB_MAX_RETRIES,
     DB_BASE_RETRY_DELAY,
+    # Atomic operation detection (per CLAUDE.md "The Flow")
+    ATOMIC_SIMILARITY_THRESHOLD,
+    ATOMIC_GAP_THRESHOLD,
+    # Similarity thresholds (per CLAUDE.md "The Flow": thresholds from config)
+    MIN_MATCH_THRESHOLD,
+    FORK_GAP_SCALING_FACTOR,
+    ROUTING_MIN_SIMILARITY,
+    ROUTING_MIN_SIMILARITY_PERMISSIVE,
+    ROUTING_BEST_MATCH_MIN_SIMILARITY,
+    PLACEMENT_MIN_SIMILARITY,
+    HINT_ALTERNATIVES_MIN_SIMILARITY,
+    NEW_CHILD_SIMILARITY_THRESHOLD,
+    # Welford-adaptive thresholds (per CLAUDE.md "The Flow")
+    ADAPTIVE_THRESHOLD_MIN_SAMPLES,
+    ADAPTIVE_THRESHOLD_K,
+    ADAPTIVE_THRESHOLD_MIN,
+    ADAPTIVE_THRESHOLD_MAX,
 )
 
 # Import from focused modules (scoring and DSL templates)
@@ -73,7 +99,7 @@ from mycelium.step_signatures.scoring import (
 from mycelium.step_signatures.dsl_templates import infer_dsl_for_signature
 from mycelium.step_signatures.graph_extractor import extract_computation_graph
 
-from mycelium.data_layer import get_db, configure_connection
+from mycelium.data_layer import get_db, configure_connection, create_connection_manager
 from mycelium.data_layer.schema import init_db
 from mycelium.step_signatures.models import StepSignature
 from mycelium.step_signatures.utils import (
@@ -116,10 +142,11 @@ def get_system_maturity(sig_count: int) -> float:
     Returns:
         Maturity value between 0 (fresh) and 1 (mature)
     """
-    from mycelium.config import BIG_BANG_TARGET_SIGNATURES
+    from mycelium.config import BIG_BANG_TARGET_SIGNATURES, BIG_BANG_TAU_DIVISOR
 
     # Smooth exponential curve: rises quickly at first, asymptotes to 1
-    tau = BIG_BANG_TARGET_SIGNATURES / 3.0  # ~3tau to reach 95%
+    # Per config: TAU_DIVISOR = 3.0 means system reaches 95% maturity at TARGET_SIGNATURES
+    tau = BIG_BANG_TARGET_SIGNATURES / BIG_BANG_TAU_DIVISOR
     maturity = 1.0 - math.exp(-sig_count / tau)
     return maturity
 
@@ -192,6 +219,7 @@ def compute_fork_probability(
         BIG_BANG_HYSTERESIS_BONUS,
         BIG_BANG_MIN_FORK_PROB,
         BIG_BANG_MAX_FORK_PROB,
+        FORK_GAP_SCALING_FACTOR,
         MIN_FORK_DEPTH,
     )
 
@@ -216,7 +244,7 @@ def compute_fork_probability(
     # 2. SIMILARITY GAP: How far below threshold is the best match?
     # Larger gap → more reason to fork (problem is divergent)
     gap = fork_threshold - best_similarity
-    gap_factor = max(0.0, min(1.0, gap * 2.0))  # Scale to 0-1 range
+    gap_factor = max(0.0, min(1.0, gap * FORK_GAP_SCALING_FACTOR))  # Scale to 0-1 range
 
     # 3. MATURITY MODULATION: Less aggressive forking as system matures
     # Cold start (maturity=0): fork more aggressively
@@ -641,19 +669,20 @@ class StepSignatureDB:
     def __init__(self, db_path: str = None, embedder=None):
         """Initialize the database.
 
+        Per CLAUDE.md "New Favorite Pattern": All database connections go through the data layer.
+
         Args:
             db_path: Optional path to SQLite database. If provided, creates
-                     a direct connection instead of using the global singleton.
+                     a ConnectionManager for that path instead of using the global singleton.
             embedder: Optional Embedder instance. If None, lazily fetches singleton on first use.
         """
         if db_path:
-            self._direct_conn = sqlite3.connect(db_path, check_same_thread=False, timeout=30.0)
-            configure_connection(self._direct_conn, enable_foreign_keys=False)
-            self._db = None
+            # Per mycelium-7eqw: Use data layer's create_connection_manager instead of direct sqlite3.connect
+            # This consolidates all DB connection logic through the data layer
+            self._db = create_connection_manager(db_path)
             self._db_path = db_path
         else:
             self._db = get_db()
-            self._direct_conn = None
             # Use default DB path from config when using global singleton
             from mycelium.config import DB_PATH
             self._db_path = DB_PATH
@@ -693,9 +722,8 @@ class StepSignatureDB:
 
     def close(self):
         """Close the database connection."""
-        if self._direct_conn:
-            self._direct_conn.close()
-            self._direct_conn = None
+        if self._db:
+            self._db.close()
 
     @property
     def _centroid_cache_path(self) -> str:
@@ -772,18 +800,29 @@ class StepSignatureDB:
 
     @contextmanager
     def _connection(self):
-        """Get a database connection."""
-        if self._direct_conn:
-            yield self._direct_conn
-            self._direct_conn.commit()
-        else:
-            with self._db.connection() as conn:
-                yield conn
+        """Get a database connection.
+
+        Per CLAUDE.md "New Favorite Pattern": Single connection pathway through data layer.
+        """
+        with self._db.connection() as conn:
+            yield conn
 
     def _init_schema(self):
         """Initialize database schema."""
         with self._connection() as conn:
             init_db(conn)
+
+    def get_signature_count(self) -> int:
+        """Get total number of signatures in the database.
+
+        Returns:
+            Count of signatures (including archived ones)
+        """
+        with self._connection() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM step_signatures"
+            ).fetchone()
+            return row[0] if row else 0
 
     # =========================================================================
     # Root Management (Single Entry Point)
@@ -983,13 +1022,64 @@ class StepSignatureDB:
                 )
 
     # =========================================================================
+    # Welford-Adaptive Similarity Threshold (per CLAUDE.md "The Flow")
+    # =========================================================================
+
+    def _get_adaptive_similarity_threshold(
+        self,
+        context: str = "match",
+        fallback: float = None,
+    ) -> float:
+        """Get Welford-adaptive similarity threshold.
+
+        Per CLAUDE.md "The Flow": Database Statistics -> Welford -> Tree Structure.
+        Instead of static 0.85, adapt based on observed similarity distribution.
+
+        Args:
+            context: Welford stats prefix - 'match' (routing) or 'cluster' (clustering)
+            fallback: Fallback if insufficient data (default: MIN_MATCH_THRESHOLD)
+
+        Returns:
+            Adaptive threshold clamped to [ADAPTIVE_THRESHOLD_MIN, ADAPTIVE_THRESHOLD_MAX]
+        """
+        from mycelium.data_layer.state_manager import get_state_manager
+
+        if fallback is None:
+            fallback = MIN_MATCH_THRESHOLD
+
+        # Get Welford stats for this context
+        stats = get_state_manager().get_welford_stats(f"sim_stats_{context}")
+
+        # Need sufficient samples for reliable estimate
+        if stats.count < ADAPTIVE_THRESHOLD_MIN_SAMPLES:
+            logger.debug(
+                "[db] Adaptive threshold: insufficient samples (%d < %d), using fallback %.3f",
+                stats.count, ADAPTIVE_THRESHOLD_MIN_SAMPLES, fallback
+            )
+            return fallback
+
+        # Adaptive: mean - k * std (captures ~93% of good matches at k=1.5)
+        # This ensures we don't reject matches that are within normal variance
+        adaptive = stats.mean - ADAPTIVE_THRESHOLD_K * stats.stddev
+
+        # Clamp to reasonable range
+        clamped = max(ADAPTIVE_THRESHOLD_MIN, min(ADAPTIVE_THRESHOLD_MAX, adaptive))
+
+        logger.debug(
+            "[db] Adaptive threshold: mean=%.3f, std=%.3f, raw=%.3f, clamped=%.3f (n=%d)",
+            stats.mean, stats.stddev, adaptive, clamped, stats.count
+        )
+
+        return clamped
+
+    # =========================================================================
     # Consolidated Routing Core
     # =========================================================================
 
     def _route_core(
         self,
         operation_embedding: np.ndarray,
-        min_similarity: float = 0.85,
+        min_similarity: Optional[float] = None,
         max_depth: int = None,
         track_alternatives: bool = False,
         top_k: int = 3,
@@ -1002,12 +1092,19 @@ class StepSignatureDB:
 
         SINGLE PATHWAY for DFS routing. All variations use this function.
 
+        Per CLAUDE.md "The Flow": min_similarity defaults to Welford-adaptive threshold.
+
         Args:
+            min_similarity: Minimum similarity threshold. None = use adaptive (recommended)
             step_position: Optional step position (1, 2, 3...) for position-aware
                 routing. When provided, uses plan_step_stats to penalize nodes
                 that historically fail at this position.
         """
         from mycelium.config import UMBRELLA_MAX_DEPTH
+
+        # Resolve adaptive threshold if not specified
+        if min_similarity is None:
+            min_similarity = self._get_adaptive_similarity_threshold("match")
 
         if max_depth is None:
             max_depth = UMBRELLA_MAX_DEPTH
@@ -1150,16 +1247,18 @@ class StepSignatureDB:
     def route_through_hierarchy(
         self,
         operation_embedding: np.ndarray,
-        min_similarity: float = 0.85,
+        min_similarity: Optional[float] = None,
         max_depth: int = None,
     ) -> tuple[Optional[StepSignature], list[StepSignature]]:
         """Route an operation embedding through the signature hierarchy.
 
         Thin wrapper around _route_core() for simple routing without alternatives.
 
+        Per CLAUDE.md "The Flow": min_similarity defaults to Welford-adaptive threshold.
+
         Args:
             operation_embedding: The operation embedding to route
-            min_similarity: Minimum similarity threshold
+            min_similarity: Minimum similarity threshold. None = use adaptive (recommended)
             max_depth: Maximum depth to traverse
 
         Returns:
@@ -1182,7 +1281,7 @@ class StepSignatureDB:
     def route_with_confidence(
         self,
         operation_embedding: np.ndarray,
-        min_similarity: float = 0.85,
+        min_similarity: Optional[float] = None,
         max_depth: int = None,
         top_k: int = 3,
         dag_step_type: Optional[str] = None,
@@ -1194,6 +1293,7 @@ class StepSignatureDB:
         tracking, and epsilon-greedy exploration enabled.
 
         Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        Per CLAUDE.md "The Flow": min_similarity defaults to Welford-adaptive threshold.
 
         Confidence interpretation:
         - High confidence (>0.8): Clear winner, single path likely sufficient
@@ -1202,7 +1302,7 @@ class StepSignatureDB:
 
         Args:
             operation_embedding: The operation embedding to route
-            min_similarity: Minimum similarity threshold
+            min_similarity: Minimum similarity threshold. None = use adaptive (recommended)
             max_depth: Maximum depth to traverse
             top_k: Number of top alternatives to track at each level
             dag_step_type: Optional step type for step-node stats lookup
@@ -1226,12 +1326,32 @@ class StepSignatureDB:
     # =========================================================================
     # Core: Find or Create
     # =========================================================================
+    #
+    # CONSOLIDATED SIGNATURE CREATION PATTERN (per CLAUDE.md "New Favorite Pattern")
+    #
+    # All signature creation flows through these layers:
+    #
+    #   PUBLIC APIS:
+    #   ├── find_or_create()      → Routes first, creates if no match
+    #   ├── find_or_create_async() → Async version of above
+    #   └── create_signature()    → Skips routing, direct creation with parent_id
+    #
+    #   INTERNAL LAYERS:
+    #   ├── propose_signature()   → SINGLE ENTRY for placement decisions
+    #   │                           (cold start, Welford-based, dedup/merge)
+    #   └── _create_signature_atomic() → SINGLE ENTRY for INSERT
+    #
+    # Use cases:
+    # - find_or_create: Normal routing - find existing match OR create new
+    # - create_signature: Explicit creation - knows parent, skips routing
+    #
+    # =========================================================================
 
     def find_or_create(
         self,
         step_text: str,
         embedding: np.ndarray,
-        min_similarity: float = 0.85,
+        min_similarity: Optional[float] = None,
         parent_problem: str = "",
         origin_depth: int = 0,
         extracted_values: dict = None,
@@ -1244,10 +1364,12 @@ class StepSignatureDB:
         Lazy NL: New signatures have empty clarifying_questions and param_descriptions.
         These get filled in later as the system learns.
 
+        Per CLAUDE.md "The Flow": min_similarity defaults to Welford-adaptive threshold.
+
         Args:
             step_text: The step description text
             embedding: Embedding vector for the step
-            min_similarity: Minimum cosine similarity for matching
+            min_similarity: Minimum cosine similarity for matching. None = use adaptive (recommended)
             parent_problem: The parent problem this step came from
             dsl_hint: Explicit operation hint from planner (+, -, *, /) for bidirectional communication
             origin_depth: Decomposition depth at which this step was created
@@ -1262,6 +1384,10 @@ class StepSignatureDB:
             This method uses blocking time.sleep() for retries. Use find_or_create_async()
             in async contexts to avoid blocking the event loop.
         """
+        # Resolve adaptive threshold if not specified
+        if min_similarity is None:
+            min_similarity = self._get_adaptive_similarity_threshold("match")
+
         # Warn if called from async context - use find_or_create_async instead
         try:
             asyncio.get_running_loop()
@@ -1296,7 +1422,7 @@ class StepSignatureDB:
         self,
         step_text: str,
         embedding: Optional[np.ndarray] = None,
-        min_similarity: float = 0.85,
+        min_similarity: Optional[float] = None,
         parent_problem: str = "",
         origin_depth: int = 0,
         extracted_values: dict = None,
@@ -1308,6 +1434,7 @@ class StepSignatureDB:
         """Async version of find_or_create with non-blocking retry sleep.
 
         Per CLAUDE.md: Route by what operations DO, not what they SOUND LIKE.
+        Per CLAUDE.md "The Flow": min_similarity defaults to Welford-adaptive threshold.
         Routing uses graph_embedding exclusively. Text embedding is optional/legacy.
 
         Use this from async contexts to avoid blocking the event loop during
@@ -1316,7 +1443,7 @@ class StepSignatureDB:
         Args:
             step_text: The step description text
             embedding: Optional text embedding (legacy, not used for routing)
-            min_similarity: Minimum cosine similarity for matching
+            min_similarity: Minimum cosine similarity for matching. None = use adaptive (recommended)
             parent_problem: The parent problem this step came from
             dsl_hint: Explicit operation hint from planner (+, -, *, /) for graph routing
             origin_depth: Decomposition depth at which this step was created
@@ -1329,6 +1456,10 @@ class StepSignatureDB:
             Tuple of (signature, is_new) where is_new=True if newly created
         """
         from mycelium.step_signatures.graph_extractor import embed_computation_graph_sync
+
+        # Resolve adaptive threshold if not specified
+        if min_similarity is None:
+            min_similarity = self._get_adaptive_similarity_threshold("match")
 
         sig = None
         is_new = False
@@ -1462,14 +1593,24 @@ class StepSignatureDB:
                 ).fetchone()
 
                 if root_row is None:
-                    # Empty DB - create root signature
-                    sig = self._create_signature_atomic(
-                        conn, step_text, embedding, parent_problem, origin_depth,
-                        extracted_values=extracted_values, dsl_hint=dsl_hint
+                    # Empty DB - create root signature via propose_signature
+                    # Per CLAUDE.md "New Favorite Pattern": ALL creation through propose_signature
+                    step_graph_emb = self._get_graph_embedding_from_hint(dsl_hint)
+                    sig_id, placement = self.propose_signature(
+                        step_text=step_text,
+                        embedding=embedding,
+                        graph_embedding=step_graph_emb,
+                        proposed_parent_id=None,  # No parent for root
+                        dsl_hint=dsl_hint,
+                        extracted_values=extracted_values,
+                        origin_depth=origin_depth,
+                        problem_context=parent_problem,
+                        conn=conn,
                     )
+                    sig = self.get_signature(sig_id)
                     conn.commit()
                     logger.info(
-                        "[db] Created ROOT signature: step='%s' type='%s'",
+                        "[db] Created ROOT signature via propose_signature: step='%s' type='%s'",
                         step_text[:40], sig.step_type
                     )
                     return sig, True
@@ -1510,7 +1651,7 @@ class StepSignatureDB:
                     if not best_match.is_semantic_umbrella:
                         # Per CLAUDE.md "New Favorite Pattern": use consolidated check_rejection
                         from mycelium.step_signatures.rejection_utils import check_rejection
-                        from mycelium.data_layer.mcts import record_leaf_rejection
+                        from mycelium.data_layer.mcts import reject_dag_step
 
                         # Use graph_embedding similarity if available (operational identity)
                         # Otherwise fall back to text similarity
@@ -1582,21 +1723,22 @@ class StepSignatureDB:
                                         # Skip during cold start - let vocabulary build first
                                         reason = "multi_part" if gap < ATOMIC_GAP_THRESHOLD else "unknown_complex"
 
-                                        # Record rejection (unified path for all leaf rejections)
-                                        rejection_count = record_leaf_rejection(
+                                        # Per CLAUDE.md "New Favorite Pattern": Use consolidated reject_dag_step()
+                                        decision = reject_dag_step(
                                             signature_id=best_match.id,
-                                            step_text=step_text,
                                             similarity=max_atomic_sim,  # Use atomic similarity for tracking
+                                            step_text=step_text,
                                             problem_context=parent_problem,
+                                            reason=reason,
                                             conn=conn,  # Pass connection to avoid lock contention
                                         )
 
                                         logger.info(
                                             "[db] Leaf '%s' REJECTED %s step (sim=%.3f, gap=%.3f, best=%s, hint='%s', rejections=%d): '%s'",
                                             best_match.step_type, reason, max_atomic_sim, gap,
-                                            best_atomic_op, dsl_hint, rejection_count, step_text[:50]
+                                            best_atomic_op, dsl_hint, decision.rejection_count, step_text[:50]
                                         )
-                                        # record_leaf_rejection already queued for decomposition
+                                        # reject_dag_step already queued for decomposition
                                         # Return None - step is queued, don't create signature
                                         conn.commit()
                                         return None, False
@@ -2459,7 +2601,7 @@ class StepSignatureDB:
     def find_similar(
         self,
         embedding: np.ndarray,
-        threshold: float = 0.7,
+        threshold: float = NEW_CHILD_SIMILARITY_THRESHOLD,
         limit: int = 10,
     ) -> list[tuple[StepSignature, float]]:
         """Find signatures similar to the given embedding.
@@ -2815,6 +2957,35 @@ class StepSignatureDB:
                         _depth=_depth + 1,
                     )
 
+    def increment_signature_stat(
+        self,
+        signature_id: int,
+        stat_type: SignatureStat,
+        *,
+        amount: float = 1.0,
+        propagate_to_parents: bool = True,
+    ):
+        """Single entry point for all signature stat updates.
+
+        Per CLAUDE.md "New Favorite Pattern": Consolidated pathway for all stat increments.
+        Per CLAUDE.md "Credit Propagation": Automatically propagates to parents with decay.
+
+        Args:
+            signature_id: ID of the signature to update
+            stat_type: SignatureStat.SUCCESS or SignatureStat.FAILURE
+            amount: Amount to increment by (default 1.0, use fractional for partial credit)
+            propagate_to_parents: If True, propagate credit up to parent routers with decay
+        """
+        with self._connection() as conn:
+            self._increment_signature_stat(
+                conn, signature_id, stat_type.value,
+                amount=amount, propagate_to_parents=propagate_to_parents, _depth=0
+            )
+
+    # -------------------------------------------------------------------------
+    # DEPRECATED: Old wrapper methods - use increment_signature_stat() instead
+    # -------------------------------------------------------------------------
+
     def increment_signature_successes(
         self,
         signature_id: int,
@@ -2822,22 +2993,18 @@ class StepSignatureDB:
         propagate_to_parents: bool = True,
         _depth: int = 0,
     ):
-        """Increment the successes count for a signature.
-
-        Per beads mycelium-itkn: Used by amplitude credit propagation.
-        Per CLAUDE.md: "Parent umbrellas get decay^depth credit (default 0.5 per level)"
-
-        Args:
-            signature_id: ID of the signature
-            count: Amount to increment by (default 1)
-            propagate_to_parents: If True, propagate credit up to parent routers with decay
-            _depth: Internal recursion depth tracker
-        """
-        with self._connection() as conn:
-            self._increment_signature_stat(
-                conn, signature_id, "successes",
-                amount=count, propagate_to_parents=propagate_to_parents, _depth=_depth
-            )
+        """DEPRECATED: Use increment_signature_stat(id, SignatureStat.SUCCESS) instead."""
+        import warnings
+        warnings.warn(
+            "increment_signature_successes() is deprecated. "
+            "Use increment_signature_stat(id, SignatureStat.SUCCESS, amount=count) instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        self.increment_signature_stat(
+            signature_id, SignatureStat.SUCCESS,
+            amount=count, propagate_to_parents=propagate_to_parents
+        )
 
     def increment_signature_failures(
         self,
@@ -2846,22 +3013,18 @@ class StepSignatureDB:
         propagate_to_parents: bool = True,
         _depth: int = 0,
     ):
-        """Increment the operational_failures count for a signature.
-
-        Per beads mycelium-itkn: Used by amplitude credit propagation.
-        Per CLAUDE.md: Failure signal also propagates up with decay.
-
-        Args:
-            signature_id: ID of the signature
-            count: Amount to increment by (default 1)
-            propagate_to_parents: If True, propagate failure up to parent routers with decay
-            _depth: Internal recursion depth tracker
-        """
-        with self._connection() as conn:
-            self._increment_signature_stat(
-                conn, signature_id, "operational_failures",
-                amount=count, propagate_to_parents=propagate_to_parents, _depth=_depth
-            )
+        """DEPRECATED: Use increment_signature_stat(id, SignatureStat.FAILURE) instead."""
+        import warnings
+        warnings.warn(
+            "increment_signature_failures() is deprecated. "
+            "Use increment_signature_stat(id, SignatureStat.FAILURE, amount=count) instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        self.increment_signature_stat(
+            signature_id, SignatureStat.FAILURE,
+            amount=count, propagate_to_parents=propagate_to_parents
+        )
 
     def increment_signature_partial_success(
         self,
@@ -2870,23 +3033,18 @@ class StepSignatureDB:
         propagate_to_parents: bool = True,
         _depth: int = 0,
     ):
-        """Increment successes with a fractional weight (partial credit).
-
-        Per beads mycelium-7o8i: Used for correct steps in failed problems.
-        Steps with high confidence in losing threads get partial credit rather
-        than full blame - they were probably correct, just in a bad chain.
-
-        Args:
-            signature_id: ID of the signature
-            weight: Fractional credit (default 0.5 = half a success)
-            propagate_to_parents: If True, propagate partial credit up with decay
-            _depth: Internal recursion depth tracker
-        """
-        with self._connection() as conn:
-            self._increment_signature_stat(
-                conn, signature_id, "successes",
-                amount=weight, propagate_to_parents=propagate_to_parents, _depth=_depth
-            )
+        """DEPRECATED: Use increment_signature_stat(id, SignatureStat.SUCCESS, amount=weight) instead."""
+        import warnings
+        warnings.warn(
+            "increment_signature_partial_success() is deprecated. "
+            "Use increment_signature_stat(id, SignatureStat.SUCCESS, amount=weight) instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        self.increment_signature_stat(
+            signature_id, SignatureStat.SUCCESS,
+            amount=weight, propagate_to_parents=propagate_to_parents
+        )
 
     def merge_signatures(
         self,
@@ -3002,7 +3160,7 @@ class StepSignatureDB:
         self,
         min_success_rate: float = 0.7,
         min_uses: int = 5,
-        min_similarity: float = 0.85,
+        min_similarity: Optional[float] = None,
         limit: int = 10,
     ) -> list[tuple[int, int, float]]:
         """Find pairs of signatures that are candidates for merging.
@@ -3012,15 +3170,20 @@ class StepSignatureDB:
         - Have similar centroids (semantically similar)
         - Are not already archived
 
+        Per CLAUDE.md "The Flow": min_similarity defaults to Welford-adaptive threshold.
+
         Args:
             min_success_rate: Minimum success rate for both signatures
             min_uses: Minimum uses for both signatures (need data to trust)
-            min_similarity: Minimum cosine similarity between centroids
+            min_similarity: Minimum cosine similarity. None = use adaptive (recommended)
             limit: Maximum number of pairs to return
 
         Returns:
             List of (sig1_id, sig2_id, similarity) tuples, ordered by similarity desc
         """
+        # Resolve adaptive threshold if not specified
+        if min_similarity is None:
+            min_similarity = self._get_adaptive_similarity_threshold("cluster")
         with self._connection() as conn:
             # Get candidate signatures (high success rate, enough uses)
             cursor = conn.execute(
@@ -3092,7 +3255,7 @@ class StepSignatureDB:
         self,
         embedding,
         exclude_signature_id: int = None,
-        min_similarity: float = 0.8,
+        min_similarity: float = ROUTING_BEST_MATCH_MIN_SIMILARITY,
         limit: int = 5,
         lookback_days: int = None,
     ) -> list[dict]:
@@ -3210,7 +3373,7 @@ class StepSignatureDB:
                 operation_embedding=centroid,
                 dag_step_type=None,
                 top_k=3,
-                min_similarity=0.5,  # Permissive - adaptive threshold applied per-candidate
+                min_similarity=ROUTING_MIN_SIMILARITY_PERMISSIVE,  # Permissive - adaptive threshold applied per-candidate
             )
 
             # Filter out self
@@ -3323,11 +3486,13 @@ class StepSignatureDB:
         child_ids: list[int],
         reason: str = "retirement",
     ) -> bool:
-        """Archive a signature and reparent its children atomically.
+        """DEPRECATED: Archive a signature and reparent its children atomically.
 
-        This handles the multi-step operation of re-parenting children to a
-        grandparent and then archiving the signature, all within a single
-        transaction to ensure consistency.
+        Per CLAUDE.md System Independence (mycelium-zlza): Immediate reparenting
+        bypasses Welford-guided decisions in periodic review. Use archive_signature()
+        instead - orphan children will be adopted by run_periodic_tree_review().
+
+        This function is kept for backwards compatibility but logs a warning.
 
         Args:
             signature_id: ID of signature to archive
@@ -3338,6 +3503,18 @@ class StepSignatureDB:
         Returns:
             True if archived successfully
         """
+        import warnings
+        warnings.warn(
+            "archive_signature_with_reparent is deprecated per CLAUDE.md System Independence. "
+            "Use archive_signature() instead - periodic review will adopt orphan children.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        logger.warning(
+            "[db] DEPRECATED: archive_signature_with_reparent called for sig %d. "
+            "Use archive_signature() - periodic review handles orphan adoption.",
+            signature_id
+        )
         with self._connection() as conn:
             # Per CLAUDE.md "System Independence": Invalidate Welford stats
             # when tree structure changes (reparenting + archive)
@@ -3918,7 +4095,7 @@ class StepSignatureDB:
             difficulty: Problem difficulty for weighted credit (0.0-1.0)
         """
         # Increment global problem counter (for traffic-based decay)
-        increment_total_problems(self.db_path)
+        increment_total_problems()
 
         if decay_factor is None:
             decay_factor = PARENT_CREDIT_DECAY
@@ -4624,7 +4801,7 @@ class StepSignatureDB:
         self,
         limit: int = 20,
         problem_embedding: np.ndarray = None,
-        min_similarity: float = 0.3,
+        min_similarity: float = HINT_ALTERNATIVES_MIN_SIMILARITY,
     ) -> list:
         """Get hierarchical signature hints for the decomposer.
 
@@ -5061,7 +5238,7 @@ class StepSignatureDB:
         operation_embedding: np.ndarray,
         dag_step_type: str = None,
         top_k: int = 3,
-        min_similarity: float = 0.5,
+        min_similarity: float = ROUTING_MIN_SIMILARITY_PERMISSIVE,
         use_adaptive_threshold: bool = None,  # None = use config default
     ) -> list[tuple[StepSignature, float, float]]:
         """MCTS-style matching: find top-k leaf candidates for a dag_step using graph embeddings.
@@ -5212,6 +5389,30 @@ class StepSignatureDB:
             - 'suggested_decomposition': list of operation names that might compose this step
             - 'rejection_reason': why decomposition is needed (if applicable)
         """
+        # Defensive check: validate embedding dimension
+        from mycelium.config import EMBEDDING_DIM
+        if operation_embedding is None or len(operation_embedding.shape) == 0:
+            logger.warning("[decomp_hints] Invalid embedding: None or scalar")
+            return {
+                'needs_decomposition': True,
+                'best_match': None,
+                'vocabulary': [],
+                'suggested_decomposition': [],
+                'rejection_reason': 'invalid_embedding',
+            }
+        if operation_embedding.shape[0] != EMBEDDING_DIM:
+            logger.warning(
+                "[decomp_hints] Embedding dimension mismatch: got %s, expected %d",
+                operation_embedding.shape, EMBEDDING_DIM
+            )
+            return {
+                'needs_decomposition': True,
+                'best_match': None,
+                'vocabulary': [],
+                'suggested_decomposition': [],
+                'rejection_reason': f'embedding_dim_mismatch_{operation_embedding.shape[0]}',
+            }
+
         # Per CLAUDE.md "System Independence": Compute adaptive thresholds from Welford stats
         # instead of hard-coded magic numbers
         with self._connection() as conn:
@@ -5520,7 +5721,7 @@ class StepSignatureDB:
         self,
         embedding: np.ndarray,
         min_depth: int,
-        min_similarity: float = 0.75,
+        min_similarity: float = PLACEMENT_MIN_SIMILARITY,
         exclude_ids: set[int] = None,
     ) -> Optional[StepSignature]:
         """Find existing signature at deeper depth for repointing.
@@ -5961,7 +6162,7 @@ class StepSignatureDB:
     def route_by_graph_embedding(
         self,
         operation_embedding: np.ndarray,
-        min_similarity: float = 0.75,
+        min_similarity: float = PLACEMENT_MIN_SIMILARITY,
         top_k: int = 5,
     ) -> list[tuple[StepSignature, float]]:
         """Route by comparing operation embedding to graph embeddings.
@@ -6857,6 +7058,315 @@ class StepSignatureDB:
         )
 
         return (gap_mult, budget_mult)
+
+    # =========================================================================
+    # EMBEDDING DRIFT: Semantic Attractor Updates (per mycelium-ieq4)
+    # =========================================================================
+    # Per CLAUDE.md: "High-traffic signatures become semantic attractors"
+    # Accumulate successful dag_step embeddings for batch drift updates.
+
+    def accumulate_embedding_drift(
+        self,
+        signature_id: int,
+        success_embedding: list[float],
+        conn=None,
+    ) -> bool:
+        """Accumulate a successful dag_step embedding for later drift update.
+
+        Called on successful (leaf_node, dag_step) matches. Embeddings are
+        accumulated and averaged during periodic batch drift updates.
+
+        Args:
+            signature_id: The leaf node signature ID
+            success_embedding: The dag_step's graph embedding that succeeded
+            conn: Optional connection
+
+        Returns:
+            True if accumulated successfully
+        """
+        def _do_accumulate(c):
+            # Check if we have existing accumulator for this signature
+            row = c.execute("""
+                SELECT embedding_sum, success_count
+                FROM pending_embedding_drifts
+                WHERE signature_id = ?
+            """, (signature_id,)).fetchone()
+
+            if row:
+                # Add to existing sum
+                import json
+                existing_sum = json.loads(row["embedding_sum"])
+                new_sum = [a + b for a, b in zip(existing_sum, success_embedding)]
+                new_count = row["success_count"] + 1
+
+                c.execute("""
+                    UPDATE pending_embedding_drifts
+                    SET embedding_sum = ?, success_count = ?, updated_at = datetime('now')
+                    WHERE signature_id = ?
+                """, (json.dumps(new_sum), new_count, signature_id))
+            else:
+                # Create new accumulator
+                import json
+                c.execute("""
+                    INSERT INTO pending_embedding_drifts (signature_id, embedding_sum, success_count)
+                    VALUES (?, ?, 1)
+                """, (signature_id, json.dumps(success_embedding)))
+
+            c.connection.commit()
+            return True
+
+        try:
+            if conn:
+                return _do_accumulate(conn)
+            with self._connection() as c:
+                return _do_accumulate(c)
+        except Exception as e:
+            logger.warning("[db] Failed to accumulate embedding drift: %s", e)
+            return False
+
+    def get_pending_embedding_drifts(self, min_successes: int = 1, conn=None) -> list[dict]:
+        """Get all pending embedding drifts ready for batch update.
+
+        Args:
+            min_successes: Minimum success count to include
+            conn: Optional connection
+
+        Returns:
+            List of dicts with signature_id, avg_embedding, success_count
+        """
+        def _do_get(c):
+            rows = c.execute("""
+                SELECT signature_id, embedding_sum, success_count
+                FROM pending_embedding_drifts
+                WHERE success_count >= ?
+            """, (min_successes,)).fetchall()
+
+            results = []
+            import json
+            for row in rows:
+                embedding_sum = json.loads(row["embedding_sum"])
+                count = row["success_count"]
+                # Compute average embedding
+                avg_embedding = [x / count for x in embedding_sum]
+                results.append({
+                    "signature_id": row["signature_id"],
+                    "avg_embedding": avg_embedding,
+                    "success_count": count,
+                })
+            return results
+
+        if conn:
+            return _do_get(conn)
+        with self._connection() as c:
+            return _do_get(c)
+
+    def clear_pending_embedding_drifts(self, signature_ids: list[int] = None, conn=None) -> int:
+        """Clear pending embedding drifts after batch update.
+
+        Args:
+            signature_ids: Specific IDs to clear, or None for all
+            conn: Optional connection
+
+        Returns:
+            Number of rows cleared
+        """
+        def _do_clear(c):
+            if signature_ids:
+                placeholders = ",".join("?" * len(signature_ids))
+                result = c.execute(f"""
+                    DELETE FROM pending_embedding_drifts
+                    WHERE signature_id IN ({placeholders})
+                """, signature_ids)
+            else:
+                result = c.execute("DELETE FROM pending_embedding_drifts")
+            c.connection.commit()
+            return result.rowcount
+
+        if conn:
+            return _do_clear(conn)
+        with self._connection() as c:
+            return _do_clear(c)
+
+    def apply_embedding_drift_batch(self, conn=None) -> dict:
+        """Apply Welford-adaptive embedding drift to leaf nodes.
+
+        Vectorized batch update using NumPy for performance.
+        Called during periodic tree review (every ~50 problems).
+
+        Per CLAUDE.md "The Flow": DB Statistics → Welford → Tree Structure
+
+        Returns:
+            Dict with update stats: nodes_updated, avg_drift_magnitude
+        """
+        from mycelium.config import (
+            EMBEDDING_DRIFT_ENABLED,
+            EMBEDDING_DRIFT_MIN_SUCCESSES,
+            EMBEDDING_DRIFT_VARIANCE_K,
+        )
+
+        if not EMBEDDING_DRIFT_ENABLED:
+            return {"nodes_updated": 0, "skipped": "drift_disabled"}
+
+        def _do_apply(c):
+            import numpy as np
+
+            # Get pending drifts with sufficient successes
+            pending = self.get_pending_embedding_drifts(
+                min_successes=EMBEDDING_DRIFT_MIN_SUCCESSES, conn=c
+            )
+
+            if not pending:
+                return {"nodes_updated": 0, "skipped": "no_pending_drifts"}
+
+            # Get current embeddings and Welford stats for these signatures
+            sig_ids = [p["signature_id"] for p in pending]
+            placeholders = ",".join("?" * len(sig_ids))
+
+            rows = c.execute(f"""
+                SELECT s.id, s.graph_embedding,
+                       COALESCE(w.embedding_n, 0) as emb_n,
+                       COALESCE(w.embedding_mean, 0) as emb_mean,
+                       COALESCE(w.embedding_m2, 0) as emb_m2
+                FROM step_signatures s
+                LEFT JOIN welford_stats w ON s.id = w.signature_id
+                WHERE s.id IN ({placeholders})
+                  AND s.graph_embedding IS NOT NULL
+            """, sig_ids).fetchall()
+
+            if not rows:
+                return {"nodes_updated": 0, "skipped": "no_valid_signatures"}
+
+            # Build lookup for pending data
+            pending_lookup = {p["signature_id"]: p for p in pending}
+
+            # Vectorized computation
+            updates = []
+            drift_magnitudes = []
+
+            for row in rows:
+                sig_id = row["id"]
+                if sig_id not in pending_lookup:
+                    continue
+
+                # Parse current embedding
+                import json
+                current_emb = np.array(json.loads(row["graph_embedding"]), dtype=np.float32)
+                success_emb = np.array(pending_lookup[sig_id]["avg_embedding"], dtype=np.float32)
+
+                # Compute Welford-adaptive alpha
+                # α = 1 - (k / (k + variance))
+                # High variance → lower α → faster drift
+                emb_n = row["emb_n"]
+                emb_m2 = row["emb_m2"]
+                if emb_n > 1:
+                    variance = emb_m2 / (emb_n - 1)
+                else:
+                    variance = 1.0  # High variance for new nodes = fast drift
+
+                k = EMBEDDING_DRIFT_VARIANCE_K
+                alpha = 1.0 - (k / (k + variance))
+                alpha = max(0.5, min(0.99, alpha))  # Clamp to reasonable range
+
+                # EMA update: new = α * old + (1-α) * success
+                new_emb = alpha * current_emb + (1 - alpha) * success_emb
+
+                # Track drift magnitude
+                drift_mag = float(np.linalg.norm(new_emb - current_emb))
+                drift_magnitudes.append(drift_mag)
+
+                updates.append({
+                    "id": sig_id,
+                    "new_embedding": json.dumps(new_emb.tolist()),
+                    "alpha": alpha,
+                })
+
+            # Apply updates
+            for upd in updates:
+                c.execute("""
+                    UPDATE step_signatures
+                    SET graph_embedding = ?, updated_at = datetime('now')
+                    WHERE id = ?
+                """, (upd["new_embedding"], upd["id"]))
+
+            # Clear processed drifts
+            processed_ids = [u["id"] for u in updates]
+            self.clear_pending_embedding_drifts(processed_ids, conn=c)
+
+            c.connection.commit()
+
+            avg_drift = sum(drift_magnitudes) / len(drift_magnitudes) if drift_magnitudes else 0.0
+
+            logger.info(
+                "[db] Embedding drift applied: %d nodes updated, avg_drift=%.4f",
+                len(updates), avg_drift
+            )
+
+            return {
+                "nodes_updated": len(updates),
+                "avg_drift_magnitude": avg_drift,
+                "updates": [{"id": u["id"], "alpha": u["alpha"]} for u in updates],
+            }
+
+        if conn:
+            return _do_apply(conn)
+        with self._connection() as c:
+            return _do_apply(c)
+
+    def recompute_router_centroids(self, conn=None) -> int:
+        """Recompute router centroids as average of children graph embeddings.
+
+        Called after embedding drift updates to propagate changes up the tree.
+
+        Returns:
+            Number of routers updated
+        """
+        def _do_recompute(c):
+            import numpy as np
+            import json
+
+            # Get all router nodes (non-leaf with children)
+            routers = c.execute("""
+                SELECT DISTINCT p.id
+                FROM step_signatures p
+                JOIN step_signatures ch ON ch.parent_id = p.id
+                WHERE p.is_archived = 0
+            """).fetchall()
+
+            updated = 0
+            for row in routers:
+                router_id = row["id"]
+
+                # Get children graph embeddings
+                children = c.execute("""
+                    SELECT graph_embedding
+                    FROM step_signatures
+                    WHERE parent_id = ? AND graph_embedding IS NOT NULL AND is_archived = 0
+                """, (router_id,)).fetchall()
+
+                if not children:
+                    continue
+
+                # Compute centroid (mean of children)
+                embeddings = [np.array(json.loads(ch["graph_embedding"]), dtype=np.float32)
+                              for ch in children]
+                centroid = np.mean(embeddings, axis=0)
+
+                # Update router
+                c.execute("""
+                    UPDATE step_signatures
+                    SET graph_embedding = ?, updated_at = datetime('now')
+                    WHERE id = ?
+                """, (json.dumps(centroid.tolist()), router_id))
+                updated += 1
+
+            c.connection.commit()
+            logger.info("[db] Recomputed %d router centroids", updated)
+            return updated
+
+        if conn:
+            return _do_recompute(conn)
+        with self._connection() as c:
+            return _do_recompute(c)
 
     # =========================================================================
     # PLAN_STEP_STATS: Statistical blame accumulation for (plan, position, node)
@@ -8624,20 +9134,24 @@ class StepSignatureDB:
         return prefix.rstrip("_- ")
 
     def _cleanup_orphan_umbrellas(self, conn=None) -> int:
-        """Remove umbrella signatures that have no children.
+        """Archive umbrella signatures that have no children.
+
+        Per CLAUDE.md System Independence: Uses soft-delete (is_archived=1) to
+        preserve learning history. Permanent deletion loses valuable data.
 
         Per CLAUDE.md: Don't create umbrellas without children.
         This cleans up any orphaned umbrellas from previous operations.
 
         Returns:
-            Number of orphan umbrellas removed
+            Number of orphan umbrellas archived
         """
         def _do_cleanup(c):
-            # Find umbrellas with no children
+            # Find non-archived umbrellas with no children
             cursor = c.execute(
                 """SELECT s.id, s.step_type FROM step_signatures s
                    WHERE s.is_semantic_umbrella = 1
                    AND s.is_root = 0
+                   AND (s.is_archived = 0 OR s.is_archived IS NULL)
                    AND NOT EXISTS (
                        SELECT 1 FROM signature_relationships r WHERE r.parent_id = s.id
                    )"""
@@ -8653,20 +9167,20 @@ class StepSignatureDB:
                 len(orphans), [(row[0], row[1][:30]) for row in orphans]
             )
 
-            # Remove orphans
+            # Archive orphans (soft-delete per CLAUDE.md System Independence)
             for orphan_id in orphan_ids:
-                # Remove from relationships (as child)
+                # Remove from relationships (as child) - clean up graph structure
                 c.execute(
                     "DELETE FROM signature_relationships WHERE child_id = ?",
                     (orphan_id,)
                 )
-                # Delete signature
+                # Soft-delete: archive instead of permanent delete
                 c.execute(
-                    "DELETE FROM step_signatures WHERE id = ?",
+                    "UPDATE step_signatures SET is_archived = 1 WHERE id = ?",
                     (orphan_id,)
                 )
 
-            logger.info("[restructure] Cleaned up %d orphan umbrellas", len(orphan_ids))
+            logger.info("[restructure] Archived %d orphan umbrellas", len(orphan_ids))
             return len(orphan_ids)
 
         if conn is not None:
@@ -8676,6 +9190,71 @@ class StepSignatureDB:
                 c.execute("BEGIN IMMEDIATE")
                 try:
                     result = _do_cleanup(c)
+                    c.commit()
+                    return result
+                except Exception:
+                    c.rollback()
+                    raise
+
+    def _adopt_orphan_children(self, conn=None) -> int:
+        """Adopt orphan children (non-root nodes without parents) under root.
+
+        Per CLAUDE.md System Independence: When a parent is archived, its children
+        may become orphans. Instead of immediate reparenting (which bypasses
+        Welford-guided decisions), we defer to periodic review to adopt orphans.
+
+        Orphan children are attached to root, where subsequent periodic reviews
+        can use Welford stats to place them in appropriate clusters.
+
+        Returns:
+            Number of orphan children adopted
+        """
+        def _do_adopt(c):
+            # Get root ID
+            root = self.get_root()
+            if not root:
+                logger.warning("[review] No root found, cannot adopt orphans")
+                return 0
+
+            # Find non-root, non-archived signatures that have no parent
+            cursor = c.execute(
+                """SELECT s.id, s.step_type FROM step_signatures s
+                   WHERE s.is_root = 0
+                   AND (s.is_archived = 0 OR s.is_archived IS NULL)
+                   AND NOT EXISTS (
+                       SELECT 1 FROM signature_relationships r WHERE r.child_id = s.id
+                   )"""
+            )
+            orphans = cursor.fetchall()
+
+            if not orphans:
+                return 0
+
+            orphan_ids = [row[0] for row in orphans]
+            logger.info(
+                "[review] Found %d orphan children (no parent): %s",
+                len(orphans), [(row[0], row[1][:30]) for row in orphans]
+            )
+
+            # Adopt orphans under root
+            for orphan_id in orphan_ids:
+                c.execute(
+                    """INSERT OR IGNORE INTO signature_relationships
+                       (parent_id, child_id, condition, routing_order)
+                       VALUES (?, ?, 'adopted_orphan', 0)""",
+                    (root.id, orphan_id)
+                )
+
+            logger.info("[review] Adopted %d orphan children under root", len(orphan_ids))
+            return len(orphan_ids)
+
+        if conn is not None:
+            return _do_adopt(conn)
+        else:
+            with self._connection() as c:
+                c.execute("BEGIN IMMEDIATE")
+                try:
+                    result = _do_adopt(c)
                     c.commit()
                     return result
                 except Exception:
@@ -9008,12 +9587,13 @@ class StepSignatureDB:
         - Sub-clustering (high variance → split)
 
         Returns:
-            Dict with review stats: merges, moves, clusters_created, orphans_cleaned
+            Dict with review stats: merges, moves, clusters_created, orphans_adopted, orphans_cleaned
         """
         from mycelium import config
 
         def _do_review(c):
-            stats = {"ran": True, "merges": 0, "moves": 0, "clusters_created": 0, "orphans_cleaned": 0,
+            stats = {"ran": True, "merges": 0, "moves": 0, "clusters_created": 0,
+                     "orphans_adopted": 0, "orphans_cleaned": 0,
                      "embeddings_backfilled": 0, "welford_backfilled": 0}
 
             # 0a. BACKFILL: Ensure all signatures have embeddings (system independence)
@@ -9084,18 +9664,36 @@ class StepSignatureDB:
                         )
                         stats["clusters_created"] += new_clusters
 
-            # 8. Cleanup orphan umbrellas
+            # 8. Adopt orphan children (nodes without parents) under root
+            # Per CLAUDE.md System Independence: deferred reparenting via periodic review
+            stats["orphans_adopted"] = self._adopt_orphan_children(conn=c)
+
+            # 9. Cleanup orphan umbrellas (empty routers)
             stats["orphans_cleaned"] = self._cleanup_orphan_umbrellas(conn=c)
 
-            # 9. Process pending proposals (staged signatures from failed refinement)
+            # 10. Process pending proposals (staged signatures from failed refinement)
             proposals_result = self._process_pending_proposals(conn=c)
             stats["proposals_accepted"] = proposals_result.get("accepted", 0)
             stats["proposals_rejected"] = proposals_result.get("rejected", 0)
 
+            # 11. Apply embedding drift batch update (per mycelium-ieq4)
+            # Per CLAUDE.md: "High-traffic signatures become semantic attractors"
+            drift_result = self.apply_embedding_drift_batch(conn=c)
+            stats["drift_nodes_updated"] = drift_result.get("nodes_updated", 0)
+            stats["drift_avg_magnitude"] = drift_result.get("avg_drift_magnitude", 0.0)
+
+            # 12. Recompute router centroids after drift updates
+            if stats["drift_nodes_updated"] > 0:
+                stats["routers_recomputed"] = self.recompute_router_centroids(conn=c)
+            else:
+                stats["routers_recomputed"] = 0
+
             logger.info(
-                "[review] Tree review complete: %d merges, %d moves, %d clusters, %d orphans, %d proposals accepted, %d rejected",
-                stats["merges"], stats["moves"], stats["clusters_created"], stats["orphans_cleaned"],
-                stats["proposals_accepted"], stats["proposals_rejected"]
+                "[review] Tree review complete: %d merges, %d moves, %d clusters, %d adopted, "
+                "%d orphan umbrellas, %d proposals accepted, %d rejected, %d drift updates (avg=%.4f), %d routers recomputed",
+                stats["merges"], stats["moves"], stats["clusters_created"], stats["orphans_adopted"],
+                stats["orphans_cleaned"], stats["proposals_accepted"], stats["proposals_rejected"],
+                stats["drift_nodes_updated"], stats["drift_avg_magnitude"], stats["routers_recomputed"]
             )
 
             return stats
@@ -9673,7 +10271,11 @@ def reset_step_db() -> None:
     """Reset the singleton StepSignatureDB instance.
 
     Primarily for testing - allows tests to get a fresh instance.
+    Also clears all caches to ensure fresh state.
     """
     global _step_db
     _step_db = None
-    logger.debug("[db] Reset singleton StepSignatureDB instance")
+    # Clear signature and children caches to avoid stale data between tests
+    from mycelium.step_signatures.utils import invalidate_signature_cache
+    invalidate_signature_cache()
+    logger.debug("[db] Reset singleton StepSignatureDB instance and caches")

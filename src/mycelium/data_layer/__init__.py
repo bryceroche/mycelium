@@ -3,8 +3,10 @@
 from mycelium.data_layer.connection import (
     ConnectionManager,
     configure_connection,
+    create_connection_manager,
     get_db,
     reset_db,
+    retry_on_locked,
     EMBEDDING_DIM,
 )
 from mycelium.data_layer.schema import (
@@ -18,6 +20,12 @@ from mycelium.data_layer.state_manager import (
     StateManager,
     WelfordStats,
     get_state_manager,
+)
+
+# Thresholds re-exported from config per CLAUDE.md "The Flow"
+from mycelium.config import (
+    REJECTION_COUNT_THRESHOLD,
+    REJECTION_RATE_THRESHOLD,
 )
 
 # MCTS Wave Function data access
@@ -82,11 +90,12 @@ from mycelium.data_layer.mcts import (
     get_decomposition_results,
     are_decompositions_ready,
     get_pending_queue_ids,
-    # Leaf rejection tracking
-    REJECTION_SIM_THRESHOLD,
-    REJECTION_COUNT_THRESHOLD,
-    REJECTION_RATE_THRESHOLD,
-    record_leaf_rejection,
+    # Leaf rejection tracking (thresholds now from config.py per "The Flow")
+    # Per CLAUDE.md "New Favorite Pattern": Consolidated rejection via reject_dag_step
+    RejectionDecision,
+    reject_dag_step,  # Single entry point for all rejections
+    get_rejection_count_threshold,  # Adaptive threshold based on system maturity
+    record_leaf_rejection,  # Legacy - prefer reject_dag_step
     get_leaf_rejection_stats,
     get_leaves_needing_decomposition,
     flag_high_rejection_leaves_for_decomposition,
@@ -103,7 +112,9 @@ __all__ = [
     "db",
     "get_db",
     "reset_db",
+    "create_connection_manager",
     "ConnectionManager",
+    "retry_on_locked",
     "configure_connection",
     "EMBEDDING_DIM",
     "SQLITE_SCHEMA",
@@ -175,11 +186,12 @@ __all__ = [
     "get_decomposition_results",
     "are_decompositions_ready",
     "get_pending_queue_ids",
-    # Leaf rejection tracking
-    "REJECTION_SIM_THRESHOLD",
-    "REJECTION_COUNT_THRESHOLD",
-    "REJECTION_RATE_THRESHOLD",
-    "record_leaf_rejection",
+    # Leaf rejection tracking (thresholds from config.py per "The Flow")
+    # Per CLAUDE.md "New Favorite Pattern": Consolidated rejection via reject_dag_step
+    "RejectionDecision",
+    "reject_dag_step",  # Single entry point for all rejections
+    "get_rejection_count_threshold",  # Adaptive threshold function
+    "record_leaf_rejection",  # Legacy - prefer reject_dag_step
     "get_leaf_rejection_stats",
     "get_leaves_needing_decomposition",
     "flag_high_rejection_leaves_for_decomposition",

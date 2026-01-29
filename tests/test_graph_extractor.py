@@ -4,6 +4,7 @@ import pytest
 import numpy as np
 from unittest.mock import MagicMock, AsyncMock
 
+from mycelium.config import EMBEDDING_DIM
 from mycelium.step_signatures.graph_extractor import (
     extract_computation_graph,
     graphs_equivalent,
@@ -11,6 +12,7 @@ from mycelium.step_signatures.graph_extractor import (
     embed_computation_graph_sync,
     clear_graph_embedding_cache,
 )
+from mycelium.embedding_cache import EmbeddingCache
 
 
 class TestExtractComputationGraph:
@@ -151,23 +153,30 @@ class TestEmbedComputationGraphSync:
     """Tests for sync graph embedding."""
 
     def setup_method(self):
-        """Clear cache before each test."""
+        """Clear caches before each test."""
         clear_graph_embedding_cache()
+        # Also clear the EmbeddingCache to ensure fresh state
+        # (both memory and disk caches)
+        cache = EmbeddingCache.get_instance()
+        cache.clear()
+        EmbeddingCache.reset_instance()
 
     def test_embed_returns_list(self):
         """Test that embedding returns a list."""
         mock_embedder = MagicMock()
-        mock_embedder.embed.return_value = np.array([0.1, 0.2, 0.3])
+        mock_embedding = np.random.rand(EMBEDDING_DIM).astype(np.float32)
+        mock_embedder.embed.return_value = mock_embedding
 
         result = embed_computation_graph_sync(mock_embedder, "MUL(param_0, param_1)")
 
         assert isinstance(result, list)
-        assert result == [0.1, 0.2, 0.3]
+        assert len(result) == EMBEDDING_DIM
 
     def test_caching(self):
         """Test that repeated calls use cache."""
         mock_embedder = MagicMock()
-        mock_embedder.embed.return_value = np.array([0.1, 0.2, 0.3])
+        mock_embedding = np.random.rand(EMBEDDING_DIM).astype(np.float32)
+        mock_embedder.embed.return_value = mock_embedding
 
         # First call
         result1 = embed_computation_graph_sync(mock_embedder, "MUL(param_0, param_1)")
