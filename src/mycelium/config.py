@@ -83,6 +83,25 @@ DSL_TIMEOUT_SEC = 1.0  # Timeout for DSL script execution
 DECOMP_MIN_BATCH_SIZE = 5  # Trigger when queue reaches this size
 DECOMP_MAX_QUEUE_AGE_SEC = 15.0  # Or when oldest item is this old (seconds)
 
+# =============================================================================
+# PERIODIC TREE MAINTENANCE (all structural changes bundled together)
+# =============================================================================
+# Per CLAUDE.md: Batch expensive operations, don't block the hot path
+# All structural tree changes happen together in periodic maintenance cycles:
+#   - Auto-decomposition (LLM calls to create children)
+#   - Merge/split from interference patterns
+#   - Restructuring (clustering, orphan cleanup)
+#   - Signature retirement
+#
+# This keeps the hot path fast and consolidates expensive operations.
+
+TREE_MAINTENANCE_INTERVAL = 10  # Run maintenance every N problems (0 = disabled)
+TREE_MAINTENANCE_ENABLED = True  # Master switch for periodic maintenance
+
+# Auto-decomposition settings (part of tree maintenance)
+AUTO_DECOMP_BATCH_ENABLED = True  # Queue decompositions instead of inline execution
+AUTO_DECOMP_MAX_QUEUE_SIZE = 50  # Max queued decompositions before force-processing
+
 # Pre-execution complexity detection
 # When disabled, only post-mortem flags failing steps for decomposition
 # (per CLAUDE.md: "failures are valuable data points")
@@ -693,12 +712,12 @@ INTERFERENCE_CONSTRUCTIVE_BOOST = 0.1  # Strength for constructive effects (plac
 INTERFERENCE_DESTRUCTIVE_PENALTY = 0.15  # Strength for destructive effects (placeholder)
 
 # =============================================================================
-# MERGE/SPLIT BATCHING (Structural tree changes from interference)
+# MERGE/SPLIT SETTINGS (runs during periodic tree maintenance)
 # =============================================================================
 # Per CLAUDE.md: Constructive → merge, Destructive → split
-# These operations are expensive, so we batch them instead of running per-problem.
+# These operations run as part of TREE_MAINTENANCE_INTERVAL cycle.
 
-MERGE_SPLIT_BATCH_SIZE = 10  # Run merge/split every N problems (0 = disabled)
+MERGE_SPLIT_BATCH_SIZE = TREE_MAINTENANCE_INTERVAL  # Alias for backward compat
 MERGE_MIN_SUCCESS_RATE = 0.75  # Min success rate for merge candidates
 MERGE_MIN_USES = 10  # Min uses to trust signal for merge
 MERGE_MIN_SIMILARITY = 0.90  # Min centroid similarity for merge

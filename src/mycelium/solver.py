@@ -18,6 +18,7 @@ import hashlib
 import json
 import logging
 import re
+import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Optional
@@ -700,6 +701,183 @@ class Solver:
         # Stores DSLResult from last successful DSL execution for learning
         self._last_dsl_info: Optional[DSLResult] = None
 
+        # Auto-decomposition batching queue (per CLAUDE.md: batch structural changes)
+        # Queue of (signature_id, difficulty) tuples waiting for batch processing
+        # This moves expensive LLM calls out of the hot path
+        self._decomp_queue: list[tuple[int, Optional[float]]] = []
+        self._problems_since_decomp_batch: int = 0  # Counter for batch triggering
+
+    def _queue_auto_decompose(self, signature_id: int, difficulty: float = None) -> None:
+        """Queue a signature for batch decomposition instead of inline processing.
+
+        Per CLAUDE.md: Batch expensive operations, don't block the hot path.
+        The actual decomposition LLM calls happen in _process_decomp_batch().
+        """
+        from mycelium.config import AUTO_DECOMP_BATCH_ENABLED, AUTO_DECOMP_MAX_QUEUE_SIZE
+
+        if not AUTO_DECOMP_BATCH_ENABLED:
+            # Batching disabled - run inline (original behavior)
+            self._create_background_task(
+                self._auto_decompose_signature_impl(signature_id, difficulty=difficulty)
+            )
+            return
+
+        # Check if already queued (avoid duplicates)
+        if any(sig_id == signature_id for sig_id, _ in self._decomp_queue):
+            logger.debug("[solver] Signature %d already in decomp queue, skipping", signature_id)
+            return
+
+        self._decomp_queue.append((signature_id, difficulty))
+        logger.info(
+            "[solver] Queued signature %d for batch decomposition (queue_size=%d)",
+            signature_id, len(self._decomp_queue)
+        )
+
+        # Force process if queue is too large
+        if len(self._decomp_queue) >= AUTO_DECOMP_MAX_QUEUE_SIZE:
+            logger.info("[solver] Decomp queue full (%d), force processing", len(self._decomp_queue))
+            self._create_background_task(self._process_decomp_batch())
+
+    async def _process_decomp_batch(self) -> dict:
+        """Process queued decompositions in batch.
+
+        Called between problems (not during step execution) to avoid blocking.
+        Returns stats about processing.
+        """
+        if not self._decomp_queue:
+            return {"processed": 0, "queue_was_empty": True}
+
+        queue_size = len(self._decomp_queue)
+        logger.info("[solver] Processing decomposition batch: %d signatures", queue_size)
+
+        processed = 0
+        errors = 0
+        start_time = time.time()
+
+        # Process all queued decompositions
+        for signature_id, difficulty in self._decomp_queue:
+            try:
+                # Check if signature still exists and needs decomposition
+                sig = self.step_db.get_signature(signature_id)
+                if sig is None:
+                    logger.debug("[decomp_batch] Signature %d no longer exists, skipping", signature_id)
+                    continue
+
+                # Skip if already has children (decomposed by another path)
+                children = self.step_db.get_children(signature_id, for_routing=True)
+                if children:
+                    logger.debug(
+                        "[decomp_batch] Signature %d already has %d children, skipping",
+                        signature_id, len(children)
+                    )
+                    continue
+
+                # Perform the actual decomposition (makes LLM calls)
+                await self._auto_decompose_signature_impl(signature_id, difficulty=difficulty)
+                processed += 1
+
+            except Exception as e:
+                logger.warning("[decomp_batch] Error decomposing signature %d: %s", signature_id, e)
+                errors += 1
+
+        # Clear queue
+        self._decomp_queue.clear()
+        self._problems_since_decomp_batch = 0
+
+        elapsed_ms = (time.time() - start_time) * 1000
+        stats = {
+            "processed": processed,
+            "errors": errors,
+            "queue_size": queue_size,
+            "elapsed_ms": elapsed_ms,
+        }
+        logger.info(
+            "[solver] Decomposition batch complete: %d/%d processed in %.0fms",
+            processed, queue_size, elapsed_ms
+        )
+        return stats
+
+    async def maybe_process_decomp_batch(self) -> Optional[dict]:
+        """Check if decomposition batch should run, and run it if so.
+
+        NOTE: Prefer using maybe_run_tree_maintenance() which consolidates all
+        structural changes. This method is kept for backward compatibility.
+        """
+        if not self._decomp_queue:
+            return None
+        return await self._process_decomp_batch()
+
+    async def maybe_run_tree_maintenance(self) -> dict:
+        """Run periodic tree maintenance if interval reached.
+
+        Consolidates all structural tree changes into a single maintenance cycle:
+        - Auto-decomposition (LLM calls to create children)
+        - Restructuring (clustering, orphan cleanup)
+        - Future: merge/split, retirement
+
+        Per CLAUDE.md: Batch expensive operations, don't block the hot path.
+
+        Returns:
+            Dict with stats from each maintenance operation that ran.
+        """
+        from mycelium.config import (
+            TREE_MAINTENANCE_ENABLED,
+            TREE_MAINTENANCE_INTERVAL,
+            AUTO_DECOMP_BATCH_ENABLED,
+            TRAINING_MODE,
+        )
+
+        stats = {"ran": False}
+
+        if not TREE_MAINTENANCE_ENABLED or TREE_MAINTENANCE_INTERVAL == 0:
+            return stats
+
+        self._problems_since_decomp_batch += 1
+
+        # Check if we should run maintenance this cycle
+        if self._problems_since_decomp_batch < TREE_MAINTENANCE_INTERVAL:
+            return stats
+
+        # Reset counter
+        self._problems_since_decomp_batch = 0
+        stats["ran"] = True
+
+        logger.info("[tree_maintenance] Starting periodic tree maintenance cycle")
+        maintenance_start = time.time()
+
+        # 1. Process queued decompositions (LLM calls)
+        if AUTO_DECOMP_BATCH_ENABLED and self._decomp_queue:
+            decomp_stats = await self._process_decomp_batch()
+            stats["decomposition"] = decomp_stats
+            logger.info(
+                "[tree_maintenance] Decomposition: %d signatures processed",
+                decomp_stats.get("processed", 0)
+            )
+
+        # 2. Restructure tree (clustering, orphan cleanup)
+        if TRAINING_MODE:
+            problem_count = self.step_db.get_total_problems_solved()
+            restructure_result = self.step_db.maybe_restructure(problem_count, force=True)
+            if restructure_result.get("ran"):
+                stats["restructure"] = restructure_result
+                logger.info(
+                    "[tree_maintenance] Restructure: %d clusters, %d orphans cleaned",
+                    restructure_result.get("clusters_created", 0),
+                    restructure_result.get("orphans_cleaned", 0)
+                )
+
+        # 3. Future: Add merge/split, retirement here
+        # These currently run in step_db but could be consolidated
+
+        maintenance_elapsed = (time.time() - maintenance_start) * 1000
+        stats["elapsed_ms"] = maintenance_elapsed
+        logger.info(
+            "[tree_maintenance] Maintenance cycle complete in %.0fms",
+            maintenance_elapsed
+        )
+
+        return stats
+
     def _create_background_task(self, coro) -> asyncio.Task:
         """Create a background task with proper lifecycle management.
 
@@ -1347,17 +1525,15 @@ class Solver:
                 matched_and_reused, steps_with_injection, steps_with_routing
             )
 
-            # Auto-restructure check (per mycelium-heh3, CLAUDE.md System Independence)
-            # Runs every N problems after cold start to reorganize tree structure
-            if TRAINING_MODE:
-                problem_count = self.step_db.get_total_problems_solved()
-                restructure_result = self.step_db.maybe_restructure(problem_count)
-                if restructure_result.get("ran"):
-                    logger.info(
-                        "[solver] Restructure: %d clusters, %d orphans cleaned",
-                        restructure_result.get("clusters_created", 0),
-                        restructure_result.get("orphans_cleaned", 0)
-                    )
+            # Periodic tree maintenance (per CLAUDE.md: batch structural changes)
+            # Consolidates: decomposition, restructuring, merge/split, retirement
+            # Runs every TREE_MAINTENANCE_INTERVAL problems
+            maintenance_stats = await self.maybe_run_tree_maintenance()
+            if maintenance_stats.get("ran"):
+                logger.debug(
+                    "[solver] Tree maintenance completed in %.0fms",
+                    maintenance_stats.get("elapsed_ms", 0)
+                )
 
             return SolverResult(
                 problem=problem,
@@ -1387,6 +1563,13 @@ class Solver:
             if self._current_dag_id:
                 grade_dag(self._current_dag_id, success=False)
                 logger.debug("[solver] Graded MCTS DAG %s as failed (exception)", self._current_dag_id)
+
+            # Still try to run tree maintenance on error (cleanup queued work)
+            try:
+                await self.maybe_run_tree_maintenance()
+            except Exception:
+                pass  # Don't mask the original error
+
             return SolverResult(
                 problem=problem,
                 answer="",
@@ -5567,12 +5750,30 @@ Rules:
             return None
 
     async def _auto_decompose_signature(
-        self, signature, recursion_depth: int = 0, difficulty: float = None
-    ) -> bool:
-        """Auto-decompose a decompose-type signature into computable children.
+        self, signature, difficulty: float = None
+    ) -> None:
+        """Queue or execute auto-decomposition based on batching config.
 
-        Called when we encounter a decompose-type signature that needs children.
-        Creates children with actual DSLs and promotes parent to umbrella.
+        This is the main entry point for auto-decomposition. When batching is enabled,
+        it queues the request for later batch processing. When disabled, it executes inline.
+
+        Args:
+            signature: The signature to decompose (or signature ID)
+            difficulty: Problem difficulty (0.0-1.0) for adaptive depth
+        """
+        # Handle both signature object and signature ID
+        signature_id = signature.id if hasattr(signature, 'id') else signature
+
+        # Queue for batch processing (or run inline if batching disabled)
+        self._queue_auto_decompose(signature_id, difficulty)
+
+    async def _auto_decompose_signature_impl(
+        self, signature_id: int, recursion_depth: int = 0, difficulty: float = None
+    ) -> bool:
+        """Implementation: Auto-decompose a signature into computable children.
+
+        Called by batch processor. Creates children with actual DSLs and promotes
+        parent to umbrella.
 
         During BIG BANG phase, recursively decomposes children to explode tree structure.
         Decomposition depth is now DIFFICULTY-AWARE:
@@ -5580,7 +5781,7 @@ Rules:
         - Easier problems (GSM8K) → shallower decomposition (3-4 levels)
 
         Args:
-            signature: The decompose-type signature to decompose
+            signature_id: The signature ID to decompose
             recursion_depth: Current recursion depth (to prevent runaway)
             difficulty: Problem difficulty (0.0-1.0) for adaptive depth
 
@@ -5589,6 +5790,12 @@ Rules:
         """
         from mycelium.step_signatures.umbrella_learner import UmbrellaLearner
         from mycelium.difficulty import get_recommended_depth
+
+        # Load the signature
+        signature = self.step_db.get_signature(signature_id)
+        if signature is None:
+            logger.warning("[solver] Cannot decompose: signature %d not found", signature_id)
+            return False
 
         # Difficulty-aware depth limit: harder problems need deeper decomposition
         # Defaults to 5 if difficulty not provided (backward compatible)
@@ -5621,8 +5828,9 @@ Rules:
                                 "[expansion] Recursive decompose: '%s' at depth %d (difficulty=%.2f)",
                                 child_sig.step_type, child_depth, difficulty or 0.0
                             )
-                            await self._auto_decompose_signature(
-                                child_sig, recursion_depth + 1, difficulty=difficulty
+                            # Recursive call uses impl directly (within batch processing)
+                            await self._auto_decompose_signature_impl(
+                                child_id, recursion_depth + 1, difficulty=difficulty
                             )
 
                 return True
