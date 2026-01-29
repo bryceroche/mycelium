@@ -1054,6 +1054,23 @@ TREE_PLANNER_NEGOTIATION_ENABLED = os.getenv("TREE_PLANNER_NEGOTIATION", "true")
 TREE_PLANNER_NEGOTIATION_MAX_ROUNDS = 2
 TREE_PLANNER_NEGOTIATION_SIMILARITY_THRESHOLD = 0.7
 
+# =============================================================================
+# LOCAL DECOMPOSITION (per CLAUDE.md: "break into smaller pieces")
+# =============================================================================
+# When enabled, uses single LLM call for value extraction + computation graph,
+# then LOCAL decomposition (no LLM) to convert to atomic steps.
+#
+# Benefits:
+# - Fewer LLM calls (1 vs 3+)
+# - Finer granularity (10+ atomic steps vs 3-5 coarse steps)
+# - Better signature reuse (direct mapping to tree vocabulary)
+# - Precise failure attribution (which atomic op failed)
+#
+# When disabled, uses Tree-Planner negotiation (multiple LLM rounds).
+
+LOCAL_DECOMPOSITION_ENABLED = os.getenv("LOCAL_DECOMPOSITION", "true").lower() == "true"
+LOCAL_DECOMPOSITION_MODEL = os.getenv("LOCAL_DECOMPOSITION_MODEL", "gpt-4o-mini")  # Fast model for extraction
+
 # Model configuration - set via TRAINING_MODE env var
 # TRAINING_MODE=true  -> use beefy models for learning
 # TRAINING_MODE=false -> use lightweight models for inference

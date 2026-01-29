@@ -5384,6 +5384,26 @@ class StepSignatureDB:
                 for row in cursor.fetchall()
             ]
 
+    def get_leaf_signature_names(self) -> list[str]:
+        """Get unique leaf signature type names for vocabulary constraint.
+
+        Used by local decomposition to validate generated steps against
+        the tree's existing vocabulary.
+
+        Returns:
+            List of unique step_type names (e.g., ["compute_sum", "compute_product", ...])
+        """
+        with self._connection() as conn:
+            cursor = conn.execute(
+                """SELECT DISTINCT step_type
+                   FROM step_signatures
+                   WHERE is_semantic_umbrella = 0
+                     AND is_archived = 0
+                     AND step_type IS NOT NULL
+                   ORDER BY step_type"""
+            )
+            return [row[0] for row in cursor.fetchall()]
+
     def match_step_to_leaves_mcts(
         self,
         operation_embedding: np.ndarray,

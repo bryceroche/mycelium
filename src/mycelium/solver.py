@@ -1229,10 +1229,38 @@ class Solver:
                 return zero_llm_result
 
             # 1. Plan: Decompose into steps
-            # Per CLAUDE.md "Negotiation between Tree and Planner":
-            # TreeGuidedPlanner handles vocabulary internally through negotiation.
-            # Don't pass signature_hints - let the planner negotiate with the tree.
-            plan = await self.planner.decompose(problem)
+            # Two modes:
+            # - LOCAL_DECOMPOSITION: Single LLM call + local decomposition (faster, finer-grained)
+            # - Tree-Planner negotiation: Multiple LLM rounds (legacy)
+            from mycelium.config import LOCAL_DECOMPOSITION_ENABLED, LOCAL_DECOMPOSITION_MODEL
+
+            if LOCAL_DECOMPOSITION_ENABLED:
+                # Local decomposition: single LLM call for extraction + local decomposition
+                # Per CLAUDE.md: "break into smaller pieces" for better reuse
+                from mycelium.local_decomposer import decompose_problem
+                from mycelium.client import LLMClient
+
+                async with LLMClient(model=LOCAL_DECOMPOSITION_MODEL) as decomp_client:
+                    plan = await decompose_problem(
+                        problem,
+                        decomp_client,
+                        tree_vocabulary=self.step_db.get_leaf_signature_names() if self.step_db else None,
+                    )
+
+                if plan is None:
+                    # Fallback to tree-planner negotiation if local decomposition fails
+                    logger.warning("[solver] Local decomposition failed, falling back to tree-planner")
+                    plan = await self.planner.decompose(problem)
+                else:
+                    logger.info(
+                        "[solver] Local decomposition: %d atomic steps",
+                        len(plan.steps)
+                    )
+            else:
+                # Legacy: Tree-Planner negotiation (multiple LLM rounds)
+                # Per CLAUDE.md "Negotiation between Tree and Planner":
+                # TreeGuidedPlanner handles vocabulary internally through negotiation.
+                plan = await self.planner.decompose(problem)
 
             # Store Phase 1 values for provenance tracking during execution
             # These are resolved when $name references appear in extracted_values
