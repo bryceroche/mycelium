@@ -6,6 +6,7 @@ from mycelium.data_layer.connection import (
     create_connection_manager,
     get_db,
     reset_db,
+    retry_on_locked,
     EMBEDDING_DIM,
 )
 from mycelium.data_layer.schema import (
@@ -113,6 +114,7 @@ __all__ = [
     "reset_db",
     "create_connection_manager",
     "ConnectionManager",
+    "retry_on_locked",
     "configure_connection",
     "EMBEDDING_DIM",
     "SQLITE_SCHEMA",

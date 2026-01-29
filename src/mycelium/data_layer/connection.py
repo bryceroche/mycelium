@@ -3,10 +3,13 @@
 import json
 import logging
 import os
+import random
 import sqlite3
 import threading
+import time
 from contextlib import contextmanager
-from typing import Any, Generator, Optional, Union
+from functools import wraps
+from typing import Any, Callable, Generator, Optional, TypeVar, Union
 
 import numpy as np
 from dotenv import load_dotenv
@@ -14,6 +17,48 @@ from dotenv import load_dotenv
 load_dotenv()
 
 logger = logging.getLogger(__name__)
+
+# Retry configuration for database locked errors
+DB_RETRY_MAX_ATTEMPTS = 5
+DB_RETRY_BASE_DELAY = 0.1  # 100ms base delay
+DB_RETRY_MAX_DELAY = 2.0   # 2 second max delay
+
+T = TypeVar('T')
+
+
+def retry_on_locked(func: Callable[..., T]) -> Callable[..., T]:
+    """Retry decorator for database operations that may encounter locking.
+
+    Uses exponential backoff with jitter to handle concurrent write contention.
+    Per CLAUDE.md "System Independence": Automated retry without manual intervention.
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs) -> T:
+        last_error = None
+        for attempt in range(DB_RETRY_MAX_ATTEMPTS):
+            try:
+                return func(*args, **kwargs)
+            except sqlite3.OperationalError as e:
+                if "database is locked" in str(e) or "database is busy" in str(e):
+                    last_error = e
+                    if attempt < DB_RETRY_MAX_ATTEMPTS - 1:
+                        # Exponential backoff with jitter
+                        delay = min(DB_RETRY_BASE_DELAY * (2 ** attempt), DB_RETRY_MAX_DELAY)
+                        delay *= (0.5 + random.random())  # Add jitter
+                        logger.debug(
+                            "[db_retry] Attempt %d/%d failed (locked), retrying in %.2fs",
+                            attempt + 1, DB_RETRY_MAX_ATTEMPTS, delay
+                        )
+                        time.sleep(delay)
+                    continue
+                raise
+        # All retries exhausted
+        logger.warning(
+            "[db_retry] All %d attempts failed for %s",
+            DB_RETRY_MAX_ATTEMPTS, func.__name__
+        )
+        raise last_error
+    return wrapper
 
 # Import config for DB path and embedding dimension - allows branch-specific databases
 try:
@@ -39,7 +84,7 @@ def configure_connection(conn: sqlite3.Connection, enable_foreign_keys: bool = T
 
     # --- Core Settings ---
     conn.execute("PRAGMA journal_mode = WAL")
-    conn.execute("PRAGMA busy_timeout = 30000")
+    conn.execute("PRAGMA busy_timeout = 60000")  # 60s timeout for concurrent workers
     if enable_foreign_keys:
         conn.execute("PRAGMA foreign_keys = ON")
 
@@ -111,13 +156,40 @@ class ConnectionManager:
 
     @contextmanager
     def connection(self) -> Generator[sqlite3.Connection, None, None]:
+        """Get a connection with automatic commit/rollback and retry on lock."""
         conn = self._get_connection()
         try:
             yield conn
-            conn.commit()
+            self._commit_with_retry(conn)
         except Exception:
             conn.rollback()
             raise
+
+    def _commit_with_retry(self, conn: sqlite3.Connection) -> None:
+        """Commit with retry logic for locked database.
+
+        Per CLAUDE.md "System Independence": Automated retry without manual intervention.
+        """
+        last_error = None
+        for attempt in range(DB_RETRY_MAX_ATTEMPTS):
+            try:
+                conn.commit()
+                return
+            except sqlite3.OperationalError as e:
+                if "database is locked" in str(e) or "database is busy" in str(e):
+                    last_error = e
+                    if attempt < DB_RETRY_MAX_ATTEMPTS - 1:
+                        delay = min(DB_RETRY_BASE_DELAY * (2 ** attempt), DB_RETRY_MAX_DELAY)
+                        delay *= (0.5 + random.random())
+                        logger.debug(
+                            "[db_retry] Commit attempt %d/%d failed (locked), retrying in %.2fs",
+                            attempt + 1, DB_RETRY_MAX_ATTEMPTS, delay
+                        )
+                        time.sleep(delay)
+                    continue
+                raise
+        logger.warning("[db_retry] All %d commit attempts failed", DB_RETRY_MAX_ATTEMPTS)
+        raise last_error
 
     @contextmanager
     def transaction(self) -> Generator[sqlite3.Connection, None, None]:
@@ -143,18 +215,21 @@ class ConnectionManager:
             return data.astype(np.float32)
         return None
 
+    @retry_on_locked
     def execute(self, sql: str, params: tuple = ()) -> sqlite3.Cursor:
         with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(sql, params)
             return cursor
 
+    @retry_on_locked
     def fetchone(self, sql: str, params: tuple = ()) -> Optional[Any]:
         with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(sql, params)
             return cursor.fetchone()
 
+    @retry_on_locked
     def fetchall(self, sql: str, params: tuple = ()) -> list:
         with self.connection() as conn:
             cursor = conn.cursor()
