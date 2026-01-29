@@ -110,18 +110,17 @@ _reuse_cache = {"rate": 0.0, "matched": 0, "total_steps": 0}
 def get_signature_count() -> int:
     """Get current signature count (cached for performance).
 
-    Uses singleton ConnectionManager to avoid creating fresh connections.
+    Per CLAUDE.md "New Favorite Pattern": Uses data layer method instead of direct SQL.
     """
     import time
-    from mycelium.data_layer import get_db
+    from mycelium.step_signatures.db import get_step_db
 
     now = time.time()
     # Cache for 1 second to avoid DB hits on every call
     if now - _signature_count_cache["last_check"] > 1.0:
         try:
-            db = get_db()
-            with db.connection() as conn:
-                count = conn.execute("SELECT COUNT(*) FROM step_signatures").fetchone()[0]
+            step_db = get_step_db()
+            count = step_db.get_signature_count()
             _signature_count_cache["count"] = count
             _signature_count_cache["last_check"] = now
         except Exception as e:
