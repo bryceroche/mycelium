@@ -113,18 +113,36 @@ class StepSignatureDB:
     # STATS RECORDING
     # =========================================================================
 
-    def record_success(self, signature_id: int) -> None:
-        """Record a successful execution."""
+    def record_success(self, signature_id: int, similarity: float = None) -> None:
+        """Record a successful execution with optional similarity."""
         conn = self._connection()
-        conn.execute(
-            """
-            UPDATE step_signatures
-            SET successes = COALESCE(successes, 0) + 1,
-                uses = COALESCE(uses, 0) + 1
-            WHERE id = ?
-            """,
-            (signature_id,),
-        )
+        if similarity is not None:
+            # Update success stats with Welford algorithm
+            conn.execute(
+                """
+                UPDATE step_signatures
+                SET successes = COALESCE(successes, 0) + 1,
+                    uses = COALESCE(uses, 0) + 1,
+                    success_sim_count = COALESCE(success_sim_count, 0) + 1,
+                    success_sim_mean = COALESCE(success_sim_mean, 0) +
+                        (? - COALESCE(success_sim_mean, 0)) / (COALESCE(success_sim_count, 0) + 1),
+                    success_sim_m2 = COALESCE(success_sim_m2, 0) +
+                        (? - COALESCE(success_sim_mean, 0)) *
+                        (? - (COALESCE(success_sim_mean, 0) + (? - COALESCE(success_sim_mean, 0)) / (COALESCE(success_sim_count, 0) + 1)))
+                WHERE id = ?
+                """,
+                (similarity, similarity, similarity, similarity, signature_id),
+            )
+        else:
+            conn.execute(
+                """
+                UPDATE step_signatures
+                SET successes = COALESCE(successes, 0) + 1,
+                    uses = COALESCE(uses, 0) + 1
+                WHERE id = ?
+                """,
+                (signature_id,),
+            )
 
     def record_failure(self, signature_id: int) -> None:
         """Record a failed execution."""
@@ -138,6 +156,122 @@ class StepSignatureDB:
             """,
             (signature_id,),
         )
+
+    def record_similarity(self, signature_id: int, similarity: float) -> None:
+        """Record similarity observation for Welford tracking."""
+        conn = self._connection()
+        conn.execute(
+            """
+            UPDATE step_signatures
+            SET similarity_count = COALESCE(similarity_count, 0) + 1,
+                similarity_mean = COALESCE(similarity_mean, 0) +
+                    (? - COALESCE(similarity_mean, 0)) / (COALESCE(similarity_count, 0) + 1),
+                similarity_m2 = COALESCE(similarity_m2, 0) +
+                    (? - COALESCE(similarity_mean, 0)) *
+                    (? - (COALESCE(similarity_mean, 0) + (? - COALESCE(similarity_mean, 0)) / (COALESCE(similarity_count, 0) + 1)))
+            WHERE id = ?
+            """,
+            (similarity, similarity, similarity, similarity, signature_id),
+        )
+
+    # =========================================================================
+    # WELFORD-ADAPTIVE THRESHOLDS
+    # =========================================================================
+
+    def get_global_similarity_stats(self) -> tuple[float, float, int]:
+        """Get aggregate Welford stats across all signatures.
+
+        Returns:
+            (mean, stddev, count) tuple for successful similarity observations.
+        """
+        conn = self._connection()
+        row = conn.execute(
+            """
+            SELECT
+                SUM(success_sim_count) as total_count,
+                SUM(success_sim_mean * success_sim_count) as weighted_sum,
+                SUM(success_sim_m2) as total_m2
+            FROM step_signatures
+            WHERE success_sim_count > 0
+            """
+        ).fetchone()
+
+        if row is None or row[0] is None or row[0] == 0:
+            return 0.0, 0.0, 0
+
+        total_count = row[0]
+        weighted_mean = row[1] / total_count if total_count > 0 else 0.0
+        total_m2 = row[2] or 0.0
+
+        # Variance from combined M2
+        variance = total_m2 / total_count if total_count > 0 else 0.0
+        stddev = variance ** 0.5
+
+        return weighted_mean, stddev, total_count
+
+    def get_adaptive_threshold(self, fallback: float = 0.85) -> float:
+        """Get Welford-adaptive similarity threshold.
+
+        Per CLAUDE.md "The Flow": DB Stats → Welford → Tree Structure.
+
+        Formula: mean - k * stddev (captures ~93% of good matches at k=1.5)
+        Clamped to [0.70, 0.95] range.
+
+        Returns:
+            Adaptive threshold, or fallback if insufficient data.
+        """
+        from mycelium.config import (
+            ADAPTIVE_THRESHOLD_MIN_SAMPLES,
+            ADAPTIVE_THRESHOLD_K,
+            ADAPTIVE_THRESHOLD_MIN,
+            ADAPTIVE_THRESHOLD_MAX,
+        )
+
+        mean, stddev, count = self.get_global_similarity_stats()
+
+        # Need sufficient samples for reliable estimate
+        if count < ADAPTIVE_THRESHOLD_MIN_SAMPLES:
+            logger.debug(
+                "[db] Adaptive threshold: insufficient samples (%d < %d), using fallback %.3f",
+                count, ADAPTIVE_THRESHOLD_MIN_SAMPLES, fallback
+            )
+            return fallback
+
+        # Adaptive: mean - k * std
+        adaptive = mean - ADAPTIVE_THRESHOLD_K * stddev
+
+        # Clamp to reasonable range
+        clamped = max(ADAPTIVE_THRESHOLD_MIN, min(ADAPTIVE_THRESHOLD_MAX, adaptive))
+
+        logger.debug(
+            "[db] Adaptive threshold: mean=%.3f, std=%.3f, raw=%.3f, clamped=%.3f (n=%d)",
+            mean, stddev, adaptive, clamped, count
+        )
+
+        return clamped
+
+    # =========================================================================
+    # ROUTING
+    # =========================================================================
+
+    def route_to_best(self, embedding: List[float]) -> RoutingResult:
+        """Route to best matching signature via cosine similarity.
+
+        Returns best match regardless of threshold - let caller decide.
+        """
+        leaves = self.get_all_leaves()
+        best_sig = None
+        best_sim = 0.0
+
+        for sig in leaves:
+            if sig.centroid is None:
+                continue
+            sim = cosine_similarity(embedding, sig.centroid)
+            if sim > best_sim:
+                best_sim = sim
+                best_sig = sig
+
+        return RoutingResult(signature=best_sig, similarity=best_sim)
 
     # =========================================================================
     # SIGNATURE CREATION

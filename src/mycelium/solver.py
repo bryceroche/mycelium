@@ -250,39 +250,56 @@ class Solver:
         context: dict,
         plan: DAGPlan,
     ) -> StepResult:
-        """Execute a single step.
+        """Execute a single step with hybrid GTS + Embedding + Welford routing.
 
-        Per CLAUDE.md New Favorite Pattern: consolidate to single entry point.
-        Uses find_or_create() to always get a signature (existing or new).
+        Per CLAUDE.md "The Flow": DB Stats → Welford → Tree Structure.
 
-        1. Embed step text
-        2. Find existing signature or create new one
-        3. Execute DSL with resolved values
-        4. Return result
+        Hybrid routing:
+        1. Embed step, route via cosine similarity to best match
+        2. Get adaptive threshold from Welford stats
+        3. If similarity >= threshold → trust tree (use existing signature)
+        4. If similarity < threshold → trust GTS (create new signature)
+        5. Execute DSL, record outcome for Welford learning
         """
         # Embed step (synchronous)
         step_embedding = cached_embed(step.task)
         if step_embedding is None:
             return StepResult(success=False, error="Failed to embed step")
 
-        # Convert numpy array to list for find_or_create
         embedding_list = step_embedding.tolist()
 
-        # Extract DSL hint from step operation
-        dsl_hint = self._get_dsl_hint(step)
+        # Route to best matching signature
+        routing = self.step_db.route_to_best(embedding_list)
 
-        # Find or create signature - always succeeds
-        signature, created = self.step_db.find_or_create(
-            step_text=step.task,
-            embedding=embedding_list,
-            dsl_hint=dsl_hint,
-        )
+        # Get adaptive threshold from Welford stats
+        threshold = self.step_db.get_adaptive_threshold(fallback=0.85)
 
-        if created:
-            logger.info(
-                "[solver] Created new signature id=%s for step: %s",
-                signature.id, step.task[:50]
+        # Hybrid decision: trust tree or trust GTS?
+        if routing.signature and routing.similarity >= threshold:
+            # HIGH similarity: trust tree, use existing signature
+            signature = routing.signature
+            created = False
+            logger.debug(
+                "[solver] Trust tree: sim=%.3f >= threshold=%.3f, using sig=%s",
+                routing.similarity, threshold, signature.id
             )
+        else:
+            # LOW similarity: trust GTS, create new signature
+            dsl_hint = self._get_dsl_hint(step)
+            signature, created = self.step_db.find_or_create(
+                step_text=step.task,
+                embedding=embedding_list,
+                dsl_hint=dsl_hint,
+            )
+            if created:
+                logger.info(
+                    "[solver] Trust GTS: sim=%.3f < threshold=%.3f, created sig=%s for: %s",
+                    routing.similarity, threshold, signature.id, step.task[:50]
+                )
+
+        # Record similarity for Welford learning (only for existing signatures)
+        if not created and routing.similarity > 0:
+            self.step_db.record_similarity(signature.id, routing.similarity)
 
         # Resolve values from context
         resolved_values = self._resolve_values(step, context, plan)
@@ -291,13 +308,13 @@ class Solver:
         if signature.dsl_script:
             result = try_execute_dsl_math(signature.dsl_script, resolved_values)
             if result is not None:
-                # Record success
-                self.step_db.record_success(signature.id)
+                # Record success with similarity for Welford
+                self.step_db.record_success(signature.id, routing.similarity)
                 return StepResult(
                     success=True,
                     result=str(result),
                     signature_id=signature.id,
-                    similarity=1.0 if created else 0.85,  # Created = perfect match
+                    similarity=routing.similarity,
                 )
 
         # DSL failed or no DSL
@@ -306,7 +323,7 @@ class Solver:
             success=False,
             error="DSL execution failed" if signature.dsl_script else "No DSL code",
             signature_id=signature.id,
-            similarity=1.0 if created else 0.85,
+            similarity=routing.similarity,
         )
 
     def _get_dsl_hint(self, step: Step) -> Optional[str]:
