@@ -3619,18 +3619,19 @@ class StepSignatureDB:
         self,
         signature_id: int,
         reason: str = "no_children",
+        dsl_type: str = "decompose",
         conn=None,
     ) -> bool:
         """Demote an umbrella signature to a leaf signature.
 
-        Per CLAUDE.md "New Favorite Pattern": Consolidated method for umbrella demotion.
+        Per CLAUDE.md "New Favorite Pattern": SINGLE PATHWAY for all umbrella demotion.
+        All code that needs to demote an umbrella should call this function.
         Ensures cache invalidation, logging, and consistency.
-
-        Used by decay system when umbrella has no healthy children.
 
         Args:
             signature_id: ID of umbrella to demote
-            reason: Why demotion is happening
+            reason: Why demotion is happening (for logging)
+            dsl_type: DSL type for the demoted leaf ("decompose" or "math")
             conn: Optional connection for transaction support
 
         Returns:
@@ -3641,10 +3642,13 @@ class StepSignatureDB:
                 c, signature_id,
                 log_reason=f"demote_umbrella:{reason}",
                 is_semantic_umbrella=0,
-                dsl_type="decompose",
+                dsl_type=dsl_type,
             )
             if result:
-                logger.info("[db] Demoted umbrella %d to leaf (reason: %s)", signature_id, reason)
+                logger.info(
+                    "[db] Demoted umbrella %d to leaf (reason: %s, dsl_type: %s)",
+                    signature_id, reason, dsl_type
+                )
             return result
 
         if conn is not None:
@@ -5964,6 +5968,9 @@ class StepSignatureDB:
     def remove_child(self, parent_id: int, child_id: int) -> bool:
         """Remove a parent-child relationship.
 
+        Per CLAUDE.md "New Favorite Pattern": Uses demote_umbrella_to_leaf() if
+        parent becomes orphaned after child removal.
+
         Args:
             parent_id: ID of the parent signature
             child_id: ID of the child signature
@@ -5984,11 +5991,12 @@ class StepSignatureDB:
                 ).fetchone()
                 remaining = remaining_row[0] if remaining_row else 0
                 if remaining == 0:
-                    # Demote from umbrella
-                    self._update_signature_fields(
-                        conn, parent_id,
-                        log_reason="demote_from_umbrella",
-                        is_semantic_umbrella=0,
+                    # Demote from umbrella using consolidated pathway
+                    self.demote_umbrella_to_leaf(
+                        parent_id,
+                        reason="last_child_removed",
+                        dsl_type="decompose",  # Keep decompose since it was an umbrella
+                        conn=conn,
                     )
                 # Invalidate caches (relationship change: child removed)
                 self._invalidate_on_relationship_change(parent_id, child_id)
@@ -5998,6 +6006,9 @@ class StepSignatureDB:
 
     def demote_orphan_umbrellas(self) -> int:
         """Demote umbrellas with no children back to leaves.
+
+        Per CLAUDE.md "New Favorite Pattern": Uses demote_umbrella_to_leaf() as
+        the single pathway for all demotion operations.
 
         Per CLAUDE.md: An umbrella is a router that routes to children.
         If an umbrella has no children, it's a broken state - demote it back to leaf.
@@ -6022,23 +6033,25 @@ class StepSignatureDB:
                 logger.info("[db] No orphan umbrellas found")
                 return 0
 
-            # Demote each orphan back to leaf
+            # Demote each orphan using consolidated pathway
             demoted = 0
             for sig_id, step_type in orphans:
-                self._update_signature_fields(
-                    conn, sig_id,
-                    log_reason="demote_orphan_umbrella",
-                    is_semantic_umbrella=0,
-                    dsl_type="math",  # Default to math for execution
-                )
-                demoted += 1
-                logger.info("[db] Demoted orphan umbrella: id=%d type='%s'", sig_id, step_type)
+                if self.demote_umbrella_to_leaf(
+                    sig_id,
+                    reason=f"orphan_umbrella:{step_type}",
+                    dsl_type="math",  # Orphans default to math for execution
+                    conn=conn,
+                ):
+                    demoted += 1
 
             logger.info("[db] Demoted %d orphan umbrellas back to leaves", demoted)
             return demoted
 
     def _demote_if_orphan(self, conn, signature_id: int) -> bool:
         """Demote a specific signature to leaf if it's an orphan umbrella.
+
+        Per CLAUDE.md "New Favorite Pattern": Uses demote_umbrella_to_leaf() as
+        the single pathway for all demotion operations.
 
         Called when global dedup redirects to a different parent, leaving
         a scaffold branch (created during routing) without children.
@@ -6069,19 +6082,14 @@ class StepSignatureDB:
         step_type = row[1]
         has_children = row[2]
 
-        # Demote if it's an umbrella with no children
+        # Demote if it's an umbrella with no children using consolidated pathway
         if is_umbrella and not has_children:
-            self._update_signature_fields(
-                conn, signature_id,
-                log_reason="demote_abandoned_scaffold",
-                is_semantic_umbrella=0,
-                dsl_type="math",  # Default to math for execution
+            return self.demote_umbrella_to_leaf(
+                signature_id,
+                reason=f"abandoned_scaffold:{step_type}",
+                dsl_type="math",  # Abandoned scaffolds default to math
+                conn=conn,
             )
-            logger.info(
-                "[db] Demoted abandoned scaffold branch: id=%d type='%s'",
-                signature_id, step_type
-            )
-            return True
 
         return False
 
