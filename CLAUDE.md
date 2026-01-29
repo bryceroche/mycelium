@@ -17,7 +17,9 @@ Accurate statistics are the source of truth. Welford variance guides all structu
 ## True Atomic Decomposition
 We want a bias towards more steps per problem.  There are so many benefits of having truely atomic decomposisition: better reuse of signatures, better matching per step, and higher accuracy per step. 
 
-If problem text is FULLY explained by one leaf, it's atomic.
+Mature tree: If problem text is FULLY explained by one leaf, it's atomic.
+Cold start: Only accept steps with graph embedding of depth 1
+
 
 
 # Claude Code Instructions
