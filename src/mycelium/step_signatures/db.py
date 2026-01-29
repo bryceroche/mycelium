@@ -455,6 +455,64 @@ def get_adaptive_thresholds(conn) -> AdaptiveThresholds:
     )
 
 
+def compute_cluster_threshold(similarities: list[float]) -> tuple[float, str]:
+    """Compute cluster threshold using unified algorithm.
+
+    Per CLAUDE.md "New Favorite Pattern": Single entry point for all
+    cluster threshold computation. Replaces duplicated logic in
+    _restructure_umbrella_internal() and _create_subclusters_for_umbrella().
+
+    Algorithm:
+    - High CV (>0.1): Use Welford method (mean + k*std)
+    - Low CV (<=0.1): Use percentile-based threshold (top 3%)
+    - Always clamp to [CLUSTER_THRESHOLD_MIN, CLUSTER_THRESHOLD_MAX]
+
+    Args:
+        similarities: List of pairwise similarity values
+
+    Returns:
+        Tuple of (threshold, method_used) where method is one of:
+        "cold_start", "welford", "percentile"
+    """
+    from mycelium.config import (
+        CLUSTER_THRESHOLD_CV_CUTOFF,
+        CLUSTER_THRESHOLD_STD_MULTIPLIER,
+        CLUSTER_THRESHOLD_PERCENTILE,
+        CLUSTER_THRESHOLD_MIN,
+        CLUSTER_THRESHOLD_MAX,
+        CLUSTER_THRESHOLD_COLD_START,
+    )
+
+    if not similarities:
+        return (CLUSTER_THRESHOLD_COLD_START, "cold_start")
+
+    # Compute mean and std
+    mean_sim = sum(similarities) / len(similarities)
+    if len(similarities) > 1:
+        variance = sum((s - mean_sim) ** 2 for s in similarities) / len(similarities)
+        std_sim = variance ** 0.5
+    else:
+        std_sim = 0.0
+
+    cv = std_sim / mean_sim if mean_sim > 0 else 0.0
+
+    if cv > CLUSTER_THRESHOLD_CV_CUTOFF:
+        # High CV: Welford-guided threshold (mean + k*std captures high-similarity items)
+        threshold = min(CLUSTER_THRESHOLD_MAX, mean_sim + CLUSTER_THRESHOLD_STD_MULTIPLIER * std_sim)
+        method = "welford"
+    else:
+        # Low CV: Percentile-based threshold (top N%)
+        sorted_sims = sorted(similarities, reverse=True)
+        percentile_idx = max(1, int(len(sorted_sims) * CLUSTER_THRESHOLD_PERCENTILE))
+        threshold = sorted_sims[min(percentile_idx, len(sorted_sims) - 1)]
+        method = "percentile"
+
+    # Clamp to bounds
+    threshold = max(CLUSTER_THRESHOLD_MIN, min(CLUSTER_THRESHOLD_MAX, threshold))
+
+    return (threshold, method)
+
+
 def get_global_exec_success_floor(conn, k: float = 2.0, min_samples: int = 10) -> float:
     """Compute adaptive failure rate floor from aggregated Welford exec stats.
 
@@ -8984,18 +9042,12 @@ class StepSignatureDB:
             # 2. Compute pairwise similarities
             sim_matrix = self._compute_pairwise_similarities(children)
 
-            # 3. Detect clusters using Welford-guided threshold
-            # Get root's Welford stats for adaptive threshold
-            stats = self.get_welford_stats(root.id, conn=c)
-            if stats and stats.get("child_n", 0) > 5:
-                # Use 2 * std as cluster threshold (similar items)
-                child_std = self.get_welford_std(root.id, "child", conn=c)
-                cluster_threshold = max(0.85, 1.0 - 2 * child_std) if child_std else 0.90
-            else:
-                # Cold start fallback
-                cluster_threshold = 0.90
-
-            logger.debug("[restructure] Cluster threshold: %.3f", cluster_threshold)
+            # 3. Detect clusters using compute_cluster_threshold()
+            # Per CLAUDE.md "New Favorite Pattern": Single entry point for cluster thresholds
+            n = len(children)
+            sims = [sim_matrix[i][j] for i in range(n) for j in range(i + 1, n)]
+            cluster_threshold, method = compute_cluster_threshold(sims)
+            logger.debug("[restructure] Cluster threshold: %.3f (%s)", cluster_threshold, method)
 
             clusters = self._detect_clusters(children, sim_matrix, cluster_threshold)
             logger.info("[restructure] Detected %d clusters", len(clusters))
@@ -10289,37 +10341,13 @@ class StepSignatureDB:
         if n < 2:
             return 0
 
-        # Compute mean and std from actual similarity matrix (Welford-style)
+        # Per CLAUDE.md "New Favorite Pattern": Use consolidated cluster threshold function
         sims = [sim_matrix[i][j] for i in range(n) for j in range(i + 1, n)]
         if not sims:
             return 0
 
-        # Online Welford computation for mean and std
-        mean_sim = sum(sims) / len(sims)
-        variance = sum((s - mean_sim) ** 2 for s in sims) / len(sims) if len(sims) > 1 else 0
-        std_sim = math.sqrt(variance)
-        cv = std_sim / mean_sim if mean_sim > 0 else 0  # Coefficient of variation
-
-        # Choose threshold strategy based on distribution characteristics
-        if cv > 0.1:
-            # High CV: Welford-guided threshold works well
-            cluster_threshold = min(0.95, mean_sim + 2.0 * std_sim)
-            method = "welford"
-        else:
-            # Low CV (tight distribution): Use percentile-based threshold
-            # Top 3% creates meaningful clusters without over-fragmenting
-            sorted_sims = sorted(sims, reverse=True)
-            percentile_idx = max(1, int(len(sorted_sims) * 0.03))  # Top 3%
-            cluster_threshold = sorted_sims[percentile_idx]
-            method = "percentile_3"
-
-        # Ensure threshold is in reasonable range
-        cluster_threshold = max(0.85, min(0.95, cluster_threshold))
-
-        logger.info(
-            "[subcluster] %s threshold %.3f (mean=%.3f, std=%.3f, cv=%.3f, n=%d)",
-            method, cluster_threshold, mean_sim, std_sim, cv, len(sims)
-        )
+        cluster_threshold, method = compute_cluster_threshold(sims)
+        logger.info("[subcluster] %s threshold %.3f (n=%d)", method, cluster_threshold, len(sims))
 
         # Detect sub-clusters using union-find
         clusters = self._detect_clusters(children, sim_matrix, cluster_threshold)

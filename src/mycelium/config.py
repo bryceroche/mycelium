@@ -59,8 +59,17 @@ ROUTING_MIN_SIMILARITY = 0.85  # Default min_similarity for main routing (db.py,
 ROUTING_MIN_SIMILARITY_PERMISSIVE = 0.5  # Permissive threshold for alternative/candidate search
 ROUTING_BEST_MATCH_MIN_SIMILARITY = 0.8  # find_best_match threshold
 
-# Signature placement thresholds (db.py find_deeper_signature, decide_signature_placement)
-PLACEMENT_MIN_SIMILARITY = 0.75  # Threshold for placement decisions and deeper routing
+# Signature placement thresholds (db.py _decide_proposal_fate, per CLAUDE.md "The Flow")
+# These guide sibling/child/merge decisions based on similarity to best match
+PLACEMENT_DEDUP_SIMILARITY = 0.97  # Very high sim → dedup (reject, use existing)
+PLACEMENT_WELL_COVERED_ZSCORE = -0.5  # z-score threshold for "well covered" check
+PLACEMENT_WELL_COVERED_SIMILARITY = 0.85  # Similarity threshold for "well covered"
+PLACEMENT_CHILD_SIMILARITY = 0.75  # Moderate sim → accept as child (sub-cluster)
+PLACEMENT_SIBLING_SIMILARITY = 0.50  # Low sim → accept as sibling under same parent
+# Below SIBLING threshold → accept under root (new cluster)
+
+# Legacy alias for backward compatibility
+PLACEMENT_MIN_SIMILARITY = PLACEMENT_CHILD_SIMILARITY
 
 # Hint alternatives threshold (get_signature_hints)
 HINT_ALTERNATIVES_MIN_SIMILARITY = 0.3  # Minimum for hint alternatives
@@ -71,6 +80,19 @@ ADAPTIVE_THRESHOLD_MIN_SAMPLES = 50  # Minimum Welford observations before using
 ADAPTIVE_THRESHOLD_K = 1.5  # Standard deviations below mean (captures ~93% of good matches)
 ADAPTIVE_THRESHOLD_MIN = 0.70  # Floor - never go below this
 ADAPTIVE_THRESHOLD_MAX = 0.95  # Ceiling - never go above this
+
+# =============================================================================
+# CLUSTER THRESHOLD COMPUTATION (per CLAUDE.md "New Favorite Pattern")
+# =============================================================================
+# Unified constants for computing cluster thresholds across the codebase.
+# Used by compute_cluster_threshold() - single entry point for all cluster detection.
+
+CLUSTER_THRESHOLD_CV_CUTOFF = 0.1        # CV above this uses Welford method
+CLUSTER_THRESHOLD_STD_MULTIPLIER = 2.0   # k in mean + k*std for high-CV distributions
+CLUSTER_THRESHOLD_PERCENTILE = 0.03      # Top 3% for low-CV distributions
+CLUSTER_THRESHOLD_MIN = 0.85             # Floor (never go below)
+CLUSTER_THRESHOLD_MAX = 0.95             # Ceiling (never go above)
+CLUSTER_THRESHOLD_COLD_START = 0.90      # Fallback when no data
 
 # =============================================================================
 # DSL EXECUTION
@@ -212,6 +234,24 @@ ADAPTIVE_MIN_SAMPLES = 10   # Min observations before using learned thresholds
 # Cold-start defaults (used until we have enough data)
 COLD_START_DEDUP_THRESHOLD = 0.95    # Very high sim = same node
 COLD_START_CLUSTER_THRESHOLD = 0.80  # Moderately high sim = same cluster
+
+# =============================================================================
+# CLUSTER THRESHOLD COMPUTATION (per CLAUDE.md "The Flow")
+# =============================================================================
+# Used by _create_subclusters_for_umbrella() and restructure logic.
+# Computes adaptive threshold based on similarity distribution characteristics.
+#
+# Algorithm:
+# - If CV (coefficient of variation) > CV_CUTOFF: use Welford method (mean + k*std)
+# - Else: use percentile method (top X% of similarities)
+# - Always clamp result to [MIN, MAX] bounds
+
+CLUSTER_THRESHOLD_CV_CUTOFF = 0.1        # CV above this uses Welford method
+CLUSTER_THRESHOLD_STD_MULTIPLIER = 2.0   # k in threshold = mean + k*std
+CLUSTER_THRESHOLD_PERCENTILE = 0.03      # Top 3% for low-CV (tight) distributions
+CLUSTER_THRESHOLD_MIN = 0.85             # Floor: never go below this
+CLUSTER_THRESHOLD_MAX = 0.95             # Ceiling: never go above this
+CLUSTER_THRESHOLD_COLD_START = 0.90      # Fallback when no similarity data
 
 # =============================================================================
 # ADAPTIVE REJECTION (per-leaf similarity thresholds from historical successes)
