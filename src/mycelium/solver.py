@@ -1,16 +1,15 @@
 """Solver: Minimal implementation for local decomposition architecture.
 
 Core loop:
-1. Decompose problem into steps (local, no LLM)
-2. For each step: route to best signature via embeddings
-3. Execute DSL
+1. Decompose problem into atomic steps (depth=1) via GTS
+2. For each step: find existing signature or create new one
+3. Execute DSL with resolved values
 4. Record success/failure for Welford stats
 
-Per CLAUDE.md Big 4:
+Per CLAUDE.md Big 3:
 - System Independence: Let tree self-organize via stats
-- New Favorite Pattern: Single pathway for routing
+- New Favorite Pattern: Single pathway via find_or_create()
 - The Flow: DB Stats → Welford → Tree Structure
-- True Atomic Decomposition: Bias towards more steps
 """
 
 import asyncio
@@ -23,7 +22,6 @@ from mycelium.plan_models import Step, DAGPlan
 from mycelium.gts_decomposer import GTSDecomposer, DecomposedStep
 from mycelium.step_signatures import StepSignatureDB, StepSignature
 from mycelium.step_signatures.dsl_executor import try_execute_dsl_math
-from mycelium.step_signatures.utils import cosine_similarity
 from mycelium.embedding_cache import cached_embed
 from mycelium.answer_norm import normalize_answer
 from mycelium.data_layer.mcts import (
@@ -254,8 +252,11 @@ class Solver:
     ) -> StepResult:
         """Execute a single step.
 
+        Per CLAUDE.md New Favorite Pattern: consolidate to single entry point.
+        Uses find_or_create() to always get a signature (existing or new).
+
         1. Embed step text
-        2. Find best matching signature
+        2. Find existing signature or create new one
         3. Execute DSL with resolved values
         4. Return result
         """
@@ -264,21 +265,31 @@ class Solver:
         if step_embedding is None:
             return StepResult(success=False, error="Failed to embed step")
 
-        # Route to best signature
-        signature, similarity = self._route_to_signature(step_embedding, step)
-        if signature is None:
-            return StepResult(
-                success=False,
-                error="No matching signature found",
-                similarity=similarity,
+        # Convert numpy array to list for find_or_create
+        embedding_list = step_embedding.tolist()
+
+        # Extract DSL hint from step operation
+        dsl_hint = self._get_dsl_hint(step)
+
+        # Find or create signature - always succeeds
+        signature, created = self.step_db.find_or_create(
+            step_text=step.task,
+            embedding=embedding_list,
+            dsl_hint=dsl_hint,
+        )
+
+        if created:
+            logger.info(
+                "[solver] Created new signature id=%s for step: %s",
+                signature.id, step.task[:50]
             )
 
         # Resolve values from context
         resolved_values = self._resolve_values(step, context, plan)
 
         # Execute DSL
-        if signature.dsl_code:
-            result = try_execute_dsl_math(signature.dsl_code, resolved_values)
+        if signature.dsl_script:
+            result = try_execute_dsl_math(signature.dsl_script, resolved_values)
             if result is not None:
                 # Record success
                 self.step_db.record_success(signature.id)
@@ -286,46 +297,44 @@ class Solver:
                     success=True,
                     result=str(result),
                     signature_id=signature.id,
-                    similarity=similarity,
+                    similarity=1.0 if created else 0.85,  # Created = perfect match
                 )
 
         # DSL failed or no DSL
         self.step_db.record_failure(signature.id)
         return StepResult(
             success=False,
-            error="DSL execution failed",
+            error="DSL execution failed" if signature.dsl_script else "No DSL code",
             signature_id=signature.id,
-            similarity=similarity,
+            similarity=1.0 if created else 0.85,
         )
 
-    def _route_to_signature(
-        self,
-        step_embedding: list[float],
-        step: Step,
-    ) -> tuple[Optional[StepSignature], float]:
-        """Route step to best matching signature.
+    def _get_dsl_hint(self, step: Step) -> Optional[str]:
+        """Extract DSL operator hint from step for signature creation.
 
-        Simple cosine similarity routing.
-        Returns (signature, similarity) or (None, 0.0) if no match.
+        Per CLAUDE.md New Favorite Pattern: consolidate to single entry point.
+        This extracts the operator so find_or_create() can generate proper DSL.
         """
-        # Get all leaf signatures
-        leaves = self.step_db.get_all_leaves()
-        if not leaves:
-            return None, 0.0
+        # Map operation names to DSL operators
+        op_map = {
+            'add': '+',
+            'subtract': '-',
+            'multiply': '*',
+            'divide': '/',
+            'power': '^',
+        }
 
-        best_sig = None
-        best_sim = 0.0
+        # Check step.operation field first (set during GTS decomposition)
+        if step.operation and step.operation in op_map:
+            return op_map[step.operation]
 
-        for sig in leaves:
-            if sig.embedding is None:
-                continue
+        # Fallback: extract from task text
+        task_lower = step.task.lower()
+        for op_name, op_symbol in op_map.items():
+            if op_name in task_lower:
+                return op_symbol
 
-            sim = cosine_similarity(step_embedding, sig.embedding)
-            if sim > best_sim:
-                best_sim = sim
-                best_sig = sig
-
-        return best_sig, best_sim
+        return None
 
     def _resolve_values(
         self,
@@ -333,36 +342,56 @@ class Solver:
         context: dict,
         plan: DAGPlan,
     ) -> dict:
-        """Resolve step values from context and plan."""
-        resolved = {}
+        """Resolve step values from context and plan.
 
-        for key, value in step.extracted_values.items():
+        Maps NUM_X variables and step references to positional params (a, b).
+        DSL scripts use 'a' and 'b' as operands.
+        """
+        # Collect values in order: step dependencies first, then NUM_X values
+        operands = []
+
+        # 1. Add results from dependent steps (step_N references)
+        for dep_id in step.depends_on:
+            if dep_id in context:
+                operands.append(context[dep_id])
+
+        # 2. Add extracted NUM_X values in order
+        num_values = []
+        for key, value in sorted(step.extracted_values.items()):
             if isinstance(value, (int, float)):
-                resolved[key] = value
+                num_values.append(value)
             elif isinstance(value, str):
                 # Check for $reference to phase1 values
                 if value.startswith("$"):
                     ref = value[1:]
                     if ref in plan.phase1_values:
-                        resolved[key] = plan.phase1_values[ref]
+                        num_values.append(plan.phase1_values[ref])
                     elif ref in context:
-                        resolved[key] = context[ref]
-                    else:
-                        resolved[key] = value
+                        num_values.append(context[ref])
                 # Check for {step_N} reference
                 elif value.startswith("{") and value.endswith("}"):
                     ref = value[1:-1]
                     if ref in context:
-                        resolved[key] = context[ref]
-                    else:
-                        resolved[key] = value
+                        num_values.append(context[ref])
                 else:
                     # Try to parse as number
                     try:
-                        resolved[key] = float(value)
+                        num_values.append(float(value))
                     except ValueError:
-                        resolved[key] = value
-            else:
+                        pass
+
+        operands.extend(num_values)
+
+        # 3. Map to positional params a, b (what DSL scripts expect)
+        resolved = {}
+        if len(operands) >= 1:
+            resolved['a'] = operands[0]
+        if len(operands) >= 2:
+            resolved['b'] = operands[1]
+
+        # Also include original keys for compatibility
+        for key, value in step.extracted_values.items():
+            if isinstance(value, (int, float)):
                 resolved[key] = value
 
         return resolved
