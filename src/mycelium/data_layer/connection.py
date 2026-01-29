@@ -84,7 +84,7 @@ def configure_connection(conn: sqlite3.Connection, enable_foreign_keys: bool = T
 
     # --- Core Settings ---
     conn.execute("PRAGMA journal_mode = WAL")
-    conn.execute("PRAGMA busy_timeout = 60000")  # 60s timeout for concurrent workers
+    conn.execute("PRAGMA busy_timeout = 5000")  # 5s timeout - retry logic handles longer waits
     if enable_foreign_keys:
         conn.execute("PRAGMA foreign_keys = ON")
 

@@ -235,9 +235,9 @@ class TestGetSignatureCount:
         _signature_count_cache["count"] = 100
         _signature_count_cache["last_check"] = 0  # Force recheck
 
-        # Patch at the module where it's imported from
-        with patch("mycelium.data_layer.connection.get_db") as mock_get_db:
-            mock_get_db.side_effect = Exception("DB connection failed")
+        # Patch get_step_db per "New Favorite Pattern" - uses data layer
+        with patch("mycelium.step_signatures.db.get_step_db") as mock_get_step_db:
+            mock_get_step_db.side_effect = Exception("DB connection failed")
 
             # Should return cached value without raising
             result = get_signature_count()
@@ -250,14 +250,10 @@ class TestGetSignatureCount:
         _signature_count_cache["count"] = 50
         _signature_count_cache["last_check"] = 0
 
-        mock_db = MagicMock()
-        mock_conn = MagicMock()
-        mock_conn.__enter__ = MagicMock(return_value=mock_conn)
-        mock_conn.__exit__ = MagicMock(return_value=False)
-        mock_conn.execute.side_effect = Exception("Query failed")
-        mock_db.connection.return_value = mock_conn
+        mock_step_db = MagicMock()
+        mock_step_db.get_signature_count.side_effect = Exception("Query failed")
 
-        with patch("mycelium.data_layer.connection.get_db", return_value=mock_db):
+        with patch("mycelium.step_signatures.db.get_step_db", return_value=mock_step_db):
             result = get_signature_count()
             assert result == 50
 

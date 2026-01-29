@@ -30,58 +30,6 @@ def make_embedding(seed: int, variation: float = 0.0) -> np.ndarray:
     return emb / np.linalg.norm(emb)
 
 
-class TestCentroidAtomicHelper:
-    """Tests for the internal _update_centroid_atomic helper.
-
-    Note: Text centroid updates are now NO-OPs. The helper only updates last_used_at.
-    Routing uses graph_embedding (computation graph embeddings).
-    """
-
-    def test_atomic_helper_returns_one_for_compatibility(self, clean_test_db):
-        """The atomic helper returns 1 for API compatibility (NO-OP for centroid)."""
-        db = StepSignatureDB()
-
-        emb = make_embedding(7000)
-
-        sig, _ = db.find_or_create(
-            step_text="Atomic test",
-            embedding=emb,
-            parent_problem="test",
-        )
-
-        # Use the atomic helper directly - now a NO-OP that returns 1
-        with db._connection() as conn:
-            conn.execute("BEGIN IMMEDIATE")
-            result = db._update_centroid_atomic(conn, sig.id, emb)
-            conn.commit()
-
-        # Always returns 1 for API compatibility (text centroid updates removed)
-        assert result == 1
-
-    def test_atomic_helper_updates_last_used(self, clean_test_db):
-        """The atomic helper should update last_used_at when flag is set."""
-        db = StepSignatureDB()
-
-        emb = make_embedding(9000)
-
-        sig, _ = db.find_or_create(
-            step_text="Last used test",
-            embedding=emb,
-            parent_problem="test",
-        )
-        original_last_used = sig.last_used_at
-
-        # Update with last_used flag
-        with db._connection() as conn:
-            conn.execute("BEGIN IMMEDIATE")
-            db._update_centroid_atomic(conn, sig.id, emb, update_last_used=True)
-            conn.commit()
-
-        updated = db.get_signature(sig.id)
-        assert updated.last_used_at is not None
-        assert updated.last_used_at != original_last_used
-
-
 class TestSignatureCreation:
     """Tests for signature creation with embeddings."""
 

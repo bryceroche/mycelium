@@ -1,20 +1,9 @@
-"""Mycelium: Recursive problem decomposition with signature-based solution networks."""
+"""Mycelium: Recursive local decomposition via embeddings."""
 
-__version__ = "1.8.14"
+__version__ = "2.0.2"
 
-from .step_signatures import StepSignature, StepExample
-from .prompt_templates import (
-    PromptTemplate,
-    PromptRegistry,
-    get_registry,
-    format_prompt,
-)
+from .step_signatures import StepSignature
 
 __all__ = [
     "StepSignature",
-    "StepExample",
-    "PromptTemplate",
-    "PromptRegistry",
-    "get_registry",
-    "format_prompt",
 ]

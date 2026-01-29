@@ -279,11 +279,26 @@ async def solve_problem(
             is_correct = await answers_equivalent_llm(result.answer, problem["answer"])
             needs_llm_verify = False
 
+        # LLM FAILURE DIAGNOSIS (per beads mycelium-b5tq)
+        # When a problem fails, ask LLM to identify the likely culprit step
+        # This provides targeted blame signal vs equal blame for all steps
+        blamed_step_id = None
+        from mycelium.config import LLM_FAILURE_DIAGNOSIS_ENABLED, TRAINING_MODE
+        if not is_correct and LLM_FAILURE_DIAGNOSIS_ENABLED and TRAINING_MODE:
+            blamed_step_id = await solver._diagnose_failure_with_llm(
+                problem=problem["problem"],
+                steps=result.steps,
+                computed_answer=result.answer or "",
+                ground_truth=problem["answer"],
+            )
+
         # Propagate correctness back to signatures for lift tracking
         # Returns candidates that may need decomposition
         # Pass ground_truth for MCTS operational equivalence learning
+        # Pass blamed_step_id for weighted failure recording
         candidates = solver.record_problem_outcome(
-            result, is_correct, ground_truth=problem["answer"]
+            result, is_correct, ground_truth=problem["answer"],
+            blamed_step_id=blamed_step_id,
         )
 
         # NOTE: Umbrella learning removed - periodic tree review handles optimization
