@@ -1074,6 +1074,41 @@ def get_leaf_rejection_stats(signature_id: int) -> dict:
     }
 
 
+def get_failing_step_descriptions(node_id: int, limit: int = 5) -> list[str]:
+    """Get specific step descriptions that failed with this node.
+
+    Per CLAUDE.md "New Favorite Pattern": DB queries through data_layer.
+
+    Queries mcts_thread_steps to find actual step descriptions that
+    this node failed on. These are more specific than the generic
+    signature step_type and may be decomposable.
+
+    Args:
+        node_id: The signature ID that's failing
+        limit: Maximum number of step descriptions to return
+
+    Returns:
+        List of unique step descriptions that failed with this node
+    """
+    try:
+        conn = get_db()
+        cursor = conn.execute("""
+            SELECT DISTINCT s.step_desc
+            FROM mcts_thread_steps t
+            JOIN mcts_dag_steps s ON t.dag_step_id = s.dag_step_id
+            WHERE t.node_id = ?
+              AND t.step_success = 0
+            ORDER BY t.created_at DESC
+            LIMIT ?
+        """, (node_id, limit))
+
+        return [row[0] for row in cursor.fetchall()]
+    except Exception as e:
+        # Table may not exist in test environment
+        logger.debug("[mcts] Could not query failing steps for node %d: %s", node_id, e)
+        return []
+
+
 def get_leaves_needing_decomposition(limit: int = 10) -> list[dict]:
     """Find leaf signatures with high rejection rates that need decomposition.
 

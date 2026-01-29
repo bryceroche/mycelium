@@ -97,6 +97,7 @@ from mycelium.data_layer.mcts import (
     get_rejection_count_threshold,  # Adaptive threshold based on system maturity
     record_leaf_rejection,  # Legacy - prefer reject_dag_step
     get_leaf_rejection_stats,
+    get_failing_step_descriptions,
     get_leaves_needing_decomposition,
     flag_high_rejection_leaves_for_decomposition,
     # DB maturity (for general use)
@@ -193,6 +194,7 @@ __all__ = [
     "get_rejection_count_threshold",  # Adaptive threshold function
     "record_leaf_rejection",  # Legacy - prefer reject_dag_step
     "get_leaf_rejection_stats",
+    "get_failing_step_descriptions",
     "get_leaves_needing_decomposition",
     "flag_high_rejection_leaves_for_decomposition",
     # DB maturity
