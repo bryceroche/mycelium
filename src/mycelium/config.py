@@ -235,23 +235,7 @@ ADAPTIVE_MIN_SAMPLES = 10   # Min observations before using learned thresholds
 COLD_START_DEDUP_THRESHOLD = 0.95    # Very high sim = same node
 COLD_START_CLUSTER_THRESHOLD = 0.80  # Moderately high sim = same cluster
 
-# =============================================================================
-# CLUSTER THRESHOLD COMPUTATION (per CLAUDE.md "The Flow")
-# =============================================================================
-# Used by _create_subclusters_for_umbrella() and restructure logic.
-# Computes adaptive threshold based on similarity distribution characteristics.
-#
-# Algorithm:
-# - If CV (coefficient of variation) > CV_CUTOFF: use Welford method (mean + k*std)
-# - Else: use percentile method (top X% of similarities)
-# - Always clamp result to [MIN, MAX] bounds
-
-CLUSTER_THRESHOLD_CV_CUTOFF = 0.1        # CV above this uses Welford method
-CLUSTER_THRESHOLD_STD_MULTIPLIER = 2.0   # k in threshold = mean + k*std
-CLUSTER_THRESHOLD_PERCENTILE = 0.03      # Top 3% for low-CV (tight) distributions
-CLUSTER_THRESHOLD_MIN = 0.85             # Floor: never go below this
-CLUSTER_THRESHOLD_MAX = 0.95             # Ceiling: never go above this
-CLUSTER_THRESHOLD_COLD_START = 0.90      # Fallback when no similarity data
+# Note: CLUSTER_THRESHOLD_* constants defined earlier in this file (line ~90)
 
 # =============================================================================
 # ADAPTIVE REJECTION (per-leaf similarity thresholds from historical successes)

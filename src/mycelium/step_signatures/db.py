@@ -80,6 +80,11 @@ from mycelium.config import (
     ROUTING_MIN_SIMILARITY_PERMISSIVE,
     ROUTING_BEST_MATCH_MIN_SIMILARITY,
     PLACEMENT_MIN_SIMILARITY,
+    PLACEMENT_DEDUP_SIMILARITY,
+    PLACEMENT_WELL_COVERED_ZSCORE,
+    PLACEMENT_WELL_COVERED_SIMILARITY,
+    PLACEMENT_CHILD_SIMILARITY,
+    PLACEMENT_SIBLING_SIMILARITY,
     HINT_ALTERNATIVES_MIN_SIMILARITY,
     NEW_CHILD_SIMILARITY_THRESHOLD,
     # Welford-adaptive thresholds (per CLAUDE.md "The Flow")
@@ -9518,7 +9523,7 @@ class StepSignatureDB:
             # Decision logic using adaptive thresholds:
 
             # 1. Very high similarity -> merge/dedup (reject proposal, use existing)
-            if best_match_sim >= 0.97:
+            if best_match_sim >= PLACEMENT_DEDUP_SIMILARITY:
                 return {
                     "action": "reject",
                     "reason": f"high_similarity_dedup (sim={best_match_sim:.3f})"
@@ -9542,14 +9547,14 @@ class StepSignatureDB:
                         }
 
                     # Best match performs well and similar -> reject (covered)
-                    if z_score > -0.5 and best_match_sim >= 0.85:
+                    if z_score > PLACEMENT_WELL_COVERED_ZSCORE and best_match_sim >= PLACEMENT_WELL_COVERED_SIMILARITY:
                         return {
                             "action": "reject",
                             "reason": f"well_covered (sim={best_match_sim:.3f}, match z={z_score:.2f})"
                         }
 
             # 3. Moderate similarity -> accept as child (sub-cluster)
-            if best_match_sim >= 0.75:
+            if best_match_sim >= PLACEMENT_CHILD_SIMILARITY:
                 return {
                     "action": "accept",
                     "parent_id": best_match_id,  # Child of best match
@@ -9557,7 +9562,7 @@ class StepSignatureDB:
                 }
 
             # 4. Low similarity -> accept as sibling under same parent
-            if best_match_sim >= 0.5:
+            if best_match_sim >= PLACEMENT_SIBLING_SIMILARITY:
                 best_match_parent = self.get_parent(best_match_id)
                 parent_id = best_match_parent.id if best_match_parent else None
                 return {
