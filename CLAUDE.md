@@ -15,8 +15,9 @@ Database Statistics → Welford → Tree Structure
 Accurate statistics are the source of truth. Welford variance guides all structural decisions: cluster boundaries, sibling vs child placement, when to decompose leaves into umbrellas. Thresholds come from config, not magic numbers.
 
 ## True Atomic Decomposition
-We want a bias towards more steps per problem.  There are so many benefits of having truely atomic decomposisition: better reuse of signatures, better matching per step, and higher accuracy per step
+We want a bias towards more steps per problem.  There are so many benefits of having truely atomic decomposisition: better reuse of signatures, better matching per step, and higher accuracy per step. 
 
+If problem text is FULLY explained by one leaf, it's atomic.
 
 
 # Claude Code Instructions

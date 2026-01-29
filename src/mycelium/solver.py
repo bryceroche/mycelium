@@ -65,16 +65,14 @@ from mycelium.config import (
     ROUTING_MIN_SIMILARITY,
     ROUTING_MIN_SIMILARITY_PERMISSIVE,
 )
-from mycelium.planner import TreeGuidedPlanner, Step, DAGPlan
+from mycelium.plan_models import Step, DAGPlan, SignatureHint
 from mycelium.step_signatures import StepSignatureDB, StepSignature
 from mycelium.step_signatures.db import normalize_step_text
 from mycelium.step_signatures.dsl_executor import DSLSpec, try_execute_dsl, try_execute_dsl_math
-from mycelium.step_signatures.dsl_generator import regenerate_dsl
 from mycelium.step_signatures.stats import record_step_stats
 from mycelium.step_signatures.utils import cosine_similarity
 from mycelium.embedder import Embedder
 from mycelium.embedding_cache import cached_embed, cached_embed_batch
-from mycelium.difficulty import estimate_difficulty
 from mycelium.answer_norm import normalize_answer
 from mycelium.data_layer.mcts import (
     create_dag,
@@ -627,8 +625,9 @@ class Solver:
         self.step_db = StepSignatureDB(db_path=db_path)
         self.embedder = Embedder.get_instance()
         self.min_similarity = min_similarity
-        # TreeGuidedPlanner uses step_db + embedder for vocabulary-guided decomposition
-        self.planner = TreeGuidedPlanner(step_db=self.step_db, embedder=self.embedder)
+        # REMOVED: local decomp refactor - TreeGuidedPlanner removed
+        # self.planner = TreeGuidedPlanner(step_db=self.step_db, embedder=self.embedder)
+        self.planner = None
         self._background_tasks: set[asyncio.Task] = set()  # Track background tasks
         # LRU cache for DSL expressions: (operation, param_names) -> (expr, used_params)
         # Bounded to DSL_EXPR_CACHE_MAX_SIZE to prevent memory growth
@@ -1145,7 +1144,8 @@ class Solver:
             SolverResult with answer and step details
         """
         from mycelium.config import COMPUTE_BUDGET_BASE, TRAINING_MODE
-        from mycelium.difficulty import get_exploration_budget
+        # REMOVED: local decomp refactor - difficulty module removed
+        # from mycelium.difficulty import get_exploration_budget
 
         # Track if caller explicitly set budget (vs adaptive)
         explicit_budget = compute_budget is not None
@@ -1178,10 +1178,11 @@ class Solver:
             # Use cached_embed to avoid redundant computation
             problem_embedding = cached_embed(problem, self.embedder)
 
-            # 0.1. Estimate problem difficulty for adaptive behavior
+            # REMOVED: local decomp refactor - estimate_difficulty removed
             # Difficulty affects: depth, credit multiplier, routing preferences
-            difficulty = estimate_difficulty(problem)
-            logger.debug("[solver] Estimated difficulty: %.2f for problem: %s", difficulty, problem[:50])
+            # difficulty = estimate_difficulty(problem)
+            difficulty = 0.0  # Stub: hardcoded value
+            logger.debug("[solver] Using default difficulty: %.2f for problem: %s", difficulty, problem[:50])
 
             # 0.15. Create MCTS DAG record for this problem (training mode only)
             # Per CLAUDE.md: Track problem_id, problem_desc, benchmark, difficulty_level
@@ -1217,10 +1218,12 @@ class Solver:
             if explicit_budget:
                 pass  # Use caller's value
             else:
-                compute_budget = get_exploration_budget(difficulty, base_budget=COMPUTE_BUDGET_BASE)
+                # REMOVED: local decomp refactor - get_exploration_budget removed
+                # compute_budget = get_exploration_budget(difficulty, base_budget=COMPUTE_BUDGET_BASE)
+                compute_budget = COMPUTE_BUDGET_BASE  # Stub: use base budget
                 logger.debug(
-                    "[solver] Adaptive budget: %.1f (difficulty=%.2f, mode=%s)",
-                    compute_budget, difficulty, "training" if TRAINING_MODE else "inference"
+                    "[solver] Using base budget: %.1f (mode=%s)",
+                    compute_budget, "training" if TRAINING_MODE else "inference"
                 )
 
             # 0.5. Try zero-LLM solve first (skip planner for mature signatures)
@@ -1248,19 +1251,31 @@ class Solver:
                     )
 
                 if plan is None:
-                    # Fallback to tree-planner negotiation if local decomposition fails
-                    logger.warning("[solver] Local decomposition failed, falling back to tree-planner")
-                    plan = await self.planner.decompose(problem)
+                    # REMOVED: local decomp refactor - TreeGuidedPlanner removed
+                    # Fallback removed, must succeed with local decomposition
+                    logger.error("[solver] Local decomposition failed, no fallback available")
+                    return SolverResult(
+                        problem=problem,
+                        answer="",
+                        success=False,
+                        error="Local decomposition failed",
+                    )
                 else:
                     logger.info(
                         "[solver] Local decomposition: %d atomic steps",
                         len(plan.steps)
                     )
             else:
-                # Legacy: Tree-Planner negotiation (multiple LLM rounds)
-                # Per CLAUDE.md "Negotiation between Tree and Planner":
-                # TreeGuidedPlanner handles vocabulary internally through negotiation.
-                plan = await self.planner.decompose(problem)
+                # REMOVED: local decomp refactor - TreeGuidedPlanner removed
+                # Legacy: Tree-Planner negotiation was removed
+                # Must use LOCAL_DECOMPOSITION_ENABLED=True
+                logger.error("[solver] LOCAL_DECOMPOSITION_ENABLED=False but TreeGuidedPlanner removed")
+                return SolverResult(
+                    problem=problem,
+                    answer="",
+                    success=False,
+                    error="TreeGuidedPlanner removed, enable LOCAL_DECOMPOSITION_ENABLED",
+                )
 
             # Store Phase 1 values for provenance tracking during execution
             # These are resolved when $name references appear in extracted_values
@@ -4095,7 +4110,7 @@ Rules:
                 step_descriptions[prev_step.step_id] = prev_step.task
 
             # Create a Step object for execution (using preserved data from StepResult)
-            from mycelium.planner import Step
+            from mycelium.plan_models import Step
             step_obj = Step(
                 id=failed_step.step_id,
                 task=failed_step.task,
@@ -4202,6 +4217,22 @@ Rules:
         decomposition_depth: int = 0,
     ) -> Optional[tuple[SolverResult, str]]:
         """Decompose failing steps and re-solve the problem.
+
+        REMOVED: local decomp refactor - TreeGuidedPlanner removed.
+        This method now returns None (no decomposition).
+        """
+        # REMOVED: local decomp refactor - self.planner is now None
+        logger.debug("[decompose] Decompose and resolve stubbed out (local decomp refactor)")
+        return None
+
+    async def _decompose_and_resolve_REMOVED(
+        self,
+        failed_result: SolverResult,
+        ground_truth: str,
+        difficulty: float = None,
+        decomposition_depth: int = 0,
+    ) -> Optional[tuple[SolverResult, str]]:
+        """REMOVED: Original implementation kept for reference.
 
         Per CLAUDE.md: "The step is likely too complex and needs decomposition"
 
@@ -4436,7 +4467,8 @@ Rules:
             REACTIVE_EXPLORATION_NUM_THREADS,
             REACTIVE_EXPLORATION_TEMPERATURE,
         )
-        from mycelium.planner import TreeGuidedPlanner
+        # REMOVED: local decomp refactor - TreeGuidedPlanner removed
+        # from mycelium.planner import TreeGuidedPlanner
 
         stats = {
             "reactive_exploration_triggered": True,
@@ -4460,13 +4492,9 @@ Rules:
                 num_threads, REACTIVE_EXPLORATION_TEMPERATURE
             )
 
-            # Swap planner to higher-temp version for exploration diversity
-            original_planner = self.planner
-            self.planner = TreeGuidedPlanner(
-                step_db=self.step_db,
-                embedder=self.embedder,
-                temperature=REACTIVE_EXPLORATION_TEMPERATURE,
-            )
+            # REMOVED: local decomp refactor - TreeGuidedPlanner swap removed
+            # original_planner = self.planner
+            # self.planner = TreeGuidedPlanner(...)
 
             # Per mycelium-02nn + CLAUDE.md "The Flow": Get Welford-adaptive multipliers
             # DB Statistics → Welford → Tree Structure (via multipliers)
@@ -4511,7 +4539,8 @@ Rules:
                     stats["full_resolve_success"] = False
             finally:
                 self._reactive_exploration_mode = False
-                self.planner = original_planner  # Restore original planner
+                # REMOVED: local decomp refactor - no planner to restore
+                # self.planner = original_planner
 
             # Per CLAUDE.md "The Flow": Record outcome to update Welford stats
             # This feeds back into DB Statistics → Welford → future multipliers
@@ -4657,78 +4686,19 @@ Rules:
     ) -> None:
         """Evaluate if leaf nodes need splitting based on divergence.
 
-        Natural splitting inspired by nature (nautilus, trees, lungs):
-        - Binary split is the atomic operation (like cell division)
-        - Split on DIVERGENCE (success vs failure embedding clusters)
-        - WIDTH vs DEPTH based on semantic distance:
-          - Close embeddings but divergent outcomes -> WIDTH (variants)
-          - Distant embeddings with divergent outcomes -> DEPTH (abstraction)
-        - The tree structure EMERGES, not designed
-
-        Args:
-            result: The failed SolverResult with step information
-            stats: Dict to record statistics about decisions made
+        REMOVED: local decomp refactor - divergence module removed.
+        This method now does nothing but record empty stats.
         """
-        from mycelium.step_signatures.divergence import (
-            get_signature_outcome_embeddings,
-            maybe_split_on_divergence,
-        )
+        # REMOVED: local decomp refactor - divergence module removed
+        # from mycelium.step_signatures.divergence import (
+        #     get_signature_outcome_embeddings,
+        #     maybe_split_on_divergence,
+        # )
 
-        # Get all leaf signatures involved in this problem
-        split_results = []
-        for step in result.steps:
-            if step.signature_id is None:
-                continue
-
-            # Get the signature
-            sig = self.step_db.get_signature(step.signature_id)
-            if sig is None or sig.is_semantic_umbrella:
-                continue  # Skip umbrellas (routers don't execute)
-
-            # Get historical success/failure embeddings for this signature
-            success_embeddings, failure_embeddings = get_signature_outcome_embeddings(
-                step.signature_id
-            )
-
-            # Check for divergence and maybe split
-            split_result = maybe_split_on_divergence(
-                self.step_db,
-                sig,
-                success_embeddings,
-                failure_embeddings,
-            )
-
-            if split_result is not None:
-                split_results.append({
-                    "signature_id": step.signature_id,
-                    "step_task": step.task[:50] if step.task else "",
-                    "split_type": split_result.split_type,
-                    "success": split_result.success,
-                    "child_a_id": split_result.child_a_id,
-                    "child_b_id": split_result.child_b_id,
-                    "reason": split_result.reason,
-                })
-                logger.info(
-                    "[divergence] Split sig %d (%s): %s -> children %s, %s",
-                    step.signature_id,
-                    split_result.split_type,
-                    split_result.reason,
-                    split_result.child_a_id,
-                    split_result.child_b_id,
-                )
-
-        # Record stats
-        stats["divergence_splits"] = split_results
-        stats["signatures_split"] = len([r for r in split_results if r["success"]])
-
-        if split_results:
-            logger.info(
-                "[divergence] Evaluated %d leaves: %d split (width=%d, depth=%d)",
-                len(result.steps),
-                stats["signatures_split"],
-                len([r for r in split_results if r["split_type"] == "width"]),
-                len([r for r in split_results if r["split_type"] == "depth"]),
-            )
+        # Record empty stats
+        stats["divergence_splits"] = []
+        stats["signatures_split"] = 0
+        logger.debug("[divergence] Divergence splitting removed in local decomp refactor")
 
     async def _diagnose_failure_with_llm(
         self,
@@ -5442,7 +5412,7 @@ If truly unclear, respond with "UNCLEAR".
         Returns:
             Modified plan with complex steps expanded
         """
-        from mycelium.planner import Step
+        from mycelium.plan_models import Step
 
         if not queue_ids or not decomposition_results:
             return plan
@@ -5719,6 +5689,28 @@ If truly unclear, respond with "UNCLEAR".
     ) -> Optional[StepResult]:
         """Decompose a complex step into sub-steps.
 
+        REMOVED: local decomp refactor - TreeGuidedPlanner removed.
+        This method now returns None (no decomposition).
+        """
+        # REMOVED: local decomp refactor - self.planner is now None
+        logger.debug("[decompose] Decompose complex step stubbed out (local decomp refactor)")
+        return None
+
+    async def _decompose_complex_step_REMOVED(
+        self,
+        step: Step,
+        problem: str,
+        context: dict[str, str],
+        step_descriptions: dict[str, str],
+        hint: str,
+        log_tag: str,
+        signature_type: str,
+        difficulty: float = None,
+        thread_id: str = None,
+        decomp_depth: int = 0,
+    ) -> Optional[StepResult]:
+        """REMOVED: Original implementation kept for reference.
+
         Uses the planner to break down steps that can't be handled
         by a single leaf signature.
 
@@ -5816,6 +5808,24 @@ If truly unclear, respond with "UNCLEAR".
         difficulty: float = None,
     ) -> Optional[str]:
         """Try decomposing a step to reuse existing signatures (maturity-based).
+
+        REMOVED: local decomp refactor - TreeGuidedPlanner removed.
+        This method now returns None (no decomposition).
+        """
+        # REMOVED: local decomp refactor - self.planner is now None
+        logger.debug("[maturity] Try maturity decomposition stubbed out (local decomp refactor)")
+        return None
+
+    async def _try_maturity_decomposition_REMOVED(
+        self,
+        step: Step,
+        signature: StepSignature,
+        problem: str,
+        context: dict[str, str],
+        step_descriptions: dict[str, str],
+        difficulty: float = None,
+    ) -> Optional[str]:
+        """REMOVED: Original implementation kept for reference.
 
         Per mycelium-jaq9: When maturity sigmoid suggests decomposition, try to
         break the step into sub-steps that match existing signatures.
@@ -5963,77 +5973,18 @@ If truly unclear, respond with "UNCLEAR".
     ) -> bool:
         """Implementation: Auto-decompose a signature into computable children.
 
-        Called by batch processor. Creates children with actual DSLs and promotes
-        parent to umbrella.
-
-        During BIG BANG phase, recursively decomposes children to explode tree structure.
-        Decomposition depth is now DIFFICULTY-AWARE:
-        - Harder problems (MATH L5) → deeper decomposition (up to 10 levels)
-        - Easier problems (GSM8K) → shallower decomposition (3-4 levels)
-
-        Args:
-            signature_id: The signature ID to decompose
-            recursion_depth: Current recursion depth (to prevent runaway)
-            difficulty: Problem difficulty (0.0-1.0) for adaptive depth
-
-        Returns:
-            True if decomposition succeeded, False otherwise
+        REMOVED: local decomp refactor - UmbrellaLearner and difficulty module removed.
+        This method now returns False (no decomposition).
         """
-        from mycelium.step_signatures.umbrella_learner import UmbrellaLearner
-        from mycelium.difficulty import get_recommended_depth
+        # REMOVED: local decomp refactor - UmbrellaLearner and difficulty module removed
+        # from mycelium.step_signatures.umbrella_learner import UmbrellaLearner
+        # from mycelium.difficulty import get_recommended_depth
 
-        # Load the signature
-        signature = self.step_db.get_signature(signature_id)
-        if signature is None:
-            logger.warning("[solver] Cannot decompose: signature %d not found", signature_id)
-            return False
-
-        # Difficulty-aware depth limit: harder problems need deeper decomposition
-        # Defaults to 5 if difficulty not provided (backward compatible)
-        max_depth = get_recommended_depth(difficulty) if difficulty is not None else 5
-        if recursion_depth >= max_depth:
-            logger.debug(
-                "[solver] Decomposition depth limit reached: depth=%d, max=%d (difficulty=%.2f)",
-                recursion_depth, max_depth, difficulty or 0.0
-            )
-            return False
-
-        learner = UmbrellaLearner(self.step_db)
-        try:
-            child_ids = await learner.decompose_signature(signature)
-            if child_ids:
-                logger.info(
-                    "[solver] Auto-decomposed '%s' into %d children (recursion=%d)",
-                    signature.step_type, len(child_ids), recursion_depth
-                )
-
-                # Recursive decomposition: controlled by smooth expansion rate
-                # High expansion (cold start/failing) = more recursive decomposition
-                # Low expansion (mature/succeeding) = less recursive decomposition
-                for child_id in child_ids:
-                    child_sig = self.step_db.get_signature(child_id)
-                    if child_sig and not child_sig.is_semantic_umbrella:
-                        child_depth = child_sig.depth or 0
-                        if should_force_decompose(child_depth):
-                            logger.debug(
-                                "[expansion] Recursive decompose: '%s' at depth %d (difficulty=%.2f)",
-                                child_sig.step_type, child_depth, difficulty or 0.0
-                            )
-                            # Recursive call uses impl directly (within batch processing)
-                            await self._auto_decompose_signature_impl(
-                                child_id, recursion_depth + 1, difficulty=difficulty
-                            )
-
-                return True
-            else:
-                logger.warning(
-                    "[solver] Could not auto-decompose '%s' (no children created)",
-                    signature.step_type
-                )
-                return False
-        except Exception as e:
-            logger.error("[solver] Auto-decomposition failed: %s", e)
-            return False
+        logger.debug(
+            "[solver] Auto-decomposition stubbed out (local decomp refactor): signature_id=%d",
+            signature_id
+        )
+        return False
 
     async def maybe_learn_umbrellas(self, candidates: list[int]) -> dict:
         """Trigger umbrella learning if there are candidates.
@@ -6078,36 +6029,31 @@ If truly unclear, respond with "UNCLEAR".
         return await self.learn_umbrellas()
 
     async def _regenerate_dsl_background(self, signature_id: int, uses: int) -> None:
-        """Background task to regenerate DSL without blocking hot path."""
-        try:
-            regenerated = await regenerate_dsl(
-                db=self.step_db,
-                client=self.solver_client,
-                signature_id=signature_id,
-            )
-            if regenerated:
-                logger.info(
-                    "[solver] Regenerated DSL for signature %d at %d uses",
-                    signature_id, uses
-                )
-        except Exception as e:
-            logger.warning("[solver] DSL regeneration failed: %s", e)
+        """Background task to regenerate DSL without blocking hot path.
+
+        REMOVED: local decomp refactor - regenerate_dsl removed.
+        """
+        # REMOVED: local decomp refactor - regenerate_dsl removed
+        # try:
+        #     regenerated = await regenerate_dsl(...)
+        logger.debug(
+            "[solver] DSL regeneration stubbed out (local decomp refactor): signature_id=%d",
+            signature_id
+        )
+        pass
 
     async def learn_umbrellas(self) -> dict:
         """Learn umbrella structure from failing guidance signatures.
 
-        Call this periodically or after a batch of solves to:
-        1. Find guidance signatures that are failing
-        2. Decompose them into specialized children
-        3. Future solves will route through umbrellas to children
-
-        Returns:
-            Dict with learning statistics
+        REMOVED: local decomp refactor - UmbrellaLearner removed.
+        Returns empty stats.
         """
-        from mycelium.step_signatures.umbrella_learner import UmbrellaLearner
-
-        learner = UmbrellaLearner(self.step_db)
-        return await learner.learn_from_failures()
+        # REMOVED: local decomp refactor - UmbrellaLearner removed
+        # from mycelium.step_signatures.umbrella_learner import UmbrellaLearner
+        # learner = UmbrellaLearner(self.step_db)
+        # return await learner.learn_from_failures()
+        logger.debug("[solver] Umbrella learning stubbed out (local decomp refactor)")
+        return {"decomposed": 0, "children_created": 0}
 
     def run_decay_cycle(self, force: bool = False) -> dict:
         """Run signature decay lifecycle management.

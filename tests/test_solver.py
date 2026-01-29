@@ -2,7 +2,7 @@
 
 import pytest
 from mycelium.solver import Solver, SolverResult, StepResult
-from mycelium.planner import Step, DAGPlan
+from mycelium.plan_models import Step, DAGPlan
 
 
 class TestExtractJsonResult:
