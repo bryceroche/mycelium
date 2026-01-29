@@ -73,3 +73,7 @@ paper.txt
 *.db.backup*
 .coverage
 *.centroid_cache.npz
+
+# Trained models (large files)
+trained_model/*
+!trained_model/.gitkeep
