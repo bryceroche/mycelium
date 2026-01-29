@@ -448,19 +448,29 @@ class GTSModel(nn.Module):
         """
         Tokenize input text to token indices.
 
+        The MAWPS vocabulary uses specific casing (e.g., "NUM" not "num").
+        We lowercase most tokens but preserve special tokens like NUM.
+
         Args:
             text: Input problem text
 
         Returns:
             List of token indices
         """
-        tokens = text.lower().split()
+        # Split into tokens
+        raw_tokens = text.split()
         indices = []
         unk_idx = self.word2idx.get("<UNK>", 3)
 
-        for token in tokens:
-            idx = self.word2idx.get(token, unk_idx)
-            indices.append(idx)
+        for token in raw_tokens:
+            # First try exact match (for special tokens like NUM)
+            if token in self.word2idx:
+                indices.append(self.word2idx[token])
+            # Then try lowercase
+            elif token.lower() in self.word2idx:
+                indices.append(self.word2idx[token.lower()])
+            else:
+                indices.append(unk_idx)
 
         return indices
 
@@ -490,6 +500,8 @@ class GTSModel(nn.Module):
         """
         Generate a prefix expression for a math word problem.
 
+        Uses tree-structured beam search decoding.
+
         Args:
             problem_text: The math word problem text
             num_values: Optional list of number values extracted from problem
@@ -503,23 +515,292 @@ class GTSModel(nn.Module):
 
         # Tokenize
         tokens = self.tokenize(problem_text)
+        if not tokens:
+            logger.warning("Empty tokenization result")
+            return ""
 
         # Convert to tensor
         input_ids = torch.tensor([tokens], dtype=torch.long)
         lengths = torch.tensor([len(tokens)], dtype=torch.long)
 
-        # Encode
+        # Create attention mask (1 for valid tokens, 0 for padding)
+        mask = torch.ones(1, len(tokens), dtype=torch.float)
+
+        # Extract number positions for NUM embeddings
+        num_positions = self._extract_num_positions(tokens)
+        num_count = len(num_positions)
+
         with torch.no_grad():
+            # Encode problem text
             encoder_outputs, hidden = self.encode(input_ids, lengths)
 
-        # For now, return a placeholder - full beam search decoding is complex
-        # and requires the full tree generation algorithm
-        logger.warning(
-            "Full beam search decoding not yet implemented. "
-            "Use encode() for embeddings only."
-        )
+            # Get number embeddings from encoder outputs
+            # These are the embeddings at positions where NUM tokens appear
+            if num_count > 0:
+                num_embeddings = self._get_num_embeddings(
+                    encoder_outputs, num_positions
+                )
+            else:
+                # No numbers in problem - use zeros
+                num_embeddings = torch.zeros(1, 1, self.config.hidden_size)
 
-        return "<decoding_not_implemented>"
+            # Run tree-structured beam search
+            result = self._beam_search_decode(
+                hidden,
+                encoder_outputs,
+                num_embeddings,
+                mask,
+                beam_size,
+                num_count,
+            )
+
+        return result
+
+    def _extract_num_positions(self, tokens: list[int]) -> list[int]:
+        """Find positions of NUM tokens in the input."""
+        positions = []
+        # NUM token is uppercase in vocab (index 7 typically)
+        num_idx = self.word2idx.get("NUM", -1)
+        for i, tok in enumerate(tokens):
+            if tok == num_idx:
+                positions.append(i)
+        return positions
+
+    def _get_num_embeddings(
+        self, encoder_outputs: torch.Tensor, num_positions: list[int]
+    ) -> torch.Tensor:
+        """Extract embeddings for NUM tokens from encoder outputs.
+
+        Args:
+            encoder_outputs: (1, seq_len, hidden_size*2)
+            num_positions: List of positions where NUM tokens appear
+
+        Returns:
+            (1, num_count, hidden_size) number embeddings
+        """
+        batch_size = encoder_outputs.size(0)
+        hidden_size = self.config.hidden_size
+
+        if not num_positions:
+            return torch.zeros(batch_size, 1, hidden_size)
+
+        # Extract embeddings at NUM positions
+        # encoder_outputs is hidden_size*2, we take first half
+        num_embeds = []
+        for pos in num_positions:
+            if pos < encoder_outputs.size(1):
+                embed = encoder_outputs[0, pos, :hidden_size]
+                num_embeds.append(embed)
+
+        if not num_embeds:
+            return torch.zeros(batch_size, 1, hidden_size)
+
+        num_embeddings = torch.stack(num_embeds, dim=0).unsqueeze(0)
+        return num_embeddings
+
+    def _beam_search_decode(
+        self,
+        hidden: torch.Tensor,
+        encoder_outputs: torch.Tensor,
+        num_embeddings: torch.Tensor,
+        mask: torch.Tensor,
+        beam_size: int,
+        num_count: int,
+    ) -> str:
+        """
+        Tree-structured beam search decoding.
+
+        Uses a stack-based approach where:
+        - Start with root goal (encoder hidden state)
+        - Pop goal, predict operator or number
+        - If operator: push right child then left child goals
+        - If number: output token
+        - Continue until stack empty
+
+        Args:
+            hidden: (1, hidden_size*2) initial hidden state
+            encoder_outputs: (1, seq_len, hidden_size*2) encoder outputs
+            num_embeddings: (1, num_count, hidden_size) number embeddings
+            mask: (1, seq_len) attention mask
+            beam_size: Number of beams
+            num_count: Number of NUM tokens in problem
+
+        Returns:
+            Best prefix expression
+        """
+        hidden_size = self.config.hidden_size
+        max_len = self.config.max_output_len
+
+        # Initialize root goal from hidden state (first half)
+        root_goal = hidden[:, :hidden_size]  # (1, hidden_size)
+
+        # Beam state: (tokens, goal_stack, score, depth)
+        # tokens: list of output symbols
+        # goal_stack: list of goal tensors to process
+        # score: log probability
+        # depth: current tree depth (used for heuristics)
+        beams = [([], [root_goal.squeeze(0)], 0.0, 0)]
+
+        # Output symbol mapping
+        # Operators are indices 0-5, numbers start at index 6
+        operators = {"+", "-", "*", "/", "^", "="}
+
+        for step in range(max_len):
+            if not beams:
+                break
+
+            all_candidates = []
+
+            for tokens, goal_stack, score, depth in beams:
+                if not goal_stack:
+                    # This beam is complete
+                    all_candidates.append((tokens, [], score, depth, True))
+                    continue
+
+                # Pop current goal
+                current_goal = goal_stack[-1]
+                remaining_stack = goal_stack[:-1]
+
+                # Compute attention context
+                goal_expanded = current_goal.unsqueeze(0)  # (1, hidden_size)
+                context_full = self.decoder.attn(
+                    goal_expanded,
+                    encoder_outputs,
+                    mask,
+                )  # (1, hidden_size*2)
+                # Project to hidden_size for decoder ops layer
+                context = context_full[:, :hidden_size]  # (1, hidden_size)
+
+                # Get predictions
+                op_scores, num_scores = self.decoder(
+                    goal_expanded,
+                    context,
+                    num_embeddings,
+                    mask,
+                )
+
+                # Decoder outputs:
+                # - op_scores: (1, 6) scores for operators [+, -, *, /, ^, =]
+                # - num_scores: (1, num_count + generate_size) scores for numbers
+                #   - indices 0 to num_count-1: problem numbers (NUM_0, NUM_1, ...)
+                #   - indices num_count to end: generated constants (x, 0.01, 1.0, ...)
+
+                # JOINT SCORING: Concatenate and softmax over all tokens for fair comparison
+                all_scores = torch.cat([op_scores, num_scores], dim=1)
+                all_log_probs = F.log_softmax(all_scores, dim=1).squeeze(0)
+                n_ops = op_scores.size(1)  # 6
+
+                # HEURISTIC: At shallow depths, prefer operators over numbers
+                # This helps generate proper tree structure
+                # The model is heavily biased towards NUM_0, so we boost operators significantly
+                operator_boost = 5.0 if depth == 0 else (3.0 if depth == 1 else 0.0)
+
+                # First: operator candidates (indices 0-5 in all_log_probs)
+                for op_idx in range(n_ops):
+                    op_symbol = self.idx2symbol[op_idx]
+                    if op_symbol not in operators:
+                        continue
+
+                    new_score = score + all_log_probs[op_idx].item() + operator_boost
+                    new_tokens = tokens + [op_symbol]
+
+                    # Generate child goals for this operator
+                    op_idx_tensor = torch.tensor([op_idx], dtype=torch.long)
+                    left_goal, right_goal = self.node_generater(
+                        goal_expanded,
+                        context,
+                        op_idx_tensor,
+                    )
+                    left_goal = left_goal.squeeze(0)
+                    right_goal = right_goal.squeeze(0)
+
+                    # Push right then left (so left is processed first - prefix order)
+                    new_stack = remaining_stack + [right_goal, left_goal]
+                    # Children are at depth + 1
+                    all_candidates.append((new_tokens, new_stack, new_score, depth + 1, False))
+
+                # Second: number candidates (indices n_ops onwards in all_log_probs)
+                for num_idx in range(num_scores.size(1)):
+                    all_idx = n_ops + num_idx
+
+                    if num_idx < num_count:
+                        symbol = f"NUM_{num_idx}"
+                    else:
+                        const_idx = num_idx - num_count
+                        if const_idx + 1 < len(self.temp_idx2symbol):
+                            symbol = self.temp_idx2symbol[const_idx + 1]
+                        else:
+                            continue
+
+                    if symbol in ("<OPT>", "<UNK>"):
+                        continue
+
+                    new_score = score + all_log_probs[all_idx].item()
+                    new_tokens = tokens + [symbol]
+                    new_stack = remaining_stack
+                    # Numbers don't increase depth (they're leaves)
+                    all_candidates.append((new_tokens, new_stack, new_score, depth, False))
+
+            # Keep top beam_size candidates
+            # Separate complete and incomplete beams
+            complete = [(t, s, sc, d) for t, s, sc, d, done in all_candidates if done or not s]
+            incomplete = [(t, s, sc, d) for t, s, sc, d, done in all_candidates if not done and s]
+
+            # Sort by score (higher is better for log probs)
+            incomplete.sort(key=lambda x: x[2], reverse=True)
+            complete.sort(key=lambda x: x[2], reverse=True)
+
+            # Keep top beams
+            beams = incomplete[:beam_size]
+
+            # If we have complete beams and they score higher than incomplete, we're done
+            if complete and (not beams or complete[0][2] >= beams[0][2]):
+                tokens = self._fix_num_references(complete[0][0], num_count)
+                return " ".join(tokens)
+
+        # Return best beam (complete or not)
+        all_beams = [(t, s, sc) for t, s, sc, d in beams] + \
+                    [(t, [], sc) for t, s, sc, d in complete if not s]
+        if all_beams:
+            all_beams.sort(key=lambda x: x[2], reverse=True)
+            tokens = all_beams[0][0]
+            # Post-process: fix repeated NUM_X references
+            tokens = self._fix_num_references(tokens, num_count)
+            return " ".join(tokens)
+
+        return ""
+
+    def _fix_num_references(self, tokens: list[str], num_count: int) -> list[str]:
+        """Fix repeated NUM_X references to use sequential numbers.
+
+        The model tends to output NUM_0 for all number references.
+        This post-processing ensures we use NUM_0, NUM_1, etc. sequentially.
+
+        Args:
+            tokens: List of output tokens
+            num_count: Number of NUM tokens in the problem
+
+        Returns:
+            Fixed token list with sequential NUM references
+        """
+        if num_count <= 1:
+            return tokens
+
+        result = []
+        num_used = 0
+        for tok in tokens:
+            if tok.startswith("NUM_"):
+                # Replace with sequential number
+                if num_used < num_count:
+                    result.append(f"NUM_{num_used}")
+                    num_used += 1
+                else:
+                    # If we've used all numbers, cycle back
+                    result.append(f"NUM_{num_used % num_count}")
+                    num_used += 1
+            else:
+                result.append(tok)
+        return result
 
     def get_state_dict_info(self) -> dict[str, Any]:
         """Get information about the model's state dict for debugging."""

@@ -160,9 +160,6 @@ class GTSDecomposer:
     def _run_inference(self, normalized_text: str) -> str:
         """Run GTS model inference.
 
-        NOTE: Full beam search not implemented in gts_model.py.
-        For now, raises NotImplementedError.
-
         Args:
             normalized_text: Text with numbers replaced by NUM tokens.
 
@@ -170,16 +167,19 @@ class GTSDecomposer:
             Prefix notation expression string.
 
         Raises:
-            NotImplementedError: GTS beam search decoding not yet implemented.
+            ValueError: If model returns empty or invalid output.
         """
-        # Ensure model is loaded (for future use)
-        self._ensure_model_loaded()
+        model = self._ensure_model_loaded()
 
-        # TODO: Implement beam search decoding in gts_model.py
-        raise NotImplementedError(
-            "GTS beam search decoding not yet implemented. "
-            "Use decompose_from_prefix() with known prefix expressions for now."
-        )
+        # Run beam search decoding
+        prefix = model.generate(normalized_text)
+
+        if not prefix or prefix == "<decoding_not_implemented>":
+            raise ValueError(
+                f"GTS model returned invalid output: {prefix!r}"
+            )
+
+        return prefix
 
     def _build_decomposed_steps(
         self,

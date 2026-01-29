@@ -259,8 +259,8 @@ class Solver:
         3. Execute DSL with resolved values
         4. Return result
         """
-        # Embed step
-        step_embedding = await cached_embed(step.task)
+        # Embed step (synchronous)
+        step_embedding = cached_embed(step.task)
         if step_embedding is None:
             return StepResult(success=False, error="Failed to embed step")
 
