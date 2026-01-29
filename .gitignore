@@ -81,3 +81,4 @@ trained_model/*
 # Notes and notebooks
 notes1.py
 notebooks/
+docs/
