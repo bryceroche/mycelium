@@ -39,6 +39,7 @@ ideas.md
 
 # Results and data
 results/
+data/
 *.db
 *.sqlite
 
