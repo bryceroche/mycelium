@@ -68,49 +68,90 @@ class AtomicStep:
 # PROMPT TEMPLATE
 # =============================================================================
 
-EXTRACTION_PROMPT = '''You are a math problem decomposer. Extract all numeric values and create a computation plan.
+EXTRACTION_PROMPT = '''You are a math problem decomposer creating MAXIMALLY ATOMIC steps.
 
 PROBLEM:
 {problem}
 
-Instructions:
-1. Extract ALL numeric values from the problem (including implicit ones like fractions, percentages)
-2. Create a step-by-step computation plan using ONLY these operations: add, subtract, multiply, divide
-3. Each plan step should be ONE atomic operation
-4. Reference values and previous steps by their id
+CRITICAL RULES - FOLLOW EXACTLY:
+1. Extract EVERY numeric value - explicit AND implicit:
+   - "half" = 0.5, "twice" = 2, "triple" = 3, "quarter" = 0.25
+   - Percentages: "2.5%" = 0.025 (as decimal)
+   - "per" rates, "each" prices, time periods, counts
+   - EVEN if a value seems obvious, EXTRACT IT
 
-Respond in JSON format:
+2. Each plan step is EXACTLY ONE arithmetic operation: add, subtract, multiply, OR divide
+   - NEVER combine operations
+   - "multiply then add" = TWO separate steps
+   - "find the difference then multiply" = TWO separate steps
+
+3. SHOW ALL INTERMEDIATE CALCULATIONS:
+   - Convert percentages: amount × percentage = increase (separate step)
+   - Then add: original + increase = final (separate step)
+   - NEVER do "original × 1.025" - that's combining multiply and implicit add!
+
+4. MINIMUM 5 STEPS for any problem. Most need 8-12 steps.
+   - If you have fewer than 5 steps, you're combining operations
+   - Break down further until each step is truly atomic
+
+5. Each step has exactly 2 inputs (values or previous step results)
+
+Respond in JSON:
 {{
   "values": {{
-    "value_name": <number>,
+    "descriptive_name": <number>,
     ...
   }},
   "plan": [
-    {{"id": "step_1", "op": "multiply|add|subtract|divide", "inputs": ["value_or_step", "value_or_step"], "description": "what this computes"}},
+    {{"id": "step_1", "op": "add|subtract|multiply|divide", "inputs": ["input1", "input2"], "description": "what this computes"}},
     ...
   ],
-  "answer_var": "step_N"
+  "answer_var": "final_step_id"
 }}
 
-Example for "Apples cost $3 each. Buy 5 apples and get $2 discount. Total cost?":
+EXAMPLE - "A store sells shirts for $25 each. Tom buys 3 shirts and 2 pants at $40 each. He has a $15 coupon. How much does he pay?"
+
 {{
   "values": {{
-    "price_per_apple": 3,
-    "num_apples": 5,
-    "discount": 2
+    "shirt_price": 25,
+    "num_shirts": 3,
+    "pants_price": 40,
+    "num_pants": 2,
+    "coupon_value": 15
   }},
   "plan": [
-    {{"id": "subtotal", "op": "multiply", "inputs": ["price_per_apple", "num_apples"], "description": "cost before discount"}},
-    {{"id": "total", "op": "subtract", "inputs": ["subtotal", "discount"], "description": "final cost after discount"}}
+    {{"id": "shirts_cost", "op": "multiply", "inputs": ["shirt_price", "num_shirts"], "description": "total cost of shirts"}},
+    {{"id": "pants_cost", "op": "multiply", "inputs": ["pants_price", "num_pants"], "description": "total cost of pants"}},
+    {{"id": "subtotal", "op": "add", "inputs": ["shirts_cost", "pants_cost"], "description": "cost before coupon"}},
+    {{"id": "final_total", "op": "subtract", "inputs": ["subtotal", "coupon_value"], "description": "final amount after coupon"}}
   ],
-  "answer_var": "total"
+  "answer_var": "final_total"
 }}
 
-IMPORTANT:
-- Break complex calculations into multiple simple steps
-- Each step should have exactly 2 inputs
-- Use descriptive value names (not x, y, z)
-- The answer_var must be the id of a plan step or a value name
+EXAMPLE - "Dana runs 4x faster than walks. Skip speed is half run speed. Skip = 3mph. Distance in 1hr (1/3 running, 2/3 walking)?"
+
+{{
+  "values": {{
+    "skip_speed": 3,
+    "run_to_skip_ratio": 2,
+    "walk_to_run_divisor": 4,
+    "total_time_hours": 1,
+    "run_time_fraction": 0.333,
+    "walk_time_fraction": 0.667
+  }},
+  "plan": [
+    {{"id": "run_speed", "op": "multiply", "inputs": ["skip_speed", "run_to_skip_ratio"], "description": "running speed from skip"}},
+    {{"id": "walk_speed", "op": "divide", "inputs": ["run_speed", "walk_to_run_divisor"], "description": "walking speed from run"}},
+    {{"id": "run_time", "op": "multiply", "inputs": ["total_time_hours", "run_time_fraction"], "description": "time spent running"}},
+    {{"id": "walk_time", "op": "multiply", "inputs": ["total_time_hours", "walk_time_fraction"], "description": "time spent walking"}},
+    {{"id": "run_distance", "op": "multiply", "inputs": ["run_speed", "run_time"], "description": "distance covered running"}},
+    {{"id": "walk_distance", "op": "multiply", "inputs": ["walk_speed", "walk_time"], "description": "distance covered walking"}},
+    {{"id": "total_distance", "op": "add", "inputs": ["run_distance", "walk_distance"], "description": "total distance traveled"}}
+  ],
+  "answer_var": "total_distance"
+}}
+
+Remember: MORE ATOMIC STEPS = BETTER. Break everything down to single operations.
 '''
 
 
