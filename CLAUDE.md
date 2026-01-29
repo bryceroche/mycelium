@@ -1,8 +1,9 @@
-# The Big 4
+# The Big 5
 1. System Independence
 2. New Favorite Pattern
 3. The Flow
 4. True Atomic Decomposition
+5. Primitive vs Chain Nodes
 
 ## System Independence
 The system restructures its own tree via periodic review—that's by design. Resist manually intervening. Modify Python code and database schema, not the tree directly. Don't clean up orphaned umbrella routers yourself; let the system handle it.
@@ -15,10 +16,15 @@ Database Statistics → Welford → Tree Structure
 Accurate statistics are the source of truth. Welford variance guides all structural decisions: cluster boundaries, sibling vs child placement, when to decompose leaves into umbrellas. Thresholds come from config, not magic numbers.
 
 ## True Atomic Decomposition
-We want a bias towards more steps per problem.  There are so many benefits of having truely atomic decomposisition: better reuse of signatures, better matching per step, and higher accuracy per step. 
+We want a bias towards more steps per problem.  There are so many benefits of having truely atomic decomposisition: better reuse of signatures, better matching per step, and higher accuracy per step.
 
 Mature tree: If problem text is FULLY explained by one leaf, it's atomic.
 Cold start: Only accept steps with graph embedding of depth 1
+
+## Primitive vs Chain Nodes
+1. Cold start with MWPToolkit parses GSM8K → expression trees → depth-1 primitives bootstrap the tree
+2. Success patterns reveal which primitives chain together
+3. Chains become new "atomic" units for L5 routing
 
 
 
