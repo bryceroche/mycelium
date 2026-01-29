@@ -618,6 +618,20 @@ THREAD_CREDIT_DECAY_PER_FORK = 0.7  # Credit decay per fork depth (0.7^1=0.7, 0.
 THREAD_MIN_CREDIT = 0.1  # Minimum credit to apply (filter noise from deep forks)
 
 # =============================================================================
+# LLM FAILURE DIAGNOSIS (per beads mycelium-b5tq)
+# =============================================================================
+# On failure, ask LLM to identify which (dag_step, leaf_node) pair likely failed.
+# Uses weighted blame: LLM-blamed step gets higher weight, others get lower weight.
+# This accelerates learning vs pure statistical convergence.
+#
+# Per CLAUDE.md: "Failures are valuable data points"
+# Per CLAUDE.md: "(dag_step, leaf_node) is what we're learning"
+
+LLM_FAILURE_DIAGNOSIS_ENABLED = True  # Enable LLM-assisted failure diagnosis
+LLM_FAILURE_DIAGNOSIS_BLAME_WEIGHT = 0.7  # Weight for LLM-blamed step (others get 1 - this)
+LLM_FAILURE_DIAGNOSIS_MODEL = "gpt-4o-mini"  # Fast/cheap model for diagnosis
+
+# =============================================================================
 # MCTS POST-MORTEM (Amplitude updates after grading)
 # =============================================================================
 # Per CLAUDE.md: "High confidence + failure = strong negative signal"

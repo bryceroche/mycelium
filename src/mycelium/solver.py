@@ -4703,12 +4703,105 @@ Rules:
                 len([r for r in split_results if r["split_type"] == "depth"]),
             )
 
+    async def _diagnose_failure_with_llm(
+        self,
+        problem: str,
+        steps: list[StepResult],
+        computed_answer: str,
+        ground_truth: str,
+    ) -> Optional[str]:
+        """Ask LLM to identify which step likely caused the failure.
+
+        Per beads mycelium-b5tq: LLM-assisted failure diagnosis to accelerate learning.
+        Returns the step_id of the likely culprit, or None if unclear.
+
+        Args:
+            problem: The original problem text
+            steps: List of StepResult from execution
+            computed_answer: The final answer we computed
+            ground_truth: The correct answer
+
+        Returns:
+            step_id of the likely failed step, or None
+        """
+        from mycelium.config import LLM_FAILURE_DIAGNOSIS_MODEL
+
+        if not steps:
+            return None
+
+        # Build step summary for LLM
+        step_lines = []
+        for i, step in enumerate(steps, 1):
+            step_lines.append(
+                f"Step {i} ({step.step_id}): {step.task}\n"
+                f"  Operation: {step.dsl_hint or 'unknown'}\n"
+                f"  Result: {step.result}\n"
+                f"  Signature: {step.signature_type or 'unknown'} (id={step.signature_id})"
+            )
+        steps_text = "\n".join(step_lines)
+
+        prompt = f"""A math word problem was solved incorrectly. Analyze the steps to identify which ONE step most likely produced the wrong result.
+
+PROBLEM:
+{problem}
+
+STEPS EXECUTED:
+{steps_text}
+
+COMPUTED ANSWER: {computed_answer}
+CORRECT ANSWER: {ground_truth}
+
+Which step_id most likely caused the error? Look for:
+- Wrong arithmetic operation (e.g., multiplied instead of divided)
+- Wrong values used
+- Missing or extra step
+- Logical error in reasoning
+
+Respond with ONLY the step_id (e.g., "step_1") of the most likely culprit.
+If truly unclear, respond with "UNCLEAR".
+"""
+
+        try:
+            from mycelium.client import LLMClient
+            async with LLMClient(model=LLM_FAILURE_DIAGNOSIS_MODEL) as client:
+                response = await client.generate(
+                    [{"role": "user", "content": prompt}],
+                    temperature=0.0,
+                    max_tokens=20,
+                )
+
+            # Parse response - should be just the step_id or UNCLEAR
+            blamed_step = response.strip().lower()
+            if blamed_step == "unclear" or not blamed_step.startswith("step_"):
+                logger.info("[solver] LLM diagnosis unclear: %s", response.strip()[:50])
+                return None
+
+            # Validate step_id exists
+            valid_ids = {step.step_id for step in steps}
+            if blamed_step not in valid_ids:
+                # Try to match partial (e.g., "step 1" -> "step_1")
+                blamed_step = blamed_step.replace(" ", "_")
+                if blamed_step not in valid_ids:
+                    logger.warning("[solver] LLM blamed invalid step: %s", blamed_step)
+                    return None
+
+            logger.info(
+                "[solver] LLM failure diagnosis: blamed '%s' (problem: %s -> %s)",
+                blamed_step, computed_answer[:20], ground_truth[:20]
+            )
+            return blamed_step
+
+        except Exception as e:
+            logger.warning("[solver] LLM failure diagnosis failed: %s", e)
+            return None
+
     def record_problem_outcome(
         self,
         result: SolverResult,
         correct: bool,
         difficulty: float = None,
         ground_truth: str = None,
+        blamed_step_id: str = None,
     ) -> list[int]:
         """Propagate problem correctness to all signatures used.
 
@@ -4720,11 +4813,17 @@ Rules:
         - difficulty=0.5 (GSM8K) → 3.0x credit
         - difficulty=1.0 (competition) → 5.0x credit
 
+        LLM FAILURE DIAGNOSIS (per beads mycelium-b5tq):
+        When `blamed_step_id` is provided for a failed problem, apply weighted blame:
+        - LLM-blamed step gets higher weight (default 0.7)
+        - Other steps get lower weight (default 0.3)
+
         Args:
             result: The SolverResult from solve()
             correct: Whether the final answer was correct
             difficulty: Problem difficulty for weighted credit (0.0-1.0)
             ground_truth: The correct answer (for MCTS path outcome comparison)
+            blamed_step_id: Step ID blamed by LLM diagnosis (for weighted failure recording)
 
         Returns:
             List of signature IDs that may need decomposition (low confidence)
@@ -4735,6 +4834,39 @@ Rules:
             if step.signature_id is not None
         ]
         self.step_db.update_problem_outcome(signature_ids, correct, difficulty=difficulty)
+
+        # LLM FAILURE DIAGNOSIS: Apply weighted blame when problem fails
+        # Per beads mycelium-b5tq: LLM-blamed step gets higher weight
+        from mycelium.config import (
+            LLM_FAILURE_DIAGNOSIS_ENABLED,
+            LLM_FAILURE_DIAGNOSIS_BLAME_WEIGHT,
+            TRAINING_MODE,
+        )
+
+        if (not correct and blamed_step_id and LLM_FAILURE_DIAGNOSIS_ENABLED and TRAINING_MODE):
+            high_weight = LLM_FAILURE_DIAGNOSIS_BLAME_WEIGHT  # e.g., 0.7
+            low_weight = 1.0 - high_weight  # e.g., 0.3
+
+            for step in result.steps:
+                if step.signature_id is None:
+                    continue
+
+                # Apply weighted blame
+                is_blamed = (step.step_id == blamed_step_id)
+                weight = high_weight if is_blamed else low_weight
+
+                # Record weighted failure for this (step, signature) pair
+                self.step_db.record_weighted_failure(
+                    signature_id=step.signature_id,
+                    step_text=step.task,
+                    weight=weight,
+                    is_llm_blamed=is_blamed,
+                )
+
+            logger.info(
+                "[solver] LLM diagnosis: weighted blame applied (blamed=%s, high=%.1f, low=%.1f)",
+                blamed_step_id, high_weight, low_weight
+            )
 
         # Grade the MCTS DAG (training mode only)
         # Per CLAUDE.md: Set success/graded_at after final answer comparison

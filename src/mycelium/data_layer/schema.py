@@ -59,6 +59,11 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     operational_failures INTEGER DEFAULT 0,  -- MCTS: times produced wrong answer vs ground truth
     rejection_count INTEGER DEFAULT 0,  -- Times this leaf rejected a dag_step (low similarity)
 
+    -- LLM Failure Diagnosis (per beads mycelium-b5tq)
+    -- Weighted blame accumulation from LLM-assisted failure analysis
+    weighted_failures REAL DEFAULT 0.0,  -- Sum of weighted failure blame (0.0-1.0 per failure)
+    llm_blamed_count INTEGER DEFAULT 0,  -- Times LLM directly blamed this signature
+
     -- Embedding Variance Tracking (Welford's online algorithm)
     -- Tracks how diverse the problems routed to this signature are
     -- High variance = too generic, should decompose into specialized children

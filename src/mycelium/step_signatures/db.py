@@ -4196,6 +4196,54 @@ class StepSignatureDB:
                     len(signature_ids)
                 )
 
+    def record_weighted_failure(
+        self,
+        signature_id: int,
+        step_text: str,
+        weight: float,
+        is_llm_blamed: bool = False,
+    ) -> None:
+        """Record a weighted failure for a signature.
+
+        Per beads mycelium-b5tq: LLM failure diagnosis applies weighted blame.
+        LLM-blamed steps get higher weight, others get lower weight.
+
+        This updates the signature's Welford failure stats with the weight,
+        allowing the system to learn which (dag_step, leaf_node) pairs are
+        more likely to be the actual culprit.
+
+        Args:
+            signature_id: The signature that was used
+            step_text: The step description (for logging)
+            weight: Blame weight (0.0 to 1.0, higher = more blame)
+            is_llm_blamed: True if LLM identified this as the likely culprit
+        """
+        with self._connection() as conn:
+            # Update weighted failure count in signature
+            # We use a weighted failure counter that accumulates blame
+            # Higher weight = more contribution to failure stats
+            conn.execute(
+                """UPDATE step_signatures
+                   SET weighted_failures = COALESCE(weighted_failures, 0) + ?,
+                       llm_blamed_count = COALESCE(llm_blamed_count, 0) + ?
+                   WHERE id = ?""",
+                (weight, 1 if is_llm_blamed else 0, signature_id)
+            )
+
+            # Also update Welford stats for this signature's failure rate
+            # This feeds into the adaptive threshold calculation
+            from mycelium.data_layer.state_manager import get_state_manager
+            prefix = f"sig_{signature_id}_failure"
+            try:
+                get_state_manager().update_welford_stats(prefix, weight)
+            except Exception as e:
+                logger.debug("[db] Failed to update Welford stats for sig %d: %s", signature_id, e)
+
+            logger.debug(
+                "[db] Recorded weighted failure: sig=%d step='%s' weight=%.2f blamed=%s",
+                signature_id, step_text[:30], weight, is_llm_blamed
+            )
+
     def _collect_parent_credits(
         self,
         conn,
