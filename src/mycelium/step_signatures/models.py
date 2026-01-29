@@ -1,125 +1,54 @@
-"""Step Signature Models V2: Natural Language Interface.
-
-Signatures now speak natural language:
-- description: What this signature does (for LLM understanding)
-- clarifying_questions: Questions to ask to extract parameters
-- param_descriptions: What each DSL parameter means in plain English
-- examples: Few-shot examples of input → output
-
-The planner and signatures can now "talk" to each other through text.
-"""
+"""Step Signature Models - minimal for local decomposition."""
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Union
 import json
 import logging
-
 import numpy as np
-from typing import Union
-
-from mycelium.config import ADAPTIVE_REJECTION_DEFAULT_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
 
 def _parse_centroid_data(data: Union[str, bytes, None]) -> Optional[np.ndarray]:
-    """Parse centroid data which may be JSON string or binary bytes.
-
-    SQLite stores centroids as JSON strings, but legacy code stored binary.
-    This helper handles both formats.
-    """
+    """Parse centroid data (JSON string or binary bytes)."""
     if data is None:
         return None
     if isinstance(data, str):
         return np.array(json.loads(data), dtype=np.float32)
-    # Binary numpy data
     return np.frombuffer(data, dtype=np.float32)
 
 
 @dataclass
 class StepSignature:
-    """A signature that speaks natural language.
-
-    The key insight: signatures need to communicate with LLMs, not just
-    match embeddings. This means:
-
-    1. description: Tells the LLM what this signature does
-    2. clarifying_questions: Asks the LLM to extract specific parameters
-    3. param_descriptions: Explains what each parameter means
-    4. examples: Shows the LLM how to use this signature
-
-    Example:
-        signature = StepSignature(
-            step_type="compute_power",
-            description="Raise a base number to an exponent power",
-            clarifying_questions=["What is the base number?", "What is the exponent?"],
-            param_descriptions={"base": "The number being raised", "exponent": "The power"},
-            dsl_script="base ** exponent",
-            examples=[{"input": "2^8", "params": {"base": 2, "exponent": 8}, "result": "256"}]
-        )
-    """
+    """A step signature for routing and DSL execution."""
     id: Optional[int] = None
     signature_id: str = ""
-
-    # Embedding (3072-dim gemini-embedding-001 centroid)
-    # centroid = embedding_sum / embedding_count (running average)
     centroid: Optional[np.ndarray] = None
-    embedding_sum: Optional[np.ndarray] = None  # Running sum of all matched embeddings
-    embedding_count: int = 1  # Number of embeddings in sum
-
-    # Identity
-    step_type: str = ""  # e.g., "compute_power", "find_gcd"
-
-    # Natural Language Interface
-    description: str = ""  # "Raise a base number to an exponent power"
-    clarifying_questions: list[str] = field(default_factory=list)  # ["What is the base?", ...]
-    param_descriptions: dict[str, str] = field(default_factory=dict)  # {"base": "The number..."}
-
-    # DSL Execution
-    dsl_script: Optional[str] = None  # "base ** exponent"
-    dsl_type: str = "math"  # "math", "sympy", "python"
-
-    # Computation Graph (per CLAUDE.md: route by what operations DO)
-    # Graph is structural representation: MUL(param_0, param_1), ADD(MUL(p0, p1), p2)
-    computation_graph: Optional[str] = None  # e.g., "MUL(param_0, param_1)"
-    graph_embedding: Optional[np.ndarray] = None  # Embedding of graph for routing
-
-    # Few-shot Examples
-    examples: list[dict] = field(default_factory=list)  # [{"input": "2^8", "params": {...}, "result": "256"}]
-
-    # Statistics
+    embedding_sum: Optional[np.ndarray] = None
+    embedding_count: int = 1
+    step_type: str = ""
+    description: str = ""
+    clarifying_questions: list[str] = field(default_factory=list)
+    param_descriptions: dict[str, str] = field(default_factory=dict)
+    dsl_script: Optional[str] = None
+    dsl_type: str = "math"
+    computation_graph: Optional[str] = None
+    graph_embedding: Optional[np.ndarray] = None
+    examples: list[dict] = field(default_factory=list)
     uses: int = 0
     successes: int = 0
-    operational_failures: int = 0  # MCTS post-mortem: destructive interference flags
-
-    # Embedding Variance Tracking (Welford's algorithm)
-    # Tracks how diverse the problems routed to this signature are
-    # High variance = too generic, should decompose into specialized children
-    similarity_count: int = 0   # N in Welford's algorithm
-    similarity_mean: float = 0.0  # Running mean of cosine similarities
-    similarity_m2: float = 0.0    # M2 for variance: variance = M2/N
-
-    # Success Similarity Tracking (for adaptive rejection per mycelium-i601)
-    # Uses Welford's algorithm: threshold = success_sim_mean - k * sqrt(success_sim_m2/success_sim_count)
-    success_sim_count: int = 0   # N successful matches
-    success_sim_mean: float = 0.0  # Running mean of similarity on success
-    success_sim_m2: float = 0.0    # M2 for variance calculation
-
-    # Difficulty tracking (for universal tree)
-    # Format: {"0.2": {"uses": 10, "successes": 8}, "0.8": {"uses": 2, "successes": 0}}
-    difficulty_stats: dict[str, dict[str, int]] = field(default_factory=dict)
-    max_difficulty_solved: float = 0.0  # Highest difficulty this sig has succeeded on
-
-    # Umbrella routing (DAG of DAGs)
-    is_semantic_umbrella: bool = False  # True if routes to children
-    is_root: bool = False  # True if this is THE root signature (single entry point)
-    depth: int = 0  # Routing depth (0=root, increases with parent-child hops)
-
-    # Atomic operations (cannot be decomposed further)
-    is_atomic: bool = False  # True if decomposition already failed
-    atomic_reason: Optional[str] = None  # "decomp_failed_single_step", "decomp_failed_with_failing_steps"
-
-    # Metadata
+    operational_failures: int = 0
+    similarity_count: int = 0
+    similarity_mean: float = 0.0
+    similarity_m2: float = 0.0
+    success_sim_count: int = 0
+    success_sim_mean: float = 0.0
+    success_sim_m2: float = 0.0
+    is_semantic_umbrella: bool = False
+    is_root: bool = False
+    depth: int = 0
+    is_atomic: bool = False
+    atomic_reason: Optional[str] = None
     created_at: Optional[str] = None
     last_used_at: Optional[str] = None
 
@@ -131,200 +60,60 @@ class StepSignature:
     def has_dsl(self) -> bool:
         return bool(self.dsl_script)
 
-    def get_adaptive_rejection_threshold(
-        self,
-        k: float = 1.5,
-        min_samples: int = 5,
-        default_threshold: float = ADAPTIVE_REJECTION_DEFAULT_THRESHOLD,
-    ) -> float:
-        """Compute adaptive rejection threshold based on historical success similarities.
-
-        Per mycelium-i601: threshold = mean - k * std
-
-        A leaf rejects dag_steps when similarity falls below this threshold,
-        signaling "I'm not confident handling this operation."
-
-        Args:
-            k: Number of standard deviations below mean (default 1.5)
-            min_samples: Minimum successful matches before adaptive threshold kicks in
-            default_threshold: Fallback when insufficient data (cold start)
-
-        Returns:
-            Similarity threshold below which to reject dag_steps
-        """
-        from mycelium.config import (
-            ADAPTIVE_REJECTION_MIN_THRESHOLD,
-            ADAPTIVE_REJECTION_MAX_THRESHOLD,
-        )
-
-        # Cold start: be permissive until we have enough data
-        if self.success_sim_count < min_samples:
-            return default_threshold
-
-        # Welford's algorithm: variance = M2 / N
-        variance = self.success_sim_m2 / self.success_sim_count
-        std = variance ** 0.5 if variance > 0 else 0.0
-
-        # threshold = mean - k * std
-        # Higher k = more permissive, lower k = more selective
-        threshold = self.success_sim_mean - k * std
-
-        # Clamp to reasonable bounds from config
-        return max(ADAPTIVE_REJECTION_MIN_THRESHOLD, min(ADAPTIVE_REJECTION_MAX_THRESHOLD, threshold))
-
-    def get_difficulty_success_rate(self, difficulty: float, tolerance: float = 0.15) -> float:
-        """Get success rate for problems at similar difficulty level.
-
-        Args:
-            difficulty: Target difficulty (0.0 to 1.0)
-            tolerance: How close difficulties must be to count
-
-        Returns:
-            Success rate for this difficulty range, or -1 if no data
-        """
-        total_uses = 0
-        total_successes = 0
-
-        for diff_str, stats in self.difficulty_stats.items():
-            try:
-                diff = float(diff_str)
-                if abs(diff - difficulty) <= tolerance:
-                    total_uses += stats.get("uses", 0)
-                    total_successes += stats.get("successes", 0)
-            except ValueError:
-                continue
-
-        if total_uses == 0:
-            return -1.0  # No data for this difficulty
-        return total_successes / total_uses
-
-    def difficulty_stats_json(self) -> str:
-        """Serialize difficulty_stats to JSON."""
-        return json.dumps(self.difficulty_stats)
-
-    def get_clarifying_prompt(self) -> str:
-        """Generate a prompt asking the LLM to extract parameters."""
-        if not self.clarifying_questions:
-            return ""
-
-        lines = [f"To execute '{self.step_type}', I need to know:"]
-        for i, q in enumerate(self.clarifying_questions, 1):
-            lines.append(f"  {i}. {q}")
-
-        if self.param_descriptions:
-            lines.append("\nParameter meanings:")
-            for param, desc in self.param_descriptions.items():
-                lines.append(f"  - {param}: {desc}")
-
-        return "\n".join(lines)
-
-    def get_few_shot_prompt(self, max_examples: int = 3) -> str:
-        """Generate few-shot examples for the LLM."""
-        if not self.examples:
-            return ""
-
-        lines = ["Examples:"]
-        for ex in self.examples[:max_examples]:
-            lines.append(f"  Input: {ex.get('input', '')}")
-            if 'params' in ex:
-                lines.append(f"  Params: {ex['params']}")
-            lines.append(f"  Result: {ex.get('result', '')}")
-            lines.append("")
-
-        return "\n".join(lines)
-
-    def to_prompt(self) -> str:
-        """Generate full prompt for LLM interaction."""
-        parts = [
-            f"Signature: {self.step_type}",
-            f"Description: {self.description}",
-        ]
-
-        if self.clarifying_questions:
-            parts.append(self.get_clarifying_prompt())
-
-        if self.examples:
-            parts.append(self.get_few_shot_prompt())
-
-        if self.dsl_script:
-            parts.append(f"DSL: {self.dsl_script}")
-
-        return "\n\n".join(parts)
-
-    # Serialization helpers for JSON columns
-    def clarifying_questions_json(self) -> str:
-        return json.dumps(self.clarifying_questions)
-
-    def param_descriptions_json(self) -> str:
-        return json.dumps(self.param_descriptions)
-
-    def examples_json(self) -> str:
-        return json.dumps(self.examples)
-
     @classmethod
     def from_row(cls, row: dict) -> "StepSignature":
-        """Create from database row (full parsing)."""
-        # Parse JSON fields
+        """Create from database row."""
         sig_id = row.get("id", "?")
+
+        # Parse JSON fields
         clarifying_questions = []
         if row.get("clarifying_questions"):
             try:
                 clarifying_questions = json.loads(row["clarifying_questions"])
-            except json.JSONDecodeError as e:
-                logger.warning("[models] Invalid clarifying_questions JSON for sig %s: %s", sig_id, e)
+            except json.JSONDecodeError:
+                pass
 
         param_descriptions = {}
         if row.get("param_descriptions"):
             try:
                 param_descriptions = json.loads(row["param_descriptions"])
-            except json.JSONDecodeError as e:
-                logger.warning("[models] Invalid param_descriptions JSON for sig %s: %s", sig_id, e)
+            except json.JSONDecodeError:
+                pass
 
         examples = []
         if row.get("examples"):
             try:
                 examples = json.loads(row["examples"])
-            except json.JSONDecodeError as e:
-                logger.warning("[models] Invalid examples JSON for sig %s: %s", sig_id, e)
+            except json.JSONDecodeError:
+                pass
 
-        difficulty_stats = {}
-        if row.get("difficulty_stats"):
-            try:
-                difficulty_stats = json.loads(row["difficulty_stats"])
-            except json.JSONDecodeError as e:
-                logger.warning("[models] Invalid difficulty_stats JSON for sig %s: %s", sig_id, e)
-
-        # Parse centroid and embedding_sum (handles both JSON and legacy binary)
         centroid = None
         if row.get("centroid"):
             try:
                 centroid = _parse_centroid_data(row["centroid"])
-            except Exception as e:
-                logger.warning("[models] Invalid centroid for sig %s: %s", sig_id, e)
+            except Exception:
+                pass
 
         embedding_sum = None
         if row.get("embedding_sum"):
             try:
                 embedding_sum = _parse_centroid_data(row["embedding_sum"])
-            except Exception as e:
-                logger.warning("[models] Invalid embedding_sum for sig %s: %s", sig_id, e)
+            except Exception:
+                pass
 
-        embedding_count = row.get("embedding_count", 1) or 1
-
-        # Parse graph_embedding (JSON-serialized numpy array)
         graph_embedding = None
         if row.get("graph_embedding"):
             try:
                 graph_embedding = np.array(json.loads(row["graph_embedding"]))
-            except (json.JSONDecodeError, TypeError) as e:
-                logger.warning("[models] Invalid graph_embedding for sig %s: %s", sig_id, e)
+            except (json.JSONDecodeError, TypeError):
+                pass
 
         return cls(
             id=row.get("id"),
             signature_id=row.get("signature_id", ""),
             centroid=centroid,
             embedding_sum=embedding_sum,
-            embedding_count=embedding_count,
+            embedding_count=row.get("embedding_count", 1) or 1,
             step_type=row.get("step_type", ""),
             description=row.get("description", ""),
             clarifying_questions=clarifying_questions,
@@ -343,58 +132,6 @@ class StepSignature:
             success_sim_count=row.get("success_sim_count", 0) or 0,
             success_sim_mean=row.get("success_sim_mean", 0.0) or 0.0,
             success_sim_m2=row.get("success_sim_m2", 0.0) or 0.0,
-            difficulty_stats=difficulty_stats,
-            max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
-            is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
-            is_root=bool(row.get("is_root", 0)),
-            depth=row.get("depth", 0) or 0,
-            is_atomic=bool(row.get("is_atomic", 0)),
-            atomic_reason=row.get("atomic_reason"),
-            created_at=row.get("created_at"),
-            last_used_at=row.get("last_used_at"),
-        )
-
-    @classmethod
-    def from_row_fast(cls, row: dict) -> "StepSignature":
-        """Create from database row (skip expensive JSON parsing).
-
-        ~2x faster than from_row. Use when you only need basic fields.
-        Skips: centroid, embedding_sum, clarifying_questions, examples.
-        Parses: param_descriptions (needed for extraction validation).
-        """
-        # Parse param_descriptions (small, needed for extraction validation)
-        param_descriptions = {}
-        if row.get("param_descriptions"):
-            try:
-                param_descriptions = json.loads(row["param_descriptions"])
-            except json.JSONDecodeError as e:
-                logger.warning("[models] Invalid param_descriptions JSON for sig %s: %s", row.get("id", "?"), e)
-
-        return cls(
-            id=row.get("id"),
-            signature_id=row.get("signature_id", ""),
-            centroid=None,  # Skip expensive parsing
-            embedding_sum=None,
-            embedding_count=row.get("embedding_count", 1) or 1,
-            step_type=row.get("step_type", ""),
-            description=row.get("description", ""),
-            clarifying_questions=[],  # Skip JSON parsing
-            param_descriptions=param_descriptions,  # Parse for extraction validation
-            dsl_script=row.get("dsl_script"),
-            dsl_type=row.get("dsl_type", "math"),
-            computation_graph=row.get("computation_graph"),
-            examples=[],  # Skip JSON parsing
-            uses=row.get("uses", 0),
-            successes=row.get("successes", 0),
-            operational_failures=row.get("operational_failures", 0) or 0,
-            similarity_count=row.get("similarity_count", 0) or 0,
-            similarity_mean=row.get("similarity_mean", 0.0) or 0.0,
-            similarity_m2=row.get("similarity_m2", 0.0) or 0.0,
-            success_sim_count=row.get("success_sim_count", 0) or 0,
-            success_sim_mean=row.get("success_sim_mean", 0.0) or 0.0,
-            success_sim_m2=row.get("success_sim_m2", 0.0) or 0.0,
-            difficulty_stats={},  # Skip JSON parsing
-            max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,
@@ -406,44 +143,29 @@ class StepSignature:
 
     @classmethod
     def from_row_for_routing(cls, row: dict) -> "StepSignature":
-        """Create from database row optimized for routing (parse centroid only).
-
-        ~4x faster than from_row. Use for umbrella routing where we only need
-        centroid for similarity, uses/successes for UCB1, and is_semantic_umbrella
-        for recursion. Per CLAUDE.md: "Umbrella signature routing should not
-        require an LLM call" - routing is purely embedding-based.
-
-        Parses: centroid (REQUIRED for similarity), graph_embedding (for graph routing)
-        Skips: clarifying_questions, param_descriptions, examples, embedding_sum
-        """
+        """Create from database row optimized for routing (parse centroid only)."""
         from mycelium.step_signatures.utils import get_cached_centroid
 
-        # Use cached centroid to avoid repeated JSON parsing
         centroid = get_cached_centroid(row.get("id"), row.get("centroid"))
 
-        # Parse graph_embedding for graph-based routing
         graph_embedding = None
         if row.get("graph_embedding"):
             try:
                 graph_embedding = np.array(json.loads(row["graph_embedding"]))
             except (json.JSONDecodeError, TypeError):
-                pass  # Silent fail for routing - not critical
+                pass
 
         return cls(
             id=row.get("id"),
             signature_id=row.get("signature_id", ""),
             centroid=centroid,
-            embedding_sum=None,  # Skip - not needed for routing
             embedding_count=row.get("embedding_count", 1) or 1,
             step_type=row.get("step_type", ""),
             description=row.get("description", ""),
-            clarifying_questions=[],  # Skip JSON parsing
-            param_descriptions={},  # Skip JSON parsing
             dsl_script=row.get("dsl_script"),
             dsl_type=row.get("dsl_type", "math"),
             computation_graph=row.get("computation_graph"),
             graph_embedding=graph_embedding,
-            examples=[],  # Skip JSON parsing
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
             operational_failures=row.get("operational_failures", 0) or 0,
@@ -453,8 +175,6 @@ class StepSignature:
             success_sim_count=row.get("success_sim_count", 0) or 0,
             success_sim_mean=row.get("success_sim_mean", 0.0) or 0.0,
             success_sim_m2=row.get("success_sim_m2", 0.0) or 0.0,
-            difficulty_stats={},  # Skip JSON parsing
-            max_difficulty_solved=row.get("max_difficulty_solved", 0.0) or 0.0,
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,
@@ -462,96 +182,4 @@ class StepSignature:
             atomic_reason=row.get("atomic_reason"),
             created_at=row.get("created_at"),
             last_used_at=row.get("last_used_at"),
-        )
-
-
-@dataclass
-class StepExample:
-    """An example step that belongs to a signature cluster."""
-    id: Optional[int] = None
-    signature_id: int = 0
-    step_text: str = ""
-    embedding: Optional[np.ndarray] = None
-    result: str = ""
-    success: bool = False
-    parent_problem: str = ""
-    created_at: Optional[str] = None
-
-
-@dataclass
-class ProposedSignature:
-    """A proposed signature awaiting acceptance decision.
-
-    Per mycelium-xv09: Signatures are staged before acceptance.
-    During cold start: auto-accept as root children.
-    After cold start: use Welford stats to decide accept/reject/merge.
-
-    Statuses:
-    - pending: Awaiting decision
-    - accepted: Converted to real signature
-    - rejected: Discarded (too similar to existing, or low quality)
-    - merged: Merged into existing signature (updated centroid)
-    """
-    id: Optional[int] = None
-    step_text: str = ""
-    embedding: Optional[np.ndarray] = None
-    graph_embedding: Optional[np.ndarray] = None
-    computation_graph: Optional[str] = None
-    proposed_parent_id: Optional[int] = None  # Suggested parent (from routing)
-    best_match_id: Optional[int] = None  # Most similar existing signature
-    best_match_sim: Optional[float] = None  # Similarity to best match
-    dsl_hint: Optional[str] = None  # Operation hint from planner
-    extracted_values: Optional[dict] = None  # JSON: extracted parameters
-    status: str = "pending"  # pending, accepted, rejected, merged
-    decision_reason: Optional[str] = None  # Why accepted/rejected/merged
-    origin_depth: int = 0  # Depth where proposal originated
-    problem_context: Optional[str] = None  # Original problem text
-    created_at: Optional[str] = None
-    decided_at: Optional[str] = None
-
-    @classmethod
-    def from_row(cls, row: dict) -> "ProposedSignature":
-        """Create from database row."""
-        from mycelium.step_signatures.utils import unpack_embedding
-
-        # Parse embedding fields
-        embedding = None
-        if row.get("embedding"):
-            try:
-                embedding = unpack_embedding(row["embedding"])
-            except Exception as e:
-                logger.warning("[models] Invalid embedding for proposal %s: %s", row.get("id", "?"), e)
-
-        graph_embedding = None
-        if row.get("graph_embedding"):
-            try:
-                graph_embedding = unpack_embedding(row["graph_embedding"])
-            except Exception as e:
-                logger.warning("[models] Invalid graph_embedding for proposal %s: %s", row.get("id", "?"), e)
-
-        # Parse extracted_values JSON
-        extracted_values = None
-        if row.get("extracted_values"):
-            try:
-                extracted_values = json.loads(row["extracted_values"])
-            except json.JSONDecodeError as e:
-                logger.warning("[models] Invalid extracted_values JSON for proposal %s: %s", row.get("id", "?"), e)
-
-        return cls(
-            id=row.get("id"),
-            step_text=row.get("step_text", ""),
-            embedding=embedding,
-            graph_embedding=graph_embedding,
-            computation_graph=row.get("computation_graph"),
-            proposed_parent_id=row.get("proposed_parent_id"),
-            best_match_id=row.get("best_match_id"),
-            best_match_sim=row.get("best_match_sim"),
-            dsl_hint=row.get("dsl_hint"),
-            extracted_values=extracted_values,
-            status=row.get("status", "pending"),
-            decision_reason=row.get("decision_reason"),
-            origin_depth=row.get("origin_depth", 0) or 0,
-            problem_context=row.get("problem_context"),
-            created_at=row.get("created_at"),
-            decided_at=row.get("decided_at"),
         )
