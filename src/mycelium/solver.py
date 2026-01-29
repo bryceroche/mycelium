@@ -18,8 +18,9 @@ import logging
 from dataclasses import dataclass, field
 from typing import Optional
 
-from mycelium.config import DB_PATH
+from mycelium.config import DB_PATH, USE_GTS_DECOMPOSITION, GTS_MODEL_PATH
 from mycelium.plan_models import Step, DAGPlan
+from mycelium.gts_decomposer import GTSDecomposer, DecomposedStep
 from mycelium.step_signatures import StepSignatureDB, StepSignature
 from mycelium.step_signatures.dsl_executor import try_execute_dsl_math
 from mycelium.step_signatures.utils import cosine_similarity
@@ -63,10 +64,24 @@ class Solver:
     Executes DSL and records stats for Welford learning.
     """
 
-    def __init__(self, db_path: str = None):
-        """Initialize solver with signature database."""
+    def __init__(self, db_path: str = None, use_gts: bool = None):
+        """Initialize solver with signature database.
+
+        Args:
+            db_path: Path to signature database.
+            use_gts: Whether to use GTS decomposition. If None, uses config.
+        """
         self.db_path = db_path or DB_PATH
         self.step_db = StepSignatureDB(self.db_path)
+        self._use_gts = use_gts if use_gts is not None else USE_GTS_DECOMPOSITION
+        self._gts_decomposer: Optional[GTSDecomposer] = None
+
+    @property
+    def gts_decomposer(self) -> GTSDecomposer:
+        """Lazy-load GTSDecomposer when first accessed."""
+        if self._gts_decomposer is None:
+            self._gts_decomposer = GTSDecomposer(model_path=GTS_MODEL_PATH)
+        return self._gts_decomposer
 
     async def solve(
         self,
@@ -146,11 +161,90 @@ class Solver:
     async def _decompose(self, problem: str) -> Optional[DAGPlan]:
         """Decompose problem into steps.
 
-        TODO: Implement local decomposition per beads mycelium-1b8w.4
-        For now, returns None (caller should provide plan).
+        If USE_GTS_DECOMPOSITION is enabled, uses GTS model.
+        Otherwise falls back to None (caller should provide plan).
         """
+        if self._use_gts:
+            try:
+                return await self._decompose_with_gts(problem)
+            except NotImplementedError as e:
+                logger.warning(
+                    "[solver] GTS beam search not implemented, falling back: %s", e
+                )
+                return None
+            except Exception as e:
+                logger.warning(
+                    "[solver] GTS decomposition failed, falling back: %s", e
+                )
+                return None
+
         logger.warning("[solver] Local decomposition not yet implemented")
         return None
+
+    async def _decompose_with_gts(self, problem: str) -> Optional[DAGPlan]:
+        """Decompose problem using GTS model.
+
+        Per CLAUDE.md Big 5 #4 (True Atomic Decomposition):
+        GTS decomposes problems into atomic steps for routing.
+
+        Args:
+            problem: The problem text.
+
+        Returns:
+            DAGPlan with atomic steps, or None if decomposition fails.
+
+        Raises:
+            NotImplementedError: If GTS beam search not yet implemented.
+        """
+        # Run GTS decomposition (may raise NotImplementedError)
+        decomposed_steps = self.gts_decomposer.decompose(problem)
+
+        if not decomposed_steps:
+            logger.warning("[solver] GTS returned no steps for problem")
+            return None
+
+        # Convert DecomposedStep list to DAGPlan
+        return self._convert_gts_to_dag(decomposed_steps, problem)
+
+    def _convert_gts_to_dag(
+        self,
+        decomposed_steps: list[DecomposedStep],
+        problem: str,
+    ) -> DAGPlan:
+        """Convert GTS DecomposedStep list to DAGPlan format.
+
+        Maps the GTS atomic steps to our standard Step/DAGPlan format
+        for compatibility with the existing execution pipeline.
+
+        Args:
+            decomposed_steps: List of DecomposedStep from GTSDecomposer.
+            problem: The original problem text.
+
+        Returns:
+            DAGPlan with Step objects ready for execution.
+        """
+        steps: list[Step] = []
+
+        for ds in decomposed_steps:
+            # Build dependency list in our format
+            depends_on = [f"step_{dep}" for dep in ds.depends_on]
+
+            # Extract operation type from operation string (e.g., "add two numbers" -> "add")
+            operation = ds.operation.split()[0] if ds.operation else None
+
+            step = Step(
+                id=f"step_{ds.step_number}",
+                task=ds.operation,
+                depends_on=depends_on,
+                extracted_values=ds.extracted_values,
+                operation=operation,
+            )
+            steps.append(step)
+
+        return DAGPlan(
+            steps=steps,
+            problem=problem,
+        )
 
     async def _execute_step(
         self,

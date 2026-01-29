@@ -107,6 +107,24 @@ CREATE TABLE IF NOT EXISTS db_metadata (
     value TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+
+-- =============================================================================
+-- STEP SEQUENCES: Track primitive chains for chain node creation
+-- Per CLAUDE.md Big 5 #5: Primitive vs Chain Nodes
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS step_sequences (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sequence TEXT NOT NULL,           -- JSON: ['leaf_1', 'leaf_2', 'leaf_3']
+    sequence_hash TEXT UNIQUE NOT NULL,  -- Hash of sequence for fast lookup
+    success_count INTEGER DEFAULT 0,
+    failure_count INTEGER DEFAULT 0,
+    chain_node_id INTEGER DEFAULT NULL,  -- FK to step_signatures if chain created
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (chain_node_id) REFERENCES step_signatures(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_seq_hash ON step_sequences(sequence_hash);
+CREATE INDEX IF NOT EXISTS idx_seq_chain ON step_sequences(chain_node_id);
 """
 
 

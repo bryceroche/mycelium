@@ -190,3 +190,15 @@ NEW_CHILD_SIMILARITY_THRESHOLD = 0.75
 # =============================================================================
 EMBEDDING_MODEL = "text-embedding-3-small"
 ADAPTIVE_REJECTION_ENABLED = True
+
+# =============================================================================
+# GTS DECOMPOSITION (per CLAUDE.md Big 5 #4: True Atomic Decomposition)
+# =============================================================================
+USE_GTS_DECOMPOSITION: bool = True  # Enable GTS-based decomposition (default on)
+GTS_MODEL_PATH: str = "trained_model/GTS-mawps"  # Path to GTS model
+
+# =============================================================================
+# CHAIN NODE DETECTION (per CLAUDE.md Big 5 #5: Primitive vs Chain Nodes)
+# =============================================================================
+CHAIN_CREATION_THRESHOLD: int = 5  # Successes before creating chain node
+CHAIN_MIN_SUCCESS_RATE: float = 0.8  # Minimum success rate for chain creation

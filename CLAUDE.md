@@ -27,7 +27,6 @@ Cold start: Only accept steps with graph embedding of depth 1
 3. Chains become new "atomic" units for L5 routing
 
 
-
 # Claude Code Instructions
 
 Bryce is the user.  He likes to make edits to this file.  Please do not overwrite his edits.
