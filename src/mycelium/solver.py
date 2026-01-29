@@ -707,6 +707,11 @@ class Solver:
         self._decomp_queue: list[tuple[int, Optional[float]]] = []
         self._problems_since_decomp_batch: int = 0  # Counter for batch triggering
 
+        # Per-solve DSL result cache: (step_task, signature_id) -> DSLResult
+        # Eliminates redundant LLM calls when multi-path exploration hits same step/sig pairs
+        # Cleared at start of each solve()
+        self._dsl_result_cache: dict[tuple[str, int], Optional["DSLResult"]] = {}
+
     def _queue_auto_decompose(self, signature_id: int, difficulty: float = None) -> None:
         """Queue a signature for batch decomposition instead of inline processing.
 
@@ -1150,6 +1155,9 @@ class Solver:
         import uuid
         from datetime import datetime, timezone
         start_time = time.time()
+
+        # Clear per-solve caches (eliminates redundant LLM calls within a single problem)
+        self._dsl_result_cache = {}
 
         try:
             # Initialize thread tracking for this problem (if enabled and multi-path)
@@ -1778,6 +1786,7 @@ class Solver:
         # Per CLAUDE.md: routing uses graph_embedding exclusively (no text centroid fallback)
         if signature is None:
             adaptive_threshold = get_adaptive_match_threshold()
+            routing_start = time.time()
             signature, is_new = await self.step_db.find_or_create_async(
                 step_text=step.task,  # Keep original for description
                 min_similarity=adaptive_threshold,
@@ -1787,6 +1796,9 @@ class Solver:
                 dsl_hint=getattr(step, 'dsl_hint', None),  # For graph routing
                 embedder=self.embedder,  # For cold start graph embedding
             )
+            routing_ms = (time.time() - routing_start) * 1000
+            if routing_ms > 100:
+                logger.info("[solver] TIMING: Routing took %.0fms for '%s'", routing_ms, step.task[:30])
 
         # Handle rejection from routing (signature is None means step was rejected)
         if signature is None:
@@ -1982,7 +1994,11 @@ class Solver:
                 if routed_signature.graph_embedding is not None and operation_embedding is not None:
                     self._routing_similarity = cosine_similarity(operation_embedding, routed_signature.graph_embedding)
                     self._routing_confidence = self._routing_similarity  # Use similarity as confidence proxy
+                dsl_start = time.time()
                 result = await self._execute_dsl_and_record(routed_signature, step, context, step_descriptions)
+                dsl_ms = (time.time() - dsl_start) * 1000
+                if dsl_ms > 100:
+                    logger.info("[solver] TIMING: DSL execution took %.0fms for '%s'", dsl_ms, step.task[:30])
                 if result is not None:
                     was_injected = True
                     logger.debug("[solver] DSL executed: %s", result[:50] if result else "")
@@ -3058,6 +3074,18 @@ class Solver:
 
         logger.debug("[solver] _try_dsl: hint=%s, params=%s", dsl_hint, list(params.keys()))
 
+        # Check per-solve DSL result cache first (eliminates redundant LLM calls)
+        # Key: (step_task, signature_id) - same step/sig pair always yields same result
+        signature_id = signature.id if signature else None
+        cache_key = (step.task, signature_id)
+        if cache_key in self._dsl_result_cache:
+            cached = self._dsl_result_cache[cache_key]
+            if cached is not None:
+                logger.info("[solver] DSL cache hit: '%s' sig=%s → %s", step.task[:30], signature_id, cached.result)
+            else:
+                logger.debug("[solver] DSL cache hit (None): '%s' sig=%s", step.task[:30], signature_id)
+            return cached
+
         # Check for batch-written expression first (single LLM call for all steps)
         batch_expressions = getattr(self, '_batch_expressions', {})
         expr_result = None
@@ -3070,7 +3098,6 @@ class Solver:
             # Fallback: LLM writes the expression (individual call)
             # Inject few-shot examples from signature for better LLM guidance
             few_shot_prompt = signature.get_few_shot_prompt() if signature else ""
-            signature_id = signature.id if signature else None
             expr_result = await self._llm_write_expression(dsl_hint, params, step.task, few_shot_prompt, signature_id)
 
         try:
@@ -3091,11 +3118,14 @@ class Solver:
                     # Build {param: value} from used_params, extracting only used values
                     used_inputs = {p: params.get(p) for p in used_params if p in params}
                     logger.info("[solver] DSL success: %s → %s", step.task[:30], result)
-                    return DSLResult(
+                    dsl_result = DSLResult(
                         result=str(result),
                         expression=script,
                         inputs=json.dumps(used_inputs),
                     )
+                    # Cache successful result for this (step, signature) pair
+                    self._dsl_result_cache[cache_key] = dsl_result
+                    return dsl_result
             else:
                 logger.debug("[solver] LLM returned no expression")
 
@@ -3111,6 +3141,8 @@ class Solver:
                 extra_context={"dsl_hint": getattr(step, "dsl_hint", None)},
             )
 
+        # Cache None result to avoid redundant LLM calls for failed attempts
+        self._dsl_result_cache[cache_key] = None
         return None
 
     async def _try_algebra_solve(

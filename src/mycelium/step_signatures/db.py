@@ -541,20 +541,56 @@ def get_global_exec_success_floor(conn, k: float = 2.0, min_samples: int = 10) -
 
 
 def update_similarity_stats(conn, stat_type: str, similarity: float) -> None:
-    """Update Welford stats for similarity tracking.
+    """Update Welford stats for similarity tracking using SAME connection.
 
-    Per CLAUDE.md New Favorite Pattern: Uses StateManager for db_metadata access.
+    IMPORTANT: Uses passed conn to avoid nested transactions that cause deadlock.
+    The StateManager version opens a new connection which waits on busy_timeout.
+
     Per CLAUDE.md The Flow: Database Statistics -> Welford -> Tree Structure.
 
     Args:
-        conn: Database connection (kept for API compat, StateManager manages its own)
+        conn: Database connection - MUST use this to avoid deadlock
         stat_type: 'match' (for dedup) or 'cluster' (for clustering)
         similarity: The observed similarity value
     """
-    from mycelium.data_layer.state_manager import get_state_manager
+    from datetime import datetime, timezone
 
     prefix = f'sim_stats_{stat_type}'
-    get_state_manager().update_welford_stats(prefix, similarity)
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Read current stats from same connection (no deadlock)
+    cursor = conn.execute(
+        "SELECT key, value FROM db_metadata WHERE key LIKE ?",
+        (f'{prefix}_%',)
+    )
+    stats = {}
+    for row in cursor:
+        try:
+            parsed = json.loads(row["value"] if isinstance(row, dict) else row[1])
+            stats[row["key"] if isinstance(row, dict) else row[0]] = parsed.get("value", parsed) if isinstance(parsed, dict) else parsed
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    count = int(stats.get(f'{prefix}_count', 0))
+    mean = float(stats.get(f'{prefix}_mean', 0.0))
+    m2 = float(stats.get(f'{prefix}_m2', 0.0))
+
+    # Welford update
+    count += 1
+    delta = similarity - mean
+    mean += delta / count
+    delta2 = similarity - mean
+    m2 += delta * delta2
+
+    # Write back using same connection
+    for key, val in [(f'{prefix}_count', count), (f'{prefix}_mean', mean), (f'{prefix}_m2', m2)]:
+        json_val = json.dumps({'value': val})
+        conn.execute(
+            """INSERT INTO db_metadata (key, value, updated_at)
+               VALUES (?, ?, ?)
+               ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = ?""",
+            (key, json_val, now, json_val, now)
+        )
 
 
 def find_global_best_match(

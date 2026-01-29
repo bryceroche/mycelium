@@ -256,7 +256,7 @@ REJECTION_COUNT_THRESHOLD = REJECTION_COUNT_THRESHOLD_MATURE
 #   - difficulty=0.5 (medium): 4.5 paths
 #   - difficulty=1.0 (hard): 6.0 paths
 
-COMPUTE_BUDGET_BASE = 3.0  # Base budget for adaptive scaling (both training & inference)
+COMPUTE_BUDGET_BASE = 1.0  # Single path - learn from statistical blame accumulation across problems
 COMPUTE_BUDGET_CONFIDENCE_THRESHOLD = 0.5  # Explore alternatives when confidence < this
 
 # Selective branching: only branch when undecided (per CLAUDE.md)
