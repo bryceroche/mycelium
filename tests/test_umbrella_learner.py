@@ -6,6 +6,7 @@ import numpy as np
 
 from mycelium.step_signatures.umbrella_learner import UmbrellaLearner
 from mycelium.config import (
+    EMBEDDING_DIM,
     UMBRELLA_MIN_USES_FOR_EVALUATION,
     UMBRELLA_MAX_SUCCESS_RATE_FOR_DECOMPOSITION,
 )
@@ -346,7 +347,7 @@ class TestDecomposeSignature:
     @pytest.fixture
     def mock_embedder(self):
         embedder = MagicMock()
-        embedder.embed.return_value = np.zeros(768)
+        embedder.embed.return_value = np.zeros(EMBEDDING_DIM)
         return embedder
 
     @pytest.fixture
@@ -526,7 +527,7 @@ class TestLearnFromFailures:
         learner.db = mock_db
         learner.planner = AsyncMock()
         learner.embedder = MagicMock()
-        learner.embedder.embed.return_value = np.zeros(768)
+        learner.embedder.embed.return_value = np.zeros(EMBEDDING_DIM)
         learner._client = AsyncMock()
         learner._client.generate.return_value = '{"clarifying_questions": [], "param_descriptions": {}, "params": []}'
         return learner

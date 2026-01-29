@@ -5,6 +5,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 import numpy as np
 
+from mycelium.config import EMBEDDING_DIM
 from mycelium.step_signatures.dsl_templates import (
     infer_dsl_for_signature,
     _infer_dsl_from_values,
@@ -252,7 +253,7 @@ class TestInferOperationSemantic:
             # Create distinct embeddings for different operations
             def make_embedding(text):
                 """Generate embeddings that cluster by operation keywords."""
-                emb = np.random.rand(768).astype(np.float32)
+                emb = np.random.rand(EMBEDDING_DIM).astype(np.float32)
                 # Bias embedding based on keywords to make tests predictable
                 if "dividend" in text.lower() or "divisor" in text.lower() or "divid" in text.lower():
                     emb[0:100] = 0.9  # Division signal
@@ -356,7 +357,7 @@ class TestGetParamAnchorEmbeddings:
         """Should return dict with operator keys."""
         with patch("mycelium.embedder.Embedder") as MockEmbedder:
             mock_instance = MagicMock()
-            mock_instance.embed = MagicMock(return_value=np.zeros(768))
+            mock_instance.embed = MagicMock(return_value=np.zeros(EMBEDDING_DIM))
             MockEmbedder.get_instance.return_value = mock_instance
 
             result = _get_param_anchor_embeddings()
@@ -370,7 +371,7 @@ class TestGetParamAnchorEmbeddings:
         """Should cache embeddings and not recompute on second call."""
         with patch("mycelium.embedder.Embedder") as MockEmbedder:
             mock_instance = MagicMock()
-            mock_instance.embed = MagicMock(return_value=np.zeros(768))
+            mock_instance.embed = MagicMock(return_value=np.zeros(EMBEDDING_DIM))
             MockEmbedder.get_instance.return_value = mock_instance
 
             # First call - should embed all anchors
@@ -401,7 +402,7 @@ class TestGetDescAnchorEmbeddings:
         """Should return dict with operator keys."""
         with patch("mycelium.embedder.Embedder") as MockEmbedder:
             mock_instance = MagicMock()
-            mock_instance.embed = MagicMock(return_value=np.zeros(768))
+            mock_instance.embed = MagicMock(return_value=np.zeros(EMBEDDING_DIM))
             MockEmbedder.get_instance.return_value = mock_instance
 
             result = _get_desc_anchor_embeddings()
@@ -414,7 +415,7 @@ class TestGetDescAnchorEmbeddings:
         """Should cache embeddings on subsequent calls."""
         with patch("mycelium.embedder.Embedder") as MockEmbedder:
             mock_instance = MagicMock()
-            mock_instance.embed = MagicMock(return_value=np.zeros(768))
+            mock_instance.embed = MagicMock(return_value=np.zeros(EMBEDDING_DIM))
             MockEmbedder.get_instance.return_value = mock_instance
 
             result1 = _get_desc_anchor_embeddings()
@@ -437,7 +438,7 @@ class TestFindSimilarSuccessfulDsl:
 
             # Create embeddings that will have high similarity for matching types
             def embed_fn(text):
-                emb = np.random.rand(768).astype(np.float32)
+                emb = np.random.rand(EMBEDDING_DIM).astype(np.float32)
                 if "multiply" in text.lower() or "product" in text.lower():
                     emb[0:100] = 1.0
                 elif "divide" in text.lower() or "quotient" in text.lower():
@@ -527,8 +528,8 @@ class TestFindSimilarSuccessfulDsl:
         # Make embeddings very different
         def orthogonal_embed(text):
             if "unrelated" in text:
-                return np.array([1.0] + [0.0] * 767, dtype=np.float32)
-            return np.array([0.0] * 767 + [1.0], dtype=np.float32)
+                return np.array([1.0] + [0.0] * (EMBEDDING_DIM - 1), dtype=np.float32)
+            return np.array([0.0] * (EMBEDDING_DIM - 1) + [1.0], dtype=np.float32)
 
         mock_embedder.embed = MagicMock(side_effect=orthogonal_embed)
 
@@ -579,7 +580,7 @@ class TestFindSimilarSuccessfulDsl:
         mock_db.get_signatures_with_successful_dsls.return_value = [sig]
 
         # Make it match well
-        mock_embedder.embed = MagicMock(return_value=np.ones(768, dtype=np.float32))
+        mock_embedder.embed = MagicMock(return_value=np.ones(EMBEDDING_DIM, dtype=np.float32))
 
         result = _find_similar_successful_dsl(
             step_type="multiply",

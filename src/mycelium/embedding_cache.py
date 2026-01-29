@@ -156,19 +156,33 @@ def pack_embedding(embedding: np.ndarray) -> bytes:
 
     Returns:
         Packed bytes (EMBEDDING_DIM * 4 bytes)
+
+    Raises:
+        ValueError: If embedding has wrong dimensions
     """
+    if embedding.shape != (EMBEDDING_DIM,):
+        raise ValueError(
+            f"Cannot pack embedding with shape {embedding.shape}, expected ({EMBEDDING_DIM},)"
+        )
     return embedding.astype(np.float32).tobytes()
 
 
-def unpack_embedding(data: bytes) -> np.ndarray:
+def unpack_embedding(data: bytes) -> Optional[np.ndarray]:
     """Unpack bytes to numpy embedding.
 
     Args:
         data: Packed bytes from pack_embedding()
 
     Returns:
-        Float32 numpy array of shape (EMBEDDING_DIM,)
+        Float32 numpy array of shape (EMBEDDING_DIM,), or None if invalid
     """
+    expected_size = EMBEDDING_DIM * 4  # float32 = 4 bytes
+    if len(data) != expected_size:
+        logger.warning(
+            "[embedding_cache] Invalid embedding size: got %d bytes, expected %d",
+            len(data), expected_size
+        )
+        return None
     return np.frombuffer(data, dtype=np.float32).copy()
 
 

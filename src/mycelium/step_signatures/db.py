@@ -812,6 +812,18 @@ class StepSignatureDB:
         with self._connection() as conn:
             init_db(conn)
 
+    def get_signature_count(self) -> int:
+        """Get total number of signatures in the database.
+
+        Returns:
+            Count of signatures (including archived ones)
+        """
+        with self._connection() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM step_signatures"
+            ).fetchone()
+            return row[0] if row else 0
+
     # =========================================================================
     # Root Management (Single Entry Point)
     # =========================================================================
