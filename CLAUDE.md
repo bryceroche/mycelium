@@ -1,7 +1,8 @@
-# The Big 3
+# The Big 4
 1. System Independence
 2. New Favorite Pattern
 3. The Flow
+4. True Atomic Decomposition
 
 ## System Independence
 The system restructures its own tree via periodic review—that's by design. Resist manually intervening. Modify Python code and database schema, not the tree directly. Don't clean up orphaned umbrella routers yourself; let the system handle it.
@@ -12,6 +13,10 @@ We want to consolidate methods - for example all database connections should go 
 ## The Flow
 Database Statistics → Welford → Tree Structure
 Accurate statistics are the source of truth. Welford variance guides all structural decisions: cluster boundaries, sibling vs child placement, when to decompose leaves into umbrellas. Thresholds come from config, not magic numbers.
+
+## True Atomic Decomposition
+We want a bias towards more steps per problem.  There are so many benefits of having truely atomic decomposisition: better reuse of signatures, better matching per step, and higher accuracy per step
+
 
 
 # Claude Code Instructions
