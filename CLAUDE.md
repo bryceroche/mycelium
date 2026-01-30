@@ -1,9 +1,21 @@
-# The Big 5
-1. System Independence
-2. New Favorite Pattern
-3. The Flow
-4. True Atomic Decomposition
-5. Primitive vs Chain Nodes
+# The Big 6
+1. Tree-Bound LLM
+2. System Independence
+3. New Favorite Pattern
+4. The Flow
+5. True Atomic Decomposition
+6. Primitive vs Chain Nodes
+
+## Tree-Bound LLM
+The tree IS the LLM's mathematical memory, connected via cross-attention.
+Problem → LLM (frozen) → Cross-Attention to Tree → Route → Execute
+Q · K = routing
+Welford variance = attention temperature
+
+- High variance signatures → soft attention (explore)
+- Low variance signatures → sharp attention (exploit)
+- No match? → Tree grows (create new signature)
+The LLM doesn't "call" the tree. The tree is part of how the LLM thinks.
 
 ## System Independence
 The system restructures its own tree via periodic review—that's by design. Resist manually intervening. Modify Python code and database schema, not the tree directly. Don't clean up orphaned umbrella routers yourself; let the system handle it.
