@@ -19,9 +19,9 @@ DECOMPOSE_PROMPT = '''Decompose this math problem into atomic computation steps.
 
 RULES:
 1. First extract all numbers from the problem with semantic names
-2. Each step has EXACTLY two inputs (either extracted values or prior step results)
+2. Each step uses a function from the registry with flexible arity
 3. Each input must be a reference: {"type": "extraction", "id": "..."} or {"type": "step", "id": "..."}
-4. Use only these operators: +, -, *, /
+4. Common functions: add, sub, mul, truediv (for /), sqrt, pow, abs, floor, ceil, max, min
 5. Steps must be in dependency order (can only reference prior steps)
 
 OUTPUT FORMAT (JSON):
@@ -32,9 +32,8 @@ OUTPUT FORMAT (JSON):
   "steps": [
     {
       "id": "s1",
-      "op": "<+|-|*|/>",
-      "left": {"type": "extraction|step", "id": "<ref_id>"},
-      "right": {"type": "extraction|step", "id": "<ref_id>"},
+      "func": "<function_name>",
+      "inputs": [{"type": "extraction|step", "id": "<ref_id>"}, ...],
       "result": <computed_number>,
       "semantic": "<what_this_represents>"
     }
@@ -55,17 +54,15 @@ Problem: "Tim has 10 dollars. He buys 3 toys at 2 dollars each. How much does he
   "steps": [
     {
       "id": "s1",
-      "op": "*",
-      "left": {"type": "extraction", "id": "num_toys"},
-      "right": {"type": "extraction", "id": "toy_price"},
+      "func": "mul",
+      "inputs": [{"type": "extraction", "id": "num_toys"}, {"type": "extraction", "id": "toy_price"}],
       "result": 6,
       "semantic": "total_cost"
     },
     {
       "id": "s2",
-      "op": "-",
-      "left": {"type": "extraction", "id": "tim_money"},
-      "right": {"type": "step", "id": "s1"},
+      "func": "sub",
+      "inputs": [{"type": "extraction", "id": "tim_money"}, {"type": "step", "id": "s1"}],
       "result": 4,
       "semantic": "remaining_money"
     }
@@ -202,35 +199,34 @@ def mock_decompose(problem: str) -> Decomposition:
         for i, n in enumerate(numbers)
     ]
 
-    # Guess operation from keywords
+    # Guess function from keywords
     problem_lower = problem.lower()
     if "total" in problem_lower or "sum" in problem_lower or "add" in problem_lower:
-        op = "+"
+        func = "add"
     elif "left" in problem_lower or "remain" in problem_lower or "subtract" in problem_lower:
-        op = "-"
+        func = "sub"
     elif "each" in problem_lower or "times" in problem_lower or "multiply" in problem_lower:
-        op = "*"
+        func = "mul"
     elif "split" in problem_lower or "divide" in problem_lower or "per" in problem_lower:
-        op = "/"
+        func = "truediv"
     else:
-        op = "+"  # Default
+        func = "add"  # Default
 
     # Simple two-number operation
     a, b = float(numbers[0]), float(numbers[1])
-    if op == "+":
+    if func == "add":
         result = a + b
-    elif op == "-":
+    elif func == "sub":
         result = a - b
-    elif op == "*":
+    elif func == "mul":
         result = a * b
-    elif op == "/":
+    elif func == "truediv":
         result = a / b if b != 0 else 0
 
     step = Step(
         id="s1",
-        op=op,
-        left=Ref.extraction("n0"),
-        right=Ref.extraction("n1"),
+        func=func,
+        inputs=[Ref.extraction("n0"), Ref.extraction("n1")],
         result=result,
         semantic="result",
     )

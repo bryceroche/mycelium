@@ -43,9 +43,8 @@ def test_step():
 
     step = Step(
         id="s1",
-        op="*",
-        left=Ref.extraction("num_toys"),
-        right=Ref.extraction("toy_price"),
+        func="mul",
+        inputs=[Ref.extraction("num_toys"), Ref.extraction("toy_price")],
         result=6,
         semantic="total_cost",
     )
@@ -54,9 +53,8 @@ def test_step():
 
     step2 = Step(
         id="s2",
-        op="-",
-        left=Ref.extraction("tim_money"),
-        right=Ref.step("s1"),
+        func="sub",
+        inputs=[Ref.extraction("tim_money"), Ref.step("s1")],
         result=4,
         semantic="remaining",
     )
@@ -88,15 +86,13 @@ def test_decomposition():
         ],
         steps=[
             Step(
-                id="s1", op="*",
-                left=Ref.extraction("num_toys"),
-                right=Ref.extraction("toy_price"),
+                id="s1", func="mul",
+                inputs=[Ref.extraction("num_toys"), Ref.extraction("toy_price")],
                 result=6, semantic="total_cost"
             ),
             Step(
-                id="s2", op="-",
-                left=Ref.extraction("tim_money"),
-                right=Ref.step("s1"),
+                id="s2", func="sub",
+                inputs=[Ref.extraction("tim_money"), Ref.step("s1")],
                 result=4, semantic="remaining_money"
             ),
         ],
@@ -111,7 +107,7 @@ def test_decomposition():
     # Test execution
     step_results, error = execute_decomposition(decomp)
     assert error is None, f"Execution error: {error}"
-    assert step_results == {"s1": 6, "s2": 4}
+    assert step_results == {"s1": 6.0, "s2": 4.0}
 
     # Test verification
     decomp = verify_decomposition(decomp, expected_answer=4)
@@ -132,9 +128,8 @@ def test_serialization():
         ],
         steps=[
             Step(
-                id="s1", op="+",
-                left=Ref.extraction("a"),
-                right=Ref.extraction("b"),
+                id="s1", func="add",
+                inputs=[Ref.extraction("a"), Ref.extraction("b")],
                 result=8, semantic="sum"
             ),
         ],
@@ -178,15 +173,13 @@ def test_trace():
         ],
         steps=[
             Step(
-                id="s1", op="*",
-                left=Ref.extraction("num_toys"),
-                right=Ref.extraction("toy_price"),
+                id="s1", func="mul",
+                inputs=[Ref.extraction("num_toys"), Ref.extraction("toy_price")],
                 result=6, semantic="total_cost"
             ),
             Step(
-                id="s2", op="-",
-                left=Ref.extraction("tim_money"),
-                right=Ref.step("s1"),
+                id="s2", func="sub",
+                inputs=[Ref.extraction("tim_money"), Ref.step("s1")],
                 result=4, semantic="remaining_money"
             ),
         ],

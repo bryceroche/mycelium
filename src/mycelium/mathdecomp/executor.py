@@ -5,7 +5,8 @@ Runs the computation steps and verifies they produce the claimed results.
 """
 
 from typing import Dict, Optional, Tuple
-from .schema import Decomposition, Step, Ref, RefType, Operator
+from .schema import Decomposition, Step, Ref, RefType
+from ..function_registry import call_function, get_function_info, FUNCTION_REGISTRY
 
 
 def execute_step(
@@ -14,34 +15,30 @@ def execute_step(
     step_results: Dict[str, float],
 ) -> Tuple[Optional[float], Optional[str]]:
     """
-    Execute a single step.
+    Execute a single step using the function registry.
 
     Returns: (result, error_message)
     """
-    # Resolve left operand
-    left_val = step.left.resolve(extractions, step_results)
-    if left_val is None:
-        return None, f"Cannot resolve left operand: {step.left}"
+    # Resolve all input operands
+    resolved_inputs = []
+    for i, inp in enumerate(step.inputs):
+        val = inp.resolve(extractions, step_results)
+        if val is None:
+            return None, f"Cannot resolve input {i}: {inp}"
+        resolved_inputs.append(val)
 
-    # Resolve right operand
-    right_val = step.right.resolve(extractions, step_results)
-    if right_val is None:
-        return None, f"Cannot resolve right operand: {step.right}"
+    # Check function exists in registry
+    if step.func not in FUNCTION_REGISTRY:
+        return None, f"Unknown function: {step.func}"
 
-    # Execute operation
-    op = step.op
-    if op == "+":
-        return left_val + right_val, None
-    elif op == "-":
-        return left_val - right_val, None
-    elif op == "*":
-        return left_val * right_val, None
-    elif op == "/":
-        if right_val == 0:
-            return None, "Division by zero"
-        return left_val / right_val, None
-    else:
-        return None, f"Unknown operator: {op}"
+    # Execute operation via function registry
+    try:
+        result = call_function(step.func, *resolved_inputs)
+        return float(result), None
+    except ZeroDivisionError:
+        return None, "Division by zero"
+    except Exception as e:
+        return None, f"Execution error: {e}"
 
 
 def execute_decomposition(
@@ -148,14 +145,15 @@ def trace_execution(decomp: Decomposition) -> str:
     step_results = {}
 
     for step in decomp.steps:
-        left_val = step.left.resolve(extractions, step_results)
-        right_val = step.right.resolve(extractions, step_results)
+        # Resolve all inputs
+        input_strs = []
+        for inp in step.inputs:
+            val = inp.resolve(extractions, step_results)
+            input_strs.append(f"{inp.id}={val}" if val is not None else inp.id)
 
-        left_str = f"{step.left.id}={left_val}" if left_val else step.left.id
-        right_str = f"{step.right.id}={right_val}" if right_val else step.right.id
-
+        inputs_display = ", ".join(input_strs)
         lines.append(
-            f"  {step.id}: {left_str} {step.op} {right_str} = {step.result}"
+            f"  {step.id}: {step.func}({inputs_display}) = {step.result}"
             f"  [{step.semantic}]"
         )
 

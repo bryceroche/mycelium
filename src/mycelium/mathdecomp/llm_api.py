@@ -26,9 +26,9 @@ DECOMPOSE_PROMPT = '''You are a math problem decomposer. Break down math problem
 
 RULES:
 1. Extract all numbers from the problem with semantic names
-2. Each step has EXACTLY two inputs - no expressions allowed
+2. Each step uses a function with flexible arity (inputs as a list)
 3. Each input is a reference with "type" and "id" fields
-4. Operators: +, -, *, / only
+4. Available functions: add, sub, mul, truediv, sqrt, abs, floor, ceil
 5. Steps must be in dependency order
 
 OUTPUT FORMAT (valid JSON only, no markdown):
@@ -39,15 +39,34 @@ OUTPUT FORMAT (valid JSON only, no markdown):
   "steps": [
     {{
       "id": "s1",
-      "op": "+|-|*|/",
-      "left": {{"type": "extraction", "id": "<id>"}},
-      "right": {{"type": "extraction", "id": "<id>"}},
+      "func": "<function_name>",
+      "inputs": [{{"type": "extraction", "id": "<id>"}}, ...],
       "result": <number>,
       "semantic": "<meaning>"
     }}
   ],
   "answer_ref": {{"type": "step", "id": "<id>"}},
   "answer_value": <number>
+}}
+
+EXAMPLE:
+Problem: Tim buys 3 toys at $2 each. How much does he spend?
+{{
+  "extractions": [
+    {{"id": "num_toys", "value": 3, "span": "3 toys", "offset": [10, 16]}},
+    {{"id": "toy_price", "value": 2, "span": "$2", "offset": [20, 22]}}
+  ],
+  "steps": [
+    {{
+      "id": "s1",
+      "func": "mul",
+      "inputs": [{{"type": "extraction", "id": "num_toys"}}, {{"type": "extraction", "id": "toy_price"}}],
+      "result": 6,
+      "semantic": "total_cost"
+    }}
+  ],
+  "answer_ref": {{"type": "step", "id": "s1"}},
+  "answer_value": 6
 }}
 
 Problem: {problem}'''

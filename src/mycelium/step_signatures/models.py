@@ -20,7 +20,7 @@ def _parse_centroid_data(data: Union[str, bytes, None]) -> Optional[np.ndarray]:
 
 @dataclass
 class StepSignature:
-    """A step signature for routing and DSL execution."""
+    """A step signature for routing and function execution."""
     id: Optional[int] = None
     signature_id: str = ""
     centroid: Optional[np.ndarray] = None
@@ -30,8 +30,8 @@ class StepSignature:
     description: str = ""
     clarifying_questions: list[str] = field(default_factory=list)
     param_descriptions: dict[str, str] = field(default_factory=dict)
-    dsl_script: Optional[str] = None
-    dsl_type: str = "math"
+    func_name: Optional[str] = None  # Key into function_registry
+    func_arity: int = 2              # Expected number of arguments
     computation_graph: Optional[str] = None
     graph_embedding: Optional[np.ndarray] = None
     examples: list[dict] = field(default_factory=list)
@@ -57,8 +57,8 @@ class StepSignature:
         return self.successes / self.uses if self.uses > 0 else 0.0
 
     @property
-    def has_dsl(self) -> bool:
-        return bool(self.dsl_script)
+    def has_func(self) -> bool:
+        return self.func_name is not None
 
     @classmethod
     def from_row(cls, row: dict) -> "StepSignature":
@@ -108,6 +108,12 @@ class StepSignature:
             except (json.JSONDecodeError, TypeError):
                 pass
 
+        # Handle func_name: use new column if present, fallback to None
+        func_name = row.get("func_name")
+
+        # Handle func_arity: use new column if present, default to 2
+        func_arity = row.get("func_arity", 2) or 2
+
         return cls(
             id=row.get("id"),
             signature_id=row.get("signature_id", ""),
@@ -118,8 +124,8 @@ class StepSignature:
             description=row.get("description", ""),
             clarifying_questions=clarifying_questions,
             param_descriptions=param_descriptions,
-            dsl_script=row.get("dsl_script"),
-            dsl_type=row.get("dsl_type", "math"),
+            func_name=func_name,
+            func_arity=func_arity,
             computation_graph=row.get("computation_graph"),
             graph_embedding=graph_embedding,
             examples=examples,
@@ -155,6 +161,12 @@ class StepSignature:
             except (json.JSONDecodeError, TypeError):
                 pass
 
+        # Handle func_name: use new column if present, fallback to None
+        func_name = row.get("func_name")
+
+        # Handle func_arity: use new column if present, default to 2
+        func_arity = row.get("func_arity", 2) or 2
+
         return cls(
             id=row.get("id"),
             signature_id=row.get("signature_id", ""),
@@ -162,8 +174,8 @@ class StepSignature:
             embedding_count=row.get("embedding_count", 1) or 1,
             step_type=row.get("step_type", ""),
             description=row.get("description", ""),
-            dsl_script=row.get("dsl_script"),
-            dsl_type=row.get("dsl_type", "math"),
+            func_name=func_name,
+            func_arity=func_arity,
             computation_graph=row.get("computation_graph"),
             graph_embedding=graph_embedding,
             uses=row.get("uses", 0),

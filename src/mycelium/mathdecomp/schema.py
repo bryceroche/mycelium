@@ -4,8 +4,8 @@ Schema definitions for math problem decomposition.
 Core principle: Everything is explicit. No inference from naming conventions.
 """
 
-from dataclasses import dataclass, field, asdict
-from typing import Literal, List, Optional, Union
+from dataclasses import dataclass
+from typing import List, Optional
 from enum import Enum
 import json
 
@@ -107,63 +107,47 @@ class Extraction:
         )
 
 
-# Valid operators for atomic operations
-Operator = Literal["+", "-", "*", "/"]
-
-
 @dataclass
 class Step:
     """
     A single atomic computation step.
 
-    Atomic = exactly TWO resolved inputs, ONE operator, ONE output.
-    Both left and right must be explicit Refs, not expressions.
+    Uses function registry keys for flexible operations with variable arity.
     """
-    id: str              # Step identifier: "s1", "s2"
-    op: Operator         # Operator: +, -, *, /
-    left: Ref            # Left operand (explicit reference)
-    right: Ref           # Right operand (explicit reference)
-    result: float        # Computed result
-    semantic: str        # What this represents: "total_cost", "remaining_money"
-    rationale: Optional[str] = None  # Why this step: "cost = quantity × price"
+    id: str                          # Step identifier: "s1", "s2"
+    func: str                        # Key into function_registry (e.g., "add", "mul", "sqrt")
+    inputs: List[Ref]                # Flexible arity - List of input references
+    result: Optional[float] = None   # Computed result (optional, set after execution)
+    semantic: str = ""               # What this represents: "total_cost", "remaining_money"
 
     def __post_init__(self):
         # Convert dict refs to Ref objects if needed
-        if isinstance(self.left, dict):
-            self.left = Ref.from_dict(self.left)
-        if isinstance(self.right, dict):
-            self.right = Ref.from_dict(self.right)
+        self.inputs = [
+            Ref.from_dict(inp) if isinstance(inp, dict) else inp
+            for inp in self.inputs
+        ]
 
     def dependencies(self) -> List[str]:
         """Return IDs of steps this step depends on."""
-        deps = []
-        if self.left.type == RefType.STEP:
-            deps.append(self.left.id)
-        if self.right.type == RefType.STEP:
-            deps.append(self.right.id)
-        return deps
+        return [inp.id for inp in self.inputs if inp.type == RefType.STEP]
 
     def to_dict(self) -> dict:
         return {
             "id": self.id,
-            "op": self.op,
-            "left": self.left.to_dict(),
-            "right": self.right.to_dict(),
+            "func": self.func,
+            "inputs": [inp.to_dict() for inp in self.inputs],
             "result": self.result,
             "semantic": self.semantic,
-            "rationale": self.rationale,
         }
 
     @classmethod
     def from_dict(cls, d: dict) -> "Step":
         return cls(
             id=d["id"],
-            op=d["op"],
-            left=Ref.from_dict(d["left"]),
-            right=Ref.from_dict(d["right"]),
-            result=d["result"],
-            semantic=d["semantic"],
-            rationale=d.get("rationale"),
+            func=d["func"],
+            inputs=[Ref.from_dict(inp) for inp in d["inputs"]],
+            result=d.get("result"),
+            semantic=d.get("semantic", ""),
         )
 
 
