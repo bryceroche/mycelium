@@ -32,6 +32,7 @@ def main():
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     parser.add_argument("--start", type=int, default=0, help="Starting problem index")
     parser.add_argument("--llm-judge", action="store_true", help="Use LLM for semantic answer comparison")
+    parser.add_argument("--learn", action="store_true", help="Record success/failure embeddings for learning")
     args = parser.parse_args()
 
     # Setup logging
@@ -51,6 +52,8 @@ def main():
 
     print(f"\n{'='*70}")
     print(f"Testing v3 architecture on {args.num} GSM8K problems")
+    if args.learn:
+        print("Learning mode: ON (recording success/failure embeddings)")
     print(f"{'='*70}")
 
     solver = Solver(model="gpt-4o-mini")
@@ -64,6 +67,7 @@ def main():
     correct = 0
     wrong = 0
     errors = 0
+    learn_stats = {"success_recorded": 0, "failure_recorded": 0}
 
     for i in range(args.start, args.start + args.num):
         item = train_data[i]
@@ -75,7 +79,7 @@ def main():
 
         try:
             context = SolveContext(max_depth=3)
-            answer = solver.solve_with_trend(question, context)
+            answer, step_results = solver.solve_with_trend_and_results(question, context)
 
             print(f"Got: {answer}")
 
@@ -94,6 +98,14 @@ def main():
                 print(f"✗ WRONG (expected {expected})")
                 wrong += 1
 
+            # Record learning if enabled
+            if args.learn and step_results:
+                stats = solver.record_learning(step_results, is_correct)
+                learn_stats["success_recorded"] += stats["success_recorded"]
+                learn_stats["failure_recorded"] += stats["failure_recorded"]
+                if args.verbose:
+                    print(f"  [learn] {stats}")
+
         except Exception as e:
             print(f"✗ ERROR: {e}")
             errors += 1
@@ -108,6 +120,11 @@ def main():
     print(f"Correct: {correct}/{total} ({100*correct/total:.1f}%)")
     print(f"Wrong:   {wrong}/{total}")
     print(f"Errors:  {errors}/{total}")
+    if args.learn:
+        print(f"{'='*70}")
+        print(f"LEARNING STATS")
+        print(f"Success embeddings recorded: {learn_stats['success_recorded']}")
+        print(f"Failure embeddings recorded: {learn_stats['failure_recorded']}")
     print(f"{'='*70}")
 
     return 0 if errors == 0 else 1

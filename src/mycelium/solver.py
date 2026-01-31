@@ -116,6 +116,23 @@ class Solver:
         Returns:
             The final answer
         """
+        answer, _ = self.solve_with_trend_and_results(problem, context)
+        return answer
+
+    def solve_with_trend_and_results(
+        self, problem: str, context: SolveContext = None
+    ) -> tuple[Any, List[StepResult]]:
+        """Solve a math problem and return both answer and step results.
+
+        Use this when you need to record learning from the results.
+
+        Args:
+            problem: The problem text
+            context: Optional solve context with settings
+
+        Returns:
+            (answer, step_results) tuple
+        """
         if context is None:
             context = SolveContext()
 
@@ -134,7 +151,51 @@ class Solver:
 
         # Combine results (for now, return last result)
         # TODO: Implement proper result combination based on step dependencies
-        return results[-1].result if results else None
+        answer = results[-1].result if results else None
+        return answer, results
+
+    def record_learning(
+        self, step_results: List[StepResult], problem_correct: bool
+    ) -> dict:
+        """Record learning from step results based on problem outcome.
+
+        If problem was solved correctly, record success embeddings.
+        If problem was wrong, record failure embeddings.
+
+        Args:
+            step_results: List of StepResult from solving
+            problem_correct: Whether the overall problem was solved correctly
+
+        Returns:
+            dict with learning stats
+        """
+        import numpy as np
+
+        success_recorded = 0
+        failure_recorded = 0
+
+        for result in step_results:
+            if result.signature_id is None or result.embedding is None:
+                continue
+
+            embedding = np.array(result.embedding, dtype=np.float32)
+
+            if problem_correct:
+                self.step_db.record_success_with_embedding(
+                    result.signature_id, embedding, result.similarity
+                )
+                success_recorded += 1
+            else:
+                self.step_db.record_failure_with_embedding(
+                    result.signature_id, embedding
+                )
+                failure_recorded += 1
+
+        return {
+            "problem_correct": problem_correct,
+            "success_recorded": success_recorded,
+            "failure_recorded": failure_recorded,
+        }
 
     def _solve_step_with_trend(
         self,
