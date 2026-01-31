@@ -1,4 +1,11 @@
-"""Database schema - minimal for local decomposition architecture."""
+"""Database schema - flat prototype store for 200-class classification.
+
+Architecture: Signatures are prototypes that map to ~200 atomic functions.
+Classification is via brute-force k-NN (fast at 5k scale).
+
+The hierarchy fields (is_semantic_umbrella, is_root, depth) are kept for
+backward compatibility but are no longer actively used in the flat architecture.
+"""
 
 import logging
 from mycelium.config import EMBEDDING_DIM
@@ -66,10 +73,12 @@ CREATE TABLE IF NOT EXISTS step_signatures (
 
 CREATE INDEX IF NOT EXISTS idx_sig_id ON step_signatures(signature_id);
 CREATE INDEX IF NOT EXISTS idx_sig_type ON step_signatures(step_type);
+CREATE INDEX IF NOT EXISTS idx_sig_func ON step_signatures(func_name);
 CREATE INDEX IF NOT EXISTS idx_sig_umbrella ON step_signatures(is_semantic_umbrella);
 
 -- =============================================================================
--- SIGNATURE RELATIONSHIPS: Tree structure for parent-child routing
+-- SIGNATURE RELATIONSHIPS: DEPRECATED - kept for backward compatibility
+-- The flat prototype architecture uses brute-force k-NN, not tree traversal.
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS signature_relationships (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

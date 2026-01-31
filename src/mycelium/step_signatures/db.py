@@ -251,27 +251,242 @@ class StepSignatureDB:
         return clamped
 
     # =========================================================================
-    # ROUTING
+    # FLAT PROTOTYPE STORE - k-NN Classification
     # =========================================================================
+
+    def get_all_prototypes(self) -> List[StepSignature]:
+        """Get all signatures as prototypes (alias for get_all_leaves).
+
+        In the flat architecture, all signatures are prototypes for classification.
+        """
+        return self.get_all_leaves()
+
+    def get_signatures_by_func(self, func_name: str, min_successes: int = 0) -> List[StepSignature]:
+        """Get all signatures that map to a given function.
+
+        Args:
+            func_name: The function name to filter by
+            min_successes: Minimum success count (for quality filtering)
+
+        Returns:
+            List of signatures sorted by success rate (descending)
+        """
+        conn = self._connection()
+        rows = conn.execute(
+            """
+            SELECT * FROM step_signatures
+            WHERE func_name = ?
+              AND COALESCE(successes, 0) >= ?
+            ORDER BY
+                CASE WHEN uses > 0 THEN CAST(successes AS REAL) / uses ELSE 0 END DESC,
+                successes DESC
+            """,
+            (func_name, min_successes),
+        ).fetchall()
+
+        return [StepSignature.from_row(dict(row)) for row in rows]
+
+    def get_all_func_names(self) -> List[str]:
+        """Get all unique function names in the signature store."""
+        conn = self._connection()
+        rows = conn.execute(
+            """
+            SELECT DISTINCT func_name FROM step_signatures
+            WHERE func_name IS NOT NULL
+            ORDER BY func_name
+            """
+        ).fetchall()
+        return [row[0] for row in rows]
+
+    def classify(self, embedding: np.ndarray) -> tuple[Optional[str], float, Optional[StepSignature]]:
+        """Classify a step embedding to a function name via k-NN.
+
+        This is the core 200-class classification:
+        - Input: step embedding
+        - Output: function name (or None if no prototypes)
+
+        Args:
+            embedding: The step embedding to classify
+
+        Returns:
+            (func_name, similarity, signature) tuple
+            - func_name: The function this step maps to (or None)
+            - similarity: Cosine similarity to best match
+            - signature: The matched prototype signature
+        """
+        result = self.route_to_best_vectorized(embedding)
+        if result.signature is None:
+            return None, 0.0, None
+        return result.signature.func_name, result.similarity, result.signature
+
+    def route_to_best_vectorized(self, embedding: np.ndarray) -> RoutingResult:
+        """Route to best signature using vectorized numpy (fast k-NN).
+
+        At 5k prototypes, this is ~0.5ms.
+
+        Args:
+            embedding: The query embedding (numpy array)
+
+        Returns:
+            RoutingResult with best matching signature
+        """
+        prototypes = self.get_all_prototypes()
+        if not prototypes:
+            return RoutingResult(signature=None, similarity=0.0)
+
+        # Filter to signatures with centroids
+        valid_prototypes = [p for p in prototypes if p.centroid is not None]
+        if not valid_prototypes:
+            return RoutingResult(signature=None, similarity=0.0)
+
+        # Vectorized cosine similarity
+        query = np.asarray(embedding, dtype=np.float32)
+        query_norm = np.linalg.norm(query)
+        if query_norm == 0:
+            return RoutingResult(signature=None, similarity=0.0)
+        query = query / query_norm
+
+        # Stack all centroids
+        centroids = np.stack([p.centroid for p in valid_prototypes])
+        # Normalize centroids (they should already be normalized, but ensure)
+        norms = np.linalg.norm(centroids, axis=1, keepdims=True)
+        norms[norms == 0] = 1  # Avoid division by zero
+        centroids = centroids / norms
+
+        # Compute all similarities at once
+        similarities = centroids @ query
+
+        # Find best
+        best_idx = np.argmax(similarities)
+        best_sim = float(similarities[best_idx])
+        best_sig = valid_prototypes[best_idx]
+
+        return RoutingResult(signature=best_sig, similarity=best_sim)
 
     def route_to_best(self, embedding: List[float]) -> RoutingResult:
         """Route to best matching signature via cosine similarity.
 
         Returns best match regardless of threshold - let caller decide.
+        Note: Use route_to_best_vectorized() for better performance.
         """
-        leaves = self.get_all_leaves()
-        best_sig = None
-        best_sim = 0.0
+        return self.route_to_best_vectorized(np.asarray(embedding, dtype=np.float32))
 
-        for sig in leaves:
-            if sig.centroid is None:
-                continue
-            sim = cosine_similarity(embedding, sig.centroid)
-            if sim > best_sim:
-                best_sim = sim
-                best_sig = sig
+    def get_top_k(self, embedding: np.ndarray, k: int = 5) -> List[tuple[StepSignature, float]]:
+        """Get top-k matching prototypes.
 
-        return RoutingResult(signature=best_sig, similarity=best_sim)
+        Useful for showing the LLM nearby options or for debugging.
+
+        Args:
+            embedding: Query embedding
+            k: Number of results to return
+
+        Returns:
+            List of (signature, similarity) tuples sorted by similarity (descending)
+        """
+        prototypes = self.get_all_prototypes()
+        if not prototypes:
+            return []
+
+        valid_prototypes = [p for p in prototypes if p.centroid is not None]
+        if not valid_prototypes:
+            return []
+
+        # Vectorized similarity
+        query = np.asarray(embedding, dtype=np.float32)
+        query_norm = np.linalg.norm(query)
+        if query_norm == 0:
+            return []
+        query = query / query_norm
+
+        centroids = np.stack([p.centroid for p in valid_prototypes])
+        norms = np.linalg.norm(centroids, axis=1, keepdims=True)
+        norms[norms == 0] = 1
+        centroids = centroids / norms
+
+        similarities = centroids @ query
+
+        # Get top-k indices
+        if len(similarities) <= k:
+            top_indices = np.argsort(similarities)[::-1]
+        else:
+            top_indices = np.argpartition(similarities, -k)[-k:]
+            top_indices = top_indices[np.argsort(similarities[top_indices])[::-1]]
+
+        return [(valid_prototypes[i], float(similarities[i])) for i in top_indices]
+
+    # =========================================================================
+    # LLM PROMPT BUILDING - Signature Menu
+    # =========================================================================
+
+    def build_signature_menu(self, min_successes: int = 3, max_examples_per_func: int = 3) -> dict[str, List[dict]]:
+        """Build a menu of functions with their proven signature examples.
+
+        This is the "learned vocabulary" that guides LLM decomposition.
+        High-success signatures become few-shot examples.
+
+        Args:
+            min_successes: Minimum successes to include a signature
+            max_examples_per_func: Max examples per function
+
+        Returns:
+            Dict mapping func_name -> list of {description, successes, success_rate}
+        """
+        conn = self._connection()
+        rows = conn.execute(
+            """
+            SELECT func_name, description, successes, uses
+            FROM step_signatures
+            WHERE func_name IS NOT NULL
+              AND COALESCE(successes, 0) >= ?
+            ORDER BY func_name,
+                CASE WHEN uses > 0 THEN CAST(successes AS REAL) / uses ELSE 0 END DESC,
+                successes DESC
+            """,
+            (min_successes,),
+        ).fetchall()
+
+        menu = {}
+        for row in rows:
+            func_name = row[0]
+            if func_name not in menu:
+                menu[func_name] = []
+
+            if len(menu[func_name]) < max_examples_per_func:
+                uses = row[3] or 0
+                successes = row[2] or 0
+                menu[func_name].append({
+                    "description": row[1],
+                    "successes": successes,
+                    "success_rate": successes / uses if uses > 0 else 0.0,
+                })
+
+        return menu
+
+    def format_signature_menu(self, min_successes: int = 3, max_examples_per_func: int = 3) -> str:
+        """Format the signature menu as a string for LLM prompts.
+
+        Returns text like:
+            add:
+              - "combine two prices" (47 successes)
+              - "sum the quantities" (38 successes)
+
+            multiply:
+              - "calculate total cost" (52 successes)
+        """
+        menu = self.build_signature_menu(min_successes, max_examples_per_func)
+
+        if not menu:
+            return "No proven patterns yet. Decompose into basic operations."
+
+        lines = []
+        for func_name in sorted(menu.keys()):
+            examples = menu[func_name]
+            lines.append(f"{func_name}:")
+            for ex in examples:
+                lines.append(f'  - "{ex["description"]}" ({ex["successes"]} successes)')
+            lines.append("")
+
+        return "\n".join(lines)
 
     # =========================================================================
     # SIGNATURE CREATION

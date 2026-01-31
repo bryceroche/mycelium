@@ -1,4 +1,17 @@
-"""Step Signature Models - minimal for local decomposition."""
+"""Step Signature Models - prototypes for 200-class function classification.
+
+Each signature is a prototype that maps a semantic description to a function.
+Multiple signatures can map to the same function (semantic variants).
+
+Key fields:
+- centroid: Learned embedding (prototype vector)
+- func_name: Key into function_registry (~200 functions)
+- description: Natural language description (few-shot example for LLM)
+- successes/uses: Track success rate for ranking
+
+Hierarchy fields (is_semantic_umbrella, is_root, depth) are kept for
+backward compatibility but are not used in the flat prototype architecture.
+"""
 
 from dataclasses import dataclass, field
 from typing import Optional, Union
