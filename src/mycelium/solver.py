@@ -152,6 +152,10 @@ class Solver:
         func_name, similarity, sig = self.step_db.classify(embedding)
         threshold = self.step_db.get_adaptive_threshold()
 
+        # Record coverage observation for Welford tracking
+        if sig is not None:
+            self.step_db.record_coverage(sig.id, similarity, threshold)
+
         logger.debug(
             f"[depth={depth}] Step: '{step.description[:50]}...' "
             f"-> {func_name} (sim={similarity:.3f}, thresh={threshold:.3f})"
@@ -461,6 +465,10 @@ class Solver:
         # Record similarity for Welford learning (only for existing signatures)
         if not created and routing.similarity > 0:
             self.step_db.record_similarity(signature.id, routing.similarity)
+
+        # Record coverage observation for all signature matches
+        if routing.signature is not None:
+            self.step_db.record_coverage(routing.signature.id, routing.similarity, threshold)
 
         # Resolve values from context
         resolved_values = self._resolve_values(step, context, plan)

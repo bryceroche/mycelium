@@ -138,6 +138,25 @@ CREATE TABLE IF NOT EXISTS step_sequences (
 
 CREATE INDEX IF NOT EXISTS idx_seq_hash ON step_sequences(sequence_hash);
 CREATE INDEX IF NOT EXISTS idx_seq_chain ON step_sequences(chain_node_id);
+
+-- =============================================================================
+-- FAILURE LOG: Track failed executions for periodic review
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS execution_failures (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    step_description TEXT NOT NULL,
+    func_name TEXT,
+    signature_id INTEGER REFERENCES step_signatures(id),
+    similarity REAL,
+    error_type TEXT,           -- 'wrong_answer', 'execution_error', 'no_match'
+    error_message TEXT,
+    problem_id TEXT,           -- Optional reference to problem
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_failures_func ON execution_failures(func_name);
+CREATE INDEX IF NOT EXISTS idx_failures_type ON execution_failures(error_type);
+CREATE INDEX IF NOT EXISTS idx_failures_created ON execution_failures(created_at);
 """
 
 
@@ -213,6 +232,18 @@ def _run_migrations(conn) -> None:
             conn.commit()
         except Exception as e:
             logger.warning("[schema] Failed to add merge_dist_m2: %s", e)
+
+    # Coverage tracking columns - for tracking how well signatures cover step descriptions
+    if "coverage_sim_count" not in columns:
+        logger.info("[schema] Adding coverage tracking columns")
+        try:
+            conn.execute("ALTER TABLE step_signatures ADD COLUMN coverage_sim_count INTEGER DEFAULT 0")
+            conn.execute("ALTER TABLE step_signatures ADD COLUMN coverage_sim_mean REAL DEFAULT 0.0")
+            conn.execute("ALTER TABLE step_signatures ADD COLUMN coverage_sim_m2 REAL DEFAULT 0.0")
+            conn.execute("ALTER TABLE step_signatures ADD COLUMN low_coverage_count INTEGER DEFAULT 0")
+            conn.commit()
+        except Exception as e:
+            logger.warning("[schema] Failed to add coverage columns: %s", e)
 
 
 STEP_SCHEMA = SQLITE_SCHEMA

@@ -11,7 +11,7 @@ import logging
 import re
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 
 import numpy as np
@@ -173,6 +173,299 @@ class StepSignatureDB:
             """,
             (similarity, similarity, similarity, similarity, signature_id),
         )
+
+    # =========================================================================
+    # COVERAGE TRACKING: Track how well signatures cover step descriptions
+    # =========================================================================
+
+    def record_coverage(self, signature_id: int, similarity: float, threshold: float = None) -> None:
+        """Record a coverage observation for a signature.
+
+        Tracks similarity scores using Welford algorithm.
+        Also counts low-coverage observations (below threshold).
+
+        Args:
+            signature_id: The signature that was matched
+            similarity: The cosine similarity score
+            threshold: Optional threshold for "low coverage" (uses adaptive if None)
+        """
+        if threshold is None:
+            threshold = self.get_adaptive_threshold()
+
+        is_low = 1 if similarity < threshold else 0
+
+        conn = self._connection()
+        conn.execute(
+            """
+            UPDATE step_signatures
+            SET coverage_sim_count = COALESCE(coverage_sim_count, 0) + 1,
+                coverage_sim_mean = COALESCE(coverage_sim_mean, 0) +
+                    (? - COALESCE(coverage_sim_mean, 0)) / (COALESCE(coverage_sim_count, 0) + 1),
+                coverage_sim_m2 = COALESCE(coverage_sim_m2, 0) +
+                    (? - COALESCE(coverage_sim_mean, 0)) *
+                    (? - (COALESCE(coverage_sim_mean, 0) + (? - COALESCE(coverage_sim_mean, 0)) / (COALESCE(coverage_sim_count, 0) + 1))),
+                low_coverage_count = COALESCE(low_coverage_count, 0) + ?
+            WHERE id = ?
+            """,
+            (similarity, similarity, similarity, similarity, is_low, signature_id),
+        )
+
+    def get_coverage_stats(self, func_name: str = None) -> dict:
+        """Get coverage statistics.
+
+        Args:
+            func_name: Optional filter by function
+
+        Returns:
+            Dict with mean, std, count, low_coverage_rate per function
+        """
+        conn = self._connection()
+
+        if func_name:
+            where = "WHERE func_name = ?"
+            params = (func_name,)
+        else:
+            where = "WHERE func_name IS NOT NULL"
+            params = ()
+
+        rows = conn.execute(
+            f"""
+            SELECT
+                func_name,
+                SUM(coverage_sim_count) as total_count,
+                SUM(coverage_sim_mean * coverage_sim_count) / NULLIF(SUM(coverage_sim_count), 0) as mean_sim,
+                SUM(coverage_sim_m2) as total_m2,
+                SUM(low_coverage_count) as low_count
+            FROM step_signatures
+            {where}
+            GROUP BY func_name
+            """,
+            params,
+        ).fetchall()
+
+        stats = {}
+        for row in rows:
+            func = row[0]
+            count = row[1] or 0
+            mean = row[2] or 0.0
+            m2 = row[3] or 0.0
+            low = row[4] or 0
+
+            variance = m2 / count if count > 0 else 0.0
+            std = variance ** 0.5
+            low_rate = low / count if count > 0 else 0.0
+
+            stats[func] = {
+                "count": count,
+                "mean_similarity": mean,
+                "std_similarity": std,
+                "low_coverage_count": low,
+                "low_coverage_rate": low_rate,
+            }
+
+        return stats
+
+    def get_functions_needing_coverage(
+        self, min_observations: int = 10, max_low_rate: float = 0.3
+    ) -> List[str]:
+        """Get functions with poor coverage (high rate of low-similarity matches).
+
+        These are candidates for adding more signature variants.
+
+        Args:
+            min_observations: Minimum observations to consider a function
+            max_low_rate: Functions with low_coverage_rate > this are returned
+
+        Returns:
+            List of function names sorted by low coverage rate (worst first)
+        """
+        stats = self.get_coverage_stats()
+
+        needs_coverage = []
+        for func, s in stats.items():
+            if s["count"] >= min_observations and s["low_coverage_rate"] > max_low_rate:
+                needs_coverage.append((func, s["low_coverage_rate"], s["count"]))
+
+        # Sort by low coverage rate (worst first)
+        needs_coverage.sort(key=lambda x: -x[1])
+        return [func for func, rate, count in needs_coverage]
+
+    # =========================================================================
+    # FAILURE TRACKING: Record failures for periodic review
+    # =========================================================================
+
+    def record_execution_failure(
+        self,
+        step_description: str,
+        func_name: str = None,
+        signature_id: int = None,
+        similarity: float = None,
+        error_type: str = "execution_error",
+        error_message: str = None,
+        problem_id: str = None,
+    ) -> None:
+        """Record a failed execution for later review.
+
+        Args:
+            step_description: The step that failed
+            func_name: Function that was attempted (if any)
+            signature_id: Signature that was matched (if any)
+            similarity: Similarity score of match (if any)
+            error_type: 'wrong_answer', 'execution_error', 'no_match'
+            error_message: Optional error details
+            problem_id: Optional problem reference
+        """
+        conn = self._connection()
+        now = datetime.now(timezone.utc).isoformat()
+
+        conn.execute(
+            """
+            INSERT INTO execution_failures
+            (step_description, func_name, signature_id, similarity,
+             error_type, error_message, problem_id, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                step_description,
+                func_name,
+                signature_id,
+                similarity,
+                error_type,
+                error_message,
+                problem_id,
+                now,
+            ),
+        )
+
+    def get_failure_stats(self) -> dict:
+        """Get summary statistics of failures."""
+        conn = self._connection()
+
+        # By error type
+        rows = conn.execute(
+            """
+            SELECT error_type, COUNT(*) as count
+            FROM execution_failures
+            GROUP BY error_type
+            """
+        ).fetchall()
+        by_type = {row[0]: row[1] for row in rows}
+
+        # By function
+        rows = conn.execute(
+            """
+            SELECT func_name, COUNT(*) as count
+            FROM execution_failures
+            WHERE func_name IS NOT NULL
+            GROUP BY func_name
+            ORDER BY count DESC
+            LIMIT 10
+            """
+        ).fetchall()
+        by_func = {row[0]: row[1] for row in rows}
+
+        # Total
+        total = conn.execute(
+            "SELECT COUNT(*) FROM execution_failures"
+        ).fetchone()[0]
+
+        return {
+            "total": total,
+            "by_type": by_type,
+            "top_failing_functions": by_func,
+        }
+
+    def get_recent_failures(
+        self, limit: int = 50, error_type: str = None
+    ) -> List[dict]:
+        """Get recent failures for review.
+
+        Args:
+            limit: Max failures to return
+            error_type: Optional filter by error type
+
+        Returns:
+            List of failure dicts
+        """
+        conn = self._connection()
+
+        if error_type:
+            rows = conn.execute(
+                """
+                SELECT * FROM execution_failures
+                WHERE error_type = ?
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (error_type, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT * FROM execution_failures
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+
+        return [dict(row) for row in rows]
+
+    def get_failure_patterns(self, min_occurrences: int = 3) -> List[dict]:
+        """Find repeated failure patterns.
+
+        Groups similar step descriptions and returns patterns
+        that occur frequently - these are candidates for new signatures.
+        """
+        conn = self._connection()
+
+        # Group by func_name and look for repeated failures
+        rows = conn.execute(
+            """
+            SELECT
+                func_name,
+                step_description,
+                COUNT(*) as occurrences,
+                AVG(similarity) as avg_similarity
+            FROM execution_failures
+            WHERE func_name IS NOT NULL
+            GROUP BY func_name, step_description
+            HAVING COUNT(*) >= ?
+            ORDER BY occurrences DESC
+            """,
+            (min_occurrences,),
+        ).fetchall()
+
+        patterns = []
+        for row in rows:
+            patterns.append(
+                {
+                    "func_name": row[0],
+                    "step_description": row[1],
+                    "occurrences": row[2],
+                    "avg_similarity": row[3],
+                }
+            )
+
+        return patterns
+
+    def clear_old_failures(self, days: int = 30) -> int:
+        """Clear failures older than specified days.
+
+        Returns number of deleted records.
+        """
+        conn = self._connection()
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+        cursor = conn.execute(
+            """
+            DELETE FROM execution_failures
+            WHERE created_at < ?
+            """,
+            (cutoff,),
+        )
+
+        return cursor.rowcount
 
     # =========================================================================
     # WELFORD-ADAPTIVE THRESHOLDS

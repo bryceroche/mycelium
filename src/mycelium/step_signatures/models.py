@@ -62,6 +62,11 @@ class StepSignature:
     merge_dist_count: int = 0
     merge_dist_mean: float = 0.0
     merge_dist_m2: float = 0.0
+    # Coverage tracking - Welford stats for similarity scores
+    coverage_sim_count: int = 0
+    coverage_sim_mean: float = 0.0
+    coverage_sim_m2: float = 0.0
+    low_coverage_count: int = 0
     is_semantic_umbrella: bool = False
     is_root: bool = False
     depth: int = 0
@@ -167,6 +172,10 @@ class StepSignature:
             merge_dist_count=row.get("merge_dist_count", 0) or 0,
             merge_dist_mean=row.get("merge_dist_mean", 0.0) or 0.0,
             merge_dist_m2=row.get("merge_dist_m2", 0.0) or 0.0,
+            coverage_sim_count=row.get("coverage_sim_count", 0) or 0,
+            coverage_sim_mean=row.get("coverage_sim_mean", 0.0) or 0.0,
+            coverage_sim_m2=row.get("coverage_sim_m2", 0.0) or 0.0,
+            low_coverage_count=row.get("low_coverage_count", 0) or 0,
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,
@@ -216,6 +225,10 @@ class StepSignature:
             success_sim_count=row.get("success_sim_count", 0) or 0,
             success_sim_mean=row.get("success_sim_mean", 0.0) or 0.0,
             success_sim_m2=row.get("success_sim_m2", 0.0) or 0.0,
+            coverage_sim_count=row.get("coverage_sim_count", 0) or 0,
+            coverage_sim_mean=row.get("coverage_sim_mean", 0.0) or 0.0,
+            coverage_sim_m2=row.get("coverage_sim_m2", 0.0) or 0.0,
+            low_coverage_count=row.get("low_coverage_count", 0) or 0,
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,
