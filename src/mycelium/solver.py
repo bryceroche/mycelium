@@ -33,7 +33,7 @@ from mycelium.data_layer.mcts import (
     grade_dag,
     run_postmortem,
 )
-from mycelium.llm_decomposer import LLMDecomposer, DecomposedStep
+from mycelium.llm_decomposer import LLMDecomposer, DecomposedStep, Decomposition, StepInput
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +124,7 @@ class Solver:
     ) -> tuple[Any, List[StepResult]]:
         """Solve a math problem and return both answer and step results.
 
-        Use this when you need to record learning from the results.
+        Uses step chaining: steps can reference previous step results.
 
         Args:
             problem: The problem text
@@ -139,20 +139,144 @@ class Solver:
         # Get signature menu for decomposition
         menu = self.step_db.format_signature_menu(max_examples_per_func=10)
 
-        # Initial decomposition
-        steps = self.decomposer.decompose(problem, menu)
-        logger.info(f"Decomposed into {len(steps)} steps")
+        # Get full decomposition with extractions and step references
+        decomposition = self.decomposer.decompose_full(problem, menu)
+        logger.info(f"Decomposed into {len(decomposition.steps)} steps with {len(decomposition.extractions)} extractions")
 
-        # Solve each step
+        # Build value context from extractions
+        value_context: dict[str, float] = {}
+        for ext in decomposition.extractions:
+            value_context[ext.id] = ext.value
+            logger.debug(f"Extraction: {ext.id} = {ext.value}")
+
+        # Solve each step in order, resolving references
         results = []
-        for step in steps:
-            result = self._solve_step_with_trend(step, menu, context, prev_similarity=0, depth=0)
+        for step in decomposition.steps:
+            # Resolve inputs from context
+            resolved_params = []
+            for inp in step.inputs:
+                try:
+                    resolved_value = inp.resolve(value_context)
+                    resolved_params.append(resolved_value)
+                except ValueError as e:
+                    logger.warning(f"Could not resolve input {inp.ref}: {e}")
+                    # Fall back to literal params if available
+                    if step.params:
+                        resolved_params = step.params
+                        break
+
+            # Execute with resolved parameters
+            result = self._solve_step_with_trend_chained(
+                step, resolved_params, menu, context, prev_similarity=0, depth=0
+            )
             results.append(result)
 
-        # Combine results (for now, return last result)
-        # TODO: Implement proper result combination based on step dependencies
-        answer = results[-1].result if results else None
+            # Store result in context for subsequent steps
+            if result.success and result.result is not None:
+                try:
+                    value_context[step.id] = float(result.result)
+                    logger.debug(f"Step {step.id}: {result.result}")
+                except (ValueError, TypeError):
+                    logger.warning(f"Could not convert result to float: {result.result}")
+
+        # Get answer from the answer_step
+        answer = None
+        if decomposition.answer_step and decomposition.answer_step in value_context:
+            answer = value_context[decomposition.answer_step]
+        elif results:
+            answer = results[-1].result
+
         return answer, results
+
+    def _solve_step_with_trend_chained(
+        self,
+        step: DecomposedStep,
+        resolved_params: List[float],
+        menu: str,
+        context: SolveContext,
+        prev_similarity: float,
+        depth: int
+    ) -> StepResult:
+        """Solve a single step with resolved parameters (step chaining support)."""
+
+        # Embed and classify
+        embedding = cached_embed(step.description)
+        func_name, similarity, sig = self.step_db.classify(embedding)
+        threshold = self.step_db.get_adaptive_threshold()
+
+        # Record coverage observation for Welford tracking
+        if sig is not None:
+            self.step_db.record_coverage(sig.id, similarity, threshold)
+
+        logger.debug(
+            f"[depth={depth}] Step: '{step.description[:50]}...' "
+            f"-> {func_name} (sim={similarity:.3f}, thresh={threshold:.3f})"
+        )
+
+        # Execute with resolved params
+        return self._execute_with_resolved_params(
+            step, func_name, resolved_params, similarity, embedding, sig, context
+        )
+
+    def _execute_with_resolved_params(
+        self,
+        step: DecomposedStep,
+        func_name: str,
+        resolved_params: List[float],
+        similarity: float,
+        embedding: Any,
+        sig: Optional[StepSignature],
+        context: SolveContext
+    ) -> StepResult:
+        """Execute a step with pre-resolved parameters."""
+        embedding_list = embedding.tolist() if hasattr(embedding, 'tolist') else embedding
+
+        try:
+            if func_name and func_name in REGISTRY:
+                result = execute(func_name, *resolved_params)
+                success = True
+                logger.debug(f"Executed {func_name}({resolved_params}) = {result}")
+
+                # Record success for Welford learning
+                if sig:
+                    self.step_db.record_success(sig.id, similarity)
+            else:
+                # No matching function
+                result = None
+                success = False
+                logger.warning(f"No function '{func_name}' in registry")
+
+                # Record failure
+                if sig:
+                    self.step_db.record_failure(sig.id)
+
+            step_result = StepResult(
+                success=success,
+                result=str(result) if result is not None else None,
+                func_name=func_name,
+                similarity=similarity,
+                embedding=embedding_list,
+                signature_id=sig.id if sig else None
+            )
+
+            # Track for post-mortem
+            if success:
+                context.successful_steps.append(step_result)
+
+            return step_result
+
+        except Exception as e:
+            logger.error(f"Execution failed: {e}")
+            if sig:
+                self.step_db.record_failure(sig.id)
+            return StepResult(
+                success=False,
+                error=str(e),
+                func_name=func_name,
+                similarity=similarity,
+                embedding=embedding_list,
+                signature_id=sig.id if sig else None
+            )
 
     def record_learning(
         self, step_results: List[StepResult], problem_correct: bool
