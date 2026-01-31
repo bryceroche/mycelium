@@ -14,6 +14,7 @@ from .schema import (
 )
 from .executor import execute_decomposition, verify_decomposition
 from .decomposer import decompose
+from .llm_api import decompose_with_api
 
 __all__ = [
     # Schema
@@ -25,6 +26,7 @@ __all__ = [
     # Execution
     "execute_decomposition",
     "verify_decomposition",
-    # Main entry point
+    # Main entry points
     "decompose",
+    "decompose_with_api",
 ]
