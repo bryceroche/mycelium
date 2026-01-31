@@ -57,6 +57,11 @@ class StepSignature:
     success_sim_count: int = 0
     success_sim_mean: float = 0.0
     success_sim_m2: float = 0.0
+    # Merge tracking
+    description_variants: list[str] = field(default_factory=list)
+    merge_dist_count: int = 0
+    merge_dist_mean: float = 0.0
+    merge_dist_m2: float = 0.0
     is_semantic_umbrella: bool = False
     is_root: bool = False
     depth: int = 0
@@ -97,6 +102,13 @@ class StepSignature:
         if row.get("examples"):
             try:
                 examples = json.loads(row["examples"])
+            except json.JSONDecodeError:
+                pass
+
+        description_variants = []
+        if row.get("description_variants"):
+            try:
+                description_variants = json.loads(row["description_variants"])
             except json.JSONDecodeError:
                 pass
 
@@ -151,6 +163,10 @@ class StepSignature:
             success_sim_count=row.get("success_sim_count", 0) or 0,
             success_sim_mean=row.get("success_sim_mean", 0.0) or 0.0,
             success_sim_m2=row.get("success_sim_m2", 0.0) or 0.0,
+            description_variants=description_variants,
+            merge_dist_count=row.get("merge_dist_count", 0) or 0,
+            merge_dist_mean=row.get("merge_dist_mean", 0.0) or 0.0,
+            merge_dist_m2=row.get("merge_dist_m2", 0.0) or 0.0,
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,

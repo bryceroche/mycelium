@@ -181,5 +181,38 @@ def _run_migrations(conn) -> None:
         except Exception as e:
             logger.warning("[schema] Failed to add func_arity: %s", e)
 
+    # Signature merge columns - for tracking merged descriptions and Welford stats
+    if "description_variants" not in columns:
+        logger.info("[schema] Adding description_variants column")
+        try:
+            conn.execute("ALTER TABLE step_signatures ADD COLUMN description_variants TEXT")
+            conn.commit()
+        except Exception as e:
+            logger.warning("[schema] Failed to add description_variants: %s", e)
+
+    if "merge_dist_count" not in columns:
+        logger.info("[schema] Adding merge_dist_count column")
+        try:
+            conn.execute("ALTER TABLE step_signatures ADD COLUMN merge_dist_count INTEGER DEFAULT 0")
+            conn.commit()
+        except Exception as e:
+            logger.warning("[schema] Failed to add merge_dist_count: %s", e)
+
+    if "merge_dist_mean" not in columns:
+        logger.info("[schema] Adding merge_dist_mean column")
+        try:
+            conn.execute("ALTER TABLE step_signatures ADD COLUMN merge_dist_mean REAL DEFAULT 0.0")
+            conn.commit()
+        except Exception as e:
+            logger.warning("[schema] Failed to add merge_dist_mean: %s", e)
+
+    if "merge_dist_m2" not in columns:
+        logger.info("[schema] Adding merge_dist_m2 column")
+        try:
+            conn.execute("ALTER TABLE step_signatures ADD COLUMN merge_dist_m2 REAL DEFAULT 0.0")
+            conn.commit()
+        except Exception as e:
+            logger.warning("[schema] Failed to add merge_dist_m2: %s", e)
+
 
 STEP_SCHEMA = SQLITE_SCHEMA

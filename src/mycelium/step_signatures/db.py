@@ -251,6 +251,262 @@ class StepSignatureDB:
         return clamped
 
     # =========================================================================
+    # SIGNATURE MERGING - Welford-guided duplicate prevention
+    # =========================================================================
+
+    def get_nearest_same_func_signature(
+        self, embedding: np.ndarray, func_name: str
+    ) -> tuple[Optional[StepSignature], float]:
+        """Find nearest signature with same func_name.
+
+        Args:
+            embedding: The query embedding vector
+            func_name: Function name to filter by
+
+        Returns:
+            (signature, distance) or (None, inf) if no signatures for this func
+        """
+        sigs = self.get_signatures_by_func(func_name)
+        if not sigs:
+            return None, float("inf")
+
+        # Normalize query
+        query = np.asarray(embedding, dtype=np.float32)
+        query_norm = np.linalg.norm(query)
+        if query_norm == 0:
+            return None, float("inf")
+        query = query / query_norm
+
+        best_sig = None
+        best_dist = float("inf")
+
+        for sig in sigs:
+            if sig.centroid is None:
+                continue
+
+            # Cosine distance = 1 - cosine_similarity
+            centroid = sig.centroid
+            centroid_norm = np.linalg.norm(centroid)
+            if centroid_norm == 0:
+                continue
+            centroid = centroid / centroid_norm
+
+            similarity = float(np.dot(query, centroid))
+            distance = 1.0 - similarity
+
+            if distance < best_dist:
+                best_dist = distance
+                best_sig = sig
+
+        return best_sig, best_dist
+
+    def get_merge_threshold(self, func_name: str, default: float = 0.15) -> float:
+        """Get Welford-adaptive merge threshold for a function.
+
+        Formula: mean + 1.5 * std of observed merge distances
+        Returns default if insufficient data (<10 merges).
+
+        Args:
+            func_name: Function name to get threshold for
+            default: Default threshold if insufficient data
+
+        Returns:
+            Adaptive merge threshold (cosine distance)
+        """
+        conn = self._connection()
+        row = conn.execute(
+            """
+            SELECT
+                SUM(merge_dist_count) as total_count,
+                SUM(merge_dist_mean * merge_dist_count) as weighted_sum,
+                SUM(merge_dist_m2) as total_m2
+            FROM step_signatures
+            WHERE func_name = ? AND merge_dist_count > 0
+            """,
+            (func_name,),
+        ).fetchone()
+
+        if row is None or row[0] is None or row[0] < 10:
+            logger.debug(
+                "[db] Merge threshold for %s: insufficient data (%s), using default %.3f",
+                func_name,
+                row[0] if row else 0,
+                default,
+            )
+            return default
+
+        total_count = row[0]
+        weighted_mean = row[1] / total_count if total_count > 0 else 0.0
+        total_m2 = row[2] or 0.0
+
+        # Variance from combined M2
+        variance = total_m2 / total_count if total_count > 0 else 0.0
+        stddev = variance ** 0.5
+
+        # Adaptive threshold: mean + 1.5 * std
+        adaptive = weighted_mean + 1.5 * stddev
+
+        # Clamp to reasonable range [0.05, 0.30]
+        clamped = max(0.05, min(0.30, adaptive))
+
+        logger.debug(
+            "[db] Merge threshold for %s: mean=%.3f, std=%.3f, raw=%.3f, clamped=%.3f (n=%d)",
+            func_name,
+            weighted_mean,
+            stddev,
+            adaptive,
+            clamped,
+            total_count,
+        )
+
+        return clamped
+
+    def merge_into_signature(
+        self, sig_id: int, embedding: np.ndarray, description: str
+    ) -> None:
+        """Merge a new description into an existing signature.
+
+        Updates:
+        - centroid via running average: (embedding_sum + new) / (count + 1)
+        - embedding_sum and embedding_count
+        - description_variants (append new description)
+        - Welford stats for merge distance
+
+        Args:
+            sig_id: The signature ID to merge into
+            embedding: The new embedding to merge
+            description: The new description to add as variant
+        """
+        from mycelium.step_signatures.utils import invalidate_centroid_cache
+
+        conn = self._connection()
+        sig = self.get_signature(sig_id)
+        if sig is None:
+            logger.warning("[db] Cannot merge into non-existent signature %d", sig_id)
+            return
+
+        # Compute distance for Welford update
+        query = np.asarray(embedding, dtype=np.float32)
+        query_norm = np.linalg.norm(query)
+        if query_norm > 0:
+            query_normalized = query / query_norm
+        else:
+            query_normalized = query
+
+        if sig.centroid is not None:
+            centroid = sig.centroid
+            centroid_norm = np.linalg.norm(centroid)
+            if centroid_norm > 0:
+                centroid_normalized = centroid / centroid_norm
+                similarity = float(np.dot(query_normalized, centroid_normalized))
+                distance = 1.0 - similarity
+            else:
+                distance = 1.0
+        else:
+            distance = 1.0
+
+        # Get current embedding_sum or initialize from centroid
+        if sig.embedding_sum is not None:
+            current_sum = sig.embedding_sum
+        elif sig.centroid is not None:
+            current_sum = sig.centroid * sig.embedding_count
+        else:
+            current_sum = np.zeros_like(query)
+
+        # Update centroid via running average
+        new_count = sig.embedding_count + 1
+        new_sum = current_sum + query
+        new_centroid = new_sum / new_count
+
+        # Update description_variants
+        variants = sig.description_variants.copy()
+        if description not in variants and description != sig.description:
+            variants.append(description)
+        variants_json = json.dumps(variants)
+
+        # Pack embeddings for storage
+        new_centroid_json = pack_embedding(new_centroid)
+        new_sum_json = pack_embedding(new_sum)
+
+        # Update with Welford algorithm for merge distance
+        with conn.connection() as raw_conn:
+            raw_conn.execute(
+                """
+                UPDATE step_signatures
+                SET centroid = ?,
+                    embedding_sum = ?,
+                    embedding_count = ?,
+                    description_variants = ?,
+                    merge_dist_count = COALESCE(merge_dist_count, 0) + 1,
+                    merge_dist_mean = COALESCE(merge_dist_mean, 0) +
+                        (? - COALESCE(merge_dist_mean, 0)) / (COALESCE(merge_dist_count, 0) + 1),
+                    merge_dist_m2 = COALESCE(merge_dist_m2, 0) +
+                        (? - COALESCE(merge_dist_mean, 0)) *
+                        (? - (COALESCE(merge_dist_mean, 0) + (? - COALESCE(merge_dist_mean, 0)) / (COALESCE(merge_dist_count, 0) + 1)))
+                WHERE id = ?
+                """,
+                (
+                    new_centroid_json,
+                    new_sum_json,
+                    new_count,
+                    variants_json,
+                    distance,
+                    distance,
+                    distance,
+                    distance,
+                    sig_id,
+                ),
+            )
+
+        # Invalidate centroid cache for this signature
+        invalidate_centroid_cache(sig_id)
+
+        logger.debug(
+            "[db] Merged into signature %d: new_count=%d, distance=%.3f, variants=%d",
+            sig_id,
+            new_count,
+            distance,
+            len(variants),
+        )
+
+    def should_merge_or_create(
+        self, embedding: np.ndarray, func_name: str
+    ) -> tuple[str, Optional[int]]:
+        """Decide whether to merge into existing or create new signature.
+
+        Args:
+            embedding: The query embedding vector
+            func_name: Function name for the signature
+
+        Returns:
+            ("merge", sig_id) if close to existing
+            ("create", None) if should create new
+        """
+        nearest, distance = self.get_nearest_same_func_signature(embedding, func_name)
+
+        if nearest is None:
+            logger.debug("[db] No existing signatures for func=%s, create new", func_name)
+            return "create", None
+
+        threshold = self.get_merge_threshold(func_name)
+
+        if distance <= threshold:
+            logger.debug(
+                "[db] Merge decision: distance=%.3f <= threshold=%.3f, merge into sig=%d",
+                distance,
+                threshold,
+                nearest.id,
+            )
+            return "merge", nearest.id
+        else:
+            logger.debug(
+                "[db] Merge decision: distance=%.3f > threshold=%.3f, create new",
+                distance,
+                threshold,
+            )
+            return "create", None
+
+    # =========================================================================
     # FLAT PROTOTYPE STORE - k-NN Classification
     # =========================================================================
 
@@ -418,6 +674,127 @@ class StepSignatureDB:
     # LLM PROMPT BUILDING - Signature Menu
     # =========================================================================
 
+    def select_diverse_signatures(
+        self, func_name: str, k: int = 10, quality_weight: float = 0.3
+    ) -> List[StepSignature]:
+        """Select k diverse signatures using quality-weighted farthest-point sampling.
+
+        Algorithm:
+        1. Start with highest success_rate signature
+        2. For each remaining slot:
+           - For each candidate, compute:
+             - distance = min distance to any selected signature
+             - quality = success_rate
+             - score = (1 - quality_weight) * distance + quality_weight * quality
+           - Select candidate with highest score
+
+        Args:
+            func_name: Function to get signatures for
+            k: Number of signatures to select
+            quality_weight: Balance between diversity (0) and quality (1)
+
+        Returns:
+            List of diverse, high-quality signatures
+        """
+        # Handle edge case of k <= 0
+        if k <= 0:
+            return []
+
+        # Get all signatures for this function
+        all_sigs = self.get_signatures_by_func(func_name, min_successes=0)
+
+        # Filter to those with centroids
+        candidates = [s for s in all_sigs if s.centroid is not None]
+
+        if not candidates:
+            return []
+
+        if len(candidates) <= k:
+            return candidates
+
+        # Start with highest success_rate signature
+        candidates.sort(key=lambda s: s.success_rate, reverse=True)
+        selected = [candidates[0]]
+        remaining = candidates[1:]
+
+        # Pre-compute normalized centroids for efficiency
+        def normalize(v: np.ndarray) -> np.ndarray:
+            norm = np.linalg.norm(v)
+            return v / norm if norm > 0 else v
+
+        selected_centroids = [normalize(selected[0].centroid)]
+
+        while len(selected) < k and remaining:
+            best_score = -1.0
+            best_idx = 0
+
+            for i, cand in enumerate(remaining):
+                cand_centroid = normalize(cand.centroid)
+
+                # Compute min distance to any selected signature (cosine distance = 1 - similarity)
+                min_distance = float("inf")
+                for sel_centroid in selected_centroids:
+                    sim = float(np.dot(cand_centroid, sel_centroid))
+                    distance = 1.0 - sim
+                    if distance < min_distance:
+                        min_distance = distance
+
+                # Normalize distance to [0, 1] range (max cosine distance is 2 for opposite vectors)
+                # In practice, for similar domain vectors, distance rarely exceeds 1
+                normalized_distance = min(min_distance, 1.0)
+
+                # Quality score (success_rate is already in [0, 1])
+                quality = cand.success_rate
+
+                # Combined score
+                score = (1 - quality_weight) * normalized_distance + quality_weight * quality
+
+                if score > best_score:
+                    best_score = score
+                    best_idx = i
+
+            # Add best candidate to selected
+            best_cand = remaining.pop(best_idx)
+            selected.append(best_cand)
+            selected_centroids.append(normalize(best_cand.centroid))
+
+        return selected
+
+    def build_diverse_menu(
+        self, max_examples: int = 10, quality_weight: float = 0.3
+    ) -> dict[str, List[dict]]:
+        """Build menu with evenly-spaced examples per function.
+
+        Uses quality-weighted farthest-point sampling to select diverse,
+        high-quality signature examples for each function.
+
+        Args:
+            max_examples: Maximum examples per function
+            quality_weight: Balance between diversity (0) and quality (1)
+
+        Returns:
+            Dict mapping func_name -> list of {description, successes, success_rate}
+        """
+        func_names = self.get_all_func_names()
+        menu = {}
+
+        for func_name in func_names:
+            diverse_sigs = self.select_diverse_signatures(
+                func_name, k=max_examples, quality_weight=quality_weight
+            )
+
+            if diverse_sigs:
+                menu[func_name] = [
+                    {
+                        "description": sig.description,
+                        "successes": sig.successes,
+                        "success_rate": sig.success_rate,
+                    }
+                    for sig in diverse_sigs
+                ]
+
+        return menu
+
     def build_signature_menu(self, min_successes: int = 3, max_examples_per_func: int = 3) -> dict[str, List[dict]]:
         """Build a menu of functions with their proven signature examples.
 
@@ -462,7 +839,12 @@ class StepSignatureDB:
 
         return menu
 
-    def format_signature_menu(self, min_successes: int = 3, max_examples_per_func: int = 3) -> str:
+    def format_signature_menu(
+        self,
+        max_examples_per_func: int = 10,
+        quality_weight: float = 0.3,
+        use_diverse: bool = True,
+    ) -> str:
         """Format the signature menu as a string for LLM prompts.
 
         Returns text like:
@@ -472,8 +854,17 @@ class StepSignatureDB:
 
             multiply:
               - "calculate total cost" (52 successes)
+
+        Args:
+            max_examples_per_func: Maximum examples per function
+            quality_weight: Balance between diversity (0) and quality (1)
+            use_diverse: If True, use quality-weighted farthest-point sampling
         """
-        menu = self.build_signature_menu(min_successes, max_examples_per_func)
+        if use_diverse:
+            menu = self.build_diverse_menu(max_examples_per_func, quality_weight)
+        else:
+            # Fallback to original behavior (kept for compatibility)
+            menu = self.build_signature_menu(min_successes=0, max_examples_per_func=max_examples_per_func)
 
         if not menu:
             return "No proven patterns yet. Decompose into basic operations."
