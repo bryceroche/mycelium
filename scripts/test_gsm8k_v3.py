@@ -56,7 +56,7 @@ def main():
         print("Learning mode: ON (recording success/failure embeddings)")
     print(f"{'='*70}")
 
-    solver = Solver(model="gpt-4o-mini")
+    solver = Solver(model="gpt-4o")
 
     # Show signature stats
     sig_count = solver.step_db.count_signatures()

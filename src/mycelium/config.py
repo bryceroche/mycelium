@@ -17,7 +17,7 @@ TRAINING_MODE = os.getenv("MYCELIUM_TRAINING_MODE", "true").lower() in ("true", 
 # =============================================================================
 # EMBEDDING
 # =============================================================================
-EMBEDDING_DIM = 768  # text-embedding-3-small
+EMBEDDING_DIM = 3072  # text-embedding-3-large
 EMBEDDING_PROVIDER = os.getenv("MYCELIUM_EMBEDDING_PROVIDER", "openai")
 EMBEDDING_BATCH_SIZE = 100
 EMBEDDING_CACHE_ENABLED = True
@@ -188,7 +188,7 @@ NEW_CHILD_SIMILARITY_THRESHOLD = 0.75
 # =============================================================================
 # MISC
 # =============================================================================
-EMBEDDING_MODEL = "text-embedding-3-small"
+EMBEDDING_MODEL = "text-embedding-3-large"
 ADAPTIVE_REJECTION_ENABLED = True
 
 # =============================================================================
