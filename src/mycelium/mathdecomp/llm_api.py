@@ -53,7 +53,7 @@ OUTPUT FORMAT (valid JSON only, no markdown):
 Problem: {problem}'''
 
 
-def call_openai(prompt: str, model: str = "gpt-4o-mini") -> str:
+def call_openai(prompt: str, model: str = "gpt-4o") -> str:
     """Call OpenAI API with JSON mode."""
     try:
         from openai import OpenAI
@@ -155,7 +155,7 @@ def decompose_with_api(
     # Select call function and default model
     if provider == "openai":
         call_fn = call_openai
-        model = model or "gpt-4o-mini"
+        model = model or "gpt-4o"
     else:
         call_fn = call_anthropic
         model = model or "claude-sonnet-4-20250514"
