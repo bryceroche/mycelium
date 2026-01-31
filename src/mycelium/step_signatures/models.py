@@ -32,6 +32,11 @@ class StepSignature:
     centroid: Optional[np.ndarray] = None
     embedding_sum: Optional[np.ndarray] = None
     embedding_count: int = 1
+    # Dual centroids for success/failure tracking
+    success_embedding_sum: Optional[np.ndarray] = None
+    success_embedding_count: int = 0
+    failure_embedding_sum: Optional[np.ndarray] = None
+    failure_embedding_count: int = 0
     step_type: str = ""
     description: str = ""
     clarifying_questions: list[str] = field(default_factory=list)
@@ -75,6 +80,25 @@ class StepSignature:
     @property
     def has_func(self) -> bool:
         return self.func_name is not None
+
+    @property
+    def success_centroid(self) -> Optional[np.ndarray]:
+        """Compute success centroid from sum and count."""
+        if self.success_embedding_sum is not None and self.success_embedding_count > 0:
+            return self.success_embedding_sum / self.success_embedding_count
+        return None
+
+    @property
+    def failure_centroid(self) -> Optional[np.ndarray]:
+        """Compute failure centroid from sum and count."""
+        if self.failure_embedding_sum is not None and self.failure_embedding_count > 0:
+            return self.failure_embedding_sum / self.failure_embedding_count
+        return None
+
+    @property
+    def has_failure_data(self) -> bool:
+        """Check if we have enough failure data to show warnings (>= 5 failures)."""
+        return self.failure_embedding_count >= 5
 
     @classmethod
     def from_row(cls, row: dict) -> "StepSignature":
@@ -124,6 +148,20 @@ class StepSignature:
             except Exception:
                 pass
 
+        success_embedding_sum = None
+        if row.get("success_embedding_sum"):
+            try:
+                success_embedding_sum = unpack_embedding(row["success_embedding_sum"])
+            except Exception:
+                pass
+
+        failure_embedding_sum = None
+        if row.get("failure_embedding_sum"):
+            try:
+                failure_embedding_sum = unpack_embedding(row["failure_embedding_sum"])
+            except Exception:
+                pass
+
         graph_embedding = None
         if row.get("graph_embedding"):
             try:
@@ -143,6 +181,10 @@ class StepSignature:
             centroid=centroid,
             embedding_sum=embedding_sum,
             embedding_count=row.get("embedding_count", 1) or 1,
+            success_embedding_sum=success_embedding_sum,
+            success_embedding_count=row.get("success_embedding_count", 0) or 0,
+            failure_embedding_sum=failure_embedding_sum,
+            failure_embedding_count=row.get("failure_embedding_count", 0) or 0,
             step_type=row.get("step_type", ""),
             description=row.get("description", ""),
             clarifying_questions=clarifying_questions,
@@ -210,6 +252,8 @@ class StepSignature:
             signature_id=row.get("signature_id", ""),
             centroid=centroid,
             embedding_count=row.get("embedding_count", 1) or 1,
+            success_embedding_count=row.get("success_embedding_count", 0) or 0,
+            failure_embedding_count=row.get("failure_embedding_count", 0) or 0,
             step_type=row.get("step_type", ""),
             description=row.get("description", ""),
             func_name=func_name,

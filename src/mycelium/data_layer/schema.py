@@ -25,6 +25,12 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     embedding_sum TEXT,
     embedding_count INTEGER DEFAULT 1,
 
+    -- Success/Failure Embeddings (dual centroids for learning what works vs fails)
+    success_embedding_sum TEXT,
+    success_embedding_count INTEGER DEFAULT 0,
+    failure_embedding_sum TEXT,
+    failure_embedding_count INTEGER DEFAULT 0,
+
     -- Computation Graph (per CLAUDE.md: route by what operations DO)
     computation_graph TEXT,
     graph_embedding TEXT,
@@ -244,6 +250,18 @@ def _run_migrations(conn) -> None:
             conn.commit()
         except Exception as e:
             logger.warning("[schema] Failed to add coverage columns: %s", e)
+
+    # Success/Failure embedding columns - dual centroids for learning what works vs fails
+    if "success_embedding_sum" not in columns:
+        logger.info("[schema] Adding success/failure embedding columns")
+        try:
+            conn.execute("ALTER TABLE step_signatures ADD COLUMN success_embedding_sum TEXT")
+            conn.execute("ALTER TABLE step_signatures ADD COLUMN success_embedding_count INTEGER DEFAULT 0")
+            conn.execute("ALTER TABLE step_signatures ADD COLUMN failure_embedding_sum TEXT")
+            conn.execute("ALTER TABLE step_signatures ADD COLUMN failure_embedding_count INTEGER DEFAULT 0")
+            conn.commit()
+        except Exception as e:
+            logger.warning("[schema] Failed to add success/failure embedding columns: %s", e)
 
 
 STEP_SCHEMA = SQLITE_SCHEMA

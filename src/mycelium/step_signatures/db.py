@@ -157,6 +157,89 @@ class StepSignatureDB:
             (signature_id,),
         )
 
+    def record_success_with_embedding(
+        self, signature_id: int, embedding: np.ndarray, similarity: float = None
+    ) -> None:
+        """Record a successful execution with the step embedding.
+
+        Updates both the success stats and the success embedding centroid.
+        This builds the "what works" centroid for this signature.
+
+        Args:
+            signature_id: The signature ID
+            embedding: The step description embedding that led to success
+            similarity: Optional similarity score for Welford tracking
+        """
+        # First record the basic success stats
+        self.record_success(signature_id, similarity)
+
+        # Now update the success embedding centroid
+        sig = self.get_signature(signature_id)
+        if sig is None:
+            return
+
+        # Get current success embedding sum or initialize
+        if sig.success_embedding_sum is not None:
+            current_sum = sig.success_embedding_sum
+        else:
+            current_sum = np.zeros(EMBEDDING_DIM, dtype=np.float32)
+
+        # Update sum and count
+        new_sum = current_sum + embedding.astype(np.float32)
+        new_count = sig.success_embedding_count + 1
+
+        conn = self._connection()
+        conn.execute(
+            """
+            UPDATE step_signatures
+            SET success_embedding_sum = ?,
+                success_embedding_count = ?
+            WHERE id = ?
+            """,
+            (pack_embedding(new_sum), new_count, signature_id),
+        )
+
+    def record_failure_with_embedding(
+        self, signature_id: int, embedding: np.ndarray
+    ) -> None:
+        """Record a failed execution with the step embedding.
+
+        Updates both the failure stats and the failure embedding centroid.
+        This builds the "what fails" centroid for this signature.
+
+        Args:
+            signature_id: The signature ID
+            embedding: The step description embedding that led to failure
+        """
+        # First record the basic failure stats
+        self.record_failure(signature_id)
+
+        # Now update the failure embedding centroid
+        sig = self.get_signature(signature_id)
+        if sig is None:
+            return
+
+        # Get current failure embedding sum or initialize
+        if sig.failure_embedding_sum is not None:
+            current_sum = sig.failure_embedding_sum
+        else:
+            current_sum = np.zeros(EMBEDDING_DIM, dtype=np.float32)
+
+        # Update sum and count
+        new_sum = current_sum + embedding.astype(np.float32)
+        new_count = sig.failure_embedding_count + 1
+
+        conn = self._connection()
+        conn.execute(
+            """
+            UPDATE step_signatures
+            SET failure_embedding_sum = ?,
+                failure_embedding_count = ?
+            WHERE id = ?
+            """,
+            (pack_embedding(new_sum), new_count, signature_id),
+        )
+
     def record_similarity(self, signature_id: int, similarity: float) -> None:
         """Record similarity observation for Welford tracking."""
         conn = self._connection()
@@ -1092,6 +1175,42 @@ class StepSignatureDB:
 
         return menu
 
+    def get_failure_warnings(self, min_failure_count: int = 5) -> dict[str, List[str]]:
+        """Get failure warnings per function for signatures with enough failure data.
+
+        Returns descriptions from signatures that have accumulated enough failures
+        to be meaningful warnings.
+
+        Args:
+            min_failure_count: Minimum failure_embedding_count to include (default 5)
+
+        Returns:
+            Dict mapping func_name -> list of failed description patterns
+        """
+        conn = self._connection()
+        rows = conn.execute(
+            """
+            SELECT func_name, description, failure_embedding_count
+            FROM step_signatures
+            WHERE func_name IS NOT NULL
+              AND COALESCE(failure_embedding_count, 0) >= ?
+            ORDER BY func_name, failure_embedding_count DESC
+            """,
+            (min_failure_count,),
+        ).fetchall()
+
+        warnings = {}
+        for row in rows:
+            func_name = row[0]
+            description = row[1]
+            if func_name not in warnings:
+                warnings[func_name] = []
+            # Limit to 3 failure examples per function
+            if len(warnings[func_name]) < 3:
+                warnings[func_name].append(description)
+
+        return warnings
+
     def build_signature_menu(self, min_successes: int = 3, max_examples_per_func: int = 3) -> dict[str, List[dict]]:
         """Build a menu of functions with their proven signature examples.
 
@@ -1166,12 +1285,22 @@ class StepSignatureDB:
         if not menu:
             return "No proven patterns yet. Decompose into basic operations."
 
+        # Get failure warnings (signatures with >= 5 failures)
+        failure_warnings = self.get_failure_warnings(min_failure_count=5)
+
         lines = []
         for func_name in sorted(menu.keys()):
             examples = menu[func_name]
             lines.append(f"{func_name}:")
             for ex in examples:
                 lines.append(f'  - "{ex["description"]}" ({ex["successes"]} successes)')
+
+            # Add failure warnings if any exist for this function
+            if func_name in failure_warnings:
+                lines.append("  [often fails when described as:]")
+                for fail_desc in failure_warnings[func_name]:
+                    lines.append(f'  ! "{fail_desc}"')
+
             lines.append("")
 
         return "\n".join(lines)
