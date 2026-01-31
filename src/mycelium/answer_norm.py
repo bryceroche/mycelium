@@ -211,3 +211,52 @@ def answers_equivalent(a: str, b: str, tolerance: float = 1e-6) -> bool:
                 return True
 
     return False
+
+
+def answers_equivalent_llm(a: str, b: str, model: str = "gpt-4o-mini") -> bool:
+    """Check if two answers are semantically equivalent using an LLM judge.
+
+    This is a fallback for when numeric comparison fails but answers
+    might still be equivalent (e.g., "1/2" vs "0.5", "$10" vs "10 dollars").
+
+    Args:
+        a: First answer
+        b: Second answer
+        model: LiteLLM model name
+
+    Returns:
+        True if answers are semantically equivalent
+    """
+    # First try fast numeric comparison
+    if answers_equivalent(a, b, tolerance=0.01):
+        return True
+
+    try:
+        from litellm import completion
+
+        prompt = f"""Are these two answers mathematically/semantically equivalent?
+
+Answer A: {a}
+Answer B: {b}
+
+Consider:
+- Different representations of same number (1/2 = 0.5 = 50%)
+- Unit variations ($10 = 10 dollars)
+- Rounding differences within 1%
+- Equivalent expressions
+
+Reply with ONLY "yes" or "no"."""
+
+        response = completion(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=10,
+            temperature=0,
+        )
+
+        answer = response.choices[0].message.content.strip().lower()
+        return answer == "yes"
+
+    except Exception as e:
+        # Fallback to numeric comparison if LLM fails
+        return answers_equivalent(a, b, tolerance=0.01)
