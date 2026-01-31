@@ -282,6 +282,7 @@ class StepSignatureDB:
         step_text: str,
         embedding: List[float],
         dsl_hint: str = None,
+        func_name: str = None,
         **kwargs,
     ) -> tuple[StepSignature, bool]:
         """Find existing signature or create new one.
@@ -289,7 +290,8 @@ class StepSignatureDB:
         Args:
             step_text: Description of the step
             embedding: Step embedding vector
-            dsl_hint: Optional DSL hint (+, -, *, /)
+            dsl_hint: Optional function name hint (add, sub, mul, etc.)
+            func_name: Explicit function name (takes precedence over dsl_hint)
 
         Returns:
             (signature, created) tuple
@@ -316,11 +318,19 @@ class StepSignatureDB:
         step_type = normalize_step_text(step_text)[:100]
         sig_id = str(uuid.uuid4())
 
-        # Infer DSL from hint
-        dsl_script = None
-        if dsl_hint:
-            dsl_map = {"+": "a + b", "-": "a - b", "*": "a * b", "/": "a / b"}
-            dsl_script = dsl_map.get(dsl_hint, f"a {dsl_hint} b")
+        # Determine function name (func_name takes precedence over dsl_hint)
+        final_func_name = func_name or dsl_hint
+
+        # Get arity from function registry if available
+        func_arity = 2  # default
+        if final_func_name:
+            try:
+                from mycelium.function_registry import get_function_info
+                info = get_function_info(final_func_name)
+                if info:
+                    func_arity = info.get("arity", 2)
+            except ImportError:
+                pass
 
         now = datetime.now(timezone.utc).isoformat()
 
@@ -328,12 +338,12 @@ class StepSignatureDB:
             cursor = raw_conn.execute(
                 """
                 INSERT INTO step_signatures (
-                    signature_id, step_type, description, dsl_script,
+                    signature_id, step_type, description, func_name, func_arity,
                     centroid, created_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (sig_id, step_type, step_text, dsl_script, pack_embedding(embedding), now),
+                (sig_id, step_type, step_text, final_func_name, func_arity, pack_embedding(embedding), now),
             )
             last_id = cursor.lastrowid
 

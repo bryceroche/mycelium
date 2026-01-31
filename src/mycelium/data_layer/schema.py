@@ -28,10 +28,14 @@ CREATE TABLE IF NOT EXISTS step_signatures (
     clarifying_questions TEXT,
     param_descriptions TEXT,
 
-    -- DSL
+    -- Function Pointer (replaces DSL)
+    func_name TEXT,               -- Key into function_registry
+    func_arity INTEGER DEFAULT 2, -- Expected number of arguments
+    examples TEXT,
+
+    -- Legacy DSL (deprecated, kept for migration)
     dsl_script TEXT,
     dsl_type TEXT DEFAULT 'math',
-    examples TEXT,
 
     -- Statistics
     uses INTEGER DEFAULT 0,
@@ -137,10 +141,36 @@ def init_db(conn) -> None:
     conn.executescript(SQLITE_SCHEMA)
     conn.commit()
 
+    # Run migrations for existing databases
+    _run_migrations(conn)
+
     try:
         conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     except Exception as e:
         logger.warning("[schema] WAL checkpoint failed: %s", e)
+
+
+def _run_migrations(conn) -> None:
+    """Run schema migrations for existing databases."""
+    # Check if func_name column exists
+    cursor = conn.execute("PRAGMA table_info(step_signatures)")
+    columns = {row[1] for row in cursor.fetchall()}
+
+    if "func_name" not in columns:
+        logger.info("[schema] Adding func_name column")
+        try:
+            conn.execute("ALTER TABLE step_signatures ADD COLUMN func_name TEXT")
+            conn.commit()
+        except Exception as e:
+            logger.warning("[schema] Failed to add func_name: %s", e)
+
+    if "func_arity" not in columns:
+        logger.info("[schema] Adding func_arity column")
+        try:
+            conn.execute("ALTER TABLE step_signatures ADD COLUMN func_arity INTEGER DEFAULT 2")
+            conn.commit()
+        except Exception as e:
+            logger.warning("[schema] Failed to add func_arity: %s", e)
 
 
 STEP_SCHEMA = SQLITE_SCHEMA

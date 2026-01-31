@@ -17,11 +17,10 @@ import logging
 from dataclasses import dataclass, field
 from typing import Optional
 
-from mycelium.config import DB_PATH, USE_GTS_DECOMPOSITION, GTS_MODEL_PATH
+from mycelium.config import DB_PATH
 from mycelium.plan_models import Step, DAGPlan
-from mycelium.gts_decomposer import GTSDecomposer, DecomposedStep
 from mycelium.step_signatures import StepSignatureDB, StepSignature
-from mycelium.step_signatures.dsl_executor import try_execute_dsl_math
+from mycelium.function_registry import call_function, get_function_info
 from mycelium.embedding_cache import cached_embed
 from mycelium.answer_norm import normalize_answer
 from mycelium.data_layer.mcts import (
@@ -56,30 +55,20 @@ class StepResult:
 
 
 class Solver:
-    """Minimal solver for local decomposition architecture.
+    """Minimal solver for function pointer architecture.
 
     Routes steps to signatures via embedding similarity.
-    Executes DSL and records stats for Welford learning.
+    Executes functions from registry and records stats for Welford learning.
     """
 
-    def __init__(self, db_path: str = None, use_gts: bool = None):
+    def __init__(self, db_path: str = None):
         """Initialize solver with signature database.
 
         Args:
             db_path: Path to signature database.
-            use_gts: Whether to use GTS decomposition. If None, uses config.
         """
         self.db_path = db_path or DB_PATH
         self.step_db = StepSignatureDB(self.db_path)
-        self._use_gts = use_gts if use_gts is not None else USE_GTS_DECOMPOSITION
-        self._gts_decomposer: Optional[GTSDecomposer] = None
-
-    @property
-    def gts_decomposer(self) -> GTSDecomposer:
-        """Lazy-load GTSDecomposer when first accessed."""
-        if self._gts_decomposer is None:
-            self._gts_decomposer = GTSDecomposer(model_path=GTS_MODEL_PATH)
-        return self._gts_decomposer
 
     async def solve(
         self,
@@ -157,91 +146,66 @@ class Solver:
         )
 
     async def _decompose(self, problem: str) -> Optional[DAGPlan]:
-        """Decompose problem into steps.
+        """Decompose problem into atomic steps using mathdecomp.
 
-        If USE_GTS_DECOMPOSITION is enabled, uses GTS model.
-        Otherwise falls back to None (caller should provide plan).
+        Uses LLM-based recursive decomposition to break problem into
+        atomic function calls that can be executed via function_registry.
         """
-        if self._use_gts:
-            try:
-                return await self._decompose_with_gts(problem)
-            except NotImplementedError as e:
-                logger.warning(
-                    "[solver] GTS beam search not implemented, falling back: %s", e
-                )
-                return None
-            except Exception as e:
-                logger.warning(
-                    "[solver] GTS decomposition failed, falling back: %s", e
-                )
+        try:
+            from mycelium.mathdecomp import decompose_with_api
+
+            decomp = decompose_with_api(problem, max_retries=2)
+
+            if not decomp.verified and decomp.error:
+                logger.warning("[solver] Decomposition failed: %s", decomp.error)
                 return None
 
-        logger.warning("[solver] Local decomposition not yet implemented")
-        return None
+            # Convert mathdecomp.Decomposition to DAGPlan
+            return self._convert_decomp_to_dag(decomp, problem)
 
-    async def _decompose_with_gts(self, problem: str) -> Optional[DAGPlan]:
-        """Decompose problem using GTS model.
-
-        Per CLAUDE.md Big 5 #4 (True Atomic Decomposition):
-        GTS decomposes problems into atomic steps for routing.
-
-        Args:
-            problem: The problem text.
-
-        Returns:
-            DAGPlan with atomic steps, or None if decomposition fails.
-
-        Raises:
-            NotImplementedError: If GTS beam search not yet implemented.
-        """
-        # Run GTS decomposition (may raise NotImplementedError)
-        decomposed_steps = self.gts_decomposer.decompose(problem)
-
-        if not decomposed_steps:
-            logger.warning("[solver] GTS returned no steps for problem")
+        except Exception as e:
+            logger.warning("[solver] Decomposition error: %s", e)
             return None
 
-        # Convert DecomposedStep list to DAGPlan
-        return self._convert_gts_to_dag(decomposed_steps, problem)
+    def _convert_decomp_to_dag(self, decomp, problem: str) -> DAGPlan:
+        """Convert mathdecomp.Decomposition to DAGPlan format.
 
-    def _convert_gts_to_dag(
-        self,
-        decomposed_steps: list[DecomposedStep],
-        problem: str,
-    ) -> DAGPlan:
-        """Convert GTS DecomposedStep list to DAGPlan format.
-
-        Maps the GTS atomic steps to our standard Step/DAGPlan format
-        for compatibility with the existing execution pipeline.
-
-        Args:
-            decomposed_steps: List of DecomposedStep from GTSDecomposer.
-            problem: The original problem text.
-
-        Returns:
-            DAGPlan with Step objects ready for execution.
+        Maps the atomic steps to our standard Step/DAGPlan format
+        for compatibility with the execution pipeline.
         """
         steps: list[Step] = []
 
-        for ds in decomposed_steps:
-            # Build dependency list in our format
-            depends_on = [f"step_{dep}" for dep in ds.depends_on]
+        # Build extraction value map
+        extraction_values = {
+            ext["id"]: ext["value"] for ext in decomp.extractions
+        }
 
-            # Extract operation type from operation string (e.g., "add two numbers" -> "add")
-            operation = ds.operation.split()[0] if ds.operation else None
+        for md_step in decomp.steps:
+            # Build dependency list from inputs
+            depends_on = []
+            extracted_values = {}
+
+            for i, inp in enumerate(md_step.inputs):
+                if inp.type.value == "step":
+                    depends_on.append(inp.id)
+                elif inp.type.value == "extraction":
+                    # Map extraction to positional param
+                    if inp.id in extraction_values:
+                        extracted_values[f"arg_{i}"] = extraction_values[inp.id]
 
             step = Step(
-                id=f"step_{ds.step_number}",
-                task=ds.operation,
+                id=md_step.id,
+                task=md_step.semantic or f"{md_step.func} operation",
                 depends_on=depends_on,
-                extracted_values=ds.extracted_values,
-                operation=operation,
+                extracted_values=extracted_values,
+                operation=md_step.func,
             )
             steps.append(step)
 
         return DAGPlan(
             steps=steps,
             problem=problem,
+            phase1_values=extraction_values,
         )
 
     async def _execute_step(
@@ -285,11 +249,11 @@ class Solver:
             )
         else:
             # LOW similarity: trust GTS, create new signature
-            dsl_hint = self._get_dsl_hint(step)
+            func_hint = self._get_func_hint(step)
             signature, created = self.step_db.find_or_create(
                 step_text=step.task,
                 embedding=embedding_list,
-                dsl_hint=dsl_hint,
+                dsl_hint=func_hint,
             )
             if created:
                 logger.info(
@@ -304,10 +268,34 @@ class Solver:
         # Resolve values from context
         resolved_values = self._resolve_values(step, context, plan)
 
-        # Execute DSL
-        if signature.dsl_script:
-            result = try_execute_dsl_math(signature.dsl_script, resolved_values)
-            if result is not None:
+        # Execute function from registry
+        func_name = signature.func_name or step.operation
+        if func_name:
+            try:
+                # Get function info for arity
+                func_info = get_function_info(func_name)
+                if func_info is None:
+                    raise ValueError(f"Unknown function: {func_name}")
+
+                # Collect arguments in order
+                args = []
+                arity = func_info.get("arity", 2)
+
+                # First add dependency results, then extracted values
+                for i in range(arity):
+                    key = f"arg_{i}"
+                    if key in resolved_values:
+                        args.append(resolved_values[key])
+                    elif 'a' in resolved_values and i == 0:
+                        args.append(resolved_values['a'])
+                    elif 'b' in resolved_values and i == 1:
+                        args.append(resolved_values['b'])
+
+                if len(args) < arity:
+                    raise ValueError(f"Not enough arguments: got {len(args)}, need {arity}")
+
+                result = call_function(func_name, *args)
+
                 # Record success with similarity for Welford
                 self.step_db.record_success(signature.id, routing.similarity)
                 return StepResult(
@@ -317,39 +305,58 @@ class Solver:
                     similarity=routing.similarity,
                 )
 
-        # DSL failed or no DSL
+            except Exception as e:
+                logger.warning("[solver] Function execution failed: %s", e)
+                self.step_db.record_failure(signature.id)
+                return StepResult(
+                    success=False,
+                    error=f"Function execution failed: {e}",
+                    signature_id=signature.id,
+                    similarity=routing.similarity,
+                )
+
+        # No function available
         self.step_db.record_failure(signature.id)
         return StepResult(
             success=False,
-            error="DSL execution failed" if signature.dsl_script else "No DSL code",
+            error="No function available",
             signature_id=signature.id,
             similarity=routing.similarity,
         )
 
-    def _get_dsl_hint(self, step: Step) -> Optional[str]:
-        """Extract DSL operator hint from step for signature creation.
+    def _get_func_hint(self, step: Step) -> Optional[str]:
+        """Extract function name hint from step for signature creation.
 
         Per CLAUDE.md New Favorite Pattern: consolidate to single entry point.
-        This extracts the operator so find_or_create() can generate proper DSL.
+        This extracts the function name so find_or_create() can set proper func_name.
         """
-        # Map operation names to DSL operators
-        op_map = {
-            'add': '+',
-            'subtract': '-',
-            'multiply': '*',
-            'divide': '/',
-            'power': '^',
+        # Map operation names to function registry keys
+        func_map = {
+            'add': 'add',
+            'sub': 'sub',
+            'subtract': 'sub',
+            'mul': 'mul',
+            'multiply': 'mul',
+            'truediv': 'truediv',
+            'div': 'truediv',
+            'divide': 'truediv',
+            'pow': 'pow',
+            'power': 'pow',
+            'sqrt': 'sqrt',
+            'abs': 'abs',
+            'floor': 'floor',
+            'ceil': 'ceil',
         }
 
-        # Check step.operation field first (set during GTS decomposition)
-        if step.operation and step.operation in op_map:
-            return op_map[step.operation]
+        # Check step.operation field first (set during decomposition)
+        if step.operation and step.operation in func_map:
+            return func_map[step.operation]
 
         # Fallback: extract from task text
         task_lower = step.task.lower()
-        for op_name, op_symbol in op_map.items():
+        for op_name, func_name in func_map.items():
             if op_name in task_lower:
-                return op_symbol
+                return func_name
 
         return None
 
@@ -361,8 +368,8 @@ class Solver:
     ) -> dict:
         """Resolve step values from context and plan.
 
-        Maps NUM_X variables and step references to positional params (a, b).
-        DSL scripts use 'a' and 'b' as operands.
+        Maps extracted values and step references to positional params.
+        Function calls use 'a', 'b' or 'arg_0', 'arg_1' as operands.
         """
         # Collect values in order: step dependencies first, then NUM_X values
         operands = []
@@ -399,7 +406,7 @@ class Solver:
 
         operands.extend(num_values)
 
-        # 3. Map to positional params a, b (what DSL scripts expect)
+        # 3. Map to positional params a, b (for function calls)
         resolved = {}
         if len(operands) >= 1:
             resolved['a'] = operands[0]
