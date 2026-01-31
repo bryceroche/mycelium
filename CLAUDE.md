@@ -13,30 +13,6 @@
 | **Tree** | Semantic → function mapping, k-NN classification | Which descriptions map to which functions |
 | **Python** | Deterministic execution via function registry | Nothing - just executes |
 
-```
-Problem Text
-     │
-     ▼
-┌─────────────────────────────────┐
-│  LLM Decomposer                 │
-│  (with signature menu)          │
-└─────────────────────────────────┘
-     │
-     ▼ [atomic steps with func names]
-┌─────────────────────────────────┐
-│  Signature Store (k-NN)         │
-│  300-1000 prototypes            │
-└─────────────────────────────────┘
-     │
-     ▼ [best matching signature]
-┌─────────────────────────────────┐
-│  Function Registry              │
-│  call_function(name, *args)     │
-└─────────────────────────────────┘
-     │
-     ▼
-   Result
-```
 
 ## System Independence
 The system restructures its own signature store via post-mortem analysis—that's by design. Resist manually intervening. Modify Python code and database schema, not the signatures directly.
