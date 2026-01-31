@@ -456,6 +456,699 @@ if SYMPY_AVAILABLE:
 
 
 # =============================================================================
+# TIER 8: Percentages & Ratios (Word Problems)
+# =============================================================================
+
+def _percent_of(percent, whole):
+    """Calculate percent of a whole. E.g., 20% of 50 = 10."""
+    return (percent / 100) * whole
+
+def _what_percent(part, whole):
+    """What percent is part of whole?"""
+    if whole == 0:
+        return None
+    return (part / whole) * 100
+
+def _percent_change(old, new):
+    """Percent change from old to new."""
+    if old == 0:
+        return None
+    return ((new - old) / old) * 100
+
+def _percent_increase(value, percent):
+    """Increase value by percent. E.g., 100 increased by 20% = 120."""
+    return value * (1 + percent / 100)
+
+def _percent_decrease(value, percent):
+    """Decrease value by percent. E.g., 100 decreased by 20% = 80."""
+    return value * (1 - percent / 100)
+
+def _ratio(a, b):
+    """Ratio a:b as a decimal."""
+    if b == 0:
+        return None
+    return a / b
+
+def _proportion_solve(a, b, c):
+    """Solve a/b = c/x for x."""
+    if a == 0:
+        return None
+    return (b * c) / a
+
+def _remaining_after(total, spent):
+    """What remains after spending."""
+    return total - spent
+
+def _split_equally(total, parts):
+    """Split total into equal parts."""
+    if parts == 0:
+        return None
+    return total / parts
+
+def _combine_parts(part, count):
+    """Combine multiple equal parts. E.g., 5 items at $3 each = $15."""
+    return part * count
+
+
+FUNCTION_REGISTRY.update({
+    "percent_of": {
+        "func": _percent_of,
+        "arity": 2,
+        "tier": 8,
+        "module": "local",
+        "description": "Calculate percent of a whole (e.g., 20% of 50)",
+    },
+    "what_percent": {
+        "func": _what_percent,
+        "arity": 2,
+        "tier": 8,
+        "module": "local",
+        "description": "What percent is part of whole",
+    },
+    "percent_change": {
+        "func": _percent_change,
+        "arity": 2,
+        "tier": 8,
+        "module": "local",
+        "description": "Percent change from old to new value",
+    },
+    "percent_increase": {
+        "func": _percent_increase,
+        "arity": 2,
+        "tier": 8,
+        "module": "local",
+        "description": "Increase value by a percentage",
+    },
+    "percent_decrease": {
+        "func": _percent_decrease,
+        "arity": 2,
+        "tier": 8,
+        "module": "local",
+        "description": "Decrease value by a percentage",
+    },
+    "ratio": {
+        "func": _ratio,
+        "arity": 2,
+        "tier": 8,
+        "module": "local",
+        "description": "Ratio a:b as a decimal",
+    },
+    "proportion_solve": {
+        "func": _proportion_solve,
+        "arity": 3,
+        "tier": 8,
+        "module": "local",
+        "description": "Solve proportion a/b = c/x for x",
+    },
+    "remaining_after": {
+        "func": _remaining_after,
+        "arity": 2,
+        "tier": 8,
+        "module": "local",
+        "description": "What remains after subtracting (total - spent)",
+    },
+    "split_equally": {
+        "func": _split_equally,
+        "arity": 2,
+        "tier": 8,
+        "module": "local",
+        "description": "Split total into equal parts",
+    },
+    "combine_parts": {
+        "func": _combine_parts,
+        "arity": 2,
+        "tier": 8,
+        "module": "local",
+        "description": "Combine multiple equal parts (part × count)",
+    },
+})
+
+
+# =============================================================================
+# TIER 9: Geometry
+# =============================================================================
+
+def _area_rectangle(length, width):
+    """Area of a rectangle."""
+    return length * width
+
+def _area_square(side):
+    """Area of a square."""
+    return side * side
+
+def _area_triangle(base, height):
+    """Area of a triangle (1/2 × base × height)."""
+    return 0.5 * base * height
+
+def _area_circle(radius):
+    """Area of a circle (π × r²)."""
+    return math.pi * radius * radius
+
+def _area_trapezoid(base1, base2, height):
+    """Area of a trapezoid."""
+    return 0.5 * (base1 + base2) * height
+
+def _perimeter_rectangle(length, width):
+    """Perimeter of a rectangle."""
+    return 2 * (length + width)
+
+def _perimeter_square(side):
+    """Perimeter of a square."""
+    return 4 * side
+
+def _circumference(radius):
+    """Circumference of a circle (2 × π × r)."""
+    return 2 * math.pi * radius
+
+def _volume_cube(side):
+    """Volume of a cube."""
+    return side ** 3
+
+def _volume_box(length, width, height):
+    """Volume of a rectangular box."""
+    return length * width * height
+
+def _volume_sphere(radius):
+    """Volume of a sphere (4/3 × π × r³)."""
+    return (4/3) * math.pi * radius ** 3
+
+def _volume_cylinder(radius, height):
+    """Volume of a cylinder (π × r² × h)."""
+    return math.pi * radius ** 2 * height
+
+def _surface_area_cube(side):
+    """Surface area of a cube (6 × s²)."""
+    return 6 * side ** 2
+
+def _surface_area_sphere(radius):
+    """Surface area of a sphere (4 × π × r²)."""
+    return 4 * math.pi * radius ** 2
+
+def _pythagorean_c(a, b):
+    """Find hypotenuse given two legs."""
+    return math.sqrt(a ** 2 + b ** 2)
+
+def _pythagorean_leg(c, a):
+    """Find leg given hypotenuse and other leg."""
+    val = c ** 2 - a ** 2
+    if val < 0:
+        return None
+    return math.sqrt(val)
+
+def _distance_2d(x1, y1, x2, y2):
+    """Euclidean distance between two points."""
+    return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
+def _midpoint(a, b):
+    """Midpoint between two numbers."""
+    return (a + b) / 2
+
+
+FUNCTION_REGISTRY.update({
+    "area_rectangle": {
+        "func": _area_rectangle,
+        "arity": 2,
+        "tier": 9,
+        "module": "local",
+        "description": "Area of a rectangle (length × width)",
+    },
+    "area_square": {
+        "func": _area_square,
+        "arity": 1,
+        "tier": 9,
+        "module": "local",
+        "description": "Area of a square (side²)",
+    },
+    "area_triangle": {
+        "func": _area_triangle,
+        "arity": 2,
+        "tier": 9,
+        "module": "local",
+        "description": "Area of a triangle (½ × base × height)",
+    },
+    "area_circle": {
+        "func": _area_circle,
+        "arity": 1,
+        "tier": 9,
+        "module": "local",
+        "description": "Area of a circle (π × r²)",
+    },
+    "area_trapezoid": {
+        "func": _area_trapezoid,
+        "arity": 3,
+        "tier": 9,
+        "module": "local",
+        "description": "Area of a trapezoid",
+    },
+    "perimeter_rectangle": {
+        "func": _perimeter_rectangle,
+        "arity": 2,
+        "tier": 9,
+        "module": "local",
+        "description": "Perimeter of a rectangle",
+    },
+    "perimeter_square": {
+        "func": _perimeter_square,
+        "arity": 1,
+        "tier": 9,
+        "module": "local",
+        "description": "Perimeter of a square",
+    },
+    "circumference": {
+        "func": _circumference,
+        "arity": 1,
+        "tier": 9,
+        "module": "local",
+        "description": "Circumference of a circle (2πr)",
+    },
+    "volume_cube": {
+        "func": _volume_cube,
+        "arity": 1,
+        "tier": 9,
+        "module": "local",
+        "description": "Volume of a cube",
+    },
+    "volume_box": {
+        "func": _volume_box,
+        "arity": 3,
+        "tier": 9,
+        "module": "local",
+        "description": "Volume of a rectangular box",
+    },
+    "volume_sphere": {
+        "func": _volume_sphere,
+        "arity": 1,
+        "tier": 9,
+        "module": "local",
+        "description": "Volume of a sphere",
+    },
+    "volume_cylinder": {
+        "func": _volume_cylinder,
+        "arity": 2,
+        "tier": 9,
+        "module": "local",
+        "description": "Volume of a cylinder",
+    },
+    "surface_area_cube": {
+        "func": _surface_area_cube,
+        "arity": 1,
+        "tier": 9,
+        "module": "local",
+        "description": "Surface area of a cube",
+    },
+    "surface_area_sphere": {
+        "func": _surface_area_sphere,
+        "arity": 1,
+        "tier": 9,
+        "module": "local",
+        "description": "Surface area of a sphere",
+    },
+    "pythagorean_c": {
+        "func": _pythagorean_c,
+        "arity": 2,
+        "tier": 9,
+        "module": "local",
+        "description": "Find hypotenuse (c = √(a² + b²))",
+    },
+    "pythagorean_leg": {
+        "func": _pythagorean_leg,
+        "arity": 2,
+        "tier": 9,
+        "module": "local",
+        "description": "Find leg given hypotenuse and other leg",
+    },
+    "distance_2d": {
+        "func": _distance_2d,
+        "arity": 4,
+        "tier": 9,
+        "module": "local",
+        "description": "Distance between two 2D points",
+    },
+    "midpoint": {
+        "func": _midpoint,
+        "arity": 2,
+        "tier": 9,
+        "module": "local",
+        "description": "Midpoint between two values",
+    },
+})
+
+
+# =============================================================================
+# TIER 10: Financial / Money
+# =============================================================================
+
+def _simple_interest(principal, rate, time):
+    """Simple interest: P × r × t (rate as decimal)."""
+    return principal * rate * time
+
+def _compound_interest(principal, rate, n, time):
+    """Compound interest amount: P × (1 + r/n)^(n×t)."""
+    return principal * ((1 + rate / n) ** (n * time))
+
+def _discount(original, percent_off):
+    """Price after discount."""
+    return original * (1 - percent_off / 100)
+
+def _markup(cost, percent_markup):
+    """Price after markup."""
+    return cost * (1 + percent_markup / 100)
+
+def _profit(revenue, cost):
+    """Profit = Revenue - Cost."""
+    return revenue - cost
+
+def _profit_margin(profit, revenue):
+    """Profit margin as percentage."""
+    if revenue == 0:
+        return None
+    return (profit / revenue) * 100
+
+def _unit_price(total, quantity):
+    """Price per unit."""
+    if quantity == 0:
+        return None
+    return total / quantity
+
+def _total_cost(unit_price, quantity):
+    """Total cost = unit price × quantity."""
+    return unit_price * quantity
+
+def _tax_amount(price, tax_rate):
+    """Tax amount (rate as percent)."""
+    return price * (tax_rate / 100)
+
+def _price_with_tax(price, tax_rate):
+    """Price including tax."""
+    return price * (1 + tax_rate / 100)
+
+def _tip_amount(bill, tip_percent):
+    """Tip amount."""
+    return bill * (tip_percent / 100)
+
+
+FUNCTION_REGISTRY.update({
+    "simple_interest": {
+        "func": _simple_interest,
+        "arity": 3,
+        "tier": 10,
+        "module": "local",
+        "description": "Simple interest (P × r × t)",
+    },
+    "compound_interest": {
+        "func": _compound_interest,
+        "arity": 4,
+        "tier": 10,
+        "module": "local",
+        "description": "Compound interest amount",
+    },
+    "discount": {
+        "func": _discount,
+        "arity": 2,
+        "tier": 10,
+        "module": "local",
+        "description": "Price after discount",
+    },
+    "markup": {
+        "func": _markup,
+        "arity": 2,
+        "tier": 10,
+        "module": "local",
+        "description": "Price after markup",
+    },
+    "profit": {
+        "func": _profit,
+        "arity": 2,
+        "tier": 10,
+        "module": "local",
+        "description": "Profit (revenue - cost)",
+    },
+    "profit_margin": {
+        "func": _profit_margin,
+        "arity": 2,
+        "tier": 10,
+        "module": "local",
+        "description": "Profit margin as percentage",
+    },
+    "unit_price": {
+        "func": _unit_price,
+        "arity": 2,
+        "tier": 10,
+        "module": "local",
+        "description": "Price per unit",
+    },
+    "total_cost": {
+        "func": _total_cost,
+        "arity": 2,
+        "tier": 10,
+        "module": "local",
+        "description": "Total cost (unit price × quantity)",
+    },
+    "tax_amount": {
+        "func": _tax_amount,
+        "arity": 2,
+        "tier": 10,
+        "module": "local",
+        "description": "Tax amount",
+    },
+    "price_with_tax": {
+        "func": _price_with_tax,
+        "arity": 2,
+        "tier": 10,
+        "module": "local",
+        "description": "Price including tax",
+    },
+    "tip_amount": {
+        "func": _tip_amount,
+        "arity": 2,
+        "tier": 10,
+        "module": "local",
+        "description": "Tip amount",
+    },
+})
+
+
+# =============================================================================
+# TIER 11: Rate / Time / Distance / Work
+# =============================================================================
+
+def _distance_formula(rate, time):
+    """Distance = Rate × Time."""
+    return rate * time
+
+def _rate_formula(distance, time):
+    """Rate = Distance / Time."""
+    if time == 0:
+        return None
+    return distance / time
+
+def _time_formula(distance, rate):
+    """Time = Distance / Rate."""
+    if rate == 0:
+        return None
+    return distance / rate
+
+def _combined_work_rate(rate1, rate2):
+    """Combined work rate when working together."""
+    return rate1 + rate2
+
+def _time_working_together(rate1, rate2):
+    """Time to complete 1 job working together."""
+    combined = rate1 + rate2
+    if combined == 0:
+        return None
+    return 1 / combined
+
+def _average_speed(total_distance, total_time):
+    """Average speed."""
+    if total_time == 0:
+        return None
+    return total_distance / total_time
+
+def _relative_speed_opposite(speed1, speed2):
+    """Relative speed when moving toward each other."""
+    return speed1 + speed2
+
+def _relative_speed_same(speed1, speed2):
+    """Relative speed when moving in same direction."""
+    return abs(speed1 - speed2)
+
+def _meeting_time(distance, speed1, speed2):
+    """Time until two objects meet (moving toward each other)."""
+    combined = speed1 + speed2
+    if combined == 0:
+        return None
+    return distance / combined
+
+
+FUNCTION_REGISTRY.update({
+    "distance_formula": {
+        "func": _distance_formula,
+        "arity": 2,
+        "tier": 11,
+        "module": "local",
+        "description": "Distance = Rate × Time",
+    },
+    "rate_formula": {
+        "func": _rate_formula,
+        "arity": 2,
+        "tier": 11,
+        "module": "local",
+        "description": "Rate = Distance / Time",
+    },
+    "time_formula": {
+        "func": _time_formula,
+        "arity": 2,
+        "tier": 11,
+        "module": "local",
+        "description": "Time = Distance / Rate",
+    },
+    "combined_work_rate": {
+        "func": _combined_work_rate,
+        "arity": 2,
+        "tier": 11,
+        "module": "local",
+        "description": "Combined work rate",
+    },
+    "time_working_together": {
+        "func": _time_working_together,
+        "arity": 2,
+        "tier": 11,
+        "module": "local",
+        "description": "Time to complete job together",
+    },
+    "average_speed": {
+        "func": _average_speed,
+        "arity": 2,
+        "tier": 11,
+        "module": "local",
+        "description": "Average speed",
+    },
+    "relative_speed_opposite": {
+        "func": _relative_speed_opposite,
+        "arity": 2,
+        "tier": 11,
+        "module": "local",
+        "description": "Relative speed (moving toward each other)",
+    },
+    "relative_speed_same": {
+        "func": _relative_speed_same,
+        "arity": 2,
+        "tier": 11,
+        "module": "local",
+        "description": "Relative speed (same direction)",
+    },
+    "meeting_time": {
+        "func": _meeting_time,
+        "arity": 3,
+        "tier": 11,
+        "module": "local",
+        "description": "Time until objects meet",
+    },
+})
+
+
+# =============================================================================
+# TIER 12: Sequences & Series
+# =============================================================================
+
+def _arithmetic_term(a1, d, n):
+    """nth term of arithmetic sequence: a1 + (n-1)×d."""
+    return a1 + (n - 1) * d
+
+def _arithmetic_sum(a1, an, n):
+    """Sum of arithmetic sequence: n×(a1 + an)/2."""
+    return n * (a1 + an) / 2
+
+def _geometric_term(a1, r, n):
+    """nth term of geometric sequence: a1 × r^(n-1)."""
+    return a1 * (r ** (n - 1))
+
+def _geometric_sum(a1, r, n):
+    """Sum of geometric sequence."""
+    if r == 1:
+        return a1 * n
+    return a1 * (1 - r ** n) / (1 - r)
+
+def _sum_consecutive(start, end):
+    """Sum of consecutive integers from start to end (inclusive)."""
+    n = end - start + 1
+    return n * (start + end) // 2
+
+def _sum_first_n(n):
+    """Sum of first n positive integers: n×(n+1)/2."""
+    return n * (n + 1) // 2
+
+def _triangular_number(n):
+    """nth triangular number: n×(n+1)/2."""
+    return n * (n + 1) // 2
+
+def _square_number(n):
+    """nth square number: n²."""
+    return n * n
+
+
+FUNCTION_REGISTRY.update({
+    "arithmetic_term": {
+        "func": _arithmetic_term,
+        "arity": 3,
+        "tier": 12,
+        "module": "local",
+        "description": "nth term of arithmetic sequence",
+    },
+    "arithmetic_sum": {
+        "func": _arithmetic_sum,
+        "arity": 3,
+        "tier": 12,
+        "module": "local",
+        "description": "Sum of arithmetic sequence",
+    },
+    "geometric_term": {
+        "func": _geometric_term,
+        "arity": 3,
+        "tier": 12,
+        "module": "local",
+        "description": "nth term of geometric sequence",
+    },
+    "geometric_sum": {
+        "func": _geometric_sum,
+        "arity": 3,
+        "tier": 12,
+        "module": "local",
+        "description": "Sum of geometric sequence",
+    },
+    "sum_consecutive": {
+        "func": _sum_consecutive,
+        "arity": 2,
+        "tier": 12,
+        "module": "local",
+        "description": "Sum of consecutive integers",
+    },
+    "sum_first_n": {
+        "func": _sum_first_n,
+        "arity": 1,
+        "tier": 12,
+        "module": "local",
+        "description": "Sum of first n positive integers",
+    },
+    "triangular_number": {
+        "func": _triangular_number,
+        "arity": 1,
+        "tier": 12,
+        "module": "local",
+        "description": "nth triangular number",
+    },
+    "square_number": {
+        "func": _square_number,
+        "arity": 1,
+        "tier": 12,
+        "module": "local",
+        "description": "nth square number",
+    },
+})
+
+
+# =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
 
@@ -559,8 +1252,27 @@ def get_tier_description(tier: int) -> str:
         5: "Number Theory",
         6: "Statistics",
         7: "Symbolic (requires sympy)",
+        8: "Percentages & Ratios",
+        9: "Geometry",
+        10: "Financial",
+        11: "Rate/Time/Distance",
+        12: "Sequences & Series",
     }
     return descriptions.get(tier, f"Tier {tier}")
+
+
+def count_functions() -> int:
+    """Count total registered functions."""
+    return len(FUNCTION_REGISTRY)
+
+
+def execute(func_name: str, *args) -> Any:
+    """Execute a function by name (alias for call_function)."""
+    return call_function(func_name, *args)
+
+
+# Alias for flat architecture compatibility
+REGISTRY = {name: info["func"] for name, info in FUNCTION_REGISTRY.items()}
 
 
 # =============================================================================
