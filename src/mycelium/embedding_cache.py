@@ -103,13 +103,24 @@ def cached_embed(text: str, embedder=None) -> np.ndarray:
     return cache.get_or_compute(text, embedder.embed)
 
 
-async def cached_embed_async(text: str, embed_fn) -> np.ndarray:
-    """Async version of cached_embed."""
+async def cached_embed_async(text: str, embedder=None) -> np.ndarray:
+    """Async version of cached_embed using asyncio.to_thread to avoid blocking.
+
+    This wraps the synchronous embedder in a thread to prevent blocking the event loop.
+    """
+    import asyncio
+
+    if embedder is None:
+        from mycelium.embedder import Embedder
+        embedder = Embedder.get_instance()
+
     cache = get_embedding_cache()
     cached = cache.get(text)
     if cached is not None:
         return cached
-    embedding = await embed_fn(text)
+
+    # Run sync embedding in thread pool to avoid blocking event loop
+    embedding = await asyncio.to_thread(embedder.embed, text)
     cache.put(text, embedding)
     return embedding
 

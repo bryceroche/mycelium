@@ -14,21 +14,14 @@ backward compatibility but are not used in the flat prototype architecture.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Union
+from typing import Optional
 import json
 import logging
 import numpy as np
 
+from mycelium.step_signatures.utils import unpack_embedding
+
 logger = logging.getLogger(__name__)
-
-
-def _parse_centroid_data(data: Union[str, bytes, None]) -> Optional[np.ndarray]:
-    """Parse centroid data (JSON string or binary bytes)."""
-    if data is None:
-        return None
-    if isinstance(data, str):
-        return np.array(json.loads(data), dtype=np.float32)
-    return np.frombuffer(data, dtype=np.float32)
 
 
 @dataclass
@@ -120,14 +113,14 @@ class StepSignature:
         centroid = None
         if row.get("centroid"):
             try:
-                centroid = _parse_centroid_data(row["centroid"])
+                centroid = unpack_embedding(row["centroid"])
             except Exception:
                 pass
 
         embedding_sum = None
         if row.get("embedding_sum"):
             try:
-                embedding_sum = _parse_centroid_data(row["embedding_sum"])
+                embedding_sum = unpack_embedding(row["embedding_sum"])
             except Exception:
                 pass
 
@@ -205,6 +198,13 @@ class StepSignature:
         # Handle func_arity: use new column if present, default to 2
         func_arity = row.get("func_arity", 2) or 2
 
+        description_variants = []
+        if row.get("description_variants"):
+            try:
+                description_variants = json.loads(row["description_variants"])
+            except json.JSONDecodeError:
+                pass
+
         return cls(
             id=row.get("id"),
             signature_id=row.get("signature_id", ""),
@@ -225,6 +225,10 @@ class StepSignature:
             success_sim_count=row.get("success_sim_count", 0) or 0,
             success_sim_mean=row.get("success_sim_mean", 0.0) or 0.0,
             success_sim_m2=row.get("success_sim_m2", 0.0) or 0.0,
+            description_variants=description_variants,
+            merge_dist_count=row.get("merge_dist_count", 0) or 0,
+            merge_dist_mean=row.get("merge_dist_mean", 0.0) or 0.0,
+            merge_dist_m2=row.get("merge_dist_m2", 0.0) or 0.0,
             coverage_sim_count=row.get("coverage_sim_count", 0) or 0,
             coverage_sim_mean=row.get("coverage_sim_mean", 0.0) or 0.0,
             coverage_sim_m2=row.get("coverage_sim_m2", 0.0) or 0.0,

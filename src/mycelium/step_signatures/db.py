@@ -16,7 +16,7 @@ from typing import Optional, List
 
 import numpy as np
 
-from mycelium.config import EMBEDDING_DIM, DB_PATH
+from mycelium.config import EMBEDDING_DIM, DB_PATH, MIN_MATCH_THRESHOLD
 from mycelium.data_layer import get_db
 from mycelium.data_layer.schema import init_db
 from mycelium.step_signatures.models import StepSignature
@@ -502,7 +502,7 @@ class StepSignatureDB:
 
         return weighted_mean, stddev, total_count
 
-    def get_adaptive_threshold(self, fallback: float = 0.85) -> float:
+    def get_adaptive_threshold(self, fallback: float = None) -> float:
         """Get Welford-adaptive similarity threshold.
 
         Per CLAUDE.md "The Flow": DB Stats → Welford → Tree Structure.
@@ -518,7 +518,11 @@ class StepSignatureDB:
             ADAPTIVE_THRESHOLD_K,
             ADAPTIVE_THRESHOLD_MIN,
             ADAPTIVE_THRESHOLD_MAX,
+            MIN_MATCH_THRESHOLD,
         )
+
+        if fallback is None:
+            fallback = MIN_MATCH_THRESHOLD
 
         mean, stddev, count = self.get_global_similarity_stats()
 
@@ -722,34 +726,34 @@ class StepSignatureDB:
         new_sum_json = pack_embedding(new_sum)
 
         # Update with Welford algorithm for merge distance
-        with conn.connection() as raw_conn:
-            raw_conn.execute(
-                """
-                UPDATE step_signatures
-                SET centroid = ?,
-                    embedding_sum = ?,
-                    embedding_count = ?,
-                    description_variants = ?,
-                    merge_dist_count = COALESCE(merge_dist_count, 0) + 1,
-                    merge_dist_mean = COALESCE(merge_dist_mean, 0) +
-                        (? - COALESCE(merge_dist_mean, 0)) / (COALESCE(merge_dist_count, 0) + 1),
-                    merge_dist_m2 = COALESCE(merge_dist_m2, 0) +
-                        (? - COALESCE(merge_dist_mean, 0)) *
-                        (? - (COALESCE(merge_dist_mean, 0) + (? - COALESCE(merge_dist_mean, 0)) / (COALESCE(merge_dist_count, 0) + 1)))
-                WHERE id = ?
-                """,
-                (
-                    new_centroid_json,
-                    new_sum_json,
-                    new_count,
-                    variants_json,
-                    distance,
-                    distance,
-                    distance,
-                    distance,
-                    sig_id,
-                ),
-            )
+        # Use convenience method - single statement, no cursor properties needed
+        conn.execute(
+            """
+            UPDATE step_signatures
+            SET centroid = ?,
+                embedding_sum = ?,
+                embedding_count = ?,
+                description_variants = ?,
+                merge_dist_count = COALESCE(merge_dist_count, 0) + 1,
+                merge_dist_mean = COALESCE(merge_dist_mean, 0) +
+                    (? - COALESCE(merge_dist_mean, 0)) / (COALESCE(merge_dist_count, 0) + 1),
+                merge_dist_m2 = COALESCE(merge_dist_m2, 0) +
+                    (? - COALESCE(merge_dist_mean, 0)) *
+                    (? - (COALESCE(merge_dist_mean, 0) + (? - COALESCE(merge_dist_mean, 0)) / (COALESCE(merge_dist_count, 0) + 1)))
+            WHERE id = ?
+            """,
+            (
+                new_centroid_json,
+                new_sum_json,
+                new_count,
+                variants_json,
+                distance,
+                distance,
+                distance,
+                distance,
+                sig_id,
+            ),
+        )
 
         # Invalidate centroid cache for this signature
         invalidate_centroid_cache(sig_id)
@@ -1180,7 +1184,6 @@ class StepSignatureDB:
         self,
         step_text: str,
         embedding: List[float],
-        dsl_hint: str = None,
         func_name: str = None,
         **kwargs,
     ) -> tuple[StepSignature, bool]:
@@ -1189,8 +1192,7 @@ class StepSignatureDB:
         Args:
             step_text: Description of the step
             embedding: Step embedding vector
-            dsl_hint: Optional function name hint (add, sub, mul, etc.)
-            func_name: Explicit function name (takes precedence over dsl_hint)
+            func_name: Optional function name (add, sub, mul, etc.)
 
         Returns:
             (signature, created) tuple
@@ -1209,7 +1211,7 @@ class StepSignatureDB:
                 best_sig = sig
 
         # If good match found, return it
-        if best_sig and best_sim >= 0.85:
+        if best_sig and best_sim >= MIN_MATCH_THRESHOLD:
             return best_sig, False
 
         # Create new signature
@@ -1217,8 +1219,8 @@ class StepSignatureDB:
         step_type = normalize_step_text(step_text)[:100]
         sig_id = str(uuid.uuid4())
 
-        # Determine function name (func_name takes precedence over dsl_hint)
-        final_func_name = func_name or dsl_hint
+        # Use func_name for function registry lookup
+        final_func_name = func_name
 
         # Get arity from function registry if available
         func_arity = 2  # default
@@ -1233,6 +1235,7 @@ class StepSignatureDB:
 
         now = datetime.now(timezone.utc).isoformat()
 
+        # Use explicit context manager to access cursor.lastrowid within transaction
         with conn.connection() as raw_conn:
             cursor = raw_conn.execute(
                 """
@@ -1259,6 +1262,7 @@ class StepSignatureDB:
             return {"error": "Use force=True to confirm"}
 
         conn = self._connection()
+        # Use explicit context manager for atomic multi-statement transaction
         with conn.connection() as raw_conn:
             raw_conn.execute("DELETE FROM step_signatures")
             raw_conn.execute("DELETE FROM signature_relationships")

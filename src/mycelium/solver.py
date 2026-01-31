@@ -25,7 +25,7 @@ from mycelium.config import DB_PATH
 from mycelium.plan_models import Step, DAGPlan
 from mycelium.step_signatures import StepSignatureDB, StepSignature
 from mycelium.function_registry import call_function, get_function_info, execute, REGISTRY
-from mycelium.embedding_cache import cached_embed
+from mycelium.embedding_cache import cached_embed, cached_embed_async
 from mycelium.answer_norm import normalize_answer
 from mycelium.data_layer.mcts import (
     create_dag,
@@ -34,7 +34,6 @@ from mycelium.data_layer.mcts import (
     run_postmortem,
 )
 from mycelium.llm_decomposer import LLMDecomposer, DecomposedStep
-from mycelium.embedder import get_embedding
 
 logger = logging.getLogger(__name__)
 
@@ -148,7 +147,7 @@ class Solver:
         """Solve a single step with similarity-trend recursion."""
 
         # Embed and classify
-        embedding = get_embedding(step.description)
+        embedding = cached_embed(step.description)
         func_name, similarity, sig = self.step_db.classify(embedding)
         threshold = self.step_db.get_adaptive_threshold()
 
@@ -426,8 +425,8 @@ class Solver:
         4. If similarity < threshold → trust GTS (create new signature)
         5. Execute DSL, record outcome for Welford learning
         """
-        # Embed step (synchronous)
-        step_embedding = cached_embed(step.task)
+        # Embed step (async to avoid blocking event loop)
+        step_embedding = await cached_embed_async(step.task)
         if step_embedding is None:
             return StepResult(success=False, error="Failed to embed step")
 
@@ -454,7 +453,7 @@ class Solver:
             signature, created = self.step_db.find_or_create(
                 step_text=step.task,
                 embedding=embedding_list,
-                dsl_hint=func_hint,
+                func_name=func_hint,
             )
             if created:
                 logger.info(
