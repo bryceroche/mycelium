@@ -1,26 +1,32 @@
-"""Step Signature Models - minimal for local decomposition."""
+"""Step Signature Models - prototypes for 200-class function classification.
+
+Each signature is a prototype that maps a semantic description to a function.
+Multiple signatures can map to the same function (semantic variants).
+
+Key fields:
+- centroid: Learned embedding (prototype vector)
+- func_name: Key into function_registry (~200 functions)
+- description: Natural language description (few-shot example for LLM)
+- successes/uses: Track success rate for ranking
+
+Hierarchy fields (is_semantic_umbrella, is_root, depth) are kept for
+backward compatibility but are not used in the flat prototype architecture.
+"""
 
 from dataclasses import dataclass, field
-from typing import Optional, Union
+from typing import Optional
 import json
 import logging
 import numpy as np
 
+from mycelium.step_signatures.utils import unpack_embedding
+
 logger = logging.getLogger(__name__)
-
-
-def _parse_centroid_data(data: Union[str, bytes, None]) -> Optional[np.ndarray]:
-    """Parse centroid data (JSON string or binary bytes)."""
-    if data is None:
-        return None
-    if isinstance(data, str):
-        return np.array(json.loads(data), dtype=np.float32)
-    return np.frombuffer(data, dtype=np.float32)
 
 
 @dataclass
 class StepSignature:
-    """A step signature for routing and DSL execution."""
+    """A step signature for routing and function execution."""
     id: Optional[int] = None
     signature_id: str = ""
     centroid: Optional[np.ndarray] = None
@@ -30,8 +36,8 @@ class StepSignature:
     description: str = ""
     clarifying_questions: list[str] = field(default_factory=list)
     param_descriptions: dict[str, str] = field(default_factory=dict)
-    dsl_script: Optional[str] = None
-    dsl_type: str = "math"
+    func_name: Optional[str] = None  # Key into function_registry
+    func_arity: int = 2              # Expected number of arguments
     computation_graph: Optional[str] = None
     graph_embedding: Optional[np.ndarray] = None
     examples: list[dict] = field(default_factory=list)
@@ -44,6 +50,16 @@ class StepSignature:
     success_sim_count: int = 0
     success_sim_mean: float = 0.0
     success_sim_m2: float = 0.0
+    # Merge tracking
+    description_variants: list[str] = field(default_factory=list)
+    merge_dist_count: int = 0
+    merge_dist_mean: float = 0.0
+    merge_dist_m2: float = 0.0
+    # Coverage tracking - Welford stats for similarity scores
+    coverage_sim_count: int = 0
+    coverage_sim_mean: float = 0.0
+    coverage_sim_m2: float = 0.0
+    low_coverage_count: int = 0
     is_semantic_umbrella: bool = False
     is_root: bool = False
     depth: int = 0
@@ -57,8 +73,8 @@ class StepSignature:
         return self.successes / self.uses if self.uses > 0 else 0.0
 
     @property
-    def has_dsl(self) -> bool:
-        return bool(self.dsl_script)
+    def has_func(self) -> bool:
+        return self.func_name is not None
 
     @classmethod
     def from_row(cls, row: dict) -> "StepSignature":
@@ -87,17 +103,24 @@ class StepSignature:
             except json.JSONDecodeError:
                 pass
 
+        description_variants = []
+        if row.get("description_variants"):
+            try:
+                description_variants = json.loads(row["description_variants"])
+            except json.JSONDecodeError:
+                pass
+
         centroid = None
         if row.get("centroid"):
             try:
-                centroid = _parse_centroid_data(row["centroid"])
+                centroid = unpack_embedding(row["centroid"])
             except Exception:
                 pass
 
         embedding_sum = None
         if row.get("embedding_sum"):
             try:
-                embedding_sum = _parse_centroid_data(row["embedding_sum"])
+                embedding_sum = unpack_embedding(row["embedding_sum"])
             except Exception:
                 pass
 
@@ -107,6 +130,12 @@ class StepSignature:
                 graph_embedding = np.array(json.loads(row["graph_embedding"]))
             except (json.JSONDecodeError, TypeError):
                 pass
+
+        # Handle func_name: use new column if present, fallback to None
+        func_name = row.get("func_name")
+
+        # Handle func_arity: use new column if present, default to 2
+        func_arity = row.get("func_arity", 2) or 2
 
         return cls(
             id=row.get("id"),
@@ -118,8 +147,8 @@ class StepSignature:
             description=row.get("description", ""),
             clarifying_questions=clarifying_questions,
             param_descriptions=param_descriptions,
-            dsl_script=row.get("dsl_script"),
-            dsl_type=row.get("dsl_type", "math"),
+            func_name=func_name,
+            func_arity=func_arity,
             computation_graph=row.get("computation_graph"),
             graph_embedding=graph_embedding,
             examples=examples,
@@ -132,6 +161,14 @@ class StepSignature:
             success_sim_count=row.get("success_sim_count", 0) or 0,
             success_sim_mean=row.get("success_sim_mean", 0.0) or 0.0,
             success_sim_m2=row.get("success_sim_m2", 0.0) or 0.0,
+            description_variants=description_variants,
+            merge_dist_count=row.get("merge_dist_count", 0) or 0,
+            merge_dist_mean=row.get("merge_dist_mean", 0.0) or 0.0,
+            merge_dist_m2=row.get("merge_dist_m2", 0.0) or 0.0,
+            coverage_sim_count=row.get("coverage_sim_count", 0) or 0,
+            coverage_sim_mean=row.get("coverage_sim_mean", 0.0) or 0.0,
+            coverage_sim_m2=row.get("coverage_sim_m2", 0.0) or 0.0,
+            low_coverage_count=row.get("low_coverage_count", 0) or 0,
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,
@@ -155,6 +192,19 @@ class StepSignature:
             except (json.JSONDecodeError, TypeError):
                 pass
 
+        # Handle func_name: use new column if present, fallback to None
+        func_name = row.get("func_name")
+
+        # Handle func_arity: use new column if present, default to 2
+        func_arity = row.get("func_arity", 2) or 2
+
+        description_variants = []
+        if row.get("description_variants"):
+            try:
+                description_variants = json.loads(row["description_variants"])
+            except json.JSONDecodeError:
+                pass
+
         return cls(
             id=row.get("id"),
             signature_id=row.get("signature_id", ""),
@@ -162,8 +212,8 @@ class StepSignature:
             embedding_count=row.get("embedding_count", 1) or 1,
             step_type=row.get("step_type", ""),
             description=row.get("description", ""),
-            dsl_script=row.get("dsl_script"),
-            dsl_type=row.get("dsl_type", "math"),
+            func_name=func_name,
+            func_arity=func_arity,
             computation_graph=row.get("computation_graph"),
             graph_embedding=graph_embedding,
             uses=row.get("uses", 0),
@@ -175,6 +225,14 @@ class StepSignature:
             success_sim_count=row.get("success_sim_count", 0) or 0,
             success_sim_mean=row.get("success_sim_mean", 0.0) or 0.0,
             success_sim_m2=row.get("success_sim_m2", 0.0) or 0.0,
+            description_variants=description_variants,
+            merge_dist_count=row.get("merge_dist_count", 0) or 0,
+            merge_dist_mean=row.get("merge_dist_mean", 0.0) or 0.0,
+            merge_dist_m2=row.get("merge_dist_m2", 0.0) or 0.0,
+            coverage_sim_count=row.get("coverage_sim_count", 0) or 0,
+            coverage_sim_mean=row.get("coverage_sim_mean", 0.0) or 0.0,
+            coverage_sim_m2=row.get("coverage_sim_m2", 0.0) or 0.0,
+            low_coverage_count=row.get("low_coverage_count", 0) or 0,
             is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
             is_root=bool(row.get("is_root", 0)),
             depth=row.get("depth", 0) or 0,
