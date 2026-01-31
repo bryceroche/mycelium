@@ -1,15 +1,5 @@
 # Mycelium
 
-**Decompose math problems into reusable atomic signatures.**
-
-**[Read the Paper](https://drive.google.com/file/d/1Gn8Efk4F2GW1bT3qGlHmKV-V_C6hIaLk/view)**
-
-First solve of a problem type is hard. Second solve is easier. 100th solve is trivial.
-
-## v3.0.0: Flat Prototype Architecture
-
-![v3 Architecture](assets/v3_architecture.png)
-
 | Before (v2.x) | After (v3.0.0) |
 |---------------|----------------|
 | Hierarchical tree traversal | Flat k-NN classification |
@@ -95,7 +85,6 @@ curl -L https://github.com/bryceroche/mycelium/releases/download/v1.4.0/mycelium
 curl -L https://github.com/bryceroche/mycelium/releases/download/v1.4.0/embedding_cache.db.gz | gunzip > embedding_cache.db
 ```
 
-
 ## Stack
 
 - **LLM (Training):** Gemini 2.5 Pro via Vertex AI
@@ -105,6 +94,10 @@ curl -L https://github.com/bryceroche/mycelium/releases/download/v1.4.0/embeddin
 - **Training Deployment:** Google Cloud VM
 
 **Please read the [CLAUDE.md](CLAUDE.md) for the latest thinking.**
+
+**[Read the Paper](https://drive.google.com/file/d/1Gn8Efk4F2GW1bT3qGlHmKV-V_C6hIaLk/view)**
+
+## v3.0.0: Flat Prototype Architecture
 
 ## License
 MIT — Bryce Roche ([github.com/bryceroche/mycelium](https://github.com/bryceroche/mycelium))
