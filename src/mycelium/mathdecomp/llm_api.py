@@ -209,6 +209,37 @@ def decompose_with_api(
     )
 
 
+def decompose_with_cascade(
+    problem: str,
+    expected_answer: Optional[float] = None,
+    cheap_model: str = "gpt-4o-mini",
+    expensive_model: str = "gpt-4o",
+) -> Decomposition:
+    """
+    Cascade approach: try cheap model first, escalate to expensive on failure.
+
+    This optimizes cost while maintaining accuracy.
+    """
+    # Try cheap model first
+    decomp = decompose_with_api(
+        problem,
+        model=cheap_model,
+        expected_answer=expected_answer,
+        max_retries=1,
+    )
+
+    if decomp.verified:
+        return decomp
+
+    # Escalate to expensive model
+    return decompose_with_api(
+        problem,
+        model=expensive_model,
+        expected_answer=expected_answer,
+        max_retries=2,
+    )
+
+
 def test_api():
     """Quick test of API integration."""
     from .executor import trace_execution
@@ -228,7 +259,7 @@ def test_api():
         print(f"\nProblem: {problem}")
         print(f"Expected: {expected}")
 
-        decomp = decompose_with_api(problem, expected_answer=expected)
+        decomp = decompose_with_api(problem, expected_answer=expected, model="gpt-4o")
 
         print(f"Verified: {decomp.verified}")
         if decomp.verified:

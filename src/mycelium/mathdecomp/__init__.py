@@ -14,7 +14,7 @@ from .schema import (
 )
 from .executor import execute_decomposition, verify_decomposition
 from .decomposer import decompose
-from .llm_api import decompose_with_api
+from .llm_api import decompose_with_api, decompose_with_cascade
 
 __all__ = [
     # Schema
@@ -29,4 +29,5 @@ __all__ = [
     # Main entry points
     "decompose",
     "decompose_with_api",
+    "decompose_with_cascade",
 ]
