@@ -6,7 +6,48 @@
 
 First solve of a problem type is hard. Second solve is easier. 100th solve is trivial.
 
-Problems decompose into DAG-structured steps. MCTS routes each step through a tree of signatures, recursively decomposing until a matching DSL executes. Novel solutions become new signatures. The tree grows; future problems route faster.
+## v3.0.0: Flat Prototype Architecture
+
+![v3 Architecture](assets/v3_architecture.png)
+
+| Before (v2.x) | After (v3.0.0) |
+|---------------|----------------|
+| Hierarchical tree traversal | Flat k-NN classification |
+| DSL code execution | Function pointer registry |
+| Fixed recursion depth | Similarity-trend recursion |
+| Separate signatures | Merged prototypes with variants |
+| No LLM guidance | Signature menu "phrasebook" |
+
+### The Three Components
+
+```
+Problem Text
+     │
+     ▼
+┌─────────────────────────────────┐
+│  LLM Decomposer                 │
+│  (with signature menu)          │
+└─────────────────────────────────┘
+     │
+     ▼ [atomic steps with func names]
+┌─────────────────────────────────┐
+│  Signature Store (k-NN)         │
+│  ~1000 prototypes               │
+└─────────────────────────────────┘
+     │
+     ▼ [best matching signature]
+┌─────────────────────────────────┐
+│  Function Registry              │
+│  call_function(name, *args)     │
+└─────────────────────────────────┘
+     │
+     ▼
+   Result
+```
+
+- **LLM**: Recursive decomposition with signature examples as guidance
+- **Tree**: Semantic → function mapping via k-NN classification
+- **Python**: Deterministic execution via function registry (57-200 functions)
 
 
 ## Quick Start (~5 min)
@@ -64,6 +105,7 @@ curl -L https://github.com/bryceroche/mycelium/releases/download/v1.4.0/embeddin
 - **Training Deployment:** Google Cloud VM
 
 **Please read the [CLAUDE.md](CLAUDE.md) for the latest thinking.**
+
 ## License
 MIT — Bryce Roche ([github.com/bryceroche/mycelium](https://github.com/bryceroche/mycelium))
 Built with [Claude Code](https://claude.ai/claude-code)
