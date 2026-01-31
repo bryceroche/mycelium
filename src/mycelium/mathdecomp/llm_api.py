@@ -21,33 +21,34 @@ from .executor import verify_decomposition
 
 
 # Structured prompt for API calls
+# Note: Double braces {{ }} escape the braces for .format()
 DECOMPOSE_PROMPT = '''You are a math problem decomposer. Break down math problems into atomic computation steps.
 
 RULES:
 1. Extract all numbers from the problem with semantic names
 2. Each step has EXACTLY two inputs - no expressions allowed
-3. Each input is a reference: {"type": "extraction", "id": "..."} or {"type": "step", "id": "..."}
+3. Each input is a reference with "type" and "id" fields
 4. Operators: +, -, *, / only
 5. Steps must be in dependency order
 
 OUTPUT FORMAT (valid JSON only, no markdown):
-{
+{{
   "extractions": [
-    {"id": "<name>", "value": <number>, "span": "<text>", "offset": [<start>, <end>]}
+    {{"id": "<name>", "value": <number>, "span": "<text>", "offset": [<start>, <end>]}}
   ],
   "steps": [
-    {
+    {{
       "id": "s1",
       "op": "+|-|*|/",
-      "left": {"type": "extraction|step", "id": "<id>"},
-      "right": {"type": "extraction|step", "id": "<id>"},
+      "left": {{"type": "extraction", "id": "<id>"}},
+      "right": {{"type": "extraction", "id": "<id>"}},
       "result": <number>,
       "semantic": "<meaning>"
-    }
+    }}
   ],
-  "answer_ref": {"type": "step", "id": "<id>"},
+  "answer_ref": {{"type": "step", "id": "<id>"}},
   "answer_value": <number>
-}
+}}
 
 Problem: {problem}'''
 
