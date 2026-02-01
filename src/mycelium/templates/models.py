@@ -5,28 +5,19 @@ import numpy as np
 
 
 @dataclass
-class ComputeGraph:
-    """A computation graph with nodes and edges."""
-    nodes: List[str]  # Variable names: ["X", "Y", "answer"]
-    edges: List[Dict[str, Any]]  # Operations: [{"op": "sub", "inputs": ["X", "Y"], "output": "answer"}]
-
-    def to_dict(self) -> Dict:
-        return {"nodes": self.nodes, "edges": self.edges}
-
-    @classmethod
-    def from_dict(cls, d: Dict) -> "ComputeGraph":
-        return cls(nodes=d["nodes"], edges=d["edges"])
-
-
-@dataclass
 class Template:
-    """A curated template with slots and computation graph."""
+    """A coarse-grained reasoning template that guides LLM expression generation.
+
+    Templates represent problem-solving patterns (e.g., sequential operations,
+    complement calculations, algebraic equations). The LLM uses the guidance
+    and prompt_template to understand the pattern and write a Python expression.
+    """
     id: Optional[int] = None
-    name: str = ""                    # "system_of_equations", "circle_radius"
-    description: str = ""             # Human-readable description
-    pattern: str = ""                 # Display pattern with [SLOTS]
-    slots: List[str] = field(default_factory=list)  # ["X", "Y", "Z"]
-    graph: ComputeGraph = field(default_factory=lambda: ComputeGraph([], []))
+    name: str = ""                    # Pattern name: "sequential", "complement", "algebra"
+    description: str = ""             # What this pattern is for
+    guidance: str = ""                # Reasoning guidance for LLM (e.g., "Do operations in sequence")
+    prompt_template: str = ""         # Prompt with {problem} placeholder
+    examples: List[str] = field(default_factory=list)  # Example problems for context
     created_at: Optional[str] = None
 
 

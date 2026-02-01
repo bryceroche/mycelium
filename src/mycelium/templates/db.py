@@ -4,7 +4,7 @@ import json
 import numpy as np
 from pathlib import Path
 from typing import List, Optional, Tuple
-from .models import Template, Example, ExampleProposal, ComputeGraph
+from .models import Template, Example, ExampleProposal
 
 DB_PATH = Path.home() / ".mycelium" / "templates.db"
 
@@ -24,9 +24,8 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT UNIQUE NOT NULL,
             description TEXT,
-            pattern TEXT,
-            slots TEXT,  -- JSON list
-            graph TEXT,  -- JSON graph
+            guidance TEXT,
+            prompt_template TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -69,17 +68,16 @@ def save_template(template: Template) -> int:
 
     if template.id:
         cursor.execute('''
-            UPDATE templates SET name=?, description=?, pattern=?, slots=?, graph=?
+            UPDATE templates SET name=?, description=?, guidance=?, prompt_template=?
             WHERE id=?
-        ''', (template.name, template.description, template.pattern,
-              json.dumps(template.slots), json.dumps(template.graph.to_dict()),
-              template.id))
+        ''', (template.name, template.description, template.guidance,
+              template.prompt_template, template.id))
     else:
         cursor.execute('''
-            INSERT OR REPLACE INTO templates (name, description, pattern, slots, graph)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (template.name, template.description, template.pattern,
-              json.dumps(template.slots), json.dumps(template.graph.to_dict())))
+            INSERT OR REPLACE INTO templates (name, description, guidance, prompt_template)
+            VALUES (?, ?, ?, ?)
+        ''', (template.name, template.description, template.guidance,
+              template.prompt_template))
         template.id = cursor.lastrowid
 
     conn.commit()
@@ -100,9 +98,8 @@ def get_template(template_id: int) -> Optional[Template]:
         id=row['id'],
         name=row['name'],
         description=row['description'],
-        pattern=row['pattern'],
-        slots=json.loads(row['slots']),
-        graph=ComputeGraph.from_dict(json.loads(row['graph'])),
+        guidance=row['guidance'] or "",
+        prompt_template=row['prompt_template'] or "",
         created_at=row['created_at']
     )
 
@@ -120,9 +117,8 @@ def get_template_by_name(name: str) -> Optional[Template]:
         id=row['id'],
         name=row['name'],
         description=row['description'],
-        pattern=row['pattern'],
-        slots=json.loads(row['slots']),
-        graph=ComputeGraph.from_dict(json.loads(row['graph'])),
+        guidance=row['guidance'] or "",
+        prompt_template=row['prompt_template'] or "",
         created_at=row['created_at']
     )
 
@@ -137,9 +133,8 @@ def get_all_templates() -> List[Template]:
         id=row['id'],
         name=row['name'],
         description=row['description'],
-        pattern=row['pattern'],
-        slots=json.loads(row['slots']),
-        graph=ComputeGraph.from_dict(json.loads(row['graph'])),
+        guidance=row['guidance'] or "",
+        prompt_template=row['prompt_template'] or "",
         created_at=row['created_at']
     ) for row in rows]
 

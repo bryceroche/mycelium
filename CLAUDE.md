@@ -126,6 +126,31 @@ The transformer's attention mechanism naturally understands "half the price of X
 
 **Why this matters for graph building:** Transformers build implicit dependency graphs through attention. When asked to extract values first, then build relationships second, we force two separate graphs that may not align. Single-pass lets the model build one coherent graph where "cheese costs $10" and "cream is half the price" are connected by attention, not by matching variable names.
 
+## Don't Decompose Too Fine-Grained
+
+**Lesson learned:** Atomic decomposition (one operation per step) hurts accuracy.
+
+| Approach | Result |
+|----------|--------|
+| Fine-grained (add, subtract, multiply) | 80% - chunks lost context, wrong matches |
+| Coarse-grained (sequential, ratio, inversion) | 100% - LLM sees full problem |
+
+**What failed:**
+- Breaking problems into atomic operations
+- Chunking into tiny pieces that lose context
+- More steps = more chances for mismatch/error
+
+**What worked:**
+- Match the *reasoning type*, not the *arithmetic operation*
+- Keep the full problem in context
+- One LLM call per problem with specialized prompt
+
+**Examples:**
+- "Janet's ducks lay eggs, she eats some, sells rest" → `sequential` (not `subtract` + `subtract` + `multiply`)
+- "After 20% discount, price is $80" → `inversion` (not `divide`)
+
+**Rule of thumb:** If the LLM needs context from the full problem to solve a step, you've decomposed too far.
+
 ## Specialized Templates for Reasoning Patterns
 
 Some examples of templates for explicit reasoning guidance

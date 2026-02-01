@@ -1,205 +1,192 @@
-"""Seed templates to bootstrap the system."""
-from .models import Template, ComputeGraph, Example
+"""Seed templates to bootstrap the system with coarse-grained reasoning patterns."""
+from .models import Template, Example
 from .db import save_template, save_example, get_template_by_name
 from mycelium.embedding_cache import cached_embed
 
 
+# Prompt template builder - JSON braces are escaped with quadruple braces
+# since the template is formatted twice (once here, once at solve time)
+def _make_prompt_template(name: str, guidance: str) -> str:
+    """Build a prompt template with proper escaping."""
+    return f"""You are solving a {name} math problem.
+
+{guidance}
+
+Problem: {{problem}}
+
+Extract the values and write a Python expression to compute the answer.
+Output JSON only:
+{{"expression": "<python expression>", "answer": <computed result>}}"""
+
+
 SEED_TEMPLATES = [
-    # Basic arithmetic - subtraction
+    # Sequential - most common pattern in GSM8K
     Template(
-        name="subtraction",
-        description="Subtract Y from X to get remainder",
-        pattern="[AGENT] has [X] [OBJECT]. Gives/loses [Y]. How many left?",
-        slots=["X", "Y"],
-        graph=ComputeGraph(
-            nodes=["X", "Y", "answer"],
-            edges=[{"op": "sub", "inputs": ["X", "Y"], "output": "answer"}]
-        )
+        name="sequential",
+        description="Do arithmetic operations in sequence",
+        guidance="Extract values, perform operations in order (add, subtract, multiply, divide)",
+        prompt_template=_make_prompt_template(
+            "sequential",
+            "Extract values, perform operations in order (add, subtract, multiply, divide)"
+        ),
     ),
 
-    # Basic arithmetic - addition
+    # Complement - percentage/fraction remaining
     Template(
-        name="addition",
-        description="Add X and Y together",
-        pattern="[AGENT] has [X] [OBJECT] and gets [Y] more. How many total?",
-        slots=["X", "Y"],
-        graph=ComputeGraph(
-            nodes=["X", "Y", "answer"],
-            edges=[{"op": "add", "inputs": ["X", "Y"], "output": "answer"}]
-        )
+        name="complement",
+        description="Find the complement (100-X%)",
+        guidance="If X% did something, (100-X)% did the opposite",
+        prompt_template=_make_prompt_template(
+            "complement",
+            "If X% did something, (100-X)% did the opposite"
+        ),
     ),
 
-    # Multiplication
+    # Algebra - set up and solve equations
     Template(
-        name="multiplication",
-        description="Multiply X by Y",
-        pattern="[X] items at [Y] each. What is total?",
-        slots=["X", "Y"],
-        graph=ComputeGraph(
-            nodes=["X", "Y", "answer"],
-            edges=[{"op": "mul", "inputs": ["X", "Y"], "output": "answer"}]
-        )
+        name="algebra",
+        description="Set up and solve an equation",
+        guidance="Define unknown as x, set up equation, solve for x",
+        prompt_template=_make_prompt_template(
+            "algebra",
+            "Define unknown as x, set up equation, solve for x"
+        ),
     ),
 
-    # Division
+    # Conditional - tiered rates or thresholds
     Template(
-        name="division",
-        description="Divide X by Y",
-        pattern="[X] items split among [Y] people. How many each?",
-        slots=["X", "Y"],
-        graph=ComputeGraph(
-            nodes=["X", "Y", "answer"],
-            edges=[{"op": "div", "inputs": ["X", "Y"], "output": "answer"}]
-        )
+        name="conditional",
+        description="Apply different rates based on thresholds",
+        guidance="Split at threshold, apply different rates to each part",
+        prompt_template=_make_prompt_template(
+            "conditional",
+            "Split at threshold, apply different rates to each part"
+        ),
     ),
 
-    # Circle radius (complete the square)
+    # Ratio - proportional reasoning
     Template(
-        name="circle_radius",
-        description="Find radius of circle by completing the square",
-        pattern="Circle equation x^2 + [A]x + y^2 + [B]y = [C]. Find radius.",
-        slots=["A", "B", "C"],
-        graph=ComputeGraph(
-            nodes=["A", "B", "C", "h_sq", "k_sq", "r_sq", "answer"],
-            edges=[
-                {"op": "div", "inputs": ["A", "2"], "output": "h"},
-                {"op": "pow", "inputs": ["h", "2"], "output": "h_sq"},
-                {"op": "div", "inputs": ["B", "2"], "output": "k"},
-                {"op": "pow", "inputs": ["k", "2"], "output": "k_sq"},
-                {"op": "add", "inputs": ["h_sq", "k_sq"], "output": "sum_sq"},
-                {"op": "add", "inputs": ["sum_sq", "C"], "output": "r_sq"},
-                {"op": "sqrt", "inputs": ["r_sq"], "output": "answer"}
-            ]
-        )
+        name="ratio",
+        description="Work with ratios and proportions",
+        guidance="Convert ratio to parts, find value per part, scale",
+        prompt_template=_make_prompt_template(
+            "ratio",
+            "Convert ratio to parts, find value per part, scale"
+        ),
     ),
 
-    # Midpoint
+    # Inversion - work backwards
     Template(
-        name="midpoint",
-        description="Find unknown point given midpoint and other point",
-        pattern="Midpoint of ([X1],[Y1]) and ([X2],[Y2]) is ([MX],[MY]). Find unknown.",
-        slots=["X1", "Y1", "MX", "MY"],
-        graph=ComputeGraph(
-            nodes=["X1", "Y1", "MX", "MY", "X2", "Y2", "answer"],
-            edges=[
-                {"op": "mul", "inputs": ["MX", "2"], "output": "mx2"},
-                {"op": "sub", "inputs": ["mx2", "X1"], "output": "X2"},
-                {"op": "mul", "inputs": ["MY", "2"], "output": "my2"},
-                {"op": "sub", "inputs": ["my2", "Y1"], "output": "Y2"},
-            ]
-        )
-    ),
-
-    # System of 3 equations (a+b, b+c, a+c)
-    Template(
-        name="system_three",
-        description="Solve a+b=P, b+c=Q, a+c=R for abc",
-        pattern="a+b=[P], b+c=[Q], a+c=[R]. Find abc.",
-        slots=["P", "Q", "R"],
-        graph=ComputeGraph(
-            nodes=["P", "Q", "R", "sum", "a", "b", "c", "answer"],
-            edges=[
-                # 2(a+b+c) = P+Q+R, so a+b+c = (P+Q+R)/2
-                {"op": "add", "inputs": ["P", "Q"], "output": "pq"},
-                {"op": "add", "inputs": ["pq", "R"], "output": "total"},
-                {"op": "div", "inputs": ["total", "2"], "output": "sum"},
-                # a = sum - (b+c) = sum - Q
-                {"op": "sub", "inputs": ["sum", "Q"], "output": "a"},
-                # b = sum - (a+c) = sum - R
-                {"op": "sub", "inputs": ["sum", "R"], "output": "b"},
-                # c = sum - (a+b) = sum - P
-                {"op": "sub", "inputs": ["sum", "P"], "output": "c"},
-                # abc = a * b * c
-                {"op": "mul", "inputs": ["a", "b"], "output": "ab"},
-                {"op": "mul", "inputs": ["ab", "c"], "output": "answer"}
-            ]
-        )
-    ),
-
-    # Vieta's sum of roots
-    Template(
-        name="vieta_sum",
-        description="Sum of roots of ax^2 + bx + c = 0 is -b/a",
-        pattern="Quadratic [A]x^2 + [B]x + [C] = 0. Sum of roots?",
-        slots=["A", "B"],
-        graph=ComputeGraph(
-            nodes=["A", "B", "answer"],
-            edges=[
-                {"op": "neg", "inputs": ["B"], "output": "neg_b"},
-                {"op": "div", "inputs": ["neg_b", "A"], "output": "answer"}
-            ]
-        )
-    ),
-
-    # Exponent same-base
-    Template(
-        name="exponent_equation",
-        description="Solve exponential equations by matching bases",
-        pattern="[BASE1]^[EXP1] = [BASE2]^[EXP2], solve for n",
-        slots=["RESULT"],  # LLM computes the answer directly
-        graph=ComputeGraph(
-            nodes=["RESULT", "answer"],
-            edges=[{"op": "add", "inputs": ["RESULT", "0"], "output": "answer"}]  # Identity
-        )
+        name="inversion",
+        description="Work backwards from result",
+        guidance="Start from final value, reverse operations to find original",
+        prompt_template=_make_prompt_template(
+            "inversion",
+            "Start from final value, reverse operations to find original"
+        ),
     ),
 ]
 
 
 SEED_EXAMPLES = [
-    # Subtraction examples
-    ("Tim has 10 apples. He gives 3 to Mary. How many left?", "subtraction"),
-    ("Sarah has 15 books. She loses 7. How many does she have?", "subtraction"),
-    ("A store has 100 items. They sell 40. How many remain?", "subtraction"),
-    ("John had $50. He spent $23 on lunch. How much money does he have left?", "subtraction"),
-    ("There were 85 people at the party. 32 people left early. How many people stayed?", "subtraction"),
-    ("A movie is 120 minutes long. We have watched 45 minutes. How many minutes are left?", "subtraction"),
-    ("The bakery made 200 cupcakes. They sold 156 by noon. How many cupcakes remain?", "subtraction"),
+    # ============================================================
+    # SEQUENTIAL - Most common pattern (many examples for coverage)
+    # ============================================================
+    # Classic GSM8K-style multi-step problems
+    ("Janet's ducks lay 16 eggs per day. She eats 3 for breakfast and bakes muffins with 4. She sells the rest at $2 each. How much does she make?", "sequential"),
+    ("Tim has 10 apples. He gives 3 to Mary and buys 5 more. How many does he have?", "sequential"),
+    ("A store has 100 items. They sell 40 in morning and 25 in afternoon. How many left?", "sequential"),
+    ("Sarah earns $15 per hour. She works 8 hours on Monday and 6 hours on Tuesday. How much did she earn?", "sequential"),
+    ("A baker makes 120 cookies. He sells 45 in the morning, gives away 20, and sells 30 more in the evening. How many are left?", "sequential"),
+    ("John has $50. He spends $12 on lunch, $8 on coffee, and receives $25 from a friend. How much does he have now?", "sequential"),
+    ("A farm has 200 chickens. 30 are sold, 15 die, and 45 new chicks are born. How many chickens are there now?", "sequential"),
+    ("Maria reads 25 pages on Monday, 32 pages on Tuesday, and 18 pages on Wednesday. How many pages did she read in total?", "sequential"),
+    ("A bus has 45 passengers. At the first stop, 12 get off and 8 get on. At the second stop, 15 get off and 20 get on. How many passengers are on the bus now?", "sequential"),
+    ("Tom bought 3 notebooks at $4 each and 5 pens at $2 each. How much did he spend in total?", "sequential"),
+    ("A factory produces 500 widgets per day. They ship 200 to Store A and 150 to Store B. How many widgets remain?", "sequential"),
+    ("Lisa has 80 stickers. She gives 15 to her sister, 20 to her friend, and buys 30 more. How many stickers does she have?", "sequential"),
+    ("A restaurant served 120 customers on Friday. On Saturday they served 45 more than Friday. How many customers did they serve on both days?", "sequential"),
+    ("Mike earns $12 per hour for 40 hours. After taxes of $96, how much does he take home?", "sequential"),
+    ("A tree had 250 apples. Wind knocked down 30, birds ate 15, and farmers picked 180. How many apples remain on the tree?", "sequential"),
 
-    # Addition examples
-    ("Tom has 5 marbles. He finds 8 more. How many total?", "addition"),
-    ("Lisa has 12 stickers. Her friend gives her 6. How many now?", "addition"),
-    ("A train traveled 120 miles. It has 80 more miles to go. What is the total distance?", "addition"),
-    ("Mark earned $45 on Monday and $67 on Tuesday. How much did he earn in total?", "addition"),
-    ("The library had 340 books. They received a donation of 125 new books. How many books does the library have now?", "addition"),
-    ("In the morning, 28 birds were in the tree. In the afternoon, 15 more birds arrived. How many birds are there now?", "addition"),
-    # Money addition with "finds" and "more"
-    ("Sarah has $30. She finds $10 more. How much money does she have now?", "addition"),
-    ("Mike has $25. He receives $15 more. How much money does he have?", "addition"),
-    ("The jar has 50 coins. We add 25 more coins. How many coins are there now?", "addition"),
-    ("Jake has 20 cards. He gets 8 more cards. How many cards does he have now?", "addition"),
+    # Simple two-step problems
+    ("There are 6 boxes with 8 items each. 10 items are removed. How many items remain?", "sequential"),
+    ("A parking lot has 5 rows with 20 spaces each. 35 cars are parked. How many spaces are empty?", "sequential"),
+    ("Jake has 3 bags with 12 marbles each. He loses 7 marbles. How many does he have left?", "sequential"),
+    ("A library has 8 shelves with 25 books each. 50 books are checked out. How many books are on the shelves?", "sequential"),
+    ("Emma buys 4 packs of gum with 5 pieces each. She chews 6 pieces. How many pieces are left?", "sequential"),
 
-    # Multiplication examples
-    ("There are 6 boxes with 8 items each. How many total items?", "multiplication"),
-    ("A farmer has 5 rows with 12 plants each. How many plants?", "multiplication"),
-    ("A movie theater has 15 rows with 24 seats in each row. How many seats are there in total?", "multiplication"),
-    ("Each package contains 8 batteries. If you buy 7 packages, how many batteries do you have?", "multiplication"),
-    ("A parking lot has 9 levels with 45 cars on each level. How many cars are parked in total?", "multiplication"),
+    # Money calculations
+    ("Coffee costs $4 and a muffin costs $3. If you buy 2 coffees and 3 muffins, how much do you spend?", "sequential"),
+    ("A shirt costs $25 and pants cost $40. With a $10 coupon, how much do you pay for both?", "sequential"),
+    ("Movie tickets are $12 each. Popcorn is $8 and drinks are $5. How much for 2 tickets, 1 popcorn, and 2 drinks?", "sequential"),
+    ("A meal costs $15. With 20% tip and $2 delivery fee, what's the total?", "sequential"),
+    ("Books cost $8 each. Buy 5 books and get $10 off. How much do you pay?", "sequential"),
 
-    # Division examples
-    ("24 cookies divided among 6 children. How many each?", "division"),
-    ("A class of 30 students split into 5 groups. How many per group?", "division"),
-    ("There are 72 pencils to be shared equally among 8 students. How many pencils does each student get?", "division"),
-    ("A chef has 96 ounces of sauce to divide into 12 equal portions. How many ounces per portion?", "division"),
-    ("The company earned $144,000 to be split equally among 6 partners. How much does each partner receive?", "division"),
+    # ============================================================
+    # COMPLEMENT - Percentage remaining
+    # ============================================================
+    ("40% of students got below average. How many percent got average or above?", "complement"),
+    ("30% of the cookies were eaten. What percent remain?", "complement"),
+    ("A survey shows 65% of people prefer coffee. What percent prefer something else?", "complement"),
+    ("25% of the budget was spent on marketing. What percent was spent on other things?", "complement"),
+    ("If 15% of applicants were rejected, what percent were accepted?", "complement"),
+    ("72% of voters supported the measure. What percent opposed it?", "complement"),
+    ("A shirt is 35% cotton. What percent is other materials?", "complement"),
+    ("If 88% of students passed the test, what percent failed?", "complement"),
 
-    # Circle examples
-    ("Find the radius of the circle with equation x^2 + 8x + y^2 - 6y = 0.", "circle_radius"),
-    ("What is the radius of x^2 + 4x + y^2 - 2y = 11?", "circle_radius"),
+    # ============================================================
+    # ALGEBRA - Set up and solve equations
+    # ============================================================
+    ("A number increased by 20% equals 60. What was the original number?", "algebra"),
+    ("After spending $15, Tom has twice what he started with minus $15. He now has $45. How much did he start with?", "algebra"),
+    ("Three times a number minus 7 equals 20. What is the number?", "algebra"),
+    ("The sum of two consecutive numbers is 37. What are the numbers?", "algebra"),
+    ("A rectangle's length is 3 more than its width. The perimeter is 26. Find the dimensions.", "algebra"),
+    ("John is 5 years older than Mary. In 3 years, their ages will sum to 35. How old is Mary now?", "algebra"),
+    ("Twice a number plus 8 equals the number plus 20. What is the number?", "algebra"),
+    ("A number divided by 4 then increased by 6 equals 15. What is the number?", "algebra"),
 
-    # Midpoint examples
-    ("The midpoint of (x,y) and (-9,1) is (3,-5). Find (x,y).", "midpoint"),
+    # ============================================================
+    # CONDITIONAL - Tiered rates and thresholds
+    # ============================================================
+    ("Workers earn $10/hour for first 40 hours and $15/hour for overtime. How much for 50 hours?", "conditional"),
+    ("A phone plan charges $0.05/minute for the first 100 minutes and $0.03/minute after. What's the cost for 150 minutes?", "conditional"),
+    ("Shipping is $5 for orders under $50 and free for orders $50 or more. What's the total for a $45 order?", "conditional"),
+    ("Tax is 10% on income up to $10,000 and 20% on income above that. What's the tax on $15,000?", "conditional"),
+    ("A gym charges $30/month for up to 10 visits and $2 per visit after that. What's the cost for 15 visits?", "conditional"),
+    ("Electricity costs $0.10/kWh for the first 500 kWh and $0.15/kWh after. What's the bill for 700 kWh?", "conditional"),
+    ("A salesperson earns 5% commission on sales up to $1000 and 8% on sales above that. What's the commission on $1500?", "conditional"),
 
-    # System of 3 examples
-    ("If a+b=8, b+c=-3, and a+c=-5, what is abc?", "system_three"),
+    # ============================================================
+    # RATIO - Proportional reasoning
+    # ============================================================
+    ("Boys to girls ratio is 2:3. If there are 10 boys, how many girls?", "ratio"),
+    ("The ratio of cats to dogs is 3:4. If there are 21 cats, how many dogs are there?", "ratio"),
+    ("A recipe calls for flour and sugar in a 5:2 ratio. If you use 10 cups of flour, how much sugar?", "ratio"),
+    ("Red and blue marbles are in ratio 3:7. If there are 28 blue marbles, how many red?", "ratio"),
+    ("Workers to managers ratio is 8:1. If there are 72 workers, how many managers?", "ratio"),
+    ("The ratio of fiction to non-fiction books is 5:3. If there are 40 fiction books, how many non-fiction?", "ratio"),
+    ("Apples to oranges ratio is 4:5. With 36 pieces of fruit total, how many apples?", "ratio"),
+    ("Paint mix requires red and white in 2:5 ratio. For 14 liters total, how much red paint?", "ratio"),
 
-    # Vieta examples
-    ("What is the sum of roots of 2x^2 - 10x + 3 = 0?", "vieta_sum"),
+    # ============================================================
+    # INVERSION - Work backwards
+    # ============================================================
+    ("After a 20% discount, the price was $80. What was the original price?", "inversion"),
+    ("A number was tripled and then 10 was subtracted, giving 50. What was the original number?", "inversion"),
+    ("After adding 25% tax, the total was $75. What was the pre-tax price?", "inversion"),
+    ("Maria spent half her money and then $10 more, leaving her with $15. How much did she start with?", "inversion"),
+    ("A population doubled and then increased by 100, reaching 500. What was the original population?", "inversion"),
+    ("After a 15% raise, salary became $5750. What was the original salary?", "inversion"),
+    ("A number was divided by 4, then 5 was added, giving 12. What was the original number?", "inversion"),
+    ("The price after 30% off is $35. What was the original price?", "inversion"),
 ]
 
 
 def seed_database():
     """Seed the database with initial templates and examples."""
-    print("Seeding templates...")
+    print("Seeding reasoning pattern templates...")
 
     # Save templates
     template_ids = {}
@@ -237,6 +224,26 @@ def seed_database():
         print(f"  Added example for '{template_name}': {problem[:50]}...")
 
     print("\nSeeding complete!")
+
+
+def get_prompt_for_template(template_name: str, problem: str) -> str:
+    """Generate a prompt for the given template and problem."""
+    guidance_map = {
+        "sequential": "Extract values, perform operations in order (add, subtract, multiply, divide)",
+        "complement": "If X% did something, (100-X)% did the opposite",
+        "algebra": "Define unknown as x, set up equation, solve for x",
+        "conditional": "Split at threshold, apply different rates to each part",
+        "ratio": "Convert ratio to parts, find value per part, scale",
+        "inversion": "Start from final value, reverse operations to find original",
+    }
+
+    guidance = guidance_map.get(template_name, "Solve the problem step by step")
+
+    return PROMPT_TEMPLATE.format(
+        name=template_name,
+        guidance=guidance,
+        problem=problem
+    )
 
 
 if __name__ == "__main__":
