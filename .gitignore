@@ -86,3 +86,9 @@ deploy/
 screen_shots/
 assets/
 notebooks/
+
+# Removed from git history
+structure.png
+structurev2.png
+math_l3_analysis.md
+math_l3_failures.json

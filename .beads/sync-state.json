@@ -1,7 +1,0 @@
-{
-  "last_failure": "2026-01-28T07:08:22.842703-08:00",
-  "failure_count": 1,
-  "backoff_until": "2026-01-28T07:08:52.842703-08:00",
-  "needs_manual_sync": false,
-  "failure_reason": "git pull failed in worktree: exit status 1\nfatal: unable to access 'https://github.com/bryceroche/mycelium.git/': Recv failure: Connection reset by peer\n"
-}

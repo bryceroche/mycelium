@@ -206,6 +206,11 @@ def detect_pattern(problem: str) -> str:
             if '^' in problem or 'frac' in problem:
                 return 'symbolic'
 
+    # Circle equation patterns: complete the square to find radius
+    # Check BEFORE equation since "radius" is more specific
+    if 'radius' in problem_lower and ('x^2' in problem or 'y^2' in problem):
+        return 'circle'
+
     # Equation solving patterns: solve for x, find x where equation = 0
     equation_signals = [
         'solve for', 'find the value of $x$', 'find $x$',
@@ -246,6 +251,15 @@ def detect_pattern(problem: str) -> str:
     if '^' in problem and ('x' in problem_lower or 'value of' in problem_lower):
         if any(signal in problem for signal in exponent_signals):
             return 'exponent'
+
+    # Same-base exponent equations: 9^n * 3^(2n+1) / 81 = 243 type
+    # Look for patterns with powers of 3 (3, 9, 27, 81, 243) or powers of 2 (2, 4, 8, 16, 32)
+    if any(base in problem for base in ['9^', '27^', '81^', '243^']):
+        if any(base in problem for base in ['3^', '9^', '27^']):
+            return 'exponent_simplify'
+    if any(base in problem for base in ['4^', '8^', '16^', '32^']):
+        if any(base in problem for base in ['2^', '4^', '8^']):
+            return 'exponent_simplify'
 
     # Algebra/equation patterns: solve for unknown variable in equation
     algebra_signals = [
@@ -300,6 +314,14 @@ def detect_pattern(problem: str) -> str:
     ]
     if any(signal in problem_lower for signal in ratio_signals):
         return 'ratio'
+
+    # Circle equation patterns: complete the square to find radius
+    if 'radius' in problem_lower and ('x^2' in problem or 'y^2' in problem or '$x^2$' in problem):
+        return 'circle'
+
+    # Midpoint patterns
+    if 'midpoint' in problem_lower:
+        return 'midpoint'
 
     return 'standard'
 
@@ -683,6 +705,40 @@ Use actual numbers. Each step ONE operation.'''
     return json.loads(response)
 
 
+def decompose_circle(problem: str) -> Dict[str, Any]:
+    """Template for circle radius - complete the square."""
+    prompt = f'''Find the radius of this circle by completing the square.
+
+Problem: {problem}
+
+COMPLETE THE SQUARE:
+- x^2 + 8x → (x+4)^2 - 16
+- y^2 - 6y → (y-3)^2 - 9
+- Then r^2 = 16 + 9 = 25, so r = 5
+
+Output JSON with just the numeric radius:
+{{"answer": "5"}}'''
+    response = call_llm(prompt)
+    return json.loads(response)
+
+
+def decompose_midpoint(problem: str) -> Dict[str, Any]:
+    """Template for midpoint problems."""
+    prompt = f'''Solve this midpoint problem.
+
+Problem: {problem}
+
+MIDPOINT FORMULA: midpoint = ((x1+x2)/2, (y1+y2)/2)
+If midpoint M=(mx,my) and one point is (x1,y1), then:
+- x2 = 2*mx - x1
+- y2 = 2*my - y1
+
+Output JSON with the coordinate pair:
+{{"answer": "(15,-11)"}}'''
+    response = call_llm(prompt)
+    return json.loads(response)
+
+
 def decompose_composition(problem: str) -> Dict[str, Any]:
     """Template for function composition problems like f(g(x))."""
     prompt = f'''Solve this function composition problem. Evaluate from INSIDE OUT.
@@ -802,6 +858,41 @@ answer: "x"
 
 Use actual numbers. Each step ONE operation.'''
 
+    response = call_llm(prompt)
+    return json.loads(response)
+
+
+def decompose_exponent_simplify(problem: str) -> Dict[str, Any]:
+    """Template for same-base exponent equations."""
+    prompt = f'''Solve this exponent equation by converting to the same base.
+
+Problem: {problem}
+
+STRATEGY:
+1. Express all terms as powers of the smallest base (usually 2 or 3)
+2. 9 = 3^2, 27 = 3^3, 81 = 3^4, 243 = 3^5
+3. 4 = 2^2, 8 = 2^3, 16 = 2^4, 32 = 2^5
+4. Use exponent rules: (a^m)^n = a^(mn), a^m * a^n = a^(m+n), a^m / a^n = a^(m-n)
+5. When bases are equal, set exponents equal and solve
+
+EXAMPLE: 9^n * 3^(2n+1) / 81 = 243
+- Convert: 3^(2n) * 3^(2n+1) / 3^4 = 3^5
+- Combine: 3^(2n + 2n + 1 - 4) = 3^5
+- Simplify: 3^(4n - 3) = 3^5
+- Equate: 4n - 3 = 5
+- Solve: n = 2
+
+Output JSON:
+{{
+    "base": "the common base (e.g., 3)",
+    "left_exponent": "simplified exponent on left (e.g., 4n - 3)",
+    "right_exponent": "exponent on right (e.g., 5)",
+    "equation": "the equation to solve (e.g., 4n - 3 = 5)",
+    "steps": [
+        {{"description": "solve for n", "expr": "(5 + 3) / 4", "result": "n"}}
+    ],
+    "answer": "n value as number"
+}}'''
     response = call_llm(prompt)
     return json.loads(response)
 
@@ -1095,6 +1186,10 @@ def decompose_with_pattern(problem: str) -> Dict[str, Any]:
         return decompose_ratio_chain(problem)
     elif pattern == 'exponent':
         return decompose_exponent(problem)
+    elif pattern == 'exponent_simplify':
+        result = decompose_exponent_simplify(problem)
+        result['_pattern'] = 'exponent_simplify'
+        return result
     elif pattern == 'algebra':
         return decompose_algebra(problem)
     elif pattern == 'complement':
@@ -1105,6 +1200,14 @@ def decompose_with_pattern(problem: str) -> Dict[str, Any]:
         return decompose_inversion(problem)
     elif pattern == 'ratio':
         return decompose_ratio(problem)
+    elif pattern == 'circle':
+        result = decompose_circle(problem)
+        result['_pattern'] = 'circle'
+        return result
+    elif pattern == 'midpoint':
+        result = decompose_midpoint(problem)
+        result['_pattern'] = 'midpoint'
+        return result
     else:
         return decompose_single_pass(problem)
 
@@ -1512,6 +1615,22 @@ class RecursiveDecomposer:
         # Handle system of equations
         if decomp.get('_pattern') == 'system':
             return self._solve_system(decomp)
+
+        # Handle exponent simplify problems
+        if decomp.get('_pattern') == 'exponent_simplify':
+            return self._solve_exponent_simplify(decomp)
+
+        # Handle circle problems (direct answer)
+        if decomp.get('_pattern') == 'circle':
+            answer = decomp.get('answer', '0')
+            try:
+                return float(answer)
+            except:
+                return 0.0
+
+        # Handle midpoint problems (return coordinate string)
+        if decomp.get('_pattern') == 'midpoint':
+            return decomp.get('answer', '(0,0)')
 
         # Execute steps, evaluating expressions
         context = {}
@@ -2027,6 +2146,67 @@ class RecursiveDecomposer:
 
         except Exception as e:
             logger.error(f"[decomposer] System error: {e}")
+            return 0.0
+
+    def _solve_exponent_simplify(self, decomp: Dict[str, Any]) -> float:
+        """
+        Solve same-base exponent equations.
+
+        Args:
+            decomp: Decomposition with base, left_exponent, right_exponent, equation, steps, answer
+
+        Returns:
+            The answer (n value)
+        """
+        logger.info(f"[decomposer] Exponent simplify: {decomp}")
+
+        try:
+            # Check if answer is a direct numeric value
+            answer_val = decomp.get("answer", "")
+            try:
+                direct_answer = float(answer_val)
+                logger.info(f"[decomposer] Exponent simplify direct answer: {direct_answer}")
+                return direct_answer
+            except (ValueError, TypeError):
+                pass
+
+            # Try to execute steps if provided
+            if 'steps' in decomp and decomp['steps']:
+                context = {}
+                import re
+                for step in decomp.get("steps", []):
+                    expr = step.get("expr", "0")
+                    result_name = step.get("result", "step")
+
+                    eval_expr = expr
+                    for var, val in context.items():
+                        if var and (var[0].isalpha() or var[0] == '_'):
+                            val_str = f"({val})" if val < 0 else str(val)
+                            eval_expr = re.sub(r'\b' + re.escape(var) + r'\b', val_str, eval_expr)
+
+                    try:
+                        result = self._safe_eval(eval_expr)
+                    except:
+                        result = 0.0
+
+                    context[result_name] = result
+                    logger.info(f"[decomposer] {result_name} = {expr} = {result}")
+
+                # Return the answer from context
+                answer_key = decomp.get("answer", "n")
+                if answer_key in context:
+                    return context[answer_key]
+                # Try to find any result that looks like the answer
+                for key in ['n', 'answer', 'result', 'x']:
+                    if key in context:
+                        return context[key]
+                if context:
+                    return list(context.values())[-1]
+
+            return 0.0
+
+        except Exception as e:
+            logger.error(f"[decomposer] Exponent simplify error: {e}")
             return 0.0
 
     def solve_two_pass(self, problem: str) -> float:
