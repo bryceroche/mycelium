@@ -8,9 +8,6 @@ Key fields:
 - func_name: Key into function_registry (~200 functions)
 - description: Natural language description (few-shot example for LLM)
 - successes/uses: Track success rate for ranking
-
-Hierarchy fields (is_semantic_umbrella, is_root, depth) are kept for
-backward compatibility but are not used in the flat prototype architecture.
 """
 
 from dataclasses import dataclass, field
@@ -44,12 +41,13 @@ class StepSignature:
     uses: int = 0
     successes: int = 0
     operational_failures: int = 0
-    similarity_count: int = 0
-    similarity_mean: float = 0.0
-    similarity_m2: float = 0.0
     success_sim_count: int = 0
     success_sim_mean: float = 0.0
     success_sim_m2: float = 0.0
+    # Outcome tracking - Welford stats for success/failure (1.0/0.0)
+    outcome_count: int = 0
+    outcome_mean: float = 0.0  # This is effectively the success rate
+    outcome_m2: float = 0.0    # High variance = inconsistent outcomes
     # Merge tracking
     description_variants: list[str] = field(default_factory=list)
     merge_dist_count: int = 0
@@ -60,11 +58,6 @@ class StepSignature:
     coverage_sim_mean: float = 0.0
     coverage_sim_m2: float = 0.0
     low_coverage_count: int = 0
-    is_semantic_umbrella: bool = False
-    is_root: bool = False
-    depth: int = 0
-    is_atomic: bool = False
-    atomic_reason: Optional[str] = None
     created_at: Optional[str] = None
     last_used_at: Optional[str] = None
 
@@ -75,6 +68,18 @@ class StepSignature:
     @property
     def has_func(self) -> bool:
         return self.func_name is not None
+
+    @property
+    def outcome_variance(self) -> float:
+        """Variance in success/failure outcomes. High = inconsistent."""
+        if self.outcome_count < 2:
+            return 0.0
+        return self.outcome_m2 / self.outcome_count
+
+    @property
+    def outcome_stddev(self) -> float:
+        """Standard deviation of outcomes."""
+        return self.outcome_variance ** 0.5
 
     @classmethod
     def from_row(cls, row: dict) -> "StepSignature":
@@ -155,12 +160,12 @@ class StepSignature:
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
             operational_failures=row.get("operational_failures", 0) or 0,
-            similarity_count=row.get("similarity_count", 0) or 0,
-            similarity_mean=row.get("similarity_mean", 0.0) or 0.0,
-            similarity_m2=row.get("similarity_m2", 0.0) or 0.0,
             success_sim_count=row.get("success_sim_count", 0) or 0,
             success_sim_mean=row.get("success_sim_mean", 0.0) or 0.0,
             success_sim_m2=row.get("success_sim_m2", 0.0) or 0.0,
+            outcome_count=row.get("outcome_count", 0) or 0,
+            outcome_mean=row.get("outcome_mean", 0.0) or 0.0,
+            outcome_m2=row.get("outcome_m2", 0.0) or 0.0,
             description_variants=description_variants,
             merge_dist_count=row.get("merge_dist_count", 0) or 0,
             merge_dist_mean=row.get("merge_dist_mean", 0.0) or 0.0,
@@ -169,11 +174,6 @@ class StepSignature:
             coverage_sim_mean=row.get("coverage_sim_mean", 0.0) or 0.0,
             coverage_sim_m2=row.get("coverage_sim_m2", 0.0) or 0.0,
             low_coverage_count=row.get("low_coverage_count", 0) or 0,
-            is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
-            is_root=bool(row.get("is_root", 0)),
-            depth=row.get("depth", 0) or 0,
-            is_atomic=bool(row.get("is_atomic", 0)),
-            atomic_reason=row.get("atomic_reason"),
             created_at=row.get("created_at"),
             last_used_at=row.get("last_used_at"),
         )
@@ -219,12 +219,12 @@ class StepSignature:
             uses=row.get("uses", 0),
             successes=row.get("successes", 0),
             operational_failures=row.get("operational_failures", 0) or 0,
-            similarity_count=row.get("similarity_count", 0) or 0,
-            similarity_mean=row.get("similarity_mean", 0.0) or 0.0,
-            similarity_m2=row.get("similarity_m2", 0.0) or 0.0,
             success_sim_count=row.get("success_sim_count", 0) or 0,
             success_sim_mean=row.get("success_sim_mean", 0.0) or 0.0,
             success_sim_m2=row.get("success_sim_m2", 0.0) or 0.0,
+            outcome_count=row.get("outcome_count", 0) or 0,
+            outcome_mean=row.get("outcome_mean", 0.0) or 0.0,
+            outcome_m2=row.get("outcome_m2", 0.0) or 0.0,
             description_variants=description_variants,
             merge_dist_count=row.get("merge_dist_count", 0) or 0,
             merge_dist_mean=row.get("merge_dist_mean", 0.0) or 0.0,
@@ -233,11 +233,6 @@ class StepSignature:
             coverage_sim_mean=row.get("coverage_sim_mean", 0.0) or 0.0,
             coverage_sim_m2=row.get("coverage_sim_m2", 0.0) or 0.0,
             low_coverage_count=row.get("low_coverage_count", 0) or 0,
-            is_semantic_umbrella=bool(row.get("is_semantic_umbrella", 0)),
-            is_root=bool(row.get("is_root", 0)),
-            depth=row.get("depth", 0) or 0,
-            is_atomic=bool(row.get("is_atomic", 0)),
-            atomic_reason=row.get("atomic_reason"),
             created_at=row.get("created_at"),
             last_used_at=row.get("last_used_at"),
         )

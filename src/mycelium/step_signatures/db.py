@@ -11,7 +11,7 @@ import logging
 import re
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Optional, List
 
 import numpy as np
@@ -92,13 +92,10 @@ class StepSignatureDB:
         return StepSignature.from_row(dict(row))
 
     def get_all_leaves(self) -> List[StepSignature]:
-        """Get all leaf signatures (non-umbrellas)."""
+        """Get all signatures (all are leaves in flat architecture)."""
         conn = self._connection()
         rows = conn.execute(
-            """
-            SELECT * FROM step_signatures
-            WHERE is_semantic_umbrella = 0 OR is_semantic_umbrella IS NULL
-            """
+            "SELECT * FROM step_signatures"
         ).fetchall()
 
         return [StepSignature.from_row_for_routing(dict(row)) for row in rows]
@@ -114,10 +111,16 @@ class StepSignatureDB:
     # =========================================================================
 
     def record_success(self, signature_id: int, similarity: float = None) -> None:
-        """Record a successful execution with optional similarity."""
+        """Record a successful execution with optional similarity.
+
+        Updates both success_sim Welford stats (for similarity) and
+        outcome Welford stats (1.0 for success).
+        """
         conn = self._connection()
+        # outcome = 1.0 for success
+        outcome = 1.0
         if similarity is not None:
-            # Update success stats with Welford algorithm
+            # Update success stats with Welford algorithm for both similarity and outcome
             conn.execute(
                 """
                 UPDATE step_signatures
@@ -128,50 +131,150 @@ class StepSignatureDB:
                         (? - COALESCE(success_sim_mean, 0)) / (COALESCE(success_sim_count, 0) + 1),
                     success_sim_m2 = COALESCE(success_sim_m2, 0) +
                         (? - COALESCE(success_sim_mean, 0)) *
-                        (? - (COALESCE(success_sim_mean, 0) + (? - COALESCE(success_sim_mean, 0)) / (COALESCE(success_sim_count, 0) + 1)))
+                        (? - (COALESCE(success_sim_mean, 0) + (? - COALESCE(success_sim_mean, 0)) / (COALESCE(success_sim_count, 0) + 1))),
+                    outcome_count = COALESCE(outcome_count, 0) + 1,
+                    outcome_mean = COALESCE(outcome_mean, 0) +
+                        (? - COALESCE(outcome_mean, 0)) / (COALESCE(outcome_count, 0) + 1),
+                    outcome_m2 = COALESCE(outcome_m2, 0) +
+                        (? - COALESCE(outcome_mean, 0)) *
+                        (? - (COALESCE(outcome_mean, 0) + (? - COALESCE(outcome_mean, 0)) / (COALESCE(outcome_count, 0) + 1)))
                 WHERE id = ?
                 """,
-                (similarity, similarity, similarity, similarity, signature_id),
+                (similarity, similarity, similarity, similarity,
+                 outcome, outcome, outcome, outcome, signature_id),
             )
         else:
+            # Update outcome Welford stats only
             conn.execute(
                 """
                 UPDATE step_signatures
                 SET successes = COALESCE(successes, 0) + 1,
-                    uses = COALESCE(uses, 0) + 1
+                    uses = COALESCE(uses, 0) + 1,
+                    outcome_count = COALESCE(outcome_count, 0) + 1,
+                    outcome_mean = COALESCE(outcome_mean, 0) +
+                        (? - COALESCE(outcome_mean, 0)) / (COALESCE(outcome_count, 0) + 1),
+                    outcome_m2 = COALESCE(outcome_m2, 0) +
+                        (? - COALESCE(outcome_mean, 0)) *
+                        (? - (COALESCE(outcome_mean, 0) + (? - COALESCE(outcome_mean, 0)) / (COALESCE(outcome_count, 0) + 1)))
                 WHERE id = ?
                 """,
-                (signature_id,),
+                (outcome, outcome, outcome, outcome, signature_id),
             )
 
     def record_failure(self, signature_id: int) -> None:
-        """Record a failed execution."""
+        """Record a failed execution.
+
+        Updates outcome Welford stats with 0.0 for failure.
+        """
         conn = self._connection()
+        # outcome = 0.0 for failure
+        outcome = 0.0
         conn.execute(
             """
             UPDATE step_signatures
             SET operational_failures = COALESCE(operational_failures, 0) + 1,
-                uses = COALESCE(uses, 0) + 1
+                uses = COALESCE(uses, 0) + 1,
+                outcome_count = COALESCE(outcome_count, 0) + 1,
+                outcome_mean = COALESCE(outcome_mean, 0) +
+                    (? - COALESCE(outcome_mean, 0)) / (COALESCE(outcome_count, 0) + 1),
+                outcome_m2 = COALESCE(outcome_m2, 0) +
+                    (? - COALESCE(outcome_mean, 0)) *
+                    (? - (COALESCE(outcome_mean, 0) + (? - COALESCE(outcome_mean, 0)) / (COALESCE(outcome_count, 0) + 1)))
             WHERE id = ?
             """,
-            (signature_id,),
+            (outcome, outcome, outcome, outcome, signature_id),
         )
 
-    def record_similarity(self, signature_id: int, similarity: float) -> None:
-        """Record similarity observation for Welford tracking."""
+    def record_success_with_embedding(
+        self, signature_id: int, embedding: np.ndarray, similarity: float
+    ) -> None:
+        """Record success AND average embedding into centroid.
+
+        This is the key learning mechanism: successful step embeddings
+        drift the signature centroid toward patterns that work.
+
+        Args:
+            signature_id: The signature that succeeded
+            embedding: The step embedding that matched successfully
+            similarity: The cosine similarity at match time
+        """
+        from mycelium.step_signatures.utils import invalidate_centroid_cache
+
+        sig = self.get_signature(signature_id)
+        if sig is None:
+            logger.warning("[db] Cannot update non-existent signature %d", signature_id)
+            return
+
+        # Prepare embedding
+        query = np.asarray(embedding, dtype=np.float32)
+
+        # Get current embedding_sum or initialize from centroid
+        if sig.embedding_sum is not None:
+            current_sum = sig.embedding_sum
+        elif sig.centroid is not None:
+            current_sum = sig.centroid * sig.embedding_count
+        else:
+            current_sum = np.zeros_like(query)
+
+        # Update centroid via running average
+        new_count = sig.embedding_count + 1
+        new_sum = current_sum + query
+        new_centroid = new_sum / new_count
+
+        # Pack embeddings for storage
+        new_centroid_json = pack_embedding(new_centroid)
+        new_sum_json = pack_embedding(new_sum)
+
+        # outcome = 1.0 for success
+        outcome = 1.0
+
         conn = self._connection()
         conn.execute(
             """
             UPDATE step_signatures
-            SET similarity_count = COALESCE(similarity_count, 0) + 1,
-                similarity_mean = COALESCE(similarity_mean, 0) +
-                    (? - COALESCE(similarity_mean, 0)) / (COALESCE(similarity_count, 0) + 1),
-                similarity_m2 = COALESCE(similarity_m2, 0) +
-                    (? - COALESCE(similarity_mean, 0)) *
-                    (? - (COALESCE(similarity_mean, 0) + (? - COALESCE(similarity_mean, 0)) / (COALESCE(similarity_count, 0) + 1)))
+            SET successes = COALESCE(successes, 0) + 1,
+                uses = COALESCE(uses, 0) + 1,
+                centroid = ?,
+                embedding_sum = ?,
+                embedding_count = ?,
+                success_sim_count = COALESCE(success_sim_count, 0) + 1,
+                success_sim_mean = COALESCE(success_sim_mean, 0) +
+                    (? - COALESCE(success_sim_mean, 0)) / (COALESCE(success_sim_count, 0) + 1),
+                success_sim_m2 = COALESCE(success_sim_m2, 0) +
+                    (? - COALESCE(success_sim_mean, 0)) *
+                    (? - (COALESCE(success_sim_mean, 0) + (? - COALESCE(success_sim_mean, 0)) / (COALESCE(success_sim_count, 0) + 1))),
+                outcome_count = COALESCE(outcome_count, 0) + 1,
+                outcome_mean = COALESCE(outcome_mean, 0) +
+                    (? - COALESCE(outcome_mean, 0)) / (COALESCE(outcome_count, 0) + 1),
+                outcome_m2 = COALESCE(outcome_m2, 0) +
+                    (? - COALESCE(outcome_mean, 0)) *
+                    (? - (COALESCE(outcome_mean, 0) + (? - COALESCE(outcome_mean, 0)) / (COALESCE(outcome_count, 0) + 1)))
             WHERE id = ?
             """,
-            (similarity, similarity, similarity, similarity, signature_id),
+            (
+                new_centroid_json,
+                new_sum_json,
+                new_count,
+                similarity,
+                similarity,
+                similarity,
+                similarity,
+                outcome,
+                outcome,
+                outcome,
+                outcome,
+                signature_id,
+            ),
+        )
+
+        # Invalidate centroid cache
+        invalidate_centroid_cache(signature_id)
+
+        logger.debug(
+            "[db] Recorded success with embedding for sig=%d: count=%d, sim=%.3f",
+            signature_id,
+            new_count,
+            similarity,
         )
 
     # =========================================================================
@@ -291,183 +394,6 @@ class StepSignatureDB:
         return [func for func, rate, count in needs_coverage]
 
     # =========================================================================
-    # FAILURE TRACKING: Record failures for periodic review
-    # =========================================================================
-
-    def record_execution_failure(
-        self,
-        step_description: str,
-        func_name: str = None,
-        signature_id: int = None,
-        similarity: float = None,
-        error_type: str = "execution_error",
-        error_message: str = None,
-        problem_id: str = None,
-    ) -> None:
-        """Record a failed execution for later review.
-
-        Args:
-            step_description: The step that failed
-            func_name: Function that was attempted (if any)
-            signature_id: Signature that was matched (if any)
-            similarity: Similarity score of match (if any)
-            error_type: 'wrong_answer', 'execution_error', 'no_match'
-            error_message: Optional error details
-            problem_id: Optional problem reference
-        """
-        conn = self._connection()
-        now = datetime.now(timezone.utc).isoformat()
-
-        conn.execute(
-            """
-            INSERT INTO execution_failures
-            (step_description, func_name, signature_id, similarity,
-             error_type, error_message, problem_id, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                step_description,
-                func_name,
-                signature_id,
-                similarity,
-                error_type,
-                error_message,
-                problem_id,
-                now,
-            ),
-        )
-
-    def get_failure_stats(self) -> dict:
-        """Get summary statistics of failures."""
-        conn = self._connection()
-
-        # By error type
-        rows = conn.execute(
-            """
-            SELECT error_type, COUNT(*) as count
-            FROM execution_failures
-            GROUP BY error_type
-            """
-        ).fetchall()
-        by_type = {row[0]: row[1] for row in rows}
-
-        # By function
-        rows = conn.execute(
-            """
-            SELECT func_name, COUNT(*) as count
-            FROM execution_failures
-            WHERE func_name IS NOT NULL
-            GROUP BY func_name
-            ORDER BY count DESC
-            LIMIT 10
-            """
-        ).fetchall()
-        by_func = {row[0]: row[1] for row in rows}
-
-        # Total
-        total = conn.execute(
-            "SELECT COUNT(*) FROM execution_failures"
-        ).fetchone()[0]
-
-        return {
-            "total": total,
-            "by_type": by_type,
-            "top_failing_functions": by_func,
-        }
-
-    def get_recent_failures(
-        self, limit: int = 50, error_type: str = None
-    ) -> List[dict]:
-        """Get recent failures for review.
-
-        Args:
-            limit: Max failures to return
-            error_type: Optional filter by error type
-
-        Returns:
-            List of failure dicts
-        """
-        conn = self._connection()
-
-        if error_type:
-            rows = conn.execute(
-                """
-                SELECT * FROM execution_failures
-                WHERE error_type = ?
-                ORDER BY created_at DESC
-                LIMIT ?
-                """,
-                (error_type, limit),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                """
-                SELECT * FROM execution_failures
-                ORDER BY created_at DESC
-                LIMIT ?
-                """,
-                (limit,),
-            ).fetchall()
-
-        return [dict(row) for row in rows]
-
-    def get_failure_patterns(self, min_occurrences: int = 3) -> List[dict]:
-        """Find repeated failure patterns.
-
-        Groups similar step descriptions and returns patterns
-        that occur frequently - these are candidates for new signatures.
-        """
-        conn = self._connection()
-
-        # Group by func_name and look for repeated failures
-        rows = conn.execute(
-            """
-            SELECT
-                func_name,
-                step_description,
-                COUNT(*) as occurrences,
-                AVG(similarity) as avg_similarity
-            FROM execution_failures
-            WHERE func_name IS NOT NULL
-            GROUP BY func_name, step_description
-            HAVING COUNT(*) >= ?
-            ORDER BY occurrences DESC
-            """,
-            (min_occurrences,),
-        ).fetchall()
-
-        patterns = []
-        for row in rows:
-            patterns.append(
-                {
-                    "func_name": row[0],
-                    "step_description": row[1],
-                    "occurrences": row[2],
-                    "avg_similarity": row[3],
-                }
-            )
-
-        return patterns
-
-    def clear_old_failures(self, days: int = 30) -> int:
-        """Clear failures older than specified days.
-
-        Returns number of deleted records.
-        """
-        conn = self._connection()
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
-
-        cursor = conn.execute(
-            """
-            DELETE FROM execution_failures
-            WHERE created_at < ?
-            """,
-            (cutoff,),
-        )
-
-        return cursor.rowcount
-
-    # =========================================================================
     # WELFORD-ADAPTIVE THRESHOLDS
     # =========================================================================
 
@@ -546,6 +472,70 @@ class StepSignatureDB:
         )
 
         return clamped
+
+    def get_high_variance_signatures(
+        self, min_observations: int = 10, min_variance: float = 0.20
+    ) -> List[StepSignature]:
+        """Get signatures with high outcome variance (decomposition candidates).
+
+        Per CLAUDE.md: High outcome variance = inconsistent success/failure.
+        These signatures might be too broad and need decomposition.
+
+        For binary outcomes (0/1), max variance is 0.25 (at 50% success rate).
+        A variance of 0.20+ indicates significant inconsistency.
+
+        Args:
+            min_observations: Minimum outcome_count to consider
+            min_variance: Minimum outcome variance threshold
+
+        Returns:
+            List of signatures sorted by variance (highest first)
+        """
+        conn = self._connection()
+        rows = conn.execute(
+            """
+            SELECT *,
+                CASE WHEN outcome_count >= 2
+                     THEN outcome_m2 / outcome_count
+                     ELSE 0 END as variance
+            FROM step_signatures
+            WHERE outcome_count >= ?
+              AND CASE WHEN outcome_count >= 2
+                       THEN outcome_m2 / outcome_count
+                       ELSE 0 END >= ?
+            ORDER BY variance DESC
+            """,
+            (min_observations, min_variance),
+        ).fetchall()
+
+        return [StepSignature.from_row(dict(row)) for row in rows]
+
+    def get_outcome_stats_summary(self) -> dict:
+        """Get summary of outcome variance across all signatures.
+
+        Returns:
+            Dict with global outcome stats for monitoring.
+        """
+        conn = self._connection()
+        row = conn.execute(
+            """
+            SELECT
+                COUNT(*) as total_sigs,
+                SUM(CASE WHEN outcome_count >= 10 THEN 1 ELSE 0 END) as sigs_with_data,
+                AVG(CASE WHEN outcome_count >= 2 THEN outcome_m2 / outcome_count ELSE NULL END) as avg_variance,
+                MAX(CASE WHEN outcome_count >= 2 THEN outcome_m2 / outcome_count ELSE 0 END) as max_variance,
+                SUM(CASE WHEN outcome_count >= 10 AND outcome_m2 / outcome_count >= 0.20 THEN 1 ELSE 0 END) as high_variance_count
+            FROM step_signatures
+            """
+        ).fetchone()
+
+        return {
+            "total_signatures": row[0] or 0,
+            "signatures_with_outcome_data": row[1] or 0,
+            "avg_outcome_variance": row[2] or 0.0,
+            "max_outcome_variance": row[3] or 0.0,
+            "high_variance_count": row[4] or 0,
+        }
 
     # =========================================================================
     # SIGNATURE MERGING - Welford-guided duplicate prevention
@@ -1092,6 +1082,42 @@ class StepSignatureDB:
 
         return menu
 
+    def get_failure_warnings(self, min_failure_count: int = 5) -> dict[str, List[str]]:
+        """Get failure warnings per function for signatures with enough failures.
+
+        Returns descriptions from signatures that have accumulated enough failures
+        to be meaningful warnings.
+
+        Args:
+            min_failure_count: Minimum operational_failures to include (default 5)
+
+        Returns:
+            Dict mapping func_name -> list of failed description patterns
+        """
+        conn = self._connection()
+        rows = conn.execute(
+            """
+            SELECT func_name, description, operational_failures
+            FROM step_signatures
+            WHERE func_name IS NOT NULL
+              AND COALESCE(operational_failures, 0) >= ?
+            ORDER BY func_name, operational_failures DESC
+            """,
+            (min_failure_count,),
+        ).fetchall()
+
+        warnings = {}
+        for row in rows:
+            func_name = row[0]
+            description = row[1]
+            if func_name not in warnings:
+                warnings[func_name] = []
+            # Limit to 3 failure examples per function
+            if len(warnings[func_name]) < 3:
+                warnings[func_name].append(description)
+
+        return warnings
+
     def build_signature_menu(self, min_successes: int = 3, max_examples_per_func: int = 3) -> dict[str, List[dict]]:
         """Build a menu of functions with their proven signature examples.
 
@@ -1166,12 +1192,22 @@ class StepSignatureDB:
         if not menu:
             return "No proven patterns yet. Decompose into basic operations."
 
+        # Get failure warnings (signatures with >= 5 failures)
+        failure_warnings = self.get_failure_warnings(min_failure_count=5)
+
         lines = []
         for func_name in sorted(menu.keys()):
             examples = menu[func_name]
             lines.append(f"{func_name}:")
             for ex in examples:
                 lines.append(f'  - "{ex["description"]}" ({ex["successes"]} successes)')
+
+            # Add failure warnings if any exist for this function
+            if func_name in failure_warnings:
+                lines.append("  [often fails when described as:]")
+                for fail_desc in failure_warnings[func_name]:
+                    lines.append(f'  ! "{fail_desc}"')
+
             lines.append("")
 
         return "\n".join(lines)
@@ -1262,10 +1298,7 @@ class StepSignatureDB:
             return {"error": "Use force=True to confirm"}
 
         conn = self._connection()
-        # Use explicit context manager for atomic multi-statement transaction
-        with conn.connection() as raw_conn:
-            raw_conn.execute("DELETE FROM step_signatures")
-            raw_conn.execute("DELETE FROM signature_relationships")
+        conn.execute("DELETE FROM step_signatures")
 
         return {"cleared": True}
 

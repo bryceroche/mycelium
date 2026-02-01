@@ -26,13 +26,6 @@ Accurate statistics are the source of truth. Welford variance guides all decisio
 
 ## Signatures as Prototypes
 One function can have multiple signatures (semantic variants):
-```
-add:
-  ├── "combine two prices"       → signature_42
-  ├── "sum the quantities"       → signature_87
-  └── "total distance traveled"  → signature_156
-```
-
 Signatures should **span the semantic space** (diverse), not cluster redundantly.
 
 At maturity: ~150-200 functions × 2-5 signatures each = **300-1000 prototypes**
@@ -70,28 +63,10 @@ Please always keep this file in the context window.
 
 ## Function Pointer Architecture
 Leaf nodes store function pointers, not DSL code:
-```python
-signature = {
-    "func_name": "add",           # Key into function_registry
-    "description": "combine prices",
-    "centroid": [0.12, -0.34, ...],
-    "successes": 47,
-    "uses": 52,
-}
-```
-
 Execute via: `call_function("add", 3, 2) → 5`
 
 ## Signature Menu (LLM Guidance)
 High-success signatures become few-shot examples for the LLM:
-```
-Known patterns for 'add':
-  - "combine two prices" (47 successes)
-  - "sum the quantities" (38 successes)
-
-Known patterns for 'mul':
-  - "calculate total cost" (52 successes)
-```
 
 This creates a **feedback loop**:
 1. Tree learns which descriptions succeed
@@ -100,50 +75,24 @@ This creates a **feedback loop**:
 4. Tree gets even better signal
 
 ## Classification (k-NN)
-```python
-embed(step) → k-NN → (func_name, similarity)
 
-if similarity >= threshold:
-    EXECUTE
-elif similarity < threshold:
-    DECOMPOSE FURTHER
-elif similarity not improving:
-    STOP, TRY EXECUTING
-```
-
-Brute-force k-NN is fast enough:
+Brute-force k-NN is fast:
 - 1,000 signatures: < 0.1ms
 - 5,000 signatures: < 0.5ms
 - 50,000 signatures: ~5ms
-
-Real bottleneck is embedding API (~100-500ms), not search.
 
 ## Post-Mortem Learning
 On success, for each (step, func) that worked:
 - **Close to existing sig?** → MERGE (update centroid + descriptions)
 - **Far from all sigs?** → CREATE new signature
 
-Thresholds guided by Welford stats per function.
+Thresholds guided by Welford stats per function embedding and outcome variance
 
 ## Signature Diversity
 Optimize for coverage, not redundancy:
-
-**Before (redundant):**
-```
-"calculate 20% of X"  ●●
-"find 20% of total"   ●●
-```
-
-**After (diverse):**
-```
-"calculate 20%"       ●
-"find the tip"        ●
-"discount amount"     ●
-```
-
 Use quality-weighted farthest-point sampling for menu building.
 
-## Similarity Trend Recursion
+## Cosine Similarity Trend Recursion
 Keep decomposing while similarity improves. Stop when:
 - Similarity plateaus (not improving)
 - Max depth reached
@@ -157,17 +106,62 @@ Keep decomposing while similarity improves. Stop when:
 
 The goal is NOT 100% accuracy on every run. The goal is collecting data that makes the system smarter over time.
 
-## With Fresh DB
-Start with **easy** problems (GSM8K or MATH L1-L2).
-Need successes to learn from; failures alone don't teach what works.
-System branches out early, consolidates later.
-
 ## Github Minor Releases
 Github minor releases checkpoint progress.
 Follow convention: v1.8.15 → v1.8.16 etc.
 
 ## Batch LLM Requests
 LLM requests should be batched when possible to reduce costs and latency.
+
+# Recursive Decomposition
+
+## Make Life Easy for the LLM
+Let LLM speak naturally. Python parses into schema.
+
+## Leverage Transformer Attention
+**Transformers are excellent at understanding word relationships -- use this superpower to build graphs**
+**Key insight:** Transformers excel at understanding which words relate to which. Don't fight this by stripping context.
+
+The transformer's attention mechanism naturally understands "half the price of X" refers to X's price, not some other value. Let it see the full problem.
+
+**Why this matters for graph building:** Transformers build implicit dependency graphs through attention. When asked to extract values first, then build relationships second, we force two separate graphs that may not align. Single-pass lets the model build one coherent graph where "cheese costs $10" and "cream is half the price" are connected by attention, not by matching variable names.
+
+## Specialized Templates for Reasoning Patterns
+
+Some examples of templates for explicit reasoning guidance
+
+| Pattern | Signals | Template Guidance |
+|---------|---------|-------------------|
+| **Algebra** | "previous income", "original price", "increased by" | Set up equation, solve for unknown |
+| **Complement** | "40% got below", "X% of students" | (100-X)% is the complement |
+| **Conditional** | "if more than", "overtime", "eligible" | Split at threshold, apply different rates |
+| **Inversion** | "how many did he", "solve for" | Work backwards: total - known = unknown |
+| **Ratio** | "ratio 2:5", "same ratio", "shared among" | Split: parts → per part. Scale: ratio × new size |
+
+
+Pattern detection + specialized prompts: **98% on GSM8K-50, 92% on MATH Algebra L1-L2**.
+
+## SymPy Integration
+For symbolic math, we integrate SymPy
+
+## Pointer Connectivity
+Every needed value connects to the answer. Orphans are extra info.
+The pointer graph reveals what matters and what's noise.
+
+## The 3 Rules
+
+| Rule | What it checks |
+|------|----------------|
+| **Similarity trend** | Stop decomposing when not improving |
+| **Pointer connectivity** | All needed values connect to answer |
+| **Valid functions** | Operations map to function_registry |
+
+## Recursive Until Match
+The tree and LLM **negotiate**:
+- LLM proposes a step
+- Tree says "I don't know that (low sim), break it down"
+- LLM decomposes further
+- Repeat until all nodes match signatures
 
 ## How to use Beads
 
@@ -188,10 +182,11 @@ Don't fix and forget - always track issues in beads.
 ## Project Structure
 
 - `src/mycelium/` - Main source code
-- `solver.py` - Main solver with decomposition loop
+- `recursive_decomposer.py` - 3-step recursive decomposition engine
 - `function_registry.py` - Curated Python function pointers
 - `step_signatures/db.py` - Signature store with k-NN classification
-- `mathdecomp/` - LLM decomposition and grading
+- `solver.py` - Main solver orchestration
+- `mathdecomp/` - Schema and grading
 
 ## Workflow
 

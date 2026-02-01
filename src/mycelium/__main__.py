@@ -2,15 +2,14 @@
 
 Usage:
     python -m mycelium solve "What is 15% of 80?"
-    python -m mycelium solve "Calculate 2^10" --mode=inference
-    python -m mycelium train --dataset=gsm8k --num=100
+    python -m mycelium solve "Calculate 2^10"
     python -m mycelium info
 """
 
 import argparse
-import asyncio
 import os
 import sys
+import time
 
 
 def set_mode(mode: str):
@@ -21,30 +20,28 @@ def set_mode(mode: str):
         os.environ["MYCELIUM_TRAINING_MODE"] = "false"
 
 
-async def solve_command(args):
+def solve_command(args):
     """Solve a single problem."""
     set_mode(args.mode)
 
     # Import after setting env var so config picks it up
     from mycelium.solver import Solver
-    from mycelium.step_signatures import StepSignatureDB
 
     problem = args.problem
-    step_db = StepSignatureDB()
-    solver = Solver(step_db=step_db)
+    solver = Solver()
 
-    result = await solver.solve(problem=problem)
+    start = time.time()
+    answer, results = solver.solve_with_trend_and_results(problem)
+    elapsed_ms = (time.time() - start) * 1000
 
     print(f"\nProblem: {problem}")
-    print(f"Answer: {result.answer}")
-    print(f"Steps: {result.total_steps}")
-    print(f"Signatures matched: {result.signatures_matched}")
-    print(f"DSL injections: {result.steps_with_injection}")
-    print(f"Time: {result.elapsed_ms:.0f}ms")
+    print(f"Answer: {answer}")
+    print(f"Steps: {len(results)}")
+    print(f"Time: {elapsed_ms:.0f}ms")
     print(f"Mode: {args.mode}")
 
 
-async def train_command(args):
+def train_command(args):
     """Run training pipeline on a dataset."""
     set_mode("training")
 
@@ -55,45 +52,30 @@ async def train_command(args):
     print(f"Dataset: {args.dataset}")
     print(f"Problems: {args.num}")
     print(f"Workers: {args.workers}")
-
-    # Use pipeline_runner for training
-    import subprocess
-    cmd = [
-        sys.executable, "-m", "scripts.pipeline_runner",
-        "--dataset", args.dataset,
-        "--problems", str(args.num),
-        "--workers", str(args.workers),
-    ]
-    if args.levels:
-        cmd.extend(["--levels", args.levels])
-    if args.seed:
-        cmd.extend(["--seed", str(args.seed)])
-
-    subprocess.run(cmd, cwd=os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    print("")
+    print("Note: Training pipeline not yet updated for simplified architecture.")
+    print("Use the solver directly for now.")
 
 
-async def info_command(args):
+def info_command(args):
     """Show system information."""
-    from mycelium.config import (
-        TRAINING_MODE, EMBEDDING_MODEL, MAX_SIGNATURES,
-        TRAINING_ACCURACY_WEIGHT, INFERENCE_ACCURACY_WEIGHT,
-    )
+    from mycelium.config import TRAINING_MODE, EMBEDDING_MODEL, EMBEDDING_DIM
     from mycelium.step_signatures import StepSignatureDB
 
     step_db = StepSignatureDB()
     sig_count = step_db.count_signatures()
+    func_names = step_db.get_all_func_names()
 
     print("Mycelium System Info")
     print("=" * 40)
     print(f"Training mode: {TRAINING_MODE}")
     print(f"Embedding model: {EMBEDDING_MODEL}")
+    print(f"Embedding dimensions: {EMBEDDING_DIM}")
     print(f"Signatures in DB: {sig_count}")
-    print(f"Max signatures: {MAX_SIGNATURES}")
-    print(f"Training accuracy weight: {TRAINING_ACCURACY_WEIGHT}")
-    print(f"Inference accuracy weight: {INFERENCE_ACCURACY_WEIGHT}")
+    print(f"Functions covered: {len(func_names)}")
 
 
-async def clear_command(args):
+def clear_command(args):
     """Clear the signature database."""
     from mycelium.config import DB_PROTECTED
 
@@ -192,13 +174,13 @@ def main():
             sys.exit(1)
 
     if args.command == "solve":
-        asyncio.run(solve_command(args))
+        solve_command(args)
     elif args.command == "train":
-        asyncio.run(train_command(args))
+        train_command(args)
     elif args.command == "info":
-        asyncio.run(info_command(args))
+        info_command(args)
     elif args.command == "clear":
-        asyncio.run(clear_command(args))
+        clear_command(args)
 
 
 if __name__ == "__main__":

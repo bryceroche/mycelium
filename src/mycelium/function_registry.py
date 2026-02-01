@@ -13,6 +13,33 @@ from typing import Any, Callable, List, Optional, Union
 # Type alias for numbers
 Number = Union[int, float]
 
+
+# =============================================================================
+# FLEXIBLE ARITHMETIC FUNCTIONS (handle variable args)
+# =============================================================================
+
+def _add(*args) -> Number:
+    """Add any combination of numbers - handles args or list."""
+    if len(args) == 0:
+        return 0
+    # If single arg that's a list/tuple, sum it
+    if len(args) == 1 and isinstance(args[0], (list, tuple)):
+        return sum(args[0])
+    return sum(args)
+
+
+def _mul(*args) -> Number:
+    """Multiply any combination of numbers - handles args or list."""
+    if len(args) == 0:
+        return 1
+    # If single arg that's a list/tuple, multiply all
+    if len(args) == 1 and isinstance(args[0], (list, tuple)):
+        args = args[0]
+    result = 1
+    for x in args:
+        result *= x
+    return result
+
 # Try to import sympy for symbolic operations (tier 7)
 try:
     import sympy
@@ -30,11 +57,11 @@ FUNCTION_REGISTRY = {
     # TIER 1: Arithmetic
     # =========================================================================
     "add": {
-        "func": operator.add,
-        "arity": 2,
+        "func": _add,
+        "arity": -1,  # Variable arity
         "tier": 1,
-        "module": "operator",
-        "description": "Add two numbers",
+        "module": "custom",
+        "description": "Add two or more numbers",
     },
     "sub": {
         "func": operator.sub,
@@ -44,11 +71,11 @@ FUNCTION_REGISTRY = {
         "description": "Subtract second number from first",
     },
     "mul": {
-        "func": operator.mul,
-        "arity": 2,
+        "func": _mul,
+        "arity": -1,  # Variable arity
         "tier": 1,
-        "module": "operator",
-        "description": "Multiply two numbers",
+        "module": "custom",
+        "description": "Multiply two or more numbers",
     },
     "truediv": {
         "func": operator.truediv,
@@ -386,11 +413,11 @@ FUNCTION_REGISTRY = {
         "description": "Sample variance of data",
     },
     "sum": {
-        "func": sum,
-        "arity": 1,  # takes iterable
+        "func": _add,  # Same as add - handles both args and list
+        "arity": -1,
         "tier": 6,
-        "module": "builtins",
-        "description": "Sum of all values in an iterable",
+        "module": "custom",
+        "description": "Sum of all values",
     },
     "len": {
         "func": len,

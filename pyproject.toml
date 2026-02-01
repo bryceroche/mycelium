@@ -1,6 +1,6 @@
 [project]
 name = "mycelium"
-version = "3.0.0"
+version = "3.0.2"
 description = "Recursive problem decomposition with signature-based solution networks"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -11,6 +11,7 @@ dependencies = [
     "sympy>=1.12",
     "datasets>=2.0.0",
     "openai>=2.16.0",
+    "litellm>=1.81.5",
 ]
 
 [project.optional-dependencies]
