@@ -128,28 +128,10 @@ The transformer's attention mechanism naturally understands "half the price of X
 
 ## Don't Decompose Too Fine-Grained
 
-**Lesson learned:** Atomic decomposition (one operation per step) hurts accuracy.
-
-| Approach | Result |
-|----------|--------|
-| Fine-grained (add, subtract, multiply) | 80% - chunks lost context, wrong matches |
-| Coarse-grained (sequential, ratio, inversion) | 100% - LLM sees full problem |
-
 **What failed:**
 - Breaking problems into atomic operations
 - Chunking into tiny pieces that lose context
 - More steps = more chances for mismatch/error
-
-**What worked:**
-- Match the *reasoning type*, not the *arithmetic operation*
-- Keep the full problem in context
-- One LLM call per problem with specialized prompt
-
-**Examples:**
-- "Janet's ducks lay eggs, she eats some, sells rest" → `sequential` (not `subtract` + `subtract` + `multiply`)
-- "After 20% discount, price is $80" → `inversion` (not `divide`)
-
-**Rule of thumb:** If the LLM needs context from the full problem to solve a step, you've decomposed too far.
 
 ## Specialized Templates for Reasoning Patterns
 
