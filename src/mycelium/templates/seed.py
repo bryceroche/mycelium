@@ -150,18 +150,37 @@ SEED_EXAMPLES = [
     ("Tim has 10 apples. He gives 3 to Mary. How many left?", "subtraction"),
     ("Sarah has 15 books. She loses 7. How many does she have?", "subtraction"),
     ("A store has 100 items. They sell 40. How many remain?", "subtraction"),
+    ("John had $50. He spent $23 on lunch. How much money does he have left?", "subtraction"),
+    ("There were 85 people at the party. 32 people left early. How many people stayed?", "subtraction"),
+    ("A movie is 120 minutes long. We have watched 45 minutes. How many minutes are left?", "subtraction"),
+    ("The bakery made 200 cupcakes. They sold 156 by noon. How many cupcakes remain?", "subtraction"),
 
     # Addition examples
     ("Tom has 5 marbles. He finds 8 more. How many total?", "addition"),
     ("Lisa has 12 stickers. Her friend gives her 6. How many now?", "addition"),
+    ("A train traveled 120 miles. It has 80 more miles to go. What is the total distance?", "addition"),
+    ("Mark earned $45 on Monday and $67 on Tuesday. How much did he earn in total?", "addition"),
+    ("The library had 340 books. They received a donation of 125 new books. How many books does the library have now?", "addition"),
+    ("In the morning, 28 birds were in the tree. In the afternoon, 15 more birds arrived. How many birds are there now?", "addition"),
+    # Money addition with "finds" and "more"
+    ("Sarah has $30. She finds $10 more. How much money does she have now?", "addition"),
+    ("Mike has $25. He receives $15 more. How much money does he have?", "addition"),
+    ("The jar has 50 coins. We add 25 more coins. How many coins are there now?", "addition"),
+    ("Jake has 20 cards. He gets 8 more cards. How many cards does he have now?", "addition"),
 
     # Multiplication examples
     ("There are 6 boxes with 8 items each. How many total items?", "multiplication"),
     ("A farmer has 5 rows with 12 plants each. How many plants?", "multiplication"),
+    ("A movie theater has 15 rows with 24 seats in each row. How many seats are there in total?", "multiplication"),
+    ("Each package contains 8 batteries. If you buy 7 packages, how many batteries do you have?", "multiplication"),
+    ("A parking lot has 9 levels with 45 cars on each level. How many cars are parked in total?", "multiplication"),
 
     # Division examples
     ("24 cookies divided among 6 children. How many each?", "division"),
     ("A class of 30 students split into 5 groups. How many per group?", "division"),
+    ("There are 72 pencils to be shared equally among 8 students. How many pencils does each student get?", "division"),
+    ("A chef has 96 ounces of sauce to divide into 12 equal portions. How many ounces per portion?", "division"),
+    ("The company earned $144,000 to be split equally among 6 partners. How much does each partner receive?", "division"),
 
     # Circle examples
     ("Find the radius of the circle with equation x^2 + 8x + y^2 - 6y = 0.", "circle_radius"),

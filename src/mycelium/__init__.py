@@ -1,9 +1,14 @@
-"""Mycelium: Recursive local decomposition via embeddings."""
+"""Mycelium: Template-based math problem solver."""
 
-__version__ = "2.0.2"
+__version__ = "3.0.0"
 
-from .step_signatures import StepSignature
+from .engine import TemplateEngine, solve
+from .templates import Template, Example, seed_database
 
 __all__ = [
-    "StepSignature",
+    "TemplateEngine",
+    "Template",
+    "Example",
+    "solve",
+    "seed_database",
 ]
