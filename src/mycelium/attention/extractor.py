@@ -9,12 +9,68 @@ Why DeepSeek?
 """
 
 import logging
-from dataclasses import dataclass
-from typing import List, Optional
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+import torch
 
 logger = logging.getLogger(__name__)
+
+# Global cache for lazy-loaded models (singleton pattern)
+_model_cache: Dict[str, Tuple["AutoModelForCausalLM", "AutoTokenizer"]] = {}
+
+
+def _get_device() -> str:
+    """Get the best available device."""
+    if torch.cuda.is_available():
+        return "cuda"
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
+def _load_model(model_name: str) -> Tuple["AutoModelForCausalLM", "AutoTokenizer"]:
+    """Load model and tokenizer with caching (singleton pattern).
+
+    Args:
+        model_name: HuggingFace model identifier
+
+    Returns:
+        Tuple of (model, tokenizer)
+    """
+    if model_name in _model_cache:
+        logger.debug(f"Using cached model: {model_name}")
+        return _model_cache[model_name]
+
+    logger.info(f"Loading model: {model_name}")
+
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    device = _get_device()
+    logger.info(f"Using device: {device}")
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+
+    # Load model with attention output enabled
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        output_attentions=True,
+        torch_dtype=torch.float16 if device != "cpu" else torch.float32,
+        device_map="auto" if device == "cuda" else None,
+        trust_remote_code=True,
+    )
+
+    # Move to device if not using device_map="auto"
+    if device != "cuda":
+        model = model.to(device)
+
+    model.eval()
+
+    _model_cache[model_name] = (model, tokenizer)
+    logger.info(f"Model loaded successfully: {model_name}")
+
+    return model, tokenizer
 
 
 @dataclass
@@ -24,8 +80,8 @@ class AttentionResult:
     # Shape: (num_layers, num_heads, seq_len, seq_len)
     attention: np.ndarray
     # Which layers/heads to use (determined empirically)
-    semantic_layers: List[int] = None
-    semantic_heads: List[int] = None
+    semantic_layers: List[int] = field(default_factory=list)
+    semantic_heads: List[int] = field(default_factory=list)
 
 
 def extract_attention(
@@ -43,25 +99,53 @@ def extract_attention(
     Returns:
         AttentionResult with tokens and attention matrices
     """
-    # TODO: Implement with transformers library
-    #
-    # from transformers import AutoModelForCausalLM, AutoTokenizer
-    #
-    # tokenizer = AutoTokenizer.from_pretrained(model_name)
-    # model = AutoModelForCausalLM.from_pretrained(
-    #     model_name,
-    #     output_attentions=True,
-    #     device_map="auto",
-    # )
-    #
-    # inputs = tokenizer(text, return_tensors="pt")
-    # outputs = model(**inputs, output_attentions=True)
-    #
-    # # outputs.attentions is tuple of (batch, heads, seq, seq) per layer
-    # attention = torch.stack(outputs.attentions).numpy()
-    # tokens = tokenizer.convert_ids_to_tokens(inputs.input_ids[0])
+    # Load model (cached singleton)
+    model, tokenizer = _load_model(model_name)
 
-    raise NotImplementedError("Attention extraction not yet implemented")
+    # Tokenize input
+    inputs = tokenizer(text, return_tensors="pt")
+
+    # Move inputs to same device as model
+    device = next(model.parameters()).device
+    inputs = {k: v.to(device) for k, v in inputs.items()}
+
+    # Forward pass with attention output
+    with torch.no_grad():
+        outputs = model(**inputs, output_attentions=True)
+
+    # outputs.attentions is tuple of (batch, num_heads, seq_len, seq_len) per layer
+    # Stack into (num_layers, batch, num_heads, seq_len, seq_len)
+    all_attentions = torch.stack(outputs.attentions)
+
+    # Remove batch dimension: (num_layers, num_heads, seq_len, seq_len)
+    all_attentions = all_attentions.squeeze(1)
+
+    # Determine which layers to use
+    num_layers = all_attentions.shape[0]
+    if layers is None:
+        # Default: last 8 layers (more semantic, less syntactic)
+        layers = list(range(max(0, num_layers - 8), num_layers))
+
+    # Extract only requested layers
+    selected_attentions = all_attentions[layers]
+
+    # Convert to numpy
+    attention_np = selected_attentions.cpu().float().numpy()
+
+    # Get tokens
+    tokens = tokenizer.convert_ids_to_tokens(inputs["input_ids"][0].cpu())
+
+    logger.debug(
+        f"Extracted attention: {len(tokens)} tokens, "
+        f"{attention_np.shape[0]} layers, {attention_np.shape[1]} heads"
+    )
+
+    return AttentionResult(
+        tokens=tokens,
+        attention=attention_np,
+        semantic_layers=layers,
+        semantic_heads=list(range(attention_np.shape[1])),  # All heads by default
+    )
 
 
 def aggregate_attention(
@@ -89,3 +173,13 @@ def aggregate_attention(
         return selected.max(axis=(0, 1))
     else:
         raise ValueError(f"Unknown method: {method}")
+
+
+def clear_model_cache() -> None:
+    """Clear the cached models to free memory.
+
+    Useful for testing or when switching between models.
+    """
+    global _model_cache
+    _model_cache.clear()
+    logger.info("Model cache cleared")

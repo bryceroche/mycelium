@@ -1,11 +1,8 @@
-# The Big 7
+# The Big 3
 1. Attention-Based Decomposition
-2. Tree-Bound LLM
-3. System Independence
-4. New Favorite Pattern
-5. The Flow
-6. True Atomic Decomposition
-7. Primitive vs Chain Nodes
+2. System Independence
+3. New Favorite Pattern
+
 
 ## Attention-Based Decomposition
 **Decomposition is the crux.** Everything downstream of step-level IR is solved.
@@ -44,37 +41,11 @@ Execute (solved)
 
 This mapping can be learned from (problem, solution) pairs using attention analysis.
 
-## Tree-Bound LLM
-The tree IS the LLM's mathematical memory, connected via cross-attention.
-Problem → LLM (frozen) → Cross-Attention to Tree → Route → Execute
-Q · K = routing
-Welford variance = attention temperature
-
-- High variance signatures → soft attention (explore)
-- Low variance signatures → sharp attention (exploit)
-- No match? → Tree grows (create new signature)
-The LLM doesn't "call" the tree. The tree is part of how the LLM thinks.
-
 ## System Independence
 The system restructures its own tree via periodic review—that's by design. Resist manually intervening. Modify Python code and database schema, not the tree directly. Don't clean up orphaned umbrella routers yourself; let the system handle it.
 
 ## New Favorite Pattern
 We want to consolidate methods - for example all database connections should go through a data layer instead of having multiple database connections.  Same with Signature creation, or leaf_node rejection of dag_steps.  We want to consolidate method calls for features to simplify our codebase and reduce the chance of bugs
-
-## The Flow
-Database Statistics → Welford → Tree Structure
-Accurate statistics are the source of truth. Welford variance guides all structural decisions: cluster boundaries, sibling vs child placement, when to decompose leaves into umbrellas. Thresholds come from config, not magic numbers.
-
-## True Atomic Decomposition
-We want a bias towards more steps per problem.  There are so many benefits of having truely atomic decomposisition: better reuse of signatures, better matching per step, and higher accuracy per step.
-
-Mature tree: If problem text is FULLY explained by one leaf, it's atomic.
-Cold start: Only accept steps with graph embedding of depth 1
-
-## Primitive vs Chain Nodes
-1. Cold start with MWPToolkit parses GSM8K → expression trees → depth-1 primitives bootstrap the tree
-2. Success patterns reveal which primitives chain together
-3. Chains become new "atomic" units for L5 routing
 
 
 # Claude Code Instructions
@@ -85,112 +56,6 @@ This file is critically important to the project.
 We want to treat this file as our source of truth.
 Every bug fix, optimization or new feature should be implemented with this file in mind.
 Please always keep this file in the context window.
-
-## Negotiation between Tree and Planner
-The tree guided planner should be a back and forth negotiation between the tree and the planner with a bias towards decomposing dag_steps instead of leaf_nodes as decomposing leaf_nodes is a bigger commitment representing a permanant change to the tree structure
-
-## Cluster Boundaries
-Welford statistics from the database guide tree structure, cluster boundaries, when to add a node as a sibling or child, when to decompose a leaf node into an umbrella router.  The database statistics that power Welford algorithm are our source of truth.
-
-## Core insight: leaf_node ≡ dag_step_type - they should have a 1:1 mapping.
-We use welfords to track both the embedding variance between dag_step_id and dag_step_type and the outcome variance
-
-## Terminology
- - Welfords = Algorithm for calculating variance
- - DAG = Directed Acyclic Graph
- - MCTS = Monte Carlo Tree Search
- - Signature = Node
- - Dag Step = Plan Step
- - Leaf Node = Node with no children
- - Router Node = Node with children
- - Centroid = Average of descentant embeddings (router nodes)
- - DSL = Domain Specific Language
-
-
-## Tree
-The signature tree is our main data structure.  It is a tree with router nodes and leaf nodes.  The job of the tree is to match (leaf_node, dag_step) pairs.  Each problem is broken in to ~5 dag steps.  Each dag step is matched to a leaf node.  The leaf node is then executed.  The results of the leaf nodes are then combined to solve the problem.
-
-The tree's goal is to match (leaf_node, dag_step) pairs with high similarity and low variance.
-
-### The Key Learning Unit
-**The combination of `(dag_step_id, dag_step_type ≡ leaf_node)` is what we're learning.**
-A node might be great for step 2 but terrible for step 5. Track performance per step-node pair, not just per node.
-
-## Segmentation LLM
-LLM breaks problem into dag steps with extracted values. Each step's operation type is mapped to a canonical computation graph, embedded, and routed through the tree using MCTS (UCB1) to select the best leaf_node. Then a single batched LLM call writes arithmetic expressions for all steps using their extracted parameters.
-
-## Github Minor Releases
-Github minor releases help us checkpoint our progress
-Pls follow this convention: V1.8.15 then v1.8.16 etc.
-
-## Signature Deduplication
-Avoid creating nodes with high cosine similarity to existing of their graph embeddings
-
-## Signature cluster by similarity
-Nodes should be clustered around their neighbors with high similarity
-
-## Batch LLM Requests
-LLM requests should be batched when possible to reduce costs and latency
-
-## Core Problem: Lexical vs Operational Similarity
-Standard embedding models learn similarity from vocabulary, not from operational semantics
-
-`x + y` vs `a + b` → **Lexically similar but operationally different**
-`x + y` vs `x * y` → **Lexically similar but operationally different**
-
-
-## The Solution: Computation Graph Embeddings
-**Route by what operations DO, not what they SOUND LIKE.**
-### Computation Graphs
-A computation graph is a structural representation of what a DSL actually computes:
-- **Parameter-agnostic**: Variable names don't matter, structure does
-- **Implementation-agnostic**: Same graph regardless of Python vs SymPy
-- **Operationally meaningful**: Two DSLs with the same graph do the same thing
-
-### Generic DSL Parameters
-DSLs must be templates with generic parameters, not hardcoded values:
-The `param_descriptions` and `clarifying_questions` guide parameter extraction from problem text at runtime.
-
-
-## The Crown Jewel: MCTS Post-Mortem Analysis
-**MCTS post-mortem analysis is the central brain of the system.**
-Run MCTS rollouts on failed problems collecting statistics on muliple threads.  Diff winning vs losing threads to spot problematic (leaf_node, dag_step) pairs
-
-### The Result
-High-traffic signatures become **semantic attractors**: their centroids stabilize around operational meaning rather than vocabulary. The embedding space self-organizes by what operations *do*, not what they *look like*.
-
-### Variance-Based Decomposition (Welford's Algorithm)
-- Embedding variance (similarity) tracking
-- The two-signal interpretation: outcome variance vs embedding variance
-- The closed loop: "ONE node high variance → decompose node, MULTIPLE nodes high variance → refine type"
-
-## Decomposition Rule
-**Do not decompose a leaf node until instructed by the MCTS rollout post-mortem analysis.**
-
-## With Fresh DB
-A **smooth and continuous** learning process is key.
-Start with **easy** problems (GSM8K or MATH L1-L2).
-Need some successes to learn from; failures alone don't teach what works.
-System is designed to aggressively **branch out early**, tapering off later.
-
-## Tree Maturity
-Decomposing leaf_nodes is a larger commitment than decomposing dag_steps because it changes the structure of the tree.  We should only decompose leaf_nodes when MCTS rollout post-mortem analysis indicates that the node is too complex.
-
-## Core Principle: Failures Are Valuable Data Points
-**Let signatures fail.** This is how the system learns.
-- Record every failure—it feeds the post-mortem analysis
-- Do not fallback to LLM reasoning
-- Accumulated failure patterns (not individual failures) trigger decomposition via post-mortem
-- Success/failure stats drive routing decisions
-
-The goal is NOT 100% accuracy on every run. The goal is collecting data that makes the system smarter over time. A failed DSL provides valuable signal for post-mortem analysis.
-
-### Credit Propagation
-When a problem is solved correctly, success credit propagates up the signature DAG to parent umbrellas with decay:
-- Direct signatures get +1 success
-- Parent umbrellas get `decay^depth` credit (default 0.5 per level)
-- Max propagation depth is configurable (default 3 levels)
-This lets umbrella signatures accumulate credit from their children's successes, improving routing decisions.
 
 ## How to use Beads
 
