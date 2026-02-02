@@ -43,12 +43,9 @@ This is a different kind of distillation:
 
 **Traditional distillation:** Train small model to mimic big model's outputs (soft labels, behavior cloning)
 
-**Our approach:** Extract the *structure* that big models learn, then execute it deterministically
+**Our approach:** Extract the *structure* that big models learn, then train tiny encoder + classifier.
 
 The insight is that large models learn span→operation mappings implicitly in their attention patterns. We make that explicit.
-
-### The Problem with Lookup Tables
-A raw mapping table would explode - "half the X" vs "half of X" vs "50% of X" vs "X divided by two" are all the same operation with infinite surface forms.
 
 ### The Solution: Tiny Encoder + Classifier
 Instead of string matching, we embed spans and classify into operations:
