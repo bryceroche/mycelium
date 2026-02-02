@@ -59,19 +59,68 @@ span text → tiny encoder (distilBERT, ~66M params) → operation_id
 
 **Why this works:** We're not doing open-ended generation - we're doing **classification into a finite set of operations**. That's fundamentally easier than general LLM reasoning.
 
-### Training Pipeline
-1. **One-time extraction:** Use big model attention to learn which spans cluster together
-2. **Generate (span, operation) pairs:** From attention analysis on solved problems
-3. **Train tiny classifier:** ~50-100M param model to map spans → operation_ids
-4. **Inference is tiny:** Embed span, classify, execute the operation
+### The Pipeline
 
-You pay the "big model tax" once during training to extract decomposition patterns. At inference:
-- Tokenize
-- Embed spans (tiny encoder)
-- Classify → operation_id
-- Execute arithmetic
+```
+┌─────────────────────────────────────────────────────────────┐
+│  1. COLLECTION                                              │
+│     GSM8K (10K problems)                                    │
+│           ↓                                                 │
+│     Attention Extraction (DeepSeek 7B)                      │
+│           ↓                                                 │
+│     SpanCollector → collected_spans.jsonl                   │
+└─────────────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────────┐
+│  2. CLUSTERING                                              │
+│     Embed all spans → vectors                               │
+│           ↓                                                 │
+│     K-means cluster → ~100 operation clusters               │
+│           ↓                                                 │
+│     Spans that cluster = same operation                     │
+└─────────────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────────┐
+│  3. TAGGING                                                 │
+│     Tag ONE span per cluster → propagates to all            │
+│     10,000 spans → ~100 manual tags                         │
+└─────────────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────────┐
+│  4. GRAPH EXECUTION                                         │
+│     Spans → Computation Graph → Execute → Answer            │
+└─────────────────────────────────────────────────────────────┘
+```
 
-**The bet:** Math reasoning isn't about "intelligence" — it's about recognizing which operation template applies. Big models learned this implicitly. We extract it into a tiny classifier.
+### Key Insight: Attention Shows Entity Binding
+
+Everything in "Janet's ducks lay 16 eggs. She eats 3." attends to **Janet**.
+This isn't noise — it shows all operations bind to the same entity.
+
+```
+           ┌──────────────────────────────────────┐
+           │           "Janet"                    │ ← SUBJECT (attention sink)
+           │         (the variable)               │
+           └──────────────────────────────────────┘
+                 ↑         ↑         ↑
+           ┌─────┴──┐ ┌────┴───┐ ┌───┴────┐
+           │ lay 16 │ │ eats 3 │ │bakes 4 │ ← OPERATIONS
+           │  SET   │ │SUBTRACT│ │SUBTRACT│
+           └────────┘ └────────┘ └────────┘
+```
+
+### Computation Graph
+
+Named variables with multi-input references:
+```python
+Graph("Janet"):
+  eggs = SET(16)           # "lay 16 eggs"
+  after_eat = SUB(eggs, 3) # "eats three"
+  final = SUB(after_eat, 4) # "bakes with four"
+→ Result: 9
+```
+
+**The bet:** Math reasoning isn't about "intelligence" — it's about recognizing which operation template applies. Big models learned this implicitly. We extract it via clustering.
 
 ## New Favorite Pattern
 We want to consolidate methods - for example all database connections should go through a data layer instead of having multiple database connections.  Same with Signature creation, or leaf_node rejection of dag_steps.  We want to consolidate method calls for features to simplify our codebase and reduce the chance of bugs
