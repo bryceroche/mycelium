@@ -224,6 +224,128 @@ class SpanCollector:
         }
 
 
+class SpanClusterer:
+    """Cluster spans by embedding similarity for efficient tagging.
+
+    Instead of tagging 10,000 spans individually:
+    1. Embed all spans
+    2. Cluster into ~50-100 groups
+    3. Tag ONE span per cluster
+    4. Propagate labels to all spans in cluster
+
+    This IS the tiny classifier - clusters become operation classes.
+    """
+
+    def __init__(self, n_clusters: int = 50):
+        self.n_clusters = n_clusters
+        self.embeddings: Dict[str, 'np.ndarray'] = {}  # span_text -> embedding
+        self.cluster_labels: Dict[str, int] = {}       # span_text -> cluster_id
+        self.cluster_operations: Dict[int, str] = {}   # cluster_id -> operation
+
+    def embed_spans(self, spans: List[ExtractedSpan], embedder=None):
+        """Embed all spans using the provided embedder."""
+        import numpy as np
+
+        if embedder is None:
+            # Use default embedder
+            from mycelium.embedder import get_embedding
+            embedder = lambda x: get_embedding(x)
+
+        for span in spans:
+            if span.text not in self.embeddings:
+                self.embeddings[span.text] = embedder(span.text)
+
+        logger.info(f"Embedded {len(self.embeddings)} unique spans")
+
+    def cluster(self):
+        """Cluster embedded spans using k-means."""
+        import numpy as np
+        from sklearn.cluster import KMeans
+
+        if not self.embeddings:
+            raise ValueError("No embeddings to cluster. Call embed_spans first.")
+
+        texts = list(self.embeddings.keys())
+        vectors = np.array([self.embeddings[t] for t in texts])
+
+        # Adjust n_clusters if we have fewer spans
+        n_clusters = min(self.n_clusters, len(texts))
+
+        kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+        labels = kmeans.fit_predict(vectors)
+
+        self.cluster_labels = {text: int(label) for text, label in zip(texts, labels)}
+        logger.info(f"Clustered into {n_clusters} groups")
+
+        return self._cluster_summary()
+
+    def _cluster_summary(self) -> Dict[int, List[str]]:
+        """Get summary of clusters (cluster_id -> list of span texts)."""
+        clusters: Dict[int, List[str]] = {}
+        for text, cluster_id in self.cluster_labels.items():
+            if cluster_id not in clusters:
+                clusters[cluster_id] = []
+            clusters[cluster_id].append(text)
+        return clusters
+
+    def tag_cluster(self, cluster_id: int, operation: str):
+        """Tag all spans in a cluster with an operation."""
+        self.cluster_operations[cluster_id] = operation
+
+    def propagate_tags(self, spans: List[ExtractedSpan]) -> List[ExtractedSpan]:
+        """Propagate cluster tags to individual spans."""
+        for span in spans:
+            if span.text in self.cluster_labels:
+                cluster_id = self.cluster_labels[span.text]
+                if cluster_id in self.cluster_operations:
+                    span.operation = self.cluster_operations[cluster_id]
+                    span.tagged_by = "cluster"
+                    span.confidence = 0.85
+        return spans
+
+    def get_representative_spans(self, n_per_cluster: int = 3) -> Dict[int, List[str]]:
+        """Get representative spans from each cluster for manual review."""
+        import numpy as np
+
+        clusters = self._cluster_summary()
+        representatives = {}
+
+        for cluster_id, texts in clusters.items():
+            # Get spans closest to cluster centroid
+            if len(texts) <= n_per_cluster:
+                representatives[cluster_id] = texts
+            else:
+                # Simple: just take first n (could do centroid distance)
+                representatives[cluster_id] = texts[:n_per_cluster]
+
+        return representatives
+
+    def save(self, path: str):
+        """Save cluster state."""
+        import numpy as np
+
+        data = {
+            "n_clusters": self.n_clusters,
+            "cluster_labels": self.cluster_labels,
+            "cluster_operations": {str(k): v for k, v in self.cluster_operations.items()},
+            "embeddings": {k: v.tolist() for k, v in self.embeddings.items()},
+        }
+        with open(path, 'w') as f:
+            json.dump(data, f)
+
+    def load(self, path: str):
+        """Load cluster state."""
+        import numpy as np
+
+        with open(path) as f:
+            data = json.load(f)
+
+        self.n_clusters = data["n_clusters"]
+        self.cluster_labels = data["cluster_labels"]
+        self.cluster_operations = {int(k): v for k, v in data["cluster_operations"].items()}
+        self.embeddings = {k: np.array(v) for k, v in data["embeddings"].items()}
+
+
 def tag_spans_with_regex(spans: List[ExtractedSpan]) -> List[ExtractedSpan]:
     """Apply regex-based tagging to spans (bootstrap tagging)."""
 
