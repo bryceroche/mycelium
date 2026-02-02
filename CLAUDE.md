@@ -46,12 +46,9 @@ This is a different kind of distillation:
 
 **Traditional distillation:** Train small model to mimic big model's outputs (soft labels, behavior cloning)
 
-**Our approach:** Extract the *structure* that big models learn, then execute it deterministically
+**Our approach:** Extract the *structure* that big models learn, then train tiny encoder + classifier.
 
 The insight is that large models learn span→operation mappings implicitly in their attention patterns. We make that explicit.
-
-### The Problem with Lookup Tables
-A raw mapping table would explode - "half the X" vs "half of X" vs "50% of X" vs "X divided by two" are all the same operation with infinite surface forms.
 
 ### The Solution: Tiny Encoder + Classifier
 Instead of string matching, we embed spans and classify into operations:
@@ -59,8 +56,6 @@ Instead of string matching, we embed spans and classify into operations:
 ```
 span text → tiny encoder (distilBERT, ~66M params) → operation_id
 ```
-
-The encoder learns that "half the X" ≈ "50% of X" in embedding space. We're distilling the mapping table into weights.
 
 **Why this works:** We're not doing open-ended generation - we're doing **classification into a finite set of operations**. That's fundamentally easier than general LLM reasoning.
 
