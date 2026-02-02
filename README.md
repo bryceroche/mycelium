@@ -47,30 +47,27 @@ This is a different kind of distillation:
 
 The insight is that large models learn span→operation mappings implicitly in their attention patterns. We make that explicit.
 
-### The Solution: Tiny Encoder + Classifier
-Instead of string matching, we embed spans and classify into operations:
+### Prototype: Frozen Embeddings + Nearest Neighbor
+Skip training entirely for the prototype. Use frozen embeddings and nearest neighbor:
+
+```
+span text → frozen encoder (sentence-transformers) → nearest neighbor → operation_id
+```
+
+1. Embed ~10 prototype spans per operation
+2. At inference: embed query span, find nearest prototype
+3. If it works, validates the approach before any training
+
+### Later: Tiny Encoder + Classifier
+Once prototype validates, optionally train for better accuracy:
 
 ```
 span text → tiny encoder (distilBERT, ~66M params) → operation_id
 ```
 
-The encoder learns that "half the X" ≈ "50% of X" in embedding space. We're distilling the mapping table into weights.
-
 **Why this works:** We're not doing open-ended generation - we're doing **classification into a finite set of operations**. That's fundamentally easier than general LLM reasoning.
 
-### Training Pipeline
-1. **One-time extraction:** Use big model attention to learn which spans cluster together
-2. **Generate (span, operation) pairs:** From attention analysis on solved problems
-3. **Train tiny classifier:** ~50-100M param model to map spans → operation_ids
-4. **Inference is tiny:** Embed span, classify, execute the operation
-
-You pay the "big model tax" once during training to extract decomposition patterns. At inference:
-- Tokenize
-- Embed spans (tiny encoder)
-- Classify → operation_id
-- Execute arithmetic
-
-**The bet:** Math reasoning isn't about "intelligence" — it's about recognizing which operation template applies. Big models learned this implicitly. We extract it into a tiny classifier.
+**The bet:** Math reasoning isn't about "intelligence" — it's about recognizing which operation template applies. Big models learned this implicitly. We extract it via embeddings.
 
 ## License
 MIT — Bryce Roche ([github.com/bryceroche/mycelium](https://github.com/bryceroche/mycelium))
