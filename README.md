@@ -1,61 +1,41 @@
 # Mycelium
 
-| Before (v2.x) | After (v3.0.0) |
-|---------------|----------------|
-| Hierarchical tree traversal | Flat k-NN classification |
-| DSL code execution | Function pointer registry |
-| Fixed recursion depth | Similarity-trend recursion |
-| Separate signatures | Merged prototypes with variants |
-| No LLM guidance | Signature menu "phrasebook" |
+## Attention-Based Decomposition
+**Decomposition is the crux.** Everything downstream of step-level intermediate representation (IR) is solved.
 
-### The Three Components
+Transformer attention reveals semantic spans. The "Panama Hats" problem: "panama" = country, but "panama hats" = completely different meaning. We need the **longest span** that matches a semantic unit.
+
+In math: "half the price of the cheese" is ONE operation, not three.
 
 ```
-Problem Text
-     │
-     ▼
-┌─────────────────────────────────┐
-│  LLM Decomposer                 │
-│  (with signature menu)          │
-└─────────────────────────────────┘
-     │
-     ▼ [atomic steps with func names]
-┌─────────────────────────────────┐
-│  Signature Store (k-NN)         │
-│  ~1000 prototypes               │
-└─────────────────────────────────┘
-     │
-     ▼ [best matching signature]
-┌─────────────────────────────────┐
-│  Function Registry              │
-│  call_function(name, *args)     │
-└─────────────────────────────────┘
-     │
-     ▼
-   Result
+Attention patterns reveal these spans:
+- "half" attends strongly to "price" AND "cheese"
+- This cluster = single semantic unit
+- Map span → operation: cheese_price * 0.5
 ```
 
-- **LLM**: Recursive decomposition with signature examples as guidance
-- **Tree**: Semantic → function mapping via k-NN classification
-- **Python**: Deterministic execution via function registry (57-200 functions)
-
-
-## Quick Start (~5 min)
-
-```bash
-git clone https://github.com/bryceroche/mycelium
-cd mycelium
-pip install -r requirements.txt
-
-# Download pre-trained DB (13K signatures, 342MB compressed)
-gh release download v1.4.0
-gunzip mycelium.db.gz embedding_cache.db.gz
-
-# Inference (just needs API key from Google AI Studio)
-export GOOGLE_API_KEY=your_key
-python scripts/pipeline_runner.py --dataset math --levels 1 2 --problems 20 --workers 4
+**The Vision:**
+```
+Math Problem (NL)
+       ↓
+Transformer Attention Weights
+       ↓
+Span Clustering (find semantic units)
+       ↓
+Span → Operation Mapping (learned)
+       ↓
+Computation Graph / AST
+       ↓
+Execute (solved)
 ```
 
+**Span → Operation Patterns:**
+- "half the X" → `X * 0.5`
+- "X more than Y" → `Y + X`
+- "X percent of Y" → `Y * (X/100)`
+- "twice as many as X" → `X * 2`
+
+This mapping can be learned from (problem, solution) pairs using attention analysis.
 
 ## License
 MIT — Bryce Roche ([github.com/bryceroche/mycelium](https://github.com/bryceroche/mycelium))

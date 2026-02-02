@@ -14,9 +14,11 @@ from typing import Optional
 
 import numpy as np
 
-from mycelium.config import EMBEDDING_MODEL, EMBEDDING_DIM
-
 logger = logging.getLogger(__name__)
+
+# Embedding defaults
+EMBEDDING_MODEL = "text-embedding-3-large"
+EMBEDDING_DIM = 3072
 
 
 def is_openai_model(model_name: str) -> bool:
