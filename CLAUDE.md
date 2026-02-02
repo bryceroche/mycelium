@@ -50,8 +50,19 @@ This is a different kind of distillation:
 
 The insight is that large models learn span→operation mappings implicitly in their attention patterns. We make that explicit.
 
-### The Solution: Tiny Encoder + Classifier
-Instead of string matching, we embed spans and classify into operations:
+### Prototype: Frozen Embeddings + Nearest Neighbor
+Skip training entirely for the prototype. Use frozen embeddings and nearest neighbor:
+
+```
+span text → frozen encoder (sentence-transformers) → nearest neighbor → operation_id
+```
+
+1. Embed ~10 prototype spans per operation
+2. At inference: embed query span, find nearest prototype
+3. If it works, validates the approach before any training
+
+### Later: Tiny Encoder + Classifier
+Once prototype validates, optionally train for better accuracy:
 
 ```
 span text → tiny encoder (distilBERT, ~66M params) → operation_id
