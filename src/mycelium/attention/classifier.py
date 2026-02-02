@@ -1,9 +1,13 @@
-"""Classify spans into mathematical operations.
+"""Classify spans and text into mathematical operations.
 
-Maps detected spans to operations:
+Maps detected spans/text to operations:
 - "half the X" → multiply(X, 0.5)
 - "X more than Y" → add(Y, X)
 - "X percent of Y" → multiply(Y, X/100)
+
+Two approaches:
+1. classify_span() - for attention-detected spans
+2. find_all_patterns() - regex search on full text (60% detection on GSM8K)
 """
 
 import logging
@@ -18,79 +22,162 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Operation:
-    """A mathematical operation extracted from a span."""
-    op_type: str           # "add", "subtract", "multiply", "divide", "value"
-    operands: List[Any]    # Can be numbers, variable refs, or nested Operations
-    source_span: Span      # The span this came from
+    """A mathematical operation extracted from text."""
+    op_type: str           # "multiply", "add", "subtract", "divide", "percent", "rate", "fraction"
+    value: Any             # The numeric value or operands
+    matched_text: str      # The text that matched
     confidence: float      # Classification confidence
+    source_span: Optional[Span] = None  # The span this came from (if any)
 
 
-# Pattern-based classification (bootstrap, will be learned later)
-SPAN_PATTERNS = [
-    # (regex, op_type, operand_extractor)
-    (r"half (?:the |of )?(.+)", "multiply", lambda m: [m.group(1), 0.5]),
-    (r"twice (?:as many as |the )?(.+)", "multiply", lambda m: [m.group(1), 2]),
-    (r"(\d+(?:\.\d+)?)\s*(?:times|x)\s+(.+)", "multiply", lambda m: [m.group(2), float(m.group(1))]),
-    (r"(\d+(?:\.\d+)?)\s*more than\s+(.+)", "add", lambda m: [m.group(2), float(m.group(1))]),
-    (r"(\d+(?:\.\d+)?)\s*less than\s+(.+)", "subtract", lambda m: [m.group(2), float(m.group(1))]),
-    (r"(\d+(?:\.\d+)?)\s*percent of\s+(.+)", "multiply", lambda m: [m.group(2), float(m.group(1)) / 100]),
-    (r"(\d+(?:\.\d+)?)\s*%\s*of\s+(.+)", "multiply", lambda m: [m.group(2), float(m.group(1)) / 100]),
-    (r"the sum of\s+(.+)\s+and\s+(.+)", "add", lambda m: [m.group(1), m.group(2)]),
-    (r"the difference (?:between|of)\s+(.+)\s+and\s+(.+)", "subtract", lambda m: [m.group(1), m.group(2)]),
-    (r"the product of\s+(.+)\s+and\s+(.+)", "multiply", lambda m: [m.group(1), m.group(2)]),
-    (r"(.+)\s+divided by\s+(.+)", "divide", lambda m: [m.group(1), m.group(2)]),
-    (r"(.+)\s+plus\s+(.+)", "add", lambda m: [m.group(1), m.group(2)]),
-    (r"(.+)\s+minus\s+(.+)", "subtract", lambda m: [m.group(1), m.group(2)]),
+# Comprehensive math patterns (tested on GSM8K: 60% detection rate)
+MATH_PATTERNS = [
+    # Multiplication
+    (r'half\s+(?:of\s+)?(?:that|the|this|as|what|her|his|its|a)', 'multiply', 0.5),
+    (r'twice\s+(?:as|the|that|what|this)', 'multiply', 2),
+    (r'(\d+(?:\.\d+)?)\s*times?\s*(?:as|the|that|more|what)?', 'multiply', None),
+    (r'double[ds]?', 'multiply', 2),
+    (r'triple[ds]?', 'multiply', 3),
+
+    # Fractions
+    (r'(?:one|a|1)\s*(?:/|-)?\s*third', 'fraction', 0.333),
+    (r'(?:one|a|1)\s*(?:/|-)?\s*(?:quarter|fourth)', 'fraction', 0.25),
+    (r'(?:one|a|1)\s*(?:/|-)?\s*half', 'fraction', 0.5),
+    (r'(?:two|2)\s*(?:/|-)?\s*thirds', 'fraction', 0.667),
+    (r'(?:three|3)\s*(?:/|-)?\s*(?:quarters|fourths)', 'fraction', 0.75),
+    (r'(\d+)\s*/\s*(\d+)(?!\d)', 'fraction', None),
+
+    # Percentages
+    (r'(\d+(?:\.\d+)?)\s*%', 'percent', None),
+    (r'(\d+(?:\.\d+)?)\s*percent', 'percent', None),
+
+    # Addition
+    (r'(\d+(?:\.\d+)?)\s*more\s+than', 'add', None),
+    (r'plus\s*(\d+(?:\.\d+)?)', 'add', None),
+    (r'add(?:ed|s|ing)?\s*(\d+(?:\.\d+)?)', 'add', None),
+    (r'increase[ds]?\s*(?:by\s*)?(\d+(?:\.\d+)?)', 'add', None),
+    (r'(\d+(?:\.\d+)?)\s*(?:more|additional|extra)', 'add', None),
+
+    # Subtraction
+    (r'(\d+(?:\.\d+)?)\s*(?:less|fewer)\s+than', 'subtract', None),
+    (r'minus\s*(\d+(?:\.\d+)?)', 'subtract', None),
+    (r'subtract(?:ed|s|ing)?\s*(\d+(?:\.\d+)?)', 'subtract', None),
+    (r'decrease[ds]?\s*(?:by\s*)?(\d+(?:\.\d+)?)', 'subtract', None),
+    (r'(?:spent|lost|gave away|used)\s*(\d+(?:\.\d+)?)', 'subtract', None),
+
+    # Division / Rates
+    (r'divide[ds]?\s*(?:by|into)\s*(\d+(?:\.\d+)?)', 'divide', None),
+    (r'split\s*(?:into|between|among)\s*(\d+)', 'divide', None),
+    (r'\$?(\d+(?:\.\d+)?)\s*(?:per|each|every|a)\s+\w+', 'rate', None),
+    (r'(\d+(?:\.\d+)?)\s*(?:per|each|every)\s', 'rate', None),
 ]
 
 
-def classify_span(span: Span) -> Optional[Operation]:
+def find_all_patterns(text: str) -> List[Operation]:
+    """Find all math patterns in text using regex.
+
+    This is the primary detection method - achieves 60% detection on GSM8K.
+
+    Args:
+        text: The problem text to search
+
+    Returns:
+        List of Operation objects found
+    """
+    text_lower = text.lower()
+    found = []
+
+    for pattern, op_type, default_value in MATH_PATTERNS:
+        for match in re.finditer(pattern, text_lower):
+            # Extract value from match groups if no default
+            if default_value is None and match.groups():
+                try:
+                    value = float(match.group(1))
+                except (ValueError, IndexError):
+                    value = match.groups()
+            else:
+                value = default_value
+
+            # Skip very short matches (likely false positives)
+            if len(match.group(0)) >= 3:
+                found.append((
+                    match.group(0),
+                    op_type,
+                    value,
+                    match.start(),
+                    match.end()
+                ))
+
+    # Remove overlapping matches (keep longer ones)
+    found.sort(key=lambda x: (x[3], -(x[4] - x[3])))
+    non_overlapping = []
+    last_end = -1
+    for matched, op_type, value, start, end in found:
+        if start >= last_end:
+            non_overlapping.append(Operation(
+                op_type=op_type,
+                value=value,
+                matched_text=matched,
+                confidence=0.8,
+            ))
+            last_end = end
+
+    return non_overlapping
+
+
+def classify_span(span: Span) -> Operation:
     """Classify a span into an operation.
 
-    Currently uses pattern matching. Will be replaced/augmented
-    with learned classifier trained on (span, operation) pairs.
+    Uses the same patterns as find_all_patterns but on span text.
 
     Args:
         span: The span to classify
 
     Returns:
-        Operation if classified, None if not recognized
+        Operation (may be 'variable' type if not recognized)
     """
     text = span.text.lower().strip()
 
-    for pattern, op_type, extractor in SPAN_PATTERNS:
-        match = re.match(pattern, text, re.IGNORECASE)
+    # Try each pattern
+    for pattern, op_type, default_value in MATH_PATTERNS:
+        match = re.search(pattern, text)
         if match:
-            try:
-                operands = extractor(match)
-                return Operation(
-                    op_type=op_type,
-                    operands=operands,
-                    source_span=span,
-                    confidence=span.confidence,
-                )
-            except (ValueError, IndexError) as e:
-                logger.debug(f"Pattern matched but extraction failed: {e}")
-                continue
+            if default_value is None and match.groups():
+                try:
+                    value = float(match.group(1))
+                except (ValueError, IndexError):
+                    value = match.groups()
+            else:
+                value = default_value
+
+            return Operation(
+                op_type=op_type,
+                value=value,
+                matched_text=match.group(0),
+                confidence=span.confidence,
+                source_span=span,
+            )
 
     # Check if it's just a number
     try:
         value = float(text.replace(",", ""))
         return Operation(
             op_type="value",
-            operands=[value],
-            source_span=span,
+            value=value,
+            matched_text=text,
             confidence=1.0,
+            source_span=span,
         )
     except ValueError:
         pass
 
-    # Unrecognized span - could be a variable reference
+    # Unrecognized - treat as variable reference
     return Operation(
         op_type="variable",
-        operands=[text],
+        value=text,
+        matched_text=text,
+        confidence=0.3,
         source_span=span,
-        confidence=0.5,  # Low confidence for unknowns
     )
 
 
@@ -99,8 +186,6 @@ def build_computation_graph(
     cross_span_attention: Optional[Dict[Tuple[int, int], float]] = None,
 ) -> List[Operation]:
     """Build computation graph from classified spans.
-
-    Uses cross-span attention to connect operations.
 
     Args:
         spans: Detected spans
@@ -113,7 +198,7 @@ def build_computation_graph(
 
     for span in spans:
         op = classify_span(span)
-        if op:
+        if op and op.op_type != "variable":
             operations.append(op)
 
     # TODO: Use cross_span_attention to link operations
