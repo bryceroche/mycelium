@@ -1,15 +1,5 @@
-"""Mycelium: Pattern-based math problem solver."""
+"""Mycelium: Attention-based math problem decomposer."""
 
-__version__ = "3.0.0"
+__version__ = "4.0.0"
 
-from .engine import PatternEngine, solve
-from .patterns import PATTERNS, Pattern, match_pattern, execute_pattern
-
-__all__ = [
-    "PatternEngine",
-    "Pattern",
-    "PATTERNS",
-    "solve",
-    "match_pattern",
-    "execute_pattern",
-]
+# Clean slate - attention-based decomposition coming soon
