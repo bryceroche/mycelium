@@ -45,18 +45,35 @@ This is a different kind of distillation:
 
 **Our approach:** Extract the *structure* that big models learn, then execute it deterministically
 
-The insight is that large models learn span→operation mappings implicitly in their attention patterns. We make that explicit:
+The insight is that large models learn span→operation mappings implicitly in their attention patterns. We make that explicit.
 
+### The Problem with Lookup Tables
+A raw mapping table would explode - "half the X" vs "half of X" vs "50% of X" vs "X divided by two" are all the same operation with infinite surface forms.
+
+### The Solution: Tiny Encoder + Classifier
+Instead of string matching, we embed spans and classify into operations:
+
+```
+span text → tiny encoder (distilBERT, ~66M params) → operation_id
+```
+
+The encoder learns that "half the X" ≈ "50% of X" in embedding space. We're distilling the mapping table into weights.
+
+**Why this works:** We're not doing open-ended generation - we're doing **classification into a finite set of operations**. That's fundamentally easier than general LLM reasoning.
+
+### Training Pipeline
 1. **One-time extraction:** Use big model attention to learn which spans cluster together
-2. **Build a mapping table:** "half the X" → `X * 0.5`, etc.
-3. **Inference is tiny:** Just pattern match spans and execute the graph — no LLM needed
+2. **Generate (span, operation) pairs:** From attention analysis on solved problems
+3. **Train tiny classifier:** ~50-100M param model to map spans → operation_ids
+4. **Inference is tiny:** Embed span, classify, execute the operation
 
-You pay the "big model tax" once during training to learn the decomposition patterns. At inference, it's just:
+You pay the "big model tax" once during training to extract decomposition patterns. At inference:
 - Tokenize
-- Match spans (lookup table)
+- Embed spans (tiny encoder)
+- Classify → operation_id
 - Execute arithmetic
 
-**The bet:** Math reasoning isn't about "intelligence" — it's about recognizing which operation template applies. Big models learned this implicitly. We extract it into something a tiny model (or no model) can run.
+**The bet:** Math reasoning isn't about "intelligence" — it's about recognizing which operation template applies. Big models learned this implicitly. We extract it into a tiny classifier.
 
 ## License
 MIT — Bryce Roche ([github.com/bryceroche/mycelium](https://github.com/bryceroche/mycelium))
