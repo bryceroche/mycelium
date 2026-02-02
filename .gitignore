@@ -87,6 +87,9 @@ screen_shots/
 assets/
 notebooks/
 
+# Secrets (AWS credentials, API keys, etc)
+secrets/
+
 # Removed from git history
 structure.png
 structurev2.png
