@@ -1,48 +1,3 @@
-# The Big 5
-1. Three Components (LLM / Tree / Python)
-2. System Independence
-3. New Favorite Pattern
-4. The Flow
-5. Signatures as Prototypes
-
-## Three Components
-
-| Component | Role | Learns |
-|-----------|------|--------|
-| **LLM** | Recursive decomposition, argument extraction | How to decompose (via signature menu) |
-| **Tree** | Semantic → function mapping, k-NN classification | Which descriptions map to which functions |
-| **Python** | Deterministic execution via function registry | Nothing - just executes |
-
-
-## System Independence
-The system restructures its own signature store via post-mortem analysis—that's by design. Resist manually intervening. Modify Python code and database schema, not the signatures directly.
-
-## New Favorite Pattern
-Consolidate methods. All database connections go through the data layer. All signature creation goes through `find_or_create()`. All classification goes through `classify()`. Single entry points reduce bugs.
-
-## The Flow
-Database Statistics → Welford → Thresholds
-Accurate statistics are the source of truth. Welford variance guides all decisions: merge thresholds, when to create new signatures, similarity cutoffs. Thresholds come from config, not magic numbers.
-
-## Signatures as Prototypes
-One function can have multiple signatures (semantic variants):
-Signatures should **span the semantic space** (diverse), not cluster redundantly.
-
-At maturity: ~150-200 functions × 2-5 signatures each = **300-1000 prototypes**
-
-
-# Runtime vs Post-Mortem
-
-| Situation | Action |
-|-----------|--------|
-| Runtime + high similarity | **Execute** |
-| Runtime + low similarity | **Decompose further** |
-| Post-mortem + success + close to existing | **Merge into signature** |
-| Post-mortem + success + far from all | **Create new signature** |
-
-**Key insight:** Don't create signatures at runtime. Only learn from post-mortem successes.
-
-
 # Claude Code Instructions
 
 Bryce is the user. He likes to make edits to this file. Please do not overwrite his edits.
@@ -52,79 +7,51 @@ We want to treat this file as our source of truth.
 Every bug fix, optimization or new feature should be implemented with this file in mind.
 Please always keep this file in the context window.
 
-## Terminology
-- **Welford's** = Algorithm for calculating running variance
-- **DAG** = Directed Acyclic Graph
-- **Signature** = Prototype (step description + function pointer + centroid)
-- **Prototype Store** = Flat collection of signatures for k-NN classification
-- **Function Registry** = Curated Python functions (57-200 across 7 tiers)
-- **Centroid** = Embedding representing a signature's semantic meaning
-- **Similarity Trend** = Track if decomposition is improving matches
+# The Simple Architecture
 
-## Function Pointer Architecture
-Leaf nodes store function pointers, not DSL code:
-Execute via: `call_function("add", 3, 2) → 5`
+```
+Problem → Embed → Match nearest example → Route to pattern → LLM executes prompt → Answer
+                                                    ↑
+                                          (LLM decomposes internally)
+```
 
-## Signature Menu (LLM Guidance)
-High-success signatures become few-shot examples for the LLM:
+**Why this works:** The LLM handles decomposition *inside* the pattern prompt where it has full context. We just route to the right prompt.
 
-This creates a **feedback loop**:
-1. Tree learns which descriptions succeed
-2. High-success signatures guide LLM decomposition
-3. LLM produces better decompositions
-4. Tree gets even better signal
+## Components
 
-## Classification (k-NN)
+| Component | Count | Role |
+|-----------|-------|------|
+| **Patterns** | 21 | Specialized prompts + execution types (steps, sympy, sympy_solve, direct) |
+| **Examples** | 74 | Diverse entry points for embedding-based routing |
+| **Welford** | - | Monitoring: adaptive thresholds, coverage gaps, pattern health |
 
-Brute-force k-NN is fast:
-- 1,000 signatures: < 0.1ms
-- 5,000 signatures: < 0.5ms
-- 50,000 signatures: ~5ms
+## What We Don't Do
 
-## Post-Mortem Learning
-On success, for each (step, func) that worked:
-- **Close to existing sig?** → MERGE (update centroid + descriptions)
-- **Far from all sigs?** → CREATE new signature
+- ❌ Explicit DAG decomposition of problems into steps
+- ❌ Tree restructuring at runtime
+- ❌ Per-step routing to signatures
+- ❌ Fine-grained atomic operations
 
-Thresholds guided by Welford stats per function embedding and outcome variance
+The LLM already decomposes well when given full context. Fighting this made things worse.
 
-## Signature Diversity
-Optimize for coverage, not redundancy:
-Use quality-weighted farthest-point sampling for menu building.
+# Core Principles
 
-## Cosine Similarity Trend Recursion
-Keep decomposing while similarity improves. Stop when:
-- Similarity plateaus (not improving)
-- Max depth reached
-- High confidence match found
+## System Independence
+The system monitors itself via Welford stats. Resist manually tuning. Modify Python code and schema, not the examples directly.
 
-## Core Principle: Failures Are Valuable
-**Let signatures fail.** This is how the system learns.
-- Record every failure for post-mortem analysis
-- Do not fallback to LLM reasoning
-- Success/failure stats drive routing decisions
+## New Favorite Pattern
+Consolidate methods. Single entry points reduce bugs:
+- All pattern matching → `match_pattern()`
+- All execution → `execute_pattern()`
+- All stats recording → `record_similarity()`
 
-The goal is NOT 100% accuracy on every run. The goal is collecting data that makes the system smarter over time.
+## The Flow
+Database Statistics → Welford → Adaptive Thresholds
 
-## Github Minor Releases
-Github minor releases checkpoint progress.
-Follow convention: v1.8.15 → v1.8.16 etc.
-
-## Batch LLM Requests
-LLM requests should be batched when possible to reduce costs and latency.
-
-# Recursive Decomposition
-
-## Make Life Easy for the LLM
-Let LLM speak naturally. Python parses into schema.
-
-## Leverage Transformer Attention
-**Transformers are excellent at understanding word relationships -- use this superpower to build graphs**
-**Key insight:** Transformers excel at understanding which words relate to which. Don't fight this by stripping context.
-
-The transformer's attention mechanism naturally understands "half the price of X" refers to X's price, not some other value. Let it see the full problem.
-
-**Why this matters for graph building:** Transformers build implicit dependency graphs through attention. When asked to extract values first, then build relationships second, we force two separate graphs that may not align. Single-pass lets the model build one coherent graph where "cheese costs $10" and "cream is half the price" are connected by attention, not by matching variable names.
+Welford variance guides:
+- When to propose new examples (coverage gaps)
+- Adaptive similarity thresholds per pattern
+- Pattern health monitoring (high outcome variance = needs attention)
 
 ## Don't Decompose Too Fine-Grained
 
@@ -133,74 +60,65 @@ The transformer's attention mechanism naturally understands "half the price of X
 - Chunking into tiny pieces that lose context
 - More steps = more chances for mismatch/error
 
-## Specialized Templates for Reasoning Patterns
-
-Some examples of templates for explicit reasoning guidance
-
-| Pattern | Signals | Template Guidance |
-|---------|---------|-------------------|
-| **Algebra** | "previous income", "original price", "increased by" | Set up equation, solve for unknown |
-| **Complement** | "40% got below", "X% of students" | (100-X)% is the complement |
-| **Conditional** | "if more than", "overtime", "eligible" | Split at threshold, apply different rates |
-| **Inversion** | "how many did he", "solve for" | Work backwards: total - known = unknown |
-| **Ratio** | "ratio 2:5", "same ratio", "shared among" | Split: parts → per part. Scale: ratio × new size |
-
+**What works:**
+- Match *reasoning patterns* (algebra, ratio, complement, etc.)
+- Let LLM decompose internally with full problem context
+- 21 coarse-grained patterns, not 200 atomic operations
 
 Pattern detection + specialized prompts: **98% on GSM8K-50, 92% on MATH Algebra L1-L2**.
 
-## SymPy Integration
-For symbolic math, we integrate SymPy
+# Welford Stats
 
-## Pointer Connectivity
-Every needed value connects to the answer. Orphans are extra info.
-The pointer graph reveals what matters and what's noise.
+## Two Signals Per Example
 
-## The 3 Rules
+| Signal | Tracks | High Variance Means |
+|--------|--------|---------------------|
+| Embedding variance | Similarity scores when matched | Matches diverse problems → may need more examples |
+| Outcome variance | Success/failure (1/0) | Inconsistent results → pattern prompt needs work |
 
-| Rule | What it checks |
-|------|----------------|
-| **Similarity trend** | Stop decomposing when not improving |
-| **Pointer connectivity** | All needed values connect to answer |
-| **Valid functions** | Operations map to function_registry |
+## Adaptive Thresholds
 
-## Recursive Until Match
-The tree and LLM **negotiate**:
-- LLM proposes a step
-- Tree says "I don't know that (low sim), break it down"
-- LLM decomposes further
-- Repeat until all nodes match signatures
+Instead of fixed 0.85 threshold:
+- Collect similarity observations per pattern
+- Compute: `threshold = mean - k * stddev`
+- Clamp to [0.70, 0.95] bounds
+- Need 50 samples before adaptive kicks in
 
-## How to use Beads
+# Terminology
+
+- **Pattern** = Specialized prompt template + execution type
+- **Example** = Problem text embedded for matching, routes to a pattern
+- **Welford** = Online algorithm for running mean/variance
+- **SymPy** = Symbolic math for algebra, equations, simplification
+
+# Project Structure
+
+```
+src/mycelium/
+├── engine.py           # Main solver entry point
+├── patterns/
+│   ├── registry.py     # 21 patterns with prompts
+│   ├── matcher.py      # Embedding-based pattern matching
+│   ├── executor.py     # SymPy and step execution
+│   ├── welford.py      # Variance tracking and adaptive thresholds
+│   └── coverage.py     # Coverage gap detection
+├── embedding_cache.py  # Cached embeddings
+├── embedder.py         # OpenAI embedding client
+└── config.py           # Configuration
+```
+
+# Github Releases
+
+Follow convention: v3.0.1 → v3.0.2 etc.
+
+# Beads Workflow
 
 ```bash
-bd prime        # Load context from beads
+bd prime        # Load context
 bd ready        # See available work
-```
-
-**When you encounter a bug or feature idea, create a beads issue to track it.**
-
-```bash
 bd create --title="Bug: description" --type=bug
-bd create --title="Feature: description" --type=feature
+bd close <id> --reason="..."
+bd sync --from-main
 ```
 
-Don't fix and forget - always track issues in beads.
-
-## Project Structure
-
-- `src/mycelium/` - Main source code
-- `recursive_decomposer.py` - 3-step recursive decomposition engine
-- `function_registry.py` - Curated Python function pointers
-- `step_signatures/db.py` - Signature store with k-NN classification
-- `solver.py` - Main solver orchestration
-- `mathdecomp/` - Schema and grading
-
-## Workflow
-
-1. Check `bd ready` for available issues
-2. `bd update <id> --status=in_progress` to claim work
-3. Make changes
-4. `bd close <id> --reason="..."` when done
-5. `bd sync` to sync changes
-
-See `AGENTS.md` for detailed guidance.
+Don't fix and forget - track issues in beads.

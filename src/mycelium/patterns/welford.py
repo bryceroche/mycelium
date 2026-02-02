@@ -99,6 +99,25 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_obs_pattern ON similarity_observations(pattern_name);
         CREATE INDEX IF NOT EXISTS idx_obs_correct ON similarity_observations(was_correct);
 
+        -- Per-example (signature) statistics for two-signal variance tracking
+        -- Embedding variance: tracks variance of similarity scores when this example is matched
+        -- Outcome variance: tracks variance of success/failure (1/0) outcomes
+        CREATE TABLE IF NOT EXISTS example_stats (
+            example_id TEXT PRIMARY KEY,
+            pattern_name TEXT NOT NULL,
+            -- Embedding variance Welford state
+            emb_n INTEGER DEFAULT 0,
+            emb_mean REAL DEFAULT 0.0,
+            emb_m2 REAL DEFAULT 0.0,
+            -- Outcome variance Welford state
+            out_n INTEGER DEFAULT 0,
+            out_mean REAL DEFAULT 0.0,
+            out_m2 REAL DEFAULT 0.0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_example_pattern ON example_stats(pattern_name);
+
         -- Initialize global stats row
         INSERT OR IGNORE INTO global_stats (id, n, mean, m2) VALUES (1, 0, 0.0, 0.0);
     ''')
@@ -263,6 +282,208 @@ def get_coverage_gap_stats() -> Dict[str, Tuple[int, int]]:
 
     conn.close()
     return results
+
+
+# ============================================================================
+# Per-Example (Signature) Welford Stats
+# Two-signal variance tracking per CLAUDE.md:
+# - Embedding variance: tracks variance of similarity scores when matched
+# - Outcome variance: tracks variance of success/failure (1/0) outcomes
+# ============================================================================
+
+@dataclass
+class ExampleWelfordStats:
+    """Two-signal Welford stats for an example/signature."""
+    example_id: str
+    pattern_name: str
+    embedding: WelfordState  # Variance of similarity scores
+    outcome: WelfordState    # Variance of success/failure (1/0)
+
+    @property
+    def high_embedding_variance(self) -> bool:
+        """High embedding variance = matches diverse problem types (may need decomposition)."""
+        # Consider high if stddev > 0.15 (15% variation in similarity scores)
+        return self.embedding.stddev > 0.15 if self.embedding.n >= 5 else False
+
+    @property
+    def high_outcome_variance(self) -> bool:
+        """High outcome variance = inconsistent success (may need refinement).
+
+        For binary outcomes (0/1), max variance is 0.25 (50% success rate).
+        Consider "high" if variance > 0.20 (roughly 30-70% success range).
+        """
+        return self.outcome.variance > 0.20 if self.outcome.n >= 5 else False
+
+
+def record_example_match(
+    example_id: str,
+    pattern_name: str,
+    similarity: float,
+    was_correct: bool
+) -> None:
+    """Record a match for an example, updating both embedding and outcome Welford stats.
+
+    Args:
+        example_id: Identifier for the example/signature
+        pattern_name: Which pattern this example belongs to
+        similarity: Cosine similarity score for this match
+        was_correct: Whether the match resulted in correct execution
+    """
+    conn = _get_connection()
+
+    # Get existing stats or defaults
+    row = conn.execute(
+        '''SELECT emb_n, emb_mean, emb_m2, out_n, out_mean, out_m2
+           FROM example_stats WHERE example_id = ?''',
+        (example_id,)
+    ).fetchone()
+
+    if row:
+        emb_n, emb_mean, emb_m2 = row['emb_n'], row['emb_mean'], row['emb_m2']
+        out_n, out_mean, out_m2 = row['out_n'], row['out_mean'], row['out_m2']
+    else:
+        emb_n, emb_mean, emb_m2 = 0, 0.0, 0.0
+        out_n, out_mean, out_m2 = 0, 0.0, 0.0
+
+    # Welford update for embedding variance (similarity scores)
+    emb_n += 1
+    emb_delta = similarity - emb_mean
+    emb_mean += emb_delta / emb_n
+    emb_delta2 = similarity - emb_mean
+    emb_m2 += emb_delta * emb_delta2
+
+    # Welford update for outcome variance (1/0 for success/failure)
+    outcome_val = 1.0 if was_correct else 0.0
+    out_n += 1
+    out_delta = outcome_val - out_mean
+    out_mean += out_delta / out_n
+    out_delta2 = outcome_val - out_mean
+    out_m2 += out_delta * out_delta2
+
+    # Upsert
+    conn.execute('''
+        INSERT INTO example_stats (
+            example_id, pattern_name,
+            emb_n, emb_mean, emb_m2,
+            out_n, out_mean, out_m2,
+            updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(example_id) DO UPDATE SET
+            pattern_name = excluded.pattern_name,
+            emb_n = excluded.emb_n,
+            emb_mean = excluded.emb_mean,
+            emb_m2 = excluded.emb_m2,
+            out_n = excluded.out_n,
+            out_mean = excluded.out_mean,
+            out_m2 = excluded.out_m2,
+            updated_at = excluded.updated_at
+    ''', (example_id, pattern_name, emb_n, emb_mean, emb_m2, out_n, out_mean, out_m2))
+
+    conn.commit()
+    conn.close()
+
+    logger.debug(
+        f"[welford] Example {example_id}: sim={similarity:.3f} (n={emb_n}, var={emb_m2/emb_n if emb_n > 1 else 0:.4f}), "
+        f"outcome={was_correct} (n={out_n}, mean={out_mean:.2f})"
+    )
+
+
+def get_example_stats(example_id: str) -> Optional[ExampleWelfordStats]:
+    """Get both embedding and outcome Welford states for an example.
+
+    Returns None if example has no recorded stats.
+    """
+    conn = _get_connection()
+    row = conn.execute(
+        '''SELECT example_id, pattern_name,
+                  emb_n, emb_mean, emb_m2,
+                  out_n, out_mean, out_m2
+           FROM example_stats WHERE example_id = ?''',
+        (example_id,)
+    ).fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    return ExampleWelfordStats(
+        example_id=row['example_id'],
+        pattern_name=row['pattern_name'],
+        embedding=WelfordState(n=row['emb_n'], mean=row['emb_mean'], m2=row['emb_m2']),
+        outcome=WelfordState(n=row['out_n'], mean=row['out_mean'], m2=row['out_m2']),
+    )
+
+
+def get_high_variance_examples(
+    embedding_threshold: float = 0.15,
+    outcome_threshold: float = 0.20,
+    min_samples: int = 5
+) -> Dict[str, ExampleWelfordStats]:
+    """Get examples with high embedding OR outcome variance.
+
+    Useful for MCTS post-mortem analysis per CLAUDE.md:
+    - High embedding variance = signature matches diverse problem types (may need decomposition)
+    - High outcome variance = inconsistent success (may need refinement)
+
+    Args:
+        embedding_threshold: Stddev threshold for embedding variance (default 0.15)
+        outcome_threshold: Variance threshold for outcome variance (default 0.20)
+        min_samples: Minimum observations required (default 5)
+
+    Returns:
+        Dict of example_id -> ExampleWelfordStats for high-variance examples
+    """
+    conn = _get_connection()
+    rows = conn.execute(
+        '''SELECT example_id, pattern_name,
+                  emb_n, emb_mean, emb_m2,
+                  out_n, out_mean, out_m2
+           FROM example_stats
+           WHERE emb_n >= ? OR out_n >= ?''',
+        (min_samples, min_samples)
+    ).fetchall()
+    conn.close()
+
+    results = {}
+    for row in rows:
+        emb_state = WelfordState(n=row['emb_n'], mean=row['emb_mean'], m2=row['emb_m2'])
+        out_state = WelfordState(n=row['out_n'], mean=row['out_mean'], m2=row['out_m2'])
+
+        # Check if either variance is high
+        high_emb = emb_state.n >= min_samples and emb_state.stddev > embedding_threshold
+        high_out = out_state.n >= min_samples and out_state.variance > outcome_threshold
+
+        if high_emb or high_out:
+            results[row['example_id']] = ExampleWelfordStats(
+                example_id=row['example_id'],
+                pattern_name=row['pattern_name'],
+                embedding=emb_state,
+                outcome=out_state,
+            )
+
+    return results
+
+
+def get_all_example_stats() -> Dict[str, ExampleWelfordStats]:
+    """Get Welford stats for all examples."""
+    conn = _get_connection()
+    rows = conn.execute(
+        '''SELECT example_id, pattern_name,
+                  emb_n, emb_mean, emb_m2,
+                  out_n, out_mean, out_m2
+           FROM example_stats'''
+    ).fetchall()
+    conn.close()
+
+    return {
+        row['example_id']: ExampleWelfordStats(
+            example_id=row['example_id'],
+            pattern_name=row['pattern_name'],
+            embedding=WelfordState(n=row['emb_n'], mean=row['emb_mean'], m2=row['emb_m2']),
+            outcome=WelfordState(n=row['out_n'], mean=row['out_mean'], m2=row['out_m2']),
+        )
+        for row in rows
+    }
 
 
 # Initialize on import

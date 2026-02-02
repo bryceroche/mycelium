@@ -49,19 +49,36 @@ def _safe_eval(expression: str, context: Dict[str, Any] = None) -> Any:
     return eval(expression, allowed, {})
 
 
+def _parse_numeric(value: Any) -> Optional[Any]:
+    """Try to parse a value as a number."""
+    if isinstance(value, (int, float)):
+        return value
+    if isinstance(value, str):
+        # Remove common formatting
+        cleaned = value.strip().replace(",", "").replace("$", "").replace("%", "")
+        # Try integer
+        if cleaned.replace("-", "").isdigit():
+            return int(cleaned)
+        # Try float
+        try:
+            return float(cleaned)
+        except ValueError:
+            pass
+    return None
+
+
 def _execute_steps(decomposition: Dict[str, Any]) -> Any:
     """Execute step-based decomposition."""
     steps = decomposition.get("steps", [])
     answer_key = decomposition.get("answer", "")
 
+    # Try to parse answer directly first (LLM sometimes gives direct numeric answer)
+    direct_answer = _parse_numeric(answer_key)
+
     if not steps:
-        # Try direct answer
-        if "answer" in decomposition:
-            ans = decomposition["answer"]
-            if isinstance(ans, (int, float)):
-                return ans
-            if isinstance(ans, str) and ans.replace(".", "").replace("-", "").isdigit():
-                return float(ans) if "." in ans else int(ans)
+        # No steps - use direct answer if available
+        if direct_answer is not None:
+            return direct_answer
         return None
 
     context = {}
@@ -82,13 +99,18 @@ def _execute_steps(decomposition: Dict[str, Any]) -> Any:
             logger.warning(f"[executor] Failed to eval '{expr}': {e}")
             continue
 
-    # Get final answer
+    # Get final answer from context
     if answer_key and answer_key in context:
         return context[answer_key]
 
-    # Return last computed value
+    # Return last computed value if we got something
     if context:
         return list(context.values())[-1]
+
+    # Fallback: if steps failed but we have a direct numeric answer, use it
+    if direct_answer is not None:
+        logger.info(f"[executor] Steps failed, using direct answer: {direct_answer}")
+        return direct_answer
 
     return None
 

@@ -15,7 +15,7 @@ from typing import Any, Optional
 
 from mycelium.patterns import match_pattern, execute_pattern
 from mycelium.patterns.coverage import propose_example
-from mycelium.patterns.welford import record_similarity, get_adaptive_threshold
+from mycelium.patterns.welford import record_similarity, get_adaptive_threshold, record_example_match
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +50,14 @@ class PatternEngine:
             The computed answer
         """
         # Step 1: Match pattern via embedding similarity
-        pattern, similarity = match_pattern(problem)
+        pattern, similarity, example_id = match_pattern(problem)
 
         if pattern is None:
             logger.warning("[engine] No pattern matched")
             return None
 
         logger.info(f"[engine] Matched pattern '{pattern.name}' (sim={similarity:.3f})")
+        logger.debug(f"[engine] Matched example: {example_id}")
 
         # Step 2: Execute pattern
         result = execute_pattern(problem, pattern)
@@ -76,11 +77,16 @@ class PatternEngine:
         problem_hash = str(hash(problem))
         record_similarity(pattern.name, similarity, is_correct, problem_hash)
 
+        # Record per-example stats (two-signal variance: embedding + outcome)
+        if example_id and is_correct is not None:
+            record_example_match(example_id, pattern.name, similarity, is_correct)
+
         # Propose if correct but low similarity (adaptive threshold)
         if is_correct:
             threshold = get_adaptive_threshold(pattern.name)
             if similarity < threshold:
-                propose_example(problem, pattern.name, similarity, threshold, was_correct=True)
+                propose_example(problem, pattern.name, similarity, threshold,
+                              was_correct=True, example_id=example_id)
 
         return result
 
@@ -96,5 +102,3 @@ def solve(problem: str) -> Any:
     return engine.solve(problem)
 
 
-# Legacy alias for backwards compatibility
-TemplateEngine = PatternEngine

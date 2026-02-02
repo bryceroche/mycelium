@@ -2,8 +2,8 @@
 
 Usage:
     python -m mycelium solve "What is 15% of 80?"
-    python -m mycelium seed
     python -m mycelium info
+    python -m mycelium stats
 """
 
 import argparse
@@ -13,10 +13,10 @@ import time
 
 def solve_command(args):
     """Solve a single problem."""
-    from mycelium.engine import TemplateEngine
+    from mycelium.engine import PatternEngine
 
     problem = args.problem
-    engine = TemplateEngine()
+    engine = PatternEngine()
 
     start = time.time()
     answer = engine.solve(problem)
@@ -27,57 +27,67 @@ def solve_command(args):
     print(f"Time: {elapsed_ms:.0f}ms")
 
 
-def seed_command(args):
-    """Seed the template database."""
-    from mycelium.templates import seed_database
-    seed_database()
-
-
 def info_command(args):
     """Show system information."""
     from mycelium.config import EMBEDDING_MODEL, EMBEDDING_DIM
-    from mycelium.templates.db import get_all_templates, get_all_examples
-
-    templates = get_all_templates()
-    examples = get_all_examples()
+    from mycelium.patterns import PATTERNS
 
     print("Mycelium System Info")
     print("=" * 40)
     print(f"Embedding model: {EMBEDDING_MODEL}")
     print(f"Embedding dimensions: {EMBEDDING_DIM}")
-    print(f"Templates: {len(templates)}")
-    print(f"Examples: {len(examples)}")
+    print(f"Patterns: {len(PATTERNS)}")
+
+    total_examples = sum(len(p.examples) for p in PATTERNS.values())
+    print(f"Examples: {total_examples}")
     print()
-    if templates:
-        print("Templates:")
-        for t in templates:
-            print(f"  - {t.name}: {t.description}")
+    print("Patterns:")
+    for name, pattern in sorted(PATTERNS.items()):
+        print(f"  - {name}: {len(pattern.examples)} examples ({pattern.execution_type})")
 
 
-def clear_command(args):
-    """Clear the template database."""
-    import os
-    from pathlib import Path
+def stats_command(args):
+    """Show Welford statistics."""
+    from mycelium.patterns.welford import (
+        get_global_stats,
+        get_all_pattern_stats,
+        get_high_variance_examples,
+    )
 
-    db_path = Path.home() / ".mycelium" / "templates.db"
+    global_stats = get_global_stats()
+    pattern_stats = get_all_pattern_stats()
+    high_var = get_high_variance_examples()
 
-    if not args.force:
-        confirm = input(f"This will delete {db_path}. Are you sure? [y/N]: ")
-        if confirm.lower() != 'y':
-            print("Aborted.")
-            return
+    print("Welford Statistics")
+    print("=" * 40)
+    print(f"Global: n={global_stats.n}, mean={global_stats.mean:.3f}, stddev={global_stats.stddev:.3f}")
+    print()
 
-    if db_path.exists():
-        os.remove(db_path)
-        print(f"Deleted: {db_path}")
+    if pattern_stats:
+        print("Per-Pattern Stats:")
+        for name, stats in sorted(pattern_stats.items()):
+            thresh = stats.adaptive_threshold()
+            thresh_str = f"{thresh:.3f}" if thresh else "default"
+            print(f"  {name}: n={stats.n}, mean={stats.mean:.3f}, stddev={stats.stddev:.3f}, thresh={thresh_str}")
+        print()
+
+    if high_var:
+        print("High Variance Examples (need attention):")
+        for eid, stats in high_var.items():
+            flags = []
+            if stats.high_embedding_variance:
+                flags.append("high-emb-var")
+            if stats.high_outcome_variance:
+                flags.append("high-out-var")
+            print(f"  {eid[:50]}: {', '.join(flags)}")
     else:
-        print("Database doesn't exist.")
+        print("No high-variance examples detected.")
 
 
 def main():
     parser = argparse.ArgumentParser(
         prog="mycelium",
-        description="Mycelium template-based math problem solver",
+        description="Mycelium pattern-based math problem solver",
     )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
@@ -85,19 +95,11 @@ def main():
     solve_parser = subparsers.add_parser("solve", help="Solve a single problem")
     solve_parser.add_argument("problem", help="The math problem to solve")
 
-    # seed command
-    subparsers.add_parser("seed", help="Seed the template database")
-
     # info command
     subparsers.add_parser("info", help="Show system information")
 
-    # clear command
-    clear_parser = subparsers.add_parser("clear", help="Clear the template database")
-    clear_parser.add_argument(
-        "--force", "-f",
-        action="store_true",
-        help="Skip confirmation prompt",
-    )
+    # stats command
+    subparsers.add_parser("stats", help="Show Welford statistics")
 
     args = parser.parse_args()
 
@@ -112,12 +114,10 @@ def main():
 
     if args.command == "solve":
         solve_command(args)
-    elif args.command == "seed":
-        seed_command(args)
     elif args.command == "info":
         info_command(args)
-    elif args.command == "clear":
-        clear_command(args)
+    elif args.command == "stats":
+        stats_command(args)
 
 
 if __name__ == "__main__":

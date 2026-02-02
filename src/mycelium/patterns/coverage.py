@@ -74,7 +74,8 @@ def propose_example(
     pattern_name: str,
     similarity: float,
     threshold: Optional[float] = None,
-    was_correct: bool = True
+    was_correct: bool = True,
+    example_id: Optional[str] = None
 ) -> Optional[ExampleProposal]:
     """
     Propose a new example if it provides coverage.
@@ -87,16 +88,22 @@ def propose_example(
         similarity: Similarity to nearest existing example
         threshold: Override threshold (uses adaptive if None)
         was_correct: Whether the answer was correct
+        example_id: Optional identifier for the matched example/signature
+                    (for per-example Welford tracking)
 
     Returns:
         ExampleProposal if proposed, None if too similar to existing
     """
     # Import here to avoid circular dependency
-    from mycelium.patterns.welford import record_similarity, get_adaptive_threshold
+    from mycelium.patterns.welford import record_similarity, get_adaptive_threshold, record_example_match
 
     # Record observation for Welford stats
     problem_hash = str(hash(problem_text))
     record_similarity(pattern_name, similarity, was_correct, problem_hash)
+
+    # Record per-example stats if example_id provided (two-signal variance tracking)
+    if example_id is not None:
+        record_example_match(example_id, pattern_name, similarity, was_correct)
 
     # Get threshold (adaptive or override)
     if threshold is None:

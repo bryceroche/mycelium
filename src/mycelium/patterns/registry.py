@@ -49,6 +49,16 @@ IMPORTANT:
         "A store has 100 items. They sell 40 in morning and 25 in afternoon. How many left?",
         "Tom bought 3 notebooks at $4 each and 5 pens at $2 each. How much did he spend?",
         "A bus has 45 passengers. 12 get off and 8 get on. How many now?",
+        # Time-based calculations
+        "John walks 5 dogs. Each dog takes 0.5 hours per day. How many hours per week?",
+        "She earns $15 per hour and works 8 hours a day for 5 days. What is her weekly pay?",
+        # Purchase/unit price calculations
+        "Yogurt is sold at 4 for $6. How much for 20 yogurts?",
+        "Terry eats 2 yogurts a day for 30 days. They cost $2 each. How much total?",
+        # Distance/travel calculations
+        "Two cars travel 100 miles each, then one goes 50 more and the other 75 more. Total miles?",
+        # Rate-based earnings
+        "Jill earns $20/hour teaching 5 hours and $30/hour training 10 hours. Weekly total?",
     ],
 )
 
@@ -685,6 +695,11 @@ Use actual numbers. Each step ONE operation.''',
         "Spent 40% on rent. Income increased by $600. Now rent is 25% of new income. Find previous income.",
         "A number increased by 20% equals 60. What was the original?",
         "Three times a number minus 7 equals 20. What is the number?",
+        # Coin/split problems
+        "Gretchen has 110 coins. There are 30 more gold coins than silver coins. How many gold coins?",
+        "There are 50 balls. Red balls outnumber blue by 10. How many red balls?",
+        # Chain of relationships
+        "Siobhan has 2 fewer jewels than Aaron. Aaron has 5 more than half of Raymond's 40 jewels. How many does Siobhan have?",
     ],
 )
 

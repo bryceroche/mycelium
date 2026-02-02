@@ -36,7 +36,7 @@ def _get_pattern_embeddings() -> Dict[str, List[Tuple[str, np.ndarray]]]:
     return _pattern_embeddings
 
 
-def match_pattern(problem: str) -> Tuple[Optional[Pattern], float]:
+def match_pattern(problem: str) -> Tuple[Optional[Pattern], float, Optional[str]]:
     """
     Find the best matching pattern for a problem using embedding similarity.
 
@@ -44,13 +44,14 @@ def match_pattern(problem: str) -> Tuple[Optional[Pattern], float]:
         problem: The problem text
 
     Returns:
-        Tuple of (Pattern, similarity_score) or (None, 0.0) if no match
+        Tuple of (Pattern, similarity_score, example_id) or (None, 0.0, None) if no match
+        example_id is a hash of the matched example text for Welford tracking
     """
     # Embed the problem
     problem_embedding = cached_embed(problem)
     if problem_embedding is None:
         logger.warning("[matcher] Failed to embed problem")
-        return None, 0.0
+        return None, 0.0, None
 
     # Normalize
     problem_embedding = problem_embedding / (np.linalg.norm(problem_embedding) + 1e-9)
@@ -78,13 +79,16 @@ def match_pattern(problem: str) -> Tuple[Optional[Pattern], float]:
 
     if best_pattern_name is None:
         logger.warning("[matcher] No pattern examples found")
-        return PATTERNS.get("sequential"), 0.0  # Default fallback
+        return PATTERNS.get("sequential"), 0.0, None  # Default fallback
 
     pattern = PATTERNS[best_pattern_name]
+    # Create example_id from hash of example text (stable identifier)
+    example_id = f"{best_pattern_name}:{hash(best_example)}"
+
     logger.info(f"[matcher] Matched '{best_pattern_name}' (sim={best_similarity:.3f})")
     logger.debug(f"[matcher] Best example: {best_example[:60]}...")
 
-    return pattern, best_similarity
+    return pattern, best_similarity, example_id
 
 
 def clear_cache():
