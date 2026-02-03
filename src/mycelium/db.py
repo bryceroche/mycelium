@@ -58,15 +58,6 @@ class OperationCentroidRow:
 
 
 @dataclass
-class DecisionBoundaryRow:
-    """Decision boundary from database."""
-    pair_key: str
-    threshold: float
-    count: int
-    updated_at: datetime
-
-
-@dataclass
 class SpanTemplateRow:
     """Span template from database.
 
@@ -169,16 +160,6 @@ def init_db():
         CREATE TABLE IF NOT EXISTS operation_centroids (
             operation VARCHAR(20) PRIMARY KEY,
             centroid BYTEA NOT NULL,
-            count INTEGER NOT NULL,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-
-    # Decision boundaries table (precomputed thresholds between confusable pairs)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS decision_boundaries (
-            pair_key VARCHAR(50) PRIMARY KEY,
-            threshold FLOAT NOT NULL,
             count INTEGER NOT NULL,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -583,47 +564,6 @@ def get_all_centroids() -> Dict[str, np.ndarray]:
 
 
 # =============================================================================
-# Decision Boundaries Operations
-# =============================================================================
-
-def store_decision_boundary(pair_key: str, threshold: float, count: int) -> None:
-    """Store or update a decision boundary threshold for an operation pair."""
-    conn = _get_connection()
-    cur = conn.cursor()
-
-    cur.execute("""
-        INSERT INTO decision_boundaries (pair_key, threshold, count, updated_at)
-        VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
-        ON CONFLICT (pair_key) DO UPDATE SET
-            threshold = EXCLUDED.threshold,
-            count = EXCLUDED.count,
-            updated_at = CURRENT_TIMESTAMP
-    """, (pair_key, threshold, count))
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
-
-def get_decision_boundary(pair_key: str) -> Optional[float]:
-    """Get decision boundary threshold for an operation pair."""
-    conn = _get_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        "SELECT threshold FROM decision_boundaries WHERE pair_key = %s",
-        (pair_key,)
-    )
-    row = cur.fetchone()
-    cur.close()
-    conn.close()
-
-    if row:
-        return row[0]
-    return None
-
-
-# =============================================================================
 # Span Templates Operations (Two-Tier KNN)
 # =============================================================================
 
@@ -752,26 +692,6 @@ def get_all_span_templates(operation: Optional[str] = None) -> List[SpanTemplate
             updated_at=r[11],
         )
         for r in rows
-    ]
-
-
-def get_template_centroids() -> List[Tuple[str, str, np.ndarray]]:
-    """Get (template_id, operation, centroid) for all templates.
-
-    Optimized for two-tier KNN lookup - returns only what's needed.
-    DEPRECATED: Use knn_query_templates() for pgvector-based search instead.
-    """
-    conn = _get_connection()
-    cur = conn.cursor()
-
-    cur.execute("SELECT template_id, operation, centroid FROM span_templates")
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    return [
-        (row[0], row[1], np.frombuffer(row[2], dtype=np.float32))
-        for row in rows
     ]
 
 

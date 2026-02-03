@@ -3,6 +3,9 @@ Verb-based operation classification module.
 
 Uses verb taxonomy to classify operations when KNN similarity is ambiguous.
 Research shows verbs carry operational semantics - "sold" means SUB, "found" means ADD.
+
+This is the SINGLE SOURCE OF TRUTH for verb patterns.
+Import from here rather than duplicating patterns elsewhere.
 """
 
 import re
@@ -18,6 +21,41 @@ VERB_TAXONOMY = {
     "MUL": ["times", "multiplied", "doubled", "tripled", "each"],
     "DIV": ["split", "divided", "shared equally", "distributed", "grouped"],
 }
+
+# =============================================================================
+# Frozensets for fast O(1) membership checking
+# These are the canonical pattern sets - import these, don't duplicate them!
+# =============================================================================
+
+# ADD patterns: words that indicate increase/addition
+ADD_PATTERNS = frozenset([
+    "more", "added", "gained", "found", "received", "bought", "collected",
+    "earned", "got", "picked", "additional", "extra", "plus", "won",
+    "acquired", "obtained", "gathered"
+])
+
+# SUB patterns: words that indicate decrease/subtraction
+SUB_PATTERNS = frozenset([
+    "less", "fewer", "sold", "gave", "lost", "spent", "used", "ate",
+    "removed", "took", "subtracted", "minus", "traded", "dropped",
+    "threw", "donated", "paid", "left", "shared", "sent"
+])
+
+# MUL patterns: words that indicate multiplication
+MUL_PATTERNS = frozenset([
+    "times", "twice", "double", "triple", "multiplied", "doubled", "tripled",
+    "half", "third", "quarter", "each"
+])
+
+# DIV patterns: words that indicate division
+DIV_PATTERNS = frozenset([
+    "split", "divided", "shared", "distributed", "grouped", "each", "per", "every"
+])
+
+# Reference patterns: words that indicate comparison/reference to another entity
+REFERENCE_PATTERNS = frozenset([
+    "than", "as", "of"
+])
 
 # Build reverse lookup: verb -> (operation, base_confidence)
 _VERB_TO_OP: dict[str, str] = {}

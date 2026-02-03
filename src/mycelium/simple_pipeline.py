@@ -45,30 +45,17 @@ def classify_by_verb(text: str) -> Optional[str]:
     Returns ADD, SUB, MUL, DIV, or None if no clear verb signal.
     Used when KNN is uncertain between ADD/SUB.
     """
+    # Import canonical patterns from verb_classifier (single source of truth)
+    from mycelium.verb_classifier import ADD_PATTERNS, SUB_PATTERNS, MUL_PATTERNS, DIV_PATTERNS
+
     text_lower = text.lower()
     words = set(text_lower.split())
 
-    # Verb patterns from span_graph.py
-    INCREASE_VERBS = frozenset([
-        "more", "added", "gained", "found", "received", "bought", "collected",
-        "earned", "got", "picked", "additional", "extra", "plus"
-    ])
-    DECREASE_VERBS = frozenset([
-        "less", "fewer", "sold", "gave", "lost", "spent", "used", "ate",
-        "removed", "took", "subtracted", "minus"
-    ])
-    MULTIPLY_VERBS = frozenset([
-        "times", "twice", "double", "triple"
-    ])
-    DIVIDE_VERBS = frozenset([
-        "split", "divided", "shared"
-    ])
-
-    # Check for verb matches
-    increase_count = len(words & INCREASE_VERBS)
-    decrease_count = len(words & DECREASE_VERBS)
-    multiply_count = len(words & MULTIPLY_VERBS)
-    divide_count = len(words & DIVIDE_VERBS)
+    # Check for verb matches using canonical patterns
+    increase_count = len(words & ADD_PATTERNS)
+    decrease_count = len(words & SUB_PATTERNS)
+    multiply_count = len(words & MUL_PATTERNS)
+    divide_count = len(words & DIV_PATTERNS)
 
     # Return operation if there's a clear winner
     counts = [
@@ -105,19 +92,8 @@ class SimplePipeline:
     TEMPLATE_WEIGHT = 2.0  # Templates count 2x vs individual spans
     TEMPLATE_CONFIDENCE_BONUS = 0.10  # Confidence boost for template matches
 
-    # Position-based priors (position 0/1 = initial state, almost always SET)
-    POSITION_PRIORS = {
-        1: {"SET": 0.85, "ADD": 0.05, "SUB": 0.05, "MUL": 0.025, "DIV": 0.025},
-        2: {"SET": 0.10, "ADD": 0.35, "SUB": 0.35, "MUL": 0.10, "DIV": 0.10},
-        3: {"SET": 0.05, "ADD": 0.35, "SUB": 0.35, "MUL": 0.125, "DIV": 0.125},
-    }
-
-    # Positional prefixes for embedding context
-    POSITION_PREFIXES = {
-        1: "Initially:",
-        2: "Then:",
-        3: "After that:",
-    }
+    # NOTE: Position priors REMOVED - dual-signal (attention + embeddings) learns
+    # that "first clause = SET" naturally from attention patterns
 
     def __init__(self, use_db: bool = True, use_pgvector: bool = True):
         self.use_db = use_db
@@ -221,14 +197,12 @@ class SimplePipeline:
         return embedding
 
     def _get_positional_embedding(self, text: str, position: int) -> np.ndarray:
-        """Get embedding with positional context.
+        """Get embedding for text (position parameter kept for API compatibility).
 
-        Adds positional prefix to disambiguate operations by their position
-        in the problem (e.g., "Initially: has 12" vs "Then: sold 5").
+        NOTE: Positional prefixes REMOVED - dual-signal approach learns position
+        context from attention patterns, not hard-coded prefixes.
         """
-        prefix = self.POSITION_PREFIXES.get(min(position, 3), "Then:")
-        positioned_text = f"{prefix} {text}"
-        return self._get_embedding(positioned_text)
+        return self._get_embedding(text)
 
     def _resolve_entity(self, text: str, known_entities: Dict[str, np.ndarray]) -> Optional[str]:
         """Resolve an entity (especially pronouns) to a known entity using embedding similarity.
@@ -314,16 +288,7 @@ class SimplePipeline:
         results.sort(key=lambda x: x[2], reverse=True)
         return results[:k]
 
-    def _get_position_prior(self, position: int) -> Dict[str, float]:
-        """Get position-based prior probability for operations.
-
-        Position 1 (first clause) is almost always SET (establishing initial state).
-        Later positions are more likely to be modifications (ADD/SUB).
-        """
-        if position in self.POSITION_PRIORS:
-            return self.POSITION_PRIORS[position].copy()
-        # Default for position > 3
-        return {"SET": 0.05, "ADD": 0.35, "SUB": 0.35, "MUL": 0.125, "DIV": 0.125}
+    # NOTE: _get_position_prior REMOVED - dual-signal learns position context
 
     def _welford_zscore(self, op: str, similarity: float) -> float:
         """Get z-score for this similarity given operation's distribution."""
@@ -359,32 +324,30 @@ class SimplePipeline:
     def classify_span(self, span_text: str, position: int = 1) -> Tuple[str, float]:
         """Classify a span into an operation type using two-tier KNN.
 
-        Uses templates (gold standard anchors) + raw spans + position priors
-        to classify operations. Like multi-object detection where each span
-        is classified independently.
+        Uses templates (gold standard anchors) + raw spans to classify.
+        Like multi-object detection where each span is classified independently.
+
+        NOTE: Position priors and verb backup REMOVED - dual-signal approach
+        (attention + embeddings) will learn these patterns naturally.
 
         Args:
             span_text: The text of the span to classify
-            position: Position in the problem (1=first, 2=second, etc.)
-                     Position 1 has strong prior for SET.
+            position: Position in the problem (kept for API compatibility)
 
         Returns (operation, confidence).
         """
-        # Use positional embedding for better disambiguation
+        # Get embedding (no positional prefix - dual-signal handles this)
         embedding = self._get_positional_embedding(span_text, position)
 
         # Two-tier lookup: templates (2x) + raw spans (1x)
         neighbors = self._two_tier_knn_lookup(embedding, k=7)
 
         if not neighbors:
-            # No neighbors - use position prior only
-            priors = self._get_position_prior(position)
-            best_op = max(priors, key=priors.get)
-            return (best_op, priors[best_op])
+            # No neighbors - default to SET with low confidence
+            return ("SET", 0.3)
 
-        # Score each operation: combine KNN votes + position prior
-        priors = self._get_position_prior(position)
-        op_scores: Dict[str, float] = {op: prior * 0.3 for op, prior in priors.items()}  # Prior weight
+        # Score each operation by weighted KNN votes
+        op_scores: Dict[str, float] = {}
         template_matches: Dict[str, int] = {}
 
         for source_id, op, weighted_sim, is_template in neighbors:
@@ -401,16 +364,7 @@ class SimplePipeline:
         best_op = max(op_scores, key=op_scores.get)
         best_score = op_scores[best_op]
 
-        # Verb backup for ADD/SUB confusion
-        sorted_ops = sorted(op_scores.items(), key=lambda x: x[1], reverse=True)
-        if len(sorted_ops) >= 2:
-            second_op, second_score = sorted_ops[1]
-            # If top-2 are ADD/SUB and scores are close, use verb backup
-            if {best_op, second_op} == {"ADD", "SUB"} and (best_score - second_score) < 0.1:
-                verb_result = classify_by_verb(span_text)
-                if verb_result:
-                    best_op = verb_result
-                    best_score = max(best_score, second_score)
+        # NOTE: Verb backup REMOVED - dual-signal will disambiguate ADD/SUB
 
         # Compute raw similarity for Welford (unweighted)
         raw_sim = best_score / self.TEMPLATE_WEIGHT if best_op in template_matches else best_score
@@ -626,67 +580,11 @@ def test_verb_classifier():
     print(f"\nVerb classifier: {passed}/{len(test_cases)} passed\n")
 
 
-def test_positional_embedding():
-    """Test that positional prefixes are applied correctly."""
-    print("=== Positional Embedding Test ===\n")
-
-    pipeline = SimplePipeline(use_db=False)
-
-    # Test that different positions produce different embeddings
-    text = "sold 5 apples"
-    emb1 = pipeline._get_positional_embedding(text, position=1)
-    emb2 = pipeline._get_positional_embedding(text, position=2)
-    emb3 = pipeline._get_positional_embedding(text, position=3)
-
-    # Embeddings should be different due to prefixes
-    sim_1_2 = float(np.dot(emb1, emb2))
-    sim_1_3 = float(np.dot(emb1, emb3))
-    sim_2_3 = float(np.dot(emb2, emb3))
-
-    print(f"  Position 1 vs 2 similarity: {sim_1_2:.4f}")
-    print(f"  Position 1 vs 3 similarity: {sim_1_3:.4f}")
-    print(f"  Position 2 vs 3 similarity: {sim_2_3:.4f}")
-
-    # All should be similar but not identical (prefixes add context)
-    assert sim_1_2 < 1.0, "Position 1 and 2 embeddings should differ"
-    assert sim_1_3 < 1.0, "Position 1 and 3 embeddings should differ"
-    print("\n  [PASS] Positional embeddings are distinct\n")
-
-
-def test_add_sub_disambiguation():
-    """Test that ADD/SUB confusion is resolved by verb backup."""
-    print("=== ADD/SUB Disambiguation Test ===\n")
-
-    # Problems that commonly confuse ADD/SUB
-    test_cases = [
-        # (problem, step_index, expected_op)
-        ("Lisa has 12 apples. She sold 5 apples.", 1, "SUB"),  # sold -> SUB
-        ("Tom had 8 coins. He found 3 more coins.", 1, "ADD"),  # found -> ADD
-        ("Mary has 10 books. She gave 4 to John.", 1, "SUB"),  # gave -> SUB
-        ("John had 20 dollars. He spent 8 on lunch.", 1, "SUB"),  # spent -> SUB
-        ("Sarah has 5 stickers. She received 7 more.", 1, "ADD"),  # received -> ADD
-    ]
-
-    pipeline = SimplePipeline(use_db=False)
-
-    passed = 0
-    for problem, step_idx, expected in test_cases:
-        result = pipeline.solve(problem)
-        if len(result.steps) > step_idx:
-            actual = result.steps[step_idx].op_type
-            status = "PASS" if actual == expected else "FAIL"
-            if actual == expected:
-                passed += 1
-            print(f"  [{status}] '{problem}'")
-            print(f"          Step {step_idx}: {actual} (expected {expected})")
-        else:
-            print(f"  [SKIP] '{problem}' - not enough steps")
-
-    print(f"\nADD/SUB disambiguation: {passed}/{len(test_cases)} passed\n")
+# NOTE: test_positional_embedding REMOVED - positional prefixes no longer used
+# NOTE: test_add_sub_disambiguation REMOVED - verb backup no longer used
+# These features are replaced by dual-signal approach (attention + embeddings)
 
 
 if __name__ == "__main__":
     test_verb_classifier()
-    test_positional_embedding()
     test_pipeline()
-    test_add_sub_disambiguation()
