@@ -8,6 +8,21 @@ Transformer attention patterns reveal semantic spans. When processing "she sold 
 
 We extract these patterns from Qwen 7B and distill them into MiniLM (22M params, 318x smaller).
 
+## The Panama Hats Problem
+
+Why do we need span detection? Because meaning is compositional.
+
+- "panama" = country
+- "panama hats" = a type of hat (completely different meaning)
+
+In math word problems:
+- "half" = 0.5
+- "half the price of the cheese" = ONE operation (cheese_price × 0.5)
+
+Naive tokenization breaks "half the price of the cheese" into separate words and loses the semantic unit. We need the **longest span** that forms a cohesive operation.
+
+Attention patterns solve this: tokens within a semantic span attend strongly to each other (high connectivity). "half," "price," and "cheese" form an attention cluster — that's the model recognizing them as a single operation.
+
 ## Attention Signals
 
 Three signals extracted from attention matrices:
