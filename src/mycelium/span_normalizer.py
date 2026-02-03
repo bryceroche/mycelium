@@ -57,6 +57,9 @@ OBJECT_PRONOUNS = {"her", "him", "them", "it", "me", "us", "you"}
 # Possessive pronouns (including possessive adjectives)
 POSSESSIVE_PRONOUNS = {"her", "his", "their", "its", "my", "our", "your", "hers", "theirs", "ours", "yours", "mine"}
 
+# Combined pronouns set (for entity resolution in other modules)
+PRONOUNS = SUBJECT_PRONOUNS | OBJECT_PRONOUNS | POSSESSIVE_PRONOUNS
+
 
 def normalize_span(text: str) -> Tuple[str, Dict[str, List[Any]]]:
     """Normalize a span to be parameter-agnostic.

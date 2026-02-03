@@ -12,18 +12,34 @@ from typing import Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass
 import numpy as np
 
+# Import consolidated Welford implementation for in-memory stats
+# NOTE: This module provides database persistence for Welford stats.
+# For in-memory Welford calculations, use mycelium.welford.WelfordStats.
+# The update_welford_stats() function below uses the same algorithm but
+# persists directly to the database. Consider refactoring to use
+# WelfordStats.from_db_row() and WelfordStats.to_dict() for consistency.
+from mycelium.welford import WelfordStats
+
 # Use environment variable for connection (required)
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
 @dataclass
 class WelfordRow:
-    """Welford stats from database."""
+    """Welford stats from database.
+
+    For in-memory operations, use WelfordStats from mycelium.welford instead.
+    This class represents the database row structure.
+    """
     stat_type: str
     count: int
     mean: float
     m2: float
     updated_at: datetime
+
+    def to_welford_stats(self) -> WelfordStats:
+        """Convert to in-memory WelfordStats instance."""
+        return WelfordStats.from_db_row(self.count, self.mean, self.m2)
 
 
 @dataclass
@@ -210,29 +226,6 @@ def init_db():
 # Welford Stats Operations
 # =============================================================================
 
-def get_welford_stats(stat_type: str) -> Optional[WelfordRow]:
-    """Get Welford stats for a given type."""
-    conn = _get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT stat_type, count, mean, m2, updated_at FROM welford_stats WHERE stat_type = %s",
-        (stat_type,)
-    )
-    row = cur.fetchone()
-    cur.close()
-    conn.close()
-
-    if row:
-        return WelfordRow(
-            stat_type=row[0],
-            count=row[1],
-            mean=row[2],
-            m2=row[3],
-            updated_at=row[4]
-        )
-    return None
-
-
 def update_welford_stats(stat_type: str, value: float) -> WelfordRow:
     """Update Welford stats with a new value using online algorithm."""
     conn = _get_connection()
@@ -345,49 +338,9 @@ def store_embedding(text: str, embedding: np.ndarray, model: str) -> None:
     conn.close()
 
 
-def get_embedding_count(model: Optional[str] = None) -> int:
-    """Get count of cached embeddings."""
-    conn = _get_connection()
-    cur = conn.cursor()
-
-    if model:
-        cur.execute("SELECT COUNT(*) FROM embeddings WHERE model = %s", (model,))
-    else:
-        cur.execute("SELECT COUNT(*) FROM embeddings")
-
-    count = cur.fetchone()[0]
-    cur.close()
-    conn.close()
-    return count
-
-
 # =============================================================================
 # Labeled Spans Operations
 # =============================================================================
-
-def add_labeled_span(
-    span_text: str,
-    operation: Optional[str] = None,
-    reference_entity: Optional[str] = None,
-    cross_similarity: Optional[float] = None,
-    source: str = "unknown"
-) -> int:
-    """Add a labeled span and return its ID."""
-    conn = _get_connection()
-    cur = conn.cursor()
-
-    cur.execute("""
-        INSERT INTO labeled_spans (span_text, operation, reference_entity, cross_similarity, source)
-        VALUES (%s, %s, %s, %s, %s)
-        RETURNING id
-    """, (span_text, operation, reference_entity, cross_similarity, source))
-
-    span_id = cur.fetchone()[0]
-    conn.commit()
-    cur.close()
-    conn.close()
-    return span_id
-
 
 def get_labeled_spans(
     operation: Optional[str] = None,
@@ -428,24 +381,6 @@ def get_labeled_spans(
     ]
 
 
-def get_span_counts_by_operation() -> Dict[str, int]:
-    """Get count of spans by operation type."""
-    conn = _get_connection()
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT operation, COUNT(*)
-        FROM labeled_spans
-        WHERE operation IS NOT NULL
-        GROUP BY operation
-    """)
-
-    counts = {row[0]: row[1] for row in cur.fetchall()}
-    cur.close()
-    conn.close()
-    return counts
-
-
 # =============================================================================
 # Problem Results Operations
 # =============================================================================
@@ -474,93 +409,6 @@ def add_problem_result(
     cur.close()
     conn.close()
     return result_id
-
-
-def get_accuracy_stats() -> Dict[str, Any]:
-    """Get overall accuracy statistics."""
-    conn = _get_connection()
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT
-            COUNT(*) as total,
-            SUM(CASE WHEN correct THEN 1 ELSE 0 END) as correct,
-            COUNT(DISTINCT problem_id) as unique_problems
-        FROM problem_results
-    """)
-
-    row = cur.fetchone()
-    cur.close()
-    conn.close()
-
-    total = row[0] or 0
-    correct = row[1] or 0
-
-    return {
-        "total": total,
-        "correct": correct,
-        "accuracy": correct / total if total > 0 else 0.0,
-        "unique_problems": row[2] or 0
-    }
-
-
-# =============================================================================
-# Operation Centroids Operations
-# =============================================================================
-
-def store_centroid(operation: str, centroid: np.ndarray, count: int) -> None:
-    """Store or update a centroid for an operation type."""
-    conn = _get_connection()
-    cur = conn.cursor()
-
-    centroid_bytes = centroid.astype(np.float32).tobytes()
-
-    cur.execute("""
-        INSERT INTO operation_centroids (operation, centroid, count, updated_at)
-        VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
-        ON CONFLICT (operation) DO UPDATE SET
-            centroid = EXCLUDED.centroid,
-            count = EXCLUDED.count,
-            updated_at = CURRENT_TIMESTAMP
-    """, (operation, centroid_bytes, count))
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
-
-def get_centroid(operation: str) -> Optional[np.ndarray]:
-    """Get centroid for an operation type."""
-    conn = _get_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        "SELECT centroid FROM operation_centroids WHERE operation = %s",
-        (operation,)
-    )
-    row = cur.fetchone()
-    cur.close()
-    conn.close()
-
-    if row:
-        return np.frombuffer(row[0], dtype=np.float32)
-    return None
-
-
-def get_all_centroids() -> Dict[str, np.ndarray]:
-    """Get all operation centroids."""
-    conn = _get_connection()
-    cur = conn.cursor()
-
-    cur.execute("SELECT operation, centroid FROM operation_centroids")
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    return {
-        row[0]: np.frombuffer(row[1], dtype=np.float32)
-        for row in rows
-    }
 
 
 # =============================================================================
@@ -617,84 +465,6 @@ def store_span_template(
     conn.close()
 
 
-def get_span_template(template_id: str) -> Optional[SpanTemplateRow]:
-    """Get a template by ID."""
-    conn = _get_connection()
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT template_id, pattern, centroid, operation, dsl_type,
-               examples, count, welford_count, welford_mean, welford_m2,
-               created_at, updated_at
-        FROM span_templates
-        WHERE template_id = %s
-    """, (template_id,))
-
-    row = cur.fetchone()
-    cur.close()
-    conn.close()
-
-    if row:
-        return SpanTemplateRow(
-            template_id=row[0],
-            pattern=row[1],
-            centroid=np.frombuffer(row[2], dtype=np.float32),
-            operation=row[3],
-            dsl_type=row[4],
-            examples=json.loads(row[5]) if row[5] else [],
-            count=row[6],
-            welford_count=row[7] or 0,
-            welford_mean=row[8] or 0.0,
-            welford_m2=row[9] or 0.0,
-            created_at=row[10],
-            updated_at=row[11],
-        )
-    return None
-
-
-def get_all_span_templates(operation: Optional[str] = None) -> List[SpanTemplateRow]:
-    """Get all span templates, optionally filtered by operation."""
-    conn = _get_connection()
-    cur = conn.cursor()
-
-    query = """
-        SELECT template_id, pattern, centroid, operation, dsl_type,
-               examples, count, welford_count, welford_mean, welford_m2,
-               created_at, updated_at
-        FROM span_templates
-    """
-    params = []
-
-    if operation:
-        query += " WHERE operation = %s"
-        params.append(operation)
-
-    query += " ORDER BY count DESC"
-
-    cur.execute(query, params)
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    return [
-        SpanTemplateRow(
-            template_id=r[0],
-            pattern=r[1],
-            centroid=np.frombuffer(r[2], dtype=np.float32),
-            operation=r[3],
-            dsl_type=r[4],
-            examples=json.loads(r[5]) if r[5] else [],
-            count=r[6],
-            welford_count=r[7] or 0,
-            welford_mean=r[8] or 0.0,
-            welford_m2=r[9] or 0.0,
-            created_at=r[10],
-            updated_at=r[11],
-        )
-        for r in rows
-    ]
-
-
 def knn_query_templates(
     query_embedding: np.ndarray,
     k: int = 5,
@@ -736,98 +506,12 @@ def knn_query_templates(
     return results
 
 
-def update_template_welford(template_id: str, similarity: float) -> None:
-    """Update Welford stats for a template match.
-
-    Called when a span matches this template during classification.
-    Tracks the distribution of match similarities for confidence scoring.
-    """
-    conn = _get_connection()
-    cur = conn.cursor()
-
-    # Get current stats with row lock
-    cur.execute(
-        "SELECT welford_count, welford_mean, welford_m2 FROM span_templates WHERE template_id = %s FOR UPDATE",
-        (template_id,)
-    )
-    row = cur.fetchone()
-
-    if row:
-        count, mean, m2 = row[0] or 0, row[1] or 0.0, row[2] or 0.0
-
-        # Welford's online algorithm
-        count += 1
-        delta = similarity - mean
-        mean += delta / count
-        delta2 = similarity - mean
-        m2 += delta * delta2
-
-        cur.execute("""
-            UPDATE span_templates
-            SET welford_count = %s, welford_mean = %s, welford_m2 = %s, updated_at = CURRENT_TIMESTAMP
-            WHERE template_id = %s
-        """, (count, mean, m2, template_id))
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
-
 def get_template_count() -> int:
     """Get total number of templates."""
     conn = _get_connection()
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM span_templates")
     count = cur.fetchone()[0]
-    cur.close()
-    conn.close()
-    return count
-
-
-def get_template_counts_by_operation() -> Dict[str, int]:
-    """Get count of templates by operation type."""
-    conn = _get_connection()
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT operation, COUNT(*)
-        FROM span_templates
-        GROUP BY operation
-    """)
-
-    counts = {row[0]: row[1] for row in cur.fetchall()}
-    cur.close()
-    conn.close()
-    return counts
-
-
-# =============================================================================
-# Migration helpers
-# =============================================================================
-
-def migrate_json_welford(json_path: str, stat_prefix: str = "") -> int:
-    """Migrate Welford stats from JSON file to database."""
-    with open(json_path) as f:
-        data = json.load(f)
-
-    count = 0
-    conn = _get_connection()
-    cur = conn.cursor()
-
-    for key, stats in data.items():
-        stat_type = f"{stat_prefix}{key}" if stat_prefix else key
-        cur.execute("""
-            INSERT INTO welford_stats (stat_type, count, mean, m2)
-            VALUES (%s, %s, %s, %s)
-            ON CONFLICT (stat_type) DO UPDATE SET
-                count = EXCLUDED.count,
-                mean = EXCLUDED.mean,
-                m2 = EXCLUDED.m2,
-                updated_at = CURRENT_TIMESTAMP
-        """, (stat_type, stats.get("count", 0), stats.get("mean", 0.0), stats.get("m2", 0.0)))
-        count += 1
-
-    conn.commit()
     cur.close()
     conn.close()
     return count

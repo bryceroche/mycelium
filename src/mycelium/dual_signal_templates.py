@@ -24,66 +24,18 @@ from transformers import AutoModel, AutoTokenizer
 import os
 from collections import OrderedDict
 
+# Import consolidated Welford implementation
+from mycelium.welford import WelfordStats
+
 
 class OperationType(Enum):
     """Core arithmetic operation types for math problem solving."""
     SET = "SET"      # Assignment/initialization
     ADD = "ADD"      # Addition
-    SUB = "SUB"      # Subtraction  
+    SUB = "SUB"      # Subtraction
     MUL = "MUL"      # Multiplication
     DIV = "DIV"      # Division
     UNKNOWN = "UNKNOWN"  # Unclassified
-
-
-@dataclass
-class WelfordStats:
-    """
-    Running statistics using Welford's online algorithm.
-    
-    Tracks mean and variance incrementally without storing all values.
-    This is critical for the variance-based decomposition signals
-    described in CLAUDE.md.
-    """
-    count: int = 0
-    mean: float = 0.0
-    M2: float = 0.0  # Sum of squared differences from mean
-    
-    def update(self, value: float) -> None:
-        """Update statistics with new value using Welford's algorithm."""
-        self.count += 1
-        delta = value - self.mean
-        self.mean += delta / self.count
-        delta2 = value - self.mean
-        self.M2 += delta * delta2
-    
-    @property
-    def variance(self) -> float:
-        """Return sample variance (or 0 if insufficient data)."""
-        if self.count < 2:
-            return 0.0
-        return self.M2 / (self.count - 1)
-    
-    @property
-    def std(self) -> float:
-        """Return sample standard deviation."""
-        return np.sqrt(self.variance)
-    
-    def to_dict(self) -> Dict[str, float]:
-        """Serialize to dictionary for storage."""
-        return {
-            "count": self.count,
-            "mean": self.mean,
-            "M2": self.M2
-        }
-    
-    @classmethod
-    def from_dict(cls, d: Dict[str, float]) -> "WelfordStats":
-        """Deserialize from dictionary."""
-        stats = cls()
-        stats.count = int(d["count"])
-        stats.mean = d["mean"]
-        stats.M2 = d["M2"]
-        return stats
 
 
 @dataclass

@@ -1,7 +1,12 @@
 """Extract attention matrices from transformer models.
 
-Uses DeepSeek-Math (or similar) to get attention patterns that
-encode mathematical understanding.
+NOTE: This is legacy/experimental code not actively used by the main pipeline.
+The active SpanDetector in dual_signal_templates.py uses a different approach.
+
+This module provides utilities to extract raw attention matrices from
+transformer models like DeepSeek-Math for research/experimentation.
+
+Requires: transformers, torch, and model weights (GPU recommended).
 
 Why DeepSeek?
 - SOTA math accuracy = attention patterns encode actual math structure
