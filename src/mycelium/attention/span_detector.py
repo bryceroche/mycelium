@@ -1,5 +1,8 @@
 """Detect semantic spans from attention patterns.
 
+NOTE: This is legacy/experimental code not actively used by the main pipeline.
+The active SpanDetector in dual_signal_templates.py uses a different approach.
+
 The "Panama Hats" problem: we need the LONGEST contiguous span
 that forms a coherent semantic unit.
 
@@ -8,22 +11,15 @@ not "half" + "the" + "price" + "of" + "the" + "cheese"
 """
 
 import logging
-from dataclasses import dataclass
 from typing import List, Tuple
 
 import numpy as np
 
+# Import Span from types.py (canonical definition)
+# Re-exported here for backward compatibility
+from mycelium.types import Span
+
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class Span:
-    """A semantic span in the text."""
-    start: int          # Start token index
-    end: int            # End token index (exclusive)
-    tokens: List[str]   # The tokens in this span
-    text: str           # Joined text
-    confidence: float   # How strongly tokens attend to each other
 
 
 def build_adjacency(
@@ -131,30 +127,3 @@ def detect_spans(
     return sorted(spans, key=lambda s: s.start)
 
 
-def detect_hierarchical_spans(
-    tokens: List[str],
-    attention: np.ndarray,
-    thresholds: List[float] = [0.25, 0.15, 0.10],
-) -> List[List[Span]]:
-    """Detect nested/hierarchical spans at different thresholds.
-
-    Higher threshold = tighter binding = inner spans
-    Lower threshold = looser binding = outer spans
-
-    Example: "half (the price (of the cheese))"
-    - threshold 0.25: ["the cheese"]
-    - threshold 0.15: ["the price of the cheese"]
-    - threshold 0.10: ["half the price of the cheese"]
-
-    Args:
-        tokens: List of tokens
-        attention: Attention matrix
-        thresholds: List of thresholds from tight to loose
-
-    Returns:
-        List of span lists, one per threshold level
-    """
-    return [
-        detect_spans(tokens, attention, thresh)
-        for thresh in sorted(thresholds, reverse=True)
-    ]

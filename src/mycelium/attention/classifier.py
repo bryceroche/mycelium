@@ -1,9 +1,12 @@
 """Classify spans and text into mathematical operations.
 
+NOTE: This is legacy/experimental code not actively used by the main pipeline.
+The pattern matching here may still be useful for research or future development.
+
 Maps detected spans/text to operations:
-- "half the X" → multiply(X, 0.5)
-- "X more than Y" → add(Y, X)
-- "X percent of Y" → multiply(Y, X/100)
+- "half the X" -> multiply(X, 0.5)
+- "X more than Y" -> add(Y, X)
+- "X percent of Y" -> multiply(Y, X/100)
 
 Two approaches:
 1. classify_span() - for attention-detected spans
@@ -12,22 +15,11 @@ Two approaches:
 
 import logging
 import re
-from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
-from .span_detector import Span
+from mycelium.types import Operation, Span
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class Operation:
-    """A mathematical operation extracted from text."""
-    op_type: str           # "multiply", "add", "subtract", "divide", "percent", "rate", "fraction"
-    value: Any             # The numeric value or operands
-    matched_text: str      # The text that matched
-    confidence: float      # Classification confidence
-    source_span: Optional[Span] = None  # The span this came from (if any)
 
 
 # Comprehensive math patterns (tested on GSM8K: 60% detection rate)
