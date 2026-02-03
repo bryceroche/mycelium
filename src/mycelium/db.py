@@ -69,6 +69,28 @@ class DecisionBoundaryRow:
     updated_at: datetime
 
 
+@dataclass
+class SpanTemplateRow:
+    """Span template from database.
+
+    Templates are clustered span patterns with centroids that serve as
+    "gold standard" anchors for KNN classification. Each template represents
+    a normalized pattern (e.g., "[NAME] sold [N] [ITEM]") with an operation.
+    """
+    template_id: str
+    pattern: str
+    centroid: np.ndarray  # 384-dim embedding
+    operation: str  # SET, ADD, SUB, MUL, DIV
+    dsl_type: str  # "simple" or "complex"
+    examples: List[str]  # Original span texts in this cluster
+    count: int  # Number of spans in cluster
+    welford_count: int  # Match count for this template
+    welford_mean: float  # Mean match similarity
+    welford_m2: float  # Variance component
+    created_at: datetime
+    updated_at: datetime
+
+
 def _get_connection():
     """Get database connection."""
     import psycopg2
@@ -159,6 +181,31 @@ def init_db():
             count INTEGER NOT NULL,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
+    """)
+
+    # Span templates table (clustered patterns with centroids)
+    # Templates serve as "gold standard" anchors for two-tier KNN
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS span_templates (
+            template_id VARCHAR(100) PRIMARY KEY,
+            pattern TEXT NOT NULL,
+            centroid BYTEA NOT NULL,
+            operation VARCHAR(20) NOT NULL,
+            dsl_type VARCHAR(20) DEFAULT 'simple',
+            examples JSONB,
+            count INTEGER NOT NULL DEFAULT 0,
+            welford_count INTEGER DEFAULT 0,
+            welford_mean FLOAT DEFAULT 0.0,
+            welford_m2 FLOAT DEFAULT 0.0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Index for filtering templates by operation
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_span_templates_operation
+        ON span_templates(operation)
     """)
 
     conn.commit()
@@ -563,6 +610,214 @@ def get_decision_boundary(pair_key: str) -> Optional[float]:
     if row:
         return row[0]
     return None
+
+
+# =============================================================================
+# Span Templates Operations (Two-Tier KNN)
+# =============================================================================
+
+def store_span_template(
+    template_id: str,
+    pattern: str,
+    centroid: np.ndarray,
+    operation: str,
+    dsl_type: str = "simple",
+    examples: Optional[List[str]] = None,
+    count: int = 0
+) -> None:
+    """Store or update a span template.
+
+    Templates are clustered span patterns that serve as "gold standard"
+    anchors for KNN classification. They carry 2x weight vs individual spans.
+    """
+    conn = _get_connection()
+    cur = conn.cursor()
+
+    centroid_bytes = centroid.astype(np.float32).tobytes()
+    examples_json = json.dumps(examples) if examples else None
+
+    cur.execute("""
+        INSERT INTO span_templates (
+            template_id, pattern, centroid, operation, dsl_type,
+            examples, count, updated_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+        ON CONFLICT (template_id) DO UPDATE SET
+            pattern = EXCLUDED.pattern,
+            centroid = EXCLUDED.centroid,
+            operation = EXCLUDED.operation,
+            dsl_type = EXCLUDED.dsl_type,
+            examples = EXCLUDED.examples,
+            count = EXCLUDED.count,
+            updated_at = CURRENT_TIMESTAMP
+    """, (template_id, pattern, centroid_bytes, operation, dsl_type,
+          examples_json, count))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def get_span_template(template_id: str) -> Optional[SpanTemplateRow]:
+    """Get a template by ID."""
+    conn = _get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT template_id, pattern, centroid, operation, dsl_type,
+               examples, count, welford_count, welford_mean, welford_m2,
+               created_at, updated_at
+        FROM span_templates
+        WHERE template_id = %s
+    """, (template_id,))
+
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if row:
+        return SpanTemplateRow(
+            template_id=row[0],
+            pattern=row[1],
+            centroid=np.frombuffer(row[2], dtype=np.float32),
+            operation=row[3],
+            dsl_type=row[4],
+            examples=json.loads(row[5]) if row[5] else [],
+            count=row[6],
+            welford_count=row[7] or 0,
+            welford_mean=row[8] or 0.0,
+            welford_m2=row[9] or 0.0,
+            created_at=row[10],
+            updated_at=row[11],
+        )
+    return None
+
+
+def get_all_span_templates(operation: Optional[str] = None) -> List[SpanTemplateRow]:
+    """Get all span templates, optionally filtered by operation."""
+    conn = _get_connection()
+    cur = conn.cursor()
+
+    query = """
+        SELECT template_id, pattern, centroid, operation, dsl_type,
+               examples, count, welford_count, welford_mean, welford_m2,
+               created_at, updated_at
+        FROM span_templates
+    """
+    params = []
+
+    if operation:
+        query += " WHERE operation = %s"
+        params.append(operation)
+
+    query += " ORDER BY count DESC"
+
+    cur.execute(query, params)
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return [
+        SpanTemplateRow(
+            template_id=r[0],
+            pattern=r[1],
+            centroid=np.frombuffer(r[2], dtype=np.float32),
+            operation=r[3],
+            dsl_type=r[4],
+            examples=json.loads(r[5]) if r[5] else [],
+            count=r[6],
+            welford_count=r[7] or 0,
+            welford_mean=r[8] or 0.0,
+            welford_m2=r[9] or 0.0,
+            created_at=r[10],
+            updated_at=r[11],
+        )
+        for r in rows
+    ]
+
+
+def get_template_centroids() -> List[Tuple[str, str, np.ndarray]]:
+    """Get (template_id, operation, centroid) for all templates.
+
+    Optimized for two-tier KNN lookup - returns only what's needed.
+    """
+    conn = _get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT template_id, operation, centroid FROM span_templates")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return [
+        (row[0], row[1], np.frombuffer(row[2], dtype=np.float32))
+        for row in rows
+    ]
+
+
+def update_template_welford(template_id: str, similarity: float) -> None:
+    """Update Welford stats for a template match.
+
+    Called when a span matches this template during classification.
+    Tracks the distribution of match similarities for confidence scoring.
+    """
+    conn = _get_connection()
+    cur = conn.cursor()
+
+    # Get current stats with row lock
+    cur.execute(
+        "SELECT welford_count, welford_mean, welford_m2 FROM span_templates WHERE template_id = %s FOR UPDATE",
+        (template_id,)
+    )
+    row = cur.fetchone()
+
+    if row:
+        count, mean, m2 = row[0] or 0, row[1] or 0.0, row[2] or 0.0
+
+        # Welford's online algorithm
+        count += 1
+        delta = similarity - mean
+        mean += delta / count
+        delta2 = similarity - mean
+        m2 += delta * delta2
+
+        cur.execute("""
+            UPDATE span_templates
+            SET welford_count = %s, welford_mean = %s, welford_m2 = %s, updated_at = CURRENT_TIMESTAMP
+            WHERE template_id = %s
+        """, (count, mean, m2, template_id))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def get_template_count() -> int:
+    """Get total number of templates."""
+    conn = _get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM span_templates")
+    count = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return count
+
+
+def get_template_counts_by_operation() -> Dict[str, int]:
+    """Get count of templates by operation type."""
+    conn = _get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT operation, COUNT(*)
+        FROM span_templates
+        GROUP BY operation
+    """)
+
+    counts = {row[0]: row[1] for row in cur.fetchall()}
+    cur.close()
+    conn.close()
+    return counts
 
 
 # =============================================================================
