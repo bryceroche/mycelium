@@ -90,12 +90,30 @@ def classify_by_verb(text: str) -> Optional[str]:
 
 
 class SimplePipeline:
-    """Simple KNN + Linear Chain pipeline."""
+    """Simple KNN + Linear Chain pipeline with two-tier template matching.
+
+    Two-tier KNN architecture:
+    - Tier 1: Template centroids (clustered patterns) with 2x weight
+    - Tier 2: Raw labeled spans with 1x weight
+
+    Templates are "gold standard" anchors computed from clustering similar spans.
+    """
 
     # Common pronouns that should trigger entity resolution
     PRONOUNS = {"she", "he", "they", "it", "her", "him", "them"}
     ENTITY_RESOLUTION_THRESHOLD = 0.7  # Cosine similarity threshold for resolution
     EMBEDDING_MODEL = "all-MiniLM-L6-v2"  # CPU-friendly, ~80MB
+
+    # Two-tier KNN weights
+    TEMPLATE_WEIGHT = 2.0  # Templates count 2x vs individual spans
+    TEMPLATE_CONFIDENCE_BONUS = 0.10  # Confidence boost for template matches
+
+    # Position-based priors (position 0/1 = initial state, almost always SET)
+    POSITION_PRIORS = {
+        1: {"SET": 0.85, "ADD": 0.05, "SUB": 0.05, "MUL": 0.025, "DIV": 0.025},
+        2: {"SET": 0.10, "ADD": 0.35, "SUB": 0.35, "MUL": 0.10, "DIV": 0.10},
+        3: {"SET": 0.05, "ADD": 0.35, "SUB": 0.35, "MUL": 0.125, "DIV": 0.125},
+    }
 
     # Positional prefixes for embedding context
     POSITION_PREFIXES = {
@@ -111,6 +129,9 @@ class SimplePipeline:
         self._embeddings_cache: Dict[str, np.ndarray] = {}
         self._labeled_spans: List[Tuple[str, str, np.ndarray]] = []  # (text, op, embedding)
 
+        # Template centroids for two-tier KNN
+        self._template_centroids: List[Tuple[str, str, np.ndarray]] = []  # (template_id, op, centroid)
+
         # Welford stats (loaded from DB or defaults)
         self._op_stats: Dict[str, Dict] = {}  # op -> {count, mean, m2}
 
@@ -118,9 +139,12 @@ class SimplePipeline:
             self._load_from_db()
 
     def _load_from_db(self):
-        """Load labeled spans and Welford stats from database."""
+        """Load templates, labeled spans, and Welford stats from database."""
         try:
-            from mycelium.db import get_labeled_spans, get_all_welford_stats, get_embedding
+            from mycelium.db import (
+                get_labeled_spans, get_all_welford_stats, get_embedding,
+                get_template_centroids
+            )
 
             # Load Welford stats
             for stat in get_all_welford_stats():
@@ -132,7 +156,10 @@ class SimplePipeline:
                         "m2": stat.m2
                     }
 
-            # Load labeled spans with embeddings
+            # Load template centroids (Tier 1 - gold standard anchors)
+            self._template_centroids = get_template_centroids()
+
+            # Load labeled spans with embeddings (Tier 2 - raw data)
             spans = get_labeled_spans(limit=2000)
             for span in spans:
                 if span.operation:
@@ -142,7 +169,7 @@ class SimplePipeline:
                         # Embeddings are already normalized
                         self._labeled_spans.append((span.span_text, span.operation, emb))
 
-            print(f"Loaded {len(self._labeled_spans)} labeled spans, {len(self._op_stats)} op stats")
+            print(f"Loaded {len(self._template_centroids)} templates, {len(self._labeled_spans)} spans, {len(self._op_stats)} op stats")
         except Exception as e:
             print(f"Could not load from DB: {e}")
 
@@ -242,6 +269,47 @@ class SimplePipeline:
         similarities.sort(key=lambda x: x[2], reverse=True)
         return similarities[:k]
 
+    def _two_tier_knn_lookup(
+        self,
+        embedding: np.ndarray,
+        k: int = 7
+    ) -> List[Tuple[str, str, float, bool]]:
+        """Two-tier KNN: templates first (2x weight), then raw spans.
+
+        Like multi-object detection: templates are "gold standard" anchors,
+        raw spans provide additional signal.
+
+        Returns: List of (source_id, operation, weighted_similarity, is_template)
+        """
+        results = []
+
+        # Tier 1: Template centroids (gold standard, 2x weight)
+        for template_id, op, centroid in self._template_centroids:
+            sim = float(np.dot(embedding, centroid))
+            # Templates get weighted similarity boost
+            weighted_sim = sim * self.TEMPLATE_WEIGHT
+            results.append((template_id, op, weighted_sim, True))
+
+        # Tier 2: Raw labeled spans (1x weight)
+        for text, op, emb in self._labeled_spans:
+            sim = float(np.dot(embedding, emb))
+            results.append((text, op, sim, False))
+
+        # Sort by weighted similarity descending
+        results.sort(key=lambda x: x[2], reverse=True)
+        return results[:k]
+
+    def _get_position_prior(self, position: int) -> Dict[str, float]:
+        """Get position-based prior probability for operations.
+
+        Position 1 (first clause) is almost always SET (establishing initial state).
+        Later positions are more likely to be modifications (ADD/SUB).
+        """
+        if position in self.POSITION_PRIORS:
+            return self.POSITION_PRIORS[position].copy()
+        # Default for position > 3
+        return {"SET": 0.05, "ADD": 0.35, "SUB": 0.35, "MUL": 0.125, "DIV": 0.125}
+
     def _welford_zscore(self, op: str, similarity: float) -> float:
         """Get z-score for this similarity given operation's distribution."""
         if op not in self._op_stats or self._op_stats[op]["count"] < 2:
@@ -274,53 +342,71 @@ class SimplePipeline:
                 pass
 
     def classify_span(self, span_text: str, position: int = 1) -> Tuple[str, float]:
-        """Classify a span into an operation type.
+        """Classify a span into an operation type using two-tier KNN.
+
+        Uses templates (gold standard anchors) + raw spans + position priors
+        to classify operations. Like multi-object detection where each span
+        is classified independently.
 
         Args:
             span_text: The text of the span to classify
             position: Position in the problem (1=first, 2=second, etc.)
-                     Used for positional prefix disambiguation.
+                     Position 1 has strong prior for SET.
 
         Returns (operation, confidence).
         """
         # Use positional embedding for better disambiguation
         embedding = self._get_positional_embedding(span_text, position)
-        neighbors = self._knn_lookup(embedding, k=5)
+
+        # Two-tier lookup: templates (2x) + raw spans (1x)
+        neighbors = self._two_tier_knn_lookup(embedding, k=7)
 
         if not neighbors:
-            return ("SET", 0.0)  # Default fallback
+            # No neighbors - use position prior only
+            priors = self._get_position_prior(position)
+            best_op = max(priors, key=priors.get)
+            return (best_op, priors[best_op])
 
-        # Vote among neighbors
-        op_scores: Dict[str, List[float]] = {}
-        for text, op, sim in neighbors:
+        # Score each operation: combine KNN votes + position prior
+        priors = self._get_position_prior(position)
+        op_scores: Dict[str, float] = {op: prior * 0.3 for op, prior in priors.items()}  # Prior weight
+        template_matches: Dict[str, int] = {}
+
+        for source_id, op, weighted_sim, is_template in neighbors:
             if op not in op_scores:
-                op_scores[op] = []
-            op_scores[op].append(sim)
+                op_scores[op] = 0.0
+            # Add weighted similarity (templates already have 2x weight)
+            op_scores[op] += weighted_sim
 
-        # Get top-2 operations by average similarity
-        sorted_ops = sorted(
-            op_scores.keys(),
-            key=lambda o: sum(op_scores[o]) / len(op_scores[o]),
-            reverse=True
-        )
-        best_op = sorted_ops[0]
-        best_sim = sum(op_scores[best_op]) / len(op_scores[best_op])
+            # Track template matches
+            if is_template:
+                template_matches[op] = template_matches.get(op, 0) + 1
 
-        # Check if we need verb backup classifier for ADD/SUB confusion
+        # Get best operation
+        best_op = max(op_scores, key=op_scores.get)
+        best_score = op_scores[best_op]
+
+        # Verb backup for ADD/SUB confusion
+        sorted_ops = sorted(op_scores.items(), key=lambda x: x[1], reverse=True)
         if len(sorted_ops) >= 2:
-            second_op = sorted_ops[1]
-            second_sim = sum(op_scores[second_op]) / len(op_scores[second_op])
-
-            # If top-2 are ADD/SUB and similarity is close, use verb backup
-            if {best_op, second_op} == {"ADD", "SUB"} and (best_sim - second_sim) < 0.05:
+            second_op, second_score = sorted_ops[1]
+            # If top-2 are ADD/SUB and scores are close, use verb backup
+            if {best_op, second_op} == {"ADD", "SUB"} and (best_score - second_score) < 0.1:
                 verb_result = classify_by_verb(span_text)
                 if verb_result:
                     best_op = verb_result
-                    best_sim = max(best_sim, second_sim)  # Use higher confidence
+                    best_score = max(best_score, second_score)
 
-        # Confidence from Welford z-score (positive = better than average)
-        zscore = self._welford_zscore(best_op, best_sim)
+        # Compute raw similarity for Welford (unweighted)
+        raw_sim = best_score / self.TEMPLATE_WEIGHT if best_op in template_matches else best_score
+
+        # Confidence from Welford z-score
+        zscore = self._welford_zscore(best_op, raw_sim)
         confidence = 1 / (1 + math.exp(-zscore))  # Sigmoid to [0, 1]
+
+        # Bonus confidence if matched a template
+        if best_op in template_matches:
+            confidence = min(1.0, confidence + self.TEMPLATE_CONFIDENCE_BONUS)
 
         return (best_op, confidence)
 

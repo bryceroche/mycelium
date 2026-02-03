@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from sentence_transformers import SentenceTransformer
 
-from mycelium.db import get_labeled_spans, store_centroid, LabeledSpanRow
+from mycelium.db import get_labeled_spans, store_span_template, LabeledSpanRow
 from mycelium.span_normalizer import normalize_span
 from mycelium.span_templates import SpanTemplate, register_template
 
@@ -485,18 +485,26 @@ def main():
 
     # Save to DB
     if not args.dry_run:
-        print("\n  Saving to database...")
+        print("\n  Saving templates to database...")
         saved_count = 0
         for t in templates:
             try:
-                # Store centroid with template_id as the operation key
-                store_centroid(t.template_id, t.centroid, t.count)
+                # Store full template with centroid, pattern, examples
+                store_span_template(
+                    template_id=t.template_id,
+                    pattern=t.pattern,
+                    centroid=t.centroid,
+                    operation=t.operation,
+                    dsl_type=t.dsl_type,
+                    examples=t.examples,
+                    count=t.count,
+                )
                 # Register template in memory
                 register_template(t)
                 saved_count += 1
             except Exception as e:
                 print(f"    Warning: Failed to save template {t.template_id}: {e}")
-        print(f"  Saved {saved_count} templates to database")
+        print(f"  Saved {saved_count} templates to span_templates table")
     else:
         print("\n  [DRY RUN] Not saving to database")
 
