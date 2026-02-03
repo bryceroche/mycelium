@@ -12,10 +12,10 @@ from typing import Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass
 import numpy as np
 
-# Use environment variable for connection, with fallback for local dev
+# Use environment variable for connection, with fallback to RDS
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql://mycelium:MyceliumDB2024!@localhost:5432/mycelium"
+    "postgresql://mycelium:MyceliumDB2024!@mycelium-db.co1sisksw74e.us-east-1.rds.amazonaws.com:5432/mycelium"
 )
 
 
