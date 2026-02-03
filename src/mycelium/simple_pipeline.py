@@ -147,10 +147,10 @@ class SimplePipeline:
             print(f"Could not load from DB: {e}")
 
     def _ensure_segmenter(self):
-        """Lazy load the segmenter."""
+        """Lazy load the segmenter (CPU-only, no GPU required)."""
         if self._segmenter is None:
-            from mycelium.attention_segmenter import AttentionSegmenter
-            self._segmenter = AttentionSegmenter()
+            from mycelium.simple_segmenter import SimpleSegmenter
+            self._segmenter = SimpleSegmenter()
         return self._segmenter
 
     def _ensure_embedding_model(self):
