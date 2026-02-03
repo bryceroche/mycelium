@@ -97,7 +97,7 @@ We extract these patterns on 10K math problems to build a library of span templa
 
 **The hybrid pipeline:**
 - **Training**: Qwen 7B → extract attention patterns + centroid embeddings → span templates
-- **Inference**: MiniLM (22M) → match attention patterns + embeddings → classify spans
+- **Inference**: MiniLM (22M) → match attention patterns + embeddings → span template → custom DSL
 
 Quality of 7B model at cost of 22M model.
 
