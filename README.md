@@ -104,11 +104,30 @@ The operation is encoded in **HOW tokens attend**, not just what tokens are pres
 - Combined approach: 92% on span classification
 - 20k spans collected, 500 representatives provide full coverage
 
+### Attention Clustering for Variable References
+
+Attention clustering naturally separates variable references from operations:
+
+```
+"Mary has 5 more than Tom"
+  Cluster 1: Mary has 5 more than  ← OPERATION
+  Cluster 2: Tom                    ← REFERENCE (separated!)
+
+"Sarah has twice as many as John"
+  Cluster 1: Sarah has twice as many as  ← OPERATION
+  Cluster 2: John                         ← REFERENCE (separated!)
+```
+
+The attention pattern identifies which tokens "belong together" as semantic units.
+References (other entities) cluster separately because they have different attention patterns.
+
+**Key insight:** Small trailing clusters often = variable references. The structure emerges from attention, not from hardcoded patterns.
+
 ### What Needs Work
-- MUL/DIV operations (percentages, fractions) need similar analysis
-- Multi-step problems with variable references
-- Span segmentation still uses simple heuristics (should use attention clustering)
-- "owns" classified as action when it's state (edge cases)
+- MUL/DIV operations need similar attention analysis
+- Welford tracking for adaptive thresholds (currently empirical 0.055)
+- Edge cases where references don't cluster separately
+- Full end-to-end pipeline on GSM8K
 
 **The bet:** Math reasoning isn't about "intelligence" — it's about recognizing which operation template applies. Big models learned this implicitly. We extract it via attention + embeddings.
 
