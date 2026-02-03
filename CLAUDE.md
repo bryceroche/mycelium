@@ -1,16 +1,20 @@
 # The Big 4
-1. Dual-Signal Architecture (Attention + Embeddings)
-2. Attention Distillation Breakthrough
-3. New Favorite Pattern
+1. Attention Signals (Entropy, Received, Connectivity)
+2. Dual-Signal Architecture (Attention + Embeddings)
+3. Attention Distillation (Qwen 7B → MiniLM 22M)
 4. How to use Beads
 
 ## Terminology
-- **Welford's** — Online algorithm for calculating running mean/variance
-- **DAG** — Directed Acyclic Graph (computation graph)
-- **Span** — Contiguous tokens forming a semantic unit (e.g., "half the eggs")
-- **SET** — Initial value assignment operation
-- **Attention sink** — Token that receives attention from many others (usually the subject/entity)
-- **Z-score** — Standard deviations from learned mean, used for classification
+- **Attention Entropy** — Low entropy = important token (focused attention). High entropy = diffuse attention.
+- **Attention Received** — Which tokens get looked back to. High received attention = structurally important (entities, operators).
+- **Span Connectivity** — How strongly tokens within a span attend to each other. High connectivity = cohesive semantic unit.
+- **Centroid Embedding** — Average embedding of a span's tokens. Used for template matching.
+- **Welford's** — Online algorithm for calculating running mean/variance without storing all data.
+- **DAG** — Directed Acyclic Graph (computation graph).
+- **Span** — Contiguous tokens forming a semantic unit (e.g., "half the eggs").
+- **SET** — Initial value assignment operation.
+- **Attention Sink** — Token that receives attention from many others (usually the subject/entity).
+- **Z-score** — Standard deviations from learned mean, used for classification.
 
 ## Core Principle: Failures Are Valuable Data Points
 **Let the system fail.** This is how it learns.
@@ -21,68 +25,84 @@
 
 The goal is NOT 100% accuracy on every run. The goal is collecting data that makes the system smarter over time. A misclassified span provides valuable signal for threshold adjustment.
 
-## Attention-Based Decomposition
-**Decomposition is the crux.** Everything downstream of step-level intermediate representation (IR) is solved.
+## Attention Signals
 
-Transformer attention reveals semantic spans. The "Panama Hats" problem: "panama" = country, but "panama hats" = completely different meaning. We need the **longest span** that matches a semantic unit.
+Three signals extracted from attention matrices:
 
+**1. Attention Entropy (per token)**
+- Low entropy → token attends to specific targets → important structural role
+- High entropy → token attends broadly → less discriminative
+- Use case: Identify operators and key nouns
 
-Standard embedding models learn lexical similarity, not operational similarity. They think "x + y" and "x * y" are similar because the tokens overlap. This is useless for math — we need to group by what computations do, not what they look like.
+**2. Attention Received (per token)**
+- Sum of attention each token receives from all other tokens
+- High received → many tokens look back to this one → entity or anchor
+- Use case: Find subjects ("Janet"), referenced quantities
 
-Our solution extracts implicit structure from LLMs and distills it into a lightweight classifier. The key insight: transformer attention patterns reveal semantic spans. When processing "she sold half her eggs," the attention weights show "half," "eggs," and "sold" attending to each other. That cluster is the model recognizing a single operation: multiply eggs by 0.5.
+**3. Span Connectivity (per span)**
+- Average mutual attention between tokens in a candidate span
+- High connectivity → tokens form cohesive unit → valid span
+- Low connectivity → tokens don't belong together → split or reject
+- Use case: Validate span boundaries, detect multi-token operations
 
-We extract attention matrices from a 7B model on 10K math problems and discovered two orthogonal signals. First, attention magnitude from numbers to verbs: state verbs like "has" produce ~0.05, action verbs like "sold" produce ~0.07. This distinguishes SET from transformations. Second, verb embeddings cluster semantically — "sold/spent/lost" cluster together (subtraction), "bought/received/earned" cluster together (addition).
+## Ground Truth from Qwen 7B
 
-We use Welford's algorithm to learn these thresholds online rather than hardcoding. Classification becomes a z-score: how many standard deviations from each operation's learned mean?
+Qwen 7B attention patterns capture:
+- **Span structure** — Which tokens group together (connectivity)
+- **Entity binding** — Which tokens reference the same entity (received attention)
+- **Centroid embeddings** — Semantic fingerprint of each operation type
 
-After classifying spans, we build a computation graph. Entity binding comes from attention sinks — all spans attend to the problem's subject, telling us they chain together. "Lay 16 eggs" → SET(16), "eats 3" → SUB(result, 3), execute in order.
+We extract these patterns on 10K math problems to build a library of span templates with their attention signatures and centroid embeddings.
 
-## Dual-Signal Architecture (Path C Hybrid)
+## Attention Distillation: Qwen 7B → MiniLM 22M
 
-**Two orthogonal signals for span detection and classification:**
+**The problem**: Qwen 7B is too expensive for inference.
 
-1. **Attention patterns** — Structural relationships between tokens (which tokens attend to each other)
-2. **Embeddings** — Semantic similarity for template matching
+**The solution**: Distill attention patterns into MiniLM (318x smaller).
 
-**The hybrid approach:**
-- **Training time**: Extract attention patterns from Qwen 7B (large model) to learn span templates
-- **Inference time**: Use fine-tuned MiniLM (22M params, 318x smaller) to detect spans and match against learned templates
+**Why MiniLM works:**
+- Bidirectional encoder (sees full context, unlike causal Qwen)
+- Prior distillation training made it a good student
+- Sentence-transformer architecture already optimized for semantic similarity
 
-This gives us the quality of a 7B model at the cost of a 22M model.
+**Fine-tuning process:**
+1. Extract Qwen 7B attention matrices on training set
+2. Train MiniLM to match Qwen's span connectivity patterns
+3. Learn optimal head weights (heads 5 & 8 most important: 0.108)
+4. Learn optimal layer weights (layers 4 & 5 most important: 0.18)
+5. Result: 0.58 → 0.945 correlation (+63% improvement)
 
-## Attention Distillation Breakthrough
+**Distillation results:**
 
-**Key discovery**: Model architecture matters more than size for attention correlation.
+| Model | Params | Correlation with Qwen 7B |
+|-------|--------|--------------------------|
+| **MiniLM-L6 (fine-tuned)** | **22M** | **0.945** |
+| MiniLM-L6 (baseline) | 22M | 0.58 |
+| Qwen2-0.5B | 500M | 0.31 |
+| BERT-base | 110M | 0.30 |
 
-We tested correlation between various models and Qwen 7B attention patterns:
+Key insight: Architecture > size. Same-family Qwen2-0.5B only achieves 0.31 correlation.
 
-| Model | Params | Architecture | Correlation with Qwen 7B |
-|-------|--------|--------------|--------------------------|
-| **MiniLM-L6 (fine-tuned)** | **22M** | Encoder | **0.945** |
-| MiniLM-L6 (baseline) | 22M | Encoder | 0.58 |
-| MiniLM-L12 | 33M | Encoder | 0.54 |
-| RoBERTa-large ST | 355M | Encoder | 0.52 |
-| ELECTRA-base | 110M | Encoder | 0.49 |
-| Qwen2-0.5B | 500M | Decoder | 0.31 |
-| BERT-base | 110M | Encoder | 0.30 |
+## Dual-Signal Architecture
 
-**Surprising findings:**
-1. Smaller sentence-transformer models beat larger generic models
-2. Same-family Qwen2-0.5B only achieves 0.31 correlation with Qwen 7B
-3. Bidirectional encoders (MiniLM) correlate better than causal decoders (Qwen, GPT)
-4. MiniLM's prior attention distillation training made it ideal for further distillation
+**Two orthogonal signals for robust matching:**
 
-**Fine-tuning approach:**
-- Train MiniLM to match Qwen's connectivity patterns (span groupings)
-- Learn optimal head weights (heads 5 & 8 most important)
-- Learn optimal layer weights (layers 4 & 5 most important)
-- Result: 0.58 → 0.945 correlation (+63% improvement)
+1. **Attention signal** — Structural relationships (which tokens attend to each other)
+2. **Embedding signal** — Semantic similarity (centroid distance)
 
-**Model location**: `models/minilm_attention_finetuned.pt` (90MB)
+**Why dual signals?**
+- Attention alone can have false positives (similar structure, different meaning)
+- Embeddings alone miss structural relationships
+- Combined: more robust span detection and classification
+
+**The hybrid pipeline:**
+- **Training**: Qwen 7B → extract attention patterns + centroid embeddings → span templates
+- **Inference**: MiniLM (22M) → match attention patterns + embeddings → classify spans
+
+Quality of 7B model at cost of 22M model.
 
 ## New Favorite Pattern
-We want to consolidate methods - for example all database connections should go through a data layer instead of having multiple database connections.  Same with Signature creation, or leaf_node rejection of dag_steps.  We want to consolidate method calls for features to simplify our codebase and reduce the chance of bugs
-
+Consolidate methods. All database connections go through a data layer. All span detection through one interface. All embedding lookups through cache. Reduces bugs, simplifies codebase.
 
 # How to use Beads
 
