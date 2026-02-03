@@ -77,6 +77,10 @@ class SimplePipeline:
                     # Try to get cached embedding
                     emb = get_embedding(span.span_text, "qwen-hidden")
                     if emb is not None:
+                        # Normalize embedding to unit vector
+                        norm = np.linalg.norm(emb)
+                        if norm > 0:
+                            emb = emb / norm
                         self._labeled_spans.append((span.span_text, span.operation, emb))
 
             print(f"Loaded {len(self._labeled_spans)} labeled spans, {len(self._op_stats)} op stats")
@@ -91,7 +95,7 @@ class SimplePipeline:
         return self._segmenter
 
     def _get_embedding(self, text: str) -> np.ndarray:
-        """Get hidden state embedding for text."""
+        """Get hidden state embedding for text (L2-normalized)."""
         if text in self._embeddings_cache:
             return self._embeddings_cache[text]
 
@@ -107,7 +111,11 @@ class SimplePipeline:
 
         # Use mean of middle layer hidden states as embedding
         hidden = outputs.hidden_states[segmenter._hidden_layer][0]
-        embedding = hidden.mean(dim=0).cpu().numpy()
+        embedding = hidden.mean(dim=0)
+
+        # L2 normalize in torch (more numerically stable than numpy)
+        embedding = embedding / embedding.norm()
+        embedding = embedding.cpu().numpy().astype(np.float32)
 
         self._embeddings_cache[text] = embedding
 
@@ -122,15 +130,19 @@ class SimplePipeline:
         return embedding
 
     def _knn_lookup(self, embedding: np.ndarray, k: int = 5) -> List[Tuple[str, str, float]]:
-        """Find k nearest labeled spans by cosine similarity."""
+        """Find k nearest labeled spans by cosine similarity.
+
+        Note: Both embedding and labeled span embeddings are L2-normalized,
+        so cosine similarity = dot product.
+        """
         if not self._labeled_spans:
             return []
 
-        # Compute similarities
+        # Compute similarities (dot product since normalized)
         similarities = []
         for text, op, emb in self._labeled_spans:
-            sim = np.dot(embedding, emb) / (np.linalg.norm(embedding) * np.linalg.norm(emb) + 1e-8)
-            similarities.append((text, op, float(sim)))
+            sim = float(np.dot(embedding, emb))
+            similarities.append((text, op, sim))
 
         # Sort by similarity descending
         similarities.sort(key=lambda x: x[2], reverse=True)
