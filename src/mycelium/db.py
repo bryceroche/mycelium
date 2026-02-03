@@ -51,6 +51,24 @@ class LabeledSpanRow:
     created_at: datetime
 
 
+@dataclass
+class OperationCentroidRow:
+    """Operation centroid from database."""
+    operation: str
+    centroid: np.ndarray
+    count: int
+    updated_at: datetime
+
+
+@dataclass
+class DecisionBoundaryRow:
+    """Decision boundary from database."""
+    pair_key: str
+    threshold: float
+    count: int
+    updated_at: datetime
+
+
 def _get_connection():
     """Get database connection."""
     import psycopg2
@@ -120,6 +138,26 @@ def init_db():
             actual_answer VARCHAR(100),
             dag_steps JSONB,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Operation centroids table (for decision boundary computation)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS operation_centroids (
+            operation VARCHAR(20) PRIMARY KEY,
+            centroid BYTEA NOT NULL,
+            count INTEGER NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Decision boundaries table (precomputed thresholds between confusable pairs)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS decision_boundaries (
+            pair_key VARCHAR(50) PRIMARY KEY,
+            threshold FLOAT NOT NULL,
+            count INTEGER NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
@@ -425,6 +463,106 @@ def get_accuracy_stats() -> Dict[str, Any]:
         "accuracy": correct / total if total > 0 else 0.0,
         "unique_problems": row[2] or 0
     }
+
+
+# =============================================================================
+# Operation Centroids Operations
+# =============================================================================
+
+def store_centroid(operation: str, centroid: np.ndarray, count: int) -> None:
+    """Store or update a centroid for an operation type."""
+    conn = _get_connection()
+    cur = conn.cursor()
+
+    centroid_bytes = centroid.astype(np.float32).tobytes()
+
+    cur.execute("""
+        INSERT INTO operation_centroids (operation, centroid, count, updated_at)
+        VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+        ON CONFLICT (operation) DO UPDATE SET
+            centroid = EXCLUDED.centroid,
+            count = EXCLUDED.count,
+            updated_at = CURRENT_TIMESTAMP
+    """, (operation, centroid_bytes, count))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def get_centroid(operation: str) -> Optional[np.ndarray]:
+    """Get centroid for an operation type."""
+    conn = _get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT centroid FROM operation_centroids WHERE operation = %s",
+        (operation,)
+    )
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if row:
+        return np.frombuffer(row[0], dtype=np.float32)
+    return None
+
+
+def get_all_centroids() -> Dict[str, np.ndarray]:
+    """Get all operation centroids."""
+    conn = _get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT operation, centroid FROM operation_centroids")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return {
+        row[0]: np.frombuffer(row[1], dtype=np.float32)
+        for row in rows
+    }
+
+
+# =============================================================================
+# Decision Boundaries Operations
+# =============================================================================
+
+def store_decision_boundary(pair_key: str, threshold: float, count: int) -> None:
+    """Store or update a decision boundary threshold for an operation pair."""
+    conn = _get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT INTO decision_boundaries (pair_key, threshold, count, updated_at)
+        VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+        ON CONFLICT (pair_key) DO UPDATE SET
+            threshold = EXCLUDED.threshold,
+            count = EXCLUDED.count,
+            updated_at = CURRENT_TIMESTAMP
+    """, (pair_key, threshold, count))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def get_decision_boundary(pair_key: str) -> Optional[float]:
+    """Get decision boundary threshold for an operation pair."""
+    conn = _get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT threshold FROM decision_boundaries WHERE pair_key = %s",
+        (pair_key,)
+    )
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if row:
+        return row[0]
+    return None
 
 
 # =============================================================================

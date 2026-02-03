@@ -42,6 +42,53 @@ class PipelineResult:
     state: Dict[str, float]  # Entity states after execution
 
 
+def classify_by_verb(text: str) -> Optional[str]:
+    """Classify operation by verb taxonomy as a backup classifier.
+
+    Returns ADD, SUB, MUL, DIV, or None if no clear verb signal.
+    Used when KNN is uncertain between ADD/SUB.
+    """
+    text_lower = text.lower()
+    words = set(text_lower.split())
+
+    # Verb patterns from span_graph.py
+    INCREASE_VERBS = frozenset([
+        "more", "added", "gained", "found", "received", "bought", "collected",
+        "earned", "got", "picked", "additional", "extra", "plus"
+    ])
+    DECREASE_VERBS = frozenset([
+        "less", "fewer", "sold", "gave", "lost", "spent", "used", "ate",
+        "removed", "took", "subtracted", "minus"
+    ])
+    MULTIPLY_VERBS = frozenset([
+        "times", "twice", "double", "triple"
+    ])
+    DIVIDE_VERBS = frozenset([
+        "split", "divided", "shared"
+    ])
+
+    # Check for verb matches
+    increase_count = len(words & INCREASE_VERBS)
+    decrease_count = len(words & DECREASE_VERBS)
+    multiply_count = len(words & MULTIPLY_VERBS)
+    divide_count = len(words & DIVIDE_VERBS)
+
+    # Return operation if there's a clear winner
+    counts = [
+        (increase_count, "ADD"),
+        (decrease_count, "SUB"),
+        (multiply_count, "MUL"),
+        (divide_count, "DIV"),
+    ]
+    counts.sort(reverse=True)
+
+    # Only return if there's a clear signal (at least 1 match and no tie)
+    if counts[0][0] > 0 and counts[0][0] > counts[1][0]:
+        return counts[0][1]
+
+    return None
+
+
 class SimplePipeline:
     """Simple KNN + Linear Chain pipeline."""
 
@@ -49,6 +96,13 @@ class SimplePipeline:
     PRONOUNS = {"she", "he", "they", "it", "her", "him", "them"}
     ENTITY_RESOLUTION_THRESHOLD = 0.7  # Cosine similarity threshold for resolution
     EMBEDDING_MODEL = "all-MiniLM-L6-v2"  # CPU-friendly, ~80MB
+
+    # Positional prefixes for embedding context
+    POSITION_PREFIXES = {
+        1: "Initially:",
+        2: "Then:",
+        3: "After that:",
+    }
 
     def __init__(self, use_db: bool = True):
         self.use_db = use_db
@@ -134,6 +188,16 @@ class SimplePipeline:
 
         return embedding
 
+    def _get_positional_embedding(self, text: str, position: int) -> np.ndarray:
+        """Get embedding with positional context.
+
+        Adds positional prefix to disambiguate operations by their position
+        in the problem (e.g., "Initially: has 12" vs "Then: sold 5").
+        """
+        prefix = self.POSITION_PREFIXES.get(min(position, 3), "Then:")
+        positioned_text = f"{prefix} {text}"
+        return self._get_embedding(positioned_text)
+
     def _resolve_entity(self, text: str, known_entities: Dict[str, np.ndarray]) -> Optional[str]:
         """Resolve an entity (especially pronouns) to a known entity using embedding similarity.
 
@@ -209,12 +273,18 @@ class SimplePipeline:
             except:
                 pass
 
-    def classify_span(self, span_text: str) -> Tuple[str, float]:
+    def classify_span(self, span_text: str, position: int = 1) -> Tuple[str, float]:
         """Classify a span into an operation type.
+
+        Args:
+            span_text: The text of the span to classify
+            position: Position in the problem (1=first, 2=second, etc.)
+                     Used for positional prefix disambiguation.
 
         Returns (operation, confidence).
         """
-        embedding = self._get_embedding(span_text)
+        # Use positional embedding for better disambiguation
+        embedding = self._get_positional_embedding(span_text, position)
         neighbors = self._knn_lookup(embedding, k=5)
 
         if not neighbors:
@@ -227,12 +297,29 @@ class SimplePipeline:
                 op_scores[op] = []
             op_scores[op].append(sim)
 
-        # Best operation by average similarity
-        best_op = max(op_scores.keys(), key=lambda o: sum(op_scores[o]) / len(op_scores[o]))
-        avg_sim = sum(op_scores[best_op]) / len(op_scores[best_op])
+        # Get top-2 operations by average similarity
+        sorted_ops = sorted(
+            op_scores.keys(),
+            key=lambda o: sum(op_scores[o]) / len(op_scores[o]),
+            reverse=True
+        )
+        best_op = sorted_ops[0]
+        best_sim = sum(op_scores[best_op]) / len(op_scores[best_op])
+
+        # Check if we need verb backup classifier for ADD/SUB confusion
+        if len(sorted_ops) >= 2:
+            second_op = sorted_ops[1]
+            second_sim = sum(op_scores[second_op]) / len(op_scores[second_op])
+
+            # If top-2 are ADD/SUB and similarity is close, use verb backup
+            if {best_op, second_op} == {"ADD", "SUB"} and (best_sim - second_sim) < 0.05:
+                verb_result = classify_by_verb(span_text)
+                if verb_result:
+                    best_op = verb_result
+                    best_sim = max(best_sim, second_sim)  # Use higher confidence
 
         # Confidence from Welford z-score (positive = better than average)
-        zscore = self._welford_zscore(best_op, avg_sim)
+        zscore = self._welford_zscore(best_op, best_sim)
         confidence = 1 / (1 + math.exp(-zscore))  # Sigmoid to [0, 1]
 
         return (best_op, confidence)
@@ -268,6 +355,7 @@ class SimplePipeline:
         steps = []
         state: Dict[str, float] = {}
         main_entity = None  # Most recent named entity (for pronoun resolution)
+        position = 0  # Track position for positional embedding
 
         for clause in clauses:
             text = clause["text"]
@@ -278,8 +366,11 @@ class SimplePipeline:
             if not numbers:
                 continue
 
-            # 3. Classify operation
-            op_type, confidence = self.classify_span(text)
+            # Increment position counter (1-indexed for operations with numbers)
+            position += 1
+
+            # 3. Classify operation with positional context
+            op_type, confidence = self.classify_span(text, position=position)
 
             # 4. Determine entity
             # First clause usually establishes main entity
@@ -405,5 +496,96 @@ def test_pipeline():
         print()
 
 
+def test_verb_classifier():
+    """Test the verb taxonomy classifier."""
+    print("=== Verb Classifier Test ===\n")
+
+    test_cases = [
+        # (text, expected_op)
+        ("She sold 5 apples", "SUB"),
+        ("He found 3 more coins", "ADD"),
+        ("She gave 4 to John", "SUB"),
+        ("Tom bought 6 oranges", "ADD"),
+        ("Mary lost 2 pencils", "SUB"),
+        ("He received 10 dollars", "ADD"),
+        ("She spent 8 dollars", "SUB"),
+        ("They collected 15 stamps", "ADD"),
+        ("He ate 3 cookies", "SUB"),
+        ("She earned 50 dollars", "ADD"),
+    ]
+
+    passed = 0
+    for text, expected in test_cases:
+        result = classify_by_verb(text)
+        status = "PASS" if result == expected else "FAIL"
+        if result == expected:
+            passed += 1
+        print(f"  [{status}] '{text}' -> {result} (expected {expected})")
+
+    print(f"\nVerb classifier: {passed}/{len(test_cases)} passed\n")
+
+
+def test_positional_embedding():
+    """Test that positional prefixes are applied correctly."""
+    print("=== Positional Embedding Test ===\n")
+
+    pipeline = SimplePipeline(use_db=False)
+
+    # Test that different positions produce different embeddings
+    text = "sold 5 apples"
+    emb1 = pipeline._get_positional_embedding(text, position=1)
+    emb2 = pipeline._get_positional_embedding(text, position=2)
+    emb3 = pipeline._get_positional_embedding(text, position=3)
+
+    # Embeddings should be different due to prefixes
+    sim_1_2 = float(np.dot(emb1, emb2))
+    sim_1_3 = float(np.dot(emb1, emb3))
+    sim_2_3 = float(np.dot(emb2, emb3))
+
+    print(f"  Position 1 vs 2 similarity: {sim_1_2:.4f}")
+    print(f"  Position 1 vs 3 similarity: {sim_1_3:.4f}")
+    print(f"  Position 2 vs 3 similarity: {sim_2_3:.4f}")
+
+    # All should be similar but not identical (prefixes add context)
+    assert sim_1_2 < 1.0, "Position 1 and 2 embeddings should differ"
+    assert sim_1_3 < 1.0, "Position 1 and 3 embeddings should differ"
+    print("\n  [PASS] Positional embeddings are distinct\n")
+
+
+def test_add_sub_disambiguation():
+    """Test that ADD/SUB confusion is resolved by verb backup."""
+    print("=== ADD/SUB Disambiguation Test ===\n")
+
+    # Problems that commonly confuse ADD/SUB
+    test_cases = [
+        # (problem, step_index, expected_op)
+        ("Lisa has 12 apples. She sold 5 apples.", 1, "SUB"),  # sold -> SUB
+        ("Tom had 8 coins. He found 3 more coins.", 1, "ADD"),  # found -> ADD
+        ("Mary has 10 books. She gave 4 to John.", 1, "SUB"),  # gave -> SUB
+        ("John had 20 dollars. He spent 8 on lunch.", 1, "SUB"),  # spent -> SUB
+        ("Sarah has 5 stickers. She received 7 more.", 1, "ADD"),  # received -> ADD
+    ]
+
+    pipeline = SimplePipeline(use_db=False)
+
+    passed = 0
+    for problem, step_idx, expected in test_cases:
+        result = pipeline.solve(problem)
+        if len(result.steps) > step_idx:
+            actual = result.steps[step_idx].op_type
+            status = "PASS" if actual == expected else "FAIL"
+            if actual == expected:
+                passed += 1
+            print(f"  [{status}] '{problem}'")
+            print(f"          Step {step_idx}: {actual} (expected {expected})")
+        else:
+            print(f"  [SKIP] '{problem}' - not enough steps")
+
+    print(f"\nADD/SUB disambiguation: {passed}/{len(test_cases)} passed\n")
+
+
 if __name__ == "__main__":
+    test_verb_classifier()
+    test_positional_embedding()
     test_pipeline()
+    test_add_sub_disambiguation()
