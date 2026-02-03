@@ -99,6 +99,10 @@ def init_db():
     conn = _get_connection()
     cur = conn.cursor()
 
+    # Enable pgvector extension for vector similarity search
+    cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+    conn.commit()  # Commit extension separately to ensure it's available
+
     # Welford stats table
     cur.execute("""
         CREATE TABLE IF NOT EXISTS welford_stats (
@@ -182,11 +186,13 @@ def init_db():
 
     # Span templates table (clustered patterns with centroids)
     # Templates serve as "gold standard" anchors for two-tier KNN
+    # Uses pgvector for DB-side similarity search (instant startup!)
     cur.execute("""
         CREATE TABLE IF NOT EXISTS span_templates (
             template_id VARCHAR(100) PRIMARY KEY,
             pattern TEXT NOT NULL,
             centroid BYTEA NOT NULL,
+            centroid_vec vector(384),
             operation VARCHAR(20) NOT NULL,
             dsl_type VARCHAR(20) DEFAULT 'simple',
             examples JSONB,
@@ -203,6 +209,14 @@ def init_db():
     cur.execute("""
         CREATE INDEX IF NOT EXISTS idx_span_templates_operation
         ON span_templates(operation)
+    """)
+
+    # pgvector HNSW index for fast KNN search
+    # Uses cosine distance (<=>); HNSW works well for any dataset size
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_span_templates_centroid_vec
+        ON span_templates USING hnsw (centroid_vec vector_cosine_ops)
+        WITH (m = 16, ef_construction = 64)
     """)
 
     conn.commit()
@@ -613,6 +627,11 @@ def get_decision_boundary(pair_key: str) -> Optional[float]:
 # Span Templates Operations (Two-Tier KNN)
 # =============================================================================
 
+def _numpy_to_pgvector(arr: np.ndarray) -> str:
+    """Convert numpy array to pgvector string format."""
+    return '[' + ','.join(str(float(x)) for x in arr.astype(np.float32)) + ']'
+
+
 def store_span_template(
     template_id: str,
     pattern: str,
@@ -626,28 +645,31 @@ def store_span_template(
 
     Templates are clustered span patterns that serve as "gold standard"
     anchors for KNN classification. They carry 2x weight vs individual spans.
+    Stores both BYTEA (for backward compat) and pgvector (for fast search).
     """
     conn = _get_connection()
     cur = conn.cursor()
 
     centroid_bytes = centroid.astype(np.float32).tobytes()
+    centroid_vec = _numpy_to_pgvector(centroid)
     examples_json = json.dumps(examples) if examples else None
 
     cur.execute("""
         INSERT INTO span_templates (
-            template_id, pattern, centroid, operation, dsl_type,
+            template_id, pattern, centroid, centroid_vec, operation, dsl_type,
             examples, count, updated_at
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+        VALUES (%s, %s, %s, %s::vector, %s, %s, %s, %s, CURRENT_TIMESTAMP)
         ON CONFLICT (template_id) DO UPDATE SET
             pattern = EXCLUDED.pattern,
             centroid = EXCLUDED.centroid,
+            centroid_vec = EXCLUDED.centroid_vec,
             operation = EXCLUDED.operation,
             dsl_type = EXCLUDED.dsl_type,
             examples = EXCLUDED.examples,
             count = EXCLUDED.count,
             updated_at = CURRENT_TIMESTAMP
-    """, (template_id, pattern, centroid_bytes, operation, dsl_type,
+    """, (template_id, pattern, centroid_bytes, centroid_vec, operation, dsl_type,
           examples_json, count))
 
     conn.commit()
@@ -737,6 +759,7 @@ def get_template_centroids() -> List[Tuple[str, str, np.ndarray]]:
     """Get (template_id, operation, centroid) for all templates.
 
     Optimized for two-tier KNN lookup - returns only what's needed.
+    DEPRECATED: Use knn_query_templates() for pgvector-based search instead.
     """
     conn = _get_connection()
     cur = conn.cursor()
@@ -750,6 +773,47 @@ def get_template_centroids() -> List[Tuple[str, str, np.ndarray]]:
         (row[0], row[1], np.frombuffer(row[2], dtype=np.float32))
         for row in rows
     ]
+
+
+def knn_query_templates(
+    query_embedding: np.ndarray,
+    k: int = 5,
+    operation_filter: Optional[str] = None
+) -> List[Tuple[str, str, float]]:
+    """Query pgvector for k nearest template centroids.
+
+    Uses cosine similarity via pgvector's <=> operator (cosine distance).
+    Returns (template_id, operation, similarity) tuples sorted by similarity.
+
+    This is the FAST path - no data loaded to RAM, DB does the search!
+    """
+    conn = _get_connection()
+    cur = conn.cursor()
+
+    query_vec = _numpy_to_pgvector(query_embedding)
+
+    if operation_filter:
+        cur.execute("""
+            SELECT template_id, operation, 1 - (centroid_vec <=> %s::vector) as similarity
+            FROM span_templates
+            WHERE operation = %s AND centroid_vec IS NOT NULL
+            ORDER BY centroid_vec <=> %s::vector
+            LIMIT %s
+        """, (query_vec, operation_filter, query_vec, k))
+    else:
+        cur.execute("""
+            SELECT template_id, operation, 1 - (centroid_vec <=> %s::vector) as similarity
+            FROM span_templates
+            WHERE centroid_vec IS NOT NULL
+            ORDER BY centroid_vec <=> %s::vector
+            LIMIT %s
+        """, (query_vec, query_vec, k))
+
+    results = [(row[0], row[1], row[2]) for row in cur.fetchall()]
+    cur.close()
+    conn.close()
+
+    return results
 
 
 def update_template_welford(template_id: str, similarity: float) -> None:

@@ -119,14 +119,15 @@ class SimplePipeline:
         3: "After that:",
     }
 
-    def __init__(self, use_db: bool = True):
+    def __init__(self, use_db: bool = True, use_pgvector: bool = True):
         self.use_db = use_db
+        self.use_pgvector = use_pgvector  # Use pgvector for DB-side KNN (instant startup!)
         self._segmenter = None
         self._embedding_model = None  # Lazy-loaded sentence-transformers model
         self._embeddings_cache: Dict[str, np.ndarray] = {}
         self._labeled_spans: List[Tuple[str, str, np.ndarray]] = []  # (text, op, embedding)
 
-        # Template centroids for two-tier KNN
+        # Template centroids for two-tier KNN (only used if not using pgvector)
         self._template_centroids: List[Tuple[str, str, np.ndarray]] = []  # (template_id, op, centroid)
 
         # Welford stats (loaded from DB or defaults)
@@ -136,11 +137,15 @@ class SimplePipeline:
             self._load_from_db()
 
     def _load_from_db(self):
-        """Load templates, labeled spans, and Welford stats from database."""
+        """Load templates, labeled spans, and Welford stats from database.
+
+        With pgvector: Only loads Welford stats (templates searched via DB query).
+        Without pgvector: Loads all templates and spans to RAM for in-memory search.
+        """
         try:
             from mycelium.db import (
                 get_labeled_spans, get_all_welford_stats, get_embedding,
-                get_template_centroids
+                get_template_centroids, get_template_count
             )
 
             # Load Welford stats
@@ -153,20 +158,23 @@ class SimplePipeline:
                         "m2": stat.m2
                     }
 
-            # Load template centroids (Tier 1 - gold standard anchors)
-            self._template_centroids = get_template_centroids()
+            if self.use_pgvector:
+                # pgvector mode: No loading to RAM, DB does the search!
+                template_count = get_template_count()
+                print(f"pgvector mode: {template_count} templates (searched via DB), {len(self._op_stats)} op stats")
+            else:
+                # Legacy mode: Load all templates and spans to RAM
+                self._template_centroids = get_template_centroids()
 
-            # Load labeled spans with embeddings (Tier 2 - raw data)
-            spans = get_labeled_spans(limit=2000)
-            for span in spans:
-                if span.operation:
-                    # Try to get cached embedding (using sentence-transformers model)
-                    emb = get_embedding(span.span_text, self.EMBEDDING_MODEL)
-                    if emb is not None:
-                        # Embeddings are already normalized
-                        self._labeled_spans.append((span.span_text, span.operation, emb))
+                # Load labeled spans with embeddings (Tier 2 - raw data)
+                spans = get_labeled_spans(limit=2000)
+                for span in spans:
+                    if span.operation:
+                        emb = get_embedding(span.span_text, self.EMBEDDING_MODEL)
+                        if emb is not None:
+                            self._labeled_spans.append((span.span_text, span.operation, emb))
 
-            print(f"Loaded {len(self._template_centroids)} templates, {len(self._labeled_spans)} spans, {len(self._op_stats)} op stats")
+                print(f"RAM mode: {len(self._template_centroids)} templates, {len(self._labeled_spans)} spans, {len(self._op_stats)} op stats")
         except Exception as e:
             print(f"Could not load from DB: {e}")
 
@@ -276,16 +284,26 @@ class SimplePipeline:
         Like multi-object detection: templates are "gold standard" anchors,
         raw spans provide additional signal.
 
+        With pgvector: Queries DB for nearest templates (instant, no RAM loading).
+        Without pgvector: Uses in-memory search over cached centroids.
+
         Returns: List of (source_id, operation, weighted_similarity, is_template)
         """
         results = []
 
-        # Tier 1: Template centroids (gold standard, 2x weight)
-        for template_id, op, centroid in self._template_centroids:
-            sim = float(np.dot(embedding, centroid))
-            # Templates get weighted similarity boost
-            weighted_sim = sim * self.TEMPLATE_WEIGHT
-            results.append((template_id, op, weighted_sim, True))
+        if self.use_pgvector:
+            # pgvector mode: Query DB for nearest templates
+            from mycelium.db import knn_query_templates
+            template_results = knn_query_templates(embedding, k=k)
+            for template_id, op, sim in template_results:
+                weighted_sim = sim * self.TEMPLATE_WEIGHT
+                results.append((template_id, op, weighted_sim, True))
+        else:
+            # Legacy mode: In-memory search over cached centroids
+            for template_id, op, centroid in self._template_centroids:
+                sim = float(np.dot(embedding, centroid))
+                weighted_sim = sim * self.TEMPLATE_WEIGHT
+                results.append((template_id, op, weighted_sim, True))
 
         # Tier 2: Raw labeled spans (1x weight)
         for text, op, emb in self._labeled_spans:
