@@ -42,7 +42,7 @@ Two orthogonal signals for robust matching:
 
 **Pipeline:**
 - **Training**: Qwen 7B → attention patterns + centroid embeddings → span templates
-- **Inference**: MiniLM 22M → match patterns + embeddings → classify spans
+- **Inference**: MiniLM 22M → match patterns + embeddings → span template → custom DSL
 
 Quality of 7B model at cost of 22M model.
 
