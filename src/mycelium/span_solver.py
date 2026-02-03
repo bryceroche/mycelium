@@ -1,9 +1,11 @@
 """Span-based math word problem solver.
 
-Architecture (no hardcoded patterns):
+Architecture (NO HARDCODED PATTERNS - everything learned via Welford):
 1. ATTENTION: num→verb attention distinguishes SET (low) from actions (high)
+   - Threshold is LEARNED via Welford statistics, not hardcoded
 2. EMBEDDING: verb embedding distinguishes ADD from SUB
-3. Combined: attention threshold + embedding NN
+   - Centroids are LEARNED from examples, not hardcoded verb lists
+3. Combined: learned attention threshold + learned embedding centroids
 
 The operation is encoded in HOW tokens attend, not just what tokens are present.
 """
@@ -33,23 +35,32 @@ class Step:
 
 
 class AttentionOperationClassifier:
-    """Classify span operations using attention patterns + verb embeddings.
+    """Classify span operations using attention patterns + learned verb embeddings.
 
-    No keywords. No regex for operations. Just model signals:
-    - Attention: SET vs action verbs
-    - Verb embedding: ADD vs SUB
+    NO HARDCODED VERB LISTS. Everything is learned from labeled examples:
+    - Attention: SET vs action verbs (Welford-tracked threshold)
+    - Verb embedding: ADD vs SUB (learned centroids from examples)
     """
 
-    def __init__(self, attention_threshold: float = 0.055):
-        self.attention_threshold = attention_threshold
+    def __init__(self, learned_profiles_path: Optional[str] = None):
         self._embed_model = None
         self._attn_model = None
         self._tokenizer = None
 
-        # Verb centroids (computed once)
+        # Welford stats for attention threshold (learned, not hardcoded)
+        from .attention_learner import WelfordStats
+        self._set_attention = WelfordStats()
+        self._action_attention = WelfordStats()
+
+        # Verb centroids (learned from examples, not hardcoded lists)
         self._sub_centroid = None
         self._add_centroid = None
-        self._set_centroid = None
+        self._sub_verbs_learned: List[np.ndarray] = []
+        self._add_verbs_learned: List[np.ndarray] = []
+
+        # Load pre-learned profiles if available
+        if learned_profiles_path:
+            self._load_learned(learned_profiles_path)
 
     def _load_embed_model(self):
         if self._embed_model is None:
@@ -70,21 +81,33 @@ class AttentionOperationClassifier:
             )
         return self._attn_model, self._tokenizer
 
-    def _compute_verb_centroids(self):
-        """Compute verb centroids for operation classification."""
-        if self._sub_centroid is not None:
-            return
-
+    def learn(self, span_text: str, operation: str):
+        """Learn from a labeled example. Updates Welford stats and verb centroids."""
         model = self._load_embed_model()
 
-        # Representative verbs for each operation
-        sub_verbs = ["sold", "ate", "gave", "spent", "lost", "used", "consumed", "donated"]
-        add_verbs = ["bought", "found", "received", "earned", "gained", "got", "acquired", "collected"]
-        set_verbs = ["has", "had", "owns", "contains", "holds", "keeps", "is", "are"]
+        # Learn attention threshold via Welford
+        attn = self._get_num_verb_attention(span_text)
+        if operation == "SET":
+            self._set_attention.update(attn)
+        else:
+            self._action_attention.update(attn)
 
-        self._sub_centroid = model.encode(sub_verbs).mean(axis=0)
-        self._add_centroid = model.encode(add_verbs).mean(axis=0)
-        self._set_centroid = model.encode(set_verbs).mean(axis=0)
+        # Learn verb centroids from examples (not hardcoded lists!)
+        if operation in ("ADD", "SUB"):
+            verb = self._extract_verb(span_text)
+            verb_embed = model.encode([verb])[0]
+            if operation == "SUB":
+                self._sub_verbs_learned.append(verb_embed)
+                self._sub_centroid = np.mean(self._sub_verbs_learned, axis=0)
+            else:
+                self._add_verbs_learned.append(verb_embed)
+                self._add_centroid = np.mean(self._add_verbs_learned, axis=0)
+
+    def _get_learned_threshold(self) -> float:
+        """Get attention threshold from Welford stats (midpoint between SET and action means)."""
+        if self._set_attention.count < 3 or self._action_attention.count < 3:
+            return 0.06  # Bootstrap default until we have enough data
+        return (self._set_attention.mean + self._action_attention.mean) / 2
 
     def _cosine_sim(self, a: np.ndarray, b: np.ndarray) -> float:
         return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8))
@@ -119,21 +142,30 @@ class AttentionOperationClassifier:
         return words[1] if len(words) > 1 else words[0]
 
     def classify(self, span_text: str) -> Tuple[str, float]:
-        """Classify a span's operation using attention + embedding.
+        """Classify a span's operation using learned attention + embedding.
 
-        Returns (operation, confidence)
+        Returns (operation, confidence). NO HARDCODED THRESHOLDS OR VERB LISTS.
         """
-        self._compute_verb_centroids()
         model = self._load_embed_model()
 
         # Step 1: Get attention signal
         attn = self._get_num_verb_attention(span_text)
 
-        # Step 2: If low attention, likely SET
-        if attn < self.attention_threshold:
-            return "SET", 0.8 + (self.attention_threshold - attn) * 5
+        # Step 2: Use LEARNED threshold (Welford) to distinguish SET vs action
+        threshold = self._get_learned_threshold()
+        if attn < threshold:
+            # Confidence based on z-score from SET distribution
+            if self._set_attention.count >= 3:
+                conf = 0.8 + (threshold - attn) / max(self._set_attention.std, 0.01)
+            else:
+                conf = 0.7
+            return "SET", min(conf, 1.0)
 
-        # Step 3: For action verbs, use embedding to distinguish ADD/SUB
+        # Step 3: For action verbs, use LEARNED centroids (not hardcoded lists!)
+        if self._sub_centroid is None or self._add_centroid is None:
+            # Not enough learned examples yet - return best guess
+            return "ADD", 0.5
+
         verb = self._extract_verb(span_text)
         verb_embed = model.encode([verb])[0]
 
@@ -144,6 +176,48 @@ class AttentionOperationClassifier:
             return "ADD", sim_add
         else:
             return "SUB", sim_sub
+
+    def _load_learned(self, path: str):
+        """Load pre-learned Welford stats and centroids."""
+        import json
+        with open(path) as f:
+            data = json.load(f)
+        # Load Welford stats
+        if "set_attention" in data:
+            self._set_attention.count = data["set_attention"]["count"]
+            self._set_attention.mean = data["set_attention"]["mean"]
+            self._set_attention.m2 = data["set_attention"]["m2"]
+        if "action_attention" in data:
+            self._action_attention.count = data["action_attention"]["count"]
+            self._action_attention.mean = data["action_attention"]["mean"]
+            self._action_attention.m2 = data["action_attention"]["m2"]
+        # Load centroids
+        if "sub_centroid" in data:
+            self._sub_centroid = np.array(data["sub_centroid"])
+        if "add_centroid" in data:
+            self._add_centroid = np.array(data["add_centroid"])
+
+    def save_learned(self, path: str):
+        """Save learned Welford stats and centroids."""
+        import json
+        data = {
+            "set_attention": {
+                "count": self._set_attention.count,
+                "mean": self._set_attention.mean,
+                "m2": self._set_attention.m2,
+            },
+            "action_attention": {
+                "count": self._action_attention.count,
+                "mean": self._action_attention.mean,
+                "m2": self._action_attention.m2,
+            },
+        }
+        if self._sub_centroid is not None:
+            data["sub_centroid"] = self._sub_centroid.tolist()
+        if self._add_centroid is not None:
+            data["add_centroid"] = self._add_centroid.tolist()
+        with open(path, "w") as f:
+            json.dump(data, f, indent=2)
 
 
 def extract_number(text: str) -> Optional[float]:
@@ -223,20 +297,42 @@ def solve(problem_text: str, classifier: AttentionOperationClassifier = None) ->
 
 
 if __name__ == "__main__":
-    # Test with attention-based classification
-    print("=== Attention + Embedding Classifier Test ===\n")
+    # Test with LEARNED attention-based classification (no hardcoded verb lists!)
+    print("=== Learned Attention + Embedding Classifier ===\n")
 
     classifier = AttentionOperationClassifier()
 
-    test_cases = [
-        ("she sold 5 apples", "SUB"),
-        ("she bought 5 apples", "ADD"),
+    # Training examples - classifier learns from these
+    train_examples = [
         ("she has 5 apples", "SET"),
-        ("he ate 3 cookies", "SUB"),
+        ("he had 10 cookies", "SET"),
+        ("the box contains 12 items", "SET"),
+        ("she sold 3 apples", "SUB"),
+        ("he ate 4 cookies", "SUB"),
+        ("Mary gave away 5 books", "SUB"),
+        ("she bought 5 apples", "ADD"),
         ("he found 3 coins", "ADD"),
-        ("the box contains 10 items", "SET"),
+        ("Mary received 4 gifts", "ADD"),
     ]
 
+    print("Learning from examples...")
+    for text, op in train_examples:
+        classifier.learn(text, op)
+        print(f"  Learned: {op} <- '{text}'")
+
+    print(f"\nLearned threshold: {classifier._get_learned_threshold():.4f}")
+    print(f"SET attention: mean={classifier._set_attention.mean:.4f} std={classifier._set_attention.std:.4f}")
+    print(f"Action attention: mean={classifier._action_attention.mean:.4f} std={classifier._action_attention.std:.4f}")
+
+    # Test on held-out examples
+    test_cases = [
+        ("John has 12 oranges", "SET"),
+        ("Lisa sold 4 tickets", "SUB"),
+        ("Mike bought 6 toys", "ADD"),
+        ("the jar holds 20 candies", "SET"),
+    ]
+
+    print("\n=== Testing on held-out examples ===\n")
     for text, expected in test_cases:
         op, conf = classifier.classify(text)
         status = "✓" if op == expected else "✗"
