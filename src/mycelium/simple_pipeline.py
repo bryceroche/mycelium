@@ -1,12 +1,14 @@
 """Simple KNN + Linear Chain Pipeline for math word problems.
 
-NO TREE. NO MCTS. Just:
+NO TREE. NO MCTS. NO GPU REQUIRED. Just:
 1. Segment span → extract reference, numbers
-2. Get span embedding (hidden state from Qwen)
+2. Get span embedding (sentence-transformers, CPU-friendly)
 3. KNN lookup → find nearest labeled spans
 4. Welford z-score → confidence
 5. If confident: return operation. If not: try top-3
 6. Update Welford stats with result
+
+Uses all-MiniLM-L6-v2 for embeddings (~80MB, runs on CPU).
 """
 
 import os
@@ -46,10 +48,12 @@ class SimplePipeline:
     # Common pronouns that should trigger entity resolution
     PRONOUNS = {"she", "he", "they", "it", "her", "him", "them"}
     ENTITY_RESOLUTION_THRESHOLD = 0.7  # Cosine similarity threshold for resolution
+    EMBEDDING_MODEL = "all-MiniLM-L6-v2"  # CPU-friendly, ~80MB
 
     def __init__(self, use_db: bool = True):
         self.use_db = use_db
         self._segmenter = None
+        self._embedding_model = None  # Lazy-loaded sentence-transformers model
         self._embeddings_cache: Dict[str, np.ndarray] = {}
         self._labeled_spans: List[Tuple[str, str, np.ndarray]] = []  # (text, op, embedding)
 
@@ -75,16 +79,13 @@ class SimplePipeline:
                     }
 
             # Load labeled spans with embeddings
-            spans = get_labeled_spans(limit=1000)
+            spans = get_labeled_spans(limit=2000)
             for span in spans:
                 if span.operation:
-                    # Try to get cached embedding
-                    emb = get_embedding(span.span_text, "qwen-hidden")
+                    # Try to get cached embedding (using sentence-transformers model)
+                    emb = get_embedding(span.span_text, self.EMBEDDING_MODEL)
                     if emb is not None:
-                        # Normalize embedding to unit vector
-                        norm = np.linalg.norm(emb)
-                        if norm > 0:
-                            emb = emb / norm
+                        # Embeddings are already normalized
                         self._labeled_spans.append((span.span_text, span.operation, emb))
 
             print(f"Loaded {len(self._labeled_spans)} labeled spans, {len(self._op_stats)} op stats")
@@ -98,36 +99,36 @@ class SimplePipeline:
             self._segmenter = AttentionSegmenter()
         return self._segmenter
 
+    def _ensure_embedding_model(self):
+        """Lazy load the sentence-transformers model."""
+        if self._embedding_model is None:
+            from sentence_transformers import SentenceTransformer
+            self._embedding_model = SentenceTransformer(self.EMBEDDING_MODEL)
+        return self._embedding_model
+
     def _get_embedding(self, text: str) -> np.ndarray:
-        """Get hidden state embedding for text (L2-normalized)."""
+        """Get embedding for text using sentence-transformers (L2-normalized)."""
         if text in self._embeddings_cache:
             return self._embeddings_cache[text]
 
-        segmenter = self._ensure_segmenter()
+        model = self._ensure_embedding_model()
 
-        # Get hidden states from segmenter's model
-        segmenter._ensure_model()
-        inputs = segmenter._tokenizer(text, return_tensors="pt").to("cuda")
+        # Get embedding (sentence-transformers returns normalized by default)
+        embedding = model.encode(text, convert_to_numpy=True)
 
-        import torch
-        with torch.no_grad():
-            outputs = segmenter._model(**inputs, output_hidden_states=True)
+        # Ensure normalized
+        norm = np.linalg.norm(embedding)
+        if norm > 0:
+            embedding = embedding / norm
 
-        # Use mean of middle layer hidden states as embedding
-        hidden = outputs.hidden_states[segmenter._hidden_layer][0]
-        embedding = hidden.mean(dim=0)
-
-        # L2 normalize in torch (more numerically stable than numpy)
-        embedding = embedding / embedding.norm()
-        embedding = embedding.cpu().numpy().astype(np.float32)
-
+        embedding = embedding.astype(np.float32)
         self._embeddings_cache[text] = embedding
 
         # Store in DB if available
         if self.use_db:
             try:
                 from mycelium.db import store_embedding
-                store_embedding(text, embedding, "qwen-hidden")
+                store_embedding(text, embedding, self.EMBEDDING_MODEL)
             except:
                 pass
 
@@ -266,8 +267,7 @@ class SimplePipeline:
         # 2. Process each clause
         steps = []
         state: Dict[str, float] = {}
-        entity_embeddings: Dict[str, np.ndarray] = {}  # Track entity embeddings for resolution
-        main_entity = None
+        main_entity = None  # Most recent named entity (for pronoun resolution)
 
         for clause in clauses:
             text = clause["text"]
@@ -293,17 +293,13 @@ class SimplePipeline:
             else:
                 entity = "X"
 
-            # 5. Entity resolution: check if this is a pronoun that should resolve to existing entity
-            if entity.lower() in self.PRONOUNS and entity_embeddings:
-                resolved = self._resolve_entity(text, entity_embeddings)
-                if resolved:
-                    entity = resolved
+            # 5. Entity resolution: pronouns resolve to most recent named entity
+            # This is simpler and more reliable than embedding-based resolution
+            if entity.lower() in self.PRONOUNS and main_entity:
+                entity = main_entity
 
-            # Store embedding for new entities (not pronouns)
-            if entity.lower() not in self.PRONOUNS and entity not in entity_embeddings:
-                entity_embeddings[entity] = self._get_embedding(text)
-
-            if main_entity is None:
+            # Track most recent named entity (for pronoun resolution)
+            if entity.lower() not in self.PRONOUNS:
                 main_entity = entity
 
             # Use reference if this is a relative operation
