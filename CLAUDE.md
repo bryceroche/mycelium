@@ -3,6 +3,23 @@
 2. New Favorite Pattern
 3. How to use Beads
 
+## Terminology
+- **Welford's** — Online algorithm for calculating running mean/variance
+- **DAG** — Directed Acyclic Graph (computation graph)
+- **Span** — Contiguous tokens forming a semantic unit (e.g., "half the eggs")
+- **SET** — Initial value assignment operation
+- **Attention sink** — Token that receives attention from many others (usually the subject/entity)
+- **Z-score** — Standard deviations from learned mean, used for classification
+
+## Core Principle: Failures Are Valuable Data Points
+**Let the system fail.** This is how it learns.
+- Record every failure — it feeds the learning loop
+- Do not fallback to LLM reasoning
+- Accumulated failure patterns (not individual failures) refine thresholds
+- Success/failure stats drive classification decisions
+
+The goal is NOT 100% accuracy on every run. The goal is collecting data that makes the system smarter over time. A misclassified span provides valuable signal for threshold adjustment.
+
 ## Attention-Based Decomposition
 **Decomposition is the crux.** Everything downstream of step-level intermediate representation (IR) is solved.
 
