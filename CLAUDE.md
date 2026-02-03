@@ -16,6 +16,21 @@
 - **Attention Sink** — Token that receives attention from many others (usually the subject/entity).
 - **Z-score** — Standard deviations from learned mean, used for classification.
 
+## The Panama Hats Problem
+
+Why do we need span detection? Because meaning is compositional.
+
+- "panama" = country
+- "panama hats" = a type of hat (completely different meaning)
+
+In math word problems:
+- "half" = 0.5
+- "half the price of the cheese" = ONE operation (cheese_price × 0.5)
+
+Naive tokenization breaks "half the price of the cheese" into separate words and loses the semantic unit. We need the **longest span** that forms a cohesive operation.
+
+Attention patterns solve this: tokens within a semantic span attend strongly to each other (high connectivity). "half," "price," and "cheese" form an attention cluster — that's the model recognizing them as a single operation.
+
 ## Core Principle: Failures Are Valuable Data Points
 **Let the system fail.** This is how it learns.
 - Record every failure — it feeds the learning loop
