@@ -12,11 +12,8 @@ from typing import Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass
 import numpy as np
 
-# Use environment variable for connection, with fallback to RDS
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "REDACTED_DATABASE_URL"
-)
+# Use environment variable for connection (required)
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
 @dataclass

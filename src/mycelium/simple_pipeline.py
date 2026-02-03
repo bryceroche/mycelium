@@ -17,11 +17,8 @@ import numpy as np
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 
-# Database URL from environment
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "REDACTED_DATABASE_URL"
-)
+# Database URL from environment (required)
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
 @dataclass
