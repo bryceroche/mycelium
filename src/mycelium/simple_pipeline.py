@@ -14,21 +14,14 @@ Uses all-MiniLM-L6-v2 for embeddings (~80MB, runs on CPU).
 import os
 import math
 import numpy as np
-from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
+from typing import List, Dict, Optional, Tuple
+
+# Import Operation from types.py (canonical definition)
+from mycelium.types import Operation
 
 # Database URL from environment (required)
 DATABASE_URL = os.environ.get("DATABASE_URL")
-
-
-@dataclass
-class Operation:
-    """A detected operation from a span."""
-    op_type: str  # SET, ADD, SUB, MUL, DIV
-    value: float
-    entity: Optional[str]  # Who this applies to
-    confidence: float
-    span_text: str
 
 
 @dataclass
@@ -83,8 +76,8 @@ class SimplePipeline:
     Templates are "gold standard" anchors computed from clustering similar spans.
     """
 
-    # Common pronouns that should trigger entity resolution
-    PRONOUNS = {"she", "he", "they", "it", "her", "him", "them"}
+    # Import from span_normalizer (single source of truth)
+    from mycelium.span_normalizer import PRONOUNS
     ENTITY_RESOLUTION_THRESHOLD = 0.7  # Cosine similarity threshold for resolution
     EMBEDDING_MODEL = "all-MiniLM-L6-v2"  # CPU-friendly, ~80MB
 
