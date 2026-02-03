@@ -10,14 +10,55 @@ This bypasses the "attention sink" problem in causal models where all
 tokens attend heavily to the first token.
 
 Uses Qwen2.5-Math-7B-Instruct for superior math reasoning (91.6% GSM8K).
+
+Reference detection threshold is Welford-adaptive:
+- Learns from labeled examples (reference vs non-reference)
+- Threshold = midpoint between reference and non-reference means
+- Falls back to bootstrap default (0.34) until sufficient data
 """
 
+import json
+import math
 import torch
 import numpy as np
-from dataclasses import dataclass
+from dataclasses import dataclass, field, asdict
 from typing import List, Tuple, Optional, Dict
+from pathlib import Path
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.spatial.distance import squareform
+
+
+@dataclass
+class WelfordStats:
+    """Welford's online algorithm for running mean and variance."""
+    count: int = 0
+    mean: float = 0.0
+    m2: float = 0.0
+
+    def update(self, value: float):
+        """Add a new value and update statistics."""
+        self.count += 1
+        delta = value - self.mean
+        self.mean += delta / self.count
+        delta2 = value - self.mean
+        self.m2 += delta * delta2
+
+    @property
+    def variance(self) -> float:
+        if self.count < 2:
+            return 0.0
+        return self.m2 / (self.count - 1)
+
+    @property
+    def std(self) -> float:
+        return math.sqrt(self.variance)
+
+    def to_dict(self) -> Dict:
+        return {"count": self.count, "mean": self.mean, "m2": self.m2}
+
+    @classmethod
+    def from_dict(cls, d: Dict) -> "WelfordStats":
+        return cls(count=d["count"], mean=d["mean"], m2=d["m2"])
 
 
 @dataclass
@@ -38,6 +79,7 @@ class SegmentedSpan:
     segments: List[Segment]
     reference_entity: Optional[str]  # Detected variable reference (e.g., "John")
     numbers: List[float]  # Extracted numeric values
+    last_token_cross_sim: Optional[float] = None  # For Welford training
 
 
 class AttentionSegmenter:
@@ -50,13 +92,108 @@ class AttentionSegmenter:
 
     Uses middle-layer hidden states (layer 14) instead of attention.
     This bypasses the attention sink problem in causal models.
+
+    Reference detection uses Welford-adaptive thresholds learned from labeled data.
     """
 
-    def __init__(self, model_name: str = "Qwen/Qwen2.5-Math-7B-Instruct"):
+    # Default profiles path
+    PROFILES_PATH = Path(__file__).parent.parent.parent.parent / "learned_reference_profiles.json"
+
+    def __init__(self, model_name: str = "Qwen/Qwen2.5-Math-7B-Instruct", profiles_path: Optional[Path] = None):
         self.model_name = model_name
         self._model = None
         self._tokenizer = None
         self._hidden_layer = 14  # Middle layer for semantic info
+
+        # Welford stats for reference vs non-reference cross-similarity
+        self._reference_similarity = WelfordStats()  # Cross-sim when last token IS a reference
+        self._non_reference_similarity = WelfordStats()  # Cross-sim when last token is NOT a reference
+
+        # Bootstrap defaults based on empirical analysis:
+        # References (John, Tom, Mike): ~0.27-0.33 cross-similarity
+        # Non-references (apples, coins): ~0.34-0.40 cross-similarity
+        self._bootstrap_threshold = 0.34
+
+        # Load learned profiles if available
+        self._profiles_path = profiles_path or self.PROFILES_PATH
+        self._load_profiles()
+
+    def _load_profiles(self):
+        """Load Welford profiles from disk if available."""
+        if self._profiles_path.exists():
+            try:
+                with open(self._profiles_path) as f:
+                    data = json.load(f)
+                self._reference_similarity = WelfordStats.from_dict(data.get("reference", {}))
+                self._non_reference_similarity = WelfordStats.from_dict(data.get("non_reference", {}))
+                print(f"Loaded reference profiles: ref={self._reference_similarity.count} examples, "
+                      f"non_ref={self._non_reference_similarity.count} examples")
+            except Exception as e:
+                print(f"Could not load profiles: {e}")
+
+    def save_profiles(self):
+        """Save Welford profiles to disk."""
+        data = {
+            "reference": self._reference_similarity.to_dict(),
+            "non_reference": self._non_reference_similarity.to_dict(),
+        }
+        with open(self._profiles_path, "w") as f:
+            json.dump(data, f, indent=2)
+        print(f"Saved reference profiles to {self._profiles_path}")
+
+    def _get_reference_threshold(self) -> float:
+        """Get adaptive threshold from Welford stats.
+
+        Only uses learned threshold if distributions are well-separated.
+        Falls back to bootstrap default if:
+        - Not enough data
+        - Distributions overlap (mean difference < combined std)
+        """
+        min_examples = 5
+        if (self._reference_similarity.count < min_examples or
+            self._non_reference_similarity.count < min_examples):
+            return self._bootstrap_threshold
+
+        # Check if distributions are well-separated
+        mean_diff = self._non_reference_similarity.mean - self._reference_similarity.mean
+        combined_std = self._reference_similarity.std + self._non_reference_similarity.std
+
+        # If overlap is too high, use bootstrap (more conservative)
+        if mean_diff < combined_std:
+            return self._bootstrap_threshold
+
+        # Well-separated: use midpoint
+        return (self._reference_similarity.mean + self._non_reference_similarity.mean) / 2
+
+    def update_reference_stats(self, cross_similarity: float, is_reference: bool):
+        """Update Welford stats with a labeled example.
+
+        Args:
+            cross_similarity: The cross-similarity value of the last token
+            is_reference: True if the last token is a reference entity
+        """
+        if is_reference:
+            self._reference_similarity.update(cross_similarity)
+        else:
+            self._non_reference_similarity.update(cross_similarity)
+
+    def get_stats_summary(self) -> Dict:
+        """Get summary of learned statistics."""
+        threshold = self._get_reference_threshold()
+        return {
+            "reference": {
+                "count": self._reference_similarity.count,
+                "mean": self._reference_similarity.mean,
+                "std": self._reference_similarity.std,
+            },
+            "non_reference": {
+                "count": self._non_reference_similarity.count,
+                "mean": self._non_reference_similarity.mean,
+                "std": self._non_reference_similarity.std,
+            },
+            "threshold": threshold,
+            "using_bootstrap": threshold == self._bootstrap_threshold,
+        }
 
     def _ensure_model(self):
         """Lazy load the model."""
@@ -187,6 +324,7 @@ class AttentionSegmenter:
 
         segments = []
         reference_entity = None
+        last_cross_sim = None  # Store for Welford training
 
         # Step 1: Check for reference entity by examining the LAST token directly
         # Reference entities like "John", "Tom" appear as the final token
@@ -200,12 +338,13 @@ class AttentionSegmenter:
             if not last_text.strip().isdigit():
                 # Check cross-similarity of last token to other tokens
                 other_indices = [i for i in range(n_tokens) if i != last_idx]
-                cross_sim = np.mean([similarity[last_idx, j] for j in other_indices])
+                last_cross_sim = float(np.mean([similarity[last_idx, j] for j in other_indices]))
 
-                # Low cross-similarity (<0.34) suggests reference entity
+                # Use Welford-adaptive threshold (or bootstrap default)
                 # Reference entities (John, Tom) have ~0.27-0.33 similarity
                 # Direct objects (apples, coins) have ~0.34-0.40 similarity
-                if cross_sim < 0.34:
+                threshold = self._get_reference_threshold()
+                if last_cross_sim < threshold:
                     reference_entity = last_text
 
         # Step 2: Use 3 clusters for main segmentation
@@ -254,6 +393,7 @@ class AttentionSegmenter:
             segments=segments,
             reference_entity=reference_entity,
             numbers=all_numbers,
+            last_token_cross_sim=last_cross_sim,
         )
 
     def segment_multi_clause(self, text: str) -> List[SegmentedSpan]:
@@ -273,7 +413,7 @@ class AttentionSegmenter:
 
         # Use more clusters for multi-clause
         n_clusters = min(estimated_clauses + 2, n_tokens // 2)
-        clusters = self._cluster_tokens(attn, tokens, n_clusters=n_clusters)
+        clusters = self._cluster_tokens(similarity, tokens, n_clusters=n_clusters)
 
         # Group adjacent clusters that form clauses
         # For now, return as single segmented span
@@ -282,28 +422,47 @@ class AttentionSegmenter:
 
 
 def test_segmenter():
-    """Test the attention segmenter."""
+    """Test the attention segmenter with Welford-adaptive thresholds."""
     segmenter = AttentionSegmenter()
 
-    test_cases = [
-        "Lisa has 5 more apples than John",
-        "Mary has twice as many books as Tom",
-        "She sold 5 apples",
-        "He found 8 coins then spent 3",
+    # Labeled test cases: (text, expected_reference)
+    labeled_cases = [
+        ("Lisa has 5 more apples than John", "John"),  # Reference
+        ("Mary has twice as many books as Tom", "Tom"),  # Reference
+        ("She sold 5 apples", None),  # No reference
+        ("He found 8 coins then spent 3", None),  # No reference
+        ("Sarah has 3 fewer candies than Mike", "Mike"),  # Reference
+        ("Tim collected 12 more stickers than Anna", "Anna"),  # Reference
     ]
 
-    print("=== Attention Segmenter Test ===\n")
+    print("=== Welford-Adaptive Reference Detection Test ===\n")
+    print(f"Initial stats: {segmenter.get_stats_summary()}\n")
 
-    for text in test_cases:
-        print(f"Input: \"{text}\"")
+    correct = 0
+    for text, expected_ref in labeled_cases:
         result = segmenter.segment(text)
+        detected = result.reference_entity
 
-        print(f"  Reference: {result.reference_entity}")
-        print(f"  Numbers: {result.numbers}")
-        print(f"  Segments:")
-        for seg in result.segments:
-            print(f"    [{seg.segment_type}] \"{seg.text}\" (attn={seg.attention_score:.3f})")
+        # Update Welford stats with ground truth
+        if result.last_token_cross_sim is not None:
+            is_reference = expected_ref is not None
+            segmenter.update_reference_stats(result.last_token_cross_sim, is_reference)
+
+        status = "OK" if detected == expected_ref else "WRONG"
+        if detected == expected_ref:
+            correct += 1
+
+        print(f"{status}: \"{text}\"")
+        print(f"  Expected: {expected_ref}, Got: {detected}")
+        if result.last_token_cross_sim is not None:
+            print(f"  Cross-sim: {result.last_token_cross_sim:.4f}")
         print()
+
+    print(f"=== Results: {correct}/{len(labeled_cases)} correct ===\n")
+    print(f"Learned stats: {segmenter.get_stats_summary()}")
+
+    # Save learned profiles
+    segmenter.save_profiles()
 
 
 if __name__ == "__main__":
