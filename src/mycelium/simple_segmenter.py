@@ -42,8 +42,8 @@ class SimpleSegmenter:
     - Reference entities (pronouns that refer to previous entities)
     """
 
-    # Common pronouns that reference entities
-    PRONOUNS = {"she", "he", "they", "it", "her", "him", "them", "his", "hers", "their"}
+    # Import from span_normalizer (single source of truth)
+    from mycelium.span_normalizer import PRONOUNS
 
     # Number pattern: integers, decimals, with optional commas
     NUMBER_PATTERN = re.compile(r'\b(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)\b')

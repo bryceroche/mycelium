@@ -1,23 +1,29 @@
-"""Attention-based math problem decomposition.
+"""Legacy/experimental attention-based decomposition utilities.
 
-Pipeline:
-1. extractor.py   - Pull attention matrices from transformer (DeepSeek-Math)
-2. span_detector.py - Cluster tokens into semantic spans
-3. classifier.py   - Map spans to operations
+NOTE: This module is NOT actively used by the main mycelium pipeline.
+The active SpanDetector lives in dual_signal_templates.py.
 
-The key insight: transformer attention reveals semantic units.
-"half the price of the cheese" is ONE span, not four words.
+This module contains experimental utilities for attention-based math problem
+decomposition that may be useful for research or future development:
+
+- extractor.py: Extract attention matrices from transformers (requires GPU + model weights)
+- span_detector.py: Cluster tokens into semantic spans using attention patterns
+- classifier.py: Map text spans to mathematical operations via regex patterns
+
+The core insight these utilities explore: transformer attention can reveal
+semantic units (e.g., "half the price of the cheese" as ONE span).
+
+Usage:
+    # These are optional utilities - import explicitly if needed
+    from mycelium.attention.extractor import extract_attention
+    from mycelium.attention.classifier import find_all_patterns, Operation
 """
 
-from .extractor import extract_attention, aggregate_attention
-from .span_detector import detect_spans
-from .classifier import classify_span, find_all_patterns, Operation
+# Minimal exports - Operation type is re-exported for convenience
+# but the canonical definition is in mycelium.types
+# Import explicitly from submodules for full access to utilities
+from mycelium.types import Operation
 
 __all__ = [
-    "extract_attention",
-    "aggregate_attention",
-    "detect_spans",
-    "classify_span",
-    "find_all_patterns",
     "Operation",
 ]
