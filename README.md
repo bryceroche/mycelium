@@ -1,50 +1,24 @@
 # Mycelium
 
-## Terminology
-- **Welford's** — Online algorithm for calculating running mean/variance
-- **DAG** — Directed Acyclic Graph (computation graph)
-- **Span** — Contiguous tokens forming a semantic unit (e.g., "half the eggs")
-- **SET** — Initial value assignment operation
-- **Attention sink** — Token that receives attention from many others (usually the subject/entity)
-- **Z-score** — Standard deviations from learned mean, used for classification
+Attention distillation for math word problem decomposition. Extract span structure from large models, run inference on small models.
 
-## Core Principle: Failures Are Valuable Data Points
-**Let the system fail.** This is how it learns.
-- Record every failure — it feeds the learning loop
-- Do not fallback to LLM reasoning
-- Accumulated failure patterns (not individual failures) refine thresholds
-- Success/failure stats drive classification decisions
+## The Insight
 
-The goal is NOT 100% accuracy on every run. The goal is collecting data that makes the system smarter over time. A misclassified span provides valuable signal for threshold adjustment.
+Transformer attention patterns reveal semantic spans. When processing "she sold half her eggs," attention weights show "half," "eggs," and "sold" attending to each other — the model recognizes this as a single operation (multiply by 0.5).
 
-## Attention-Based Decomposition
-**Decomposition is the crux.** Everything downstream of step-level intermediate representation (IR) is solved.
+We extract these patterns from Qwen 7B and distill them into MiniLM (22M params, 318x smaller).
 
-Transformer attention reveals semantic spans. The "Panama Hats" problem: "panama" = country, but "panama hats" = completely different meaning. We need the **longest span** that matches a semantic unit.
+## Attention Signals
 
-Standard embedding models learn lexical similarity, not operational similarity. They think "x + y" and "x * y" are similar because the tokens overlap. This is useless for math — we need to group by what computations do, not what they look like.
+Three signals extracted from attention matrices:
 
-Our solution extracts implicit structure from LLMs and distills it into a lightweight classifier. The key insight: transformer attention patterns reveal semantic spans. When processing "she sold half her eggs," the attention weights show "half," "eggs," and "sold" attending to each other. That cluster is the model recognizing a single operation: multiply eggs by 0.5.
+| Signal | What it measures | Use case |
+|--------|------------------|----------|
+| **Entropy** | Low = focused attention = important token | Find operators, key nouns |
+| **Received** | High = many tokens look back here | Find entities, anchors |
+| **Connectivity** | High = tokens form cohesive unit | Validate span boundaries |
 
-We extract attention matrices from a 7B model on 10K math problems and discovered two orthogonal signals. First, attention magnitude from numbers to verbs: state verbs like "has" produce ~0.05, action verbs like "sold" produce ~0.07. This distinguishes SET from transformations. Second, verb embeddings cluster semantically — "sold/spent/lost" cluster together (subtraction), "bought/received/earned" cluster together (addition).
-
-We use Welford's algorithm to learn these thresholds online rather than hardcoding. Classification becomes a z-score: how many standard deviations from each operation's learned mean?
-
-After classifying spans, we build a computation graph. Entity binding comes from attention sinks — all spans attend to the problem's subject, telling us they chain together. "Lay 16 eggs" → SET(16), "eats 3" → SUB(result, 3), execute in order.
-
-## Dual-Signal Architecture
-
-**Two orthogonal signals for span detection:**
-1. **Attention patterns** — Structural token relationships
-2. **Embeddings** — Semantic similarity for template matching
-
-**Hybrid approach (Path C):**
-- Training: Qwen 7B attention → learned span templates
-- Inference: Fine-tuned MiniLM (22M) → match templates
-
-Quality of 7B model at cost of 22M model (318x smaller).
-
-## Attention Distillation Results
+## Attention Distillation
 
 | Model | Params | Correlation with Qwen 7B |
 |-------|--------|--------------------------|
@@ -53,13 +27,29 @@ Quality of 7B model at cost of 22M model (318x smaller).
 | Qwen2-0.5B | 500M | 0.31 |
 | BERT-base | 110M | 0.30 |
 
-**Key insight**: Sentence-transformer training + attention distillation beats larger models. MiniLM-L6 fine-tuned achieves 94.5% correlation with Qwen 7B while being 318x smaller.
+**Key insight**: Architecture > size. Bidirectional encoders beat causal decoders. Same-family Qwen2-0.5B only achieves 0.31 correlation.
 
-Learned weights:
-- Heads 5 & 8 most important (0.108)
-- Layers 4 & 5 most important (0.18)
+Fine-tuning improved correlation from 0.58 → 0.945 (+63%).
+
+## Dual-Signal Architecture
+
+Two orthogonal signals for robust matching:
+
+1. **Attention** — Structural relationships (which tokens attend to each other)
+2. **Embeddings** — Semantic similarity (centroid distance)
+
+**Pipeline:**
+- **Training**: Qwen 7B → attention patterns + centroid embeddings → span templates
+- **Inference**: MiniLM 22M → match patterns + embeddings → classify spans
+
+Quality of 7B model at cost of 22M model.
+
+## Core Principle
+
+**Let the system fail.** Failures feed the learning loop. No LLM fallback. Accumulated failure patterns refine thresholds via Welford's algorithm.
 
 ## License
+
 MIT — Bryce Roche ([github.com/bryceroche/mycelium](https://github.com/bryceroche/mycelium))
 
 Built with [Claude Code](https://claude.ai/claude-code)
