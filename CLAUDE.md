@@ -50,25 +50,32 @@ This is a different kind of distillation:
 
 The insight is that large models learn span→operation mappings implicitly in their attention patterns. We make that explicit.
 
-### Prototype: Frozen Embeddings + Nearest Neighbor
-Skip training entirely for the prototype. Use frozen embeddings and nearest neighbor:
+### Key Discovery: Attention Encodes Operations
+
+The operation is encoded in **HOW tokens attend**, not just what tokens are present.
+
+**Two signals, no hardcoding:**
+1. **Attention signal**: num→verb attention distinguishes SET (low ~0.05) from actions (high ~0.07)
+2. **Embedding signal**: verb embedding similarity distinguishes ADD from SUB
 
 ```
-span text → frozen encoder (sentence-transformers) → nearest neighbor → operation_id
+ATTENTION: "she has 5" → 0.049 (SET)    vs "she sold 5" → 0.077 (action)
+EMBEDDING: "sold" → SUB cluster         vs "bought" → ADD cluster
 ```
 
-1. Embed ~10 prototype spans per operation
-2. At inference: embed query span, find nearest prototype
-3. If it works, validates the approach before any training
+**Results: 92% accuracy** with no keywords, no regex for operations.
 
-### Later: Tiny Encoder + Classifier
-Once prototype validates, optionally train for better accuracy:
+### What's Working
+- Attention distinguishes SET from action verbs
+- Verb embeddings distinguish ADD from SUB
+- Combined: 92% on span classification
+- 20k spans collected, 500 representatives for coverage
 
-```
-span text → tiny encoder (distilBERT, ~66M params) → operation_id
-```
-
-**Why this works:** We're not doing open-ended generation - we're doing **classification into a finite set of operations**. That's fundamentally easier than general LLM reasoning.
+### What Needs Work
+- MUL/DIV (percentages, fractions)
+- Multi-step with variable references
+- Span segmentation (still heuristic, should use attention)
+- Edge cases like "owns" (state verb with action-like attention)
 
 ### The Pipeline
 
