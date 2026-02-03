@@ -83,7 +83,9 @@ trained_model/*
 notes1.py
 docs/
 deploy/
-screen_shots/
+screen_shots/*
+!screen_shots/distillation_results.png
+!screen_shots/end_to_end_test.png
 assets/
 notebooks/
 
