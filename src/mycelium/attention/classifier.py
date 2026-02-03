@@ -179,29 +179,3 @@ def classify_span(span: Span) -> Operation:
         confidence=0.3,
         source_span=span,
     )
-
-
-def build_computation_graph(
-    spans: List[Span],
-    cross_span_attention: Optional[Dict[Tuple[int, int], float]] = None,
-) -> List[Operation]:
-    """Build computation graph from classified spans.
-
-    Args:
-        spans: Detected spans
-        cross_span_attention: Attention between spans (optional)
-
-    Returns:
-        List of Operations forming a computation graph
-    """
-    operations = []
-
-    for span in spans:
-        op = classify_span(span)
-        if op and op.op_type != "variable":
-            operations.append(op)
-
-    # TODO: Use cross_span_attention to link operations
-    # e.g., if span A attends to span B, A's operand might be B's result
-
-    return operations

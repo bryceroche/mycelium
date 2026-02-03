@@ -100,25 +100,14 @@ class SpanGraph:
     - Provides operation hints based on relationship context
     """
 
-    # Keyword patterns that hint at relationship types
-    # These are used as WEAK signals, not hard rules
-    INCREASE_PATTERNS = frozenset([
-        "more", "added", "gained", "found", "received", "bought", "collected",
-        "earned", "got", "picked", "additional", "extra", "plus"
-    ])
-    DECREASE_PATTERNS = frozenset([
-        "less", "fewer", "sold", "gave", "lost", "spent", "used", "ate",
-        "removed", "took", "subtracted", "minus"
-    ])
-    MULTIPLY_PATTERNS = frozenset([
-        "times", "twice", "double", "triple", "half", "third", "quarter"
-    ])
-    DIVIDE_PATTERNS = frozenset([
-        "split", "divided", "shared", "each", "per", "every"
-    ])
-    REFERENCE_PATTERNS = frozenset([
-        "than", "as", "of"
-    ])
+    # Import canonical patterns from verb_classifier (single source of truth)
+    from mycelium.verb_classifier import (
+        ADD_PATTERNS as INCREASE_PATTERNS,
+        SUB_PATTERNS as DECREASE_PATTERNS,
+        MUL_PATTERNS as MULTIPLY_PATTERNS,
+        DIV_PATTERNS as DIVIDE_PATTERNS,
+        REFERENCE_PATTERNS,
+    )
 
     def __init__(self):
         self.nodes: Dict[str, SpanNode] = {}  # text -> node
@@ -433,62 +422,32 @@ class SpanGraph:
     def classify_operation(self, span_text: str) -> Tuple[str, float]:
         """Classify a span's operation using graph context.
 
-        Combines:
-        1. Op hint from pattern matching (weak signal)
-        2. Relationship context (strong signal)
-        3. Entity state (is this SET or modification?)
+        NOTE: Hard-coded rules REMOVED - dual-signal approach (attention + embeddings)
+        will learn classification patterns. This method now just returns the op_hint
+        as a weak baseline signal. Real classification happens in the dual-signal pipeline.
 
-        Returns (operation, confidence).
-
-        Key insight for ADD vs SUB:
-        - "more than X" with reference → ADD relative to X
-        - "fewer than X" with reference → SUB relative to X
-        - "sold 5" modifying existing entity → SUB from current state
-        - "found 3 more" modifying existing → ADD to current state
+        Returns (operation, confidence) based on simple op_hint mapping.
         """
         context = self.get_classification_context(span_text)
         if not context:
-            return ("SET", 0.0)
+            return ("SET", 0.3)
 
         op_hint = context.get("op_hint", "UNKNOWN")
         hint_confidence = context.get("op_confidence", 0.0)
-        relation_type = context.get("relation_type", "DEFINES")
-        has_reference = len(context.get("references", [])) > 0
 
-        # Rule 1: First mention with value and NO reference → SET
-        if context.get("is_first_mention") and context.get("value") is not None:
-            # But if it has a reference, it's relative (ADD/SUB)
-            if not has_reference:
-                return ("SET", 0.9)
+        # Simple mapping from op_hint to operation (weak signal only)
+        hint_to_op = {
+            "INCREASE": "ADD",
+            "DECREASE": "SUB",
+            "MULTIPLY": "MUL",
+            "DIVIDE": "DIV",
+            "SET": "SET",
+        }
 
-        # Rule 2: Comparative with reference → ADD or SUB based on hint
-        if relation_type == "COMPARES" and has_reference:
-            if op_hint == "INCREASE":
-                return ("ADD", 0.85 + hint_confidence * 0.1)
-            elif op_hint == "DECREASE":
-                return ("SUB", 0.85 + hint_confidence * 0.1)
-            # Default for COMPARES without clear hint: assume ADD (more common)
-            return ("ADD", 0.5)
+        if op_hint in hint_to_op:
+            return (hint_to_op[op_hint], 0.5 + hint_confidence * 0.3)
 
-        # Rule 3: Use op_hint with relationship context
-        if op_hint == "INCREASE":
-            return ("ADD", 0.7 + hint_confidence * 0.2)
-        elif op_hint == "DECREASE":
-            return ("SUB", 0.7 + hint_confidence * 0.2)
-        elif op_hint == "MULTIPLY":
-            return ("MUL", 0.7 + hint_confidence * 0.2)
-        elif op_hint == "DIVIDE":
-            return ("DIV", 0.7 + hint_confidence * 0.2)
-        elif op_hint == "SET":
-            return ("SET", 0.6 + hint_confidence * 0.2)
-
-        # Rule 4: MODIFIES/REFERENCES relation with no hint → context-dependent
-        if relation_type in ("MODIFIES", "REFERENCES"):
-            # If modifying without clear hint, could be either
-            # Return low confidence to signal uncertainty
-            return ("SUB", 0.4)
-
-        # Default: SET for unknown
+        # Default: SET with low confidence
         return ("SET", 0.3)
 
     def embed_relationship(self, source_text: str, target_text: str,
