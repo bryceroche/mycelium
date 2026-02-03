@@ -43,6 +43,10 @@ class PipelineResult:
 class SimplePipeline:
     """Simple KNN + Linear Chain pipeline."""
 
+    # Common pronouns that should trigger entity resolution
+    PRONOUNS = {"she", "he", "they", "it", "her", "him", "them"}
+    ENTITY_RESOLUTION_THRESHOLD = 0.7  # Cosine similarity threshold for resolution
+
     def __init__(self, use_db: bool = True):
         self.use_db = use_db
         self._segmenter = None
@@ -128,6 +132,31 @@ class SimplePipeline:
                 pass
 
         return embedding
+
+    def _resolve_entity(self, text: str, known_entities: Dict[str, np.ndarray]) -> Optional[str]:
+        """Resolve an entity (especially pronouns) to a known entity using embedding similarity.
+
+        Returns the matching entity name if similarity > threshold, else None.
+        """
+        if not known_entities:
+            return None
+
+        # Get embedding for the candidate entity
+        entity_emb = self._get_embedding(text)
+
+        # Compare to known entities
+        best_match = None
+        best_sim = 0.0
+        for entity_name, entity_emb_stored in known_entities.items():
+            sim = float(np.dot(entity_emb, entity_emb_stored))
+            if sim > best_sim:
+                best_sim = sim
+                best_match = entity_name
+
+        # Return match if above threshold
+        if best_sim >= self.ENTITY_RESOLUTION_THRESHOLD:
+            return best_match
+        return None
 
     def _knn_lookup(self, embedding: np.ndarray, k: int = 5) -> List[Tuple[str, str, float]]:
         """Find k nearest labeled spans by cosine similarity.
@@ -237,6 +266,7 @@ class SimplePipeline:
         # 2. Process each clause
         steps = []
         state: Dict[str, float] = {}
+        entity_embeddings: Dict[str, np.ndarray] = {}  # Track entity embeddings for resolution
         main_entity = None
 
         for clause in clauses:
@@ -263,6 +293,16 @@ class SimplePipeline:
             else:
                 entity = "X"
 
+            # 5. Entity resolution: check if this is a pronoun that should resolve to existing entity
+            if entity.lower() in self.PRONOUNS and entity_embeddings:
+                resolved = self._resolve_entity(text, entity_embeddings)
+                if resolved:
+                    entity = resolved
+
+            # Store embedding for new entities (not pronouns)
+            if entity.lower() not in self.PRONOUNS and entity not in entity_embeddings:
+                entity_embeddings[entity] = self._get_embedding(text)
+
             if main_entity is None:
                 main_entity = entity
 
@@ -273,7 +313,7 @@ class SimplePipeline:
                     # Relative to reference
                     pass  # Will handle in execution
 
-            # 5. Create operation
+            # 6. Create operation
             op = Operation(
                 op_type=op_type,
                 value=numbers[0] if numbers else 0,
@@ -283,7 +323,7 @@ class SimplePipeline:
             )
             steps.append(op)
 
-            # 6. Execute operation (linear chain)
+            # 7. Execute operation (linear chain)
             if entity not in state:
                 state[entity] = 0
 
