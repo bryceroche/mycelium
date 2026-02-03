@@ -31,6 +31,8 @@ Three signals extracted from attention matrices:
 
 Fine-tuning improved correlation from 0.58 → 0.945 (+63%).
 
+![Distillation Results](screen_shots/distillation_results.png)
+
 ## Dual-Signal Architecture
 
 Two orthogonal signals for robust matching:
@@ -43,6 +45,12 @@ Two orthogonal signals for robust matching:
 - **Inference**: MiniLM 22M → match patterns + embeddings → classify spans
 
 Quality of 7B model at cost of 22M model.
+
+## Results
+
+End-to-end test on held-out samples shows **96.8% average correlation** — even better than training (94.5%).
+
+![End to End Test](screen_shots/end_to_end_test.png)
 
 ## Core Principle
 
