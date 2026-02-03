@@ -83,21 +83,39 @@ class AttentionProfile:
             self.main_cluster_size.update(features["main_cluster_size"])
 
     def score(self, features: Dict[str, float]) -> float:
-        """Score how well features match this profile (log probability)."""
-        score = 0.0
-        count = 0
+        """Score how well features match this profile using z-score distance.
 
-        if "num_to_verb" in features and self.num_to_verb_attn.count > 5:
-            score += math.log(self.num_to_verb_attn.probability(features["num_to_verb"]) + 1e-10)
-            count += 1
-        if "self_attn" in features and self.self_attn.count > 5:
-            score += math.log(self.self_attn.probability(features["self_attn"]) + 1e-10)
-            count += 1
-        if "first_token_attn" in features and self.first_token_attn.count > 5:
-            score += math.log(self.first_token_attn.probability(features["first_token_attn"]) + 1e-10)
-            count += 1
+        Lower score = better match (closer to learned distribution mean).
+        Uses weighted combination of z-scores from different features.
+        """
+        z_scores = []
+        weights = []
 
-        return score / max(count, 1)
+        # num_to_verb is our primary signal (weight=2)
+        if "num_to_verb" in features and self.num_to_verb_attn.count > 3:
+            z = abs(self.num_to_verb_attn.zscore(features["num_to_verb"]))
+            z_scores.append(z)
+            weights.append(2.0)
+
+        # self_attn is secondary signal (weight=1)
+        if "self_attn" in features and self.self_attn.count > 3:
+            z = abs(self.self_attn.zscore(features["self_attn"]))
+            z_scores.append(z)
+            weights.append(1.0)
+
+        # first_token_attn is tertiary (weight=0.5)
+        if "first_token_attn" in features and self.first_token_attn.count > 3:
+            z = abs(self.first_token_attn.zscore(features["first_token_attn"]))
+            z_scores.append(z)
+            weights.append(0.5)
+
+        if not z_scores:
+            return float('inf')
+
+        # Weighted average of z-scores (lower = better match)
+        weighted_sum = sum(z * w for z, w in zip(z_scores, weights))
+        total_weight = sum(weights)
+        return weighted_sum / total_weight
 
 
 class AttentionLearner:
@@ -199,13 +217,19 @@ class AttentionLearner:
         for op, profile in self.profiles.items():
             scores[op] = profile.score(features)
 
-        # Return best match
-        best_op = max(scores, key=scores.get)
+        # Return best match (lowest z-score distance = best match)
+        best_op = min(scores, key=scores.get)
 
-        # Confidence = how much better than second best
-        sorted_scores = sorted(scores.values(), reverse=True)
+        # Confidence = how much worse second best is (larger gap = more confident)
+        sorted_scores = sorted(scores.values())  # ascending (best first)
         if len(sorted_scores) > 1:
-            confidence = sorted_scores[0] - sorted_scores[1]
+            # Confidence: ratio of second-best to best (>1 means clear winner)
+            best_score = sorted_scores[0]
+            second_score = sorted_scores[1]
+            if best_score > 0.01:
+                confidence = second_score / best_score
+            else:
+                confidence = second_score - best_score + 1.0
         else:
             confidence = 1.0
 
