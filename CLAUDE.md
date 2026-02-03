@@ -81,7 +81,7 @@ We extract these patterns on 10K math problems to build a library of span templa
 | Qwen2-0.5B | 500M | 0.31 |
 | BERT-base | 110M | 0.30 |
 
-Key insight: Architecture > size. Same-family Qwen2-0.5B only achieves 0.31 correlation.
+**Key insight**: MiniLM used attention distillation from a larger teacher. The training objective was literally: `loss = MSE(student_attention, teacher_attention)`
 
 ## Dual-Signal Architecture
 

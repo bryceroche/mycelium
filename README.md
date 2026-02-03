@@ -27,7 +27,7 @@ Three signals extracted from attention matrices:
 | Qwen2-0.5B | 500M | 0.31 |
 | BERT-base | 110M | 0.30 |
 
-**Key insight**: Architecture > size. Bidirectional encoders beat causal decoders. Same-family Qwen2-0.5B only achieves 0.31 correlation.
+**Key insight**: MiniLM used attention distillation from a larger teacher. The training objective was literally: loss = MSE(student_attention, teacher_attention)
 
 Fine-tuning improved correlation from 0.58 → 0.945 (+63%).
 
