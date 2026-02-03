@@ -17,11 +17,8 @@ import numpy as np
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 
-# Database URL from environment
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://mycelium:MyceliumDB2024!@mycelium-db.co1sisksw74e.us-east-1.rds.amazonaws.com:5432/mycelium"
-)
+# Database URL from environment (required)
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
 @dataclass
