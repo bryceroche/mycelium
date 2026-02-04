@@ -20,7 +20,6 @@ The solver:
 
 import os
 import json
-import math
 import numpy as np
 from pathlib import Path
 from dataclasses import dataclass
