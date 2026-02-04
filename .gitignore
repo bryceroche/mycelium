@@ -38,8 +38,7 @@ ideas.md
 .env.local
 
 # Results and data
-results/*
-!results/paper.md
+results/
 data/
 *.db
 *.sqlite
