@@ -21,14 +21,6 @@ from typing import List, Dict, Optional, Tuple, Any
 from dataclasses import dataclass
 from pathlib import Path
 
-# Import signal mapper for predicting Qwen attention signals from MiniLM embeddings
-try:
-    from mycelium.signal_mapper import predict_qwen_signals
-    SIGNAL_MAPPER_AVAILABLE = True
-except ImportError:
-    SIGNAL_MAPPER_AVAILABLE = False
-    predict_qwen_signals = None
-
 from mycelium.dual_signal_templates import (
     SpanDetector,
     TemplateStore,
@@ -42,8 +34,11 @@ from mycelium.attention_graph import AttentionGraphBuilder, SpanGraph, Span, Gra
 # Goes up to mycelium/ project root, then into models/
 DEFAULT_MODEL_PATH = Path(__file__).parent.parent.parent / "models" / "minilm_attention_finetuned.pt"
 
-# Default templates path - deduplicated templates (137 specialized)
-DEFAULT_TEMPLATES_PATH = Path(__file__).parent.parent.parent / "deduplicated_templates.json"
+# Default templates path - prefer Qwen-generated, fall back to deduplicated
+_PROJECT_ROOT = Path(__file__).parent.parent.parent
+QWEN_TEMPLATES_PATH = _PROJECT_ROOT / "qwen_templates.json"
+DEDUP_TEMPLATES_PATH = _PROJECT_ROOT / "deduplicated_templates.json"
+DEFAULT_TEMPLATES_PATH = QWEN_TEMPLATES_PATH if QWEN_TEMPLATES_PATH.exists() else DEDUP_TEMPLATES_PATH
 
 
 # ================================================================
@@ -279,277 +274,15 @@ class DualSignalPipeline:
 
         return None
 
-    def _process_sentence_first(self, text: str) -> PipelineOutput:
-        """Process using sentence-first segmentation + verb classifier.
-
-        This approach works better for multi-step problems:
-        1. Split by sentence boundaries (periods, exclamations)
-        2. Filter out questions (how many, what, etc.)
-        3. Classify each sentence using verb patterns (high confidence)
-        4. Fall back to embedding similarity when no verb match
-        """
-        # Split into sentences, filter questions
-        sentences = self._segment_sentences(text)
-
-        matched_operations = []
-
-        for sent in sentences:
-            match_result = self._classify_sentence(sent)
-            if match_result:
-                matched_operations.append(match_result)
-
-        return PipelineOutput(
-            problem_text=text,
-            matched_operations=matched_operations,
-            spans_detected=len(sentences),
-            templates_available=len(self.store.templates),
-        )
-
-    def _segment_sentences(self, text: str) -> List[str]:
-        """Segment text into operational sentences.
-
-        Splits on sentence boundaries AND compound clauses:
-        - Sentence endings: . ! ?
-        - Compound clauses: and, then (to handle "She ate 3 and baked 4")
-
-        Filters out:
-        - Questions (how many, what, etc.)
-        - Empty strings
-        """
-        # Split on sentence-ending punctuation AND compound conjunctions
-        # This handles "She ate 3 and baked 4" as two operations
-        parts = re.split(r'[.!?]|\band\b|\bthen\b', text)
-
-        sentences = []
-        for part in parts:
-            part = part.strip()
-            if not part:
-                continue
-            # Skip questions
-            part_lower = part.lower()
-            if any(q in part_lower for q in ['how many', 'how much', 'what is', 'what are', 'what was']):
-                continue
-            sentences.append(part)
-
-        return sentences
-
-    def _classify_sentence(self, sentence: str) -> Optional[MatchedOperation]:
-        """Classify a single sentence using cross-entity attention + dual-signal template matching.
-
-        Uses cross-entity attention to discriminate operations:
-        - SET: ~0.0 cross-entity attention (single entity, self-contained)
-        - ADD: ~0.04 (receiving, but mainly one entity focus)
-        - SUB/MUL: ~0.06 (transfer/reference to another entity)
-
-        Per CLAUDE.md: route by what operations DO, not what they SOUND LIKE.
-        AVOID verb classification - use structural attention patterns instead.
-        """
-        # Use dual-signal template matching with cross-entity attention
-        if self.store.templates:
-            # Genericize sentence before embedding to match template space
-            # Templates are embedded from patterns like "[NAME] sold [N] [ITEM]"
-            # So queries must also be genericized for proper matching
-            genericized, _ = normalize_span(sentence)
-
-            # Embed the genericized version (structural, not lexical)
-            embedding, attention, tokens = self.detector.extract_features(genericized)
-
-            # Compute cross-entity attention for operation discrimination
-            cross_entity_attention = self.detector.compute_cross_entity_attention(
-                sentence, attention, tokens
-            )
-
-            # Use signal mapper to predict Qwen attention signals from MiniLM embedding
-            if SIGNAL_MAPPER_AVAILABLE and predict_qwen_signals is not None:
-                try:
-                    entropy, received, connection = predict_qwen_signals(embedding)
-                    attention_flat = np.array(
-                        [entropy, received, connection] + [0.0] * 97,
-                        dtype=np.float32
-                    )
-                except Exception:
-                    attention_flat = attention.flatten() if attention.ndim > 1 else attention
-            else:
-                attention_flat = attention.flatten() if attention.ndim > 1 else attention
-
-            # Use cross-entity attention for operation discrimination
-            # This captures structural patterns (entity relationships) not vocabulary
-            result = self.store.find_best_match_with_cross_entity(
-                embedding, attention_flat, cross_entity_attention
-            )
-            if result:
-                template, combined_score, emb_sim, att_sim = result
-                confidence = self._compute_confidence(template, combined_score)
-
-                return MatchedOperation(
-                    span_text=sentence,
-                    operation_type=template.operation_type,
-                    template_id=template.template_id,
-                    combined_score=combined_score,
-                    embedding_similarity=emb_sim,
-                    attention_similarity=att_sim,
-                    confidence=confidence,
-                    dsl_expr=getattr(template, 'dsl_expr', 'value'),
-                )
-
-        # Fallback: if no templates or no match, default to SET for sentences with numbers
-        if re.search(r'\d+', sentence):
-            return MatchedOperation(
-                span_text=sentence,
-                operation_type=OperationType.SET,
-                template_id="SET_default",
-                combined_score=0.5,
-                embedding_similarity=0.0,
-                attention_similarity=0.0,
-                confidence=0.5,
-                dsl_expr="value",
-            )
-
-        # No match found
-        return None
-
-    def _get_high_confidence_verb_hint(self, sentence: str) -> Optional[OperationType]:
-        """Get operation hint ONLY for very high-confidence verb patterns.
-
-        This is more conservative than full verb classification:
-        - Only triggers on unambiguous consumption/transfer verbs
-        - Excludes ambiguous verbs like "takes" (could mean requires OR removes)
-        - Excludes verbs that often appear in SET contexts
-
-        Returns:
-            OperationType hint for template filtering, or None to not filter
-        """
-        sentence_lower = sentence.lower()
-
-        # Check for price patterns first - $X per/each indicates MUL
-        if re.search(r'\$\d+', sentence_lower) and ('per' in sentence_lower or 'each' in sentence_lower):
-            return OperationType.MUL
-
-        # VERY high-confidence SUB verbs (consumption/giving away)
-        # These almost always mean subtraction in word problems
-        unambiguous_sub = ['ate', 'eats', 'eat', 'gave', 'gives', 'give',
-                          'drank', 'drinks', 'drink', 'threw', 'throws',
-                          'baked', 'bakes', 'bake']  # baking uses/consumes ingredients
-        for verb in unambiguous_sub:
-            if f' {verb} ' in f' {sentence_lower} ' or sentence_lower.startswith(verb + ' '):
-                return OperationType.SUB
-
-        # No high-confidence hint - let template matching decide
-        return None
-
-    def _infer_operation_type_from_verb(self, sentence: str) -> Optional[OperationType]:
-        """Infer operation type from verb patterns for template filtering.
-
-        This is a key insight from CLAUDE.md: route by what operations DO,
-        not what they SOUND LIKE. Verb patterns provide semantic grounding
-        that embedding similarity alone may miss.
-
-        Returns:
-            OperationType to filter templates by, or None for no filtering
-        """
-        sentence_lower = sentence.lower()
-
-        # High-confidence verb patterns (include all tenses: past, present, present 3rd person)
-        sub_verbs = [
-            'sold', 'sells', 'sell',           # sell
-            'gave', 'gives', 'give',           # give
-            'spent', 'spends', 'spend',        # spend
-            'lost', 'loses', 'lose',           # lose
-            'ate', 'eats', 'eat',              # eat
-            'used', 'uses', 'use',             # use
-            'took', 'takes', 'take',           # take
-            'baked', 'bakes', 'bake',          # bake
-            'donated', 'donates', 'donate',    # donate
-            'lent', 'lends', 'lend',           # lend
-            'paid', 'pays', 'pay',             # pay
-            'threw', 'throws', 'throw',        # throw
-            'drank', 'drinks', 'drink',        # drink
-        ]
-        add_verbs = [
-            'found', 'finds', 'find',          # find
-            'received', 'receives', 'receive', # receive
-            'earned', 'earns', 'earn',         # earn
-            'won', 'wins', 'win',              # win
-            'bought', 'buys', 'buy',           # buy
-            'got', 'gets', 'get',              # get
-            'collected', 'collects', 'collect', # collect
-            'picked', 'picks', 'pick',         # pick
-            'gathered', 'gathers', 'gather',   # gather
-            'gained', 'gains', 'gain',         # gain
-            'saved', 'saves', 'save',          # save
-        ]
-        set_verbs = ['has', 'have', 'had', 'starts', 'started', 'owns', 'contains',
-                     'costs', 'is', 'was', 'are', 'were', 'lay', 'lays', 'laid']
-        mul_keywords = ['times', 'doubled', 'tripled', 'multiplied']
-        div_keywords = ['split', 'divided', 'shared equally', 'half of']
-
-        # Check for price patterns first - these indicate MUL even with sell/give verbs
-        # Pattern: $X per/each or "for $X"
-        if re.search(r'\$\d+', sentence_lower) and ('per' in sentence_lower or 'each' in sentence_lower):
-            return OperationType.MUL
-
-        # Check multiplication keywords (non-price)
-        for kw in mul_keywords:
-            if kw in sentence_lower:
-                return OperationType.MUL
-
-        # Check subtraction verbs
-        for verb in sub_verbs:
-            if verb in sentence_lower:
-                return OperationType.SUB
-
-        # Check addition verbs
-        for verb in add_verbs:
-            if verb in sentence_lower:
-                return OperationType.ADD
-
-        # Check division
-        for kw in div_keywords:
-            if kw in sentence_lower:
-                return OperationType.DIV
-
-        # SET verbs - initial state declarations
-        for verb in set_verbs:
-            if verb in sentence_lower:
-                return OperationType.SET
-
-        # No strong verb signal - let embedding matching decide
-        return None
-
-    def _infer_operation_from_patterns(self, sentence: str) -> Optional[tuple]:
-        """Infer operation from sentence patterns as fallback.
-
-        Only used when no templates are available.
-
-        Returns:
-            Tuple of (operation_label, confidence, dsl_expr) or None
-        """
-        sentence_lower = sentence.lower()
-
-        # Pattern-based operation inference
-        sub_verbs = ['sold', 'gave', 'spent', 'lost', 'ate', 'used', 'took', 'baked']
-        add_verbs = ['found', 'received', 'earned', 'won', 'bought', 'got', 'collected']
-        set_verbs = ['has', 'have', 'had', 'starts', 'started', 'owns', 'contains']
-        mul_keywords = ['times', 'each', 'per', 'doubled', 'tripled']
-        div_keywords = ['split', 'divided', 'shared equally', 'half of']
-
-        for verb in sub_verbs:
-            if verb in sentence_lower:
-                return ("SUB", 0.7, "entity - value")
-        for verb in add_verbs:
-            if verb in sentence_lower:
-                return ("ADD", 0.7, "entity + value")
-        for kw in mul_keywords:
-            if kw in sentence_lower:
-                return ("MUL", 0.7, "entity * value")
-        for kw in div_keywords:
-            if kw in sentence_lower:
-                return ("DIV", 0.7, "entity / value")
-        for verb in set_verbs:
-            if verb in sentence_lower:
-                return ("SET", 0.6, "value")
-
-        return None
+    # ================================================================
+    # REMOVED: All hardcoded verb lists and pattern-based classification
+    # Per CLAUDE.md: "AVOID Verb Classification Like The Plague"
+    #
+    # Operation type comes ONLY from template matching:
+    # - Templates were classified by Qwen at training time
+    # - At inference, raw span embedding → cosine match → template → operation + DSL
+    # - No verb lists, no pattern matching, no heuristics
+    # ================================================================
 
     def _compute_confidence(
         self,
