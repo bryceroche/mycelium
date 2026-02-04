@@ -17,10 +17,16 @@ def extract_answer(answer_str: str) -> float:
     except ValueError:
         return None
 
-def benchmark_gsm8k(num_problems: int = 1000, show_progress: int = 100):
+def benchmark_gsm8k(num_problems: int = 1000, show_progress: int = 100, seed: int = None):
     """Benchmark the dual signal solver on GSM8K."""
+    import random
+    if seed is None:
+        seed = random.randint(0, 100000)
+    random.seed(seed)
+
     print("=" * 70)
     print(f"GSM8K BENCHMARK - DUAL SIGNAL SOLVER ({num_problems} problems)")
+    print(f"Random seed: {seed}")
     print("=" * 70)
 
     print("\n[1] Loading GSM8K test set...")
@@ -42,7 +48,12 @@ def benchmark_gsm8k(num_problems: int = 1000, show_progress: int = 100):
     total = 0
     errors = 0
 
-    for i in range(min(num_problems, len(ds))):
+    # Random sample of problem indices
+    all_indices = list(range(len(ds)))
+    random.shuffle(all_indices)
+    sample_indices = all_indices[:num_problems]
+
+    for idx, i in enumerate(sample_indices):
         problem = ds[i]
         question = problem['question']
         expected = extract_answer(problem['answer'])
@@ -72,9 +83,9 @@ def benchmark_gsm8k(num_problems: int = 1000, show_progress: int = 100):
             if errors <= 5:
                 print(f"    ERROR at {i+1}: {str(e)[:50]}")
 
-        if (i + 1) % show_progress == 0:
+        if (idx + 1) % show_progress == 0:
             pct = 100 * correct / total if total > 0 else 0
-            print(f"    Progress: {i+1}/{num_problems} | Accuracy: {correct}/{total} = {pct:.1f}%")
+            print(f"    Progress: {idx+1}/{num_problems} | Accuracy: {correct}/{total} = {pct:.1f}%")
 
     accuracy = 100 * correct / total if total > 0 else 0
     print("\n" + "=" * 70)
@@ -89,5 +100,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--num-problems", type=int, default=1000)
     parser.add_argument("--progress", type=int, default=100)
+    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility")
     args = parser.parse_args()
-    benchmark_gsm8k(args.num_problems, args.progress)
+    benchmark_gsm8k(args.num_problems, args.progress, args.seed)
