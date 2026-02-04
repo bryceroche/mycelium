@@ -45,6 +45,7 @@ class MatchedOperation:
     embedding_similarity: float
     attention_similarity: float
     confidence: float  # Welford-adjusted confidence
+    dsl_expr: str = "value"  # Custom DSL expression from matched template
 
 
 @dataclass
@@ -198,6 +199,16 @@ class DualSignalPipeline:
             op_label, confidence = verb_result
             op_type = self.OP_TYPE_MAP.get(op_label, OperationType.UNKNOWN)
 
+            # Map operation to default DSL expression
+            op_to_dsl = {
+                "SET": "value",
+                "ADD": "entity + value",
+                "SUB": "entity - value",
+                "MUL": "entity * value",
+                "DIV": "entity / value",
+            }
+            dsl_expr = op_to_dsl.get(op_label, "value")
+
             return MatchedOperation(
                 span_text=sentence,
                 operation_type=op_type,
@@ -206,6 +217,7 @@ class DualSignalPipeline:
                 embedding_similarity=0.0,  # Not used for verb match
                 attention_similarity=0.0,  # Not used for verb match
                 confidence=confidence,
+                dsl_expr=dsl_expr,
             )
 
         # Fall back to embedding similarity
@@ -226,6 +238,7 @@ class DualSignalPipeline:
                     embedding_similarity=emb_sim,
                     attention_similarity=att_sim,
                     confidence=confidence,
+                    dsl_expr=getattr(template, 'dsl_expr', 'value'),
                 )
 
         # No match found

@@ -517,6 +517,40 @@ def get_template_count() -> int:
     return count
 
 
+def get_all_templates() -> List[SpanTemplateRow]:
+    """Get all span templates from database."""
+    conn = _get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT template_id, pattern, centroid, operation, dsl_type,
+               examples, count, welford_count, welford_mean, welford_m2,
+               created_at, updated_at
+        FROM span_templates
+        ORDER BY count DESC
+    """)
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    templates = []
+    for r in rows:
+        templates.append(SpanTemplateRow(
+            template_id=r[0],
+            pattern=r[1],
+            centroid=np.frombuffer(r[2], dtype=np.float32) if r[2] else None,
+            operation=r[3],
+            dsl_type=r[4] or "simple",
+            examples=json.loads(r[5]) if r[5] else [],
+            count=r[6] or 0,
+            welford_count=r[7] or 0,
+            welford_mean=r[8] or 0.0,
+            welford_m2=r[9] or 0.0,
+            created_at=r[10],
+            updated_at=r[11],
+        ))
+    return templates
+
+
 if __name__ == "__main__":
     # Test connection and initialize schema
     print(f"Connecting to: {DATABASE_URL.split('@')[1] if '@' in DATABASE_URL else DATABASE_URL}")

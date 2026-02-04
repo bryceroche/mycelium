@@ -53,6 +53,8 @@ class DualSignalTemplate:
     Attributes:
         template_id: Unique identifier for this template
         operation_type: The arithmetic operation this template represents
+        pattern: Normalized pattern string like "[NAME] sold [N] [ITEM]"
+        dsl_expr: Custom DSL expression like "entity - value"
         embedding_centroid: Mean embedding vector of matched spans
         attention_signature: Characteristic attention connectivity pattern
         span_examples: Example spans that match this template
@@ -64,6 +66,8 @@ class DualSignalTemplate:
     operation_type: OperationType
     embedding_centroid: np.ndarray
     attention_signature: np.ndarray  # Flattened or aggregated attention pattern
+    pattern: str = ""  # Normalized pattern: "[NAME] sold [N] [ITEM]"
+    dsl_expr: str = "value"  # Custom DSL expression: "entity - value"
     span_examples: List[str] = field(default_factory=list)
     embedding_welford: WelfordStats = field(default_factory=WelfordStats)
     attention_welford: WelfordStats = field(default_factory=WelfordStats)
