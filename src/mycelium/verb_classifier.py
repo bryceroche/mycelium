@@ -182,6 +182,18 @@ def classify_by_verb(text: str) -> Optional[Tuple[str, float]]:
                 # The pronoun is receiving, so it's ADD not SUB
                 return ("ADD", 0.85)
 
+    # Special case: "sells for $X per" - price calculation = MUL
+    # "She sells eggs for $2 per egg" → revenue = quantity * price = MUL
+    if verb in ("sells", "sell", "sold", "selling"):
+        text_lower = text.lower()
+        # Check for price patterns: "for $X per", "at $X each", "for $X a"
+        if re.search(r'for\s+\$?\d+.*\bper\b', text_lower):
+            return ("MUL", 0.85)
+        if re.search(r'at\s+\$?\d+.*\b(each|per)\b', text_lower):
+            return ("MUL", 0.85)
+        if re.search(r'for\s+\$?\d+\s+(a|an|each)\b', text_lower):
+            return ("MUL", 0.85)
+
     # Assign confidence based on operation type
     # SUB/ADD verbs are highly specific to their operations
     # SET verbs like "has" can be more ambiguous
