@@ -47,9 +47,17 @@ def extract_spans(problem_text: str) -> List[str]:
     """Extract operational spans from a problem.
 
     Splits on sentence boundaries. Filters out questions.
+    Keeps spans with numbers OR operational keywords (twice, half, etc).
     """
-    # Split on sentence-ending punctuation
+    # Split on sentence-ending punctuation (but not abbreviations like Dr.)
     parts = re.split(r'(?<=[.!?])\s+', problem_text)
+
+    # Operational keywords that don't require explicit numbers
+    OP_KEYWORDS = [
+        'twice', 'thrice', 'double', 'triple', 'half', 'quarter',
+        'more than', 'less than', 'fewer than', 'times as',
+        'each', 'every', 'per',
+    ]
 
     spans = []
     for part in parts:
@@ -65,8 +73,11 @@ def extract_spans(problem_text: str) -> List[str]:
         ]):
             continue
 
-        # Must have a number to be operational
-        if re.search(r'\d+', part):
+        # Keep if has a number OR operational keywords
+        has_number = bool(re.search(r'\d+', part))
+        has_op_keyword = any(kw in part_lower for kw in OP_KEYWORDS)
+
+        if has_number or has_op_keyword:
             spans.append(part)
 
     return spans
