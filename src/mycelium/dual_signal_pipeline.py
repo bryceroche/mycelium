@@ -230,13 +230,10 @@ class DualSignalPipeline:
                 # No signal mapper - use raw MiniLM attention
                 attention_flat = attention.flatten() if attention.ndim > 1 else attention
 
-            # Use verb hints for high-confidence patterns, but don't filter out other matches
-            # This helps distinguish "eats" (SUB) from "has" (SET) despite similar embeddings
-            verb_hint = self._get_high_confidence_verb_hint(sentence)
-
+            # Pure dual-signal matching - no verb heuristics
             result = self.store.find_best_match(
                 embedding, attention_flat,
-                operation_filter=verb_hint  # Only filter when very confident
+                operation_filter=None  # Let embedding+attention decide
             )
             if result:
                 template, combined_score, emb_sim, att_sim = result
