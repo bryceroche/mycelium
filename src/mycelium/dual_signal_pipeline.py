@@ -165,12 +165,17 @@ class DualSignalPipeline:
     def _segment_sentences(self, text: str) -> List[str]:
         """Segment text into operational sentences.
 
-        Splits on sentence boundaries and filters out:
+        Splits on sentence boundaries AND compound clauses:
+        - Sentence endings: . ! ?
+        - Compound clauses: and, then (to handle "She ate 3 and baked 4")
+
+        Filters out:
         - Questions (how many, what, etc.)
         - Empty strings
         """
-        # Split on sentence-ending punctuation
-        parts = re.split(r'[.!?]', text)
+        # Split on sentence-ending punctuation AND compound conjunctions
+        # This handles "She ate 3 and baked 4" as two operations
+        parts = re.split(r'[.!?]|\band\b|\bthen\b', text)
 
         sentences = []
         for part in parts:
