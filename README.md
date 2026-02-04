@@ -45,7 +45,7 @@ We have 17k spans with BOTH MiniLM embeddings AND Qwen attention signals. This l
 - Extract MiniLM embeddings on same 17k spans
 - Train mapping: predict Qwen signals from MiniLM features ~95% correlation
 
-![Distillation Results](tests/distillation_results.png)
+![Distillation Results](scripts/tests/distillation_results.png)
 
 ## Cross-Attention Between Spans
 
@@ -86,7 +86,7 @@ GSM8K problems mention many entities (apples, cookies, cheese). We use `{entity}
 
 End-to-end test on held-out samples shows **96.8% average correlation** — even better than training (94.5%).
 
-![End to End Test](tests/end_to_end_test.png)
+![End to End Test](scripts/tests/end_to_end_test.png)
 
 
 ## License
