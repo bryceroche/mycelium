@@ -48,8 +48,9 @@ from mycelium.db import get_all_templates, get_template_count
 
 # Default paths
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-TEMPLATES_JSON = PROJECT_ROOT / "operation_templates.json"
+DUAL_SIGNAL_TEMPLATES = PROJECT_ROOT / "dual_signal_templates.json"  # Best: embeddings + attention
 TEMPLATES_EXPORT = PROJECT_ROOT / "span_templates_export.json"  # Fine-grained templates
+TEMPLATES_JSON = PROJECT_ROOT / "operation_templates.json"  # Coarse templates
 MODEL_PATH = PROJECT_ROOT / "models" / "minilm_attention_finetuned.pt"
 
 
@@ -135,31 +136,40 @@ class DualSignalSolver:
                     attention_weight=self.attention_weight,
                 )
 
-            # Load templates: prefer database > export JSON > coarse JSON > bootstrap
+            # Load templates: prefer dual-signal > database > export JSON > coarse JSON > bootstrap
             if not self.mock_model:
                 templates_loaded = False
 
-                # 1. Try database first (has fine-grained templates)
-                try:
-                    db_count = get_template_count()
-                    if db_count > 0:
-                        self._load_templates_from_db()
+                # 1. Try dual-signal templates first (best: embeddings + attention)
+                if not templates_loaded and os.path.exists(DUAL_SIGNAL_TEMPLATES):
+                    self.templates_path = str(DUAL_SIGNAL_TEMPLATES)
+                    count = self._load_templates_from_json()
+                    if count > 0:
                         templates_loaded = True
-                except Exception as e:
-                    print(f"Database not available ({e})")
+                        print(f"Using dual-signal templates with attention signatures")
 
-                # 2. Try exported fine-grained templates (span_templates_export.json)
+                # 2. Try database (has fine-grained templates)
+                if not templates_loaded:
+                    try:
+                        db_count = get_template_count()
+                        if db_count > 0:
+                            self._load_templates_from_db()
+                            templates_loaded = True
+                    except Exception as e:
+                        print(f"Database not available ({e})")
+
+                # 3. Try exported fine-grained templates (span_templates_export.json)
                 if not templates_loaded and os.path.exists(TEMPLATES_EXPORT):
-                    self.templates_path = TEMPLATES_EXPORT
+                    self.templates_path = str(TEMPLATES_EXPORT)
                     self._load_templates_from_json()
                     templates_loaded = True
 
-                # 3. Try coarse operation templates (operation_templates.json)
+                # 4. Try coarse operation templates (operation_templates.json)
                 if not templates_loaded and os.path.exists(self.templates_path):
                     self._load_templates_from_json()
                     templates_loaded = True
 
-                # 4. Bootstrap with examples as last resort
+                # 5. Bootstrap with examples as last resort
                 if not templates_loaded:
                     print("No templates found, bootstrapping with examples...")
                     self._pipeline.bootstrap_from_examples()
@@ -562,31 +572,82 @@ def _create_mock_pipeline(
                 self.store.add_template(template)
 
         def process_problem(self, text: str) -> PipelineOutput:
-            """Process problem using verb classifier (mock mode).
+            """Process problem using pattern-based template matching (mock mode).
 
-            Uses the real verb classifier for operation classification,
-            just skips the GPU-based embedding extraction.
+            Uses pattern matching for operation classification,
+            skipping GPU-based embedding extraction.
             """
             import re
-            from mycelium.verb_classifier import classify_by_verb
 
-            # Map operation labels to DSL expressions
-            OP_TO_DSL = {
-                "SET": "value",
-                "ADD": "entity + value",
-                "SUB": "entity - value",
-                "MUL": "entity * value",
-                "DIV": "entity / value",
-            }
+            # Pattern-based operation inference (no verb classifier)
+            def infer_operation(clause):
+                """Infer operation from clause patterns."""
+                clause_lower = clause.lower()
 
-            # Map string labels to OperationType
-            OP_TYPE_MAP = {
-                "SET": OperationType.SET,
-                "ADD": OperationType.ADD,
-                "SUB": OperationType.SUB,
-                "MUL": OperationType.MUL,
-                "DIV": OperationType.DIV,
-            }
+                # Check patterns in order of specificity
+                sub_verbs = ['sold', 'sells', 'gave', 'gives', 'spent', 'spends',
+                             'lost', 'loses', 'ate', 'eats', 'used', 'uses',
+                             'took', 'takes', 'baked', 'bakes', 'threw', 'throws',
+                             'lent', 'lends', 'traded', 'trades', 'donated', 'donates',
+                             'paid', 'pays', 'drank', 'drinks']
+                add_verbs = ['found', 'finds', 'received', 'receives', 'earned', 'earns',
+                             'won', 'wins', 'bought', 'buys', 'got', 'gets',
+                             'collected', 'collects', 'picked', 'picks',
+                             'gathered', 'gathers', 'gained', 'gains']
+                set_verbs = ['has', 'have', 'had', 'starts', 'started', 'owns',
+                             'contains', 'there are', 'there were']
+
+                # 1. Check VERY specific patterns first (price calculations)
+                # "sells for $N each/per" = MUL (revenue = quantity * price)
+                if re.search(r'(sells?|sold)\s+.*for\s+\$?\d+', clause_lower):
+                    return (OperationType.MUL, "entity * value", 0.9)
+                if re.search(r'for\s+\$?\d+.*\b(each|per)\b', clause_lower):
+                    return (OperationType.MUL, "entity * value", 0.85)
+
+                # 2. Check subtraction
+                for verb in sub_verbs:
+                    if verb in clause_lower:
+                        return (OperationType.SUB, "entity - value", 0.85)
+
+                # 3. Check addition
+                for verb in add_verbs:
+                    if verb in clause_lower:
+                        return (OperationType.ADD, "entity + value", 0.85)
+
+                # 4. Check other multiplication patterns
+                # "each X has N" = MUL (total = count * per_item)
+                # "N times" = MUL
+                if re.search(r'each\s+\w+\s+has\s+\d+', clause_lower):
+                    return (OperationType.MUL, "entity * value", 0.85)
+                if 'times' in clause_lower and re.search(r'\d+\s+times', clause_lower):
+                    return (OperationType.MUL, "entity * value", 0.85)
+                if 'doubled' in clause_lower:
+                    return (OperationType.MUL, "entity * 2", 0.9)
+                if 'tripled' in clause_lower:
+                    return (OperationType.MUL, "entity * 3", 0.9)
+
+                # 4. Check division patterns
+                if 'shared' in clause_lower and 'equally' in clause_lower:
+                    return (OperationType.DIV, "entity / value", 0.85)
+                if 'split' in clause_lower:
+                    return (OperationType.DIV, "entity / value", 0.8)
+                if 'divided' in clause_lower:
+                    return (OperationType.DIV, "entity / value", 0.8)
+                if 'half of' in clause_lower:
+                    return (OperationType.DIV, "entity / 2", 0.85)
+                if re.search(r'among\s+\d+', clause_lower):
+                    return (OperationType.DIV, "entity / value", 0.75)
+
+                # 5. Check set/initial values (last, as fallback)
+                for verb in set_verbs:
+                    if verb in clause_lower:
+                        return (OperationType.SET, "value", 0.7)
+
+                # Default: SET if has number
+                if re.search(r'\d+', clause):
+                    return (OperationType.SET, "value", 0.5)
+
+                return None
 
             # Simple clause splitting
             clauses = re.split(r'[.!?]|\band\b|\bthen\b', text)
@@ -600,37 +661,21 @@ def _create_mock_pipeline(
                         ['how many', 'how much', 'what is', 'what are']):
                     continue
 
-                # Use real verb classifier (single source of truth)
-                verb_result = classify_by_verb(clause)
+                # Infer operation from patterns
+                result = infer_operation(clause)
 
-                if verb_result:
-                    op_label, confidence = verb_result
-                    op_type = OP_TYPE_MAP.get(op_label, OperationType.SET)
-                    dsl_expr = OP_TO_DSL.get(op_label, "value")
-
+                if result:
+                    op_type, dsl_expr, confidence = result
                     matched_ops.append(MatchedOperation(
                         span_text=clause,
                         operation_type=op_type,
-                        template_id=f"{op_label}_verb",
+                        template_id=f"{op_type.value}_pattern",
                         combined_score=confidence,
                         embedding_similarity=0.0,
                         attention_similarity=0.0,
                         confidence=confidence,
                         dsl_expr=dsl_expr,
                     ))
-                else:
-                    # Default to SET if no verb match but has a number
-                    if re.search(r'\d+', clause):
-                        matched_ops.append(MatchedOperation(
-                            span_text=clause,
-                            operation_type=OperationType.SET,
-                            template_id="SET_default",
-                            combined_score=0.5,
-                            embedding_similarity=0.0,
-                            attention_similarity=0.0,
-                            confidence=0.5,
-                            dsl_expr="value",
-                        ))
 
             return PipelineOutput(
                 problem_text=text,
