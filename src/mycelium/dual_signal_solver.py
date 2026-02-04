@@ -343,6 +343,8 @@ class DualSignalSolver:
 
             if entity is None:
                 entity = main_entity or "X"
+                if main_entity is None:
+                    main_entity = entity  # Track first entity seen
 
             op = SolverOperation(
                 op_type=matched_op.operation_type.value,
