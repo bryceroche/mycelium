@@ -21,6 +21,14 @@ from typing import List, Dict, Optional, Tuple, Any
 from dataclasses import dataclass
 from pathlib import Path
 
+# Import signal mapper for predicting Qwen attention signals from MiniLM embeddings
+try:
+    from mycelium.signal_mapper import predict_qwen_signals
+    SIGNAL_MAPPER_AVAILABLE = True
+except ImportError:
+    SIGNAL_MAPPER_AVAILABLE = False
+    predict_qwen_signals = None
+
 from mycelium.dual_signal_templates import (
     SpanDetector,
     TemplateStore,
@@ -192,24 +200,43 @@ class DualSignalPipeline:
     def _classify_sentence(self, sentence: str) -> Optional[MatchedOperation]:
         """Classify a single sentence using dual-signal template matching.
 
-        Uses embedding similarity + attention correlation to find the best
+        Uses embedding similarity + predicted Qwen attention signals to find the best
         matching template. Each template has a specialized custom DSL expression.
 
         This approach routes by what operations DO (via attention patterns),
         not what they SOUND LIKE (pure lexical similarity).
+
+        Key insight: Templates have Qwen attention signals (entropy, received, connection).
+        At inference, we use a trained mapper to predict these signals from MiniLM embeddings.
         """
         # Use dual-signal template matching
         if self.store.templates:
             embedding, attention, _ = self.detector.extract_features(sentence)
-            attention_flat = attention.flatten() if attention.ndim > 1 else attention
 
-            # First, check if we can narrow by verb-based operation type
-            # This helps overcome lexical similarity issues (CLAUDE.md insight)
-            verb_op = self._infer_operation_type_from_verb(sentence)
+            # Use signal mapper to predict Qwen attention signals from MiniLM embedding
+            # This bridges the gap: templates have Qwen signals, inference uses MiniLM
+            if SIGNAL_MAPPER_AVAILABLE and predict_qwen_signals is not None:
+                try:
+                    entropy, received, connection = predict_qwen_signals(embedding)
+                    # Create attention vector matching template format (3 signals + padding)
+                    attention_flat = np.array(
+                        [entropy, received, connection] + [0.0] * 97,
+                        dtype=np.float32
+                    )
+                except Exception as e:
+                    # Fallback to raw MiniLM attention if mapper fails
+                    attention_flat = attention.flatten() if attention.ndim > 1 else attention
+            else:
+                # No signal mapper - use raw MiniLM attention
+                attention_flat = attention.flatten() if attention.ndim > 1 else attention
+
+            # Use verb hints for high-confidence patterns, but don't filter out other matches
+            # This helps distinguish "eats" (SUB) from "has" (SET) despite similar embeddings
+            verb_hint = self._get_high_confidence_verb_hint(sentence)
 
             result = self.store.find_best_match(
                 embedding, attention_flat,
-                operation_filter=verb_op  # Filter by verb-inferred operation
+                operation_filter=verb_hint  # Only filter when very confident
             )
             if result:
                 template, combined_score, emb_sim, att_sim = result
@@ -226,25 +253,7 @@ class DualSignalPipeline:
                     dsl_expr=getattr(template, 'dsl_expr', 'value'),
                 )
 
-        # Fallback: if no templates loaded, use basic pattern inference
-        # This only happens during initialization or when templates fail to load
-        inferred = self._infer_operation_from_patterns(sentence)
-        if inferred:
-            op_label, confidence, dsl_expr = inferred
-            op_type = self.OP_TYPE_MAP.get(op_label, OperationType.UNKNOWN)
-
-            return MatchedOperation(
-                span_text=sentence,
-                operation_type=op_type,
-                template_id=f"{op_label}_fallback",
-                combined_score=confidence,
-                embedding_similarity=0.0,
-                attention_similarity=0.0,
-                confidence=confidence,
-                dsl_expr=dsl_expr,
-            )
-
-        # Last resort: check for numbers and default to SET
+        # Fallback: if no templates or no match, default to SET for sentences with numbers
         if re.search(r'\d+', sentence):
             return MatchedOperation(
                 span_text=sentence,
@@ -260,6 +269,35 @@ class DualSignalPipeline:
         # No match found
         return None
 
+    def _get_high_confidence_verb_hint(self, sentence: str) -> Optional[OperationType]:
+        """Get operation hint ONLY for very high-confidence verb patterns.
+
+        This is more conservative than full verb classification:
+        - Only triggers on unambiguous consumption/transfer verbs
+        - Excludes ambiguous verbs like "takes" (could mean requires OR removes)
+        - Excludes verbs that often appear in SET contexts
+
+        Returns:
+            OperationType hint for template filtering, or None to not filter
+        """
+        sentence_lower = sentence.lower()
+
+        # Check for price patterns first - $X per/each indicates MUL
+        if re.search(r'\$\d+', sentence_lower) and ('per' in sentence_lower or 'each' in sentence_lower):
+            return OperationType.MUL
+
+        # VERY high-confidence SUB verbs (consumption/giving away)
+        # These almost always mean subtraction in word problems
+        unambiguous_sub = ['ate', 'eats', 'eat', 'gave', 'gives', 'give',
+                          'drank', 'drinks', 'drink', 'threw', 'throws',
+                          'baked', 'bakes', 'bake']  # baking uses/consumes ingredients
+        for verb in unambiguous_sub:
+            if f' {verb} ' in f' {sentence_lower} ' or sentence_lower.startswith(verb + ' '):
+                return OperationType.SUB
+
+        # No high-confidence hint - let template matching decide
+        return None
+
     def _infer_operation_type_from_verb(self, sentence: str) -> Optional[OperationType]:
         """Infer operation type from verb patterns for template filtering.
 
@@ -272,17 +310,51 @@ class DualSignalPipeline:
         """
         sentence_lower = sentence.lower()
 
-        # High-confidence verb patterns
-        sub_verbs = ['sold', 'gave', 'spent', 'lost', 'ate', 'used', 'took', 'baked',
-                     'donated', 'lent', 'paid', 'threw', 'drank']
-        add_verbs = ['found', 'received', 'earned', 'won', 'bought', 'got', 'collected',
-                     'picked', 'gathered', 'gained', 'saved']
+        # High-confidence verb patterns (include all tenses: past, present, present 3rd person)
+        sub_verbs = [
+            'sold', 'sells', 'sell',           # sell
+            'gave', 'gives', 'give',           # give
+            'spent', 'spends', 'spend',        # spend
+            'lost', 'loses', 'lose',           # lose
+            'ate', 'eats', 'eat',              # eat
+            'used', 'uses', 'use',             # use
+            'took', 'takes', 'take',           # take
+            'baked', 'bakes', 'bake',          # bake
+            'donated', 'donates', 'donate',    # donate
+            'lent', 'lends', 'lend',           # lend
+            'paid', 'pays', 'pay',             # pay
+            'threw', 'throws', 'throw',        # throw
+            'drank', 'drinks', 'drink',        # drink
+        ]
+        add_verbs = [
+            'found', 'finds', 'find',          # find
+            'received', 'receives', 'receive', # receive
+            'earned', 'earns', 'earn',         # earn
+            'won', 'wins', 'win',              # win
+            'bought', 'buys', 'buy',           # buy
+            'got', 'gets', 'get',              # get
+            'collected', 'collects', 'collect', # collect
+            'picked', 'picks', 'pick',         # pick
+            'gathered', 'gathers', 'gather',   # gather
+            'gained', 'gains', 'gain',         # gain
+            'saved', 'saves', 'save',          # save
+        ]
         set_verbs = ['has', 'have', 'had', 'starts', 'started', 'owns', 'contains',
-                     'costs', 'is', 'was', 'are', 'were']
+                     'costs', 'is', 'was', 'are', 'were', 'lay', 'lays', 'laid']
         mul_keywords = ['times', 'doubled', 'tripled', 'multiplied']
         div_keywords = ['split', 'divided', 'shared equally', 'half of']
 
-        # Check subtraction verbs first (most commonly confused)
+        # Check for price patterns first - these indicate MUL even with sell/give verbs
+        # Pattern: $X per/each or "for $X"
+        if re.search(r'\$\d+', sentence_lower) and ('per' in sentence_lower or 'each' in sentence_lower):
+            return OperationType.MUL
+
+        # Check multiplication keywords (non-price)
+        for kw in mul_keywords:
+            if kw in sentence_lower:
+                return OperationType.MUL
+
+        # Check subtraction verbs
         for verb in sub_verbs:
             if verb in sentence_lower:
                 return OperationType.SUB
@@ -291,11 +363,6 @@ class DualSignalPipeline:
         for verb in add_verbs:
             if verb in sentence_lower:
                 return OperationType.ADD
-
-        # Check multiplication
-        for kw in mul_keywords:
-            if kw in sentence_lower:
-                return OperationType.MUL
 
         # Check division
         for kw in div_keywords:
