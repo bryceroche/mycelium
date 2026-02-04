@@ -198,18 +198,24 @@ class DualSignalPipeline:
         return sentences
 
     def _classify_sentence(self, sentence: str) -> Optional[MatchedOperation]:
-        """Classify a single sentence using verb hints + dual-signal template matching.
+        """Classify a single sentence using cross-entity attention + dual-signal template matching.
 
-        Uses a hybrid approach:
-        1. First, use verb patterns to determine operation type (high confidence)
-        2. Then, use embedding matching to find the best template WITHIN that type
+        Uses cross-entity attention to discriminate operations:
+        - SET: ~0.0 cross-entity attention (single entity, self-contained)
+        - ADD: ~0.04 (receiving, but mainly one entity focus)
+        - SUB/MUL: ~0.06 (transfer/reference to another entity)
 
-        This combines semantic understanding from verbs with template specificity.
         Per CLAUDE.md: route by what operations DO, not what they SOUND LIKE.
+        AVOID verb classification - use structural attention patterns instead.
         """
-        # Use dual-signal template matching
+        # Use dual-signal template matching with cross-entity attention
         if self.store.templates:
-            embedding, attention, _ = self.detector.extract_features(sentence)
+            embedding, attention, tokens = self.detector.extract_features(sentence)
+
+            # Compute cross-entity attention for operation discrimination
+            cross_entity_attention = self.detector.compute_cross_entity_attention(
+                sentence, attention, tokens
+            )
 
             # Use signal mapper to predict Qwen attention signals from MiniLM embedding
             if SIGNAL_MAPPER_AVAILABLE and predict_qwen_signals is not None:
@@ -224,14 +230,10 @@ class DualSignalPipeline:
             else:
                 attention_flat = attention.flatten() if attention.ndim > 1 else attention
 
-            # HYBRID APPROACH: Use verb hints to filter templates by operation type
-            # This gives high-confidence classification while using embeddings for template selection
-            verb_hint = self._infer_operation_type_from_verb(sentence)
-
-            # Find best match - filter by verb hint if available
-            result = self.store.find_best_match(
-                embedding, attention_flat,
-                operation_filter=verb_hint  # Use verb hint to filter operation type
+            # Use cross-entity attention for operation discrimination
+            # This captures structural patterns (entity relationships) not vocabulary
+            result = self.store.find_best_match_with_cross_entity(
+                embedding, attention_flat, cross_entity_attention
             )
             if result:
                 template, combined_score, emb_sim, att_sim = result

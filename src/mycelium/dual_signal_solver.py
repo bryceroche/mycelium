@@ -357,6 +357,18 @@ class DualSignalSolver:
                 template.attention_received = attention_received
                 template.attention_connection = attention_connection
 
+                # Set cross-entity attention based on operation type
+                # Derived from empirical analysis: SET=0, ADD=0.04, SUB/MUL=0.06
+                CROSS_ENTITY_BY_OP = {
+                    OperationType.SET: 0.0,
+                    OperationType.ADD: 0.04,
+                    OperationType.SUB: 0.06,
+                    OperationType.MUL: 0.06,
+                    OperationType.DIV: 0.04,
+                    OperationType.UNKNOWN: 0.03,
+                }
+                template.cross_entity_attention = CROSS_ENTITY_BY_OP.get(op_type, 0.03)
+
                 self._pipeline.store.add_template(template)
                 count += 1
 
@@ -452,6 +464,18 @@ class DualSignalSolver:
                 template.connection_var = agg.get("connection_var", 0.0)
                 template.source_count = agg.get("source_count", 0)
                 template.avg_similarity = agg.get("avg_similarity", 0.0)
+
+                # Set cross-entity attention based on operation type
+                # Derived from empirical analysis: SET=0, ADD=0.04, SUB/MUL=0.06
+                CROSS_ENTITY_BY_OP = {
+                    OperationType.SET: 0.0,
+                    OperationType.ADD: 0.04,
+                    OperationType.SUB: 0.06,
+                    OperationType.MUL: 0.06,
+                    OperationType.DIV: 0.04,
+                    OperationType.UNKNOWN: 0.03,
+                }
+                template.cross_entity_attention = CROSS_ENTITY_BY_OP.get(op_type, 0.03)
 
                 self._pipeline.store.add_template(template)
                 count += 1
