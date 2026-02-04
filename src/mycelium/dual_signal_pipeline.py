@@ -15,6 +15,7 @@ addressing the lexical vs operational similarity problem.
 
 import os
 import json
+import re
 import numpy as np
 from typing import List, Dict, Optional, Tuple, Any
 from dataclasses import dataclass
@@ -28,6 +29,7 @@ from mycelium.dual_signal_templates import (
     WelfordStats,
     create_template_from_span,
 )
+from mycelium.verb_classifier import classify_by_verb
 
 
 # Default model path - relative to this file's location in src/mycelium/
@@ -119,26 +121,130 @@ class DualSignalPipeline:
         if templates_path and os.path.exists(templates_path):
             self.load_templates(templates_path)
 
-    def process_problem(self, text: str) -> PipelineOutput:
+    def process_problem(self, text: str, method: str = "sentence") -> PipelineOutput:
         """Process a math problem and match spans to templates.
 
         This is the main entry point for the pipeline:
-        1. Detects operational spans using attention patterns
-        2. Matches each span to templates using dual-signal
+        1. Segments problem into clauses (sentence-first or attention-based)
+        2. Classifies each clause using verb patterns + embedding fallback
         3. Returns matched operations with confidence scores
 
         Args:
             text: The math problem text to process
+            method: "sentence" (default, recommended) or "community" (attention-based)
 
         Returns:
             PipelineOutput with matched operations for each span
         """
-        # Step 1: Detect spans using attention-based community detection
+        if method == "sentence":
+            # Sentence-first segmentation: split by punctuation, filter questions
+            return self._process_sentence_first(text)
+        else:
+            # Legacy: attention-based community detection
+            return self._process_community_based(text)
+
+    def _process_sentence_first(self, text: str) -> PipelineOutput:
+        """Process using sentence-first segmentation + verb classifier.
+
+        This approach works better for multi-step problems:
+        1. Split by sentence boundaries (periods, exclamations)
+        2. Filter out questions (how many, what, etc.)
+        3. Classify each sentence using verb patterns (high confidence)
+        4. Fall back to embedding similarity when no verb match
+        """
+        # Split into sentences, filter questions
+        sentences = self._segment_sentences(text)
+
+        matched_operations = []
+
+        for sent in sentences:
+            match_result = self._classify_sentence(sent)
+            if match_result:
+                matched_operations.append(match_result)
+
+        return PipelineOutput(
+            problem_text=text,
+            matched_operations=matched_operations,
+            spans_detected=len(sentences),
+            templates_available=len(self.store.templates),
+        )
+
+    def _segment_sentences(self, text: str) -> List[str]:
+        """Segment text into operational sentences.
+
+        Splits on sentence boundaries and filters out:
+        - Questions (how many, what, etc.)
+        - Empty strings
+        """
+        # Split on sentence-ending punctuation
+        parts = re.split(r'[.!?]', text)
+
+        sentences = []
+        for part in parts:
+            part = part.strip()
+            if not part:
+                continue
+            # Skip questions
+            part_lower = part.lower()
+            if any(q in part_lower for q in ['how many', 'how much', 'what is', 'what are', 'what was']):
+                continue
+            sentences.append(part)
+
+        return sentences
+
+    def _classify_sentence(self, sentence: str) -> Optional[MatchedOperation]:
+        """Classify a single sentence using verb patterns + embedding fallback.
+
+        Priority:
+        1. Verb classifier (high confidence, pattern-based)
+        2. Embedding similarity to template centroids (fallback)
+        """
+        # Try verb classifier first (high confidence)
+        verb_result = classify_by_verb(sentence)
+
+        if verb_result:
+            op_label, confidence = verb_result
+            op_type = self.OP_TYPE_MAP.get(op_label, OperationType.UNKNOWN)
+
+            return MatchedOperation(
+                span_text=sentence,
+                operation_type=op_type,
+                template_id=f"{op_label}_verb",
+                combined_score=confidence,
+                embedding_similarity=0.0,  # Not used for verb match
+                attention_similarity=0.0,  # Not used for verb match
+                confidence=confidence,
+            )
+
+        # Fall back to embedding similarity
+        if self.store.templates:
+            embedding, attention, _ = self.detector.extract_features(sentence)
+            attention_flat = attention.flatten() if attention.ndim > 1 else attention
+
+            result = self.store.find_best_match(embedding, attention_flat)
+            if result:
+                template, combined_score, emb_sim, att_sim = result
+                confidence = self._compute_confidence(template, combined_score)
+
+                return MatchedOperation(
+                    span_text=sentence,
+                    operation_type=template.operation_type,
+                    template_id=template.template_id,
+                    combined_score=combined_score,
+                    embedding_similarity=emb_sim,
+                    attention_similarity=att_sim,
+                    confidence=confidence,
+                )
+
+        # No match found
+        return None
+
+    def _process_community_based(self, text: str) -> PipelineOutput:
+        """Legacy: Process using attention-based community detection."""
         spans = self.detector.extract_span_features(text, method="community")
 
         matched_operations = []
 
-        # Step 2: Match each span to templates
         for span in spans:
             match_result = self._match_span_to_template(span)
             if match_result:

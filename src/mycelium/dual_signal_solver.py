@@ -297,21 +297,51 @@ class DualSignalSolver:
 
         return 0.0
 
+    # Words that look like entities but aren't (sentence starters, articles, etc.)
+    NOISE_WORDS = frozenset([
+        'then', 'the', 'each', 'every', 'some', 'all', 'and', 'but', 'after',
+        'before', 'when', 'if', 'so', 'a', 'an', 'now', 'later', 'first',
+    ])
+
     def _extract_entity(self, text: str) -> Optional[str]:
-        """Extract the main entity (subject) from text."""
-        # Simple heuristic: first capitalized word
+        """Extract the SUBJECT entity from text.
+
+        Key insight: The subject is typically in the first 2-3 words.
+        "She gave 8 to Bob" - subject is "She", Bob is the object (recipient).
+
+        Priority:
+        1. Look at first 3 words for subject
+        2. If subject is pronoun, return None (caller resolves to main_entity)
+        3. If subject is proper noun, return it
+
+        This INTENTIONALLY returns None for pronouns so the solver
+        can resolve them to the main_entity from previous sentences.
+        """
         words = text.split()
-        for word in words:
-            clean_word = word.strip('.,!?')
-            if clean_word and clean_word[0].isupper():
+
+        # Only look at first 3 words for subject (subject-verb-object structure)
+        subject_window = words[:3]
+
+        for word in subject_window:
+            clean_word = word.strip('.,!?\'\"')
+            if not clean_word:
+                continue
+
+            lower = clean_word.lower()
+
+            # Skip noise words (Then, The, etc.)
+            if lower in self.NOISE_WORDS:
+                continue
+
+            # If it's a pronoun, return None to signal pronoun resolution
+            if lower in self.PRONOUNS:
+                return None
+
+            # If it's capitalized (proper noun), return it
+            if clean_word[0].isupper():
                 return clean_word
 
-        # Check for pronouns at start
-        if words:
-            first = words[0].lower().strip('.,!?')
-            if first in self.PRONOUNS:
-                return first.capitalize()
-
+        # No subject found in first 3 words - return None
         return None
 
     def record_outcome(self, result: SolverResult, correct: bool) -> None:
