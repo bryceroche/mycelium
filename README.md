@@ -61,6 +61,27 @@ Two orthogonal signals for robust matching:
 
 Quality of 7B model at cost of 22M model.
 
+## Specialized Templates
+
+Each span type has a specialized template with generic entity placeholders.
+
+**Examples:**
+- Circle geometry: `area = π × {radius}²`
+- Ratio: `{entity_a} = {ratio} × {entity_b}`
+- Percentage: `{result} = {entity} × ({percent}/100)`
+- Half of: `{result} = {entity} × 0.5`
+
+**Why generic entities?**
+
+Instead of hardcoding "apples" or "cookies", we use `{entity}` placeholders:
+- "half the apples" → `apples × 0.5`
+- "half the cookies" → `cookies × 0.5`
+- Both match the same template: `{entity} × 0.5`
+
+This gives us **specialized structure** (each operation type has its own template) with **generic applicability** (works for any entity).
+
+The span detection identifies WHICH template to use. The entity extraction fills in the placeholders.
+
 ## Results
 
 End-to-end test on held-out samples shows **96.8% average correlation** — even better than training (94.5%).
