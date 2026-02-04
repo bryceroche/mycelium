@@ -203,7 +203,14 @@ class DualSignalPipeline:
             embedding, attention, _ = self.detector.extract_features(sentence)
             attention_flat = attention.flatten() if attention.ndim > 1 else attention
 
-            result = self.store.find_best_match(embedding, attention_flat)
+            # First, check if we can narrow by verb-based operation type
+            # This helps overcome lexical similarity issues (CLAUDE.md insight)
+            verb_op = self._infer_operation_type_from_verb(sentence)
+
+            result = self.store.find_best_match(
+                embedding, attention_flat,
+                operation_filter=verb_op  # Filter by verb-inferred operation
+            )
             if result:
                 template, combined_score, emb_sim, att_sim = result
                 confidence = self._compute_confidence(template, combined_score)
@@ -251,6 +258,56 @@ class DualSignalPipeline:
             )
 
         # No match found
+        return None
+
+    def _infer_operation_type_from_verb(self, sentence: str) -> Optional[OperationType]:
+        """Infer operation type from verb patterns for template filtering.
+
+        This is a key insight from CLAUDE.md: route by what operations DO,
+        not what they SOUND LIKE. Verb patterns provide semantic grounding
+        that embedding similarity alone may miss.
+
+        Returns:
+            OperationType to filter templates by, or None for no filtering
+        """
+        sentence_lower = sentence.lower()
+
+        # High-confidence verb patterns
+        sub_verbs = ['sold', 'gave', 'spent', 'lost', 'ate', 'used', 'took', 'baked',
+                     'donated', 'lent', 'paid', 'threw', 'drank']
+        add_verbs = ['found', 'received', 'earned', 'won', 'bought', 'got', 'collected',
+                     'picked', 'gathered', 'gained', 'saved']
+        set_verbs = ['has', 'have', 'had', 'starts', 'started', 'owns', 'contains',
+                     'costs', 'is', 'was', 'are', 'were']
+        mul_keywords = ['times', 'doubled', 'tripled', 'multiplied']
+        div_keywords = ['split', 'divided', 'shared equally', 'half of']
+
+        # Check subtraction verbs first (most commonly confused)
+        for verb in sub_verbs:
+            if verb in sentence_lower:
+                return OperationType.SUB
+
+        # Check addition verbs
+        for verb in add_verbs:
+            if verb in sentence_lower:
+                return OperationType.ADD
+
+        # Check multiplication
+        for kw in mul_keywords:
+            if kw in sentence_lower:
+                return OperationType.MUL
+
+        # Check division
+        for kw in div_keywords:
+            if kw in sentence_lower:
+                return OperationType.DIV
+
+        # SET verbs - initial state declarations
+        for verb in set_verbs:
+            if verb in sentence_lower:
+                return OperationType.SET
+
+        # No strong verb signal - let embedding matching decide
         return None
 
     def _infer_operation_from_patterns(self, sentence: str) -> Optional[tuple]:
