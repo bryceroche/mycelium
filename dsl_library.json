@@ -4,7 +4,7 @@
     "operation": "SET",
     "verb": "other",
     "base_dsl": "value",
-    "custom_dsl": "value = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Generic value assignment",
     "count": 5778,
     "pattern_examples": [
@@ -411,7 +411,7 @@
     "operation": "SET",
     "verb": "is",
     "base_dsl": "value",
-    "custom_dsl": "property = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Entity has a property/state",
     "count": 2234,
     "pattern_examples": [
@@ -818,7 +818,7 @@
     "operation": "SET",
     "verb": "has",
     "base_dsl": "value",
-    "custom_dsl": "quantity = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Entity possesses a quantity",
     "count": 1553,
     "pattern_examples": [
@@ -1225,7 +1225,7 @@
     "operation": "SET",
     "verb": "are",
     "base_dsl": "value",
-    "custom_dsl": "count = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Multiple entities exist",
     "count": 974,
     "pattern_examples": [
@@ -1632,7 +1632,7 @@
     "operation": "SUB",
     "verb": "ate",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Subtract consumed quantity",
     "count": 593,
     "pattern_examples": [
@@ -2039,7 +2039,7 @@
     "operation": "SET",
     "verb": "had",
     "base_dsl": "value",
-    "custom_dsl": "quantity = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Entity possesses a quantity",
     "count": 350,
     "pattern_examples": [
@@ -2446,7 +2446,7 @@
     "operation": "SET",
     "verb": "was",
     "base_dsl": "value",
-    "custom_dsl": "property = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Entity has a property/state",
     "count": 340,
     "pattern_examples": [
@@ -2853,7 +2853,7 @@
     "operation": "SET",
     "verb": "cost",
     "base_dsl": "value",
-    "custom_dsl": "price = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Item has a price",
     "count": 340,
     "pattern_examples": [
@@ -3260,7 +3260,7 @@
     "operation": "SET",
     "verb": "costs",
     "base_dsl": "value",
-    "custom_dsl": "price = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Item has a price",
     "count": 328,
     "pattern_examples": [
@@ -3667,7 +3667,7 @@
     "operation": "ADD",
     "verb": "bought",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = prev_total + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Add purchased quantity",
     "count": 315,
     "pattern_examples": [
@@ -4074,7 +4074,7 @@
     "operation": "SUB",
     "verb": "is",
     "base_dsl": "entity - value",
-    "custom_dsl": "result = reference - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Subtract from reference",
     "count": 307,
     "pattern_examples": [
@@ -4481,7 +4481,7 @@
     "operation": "MUL",
     "verb": "other",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = entity * extract_value(span)",
+    "custom_dsl": "entity * value",
     "description": "Generic multiplication",
     "count": 231,
     "pattern_examples": [
@@ -4888,7 +4888,7 @@
     "operation": "SET",
     "verb": "takes",
     "base_dsl": "value",
-    "custom_dsl": "duration = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Action takes time/quantity",
     "count": 230,
     "pattern_examples": [
@@ -5295,7 +5295,7 @@
     "operation": "MUL",
     "verb": "times",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = entity * extract_multiplier(span)",
+    "custom_dsl": "entity * value",
     "description": "Multiply by factor",
     "count": 204,
     "pattern_examples": [
@@ -5702,7 +5702,7 @@
     "operation": "SET",
     "verb": "were",
     "base_dsl": "value",
-    "custom_dsl": "count = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Multiple entities exist",
     "count": 204,
     "pattern_examples": [
@@ -6109,7 +6109,7 @@
     "operation": "MUL",
     "verb": "has",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = reference * extract_fraction(span)",
+    "custom_dsl": "entity * value",
     "description": "Fractional multiplication of reference",
     "count": 195,
     "pattern_examples": [
@@ -6516,7 +6516,7 @@
     "operation": "SET",
     "verb": "needs",
     "base_dsl": "value",
-    "custom_dsl": "target = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Entity requires an amount",
     "count": 190,
     "pattern_examples": [
@@ -6923,7 +6923,7 @@
     "operation": "MUL",
     "verb": "is",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = base * extract_rate(span)",
+    "custom_dsl": "entity * value",
     "description": "Multiply base by rate",
     "count": 141,
     "pattern_examples": [
@@ -7330,7 +7330,7 @@
     "operation": "SUB",
     "verb": "has",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Reduce possession",
     "count": 130,
     "pattern_examples": [
@@ -7737,7 +7737,7 @@
     "operation": "ADD",
     "verb": "other",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Generic addition",
     "count": 127,
     "pattern_examples": [
@@ -8144,7 +8144,7 @@
     "operation": "SUB",
     "verb": "sold",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Subtract sold quantity",
     "count": 124,
     "pattern_examples": [
@@ -8551,7 +8551,7 @@
     "operation": "SET",
     "verb": "makes",
     "base_dsl": "value",
-    "custom_dsl": "rate = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Entity earns at a rate",
     "count": 120,
     "pattern_examples": [
@@ -8958,7 +8958,7 @@
     "operation": "SUB",
     "verb": "gave",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Subtract given quantity",
     "count": 119,
     "pattern_examples": [
@@ -9365,7 +9365,7 @@
     "operation": "SUB",
     "verb": "spent",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Subtract spent amount",
     "count": 106,
     "pattern_examples": [
@@ -9772,7 +9772,7 @@
     "operation": "SET",
     "verb": "wants",
     "base_dsl": "value",
-    "custom_dsl": "target = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Entity requires an amount",
     "count": 97,
     "pattern_examples": [
@@ -10179,7 +10179,7 @@
     "operation": "ADD",
     "verb": "is",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = reference + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Add relative to reference",
     "count": 88,
     "pattern_examples": [
@@ -10586,7 +10586,7 @@
     "operation": "SET",
     "verb": "made",
     "base_dsl": "value",
-    "custom_dsl": "value = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Generic value assignment",
     "count": 88,
     "pattern_examples": [
@@ -10993,7 +10993,7 @@
     "operation": "SUB",
     "verb": "are",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = count - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Reduce count",
     "count": 77,
     "pattern_examples": [
@@ -11400,7 +11400,7 @@
     "operation": "SUB",
     "verb": "paid",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Subtract spent amount",
     "count": 76,
     "pattern_examples": [
@@ -11807,7 +11807,7 @@
     "operation": "SUB",
     "verb": "took",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Subtract taken quantity",
     "count": 68,
     "pattern_examples": [
@@ -12214,7 +12214,7 @@
     "operation": "SET",
     "verb": "gives",
     "base_dsl": "value",
-    "custom_dsl": "transfer = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Entity transfers a value",
     "count": 66,
     "pattern_examples": [
@@ -12621,7 +12621,7 @@
     "operation": "SUB",
     "verb": "was",
     "base_dsl": "entity - value",
-    "custom_dsl": "result = reference - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Subtract from reference",
     "count": 66,
     "pattern_examples": [
@@ -13028,7 +13028,7 @@
     "operation": "SUB",
     "verb": "used",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Subtract used quantity",
     "count": 63,
     "pattern_examples": [
@@ -13435,7 +13435,7 @@
     "operation": "SET",
     "verb": "runs",
     "base_dsl": "value",
-    "custom_dsl": "distance = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Entity travels a distance",
     "count": 55,
     "pattern_examples": [
@@ -13842,7 +13842,7 @@
     "operation": "ADD",
     "verb": "other",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Generic addition",
     "count": 55,
     "pattern_examples": [
@@ -14249,7 +14249,7 @@
     "operation": "SET",
     "verb": "half",
     "base_dsl": "value",
-    "custom_dsl": "value = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Generic value assignment",
     "count": 53,
     "pattern_examples": [
@@ -14656,7 +14656,7 @@
     "operation": "SUB",
     "verb": "had",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Reduce possession",
     "count": 52,
     "pattern_examples": [
@@ -15063,7 +15063,7 @@
     "operation": "ADD",
     "verb": "has",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = prev_total + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Add to possession",
     "count": 49,
     "pattern_examples": [
@@ -15470,7 +15470,7 @@
     "operation": "SET",
     "verb": "earns",
     "base_dsl": "value",
-    "custom_dsl": "rate = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Entity earns at a rate",
     "count": 46,
     "pattern_examples": [
@@ -15877,7 +15877,7 @@
     "operation": "ADD",
     "verb": "received",
     "base_dsl": "entity + value",
-    "custom_dsl": "earnings = prev_earnings + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Add earned amount",
     "count": 46,
     "pattern_examples": [
@@ -16284,7 +16284,7 @@
     "operation": "SUB",
     "verb": "were",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = count - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Reduce count",
     "count": 43,
     "pattern_examples": [
@@ -16691,7 +16691,7 @@
     "operation": "ADD",
     "verb": "found",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = prev_total + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Add discovered quantity",
     "count": 42,
     "pattern_examples": [
@@ -17098,7 +17098,7 @@
     "operation": "ADD",
     "verb": "collected",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = prev_total + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Add collected quantity",
     "count": 41,
     "pattern_examples": [
@@ -17505,7 +17505,7 @@
     "operation": "SUB",
     "verb": "other",
     "base_dsl": "ref - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "ref - value",
     "description": "Generic subtraction",
     "count": 41,
     "pattern_examples": [
@@ -17912,7 +17912,7 @@
     "operation": "ADD",
     "verb": "earned",
     "base_dsl": "entity + value",
-    "custom_dsl": "earnings = prev_earnings + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Add earned amount",
     "count": 38,
     "pattern_examples": [
@@ -18319,7 +18319,7 @@
     "operation": "ADD",
     "verb": "picked",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = prev_total + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Add collected quantity",
     "count": 37,
     "pattern_examples": [
@@ -18726,7 +18726,7 @@
     "operation": "SET",
     "verb": "pays",
     "base_dsl": "value",
-    "custom_dsl": "transfer = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Entity transfers a value",
     "count": 36,
     "pattern_examples": [
@@ -19133,7 +19133,7 @@
     "operation": "SET",
     "verb": "drives",
     "base_dsl": "value",
-    "custom_dsl": "distance = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Entity travels a distance",
     "count": 36,
     "pattern_examples": [
@@ -19540,7 +19540,7 @@
     "operation": "SET",
     "verb": "walks",
     "base_dsl": "value",
-    "custom_dsl": "distance = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Entity travels a distance",
     "count": 36,
     "pattern_examples": [
@@ -19947,7 +19947,7 @@
     "operation": "SUB",
     "verb": "bought",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Generic subtraction",
     "count": 34,
     "pattern_examples": [
@@ -20354,7 +20354,7 @@
     "operation": "ADD",
     "verb": "is",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = reference + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Add relative to reference",
     "count": 33,
     "pattern_examples": [
@@ -20761,7 +20761,7 @@
     "operation": "SET",
     "verb": "reads",
     "base_dsl": "value",
-    "custom_dsl": "amount = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Entity processes an amount",
     "count": 32,
     "pattern_examples": [
@@ -21168,7 +21168,7 @@
     "operation": "ADD",
     "verb": "has",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = prev_total + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Add to possession",
     "count": 32,
     "pattern_examples": [
@@ -21575,7 +21575,7 @@
     "operation": "SUB",
     "verb": "is",
     "base_dsl": "ref - value",
-    "custom_dsl": "result = reference - extract_value(span)",
+    "custom_dsl": "ref - value",
     "description": "Subtract from reference",
     "count": 31,
     "pattern_examples": [
@@ -21982,7 +21982,7 @@
     "operation": "SUB",
     "verb": "lost",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Subtract lost quantity",
     "count": 30,
     "pattern_examples": [
@@ -22389,7 +22389,7 @@
     "operation": "ADD",
     "verb": "had",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = prev_total + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Add to possession",
     "count": 30,
     "pattern_examples": [
@@ -22796,7 +22796,7 @@
     "operation": "MUL",
     "verb": "are",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = count * extract_value(span)",
+    "custom_dsl": "entity * value",
     "description": "Multiply count by value",
     "count": 30,
     "pattern_examples": [
@@ -23203,7 +23203,7 @@
     "operation": "SUB",
     "verb": "has",
     "base_dsl": "ref - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "ref - value",
     "description": "Reduce possession",
     "count": 29,
     "pattern_examples": [
@@ -23610,7 +23610,7 @@
     "operation": "MUL",
     "verb": "sold",
     "base_dsl": "entity * value",
-    "custom_dsl": "total = quantity * unit_price",
+    "custom_dsl": "entity * value",
     "description": "Unit price multiplication",
     "count": 29,
     "pattern_examples": [
@@ -24017,7 +24017,7 @@
     "operation": "MUL",
     "verb": "bought",
     "base_dsl": "entity * value",
-    "custom_dsl": "total = quantity * unit_price",
+    "custom_dsl": "entity * value",
     "description": "Unit price multiplication",
     "count": 28,
     "pattern_examples": [
@@ -24424,7 +24424,7 @@
     "operation": "DIV",
     "verb": "half",
     "base_dsl": "entity / 2",
-    "custom_dsl": "result = entity / 2",
+    "custom_dsl": "entity / 2",
     "description": "Half of entity",
     "count": 28,
     "pattern_examples": [
@@ -24831,7 +24831,7 @@
     "operation": "DIV",
     "verb": "is",
     "base_dsl": "entity / value",
-    "custom_dsl": "unit = total / count",
+    "custom_dsl": "entity / value",
     "description": "Per-unit calculation",
     "count": 27,
     "pattern_examples": [
@@ -25238,7 +25238,7 @@
     "operation": "SET",
     "verb": "twice",
     "base_dsl": "value",
-    "custom_dsl": "value = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Generic value assignment",
     "count": 23,
     "pattern_examples": [
@@ -25645,7 +25645,7 @@
     "operation": "ADD",
     "verb": "saved",
     "base_dsl": "entity + value",
-    "custom_dsl": "savings = prev_savings + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Add to savings",
     "count": 22,
     "pattern_examples": [
@@ -26052,7 +26052,7 @@
     "operation": "MUL",
     "verb": "was",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = base * extract_rate(span)",
+    "custom_dsl": "entity * value",
     "description": "Multiply base by rate",
     "count": 22,
     "pattern_examples": [
@@ -26459,7 +26459,7 @@
     "operation": "SET",
     "verb": "writes",
     "base_dsl": "value",
-    "custom_dsl": "amount = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Entity processes an amount",
     "count": 19,
     "pattern_examples": [
@@ -26866,7 +26866,7 @@
     "operation": "ADD",
     "verb": "was",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = reference + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Add relative to reference",
     "count": 19,
     "pattern_examples": [
@@ -27273,7 +27273,7 @@
     "operation": "ADD",
     "verb": "are",
     "base_dsl": "entity + value",
-    "custom_dsl": "count = prev_count + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Add to count",
     "count": 19,
     "pattern_examples": [
@@ -27680,7 +27680,7 @@
     "operation": "SUB",
     "verb": "other",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Generic subtraction",
     "count": 19,
     "pattern_examples": [
@@ -28087,7 +28087,7 @@
     "operation": "MUL",
     "verb": "ate",
     "base_dsl": "entity * value",
-    "custom_dsl": "total = quantity * unit_value",
+    "custom_dsl": "entity * value",
     "description": "Quantity times value",
     "count": 18,
     "pattern_examples": [
@@ -28494,7 +28494,7 @@
     "operation": "SET",
     "verb": "planted",
     "base_dsl": "value",
-    "custom_dsl": "planted_count = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Entity plants/grows items",
     "count": 18,
     "pattern_examples": [
@@ -28901,7 +28901,7 @@
     "operation": "MUL",
     "verb": "is",
     "base_dsl": "ref * 2",
-    "custom_dsl": "result = base * extract_rate(span)",
+    "custom_dsl": "ref * 2",
     "description": "Multiply base by rate",
     "count": 17,
     "pattern_examples": [
@@ -29308,7 +29308,7 @@
     "operation": "MUL",
     "verb": "twice",
     "base_dsl": "ref * 2",
-    "custom_dsl": "result = entity * extract_multiplier(span)",
+    "custom_dsl": "ref * 2",
     "description": "Multiply by factor",
     "count": 17,
     "pattern_examples": [
@@ -29715,7 +29715,7 @@
     "operation": "DIV",
     "verb": "split",
     "base_dsl": "entity / value",
-    "custom_dsl": "share = total / extract_divisor(span)",
+    "custom_dsl": "entity / value",
     "description": "Divide among parts",
     "count": 15,
     "pattern_examples": [
@@ -30122,7 +30122,7 @@
     "operation": "DIV",
     "verb": "divided",
     "base_dsl": "entity / value",
-    "custom_dsl": "share = total / extract_divisor(span)",
+    "custom_dsl": "entity / value",
     "description": "Divide among parts",
     "count": 15,
     "pattern_examples": [
@@ -30529,7 +30529,7 @@
     "operation": "ADD",
     "verb": "harvested",
     "base_dsl": "entity + value",
-    "custom_dsl": "harvest = prev_harvest + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Add harvested quantity",
     "count": 15,
     "pattern_examples": [
@@ -30936,7 +30936,7 @@
     "operation": "SUB",
     "verb": "baked",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Subtract produced quantity (from ingredients)",
     "count": 15,
     "pattern_examples": [
@@ -31343,7 +31343,7 @@
     "operation": "SET",
     "verb": "increased",
     "base_dsl": "value",
-    "custom_dsl": "increment = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Value increases",
     "count": 13,
     "pattern_examples": [
@@ -31750,7 +31750,7 @@
     "operation": "MUL",
     "verb": "had",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = reference * extract_fraction(span)",
+    "custom_dsl": "entity * value",
     "description": "Fractional multiplication of reference",
     "count": 13,
     "pattern_examples": [
@@ -32157,7 +32157,7 @@
     "operation": "MUL",
     "verb": "has",
     "base_dsl": "ref * 2",
-    "custom_dsl": "result = reference * extract_fraction(span)",
+    "custom_dsl": "ref * 2",
     "description": "Fractional multiplication of reference",
     "count": 13,
     "pattern_examples": [
@@ -32564,7 +32564,7 @@
     "operation": "MUL",
     "verb": "were",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = count * extract_value(span)",
+    "custom_dsl": "entity * value",
     "description": "Multiply count by value",
     "count": 12,
     "pattern_examples": [
@@ -32971,7 +32971,7 @@
     "operation": "SUB",
     "verb": "cost",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = budget - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Subtract cost from budget",
     "count": 12,
     "pattern_examples": [
@@ -33378,7 +33378,7 @@
     "operation": "SET",
     "verb": "added",
     "base_dsl": "value",
-    "custom_dsl": "increment = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Value increases",
     "count": 11,
     "pattern_examples": [
@@ -33785,7 +33785,7 @@
     "operation": "MUL",
     "verb": "takes",
     "base_dsl": "entity * value",
-    "custom_dsl": "total = rate * time",
+    "custom_dsl": "entity * value",
     "description": "Rate-time multiplication",
     "count": 11,
     "pattern_examples": [
@@ -34192,7 +34192,7 @@
     "operation": "SET",
     "verb": "saves",
     "base_dsl": "value",
-    "custom_dsl": "saved_amount = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Entity saves/stores value",
     "count": 11,
     "pattern_examples": [
@@ -34599,7 +34599,7 @@
     "operation": "ADD",
     "verb": "costs",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Generic addition",
     "count": 10,
     "pattern_examples": [
@@ -35006,7 +35006,7 @@
     "operation": "SUB",
     "verb": "costs",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = budget - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Subtract cost from budget",
     "count": 10,
     "pattern_examples": [
@@ -35413,7 +35413,7 @@
     "operation": "SUB",
     "verb": "drank",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Subtract consumed quantity",
     "count": 10,
     "pattern_examples": [
@@ -35820,7 +35820,7 @@
     "operation": "SUB",
     "verb": "made",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Subtract produced quantity (from ingredients)",
     "count": 10,
     "pattern_examples": [
@@ -36227,7 +36227,7 @@
     "operation": "DIV",
     "verb": "is",
     "base_dsl": "entity / 2",
-    "custom_dsl": "unit = total / count",
+    "custom_dsl": "entity / 2",
     "description": "Per-unit calculation",
     "count": 10,
     "pattern_examples": [
@@ -36634,7 +36634,7 @@
     "operation": "MUL",
     "verb": "needs",
     "base_dsl": "entity * value",
-    "custom_dsl": "total = units * per_unit_requirement",
+    "custom_dsl": "entity * value",
     "description": "Units times requirement",
     "count": 9,
     "pattern_examples": [
@@ -37041,7 +37041,7 @@
     "operation": "ADD",
     "verb": "twice",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Generic addition",
     "count": 9,
     "pattern_examples": [
@@ -37448,7 +37448,7 @@
     "operation": "MUL",
     "verb": "made",
     "base_dsl": "entity * value",
-    "custom_dsl": "total = quantity * unit_value",
+    "custom_dsl": "entity * value",
     "description": "Quantity times value",
     "count": 8,
     "pattern_examples": [
@@ -37855,7 +37855,7 @@
     "operation": "ADD",
     "verb": "were",
     "base_dsl": "entity + value",
-    "custom_dsl": "count = prev_count + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Add to count",
     "count": 8,
     "pattern_examples": [
@@ -38262,7 +38262,7 @@
     "operation": "ADD",
     "verb": "was",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = reference + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Add relative to reference",
     "count": 8,
     "pattern_examples": [
@@ -38669,7 +38669,7 @@
     "operation": "ADD",
     "verb": "cost",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Generic addition",
     "count": 8,
     "pattern_examples": [
@@ -39076,7 +39076,7 @@
     "operation": "SET",
     "verb": "triple",
     "base_dsl": "value",
-    "custom_dsl": "value = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Generic value assignment",
     "count": 8,
     "pattern_examples": [
@@ -39483,7 +39483,7 @@
     "operation": "DIV",
     "verb": "are",
     "base_dsl": "entity / value",
-    "custom_dsl": "per_item = total / count",
+    "custom_dsl": "entity / value",
     "description": "Distribute among items",
     "count": 8,
     "pattern_examples": [
@@ -39890,7 +39890,7 @@
     "operation": "MUL",
     "verb": "runs",
     "base_dsl": "entity * value",
-    "custom_dsl": "total = rate * time",
+    "custom_dsl": "entity * value",
     "description": "Rate-time multiplication",
     "count": 7,
     "pattern_examples": [
@@ -40297,7 +40297,7 @@
     "operation": "MUL",
     "verb": "costs",
     "base_dsl": "entity * value",
-    "custom_dsl": "total = quantity * unit_cost",
+    "custom_dsl": "entity * value",
     "description": "Quantity times unit cost",
     "count": 7,
     "pattern_examples": [
@@ -40704,7 +40704,7 @@
     "operation": "MUL",
     "verb": "doubled",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = entity * extract_multiplier(span)",
+    "custom_dsl": "entity * value",
     "description": "Growth multiplication",
     "count": 6,
     "pattern_examples": [
@@ -41111,7 +41111,7 @@
     "operation": "MUL",
     "verb": "cost",
     "base_dsl": "entity * value",
-    "custom_dsl": "total = quantity * unit_cost",
+    "custom_dsl": "entity * value",
     "description": "Quantity times unit cost",
     "count": 6,
     "pattern_examples": [
@@ -41518,7 +41518,7 @@
     "operation": "DIV",
     "verb": "are",
     "base_dsl": "entity / 2",
-    "custom_dsl": "per_item = total / count",
+    "custom_dsl": "entity / 2",
     "description": "Distribute among items",
     "count": 6,
     "pattern_examples": [
@@ -41925,7 +41925,7 @@
     "operation": "SUB",
     "verb": "twice",
     "base_dsl": "ref - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "ref - value",
     "description": "Generic subtraction",
     "count": 6,
     "pattern_examples": [
@@ -42332,7 +42332,7 @@
     "operation": "ADD",
     "verb": "times",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Generic addition",
     "count": 5,
     "pattern_examples": [
@@ -42739,7 +42739,7 @@
     "operation": "SUB",
     "verb": "pays",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Generic subtraction",
     "count": 5,
     "pattern_examples": [
@@ -43146,7 +43146,7 @@
     "operation": "SUB",
     "verb": "earned",
     "base_dsl": "entity - value",
-    "custom_dsl": "net = earnings - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Subtract from earnings",
     "count": 5,
     "pattern_examples": [
@@ -43553,7 +43553,7 @@
     "operation": "SUB",
     "verb": "had",
     "base_dsl": "ref - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "ref - value",
     "description": "Reduce possession",
     "count": 5,
     "pattern_examples": [
@@ -43960,7 +43960,7 @@
     "operation": "SUB",
     "verb": "received",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Generic subtraction",
     "count": 5,
     "pattern_examples": [
@@ -44367,7 +44367,7 @@
     "operation": "ADD",
     "verb": "half",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Generic addition",
     "count": 5,
     "pattern_examples": [
@@ -44774,7 +44774,7 @@
     "operation": "SUB",
     "verb": "made",
     "base_dsl": "ref - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "ref - value",
     "description": "Subtract produced quantity (from ingredients)",
     "count": 5,
     "pattern_examples": [
@@ -45181,7 +45181,7 @@
     "operation": "SUB",
     "verb": "makes",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Generic subtraction",
     "count": 5,
     "pattern_examples": [
@@ -45588,7 +45588,7 @@
     "operation": "ADD",
     "verb": "made",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Generic addition",
     "count": 5,
     "pattern_examples": [
@@ -45995,7 +45995,7 @@
     "operation": "SUB",
     "verb": "was",
     "base_dsl": "ref - value",
-    "custom_dsl": "result = reference - extract_value(span)",
+    "custom_dsl": "ref - value",
     "description": "Subtract from reference",
     "count": 5,
     "pattern_examples": [
@@ -46402,7 +46402,7 @@
     "operation": "DIV",
     "verb": "cost",
     "base_dsl": "entity / value",
-    "custom_dsl": "result = entity / extract_divisor(span)",
+    "custom_dsl": "entity / value",
     "description": "Generic division",
     "count": 4,
     "pattern_examples": [
@@ -46809,7 +46809,7 @@
     "operation": "MUL",
     "verb": "was",
     "base_dsl": "ref * 2",
-    "custom_dsl": "result = base * extract_rate(span)",
+    "custom_dsl": "ref * 2",
     "description": "Multiply base by rate",
     "count": 4,
     "pattern_examples": [
@@ -47216,7 +47216,7 @@
     "operation": "DIV",
     "verb": "had",
     "base_dsl": "entity / 2",
-    "custom_dsl": "result = entity / extract_divisor(span)",
+    "custom_dsl": "entity / 2",
     "description": "Generic division",
     "count": 4,
     "pattern_examples": [
@@ -47623,7 +47623,7 @@
     "operation": "SET",
     "verb": "removed",
     "base_dsl": "value",
-    "custom_dsl": "value = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Generic value assignment",
     "count": 4,
     "pattern_examples": [
@@ -48030,7 +48030,7 @@
     "operation": "ADD",
     "verb": "takes",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Generic addition",
     "count": 3,
     "pattern_examples": [
@@ -48437,7 +48437,7 @@
     "operation": "MUL",
     "verb": "cost",
     "base_dsl": "ref * 2",
-    "custom_dsl": "total = quantity * unit_cost",
+    "custom_dsl": "ref * 2",
     "description": "Quantity times unit cost",
     "count": 3,
     "pattern_examples": [
@@ -48844,7 +48844,7 @@
     "operation": "MUL",
     "verb": "half",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = entity * extract_value(span)",
+    "custom_dsl": "entity * value",
     "description": "Generic multiplication",
     "count": 3,
     "pattern_examples": [
@@ -49251,7 +49251,7 @@
     "operation": "SET",
     "verb": "grew",
     "base_dsl": "value",
-    "custom_dsl": "planted_count = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Entity plants/grows items",
     "count": 3,
     "pattern_examples": [
@@ -49658,7 +49658,7 @@
     "operation": "DIV",
     "verb": "has",
     "base_dsl": "entity / 2",
-    "custom_dsl": "result = entity / extract_divisor(span)",
+    "custom_dsl": "entity / 2",
     "description": "Generic division",
     "count": 3,
     "pattern_examples": [
@@ -50065,7 +50065,7 @@
     "operation": "DIV",
     "verb": "has",
     "base_dsl": "entity / value",
-    "custom_dsl": "result = entity / extract_divisor(span)",
+    "custom_dsl": "entity / value",
     "description": "Generic division",
     "count": 3,
     "pattern_examples": [
@@ -50472,7 +50472,7 @@
     "operation": "ADD",
     "verb": "had",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = prev_total + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Add to possession",
     "count": 3,
     "pattern_examples": [
@@ -50879,7 +50879,7 @@
     "operation": "SUB",
     "verb": "collected",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Generic subtraction",
     "count": 3,
     "pattern_examples": [
@@ -51286,7 +51286,7 @@
     "operation": "DIV",
     "verb": "was",
     "base_dsl": "entity / value",
-    "custom_dsl": "unit = total / count",
+    "custom_dsl": "entity / value",
     "description": "Per-unit calculation",
     "count": 3,
     "pattern_examples": [
@@ -51693,7 +51693,7 @@
     "operation": "ADD",
     "verb": "wants",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Generic addition",
     "count": 3,
     "pattern_examples": [
@@ -52100,7 +52100,7 @@
     "operation": "MUL",
     "verb": "takes",
     "base_dsl": "ref * 2",
-    "custom_dsl": "total = rate * time",
+    "custom_dsl": "ref * 2",
     "description": "Rate-time multiplication",
     "count": 3,
     "pattern_examples": [
@@ -52507,7 +52507,7 @@
     "operation": "MUL",
     "verb": "are",
     "base_dsl": "ref * 2",
-    "custom_dsl": "result = count * extract_value(span)",
+    "custom_dsl": "ref * 2",
     "description": "Multiply count by value",
     "count": 3,
     "pattern_examples": [
@@ -52914,7 +52914,7 @@
     "operation": "SUB",
     "verb": "are",
     "base_dsl": "ref - value",
-    "custom_dsl": "remaining = count - extract_value(span)",
+    "custom_dsl": "ref - value",
     "description": "Reduce count",
     "count": 3,
     "pattern_examples": [
@@ -53321,7 +53321,7 @@
     "operation": "ADD",
     "verb": "cost",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Generic addition",
     "count": 3,
     "pattern_examples": [
@@ -53728,7 +53728,7 @@
     "operation": "SUB",
     "verb": "earns",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Generic subtraction",
     "count": 2,
     "pattern_examples": [
@@ -54134,7 +54134,7 @@
     "operation": "SET",
     "verb": "cooked",
     "base_dsl": "value",
-    "custom_dsl": "value = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Generic value assignment",
     "count": 2,
     "pattern_examples": [
@@ -54540,7 +54540,7 @@
     "operation": "MUL",
     "verb": "drives",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = entity * extract_value(span)",
+    "custom_dsl": "entity * value",
     "description": "Generic multiplication",
     "count": 2,
     "pattern_examples": [
@@ -54946,7 +54946,7 @@
     "operation": "ADD",
     "verb": "runs",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Generic addition",
     "count": 2,
     "pattern_examples": [
@@ -55352,7 +55352,7 @@
     "operation": "SUB",
     "verb": "costs",
     "base_dsl": "ref - value",
-    "custom_dsl": "remaining = budget - extract_value(span)",
+    "custom_dsl": "ref - value",
     "description": "Subtract cost from budget",
     "count": 2,
     "pattern_examples": [
@@ -55758,7 +55758,7 @@
     "operation": "SUB",
     "verb": "times",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Generic subtraction",
     "count": 2,
     "pattern_examples": [
@@ -56164,7 +56164,7 @@
     "operation": "DIV",
     "verb": "were",
     "base_dsl": "entity / 2",
-    "custom_dsl": "per_item = total / count",
+    "custom_dsl": "entity / 2",
     "description": "Distribute among items",
     "count": 2,
     "pattern_examples": [
@@ -56570,7 +56570,7 @@
     "operation": "MUL",
     "verb": "makes",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = entity * extract_value(span)",
+    "custom_dsl": "entity * value",
     "description": "Generic multiplication",
     "count": 2,
     "pattern_examples": [
@@ -56976,7 +56976,7 @@
     "operation": "DIV",
     "verb": "were",
     "base_dsl": "entity / value",
-    "custom_dsl": "per_item = total / count",
+    "custom_dsl": "entity / value",
     "description": "Distribute among items",
     "count": 2,
     "pattern_examples": [
@@ -57382,7 +57382,7 @@
     "operation": "MUL",
     "verb": "grew",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = entity * extract_value(span)",
+    "custom_dsl": "entity * value",
     "description": "Generic multiplication",
     "count": 2,
     "pattern_examples": [
@@ -57788,7 +57788,7 @@
     "operation": "MUL",
     "verb": "used",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = entity * extract_value(span)",
+    "custom_dsl": "entity * value",
     "description": "Generic multiplication",
     "count": 2,
     "pattern_examples": [
@@ -58194,7 +58194,7 @@
     "operation": "MUL",
     "verb": "added",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = entity * extract_value(span)",
+    "custom_dsl": "entity * value",
     "description": "Generic multiplication",
     "count": 2,
     "pattern_examples": [
@@ -58600,7 +58600,7 @@
     "operation": "DIV",
     "verb": "was",
     "base_dsl": "entity / 2",
-    "custom_dsl": "unit = total / count",
+    "custom_dsl": "entity / 2",
     "description": "Per-unit calculation",
     "count": 2,
     "pattern_examples": [
@@ -59006,7 +59006,7 @@
     "operation": "ADD",
     "verb": "needs",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Generic addition",
     "count": 2,
     "pattern_examples": [
@@ -59412,7 +59412,7 @@
     "operation": "MUL",
     "verb": "half",
     "base_dsl": "ref * 2",
-    "custom_dsl": "result = entity * extract_value(span)",
+    "custom_dsl": "ref * 2",
     "description": "Generic multiplication",
     "count": 2,
     "pattern_examples": [
@@ -59818,7 +59818,7 @@
     "operation": "ADD",
     "verb": "are",
     "base_dsl": "ref + value",
-    "custom_dsl": "count = prev_count + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Add to count",
     "count": 2,
     "pattern_examples": [
@@ -60224,7 +60224,7 @@
     "operation": "ADD",
     "verb": "half",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Generic addition",
     "count": 2,
     "pattern_examples": [
@@ -60630,7 +60630,7 @@
     "operation": "DIV",
     "verb": "takes",
     "base_dsl": "entity / 2",
-    "custom_dsl": "result = entity / extract_divisor(span)",
+    "custom_dsl": "entity / 2",
     "description": "Generic division",
     "count": 2,
     "pattern_examples": [
@@ -61036,7 +61036,7 @@
     "operation": "MUL",
     "verb": "walks",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = entity * extract_value(span)",
+    "custom_dsl": "entity * value",
     "description": "Generic multiplication",
     "count": 2,
     "pattern_examples": [
@@ -61442,7 +61442,7 @@
     "operation": "MUL",
     "verb": "costs",
     "base_dsl": "ref * 2",
-    "custom_dsl": "total = quantity * unit_cost",
+    "custom_dsl": "ref * 2",
     "description": "Quantity times unit cost",
     "count": 2,
     "pattern_examples": [
@@ -61848,7 +61848,7 @@
     "operation": "MUL",
     "verb": "twice",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = entity * extract_multiplier(span)",
+    "custom_dsl": "entity * value",
     "description": "Multiply by factor",
     "count": 2,
     "pattern_examples": [
@@ -62254,7 +62254,7 @@
     "operation": "DIV",
     "verb": "gives",
     "base_dsl": "entity / value",
-    "custom_dsl": "result = entity / extract_divisor(span)",
+    "custom_dsl": "entity / value",
     "description": "Generic division",
     "count": 2,
     "pattern_examples": [
@@ -62660,7 +62660,7 @@
     "operation": "MUL",
     "verb": "planted",
     "base_dsl": "ref * 2",
-    "custom_dsl": "result = entity * extract_value(span)",
+    "custom_dsl": "ref * 2",
     "description": "Generic multiplication",
     "count": 1,
     "pattern_examples": [
@@ -63064,7 +63064,7 @@
     "operation": "MUL",
     "verb": "needs",
     "base_dsl": "ref * 2",
-    "custom_dsl": "total = units * per_unit_requirement",
+    "custom_dsl": "ref * 2",
     "description": "Units times requirement",
     "count": 1,
     "pattern_examples": [
@@ -63468,7 +63468,7 @@
     "operation": "DIV",
     "verb": "gives",
     "base_dsl": "entity / 2",
-    "custom_dsl": "result = entity / extract_divisor(span)",
+    "custom_dsl": "entity / 2",
     "description": "Generic division",
     "count": 1,
     "pattern_examples": [
@@ -63872,7 +63872,7 @@
     "operation": "ADD",
     "verb": "earns",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Generic addition",
     "count": 1,
     "pattern_examples": [
@@ -64276,7 +64276,7 @@
     "operation": "SUB",
     "verb": "were",
     "base_dsl": "ref - value",
-    "custom_dsl": "remaining = count - extract_value(span)",
+    "custom_dsl": "ref - value",
     "description": "Reduce count",
     "count": 1,
     "pattern_examples": [
@@ -64680,7 +64680,7 @@
     "operation": "ADD",
     "verb": "drives",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Generic addition",
     "count": 1,
     "pattern_examples": [
@@ -65084,7 +65084,7 @@
     "operation": "SUB",
     "verb": "needs",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Generic subtraction",
     "count": 1,
     "pattern_examples": [
@@ -65488,7 +65488,7 @@
     "operation": "MUL",
     "verb": "found",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = entity * extract_value(span)",
+    "custom_dsl": "entity * value",
     "description": "Generic multiplication",
     "count": 1,
     "pattern_examples": [
@@ -65892,7 +65892,7 @@
     "operation": "SET",
     "verb": "cleaned",
     "base_dsl": "value",
-    "custom_dsl": "value = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Generic value assignment",
     "count": 1,
     "pattern_examples": [
@@ -66296,7 +66296,7 @@
     "operation": "ADD",
     "verb": "makes",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Generic addition",
     "count": 1,
     "pattern_examples": [
@@ -66700,7 +66700,7 @@
     "operation": "DIV",
     "verb": "increased",
     "base_dsl": "entity / 2",
-    "custom_dsl": "result = entity / extract_divisor(span)",
+    "custom_dsl": "entity / 2",
     "description": "Generic division",
     "count": 1,
     "pattern_examples": [
@@ -67104,7 +67104,7 @@
     "operation": "MUL",
     "verb": "gives",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = entity * extract_value(span)",
+    "custom_dsl": "entity * value",
     "description": "Generic multiplication",
     "count": 1,
     "pattern_examples": [
@@ -67508,7 +67508,7 @@
     "operation": "SUB",
     "verb": "added",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Generic subtraction",
     "count": 1,
     "pattern_examples": [
@@ -67912,7 +67912,7 @@
     "operation": "SUB",
     "verb": "found",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Generic subtraction",
     "count": 1,
     "pattern_examples": [
@@ -68316,7 +68316,7 @@
     "operation": "SUB",
     "verb": "picked",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Generic subtraction",
     "count": 1,
     "pattern_examples": [
@@ -68720,7 +68720,7 @@
     "operation": "SET",
     "verb": "decreased",
     "base_dsl": "value",
-    "custom_dsl": "value = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Generic value assignment",
     "count": 1,
     "pattern_examples": [
@@ -69124,7 +69124,7 @@
     "operation": "ADD",
     "verb": "runs",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Generic addition",
     "count": 1,
     "pattern_examples": [
@@ -69528,7 +69528,7 @@
     "operation": "SUB",
     "verb": "wants",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Generic subtraction",
     "count": 1,
     "pattern_examples": [
@@ -69932,7 +69932,7 @@
     "operation": "SET",
     "verb": "built",
     "base_dsl": "value",
-    "custom_dsl": "value = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Generic value assignment",
     "count": 1,
     "pattern_examples": [
@@ -70336,7 +70336,7 @@
     "operation": "ADD",
     "verb": "increased",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Generic addition",
     "count": 1,
     "pattern_examples": [
@@ -70740,7 +70740,7 @@
     "operation": "MUL",
     "verb": "saved",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = entity * extract_value(span)",
+    "custom_dsl": "entity * value",
     "description": "Generic multiplication",
     "count": 1,
     "pattern_examples": [
@@ -71144,7 +71144,7 @@
     "operation": "DIV",
     "verb": "had",
     "base_dsl": "entity / value",
-    "custom_dsl": "result = entity / extract_divisor(span)",
+    "custom_dsl": "entity / value",
     "description": "Generic division",
     "count": 1,
     "pattern_examples": [
@@ -71548,7 +71548,7 @@
     "operation": "SUB",
     "verb": "saves",
     "base_dsl": "ref - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "ref - value",
     "description": "Generic subtraction",
     "count": 1,
     "pattern_examples": [
@@ -71952,7 +71952,7 @@
     "operation": "ADD",
     "verb": "saves",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Generic addition",
     "count": 1,
     "pattern_examples": [
@@ -72356,7 +72356,7 @@
     "operation": "ADD",
     "verb": "walks",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Generic addition",
     "count": 1,
     "pattern_examples": [
@@ -72760,7 +72760,7 @@
     "operation": "SUB",
     "verb": "walks",
     "base_dsl": "ref - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "ref - value",
     "description": "Generic subtraction",
     "count": 1,
     "pattern_examples": [
@@ -73164,7 +73164,7 @@
     "operation": "MUL",
     "verb": "had",
     "base_dsl": "ref * 2",
-    "custom_dsl": "result = reference * extract_fraction(span)",
+    "custom_dsl": "ref * 2",
     "description": "Fractional multiplication of reference",
     "count": 1,
     "pattern_examples": [
@@ -73568,7 +73568,7 @@
     "operation": "MUL",
     "verb": "runs",
     "base_dsl": "ref * 2",
-    "custom_dsl": "total = rate * time",
+    "custom_dsl": "ref * 2",
     "description": "Rate-time multiplication",
     "count": 1,
     "pattern_examples": [
@@ -73972,7 +73972,7 @@
     "operation": "SUB",
     "verb": "takes",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Generic subtraction",
     "count": 1,
     "pattern_examples": [
@@ -74376,7 +74376,7 @@
     "operation": "MUL",
     "verb": "planted",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = entity * extract_value(span)",
+    "custom_dsl": "entity * value",
     "description": "Generic multiplication",
     "count": 1,
     "pattern_examples": [
@@ -74780,7 +74780,7 @@
     "operation": "ADD",
     "verb": "pays",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Generic addition",
     "count": 1,
     "pattern_examples": [
@@ -75184,7 +75184,7 @@
     "operation": "ADD",
     "verb": "makes",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Generic addition",
     "count": 1,
     "pattern_examples": [
@@ -75588,7 +75588,7 @@
     "operation": "ADD",
     "verb": "were",
     "base_dsl": "ref + value",
-    "custom_dsl": "count = prev_count + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Add to count",
     "count": 1,
     "pattern_examples": [
@@ -75992,7 +75992,7 @@
     "operation": "ADD",
     "verb": "wants",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Generic addition",
     "count": 1,
     "pattern_examples": [
@@ -76396,7 +76396,7 @@
     "operation": "SUB",
     "verb": "planted",
     "base_dsl": "ref - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "ref - value",
     "description": "Generic subtraction",
     "count": 1,
     "pattern_examples": [
@@ -76800,7 +76800,7 @@
     "operation": "MUL",
     "verb": "paid",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = entity * extract_value(span)",
+    "custom_dsl": "entity * value",
     "description": "Generic multiplication",
     "count": 1,
     "pattern_examples": [
@@ -77204,7 +77204,7 @@
     "operation": "SET",
     "verb": "painted",
     "base_dsl": "value",
-    "custom_dsl": "value = extract_value(span)",
+    "custom_dsl": "value",
     "description": "Generic value assignment",
     "count": 1,
     "pattern_examples": [
@@ -77608,7 +77608,7 @@
     "operation": "ADD",
     "verb": "twice",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Generic addition",
     "count": 1,
     "pattern_examples": [
@@ -78012,7 +78012,7 @@
     "operation": "ADD",
     "verb": "needs",
     "base_dsl": "entity + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "entity + value",
     "description": "Generic addition",
     "count": 1,
     "pattern_examples": [
@@ -78416,7 +78416,7 @@
     "operation": "MUL",
     "verb": "saves",
     "base_dsl": "ref * 2",
-    "custom_dsl": "result = entity * extract_value(span)",
+    "custom_dsl": "ref * 2",
     "description": "Generic multiplication",
     "count": 1,
     "pattern_examples": [
@@ -78820,7 +78820,7 @@
     "operation": "DIV",
     "verb": "wants",
     "base_dsl": "entity / value",
-    "custom_dsl": "result = entity / extract_divisor(span)",
+    "custom_dsl": "entity / value",
     "description": "Generic division",
     "count": 1,
     "pattern_examples": [
@@ -79224,7 +79224,7 @@
     "operation": "ADD",
     "verb": "earns",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Generic addition",
     "count": 1,
     "pattern_examples": [
@@ -79628,7 +79628,7 @@
     "operation": "DIV",
     "verb": "built",
     "base_dsl": "entity / 2",
-    "custom_dsl": "result = entity / extract_divisor(span)",
+    "custom_dsl": "entity / 2",
     "description": "Generic division",
     "count": 1,
     "pattern_examples": [
@@ -80032,7 +80032,7 @@
     "operation": "MUL",
     "verb": "spent",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = entity * extract_value(span)",
+    "custom_dsl": "entity * value",
     "description": "Generic multiplication",
     "count": 1,
     "pattern_examples": [
@@ -80436,7 +80436,7 @@
     "operation": "ADD",
     "verb": "planted",
     "base_dsl": "ref + value",
-    "custom_dsl": "total = entity + extract_value(span)",
+    "custom_dsl": "ref + value",
     "description": "Generic addition",
     "count": 1,
     "pattern_examples": [
@@ -80840,7 +80840,7 @@
     "operation": "DIV",
     "verb": "saves",
     "base_dsl": "entity / 2",
-    "custom_dsl": "result = entity / extract_divisor(span)",
+    "custom_dsl": "entity / 2",
     "description": "Generic division",
     "count": 1,
     "pattern_examples": [
@@ -81244,7 +81244,7 @@
     "operation": "DIV",
     "verb": "wants",
     "base_dsl": "entity / 2",
-    "custom_dsl": "result = entity / extract_divisor(span)",
+    "custom_dsl": "entity / 2",
     "description": "Generic division",
     "count": 1,
     "pattern_examples": [
@@ -81648,7 +81648,7 @@
     "operation": "SUB",
     "verb": "makes",
     "base_dsl": "ref - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "ref - value",
     "description": "Generic subtraction",
     "count": 1,
     "pattern_examples": [
@@ -82052,7 +82052,7 @@
     "operation": "SUB",
     "verb": "cost",
     "base_dsl": "ref - value",
-    "custom_dsl": "remaining = budget - extract_value(span)",
+    "custom_dsl": "ref - value",
     "description": "Subtract cost from budget",
     "count": 1,
     "pattern_examples": [
@@ -82456,7 +82456,7 @@
     "operation": "MUL",
     "verb": "wants",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = entity * extract_value(span)",
+    "custom_dsl": "entity * value",
     "description": "Generic multiplication",
     "count": 1,
     "pattern_examples": [
@@ -82860,7 +82860,7 @@
     "operation": "DIV",
     "verb": "costs",
     "base_dsl": "entity / 2",
-    "custom_dsl": "result = entity / extract_divisor(span)",
+    "custom_dsl": "entity / 2",
     "description": "Generic division",
     "count": 1,
     "pattern_examples": [
@@ -83264,7 +83264,7 @@
     "operation": "SUB",
     "verb": "half",
     "base_dsl": "entity - value",
-    "custom_dsl": "remaining = entity - extract_value(span)",
+    "custom_dsl": "entity - value",
     "description": "Generic subtraction",
     "count": 1,
     "pattern_examples": [
@@ -83668,7 +83668,7 @@
     "operation": "MUL",
     "verb": "pays",
     "base_dsl": "entity * value",
-    "custom_dsl": "result = entity * extract_value(span)",
+    "custom_dsl": "entity * value",
     "description": "Generic multiplication",
     "count": 1,
     "pattern_examples": [
