@@ -55,15 +55,14 @@ notes/
 !mycelium_768.db
 *.db-shm
 *.db-wal
-# Generated JSON files
+# Generated JSON template files (keep deduplicated_templates.json tracked)
 scripts/*.json
 src/mycelium/*.json
-dsl_library.json
-enhanced_dsl_library.json
-span_templates_export.json
-operation_templates.json
-dual_signal_templates.json
-semantic_clusters.json
+*.json
+!deduplicated_templates.json
+!package.json
+!pyproject.json
+!.beads/*.json
 mycelium_768.db
 paper.docx
 paper.html
@@ -104,8 +103,5 @@ math_l3_failures.json
 idea1.md
 gcp_commands.md
 gcp_setup.sh
-learned_balanced.json
-learned_welford_profiles.json
 aws_setup.md
 models/*.pt
-specialized_templates.json
