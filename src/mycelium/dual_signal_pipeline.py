@@ -191,11 +191,14 @@ class DualSignalPipeline:
         return sentences
 
     def _classify_sentence(self, sentence: str) -> Optional[MatchedOperation]:
-        """Classify a single sentence using verb patterns + embedding fallback.
+        """Classify a single sentence using verb patterns + pattern inference.
 
         Priority:
         1. Verb classifier (high confidence, pattern-based)
-        2. Embedding similarity to template centroids (fallback)
+        2. Pattern inference from sentence structure (fallback)
+
+        Note: Template embedding matching is unreliable due to mislabeled templates,
+        so we rely on verb patterns which are the single source of truth.
         """
         # Try verb classifier first (high confidence)
         verb_result = classify_by_verb(sentence)
@@ -225,28 +228,71 @@ class DualSignalPipeline:
                 dsl_expr=dsl_expr,
             )
 
-        # Fall back to embedding similarity
-        if self.store.templates:
-            embedding, attention, _ = self.detector.extract_features(sentence)
-            attention_flat = attention.flatten() if attention.ndim > 1 else attention
+        # Fall back to pattern-based inference from sentence
+        # Since templates are mislabeled, infer operation from patterns
+        inferred = self._infer_operation_from_patterns(sentence)
+        if inferred:
+            op_label, confidence, dsl_expr = inferred
+            op_type = self.OP_TYPE_MAP.get(op_label, OperationType.UNKNOWN)
 
-            result = self.store.find_best_match(embedding, attention_flat)
-            if result:
-                template, combined_score, emb_sim, att_sim = result
-                confidence = self._compute_confidence(template, combined_score)
+            return MatchedOperation(
+                span_text=sentence,
+                operation_type=op_type,
+                template_id=f"{op_label}_pattern",
+                combined_score=confidence,
+                embedding_similarity=0.0,
+                attention_similarity=0.0,
+                confidence=confidence,
+                dsl_expr=dsl_expr,
+            )
 
-                return MatchedOperation(
-                    span_text=sentence,
-                    operation_type=template.operation_type,
-                    template_id=template.template_id,
-                    combined_score=combined_score,
-                    embedding_similarity=emb_sim,
-                    attention_similarity=att_sim,
-                    confidence=confidence,
-                    dsl_expr=getattr(template, 'dsl_expr', 'value'),
-                )
+        # Last resort: check for numbers and default to SET
+        if re.search(r'\d+', sentence):
+            return MatchedOperation(
+                span_text=sentence,
+                operation_type=OperationType.SET,
+                template_id="SET_default",
+                combined_score=0.5,
+                embedding_similarity=0.0,
+                attention_similarity=0.0,
+                confidence=0.5,
+                dsl_expr="value",
+            )
 
         # No match found
+        return None
+
+    def _infer_operation_from_patterns(self, sentence: str) -> Optional[tuple]:
+        """Infer operation from sentence patterns when verb classifier fails.
+
+        Uses the pattern sets from verb_classifier as the source of truth.
+
+        Returns:
+            Tuple of (operation_label, confidence, dsl_expr) or None
+        """
+        from mycelium.verb_classifier import (
+            ADD_PATTERNS, SUB_PATTERNS, MUL_PATTERNS, DIV_PATTERNS
+        )
+
+        sentence_lower = sentence.lower()
+        words = set(re.findall(r'\b[a-z]+\b', sentence_lower))
+
+        # Check pattern matches (prioritize specific patterns)
+        sub_matches = words & SUB_PATTERNS
+        add_matches = words & ADD_PATTERNS
+        mul_matches = words & MUL_PATTERNS
+        div_matches = words & DIV_PATTERNS
+
+        # Return based on matches with confidence
+        if sub_matches:
+            return ("SUB", 0.7, "entity - value")
+        if add_matches:
+            return ("ADD", 0.7, "entity + value")
+        if mul_matches:
+            return ("MUL", 0.7, "entity * value")
+        if div_matches:
+            return ("DIV", 0.7, "entity / value")
+
         return None
 
     def _compute_confidence(

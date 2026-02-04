@@ -130,10 +130,15 @@ def extract_verb(text: str) -> Optional[str]:
     text_lower = text.lower()
 
     # First check for multi-word phrases (like "shared equally")
+    # Allow intervening words: "shared the candy equally" matches "shared equally"
     for op, verbs in VERB_TAXONOMY.items():
         for verb in verbs:
-            if " " in verb and verb in text_lower:
-                return verb
+            if " " in verb:
+                # Create pattern allowing any words between: "shared equally" -> "shared\b.*?\bequally"
+                parts = verb.split()
+                pattern = r'\b' + r'\b.*?\b'.join(re.escape(p) for p in parts) + r'\b'
+                if re.search(pattern, text_lower):
+                    return verb
 
     # Extract words, handling punctuation
     words = re.findall(r'\b[a-z]+\b', text_lower)
