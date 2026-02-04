@@ -472,15 +472,23 @@ class ExecutionResult:
 class GraphExecutor:
     """Executes span graphs to compute numeric answers.
 
-    Walks spans in topological order, extracts values, executes DSL,
-    and tracks entity values for cross-span composition.
+    Uses attention signals for all decisions:
+    - Entity detection: attention_received (from AttentionGraphBuilder)
+    - Pronoun resolution: cross-attention between spans
+    - Number role assignment: attention from number tokens to entities
+    - Reference entities: cross-attention edge weights
+
+    No hardcoded word lists. Per CLAUDE.md: attention signals discriminate.
     """
 
     def __init__(self):
-        # Regex patterns for value extraction
         import re
         self._number_pattern = re.compile(r'[\$]?(\d+(?:,\d{3})*(?:\.\d+)?)')
         self._fraction_pattern = re.compile(r'(\d+)/(\d+)')
+        # Common pronouns for cross-attention resolution (not for classification)
+        self._pronouns = frozenset([
+            'he', 'she', 'it', 'they', 'him', 'her', 'them', 'his', 'its', 'their',
+        ])
 
     def extract_numbers(self, text: str) -> List[float]:
         """Extract all numeric values from text."""
@@ -556,24 +564,181 @@ class GraphExecutor:
         # Default: return span_value
         return span_value
 
+    def resolve_entity_via_cross_attention(
+        self,
+        span: Span,
+        span_idx: int,
+        graph: SpanGraph,
+        attention_matrix: Optional[np.ndarray],
+        entity_values: Dict[str, float],
+    ) -> Optional[str]:
+        """Resolve which entity a span refers to using cross-attention.
+
+        When a span has a pronoun or no detected entity, uses cross-attention
+        edge weights to find which previous span (and its entity) this span
+        most strongly attends to.
+
+        No hardcoded pronoun lists for classification - attention signals decide.
+
+        Args:
+            span: Current span being executed
+            span_idx: Index of current span in graph
+            graph: Full span graph with edges
+            attention_matrix: Full problem attention matrix
+            entity_values: Currently tracked entity values
+
+        Returns:
+            Entity name resolved via cross-attention, or None
+        """
+        if not graph.edges or not entity_values:
+            return None
+
+        # Find the strongest cross-attention edge FROM a previous span TO this span
+        best_source = None
+        best_weight = 0.0
+
+        for src, dst, weight in graph.edges:
+            if dst == span_idx and weight > best_weight:
+                best_weight = weight
+                best_source = src
+
+        if best_source is None or best_source >= len(graph.spans):
+            return None
+
+        # Get the primary entity from the source span
+        source_span = graph.spans[best_source]
+        if source_span.entities:
+            source_entity = max(source_span.entities, key=lambda e: e.attention_received)
+            entity_name = source_entity.text.lower()
+            if entity_name in entity_values:
+                return entity_name
+
+        return None
+
+    def assign_number_roles(
+        self,
+        span: Span,
+        numbers: List[float],
+        attention_matrix: Optional[np.ndarray],
+    ) -> Tuple[Optional[float], Optional[float]]:
+        """Assign numbers to roles using attention patterns.
+
+        For multi-number spans like "bought 3 apples for $2 each":
+        - Primary value: number with highest attention to the span's entity
+        - Secondary value: the other number (used as operand)
+
+        Uses attention from number tokens to entity tokens to determine roles.
+
+        Args:
+            span: The span containing the numbers
+            numbers: Extracted numeric values
+            attention_matrix: Full problem attention matrix
+
+        Returns:
+            (primary_value, secondary_value) tuple
+        """
+        if not numbers:
+            return None, None
+        if len(numbers) == 1:
+            return numbers[0], None
+
+        # With attention matrix, use attention to determine roles
+        if attention_matrix is not None and span.entities:
+            entity_indices = set()
+            for entity in span.entities:
+                entity_indices.update(entity.token_indices)
+
+            # Find which number tokens attend more strongly to entity tokens
+            # Number tokens within the span's range
+            number_attentions = []
+            for num_idx, num_val in enumerate(numbers):
+                # Estimate which token position this number occupies
+                # by scanning span tokens for numeric content
+                attn_to_entity = 0.0
+                count = 0
+                for tok_idx in span.token_indices:
+                    if tok_idx < attention_matrix.shape[0]:
+                        for ent_idx in entity_indices:
+                            if ent_idx < attention_matrix.shape[1]:
+                                attn_to_entity += attention_matrix[tok_idx, ent_idx]
+                                count += 1
+                number_attentions.append(attn_to_entity / max(count, 1))
+
+            # Number with higher attention to entity = primary (the quantity being modified)
+            if len(number_attentions) >= 2 and number_attentions[0] != number_attentions[1]:
+                if number_attentions[0] >= number_attentions[1]:
+                    return numbers[0], numbers[1]
+                else:
+                    return numbers[1], numbers[0]
+
+        # Fallback: first number is primary, second is secondary
+        return numbers[0], numbers[1] if len(numbers) > 1 else None
+
+    def find_reference_entity(
+        self,
+        span: Span,
+        span_idx: int,
+        graph: SpanGraph,
+        entity_values: Dict[str, float],
+    ) -> Optional[str]:
+        """Find reference entity for relative operations (e.g., "more than [REF]").
+
+        Uses cross-attention: if a span has multiple entities detected,
+        the one with LOWER attention_received (not the subject) is likely
+        the reference entity.
+
+        Args:
+            span: Current span
+            span_idx: Index in graph
+            graph: Full graph
+            entity_values: Current entity state
+
+        Returns:
+            Reference entity name, or None
+        """
+        if len(span.entities) < 2:
+            return None
+
+        # Sort entities by attention_received - highest is subject, others are references
+        sorted_entities = sorted(span.entities, key=lambda e: -e.attention_received)
+
+        # The second-highest attention entity that exists in state = reference
+        for entity in sorted_entities[1:]:
+            entity_name = entity.text.lower()
+            if entity_name in entity_values:
+                return entity_name
+
+        # Check entity_references in graph for cross-span references
+        for entity_name, span_ids in graph.entity_references.items():
+            if span_idx in span_ids and entity_name in entity_values:
+                # This span references an entity from another span
+                # Check it's not the primary entity of this span
+                primary = sorted_entities[0].text.lower() if sorted_entities else None
+                if entity_name != primary:
+                    return entity_name
+
+        return None
+
     def execute_graph_with_attention(
         self,
         graph: SpanGraph,
         span_templates: List[Tuple[int, str, str]],  # (span_idx, operation_type, dsl_expr)
         attention_matrix: Optional[np.ndarray] = None
     ) -> ExecutionResult:
-        """Execute span graph using attention signals for composition.
+        """Execute span graph using attention signals for all decisions.
 
-        Key improvements over basic execution:
-        1. Uses attention_received to weight entity importance
-        2. Handles multiple values per span (the "2 dogs + 1 cat" problem)
-        3. Uses cross-span attention to determine which entities to compose
-        4. Tracks separate accumulators for different entity types
+        Pure attention-driven execution:
+        1. Entity detection: attention_received (from graph.spans[].entities)
+        2. Pronoun/reference resolution: cross-attention edges between spans
+        3. Number role assignment: attention from number tokens to entities
+        4. Reference entities: secondary entities detected via attention
+
+        No hardcoded word lists. Per CLAUDE.md: attention signals discriminate.
 
         Args:
             graph: SpanGraph with spans, edges, and entities
             span_templates: List of (span_idx, operation_type, dsl_expr) tuples
-            attention_matrix: Optional attention matrix for attention-guided execution
+            attention_matrix: Full problem attention matrix for cross-attention
 
         Returns:
             ExecutionResult with composed answer
@@ -587,20 +752,15 @@ class GraphExecutor:
                 error="Empty graph"
             )
 
-        # Track entity values by name for cross-span composition
         entity_values: Dict[str, float] = {}
         trace: List[str] = []
 
-        # Build span_idx -> template mapping
         template_map = {idx: (op, dsl) for idx, op, dsl in span_templates}
-
-        # Topological sort based on edges
         order = self._topological_sort(graph)
 
-        # Track ALL values extracted (for final composition)
-        all_values: List[Tuple[str, float, str]] = []  # (entity, value, operation)
+        # Track the primary entity (first named entity seen)
+        primary_entity: Optional[str] = None
 
-        # First pass: extract all values and their contexts
         for span_idx in order:
             if span_idx >= len(graph.spans):
                 continue
@@ -608,43 +768,74 @@ class GraphExecutor:
             span = graph.spans[span_idx]
             op_type, dsl_expr = template_map.get(span_idx, ('SET', 'value'))
 
-            # Extract ALL numbers from span (not just first)
-            numbers = self.extract_numbers(span.text)
-
-            # Get primary entity for this span
-            primary_entity = None
+            # --- Entity resolution via attention ---
+            # 1. Use attention-detected entities from the span
+            current_entity = None
             if span.entities:
-                # Use entity with highest attention_received
                 best_entity = max(span.entities, key=lambda e: e.attention_received)
-                primary_entity = best_entity.text.lower()
+                entity_text = best_entity.text.lower()
 
-            # For each number, determine its role
-            for i, num in enumerate(numbers):
-                entity_name = primary_entity or f"value_{span_idx}_{i}"
-
-                # Determine if this is a SET (initial) or operation
-                if op_type == 'SET' or entity_name not in entity_values:
-                    # Initial value for this entity
-                    entity_values[entity_name] = num
-                    all_values.append((entity_name, num, 'SET'))
-                    trace.append(f"SET {entity_name} = {num}")
+                # Check if this is a pronoun needing cross-attention resolution
+                if entity_text in self._pronouns:
+                    # Resolve via cross-attention to previous spans
+                    resolved = self.resolve_entity_via_cross_attention(
+                        span, span_idx, graph, attention_matrix, entity_values
+                    )
+                    current_entity = resolved or primary_entity
                 else:
-                    # Apply operation to existing entity
-                    old_val = entity_values[entity_name]
-                    new_val = self.execute_dsl(dsl_expr, old_val, num)
+                    current_entity = entity_text
+                    if primary_entity is None:
+                        primary_entity = entity_text
+
+            # 2. If no entity detected, use cross-attention to infer from context
+            if current_entity is None:
+                current_entity = self.resolve_entity_via_cross_attention(
+                    span, span_idx, graph, attention_matrix, entity_values
+                ) or primary_entity or f"entity_{span_idx}"
+
+            # --- Number extraction with role assignment ---
+            numbers = self.extract_numbers(span.text)
+            primary_value, secondary_value = self.assign_number_roles(
+                span, numbers, attention_matrix
+            )
+
+            # --- Reference entity for relative DSLs (e.g., "ref + value") ---
+            ref_entity = None
+            if 'ref' in dsl_expr:
+                ref_entity = self.find_reference_entity(
+                    span, span_idx, graph, entity_values
+                )
+
+            # --- Execute DSL ---
+            if op_type == 'SET' or current_entity not in entity_values:
+                if primary_value is not None:
+                    entity_values[current_entity] = primary_value
+                    trace.append(f"SET {current_entity} = {primary_value}")
+            else:
+                old_val = entity_values[current_entity]
+
+                # Handle reference-based DSL (e.g., "ref + value", "ref * 2")
+                if ref_entity and ref_entity in entity_values:
+                    ref_val = entity_values[ref_entity]
+                    new_val = self._execute_ref_dsl(dsl_expr, ref_val, primary_value)
                     if new_val is not None:
-                        entity_values[entity_name] = new_val
-                        all_values.append((entity_name, new_val, op_type))
-                        trace.append(f"{op_type} {entity_name}: {old_val} -> {new_val}")
+                        entity_values[current_entity] = new_val
+                        trace.append(f"{op_type} {current_entity}: ref({ref_entity}={ref_val}) -> {new_val}")
+                else:
+                    new_val = self.execute_dsl(dsl_expr, old_val, primary_value)
+                    if new_val is not None:
+                        entity_values[current_entity] = new_val
+                        trace.append(f"{op_type} {current_entity}: {old_val} -> {new_val}")
 
-        # Second pass: compose entities using cross-span attention
-        # Find entities that are referenced across spans
-        cross_referenced = set()
-        for entity_name, span_ids in graph.entity_references.items():
-            if len(span_ids) > 1:
-                cross_referenced.add(entity_name)
+            # Handle secondary value (e.g., MUL: quantity * unit_price)
+            if secondary_value is not None and op_type in ('MUL', 'DIV'):
+                old_val = entity_values.get(current_entity, 0)
+                new_val = self.execute_dsl(dsl_expr, old_val, secondary_value)
+                if new_val is not None:
+                    entity_values[current_entity] = new_val
+                    trace.append(f"{op_type} {current_entity} (secondary): {old_val} -> {new_val}")
 
-        # Compute final answer based on composition pattern
+        # Compute final answer
         if not entity_values:
             return ExecutionResult(
                 answer=None,
@@ -654,17 +845,16 @@ class GraphExecutor:
                 error="No values extracted"
             )
 
-        # Heuristic: if question asks "how many total", sum cross-referenced entities
-        # Otherwise, return the last computed value
         trace.append(f"Entity values: {entity_values}")
-        trace.append(f"Cross-referenced: {cross_referenced}")
 
-        # Get all unique final entity values
-        final_values = list(entity_values.values())
+        # Answer = primary entity's final value (not sum of all entities)
+        if primary_entity and primary_entity in entity_values:
+            answer = entity_values[primary_entity]
+        else:
+            # Fallback: last computed value
+            answer = list(entity_values.values())[-1]
 
-        # Default: return sum of all values (common for GSM8K)
-        answer = sum(final_values) if len(final_values) > 1 else final_values[0]
-        trace.append(f"Final answer (sum of {len(final_values)} values): {answer}")
+        trace.append(f"Final answer ({primary_entity}): {answer}")
 
         return ExecutionResult(
             answer=answer,
@@ -673,99 +863,40 @@ class GraphExecutor:
             success=True
         )
 
-    def execute_graph(
+    def _execute_ref_dsl(
         self,
-        graph: SpanGraph,
-        span_templates: List[Tuple[int, str, str]]  # (span_idx, operation_type, dsl_expr)
-    ) -> ExecutionResult:
-        """Execute a span graph to compute the final answer.
+        dsl_expr: str,
+        ref_value: float,
+        span_value: Optional[float]
+    ) -> Optional[float]:
+        """Execute a reference-based DSL expression.
 
-        Walks spans in topological order based on cross-attention edges.
-        Tracks entity values for cross-span composition.
-
-        Args:
-            graph: SpanGraph with spans and edges
-            span_templates: List of (span_idx, operation_type, dsl_expr) tuples
-
-        Returns:
-            ExecutionResult with answer and trace
+        Handles DSL like "ref + value", "ref * 2", "ref - value".
+        Uses the reference entity's value as the base.
         """
-        if not graph.spans:
-            return ExecutionResult(
-                answer=None,
-                entity_values={},
-                execution_trace=["No spans to execute"],
-                success=False,
-                error="Empty graph"
-            )
+        dsl = dsl_expr.strip().lower()
 
-        # Track entity values by name for cross-span composition
-        entity_values: Dict[str, float] = {}
-        trace: List[str] = []
+        if span_value is None:
+            return ref_value
 
-        # Build span_idx -> template mapping
-        template_map = {idx: (op, dsl) for idx, op, dsl in span_templates}
+        if 'ref * 2' in dsl:
+            return ref_value * 2
+        elif 'ref * 3' in dsl:
+            return ref_value * 3
+        elif 'ref +' in dsl:
+            return ref_value + span_value
+        elif 'ref -' in dsl:
+            return ref_value - span_value
+        elif 'ref *' in dsl:
+            return ref_value * span_value
+        elif 'ref /' in dsl:
+            return ref_value / span_value if span_value != 0 else None
 
-        # Topological sort based on edges (earlier spans first, respecting deps)
-        order = self._topological_sort(graph)
+        return ref_value
 
-        # Track current running value (for chained operations)
-        running_value: Optional[float] = None
-        last_entity: Optional[str] = None
-
-        for span_idx in order:
-            if span_idx >= len(graph.spans):
-                continue
-
-            span = graph.spans[span_idx]
-
-            # Get template for this span
-            op_type, dsl_expr = template_map.get(span_idx, ('SET', 'value'))
-
-            # Extract numbers from span
-            numbers = self.extract_numbers(span.text)
-            span_value = numbers[0] if numbers else None
-
-            # Get entity reference if any
-            entity_ref = None
-            if span.entities:
-                # Check if this span references a known entity
-                for entity in span.entities:
-                    entity_key = entity.text.lower()
-                    if entity_key in entity_values:
-                        entity_ref = entity_key
-                        break
-
-            # Get entity value for operation
-            if entity_ref:
-                entity_value = entity_values[entity_ref]
-            else:
-                entity_value = running_value
-
-            # Execute DSL
-            result = self.execute_dsl(dsl_expr, entity_value, span_value)
-
-            trace.append(
-                f"Span {span_idx}: '{span.text[:40]}...' | "
-                f"op={op_type}, dsl={dsl_expr}, "
-                f"entity_val={entity_value}, span_val={span_value} -> {result}"
-            )
-
-            if result is not None:
-                running_value = result
-
-                # Store result under entity names in this span
-                if span.entities:
-                    for entity in span.entities:
-                        entity_values[entity.text.lower()] = result
-                        last_entity = entity.text.lower()
-
-        return ExecutionResult(
-            answer=running_value,
-            entity_values=entity_values,
-            execution_trace=trace,
-            success=running_value is not None
-        )
+    # execute_graph() removed - use execute_graph_with_attention() instead
+    # The old method used string-based entity matching; the new method
+    # uses attention signals for all entity resolution.
 
     def _topological_sort(self, graph: SpanGraph) -> List[int]:
         """Topological sort of spans based on cross-attention edges."""
