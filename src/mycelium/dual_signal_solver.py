@@ -562,8 +562,31 @@ def _create_mock_pipeline(
                 self.store.add_template(template)
 
         def process_problem(self, text: str) -> PipelineOutput:
-            """Process problem using keyword matching (mock)."""
+            """Process problem using verb classifier (mock mode).
+
+            Uses the real verb classifier for operation classification,
+            just skips the GPU-based embedding extraction.
+            """
             import re
+            from mycelium.verb_classifier import classify_by_verb
+
+            # Map operation labels to DSL expressions
+            OP_TO_DSL = {
+                "SET": "value",
+                "ADD": "entity + value",
+                "SUB": "entity - value",
+                "MUL": "entity * value",
+                "DIV": "entity / value",
+            }
+
+            # Map string labels to OperationType
+            OP_TYPE_MAP = {
+                "SET": OperationType.SET,
+                "ADD": OperationType.ADD,
+                "SUB": OperationType.SUB,
+                "MUL": OperationType.MUL,
+                "DIV": OperationType.DIV,
+            }
 
             # Simple clause splitting
             clauses = re.split(r'[.!?]|\band\b|\bthen\b', text)
@@ -572,39 +595,42 @@ def _create_mock_pipeline(
             matched_ops = []
             for clause in clauses:
                 # Skip question clauses
-                if '?' in clause or 'how many' in clause.lower():
+                clause_lower = clause.lower()
+                if '?' in clause or any(q in clause_lower for q in
+                        ['how many', 'how much', 'what is', 'what are']):
                     continue
 
-                # Find matching operation by keywords
-                best_match = None
-                best_score = 0.0
+                # Use real verb classifier (single source of truth)
+                verb_result = classify_by_verb(clause)
 
-                clause_lower = clause.lower()
-                for template in self.store.templates.values():
-                    score = 0.0
-                    for example in template.span_examples:
-                        if example.lower() in clause_lower:
-                            score += 1.0
+                if verb_result:
+                    op_label, confidence = verb_result
+                    op_type = OP_TYPE_MAP.get(op_label, OperationType.SET)
+                    dsl_expr = OP_TO_DSL.get(op_label, "value")
 
-                    if score > best_score:
-                        best_score = score
-                        best_match = template
-
-                # Default to SET if no match
-                if best_match is None:
-                    best_match = self.store.get_template("SET_mock")
-                    best_score = 0.3
-
-                if best_match:
                     matched_ops.append(MatchedOperation(
                         span_text=clause,
-                        operation_type=best_match.operation_type,
-                        template_id=best_match.template_id,
-                        combined_score=best_score / 5.0,
-                        embedding_similarity=0.7,
-                        attention_similarity=0.6,
-                        confidence=best_score / 5.0 + 0.5,
+                        operation_type=op_type,
+                        template_id=f"{op_label}_verb",
+                        combined_score=confidence,
+                        embedding_similarity=0.0,
+                        attention_similarity=0.0,
+                        confidence=confidence,
+                        dsl_expr=dsl_expr,
                     ))
+                else:
+                    # Default to SET if no verb match but has a number
+                    if re.search(r'\d+', clause):
+                        matched_ops.append(MatchedOperation(
+                            span_text=clause,
+                            operation_type=OperationType.SET,
+                            template_id="SET_default",
+                            combined_score=0.5,
+                            embedding_similarity=0.0,
+                            attention_similarity=0.0,
+                            confidence=0.5,
+                            dsl_expr="value",
+                        ))
 
             return PipelineOutput(
                 problem_text=text,
