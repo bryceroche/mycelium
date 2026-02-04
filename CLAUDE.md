@@ -32,6 +32,16 @@ We're lookinig for the longest continuous sequence that retains attention connec
 
 The goal is NOT 100% accuracy on every run. The goal is collecting data that makes the system smarter over time.
 
+## AVOID Verb Classification Like The Plague
+**Do NOT use hardcoded verb lists to classify operations.** This is brittle and doesn't generalize.
+- "ate" → SUB, "found" → ADD — this is pattern matching, not understanding
+- Verbs are ambiguous: "takes 5 minutes" vs "takes 5 apples"
+- We want the attention signals themselves to discriminate operations
+- The goal: learn operation type from structural patterns, not vocabulary
+
+**Current problem:** Attention signals correlate with span length (r=-0.81), not operation type.
+**The fix:** We need to extract/engineer attention features that actually capture operational semantics.
+
 ## Attention Signals
 
 Three signals extracted from attention matrices:
