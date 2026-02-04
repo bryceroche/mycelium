@@ -26,8 +26,6 @@ from mycelium.dual_signal_templates import (
     TemplateStore,
     DualSignalTemplate,
     OperationType,
-    WelfordStats,
-    create_template_from_span,
 )
 from mycelium.verb_classifier import classify_by_verb
 
@@ -121,27 +119,21 @@ class DualSignalPipeline:
         if templates_path and os.path.exists(templates_path):
             self.load_templates(templates_path)
 
-    def process_problem(self, text: str, method: str = "sentence") -> PipelineOutput:
+    def process_problem(self, text: str) -> PipelineOutput:
         """Process a math problem and match spans to templates.
 
         This is the main entry point for the pipeline:
-        1. Segments problem into clauses (sentence-first or attention-based)
-        2. Classifies each clause using verb patterns + embedding fallback
+        1. Segments problem into sentences (split by punctuation, filter questions)
+        2. Classifies each sentence using verb patterns + embedding fallback
         3. Returns matched operations with confidence scores
 
         Args:
             text: The math problem text to process
-            method: "sentence" (default, recommended) or "community" (attention-based)
 
         Returns:
             PipelineOutput with matched operations for each span
         """
-        if method == "sentence":
-            # Sentence-first segmentation: split by punctuation, filter questions
-            return self._process_sentence_first(text)
-        else:
-            # Legacy: attention-based community detection
-            return self._process_community_based(text)
+        return self._process_sentence_first(text)
 
     def _process_sentence_first(self, text: str) -> PipelineOutput:
         """Process using sentence-first segmentation + verb classifier.
@@ -238,72 +230,6 @@ class DualSignalPipeline:
 
         # No match found
         return None
-
-    def _process_community_based(self, text: str) -> PipelineOutput:
-        """Legacy: Process using attention-based community detection."""
-        spans = self.detector.extract_span_features(text, method="community")
-
-        matched_operations = []
-
-        for span in spans:
-            match_result = self._match_span_to_template(span)
-            if match_result:
-                matched_operations.append(match_result)
-
-        return PipelineOutput(
-            problem_text=text,
-            matched_operations=matched_operations,
-            spans_detected=len(spans),
-            templates_available=len(self.store.templates),
-        )
-
-    def _match_span_to_template(
-        self,
-        span: Dict[str, Any]
-    ) -> Optional[MatchedOperation]:
-        """Match a single span to the best template.
-
-        Uses dual-signal scoring: embedding similarity + attention correlation.
-        Following CLAUDE.md: Always route to best match, let failures drive learning.
-
-        Args:
-            span: Span dictionary from extract_span_features()
-
-        Returns:
-            MatchedOperation if templates exist, None otherwise
-        """
-        if not self.store.templates:
-            # No templates yet - return None (caller should bootstrap)
-            return None
-
-        # Get span signals
-        embedding = span["embedding"]
-        attention = span["attention_pattern"]
-
-        # Find best matching template (always route to best per CLAUDE.md)
-        result = self.store.find_best_match(embedding, attention)
-
-        if result is None:
-            return None
-
-        template, combined_score, emb_sim, att_sim = result
-
-        # Update Welford stats for this template
-        template.embedding_welford.update(emb_sim)
-        template.attention_welford.update(att_sim)
-
-        # Compute confidence using Welford z-score
-        confidence = self._compute_confidence(template, combined_score)
-
-        return MatchedOperation(
-            span_text=span["text"],
-            operation_type=template.operation_type,
-            template_id=template.template_id,
-            combined_score=combined_score,
-            embedding_similarity=emb_sim,
-            attention_similarity=att_sim,
-            confidence=confidence,
-        )
 
     def _compute_confidence(
         self,

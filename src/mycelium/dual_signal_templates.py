@@ -555,18 +555,18 @@ class SpanDetector:
         print(f"Loaded checkpoint from {path}")
         print(f"  Correlation: {checkpoint.get('correlation', 'N/A')}")
         print(f"  Epoch: {checkpoint.get('epoch', 'N/A')}")
-    
+
     @torch.no_grad()
     def extract_features(
-        self, 
+        self,
         text: str
     ) -> Tuple[np.ndarray, np.ndarray, List[str]]:
         """
         Extract embedding and attention features from text.
-        
+
         Args:
             text: Input text to process
-        
+
         Returns:
             Tuple of:
             - embedding: [hidden_dim] numpy array
@@ -582,283 +582,55 @@ class SpanDetector:
             max_length=512
         )
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
-        
+
         # Forward pass
         embeddings, attention, _ = self.model(
             inputs["input_ids"],
             inputs["attention_mask"]
         )
-        
+
         # Convert to numpy
         embedding = embeddings[0].cpu().numpy()
         attention = attention[0].cpu().numpy()
-        
+
         # Get tokens
         tokens = self.tokenizer.convert_ids_to_tokens(inputs["input_ids"][0].cpu())
-        
+
         return embedding, attention, tokens
-    
-    def detect_spans_community(
-        self, 
-        attention: np.ndarray,
-        tokens: List[str],
-        resolution: float = 1.0,
-        min_span_size: int = 2
-    ) -> List[Tuple[int, int, float]]:
-        """
-        Detect spans using community detection on attention graph.
-        
-        Uses Louvain community detection to find clusters of tokens
-        that attend strongly to each other.
-        
-        Args:
-            attention: [seq_len, seq_len] attention matrix
-            tokens: List of token strings
-            resolution: Louvain resolution parameter (higher = smaller communities)
-            min_span_size: Minimum tokens in a span
-        
-        Returns:
-            List of (start_idx, end_idx, density) tuples
-        """
-        import networkx as nx
-        from networkx.algorithms.community import louvain_communities
-        
-        n = attention.shape[0]
-        
-        # Build weighted graph from attention
-        G = nx.Graph()
-        G.add_nodes_from(range(n))
-        
-        # Add edges with attention weights (symmetric for community detection)
-        for i in range(n):
-            for j in range(i + 1, n):
-                weight = (attention[i, j] + attention[j, i]) / 2
-                if weight > 0.01:  # Threshold weak connections
-                    G.add_edge(i, j, weight=weight)
-        
-        # Detect communities
-        try:
-            communities = louvain_communities(G, weight="weight", resolution=resolution)
-        except Exception:
-            # Fallback: treat entire sequence as one span
-            return [(0, n, 1.0)]
-        
-        # Convert communities to contiguous spans
-        spans = []
-        for community in communities:
-            if len(community) < min_span_size:
-                continue
-            
-            indices = sorted(community)
-            start = indices[0]
-            end = indices[-1] + 1
-            
-            # Compute internal density
-            subgraph = G.subgraph(indices)
-            if len(indices) > 1:
-                density = nx.density(subgraph)
-            else:
-                density = 1.0
-            
-            spans.append((start, end, density))
-        
-        # Sort by start position
-        spans.sort(key=lambda x: x[0])
-        
-        return spans
-    
-    def detect_spans_threshold(
-        self,
-        attention: np.ndarray,
-        tokens: List[str],
-        threshold: float = 0.1,
-        min_span_size: int = 2
-    ) -> List[Tuple[int, int, float]]:
-        """
-        Detect spans using attention threshold method.
-        
-        Simpler alternative to community detection.
-        Finds contiguous regions with high self-attention.
-        """
-        n = attention.shape[0]
-        
-        # Compute "self-connectivity" score for each position
-        connectivity = np.zeros(n)
-        for i in range(n):
-            # Average attention received from nearby tokens
-            window = min(5, n)
-            start = max(0, i - window)
-            end = min(n, i + window + 1)
-            connectivity[i] = np.mean(attention[start:end, i])
-        
-        # Find spans above threshold
-        spans = []
-        in_span = False
-        span_start = 0
-        
-        for i in range(n):
-            if connectivity[i] > threshold:
-                if not in_span:
-                    span_start = i
-                    in_span = True
-            else:
-                if in_span:
-                    if i - span_start >= min_span_size:
-                        density = np.mean(connectivity[span_start:i])
-                        spans.append((span_start, i, density))
-                    in_span = False
-        
-        # Handle span at end
-        if in_span and n - span_start >= min_span_size:
-            density = np.mean(connectivity[span_start:n])
-            spans.append((span_start, n, density))
-        
-        return spans
-    
-    def extract_span_features(
-        self,
-        text: str,
-        method: str = "community"
-    ) -> List[Dict[str, Any]]:
-        """
-        Extract features for all detected spans in text.
-        
-        Args:
-            text: Input text
-            method: "community" or "threshold"
-        
-        Returns:
-            List of span dictionaries with:
-            - text: Span text
-            - start: Start token index
-            - end: End token index
-            - embedding: Span embedding (mean of token embeddings)
-            - attention_pattern: Submatrix of attention for this span
-            - density: Internal attention density
-        """
-        # Get full features
-        embedding, attention, tokens = self.extract_features(text)
-        
-        # Detect spans
-        if method == "community":
-            spans = self.detect_spans_community(attention, tokens)
-        else:
-            spans = self.detect_spans_threshold(attention, tokens)
-        
-        # Extract features for each span
-        results = []
-        for start, end, density in spans:
-            # Get span text
-            span_tokens = tokens[start:end]
-            span_text = self.tokenizer.convert_tokens_to_string(span_tokens)
-            
-            # Get span attention submatrix
-            span_attention = attention[start:end, start:end]
-            
-            # Flatten for storage (can reconstruct shape later)
-            attention_flat = span_attention.flatten()
-            
-            results.append({
-                "text": span_text.strip(),
-                "start": start,
-                "end": end,
-                "embedding": embedding,  # Use full embedding for now
-                "attention_pattern": attention_flat,
-                "attention_shape": span_attention.shape,
-                "density": density
-            })
-        
-        return results
 
 
 def create_template_from_span(
-    span_data: Dict[str, Any],
+    span_text: str,
+    embedding: np.ndarray,
+    attention_pattern: np.ndarray,
     operation_type: OperationType,
     template_id: Optional[str] = None
 ) -> DualSignalTemplate:
     """
     Create a new template from span data.
-    
+
     Args:
-        span_data: Output from SpanDetector.extract_span_features()
+        span_text: Text of the span
+        embedding: Embedding vector for the span
+        attention_pattern: Attention pattern for the span
         operation_type: The operation this span represents
         template_id: Optional ID (auto-generated if not provided)
-    
+
     Returns:
         New DualSignalTemplate
     """
     import uuid
-    
+
     if template_id is None:
         template_id = f"{operation_type.value}_{uuid.uuid4().hex[:8]}"
-    
+
     return DualSignalTemplate(
         template_id=template_id,
         operation_type=operation_type,
-        embedding_centroid=span_data["embedding"].copy(),
-        attention_signature=span_data["attention_pattern"].copy(),
-        span_examples=[span_data["text"]]
+        embedding_centroid=embedding.copy(),
+        attention_signature=attention_pattern.copy(),
+        span_examples=[span_text]
     )
-
-
-def extract_templates_from_qwen_data(
-    qwen_data_dir: str,
-    max_files: int = 10
-) -> List[DualSignalTemplate]:
-    """
-    Extract initial templates from Qwen attention data.
-    
-    This bootstraps the template store with patterns learned
-    from the large model's attention.
-    
-    Args:
-        qwen_data_dir: Directory containing Qwen feature files
-        max_files: Maximum number of files to process
-    
-    Returns:
-        List of extracted templates
-    """
-    templates = []
-    
-    # Get list of feature files
-    files = sorted([
-        f for f in os.listdir(qwen_data_dir) 
-        if f.endswith('.npz')
-    ])[:max_files]
-    
-    for fname in files:
-        fpath = os.path.join(qwen_data_dir, fname)
-        data = np.load(fpath, allow_pickle=True)
-        
-        # Process each sample in the file
-        n_samples = len(data['connectivity'])
-        
-        for i in range(min(n_samples, 10)):  # Limit samples per file
-            connectivity = data['connectivity'][i]
-            
-            # Skip very small sequences
-            if connectivity.shape[0] < 5:
-                continue
-            
-            # Use connectivity as attention signature
-            # Flatten for consistent representation
-            attention_flat = connectivity.flatten()
-            
-            # Create a template with dummy embedding (will be updated)
-            # In practice, we'd pair this with text to get real embeddings
-            embedding = np.random.randn(384)  # MiniLM dimension
-            embedding = embedding / np.linalg.norm(embedding)
-            
-            template = DualSignalTemplate(
-                template_id=f"qwen_{fname}_{i}",
-                operation_type=OperationType.UNKNOWN,
-                embedding_centroid=embedding,
-                attention_signature=attention_flat,
-                span_examples=[f"Sample {i} from {fname}"]
-            )
-            templates.append(template)
-    
-    return templates
 
 
 # ============================================================
@@ -954,30 +726,25 @@ class DualSignalRouter:
 
 if __name__ == "__main__":
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="Dual-Signal Template System")
     parser.add_argument(
-        "--model-path", 
+        "--model-path",
         default=os.path.expanduser("~/models/minilm_finetuned/best_model.pt"),
         help="Path to fine-tuned MiniLM model"
-    )
-    parser.add_argument(
-        "--qwen-data",
-        default=os.path.expanduser("~/qwen_data"),
-        help="Path to Qwen attention data"
     )
     parser.add_argument(
         "--test",
         action="store_true",
         help="Run basic tests"
     )
-    
+
     args = parser.parse_args()
-    
+
     print("=" * 60)
     print("Dual-Signal Template System")
     print("=" * 60)
-    
+
     # Test basic functionality
     print("\n1. Testing SpanDetector initialization...")
     try:
@@ -988,37 +755,33 @@ if __name__ == "__main__":
         print("   Trying without fine-tuned weights...")
         detector = SpanDetector(model_path=None)
         print("   [OK] SpanDetector initialized with base weights")
-    
+
     # Test feature extraction
     print("\n2. Testing feature extraction...")
-    test_text = "John has 5 apples. He gives 2 apples to Mary. How many apples does John have now?"
+    test_text = "John has 5 apples. He gives 2 apples to Mary."
     embedding, attention, tokens = detector.extract_features(test_text)
     print(f"   [OK] Embedding shape: {embedding.shape}")
     print(f"   [OK] Attention shape: {attention.shape}")
     print(f"   [OK] Tokens: {len(tokens)}")
-    
-    # Test span detection
-    print("\n3. Testing span detection...")
-    spans = detector.extract_span_features(test_text, method="community")
-    print(f"   [OK] Detected {len(spans)} spans")
-    for i, span in enumerate(spans):
-        text_preview = span['text'][:50] if len(span['text']) > 50 else span['text']
-        print(f"       Span {i}: '{text_preview}' (density={span['density']:.3f})")
-    
+
     # Test template creation
-    print("\n4. Testing template creation...")
-    if spans:
-        template = create_template_from_span(spans[0], OperationType.SUB)
-        print(f"   [OK] Created template: {template.template_id}")
-        print(f"       Operation: {template.operation_type.value}")
-        print(f"       Embedding dim: {len(template.embedding_centroid)}")
-        print(f"       Attention dim: {len(template.attention_signature)}")
-    
+    print("\n3. Testing template creation...")
+    template = create_template_from_span(
+        span_text=test_text,
+        embedding=embedding,
+        attention_pattern=attention.flatten(),
+        operation_type=OperationType.SUB
+    )
+    print(f"   [OK] Created template: {template.template_id}")
+    print(f"       Operation: {template.operation_type.value}")
+    print(f"       Embedding dim: {len(template.embedding_centroid)}")
+    print(f"       Attention dim: {len(template.attention_signature)}")
+
     # Test template store
-    print("\n5. Testing TemplateStore...")
+    print("\n4. Testing TemplateStore...")
     store = TemplateStore()
     store.add_template(template)
-    
+
     # Query with same text (should match well)
     embedding2, attention2, _ = detector.extract_features(test_text)
     result = store.find_best_match(embedding2, attention2.flatten())
@@ -1028,9 +791,9 @@ if __name__ == "__main__":
         print(f"       Combined score: {score:.4f}")
         print(f"       Embedding sim: {emb_sim:.4f}")
         print(f"       Attention sim: {att_sim:.4f}")
-    
+
     # Test Welford stats
-    print("\n6. Testing Welford statistics...")
+    print("\n5. Testing Welford statistics...")
     welford = WelfordStats()
     for v in [0.8, 0.85, 0.82, 0.78, 0.9]:
         welford.update(v)
@@ -1038,31 +801,21 @@ if __name__ == "__main__":
     print(f"   [OK] Mean: {welford.mean:.4f}")
     print(f"   [OK] Variance: {welford.variance:.4f}")
     print(f"   [OK] Std: {welford.std:.4f}")
-    
-    # Test Qwen data loading if available
-    print("\n7. Testing Qwen data extraction...")
-    if os.path.exists(args.qwen_data):
-        templates = extract_templates_from_qwen_data(args.qwen_data, max_files=2)
-        print(f"   [OK] Extracted {len(templates)} templates from Qwen data")
-    else:
-        print(f"   [SKIP] Qwen data not found at {args.qwen_data}")
-    
+
     # Test full router
-    print("\n8. Testing DualSignalRouter...")
+    print("\n6. Testing DualSignalRouter...")
     router = DualSignalRouter(embedding_weight=0.6, attention_weight=0.4)
-    
-    # Add some templates
-    for span in spans[:3]:
-        t = create_template_from_span(span, OperationType.UNKNOWN)
-        router.store.add_template(t)
-    
+
+    # Add the template
+    router.store.add_template(template)
+
     # Route a query
     result = router.process_dag_step("Calculate 5 minus 2")
     if result:
         matched, score = result
         print(f"   [OK] Routed to: {matched.template_id}")
         print(f"       Score: {score:.4f}")
-    
+
     print("\n" + "=" * 60)
     print("All tests passed!")
     print("=" * 60)
