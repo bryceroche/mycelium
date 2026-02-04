@@ -323,21 +323,27 @@ class TemplateStore:
         # Empirical values from test data:
         # SET: 0.0 (no indicator tokens)
         # ADD: ~0.02-0.035 (has additive tokens like "more")
-        # SUB/MUL: ~0.035-0.07 (has relational tokens like "to", "as")
-        # DIV: ~0.08+ (has division tokens like "half", "split", "each")
+        # SUB: ~0.035-0.055 (has "to" - transfer relationship)
+        # MUL: ~0.055-0.075 (has "as", "times" - comparison)
+        # DIV: ~0.08+ (has division tokens like "half", "split")
         THRESHOLD_SET_ADD = 0.02   # Below = SET
-        THRESHOLD_ADD_REL = 0.035  # Below = ADD, above = SUB/MUL
-        THRESHOLD_REL_DIV = 0.075  # Below = SUB/MUL, above = DIV
+        THRESHOLD_ADD_SUB = 0.035  # Below = ADD, above = SUB
+        THRESHOLD_SUB_MUL = 0.052  # Below = SUB, above = MUL
+        THRESHOLD_MUL_DIV = 0.075  # Below = MUL, above = DIV
 
         if cross_entity_attention < THRESHOLD_SET_ADD:
             # Likely SET operation - boost SET templates, penalize others
             preferred_ops = {OperationType.SET}
             penalized_ops = {OperationType.ADD, OperationType.SUB, OperationType.MUL, OperationType.DIV}
-        elif cross_entity_attention < THRESHOLD_ADD_REL:
+        elif cross_entity_attention < THRESHOLD_ADD_SUB:
             # Likely ADD operation - boost ADD, penalize SET
             preferred_ops = {OperationType.ADD}
             penalized_ops = {OperationType.SET}
-        elif cross_entity_attention >= THRESHOLD_REL_DIV:
+        elif cross_entity_attention < THRESHOLD_SUB_MUL:
+            # Likely SUB operation - boost SUB, penalize SET/ADD/MUL
+            preferred_ops = {OperationType.SUB}
+            penalized_ops = {OperationType.SET, OperationType.MUL}
+        elif cross_entity_attention >= THRESHOLD_MUL_DIV:
             # Likely DIV operation - boost DIV, penalize SET/ADD
             preferred_ops = {OperationType.DIV}
             penalized_ops = {OperationType.SET, OperationType.ADD}
@@ -697,7 +703,12 @@ class SpanDetector:
     # Additive indicators that suggest ADD operations
     ADDITIVE_TOKENS = {'more', 'additional', 'another', 'extra', 'added'}
     # Division indicators that suggest DIV operations
-    DIVISION_TOKENS = {'half', 'split', 'divided', 'each', 'equally', 'share', 'per'}
+    # Note: "each" removed - too ambiguous ("each basket" isn't division)
+    DIVISION_TOKENS = {'half', 'split', 'divided', 'equally', 'share'}
+    # SUB-indicating relational tokens (transfer: "gave X to Y")
+    SUB_RELATIONAL = {'to'}
+    # MUL-indicating relational tokens (comparison: "twice as many as")
+    MUL_RELATIONAL = {'as', 'times'}
 
     def compute_cross_entity_attention(
         self,
@@ -735,20 +746,24 @@ class SpanDetector:
             attention_matrix = attention_matrix.mean(axis=0)
 
         # Find indicator token indices by type
-        rel_indices = [
-            i for i, t in enumerate(tokens)
-            if t.lower() in self.RELATIONAL_TOKENS
-        ]
         add_indices = [
             i for i, t in enumerate(tokens)
             if t.lower() in self.ADDITIVE_TOKENS
+        ]
+        sub_indices = [
+            i for i, t in enumerate(tokens)
+            if t.lower() in self.SUB_RELATIONAL
+        ]
+        mul_indices = [
+            i for i, t in enumerate(tokens)
+            if t.lower() in self.MUL_RELATIONAL
         ]
         div_indices = [
             i for i, t in enumerate(tokens)
             if t.lower() in self.DIVISION_TOKENS
         ]
 
-        # Priority: DIV > REL (SUB/MUL) > ADD > SET
+        # Priority: DIV > MUL > SUB > ADD > SET
         # Return different score ranges for each operation type
         if div_indices:
             # DIV gets highest score (~0.08-0.10)
@@ -757,10 +772,17 @@ class SpanDetector:
                 if i < len(attention_matrix):
                     total_attention += attention_matrix[:, i].sum()
             return float(total_attention / len(tokens)) * 1.2 + 0.08
-        elif rel_indices:
-            # SUB/MUL (~0.04-0.07)
+        elif mul_indices:
+            # MUL (~0.055-0.07) - "as", "times"
             total_attention = 0.0
-            for i in rel_indices:
+            for i in mul_indices:
+                if i < len(attention_matrix):
+                    total_attention += attention_matrix[:, i].sum()
+            return float(total_attention / len(tokens)) + 0.02
+        elif sub_indices:
+            # SUB (~0.04-0.055) - "to"
+            total_attention = 0.0
+            for i in sub_indices:
                 if i < len(attention_matrix):
                     total_attention += attention_matrix[:, i].sum()
             return float(total_attention / len(tokens))
