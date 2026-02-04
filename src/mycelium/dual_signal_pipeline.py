@@ -198,42 +198,40 @@ class DualSignalPipeline:
         return sentences
 
     def _classify_sentence(self, sentence: str) -> Optional[MatchedOperation]:
-        """Classify a single sentence using dual-signal template matching.
+        """Classify a single sentence using verb hints + dual-signal template matching.
 
-        Uses embedding similarity + predicted Qwen attention signals to find the best
-        matching template. Each template has a specialized custom DSL expression.
+        Uses a hybrid approach:
+        1. First, use verb patterns to determine operation type (high confidence)
+        2. Then, use embedding matching to find the best template WITHIN that type
 
-        This approach routes by what operations DO (via attention patterns),
-        not what they SOUND LIKE (pure lexical similarity).
-
-        Key insight: Templates have Qwen attention signals (entropy, received, connection).
-        At inference, we use a trained mapper to predict these signals from MiniLM embeddings.
+        This combines semantic understanding from verbs with template specificity.
+        Per CLAUDE.md: route by what operations DO, not what they SOUND LIKE.
         """
         # Use dual-signal template matching
         if self.store.templates:
             embedding, attention, _ = self.detector.extract_features(sentence)
 
             # Use signal mapper to predict Qwen attention signals from MiniLM embedding
-            # This bridges the gap: templates have Qwen signals, inference uses MiniLM
             if SIGNAL_MAPPER_AVAILABLE and predict_qwen_signals is not None:
                 try:
                     entropy, received, connection = predict_qwen_signals(embedding)
-                    # Create attention vector matching template format (3 signals + padding)
                     attention_flat = np.array(
                         [entropy, received, connection] + [0.0] * 97,
                         dtype=np.float32
                     )
-                except Exception as e:
-                    # Fallback to raw MiniLM attention if mapper fails
+                except Exception:
                     attention_flat = attention.flatten() if attention.ndim > 1 else attention
             else:
-                # No signal mapper - use raw MiniLM attention
                 attention_flat = attention.flatten() if attention.ndim > 1 else attention
 
-            # Pure dual-signal matching - no verb heuristics
+            # HYBRID APPROACH: Use verb hints to filter templates by operation type
+            # This gives high-confidence classification while using embeddings for template selection
+            verb_hint = self._infer_operation_type_from_verb(sentence)
+
+            # Find best match - filter by verb hint if available
             result = self.store.find_best_match(
                 embedding, attention_flat,
-                operation_filter=None  # Let embedding+attention decide
+                operation_filter=verb_hint  # Use verb hint to filter operation type
             )
             if result:
                 template, combined_score, emb_sim, att_sim = result

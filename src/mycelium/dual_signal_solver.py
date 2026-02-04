@@ -48,14 +48,21 @@ from mycelium.db import get_all_templates, get_template_count
 
 # Default paths
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-OPERATION_SEPARATED = PROJECT_ROOT / "operation_separated_templates.json"  # PREFERRED: 458 (cluster, operation) pairs
-ENHANCED_DSL_LIBRARY = PROJECT_ROOT / "enhanced_dsl_library.json"  # 207 deduped with aggregated Qwen signals + variance
-SPECIALIZED_TEMPLATES = PROJECT_ROOT / "specialized_templates.json"  # 17k raw Qwen-extracted templates
-DSL_LIBRARY = PROJECT_ROOT / "dsl_library.json"  # LLM-generated (NOT used with signal mapper)
-DUAL_SIGNAL_TEMPLATES = PROJECT_ROOT / "dual_signal_templates.json"  # Legacy: embeddings + attention
+
+# Primary template sources (17k spans → 207 specialized templates)
+SPECIALIZED_TEMPLATES = PROJECT_ROOT / "specialized_templates.json"  # 17k raw templates (source of truth)
+DEDUPLICATED_TEMPLATES = PROJECT_ROOT / "deduplicated_templates.json"  # 207 specialized (PREFERRED)
+
+# Legacy/alternative template files (kept for backward compatibility)
+OPERATION_SEPARATED = PROJECT_ROOT / "operation_separated_templates.json"  # 458 cluster+operation pairs
+ENHANCED_DSL_LIBRARY = PROJECT_ROOT / "enhanced_dsl_library.json"  # 207 with Qwen signals
+DSL_LIBRARY = PROJECT_ROOT / "dsl_library.json"  # LLM-generated
+DUAL_SIGNAL_TEMPLATES = PROJECT_ROOT / "dual_signal_templates.json"  # Legacy embeddings + attention
 TEMPLATES_EXPORT = PROJECT_ROOT / "span_templates_export.json"  # Fine-grained templates
 TEMPLATES_JSON = PROJECT_ROOT / "operation_templates.json"  # Coarse templates
-MODEL_PATH = PROJECT_ROOT / "models" / "minilm_attention_finetuned.pt"
+
+# Model paths
+MODEL_PATH = PROJECT_ROOT / "models" / "minilm_contrastive.pt"  # Contrastive-trained encoder
 
 
 @dataclass
@@ -140,19 +147,27 @@ class DualSignalSolver:
                     attention_weight=self.attention_weight,
                 )
 
-            # Load templates: prefer operation-separated (458 pure clusters) > enhanced > specialized > DSL library
+            # Load templates: prefer deduplicated (207 specialized) > operation-separated > enhanced > specialized
             if not self.mock_model:
                 templates_loaded = False
 
-                # 1. FIRST: Try operation_separated (458 pure operation clusters)
+                # 1. FIRST: Try deduplicated_templates (207 specialized - balanced operations)
+                if not templates_loaded and os.path.exists(DEDUPLICATED_TEMPLATES):
+                    self.templates_path = str(DEDUPLICATED_TEMPLATES)
+                    count = self._load_enhanced_templates()  # Compatible format
+                    if count > 0:
+                        templates_loaded = True
+                        print(f"Using deduplicated templates (207 specialized from 17k spans)")
+
+                # 2. Fallback to operation_separated (458 pure operation clusters)
                 if not templates_loaded and os.path.exists(OPERATION_SEPARATED):
                     self.templates_path = str(OPERATION_SEPARATED)
-                    count = self._load_enhanced_templates()  # Same format as enhanced
+                    count = self._load_enhanced_templates()
                     if count > 0:
                         templates_loaded = True
                         print(f"Using operation-separated templates (458 pure clusters)")
 
-                # 2. Fallback to enhanced_dsl_library (207 mixed operation clusters)
+                # 3. Fallback to enhanced_dsl_library (207 mixed operation clusters)
                 if not templates_loaded and os.path.exists(ENHANCED_DSL_LIBRARY):
                     self.templates_path = str(ENHANCED_DSL_LIBRARY)
                     count = self._load_enhanced_templates()
@@ -160,31 +175,15 @@ class DualSignalSolver:
                         templates_loaded = True
                         print(f"Using enhanced templates (207 deduped with aggregated signals)")
 
-                # 3. Fallback to specialized_templates (17k raw)
+                # 4. Fallback to specialized_templates (17k raw)
                 if not templates_loaded and os.path.exists(SPECIALIZED_TEMPLATES):
                     self.templates_path = str(SPECIALIZED_TEMPLATES)
                     count = self._load_specialized_templates()
                     if count > 0:
                         templates_loaded = True
-                        print(f"Using specialized templates (signal mapper training data)")
+                        print(f"Using specialized templates (17k raw spans)")
 
-                # 4. Fallback to DSL library
-                if not templates_loaded and os.path.exists(DSL_LIBRARY):
-                    self.templates_path = str(DSL_LIBRARY)
-                    count = self._load_dsl_library()
-                    if count > 0:
-                        templates_loaded = True
-                        print(f"Using DSL library with Qwen attention signals")
-
-                # 2. Try dual-signal templates (legacy format)
-                if not templates_loaded and os.path.exists(DUAL_SIGNAL_TEMPLATES):
-                    self.templates_path = str(DUAL_SIGNAL_TEMPLATES)
-                    count = self._load_templates_from_json()
-                    if count > 0:
-                        templates_loaded = True
-                        print(f"Using dual-signal templates with attention signatures")
-
-                # 2. Try database (has fine-grained templates)
+                # 5. Try database (has fine-grained templates)
                 if not templates_loaded:
                     try:
                         db_count = get_template_count()
@@ -194,18 +193,7 @@ class DualSignalSolver:
                     except Exception as e:
                         print(f"Database not available ({e})")
 
-                # 3. Try exported fine-grained templates (span_templates_export.json)
-                if not templates_loaded and os.path.exists(TEMPLATES_EXPORT):
-                    self.templates_path = str(TEMPLATES_EXPORT)
-                    self._load_templates_from_json()
-                    templates_loaded = True
-
-                # 4. Try coarse operation templates (operation_templates.json)
-                if not templates_loaded and os.path.exists(self.templates_path):
-                    self._load_templates_from_json()
-                    templates_loaded = True
-
-                # 5. Bootstrap with examples as last resort
+                # 6. Bootstrap with examples as last resort
                 if not templates_loaded:
                     print("No templates found, bootstrapping with examples...")
                     self._pipeline.bootstrap_from_examples()
@@ -423,11 +411,11 @@ class DualSignalSolver:
                     continue
                 centroid = np.array(centroid_data, dtype=np.float32)
 
-                # Get aggregated signals (from the aggregation script)
+                # Get attention signals (supports both aggregated and flat formats)
                 agg = template_data.get("aggregated_signals", {})
-                entropy_mean = agg.get("entropy_mean", 0.0)
-                received_mean = agg.get("received_mean", 0.0)
-                connection_mean = agg.get("connection_mean", 0.0)
+                entropy_mean = agg.get("entropy_mean", template_data.get("attention_entropy", 0.0))
+                received_mean = agg.get("received_mean", template_data.get("attention_received", 0.0))
+                connection_mean = agg.get("connection_mean", template_data.get("attention_connection", 0.0))
 
                 # Create attention signature from aggregated signals
                 attention = np.array([
@@ -436,8 +424,8 @@ class DualSignalSolver:
                     connection_mean,
                 ] + [0.0] * 97, dtype=np.float32)
 
-                # Get DSL expression
-                dsl_expr = template_data.get("custom_dsl", template_data.get("dsl_expr", "value"))
+                # Get DSL expression (supports multiple field names)
+                dsl_expr = template_data.get("custom_dsl") or template_data.get("base_dsl") or template_data.get("dsl_expr", "value")
 
                 # Get pattern and examples
                 pattern = template_data.get("pattern", "")
