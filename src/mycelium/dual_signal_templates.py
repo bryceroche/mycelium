@@ -74,7 +74,8 @@ class DualSignalTemplate:
     outcome_welford: WelfordStats = field(default_factory=WelfordStats)
     match_count: int = 0
     success_count: int = 0
-    
+    cross_entity_attention: float = 0.0  # How much attention flows between entities (discriminates SET vs SUB/MUL)
+
     def update_centroid(self, new_embedding: np.ndarray, new_attention: np.ndarray) -> None:
         """
         Update centroids using incremental averaging.
@@ -285,7 +286,91 @@ class TemplateStore:
             return None
         
         return best_match, best_score, best_emb_sim, best_att_sim
-    
+
+    def find_best_match_with_cross_entity(
+        self,
+        embedding: np.ndarray,
+        attention: np.ndarray,
+        cross_entity_attention: float,
+        min_score: float = 0.0
+    ) -> Optional[Tuple[DualSignalTemplate, float, float, float]]:
+        """
+        Find best matching template using cross-entity attention for operation discrimination.
+
+        Cross-entity attention discriminates operations:
+        - SET: ~0.0 (single entity, self-contained)
+        - ADD: ~0.04 (receiving, but mainly one entity focus)
+        - SUB/MUL: ~0.06 (transfer/reference to another entity)
+
+        This method uses cross-entity attention to:
+        1. Boost scores for templates whose operation matches the cross-entity pattern
+        2. Penalize templates that don't match
+
+        Args:
+            embedding: Query embedding vector
+            attention: Query attention pattern
+            cross_entity_attention: Cross-entity attention score from input span
+            min_score: Minimum score threshold
+
+        Returns:
+            Tuple of (template, combined_score, embedding_sim, attention_sim)
+            or None if no templates exist
+        """
+        if not self.templates:
+            return None
+
+        # Classify input span's operation tendency based on indicator token attention
+        # Empirical values from test data:
+        # SET: 0.0 (no indicator tokens)
+        # ADD: ~0.033 (has additive tokens like "more")
+        # SUB: ~0.039 (has relational tokens like "to")
+        # MUL: ~0.063 (has relational tokens like "as")
+        THRESHOLD_SET_ADD = 0.02   # Below = SET, above = ADD/SUB/MUL
+        THRESHOLD_ADD_SUB = 0.036  # Below = ADD, above = SUB/MUL
+
+        if cross_entity_attention < THRESHOLD_SET_ADD:
+            # Likely SET operation - boost SET templates, penalize others
+            preferred_ops = {OperationType.SET}
+            penalized_ops = {OperationType.ADD, OperationType.SUB, OperationType.MUL}
+        elif cross_entity_attention < THRESHOLD_ADD_SUB:
+            # Likely ADD operation - boost ADD, penalize SET
+            preferred_ops = {OperationType.ADD}
+            penalized_ops = {OperationType.SET}
+        else:
+            # Likely SUB/MUL operation - boost SUB/MUL, penalize SET/ADD
+            preferred_ops = {OperationType.SUB, OperationType.MUL}
+            penalized_ops = {OperationType.SET, OperationType.ADD}
+
+        best_match = None
+        best_score = -float('inf')
+        best_emb_sim = 0.0
+        best_att_sim = 0.0
+
+        PREFERENCE_BOOST = 0.15  # Boost for preferred operations
+        PENALTY = 0.10  # Penalty for penalized operations
+
+        for template in self.templates.values():
+            score, emb_sim, att_sim = self.compute_match_score(
+                embedding, attention, template
+            )
+
+            # Apply cross-entity attention-based adjustments
+            if template.operation_type in preferred_ops:
+                score += PREFERENCE_BOOST
+            elif template.operation_type in penalized_ops:
+                score -= PENALTY
+
+            if score > best_score:
+                best_score = score
+                best_match = template
+                best_emb_sim = emb_sim
+                best_att_sim = att_sim
+
+        if best_match is None or best_score < min_score:
+            return None
+
+        return best_match, best_score, best_emb_sim, best_att_sim
+
     def find_top_k_matches(
         self,
         embedding: np.ndarray,
@@ -601,6 +686,94 @@ class SpanDetector:
         tokens = self.tokenizer.convert_ids_to_tokens(inputs["input_ids"][0].cpu())
 
         return embedding, attention, tokens
+
+    # Relational tokens that indicate entity relationships
+    RELATIONAL_TOKENS = {'to', 'from', 'as', 'than', 'for'}
+    # Additive indicators that suggest ADD operations
+    ADDITIVE_TOKENS = {'more', 'additional', 'another', 'extra', 'added'}
+
+    def compute_cross_entity_attention(
+        self,
+        text: str,
+        attention_matrix: Optional[np.ndarray] = None,
+        tokens: Optional[List[str]] = None
+    ) -> float:
+        """
+        Compute relational/additive token attention for a span.
+
+        This measures attention to discriminative tokens:
+        - Relational tokens (to, from, as, than, for): indicate SUB/MUL
+        - Additive tokens (more, additional, another): indicate ADD
+
+        Discriminates operation types:
+        - SET: ~0.0 (no indicator tokens)
+        - ADD: ~0.02-0.04 (has additive tokens like "more")
+        - SUB: ~0.04-0.06 (has relational tokens like "to")
+        - MUL: ~0.06-0.08 (has relational tokens like "as")
+
+        Args:
+            text: The span text
+            attention_matrix: Optional pre-computed attention matrix
+            tokens: Optional pre-computed tokens
+
+        Returns:
+            Indicator token attention score (0.0 to ~0.1)
+        """
+        # Get attention matrix if not provided
+        if attention_matrix is None or tokens is None:
+            _, attention_matrix, tokens = self.extract_features(text)
+
+        # Average attention across heads if needed (shape: seq x seq)
+        if attention_matrix.ndim > 2:
+            attention_matrix = attention_matrix.mean(axis=0)
+
+        # Find relational and additive token indices
+        rel_indices = [
+            i for i, t in enumerate(tokens)
+            if t.lower() in self.RELATIONAL_TOKENS
+        ]
+        add_indices = [
+            i for i, t in enumerate(tokens)
+            if t.lower() in self.ADDITIVE_TOKENS
+        ]
+
+        # If we have relational tokens, use them (SUB/MUL indicator)
+        # If we have additive tokens only, use them (ADD indicator)
+        # Relational tokens get higher weight since they're stronger indicators
+        if rel_indices:
+            total_attention = 0.0
+            for i in rel_indices:
+                if i < len(attention_matrix):
+                    total_attention += attention_matrix[:, i].sum()
+            return float(total_attention / len(tokens))
+        elif add_indices:
+            # Additive tokens get slightly lower score to rank between SET and SUB
+            total_attention = 0.0
+            for i in add_indices:
+                if i < len(attention_matrix):
+                    total_attention += attention_matrix[:, i].sum()
+            # Scale down slightly so ADD < SUB/MUL
+            return float(total_attention / len(tokens)) * 0.7
+
+        return 0.0
+
+    def extract_features_with_cross_entity(
+        self,
+        text: str
+    ) -> Tuple[np.ndarray, np.ndarray, List[str], float]:
+        """
+        Extract embedding, attention, and cross-entity attention from text.
+
+        Returns:
+            Tuple of:
+            - embedding: [hidden_dim] numpy array
+            - attention: [seq_len, seq_len] numpy array
+            - tokens: List of token strings
+            - cross_entity_attention: float score
+        """
+        embedding, attention, tokens = self.extract_features(text)
+        cross_entity = self.compute_cross_entity_attention(text, attention, tokens)
+        return embedding, attention, tokens, cross_entity
 
 
 def create_template_from_span(
