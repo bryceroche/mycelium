@@ -5,6 +5,7 @@
 4. Trained Signal Mapping (17k spans dataset)
 5. Cross-Attention Between Spans
 6. Building the Graph
+7. Primes = Spans = Templates = Sub-Graph
 
 ## Terminology
 - **Attention Entropy** — Low entropy = important token (focused attention). High entropy = diffuse attention.
