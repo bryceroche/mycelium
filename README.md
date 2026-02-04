@@ -42,9 +42,9 @@ Three signals extracted from attention matrices:
 | Qwen2-0.5B | 500M | 0.31 |
 | BERT-base | 110M | 0.30 |
 
-**Key insight**: MiniLM used attention distillation from a larger teacher. The training objective was literally: loss = MSE(student_attention, teacher_attention)
+**Key insight**: MiniLM used attention distillation from a larger teacher. The training objective was: loss = MSE(student_attention, teacher_attention)
 
-Fine-tuning improved correlation from 0.58 → 0.945 (+63%).
+Fine-tuning improved correlation from 0.58 → 0.945 
 
 ![Distillation Results](screen_shots/distillation_results.png)
 
@@ -61,8 +61,7 @@ Two orthogonal signals for robust matching:
 
 Quality of 7B model at cost of 22M model.
 
-## Specialized Templates
-
+## Specialized Templates with Generic Entities
 Each span type has a specialized template with generic entity placeholders.
 
 **Examples:**
@@ -71,14 +70,13 @@ Each span type has a specialized template with generic entity placeholders.
 - Percentage: `{result} = {entity} × ({percent}/100)`
 - Half of: `{result} = {entity} × 0.5`
 
-**Why generic entities?**
-
-Instead of hardcoding "apples" or "cookies", we use `{entity}` placeholders:
+**generic entities**
+GSM8K problems mention many different entities (apples, cookies, cheese, etc.). To generalize across all of them, we use `{entity}` placeholders:
 - "half the apples" → `apples × 0.5`
 - "half the cookies" → `cookies × 0.5`
 - Both match the same template: `{entity} × 0.5`
 
-This gives us **specialized structure** (each operation type has its own template) with **generic applicability** (works for any entity).
+This gives us **specialized structure** (each operation type has its own template) with **generic applicability** 
 
 The span detection identifies WHICH template to use. The entity extraction fills in the placeholders.
 
