@@ -40,6 +40,8 @@ from mycelium.dual_signal_pipeline import (
 # Import Operation from types.py (canonical definition)
 # Alias as SolverOperation for backward compatibility
 from mycelium.types import Operation as SolverOperation
+# Import centralized DSL framework for operation execution
+from mycelium.span_templates import get_dsl
 
 
 # Default paths
@@ -249,21 +251,16 @@ class DualSignalSolver:
             )
             operations.append(op)
 
-            # Execute operation
+            # Execute operation using centralized DSL framework
+            # This enables single source of truth for operation logic
+            # and support for complex DSLs (COMPARE_MORE, RATIO, etc.)
             if entity not in state:
                 state[entity] = 0
 
-            if op.op_type == "SET":
-                state[entity] = op.value
-            elif op.op_type == "ADD":
-                state[entity] += op.value
-            elif op.op_type == "SUB":
-                state[entity] -= op.value
-            elif op.op_type == "MUL":
-                state[entity] *= op.value
-            elif op.op_type == "DIV":
-                if op.value != 0:
-                    state[entity] /= op.value
+            # Get DSL function from span_templates (simple DSLs for now)
+            # TODO: Support complex DSLs by extracting ref_entity from span
+            dsl_fn = get_dsl(op.op_type, "simple")
+            state[entity] = dsl_fn(state, entity, op.value, None)
 
         # Get answer (main entity's final value)
         answer = state.get(main_entity, 0) if main_entity else 0
