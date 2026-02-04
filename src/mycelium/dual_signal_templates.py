@@ -295,21 +295,15 @@ class TemplateStore:
         min_score: float = 0.0
     ) -> Optional[Tuple[DualSignalTemplate, float, float, float]]:
         """
-        Find best matching template using cross-entity attention for operation discrimination.
+        Find best matching template using cross-entity attention as additional signal.
 
-        Cross-entity attention discriminates operations:
-        - SET: ~0.0 (single entity, self-contained)
-        - ADD: ~0.04 (receiving, but mainly one entity focus)
-        - SUB/MUL: ~0.06 (transfer/reference to another entity)
-
-        This method uses cross-entity attention to:
-        1. Boost scores for templates whose operation matches the cross-entity pattern
-        2. Penalize templates that don't match
+        NO HEURISTIC BOOSTING - pure signal-based matching only.
+        Cross-entity attention is stored for analysis but doesn't boost/penalize operations.
 
         Args:
             embedding: Query embedding vector
             attention: Query attention pattern
-            cross_entity_attention: Cross-entity attention score from input span
+            cross_entity_attention: Cross-entity attention score (for debugging/analysis)
             min_score: Minimum score threshold
 
         Returns:
@@ -319,58 +313,17 @@ class TemplateStore:
         if not self.templates:
             return None
 
-        # Classify input span's operation tendency based on indicator token attention
-        # Empirical values from test data:
-        # SET: 0.0 (no indicator tokens)
-        # ADD: ~0.02-0.035 (has additive tokens like "more")
-        # SUB: ~0.035-0.055 (has "to" - transfer relationship)
-        # MUL: ~0.055-0.075 (has "as", "times" - comparison)
-        # DIV: ~0.08+ (has division tokens like "half", "split")
-        THRESHOLD_SET_ADD = 0.02   # Below = SET
-        THRESHOLD_ADD_SUB = 0.035  # Below = ADD, above = SUB
-        THRESHOLD_SUB_MUL = 0.052  # Below = SUB, above = MUL
-        THRESHOLD_MUL_DIV = 0.075  # Below = MUL, above = DIV
-
-        if cross_entity_attention < THRESHOLD_SET_ADD:
-            # Likely SET operation - boost SET templates, penalize others
-            preferred_ops = {OperationType.SET}
-            penalized_ops = {OperationType.ADD, OperationType.SUB, OperationType.MUL, OperationType.DIV}
-        elif cross_entity_attention < THRESHOLD_ADD_SUB:
-            # Likely ADD operation - boost ADD, penalize SET
-            preferred_ops = {OperationType.ADD}
-            penalized_ops = {OperationType.SET}
-        elif cross_entity_attention < THRESHOLD_SUB_MUL:
-            # Likely SUB operation - boost SUB, penalize SET/ADD/MUL
-            preferred_ops = {OperationType.SUB}
-            penalized_ops = {OperationType.SET, OperationType.MUL}
-        elif cross_entity_attention >= THRESHOLD_MUL_DIV:
-            # Likely DIV operation - boost DIV, penalize SET/ADD
-            preferred_ops = {OperationType.DIV}
-            penalized_ops = {OperationType.SET, OperationType.ADD}
-        else:
-            # Likely SUB/MUL operation - boost SUB/MUL, penalize SET/ADD
-            preferred_ops = {OperationType.SUB, OperationType.MUL}
-            penalized_ops = {OperationType.SET, OperationType.ADD}
-
         best_match = None
         best_score = -float('inf')
         best_emb_sim = 0.0
         best_att_sim = 0.0
-
-        PREFERENCE_BOOST = 0.15  # Boost for preferred operations
-        PENALTY = 0.10  # Penalty for penalized operations
 
         for template in self.templates.values():
             score, emb_sim, att_sim = self.compute_match_score(
                 embedding, attention, template
             )
 
-            # Apply cross-entity attention-based adjustments
-            if template.operation_type in preferred_ops:
-                score += PREFERENCE_BOOST
-            elif template.operation_type in penalized_ops:
-                score -= PENALTY
-
+            # NO boosting or penalizing - pure embedding+attention matching
             if score > best_score:
                 best_score = score
                 best_match = template
@@ -698,18 +651,6 @@ class SpanDetector:
 
         return embedding, attention, tokens
 
-    # Relational tokens that indicate entity relationships (SUB/MUL)
-    RELATIONAL_TOKENS = {'to', 'from', 'as', 'than', 'for'}
-    # Additive indicators that suggest ADD operations
-    ADDITIVE_TOKENS = {'more', 'additional', 'another', 'extra', 'added'}
-    # Division indicators that suggest DIV operations
-    # Note: "each" removed - too ambiguous ("each basket" isn't division)
-    DIVISION_TOKENS = {'half', 'split', 'divided', 'equally', 'share'}
-    # SUB-indicating relational tokens (transfer: "gave X to Y")
-    SUB_RELATIONAL = {'to'}
-    # MUL-indicating relational tokens (comparison: "twice as many as")
-    MUL_RELATIONAL = {'as', 'times'}
-
     def compute_cross_entity_attention(
         self,
         text: str,
@@ -717,17 +658,13 @@ class SpanDetector:
         tokens: Optional[List[str]] = None
     ) -> float:
         """
-        Compute relational/additive token attention for a span.
+        Compute cross-entity attention from the attention matrix.
 
-        This measures attention to discriminative tokens:
-        - Relational tokens (to, from, as, than, for): indicate SUB/MUL
-        - Additive tokens (more, additional, another): indicate ADD
+        This measures how much attention flows between different parts of the
+        sentence (off-diagonal attention), which could indicate relational
+        operations vs self-contained ones.
 
-        Discriminates operation types:
-        - SET: ~0.0 (no indicator tokens)
-        - ADD: ~0.02-0.04 (has additive tokens like "more")
-        - SUB: ~0.04-0.06 (has relational tokens like "to")
-        - MUL: ~0.06-0.08 (has relational tokens like "as")
+        NO KEYWORD/VOCABULARY HEURISTICS - pure attention signal only.
 
         Args:
             text: The span text
@@ -735,7 +672,7 @@ class SpanDetector:
             tokens: Optional pre-computed tokens
 
         Returns:
-            Indicator token attention score (0.0 to ~0.1)
+            Cross-entity attention score based on attention patterns
         """
         # Get attention matrix if not provided
         if attention_matrix is None or tokens is None:
@@ -745,37 +682,30 @@ class SpanDetector:
         if attention_matrix.ndim > 2:
             attention_matrix = attention_matrix.mean(axis=0)
 
-        # Find indicator token indices by type
-        add_indices = [
-            i for i, t in enumerate(tokens)
-            if t.lower() in self.ADDITIVE_TOKENS
-        ]
-        sub_indices = [
-            i for i, t in enumerate(tokens)
-            if t.lower() in self.SUB_RELATIONAL
-        ]
-        mul_indices = [
-            i for i, t in enumerate(tokens)
-            if t.lower() in self.MUL_RELATIONAL
-        ]
-        div_indices = [
-            i for i, t in enumerate(tokens)
-            if t.lower() in self.DIVISION_TOKENS
-        ]
+        # Compute off-diagonal attention (attention to other positions)
+        # This measures how much attention flows between different parts
+        n = attention_matrix.shape[0]
+        if n < 2:
+            return 0.0
 
-        # Return fixed scores based on which indicator type is detected
-        # Priority: DIV > MUL > SUB > ADD > SET
-        # Each operation type maps to a distinct score band
-        if div_indices:
-            return 0.09  # DIV: fixed score in DIV range
-        elif mul_indices:
-            return 0.06  # MUL: fixed score in MUL range
-        elif sub_indices:
-            return 0.045  # SUB: fixed score in SUB range
-        elif add_indices:
-            return 0.03  # ADD: fixed score in ADD range
+        # Create mask for off-diagonal elements (exclude diagonal + adjacent)
+        # Adjacent tokens naturally have high attention due to language structure
+        mask = np.ones_like(attention_matrix)
+        for i in range(n):
+            for j in range(n):
+                # Mask out diagonal and 1-off diagonal (adjacent tokens)
+                if abs(i - j) <= 1:
+                    mask[i, j] = 0.0
 
-        return 0.0  # SET: no indicator tokens
+        # Compute mean off-diagonal attention
+        masked_attn = attention_matrix * mask
+        off_diag_sum = masked_attn.sum()
+        off_diag_count = mask.sum()
+
+        if off_diag_count == 0:
+            return 0.0
+
+        return float(off_diag_sum / off_diag_count)
 
     def extract_features_with_cross_entity(
         self,

@@ -2,9 +2,9 @@
 """
 Recompute embedding centroids for deduplicated templates.
 
-The current embeddings are nearly identical (0.99 cosine similarity) which makes
-template matching useless. This script recomputes proper embeddings from the
-actual span examples using MiniLM.
+IMPORTANT: Embeds the PATTERN (genericized text like "[NAME] sold [N] [ITEM]")
+not the raw span examples. This ensures templates and queries are in the same
+embedding space after queries are also genericized.
 """
 
 import json
@@ -20,9 +20,9 @@ from sentence_transformers import SentenceTransformer
 
 
 def recompute_embeddings(input_path: str, output_path: str):
-    """Recompute embedding centroids from span examples."""
+    """Recompute embedding centroids from PATTERNS (not raw spans)."""
     print("=" * 60)
-    print("RECOMPUTING TEMPLATE EMBEDDINGS")
+    print("RECOMPUTING TEMPLATE EMBEDDINGS FROM PATTERNS")
     print("=" * 60)
 
     # Load templates
@@ -36,29 +36,31 @@ def recompute_embeddings(input_path: str, output_path: str):
     model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
     print(f"    Embedding dimension: {model.get_sentence_embedding_dimension()}")
 
-    # Recompute embeddings
-    print("\n[3] Recomputing embeddings from span examples...")
+    # Recompute embeddings from PATTERNS (genericized text)
+    print("\n[3] Recomputing embeddings from PATTERNS (not raw spans)...")
     updated = 0
     skipped = 0
 
     for i, template in enumerate(templates):
-        spans = template.get('span_examples', [])
+        # Get pattern - try 'pattern' field first, then 'pattern_examples'
+        pattern = template.get('pattern', '')
+        if not pattern or pattern == 'N/A':
+            pattern_examples = template.get('pattern_examples', [])
+            if pattern_examples:
+                pattern = pattern_examples[0]
 
-        if not spans:
+        if not pattern or pattern == 'N/A':
             skipped += 1
             continue
 
-        # Encode all spans
-        embeddings = model.encode(spans, convert_to_numpy=True)
-
-        # Compute centroid (mean of span embeddings)
-        centroid = np.mean(embeddings, axis=0)
+        # Encode the PATTERN (genericized, structural text)
+        embedding = model.encode(pattern, convert_to_numpy=True)
 
         # Normalize to unit vector
-        centroid = centroid / np.linalg.norm(centroid)
+        embedding = embedding / np.linalg.norm(embedding)
 
         # Update template
-        template['embedding_centroid'] = centroid.tolist()
+        template['embedding_centroid'] = embedding.tolist()
         updated += 1
 
         if (i + 1) % 50 == 0:

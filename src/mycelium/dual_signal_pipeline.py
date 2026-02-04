@@ -35,6 +35,7 @@ from mycelium.dual_signal_templates import (
     DualSignalTemplate,
     OperationType,
 )
+from mycelium.attention_graph import AttentionGraphBuilder, SpanGraph, Span, GraphExecutor, ExecutionResult
 
 
 # Default model path - relative to this file's location in src/mycelium/
@@ -62,6 +63,8 @@ class PipelineOutput:
     matched_operations: List[MatchedOperation]
     spans_detected: int
     templates_available: int
+    execution_result: Optional[ExecutionResult] = None  # Result of graph execution
+    answer: Optional[float] = None  # Computed numeric answer
 
 
 class DualSignalPipeline:
@@ -120,6 +123,17 @@ class DualSignalPipeline:
             attention_weight=attention_weight,
         )
 
+        # Initialize attention graph builder for span detection
+        # Uses attention signals (not hardcoded lists) per CLAUDE.md
+        self.graph_builder = AttentionGraphBuilder(
+            entity_threshold=0.08,  # Tuned: "jordan" has 0.112 attention_received
+            connectivity_threshold=0.1,
+            boundary_drop_threshold=0.5,
+        )
+
+        # Initialize graph executor for computing answers
+        self.graph_executor = GraphExecutor()
+
         # Track templates file path for persistence
         self.templates_path = templates_path
 
@@ -130,10 +144,12 @@ class DualSignalPipeline:
     def process_problem(self, text: str) -> PipelineOutput:
         """Process a math problem and match spans to templates.
 
-        This is the main entry point for the pipeline:
-        1. Segments problem into sentences (split by punctuation, filter questions)
-        2. Classifies each sentence using verb patterns + embedding fallback
-        3. Returns matched operations with confidence scores
+        Uses attention signals (not hardcoded lists) per CLAUDE.md:
+        1. Extract attention matrix from MiniLM
+        2. Build span graph using attention connectivity
+        3. Detect entities via attention_received signal
+        4. Compose sub-graphs using cross-span attention
+        5. Match each span to template and return in execution order
 
         Args:
             text: The math problem text to process
@@ -141,7 +157,103 @@ class DualSignalPipeline:
         Returns:
             PipelineOutput with matched operations for each span
         """
-        return self._process_sentence_first(text)
+        return self._process_with_attention_graph(text)
+
+    def _process_with_attention_graph(self, text: str) -> PipelineOutput:
+        """Process using attention-based span detection and graph composition.
+
+        No hardcoded entity lists - uses attention signals:
+        - attention_received → detect entities
+        - span_connectivity → find boundaries
+        - cross_attention → compose sub-graphs
+
+        Returns PipelineOutput with computed answer from graph execution.
+        """
+        # Extract attention matrix from MiniLM
+        embedding, attention_matrix, tokens = self.detector.extract_features(text)
+
+        # Average attention across heads if needed
+        if attention_matrix.ndim > 2:
+            attention_matrix = attention_matrix.mean(axis=0)
+
+        # Build span graph using attention signals
+        graph = self.graph_builder.build_graph(attention_matrix, tokens, text)
+
+        # Match each span to templates and compose
+        matched_operations = []
+        span_templates = []  # For graph execution: (span_idx, op_type, dsl_expr)
+
+        for span_idx, span in enumerate(graph.spans):
+            match_result = self._match_span_to_template(span, attention_matrix)
+            if match_result:
+                matched_operations.append(match_result)
+                span_templates.append((
+                    span_idx,
+                    match_result.operation_type.value,
+                    match_result.dsl_expr
+                ))
+
+        # Execute the graph to compute the answer
+        execution_result = self.graph_executor.execute_graph(graph, span_templates)
+
+        return PipelineOutput(
+            problem_text=text,
+            matched_operations=matched_operations,
+            spans_detected=len(graph.spans),
+            templates_available=len(self.store.templates),
+            execution_result=execution_result,
+            answer=execution_result.answer if execution_result else None,
+        )
+
+    def _match_span_to_template(
+        self,
+        span: Span,
+        full_attention_matrix: np.ndarray
+    ) -> Optional[MatchedOperation]:
+        """Match a detected span to the best template.
+
+        Uses the span's text and attention features to find matching template.
+        Entities are already detected via attention_received (no hardcoded list).
+
+        Args:
+            span: Detected span with entities and connectivity
+            full_attention_matrix: Full attention matrix for the problem
+
+        Returns:
+            MatchedOperation if match found, None otherwise
+        """
+        if not self.store.templates:
+            return None
+
+        # Extract embedding for this span's text
+        span_embedding, span_attention, span_tokens = self.detector.extract_features(span.text)
+
+        # Average attention if needed
+        if span_attention.ndim > 2:
+            span_attention = span_attention.mean(axis=0)
+
+        # Flatten attention for matching
+        attention_flat = span_attention.flatten()
+
+        # Find best template match
+        result = self.store.find_best_match(span_embedding, attention_flat)
+
+        if result:
+            template, combined_score, emb_sim, att_sim = result
+            confidence = self._compute_confidence(template, combined_score)
+
+            return MatchedOperation(
+                span_text=span.text,
+                operation_type=template.operation_type,
+                template_id=template.template_id,
+                combined_score=combined_score,
+                embedding_similarity=emb_sim,
+                attention_similarity=att_sim,
+                confidence=confidence,
+                dsl_expr=getattr(template, 'dsl_expr', 'value'),
+            )
+
+        return None
 
     def _process_sentence_first(self, text: str) -> PipelineOutput:
         """Process using sentence-first segmentation + verb classifier.
@@ -210,7 +322,13 @@ class DualSignalPipeline:
         """
         # Use dual-signal template matching with cross-entity attention
         if self.store.templates:
-            embedding, attention, tokens = self.detector.extract_features(sentence)
+            # Genericize sentence before embedding to match template space
+            # Templates are embedded from patterns like "[NAME] sold [N] [ITEM]"
+            # So queries must also be genericized for proper matching
+            genericized, _ = normalize_span(sentence)
+
+            # Embed the genericized version (structural, not lexical)
+            embedding, attention, tokens = self.detector.extract_features(genericized)
 
             # Compute cross-entity attention for operation discrimination
             cross_entity_attention = self.detector.compute_cross_entity_attention(
