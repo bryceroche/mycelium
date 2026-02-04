@@ -58,6 +58,12 @@ notes/
 # Generated JSON files
 scripts/*.json
 src/mycelium/*.json
+dsl_library.json
+enhanced_dsl_library.json
+span_templates_export.json
+operation_templates.json
+dual_signal_templates.json
+semantic_clusters.json
 mycelium_768.db
 paper.docx
 paper.html
