@@ -377,10 +377,11 @@ def collect_templates(config: CollectionConfig) -> Dict[str, SpecializedTemplate
                     count=1,
                 )
 
-                # Compute embedding
+                # Compute embedding from PATTERN (genericized), not raw span
+                # This ensures embeddings capture operational structure, not lexical content
                 if detector:
                     try:
-                        embedding, attention, _ = detector.extract_features(span)
+                        embedding, attention, _ = detector.extract_features(pattern)
                         embedding = embedding / (np.linalg.norm(embedding) + 1e-8)
                         templates[pattern_id].embedding_centroid = embedding.tolist()
 
@@ -437,17 +438,9 @@ def collect_templates(config: CollectionConfig) -> Dict[str, SpecializedTemplate
                 templates[pattern_id].span_examples.append(span)
                 templates[pattern_id].count += 1
 
-                # Update embedding centroid (running average)
-                if detector and templates[pattern_id].embedding_centroid:
-                    try:
-                        embedding, _, _ = detector.extract_features(span)
-                        embedding = embedding / (np.linalg.norm(embedding) + 1e-8)
-                        old_centroid = np.array(templates[pattern_id].embedding_centroid)
-                        n = templates[pattern_id].count
-                        new_centroid = old_centroid * (n-1)/n + embedding / n
-                        templates[pattern_id].embedding_centroid = new_centroid.tolist()
-                    except:
-                        pass
+                # Note: No need to update embedding centroid - pattern is the same
+                # The centroid was computed from the pattern, which doesn't change
+                pass
 
     print(f"\nCollected {len(templates)} unique templates")
 
