@@ -394,10 +394,30 @@ class DualSignalSolver:
         )
 
     def _extract_number(self, text: str) -> float:
-        """Extract the first number from text."""
+        """Extract the first number from text.
+
+        Handles:
+        - Plain numbers: 42, 3.14
+        - Comma-separated: 80,000 -> 80000
+        - Dollar amounts: $80,000 -> 80000
+        - Percentages: 15% -> 15
+        - Word numbers: one, two, three...
+        """
         import re
 
-        # Find numbers (including decimals)
+        # First try to find numbers with commas (e.g., 80,000 or $80,000)
+        # Pattern: optional $, digits with optional commas, optional decimal
+        comma_matches = re.findall(r'\$?([\d,]+\.?\d*)', text)
+        for match in comma_matches:
+            # Remove commas and convert
+            clean = match.replace(',', '')
+            if clean and clean != '.':
+                try:
+                    return float(clean)
+                except ValueError:
+                    continue
+
+        # Fall back to simple number extraction
         matches = re.findall(r'\d+\.?\d*', text)
         if matches:
             return float(matches[0])
@@ -406,6 +426,11 @@ class DualSignalSolver:
         word_numbers = {
             'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
             'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
+            'eleven': 11, 'twelve': 12, 'thirteen': 13, 'fourteen': 14,
+            'fifteen': 15, 'sixteen': 16, 'seventeen': 17, 'eighteen': 18,
+            'nineteen': 19, 'twenty': 20, 'thirty': 30, 'forty': 40,
+            'fifty': 50, 'sixty': 60, 'seventy': 70, 'eighty': 80,
+            'ninety': 90, 'hundred': 100, 'thousand': 1000, 'million': 1000000,
         }
         text_lower = text.lower()
         for word, value in word_numbers.items():
