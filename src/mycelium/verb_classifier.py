@@ -120,6 +120,19 @@ def classify_by_verb(text: str) -> Optional[Tuple[str, float]]:
     if operation is None:
         return None
 
+    # Special case: "gave him/her/them" - the pronoun is RECEIVING
+    # "His mom gave him 5" → main entity (him) gains 5 = ADD
+    # Check if verb is "gave" and followed by object pronoun
+    if verb == "gave":
+        text_lower = text.lower()
+        # Object pronouns that indicate receiving
+        object_pronouns = ["him", "her", "them", "me", "us"]
+        for pronoun in object_pronouns:
+            # Check for "gave [pronoun]" pattern
+            if re.search(rf'\bgave\s+{pronoun}\b', text_lower):
+                # The pronoun is receiving, so it's ADD not SUB
+                return ("ADD", 0.85)
+
     # Assign confidence based on operation type
     # SUB/ADD verbs are highly specific to their operations
     # SET verbs like "has" can be more ambiguous
