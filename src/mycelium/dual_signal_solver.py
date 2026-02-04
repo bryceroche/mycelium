@@ -48,7 +48,8 @@ from mycelium.db import get_all_templates, get_template_count
 
 # Default paths
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-DUAL_SIGNAL_TEMPLATES = PROJECT_ROOT / "dual_signal_templates.json"  # Best: embeddings + attention
+DSL_LIBRARY = PROJECT_ROOT / "dsl_library.json"  # Best: Qwen attention + MiniLM embeddings + custom DSL
+DUAL_SIGNAL_TEMPLATES = PROJECT_ROOT / "dual_signal_templates.json"  # Legacy: embeddings + attention
 TEMPLATES_EXPORT = PROJECT_ROOT / "span_templates_export.json"  # Fine-grained templates
 TEMPLATES_JSON = PROJECT_ROOT / "operation_templates.json"  # Coarse templates
 MODEL_PATH = PROJECT_ROOT / "models" / "minilm_attention_finetuned.pt"
@@ -136,11 +137,19 @@ class DualSignalSolver:
                     attention_weight=self.attention_weight,
                 )
 
-            # Load templates: prefer dual-signal > database > export JSON > coarse JSON > bootstrap
+            # Load templates: prefer DSL library > dual-signal > database > export JSON > coarse JSON > bootstrap
             if not self.mock_model:
                 templates_loaded = False
 
-                # 1. Try dual-signal templates first (best: embeddings + attention)
+                # 1. Try DSL library first (best: Qwen attention + MiniLM embeddings + custom DSL)
+                if not templates_loaded and os.path.exists(DSL_LIBRARY):
+                    self.templates_path = str(DSL_LIBRARY)
+                    count = self._load_dsl_library()
+                    if count > 0:
+                        templates_loaded = True
+                        print(f"Using DSL library with Qwen attention signals")
+
+                # 2. Try dual-signal templates (legacy format)
                 if not templates_loaded and os.path.exists(DUAL_SIGNAL_TEMPLATES):
                     self.templates_path = str(DUAL_SIGNAL_TEMPLATES)
                     count = self._load_templates_from_json()
@@ -265,6 +274,84 @@ class DualSignalSolver:
 
         except Exception as e:
             print(f"Error loading templates: {e}")
+            return 0
+
+    def _load_dsl_library(self) -> int:
+        """Load templates from DSL library with Qwen attention signals.
+
+        The DSL library has the new format with:
+        - embedding_centroid (384-dim MiniLM)
+        - attention_entropy (Qwen-derived)
+        - attention_received (Qwen-derived)
+        - attention_connection (Qwen-derived)
+        - custom_dsl (specialized DSL expression)
+        """
+        try:
+            with open(self.templates_path, 'r') as f:
+                data = json.load(f)
+
+            count = 0
+            for template_id, template_data in data.items():
+                # Get operation type
+                op_str = template_data.get("operation", "SET").upper()
+                try:
+                    op_type = OperationType(op_str)
+                except ValueError:
+                    op_type = OperationType.SET
+
+                # Get centroid (required)
+                centroid_data = template_data.get("embedding_centroid")
+                if centroid_data is None or len(centroid_data) == 0:
+                    continue
+                centroid = np.array(centroid_data, dtype=np.float32)
+
+                # Build attention signature from Qwen signals
+                # Combine entropy, received, connection into a feature vector
+                attention_entropy = template_data.get("attention_entropy", 0.0)
+                attention_received = template_data.get("attention_received", 0.0)
+                attention_connection = template_data.get("attention_connection", 0.0)
+
+                # Create compact attention signature (can be expanded later)
+                attention = np.array([
+                    attention_entropy,
+                    attention_received,
+                    attention_connection,
+                ] + [0.0] * 97, dtype=np.float32)  # Pad to 100 dims
+
+                # Get pattern examples
+                patterns = template_data.get("pattern_examples", [])
+                spans = template_data.get("span_examples", [])
+
+                # Get custom DSL expression
+                custom_dsl = template_data.get("custom_dsl", template_data.get("base_dsl", "value"))
+
+                # Create template
+                template = DualSignalTemplate(
+                    template_id=template_id,
+                    operation_type=op_type,
+                    embedding_centroid=centroid,
+                    attention_signature=attention,
+                    pattern=patterns[0] if patterns else "",
+                    dsl_expr=custom_dsl,
+                    span_examples=spans[:10],
+                    match_count=template_data.get("count", 0),
+                )
+
+                # Store Qwen attention signals as extra attributes for dual-signal matching
+                template.attention_entropy = attention_entropy
+                template.attention_received = attention_received
+                template.attention_connection = attention_connection
+
+                self._pipeline.store.add_template(template)
+                count += 1
+
+            print(f"Loaded {count} DSL templates with Qwen attention signals")
+            return count
+
+        except Exception as e:
+            print(f"Error loading DSL library: {e}")
+            import traceback
+            traceback.print_exc()
             return 0
 
     def _load_templates_from_db(self) -> int:
