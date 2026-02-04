@@ -565,8 +565,10 @@ class DualSignalPipeline:
             # Check for pre-computed centroid (from Qwen pipeline)
             if "embedding_centroid" in tpl_dict and tpl_dict["embedding_centroid"]:
                 embedding = np.array(tpl_dict["embedding_centroid"], dtype=np.float32)
-                # Generate a dummy attention signature
-                attention_flat = np.zeros(100, dtype=np.float32)
+
+                # Compute attention centroid from pattern_examples via MiniLM
+                # This gives us a REAL dual signal instead of dummy zeros
+                attention_flat = self._compute_attention_centroid(patterns)
             else:
                 # Legacy: re-embed from pattern examples or description
                 text_for_embedding = tpl_dict.get("description", "")
@@ -590,6 +592,43 @@ class DualSignalPipeline:
         except Exception as e:
             print(f"Warning: Failed to convert template {tpl_dict.get('template_id')}: {e}")
             return None
+
+    def _compute_attention_centroid(self, pattern_examples: List[str]) -> np.ndarray:
+        """Compute attention centroid from pattern examples via MiniLM.
+
+        Runs extract_features on each example, flattens the attention matrices,
+        and averages them (zero-padded to max length). This gives templates a
+        REAL attention signature for dual-signal matching instead of dummy zeros.
+
+        Args:
+            pattern_examples: Raw span examples from the template
+
+        Returns:
+            Averaged flattened attention vector, or zeros if no examples
+        """
+        if not pattern_examples:
+            return np.zeros(100, dtype=np.float32)
+
+        attention_vectors = []
+        for example in pattern_examples[:5]:  # Cap at 5 to limit startup cost
+            try:
+                _, attention, _ = self.detector.extract_features(example)
+                if attention.ndim > 2:
+                    attention = attention.mean(axis=0)
+                attention_vectors.append(attention.flatten())
+            except Exception:
+                continue
+
+        if not attention_vectors:
+            return np.zeros(100, dtype=np.float32)
+
+        # Pad all to max length, then average
+        max_len = max(len(v) for v in attention_vectors)
+        padded = np.zeros((len(attention_vectors), max_len), dtype=np.float32)
+        for i, v in enumerate(attention_vectors):
+            padded[i, :len(v)] = v
+
+        return padded.mean(axis=0)
 
     # ================================================================
     # Diagnostic Methods
