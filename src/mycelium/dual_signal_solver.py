@@ -337,7 +337,11 @@ class DualSignalSolver:
                 dsl_expr = template_data.get("dsl_expr", "value")
 
                 # Get pattern and examples
+                # Use pattern_examples[0] if pattern is not set
                 pattern = template_data.get("pattern", "")
+                pattern_examples = template_data.get("pattern_examples", [])
+                if not pattern and pattern_examples:
+                    pattern = pattern_examples[0]
                 spans = template_data.get("span_examples", [])
 
                 # Create template
@@ -440,7 +444,11 @@ class DualSignalSolver:
                 dsl_expr = template_data.get("custom_dsl") or template_data.get("base_dsl") or template_data.get("dsl_expr", "value")
 
                 # Get pattern and examples
+                # Use pattern_examples[0] if pattern is not set
                 pattern = template_data.get("pattern", "")
+                pattern_examples = template_data.get("pattern_examples", [])
+                if not pattern and pattern_examples:
+                    pattern = pattern_examples[0]
                 spans = template_data.get("span_examples", [])
 
                 # Create template
