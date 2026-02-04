@@ -54,7 +54,7 @@ def benchmark_gsm8k(num_problems: int = 1000, show_progress: int = 100):
 
         try:
             result = solver.solve(question)
-            answer = result.get('answer') if result else None
+            answer = result.answer if result else None
 
             # Check if correct (within tolerance)
             is_correct = False
