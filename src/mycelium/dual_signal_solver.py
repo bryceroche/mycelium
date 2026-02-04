@@ -88,8 +88,7 @@ class DualSignalSolver:
     is what we're learning. A node might be great for step 2 but terrible for step 5.
     """
 
-    # Import from span_normalizer (single source of truth)
-    from mycelium.span_normalizer import PRONOUNS
+    # Entity detection handled by attention_graph.py (attention_received signal)
 
     def __init__(
         self,
@@ -645,15 +644,24 @@ class DualSignalSolver:
         # Process problem through dual-signal pipeline
         output = pipeline.process_problem(problem)
 
-        # Use graph execution result if available (preferred method)
+        # Graph execution is the ONLY execution path
+        # Entity detection comes from attention_received signals in attention_graph.py
+        # No hardcoded entity extraction or pronoun lists
         if output.execution_result and output.execution_result.answer is not None:
             # Build operations list for reporting
             operations = []
             for matched_op in output.matched_operations:
+                # Entity comes from attention-detected entities in the graph
+                # (populated by attention_graph.py using attention_received signal)
+                entity = "X"
+                if output.execution_result.entity_values:
+                    # Use the entity that was tracked during graph execution
+                    entity = next(iter(output.execution_result.entity_values), "X")
+
                 op = SolverOperation(
                     op_type=matched_op.operation_type.value,
                     value=self._extract_number(matched_op.span_text),
-                    entity=self._extract_entity(matched_op.span_text) or "X",
+                    entity=entity,
                     confidence=matched_op.confidence,
                     embedding_sim=matched_op.embedding_similarity,
                     attention_sim=matched_op.attention_similarity,
@@ -669,65 +677,11 @@ class DualSignalSolver:
                 spans_detected=output.spans_detected,
             )
 
-        # Fallback: legacy execution path
-        # Convert matched operations to solver operations
-        operations = []
-        state: Dict[str, float] = {}
-        main_entity = None
-
-        # Extract numbers and entities from spans
-        for matched_op in output.matched_operations:
-            # Extract numeric value from span
-            value = self._extract_number(matched_op.span_text)
-
-            # Extract entity from span
-            entity = self._extract_entity(matched_op.span_text)
-
-            # Handle pronouns
-            if entity and entity.lower() in self.PRONOUNS and main_entity:
-                entity = main_entity
-            elif entity and entity.lower() not in self.PRONOUNS:
-                main_entity = entity
-
-            if entity is None:
-                entity = main_entity or "X"
-                if main_entity is None:
-                    main_entity = entity  # Track first entity seen
-
-            op = SolverOperation(
-                op_type=matched_op.operation_type.value,
-                value=value,
-                entity=entity,
-                confidence=matched_op.confidence,
-                embedding_sim=matched_op.embedding_similarity,
-                attention_sim=matched_op.attention_similarity,
-                span_text=matched_op.span_text,
-                template_id=matched_op.template_id,
-            )
-            operations.append(op)
-
-            # Execute using custom DSL expression from matched template
-            # Each template has its own dsl_expr like "entity - value" or "ref * 2"
-            if entity not in state:
-                state[entity] = 0
-
-            # Use custom DSL expression (preferred) or fall back to operation-based
-            dsl_expr = getattr(matched_op, 'dsl_expr', None)
-            if dsl_expr and dsl_expr != "value":
-                # Execute custom DSL expression
-                state[entity] = execute_dsl_expr(dsl_expr, state, entity, op.value, None)
-            else:
-                # Fall back to operation-based DSL
-                dsl_fn = get_dsl(op.op_type, "simple")
-                state[entity] = dsl_fn(state, entity, op.value, None)
-
-        # Get answer (main entity's final value)
-        answer = state.get(main_entity, 0) if main_entity else 0
-
+        # No graph execution result - return zero (no fallback to hardcoded heuristics)
         return SolverResult(
-            answer=answer,
-            operations=operations,
-            state=state,
+            answer=0.0,
+            operations=[],
+            state={},
             spans_detected=output.spans_detected,
         )
 
@@ -777,52 +731,11 @@ class DualSignalSolver:
 
         return 0.0
 
-    # Words that look like entities but aren't (sentence starters, articles, etc.)
-    NOISE_WORDS = frozenset([
-        'then', 'the', 'each', 'every', 'some', 'all', 'and', 'but', 'after',
-        'before', 'when', 'if', 'so', 'a', 'an', 'now', 'later', 'first',
-    ])
-
-    def _extract_entity(self, text: str) -> Optional[str]:
-        """Extract the SUBJECT entity from text.
-
-        Key insight: The subject is typically in the first 2-3 words.
-        "She gave 8 to Bob" - subject is "She", Bob is the object (recipient).
-
-        Priority:
-        1. Look at first 3 words for subject
-        2. If subject is pronoun, return None (caller resolves to main_entity)
-        3. If subject is proper noun, return it
-
-        This INTENTIONALLY returns None for pronouns so the solver
-        can resolve them to the main_entity from previous sentences.
-        """
-        words = text.split()
-
-        # Only look at first 3 words for subject (subject-verb-object structure)
-        subject_window = words[:3]
-
-        for word in subject_window:
-            clean_word = word.strip('.,!?\'\"')
-            if not clean_word:
-                continue
-
-            lower = clean_word.lower()
-
-            # Skip noise words (Then, The, etc.)
-            if lower in self.NOISE_WORDS:
-                continue
-
-            # If it's a pronoun, return None to signal pronoun resolution
-            if lower in self.PRONOUNS:
-                return None
-
-            # If it's capitalized (proper noun), return it
-            if clean_word[0].isupper():
-                return clean_word
-
-        # No subject found in first 3 words - return None
-        return None
+    # ================================================================
+    # REMOVED: Hardcoded NOISE_WORDS and _extract_entity with 3-word window
+    # Entity detection is now done by attention_graph.py using attention_received
+    # signals. No hardcoded word lists needed.
+    # ================================================================
 
     def record_outcome(self, result: SolverResult, correct: bool) -> None:
         """Record outcome for learning.
@@ -900,166 +813,29 @@ def _create_mock_pipeline(
 ) -> DualSignalPipeline:
     """Create a mock pipeline for testing without GPU.
 
-    Uses random embeddings and predefined operation patterns.
+    Mock mode is minimal - no hardcoded verb lists.
+    Returns empty results; real testing requires the model.
     """
-    # Create a custom mock pipeline
     class MockPipeline:
         def __init__(self, emb_w, att_w):
             self.store = TemplateStore(emb_w, att_w)
-            self._setup_mock_templates()
-
-        def _setup_mock_templates(self):
-            """Create mock templates for each operation type."""
-            # Create deterministic "embeddings" for each operation
-            np.random.seed(42)  # Reproducible
-
-            ops = [
-                (OperationType.SET, ["has", "have", "had", "starts with", "begins with", "started with"]),
-                (OperationType.ADD, ["found", "received", "got", "earned", "bought", "finds", "gets", "earns", "buys", "more"]),
-                (OperationType.SUB, ["gave", "gives", "sold", "sells", "lost", "loses", "spent", "spends", "ate", "eats"]),
-                (OperationType.MUL, ["doubled", "tripled", "times", "multiplied", "each"]),
-                (OperationType.DIV, ["divided", "split", "shared", "half", "equally"]),
-            ]
-
-            for op_type, keywords in ops:
-                embedding = np.random.randn(384).astype(np.float32)
-                embedding = embedding / np.linalg.norm(embedding)
-
-                template = DualSignalTemplate(
-                    template_id=f"{op_type.value}_mock",
-                    operation_type=op_type,
-                    embedding_centroid=embedding,
-                    attention_signature=np.zeros(100, dtype=np.float32),
-                    span_examples=keywords,
-                )
-                self.store.add_template(template)
 
         def process_problem(self, text: str) -> PipelineOutput:
-            """Process problem using pattern-based template matching (mock mode).
-
-            Uses pattern matching for operation classification,
-            skipping GPU-based embedding extraction.
-            """
-            import re
-
-            # Pattern-based operation inference (no verb classifier)
-            def infer_operation(clause):
-                """Infer operation from clause patterns."""
-                clause_lower = clause.lower()
-
-                # Check patterns in order of specificity
-                sub_verbs = ['sold', 'sells', 'gave', 'gives', 'spent', 'spends',
-                             'lost', 'loses', 'ate', 'eats', 'used', 'uses',
-                             'took', 'takes', 'baked', 'bakes', 'threw', 'throws',
-                             'lent', 'lends', 'traded', 'trades', 'donated', 'donates',
-                             'paid', 'pays', 'drank', 'drinks']
-                add_verbs = ['found', 'finds', 'received', 'receives', 'earned', 'earns',
-                             'won', 'wins', 'bought', 'buys', 'got', 'gets',
-                             'collected', 'collects', 'picked', 'picks',
-                             'gathered', 'gathers', 'gained', 'gains']
-                set_verbs = ['has', 'have', 'had', 'starts', 'started', 'owns',
-                             'contains', 'there are', 'there were']
-
-                # 1. Check VERY specific patterns first (price calculations)
-                # "sells for $N each/per" = MUL (revenue = quantity * price)
-                if re.search(r'(sells?|sold)\s+.*for\s+\$?\d+', clause_lower):
-                    return (OperationType.MUL, "entity * value", 0.9)
-                if re.search(r'for\s+\$?\d+.*\b(each|per)\b', clause_lower):
-                    return (OperationType.MUL, "entity * value", 0.85)
-
-                # 2. Check subtraction
-                for verb in sub_verbs:
-                    if verb in clause_lower:
-                        return (OperationType.SUB, "entity - value", 0.85)
-
-                # 3. Check addition
-                for verb in add_verbs:
-                    if verb in clause_lower:
-                        return (OperationType.ADD, "entity + value", 0.85)
-
-                # 4. Check other multiplication patterns
-                # "each X has N" = MUL (total = count * per_item)
-                # "N times" = MUL
-                if re.search(r'each\s+\w+\s+has\s+\d+', clause_lower):
-                    return (OperationType.MUL, "entity * value", 0.85)
-                if 'times' in clause_lower and re.search(r'\d+\s+times', clause_lower):
-                    return (OperationType.MUL, "entity * value", 0.85)
-                if 'doubled' in clause_lower:
-                    return (OperationType.MUL, "entity * 2", 0.9)
-                if 'tripled' in clause_lower:
-                    return (OperationType.MUL, "entity * 3", 0.9)
-
-                # 4. Check division patterns
-                if 'shared' in clause_lower and 'equally' in clause_lower:
-                    return (OperationType.DIV, "entity / value", 0.85)
-                if 'split' in clause_lower:
-                    return (OperationType.DIV, "entity / value", 0.8)
-                if 'divided' in clause_lower:
-                    return (OperationType.DIV, "entity / value", 0.8)
-                if 'half of' in clause_lower:
-                    return (OperationType.DIV, "entity / 2", 0.85)
-                if re.search(r'among\s+\d+', clause_lower):
-                    return (OperationType.DIV, "entity / value", 0.75)
-
-                # 5. Check set/initial values (last, as fallback)
-                for verb in set_verbs:
-                    if verb in clause_lower:
-                        return (OperationType.SET, "value", 0.7)
-
-                # Default: SET if has number
-                if re.search(r'\d+', clause):
-                    return (OperationType.SET, "value", 0.5)
-
-                return None
-
-            # Simple clause splitting
-            clauses = re.split(r'[.!?]|\band\b|\bthen\b', text)
-            clauses = [c.strip() for c in clauses if c.strip()]
-
-            matched_ops = []
-            for clause in clauses:
-                # Skip question clauses
-                clause_lower = clause.lower()
-                if '?' in clause or any(q in clause_lower for q in
-                        ['how many', 'how much', 'what is', 'what are']):
-                    continue
-
-                # Infer operation from patterns
-                result = infer_operation(clause)
-
-                if result:
-                    op_type, dsl_expr, confidence = result
-                    matched_ops.append(MatchedOperation(
-                        span_text=clause,
-                        operation_type=op_type,
-                        template_id=f"{op_type.value}_pattern",
-                        combined_score=confidence,
-                        embedding_similarity=0.0,
-                        attention_similarity=0.0,
-                        confidence=confidence,
-                        dsl_expr=dsl_expr,
-                    ))
-
             return PipelineOutput(
                 problem_text=text,
-                matched_operations=matched_ops,
-                spans_detected=len(clauses),
-                templates_available=len(self.store.templates),
+                matched_operations=[],
+                spans_detected=0,
+                templates_available=0,
             )
 
         def record_outcome(self, template_id, success, embedding_sim=None, attention_sim=None):
-            """Record outcome for learning."""
-            template = self.store.get_template(template_id)
-            if template:
-                template.record_outcome(success)
+            pass
 
         def get_decomposition_candidates(self):
-            """Get high variance templates."""
-            return self.store.get_high_variance_templates()
+            return []
 
         def bootstrap_from_examples(self):
-            """Already bootstrapped in init."""
-            return len(self.store.templates)
+            return 0
 
     return MockPipeline(embedding_weight, attention_weight)
 
