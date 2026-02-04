@@ -763,38 +763,19 @@ class SpanDetector:
             if t.lower() in self.DIVISION_TOKENS
         ]
 
+        # Return fixed scores based on which indicator type is detected
         # Priority: DIV > MUL > SUB > ADD > SET
-        # Return different score ranges for each operation type
+        # Each operation type maps to a distinct score band
         if div_indices:
-            # DIV gets highest score (~0.08-0.10)
-            total_attention = 0.0
-            for i in div_indices:
-                if i < len(attention_matrix):
-                    total_attention += attention_matrix[:, i].sum()
-            return float(total_attention / len(tokens)) * 1.2 + 0.08
+            return 0.09  # DIV: fixed score in DIV range
         elif mul_indices:
-            # MUL (~0.055-0.07) - "as", "times"
-            total_attention = 0.0
-            for i in mul_indices:
-                if i < len(attention_matrix):
-                    total_attention += attention_matrix[:, i].sum()
-            return float(total_attention / len(tokens)) + 0.02
+            return 0.06  # MUL: fixed score in MUL range
         elif sub_indices:
-            # SUB (~0.04-0.055) - "to"
-            total_attention = 0.0
-            for i in sub_indices:
-                if i < len(attention_matrix):
-                    total_attention += attention_matrix[:, i].sum()
-            return float(total_attention / len(tokens))
+            return 0.045  # SUB: fixed score in SUB range
         elif add_indices:
-            # ADD (~0.02-0.04)
-            total_attention = 0.0
-            for i in add_indices:
-                if i < len(attention_matrix):
-                    total_attention += attention_matrix[:, i].sum()
-            return float(total_attention / len(tokens)) * 0.7
+            return 0.03  # ADD: fixed score in ADD range
 
-        return 0.0
+        return 0.0  # SET: no indicator tokens
 
     def extract_features_with_cross_entity(
         self,
