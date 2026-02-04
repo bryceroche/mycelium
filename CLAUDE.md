@@ -1,8 +1,9 @@
-# The Big 4
-1. Attention Signals (Entropy, Received, Connectivity)
-2. Dual-Signal Architecture (Attention + Embeddings)
-3. Attention Distillation (Qwen 7B → MiniLM 22M)
-4. How to use Beads
+# The Big 5
+1. The Panama Hats Problem (guides span creation)
+2. Attention Signals (Entropy, Received, Connectivity)
+3. Why MiniLM is Perfect (trained with MSE attention loss)
+4. Trained Signal Mapping (17k spans dataset)
+5. Cross-Attention Between Spans
 
 ## Terminology
 - **Attention Entropy** — Low entropy = important token (focused attention). High entropy = diffuse attention.
@@ -10,11 +11,9 @@
 - **Span Connectivity** — How strongly tokens within a span attend to each other. High connectivity = cohesive semantic unit.
 - **Centroid Embedding** — Average embedding of a span's tokens. Used for template matching.
 - **Welford's** — Online algorithm for calculating running mean/variance without storing all data.
-- **DAG** — Directed Acyclic Graph (computation graph).
 - **Span** — Contiguous tokens forming a semantic unit (e.g., "half the eggs").
 - **SET** — Initial value assignment operation.
 - **Attention Sink** — Token that receives attention from many others (usually the subject/entity).
-- **Z-score** — Standard deviations from learned mean, used for classification.
 
 ## The Panama Hats Problem
 
@@ -23,22 +22,23 @@ Why do we need span detection? Because meaning is compositional.
 - "panama" = country
 - "panama hats" = a type of hat (completely different meaning)
 
-In math word problems:
+**In math word problems, this is critical:**
 - "half" = 0.5
 - "half the price of the cheese" = ONE operation (cheese_price × 0.5)
+- "twice as many apples as oranges" = ONE comparison operation
 
-Naive tokenization breaks "half the price of the cheese" into separate words and loses the semantic unit. We need the **longest span** that forms a cohesive operation.
+Naive tokenization breaks these into separate words and loses the semantic unit. The Panama Hats problem guides our span creation: we need the **longest span** that forms a cohesive operation.
 
-Attention patterns solve this: tokens within a semantic span attend strongly to each other (high connectivity). "half," "price," and "cheese" form an attention cluster — that's the model recognizing them as a single operation.
+**How attention solves this:**
+Tokens within a semantic span attend strongly to each other (high connectivity). "half," "price," and "cheese" form an attention cluster — that's the model recognizing them as a single operation. This guides where to draw span boundaries.
 
 ## Core Principle: Failures Are Valuable Data Points
 **Let the system fail.** This is how it learns.
 - Record every failure — it feeds the learning loop
-- Do not fallback to LLM reasoning
 - Accumulated failure patterns (not individual failures) refine thresholds
 - Success/failure stats drive classification decisions
 
-The goal is NOT 100% accuracy on every run. The goal is collecting data that makes the system smarter over time. A misclassified span provides valuable signal for threshold adjustment.
+The goal is NOT 100% accuracy on every run. The goal is collecting data that makes the system smarter over time.
 
 ## Attention Signals
 
@@ -60,32 +60,32 @@ Three signals extracted from attention matrices:
 - Low connectivity → tokens don't belong together → split or reject
 - Use case: Validate span boundaries, detect multi-token operations
 
-## Ground Truth from Qwen 7B
+## Why MiniLM is Perfect for Distillation
 
-Qwen 7B attention patterns capture:
-- **Span structure** — Which tokens group together (connectivity)
-- **Entity binding** — Which tokens reference the same entity (received attention)
-- **Centroid embeddings** — Semantic fingerprint of each operation type
+MiniLM was originally trained with: `loss = MSE(student_attention, teacher_attention)`
 
-We extract these patterns on 10K math problems to build a library of span templates with their attention signatures and centroid embeddings.
+This means MiniLM already learned to mimic attention patterns from a larger teacher. When we fine-tune it on Qwen 7B attention patterns, it's doing exactly what it was designed for — just with a new teacher.
 
-## Attention Distillation: Qwen 7B → MiniLM 22M
-
-**The problem**: Qwen 7B is too expensive for inference.
-
-**The solution**: Distill attention patterns into MiniLM (318x smaller).
-
-**Why MiniLM works:**
+**Why this matters:**
 - Bidirectional encoder (sees full context, unlike causal Qwen)
 - Prior distillation training made it a good student
 - Sentence-transformer architecture already optimized for semantic similarity
+- The training objective aligns perfectly with our goal
+
+## Trained Signal Mapping (17k Spans)
+
+**The dataset:**
+We have 17k spans with BOTH MiniLM embeddings AND Qwen attention signals. This lets us train a mapping:
+
+`MiniLM features → predicted Qwen signals`
 
 **Fine-tuning process:**
-1. Extract Qwen 7B attention matrices on training set
-2. Train MiniLM to match Qwen's span connectivity patterns
-3. Learn optimal head weights (heads 5 & 8 most important: 0.108)
-4. Learn optimal layer weights (layers 4 & 5 most important: 0.18)
-5. Result: 0.58 → 0.945 correlation
+1. Extract Qwen 7B attention on 17k spans
+2. Extract MiniLM embeddings on same 17k spans
+3. Train mapping: predict Qwen signals from MiniLM features
+4. Learn optimal head weights (heads 5 & 8 most important)
+5. Learn optimal layer weights (layers 4 & 5 most important)
+6. Result: 0.58 → 0.945 correlation
 
 **Distillation results:**
 
@@ -96,29 +96,30 @@ We extract these patterns on 10K math problems to build a library of span templa
 | Qwen2-0.5B | 500M | 0.31 |
 | BERT-base | 110M | 0.30 |
 
-**Key insight**: MiniLM used attention distillation from a larger teacher. The training objective was: `loss = MSE(student_attention, teacher_attention)`
+## Cross-Attention Between Spans
 
-## Dual-Signal Architecture
+Spans don't exist in isolation. We track:
 
-**Two orthogonal signals for robust matching:**
+1. **Sequence awareness** — Position in the problem (first span usually SET, later spans usually operations)
+2. **Previous span tracking** — What operation came before? (context for current span)
+3. **Entity tracking** — Which entities have been introduced? Which are being referenced?
 
-1. **Attention signal** — Structural relationships (which tokens attend to each other)
-2. **Embedding signal** — Semantic similarity (centroid distance)
+Cross-attention between spans captures dependencies: "she sold half" depends on knowing what "she" refers to from a previous span.
 
-**Why dual signals?**
-- Attention alone can have false positives (similar structure, different meaning)
-- Embeddings alone miss structural relationships
-- Combined: more robust span detection and classification
+## Inference Pipeline
 
-**The hybrid pipeline:**
-- **Training**: Qwen 7B → extract attention patterns + centroid embeddings → span templates
-- **Inference**: MiniLM (22M) → match attention patterns + embeddings → span template → custom DSL
+At inference (no KNN — we use LLM with templates):
 
-Quality of 7B model at cost of 22M model.
+1. Run MiniLM (fast, 22M params)
+2. Apply learned mapping → approximate Qwen signals
+3. Use signals for span detection + template matching
+4. LLM executes specialized template
+
+No Qwen 7B needed at inference — just the trained mapping + LLM for execution.
 
 ## Specialized Templates with Generic Entities
 
-Each span type has a specialized template with generic entity placeholders.
+Each span maps to a specialized template. No KNN lookup — the LLM uses the detected span type directly.
 
 **Examples:**
 - Circle geometry: `area = π × {radius}²`
@@ -126,16 +127,12 @@ Each span type has a specialized template with generic entity placeholders.
 - Percentage: `{result} = {entity} × ({percent}/100)`
 - Half of: `{result} = {entity} × 0.5`
 
-**generic entities**
+**Generic entities:**
+GSM8K problems mention many entities (apples, cookies, cheese). We use `{entity}` placeholders:
+- "half the apples" → template: `{entity} × 0.5`
+- "half the cookies" → same template: `{entity} × 0.5`
 
-GSM8K problems mention many different entities (apples, cookies, cheese, etc.). To generalize across all of them, we use `{entity}` placeholders:
-- "half the apples" → `apples × 0.5`
-- "half the cookies" → `cookies × 0.5`
-- Both match the same template: `{entity} × 0.5`
-
-This gives us **specialized structure** (each operation type has its own template) with **generic applicability**
-
-The span detection identifies WHICH template to use. The entity extraction fills in the placeholders.
+Span detection identifies WHICH template. Entity extraction fills placeholders. LLM executes.
 
 ## New Favorite Pattern
 Consolidate methods. All database connections go through a data layer. All span detection through one interface. All embedding lookups through cache. Reduces bugs, simplifies codebase.
