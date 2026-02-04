@@ -41,12 +41,15 @@ from mycelium.dual_signal_pipeline import (
 # Alias as SolverOperation for backward compatibility
 from mycelium.types import Operation as SolverOperation
 # Import centralized DSL framework for operation execution
-from mycelium.span_templates import get_dsl
+from mycelium.span_templates import get_dsl, infer_dsl_expr, execute_dsl_expr
+# Import database functions for loading templates
+from mycelium.db import get_all_templates, get_template_count
 
 
 # Default paths
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 TEMPLATES_JSON = PROJECT_ROOT / "operation_templates.json"
+TEMPLATES_EXPORT = PROJECT_ROOT / "span_templates_export.json"  # Fine-grained templates
 MODEL_PATH = PROJECT_ROOT / "models" / "minilm_attention_finetuned.pt"
 
 
@@ -132,13 +135,34 @@ class DualSignalSolver:
                     attention_weight=self.attention_weight,
                 )
 
-            # Load templates if available (skip for mock mode - uses keyword matching)
-            if not self.mock_model and os.path.exists(self.templates_path):
-                self._load_templates_from_json()
-            elif not self.mock_model:
-                # Bootstrap with examples
-                print("No templates file found, bootstrapping with examples...")
-                self._pipeline.bootstrap_from_examples()
+            # Load templates: prefer database > export JSON > coarse JSON > bootstrap
+            if not self.mock_model:
+                templates_loaded = False
+
+                # 1. Try database first (has fine-grained templates)
+                try:
+                    db_count = get_template_count()
+                    if db_count > 0:
+                        self._load_templates_from_db()
+                        templates_loaded = True
+                except Exception as e:
+                    print(f"Database not available ({e})")
+
+                # 2. Try exported fine-grained templates (span_templates_export.json)
+                if not templates_loaded and os.path.exists(TEMPLATES_EXPORT):
+                    self.templates_path = TEMPLATES_EXPORT
+                    self._load_templates_from_json()
+                    templates_loaded = True
+
+                # 3. Try coarse operation templates (operation_templates.json)
+                if not templates_loaded and os.path.exists(self.templates_path):
+                    self._load_templates_from_json()
+                    templates_loaded = True
+
+                # 4. Bootstrap with examples as last resort
+                if not templates_loaded:
+                    print("No templates found, bootstrapping with examples...")
+                    self._pipeline.bootstrap_from_examples()
 
             self._templates_loaded = True
 
@@ -147,43 +171,73 @@ class DualSignalSolver:
     def _load_templates_from_json(self) -> int:
         """Load operation templates from JSON file.
 
-        The JSON format has one entry per operation type:
-        {
-            "SUB": {
-                "operation_type": "SUB",
-                "count": 871,
-                "embedding_centroid": [...384 floats...],
-                "attention_signature": [...optional...],
-                "span_examples": [...]
-            },
-            ...
-        }
+        Supports two formats:
+        1. Coarse format (operation_templates.json): One centroid per operation
+        2. Fine-grained format (span_templates_export.json): One template per pattern
         """
         try:
             with open(self.templates_path, 'r') as f:
                 data = json.load(f)
 
             count = 0
-            for op_name, template_data in data.items():
-                op_type = OperationType(template_data.get("operation_type", op_name))
+            # Detect format: coarse has operation names as keys (SUB, ADD, etc.)
+            # Fine-grained has template IDs as keys (add_n_has_v_i_0, etc.)
+            operation_names = {"SET", "ADD", "SUB", "MUL", "DIV"}
+            is_coarse_format = all(k.upper() in operation_names for k in data.keys())
+
+            for template_id, template_data in data.items():
+                # Get pattern (for DSL inference)
+                pattern = template_data.get("pattern", "")
+
+                # Get operation type from template data
+                if is_coarse_format:
+                    op_str = template_id.upper()
+                else:
+                    op_str = (template_data.get("operation_type") or template_data.get("operation", "SET")).upper()
+
+                # Infer DSL expression from pattern (overrides mislabeled operations)
+                dsl_expr = infer_dsl_expr(pattern, op_str) if pattern else None
+
+                # Correct operation type based on inferred DSL
+                if dsl_expr:
+                    if "entity - " in dsl_expr or "ref - " in dsl_expr:
+                        op_str = "SUB"
+                    elif "entity + " in dsl_expr or "ref + " in dsl_expr:
+                        op_str = "ADD"
+                    elif "entity * " in dsl_expr or "ref * " in dsl_expr:
+                        op_str = "MUL"
+                    elif "entity / " in dsl_expr or "ref / " in dsl_expr:
+                        op_str = "DIV"
+                    elif dsl_expr == "value":
+                        op_str = "SET"
+
+                try:
+                    op_type = OperationType(op_str)
+                except ValueError:
+                    op_type = OperationType.SET
 
                 # Get centroid (required)
-                centroid = np.array(template_data["embedding_centroid"], dtype=np.float32)
+                centroid_data = template_data.get("embedding_centroid")
+                if centroid_data is None:
+                    continue
+                centroid = np.array(centroid_data, dtype=np.float32)
 
-                # Get attention signature (optional, use centroid shape if missing)
+                # Get attention signature (optional)
                 if "attention_signature" in template_data:
                     attention = np.array(template_data["attention_signature"], dtype=np.float32)
                 else:
-                    # No attention data, use a placeholder
                     attention = np.zeros(100, dtype=np.float32)
 
-                # Create template
+                # Create template with pattern and custom DSL
+                tid = f"{template_id}_centroid" if is_coarse_format else template_id
                 template = DualSignalTemplate(
-                    template_id=f"{op_name}_centroid",
+                    template_id=tid,
                     operation_type=op_type,
                     embedding_centroid=centroid,
                     attention_signature=attention,
-                    span_examples=template_data.get("span_examples", [])[:10],
+                    pattern=pattern,
+                    dsl_expr=dsl_expr or "value",
+                    span_examples=(template_data.get("span_examples") or template_data.get("examples", []))[:10],
                     match_count=template_data.get("count", 0),
                 )
 
@@ -201,6 +255,57 @@ class DualSignalSolver:
 
         except Exception as e:
             print(f"Error loading templates: {e}")
+            return 0
+
+    def _load_templates_from_db(self) -> int:
+        """Load fine-grained span templates from PostgreSQL database.
+
+        The database contains specialized templates like:
+        - "[NAME] sold [N] [ITEM]" → SUB
+        - "[NAME] has [N] more than [REF]" → COMPARE_MORE
+
+        These are more fine-grained than the JSON centroids.
+        """
+        try:
+            templates = get_all_templates()
+            if not templates:
+                return 0
+
+            count = 0
+            for t in templates:
+                if t.centroid is None:
+                    continue
+
+                # Map operation string to OperationType enum
+                op_str = t.operation.upper() if t.operation else "SET"
+                try:
+                    op_type = OperationType(op_str)
+                except ValueError:
+                    op_type = OperationType.SET
+
+                template = DualSignalTemplate(
+                    template_id=t.template_id,
+                    operation_type=op_type,
+                    embedding_centroid=t.centroid,
+                    attention_signature=np.zeros(100, dtype=np.float32),  # DB doesn't store attention
+                    span_examples=t.examples[:10] if t.examples else [],
+                    match_count=t.count,
+                )
+
+                # Load Welford stats from DB
+                if t.welford_count > 0:
+                    template.embedding_welford.count = t.welford_count
+                    template.embedding_welford.mean = t.welford_mean
+                    template.embedding_welford.M2 = t.welford_m2
+
+                self._pipeline.store.add_template(template)
+                count += 1
+
+            print(f"Loaded {count} fine-grained templates from database")
+            return count
+
+        except Exception as e:
+            print(f"Error loading templates from DB: {e}")
             return 0
 
     def solve(self, problem: str) -> SolverResult:
@@ -251,16 +356,20 @@ class DualSignalSolver:
             )
             operations.append(op)
 
-            # Execute operation using centralized DSL framework
-            # This enables single source of truth for operation logic
-            # and support for complex DSLs (COMPARE_MORE, RATIO, etc.)
+            # Execute using custom DSL expression from matched template
+            # Each template has its own dsl_expr like "entity - value" or "ref * 2"
             if entity not in state:
                 state[entity] = 0
 
-            # Get DSL function from span_templates (simple DSLs for now)
-            # TODO: Support complex DSLs by extracting ref_entity from span
-            dsl_fn = get_dsl(op.op_type, "simple")
-            state[entity] = dsl_fn(state, entity, op.value, None)
+            # Use custom DSL expression (preferred) or fall back to operation-based
+            dsl_expr = getattr(matched_op, 'dsl_expr', None)
+            if dsl_expr and dsl_expr != "value":
+                # Execute custom DSL expression
+                state[entity] = execute_dsl_expr(dsl_expr, state, entity, op.value, None)
+            else:
+                # Fall back to operation-based DSL
+                dsl_fn = get_dsl(op.op_type, "simple")
+                state[entity] = dsl_fn(state, entity, op.value, None)
 
         # Get answer (main entity's final value)
         answer = state.get(main_entity, 0) if main_entity else 0
