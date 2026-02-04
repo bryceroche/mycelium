@@ -48,7 +48,10 @@ from mycelium.db import get_all_templates, get_template_count
 
 # Default paths
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-DSL_LIBRARY = PROJECT_ROOT / "dsl_library.json"  # Best: Qwen attention + MiniLM embeddings + custom DSL
+OPERATION_SEPARATED = PROJECT_ROOT / "operation_separated_templates.json"  # PREFERRED: 458 (cluster, operation) pairs
+ENHANCED_DSL_LIBRARY = PROJECT_ROOT / "enhanced_dsl_library.json"  # 207 deduped with aggregated Qwen signals + variance
+SPECIALIZED_TEMPLATES = PROJECT_ROOT / "specialized_templates.json"  # 17k raw Qwen-extracted templates
+DSL_LIBRARY = PROJECT_ROOT / "dsl_library.json"  # LLM-generated (NOT used with signal mapper)
 DUAL_SIGNAL_TEMPLATES = PROJECT_ROOT / "dual_signal_templates.json"  # Legacy: embeddings + attention
 TEMPLATES_EXPORT = PROJECT_ROOT / "span_templates_export.json"  # Fine-grained templates
 TEMPLATES_JSON = PROJECT_ROOT / "operation_templates.json"  # Coarse templates
@@ -137,11 +140,35 @@ class DualSignalSolver:
                     attention_weight=self.attention_weight,
                 )
 
-            # Load templates: prefer DSL library > dual-signal > database > export JSON > coarse JSON > bootstrap
+            # Load templates: prefer operation-separated (458 pure clusters) > enhanced > specialized > DSL library
             if not self.mock_model:
                 templates_loaded = False
 
-                # 1. Try DSL library first (best: Qwen attention + MiniLM embeddings + custom DSL)
+                # 1. FIRST: Try operation_separated (458 pure operation clusters)
+                if not templates_loaded and os.path.exists(OPERATION_SEPARATED):
+                    self.templates_path = str(OPERATION_SEPARATED)
+                    count = self._load_enhanced_templates()  # Same format as enhanced
+                    if count > 0:
+                        templates_loaded = True
+                        print(f"Using operation-separated templates (458 pure clusters)")
+
+                # 2. Fallback to enhanced_dsl_library (207 mixed operation clusters)
+                if not templates_loaded and os.path.exists(ENHANCED_DSL_LIBRARY):
+                    self.templates_path = str(ENHANCED_DSL_LIBRARY)
+                    count = self._load_enhanced_templates()
+                    if count > 0:
+                        templates_loaded = True
+                        print(f"Using enhanced templates (207 deduped with aggregated signals)")
+
+                # 3. Fallback to specialized_templates (17k raw)
+                if not templates_loaded and os.path.exists(SPECIALIZED_TEMPLATES):
+                    self.templates_path = str(SPECIALIZED_TEMPLATES)
+                    count = self._load_specialized_templates()
+                    if count > 0:
+                        templates_loaded = True
+                        print(f"Using specialized templates (signal mapper training data)")
+
+                # 4. Fallback to DSL library
                 if not templates_loaded and os.path.exists(DSL_LIBRARY):
                     self.templates_path = str(DSL_LIBRARY)
                     count = self._load_dsl_library()
@@ -274,6 +301,180 @@ class DualSignalSolver:
 
         except Exception as e:
             print(f"Error loading templates: {e}")
+            return 0
+
+    def _load_specialized_templates(self) -> int:
+        """Load templates from specialized_templates.json (signal mapper training data).
+
+        This is the SAME data the signal mapper was trained on, ensuring consistency
+        between predicted attention signals and template matching.
+
+        Format:
+        - template_id, pattern, operation_type, dsl_expr
+        - embedding_centroid (384-dim MiniLM)
+        - attention_entropy, attention_received, attention_connection (Qwen-derived)
+        """
+        try:
+            with open(self.templates_path, 'r') as f:
+                data = json.load(f)
+
+            count = 0
+            for template_id, template_data in data.items():
+                # Get operation type (specialized uses 'operation_type' not 'operation')
+                op_str = template_data.get("operation_type", "SET").upper()
+                try:
+                    op_type = OperationType(op_str)
+                except ValueError:
+                    op_type = OperationType.SET
+
+                # Get centroid (required)
+                centroid_data = template_data.get("embedding_centroid")
+                if centroid_data is None or len(centroid_data) == 0:
+                    continue
+                centroid = np.array(centroid_data, dtype=np.float32)
+
+                # Build attention signature from Qwen signals
+                attention_entropy = template_data.get("attention_entropy", 0.0)
+                attention_received = template_data.get("attention_received", 0.0)
+                attention_connection = template_data.get("attention_connection", 0.0)
+
+                # Create attention signature matching signal mapper output format
+                attention = np.array([
+                    attention_entropy,
+                    attention_received,
+                    attention_connection,
+                ] + [0.0] * 97, dtype=np.float32)  # Pad to 100 dims
+
+                # Get DSL expression (specialized uses 'dsl_expr' not 'custom_dsl')
+                dsl_expr = template_data.get("dsl_expr", "value")
+
+                # Get pattern and examples
+                pattern = template_data.get("pattern", "")
+                spans = template_data.get("span_examples", [])
+
+                # Create template
+                template = DualSignalTemplate(
+                    template_id=template_id,
+                    operation_type=op_type,
+                    embedding_centroid=centroid,
+                    attention_signature=attention,
+                    pattern=pattern,
+                    dsl_expr=dsl_expr,
+                    span_examples=spans[:10] if spans else [],
+                    match_count=template_data.get("count", 0),
+                )
+
+                # Store Qwen attention signals as extra attributes
+                template.attention_entropy = attention_entropy
+                template.attention_received = attention_received
+                template.attention_connection = attention_connection
+
+                self._pipeline.store.add_template(template)
+                count += 1
+
+            print(f"Loaded {count} specialized templates (signal mapper training data)")
+            return count
+
+        except Exception as e:
+            print(f"Error loading specialized templates: {e}")
+            import traceback
+            traceback.print_exc()
+            return 0
+
+    def _load_enhanced_templates(self) -> int:
+        """Load enhanced templates with aggregated Qwen signals + variance.
+
+        Enhanced templates are 207 deduped templates where each has:
+        - aggregated_signals: mean/variance of Qwen signals from 17k source templates
+        - source_count: how many source templates contributed
+        - avg_similarity: average cosine similarity to sources
+
+        The variance serves as a routing confidence metric:
+        - Low variance = reliable signal (consistent across similar spans)
+        - High variance = unreliable signal (may need decomposition)
+        """
+        try:
+            with open(self.templates_path, 'r') as f:
+                data = json.load(f)
+
+            # Handle both dict and {templates: [...]} formats
+            if isinstance(data, dict) and 'templates' in data:
+                templates_list = data['templates']
+            elif isinstance(data, list):
+                templates_list = data
+            else:
+                templates_list = list(data.values())
+
+            count = 0
+            for template_data in templates_list:
+                # Get template ID
+                template_id = template_data.get('template_id', f'enhanced_{count}')
+
+                # Get operation type
+                op_str = template_data.get("operation", template_data.get("operation_type", "SET")).upper()
+                try:
+                    op_type = OperationType(op_str)
+                except ValueError:
+                    op_type = OperationType.SET
+
+                # Get centroid (required)
+                centroid_data = template_data.get("embedding_centroid")
+                if centroid_data is None or len(centroid_data) == 0:
+                    continue
+                centroid = np.array(centroid_data, dtype=np.float32)
+
+                # Get aggregated signals (from the aggregation script)
+                agg = template_data.get("aggregated_signals", {})
+                entropy_mean = agg.get("entropy_mean", 0.0)
+                received_mean = agg.get("received_mean", 0.0)
+                connection_mean = agg.get("connection_mean", 0.0)
+
+                # Create attention signature from aggregated signals
+                attention = np.array([
+                    entropy_mean,
+                    received_mean,
+                    connection_mean,
+                ] + [0.0] * 97, dtype=np.float32)
+
+                # Get DSL expression
+                dsl_expr = template_data.get("custom_dsl", template_data.get("dsl_expr", "value"))
+
+                # Get pattern and examples
+                pattern = template_data.get("pattern", "")
+                spans = template_data.get("span_examples", [])
+
+                # Create template
+                template = DualSignalTemplate(
+                    template_id=template_id,
+                    operation_type=op_type,
+                    embedding_centroid=centroid,
+                    attention_signature=attention,
+                    pattern=pattern,
+                    dsl_expr=dsl_expr,
+                    span_examples=spans[:10] if spans else [],
+                    match_count=template_data.get("count", 0),
+                )
+
+                # Store aggregated signals + variance as extra attributes
+                template.entropy_mean = entropy_mean
+                template.entropy_var = agg.get("entropy_var", 0.0)
+                template.received_mean = received_mean
+                template.received_var = agg.get("received_var", 0.0)
+                template.connection_mean = connection_mean
+                template.connection_var = agg.get("connection_var", 0.0)
+                template.source_count = agg.get("source_count", 0)
+                template.avg_similarity = agg.get("avg_similarity", 0.0)
+
+                self._pipeline.store.add_template(template)
+                count += 1
+
+            print(f"Loaded {count} enhanced templates (207 deduped with aggregated signals)")
+            return count
+
+        except Exception as e:
+            print(f"Error loading enhanced templates: {e}")
+            import traceback
+            traceback.print_exc()
             return 0
 
     def _load_dsl_library(self) -> int:
