@@ -485,10 +485,6 @@ class GraphExecutor:
         import re
         self._number_pattern = re.compile(r'[\$]?(\d+(?:,\d{3})*(?:\.\d+)?)')
         self._fraction_pattern = re.compile(r'(\d+)/(\d+)')
-        # Common pronouns for cross-attention resolution (not for classification)
-        self._pronouns = frozenset([
-            'he', 'she', 'it', 'they', 'him', 'her', 'them', 'his', 'its', 'their',
-        ])
 
     def extract_numbers(self, text: str) -> List[float]:
         """Extract all numeric values from text."""
@@ -574,11 +570,11 @@ class GraphExecutor:
     ) -> Optional[str]:
         """Resolve which entity a span refers to using cross-attention.
 
-        When a span has a pronoun or no detected entity, uses cross-attention
-        edge weights to find which previous span (and its entity) this span
-        most strongly attends to.
+        When a span's entity has low attention_received (below graph median)
+        or no detected entity, uses cross-attention edge weights to find which
+        previous span (and its entity) this span most strongly attends to.
 
-        No hardcoded pronoun lists for classification - attention signals decide.
+        Triggered by attention signals, not word lists.
 
         Args:
             span: Current span being executed
@@ -758,6 +754,22 @@ class GraphExecutor:
         template_map = {idx: (op, dsl) for idx, op, dsl in span_templates}
         order = self._topological_sort(graph)
 
+        # Compute median attention_received across all entities in the graph.
+        # Entities below median are likely reference words (pronouns/demonstratives),
+        # entities above are likely named entities (Mary, John, etc.).
+        # No hardcoded word lists — pure attention signal.
+        all_entity_attentions = [
+            e.attention_received
+            for span in graph.spans
+            for e in span.entities
+        ]
+        if all_entity_attentions:
+            sorted_attentions = sorted(all_entity_attentions)
+            mid = len(sorted_attentions) // 2
+            entity_median = sorted_attentions[mid]
+        else:
+            entity_median = 0.0
+
         # Track the primary entity (first named entity seen)
         primary_entity: Optional[str] = None
 
@@ -775,9 +787,12 @@ class GraphExecutor:
                 best_entity = max(span.entities, key=lambda e: e.attention_received)
                 entity_text = best_entity.text.lower()
 
-                # Check if this is a pronoun needing cross-attention resolution
-                if entity_text in self._pronouns:
-                    # Resolve via cross-attention to previous spans
+                # Check if this entity has LOW attention_received relative to
+                # others in the graph — indicates a reference word (pronoun,
+                # demonstrative) rather than a named entity.
+                # No hardcoded word lists — pure attention signal.
+                if entity_median > 0 and best_entity.attention_received < entity_median:
+                    # Low-attention entity → resolve via cross-attention
                     resolved = self.resolve_entity_via_cross_attention(
                         span, span_idx, graph, attention_matrix, entity_values
                     )
