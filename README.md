@@ -84,10 +84,7 @@ GSM8K problems mention many entities (apples, cookies, cheese). We use `{entity}
 
 ## Results
 
-End-to-end test on held-out samples shows **96.8% average correlation** — even better than training (94.5%).
-
-![End to End Test](scripts/tests/end_to_end_test.png)
-
+pending
 
 ## License
 
