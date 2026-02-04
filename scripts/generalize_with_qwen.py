@@ -156,50 +156,62 @@ def generalize_batch_qwen(
     spans: List[str],
     model,
     tokenizer,
-    batch_size: int = 8,
+    batch_size: int = 32,
 ) -> List[Optional[Dict]]:
-    """Generalize a batch of spans using Qwen.
+    """Generalize spans using Qwen with true batched inference.
 
     Args:
         spans: List of raw span texts
         model: Loaded Qwen model
         tokenizer: Loaded Qwen tokenizer
-        batch_size: Number of spans per batch
+        batch_size: Number of spans per GPU batch
 
     Returns:
         List of parsed results (or None for failures)
     """
     import torch
 
+    # Pad from left for batched generation
+    tokenizer.padding_side = "left"
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
     results = []
 
     for i in tqdm(range(0, len(spans), batch_size), desc="Generalizing"):
         batch = spans[i:i + batch_size]
 
+        # Build all prompts for this batch
+        texts = []
         for span in batch:
             prompt = GENERALIZATION_PROMPT.format(span=span)
-
             messages = [
                 {"role": "system", "content": "You analyze math word problem sentences. Always respond with exactly PATTERN, OPERATION, and DSL lines."},
                 {"role": "user", "content": prompt},
             ]
-
             text = tokenizer.apply_chat_template(
                 messages, tokenize=False, add_generation_prompt=True
             )
-            inputs = tokenizer([text], return_tensors="pt").to(model.device)
+            texts.append(text)
 
-            with torch.no_grad():
-                outputs = model.generate(
-                    **inputs,
-                    max_new_tokens=150,
-                    temperature=0.1,  # Low temp for consistency
-                    do_sample=False,
-                )
+        # Tokenize entire batch at once with padding
+        inputs = tokenizer(
+            texts, return_tensors="pt", padding=True, truncation=True
+        ).to(model.device)
 
-            # Decode only the new tokens
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=80,
+                do_sample=False,
+            )
+
+        # Decode each output
+        for j, span in enumerate(batch):
+            # Extract only new tokens (skip input)
+            input_len = inputs.input_ids.shape[1]
             response = tokenizer.decode(
-                outputs[0][inputs.input_ids.shape[1]:],
+                outputs[j][input_len:],
                 skip_special_tokens=True,
             )
 
@@ -208,14 +220,13 @@ def generalize_batch_qwen(
                 parsed['raw_span'] = span
                 results.append(parsed)
             else:
-                # Fallback: regex-only generalization
                 fallback = regex_fallback_generalize(span)
                 fallback['raw_span'] = span
                 fallback['qwen_failed'] = True
                 results.append(fallback)
 
         # Clear GPU cache periodically
-        if torch.cuda.is_available():
+        if i % (batch_size * 10) == 0 and torch.cuda.is_available():
             torch.cuda.empty_cache()
 
     return results
@@ -262,7 +273,7 @@ def run_generalization(
     problems: List[Dict],
     model,
     tokenizer,
-    batch_size: int = 8,
+    batch_size: int = 32,
 ) -> List[Dict]:
     """Run full generalization pipeline.
 
@@ -457,7 +468,7 @@ def main():
                         help="Output path for deduplicated templates")
     parser.add_argument("--num-samples", type=int, default=None,
                         help="Limit number of problems (for testing)")
-    parser.add_argument("--batch-size", type=int, default=8,
+    parser.add_argument("--batch-size", type=int, default=32,
                         help="Batch size for Qwen inference")
     parser.add_argument("--quantize", choices=["4bit", "8bit", "none"],
                         default="4bit", help="Quantization for Qwen")
