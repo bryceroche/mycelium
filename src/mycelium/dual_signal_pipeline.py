@@ -42,6 +42,22 @@ from mycelium.attention_graph import AttentionGraphBuilder, SpanGraph, Span, Gra
 # Goes up to mycelium/ project root, then into models/
 DEFAULT_MODEL_PATH = Path(__file__).parent.parent.parent / "models" / "minilm_attention_finetuned.pt"
 
+# Default templates path - deduplicated templates (137 specialized)
+DEFAULT_TEMPLATES_PATH = Path(__file__).parent.parent.parent / "deduplicated_templates.json"
+
+
+# ================================================================
+# Inference Strategy
+# ================================================================
+# At inference, raw spans are embedded directly by MiniLM and matched
+# to templates by cosine similarity. NO generalization needed at inference.
+#
+# Templates were generalized at training time using Qwen-7B (one-time batch).
+# Template centroids are computed from RAW span examples (not generalized
+# patterns), so raw inference spans naturally match.
+#
+# See scripts/generalize_with_qwen.py for training-time generalization.
+
 
 @dataclass
 class MatchedOperation:
@@ -137,9 +153,11 @@ class DualSignalPipeline:
         # Track templates file path for persistence
         self.templates_path = templates_path
 
-        # Load templates if path provided and exists
+        # Load templates: prefer explicit path, then default path
         if templates_path and os.path.exists(templates_path):
             self.load_templates(templates_path)
+        elif os.path.exists(DEFAULT_TEMPLATES_PATH):
+            self.load_templates(str(DEFAULT_TEMPLATES_PATH))
 
     def process_problem(self, text: str) -> PipelineOutput:
         """Process a math problem and match spans to templates.
@@ -184,7 +202,7 @@ class DualSignalPipeline:
         span_templates = []  # For graph execution: (span_idx, op_type, dsl_expr)
 
         for span_idx, span in enumerate(graph.spans):
-            match_result = self._match_span_to_template(span, attention_matrix)
+            match_result = self._match_span_to_template(span, attention_matrix, tokens)
             if match_result:
                 matched_operations.append(match_result)
                 span_templates.append((
@@ -193,8 +211,10 @@ class DualSignalPipeline:
                     match_result.dsl_expr
                 ))
 
-        # Execute the graph to compute the answer
-        execution_result = self.graph_executor.execute_graph(graph, span_templates)
+        # Execute the graph to compute the answer using attention-guided composition
+        execution_result = self.graph_executor.execute_graph_with_attention(
+            graph, span_templates, attention_matrix
+        )
 
         return PipelineOutput(
             problem_text=text,
@@ -208,16 +228,19 @@ class DualSignalPipeline:
     def _match_span_to_template(
         self,
         span: Span,
-        full_attention_matrix: np.ndarray
+        full_attention_matrix: np.ndarray,
+        full_tokens: List[str],
     ) -> Optional[MatchedOperation]:
         """Match a detected span to the best template.
 
-        Uses the span's text and attention features to find matching template.
-        Entities are already detected via attention_received (no hardcoded list).
+        Embeds the RAW span text directly and matches by cosine similarity.
+        No generalization at inference time - templates were generalized at
+        training time (Qwen) and their centroids were computed from raw examples.
 
         Args:
-            span: Detected span with entities and connectivity
-            full_attention_matrix: Full attention matrix for the problem
+            span: Detected span with token_indices into full attention matrix
+            full_attention_matrix: Full attention matrix for the WHOLE problem
+            full_tokens: All tokens from the full problem
 
         Returns:
             MatchedOperation if match found, None otherwise
@@ -225,8 +248,9 @@ class DualSignalPipeline:
         if not self.store.templates:
             return None
 
-        # Extract embedding for this span's text
-        span_embedding, span_attention, span_tokens = self.detector.extract_features(span.text)
+        # Embed the raw span directly - no generalization needed at inference
+        # Template centroids were computed from raw span examples at training time
+        span_embedding, span_attention, _ = self.detector.extract_features(span.text)
 
         # Average attention if needed
         if span_attention.ndim > 2:
@@ -243,7 +267,7 @@ class DualSignalPipeline:
             confidence = self._compute_confidence(template, combined_score)
 
             return MatchedOperation(
-                span_text=span.text,
+                span_text=span.text,  # Keep original text for display
                 operation_type=template.operation_type,
                 template_id=template.template_id,
                 combined_score=combined_score,
@@ -750,6 +774,10 @@ class DualSignalPipeline:
     def load_templates(self, path: Optional[str] = None) -> None:
         """Load templates from JSON file.
 
+        Supports two formats:
+        1. TemplateStore format: {"embedding_weight": ..., "templates": {...}}
+        2. Flat list format: [{template_id, operation, ...}, ...]
+
         Args:
             path: File path. Uses self.templates_path if not provided.
         """
@@ -760,8 +788,75 @@ class DualSignalPipeline:
         with open(path, 'r') as f:
             data = json.load(f)
 
-        self.store = TemplateStore.from_dict(data)
+        # Detect format
+        if isinstance(data, list):
+            # Flat list format (deduplicated_templates.json style)
+            for tpl_dict in data:
+                template = self._convert_simple_template(tpl_dict)
+                if template:
+                    self.store.add_template(template)
+        elif isinstance(data, dict) and "templates" in data:
+            # TemplateStore format
+            self.store = TemplateStore.from_dict(data)
+        else:
+            raise ValueError(f"Unknown template format in {path}")
+
         print(f"Loaded {len(self.store.templates)} templates from {path}")
+
+    def _convert_simple_template(self, tpl_dict: Dict[str, Any]) -> Optional[DualSignalTemplate]:
+        """Convert a simple template dict to DualSignalTemplate.
+
+        Supports two centroid sources:
+        1. Pre-computed centroid (from Qwen pipeline): uses embedding_centroid directly
+        2. Legacy format: re-embeds from pattern_examples text
+
+        Pre-computed centroids are preferred because they were computed from
+        RAW span examples during training, matching the inference embedding space.
+
+        Args:
+            tpl_dict: Dict with template_id, operation, base_dsl, etc.
+
+        Returns:
+            DualSignalTemplate or None if invalid
+        """
+        try:
+            # Map operation string to OperationType
+            op_str = tpl_dict.get("operation", "SET")
+            operation_type = OperationType[op_str]
+
+            # Get DSL expression
+            dsl_expr = tpl_dict.get("base_dsl", tpl_dict.get("dsl", "value"))
+
+            patterns = tpl_dict.get("pattern_examples", [])
+
+            # Check for pre-computed centroid (from Qwen pipeline)
+            if "embedding_centroid" in tpl_dict and tpl_dict["embedding_centroid"]:
+                embedding = np.array(tpl_dict["embedding_centroid"], dtype=np.float32)
+                # Generate a dummy attention signature
+                attention_flat = np.zeros(100, dtype=np.float32)
+            else:
+                # Legacy: re-embed from pattern examples or description
+                text_for_embedding = tpl_dict.get("description", "")
+                if patterns:
+                    text_for_embedding = " ".join(patterns[:3])
+
+                embedding, attention, _ = self.detector.extract_features(text_for_embedding)
+                if attention.ndim > 2:
+                    attention = attention.mean(axis=0)
+                attention_flat = attention.flatten()
+
+            return DualSignalTemplate(
+                template_id=tpl_dict["template_id"],
+                operation_type=operation_type,
+                embedding_centroid=embedding,
+                attention_signature=attention_flat,
+                pattern=tpl_dict.get("pattern", ""),
+                dsl_expr=dsl_expr,
+                span_examples=patterns,
+            )
+        except Exception as e:
+            print(f"Warning: Failed to convert template {tpl_dict.get('template_id')}: {e}")
+            return None
 
     # ================================================================
     # Diagnostic Methods
