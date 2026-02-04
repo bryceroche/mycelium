@@ -12,14 +12,63 @@ import re
 from typing import Optional, Tuple
 
 # Verb taxonomy mapping verbs to operations
+# Includes both past and present tense forms for broader coverage
 VERB_TAXONOMY = {
-    "SUB": ["sold", "gave", "spent", "lost", "ate", "used", "traded", "removed",
-            "dropped", "threw", "donated", "paid", "left", "shared", "sent"],
-    "ADD": ["found", "received", "earned", "won", "picked", "got", "gained",
-            "collected", "bought", "acquired", "added", "obtained", "gathered"],
-    "SET": ["has", "have", "had", "started", "began", "owns", "contains", "holds"],
-    "MUL": ["times", "multiplied", "doubled", "tripled", "each"],
-    "DIV": ["split", "divided", "shared equally", "distributed", "grouped"],
+    "SUB": [
+        # Past tense
+        "sold", "gave", "spent", "lost", "ate", "used", "traded", "removed",
+        "dropped", "threw", "donated", "paid", "left", "shared", "sent",
+        # Present tense
+        "sells", "gives", "spends", "loses", "eats", "uses", "trades", "removes",
+        "drops", "throws", "donates", "pays", "leaves", "shares", "sends",
+        # Base/infinitive
+        "sell", "give", "spend", "lose", "eat", "use", "trade", "remove",
+        "drop", "throw", "donate", "pay", "leave", "share", "send",
+        # Gerund (-ing)
+        "selling", "giving", "spending", "losing", "eating", "using",
+        # Additional verbs
+        "bakes", "baked", "bake", "baking",  # Uses ingredients = subtraction
+        "takes", "took", "take", "taking",
+    ],
+    "ADD": [
+        # Past tense
+        "found", "received", "earned", "won", "picked", "got", "gained",
+        "collected", "bought", "acquired", "added", "obtained", "gathered",
+        # Present tense
+        "finds", "receives", "earns", "wins", "picks", "gets", "gains",
+        "collects", "buys", "acquires", "adds", "obtains", "gathers",
+        # Base/infinitive
+        "find", "receive", "earn", "win", "pick", "get", "gain",
+        "collect", "buy", "acquire", "add", "obtain", "gather",
+        # Gerund
+        "finding", "receiving", "earning", "winning", "collecting",
+    ],
+    "SET": [
+        "has", "have", "had", "having",
+        "starts", "started", "start", "starting",
+        "begins", "began", "begin", "beginning",
+        "owns", "owned", "own", "owning",
+        "contains", "contained", "contain", "containing",
+        "holds", "held", "hold", "holding",
+        # Production/creation verbs (initial quantity)
+        "lays", "laid", "lay", "laying",  # "lays 16 eggs"
+        "produces", "produced", "produce", "producing",
+        "makes", "made", "make", "making",
+        "grows", "grew", "grow", "growing",
+    ],
+    "MUL": [
+        "times", "multiplied", "multiply", "multiplying",
+        "doubled", "double", "doubles", "doubling",
+        "tripled", "triple", "triples", "tripling",
+        "each",
+    ],
+    "DIV": [
+        "split", "splits", "splitting",
+        "divided", "divide", "divides", "dividing",
+        "shared equally", "shares equally",
+        "distributed", "distribute", "distributes",
+        "grouped", "group", "groups",
+    ],
 }
 
 # =============================================================================
