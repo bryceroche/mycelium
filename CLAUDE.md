@@ -1,9 +1,10 @@
-# The Big 5
-1. The Panama Hats Problem (guides span creation)
+# The Big 6
+1. Our "Panama Hats" Problem (guides span creation)
 2. Attention Signals (Entropy, Received, Connectivity)
 3. Why MiniLM is Perfect (trained with MSE attention loss)
 4. Trained Signal Mapping (17k spans dataset)
 5. Cross-Attention Between Spans
+6. Building the Graph
 
 ## Terminology
 - **Attention Entropy** — Low entropy = important token (focused attention). High entropy = diffuse attention.
@@ -15,22 +16,12 @@
 - **SET** — Initial value assignment operation.
 - **Attention Sink** — Token that receives attention from many others (usually the subject/entity).
 
-## The Panama Hats Problem
-
-Why do we need span detection? Because meaning is compositional.
-
+## Our Panama Hats Problem
+How to put sub-graphs togther into one graph?  Span detection guides sub-graph composition
 - "panama" = country
 - "panama hats" = a type of hat (completely different meaning)
 
-**In math word problems, this is critical:**
-- "half" = 0.5
-- "half the price of the cheese" = ONE operation (cheese_price × 0.5)
-- "twice as many apples as oranges" = ONE comparison operation
-
-Naive tokenization breaks these into separate words and loses the semantic unit. The Panama Hats problem guides our span creation: we need the **longest span** that forms a cohesive operation.
-
-**How attention solves this:**
-Tokens within a semantic span attend strongly to each other (high connectivity). "half," "price," and "cheese" form an attention cluster — that's the model recognizing them as a single operation. This guides where to draw span boundaries.
+We're lookinig for the longest continuous sequence that retains attention connectivity.  Naive tokenization breaks these into separate words and loses the semantic unit. The Panama Hats problem guides our span creation: we need the **longest span** that forms a cohesive operation.
 
 ## Core Principle: Failures Are Valuable Data Points
 **Let the system fail.** This is how it learns.
@@ -66,40 +57,21 @@ MiniLM was originally trained with: `loss = MSE(student_attention, teacher_atten
 
 This means MiniLM already learned to mimic attention patterns from a larger teacher. When we fine-tune it on Qwen 7B attention patterns, it's doing exactly what it was designed for — just with a new teacher.
 
-**Why this matters:**
-- Bidirectional encoder (sees full context, unlike causal Qwen)
-- Prior distillation training made it a good student
-- Sentence-transformer architecture already optimized for semantic similarity
-- The training objective aligns perfectly with our goal
-
 ## Trained Signal Mapping (17k Spans)
-
 **The dataset:**
 We have 17k spans with BOTH MiniLM embeddings AND Qwen attention signals. This lets us train a mapping:
 
 `MiniLM features → predicted Qwen signals`
 
 **Fine-tuning process:**
-1. Extract Qwen 7B attention on 17k spans
-2. Extract MiniLM embeddings on same 17k spans
-3. Train mapping: predict Qwen signals from MiniLM features
-4. Learn optimal head weights (heads 5 & 8 most important)
-5. Learn optimal layer weights (layers 4 & 5 most important)
-6. Result: 0.58 → 0.945 correlation
-
-**Distillation results:**
-
-| Model | Params | Correlation with Qwen 7B |
-|-------|--------|--------------------------|
-| **MiniLM-L6 (fine-tuned)** | **22M** | **0.945** |
-| MiniLM-L6 (baseline) | 22M | 0.58 |
-| Qwen2-0.5B | 500M | 0.31 |
-| BERT-base | 110M | 0.30 |
+- Extract Qwen 7B attention on 17k spans
+- Deduplicate and embed 17k spans -> 200 specialized span templates with custom DSL (sub graph)
+- Extract MiniLM embeddings on same 17k spans
+- Train mapping: predict Qwen signals from MiniLM features ~95% correlation
 
 ## Cross-Attention Between Spans
 
 Spans don't exist in isolation. We track:
-
 1. **Sequence awareness** — Position in the problem (first span usually SET, later spans usually operations)
 2. **Previous span tracking** — What operation came before? (context for current span)
 3. **Entity tracking** — Which entities have been introduced? Which are being referenced?
@@ -107,8 +79,6 @@ Spans don't exist in isolation. We track:
 Cross-attention between spans captures dependencies: "she sold half" depends on knowing what "she" refers to from a previous span.
 
 ## Inference Pipeline
-
-At inference (no KNN — we use LLM with templates):
 
 1. Run MiniLM (fast, 22M params)
 2. Apply learned mapping → approximate Qwen signals
@@ -119,20 +89,18 @@ No Qwen 7B needed at inference — just the trained mapping + LLM for execution.
 
 ## Specialized Templates with Generic Entities
 
-Each span maps to a specialized template. No KNN lookup — the LLM uses the detected span type directly.
+Each span maps to a specialized template.  LLM matches problem text to our span templates which are sub-graphs that are composed via attention span connectivity.
 
-**Examples:**
-- Circle geometry: `area = π × {radius}²`
-- Ratio: `{entity_a} = {ratio} × {entity_b}`
-- Percentage: `{result} = {entity} × ({percent}/100)`
-- Half of: `{result} = {entity} × 0.5`
+**Examples:** Circle geometry, Ratio, Percentage, Half of
 
 **Generic entities:**
 GSM8K problems mention many entities (apples, cookies, cheese). We use `{entity}` placeholders:
-- "half the apples" → template: `{entity} × 0.5`
-- "half the cookies" → same template: `{entity} × 0.5`
 
-Span detection identifies WHICH template. Entity extraction fills placeholders. LLM executes.
+## Building the graph
+ - match span templates to subgraphs
+ - granularity – guided by our “panama hats” problem
+ - Spans -  guide subgraph boundaries
+ - Subgraph composition - guided by attention span connections 
 
 ## New Favorite Pattern
 Consolidate methods. All database connections go through a data layer. All span detection through one interface. All embedding lookups through cache. Reduces bugs, simplifies codebase.
