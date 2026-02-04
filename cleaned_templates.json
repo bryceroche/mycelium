@@ -1,0 +1,251 @@
+[
+  {
+    "template_id": "set_has_quantity",
+    "operation": "SET",
+    "base_dsl": "value",
+    "description": "Entity has/owns a quantity",
+    "pattern_examples": [
+      "[SUBJ] has [N] [ITEM]",
+      "[SUBJ] had [N] [ITEM]",
+      "There are [N] [ITEM]",
+      "A [ITEM] has [N] [ITEM]",
+      "[SUBJ] owns [N] [ITEM]"
+    ]
+  },
+  {
+    "template_id": "set_costs_price",
+    "operation": "SET",
+    "base_dsl": "value",
+    "description": "Something costs a price",
+    "pattern_examples": [
+      "[ITEM] costs [N]",
+      "[ITEM] cost [N] each",
+      "The price is [N]",
+      "[N] per [ITEM]",
+      "[ITEM] for [N]"
+    ]
+  },
+  {
+    "template_id": "set_earns_rate",
+    "operation": "SET",
+    "base_dsl": "value",
+    "description": "Entity earns/makes at a rate",
+    "pattern_examples": [
+      "[SUBJ] earns [N] per hour",
+      "[SUBJ] makes [N] a day",
+      "[SUBJ] gets paid [N] per [ITEM]"
+    ]
+  },
+  {
+    "template_id": "set_needs_requirement",
+    "operation": "SET",
+    "base_dsl": "value",
+    "description": "Entity needs a quantity",
+    "pattern_examples": [
+      "[SUBJ] needs [N] [ITEM]",
+      "[SUBJ] requires [N] [ITEM]",
+      "[SUBJ] wants [N] [ITEM]"
+    ]
+  },
+  {
+    "template_id": "set_initial_state",
+    "operation": "SET",
+    "base_dsl": "value",
+    "description": "Initial state or starting point",
+    "pattern_examples": [
+      "[SUBJ] started with [N]",
+      "[SUBJ] began with [N] [ITEM]",
+      "Initially there were [N]",
+      "At first [SUBJ] had [N]"
+    ]
+  },
+  {
+    "template_id": "add_receives_gain",
+    "operation": "ADD",
+    "base_dsl": "entity + value",
+    "description": "Entity receives/gains something",
+    "pattern_examples": [
+      "[SUBJ] received [N] more",
+      "[SUBJ] got [N] [ITEM]",
+      "[SUBJ] found [N] [ITEM]",
+      "[SUBJ] collected [N] [ITEM]",
+      "[SUBJ] picked [N] [ITEM]"
+    ]
+  },
+  {
+    "template_id": "add_bought_purchase",
+    "operation": "ADD",
+    "base_dsl": "entity + value",
+    "description": "Entity buys/purchases (adds to inventory)",
+    "pattern_examples": [
+      "[SUBJ] bought [N] [ITEM]",
+      "[SUBJ] purchased [N] [ITEM]",
+      "[SUBJ] acquired [N] [ITEM]"
+    ]
+  },
+  {
+    "template_id": "add_earned_income",
+    "operation": "ADD",
+    "base_dsl": "entity + value",
+    "description": "Entity earns/wins (adds to wealth)",
+    "pattern_examples": [
+      "[SUBJ] earned [N]",
+      "[SUBJ] won [N]",
+      "[SUBJ] made [N] profit"
+    ]
+  },
+  {
+    "template_id": "add_more_than",
+    "operation": "ADD",
+    "base_dsl": "ref + value",
+    "description": "Quantity more than reference",
+    "pattern_examples": [
+      "[N] more than [REF]",
+      "[SUBJ] has [N] more [ITEM] than [REF]",
+      "[N] additional [ITEM]"
+    ]
+  },
+  {
+    "template_id": "sub_gave_transfer",
+    "operation": "SUB",
+    "base_dsl": "entity - value",
+    "description": "Entity gives away (reduces inventory)",
+    "pattern_examples": [
+      "[SUBJ] gave [N] to [OBJ]",
+      "[SUBJ] donated [N] [ITEM]",
+      "[SUBJ] shared [N] [ITEM]"
+    ]
+  },
+  {
+    "template_id": "sub_sold_sale",
+    "operation": "SUB",
+    "base_dsl": "entity - value",
+    "description": "Entity sells (reduces inventory)",
+    "pattern_examples": [
+      "[SUBJ] sold [N] [ITEM]",
+      "[SUBJ] traded [N] [ITEM]"
+    ]
+  },
+  {
+    "template_id": "sub_spent_expense",
+    "operation": "SUB",
+    "base_dsl": "entity - value",
+    "description": "Entity spends money (reduces wealth)",
+    "pattern_examples": [
+      "[SUBJ] spent [N]",
+      "[SUBJ] paid [N]",
+      "[SUBJ] used [N] for"
+    ]
+  },
+  {
+    "template_id": "sub_consumed_use",
+    "operation": "SUB",
+    "base_dsl": "entity - value",
+    "description": "Entity consumes/uses up",
+    "pattern_examples": [
+      "[SUBJ] ate [N] [ITEM]",
+      "[SUBJ] drank [N] [ITEM]",
+      "[SUBJ] used [N] [ITEM]"
+    ]
+  },
+  {
+    "template_id": "sub_lost_decrease",
+    "operation": "SUB",
+    "base_dsl": "entity - value",
+    "description": "Entity loses/decreases",
+    "pattern_examples": [
+      "[SUBJ] lost [N] [ITEM]",
+      "[N] [ITEM] broke",
+      "[N] [ITEM] were damaged"
+    ]
+  },
+  {
+    "template_id": "sub_less_than",
+    "operation": "SUB",
+    "base_dsl": "ref - value",
+    "description": "Quantity less than reference",
+    "pattern_examples": [
+      "[N] less than [REF]",
+      "[N] fewer than [REF]",
+      "[SUBJ] has [N] fewer [ITEM] than [REF]"
+    ]
+  },
+  {
+    "template_id": "mul_unit_price",
+    "operation": "MUL",
+    "base_dsl": "entity * value",
+    "description": "Quantity times unit price",
+    "pattern_examples": [
+      "[N] [ITEM] at [N] each",
+      "[N] [ITEM] for [N] per [ITEM]",
+      "[N] hours at [N] per hour"
+    ]
+  },
+  {
+    "template_id": "mul_times_multiplier",
+    "operation": "MUL",
+    "base_dsl": "entity * value",
+    "description": "Times multiplier",
+    "pattern_examples": [
+      "[N] times as many",
+      "[N] times that amount",
+      "triple the amount",
+      "double the [ITEM]"
+    ]
+  },
+  {
+    "template_id": "mul_per_unit",
+    "operation": "MUL",
+    "base_dsl": "entity * value",
+    "description": "Rate per unit over time/quantity",
+    "pattern_examples": [
+      "[N] per day for [N] days",
+      "[N] per hour for [N] hours",
+      "[N] each for [N] [ITEM]"
+    ]
+  },
+  {
+    "template_id": "mul_twice_double",
+    "operation": "MUL",
+    "base_dsl": "ref * 2",
+    "description": "Twice/double a reference",
+    "pattern_examples": [
+      "twice as many as [REF]",
+      "double what [REF] has",
+      "twice that amount"
+    ]
+  },
+  {
+    "template_id": "div_split_equal",
+    "operation": "DIV",
+    "base_dsl": "entity / value",
+    "description": "Split/divide equally",
+    "pattern_examples": [
+      "split among [N] people",
+      "divided into [N] parts",
+      "shared equally among [N]"
+    ]
+  },
+  {
+    "template_id": "div_half",
+    "operation": "DIV",
+    "base_dsl": "entity / 2",
+    "description": "Half of quantity",
+    "pattern_examples": [
+      "half of the [ITEM]",
+      "half as many",
+      "50% of"
+    ]
+  },
+  {
+    "template_id": "div_fraction",
+    "operation": "DIV",
+    "base_dsl": "entity / value",
+    "description": "Fraction of quantity",
+    "pattern_examples": [
+      "[N]/[N] of the [ITEM]",
+      "one third of",
+      "a quarter of"
+    ]
+  }
+]
