@@ -629,6 +629,11 @@ class DualSignalSolver:
     def solve(self, problem: str) -> SolverResult:
         """Solve a math word problem using dual-signal routing.
 
+        Uses attention-based graph execution for span composition:
+        1. Build span graph using attention signals (not hardcoded lists)
+        2. Match spans to templates
+        3. Execute graph to compute answer
+
         Args:
             problem: The problem text
 
@@ -640,6 +645,31 @@ class DualSignalSolver:
         # Process problem through dual-signal pipeline
         output = pipeline.process_problem(problem)
 
+        # Use graph execution result if available (preferred method)
+        if output.execution_result and output.execution_result.answer is not None:
+            # Build operations list for reporting
+            operations = []
+            for matched_op in output.matched_operations:
+                op = SolverOperation(
+                    op_type=matched_op.operation_type.value,
+                    value=self._extract_number(matched_op.span_text),
+                    entity=self._extract_entity(matched_op.span_text) or "X",
+                    confidence=matched_op.confidence,
+                    embedding_sim=matched_op.embedding_similarity,
+                    attention_sim=matched_op.attention_similarity,
+                    span_text=matched_op.span_text,
+                    template_id=matched_op.template_id,
+                )
+                operations.append(op)
+
+            return SolverResult(
+                answer=output.execution_result.answer,
+                operations=operations,
+                state=output.execution_result.entity_values,
+                spans_detected=output.spans_detected,
+            )
+
+        # Fallback: legacy execution path
         # Convert matched operations to solver operations
         operations = []
         state: Dict[str, float] = {}
