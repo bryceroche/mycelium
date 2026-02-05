@@ -75,21 +75,41 @@ A computation graph is a structural representation of what a DSL actually comput
 
 No Qwen 7B needed at inference — just the trained mapping + LLM for execution.
 
-## Specialized Templates with Sub-Graph DSLs
+## Specialized Templates with Sub-Graph DSLs (1:1)
 
-Each span maps to a specialized template with a custom sub-graph DSL. Templates are not single operations — they are sub-graphs that can contain multiple operations, composed via attention span connectivity.
+Every deduplicated template has exactly one `SubGraphDSL` — its own composable sub-graph. Not flat labels (SET/ADD/SUB) but full computation graphs with typed ports:
 
-**Examples:** Circle geometry, Ratio, Percentage, Half of, Earn-per-period
+```json
+{
+  "template_id": "tpl_0194",
+  "pattern": "insurance covers [N] percent of the [ITEM1]",
+  "params":  {"percent": "percentage covered"},
+  "inputs":  {"cost": "the cost being covered"},
+  "steps": [
+    {"var": "rate", "op": "DIV", "args": ["percent", 100]},
+    {"var": "covered", "op": "MUL", "args": ["cost", "rate"]}
+  ],
+  "output": "covered"
+}
+```
+
+- **params** — values extracted from the span text at inference (the `[N]` slots)
+- **inputs** — values wired from upstream sub-graphs (resolved via cross-attention / entity tracking)
+- **steps** — ordered computation. Operators: SET, ADD, SUB, MUL, DIV, MOD, NEG
+- **output** — single value exposed to downstream sub-graphs
 
 **Generic entities:**
-GSM8K problems mention many entities (apples, cookies, cheese). We use `{entity}` placeholders.
+GSM8K problems mention many entities (apples, cookies, cheese). Templates use `[PERSON1]`, `[ITEM1]`, `[N]` placeholders.
 
-## Building the Graph
+## Building the Graph (DAG Composition)
 
-- Match span templates to subgraphs
-- Granularity – guided by our "panama hats" problem
-- Spans – guide subgraph boundaries
-- Subgraph composition – guided by attention span connections
+Sub-graphs compose into a **DAG** (not a tree). A tree can't handle convergence — "Tom has 5. Bob has 3. Together they have how many?" pulls from two upstream sub-graphs.
+
+- **Match** span → template → get `SubGraphDSL` (with input/output ports)
+- **Extract params** — LLM extracts `[N]` values from span text, guided by template pattern
+- **Wire inputs** — cross-attention between spans determines which upstream output connects to which input port
+- **Execute** — topological sort the DAG, run each sub-graph in order
+- **Granularity** — Panama Hats: single output per sub-graph, segmentation enforces the right span boundaries
 
 ## Results
 

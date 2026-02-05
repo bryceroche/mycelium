@@ -17,6 +17,8 @@
 - **Span** — Contiguous tokens forming a semantic unit (e.g., "half the eggs").
 - **SET** — Initial value assignment operation.
 - **Attention Sink** — Token that receives attention from many others (usually the subject/entity).
+- **SubGraphDSL** — Dataclass (`subgraph_dsl.py`) defining a composable sub-graph: params (from span text), inputs (from upstream sub-graphs), steps (ordered computation), single output. 1:1 with each deduplicated template.
+- **DAG** — Directed Acyclic Graph. Sub-graphs compose into a DAG, not a tree. Supports convergence (multiple inputs) and fan-out (one output to many downstream).
 
 ## ID Span Boundaries with Panama Hats Algorithm
 - "panama" = country
@@ -113,20 +115,41 @@ A computation graph is a structural representation of what a DSL actually comput
 
 No Qwen 7B needed at inference — just the trained mapping + LLM for execution.
 
-## Specialized Templates with Sub-Graph DSLs
+## Specialized Templates with Sub-Graph DSLs (1:1)
 
-Each span maps to a specialized template with a custom sub-graph DSL. Templates are NOT single operations (SET/ADD/SUB/MUL/DIV) — they are sub-graphs that can contain multiple operations. LLM matches problem text to our span templates which are sub-graphs composed via attention span connectivity.
+Every deduplicated template has exactly one `SubGraphDSL` — its own composable sub-graph. Not flat labels (SET/ADD/SUB) but full computation graphs with typed ports:
 
-**Examples:** Circle geometry, Ratio, Percentage, Half of, Earn-per-period
+```json
+{
+  "template_id": "tpl_0194",
+  "pattern": "insurance covers [N] percent of the [ITEM1]",
+  "params":  {"percent": "percentage covered"},
+  "inputs":  {"cost": "the cost being covered"},
+  "steps": [
+    {"var": "rate", "op": "DIV", "args": ["percent", 100]},
+    {"var": "covered", "op": "MUL", "args": ["cost", "rate"]}
+  ],
+  "output": "covered"
+}
+```
+
+- **params** — values extracted from the span text at inference (the `[N]` slots)
+- **inputs** — values wired from upstream sub-graphs (resolved via cross-attention / entity tracking)
+- **steps** — ordered computation. Operators: SET, ADD, SUB, MUL, DIV, MOD, NEG
+- **output** — single value exposed to downstream sub-graphs
 
 **Generic entities:**
-GSM8K problems mention many entities (apples, cookies, cheese). We use `{entity}` placeholders.
+GSM8K problems mention many entities (apples, cookies, cheese). Templates use `[PERSON1]`, `[ITEM1]`, `[N]` placeholders.
 
-## Building the graph
- - match span templates to subgraphs
- - granularity – guided by our “panama hats” problem
- - Spans -  guide subgraph boundaries
- - Subgraph composition - guided by attention span connections 
+## Building the Graph (DAG Composition)
+
+Sub-graphs compose into a **DAG** (not a tree). A tree can't handle convergence — "Tom has 5. Bob has 3. Together they have how many?" pulls from two upstream sub-graphs.
+
+- **Match** span → template → get `SubGraphDSL` (with input/output ports)
+- **Extract params** — LLM extracts `[N]` values from span text, guided by template pattern
+- **Wire inputs** — cross-attention between spans determines which upstream output connects to which input port
+- **Execute** — topological sort the DAG, run each sub-graph in order
+- **Granularity** — Panama Hats: single output per sub-graph, segmentation enforces the right span boundaries
 
 ## New Favorite Pattern
 Consolidate methods. All database connections go through a data layer. All span detection through one interface. All embedding lookups through cache. Reduces bugs, simplifies codebase.
