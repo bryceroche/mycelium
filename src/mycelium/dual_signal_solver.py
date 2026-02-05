@@ -165,7 +165,7 @@ class DualSignalSolver:
                     entity = next(iter(output.execution_result.entity_values), "X")
 
                 op = SolverOperation(
-                    dsl_expr=matched_op.dsl_expr,
+                    subgraph=matched_op.subgraph,
                     value=self._extract_number(matched_op.span_text),
                     entity=entity,
                     confidence=matched_op.confidence,
@@ -404,7 +404,11 @@ if __name__ == "__main__":
         print(f"Spans detected: {result.spans_detected}")
         print("Operations:")
         for op in result.operations:
-            print(f"  - {op.entity} [{op.dsl_expr}] {op.value}")
+            # Extract op name from subgraph for display
+            op_name = "SET"
+            if op.subgraph and op.subgraph.get("steps"):
+                op_name = op.subgraph["steps"][-1].get("op", "SET")
+            print(f"  - {op.entity} [{op_name}] {op.value}")
             print(f"    Confidence: {op.confidence:.3f}")
             print(f"    Similarity: emb={op.embedding_sim:.3f}, att={op.attention_sim:.3f}")
 

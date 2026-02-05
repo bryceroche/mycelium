@@ -63,7 +63,7 @@ class MatchedOperation:
     embedding_similarity: float
     attention_similarity: float
     confidence: float  # Welford-adjusted confidence
-    dsl_expr: str = "value"  # DSL expression from matched template
+    subgraph: Optional[Dict[str, Any]] = None  # SubGraphDSL dict for execution
 
 
 @dataclass
@@ -188,33 +188,22 @@ class DualSignalPipeline:
         # Build span graph using attention signals
         graph = self.graph_builder.build_graph(attention_matrix, tokens, text)
 
-        # Match each span to templates and compose
+        # Match each span to templates and collect SubGraphDSL for execution
         matched_operations = []
-        span_templates = []  # For flat DSL execution: (span_idx, dsl_expr)
-        span_subgraphs = []  # For sub-graph DSL execution: (span_idx, SubGraphDSL)
+        span_subgraphs = []  # (span_idx, subgraph_dict)
 
         for span_idx, span in enumerate(graph.spans):
             match_result = self._match_span_to_template(span, attention_matrix, tokens)
             if match_result:
                 matched_operations.append(match_result)
-                span_templates.append((span_idx, match_result.dsl_expr))
+                # Every template now has a subgraph (converted from legacy if needed)
+                if match_result.subgraph:
+                    span_subgraphs.append((span_idx, match_result.subgraph))
 
-                # Check if this template has a sub-graph DSL
-                if match_result.template_id in self.subgraph_dsls:
-                    span_subgraphs.append((
-                        span_idx,
-                        self.subgraph_dsls[match_result.template_id]
-                    ))
-
-        # Execute: prefer sub-graph DSLs if available, fall back to flat DSLs
-        if span_subgraphs:
-            execution_result = self.graph_executor.execute_graph_with_subgraphs(
-                graph, span_subgraphs, attention_matrix
-            )
-        else:
-            execution_result = self.graph_executor.execute_graph_with_attention(
-                graph, span_templates, attention_matrix
-            )
+        # Execute using SubGraphDSL
+        execution_result = self.graph_executor.execute_graph_with_subgraphs(
+            graph, span_subgraphs, attention_matrix
+        )
 
         return PipelineOutput(
             problem_text=text,
@@ -273,7 +262,7 @@ class DualSignalPipeline:
                 embedding_similarity=emb_sim,
                 attention_similarity=att_sim,
                 confidence=confidence,
-                dsl_expr=template.dsl_expr,
+                subgraph=template.subgraph,
             )
 
         return None
@@ -373,7 +362,7 @@ class DualSignalPipeline:
 
     def bootstrap_from_labeled_spans(
         self,
-        spans: List[Tuple[str, str]],  # (text, dsl_expr)
+        spans: List[Tuple[str, Any]],  # (text, subgraph_dict or legacy dsl_expr string)
         deduplicate: bool = True,
         similarity_threshold: float = 0.85,
     ) -> int:
@@ -382,7 +371,9 @@ class DualSignalPipeline:
         Creates initial templates from existing labeled spans.
 
         Args:
-            spans: List of (span_text, dsl_expr) tuples
+            spans: List of (span_text, subgraph_or_dsl_expr) tuples
+                   - subgraph: Dict with SubGraphDSL format
+                   - dsl_expr: Legacy string like "value", "entity + value" (converted)
             deduplicate: Skip spans too similar to existing templates
             similarity_threshold: Threshold for deduplication
 
@@ -391,7 +382,7 @@ class DualSignalPipeline:
         """
         created = 0
 
-        for span_text, dsl_expr in spans:
+        for span_text, subgraph_or_dsl in spans:
             # Extract features for this span
             embedding, attention, tokens = self.detector.extract_features(span_text)
             attention_flat = attention.flatten()
@@ -406,11 +397,17 @@ class DualSignalPipeline:
             import uuid
             template_id = f"tpl_{uuid.uuid4().hex[:8]}"
 
+            # Convert legacy dsl_expr string to subgraph if needed
+            if isinstance(subgraph_or_dsl, str):
+                subgraph = self._dsl_expr_to_subgraph(subgraph_or_dsl, template_id)
+            else:
+                subgraph = subgraph_or_dsl
+
             template = DualSignalTemplate(
                 template_id=template_id,
                 embedding_centroid=embedding.copy(),
                 attention_signature=attention_flat.copy(),
-                dsl_expr=dsl_expr,
+                subgraph=subgraph,
                 span_examples=[span_text],
             )
 
@@ -540,32 +537,40 @@ class DualSignalPipeline:
     def _convert_simple_template(self, tpl_dict: Dict[str, Any]) -> Optional[DualSignalTemplate]:
         """Convert a simple template dict to DualSignalTemplate.
 
-        Supports two centroid sources:
-        1. Pre-computed centroid (from Qwen pipeline): uses embedding_centroid directly
-        2. Legacy format: re-embeds from pattern_examples text
+        Supports three template formats:
+        1. Atomic pipeline: centroid + subgraph (SubGraphDSL steps) — preferred
+        2. Legacy Qwen: embedding_centroid + base_dsl/dsl string → converted to subgraph
+        3. Legacy format: re-embeds from pattern_examples text
 
         Args:
-            tpl_dict: Dict with template_id, base_dsl/dsl, etc.
+            tpl_dict: Dict with template_id, subgraph, base_dsl/dsl, etc.
 
         Returns:
             DualSignalTemplate or None if invalid
         """
         try:
-            # Get DSL expression
-            dsl_expr = tpl_dict.get("base_dsl", tpl_dict.get("dsl", tpl_dict.get("dsl_expr", "value")))
+            # Get SubGraphDSL — prefer explicit subgraph, convert legacy dsl_expr strings
+            subgraph = tpl_dict.get("subgraph")
 
-            patterns = tpl_dict.get("pattern_examples", [])
+            if subgraph is None:
+                # Convert legacy dsl_expr string to SubGraphDSL format
+                dsl_expr = tpl_dict.get("base_dsl", tpl_dict.get("dsl", tpl_dict.get("dsl_expr", "value")))
+                subgraph = self._dsl_expr_to_subgraph(dsl_expr, tpl_dict.get("template_id", "unknown"))
 
-            # Check for pre-computed centroid (from Qwen pipeline)
-            if "embedding_centroid" in tpl_dict and tpl_dict["embedding_centroid"]:
-                embedding = np.array(tpl_dict["embedding_centroid"], dtype=np.float32)
+            # Pattern examples: check both field names
+            patterns = tpl_dict.get("pattern_examples", tpl_dict.get("span_examples", []))
+
+            # Check for pre-computed centroid (supports both field names)
+            centroid = tpl_dict.get("embedding_centroid", tpl_dict.get("centroid", None))
+            if centroid is not None:
+                embedding = np.array(centroid, dtype=np.float32)
 
                 # Skip attention centroid computation for bulk-loaded templates
                 # (too slow for 23K+ templates; embedding_weight=0.9 dominates anyway)
                 attention_flat = np.zeros(100, dtype=np.float32)
             else:
                 # Legacy: re-embed from pattern examples or description
-                text_for_embedding = tpl_dict.get("description", "")
+                text_for_embedding = tpl_dict.get("description", tpl_dict.get("pattern", ""))
                 if patterns:
                     text_for_embedding = " ".join(patterns[:3])
 
@@ -579,12 +584,49 @@ class DualSignalPipeline:
                 embedding_centroid=embedding,
                 attention_signature=attention_flat,
                 pattern=tpl_dict.get("pattern", ""),
-                dsl_expr=dsl_expr,
+                subgraph=subgraph,
                 span_examples=patterns,
             )
         except Exception as e:
             print(f"Warning: Failed to convert template {tpl_dict.get('template_id')}: {e}")
             return None
+
+    @staticmethod
+    def _dsl_expr_to_subgraph(dsl_expr: str, template_id: str) -> Dict[str, Any]:
+        """Convert legacy dsl_expr string to SubGraphDSL format.
+
+        This is for backwards compatibility with old templates that used
+        simple strings like "value", "entity + value", etc.
+        """
+        dsl_expr = dsl_expr.strip().lower() if dsl_expr else "value"
+
+        # Default subgraph structure
+        def make_subgraph(params, inputs, steps):
+            return {
+                "template_id": template_id,
+                "pattern": "",
+                "params": params,
+                "inputs": inputs,
+                "steps": steps,
+                "output": "out",
+            }
+
+        if dsl_expr == "value":
+            return make_subgraph({"n1": "value"}, {}, [{"var": "out", "op": "SET", "args": ["n1"]}])
+        elif "+" in dsl_expr:  # "entity + value"
+            return make_subgraph({"n1": "value"}, {"upstream": "entity"},
+                                 [{"var": "out", "op": "ADD", "args": ["upstream", "n1"]}])
+        elif "-" in dsl_expr:  # "entity - value"
+            return make_subgraph({"n1": "value"}, {"upstream": "entity"},
+                                 [{"var": "out", "op": "SUB", "args": ["upstream", "n1"]}])
+        elif "*" in dsl_expr:  # "entity * value"
+            return make_subgraph({"n1": "value"}, {"upstream": "entity"},
+                                 [{"var": "out", "op": "MUL", "args": ["upstream", "n1"]}])
+        elif "/" in dsl_expr:  # "entity / value"
+            return make_subgraph({"n1": "value"}, {"upstream": "entity"},
+                                 [{"var": "out", "op": "DIV", "args": ["upstream", "n1"]}])
+        else:
+            return make_subgraph({"n1": "value"}, {}, [{"var": "out", "op": "SET", "args": ["n1"]}])
 
     def _compute_attention_centroid(self, pattern_examples: List[str]) -> np.ndarray:
         """Compute attention centroid from pattern examples via MiniLM.
@@ -635,8 +677,12 @@ class DualSignalPipeline:
         """
         templates_by_op = {}
         for template in self.store.templates.values():
-            dsl = template.dsl_expr
-            templates_by_op[dsl] = templates_by_op.get(dsl, 0) + 1
+            # Extract operation from subgraph for stats
+            if template.subgraph and template.subgraph.get("steps"):
+                op = template.subgraph["steps"][-1].get("op", "SET")
+            else:
+                op = "SET"
+            templates_by_op[op] = templates_by_op.get(op, 0) + 1
 
         return {
             "total_templates": len(self.store.templates),
@@ -726,7 +772,12 @@ if __name__ == "__main__":
         for op in output.matched_operations:
             span_preview = f"{op.span_text[:40]}..." if len(op.span_text) > 40 else op.span_text
             print(f"  - '{span_preview}'")
-            print(f"    DSL: {op.dsl_expr}")
+            # Extract operation from subgraph for display
+            if op.subgraph and op.subgraph.get("steps"):
+                dsl_op = op.subgraph["steps"][-1].get("op", "SET")
+            else:
+                dsl_op = "SET"
+            print(f"    Op: {dsl_op}")
             print(f"    Template: {op.template_id}")
             print(f"    Confidence: {op.confidence:.3f}")
             print(f"    Scores: combined={op.combined_score:.3f}, "

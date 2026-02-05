@@ -38,12 +38,11 @@ class DualSignalTemplate:
     
     This dual-signal approach enables routing by operational semantics
     rather than lexical similarity.
-    
+
     Attributes:
         template_id: Unique identifier for this template
-        operation_type: The arithmetic operation this template represents
         pattern: Normalized pattern string like "[NAME] sold [N] [ITEM]"
-        dsl_expr: Custom DSL expression like "entity - value"
+        subgraph: SubGraphDSL dict defining computation steps
         embedding_centroid: Mean embedding vector of matched spans
         attention_signature: Characteristic attention connectivity pattern
         span_examples: Example spans that match this template
@@ -55,7 +54,7 @@ class DualSignalTemplate:
     embedding_centroid: np.ndarray
     attention_signature: np.ndarray  # Flattened or aggregated attention pattern
     pattern: str = ""  # Normalized pattern: "[NAME] sold [N] [ITEM]"
-    dsl_expr: str = "value"  # DSL expression: "value", "entity + value", etc.
+    subgraph: Optional[Dict[str, Any]] = None  # SubGraphDSL dict for execution
     span_examples: List[str] = field(default_factory=list)
     embedding_welford: WelfordStats = field(default_factory=WelfordStats)
     attention_welford: WelfordStats = field(default_factory=WelfordStats)
@@ -93,7 +92,7 @@ class DualSignalTemplate:
         """Serialize template to dictionary."""
         return {
             "template_id": self.template_id,
-            "dsl_expr": self.dsl_expr,
+            "subgraph": self.subgraph,
             "pattern": self.pattern,
             "embedding_centroid": self.embedding_centroid.tolist(),
             "attention_signature": self.attention_signature.tolist(),
@@ -113,7 +112,7 @@ class DualSignalTemplate:
             embedding_centroid=np.array(d["embedding_centroid"]),
             attention_signature=np.array(d["attention_signature"]),
             pattern=d.get("pattern", ""),
-            dsl_expr=d.get("dsl_expr", "value"),
+            subgraph=d.get("subgraph"),
             span_examples=d.get("span_examples", []),
             embedding_welford=WelfordStats.from_dict(d["embedding_welford"]),
             attention_welford=WelfordStats.from_dict(d["attention_welford"]),
@@ -709,7 +708,7 @@ def create_template_from_span(
     span_text: str,
     embedding: np.ndarray,
     attention_pattern: np.ndarray,
-    dsl_expr: str = "value",
+    subgraph: Optional[Dict[str, Any]] = None,
     template_id: Optional[str] = None
 ) -> DualSignalTemplate:
     """
@@ -719,7 +718,7 @@ def create_template_from_span(
         span_text: Text of the span
         embedding: Embedding vector for the span
         attention_pattern: Attention pattern for the span
-        dsl_expr: DSL expression for computation (e.g., "entity + value")
+        subgraph: SubGraphDSL dict for computation (default: SET operation)
         template_id: Optional ID (auto-generated if not provided)
 
     Returns:
@@ -730,11 +729,22 @@ def create_template_from_span(
     if template_id is None:
         template_id = f"tpl_{uuid.uuid4().hex[:8]}"
 
+    # Default subgraph: simple SET operation
+    if subgraph is None:
+        subgraph = {
+            "template_id": template_id,
+            "pattern": span_text,
+            "params": {"n1": "value"},
+            "inputs": {},
+            "steps": [{"var": "out", "op": "SET", "args": ["n1"]}],
+            "output": "out",
+        }
+
     return DualSignalTemplate(
         template_id=template_id,
         embedding_centroid=embedding.copy(),
         attention_signature=attention_pattern.copy(),
-        dsl_expr=dsl_expr,
+        subgraph=subgraph,
         span_examples=[span_text]
     )
 
@@ -872,14 +882,23 @@ if __name__ == "__main__":
 
     # Test template creation
     print("\n3. Testing template creation...")
+    sub_subgraph = {
+        "template_id": "test",
+        "pattern": test_text,
+        "params": {"n1": "value"},
+        "inputs": {"upstream": "entity"},
+        "steps": [{"var": "out", "op": "SUB", "args": ["upstream", "n1"]}],
+        "output": "out",
+    }
     template = create_template_from_span(
         span_text=test_text,
         embedding=embedding,
         attention_pattern=attention.flatten(),
-        dsl_expr="entity - value"
+        subgraph=sub_subgraph
     )
     print(f"   [OK] Created template: {template.template_id}")
-    print(f"       DSL expr: {template.dsl_expr}")
+    op_name = template.subgraph["steps"][-1]["op"] if template.subgraph else "SET"
+    print(f"       Op: {op_name}")
     print(f"       Embedding dim: {len(template.embedding_centroid)}")
     print(f"       Attention dim: {len(template.attention_signature)}")
 

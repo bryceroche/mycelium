@@ -13,7 +13,7 @@ Per CLAUDE.md:
 """
 
 import numpy as np
-from typing import List, Tuple, Dict, Optional, NamedTuple, Union
+from typing import List, Tuple, Dict, Optional, NamedTuple, Union, Any
 from dataclasses import dataclass, field
 
 from mycelium.subgraph_dsl import SubGraphDSL
@@ -1042,7 +1042,7 @@ class GraphExecutor:
     def execute_graph_with_subgraphs(
         self,
         graph: SpanGraph,
-        span_dsls: List[Tuple[int, SubGraphDSL]],
+        span_dsls: List[Tuple[int, Union[SubGraphDSL, Dict[str, Any]]]],
         attention_matrix: Optional[np.ndarray] = None,
     ) -> ExecutionResult:
         """Execute span graph using sub-graph DSLs.
@@ -1052,7 +1052,7 @@ class GraphExecutor:
 
         Args:
             graph: SpanGraph with spans, edges, and entities
-            span_dsls: List of (span_idx, SubGraphDSL) tuples
+            span_dsls: List of (span_idx, SubGraphDSL or dict) tuples
             attention_matrix: Full problem attention matrix
 
         Returns:
@@ -1066,7 +1066,18 @@ class GraphExecutor:
 
         entity_values: Dict[str, float] = {}
         trace: List[str] = []
-        dsl_map = {idx: dsl for idx, dsl in span_dsls}
+
+        # Convert dicts to SubGraphDSL objects
+        dsl_map = {}
+        for idx, dsl in span_dsls:
+            if isinstance(dsl, dict):
+                try:
+                    dsl_map[idx] = SubGraphDSL.from_dict(dsl)
+                except (KeyError, TypeError) as e:
+                    trace.append(f"Span {idx}: failed to parse subgraph: {e}")
+                    continue
+            else:
+                dsl_map[idx] = dsl
         order = self._topological_sort(graph)
 
         # Compute entity attention median for pronoun resolution

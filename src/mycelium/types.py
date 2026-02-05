@@ -12,7 +12,7 @@ multiple database connections."
 """
 
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -41,7 +41,7 @@ class Operation:
 
     All fields that aren't universally needed are Optional.
     """
-    dsl_expr: str                       # DSL expression: "value", "entity + value", etc.
+    subgraph: Optional[Dict[str, Any]]  # SubGraphDSL dict for execution
     value: Any                          # The numeric value or operands (float or tuple)
     confidence: float                   # Classification confidence [0, 1]
 
