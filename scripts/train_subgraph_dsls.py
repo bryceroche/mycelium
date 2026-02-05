@@ -125,7 +125,14 @@ Template: "insurance covers [N] percent of the [ITEM1]"
 {"params": {"percent": "percentage covered"}, "inputs": {"cost": "the cost being covered"}, "steps": [{"var": "rate", "op": "DIV", "args": ["percent", 100]}, {"var": "covered", "op": "MUL", "args": ["cost", "rate"]}], "output": "covered"}
 ```
 
-Now generate sub-graph DSLs for each template below. Return a JSON array of objects, one per template, with fields: template_id, params, inputs, steps, output.
+Generate sub-graph DSLs for ALL templates below. For each template, specify:
+- template_id: the ID provided
+- params: variables extracted from the span (at minimum: {"value": "the quantity"})
+- inputs: variables from previous spans (can be empty: {})
+- steps: computation steps (at minimum: [{"var": "result", "op": "SET", "args": ["value"]}])
+- output: the result variable name (e.g., "result")
+
+Return JSON: {"templates": [{"template_id": "...", "params": {...}, "inputs": {...}, "steps": [...], "output": "..."}, ...]}
 
 TEMPLATES:
 """
@@ -250,21 +257,56 @@ def parse_response(response_text: str) -> List[Dict]:
 def validate_and_build(template: Dict, dsl_data: Dict) -> Optional[SubGraphDSL]:
     """Build and validate a SubGraphDSL from LLM output."""
     try:
+        # Get steps and fix common issues
+        steps_data = dsl_data.get("steps", [])
+        if not steps_data:
+            # Default to simple SET if no steps
+            steps_data = [{"var": "result", "op": "SET", "args": ["value"]}]
+
+        steps = []
+        for s in steps_data:
+            if isinstance(s, dict) and "var" in s and "op" in s:
+                steps.append(SubGraphStep.from_dict(s))
+
+        if not steps:
+            steps = [SubGraphStep(var="result", op="SET", args=["value"])]
+
+        # Get output, default to last step var or "result"
+        output = dsl_data.get("output", "")
+        if not output or output == "None":
+            output = steps[-1].var if steps else "result"
+
+        # Get params, ensure at least "value" if empty
+        params = dsl_data.get("params", {})
+        if not params:
+            params = {"value": "the quantity"}
+
         dsl = SubGraphDSL(
             template_id=template.get("template_id", dsl_data.get("template_id", "")),
             pattern=template.get("pattern", ""),
-            params=dsl_data.get("params", {}),
+            params=params,
             inputs=dsl_data.get("inputs", {}),
-            steps=[SubGraphStep.from_dict(s) for s in dsl_data.get("steps", [])],
-            output=dsl_data.get("output", "result"),
+            steps=steps,
+            output=output,
         )
+
         errors = dsl.validate()
         if errors:
-            print(f"    Validation errors: {errors}")
-            return None
+            # Try to fix shadowing errors by renaming step vars
+            if any("shadows" in e for e in errors):
+                for step in dsl.steps:
+                    if step.var in dsl.params or step.var in dsl.inputs:
+                        step.var = step.var + "_out"
+                if dsl.output in dsl.params or dsl.output in dsl.inputs:
+                    dsl.output = dsl.steps[-1].var
+                errors = dsl.validate()
+
+            if errors:
+                # print(f"    Validation errors: {errors}")
+                return None
         return dsl
     except Exception as e:
-        print(f"    Build error: {e}")
+        # print(f"    Build error: {e}")
         return None
 
 
