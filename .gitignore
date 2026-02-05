@@ -75,6 +75,7 @@ Myceliumv3.txt
 logs/
 *.log
 paper.txt
+paper.md
 *.backup.*
 *.db.backup*
 .coverage
