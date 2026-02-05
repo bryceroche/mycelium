@@ -2,13 +2,14 @@
 """
 Generalize GSM8K spans using Qwen-7B (one-time batch job).
 
-Qwen generalizes each span:
+Qwen generalizes each span into a pattern:
   - Names/pronouns → [ENTITY]
   - Items/objects → [ENTITY]
   - Numbers → [N]
   - Verbs and structural words → kept as-is
 
-Also classifies operation type (SET/ADD/SUB/MUL/DIV) and infers DSL.
+Patterns are then clustered at 95% cosine similarity to produce canonical
+span templates. Custom sub-graph DSLs are written per template AFTER clustering.
 
 Run on GPU VM. Output: gsm8k_generalized.json
 Used ONLY for training template creation. NOT needed at inference time.
@@ -65,235 +66,92 @@ def extract_spans(problem_text: str) -> List[str]:
 # Qwen Generalization
 # =============================================================================
 
-GENERALIZATION_PROMPT = """You are analyzing math word problem sentences. For each sentence, output exactly three lines:
+GENERALIZATION_PROMPT = """Generalize this math word problem sentence into a pattern. Output one line:
 
-PATTERN: Replace person names and pronouns (he/she/they/it) with [ENTITY], object/item nouns (apples/dollars/cookies/bags/etc) with [ENTITY], and numbers with [N]. Keep verbs, prepositions, and structural words exactly as they are.
-OPERATION: One of: SET (establishing initial quantity), ADD (gaining/receiving), SUB (losing/giving away), MUL (multiplying/rate×time), DIV (dividing/splitting)
-DSL: The computation expression using: value, entity + value, entity - value, entity * value, entity / value, ref + value, ref - value, ref * 2, ref * 3, ref * value
+PATTERN: Replace person names and pronouns (he/she/they/it/his/her) with [ENTITY]. Replace object/item nouns (apples/dollars/cookies/bags/hours/etc) with [ENTITY]. Replace numbers (including dollar amounts like $50) with [N]. Keep verbs, prepositions, and structural words exactly as they are.
 
 Examples:
 Sentence: "John has 5 apples"
 PATTERN: [ENTITY] has [N] [ENTITY]
-OPERATION: SET
-DSL: value
 
 Sentence: "He gave 2 to Mary"
 PATTERN: [ENTITY] gave [N] to [ENTITY]
-OPERATION: SUB
-DSL: entity - value
 
 Sentence: "She bought 3 more oranges"
 PATTERN: [ENTITY] bought [N] more [ENTITY]
-OPERATION: ADD
-DSL: entity + value
 
 Sentence: "Each bag contains 5 items"
 PATTERN: each [ENTITY] contains [N] [ENTITY]
-OPERATION: MUL
-DSL: entity * value
 
 Sentence: "They split it equally among 4 friends"
 PATTERN: [ENTITY] split [ENTITY] equally among [N] [ENTITY]
-OPERATION: DIV
-DSL: entity / value
 
 Sentence: "She earned $12 per hour for 8 hours"
 PATTERN: [ENTITY] earned [N] per [ENTITY] for [N] [ENTITY]
-OPERATION: MUL
-DSL: entity * value
 
 Sentence: "He has 5 more than Mary"
 PATTERN: [ENTITY] has [N] more than [ENTITY]
-OPERATION: ADD
-DSL: ref + value
 
 Sentence: "She has twice as many as Bob"
 PATTERN: [ENTITY] has twice as many as [ENTITY]
-OPERATION: MUL
-DSL: ref * 2
 
-Now analyze this sentence:
+Sentence: "How many apples does John have?"
+PATTERN: how many [ENTITY] does [ENTITY] have?
+
 Sentence: "{span}"
 """
 
 
 def parse_qwen_response(response: str) -> Optional[Dict]:
-    """Parse Qwen's response into a dict.
+    """Parse Qwen's PATTERN response.
 
-    Qwen2.5-Math-Instruct does chain-of-thought reasoning, so the structured
-    PATTERN/OPERATION/DSL lines may appear anywhere in verbose output, or
-    in a \\boxed{} block. We search flexibly rather than requiring exact format.
-
-    Key Qwen quirks handled:
-    - Bold markdown headers: **PATTERN:**, ** operation:**
-    - Abbreviates "DSL" as "sl": ** sl:**, sl:
-    - LaTeX wrappers: \\text{OPERATION: ADD}
-    - Truncated CoT where operation is mentioned in reasoning
+    Only extracts the generalized pattern — no operation or DSL.
+    Handles Qwen quirks: markdown bold, CoT reasoning, \\boxed{}.
     """
-    result = {}
-
-    # Pre-process: strip markdown bold markers and normalize whitespace
+    # Pre-process: strip markdown bold markers
     cleaned = re.sub(r'\*\*\s*', '', response)
-    # Qwen consistently writes "sl" instead of "DSL" — normalize
-    cleaned = re.sub(r'\bsl\b', 'DSL', cleaned, flags=re.IGNORECASE)
     # Strip LaTeX \text{} wrappers
     cleaned = re.sub(r'\\text\{([^}]*)\}', r'\1', cleaned)
 
-    # Strategy 1: Look for PATTERN:/OPERATION:/DSL: lines
-    # Qwen outputs multiple PATTERN: lines — first is often a CoT header
-    # ("Identify the key elements..."), actual pattern has [ENTITY]/[N] placeholders.
-    # Find ALL matches and prefer the one with placeholders.
+    # Strategy 1: Find PATTERN: lines, prefer ones with [ENTITY]/[N]
     pattern_matches = re.findall(r'PATTERN:\s*(.+)', cleaned, re.IGNORECASE)
     if pattern_matches:
-        # Prefer match containing [ENTITY] or [N] placeholders
         best = next(
             (m.strip() for m in pattern_matches if '[ENTITY]' in m.upper() or '[N]' in m.upper()),
-            pattern_matches[-1].strip()  # fallback to last match (most likely the actual answer)
+            pattern_matches[-1].strip()
         )
-        result['pattern'] = best
+        pattern = _cleanup_pattern(best)
+        if pattern:
+            return {'pattern': pattern}
 
-    # For OPERATION, find all matches and take the last (actual answer, not CoT header)
-    op_matches = re.findall(r'OPERATION:\s*(SET|ADD|SUB|MUL|DIV)', cleaned, re.IGNORECASE)
-    if op_matches:
-        result['operation'] = op_matches[-1].strip().upper()
-
-    # For DSL, prefer matches with actual expressions (entity/ref/value/operators)
-    dsl_matches = re.findall(r'DSL:\s*(.+)', cleaned, re.IGNORECASE)
-    if dsl_matches:
-        best_dsl = next(
-            (m.strip() for m in dsl_matches
-             if re.search(r'entity|ref|value|[\+\-\*/]', m, re.IGNORECASE)),
-            dsl_matches[-1].strip()
-        )
-        result['dsl'] = best_dsl
-
-    if 'pattern' in result and 'operation' in result and 'dsl' in result:
-        return _cleanup_result(result)
-
-    # Strategy 2: Parse from chain-of-thought (Qwen says "the operation is ADD/MUL/etc")
-    if 'operation' not in result:
-        op_context = re.search(
-            r'(?:operation\s+(?:is|here is|would be)|operation:\s*)\s*"?\s*(SET|ADD|SUB|MUL|DIV|AD|addition|subtraction|multiplication|division|setting|multiply|divid)',
-            cleaned, re.IGNORECASE
-        )
-        if op_context:
-            op_word = op_context.group(1).strip().upper()
-            OP_MAP = {
-                'ADDITION': 'ADD', 'ADD': 'ADD', 'AD': 'ADD',
-                'SUBTRACTION': 'SUB', 'SUB': 'SUB',
-                'MULTIPLICATION': 'MUL', 'MUL': 'MUL', 'MULTIPLY': 'MUL',
-                'DIVISION': 'DIV', 'DIV': 'DIV', 'DIVID': 'DIV',
-                'SETTING': 'SET', 'SET': 'SET',
-            }
-            result['operation'] = OP_MAP.get(op_word, 'SET')
-
-    # Strategy 3: Infer operation from DSL expression found anywhere
-    if 'operation' not in result:
-        dsl_anywhere = re.search(
-            r'(entity\s*[\+\-\*/]\s*value|ref\s*[\+\-\*/]\s*(?:value|\d+)|value)',
-            cleaned, re.IGNORECASE
-        )
-        if dsl_anywhere:
-            dsl_text = dsl_anywhere.group(1).strip().lower()
-            if 'dsl' not in result:
-                result['dsl'] = dsl_text
-            if '+' in dsl_text:
-                result['operation'] = 'ADD'
-            elif '-' in dsl_text:
-                result['operation'] = 'SUB'
-            elif '*' in dsl_text:
-                result['operation'] = 'MUL'
-            elif '/' in dsl_text:
-                result['operation'] = 'DIV'
-            else:
-                result['operation'] = 'SET'
-
-    # Strategy 4: Infer operation from explicit math operators in CoT
-    # (conservative — only match actual operator symbols, not descriptive words
-    # which appear in Qwen's analysis text and cause false positives)
-    if 'operation' not in result:
-        # Look for actual computation expressions in the response
-        if re.search(r'entity\s*/\s*value|ref\s*/\s*\d+|\bDIV\b', cleaned):
-            result['operation'] = 'DIV'
-        elif re.search(r'entity\s*\*\s*value|ref\s*\*\s*\d+|\bMUL\b', cleaned):
-            result['operation'] = 'MUL'
-        elif re.search(r'entity\s*\+\s*value|ref\s*\+\s*\d+|\bADD\b', cleaned):
-            result['operation'] = 'ADD'
-        elif re.search(r'entity\s*-\s*value|ref\s*-\s*\d+|\bSUB\b', cleaned):
-            result['operation'] = 'SUB'
-        else:
-            # Last resort: default to SET
-            result['operation'] = 'SET'
-
-    # Strategy 5: Parse from \boxed{} (Qwen math format)
+    # Strategy 2: Parse from \boxed{} (Qwen math format)
     boxed = re.search(r'\\boxed\{(.+?)\}', response)
     if boxed:
-        boxed_text = boxed.group(1)
-        if 'pattern' not in result:
-            parts = re.split(r'[.;]', boxed_text)
-            if parts:
-                result['pattern'] = parts[0].strip()
+        pattern = _cleanup_pattern(boxed.group(1).strip())
+        if pattern:
+            return {'pattern': pattern}
 
-    # Fill in pattern from ENTITY/N substitution in response
-    if 'pattern' not in result:
-        entity_pattern = re.search(
-            r'(?:pattern\s+is|pattern:)\s*(.+?)(?:\.|$)',
-            cleaned, re.IGNORECASE
-        )
-        if entity_pattern:
-            result['pattern'] = entity_pattern.group(1).strip()
+    # Strategy 3: Look for any line with [ENTITY] or [N] placeholders
+    for line in cleaned.split('\n'):
+        line = line.strip()
+        if ('[ENTITY]' in line.upper() or '[N]' in line.upper()) and len(line) > 5:
+            pattern = _cleanup_pattern(line)
+            if pattern:
+                return {'pattern': pattern}
 
-    # Default DSL based on operation
-    if 'operation' in result and 'dsl' not in result:
-        DSL_DEFAULTS = {
-            'SET': 'value', 'ADD': 'entity + value', 'SUB': 'entity - value',
-            'MUL': 'entity * value', 'DIV': 'entity / value',
-        }
-        result['dsl'] = DSL_DEFAULTS.get(result['operation'], 'value')
-
-    if 'operation' in result and 'dsl' in result:
-        if 'pattern' not in result:
-            result['pattern'] = result['dsl']
-        return _cleanup_result(result)
     return None
 
 
-def _cleanup_result(result: Dict) -> Dict:
-    """Clean up parsed result — strip CoT prefixes and markdown artifacts."""
-    DSL_DEFAULTS = {
-        'SET': 'value', 'ADD': 'entity + value', 'SUB': 'entity - value',
-        'MUL': 'entity * value', 'DIV': 'entity / value',
-    }
-
-    for key in ('pattern', 'dsl'):
-        if key in result:
-            val = result[key]
-            # Remove bullet prefixes like "- The pattern is:"
-            val = re.sub(r'^[-*\d.]+\s*(?:The\s+)?(?:pattern|dsl|operation)\s+(?:is|would be):?\s*', '', val, flags=re.IGNORECASE)
-            # Remove trailing markdown, LaTeX fragments
-            val = re.sub(r'\s*\\?\[?\s*$', '', val)
-            val = re.sub(r'\s*\*+\s*$', '', val)
-            result[key] = val.strip().rstrip('.')
-
-    # Validate DSL — if it's a garbage CoT sentence, replace with default
-    if 'dsl' in result:
-        dsl = result['dsl']
-        # Valid DSLs are short expressions like "value", "entity + value", "ref * 2"
-        is_garbage = (
-            len(dsl) > 60
-            or 'computation' in dsl.lower()
-            or 'expression' in dsl.lower()
-            or 'sentence' in dsl.lower()
-            or dsl.startswith('- ')
-            or dsl.startswith('The ')
-            or dsl.startswith('Since ')
-            or dsl.startswith('Let')
-            or dsl.startswith('Write')
-        )
-        if is_garbage and 'operation' in result:
-            result['dsl'] = DSL_DEFAULTS.get(result['operation'], 'value')
-
-    return result
+def _cleanup_pattern(text: str) -> str:
+    """Clean up a pattern — strip CoT prefixes and markdown artifacts."""
+    # Remove common prefixes
+    text = re.sub(r'^[-*\d.]+\s*(?:The\s+)?(?:pattern|answer)\s+(?:is|would be):?\s*', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'^PATTERN:\s*', '', text, flags=re.IGNORECASE)
+    # Remove trailing markdown/LaTeX
+    text = re.sub(r'\s*\\?\[?\s*$', '', text)
+    text = re.sub(r'\s*\*+\s*$', '', text)
+    text = text.strip().rstrip('.')
+    return text if len(text) > 3 else ''
 
 
 def generalize_batch_qwen(
@@ -355,7 +213,7 @@ def generalize_batch_qwen(
         for span in batch:
             prompt = GENERALIZATION_PROMPT.format(span=span)
             messages = [
-                {"role": "system", "content": "You analyze math word problem sentences. Always respond with exactly PATTERN, OPERATION, and DSL lines."},
+                {"role": "system", "content": "Output one line: PATTERN: with the generalized pattern. No explanation."},
                 {"role": "user", "content": prompt},
             ]
             text = tokenizer.apply_chat_template(
@@ -408,7 +266,7 @@ def generalize_batch_qwen(
             span = batch[j]
             prompt = GENERALIZATION_PROMPT.format(span=span)
             messages = [
-                {"role": "system", "content": "You analyze math word problem sentences. Always respond with exactly PATTERN, OPERATION, and DSL lines."},
+                {"role": "system", "content": "Output one line: PATTERN: with the generalized pattern. No explanation."},
                 {"role": "user", "content": prompt},
             ]
             text = tokenizer.apply_chat_template(
@@ -481,8 +339,6 @@ def regex_fallback_generalize(span: str) -> Dict:
 
     return {
         'pattern': pattern.lower(),
-        'operation': 'SET',
-        'dsl': 'value',
     }
 
 
@@ -521,7 +377,7 @@ def run_generalization(
     """Run full generalization pipeline.
 
     Returns list of generalized span records with:
-    - problem_id, raw_span, pattern, operation, dsl, problem_text
+    - problem_id, raw_span, pattern, problem_text
     """
     all_records = []
 
@@ -549,8 +405,6 @@ def run_generalization(
             'problem_text': sd['problem_text'],
             'raw_span': sd['span'],
             'pattern': gen['pattern'],
-            'operation': gen['operation'],
-            'dsl': gen['dsl'],
             'qwen_failed': gen.get('qwen_failed', False),
             'qwen_response': gen.get('qwen_response', ''),
         }
@@ -567,7 +421,7 @@ def compute_template_embeddings(
 
     Two-stage deduplication:
     1. GROUP BY exact pattern (like SQL GROUP BY)
-    2. Cluster by embedding similarity within same operation type
+    2. Cluster by embedding cosine similarity across ALL templates
 
     Template centroids are computed from RAW span examples (not generalized
     patterns), so they live in the same embedding space as inference spans.
