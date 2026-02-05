@@ -162,17 +162,32 @@ def parse_qwen_response(response: str) -> Optional[Dict]:
     cleaned = re.sub(r'\\text\{([^}]*)\}', r'\1', cleaned)
 
     # Strategy 1: Look for PATTERN:/OPERATION:/DSL: lines
-    pattern_match = re.search(r'PATTERN:\s*(.+)', cleaned, re.IGNORECASE)
-    if pattern_match:
-        result['pattern'] = pattern_match.group(1).strip()
+    # Qwen outputs multiple PATTERN: lines — first is often a CoT header
+    # ("Identify the key elements..."), actual pattern has [ENTITY]/[N] placeholders.
+    # Find ALL matches and prefer the one with placeholders.
+    pattern_matches = re.findall(r'PATTERN:\s*(.+)', cleaned, re.IGNORECASE)
+    if pattern_matches:
+        # Prefer match containing [ENTITY] or [N] placeholders
+        best = next(
+            (m.strip() for m in pattern_matches if '[ENTITY]' in m.upper() or '[N]' in m.upper()),
+            pattern_matches[-1].strip()  # fallback to last match (most likely the actual answer)
+        )
+        result['pattern'] = best
 
-    op_match = re.search(r'OPERATION:\s*(SET|ADD|SUB|MUL|DIV)', cleaned, re.IGNORECASE)
-    if op_match:
-        result['operation'] = op_match.group(1).strip().upper()
+    # For OPERATION, find all matches and take the last (actual answer, not CoT header)
+    op_matches = re.findall(r'OPERATION:\s*(SET|ADD|SUB|MUL|DIV)', cleaned, re.IGNORECASE)
+    if op_matches:
+        result['operation'] = op_matches[-1].strip().upper()
 
-    dsl_match = re.search(r'DSL:\s*(.+)', cleaned, re.IGNORECASE)
-    if dsl_match:
-        result['dsl'] = dsl_match.group(1).strip()
+    # For DSL, prefer matches with actual expressions (entity/ref/value/operators)
+    dsl_matches = re.findall(r'DSL:\s*(.+)', cleaned, re.IGNORECASE)
+    if dsl_matches:
+        best_dsl = next(
+            (m.strip() for m in dsl_matches
+             if re.search(r'entity|ref|value|[\+\-\*/]', m, re.IGNORECASE)),
+            dsl_matches[-1].strip()
+        )
+        result['dsl'] = best_dsl
 
     if 'pattern' in result and 'operation' in result and 'dsl' in result:
         return _cleanup_result(result)
