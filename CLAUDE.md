@@ -80,20 +80,21 @@ This means MiniLM already learned to mimic attention patterns from a larger teac
 4. **Custom sub-graph DSLs** — Frontier LLM creates custom sub-graph DSL representing the actual computation (not just SET/ADD/SUB)
 5. **Embed templates** — MiniLM centroid embeddings for cosine matching at inference
 
-## Iterative Generalization (Multi-Pass)
+## Vocabulary Reduction & Summarization
 
-Raw spans have a long tail of singletons. One pass of generalization isn't enough — "Sally sold half her eggs at the farmer's market on Tuesday" and "He gave away a third of his cookies at school" should collapse to the same template, but lexical differences keep them apart.
+Raw spans carry lexical noise that prevents clustering — names, items, locations, units all vary across problems while the underlying operation is identical. We reduce vocabulary while preserving operational integrity for the downstream DSL.
 
-**Solution: multiple passes, each targeting the singleton long tail.**
+**The constraint:** every transformation must preserve the information the SubGraphDSL needs — the operation structure, the number of parameters, and the relationship between entities. "Sally sold half her eggs at the farmer's market on Tuesday" and "He gave away a third of his cookies at school" are the same operation: `MUL(upstream, fraction)`. The summarization must make that visible.
 
-Each pass generates a **new column** — preserving the full audit trail. Non-singletons carry forward unchanged. Only small groups (count < min_group_size) get re-generalized.
+**Approach:**
+1. **Entity replacement** — Names → `[PERSON]`, objects → `[ITEM]`, numbers → `[N]`, locations/times stripped (irrelevant to computation)
+2. **Operational summarization** — Qwen summarizes the span into its operational core while preserving verb semantics: "sold half" → "[PERSON] [verb] [N] of [ITEM]"
+3. **Vocabulary collapse** — After summarization, spans that perform the same operation cluster naturally at high cosine similarity because the lexical noise is gone
 
-**After convergence:**
-1. Embed final column with MiniLM
-2. Cosine cluster at ~90% threshold → deduplicated templates
-3. Generate SubGraphDSL (1:1) for each template
+**What gets preserved:** verb (operation signal), parameter count, entity relationships.
+**What gets stripped:** proper nouns, specific items, locations, temporal references, filler words.
 
-**Key: each pass's prompt references the previous attempt** — "Previous attempt (too specific, try harder): {prev_pattern}" — so Qwen knows what didn't work and tries harder to abstract.
+The result feeds directly into cosine clustering → deduplicated templates → SubGraphDSL generation.
 
 ## Trained Signal Mapping (17k Spans)
 **The dataset:**
