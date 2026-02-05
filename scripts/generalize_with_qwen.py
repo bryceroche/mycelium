@@ -323,28 +323,53 @@ def generalize_batch_qwen(
     model,
     tokenizer,
     batch_size: int = 16,
+    checkpoint_dir: str = ".",
+    checkpoint_every: int = 50,
 ) -> List[Optional[Dict]]:
     """Generalize spans using Qwen with true batched inference.
+
+    Saves checkpoint every `checkpoint_every` batches so we can test
+    partial results while the full batch runs.
 
     Args:
         spans: List of raw span texts
         model: Loaded Qwen model
         tokenizer: Loaded Qwen tokenizer
         batch_size: Number of spans per GPU batch
+        checkpoint_dir: Directory for checkpoint files
+        checkpoint_every: Save checkpoint every N batches
 
     Returns:
         List of parsed results (or None for failures)
     """
     import torch
 
+    # Check for existing checkpoint to resume from
+    checkpoint_path = os.path.join(checkpoint_dir, "qwen_checkpoint.json")
+    results = []
+    start_batch = 0
+
+    if os.path.exists(checkpoint_path):
+        with open(checkpoint_path) as f:
+            checkpoint = json.load(f)
+        results = checkpoint["results"]
+        start_batch = checkpoint["next_batch_idx"]
+        print(f"Resuming from checkpoint: {len(results)} spans done, "
+              f"starting at batch index {start_batch}")
+
     # Pad from left for batched generation
     tokenizer.padding_side = "left"
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    results = []
+    total_batches = (len(spans) + batch_size - 1) // batch_size
+    batch_num = 0
 
     for i in tqdm(range(0, len(spans), batch_size), desc="Generalizing"):
+        # Skip already-processed batches (from checkpoint)
+        if i < start_batch:
+            batch_num += 1
+            continue
         batch = spans[i:i + batch_size]
 
         # Build all prompts for this batch
@@ -441,10 +466,30 @@ def generalize_batch_qwen(
                 batch_results[j] = fallback
 
         results.extend(batch_results)
+        batch_num += 1
+
+        # Save checkpoint every N batches
+        if batch_num % checkpoint_every == 0:
+            checkpoint_data = {
+                "results": results,
+                "next_batch_idx": i + batch_size,
+                "total_spans": len(spans),
+                "batches_done": batch_num,
+                "total_batches": total_batches,
+            }
+            with open(checkpoint_path, 'w') as f:
+                json.dump(checkpoint_data, f)
+            print(f"\n  Checkpoint saved: {len(results)}/{len(spans)} spans "
+                  f"({batch_num}/{total_batches} batches)")
 
         # Clear GPU cache periodically
         if i % (batch_size * 10) == 0 and torch.cuda.is_available():
             torch.cuda.empty_cache()
+
+    # Remove checkpoint file on completion
+    if os.path.exists(checkpoint_path):
+        os.remove(checkpoint_path)
+        print("Checkpoint file removed (batch complete)")
 
     return results
 
@@ -641,11 +686,10 @@ def compute_template_embeddings(
         centroid = np.mean(embeddings, axis=0)
         centroid = centroid / (np.linalg.norm(centroid) + 1e-8)
 
-        # Majority vote for operation and DSL
+        # Majority vote for operation; DSL is deterministic from operation type
         ops = [r['operation'] for r in group]
-        dsls = [r['dsl'] for r in group]
         majority_op = max(set(ops), key=ops.count)
-        majority_dsl = max(set(dsls), key=dsls.count)
+        majority_dsl = DSL_FOR_OP.get(majority_op, 'value')
 
         raw_templates.append({
             'pattern': pattern,
@@ -720,7 +764,7 @@ def compute_template_embeddings(
                 'template_id': template_id,
                 'pattern': rep['pattern'],
                 'operation': rep['operation'],
-                'base_dsl': rep['dsl'],
+                'base_dsl': DSL_FOR_OP.get(rep['operation'], 'value'),
                 'embedding_centroid': merged_centroid.tolist(),
                 'count': total_count,
                 'cluster_size': len(cluster),

@@ -17,6 +17,27 @@ from typing import List, Tuple, Dict, Optional, NamedTuple
 from dataclasses import dataclass, field
 
 
+def _join_wordpiece_tokens(tokens: List[str]) -> str:
+    """Join WordPiece tokens properly, handling ## subword pieces.
+
+    E.g., ['pup', '##pies'] -> 'puppies'
+          ['op', '##hel', '##ia'] -> 'ophelia'
+          ['[CLS]', 'john'] -> 'john'
+    """
+    result = []
+    for t in tokens:
+        if t.startswith('[') and t.endswith(']'):
+            continue  # Skip special tokens like [CLS], [SEP]
+        if t.startswith('##'):
+            if result:
+                result[-1] += t[2:]  # Append subword to previous token
+            else:
+                result.append(t[2:])
+        else:
+            result.append(t)
+    return ' '.join(result)
+
+
 @dataclass
 class Entity:
     """An entity detected via attention signals."""
@@ -156,6 +177,8 @@ class AttentionGraphBuilder:
         """Detect entities using attention_received signal.
 
         No hardcoded list - entities are tokens that receive high attention.
+        Uses statistical outlier detection (mean + k*std) instead of a flat
+        threshold, because after normalization most tokens pass a low bar.
 
         Args:
             attention_matrix: (seq_len, seq_len) attention weights
@@ -165,49 +188,79 @@ class AttentionGraphBuilder:
         Returns:
             List of detected entities
         """
-        threshold = threshold or self.entity_threshold
-
         # Compute attention received per token
         attn_received = self.compute_attention_received(attention_matrix)
 
-        # Create mask for special tokens ([CLS], [SEP], punctuation)
+        # Create mask for special tokens ([CLS], [SEP], punctuation, subwords)
         # These tokens dominate attention but aren't entities
         special_mask = np.array([
-            t.startswith('[') and t.endswith(']') or t in '.!?,:;'
+            (t.startswith('[') and t.endswith(']'))
+            or t in '.!?,:;'
+            or t.startswith('##')
             for t in tokens
         ])
 
-        # Normalize to [0, 1] excluding special tokens
+        # Use statistical outlier detection on non-special tokens
         non_special_attn = attn_received[~special_mask]
-        if len(non_special_attn) > 0 and non_special_attn.max() > 0:
+        if len(non_special_attn) < 2:
+            return []
+
+        mean_attn = non_special_attn.mean()
+        std_attn = non_special_attn.std()
+
+        # Entity threshold: tokens receiving attention > mean + 1.5*std
+        # This selects the top ~7% of tokens as entity candidates.
+        # Higher bar avoids catching function words like "the", "how", "fewer".
+        if threshold is not None:
+            # If explicit threshold given, normalize and use it
             max_received = non_special_attn.max()
-            attn_received = attn_received / max_received
-        else:
-            max_received = attn_received.max()
             if max_received > 0:
-                attn_received = attn_received / max_received
+                stat_threshold = threshold * max_received
+            else:
+                stat_threshold = threshold
+        else:
+            stat_threshold = mean_attn + 1.5 * std_attn
+
+        # Normalize for output (attention_received field) but use raw for detection
+        max_received = non_special_attn.max()
+        if max_received > 0:
+            attn_normalized = attn_received / max_received
+        else:
+            attn_normalized = attn_received
 
         entities = []
         i = 0
         while i < len(tokens):
-            if attn_received[i] >= threshold:
-                # Found potential entity - extend to consecutive high-attention tokens
+            token = tokens[i]
+            # Skip special/subword/punctuation tokens as entity starts
+            if special_mask[i]:
+                i += 1
+                continue
+
+            if attn_received[i] >= stat_threshold:
+                # Found potential entity start — extend only to include
+                # subword continuations and immediately adjacent high-attention tokens.
+                # Entities in math problems are short: "John", "Mary", "apples" (1-3 tokens)
                 start = i
-                while i < len(tokens) and attn_received[i] >= threshold * 0.7:
+                max_entity_len = 4  # Cap: "John Smith Jr" = 3, with subwords maybe 4
+                i += 1
+                while (i < len(tokens)
+                       and i - start < max_entity_len
+                       and not (tokens[i] in '.!?,:;')
+                       and (tokens[i].startswith('##')
+                            or attn_received[i] >= stat_threshold)):
                     i += 1
                 end = i
 
-                # Skip special tokens
-                entity_tokens = tokens[start:end]
-                if not all(t.startswith('[') and t.endswith(']') for t in entity_tokens):
-                    entity_text = ' '.join(t for t in entity_tokens
-                                          if not (t.startswith('[') and t.endswith(']')))
-                    if entity_text.strip():
-                        entities.append(Entity(
-                            text=entity_text.strip(),
-                            token_indices=list(range(start, end)),
-                            attention_received=float(attn_received[start:end].mean())
-                        ))
+                # Build entity text with proper subword joining
+                entity_text = _join_wordpiece_tokens(tokens[start:end])
+                # Skip very short entities (1-3 chars) — "the", "how", "if" are noise
+                if entity_text.strip() and len(entity_text.strip()) > 3:
+                    entities.append(Entity(
+                        text=entity_text.strip(),
+                        token_indices=list(range(start, end)),
+                        attention_received=float(attn_normalized[start:end].mean())
+                    ))
             else:
                 i += 1
 
@@ -218,10 +271,13 @@ class AttentionGraphBuilder:
         attention_matrix: np.ndarray,
         tokens: List[str]
     ) -> List[Tuple[int, int]]:
-        """Detect span boundaries using connectivity drops.
+        """Detect span boundaries using sentence-level splits.
 
-        Panama Hats problem: find longest spans with high internal connectivity.
-        Boundary = where connectivity drops significantly.
+        Math word problems have ~1 operation per sentence. Split on sentence
+        endings (.!?) only — NOT on commas, which fragment logical operations.
+
+        Only refine (sub-split) if a sentence span is very long (>15 tokens)
+        AND has a clear connectivity drop.
 
         Args:
             attention_matrix: (seq_len, seq_len) attention weights
@@ -234,39 +290,34 @@ class AttentionGraphBuilder:
         if n <= 2:
             return [(0, n)]
 
-        # Compute running connectivity for windows of different sizes
-        # Start with sentence-level splits (periods, etc.)
+        # Split on sentence endings only (not commas)
         boundaries = [0]
-
         for i, token in enumerate(tokens):
-            # Split on sentence boundaries
-            if token in ['.', '!', '?', ','] and i > 0 and i < n - 1:
+            if token in ['.', '!', '?'] and i > 0 and i < n - 1:
                 boundaries.append(i + 1)
-
         boundaries.append(n)
 
-        # Refine boundaries using connectivity
+        # Only refine very long spans (>15 tokens) using connectivity drops
         refined = []
         for i in range(len(boundaries) - 1):
             start, end = boundaries[i], boundaries[i + 1]
 
-            # Check if this span should be split further
-            if end - start > 5:
-                # Look for connectivity drops within span
+            if end - start > 15:
+                # Look for the strongest connectivity drop within the span
+                # Require at least 5 tokens in each half to avoid tiny fragments
                 best_split = None
-                min_connectivity = float('inf')
+                best_drop_ratio = 1.0  # Lower = better split
 
-                for j in range(start + 2, end - 2):
-                    # Connectivity at potential split point
+                for j in range(start + 5, end - 5):
                     left_conn = self.compute_span_connectivity(attention_matrix, start, j)
                     right_conn = self.compute_span_connectivity(attention_matrix, j, end)
                     cross_conn = self._compute_cross_attention(attention_matrix, start, j, j, end)
 
-                    # If cross-attention is much lower than internal, this is a good split
                     internal_avg = (left_conn + right_conn) / 2
-                    if cross_conn < internal_avg * self.boundary_drop_threshold:
-                        if cross_conn < min_connectivity:
-                            min_connectivity = cross_conn
+                    if internal_avg > 0:
+                        drop_ratio = cross_conn / internal_avg
+                        if drop_ratio < self.boundary_drop_threshold and drop_ratio < best_drop_ratio:
+                            best_drop_ratio = drop_ratio
                             best_split = j
 
                 if best_split is not None:
@@ -315,11 +366,9 @@ class AttentionGraphBuilder:
 
         spans = []
         for span_id, (start, end) in enumerate(boundaries):
-            # Get span text from tokens
+            # Get span text from tokens with proper subword joining
             span_tokens = tokens[start:end]
-            span_text = ' '.join(t for t in span_tokens
-                                if not (t.startswith('[') and t.endswith(']'))
-                                and not t.startswith('##'))
+            span_text = _join_wordpiece_tokens(span_tokens)
 
             # Skip empty or trivial spans
             if not span_text.strip() or len(span_text.strip()) < 3:

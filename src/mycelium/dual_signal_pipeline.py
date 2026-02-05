@@ -100,8 +100,8 @@ class DualSignalPipeline:
     def __init__(
         self,
         model_path: Optional[str] = None,
-        embedding_weight: float = 0.5,
-        attention_weight: float = 0.5,
+        embedding_weight: float = 0.9,
+        attention_weight: float = 0.1,
         device: str = "auto",
         templates_path: Optional[str] = None,
     ):
@@ -110,7 +110,10 @@ class DualSignalPipeline:
         Args:
             model_path: Path to fine-tuned MiniLM model checkpoint.
                        Uses default path if not provided.
-            embedding_weight: Weight for embedding similarity in matching [0-1]
+            embedding_weight: Weight for embedding similarity in matching [0-1].
+                            Default 0.9 because base MiniLM attention patterns
+                            are not discriminative (always ~0.999 correlation).
+                            Re-balance toward attention once model is fine-tuned.
             attention_weight: Weight for attention similarity in matching [0-1]
             device: Device for inference ("auto", "cuda", "cpu")
             templates_path: Optional path to load/save templates JSON
