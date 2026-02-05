@@ -299,24 +299,75 @@ def generalize_batch_qwen(
                 do_sample=False,
             )
 
-        # Decode each output
+        # Decode each output, maintaining order via placeholder slots
+        batch_results = [None] * len(batch)
+        retry_indices = []
+        input_len = inputs.input_ids.shape[1]
+
         for j, span in enumerate(batch):
-            # Extract only new tokens (skip input)
-            input_len = inputs.input_ids.shape[1]
             response = tokenizer.decode(
                 outputs[j][input_len:],
                 skip_special_tokens=True,
-            )
+            ).strip()
+
+            if not response:
+                # Empty response — pad_token==eos_token can cause this in batches
+                retry_indices.append(j)
+                continue
 
             parsed = parse_qwen_response(response)
             if parsed:
                 parsed['raw_span'] = span
-                results.append(parsed)
+                parsed['qwen_response'] = response
+                batch_results[j] = parsed
             else:
                 fallback = regex_fallback_generalize(span)
                 fallback['raw_span'] = span
+                fallback['qwen_response'] = response
                 fallback['qwen_failed'] = True
-                results.append(fallback)
+                batch_results[j] = fallback
+
+        # Retry empty responses individually (no padding → no pad/eos confusion)
+        for j in retry_indices:
+            span = batch[j]
+            prompt = GENERALIZATION_PROMPT.format(span=span)
+            messages = [
+                {"role": "system", "content": "You analyze math word problem sentences. Always respond with exactly PATTERN, OPERATION, and DSL lines."},
+                {"role": "user", "content": prompt},
+            ]
+            text = tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
+            single_input = tokenizer(
+                text, return_tensors="pt"
+            ).to(model.device)
+
+            with torch.no_grad():
+                single_output = model.generate(
+                    **single_input,
+                    max_new_tokens=300,
+                    do_sample=False,
+                )
+
+            single_len = single_input.input_ids.shape[1]
+            response = tokenizer.decode(
+                single_output[0][single_len:],
+                skip_special_tokens=True,
+            ).strip()
+
+            parsed = parse_qwen_response(response) if response else None
+            if parsed:
+                parsed['raw_span'] = span
+                parsed['qwen_response'] = response
+                batch_results[j] = parsed
+            else:
+                fallback = regex_fallback_generalize(span)
+                fallback['raw_span'] = span
+                fallback['qwen_response'] = response
+                fallback['qwen_failed'] = True
+                batch_results[j] = fallback
+
+        results.extend(batch_results)
 
         # Clear GPU cache periodically
         if i % (batch_size * 10) == 0 and torch.cuda.is_available():
@@ -402,6 +453,7 @@ def run_generalization(
             'operation': gen['operation'],
             'dsl': gen['dsl'],
             'qwen_failed': gen.get('qwen_failed', False),
+            'qwen_response': gen.get('qwen_response', ''),
         }
         all_records.append(record)
 
