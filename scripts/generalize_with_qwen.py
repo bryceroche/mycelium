@@ -66,92 +66,80 @@ def extract_spans(problem_text: str) -> List[str]:
 # Qwen Generalization
 # =============================================================================
 
-GENERALIZATION_PROMPT = """Generalize this math word problem sentence into a pattern. Output one line:
+GENERALIZATION_PROMPT = """Replace person names/pronouns with [PERSON1],[PERSON2],etc. Replace object nouns (apples/dollars/bags/hours) with [ITEM1],[ITEM2],etc. Replace numbers/$amounts with [N]. Keep verbs and structure. Output ONLY JSON.
 
-PATTERN: Replace person names and pronouns (he/she/they/it/his/her) with [ENTITY]. Replace object/item nouns (apples/dollars/cookies/bags/hours/etc) with [ENTITY]. Replace numbers (including dollar amounts like $50) with [N]. Keep verbs, prepositions, and structural words exactly as they are.
+{{"input": "John has 5 apples", "output": "[PERSON1] has [N] [ITEM1]"}}
+{{"input": "She gave 2 cookies to Mary", "output": "[PERSON1] gave [N] [ITEM1] to [PERSON2]"}}
+{{"input": "Each bag contains 5 items", "output": "each [ITEM1] contains [N] [ITEM2]"}}
+{{"input": "She earned $12 per hour for 8 hours", "output": "[PERSON1] earned [N] per [ITEM1] for [N] [ITEM1]"}}
+{{"input": "He has twice as many apples as Bob has oranges", "output": "[PERSON1] has twice as many [ITEM1] as [PERSON2] has [ITEM2]"}}
+{{"input": "How many apples does John have?", "output": "how many [ITEM1] does [PERSON1] have?"}}
+{{"input": "{span}", "output": """
 
-Examples:
-Sentence: "John has 5 apples"
-PATTERN: [ENTITY] has [N] [ENTITY]
 
-Sentence: "He gave 2 to Mary"
-PATTERN: [ENTITY] gave [N] to [ENTITY]
-
-Sentence: "She bought 3 more oranges"
-PATTERN: [ENTITY] bought [N] more [ENTITY]
-
-Sentence: "Each bag contains 5 items"
-PATTERN: each [ENTITY] contains [N] [ENTITY]
-
-Sentence: "They split it equally among 4 friends"
-PATTERN: [ENTITY] split [ENTITY] equally among [N] [ENTITY]
-
-Sentence: "She earned $12 per hour for 8 hours"
-PATTERN: [ENTITY] earned [N] per [ENTITY] for [N] [ENTITY]
-
-Sentence: "He has 5 more than Mary"
-PATTERN: [ENTITY] has [N] more than [ENTITY]
-
-Sentence: "She has twice as many as Bob"
-PATTERN: [ENTITY] has twice as many as [ENTITY]
-
-Sentence: "How many apples does John have?"
-PATTERN: how many [ENTITY] does [ENTITY] have?
-
-Sentence: "{span}"
-"""
+def _clean_pattern(raw: str) -> str:
+    """Strip common artifacts from extracted patterns."""
+    p = raw.strip()
+    # Strip trailing JSON artifacts: "}, }, etc.
+    p = re.sub(r'["\s}]+$', '', p)
+    # Strip leading quotes
+    p = p.lstrip('"').lstrip("'")
+    # Strip trailing period
+    p = p.rstrip('.')
+    return p.strip()
 
 
 def parse_qwen_response(response: str) -> Optional[Dict]:
-    """Parse Qwen's PATTERN response.
+    """Parse Qwen's JSON response to extract the generalized pattern.
 
-    Only extracts the generalized pattern — no operation or DSL.
-    Handles Qwen quirks: markdown bold, CoT reasoning, \\boxed{}.
+    The prompt asks for JSON like: {"output": "[PERSON1] has [N] [ITEM1]"}
+    Since we provide the opening of the JSON, Qwen should complete it.
+
+    Strategies (in order):
+    1. Parse as JSON (ideal case)
+    2. Extract quoted string after "output":
+    3. Find any line with [PERSON*]/[ITEM*]/[N] placeholders
     """
-    # Pre-process: strip markdown bold markers
-    cleaned = re.sub(r'\*\*\s*', '', response)
-    # Strip LaTeX \text{} wrappers
-    cleaned = re.sub(r'\\text\{([^}]*)\}', r'\1', cleaned)
+    cleaned = response.strip()
 
-    # Strategy 1: Find PATTERN: lines, prefer ones with [ENTITY]/[N]
-    pattern_matches = re.findall(r'PATTERN:\s*(.+)', cleaned, re.IGNORECASE)
-    if pattern_matches:
-        best = next(
-            (m.strip() for m in pattern_matches if '[ENTITY]' in m.upper() or '[N]' in m.upper()),
-            pattern_matches[-1].strip()
-        )
-        pattern = _cleanup_pattern(best)
-        if pattern:
-            return {'pattern': pattern}
-
-    # Strategy 2: Parse from \boxed{} (Qwen math format)
-    boxed = re.search(r'\\boxed\{(.+?)\}', response)
-    if boxed:
-        pattern = _cleanup_pattern(boxed.group(1).strip())
-        if pattern:
-            return {'pattern': pattern}
-
-    # Strategy 3: Look for any line with [ENTITY] or [N] placeholders
-    for line in cleaned.split('\n'):
-        line = line.strip()
-        if ('[ENTITY]' in line.upper() or '[N]' in line.upper()) and len(line) > 5:
-            pattern = _cleanup_pattern(line)
-            if pattern:
+    # Strategy 1: Try to parse as JSON or complete partial JSON
+    # The prompt ends with {"input": "...", "output": so response is typically: "value"}
+    for attempt in [
+        '{"output": ' + cleaned,          # most common: response is "value"}
+        cleaned,                          # raw response (already valid JSON)
+        '{"output": ' + cleaned + '}',    # wrap as JSON value
+        '{"output": "' + cleaned,         # wrap as JSON string
+    ]:
+        try:
+            # Fix common JSON issues: single quotes, trailing comma
+            fixed = attempt.replace("'", '"').rstrip(',').rstrip()
+            if not fixed.endswith('}'):
+                fixed = fixed.rstrip('"') + '"}'
+            obj = json.loads(fixed)
+            pattern = _clean_pattern(obj.get('output', ''))
+            if pattern and len(pattern) > 3:
                 return {'pattern': pattern}
+        except (json.JSONDecodeError, AttributeError):
+            continue
+
+    # Strategy 2: Find "output": "..." in the response
+    match = re.search(r'"output"\s*:\s*"([^"]+)"', cleaned)
+    if match:
+        pattern = _clean_pattern(match.group(1))
+        if pattern and len(pattern) > 3:
+            return {'pattern': pattern}
+
+    # Strategy 3: Look for any line with [PERSON*]/[ITEM*]/[N] placeholders (fallback)
+    placeholder_re = re.compile(r'\[(?:PERSON|ITEM)\d+\]|\[N\]', re.IGNORECASE)
+    for line in cleaned.split('\n'):
+        line = _clean_pattern(line)
+        if placeholder_re.search(line) and len(line) > 5:
+            # Skip if it looks like instructions rather than a pattern
+            if any(x in line.lower() for x in ['replace', 'should be', 'we need']):
+                continue
+            return {'pattern': line}
 
     return None
-
-
-def _cleanup_pattern(text: str) -> str:
-    """Clean up a pattern — strip CoT prefixes and markdown artifacts."""
-    # Remove common prefixes
-    text = re.sub(r'^[-*\d.]+\s*(?:The\s+)?(?:pattern|answer)\s+(?:is|would be):?\s*', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'^PATTERN:\s*', '', text, flags=re.IGNORECASE)
-    # Remove trailing markdown/LaTeX
-    text = re.sub(r'\s*\\?\[?\s*$', '', text)
-    text = re.sub(r'\s*\*+\s*$', '', text)
-    text = text.strip().rstrip('.')
-    return text if len(text) > 3 else ''
 
 
 def generalize_batch_qwen(
@@ -213,7 +201,7 @@ def generalize_batch_qwen(
         for span in batch:
             prompt = GENERALIZATION_PROMPT.format(span=span)
             messages = [
-                {"role": "system", "content": "Output one line: PATTERN: with the generalized pattern. No explanation."},
+                {"role": "system", "content": "Complete the JSON. Output ONLY the pattern value and closing brace. No explanation."},
                 {"role": "user", "content": prompt},
             ]
             text = tokenizer.apply_chat_template(
@@ -229,7 +217,7 @@ def generalize_batch_qwen(
         with torch.no_grad():
             outputs = model.generate(
                 **inputs,
-                max_new_tokens=300,
+                max_new_tokens=100,
                 do_sample=False,
             )
 
@@ -266,7 +254,7 @@ def generalize_batch_qwen(
             span = batch[j]
             prompt = GENERALIZATION_PROMPT.format(span=span)
             messages = [
-                {"role": "system", "content": "Output one line: PATTERN: with the generalized pattern. No explanation."},
+                {"role": "system", "content": "Complete the JSON. Output ONLY the pattern value and closing brace. No explanation."},
                 {"role": "user", "content": prompt},
             ]
             text = tokenizer.apply_chat_template(
@@ -279,7 +267,7 @@ def generalize_batch_qwen(
             with torch.no_grad():
                 single_output = model.generate(
                     **single_input,
-                    max_new_tokens=300,
+                    max_new_tokens=100,
                     do_sample=False,
                 )
 
@@ -593,7 +581,7 @@ def main():
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
         print("\nLoading Qwen-7B...")
-        model_name = "Qwen/Qwen2.5-Math-7B-Instruct"
+        model_name = "Qwen/Qwen2.5-7B-Instruct"
 
         tokenizer = AutoTokenizer.from_pretrained(
             model_name, trust_remote_code=True
