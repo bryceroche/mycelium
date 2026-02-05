@@ -25,6 +25,7 @@ import os
 import re
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -425,6 +426,74 @@ def regenerate_dsl(
 
 
 # ============================================================================
+# Parallel Batch Processing
+# ============================================================================
+
+def process_single_batch(
+    batch: List[Dict],
+    batch_idx: int,
+    provider: str,
+    model: str,
+    gsm8k_problems: List[Dict],
+    verify_samples: int,
+    max_regenerations: int
+) -> Tuple[List[Dict], List[str]]:
+    """Process a single batch of templates. Returns (results, failed_ids)."""
+    results = []
+    failed = []
+
+    prompt = build_batch_prompt(batch)
+    try:
+        response = call_llm(prompt, provider, model)
+        dsl_datas = parse_response(response)
+    except Exception as e:
+        # Batch failed
+        return [], [t.get("template_id", "unknown") for t in batch]
+
+    for j, template in enumerate(batch):
+        tid = template.get("template_id", f"idx_{batch_idx + j}")
+
+        if j >= len(dsl_datas):
+            failed.append(tid)
+            continue
+
+        dsl = validate_and_build(template, dsl_datas[j])
+        if not dsl:
+            failed.append(tid)
+            continue
+
+        # Verify (skip if no GSM8K problems)
+        if gsm8k_problems:
+            stats = verify_template(template, dsl, gsm8k_problems, verify_samples)
+
+            # Regenerate if needed
+            regenerations = 0
+            while stats.accuracy < 0.5 and regenerations < max_regenerations and stats.failures:
+                new_dsl = regenerate_dsl(template, stats.failures, provider, model)
+                if new_dsl:
+                    dsl = new_dsl
+                    stats = verify_template(template, dsl, gsm8k_problems, verify_samples)
+                regenerations += 1
+                time.sleep(0.3)
+        else:
+            stats = TemplateStats(template_id=tid)
+            regenerations = 0
+
+        # Save result
+        merged = dict(template)
+        merged["subgraph"] = dsl.to_dict()
+        merged["train_stats"] = {
+            "verified": stats.total_verified,
+            "correct": stats.correct,
+            "accuracy": stats.accuracy,
+            "regenerations": regenerations
+        }
+        results.append(merged)
+
+    return results, failed
+
+
+# ============================================================================
 # Main Training Loop
 # ============================================================================
 
@@ -535,6 +604,74 @@ def train_subgraph_dsls(
     return results
 
 
+def train_parallel(
+    templates: List[Dict],
+    gsm8k_problems: List[Dict],
+    provider: str = "openai",
+    model: str = None,
+    batch_size: int = 20,
+    verify_samples: int = 5,
+    max_regenerations: int = 2,
+    output_path: str = "templates_trained.json",
+    num_workers: int = 4
+) -> List[Dict]:
+    """Parallel training using ThreadPoolExecutor."""
+
+    # Split into batches
+    batches = []
+    for i in range(0, len(templates), batch_size):
+        batches.append((i, templates[i:i + batch_size]))
+
+    total_batches = len(batches)
+    print(f"\nParallel training: {len(templates)} templates in {total_batches} batches")
+    print(f"Workers: {num_workers}, Batch size: {batch_size}")
+    print("=" * 60)
+
+    all_results = []
+    all_failed = []
+    completed = 0
+
+    with ThreadPoolExecutor(max_workers=num_workers) as executor:
+        futures = {}
+        for batch_idx, batch in batches:
+            future = executor.submit(
+                process_single_batch,
+                batch, batch_idx, provider, model,
+                gsm8k_problems, verify_samples, max_regenerations
+            )
+            futures[future] = batch_idx
+
+        for future in as_completed(futures):
+            batch_idx = futures[future]
+            try:
+                results, failed = future.result()
+                all_results.extend(results)
+                all_failed.extend(failed)
+                completed += 1
+                print(f"  [{completed}/{total_batches}] Batch {batch_idx // batch_size + 1}: {len(results)} OK, {len(failed)} failed")
+
+                # Save periodically
+                if completed % 5 == 0:
+                    with open(output_path, "w") as f:
+                        json.dump(all_results, f, indent=2)
+            except Exception as e:
+                print(f"  Batch {batch_idx} error: {e}")
+                completed += 1
+
+    # Final save
+    with open(output_path, "w") as f:
+        json.dump(all_results, f, indent=2)
+
+    print("\n" + "=" * 60)
+    print(f"Training complete: {len(all_results)} templates saved")
+    print(f"Failed: {len(all_failed)}")
+    if all_results:
+        avg_acc = sum(r.get("train_stats", {}).get("accuracy", 0) for r in all_results) / len(all_results)
+        print(f"Average accuracy: {avg_acc:.1%}")
+
+    return all_results
+
+
 def main():
     parser = argparse.ArgumentParser(description="Train SubGraphDSLs with GSM8K verification")
     parser.add_argument("--templates", required=True, help="Input templates JSON")
@@ -546,6 +683,7 @@ def main():
     parser.add_argument("--model", default=None, help="Model override")
     parser.add_argument("--limit", type=int, default=None, help="Limit templates to process")
     parser.add_argument("--gsm8k-split", default="test", help="GSM8K split to use")
+    parser.add_argument("--parallel", type=int, default=0, help="Number of parallel workers (0=sequential)")
     args = parser.parse_args()
 
     # Load templates
@@ -568,16 +706,29 @@ def main():
         gsm8k_problems = []
 
     # Run training
-    train_subgraph_dsls(
-        templates=templates,
-        gsm8k_problems=gsm8k_problems,
-        provider=args.provider,
-        model=args.model,
-        batch_size=args.batch_size,
-        verify_samples=args.verify_samples,
-        max_regenerations=args.max_regenerations,
-        output_path=args.output,
-    )
+    if args.parallel > 0:
+        train_parallel(
+            templates=templates,
+            gsm8k_problems=gsm8k_problems,
+            provider=args.provider,
+            model=args.model,
+            batch_size=args.batch_size,
+            verify_samples=args.verify_samples,
+            max_regenerations=args.max_regenerations,
+            output_path=args.output,
+            num_workers=args.parallel,
+        )
+    else:
+        train_subgraph_dsls(
+            templates=templates,
+            gsm8k_problems=gsm8k_problems,
+            provider=args.provider,
+            model=args.model,
+            batch_size=args.batch_size,
+            verify_samples=args.verify_samples,
+            max_regenerations=args.max_regenerations,
+            output_path=args.output,
+        )
 
 
 if __name__ == "__main__":
