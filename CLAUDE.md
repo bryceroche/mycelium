@@ -1,16 +1,17 @@
-# The Big 6
+# The Big 8
 1. Our "Panama Hats" Problem (guides span creation)
 2. Attention Signals (Entropy, Received, Connectivity)
 3. Why MiniLM is Perfect (trained with MSE attention loss)
 4. Trained Signal Mapping (17k spans dataset)
 5. Cross-Attention Between Spans
 6. Building the Graph
-7. Primes = Spans = Templates = Sub-Graph
+7. AVOID hardcoded heuristics and verb classification Like The Plague
+8. Primes = Spans = Templates = Sub-Graph
 
 ## Terminology
 - **Attention Entropy** — Low entropy = important token (focused attention). High entropy = diffuse attention.
 - **Attention Received** — Which tokens get looked back to. High received attention = structurally important (entities, operators).
-- **Span Connectivity** — How strongly tokens within a span attend to each other. High connectivity = cohesive semantic unit.
+- **Attention Span Connectivity** — How strongly tokens within a span attend to each other. High connectivity = cohesive semantic unit.
 - **Centroid Embedding** — Average embedding of a span's tokens. Used for template matching.
 - **Welford's** — Online algorithm for calculating running mean/variance without storing all data.
 - **Span** — Contiguous tokens forming a semantic unit (e.g., "half the eggs").
