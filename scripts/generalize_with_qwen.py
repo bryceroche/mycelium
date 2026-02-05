@@ -462,6 +462,68 @@ def regex_fallback_generalize(span: str) -> Dict:
     }
 
 
+DSL_FOR_OP = {
+    'SET': 'value', 'ADD': 'entity + value', 'SUB': 'entity - value',
+    'MUL': 'entity * value', 'DIV': 'entity / value',
+}
+
+
+def sanity_check_operations(records: List[Dict]) -> List[Dict]:
+    """Post-processing sanity check on Qwen operation classifications.
+
+    Corrects obvious mismatches between span text and classified operation.
+    Only overrides high-confidence cases to avoid making things worse.
+    Returns records with corrections applied + stats printed.
+    """
+    corrections = 0
+
+    for r in records:
+        span = r['raw_span'].lower()
+        op = r['operation']
+        suggested = None
+
+        # --- DIV signals (high confidence) ---
+        # "half as many", "split equally", "divided among"
+        if re.search(r'\bhalf\b(?:\s+(?:as|of|the))', span):
+            suggested = 'DIV'
+        elif re.search(r'\b(?:split|divided)\s+(?:equally|among|between|into)', span):
+            suggested = 'DIV'
+
+        # --- MUL signals (high confidence) ---
+        # "twice as many", "double the", "triple the", rate patterns
+        elif re.search(r'\b(?:twice|double|triple|thrice)\b', span):
+            suggested = 'MUL'
+        elif re.search(r'\b\d+\s+(?:per|an?|each)\s+\w+', span):
+            # "$12 per hour", "5 each day", "$3 an hour"
+            suggested = 'MUL'
+        elif re.search(r'\b\d+%\s+(?:more|increase|higher)', span):
+            suggested = 'MUL'
+
+        # --- SUB signals (high confidence) ---
+        # "gave away", "spent", "lost", "ate", "used"
+        elif re.search(r'\b(?:gave\s+away|spent|lost|ate|removed|took\s+away)\b', span):
+            suggested = 'SUB'
+
+        # --- ADD signals (moderate confidence) ---
+        # "received", "got more", "earned more", "added"
+        elif re.search(r'\b(?:received|got\s+\d|earned\s+\d|found\s+\d|added\s+\d)', span):
+            suggested = 'ADD'
+
+        # Only correct if suggested differs from current AND current is likely wrong
+        # Don't override if Qwen already matched (it usually knows better for ambiguous cases)
+        if suggested and suggested != op:
+            # Only correct SET → something else (SET is the fallback, most likely wrong)
+            # Or correct obvious mismatches like ADD↔SUB
+            if op == 'SET' or (op == 'ADD' and suggested == 'SUB') or (op == 'SUB' and suggested == 'ADD'):
+                r['operation'] = suggested
+                r['dsl'] = DSL_FOR_OP[suggested]
+                r['operation_corrected'] = True
+                corrections += 1
+
+    print(f"Sanity check: corrected {corrections}/{len(records)} operations")
+    return records
+
+
 # =============================================================================
 # Main Pipeline
 # =============================================================================
@@ -777,6 +839,17 @@ def main():
 
     fail_count = sum(1 for r in all_records if r.get('qwen_failed'))
     print(f"Qwen failures: {fail_count}/{len(all_records)} ({100*fail_count/max(len(all_records),1):.1f}%)")
+
+    # Sanity-check operation classifications against span text
+    all_records = sanity_check_operations(all_records)
+
+    # Reprint operation distribution after corrections
+    op_counts_corrected = defaultdict(int)
+    for r in all_records:
+        op_counts_corrected[r['operation']] += 1
+    print(f"Operation distribution (after sanity check):")
+    for op, count in sorted(op_counts_corrected.items()):
+        print(f"  {op}: {count}")
 
     # Compute template embeddings and deduplicate
     if not args.skip_embeddings:
