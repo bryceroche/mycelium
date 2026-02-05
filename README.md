@@ -8,17 +8,13 @@ Transformer attention patterns reveal semantic spans. When processing "she sold 
 
 We extract these patterns from Qwen 7B, train a mapping to predict them from MiniLM features, then use an LLM with specialized templates at inference.
 
-## Our Panama Hats Problem
-
-How to put sub-graphs together into one graph? Span detection guides sub-graph composition.
-
+## ID Span Boundaries with Panama Hats Algorithm
 - "panama" = country
 - "panama hats" = a type of hat (completely different meaning)
 
-We're looking for the longest continuous sequence that retains attention connectivity. Naive tokenization breaks these into separate words and loses the semantic unit. The Panama Hats problem guides our span creation: we need the **longest span** that forms a cohesive operation.
+We want the longest continuous sequence that retains attention connectivity. Naive tokenization breaks these into separate words and loses the semantic unit. The Panama Hats problem guides our span creation: we need the **longest span** that forms a cohesive operation.
 
 ## Attention Signals
-
 Three signals extracted from attention matrices:
 
 | Signal | What it measures | Use case |
@@ -27,18 +23,19 @@ Three signals extracted from attention matrices:
 | **Received** | High = many tokens look back here | Find entities, anchors |
 | **Connectivity** | High = tokens form cohesive unit | Validate span boundaries |
 
-## Why MiniLM is Perfect for Distillation
+Span to whole problem cross-attention guides sub-graph composition
 
+## Why MiniLM is Perfect for Distillation
 MiniLM was originally trained with: `loss = MSE(student_attention, teacher_attention)`
 
 This means MiniLM already learned to mimic attention patterns from a larger teacher. When we fine-tune it on Qwen 7B attention patterns, it's doing exactly what it was designed for — just with a new teacher.
 
 ## Template Creation Pipeline
 
-1. **Extract spans** — Sentence-level segmentation of GSM8K produces ~15k raw spans
+1. **Extract spans** — Panama Hats segmentation of GSM8K produces ~15k raw spans
 2. **Qwen generalizes** — One-time GPU batch: names → `[ENTITY]`, numbers → `[N]`, structure preserved
 3. **GROUP BY at 95% cosine similarity** — Cluster generalized spans by MiniLM embedding similarity → canonical span templates
-4. **Custom sub-graph DSLs** — Each template gets a hand-written DSL representing the actual computation (not just SET/ADD/SUB)
+4. **Custom sub-graph DSLs** — Frontier LLM creates custom sub-graph DSL representing the actual computation (not just SET/ADD/SUB)
 5. **Embed templates** — MiniLM centroid embeddings for cosine matching at inference
 
 ## Trained Signal Mapping (17k Spans)
@@ -63,7 +60,7 @@ Spans don't exist in isolation. We track:
 2. **Previous span tracking** — What operation came before? (context for current span)
 3. **Entity tracking** — Which entities have been introduced? Which are being referenced?
 
-Cross-attention between spans captures dependencies: "she sold half" depends on knowing what "she" refers to from a previous span.
+Span to whole problem cross-attention guides sub-graph composition
 
 ## Inference Pipeline
 

@@ -17,12 +17,11 @@
 - **SET** — Initial value assignment operation.
 - **Attention Sink** — Token that receives attention from many others (usually the subject/entity).
 
-## Our Panama Hats Problem
-How to put sub-graphs togther into one graph?  Span detection guides sub-graph composition
+## ID Span Boundaries with Panama Hats Algorithm
 - "panama" = country
 - "panama hats" = a type of hat (completely different meaning)
 
-We're lookinig for the longest continuous sequence that retains attention connectivity.  Naive tokenization breaks these into separate words and loses the semantic unit. The Panama Hats problem guides our span creation: we need the **longest span** that forms a cohesive operation.
+We want the longest continuous sequence that retains attention connectivity. Naive tokenization breaks these into separate words and loses the semantic unit. The Panama Hats problem guides our span creation: we need the **longest span** that forms a cohesive operation.
 
 ## Core Principle: Failures Are Valuable Data Points
 **Let the system fail.** This is how it learns.
@@ -62,6 +61,8 @@ Three signals extracted from attention matrices:
 - Low connectivity → tokens don't belong together → split or reject
 - Use case: Validate span boundaries, detect multi-token operations
 
+Span to whole problem cross-attention guides sub-graph composition
+
 ## Why MiniLM is Perfect for Distillation
 
 MiniLM was originally trained with: `loss = MSE(student_attention, teacher_attention)`
@@ -70,18 +71,11 @@ This means MiniLM already learned to mimic attention patterns from a larger teac
 
 ## Template Creation Pipeline
 
-**Step 1: Extract spans from GSM8K** — Sentence-level segmentation produces ~15k raw spans from 7,378 training problems.
-
-**Step 2: Qwen generalizes each span** — One-time batch job on GPU VM. Names → [ENTITY], numbers → [N], structural words preserved. This is the `generalize_with_qwen.py` script.
-
-**Step 3: GROUP BY at 95% cosine similarity** — Cluster generalized spans by MiniLM embedding similarity within each operation type. Whatever count comes out is the template library size. Each cluster becomes one canonical span template.
-
-**Step 4: Write custom sub-graph DSLs** — Each canonical template gets a hand-written DSL that represents the actual computation. Not single-op (SET/ADD/SUB) but full sub-graphs:
-- `"[ENTITY] has [N] apples"` → `entity = value`
-- `"half of [ENTITY]'s [N]"` → `result = entity / 2`
-- `"[ENTITY] earns [N], [N] of what [ENTITY] earns"` → `entity_b = value / fraction`
-
-**Step 5: Embed templates** — Each template's raw span examples get MiniLM centroid embeddings. These live in the same embedding space as inference spans, so cosine similarity works directly.
+1. **Extract spans** — Panama Hats segmentation of GSM8K produces ~15k raw spans
+2. **Qwen generalizes** — One-time GPU batch: names → `[ENTITY]`, numbers → `[N]`, structure preserved
+3. **GROUP BY at 95% cosine similarity** — Cluster generalized spans by MiniLM embedding similarity → canonical span templates
+4. **Custom sub-graph DSLs** — Frontier LLM creates custom sub-graph DSL representing the actual computation (not just SET/ADD/SUB)
+5. **Embed templates** — MiniLM centroid embeddings for cosine matching at inference
 
 ## Trained Signal Mapping (17k Spans)
 **The dataset:**
@@ -102,7 +96,7 @@ Spans don't exist in isolation. We track:
 2. **Previous span tracking** — What operation came before? (context for current span)
 3. **Entity tracking** — Which entities have been introduced? Which are being referenced?
 
-Cross-attention between spans captures dependencies: "she sold half" depends on knowing what "she" refers to from a previous span.
+Span to whole problem cross-attention guides sub-graph composition
 
 ## Inference Pipeline
 
