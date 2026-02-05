@@ -145,39 +145,51 @@ def parse_qwen_response(response: str) -> Optional[Dict]:
     Qwen2.5-Math-Instruct does chain-of-thought reasoning, so the structured
     PATTERN/OPERATION/DSL lines may appear anywhere in verbose output, or
     in a \\boxed{} block. We search flexibly rather than requiring exact format.
+
+    Key Qwen quirks handled:
+    - Bold markdown headers: **PATTERN:**, ** operation:**
+    - Abbreviates "DSL" as "sl": ** sl:**, sl:
+    - LaTeX wrappers: \\text{OPERATION: ADD}
+    - Truncated CoT where operation is mentioned in reasoning
     """
     result = {}
 
-    # Strategy 1: Look for exact PATTERN:/OPERATION:/DSL: lines (ideal case)
-    pattern_match = re.search(r'PATTERN:\s*(.+)', response, re.IGNORECASE)
+    # Pre-process: strip markdown bold markers and normalize whitespace
+    cleaned = re.sub(r'\*\*\s*', '', response)
+    # Qwen consistently writes "sl" instead of "DSL" — normalize
+    cleaned = re.sub(r'\bsl\b', 'DSL', cleaned, flags=re.IGNORECASE)
+    # Strip LaTeX \text{} wrappers
+    cleaned = re.sub(r'\\text\{([^}]*)\}', r'\1', cleaned)
+
+    # Strategy 1: Look for PATTERN:/OPERATION:/DSL: lines
+    pattern_match = re.search(r'PATTERN:\s*(.+)', cleaned, re.IGNORECASE)
     if pattern_match:
         result['pattern'] = pattern_match.group(1).strip()
 
-    op_match = re.search(r'OPERATION:\s*(SET|ADD|SUB|MUL|DIV)', response, re.IGNORECASE)
+    op_match = re.search(r'OPERATION:\s*(SET|ADD|SUB|MUL|DIV)', cleaned, re.IGNORECASE)
     if op_match:
         result['operation'] = op_match.group(1).strip().upper()
 
-    dsl_match = re.search(r'DSL:\s*(.+)', response, re.IGNORECASE)
+    dsl_match = re.search(r'DSL:\s*(.+)', cleaned, re.IGNORECASE)
     if dsl_match:
         result['dsl'] = dsl_match.group(1).strip()
 
     if 'pattern' in result and 'operation' in result and 'dsl' in result:
-        return result
+        return _cleanup_result(result)
 
-    # Strategy 2: Parse from chain-of-thought (Qwen often says "the operation is ADD")
+    # Strategy 2: Parse from chain-of-thought (Qwen says "the operation is ADD/MUL/etc")
     if 'operation' not in result:
-        # Look for operation keywords in context
         op_context = re.search(
-            r'(?:operation\s+is|operation:\s*)\s*(SET|ADD|SUB|MUL|DIV|addition|subtraction|multiplication|division|setting)',
-            response, re.IGNORECASE
+            r'(?:operation\s+(?:is|here is|would be)|operation:\s*)\s*"?\s*(SET|ADD|SUB|MUL|DIV|AD|addition|subtraction|multiplication|division|setting|multiply|divid)',
+            cleaned, re.IGNORECASE
         )
         if op_context:
             op_word = op_context.group(1).strip().upper()
             OP_MAP = {
-                'ADDITION': 'ADD', 'ADD': 'ADD',
+                'ADDITION': 'ADD', 'ADD': 'ADD', 'AD': 'ADD',
                 'SUBTRACTION': 'SUB', 'SUB': 'SUB',
-                'MULTIPLICATION': 'MUL', 'MUL': 'MUL',
-                'DIVISION': 'DIV', 'DIV': 'DIV',
+                'MULTIPLICATION': 'MUL', 'MUL': 'MUL', 'MULTIPLY': 'MUL',
+                'DIVISION': 'DIV', 'DIV': 'DIV', 'DIVID': 'DIV',
                 'SETTING': 'SET', 'SET': 'SET',
             }
             result['operation'] = OP_MAP.get(op_word, 'SET')
@@ -186,7 +198,7 @@ def parse_qwen_response(response: str) -> Optional[Dict]:
     if 'operation' not in result:
         dsl_anywhere = re.search(
             r'(entity\s*[\+\-\*/]\s*value|ref\s*[\+\-\*/]\s*(?:value|\d+)|value)',
-            response, re.IGNORECASE
+            cleaned, re.IGNORECASE
         )
         if dsl_anywhere:
             dsl_text = dsl_anywhere.group(1).strip().lower()
@@ -203,12 +215,28 @@ def parse_qwen_response(response: str) -> Optional[Dict]:
             else:
                 result['operation'] = 'SET'
 
-    # Strategy 4: Parse from \boxed{} (Qwen math format)
+    # Strategy 4: Infer operation from explicit math operators in CoT
+    # (conservative — only match actual operator symbols, not descriptive words
+    # which appear in Qwen's analysis text and cause false positives)
+    if 'operation' not in result:
+        # Look for actual computation expressions in the response
+        if re.search(r'entity\s*/\s*value|ref\s*/\s*\d+|\bDIV\b', cleaned):
+            result['operation'] = 'DIV'
+        elif re.search(r'entity\s*\*\s*value|ref\s*\*\s*\d+|\bMUL\b', cleaned):
+            result['operation'] = 'MUL'
+        elif re.search(r'entity\s*\+\s*value|ref\s*\+\s*\d+|\bADD\b', cleaned):
+            result['operation'] = 'ADD'
+        elif re.search(r'entity\s*-\s*value|ref\s*-\s*\d+|\bSUB\b', cleaned):
+            result['operation'] = 'SUB'
+        else:
+            # Last resort: default to SET
+            result['operation'] = 'SET'
+
+    # Strategy 5: Parse from \boxed{} (Qwen math format)
     boxed = re.search(r'\\boxed\{(.+?)\}', response)
     if boxed:
         boxed_text = boxed.group(1)
         if 'pattern' not in result:
-            # First segment before period/comma is often the pattern
             parts = re.split(r'[.;]', boxed_text)
             if parts:
                 result['pattern'] = parts[0].strip()
@@ -217,7 +245,7 @@ def parse_qwen_response(response: str) -> Optional[Dict]:
     if 'pattern' not in result:
         entity_pattern = re.search(
             r'(?:pattern\s+is|pattern:)\s*(.+?)(?:\.|$)',
-            response, re.IGNORECASE
+            cleaned, re.IGNORECASE
         )
         if entity_pattern:
             result['pattern'] = entity_pattern.group(1).strip()
@@ -230,19 +258,49 @@ def parse_qwen_response(response: str) -> Optional[Dict]:
         }
         result['dsl'] = DSL_DEFAULTS.get(result['operation'], 'value')
 
-    # Clean up parsed values — strip chain-of-thought prefixes
-    for key in ('pattern', 'dsl'):
-        if key in result:
-            # Remove bullet prefixes like "- The pattern is:" or "- The DSL is:"
-            val = re.sub(r'^[-*\d.]+\s*(?:The\s+)?(?:pattern|dsl|operation)\s+(?:is|would be):?\s*', '', result[key], flags=re.IGNORECASE)
-            result[key] = val.strip().rstrip('.')
-
     if 'operation' in result and 'dsl' in result:
-        # Pattern is optional — use a placeholder if not found
         if 'pattern' not in result:
             result['pattern'] = result['dsl']
-        return result
+        return _cleanup_result(result)
     return None
+
+
+def _cleanup_result(result: Dict) -> Dict:
+    """Clean up parsed result — strip CoT prefixes and markdown artifacts."""
+    DSL_DEFAULTS = {
+        'SET': 'value', 'ADD': 'entity + value', 'SUB': 'entity - value',
+        'MUL': 'entity * value', 'DIV': 'entity / value',
+    }
+
+    for key in ('pattern', 'dsl'):
+        if key in result:
+            val = result[key]
+            # Remove bullet prefixes like "- The pattern is:"
+            val = re.sub(r'^[-*\d.]+\s*(?:The\s+)?(?:pattern|dsl|operation)\s+(?:is|would be):?\s*', '', val, flags=re.IGNORECASE)
+            # Remove trailing markdown, LaTeX fragments
+            val = re.sub(r'\s*\\?\[?\s*$', '', val)
+            val = re.sub(r'\s*\*+\s*$', '', val)
+            result[key] = val.strip().rstrip('.')
+
+    # Validate DSL — if it's a garbage CoT sentence, replace with default
+    if 'dsl' in result:
+        dsl = result['dsl']
+        # Valid DSLs are short expressions like "value", "entity + value", "ref * 2"
+        is_garbage = (
+            len(dsl) > 60
+            or 'computation' in dsl.lower()
+            or 'expression' in dsl.lower()
+            or 'sentence' in dsl.lower()
+            or dsl.startswith('- ')
+            or dsl.startswith('The ')
+            or dsl.startswith('Since ')
+            or dsl.startswith('Let')
+            or dsl.startswith('Write')
+        )
+        if is_garbage and 'operation' in result:
+            result['dsl'] = DSL_DEFAULTS.get(result['operation'], 'value')
+
+    return result
 
 
 def generalize_batch_qwen(
@@ -295,7 +353,7 @@ def generalize_batch_qwen(
         with torch.no_grad():
             outputs = model.generate(
                 **inputs,
-                max_new_tokens=300,
+                max_new_tokens=512,
                 do_sample=False,
             )
 
@@ -345,7 +403,7 @@ def generalize_batch_qwen(
             with torch.no_grad():
                 single_output = model.generate(
                     **single_input,
-                    max_new_tokens=300,
+                    max_new_tokens=512,
                     do_sample=False,
                 )
 
