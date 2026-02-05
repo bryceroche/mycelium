@@ -1,10 +1,8 @@
 """Unified type definitions for Mycelium.
 
-This module consolidates duplicate dataclass definitions from:
-- attention/classifier.py
-- subspan_detector.py
-- simple_pipeline.py
-- dual_signal_solver.py
+This module provides canonical dataclass definitions used throughout the
+codebase. All components should import from here rather than defining
+their own duplicate types.
 
 Following the CLAUDE.md principle: "consolidate methods - for example all
 database connections should go through a data layer instead of having
@@ -33,13 +31,8 @@ class Span:
 class Operation:
     """A mathematical operation extracted from text.
 
-    This is the unified Operation dataclass combining fields from:
-    - attention/classifier.py Operation
-    - subspan_detector.py Operation
-    - simple_pipeline.py Operation
-    - dual_signal_solver.py SolverOperation
-
-    All fields that aren't universally needed are Optional.
+    This is the canonical Operation dataclass for all pipeline components.
+    Fields that aren't universally needed are Optional.
     """
     subgraph: Optional[Dict[str, Any]]  # SubGraphDSL dict for execution
     value: Any                          # The numeric value or operands (float or tuple)

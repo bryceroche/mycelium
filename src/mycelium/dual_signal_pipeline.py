@@ -672,21 +672,18 @@ class DualSignalPipeline:
     def get_stats(self) -> Dict[str, Any]:
         """Get pipeline statistics.
 
+        Note: NO operation type categorization - per CLAUDE.md, we avoid
+        classifying templates by operation type like the plague.
+
         Returns:
             Dictionary with template counts, weights, etc.
         """
-        templates_by_op = {}
-        for template in self.store.templates.values():
-            # Extract operation from subgraph for stats
-            if template.subgraph and template.subgraph.get("steps"):
-                op = template.subgraph["steps"][-1].get("op", "SET")
-            else:
-                op = "SET"
-            templates_by_op[op] = templates_by_op.get(op, 0) + 1
+        # Count templates with/without subgraphs
+        with_subgraph = sum(1 for t in self.store.templates.values() if t.subgraph)
 
         return {
             "total_templates": len(self.store.templates),
-            "templates_by_operation": templates_by_op,
+            "templates_with_subgraph": with_subgraph,
             "embedding_weight": self.store.embedding_weight,
             "attention_weight": self.store.attention_weight,
             "high_variance_templates": len(self.get_decomposition_candidates()),
@@ -697,7 +694,7 @@ class DualSignalPipeline:
         stats = self.get_stats()
         print("\n=== Dual-Signal Pipeline Stats ===")
         print(f"Total templates: {stats['total_templates']}")
-        print(f"Templates by operation: {stats['templates_by_operation']}")
+        print(f"Templates with subgraph: {stats['templates_with_subgraph']}")
         print(f"Signal weights: embedding={stats['embedding_weight']:.2f}, "
               f"attention={stats['attention_weight']:.2f}")
         print(f"High variance templates: {stats['high_variance_templates']}")

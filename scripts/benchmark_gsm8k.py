@@ -99,9 +99,8 @@ def main():
                 "predicted": predicted,
                 "correct": is_correct,
                 "spans": result.spans_detected,
-                "ops": [{"type": (op.subgraph["steps"][-1]["op"] if op.subgraph and op.subgraph.get("steps") else "SET"),
-                        "value": op.value, "entity": op.entity,
-                        "template_id": op.template_id, "span_text": op.span_text}
+                "ops": [{"template_id": op.template_id, "value": op.value,
+                        "entity": op.entity, "span_text": op.span_text}
                        for op in result.operations],
             })
 
