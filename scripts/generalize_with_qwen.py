@@ -368,7 +368,7 @@ def generalize_batch_qwen(
         with torch.no_grad():
             outputs = model.generate(
                 **inputs,
-                max_new_tokens=512,
+                max_new_tokens=300,
                 do_sample=False,
             )
 
@@ -418,7 +418,7 @@ def generalize_batch_qwen(
             with torch.no_grad():
                 single_output = model.generate(
                     **single_input,
-                    max_new_tokens=512,
+                    max_new_tokens=300,
                     do_sample=False,
                 )
 
