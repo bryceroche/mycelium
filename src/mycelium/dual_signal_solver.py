@@ -124,9 +124,9 @@ class DualSignalSolver:
                 )
 
             # Pipeline loads templates in __init__ (qwen_templates.json or deduplicated_templates.json)
-            # If explicit path was given, load that instead
+            # If explicit path was given, REPLACE with that instead
             if not self.mock_model and self.templates_path:
-                self._pipeline.load_templates(self.templates_path)
+                self._pipeline.load_templates(self.templates_path, replace=True)
 
             self._templates_loaded = True
 
