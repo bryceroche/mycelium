@@ -44,41 +44,19 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 # =============================================================================
 
 def extract_spans(problem_text: str) -> List[str]:
-    """Extract operational spans from a problem.
+    """Extract spans from a problem by sentence segmentation.
 
-    Splits on sentence boundaries. Filters out questions.
-    Keeps spans with numbers OR operational keywords (twice, half, etc).
+    No filtering — every sentence is a span. Let the system learn
+    what's important rather than hardcoding heuristics.
     """
-    # Split on sentence-ending punctuation (but not abbreviations like Dr.)
     parts = re.split(r'(?<=[.!?])\s+', problem_text)
-
-    # Operational keywords that don't require explicit numbers
-    OP_KEYWORDS = [
-        'twice', 'thrice', 'double', 'triple', 'half', 'quarter',
-        'more than', 'less than', 'fewer than', 'times as',
-        'each', 'every', 'per',
-    ]
 
     spans = []
     for part in parts:
-        part = part.strip().rstrip('.!?')
+        part = part.strip()
         if not part:
             continue
-
-        # Skip questions
-        part_lower = part.lower()
-        if any(q in part_lower for q in [
-            'how many', 'how much', 'what is', 'what are', 'what was',
-            'what does', 'what did', 'how long', 'how far',
-        ]):
-            continue
-
-        # Keep if has a number OR operational keywords
-        has_number = bool(re.search(r'\d+', part))
-        has_op_keyword = any(kw in part_lower for kw in OP_KEYWORDS)
-
-        if has_number or has_op_keyword:
-            spans.append(part)
+        spans.append(part)
 
     return spans
 
@@ -472,6 +450,7 @@ def generalize_batch_qwen(
         if batch_num % checkpoint_every == 0:
             checkpoint_data = {
                 "results": results,
+                "raw_spans": spans,  # Save all raw spans so generic_method can be re-run
                 "next_batch_idx": i + batch_size,
                 "total_spans": len(spans),
                 "batches_done": batch_num,
@@ -507,66 +486,6 @@ def regex_fallback_generalize(span: str) -> Dict:
     }
 
 
-DSL_FOR_OP = {
-    'SET': 'value', 'ADD': 'entity + value', 'SUB': 'entity - value',
-    'MUL': 'entity * value', 'DIV': 'entity / value',
-}
-
-
-def sanity_check_operations(records: List[Dict]) -> List[Dict]:
-    """Post-processing sanity check on Qwen operation classifications.
-
-    Corrects obvious mismatches between span text and classified operation.
-    Only overrides high-confidence cases to avoid making things worse.
-    Returns records with corrections applied + stats printed.
-    """
-    corrections = 0
-
-    for r in records:
-        span = r['raw_span'].lower()
-        op = r['operation']
-        suggested = None
-
-        # --- DIV signals (high confidence) ---
-        # "half as many", "split equally", "divided among"
-        if re.search(r'\bhalf\b(?:\s+(?:as|of|the))', span):
-            suggested = 'DIV'
-        elif re.search(r'\b(?:split|divided)\s+(?:equally|among|between|into)', span):
-            suggested = 'DIV'
-
-        # --- MUL signals (high confidence) ---
-        # "twice as many", "double the", "triple the", rate patterns
-        elif re.search(r'\b(?:twice|double|triple|thrice)\b', span):
-            suggested = 'MUL'
-        elif re.search(r'\b\d+\s+(?:per|an?|each)\s+\w+', span):
-            # "$12 per hour", "5 each day", "$3 an hour"
-            suggested = 'MUL'
-        elif re.search(r'\b\d+%\s+(?:more|increase|higher)', span):
-            suggested = 'MUL'
-
-        # --- SUB signals (high confidence) ---
-        # "gave away", "spent", "lost", "ate", "used"
-        elif re.search(r'\b(?:gave\s+away|spent|lost|ate|removed|took\s+away)\b', span):
-            suggested = 'SUB'
-
-        # --- ADD signals (moderate confidence) ---
-        # "received", "got more", "earned more", "added"
-        elif re.search(r'\b(?:received|got\s+\d|earned\s+\d|found\s+\d|added\s+\d)', span):
-            suggested = 'ADD'
-
-        # Only correct if suggested differs from current AND current is likely wrong
-        # Don't override if Qwen already matched (it usually knows better for ambiguous cases)
-        if suggested and suggested != op:
-            # Only correct SET → something else (SET is the fallback, most likely wrong)
-            # Or correct obvious mismatches like ADD↔SUB
-            if op == 'SET' or (op == 'ADD' and suggested == 'SUB') or (op == 'SUB' and suggested == 'ADD'):
-                r['operation'] = suggested
-                r['dsl'] = DSL_FOR_OP[suggested]
-                r['operation_corrected'] = True
-                corrections += 1
-
-    print(f"Sanity check: corrected {corrections}/{len(records)} operations")
-    return records
 
 
 # =============================================================================
@@ -686,91 +605,76 @@ def compute_template_embeddings(
         centroid = np.mean(embeddings, axis=0)
         centroid = centroid / (np.linalg.norm(centroid) + 1e-8)
 
-        # Majority vote for operation; DSL is deterministic from operation type
-        ops = [r['operation'] for r in group]
-        majority_op = max(set(ops), key=ops.count)
-        majority_dsl = DSL_FOR_OP.get(majority_op, 'value')
-
         raw_templates.append({
             'pattern': pattern,
-            'operation': majority_op,
-            'dsl': majority_dsl,
             'centroid': centroid,
             'count': len(group),
-            'examples': [r['raw_span'] for r in group[:5]],
+            'examples': [r['raw_span'] for r in group[:10]],
             'qwen_fail_rate': sum(1 for r in group if r.get('qwen_failed')) / len(group),
         })
 
     print(f"  Templates before clustering: {len(raw_templates)}")
 
-    # Stage 2: Cluster by embedding similarity WITHIN same operation type
-    # Biased towards MORE templates (high threshold)
-    by_op = defaultdict(list)
-    for t in raw_templates:
-        by_op[t['operation']].append(t)
+    # Stage 2: Cluster by embedding similarity across ALL templates
+    # No operation-type partitioning — spans can contain multiple ops,
+    # so cosine similarity alone determines what merges.
+    raw_templates.sort(key=lambda t: -t['count'])
+
+    centroids = np.array([t['centroid'] for t in raw_templates])
+    norms = np.linalg.norm(centroids, axis=1, keepdims=True)
+    norms[norms == 0] = 1
+    centroids_norm = centroids / norms
+
+    used = set()
+    clusters = []
+
+    for i in range(len(raw_templates)):
+        if i in used:
+            continue
+
+        cluster = [i]
+        used.add(i)
+
+        for j in range(i + 1, len(raw_templates)):
+            if j in used:
+                continue
+            sim = np.dot(centroids_norm[i], centroids_norm[j])
+            if sim >= similarity_threshold:
+                cluster.append(j)
+                used.add(j)
+
+        clusters.append(cluster)
+
+    print(f"  Clustered: {len(raw_templates)} → {len(clusters)} templates")
 
     final_templates = []
-    for op, op_templates in by_op.items():
-        # Sort by count descending (most common = best representative)
-        op_templates.sort(key=lambda t: -t['count'])
+    for cluster in clusters:
+        # Representative = highest count (already sorted)
+        rep_idx = cluster[0]
+        rep = raw_templates[rep_idx]
 
-        centroids = np.array([t['centroid'] for t in op_templates])
-        norms = np.linalg.norm(centroids, axis=1, keepdims=True)
-        norms[norms == 0] = 1
-        centroids_norm = centroids / norms
+        # Merge counts and examples from cluster
+        total_count = sum(raw_templates[i]['count'] for i in cluster)
+        all_examples = []
+        for i in cluster:
+            all_examples.extend(raw_templates[i]['examples'])
 
-        used = set()
-        clusters = []
+        # Recompute centroid from merged cluster
+        cluster_centroids = centroids[cluster]
+        merged_centroid = np.mean(cluster_centroids, axis=0)
+        merged_centroid = merged_centroid / (np.linalg.norm(merged_centroid) + 1e-8)
 
-        for i in range(len(op_templates)):
-            if i in used:
-                continue
+        template_id = re.sub(r'[^a-z0-9]', '_', rep['pattern'].lower())[:50]
 
-            cluster = [i]
-            used.add(i)
-
-            for j in range(i + 1, len(op_templates)):
-                if j in used:
-                    continue
-                sim = np.dot(centroids_norm[i], centroids_norm[j])
-                if sim >= similarity_threshold:
-                    cluster.append(j)
-                    used.add(j)
-
-            clusters.append(cluster)
-
-        print(f"  {op}: {len(op_templates)} → {len(clusters)} templates")
-
-        for cluster in clusters:
-            # Representative = highest count
-            rep_idx = cluster[0]  # Already sorted by count
-            rep = op_templates[rep_idx]
-
-            # Merge counts and examples from cluster
-            total_count = sum(op_templates[i]['count'] for i in cluster)
-            all_examples = []
-            for i in cluster:
-                all_examples.extend(op_templates[i]['examples'])
-
-            # Recompute centroid from merged cluster
-            cluster_centroids = centroids[cluster]
-            merged_centroid = np.mean(cluster_centroids, axis=0)
-            merged_centroid = merged_centroid / (np.linalg.norm(merged_centroid) + 1e-8)
-
-            template_id = re.sub(r'[^a-z0-9]', '_', rep['pattern'].lower())[:50]
-            template_id = f"{rep['operation'].lower()}_{template_id}"
-
-            final_templates.append({
-                'template_id': template_id,
-                'pattern': rep['pattern'],
-                'operation': rep['operation'],
-                'base_dsl': DSL_FOR_OP.get(rep['operation'], 'value'),
-                'embedding_centroid': merged_centroid.tolist(),
-                'count': total_count,
-                'cluster_size': len(cluster),
-                'pattern_examples': all_examples[:5],
-                'qwen_fail_rate': rep['qwen_fail_rate'],
-            })
+        final_templates.append({
+            'template_id': template_id,
+            'pattern': rep['pattern'],
+            'embedding_centroid': merged_centroid.tolist(),
+            'count': total_count,
+            'cluster_size': len(cluster),
+            'pattern_examples': all_examples[:10],
+            'qwen_fail_rate': rep['qwen_fail_rate'],
+        })
 
     final_templates.sort(key=lambda t: -t['count'])
     return final_templates
@@ -874,26 +778,8 @@ def main():
         json.dump(all_records, f, indent=2)
 
     # Stats
-    op_counts = defaultdict(int)
-    for r in all_records:
-        op_counts[r['operation']] += 1
-    print(f"\nOperation distribution:")
-    for op, count in sorted(op_counts.items()):
-        print(f"  {op}: {count}")
-
     fail_count = sum(1 for r in all_records if r.get('qwen_failed'))
-    print(f"Qwen failures: {fail_count}/{len(all_records)} ({100*fail_count/max(len(all_records),1):.1f}%)")
-
-    # Sanity-check operation classifications against span text
-    all_records = sanity_check_operations(all_records)
-
-    # Reprint operation distribution after corrections
-    op_counts_corrected = defaultdict(int)
-    for r in all_records:
-        op_counts_corrected[r['operation']] += 1
-    print(f"Operation distribution (after sanity check):")
-    for op, count in sorted(op_counts_corrected.items()):
-        print(f"  {op}: {count}")
+    print(f"\nQwen failures: {fail_count}/{len(all_records)} ({100*fail_count/max(len(all_records),1):.1f}%)")
 
     # Compute template embeddings and deduplicate
     if not args.skip_embeddings:
@@ -902,7 +788,7 @@ def main():
         print(f"\nDeduplicated to {len(templates)} templates")
         print(f"\nTop 20 templates:")
         for t in templates[:20]:
-            print(f"  [{t['operation']:3}] {t['pattern'][:50]:50} (n={t['count']:4}) DSL: {t['base_dsl']}")
+            print(f"  {t['pattern'][:60]:60} (n={t['count']:4}, cluster={t['cluster_size']})")
 
         print(f"\nSaving templates to {templates_path}...")
         with open(templates_path, 'w') as f:
