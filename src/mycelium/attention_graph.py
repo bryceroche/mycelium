@@ -13,8 +13,10 @@ Per CLAUDE.md:
 """
 
 import numpy as np
-from typing import List, Tuple, Dict, Optional, NamedTuple
+from typing import List, Tuple, Dict, Optional, NamedTuple, Union
 from dataclasses import dataclass, field
+
+from mycelium.subgraph_dsl import SubGraphDSL
 
 
 def _join_wordpiece_tokens(tokens: List[str]) -> str:
@@ -957,6 +959,180 @@ class GraphExecutor:
             return ref_value / span_value if span_value != 0 else None
 
         return ref_value
+
+    def execute_subgraph_dsl(
+        self,
+        dsl: SubGraphDSL,
+        span: Span,
+        entity_values: Dict[str, float],
+        span_idx: int,
+        graph: SpanGraph,
+        attention_matrix: Optional[np.ndarray] = None,
+    ) -> Optional[float]:
+        """Execute a sub-graph DSL for a span.
+
+        Extracts params from span text, resolves inputs from entity_values
+        via cross-attention, and runs the sub-graph computation.
+
+        Args:
+            dsl: The SubGraphDSL to execute
+            span: Current span
+            entity_values: Current entity state (for resolving inputs)
+            span_idx: Index of current span in graph
+            graph: Full span graph
+            attention_matrix: Full problem attention matrix
+
+        Returns:
+            Computed output value, or None on failure
+        """
+        # Extract param values from span text
+        numbers = self.extract_numbers(span.text)
+        param_values: Dict[str, float] = {}
+
+        # Assign extracted numbers to param slots in order
+        param_names = list(dsl.params.keys())
+        for i, name in enumerate(param_names):
+            if i < len(numbers):
+                param_values[name] = numbers[i]
+
+        # Resolve input values from entity state via cross-attention
+        input_values: Dict[str, float] = {}
+        if dsl.inputs:
+            # Find upstream spans via cross-attention edges
+            upstream_entities = []
+            for src, dst, weight in sorted(graph.edges, key=lambda e: -e[2]):
+                if dst == span_idx and src < len(graph.spans):
+                    src_span = graph.spans[src]
+                    if src_span.entities:
+                        best = max(src_span.entities, key=lambda e: e.attention_received)
+                        name = best.text.lower()
+                        if name in entity_values:
+                            upstream_entities.append((name, entity_values[name], weight))
+
+            # Also check span's own entities for references
+            if span.entities:
+                for entity in sorted(span.entities, key=lambda e: -e.attention_received):
+                    name = entity.text.lower()
+                    if name in entity_values:
+                        upstream_entities.append((name, entity_values[name], entity.attention_received))
+
+            # Assign upstream values to input slots in order
+            input_names = list(dsl.inputs.keys())
+            seen = set()
+            upstream_idx = 0
+            for input_name in input_names:
+                while upstream_idx < len(upstream_entities):
+                    ent_name, ent_val, _ = upstream_entities[upstream_idx]
+                    upstream_idx += 1
+                    if ent_name not in seen:
+                        input_values[input_name] = ent_val
+                        seen.add(ent_name)
+                        break
+
+            # Fallback: if we couldn't resolve all inputs, try last known value
+            for input_name in input_names:
+                if input_name not in input_values and entity_values:
+                    input_values[input_name] = list(entity_values.values())[-1]
+
+        try:
+            return dsl.execute(param_values, input_values)
+        except (ValueError, TypeError, ZeroDivisionError):
+            return None
+
+    def execute_graph_with_subgraphs(
+        self,
+        graph: SpanGraph,
+        span_dsls: List[Tuple[int, SubGraphDSL]],
+        attention_matrix: Optional[np.ndarray] = None,
+    ) -> ExecutionResult:
+        """Execute span graph using sub-graph DSLs.
+
+        Each span has a 1:1 SubGraphDSL. Inputs are wired from upstream
+        sub-graph outputs via cross-attention edges.
+
+        Args:
+            graph: SpanGraph with spans, edges, and entities
+            span_dsls: List of (span_idx, SubGraphDSL) tuples
+            attention_matrix: Full problem attention matrix
+
+        Returns:
+            ExecutionResult with composed answer
+        """
+        if not graph.spans:
+            return ExecutionResult(
+                answer=None, entity_values={}, execution_trace=["No spans"],
+                success=False, error="Empty graph"
+            )
+
+        entity_values: Dict[str, float] = {}
+        trace: List[str] = []
+        dsl_map = {idx: dsl for idx, dsl in span_dsls}
+        order = self._topological_sort(graph)
+
+        # Compute entity attention median for pronoun resolution
+        all_attn = [e.attention_received for s in graph.spans for e in s.entities]
+        entity_median = sorted(all_attn)[len(all_attn) // 2] if all_attn else 0.0
+        primary_entity: Optional[str] = None
+
+        for span_idx in order:
+            if span_idx >= len(graph.spans):
+                continue
+
+            span = graph.spans[span_idx]
+            dsl = dsl_map.get(span_idx)
+
+            # Resolve current entity via attention
+            current_entity = None
+            if span.entities:
+                best = max(span.entities, key=lambda e: e.attention_received)
+                if entity_median > 0 and best.attention_received < entity_median:
+                    current_entity = self.resolve_entity_via_cross_attention(
+                        span, span_idx, graph, attention_matrix, entity_values
+                    ) or primary_entity
+                else:
+                    current_entity = best.text.lower()
+                    if primary_entity is None:
+                        primary_entity = current_entity
+
+            if current_entity is None:
+                current_entity = self.resolve_entity_via_cross_attention(
+                    span, span_idx, graph, attention_matrix, entity_values
+                ) or primary_entity or f"entity_{span_idx}"
+
+            # Execute sub-graph DSL or fall back to flat DSL
+            if dsl:
+                result = self.execute_subgraph_dsl(
+                    dsl, span, entity_values, span_idx, graph, attention_matrix
+                )
+                if result is not None:
+                    entity_values[current_entity] = result
+                    trace.append(
+                        f"[{dsl.template_id}] {current_entity} = {result} "
+                        f"(steps: {len(dsl.steps)})"
+                    )
+            else:
+                # Fallback to flat DSL
+                numbers = self.extract_numbers(span.text)
+                if numbers:
+                    entity_values[current_entity] = numbers[0]
+                    trace.append(f"[SET] {current_entity} = {numbers[0]}")
+
+        if not entity_values:
+            return ExecutionResult(
+                answer=None, entity_values=entity_values,
+                execution_trace=trace, success=False, error="No values"
+            )
+
+        if primary_entity and primary_entity in entity_values:
+            answer = entity_values[primary_entity]
+        else:
+            answer = list(entity_values.values())[-1]
+
+        trace.append(f"Final: {answer}")
+        return ExecutionResult(
+            answer=answer, entity_values=entity_values,
+            execution_trace=trace, success=True
+        )
 
     # execute_graph() removed - use execute_graph_with_attention() instead
     # The old method used string-based entity matching; the new method
