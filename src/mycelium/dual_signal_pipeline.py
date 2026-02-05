@@ -27,6 +27,7 @@ from mycelium.dual_signal_templates import (
     DualSignalTemplate,
 )
 from mycelium.attention_graph import AttentionGraphBuilder, SpanGraph, Span, GraphExecutor, ExecutionResult
+from mycelium.subgraph_dsl import SubGraphDSL, load_subgraph_dsls
 
 
 # Default model path - relative to this file's location in src/mycelium/
@@ -137,6 +138,9 @@ class DualSignalPipeline:
         # Initialize graph executor for computing answers
         self.graph_executor = GraphExecutor()
 
+        # Sub-graph DSLs (keyed by template_id)
+        self.subgraph_dsls: Dict[str, SubGraphDSL] = {}
+
         # Track templates file path for persistence
         self.templates_path = templates_path
 
@@ -186,21 +190,31 @@ class DualSignalPipeline:
 
         # Match each span to templates and compose
         matched_operations = []
-        span_templates = []  # For graph execution: (span_idx, op_type, dsl_expr)
+        span_templates = []  # For flat DSL execution: (span_idx, dsl_expr)
+        span_subgraphs = []  # For sub-graph DSL execution: (span_idx, SubGraphDSL)
 
         for span_idx, span in enumerate(graph.spans):
             match_result = self._match_span_to_template(span, attention_matrix, tokens)
             if match_result:
                 matched_operations.append(match_result)
-                span_templates.append((
-                    span_idx,
-                    match_result.dsl_expr
-                ))
+                span_templates.append((span_idx, match_result.dsl_expr))
 
-        # Execute the graph to compute the answer using attention-guided composition
-        execution_result = self.graph_executor.execute_graph_with_attention(
-            graph, span_templates, attention_matrix
-        )
+                # Check if this template has a sub-graph DSL
+                if match_result.template_id in self.subgraph_dsls:
+                    span_subgraphs.append((
+                        span_idx,
+                        self.subgraph_dsls[match_result.template_id]
+                    ))
+
+        # Execute: prefer sub-graph DSLs if available, fall back to flat DSLs
+        if span_subgraphs:
+            execution_result = self.graph_executor.execute_graph_with_subgraphs(
+                graph, span_subgraphs, attention_matrix
+            )
+        else:
+            execution_result = self.graph_executor.execute_graph_with_attention(
+                graph, span_templates, attention_matrix
+            )
 
         return PipelineOutput(
             problem_text=text,
@@ -338,6 +352,21 @@ class DualSignalPipeline:
         """
         return self.store.get_high_variance_templates()
 
+    def load_subgraph_dsls(self, path: str) -> int:
+        """Load sub-graph DSLs from a JSON file.
+
+        Each template gets a 1:1 sub-graph DSL for composable execution.
+
+        Args:
+            path: Path to JSON file with sub-graph DSLs
+
+        Returns:
+            Number of DSLs loaded
+        """
+        self.subgraph_dsls = load_subgraph_dsls(path)
+        print(f"Loaded {len(self.subgraph_dsls)} sub-graph DSLs from {path}")
+        return len(self.subgraph_dsls)
+
     # ================================================================
     # Bootstrap Methods - Initialize templates from existing data
     # ================================================================
@@ -471,7 +500,7 @@ class DualSignalPipeline:
 
         print(f"Saved {len(self.store.templates)} templates to {path}")
 
-    def load_templates(self, path: Optional[str] = None) -> None:
+    def load_templates(self, path: Optional[str] = None, replace: bool = False) -> None:
         """Load templates from JSON file.
 
         Supports two formats:
@@ -480,6 +509,7 @@ class DualSignalPipeline:
 
         Args:
             path: File path. Uses self.templates_path if not provided.
+            replace: If True, clear existing templates before loading.
         """
         path = path or self.templates_path
         if not path:
@@ -487,6 +517,10 @@ class DualSignalPipeline:
 
         with open(path, 'r') as f:
             data = json.load(f)
+
+        # Clear existing templates if replacing
+        if replace:
+            self.store = TemplateStore()
 
         # Detect format
         if isinstance(data, list):
