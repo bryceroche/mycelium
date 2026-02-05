@@ -38,6 +38,29 @@ This means MiniLM already learned to mimic attention patterns from a larger teac
 4. **Custom sub-graph DSLs** — Frontier LLM creates custom sub-graph DSL representing the actual computation (not just SET/ADD/SUB)
 5. **Embed templates** — MiniLM centroid embeddings for cosine matching at inference
 
+## Iterative Generalization (Multi-Pass)
+
+Raw spans have a long tail of singletons. One pass of generalization isn't enough — "Sally sold half her eggs at the farmer's market on Tuesday" and "He gave away a third of his cookies at school" should collapse to the same template, but lexical differences keep them apart.
+
+**Solution: multiple passes, each targeting the singleton long tail.**
+
+```
+raw_span → gen_0 (seed from existing patterns)
+         → gen_1 (Qwen generalizes ALL spans)
+             → GROUP BY gen_1, find singletons
+         → gen_2 (Qwen re-generalizes ONLY singletons, refs gen_1)
+             → GROUP BY gen_2, find singletons
+         → gen_3 (repeat until singleton count stabilizes)
+             → ...stop when drop < 5% between passes
+```
+
+Each pass generates a **new column** — preserving the full audit trail. Non-singletons carry forward unchanged. Only small groups get re-generalized.
+
+**After convergence:**
+1. Embed final column with MiniLM
+2. Cosine cluster at ~90% threshold → deduplicated templates
+3. Generate SubGraphDSL (1:1) for each template
+
 ## Trained Signal Mapping (17k Spans)
 
 We have 17k spans with BOTH MiniLM embeddings AND Qwen attention signals. This lets us train a mapping:
@@ -78,20 +101,6 @@ No Qwen 7B needed at inference — just the trained mapping + LLM for execution.
 ## Specialized Templates with Sub-Graph DSLs (1:1)
 
 Every deduplicated template has exactly one `SubGraphDSL` — its own composable sub-graph. Not flat labels (SET/ADD/SUB) but full computation graphs with typed ports:
-
-```json
-{
-  "template_id": "tpl_0194",
-  "pattern": "insurance covers [N] percent of the [ITEM1]",
-  "params":  {"percent": "percentage covered"},
-  "inputs":  {"cost": "the cost being covered"},
-  "steps": [
-    {"var": "rate", "op": "DIV", "args": ["percent", 100]},
-    {"var": "covered", "op": "MUL", "args": ["cost", "rate"]}
-  ],
-  "output": "covered"
-}
-```
 
 - **params** — values extracted from the span text at inference (the `[N]` slots)
 - **inputs** — values wired from upstream sub-graphs (resolved via cross-attention / entity tracking)

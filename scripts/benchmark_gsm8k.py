@@ -32,6 +32,7 @@ def main():
     parser.add_argument("--num-problems", type=int, default=2000, help="Number of problems to test")
     parser.add_argument("--output", type=str, default="gsm8k_benchmark_results.json", help="Output file")
     parser.add_argument("--mock", action="store_true", help="Use mock model (no GPU)")
+    parser.add_argument("--templates", type=str, default=None, help="Path to custom templates JSON")
     args = parser.parse_args()
 
     print("=" * 60)
@@ -56,7 +57,7 @@ def main():
         sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
         from mycelium.dual_signal_solver import DualSignalSolver
 
-        solver = DualSignalSolver(mock_model=args.mock)
+        solver = DualSignalSolver(mock_model=args.mock, templates_path=args.templates)
         print("   Solver ready")
     except Exception as e:
         print(f"   Error initializing solver: {e}")
