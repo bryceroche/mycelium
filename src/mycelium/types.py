@@ -12,18 +12,7 @@ multiple database connections."
 """
 
 from dataclasses import dataclass
-from enum import Enum
 from typing import Any, List, Optional
-
-
-class OperationType(Enum):
-    """Core arithmetic operation types for math problem solving."""
-    SET = "SET"      # Assignment/initialization
-    ADD = "ADD"      # Addition
-    SUB = "SUB"      # Subtraction
-    MUL = "MUL"      # Multiplication
-    DIV = "DIV"      # Division
-    UNKNOWN = "UNKNOWN"  # Unclassified
 
 
 @dataclass
@@ -52,7 +41,7 @@ class Operation:
 
     All fields that aren't universally needed are Optional.
     """
-    op_type: str                        # SET, ADD, SUB, MUL, DIV (or more specific like COMPARE_MORE)
+    dsl_expr: str                       # DSL expression: "value", "entity + value", etc.
     value: Any                          # The numeric value or operands (float or tuple)
     confidence: float                   # Classification confidence [0, 1]
 

@@ -107,7 +107,7 @@ def find_all_patterns(text: str) -> List[Operation]:
     for matched, op_type, value, start, end in found:
         if start >= last_end:
             non_overlapping.append(Operation(
-                op_type=op_type,
+                dsl_expr=op_type,
                 value=value,
                 matched_text=matched,
                 confidence=0.8,
@@ -143,7 +143,7 @@ def classify_span(span: Span) -> Operation:
                 value = default_value
 
             return Operation(
-                op_type=op_type,
+                dsl_expr=op_type,
                 value=value,
                 matched_text=match.group(0),
                 confidence=span.confidence,
@@ -154,7 +154,7 @@ def classify_span(span: Span) -> Operation:
     try:
         value = float(text.replace(",", ""))
         return Operation(
-            op_type="value",
+            dsl_expr="value",
             value=value,
             matched_text=text,
             confidence=1.0,
@@ -165,7 +165,7 @@ def classify_span(span: Span) -> Operation:
 
     # Unrecognized - treat as variable reference
     return Operation(
-        op_type="variable",
+        dsl_expr="variable",
         value=text,
         matched_text=text,
         confidence=0.3,

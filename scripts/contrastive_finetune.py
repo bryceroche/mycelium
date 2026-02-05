@@ -33,7 +33,7 @@ class TripletDataset(Dataset):
         # Group templates by operation
         self.by_operation: Dict[str, List[dict]] = defaultdict(list)
         for t in templates:
-            op = t.get('operation_type', 'unknown')
+            op = t.get('dsl_expr', t.get('operation_type', 'unknown'))
             if op != 'unknown' and t.get('span_examples'):
                 self.by_operation[op].append(t)
 
@@ -213,7 +213,7 @@ def evaluate_clustering(model: ContrastiveModel, templates: List[dict],
     # Group by operation
     by_op = defaultdict(list)
     for t in templates:
-        op = t.get('operation_type')
+        op = t.get('dsl_expr', t.get('operation_type'))
         if op and t.get('span_examples'):
             by_op[op].extend(t['span_examples'][:3])  # Take up to 3 examples per template
 

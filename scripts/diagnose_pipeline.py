@@ -89,12 +89,12 @@ def diagnose_problem(pipeline: DualSignalPipeline, problem_text: str, answer: st
     for span_idx, span in enumerate(graph.spans):
         match = pipeline._match_span_to_template(span, attention_matrix, tokens)
         if match:
-            print(f"    Span {span_idx}: '{span.text[:50]}' -> {match.operation_type.value} "
+            print(f"    Span {span_idx}: '{span.text[:50]}' -> {match.dsl_expr} "
                   f"(conf={match.confidence:.3f}, emb={match.embedding_similarity:.3f}, "
                   f"att={match.attention_similarity:.3f})")
             print(f"      Template: {match.template_id}")
             print(f"      DSL: {match.dsl_expr}")
-            span_templates.append((span_idx, match.operation_type.value, match.dsl_expr))
+            span_templates.append((span_idx, match.dsl_expr))
         else:
             print(f"    Span {span_idx}: '{span.text[:50]}' -> NO MATCH")
 

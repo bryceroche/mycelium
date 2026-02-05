@@ -23,16 +23,6 @@ from typing import List, Dict, Optional, Tuple, Set
 from enum import Enum
 
 
-class OpType(Enum):
-    """Operation types for span nodes."""
-    SET = "SET"      # Initial value: "Janet has 16 eggs"
-    ADD = "ADD"      # Addition: "found 5 more"
-    SUB = "SUB"      # Subtraction: "ate 3 eggs"
-    MUL = "MUL"      # Multiplication: "twice as many", "$2 per egg"
-    DIV = "DIV"      # Division: "half the eggs", "split evenly"
-    REF = "REF"      # Reference to another entity: "as many as X"
-
-
 class Track(Enum):
     """Tracks for multi-track accounting (cost vs value problems)."""
     DEFAULT = "default"   # Single-track (most problems)
@@ -54,7 +44,7 @@ class SpanNode:
     text: str
 
     # Extracted semantics
-    operation: OpType
+    dsl_expr: str = "value"                # DSL expression: "value", "entity + value", etc.
     value: Optional[float] = None          # Numeric value if present
     entity: Optional[str] = None           # Subject entity ("Janet", "eggs")
     reference: Optional[str] = None        # Referenced entity for REF/comparisons
@@ -284,11 +274,11 @@ class SpanGraphBuilder:
         # Extract numeric value
         value = self._extract_value(text)
 
-        # Detect operation type and any references
-        operation, reference, ref_multiplier = self._detect_operation(text, entity_tracker)
+        # Detect DSL expression and any references
+        dsl_expr, reference, ref_multiplier = self._detect_operation(text, entity_tracker)
 
         # Detect which track this span affects (for multi-track accounting)
-        track = self._detect_track(text, operation, reference)
+        track = self._detect_track(text, dsl_expr, reference)
 
         # If we have a reference multiplier (e.g., "twice that", "150%"), use it
         # For percentage patterns, always use the computed multiplier
@@ -299,7 +289,7 @@ class SpanGraphBuilder:
         node = SpanNode(
             id=f"span_{position}",
             text=text,
-            operation=operation,
+            dsl_expr=dsl_expr,
             value=value,
             entity=entity,
             reference=reference,
@@ -312,7 +302,7 @@ class SpanGraphBuilder:
     def _detect_track(
         self,
         text: str,
-        operation: OpType,
+        dsl_expr: str,
         reference: Optional[str]
     ) -> Track:
         """Detect which track this span affects for multi-track accounting.
@@ -452,10 +442,12 @@ class SpanGraphBuilder:
         self,
         text: str,
         entity_tracker: Dict[str, str]
-    ) -> Tuple[OpType, Optional[str], Optional[float]]:
-        """Detect operation type and any entity/value references.
+    ) -> Tuple[str, Optional[str], Optional[float]]:
+        """Detect DSL expression and any entity/value references.
 
-        Returns: (operation, reference_entity, reference_multiplier)
+        Returns: (dsl_expr, reference_entity, reference_multiplier)
+        DSL expressions: "value", "entity + value", "entity - value",
+                        "entity * value", "entity / value", "ref"
         """
         text_lower = text.lower()
 
@@ -469,104 +461,100 @@ class SpanGraphBuilder:
 
                 # Determine multiplier
                 if 'twice' in text_lower:
-                    return OpType.MUL, ref_entity, 2.0
+                    return "entity * value", ref_entity, 2.0
                 elif 'half' in text_lower:
-                    return OpType.MUL, ref_entity, 0.5
+                    return "entity * value", ref_entity, 0.5
                 elif 'times' in text_lower and len(groups) > 1:
                     try:
                         mult = float(groups[0])
-                        return OpType.MUL, ref_entity, mult
+                        return "entity * value", ref_entity, mult
                     except:
                         pass
                 elif 'more than' in text_lower:
-                    return OpType.ADD, ref_entity, None
+                    return "entity + value", ref_entity, None
                 elif 'fewer than' in text_lower:
-                    return OpType.SUB, ref_entity, None
+                    return "entity - value", ref_entity, None
 
-                return OpType.REF, ref_entity, None
+                return "ref", ref_entity, None
 
         # Check for percentage increase pattern FIRST
         # "increased by X%" or "increased the value by X%" → MUL with factor (1 + X/100)
         pct_match = re.search(r'increased?.*?(\d+)%', text_lower)
         if pct_match:
             pct = float(pct_match.group(1))
-            # Return special marker - value will be the multiplier
-            return OpType.MUL, "_pct_increase", 1 + pct / 100
+            return "entity * value", "_pct_increase", 1 + pct / 100
 
         # "X% more" → MUL with factor (1 + X/100)
         pct_more = re.search(r'(\d+)%\s+more', text_lower)
         if pct_more:
             pct = float(pct_more.group(1))
-            return OpType.MUL, "_pct_increase", 1 + pct / 100
+            return "entity * value", "_pct_increase", 1 + pct / 100
 
         # "X% of" → MUL with factor X/100
         pct_of = re.search(r'(\d+)%\s+of', text_lower)
         if pct_of:
             pct = float(pct_of.group(1))
-            return OpType.MUL, None, pct / 100
+            return "entity * value", None, pct / 100
 
         # Check for price/rate patterns - takes priority over value references
         # "$X per/each" or "for $X per" → MUL
         if re.search(r'\$\d+', text_lower) and ('per' in text_lower or 'each' in text_lower):
-            return OpType.MUL, None, None
+            return "entity * value", None, None
 
         # "X each Y" or "X per Y" without $ → MUL (unit rate)
         if re.search(r'\d+.*\b(each|per)\b', text_lower):
-            return OpType.MUL, None, None
+            return "entity * value", None, None
 
         # "for $X per" pattern
         if re.search(r'for \$\d+.*per', text_lower):
-            return OpType.MUL, None, None
+            return "entity * value", None, None
 
         # "sells/sold ... for $X" could be MUL if it's unit pricing
         if re.search(r'sells?.*for.*\$\d+', text_lower):
-            return OpType.MUL, None, None
+            return "entity * value", None, None
 
         # "remainder/rest" + price → multiply remaining by price
         if ('remainder' in text_lower or 'rest' in text_lower) and '$' in text_lower:
-            return OpType.MUL, None, None
+            return "entity * value", None, None
 
         # Check for value reference phrases - these ADD a fraction of previous value
         # But NOT if there's a price pattern (already handled above)
         for phrase, mult in self.VALUE_REFS.items():
             if phrase in text_lower and '$' not in text_lower:
-                # "half that much" = ADD (prev * 0.5) to total
-                return OpType.ADD, "_prev", mult
+                return "entity + value", "_prev", mult
 
         # Check for multiplication keywords
         if any(kw in text_lower for kw in ['times', 'multiplied', 'doubled', 'tripled']):
-            return OpType.MUL, None, None
+            return "entity * value", None, None
 
         # Check for division keywords
         if any(kw in text_lower for kw in ['divided', 'split', 'shared equally', 'half of']):
-            return OpType.DIV, None, None
+            return "entity / value", None, None
 
         # Subtraction verbs (consumption) - "bakes with X eggs" = uses eggs
         # Use word boundaries to avoid "seattle" matching "eat"
         # NOTE: "gave him/her" = receiving (not subtraction), so check context
         if re.search(r'\bgave\s+(him|her|them|me)\b', text_lower):
-            # "X gave him $Y" = receiving money, not subtraction
-            return OpType.SET, None, None
+            return "value", None, None
 
         sub_verbs = ['ate', 'eats', 'eat', 'gave', 'gives', 'spent', 'lost',
                      'used', 'took', 'baked', 'bakes', 'bake', 'drank', 'threw']
         for verb in sub_verbs:
             if re.search(rf'\b{verb}\b', text_lower):
-                return OpType.SUB, None, None
+                return "entity - value", None, None
 
         # Selling without price pattern is also consumption (giving away inventory)
         # But only if not a "has/have" sentence (initial state)
         if any(v in text_lower for v in ['sold', 'sells', 'sell']):
             if ' has ' not in text_lower and ' have ' not in text_lower:
-                return OpType.SUB, None, None
+                return "entity - value", None, None
 
-        # SET verbs FIRST (initial state) - check before ADD
+        # SET verbs (initial state) - check before ADD
         set_verbs = ['has', 'have', 'had', 'starts', 'started', 'owns',
                      'contains', 'is', 'was', 'are', 'were', 'lay', 'lays', 'takes']
         for verb in set_verbs:
-            # Match as word boundary to avoid "the" in "gathered"
             if re.search(rf'\b{verb}\b', text_lower):
-                return OpType.SET, None, None
+                return "value", None, None
 
         # Addition verbs - includes spending/putting in (cost accumulation)
         add_verbs = ['found', 'received', 'earned', 'won', 'bought', 'got',
@@ -574,10 +562,10 @@ class SpanGraphBuilder:
                      'puts', 'put', 'spent', 'invested', 'added']
         for verb in add_verbs:
             if re.search(rf'\b{verb}\b', text_lower):
-                return OpType.ADD, None, None
+                return "entity + value", None, None
 
-        # Default to SET for first span, ADD for others
-        return OpType.SET, None, None
+        # Default to value assignment
+        return "value", None, None
 
     def _link_spans(self, graph: SpanGraph, entity_tracker: Dict[str, str]):
         """Link spans via entity references and sequence.
@@ -688,17 +676,17 @@ class SpanGraphExecutor:
 
                 if ref_key and ref_key in state:
                     ref_value = state[ref_key]
-                    if node.operation == OpType.MUL:
+                    if '*' in node.dsl_expr:
                         multiplier = value if value else 2.0
                         state[entity] = ref_value * multiplier
                         continue
-                    elif node.operation == OpType.ADD:
+                    elif '+' in node.dsl_expr:
                         state[entity] = ref_value + value
                         continue
-                    elif node.operation == OpType.SUB:
+                    elif '-' in node.dsl_expr:
                         state[entity] = ref_value - value
                         continue
-                    elif node.operation == OpType.REF:
+                    elif node.dsl_expr == "ref":
                         if value and value < 1.0:
                             state[entity] = state[entity] + (ref_value * value)
                         else:
@@ -706,31 +694,31 @@ class SpanGraphExecutor:
                         continue
 
             # Handle "_prev" reference
-            if node.reference == "_prev" and node.operation == OpType.ADD:
+            if node.reference == "_prev" and '+' in node.dsl_expr:
                 prev_value = state[entity]
                 if value and value != 0:
                     state[entity] = prev_value + (prev_value * value)
                 continue
 
             # Handle "_pct_increase"
-            if node.reference == "_pct_increase" and node.operation == OpType.MUL:
+            if node.reference == "_pct_increase" and '*' in node.dsl_expr:
                 if value and value != 0:
                     state[entity] = state[entity] * value
                 continue
 
-            # Standard operations
-            if node.operation == OpType.SET:
+            # Standard operations based on DSL expression
+            if node.dsl_expr == "value":
                 state[entity] = value
-            elif node.operation == OpType.ADD:
+            elif '+' in node.dsl_expr:
                 state[entity] = state[entity] + value
-            elif node.operation == OpType.SUB:
+            elif '-' in node.dsl_expr:
                 state[entity] = state[entity] - value
-            elif node.operation == OpType.MUL:
+            elif '*' in node.dsl_expr:
                 if value and state[entity]:
                     state[entity] = state[entity] * value
                 elif value:
                     state[entity] = value
-            elif node.operation == OpType.DIV:
+            elif '/' in node.dsl_expr:
                 if value and value != 0:
                     state[entity] = state[entity] / value
 
@@ -779,7 +767,7 @@ class SpanGraphExecutor:
             track = node.track
 
             # Handle "_pct_increase" - applies to VALUE track only
-            if node.reference == "_pct_increase" and node.operation == OpType.MUL:
+            if node.reference == "_pct_increase" and '*' in node.dsl_expr:
                 if value and value != 0:
                     # Apply percentage increase to VALUE (not cost)
                     state[entity]["value"] = state[entity]["value"] * value
@@ -788,29 +776,29 @@ class SpanGraphExecutor:
             # Determine which track(s) to modify
             if track == Track.BOTH:
                 # Initial purchase: sets both cost basis and initial value
-                if node.operation == OpType.SET:
+                if node.dsl_expr == "value":
                     state[entity]["cost"] = value
                     state[entity]["value"] = value
-                elif node.operation == OpType.ADD:
+                elif '+' in node.dsl_expr:
                     state[entity]["cost"] += value
                     state[entity]["value"] += value
 
             elif track == Track.COST:
                 # Cost-only: repairs, investments
-                if node.operation == OpType.SET:
+                if node.dsl_expr == "value":
                     state[entity]["cost"] = value
-                elif node.operation == OpType.ADD:
+                elif '+' in node.dsl_expr:
                     state[entity]["cost"] += value
-                elif node.operation == OpType.SUB:
+                elif '-' in node.dsl_expr:
                     state[entity]["cost"] -= value
 
             elif track == Track.VALUE:
                 # Value-only: appreciation
-                if node.operation == OpType.SET:
+                if node.dsl_expr == "value":
                     state[entity]["value"] = value
-                elif node.operation == OpType.ADD:
+                elif '+' in node.dsl_expr:
                     state[entity]["value"] += value
-                elif node.operation == OpType.MUL:
+                elif '*' in node.dsl_expr:
                     if value and state[entity]["value"]:
                         state[entity]["value"] *= value
                     elif value:
@@ -818,16 +806,16 @@ class SpanGraphExecutor:
 
             else:
                 # DEFAULT track - apply to both (single-track behavior)
-                if node.operation == OpType.SET:
+                if node.dsl_expr == "value":
                     state[entity]["cost"] = value
                     state[entity]["value"] = value
-                elif node.operation == OpType.ADD:
+                elif '+' in node.dsl_expr:
                     state[entity]["cost"] += value
                     state[entity]["value"] += value
-                elif node.operation == OpType.SUB:
+                elif '-' in node.dsl_expr:
                     state[entity]["cost"] -= value
                     state[entity]["value"] -= value
-                elif node.operation == OpType.MUL:
+                elif '*' in node.dsl_expr:
                     if value:
                         state[entity]["cost"] *= value
                         state[entity]["value"] *= value
@@ -921,7 +909,7 @@ def debug_graph(problem: str):
         node = graph.nodes[node_id]
         ref_str = f" (ref: {node.reference})" if node.reference else ""
         track_str = f" [{node.track.value}]" if node.track != Track.DEFAULT else ""
-        print(f"  [{node_id}] {node.operation.value:4s} | {node.entity or 'X':12s} | "
+        print(f"  [{node_id}] {node.dsl_expr:20s} | {node.entity or 'X':12s} | "
               f"val={node.value}{ref_str}{track_str}")
         print(f"           \"{node.text[:50]}...\"" if len(node.text) > 50 else
               f"           \"{node.text}\"")

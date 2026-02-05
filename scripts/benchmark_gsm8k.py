@@ -98,7 +98,7 @@ def main():
                 "predicted": predicted,
                 "correct": is_correct,
                 "spans": result.spans_detected,
-                "ops": [{"type": op.op_type, "value": op.value, "entity": op.entity}
+                "ops": [{"type": op.dsl_expr, "value": op.value, "entity": op.entity}
                        for op in result.operations],
             })
 

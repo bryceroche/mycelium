@@ -28,7 +28,6 @@ from typing import List, Dict, Optional, Tuple, Any
 from mycelium.dual_signal_templates import (
     TemplateStore,
     DualSignalTemplate,
-    OperationType,
 )
 from mycelium.dual_signal_pipeline import (
     DualSignalPipeline,
@@ -163,11 +162,10 @@ class DualSignalSolver:
                 # (populated by attention_graph.py using attention_received signal)
                 entity = "X"
                 if output.execution_result.entity_values:
-                    # Use the entity that was tracked during graph execution
                     entity = next(iter(output.execution_result.entity_values), "X")
 
                 op = SolverOperation(
-                    op_type=matched_op.operation_type.value,
+                    dsl_expr=matched_op.dsl_expr,
                     value=self._extract_number(matched_op.span_text),
                     entity=entity,
                     confidence=matched_op.confidence,
@@ -270,7 +268,7 @@ class DualSignalSolver:
             if self.use_db:
                 try:
                     from mycelium.db import update_welford_stats
-                    stat_type = f"dual_signal_{op.op_type}_outcome"
+                    stat_type = f"dual_signal_{op.template_id}_outcome"
                     update_welford_stats(stat_type, 1.0 if correct else 0.0)
                 except Exception:
                     pass
@@ -406,7 +404,7 @@ if __name__ == "__main__":
         print(f"Spans detected: {result.spans_detected}")
         print("Operations:")
         for op in result.operations:
-            print(f"  - {op.entity} {op.op_type} {op.value}")
+            print(f"  - {op.entity} [{op.dsl_expr}] {op.value}")
             print(f"    Confidence: {op.confidence:.3f}")
             print(f"    Similarity: emb={op.embedding_sim:.3f}, att={op.attention_sim:.3f}")
 

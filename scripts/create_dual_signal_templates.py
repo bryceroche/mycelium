@@ -21,8 +21,7 @@ import numpy as np
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from mycelium.dual_signal_templates import SpanDetector, OperationType
-from mycelium.verb_classifier import classify_by_verb
+from mycelium.dual_signal_templates import SpanDetector
 
 
 def load_span_examples(path: str) -> dict:
@@ -33,37 +32,30 @@ def load_span_examples(path: str) -> dict:
 
 
 def infer_operation(examples: list, pattern: str) -> tuple:
-    """Infer correct operation type from examples using verb classifier.
+    """Infer DSL expression from pattern keywords.
 
-    Returns: (operation_type, confidence, dsl_expr)
+    Returns: (dsl_expr, confidence)
     """
-    # Try each example through verb classifier
-    for ex in examples[:5]:  # Check first 5 examples
-        result = classify_by_verb(ex)
-        if result:
-            op_label, confidence = result
-            op_to_dsl = {
-                "SET": "value",
-                "ADD": "entity + value",
-                "SUB": "entity - value",
-                "MUL": "entity * value",
-                "DIV": "entity / value",
-            }
-            return op_label, confidence, op_to_dsl.get(op_label, "value")
-
-    # Fallback: check pattern for keywords
     pattern_lower = pattern.lower()
 
     # Check for division patterns
     if any(kw in pattern_lower for kw in ['split', 'divided', 'shared equally', 'distributed']):
-        return "DIV", 0.6, "entity / value"
+        return "entity / value", 0.6
 
     # Check for multiplication patterns
     if any(kw in pattern_lower for kw in ['times', 'each', 'per', 'doubled', 'tripled']):
-        return "MUL", 0.6, "entity * value"
+        return "entity * value", 0.6
 
-    # Default to SET for initial values
-    return "SET", 0.5, "value"
+    # Check for subtraction patterns
+    if any(kw in pattern_lower for kw in ['gave', 'sold', 'spent', 'lost', 'ate', 'used']):
+        return "entity - value", 0.6
+
+    # Check for addition patterns
+    if any(kw in pattern_lower for kw in ['found', 'earned', 'received', 'bought', 'got']):
+        return "entity + value", 0.6
+
+    # Default to value assignment
+    return "value", 0.5
 
 
 def create_dual_signal_templates(
@@ -104,9 +96,9 @@ def create_dual_signal_templates(
             stats['skipped_no_examples'] += 1
             continue
 
-        # Infer correct operation using verb classifier
-        op_label, op_confidence, dsl_expr = infer_operation(examples, pattern)
-        stats[f'op_{op_label}'] += 1
+        # Infer DSL expression from pattern
+        dsl_expr, op_confidence = infer_operation(examples, pattern)
+        stats[f'dsl_{dsl_expr}'] += 1
 
         # Get representative example (first one)
         rep_example = examples[0]
@@ -153,7 +145,7 @@ def create_dual_signal_templates(
         # Create dual-signal template
         dual_signal_templates[tid] = {
             "template_id": tid,
-            "operation_type": op_label,
+            "dsl_expr": dsl_expr,
             "pattern": pattern,
             "dsl_expr": dsl_expr,
             "embedding_centroid": embedding.tolist(),
@@ -176,9 +168,9 @@ def create_dual_signal_templates(
     print(f"Templates created: {stats['created']}")
     print(f"Skipped (no examples): {stats['skipped_no_examples']}")
     print(f"Extraction failed: {stats['extraction_failed']}")
-    print("\nOperation distribution:")
-    for op in ['SET', 'ADD', 'SUB', 'MUL', 'DIV']:
-        print(f"  {op}: {stats[f'op_{op}']}")
+    print("\nDSL distribution:")
+    for dsl in ['value', 'entity + value', 'entity - value', 'entity * value', 'entity / value']:
+        print(f"  {dsl}: {stats.get(f'dsl_{dsl}', 0)}")
 
     return dual_signal_templates
 

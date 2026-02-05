@@ -60,7 +60,7 @@ def test_mock_solver():
         print(f"State: {result.state}")
         print(f"Operations:")
         for op in result.operations:
-            print(f"  {op.entity}: {op.op_type}({op.value}) -> conf={op.confidence:.2f}")
+            print(f"  {op.entity}: {op.dsl_expr}({op.value}) -> conf={op.confidence:.2f}")
 
         # Record outcome
         correct = abs(result.answer - expected) < 0.01
@@ -88,29 +88,29 @@ def test_template_store():
     from mycelium.dual_signal_templates import (
         TemplateStore,
         DualSignalTemplate,
-        OperationType,
         WelfordStats,
     )
 
     # Create store
     store = TemplateStore(embedding_weight=0.6, attention_weight=0.4)
 
-    # Create some templates
+    # Create some templates with DSL expressions
     np.random.seed(123)  # Reproducible
 
+    dsl_exprs = [("value", "value"), ("entity + value", "add"), ("entity - value", "sub")]
     templates = []
-    for op_type in [OperationType.SET, OperationType.ADD, OperationType.SUB]:
+    for dsl_expr, label in dsl_exprs:
         embedding = np.random.randn(384).astype(np.float32)
         embedding = embedding / np.linalg.norm(embedding)
 
         attention = np.random.randn(100).astype(np.float32)
 
         template = DualSignalTemplate(
-            template_id=f"test_{op_type.value}",
-            operation_type=op_type,
+            template_id=f"test_{label}",
             embedding_centroid=embedding,
             attention_signature=attention,
-            span_examples=[f"Example for {op_type.value}"],
+            dsl_expr=dsl_expr,
+            span_examples=[f"Example for {label}"],
         )
         store.add_template(template)
         templates.append(template)
@@ -138,11 +138,11 @@ def test_template_store():
         print(f"Embedding similarity: {emb_sim:.4f}")
         print(f"Attention correlation: {att_sim:.4f}")
 
-        # Should match SET template
-        if matched.operation_type == OperationType.SET:
-            print("[PASS] Correctly matched SET template")
+        # Should match value (SET) template
+        if matched.template_id == "test_value":
+            print("[PASS] Correctly matched value template")
         else:
-            print(f"[FAIL] Expected SET, got {matched.operation_type}")
+            print(f"[FAIL] Expected test_value, got {matched.template_id}")
             return False
     else:
         print("[FAIL] No match found")
@@ -234,7 +234,7 @@ def test_full_pipeline():
         for op in output.matched_operations:
             span_preview = op.span_text[:40] + "..." if len(op.span_text) > 40 else op.span_text
             print(f"  '{span_preview}'")
-            print(f"    Operation: {op.operation_type.value}")
+            print(f"    DSL: {op.dsl_expr}")
             print(f"    Confidence: {op.confidence:.3f}")
             print(f"    Embedding sim: {op.embedding_similarity:.3f}")
             print(f"    Attention sim: {op.attention_similarity:.3f}")
