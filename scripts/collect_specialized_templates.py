@@ -134,63 +134,63 @@ def genericize_span(text: str) -> str:
 # DSL Inference
 # =============================================================================
 
-def infer_dsl(pattern: str, examples: List[str]) -> Tuple[str, str]:
-    """Infer operation type and custom DSL from pattern.
+def infer_dsl(pattern: str, examples: List[str]) -> str:
+    """Infer DSL expression from pattern.
 
-    Returns: (operation_type, dsl_expr)
+    Returns: dsl_expr string
     """
     text = pattern.lower() + " " + " ".join(ex.lower() for ex in examples[:3])
 
-    # === Price/revenue calculations (MUL) ===
+    # === Price/revenue calculations ===
     if re.search(r'(sells?|sold)\s+.*for\s+\[n\]', text):
-        return ("MUL", "entity * value")
+        return "entity * value"
     if re.search(r'for\s+\[n\].*\b(each|per)\b', text):
-        return ("MUL", "entity * value")
+        return "entity * value"
     if re.search(r'each\s+\w+\s+has\s+\[n\]', text):
-        return ("MUL", "entity * value")
+        return "entity * value"
 
     # === Subtraction verbs ===
     sub_verbs = ['sold', 'gave', 'spent', 'lost', 'ate', 'used', 'took', 'baked',
                  'threw', 'lent', 'traded', 'donated', 'paid', 'drank', 'dropped']
     for verb in sub_verbs:
         if verb in text:
-            return ("SUB", "entity - value")
+            return "entity - value"
 
     # === Addition verbs ===
     add_verbs = ['found', 'received', 'earned', 'won', 'bought', 'got', 'gained',
                  'collected', 'picked', 'gathered', 'saved', 'harvested']
     for verb in add_verbs:
         if verb in text:
-            return ("ADD", "entity + value")
+            return "entity + value"
 
     # === Multiplication patterns ===
     if 'times' in text or 'doubled' in text or 'tripled' in text:
-        return ("MUL", "entity * value")
+        return "entity * value"
 
     # === Division patterns ===
     if 'shared' in text and 'equally' in text:
-        return ("DIV", "entity / value")
+        return "entity / value"
     if 'split' in text or 'divided' in text:
-        return ("DIV", "entity / value")
+        return "entity / value"
     if 'half of' in text:
-        return ("DIV", "entity / 2")
+        return "entity / 2"
 
     # === Comparison patterns ===
     if 'more than' in text:
-        return ("ADD", "ref + value")
+        return "ref + value"
     if 'less than' in text or 'fewer than' in text:
-        return ("SUB", "ref - value")
+        return "ref - value"
     if 'twice as' in text:
-        return ("MUL", "ref * 2")
+        return "ref * 2"
 
     # === Set/initial patterns ===
     set_verbs = ['has', 'have', 'had', 'starts', 'started', 'owns', 'contains']
     for verb in set_verbs:
         if verb in text:
-            return ("SET", "value")
+            return "value"
 
     # Default
-    return ("SET", "value")
+    return "value"
 
 
 # =============================================================================
@@ -233,8 +233,7 @@ class SpecializedTemplate:
     """A specialized template for a unique generic pattern."""
     template_id: str
     pattern: str  # Generic pattern: "[NAME] sold [N] [ITEM]"
-    operation_type: str  # SET, ADD, SUB, MUL, DIV
-    dsl_expr: str  # Custom DSL: "entity - value"
+    dsl_expr: str  # DSL expression: "value", "entity + value", etc.
 
     # Dual-signal features
     embedding_centroid: List[float] = field(default_factory=list)  # 384-dim
@@ -364,14 +363,13 @@ def collect_templates(config: CollectionConfig) -> Dict[str, SpecializedTemplate
             pattern_id = re.sub(r'[^a-z0-9]', '_', pattern.lower())[:50]
 
             if pattern_id not in templates:
-                # Infer operation and DSL
-                op_type, dsl_expr = infer_dsl(pattern, [span])
+                # Infer DSL expression
+                dsl_expr = infer_dsl(pattern, [span])
 
                 # Create new template
                 templates[pattern_id] = SpecializedTemplate(
                     template_id=pattern_id,
                     pattern=pattern,
-                    operation_type=op_type,
                     dsl_expr=dsl_expr,
                     span_examples=[span],
                     count=1,
@@ -445,12 +443,12 @@ def collect_templates(config: CollectionConfig) -> Dict[str, SpecializedTemplate
     print(f"\nCollected {len(templates)} unique templates")
 
     # Print distribution
-    op_counts = defaultdict(int)
+    dsl_counts = defaultdict(int)
     for t in templates.values():
-        op_counts[t.operation_type] += 1
-    print("\nOperation distribution:")
-    for op, count in sorted(op_counts.items()):
-        print(f"  {op}: {count}")
+        dsl_counts[t.dsl_expr] += 1
+    print("\nDSL distribution:")
+    for dsl, count in sorted(dsl_counts.items()):
+        print(f"  {dsl}: {count}")
 
     return templates
 

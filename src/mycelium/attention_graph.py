@@ -56,7 +56,6 @@ class Span:
     end_idx: int
     connectivity: float  # Internal attention connectivity
     entities: List[Entity] = field(default_factory=list)
-    operation_type: Optional[str] = None
     template_id: Optional[str] = None
 
 
@@ -767,7 +766,7 @@ class GraphExecutor:
     def execute_graph_with_attention(
         self,
         graph: SpanGraph,
-        span_templates: List[Tuple[int, str, str]],  # (span_idx, operation_type, dsl_expr)
+        span_templates: List[Tuple[int, str]],  # (span_idx, dsl_expr)
         attention_matrix: Optional[np.ndarray] = None
     ) -> ExecutionResult:
         """Execute span graph using attention signals for all decisions.
@@ -782,7 +781,7 @@ class GraphExecutor:
 
         Args:
             graph: SpanGraph with spans, edges, and entities
-            span_templates: List of (span_idx, operation_type, dsl_expr) tuples
+            span_templates: List of (span_idx, dsl_expr) tuples
             attention_matrix: Full problem attention matrix for cross-attention
 
         Returns:
@@ -800,7 +799,7 @@ class GraphExecutor:
         entity_values: Dict[str, float] = {}
         trace: List[str] = []
 
-        template_map = {idx: (op, dsl) for idx, op, dsl in span_templates}
+        template_map = {idx: dsl for idx, dsl in span_templates}
         order = self._topological_sort(graph)
 
         # Compute median attention_received across all entities in the graph.
@@ -827,7 +826,7 @@ class GraphExecutor:
                 continue
 
             span = graph.spans[span_idx]
-            op_type, dsl_expr = template_map.get(span_idx, ('SET', 'value'))
+            dsl_expr = template_map.get(span_idx, 'value')
 
             # --- Entity resolution via attention ---
             # 1. Use attention-detected entities from the span
@@ -871,10 +870,11 @@ class GraphExecutor:
                 )
 
             # --- Execute DSL ---
-            if op_type == 'SET' or current_entity not in entity_values:
+            if dsl_expr == 'value' or current_entity not in entity_values:
+                # Assignment: "value" DSL or first time seeing this entity
                 if primary_value is not None:
                     entity_values[current_entity] = primary_value
-                    trace.append(f"SET {current_entity} = {primary_value}")
+                    trace.append(f"[{dsl_expr}] {current_entity} = {primary_value}")
             else:
                 old_val = entity_values[current_entity]
 
@@ -884,20 +884,20 @@ class GraphExecutor:
                     new_val = self._execute_ref_dsl(dsl_expr, ref_val, primary_value)
                     if new_val is not None:
                         entity_values[current_entity] = new_val
-                        trace.append(f"{op_type} {current_entity}: ref({ref_entity}={ref_val}) -> {new_val}")
+                        trace.append(f"[{dsl_expr}] {current_entity}: ref({ref_entity}={ref_val}) -> {new_val}")
                 else:
                     new_val = self.execute_dsl(dsl_expr, old_val, primary_value)
                     if new_val is not None:
                         entity_values[current_entity] = new_val
-                        trace.append(f"{op_type} {current_entity}: {old_val} -> {new_val}")
+                        trace.append(f"[{dsl_expr}] {current_entity}: {old_val} -> {new_val}")
 
-            # Handle secondary value (e.g., MUL: quantity * unit_price)
-            if secondary_value is not None and op_type in ('MUL', 'DIV'):
+            # Handle secondary value (e.g., "entity * value")
+            if secondary_value is not None and ('*' in dsl_expr or '/' in dsl_expr):
                 old_val = entity_values.get(current_entity, 0)
                 new_val = self.execute_dsl(dsl_expr, old_val, secondary_value)
                 if new_val is not None:
                     entity_values[current_entity] = new_val
-                    trace.append(f"{op_type} {current_entity} (secondary): {old_val} -> {new_val}")
+                    trace.append(f"[{dsl_expr}] {current_entity} (secondary): {old_val} -> {new_val}")
 
         # Compute final answer
         if not entity_values:

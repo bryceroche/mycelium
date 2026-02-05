@@ -32,40 +32,6 @@ class PipelineResult:
     state: Dict[str, float]  # Entity states after execution
 
 
-def classify_by_verb(text: str) -> Optional[str]:
-    """Classify operation by verb taxonomy as a backup classifier.
-
-    Returns ADD, SUB, MUL, DIV, or None if no clear verb signal.
-    Used when KNN is uncertain between ADD/SUB.
-    """
-    # Import canonical patterns from verb_classifier (single source of truth)
-    from mycelium.verb_classifier import ADD_PATTERNS, SUB_PATTERNS, MUL_PATTERNS, DIV_PATTERNS
-
-    text_lower = text.lower()
-    words = set(text_lower.split())
-
-    # Check for verb matches using canonical patterns
-    increase_count = len(words & ADD_PATTERNS)
-    decrease_count = len(words & SUB_PATTERNS)
-    multiply_count = len(words & MUL_PATTERNS)
-    divide_count = len(words & DIV_PATTERNS)
-
-    # Return operation if there's a clear winner
-    counts = [
-        (increase_count, "ADD"),
-        (decrease_count, "SUB"),
-        (multiply_count, "MUL"),
-        (divide_count, "DIV"),
-    ]
-    counts.sort(reverse=True)
-
-    # Only return if there's a clear signal (at least 1 match and no tie)
-    if counts[0][0] > 0 and counts[0][0] > counts[1][0]:
-        return counts[0][1]
-
-    return None
-
-
 class SimplePipeline:
     """Simple KNN + Linear Chain pipeline with two-tier template matching.
 
@@ -315,19 +281,15 @@ class SimplePipeline:
                 pass
 
     def classify_span(self, span_text: str, position: int = 1) -> Tuple[str, float]:
-        """Classify a span into an operation type using two-tier KNN.
+        """Classify a span using two-tier KNN, returning a DSL expression.
 
         Uses templates (gold standard anchors) + raw spans to classify.
-        Like multi-object detection where each span is classified independently.
-
-        NOTE: Position priors and verb backup REMOVED - dual-signal approach
-        (attention + embeddings) will learn these patterns naturally.
 
         Args:
             span_text: The text of the span to classify
             position: Position in the problem (kept for API compatibility)
 
-        Returns (operation, confidence).
+        Returns (dsl_expr, confidence).
         """
         # Get embedding (no positional prefix - dual-signal handles this)
         embedding = self._get_positional_embedding(span_text, position)
@@ -336,8 +298,8 @@ class SimplePipeline:
         neighbors = self._two_tier_knn_lookup(embedding, k=7)
 
         if not neighbors:
-            # No neighbors - default to SET with low confidence
-            return ("SET", 0.3)
+            # No neighbors - default to value assignment with low confidence
+            return ("value", 0.3)
 
         # Score each operation by weighted KNN votes
         op_scores: Dict[str, float] = {}
@@ -418,7 +380,7 @@ class SimplePipeline:
             position += 1
 
             # 3. Classify operation with positional context
-            op_type, confidence = self.classify_span(text, position=position)
+            dsl_expr, confidence = self.classify_span(text, position=position)
 
             # 4. Determine entity
             # First clause usually establishes main entity
@@ -450,7 +412,7 @@ class SimplePipeline:
 
             # 6. Create operation
             op = Operation(
-                op_type=op_type,
+                dsl_expr=dsl_expr,
                 value=numbers[0] if numbers else 0,
                 entity=entity,
                 confidence=confidence,
@@ -462,24 +424,24 @@ class SimplePipeline:
             if entity not in state:
                 state[entity] = 0
 
-            if op_type == "SET":
+            if dsl_expr == "value":
                 state[entity] = op.value
-            elif op_type == "ADD":
+            elif '+' in dsl_expr:
                 if reference and reference in state:
                     state[entity] = state[reference] + op.value
                 else:
                     state[entity] += op.value
-            elif op_type == "SUB":
+            elif '-' in dsl_expr:
                 if reference and reference in state:
                     state[entity] = state[reference] - op.value
                 else:
                     state[entity] -= op.value
-            elif op_type == "MUL":
+            elif '*' in dsl_expr:
                 if reference and reference in state:
                     state[entity] = state[reference] * op.value
                 else:
                     state[entity] *= op.value
-            elif op_type == "DIV":
+            elif '/' in dsl_expr:
                 if reference and reference in state:
                     state[entity] = state[reference] / op.value if op.value != 0 else 0
                 else:
@@ -500,10 +462,10 @@ class SimplePipeline:
             # Update confidence stats
             if correct:
                 # Reinforce this classification
-                self._update_welford(step.op_type, step.confidence + 0.1)
+                self._update_welford(step.dsl_expr, step.confidence + 0.1)
             else:
                 # Weaken this classification
-                self._update_welford(step.op_type, step.confidence - 0.1)
+                self._update_welford(step.dsl_expr, step.confidence - 0.1)
 
         # Log to DB
         if self.use_db:
@@ -515,7 +477,7 @@ class SimplePipeline:
                     predicted_answer=str(steps[-1].value if steps else 0),
                     actual_answer="",
                     problem_text=problem,
-                    dag_steps=[{"op": s.op_type, "value": s.value, "entity": s.entity} for s in steps]
+                    dag_steps=[{"dsl": s.dsl_expr, "value": s.value, "entity": s.entity} for s in steps]
                 )
             except:
                 pass
@@ -540,44 +502,9 @@ def test_pipeline():
         print(f"  State: {result.state}")
         print(f"  Steps:")
         for step in result.steps:
-            print(f"    {step.entity} {step.op_type} {step.value} (conf={step.confidence:.2f})")
+            print(f"    {step.entity} [{step.dsl_expr}] {step.value} (conf={step.confidence:.2f})")
         print()
 
 
-def test_verb_classifier():
-    """Test the verb taxonomy classifier."""
-    print("=== Verb Classifier Test ===\n")
-
-    test_cases = [
-        # (text, expected_op)
-        ("She sold 5 apples", "SUB"),
-        ("He found 3 more coins", "ADD"),
-        ("She gave 4 to John", "SUB"),
-        ("Tom bought 6 oranges", "ADD"),
-        ("Mary lost 2 pencils", "SUB"),
-        ("He received 10 dollars", "ADD"),
-        ("She spent 8 dollars", "SUB"),
-        ("They collected 15 stamps", "ADD"),
-        ("He ate 3 cookies", "SUB"),
-        ("She earned 50 dollars", "ADD"),
-    ]
-
-    passed = 0
-    for text, expected in test_cases:
-        result = classify_by_verb(text)
-        status = "PASS" if result == expected else "FAIL"
-        if result == expected:
-            passed += 1
-        print(f"  [{status}] '{text}' -> {result} (expected {expected})")
-
-    print(f"\nVerb classifier: {passed}/{len(test_cases)} passed\n")
-
-
-# NOTE: test_positional_embedding REMOVED - positional prefixes no longer used
-# NOTE: test_add_sub_disambiguation REMOVED - verb backup no longer used
-# These features are replaced by dual-signal approach (attention + embeddings)
-
-
 if __name__ == "__main__":
-    test_verb_classifier()
     test_pipeline()

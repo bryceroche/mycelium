@@ -16,7 +16,6 @@ while maintaining the structural understanding of the larger model.
 
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Tuple, Any
-from enum import Enum
 import numpy as np
 import torch
 import torch.nn as nn
@@ -26,16 +25,6 @@ from collections import OrderedDict
 
 # Import consolidated Welford implementation
 from mycelium.welford import WelfordStats
-
-
-class OperationType(Enum):
-    """Core arithmetic operation types for math problem solving."""
-    SET = "SET"      # Assignment/initialization
-    ADD = "ADD"      # Addition
-    SUB = "SUB"      # Subtraction
-    MUL = "MUL"      # Multiplication
-    DIV = "DIV"      # Division
-    UNKNOWN = "UNKNOWN"  # Unclassified
 
 
 @dataclass
@@ -63,18 +52,17 @@ class DualSignalTemplate:
         outcome_welford: Running stats for execution outcomes (success/failure)
     """
     template_id: str
-    operation_type: OperationType
     embedding_centroid: np.ndarray
     attention_signature: np.ndarray  # Flattened or aggregated attention pattern
     pattern: str = ""  # Normalized pattern: "[NAME] sold [N] [ITEM]"
-    dsl_expr: str = "value"  # Custom DSL expression: "entity - value"
+    dsl_expr: str = "value"  # DSL expression: "value", "entity + value", etc.
     span_examples: List[str] = field(default_factory=list)
     embedding_welford: WelfordStats = field(default_factory=WelfordStats)
     attention_welford: WelfordStats = field(default_factory=WelfordStats)
     outcome_welford: WelfordStats = field(default_factory=WelfordStats)
     match_count: int = 0
     success_count: int = 0
-    cross_entity_attention: float = 0.0  # How much attention flows between entities (discriminates SET vs SUB/MUL)
+    cross_entity_attention: float = 0.0
 
     def update_centroid(self, new_embedding: np.ndarray, new_attention: np.ndarray) -> None:
         """
@@ -105,25 +93,27 @@ class DualSignalTemplate:
         """Serialize template to dictionary."""
         return {
             "template_id": self.template_id,
-            "operation_type": self.operation_type.value,
+            "dsl_expr": self.dsl_expr,
+            "pattern": self.pattern,
             "embedding_centroid": self.embedding_centroid.tolist(),
             "attention_signature": self.attention_signature.tolist(),
-            "span_examples": self.span_examples[:10],  # Keep top 10 examples
+            "span_examples": self.span_examples[:10],
             "embedding_welford": self.embedding_welford.to_dict(),
             "attention_welford": self.attention_welford.to_dict(),
             "outcome_welford": self.outcome_welford.to_dict(),
             "match_count": self.match_count,
             "success_count": self.success_count
         }
-    
+
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "DualSignalTemplate":
         """Deserialize template from dictionary."""
         return cls(
             template_id=d["template_id"],
-            operation_type=OperationType(d["operation_type"]),
             embedding_centroid=np.array(d["embedding_centroid"]),
             attention_signature=np.array(d["attention_signature"]),
+            pattern=d.get("pattern", ""),
+            dsl_expr=d.get("dsl_expr", "value"),
             span_examples=d.get("span_examples", []),
             embedding_welford=WelfordStats.from_dict(d["embedding_welford"]),
             attention_welford=WelfordStats.from_dict(d["attention_welford"]),
@@ -147,7 +137,7 @@ class TemplateStore:
     def __init__(self, embedding_weight: float = 0.5, attention_weight: float = 0.5):
         """
         Initialize template store.
-        
+
         Args:
             embedding_weight: Initial weight for embedding similarity [0-1]
             attention_weight: Initial weight for attention similarity [0-1]
@@ -155,18 +145,46 @@ class TemplateStore:
         self.templates: Dict[str, DualSignalTemplate] = OrderedDict()
         self.embedding_weight = embedding_weight
         self.attention_weight = attention_weight
-        
+
+        # Vectorized centroid matrix for fast matching (built lazily)
+        self._centroid_matrix: Optional[np.ndarray] = None  # (N, dim) normalized
+        self._template_ids: Optional[List[str]] = None  # parallel list of IDs
+
         # Track weight learning
         self.weight_welford = WelfordStats()  # Tracks optimal weight estimation
         self._weight_history: List[Tuple[float, bool]] = []  # (weight, success) pairs
-    
+
+    def _invalidate_centroid_cache(self) -> None:
+        """Invalidate the vectorized centroid matrix (call after add/remove)."""
+        self._centroid_matrix = None
+        self._template_ids = None
+
+    def _ensure_centroid_matrix(self) -> None:
+        """Build the vectorized centroid matrix if not cached."""
+        if self._centroid_matrix is not None:
+            return
+        if not self.templates:
+            return
+
+        self._template_ids = list(self.templates.keys())
+        centroids = [self.templates[tid].embedding_centroid for tid in self._template_ids]
+        self._centroid_matrix = np.array(centroids, dtype=np.float32)
+        # Pre-normalize rows for fast cosine similarity via dot product
+        norms = np.linalg.norm(self._centroid_matrix, axis=1, keepdims=True)
+        norms = np.maximum(norms, 1e-10)
+        self._centroid_matrix = self._centroid_matrix / norms
+
     def add_template(self, template: DualSignalTemplate) -> None:
         """Add a template to the store."""
         self.templates[template.template_id] = template
+        self._invalidate_centroid_cache()
     
     def remove_template(self, template_id: str) -> Optional[DualSignalTemplate]:
         """Remove and return a template by ID."""
-        return self.templates.pop(template_id, None)
+        result = self.templates.pop(template_id, None)
+        if result:
+            self._invalidate_centroid_cache()
+        return result
     
     def get_template(self, template_id: str) -> Optional[DualSignalTemplate]:
         """Get a template by ID."""
@@ -238,73 +256,24 @@ class TemplateStore:
         return combined, emb_sim, att_sim
     
     def find_best_match(
-        self, 
-        embedding: np.ndarray, 
+        self,
+        embedding: np.ndarray,
         attention: np.ndarray,
-        operation_filter: Optional[OperationType] = None,
         min_score: float = 0.0
     ) -> Optional[Tuple[DualSignalTemplate, float, float, float]]:
         """
         Find the best matching template for given signals.
-        
+
         Following CLAUDE.md principle: ALWAYS route to best match,
         let failures drive learning rather than arbitrary thresholds.
-        
+
+        Uses vectorized matrix multiplication for O(1) matching against
+        all templates simultaneously (vs O(N) Python loop).
+
         Args:
             embedding: Query embedding vector
             attention: Query attention pattern
-            operation_filter: Optional filter by operation type
             min_score: Minimum score threshold (default 0, always match)
-        
-        Returns:
-            Tuple of (template, combined_score, embedding_sim, attention_sim)
-            or None if no templates exist
-        """
-        if not self.templates:
-            return None
-        
-        best_match = None
-        best_score = -float('inf')
-        best_emb_sim = 0.0
-        best_att_sim = 0.0
-        
-        for template in self.templates.values():
-            if operation_filter and template.operation_type != operation_filter:
-                continue
-            
-            score, emb_sim, att_sim = self.compute_match_score(
-                embedding, attention, template
-            )
-            
-            if score > best_score:
-                best_score = score
-                best_match = template
-                best_emb_sim = emb_sim
-                best_att_sim = att_sim
-        
-        if best_match is None or best_score < min_score:
-            return None
-        
-        return best_match, best_score, best_emb_sim, best_att_sim
-
-    def find_best_match_with_cross_entity(
-        self,
-        embedding: np.ndarray,
-        attention: np.ndarray,
-        cross_entity_attention: float,
-        min_score: float = 0.0
-    ) -> Optional[Tuple[DualSignalTemplate, float, float, float]]:
-        """
-        Find best matching template using cross-entity attention as additional signal.
-
-        NO HEURISTIC BOOSTING - pure signal-based matching only.
-        Cross-entity attention is stored for analysis but doesn't boost/penalize operations.
-
-        Args:
-            embedding: Query embedding vector
-            attention: Query attention pattern
-            cross_entity_attention: Cross-entity attention score (for debugging/analysis)
-            min_score: Minimum score threshold
 
         Returns:
             Tuple of (template, combined_score, embedding_sim, attention_sim)
@@ -313,55 +282,75 @@ class TemplateStore:
         if not self.templates:
             return None
 
-        best_match = None
-        best_score = -float('inf')
-        best_emb_sim = 0.0
-        best_att_sim = 0.0
+        # Vectorized cosine similarity via matrix multiply
+        self._ensure_centroid_matrix()
+        if self._centroid_matrix is not None:
+            # Normalize query
+            query = embedding.astype(np.float32)
+            norm = np.linalg.norm(query)
+            if norm > 0:
+                query = query / norm
 
-        for template in self.templates.values():
-            score, emb_sim, att_sim = self.compute_match_score(
-                embedding, attention, template
-            )
+            # Single matrix multiply: (N, dim) @ (dim,) -> (N,)
+            sims = self._centroid_matrix @ query
+            best_idx = int(np.argmax(sims))
+            best_emb_sim = float(sims[best_idx])
 
-            # NO boosting or penalizing - pure embedding+attention matching
-            if score > best_score:
-                best_score = score
-                best_match = template
-                best_emb_sim = emb_sim
-                best_att_sim = att_sim
+            best_tid = self._template_ids[best_idx]
+            best_match = self.templates[best_tid]
 
-        if best_match is None or best_score < min_score:
-            return None
+            # Attention correlation (cheap for the single best match)
+            att_sim = self._attention_correlation(attention, best_match.attention_signature)
+            att_sim_normalized = (att_sim + 1) / 2
 
-        return best_match, best_score, best_emb_sim, best_att_sim
+            combined = (self.embedding_weight * best_emb_sim +
+                        self.attention_weight * att_sim_normalized)
+
+            if combined < min_score:
+                return None
+            return best_match, combined, best_emb_sim, att_sim
+
+        return None
 
     def find_top_k_matches(
         self,
         embedding: np.ndarray,
         attention: np.ndarray,
         k: int = 5,
-        operation_filter: Optional[OperationType] = None
     ) -> List[Tuple[DualSignalTemplate, float, float, float]]:
         """
         Find top-k matching templates.
-        
+
         Useful for MCTS exploration where we want to consider
         multiple candidates.
         """
-        matches = []
-        
-        for template in self.templates.values():
-            if operation_filter and template.operation_type != operation_filter:
-                continue
-            
-            score, emb_sim, att_sim = self.compute_match_score(
-                embedding, attention, template
-            )
-            matches.append((template, score, emb_sim, att_sim))
-        
-        # Sort by score descending
-        matches.sort(key=lambda x: x[1], reverse=True)
-        return matches[:k]
+        if not self.templates:
+            return []
+
+        # Vectorized: get top-k by embedding similarity
+        self._ensure_centroid_matrix()
+        if self._centroid_matrix is not None:
+            query = embedding.astype(np.float32)
+            norm = np.linalg.norm(query)
+            if norm > 0:
+                query = query / norm
+
+            sims = self._centroid_matrix @ query
+            top_k_indices = np.argsort(sims)[-k:][::-1]
+
+            matches = []
+            for idx in top_k_indices:
+                tid = self._template_ids[idx]
+                template = self.templates[tid]
+                emb_sim = float(sims[idx])
+                att_sim = self._attention_correlation(attention, template.attention_signature)
+                att_sim_normalized = (att_sim + 1) / 2
+                combined = (self.embedding_weight * emb_sim +
+                            self.attention_weight * att_sim_normalized)
+                matches.append((template, combined, emb_sim, att_sim))
+            return matches
+
+        return []
     
     def update_weights_from_outcome(
         self, 
@@ -416,16 +405,6 @@ class TemplateStore:
         
         # Clear history (keep last 50 for continuity)
         self._weight_history = self._weight_history[-50:]
-    
-    def get_templates_by_operation(
-        self, 
-        operation_type: OperationType
-    ) -> List[DualSignalTemplate]:
-        """Get all templates for a given operation type."""
-        return [
-            t for t in self.templates.values() 
-            if t.operation_type == operation_type
-        ]
     
     def get_high_variance_templates(
         self, 
@@ -730,7 +709,7 @@ def create_template_from_span(
     span_text: str,
     embedding: np.ndarray,
     attention_pattern: np.ndarray,
-    operation_type: OperationType,
+    dsl_expr: str = "value",
     template_id: Optional[str] = None
 ) -> DualSignalTemplate:
     """
@@ -740,7 +719,7 @@ def create_template_from_span(
         span_text: Text of the span
         embedding: Embedding vector for the span
         attention_pattern: Attention pattern for the span
-        operation_type: The operation this span represents
+        dsl_expr: DSL expression for computation (e.g., "entity + value")
         template_id: Optional ID (auto-generated if not provided)
 
     Returns:
@@ -749,13 +728,13 @@ def create_template_from_span(
     import uuid
 
     if template_id is None:
-        template_id = f"{operation_type.value}_{uuid.uuid4().hex[:8]}"
+        template_id = f"tpl_{uuid.uuid4().hex[:8]}"
 
     return DualSignalTemplate(
         template_id=template_id,
-        operation_type=operation_type,
         embedding_centroid=embedding.copy(),
         attention_signature=attention_pattern.copy(),
+        dsl_expr=dsl_expr,
         span_examples=[span_text]
     )
 
@@ -897,10 +876,10 @@ if __name__ == "__main__":
         span_text=test_text,
         embedding=embedding,
         attention_pattern=attention.flatten(),
-        operation_type=OperationType.SUB
+        dsl_expr="entity - value"
     )
     print(f"   [OK] Created template: {template.template_id}")
-    print(f"       Operation: {template.operation_type.value}")
+    print(f"       DSL expr: {template.dsl_expr}")
     print(f"       Embedding dim: {len(template.embedding_centroid)}")
     print(f"       Attention dim: {len(template.attention_signature)}")
 

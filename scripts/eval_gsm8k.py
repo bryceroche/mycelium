@@ -69,78 +69,67 @@ class AttentionDistillationModel(nn.Module):
 # Operation Type Detection
 # ============================================================================
 
-class OperationType:
-    """Core arithmetic operation types."""
-    SET = "SET"      # Assignment/initialization
-    ADD = "ADD"      # Addition
-    SUB = "SUB"      # Subtraction  
-    MUL = "MUL"      # Multiplication
-    DIV = "DIV"      # Division
-    UNKNOWN = "UNKNOWN"
-
-
 def classify_operation_from_text(span_text: str) -> str:
     """
-    Classify operation type from span text using keyword patterns.
+    Classify operation from span text, returning a DSL expression.
     """
     text_lower = span_text.lower()
-    
-    # Addition patterns
-    add_patterns = [
-        r'\b(add|plus|more|increase|total|sum|altogether|combined|both)\b',
-        r'\b(and then|also|another|additional)\b',
-        r'\+',
-    ]
-    
-    # Subtraction patterns  
-    sub_patterns = [
-        r'\b(subtract|minus|less|decrease|remove|gave away|sold|spent|lost|left|remain)\b',
-        r'\b(how many .* left|how many .* remain)\b',
-        r'-',
-    ]
-    
-    # Multiplication patterns
+
+    # Multiplication patterns (check first - most specific)
     mul_patterns = [
         r'\b(times|multiply|each|per|every|groups of)\b',
         r'\b(\d+)\s*(times|x)\s*(\d+)\b',
         r'\*|×',
     ]
-    
+
     # Division patterns
     div_patterns = [
         r'\b(divide|split|share|equally|half|third|quarter|portion)\b',
         r'\b(divided by|per each)\b',
         r'/|÷',
     ]
-    
+
+    # Subtraction patterns
+    sub_patterns = [
+        r'\b(subtract|minus|less|decrease|remove|gave away|sold|spent|lost|left|remain)\b',
+        r'\b(how many .* left|how many .* remain)\b',
+        r'-',
+    ]
+
+    # Addition patterns
+    add_patterns = [
+        r'\b(add|plus|more|increase|total|sum|altogether|combined|both)\b',
+        r'\b(and then|also|another|additional)\b',
+        r'\+',
+    ]
+
     # Set/initialization patterns
     set_patterns = [
         r'\b(has|have|had|owns|starts with|began with|initially)\b',
         r'\b(there are|there is|there were)\b',
     ]
-    
-    # Check patterns in order of specificity
+
     for pattern in mul_patterns:
         if re.search(pattern, text_lower):
-            return OperationType.MUL
-    
+            return "entity * value"
+
     for pattern in div_patterns:
         if re.search(pattern, text_lower):
-            return OperationType.DIV
-    
+            return "entity / value"
+
     for pattern in sub_patterns:
         if re.search(pattern, text_lower):
-            return OperationType.SUB
-    
+            return "entity - value"
+
     for pattern in add_patterns:
         if re.search(pattern, text_lower):
-            return OperationType.ADD
-    
+            return "entity + value"
+
     for pattern in set_patterns:
         if re.search(pattern, text_lower):
-            return OperationType.SET
-    
-    return OperationType.UNKNOWN
+            return "value"
+
+    return "value"
 
 
 # ============================================================================
@@ -389,7 +378,7 @@ def evaluate_gsm8k(num_samples: int = 100, show_examples: int = 5):
     print(f"    Max spans: {max(span_counts)}")
     
     # Operation type distribution
-    print("\n[B] OPERATION TYPE DISTRIBUTION")
+    print("\n[B] DSL EXPRESSION DISTRIBUTION")
     print("-" * 40)
     total_ops = sum(operation_counts.values())
     for op_type, count in sorted(operation_counts.items(), key=lambda x: -x[1]):

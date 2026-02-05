@@ -129,7 +129,7 @@ def load_templates(templates_path: str, encoder: ContrastiveEncoder) -> List[Tem
 
         templates.append(Template(
             template_id=t.get('template_id', 'unknown'),
-            operation=t.get('operation', t.get('operation_type', 'unknown')),
+            operation=t.get('dsl_expr', t.get('operation', t.get('operation_type', 'unknown'))),
             custom_dsl=t.get('custom_dsl', 'value'),
             embedding=centroid,
             span_examples=spans,

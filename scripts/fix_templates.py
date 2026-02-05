@@ -54,7 +54,7 @@ OPERATION_INDICATORS = {
 def classify_pattern(pattern: str) -> Tuple[Optional[str], float]:
     """Classify a single pattern by its semantic content.
 
-    Returns: (operation_type, confidence)
+    Returns: (dsl_label, confidence)
     """
     pattern_lower = pattern.lower()
 

@@ -207,7 +207,7 @@ def deduplicate_patterns(spans: List[Dict]) -> Dict[str, Dict]:
     Groups by pattern, then infers operation from pattern content.
 
     Args:
-        spans: List of span dicts with span_text, operation_type, etc.
+        spans: List of span dicts with span_text, dsl_expr, etc.
 
     Returns:
         Dict mapping pattern -> template info
@@ -316,7 +316,7 @@ def load_specialized_templates(path: Path) -> List[Dict]:
     for template_id, tpl in data.items():
         spans.append({
             'span_text': tpl.get('pattern', ''),
-            'operation_type': tpl.get('operation_type', 'SET'),
+            'dsl_expr': tpl.get('dsl_expr', 'value'),
             'original_dsl': tpl.get('dsl_expr', 'value'),
             'template_id': template_id
         })

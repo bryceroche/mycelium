@@ -155,7 +155,7 @@ def run_benchmark(templates_path: str, model_path: str, n_problems: int = 1000):
                     'problem': problem[:100],
                     'expected': expected,
                     'predicted': predicted,
-                    'operations': [(op.op_type, op.value) for op in result.operations]
+                    'operations': [(op.dsl_expr, op.value) for op in result.operations]
                 })
 
             total += 1

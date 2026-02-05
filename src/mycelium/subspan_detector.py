@@ -486,7 +486,7 @@ def detect_operations(
         value = cls_span.span.numbers[0] if cls_span.span.numbers else 0.0
 
         operations.append(Operation(
-            op_type=cls_span.operation,
+            dsl_expr=cls_span.operation,
             value=value,
             entity=cls_span.entity,
             reference=cls_span.span.reference,
@@ -622,7 +622,7 @@ def test_detect_operations():
         operations = detect_operations(clause, pipeline=None)
         print(f"  Detected {len(operations)} operation(s):")
         for op in operations:
-            print(f"    - {op.op_type}({op.value}) ref={op.reference} conf={op.confidence:.2f}")
+            print(f"    - {op.dsl_expr}({op.value}) ref={op.reference} conf={op.confidence:.2f}")
             print(f"      span: '{op.span_text}'")
 
         # Verify expected operations
@@ -650,7 +650,7 @@ def test_with_pipeline():
             operations = detect_operations(clause, pipeline=pipeline, position=2)
             print(f"  Detected {len(operations)} operation(s):")
             for op in operations:
-                print(f"    - {op.op_type}({op.value}) ref={op.reference} conf={op.confidence:.2f}")
+                print(f"    - {op.dsl_expr}({op.value}) ref={op.reference} conf={op.confidence:.2f}")
             print()
 
     except ImportError as e:

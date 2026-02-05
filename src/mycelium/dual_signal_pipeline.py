@@ -25,7 +25,6 @@ from mycelium.dual_signal_templates import (
     SpanDetector,
     TemplateStore,
     DualSignalTemplate,
-    OperationType,
 )
 from mycelium.attention_graph import AttentionGraphBuilder, SpanGraph, Span, GraphExecutor, ExecutionResult
 
@@ -58,13 +57,12 @@ DEFAULT_TEMPLATES_PATH = QWEN_TEMPLATES_PATH if QWEN_TEMPLATES_PATH.exists() els
 class MatchedOperation:
     """Result of matching a span to a template."""
     span_text: str
-    operation_type: OperationType
     template_id: str
     combined_score: float
     embedding_similarity: float
     attention_similarity: float
     confidence: float  # Welford-adjusted confidence
-    dsl_expr: str = "value"  # Custom DSL expression from matched template
+    dsl_expr: str = "value"  # DSL expression from matched template
 
 
 @dataclass
@@ -87,15 +85,6 @@ class DualSignalPipeline:
     The dual-signal approach achieves better operational similarity matching
     by using BOTH embedding content and attention patterns.
     """
-
-    # Operation type mapping from string labels
-    OP_TYPE_MAP = {
-        "SET": OperationType.SET,
-        "ADD": OperationType.ADD,
-        "SUB": OperationType.SUB,
-        "MUL": OperationType.MUL,
-        "DIV": OperationType.DIV,
-    }
 
     def __init__(
         self,
@@ -205,7 +194,6 @@ class DualSignalPipeline:
                 matched_operations.append(match_result)
                 span_templates.append((
                     span_idx,
-                    match_result.operation_type.value,
                     match_result.dsl_expr
                 ))
 
@@ -265,14 +253,13 @@ class DualSignalPipeline:
             confidence = self._compute_confidence(template, combined_score)
 
             return MatchedOperation(
-                span_text=span.text,  # Keep original text for display
-                operation_type=template.operation_type,
+                span_text=span.text,
                 template_id=template.template_id,
                 combined_score=combined_score,
                 embedding_similarity=emb_sim,
                 attention_similarity=att_sim,
                 confidence=confidence,
-                dsl_expr=getattr(template, 'dsl_expr', 'value'),
+                dsl_expr=template.dsl_expr,
             )
 
         return None
@@ -357,17 +344,16 @@ class DualSignalPipeline:
 
     def bootstrap_from_labeled_spans(
         self,
-        spans: List[Tuple[str, str]],  # (text, operation_label)
+        spans: List[Tuple[str, str]],  # (text, dsl_expr)
         deduplicate: bool = True,
         similarity_threshold: float = 0.85,
     ) -> int:
         """Bootstrap templates from labeled span data.
 
         Creates initial templates from existing labeled spans.
-        This is the primary way to initialize the template store.
 
         Args:
-            spans: List of (span_text, operation_label) tuples
+            spans: List of (span_text, dsl_expr) tuples
             deduplicate: Skip spans too similar to existing templates
             similarity_threshold: Threshold for deduplication
 
@@ -376,10 +362,7 @@ class DualSignalPipeline:
         """
         created = 0
 
-        for span_text, op_label in spans:
-            # Map label to OperationType
-            op_type = self.OP_TYPE_MAP.get(op_label.upper(), OperationType.UNKNOWN)
-
+        for span_text, dsl_expr in spans:
             # Extract features for this span
             embedding, attention, tokens = self.detector.extract_features(span_text)
             attention_flat = attention.flatten()
@@ -388,18 +371,17 @@ class DualSignalPipeline:
             if deduplicate and self.store.templates:
                 best_match = self.store.find_best_match(embedding, attention_flat)
                 if best_match and best_match[1] > similarity_threshold:
-                    # Too similar to existing template, skip
                     continue
 
             # Create template
             import uuid
-            template_id = f"{op_type.value}_{uuid.uuid4().hex[:8]}"
+            template_id = f"tpl_{uuid.uuid4().hex[:8]}"
 
             template = DualSignalTemplate(
                 template_id=template_id,
-                operation_type=op_type,
                 embedding_centroid=embedding.copy(),
                 attention_signature=attention_flat.copy(),
+                dsl_expr=dsl_expr,
                 span_examples=[span_text],
             )
 
@@ -429,9 +411,8 @@ class DualSignalPipeline:
 
             spans = get_labeled_spans(limit=limit)
             labeled_data = [
-                (span.span_text, span.operation)
+                (span.span_text, getattr(span, 'dsl_expr', 'value'))
                 for span in spans
-                if span.operation
             ]
 
             return self.bootstrap_from_labeled_spans(
@@ -448,42 +429,25 @@ class DualSignalPipeline:
     def bootstrap_from_examples(self) -> int:
         """Bootstrap with built-in example spans.
 
-        Provides minimal templates for each operation type
-        when no database is available.
+        Provides minimal templates when no data is available.
 
         Returns:
             Number of templates created
         """
         example_spans = [
-            # SET operations
-            ("John has 5 apples", "SET"),
-            ("Mary has 12 cookies", "SET"),
-            ("Tom has 8 dollars", "SET"),
-
-            # ADD operations
-            ("He found 3 more coins", "ADD"),
-            ("She received 10 dollars", "ADD"),
-            ("They bought 6 oranges", "ADD"),
-
-            # SUB operations
-            ("She gave 4 to Jane", "SUB"),
-            ("He sold 5 apples", "SUB"),
-            ("She spent 8 dollars", "SUB"),
-
-            # MUL operations
-            ("She tripled her money", "MUL"),
-            ("He doubled his score", "MUL"),
-            ("Each bag has 5 apples", "MUL"),
-
-            # DIV operations
-            ("She split it into 3 parts", "DIV"),
-            ("He divided by 2", "DIV"),
-            ("They shared equally among 4", "DIV"),
+            ("John has 5 apples", "value"),
+            ("Mary has 12 cookies", "value"),
+            ("He found 3 more coins", "entity + value"),
+            ("She received 10 dollars", "entity + value"),
+            ("She gave 4 to Jane", "entity - value"),
+            ("He sold 5 apples", "entity - value"),
+            ("Each bag has 5 apples", "entity * value"),
+            ("She split it into 3 parts", "entity / value"),
         ]
 
         return self.bootstrap_from_labeled_spans(
             example_spans,
-            deduplicate=False  # Keep all examples
+            deduplicate=False
         )
 
     # ================================================================
@@ -546,22 +510,15 @@ class DualSignalPipeline:
         1. Pre-computed centroid (from Qwen pipeline): uses embedding_centroid directly
         2. Legacy format: re-embeds from pattern_examples text
 
-        Pre-computed centroids are preferred because they were computed from
-        RAW span examples during training, matching the inference embedding space.
-
         Args:
-            tpl_dict: Dict with template_id, operation, base_dsl, etc.
+            tpl_dict: Dict with template_id, base_dsl/dsl, etc.
 
         Returns:
             DualSignalTemplate or None if invalid
         """
         try:
-            # Map operation string to OperationType
-            op_str = tpl_dict.get("operation", "SET")
-            operation_type = OperationType[op_str]
-
             # Get DSL expression
-            dsl_expr = tpl_dict.get("base_dsl", tpl_dict.get("dsl", "value"))
+            dsl_expr = tpl_dict.get("base_dsl", tpl_dict.get("dsl", tpl_dict.get("dsl_expr", "value")))
 
             patterns = tpl_dict.get("pattern_examples", [])
 
@@ -569,9 +526,9 @@ class DualSignalPipeline:
             if "embedding_centroid" in tpl_dict and tpl_dict["embedding_centroid"]:
                 embedding = np.array(tpl_dict["embedding_centroid"], dtype=np.float32)
 
-                # Compute attention centroid from pattern_examples via MiniLM
-                # This gives us a REAL dual signal instead of dummy zeros
-                attention_flat = self._compute_attention_centroid(patterns)
+                # Skip attention centroid computation for bulk-loaded templates
+                # (too slow for 23K+ templates; embedding_weight=0.9 dominates anyway)
+                attention_flat = np.zeros(100, dtype=np.float32)
             else:
                 # Legacy: re-embed from pattern examples or description
                 text_for_embedding = tpl_dict.get("description", "")
@@ -585,7 +542,6 @@ class DualSignalPipeline:
 
             return DualSignalTemplate(
                 template_id=tpl_dict["template_id"],
-                operation_type=operation_type,
                 embedding_centroid=embedding,
                 attention_signature=attention_flat,
                 pattern=tpl_dict.get("pattern", ""),
@@ -645,8 +601,8 @@ class DualSignalPipeline:
         """
         templates_by_op = {}
         for template in self.store.templates.values():
-            op = template.operation_type.value
-            templates_by_op[op] = templates_by_op.get(op, 0) + 1
+            dsl = template.dsl_expr
+            templates_by_op[dsl] = templates_by_op.get(dsl, 0) + 1
 
         return {
             "total_templates": len(self.store.templates),
@@ -736,7 +692,7 @@ if __name__ == "__main__":
         for op in output.matched_operations:
             span_preview = f"{op.span_text[:40]}..." if len(op.span_text) > 40 else op.span_text
             print(f"  - '{span_preview}'")
-            print(f"    Operation: {op.operation_type.value}")
+            print(f"    DSL: {op.dsl_expr}")
             print(f"    Template: {op.template_id}")
             print(f"    Confidence: {op.confidence:.3f}")
             print(f"    Scores: combined={op.combined_score:.3f}, "
