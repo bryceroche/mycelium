@@ -3,10 +3,10 @@
 Generalize GSM8K spans using Qwen-7B (one-time batch job).
 
 Qwen generalizes each span into a pattern:
-  - Names/pronouns → [ENTITY]
-  - Items/objects → [ENTITY]
-  - Numbers → [N]
-  - Verbs and structural words → kept as-is
+  - Names/pronouns -> [PERSON1], [PERSON2], etc.
+  - Items/objects -> [ITEM1], [ITEM2], etc.
+  - Numbers -> [N]
+  - Verbs and structural words -> kept as-is
 
 Patterns are then clustered at 95% cosine similarity to produce canonical
 span templates. Custom sub-graph DSLs are written per template AFTER clustering.
@@ -16,8 +16,8 @@ Used ONLY for training template creation. NOT needed at inference time.
 At inference, raw spans are embedded and matched to templates by cosine similarity.
 
 USAGE:
-    # Full run on VM with GPU:
-    python scripts/generalize_with_qwen.py
+    # Full run on VM with 4 GPUs (vLLM tensor parallel):
+    python scripts/generalize_with_qwen.py --tp-size 4
 
     # Quick test (10 problems):
     python scripts/generalize_with_qwen.py --num-samples 10
@@ -142,63 +142,53 @@ def parse_qwen_response(response: str) -> Optional[Dict]:
     return None
 
 
-def generalize_batch_qwen(
+def generalize_batch_vllm(
     spans: List[str],
-    model,
+    llm,
     tokenizer,
-    batch_size: int = 16,
+    chunk_size: int = 3200,
     checkpoint_dir: str = ".",
-    checkpoint_every: int = 50,
 ) -> List[Optional[Dict]]:
-    """Generalize spans using Qwen with true batched inference.
+    """Generalize spans using vLLM for high-throughput inference.
 
-    Saves checkpoint every `checkpoint_every` batches so we can test
-    partial results while the full batch runs.
+    vLLM handles batching, KV cache (PagedAttention), and GPU scheduling
+    internally — we just feed it prompts in chunks for checkpointing.
 
     Args:
         spans: List of raw span texts
-        model: Loaded Qwen model
-        tokenizer: Loaded Qwen tokenizer
-        batch_size: Number of spans per GPU batch
+        llm: vLLM LLM engine
+        tokenizer: Tokenizer for chat template formatting
+        chunk_size: Number of spans per checkpoint chunk
         checkpoint_dir: Directory for checkpoint files
-        checkpoint_every: Save checkpoint every N batches
 
     Returns:
         List of parsed results (or None for failures)
     """
-    import torch
+    from vllm import SamplingParams
+
+    sampling_params = SamplingParams(max_tokens=40, temperature=0)
 
     # Check for existing checkpoint to resume from
     checkpoint_path = os.path.join(checkpoint_dir, "qwen_checkpoint.json")
     results = []
-    start_batch = 0
+    start_idx = 0
 
     if os.path.exists(checkpoint_path):
         with open(checkpoint_path) as f:
             checkpoint = json.load(f)
         results = checkpoint["results"]
-        start_batch = checkpoint["next_batch_idx"]
+        start_idx = checkpoint["next_span_idx"]
         print(f"Resuming from checkpoint: {len(results)} spans done, "
-              f"starting at batch index {start_batch}")
+              f"starting at span index {start_idx}")
 
-    # Pad from left for batched generation
-    tokenizer.padding_side = "left"
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
+    total_chunks = (len(spans) - start_idx + chunk_size - 1) // chunk_size
 
-    total_batches = (len(spans) + batch_size - 1) // batch_size
-    batch_num = 0
+    for chunk_num, chunk_start in enumerate(range(start_idx, len(spans), chunk_size)):
+        chunk = spans[chunk_start:chunk_start + chunk_size]
 
-    for i in tqdm(range(0, len(spans), batch_size), desc="Generalizing"):
-        # Skip already-processed batches (from checkpoint)
-        if i < start_batch:
-            batch_num += 1
-            continue
-        batch = spans[i:i + batch_size]
-
-        # Build all prompts for this batch
-        texts = []
-        for span in batch:
+        # Format all prompts for this chunk using chat template
+        prompts = []
+        for span in chunk:
             prompt = GENERALIZATION_PROMPT.format(span=span)
             messages = [
                 {"role": "system", "content": "Complete the JSON. Output ONLY the pattern value and closing brace. No explanation."},
@@ -207,109 +197,38 @@ def generalize_batch_qwen(
             text = tokenizer.apply_chat_template(
                 messages, tokenize=False, add_generation_prompt=True
             )
-            texts.append(text)
+            prompts.append(text)
 
-        # Tokenize entire batch at once with padding
-        inputs = tokenizer(
-            texts, return_tensors="pt", padding=True, truncation=True
-        ).to(model.device)
+        # vLLM generates all at once with continuous batching + PagedAttention
+        print(f"\n  Chunk {chunk_num + 1}/{total_chunks}: generating {len(prompts)} spans...")
+        outputs = llm.generate(prompts, sampling_params)
 
-        with torch.no_grad():
-            outputs = model.generate(
-                **inputs,
-                max_new_tokens=100,
-                do_sample=False,
-            )
-
-        # Decode each output, maintaining order via placeholder slots
-        batch_results = [None] * len(batch)
-        retry_indices = []
-        input_len = inputs.input_ids.shape[1]
-
-        for j, span in enumerate(batch):
-            response = tokenizer.decode(
-                outputs[j][input_len:],
-                skip_special_tokens=True,
-            ).strip()
-
-            if not response:
-                # Empty response — pad_token==eos_token can cause this in batches
-                retry_indices.append(j)
-                continue
-
-            parsed = parse_qwen_response(response)
-            if parsed:
-                parsed['raw_span'] = span
-                parsed['qwen_response'] = response
-                batch_results[j] = parsed
-            else:
-                fallback = regex_fallback_generalize(span)
-                fallback['raw_span'] = span
-                fallback['qwen_response'] = response
-                fallback['qwen_failed'] = True
-                batch_results[j] = fallback
-
-        # Retry empty responses individually (no padding → no pad/eos confusion)
-        for j in retry_indices:
-            span = batch[j]
-            prompt = GENERALIZATION_PROMPT.format(span=span)
-            messages = [
-                {"role": "system", "content": "Complete the JSON. Output ONLY the pattern value and closing brace. No explanation."},
-                {"role": "user", "content": prompt},
-            ]
-            text = tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True
-            )
-            single_input = tokenizer(
-                text, return_tensors="pt"
-            ).to(model.device)
-
-            with torch.no_grad():
-                single_output = model.generate(
-                    **single_input,
-                    max_new_tokens=100,
-                    do_sample=False,
-                )
-
-            single_len = single_input.input_ids.shape[1]
-            response = tokenizer.decode(
-                single_output[0][single_len:],
-                skip_special_tokens=True,
-            ).strip()
+        # Parse results
+        for span, output in zip(chunk, outputs):
+            response = output.outputs[0].text.strip()
 
             parsed = parse_qwen_response(response) if response else None
             if parsed:
                 parsed['raw_span'] = span
                 parsed['qwen_response'] = response
-                batch_results[j] = parsed
+                results.append(parsed)
             else:
                 fallback = regex_fallback_generalize(span)
                 fallback['raw_span'] = span
                 fallback['qwen_response'] = response
                 fallback['qwen_failed'] = True
-                batch_results[j] = fallback
+                results.append(fallback)
 
-        results.extend(batch_results)
-        batch_num += 1
-
-        # Save checkpoint every N batches
-        if batch_num % checkpoint_every == 0:
-            checkpoint_data = {
-                "results": results,
-                "raw_spans": spans,  # Save all raw spans so generic_method can be re-run
-                "next_batch_idx": i + batch_size,
-                "total_spans": len(spans),
-                "batches_done": batch_num,
-                "total_batches": total_batches,
-            }
-            with open(checkpoint_path, 'w') as f:
-                json.dump(checkpoint_data, f)
-            print(f"\n  Checkpoint saved: {len(results)}/{len(spans)} spans "
-                  f"({batch_num}/{total_batches} batches)")
-
-        # Clear GPU cache periodically
-        if i % (batch_size * 10) == 0 and torch.cuda.is_available():
-            torch.cuda.empty_cache()
+        # Save checkpoint after each chunk
+        checkpoint_data = {
+            "results": results,
+            "raw_spans": spans,
+            "next_span_idx": chunk_start + len(chunk),
+            "total_spans": len(spans),
+        }
+        with open(checkpoint_path, 'w') as f:
+            json.dump(checkpoint_data, f)
+        print(f"  Checkpoint saved: {len(results)}/{len(spans)} spans")
 
     # Remove checkpoint file on completion
     if os.path.exists(checkpoint_path):
@@ -358,9 +277,8 @@ def load_gsm8k(data_dir: Path, num_samples: Optional[int] = None) -> List[Dict]:
 
 def run_generalization(
     problems: List[Dict],
-    model,
+    llm,
     tokenizer,
-    batch_size: int = 16,
 ) -> List[Dict]:
     """Run full generalization pipeline.
 
@@ -384,7 +302,7 @@ def run_generalization(
 
     # Generalize all spans
     raw_spans = [s['span'] for s in span_data]
-    generalized = generalize_batch_qwen(raw_spans, model, tokenizer, batch_size)
+    generalized = generalize_batch_vllm(raw_spans, llm, tokenizer)
 
     # Merge results
     for sd, gen in zip(span_data, generalized):
@@ -487,7 +405,7 @@ def compute_template_embeddings(
 
         clusters.append(cluster)
 
-    print(f"  Clustered: {len(raw_templates)} → {len(clusters)} templates")
+    print(f"  Clustered: {len(raw_templates)} -> {len(clusters)} templates")
 
     final_templates = []
     for cluster in clusters:
@@ -538,10 +456,8 @@ def main():
                         help="Output path for deduplicated templates")
     parser.add_argument("--num-samples", type=int, default=None,
                         help="Limit number of problems (for testing)")
-    parser.add_argument("--batch-size", type=int, default=32,
-                        help="Batch size for Qwen inference")
-    parser.add_argument("--quantize", choices=["4bit", "8bit", "none"],
-                        default="4bit", help="Quantization for Qwen")
+    parser.add_argument("--tp-size", type=int, default=1,
+                        help="Tensor parallel size (number of GPUs for vLLM)")
     parser.add_argument("--skip-qwen", action="store_true",
                         help="Skip Qwen, use regex fallback only (for testing)")
     parser.add_argument("--similarity-threshold", type=float, default=0.95,
@@ -576,43 +492,28 @@ def main():
                 fb['qwen_failed'] = True
                 all_records.append(fb)
     else:
-        # Load Qwen
-        import torch
-        from transformers import AutoModelForCausalLM, AutoTokenizer
+        # Load Qwen with vLLM for high-throughput inference
+        from vllm import LLM
+        from transformers import AutoTokenizer
 
-        print("\nLoading Qwen-7B...")
         model_name = "Qwen/Qwen2.5-7B-Instruct"
+        print(f"\nLoading {model_name} with vLLM (tensor_parallel={args.tp_size})...")
 
         tokenizer = AutoTokenizer.from_pretrained(
             model_name, trust_remote_code=True
         )
 
-        model_kwargs = {"trust_remote_code": True}
-        if args.quantize == "4bit":
-            from transformers import BitsAndBytesConfig
-            model_kwargs["quantization_config"] = BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_compute_dtype=torch.float16,
-            )
-            model_kwargs["device_map"] = "auto"
-        elif args.quantize == "8bit":
-            from transformers import BitsAndBytesConfig
-            model_kwargs["quantization_config"] = BitsAndBytesConfig(
-                load_in_8bit=True
-            )
-            model_kwargs["device_map"] = "auto"
-        else:
-            model_kwargs["torch_dtype"] = torch.float16
-            model_kwargs["device_map"] = "auto"
-
-        model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
-        model.eval()
+        llm = LLM(
+            model=model_name,
+            tensor_parallel_size=args.tp_size,
+            dtype="float16",
+            trust_remote_code=True,
+            gpu_memory_utilization=0.90,
+        )
         print(f"Loaded {model_name}")
 
         # Run generalization
-        all_records = run_generalization(
-            problems, model, tokenizer, args.batch_size
-        )
+        all_records = run_generalization(problems, llm, tokenizer)
 
     # Save raw generalized spans
     print(f"\nSaving {len(all_records)} generalized spans to {output_path}...")
