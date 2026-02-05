@@ -86,16 +86,6 @@ Raw spans have a long tail of singletons. One pass of generalization isn't enoug
 
 **Solution: multiple passes, each targeting the singleton long tail.**
 
-```
-raw_span → gen_0 (seed from existing patterns)
-         → gen_1 (Qwen generalizes ALL spans)
-             → GROUP BY gen_1, find singletons
-         → gen_2 (Qwen re-generalizes ONLY singletons, refs gen_1)
-             → GROUP BY gen_2, find singletons
-         → gen_3 (repeat until singleton count stabilizes)
-             → ...stop when drop < 5% between passes
-```
-
 Each pass generates a **new column** — preserving the full audit trail. Non-singletons carry forward unchanged. Only small groups (count < min_group_size) get re-generalized.
 
 **After convergence:**
