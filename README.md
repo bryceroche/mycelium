@@ -33,6 +33,14 @@ MiniLM was originally trained with: `loss = MSE(student_attention, teacher_atten
 
 This means MiniLM already learned to mimic attention patterns from a larger teacher. When we fine-tune it on Qwen 7B attention patterns, it's doing exactly what it was designed for — just with a new teacher.
 
+## Template Creation Pipeline
+
+1. **Extract spans** — Sentence-level segmentation of GSM8K produces ~15k raw spans
+2. **Qwen generalizes** — One-time GPU batch: names → `[ENTITY]`, numbers → `[N]`, structure preserved
+3. **GROUP BY at 95% cosine similarity** — Cluster generalized spans by MiniLM embedding similarity → canonical span templates
+4. **Custom sub-graph DSLs** — Each template gets a hand-written DSL representing the actual computation (not just SET/ADD/SUB)
+5. **Embed templates** — MiniLM centroid embeddings for cosine matching at inference
+
 ## Trained Signal Mapping (17k Spans)
 
 We have 17k spans with BOTH MiniLM embeddings AND Qwen attention signals. This lets us train a mapping:
@@ -41,7 +49,7 @@ We have 17k spans with BOTH MiniLM embeddings AND Qwen attention signals. This l
 
 **Fine-tuning process:**
 - Extract Qwen 7B attention on 17k spans
-- Deduplicate and embed 17k spans → 200 specialized span templates with custom DSL (sub-graph)
+- Cluster at 95% cosine sim → specialized span templates with custom DSL (sub-graph)
 - Extract MiniLM embeddings on same 17k spans
 - Train mapping: predict Qwen signals from MiniLM features ~95% correlation
 
@@ -66,11 +74,11 @@ Cross-attention between spans captures dependencies: "she sold half" depends on 
 
 No Qwen 7B needed at inference — just the trained mapping + LLM for execution.
 
-## Specialized Templates with Generic Entities
+## Specialized Templates with Sub-Graph DSLs
 
-Each span maps to a specialized template. LLM matches problem text to our span templates which are sub-graphs that are composed via attention span connectivity.
+Each span maps to a specialized template with a custom sub-graph DSL. Templates are not single operations — they are sub-graphs that can contain multiple operations, composed via attention span connectivity.
 
-**Examples:** Circle geometry, Ratio, Percentage, Half of
+**Examples:** Circle geometry, Ratio, Percentage, Half of, Earn-per-period
 
 **Generic entities:**
 GSM8K problems mention many entities (apples, cookies, cheese). We use `{entity}` placeholders.

@@ -72,8 +72,8 @@ class DualSignalSolver:
         self,
         templates_path: Optional[str] = None,
         model_path: Optional[str] = None,
-        embedding_weight: float = 0.5,
-        attention_weight: float = 0.5,
+        embedding_weight: float = 0.9,
+        attention_weight: float = 0.1,
         use_db: bool = False,
         mock_model: bool = False,
     ):

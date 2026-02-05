@@ -68,6 +68,21 @@ MiniLM was originally trained with: `loss = MSE(student_attention, teacher_atten
 
 This means MiniLM already learned to mimic attention patterns from a larger teacher. When we fine-tune it on Qwen 7B attention patterns, it's doing exactly what it was designed for — just with a new teacher.
 
+## Template Creation Pipeline
+
+**Step 1: Extract spans from GSM8K** — Sentence-level segmentation produces ~15k raw spans from 7,378 training problems.
+
+**Step 2: Qwen generalizes each span** — One-time batch job on GPU VM. Names → [ENTITY], numbers → [N], structural words preserved. This is the `generalize_with_qwen.py` script.
+
+**Step 3: GROUP BY at 95% cosine similarity** — Cluster generalized spans by MiniLM embedding similarity within each operation type. Whatever count comes out is the template library size. Each cluster becomes one canonical span template.
+
+**Step 4: Write custom sub-graph DSLs** — Each canonical template gets a hand-written DSL that represents the actual computation. Not single-op (SET/ADD/SUB) but full sub-graphs:
+- `"[ENTITY] has [N] apples"` → `entity = value`
+- `"half of [ENTITY]'s [N]"` → `result = entity / 2`
+- `"[ENTITY] earns [N], [N] of what [ENTITY] earns"` → `entity_b = value / fraction`
+
+**Step 5: Embed templates** — Each template's raw span examples get MiniLM centroid embeddings. These live in the same embedding space as inference spans, so cosine similarity works directly.
+
 ## Trained Signal Mapping (17k Spans)
 **The dataset:**
 We have 17k spans with BOTH MiniLM embeddings AND Qwen attention signals. This lets us train a mapping:
@@ -76,7 +91,7 @@ We have 17k spans with BOTH MiniLM embeddings AND Qwen attention signals. This l
 
 **Fine-tuning process:**
 - Extract Qwen 7B attention on 17k spans
-- Deduplicate and embed 17k spans -> 200 specialized span templates with custom DSL (sub graph)
+- Cluster at 95% cosine sim → specialized span templates with custom DSL (sub-graph)
 - Extract MiniLM embeddings on same 17k spans
 - Train mapping: predict Qwen signals from MiniLM features ~95% correlation
 
@@ -98,14 +113,14 @@ Cross-attention between spans captures dependencies: "she sold half" depends on 
 
 No Qwen 7B needed at inference — just the trained mapping + LLM for execution.
 
-## Specialized Templates with Generic Entities
+## Specialized Templates with Sub-Graph DSLs
 
-Each span maps to a specialized template.  LLM matches problem text to our span templates which are sub-graphs that are composed via attention span connectivity.
+Each span maps to a specialized template with a custom sub-graph DSL. Templates are NOT single operations (SET/ADD/SUB/MUL/DIV) — they are sub-graphs that can contain multiple operations. LLM matches problem text to our span templates which are sub-graphs composed via attention span connectivity.
 
-**Examples:** Circle geometry, Ratio, Percentage, Half of
+**Examples:** Circle geometry, Ratio, Percentage, Half of, Earn-per-period
 
 **Generic entities:**
-GSM8K problems mention many entities (apples, cookies, cheese). We use `{entity}` placeholders:
+GSM8K problems mention many entities (apples, cookies, cheese). We use `{entity}` placeholders.
 
 ## Building the graph
  - match span templates to subgraphs
