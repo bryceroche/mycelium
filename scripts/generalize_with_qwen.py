@@ -140,25 +140,107 @@ Sentence: "{span}"
 
 
 def parse_qwen_response(response: str) -> Optional[Dict]:
-    """Parse Qwen's structured response into a dict."""
+    """Parse Qwen's response into a dict.
+
+    Qwen2.5-Math-Instruct does chain-of-thought reasoning, so the structured
+    PATTERN/OPERATION/DSL lines may appear anywhere in verbose output, or
+    in a \\boxed{} block. We search flexibly rather than requiring exact format.
+    """
     result = {}
 
-    # Extract PATTERN
-    pattern_match = re.search(r'PATTERN:\s*(.+)', response)
+    # Strategy 1: Look for exact PATTERN:/OPERATION:/DSL: lines (ideal case)
+    pattern_match = re.search(r'PATTERN:\s*(.+)', response, re.IGNORECASE)
     if pattern_match:
         result['pattern'] = pattern_match.group(1).strip()
 
-    # Extract OPERATION
-    op_match = re.search(r'OPERATION:\s*(SET|ADD|SUB|MUL|DIV)', response)
+    op_match = re.search(r'OPERATION:\s*(SET|ADD|SUB|MUL|DIV)', response, re.IGNORECASE)
     if op_match:
-        result['operation'] = op_match.group(1).strip()
+        result['operation'] = op_match.group(1).strip().upper()
 
-    # Extract DSL
-    dsl_match = re.search(r'DSL:\s*(.+)', response)
+    dsl_match = re.search(r'DSL:\s*(.+)', response, re.IGNORECASE)
     if dsl_match:
         result['dsl'] = dsl_match.group(1).strip()
 
     if 'pattern' in result and 'operation' in result and 'dsl' in result:
+        return result
+
+    # Strategy 2: Parse from chain-of-thought (Qwen often says "the operation is ADD")
+    if 'operation' not in result:
+        # Look for operation keywords in context
+        op_context = re.search(
+            r'(?:operation\s+is|operation:\s*)\s*(SET|ADD|SUB|MUL|DIV|addition|subtraction|multiplication|division|setting)',
+            response, re.IGNORECASE
+        )
+        if op_context:
+            op_word = op_context.group(1).strip().upper()
+            OP_MAP = {
+                'ADDITION': 'ADD', 'ADD': 'ADD',
+                'SUBTRACTION': 'SUB', 'SUB': 'SUB',
+                'MULTIPLICATION': 'MUL', 'MUL': 'MUL',
+                'DIVISION': 'DIV', 'DIV': 'DIV',
+                'SETTING': 'SET', 'SET': 'SET',
+            }
+            result['operation'] = OP_MAP.get(op_word, 'SET')
+
+    # Strategy 3: Infer operation from DSL expression found anywhere
+    if 'operation' not in result:
+        dsl_anywhere = re.search(
+            r'(entity\s*[\+\-\*/]\s*value|ref\s*[\+\-\*/]\s*(?:value|\d+)|value)',
+            response, re.IGNORECASE
+        )
+        if dsl_anywhere:
+            dsl_text = dsl_anywhere.group(1).strip().lower()
+            if 'dsl' not in result:
+                result['dsl'] = dsl_text
+            if '+' in dsl_text:
+                result['operation'] = 'ADD'
+            elif '-' in dsl_text:
+                result['operation'] = 'SUB'
+            elif '*' in dsl_text:
+                result['operation'] = 'MUL'
+            elif '/' in dsl_text:
+                result['operation'] = 'DIV'
+            else:
+                result['operation'] = 'SET'
+
+    # Strategy 4: Parse from \boxed{} (Qwen math format)
+    boxed = re.search(r'\\boxed\{(.+?)\}', response)
+    if boxed:
+        boxed_text = boxed.group(1)
+        if 'pattern' not in result:
+            # First segment before period/comma is often the pattern
+            parts = re.split(r'[.;]', boxed_text)
+            if parts:
+                result['pattern'] = parts[0].strip()
+
+    # Fill in pattern from ENTITY/N substitution in response
+    if 'pattern' not in result:
+        entity_pattern = re.search(
+            r'(?:pattern\s+is|pattern:)\s*(.+?)(?:\.|$)',
+            response, re.IGNORECASE
+        )
+        if entity_pattern:
+            result['pattern'] = entity_pattern.group(1).strip()
+
+    # Default DSL based on operation
+    if 'operation' in result and 'dsl' not in result:
+        DSL_DEFAULTS = {
+            'SET': 'value', 'ADD': 'entity + value', 'SUB': 'entity - value',
+            'MUL': 'entity * value', 'DIV': 'entity / value',
+        }
+        result['dsl'] = DSL_DEFAULTS.get(result['operation'], 'value')
+
+    # Clean up parsed values — strip chain-of-thought prefixes
+    for key in ('pattern', 'dsl'):
+        if key in result:
+            # Remove bullet prefixes like "- The pattern is:" or "- The DSL is:"
+            val = re.sub(r'^[-*\d.]+\s*(?:The\s+)?(?:pattern|dsl|operation)\s+(?:is|would be):?\s*', '', result[key], flags=re.IGNORECASE)
+            result[key] = val.strip().rstrip('.')
+
+    if 'operation' in result and 'dsl' in result:
+        # Pattern is optional — use a placeholder if not found
+        if 'pattern' not in result:
+            result['pattern'] = result['dsl']
         return result
     return None
 
@@ -167,7 +249,7 @@ def generalize_batch_qwen(
     spans: List[str],
     model,
     tokenizer,
-    batch_size: int = 32,
+    batch_size: int = 16,
 ) -> List[Optional[Dict]]:
     """Generalize spans using Qwen with true batched inference.
 
@@ -213,7 +295,7 @@ def generalize_batch_qwen(
         with torch.no_grad():
             outputs = model.generate(
                 **inputs,
-                max_new_tokens=80,
+                max_new_tokens=300,
                 do_sample=False,
             )
 
@@ -284,7 +366,7 @@ def run_generalization(
     problems: List[Dict],
     model,
     tokenizer,
-    batch_size: int = 32,
+    batch_size: int = 16,
 ) -> List[Dict]:
     """Run full generalization pipeline.
 
