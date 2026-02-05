@@ -62,6 +62,10 @@ Spans don't exist in isolation. We track:
 
 Span to whole problem cross-attention guides sub-graph composition
 
+## Template matching
+Route by what operations DO, not what they SOUND LIKE.
+A computation graph is a structural representation of what a DSL actually computes — parameter-agnostic, implementation-agnostic, operationally meaningful.
+
 ## Inference Pipeline
 
 1. Run MiniLM (fast, 22M params)
