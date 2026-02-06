@@ -28,6 +28,7 @@ from mycelium.dual_signal_templates import (
 )
 from mycelium.attention_graph import AttentionGraphBuilder, SpanGraph, Span, GraphExecutor, ExecutionResult
 from mycelium.subgraph_dsl import SubGraphDSL, load_subgraph_dsls
+from mycelium.graph_embedder import infer_span_graph_embedding_from_text
 
 
 # Default model path - relative to this file's location in src/mycelium/
@@ -197,6 +198,7 @@ class DualSignalPipeline:
         matched_operations = []
         span_subgraphs = []  # (span_idx, subgraph_dict)
 
+        num_spans = len(graph.spans)
         for span_idx, span in enumerate(graph.spans):
             # Compute backward attention: how much this span attends to earlier spans
             # High backward attention = span depends on upstream context
@@ -207,9 +209,13 @@ class DualSignalPipeline:
                 if src == span_idx and dst < span_idx
             )
 
+            # Span position (0=first, 1=last) for graph embedding inference
+            span_position = span_idx / max(1, num_spans - 1) if num_spans > 1 else 0.0
+
             match_result = self._match_span_to_template(
                 span, attention_matrix, tokens,
-                incoming_cross_attention=backward_attention
+                incoming_cross_attention=backward_attention,
+                span_position=span_position,
             )
             if match_result:
                 matched_operations.append(match_result)
@@ -237,21 +243,24 @@ class DualSignalPipeline:
         full_attention_matrix: np.ndarray,
         full_tokens: List[str],
         incoming_cross_attention: float = 0.0,
+        span_position: float = 0.5,
     ) -> Optional[MatchedOperation]:
-        """Match a detected span to the best template.
+        """Match a detected span to the best template using triple signals.
 
-        Embeds the RAW span text directly and matches by cosine similarity.
-        No generalization at inference time - templates were generalized at
-        training time (Qwen) and their centroids were computed from raw examples.
+        Uses three signals for matching:
+        1. Embedding similarity (text semantic)
+        2. Attention pattern correlation (structural)
+        3. Graph embedding similarity (operational)
 
-        Uses incoming cross-attention to bias toward templates that need
-        upstream inputs (chaining) vs self-contained templates.
+        The graph embedding is inferred from span features (number count,
+        backward attention, position) to match templates by operation type.
 
         Args:
             span: Detected span with token_indices into full attention matrix
             full_attention_matrix: Full attention matrix for the WHOLE problem
             full_tokens: All tokens from the full problem
             incoming_cross_attention: Sum of attention weights from previous spans
+            span_position: Position in sequence (0=first, 1=last)
 
         Returns:
             MatchedOperation if match found, None otherwise
@@ -270,12 +279,23 @@ class DualSignalPipeline:
         # Flatten attention for matching
         attention_flat = span_attention.flatten()
 
-        # Find best template match using cross-attention signal
-        # High incoming cross-attention = span needs upstream inputs
+        # Infer span graph embedding from features
+        # This encodes expected operation type based on:
+        # - Number count (arity hint)
+        # - Backward attention (needs upstream?)
+        # - Position (early = SET, late = compute)
+        span_graph_embedding = infer_span_graph_embedding_from_text(
+            span_text=span.text,
+            backward_attention=incoming_cross_attention,
+            span_position=span_position,
+            extract_numbers_fn=self.graph_executor.extract_numbers,
+        )
+
+        # Find best template match using triple signals
         result = self.store.find_best_match(
             span_embedding, attention_flat,
-            graph_embedding=None,
-            needs_upstream=incoming_cross_attention > 0.05  # Threshold for dependency
+            graph_embedding=span_graph_embedding,
+            needs_upstream=incoming_cross_attention > 0.05
         )
 
         if result:

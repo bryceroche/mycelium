@@ -142,39 +142,20 @@ class SpanGraph:
 class SpanGraphBuilder:
     """Builds a SpanGraph from problem text using attention signals.
 
+    Per CLAUDE.md: NO hardcoded verb lists or heuristics.
+    - Span boundaries come from attention connectivity (Panama Hats)
+    - Operation detection comes from template matching + Welford learning
+
     Pipeline:
-    1. Segment into candidate spans (sentence boundaries + attention connectivity)
-    2. Extract semantics from each span (operation, value, entity)
-    3. Link spans via entity tracking and cross-attention
-    4. Build the computation graph
+    1. Segment into spans using attention connectivity
+    2. Extract values/entities (structural, not semantic)
+    3. Link spans via cross-attention
+    4. Operation types determined by template matching (not here)
     """
 
-    # Pronouns that reference previous entities
-    PRONOUNS = {'she', 'he', 'it', 'they', 'her', 'his', 'their', 'its'}
-
-    # Reference phrases that point to previous values
-    VALUE_REFS = {
-        'that much': 1.0,
-        'the rest': 1.0,
-        'the remainder': 1.0,
-        'half that': 0.5,
-        'twice that': 2.0,
-        'half as much': 0.5,
-        'twice as much': 2.0,
-    }
-
-    # Comparison patterns (entity references)
-    COMPARISON_PATTERNS = [
-        r'(\w+) times as many (?:\w+ )?as (\w+)',      # "4 times as many as Seattle"
-        r'twice as many (?:\w+ )?as (\w+)',            # "twice as many as Charleston"
-        r'half as many (?:\w+ )?as (\w+)',             # "half as many as X"
-        r'(\d+) more than (\w+)',                       # "5 more than Janet"
-        r'(\d+) fewer than (\w+)',                      # "3 fewer than Bob"
-    ]
-
-    def __init__(self, detector=None):
-        """Initialize with optional span detector for attention signals."""
-        self.detector = detector
+    def __init__(self, attention_graph_builder=None):
+        """Initialize with attention graph builder for Panama Hats segmentation."""
+        self.attention_builder = attention_graph_builder
 
     def build_graph(self, problem_text: str) -> SpanGraph:
         """Build a SpanGraph from problem text.
@@ -203,45 +184,52 @@ class SpanGraphBuilder:
 
         return graph
 
-    def _segment_spans(self, text: str) -> List[str]:
-        """Segment text into spans using attention connectivity.
+    def _segment_spans(self, text: str, attention_matrix: np.ndarray = None, tokens: List[str] = None) -> List[str]:
+        """Segment text into spans using attention connectivity (Panama Hats).
 
-        Panama Hats insight: tokens with high mutual attention form a span.
-        For now, use heuristics. TODO: use actual attention signals.
+        Per CLAUDE.md: NO punctuation-based heuristics.
+        Uses attention connectivity to find span boundaries.
+
+        Args:
+            text: Problem text
+            attention_matrix: Attention weights from model
+            tokens: Tokenized text
+
+        Returns:
+            List of span texts
         """
-        # Split on sentence boundaries
-        parts = re.split(r'[.!?]', text)
+        if attention_matrix is None or tokens is None or self.attention_builder is None:
+            # Fallback: treat whole text as one span (let template matching handle it)
+            return [text.strip()] if text.strip() else []
 
+        # Use Panama Hats algorithm from attention_graph_builder
+        boundaries = self.attention_builder.detect_span_boundaries(attention_matrix, tokens)
+
+        # Convert token boundaries to text spans
         spans = []
-        for part in parts:
-            part = part.strip()
-            if not part:
-                continue
-
-            part_lower = part.lower()
-
-            # Extract values from questions before skipping
-            # "if Seattle has 20 sheep" contains important data
-            if any(q in part_lower for q in ['how many', 'how much', 'what is']):
-                # Check for "if X has/is Y" patterns with values
-                if_match = re.search(r'if (\w+) (?:has|is|have|are|had|was|were) (\d+)', part_lower)
-                if if_match:
-                    # Extract this as a SET span
-                    entity = if_match.group(1).capitalize()
-                    value = if_match.group(2)
-                    spans.append(f"{entity} has {value}")
-                continue
-
-            # Split on "and" / "then" for compound sentences
-            # But keep together: "twice as many apples as oranges"
-            if ' and ' in part and 'as many' not in part_lower:
-                # Split on "and" - but "half that much" should be its own span
-                subparts = part.split(' and ')
-                spans.extend([s.strip() for s in subparts if s.strip()])
-            else:
-                spans.append(part)
+        for start, end in boundaries:
+            span_tokens = tokens[start:end]
+            # Join tokens properly (handle WordPiece)
+            span_text = self._join_tokens(span_tokens)
+            if span_text.strip():
+                spans.append(span_text.strip())
 
         return spans
+
+    def _join_tokens(self, tokens: List[str]) -> str:
+        """Join tokens, handling WordPiece subwords."""
+        result = []
+        for t in tokens:
+            if t.startswith('[') and t.endswith(']'):
+                continue  # Skip special tokens
+            if t.startswith('##'):
+                if result:
+                    result[-1] += t[2:]
+                else:
+                    result.append(t[2:])
+            else:
+                result.append(t)
+        return ' '.join(result)
 
     def _create_span_node(
         self,
@@ -250,26 +238,17 @@ class SpanGraphBuilder:
         last_entity: Optional[str],
         entity_tracker: Dict[str, str]
     ) -> Optional[SpanNode]:
-        """Create a SpanNode from span text with extracted semantics."""
+        """Create a SpanNode from span text.
 
-        text_lower = text.lower()
-
-        # Extract entity (subject of the span)
+        Per CLAUDE.md: NO hardcoded pronoun lists.
+        Entity resolution should come from cross-attention patterns.
+        """
+        # Extract entity (subject of the span) - structural extraction only
         entity = self._extract_entity(text)
 
-        # Handle pronouns and demonstratives ("this", "that")
-        if entity and entity.lower() in self.PRONOUNS:
-            entity = last_entity
-        elif entity and entity.lower() in ['this', 'that', 'it']:
-            entity = last_entity
-
-        # If no entity found but we have a value reference, carry forward from last entity
-        # "half that much" continues the previous entity's accounting
+        # If no entity found, use last entity (cross-attention would guide this)
         if entity is None and last_entity:
-            for phrase in self.VALUE_REFS:
-                if phrase in text_lower:
-                    entity = last_entity
-                    break
+            entity = last_entity
 
         # Extract numeric value
         value = self._extract_value(text)
@@ -280,10 +259,9 @@ class SpanGraphBuilder:
         # Detect which track this span affects (for multi-track accounting)
         track = self._detect_track(text, dsl_expr, reference)
 
-        # If we have a reference multiplier (e.g., "twice that", "150%"), use it
-        # For percentage patterns, always use the computed multiplier
+        # If we have a reference multiplier (e.g., "150%"), use it
         if ref_multiplier and ref_multiplier != 1.0:
-            if reference == "_pct_increase" or value is None:
+            if value is None:
                 value = ref_multiplier
 
         node = SpanNode(
@@ -305,63 +283,14 @@ class SpanGraphBuilder:
         dsl_expr: str,
         reference: Optional[str]
     ) -> Track:
-        """Detect which track this span affects for multi-track accounting.
+        """Return default track - actual detection done by template matching.
 
-        Track types:
-        - COST: Money spent (buying, repairs, investment)
-        - VALUE: Asset value (appreciation, increases, worth)
-        - BOTH: Initial purchase (sets both cost basis and initial value)
-        - DEFAULT: Single-track problems
+        Per CLAUDE.md: NO hardcoded keyword lists.
+        Track detection should come from template matching + Welford learning.
 
-        Returns Track.DEFAULT for simple single-track problems.
+        Returns Track.DEFAULT for all spans - template matching will
+        determine if multi-track accounting is needed.
         """
-        text_lower = text.lower()
-
-        # Keywords that indicate we need multi-track accounting
-        multi_track_signals = [
-            'profit', 'loss', 'gain', 'margin', 'difference',
-            'buys', 'bought', 'purchase', 'repair', 'renovate',
-            'value', 'worth', 'appreciate', 'increase'
-        ]
-
-        # Check if this problem needs multi-track accounting
-        # (Only activate if we see profit/value language)
-        has_value_language = any(kw in text_lower for kw in ['value', 'worth', 'appreciate', 'increase'])
-        has_cost_language = any(kw in text_lower for kw in ['repair', 'renovate', 'invest', 'put', 'spent'])
-
-        # Initial purchase: "buys X for $Y" - sets BOTH tracks
-        if re.search(r'buys?|bought|purchase', text_lower) and re.search(r'\$[\d,]+', text_lower):
-            return Track.BOTH
-
-        # Cost-only: repairs, renovations, investments INTO something
-        cost_patterns = [
-            r'puts?.*\$',           # "puts $50k into"
-            r'spent.*\$',           # "spent $X on"
-            r'invest',              # "invested"
-            r'repair',              # "repairs"
-            r'renovate',            # "renovation"
-            r'maintenance',         # "maintenance costs"
-        ]
-        for pattern in cost_patterns:
-            if re.search(pattern, text_lower):
-                return Track.COST
-
-        # Value-only: appreciation, increases, "the value"
-        value_patterns = [
-            r'value.*increase',     # "value increased"
-            r'increase.*value',     # "increased the value"
-            r'appreciate',          # "appreciated by"
-            r'worth.*now',          # "worth X now"
-            r'increased?.*%',       # "increased by X%" (typically value)
-        ]
-        for pattern in value_patterns:
-            if re.search(pattern, text_lower):
-                return Track.VALUE
-
-        # If we have a percentage increase with _pct_increase reference, it's VALUE
-        if reference == "_pct_increase":
-            return Track.VALUE
-
         return Track.DEFAULT
 
     def _extract_entity(self, text: str) -> Optional[str]:
@@ -370,26 +299,17 @@ class SpanGraphBuilder:
         Uses attention-received signal: high received = entity/anchor.
         For now, heuristic: first capitalized word or noun phrase.
         """
-        # Look for capitalized words (proper nouns)
+        # Look for capitalized words (proper nouns) - structural extraction
         caps = re.findall(r'\b([A-Z][a-z]+)\b', text)
         if caps:
-            # Filter out sentence starters
-            if caps[0] in ['A', 'The', 'She', 'He', 'It', 'They']:
+            # Filter out common sentence starters
+            if caps[0] in ['A', 'The']:
                 if len(caps) > 1:
                     return caps[1]
-                # Check for pronoun
-                for word in ['she', 'he', 'it', 'they']:
-                    if word in text.lower().split()[:3]:
-                        return word.capitalize()
             else:
                 return caps[0]
 
-        # Look for pronouns
-        words = text.lower().split()
-        for word in words[:5]:
-            if word in self.PRONOUNS:
-                return word.capitalize()
-
+        # No entity found - will be resolved via cross-attention
         return None
 
     def _extract_value(self, text: str) -> Optional[float]:
@@ -443,134 +363,37 @@ class SpanGraphBuilder:
         text: str,
         entity_tracker: Dict[str, str]
     ) -> Tuple[str, Optional[str], Optional[float]]:
-        """Detect DSL expression and any entity/value references.
+        """Return default operation - actual detection done by template matching.
+
+        Per CLAUDE.md: NO hardcoded verb lists or heuristics.
+        Operation detection should come from:
+        1. Template matching (graph embeddings)
+        2. Welford learning from outcomes
+
+        This method only extracts structural features (percentages, references)
+        that can be detected without semantic interpretation.
 
         Returns: (dsl_expr, reference_entity, reference_multiplier)
-        DSL expressions: "value", "entity + value", "entity - value",
-                        "entity * value", "entity / value", "ref"
         """
         text_lower = text.lower()
 
-        # Check for comparison patterns first (these have entity references)
-        for pattern in self.COMPARISON_PATTERNS:
-            match = re.search(pattern, text_lower)
-            if match:
-                groups = match.groups()
-                # Find the referenced entity
-                ref_entity = groups[-1] if groups else None
-
-                # Determine multiplier
-                if 'twice' in text_lower:
-                    return "entity * value", ref_entity, 2.0
-                elif 'half' in text_lower:
-                    return "entity * value", ref_entity, 0.5
-                elif 'times' in text_lower and len(groups) > 1:
-                    try:
-                        mult = float(groups[0])
-                        return "entity * value", ref_entity, mult
-                    except:
-                        pass
-                elif 'more than' in text_lower:
-                    return "entity + value", ref_entity, None
-                elif 'fewer than' in text_lower:
-                    return "entity - value", ref_entity, None
-
-                return "ref", ref_entity, None
-
-        # Check for percentage increase pattern FIRST
-        # "increased by X%" or "increased the value by X%" → MUL with factor (1 + X/100)
-        pct_match = re.search(r'increased?.*?(\d+)%', text_lower)
+        # Extract percentages (structural, not semantic)
+        pct_match = re.search(r'(\d+)%', text_lower)
         if pct_match:
             pct = float(pct_match.group(1))
-            return "entity * value", "_pct_increase", 1 + pct / 100
+            # Don't assume operation type - let template matching decide
+            return "value", "_pct", pct / 100
 
-        # "X% more" → MUL with factor (1 + X/100)
-        pct_more = re.search(r'(\d+)%\s+more', text_lower)
-        if pct_more:
-            pct = float(pct_more.group(1))
-            return "entity * value", "_pct_increase", 1 + pct / 100
-
-        # "X% of" → MUL with factor X/100
-        pct_of = re.search(r'(\d+)%\s+of', text_lower)
-        if pct_of:
-            pct = float(pct_of.group(1))
-            return "entity * value", None, pct / 100
-
-        # Check for price/rate patterns - takes priority over value references
-        # "$X per/each" or "for $X per" → MUL
-        if re.search(r'\$\d+', text_lower) and ('per' in text_lower or 'each' in text_lower):
-            return "entity * value", None, None
-
-        # "X each Y" or "X per Y" without $ → MUL (unit rate)
-        if re.search(r'\d+.*\b(each|per)\b', text_lower):
-            return "entity * value", None, None
-
-        # "for $X per" pattern
-        if re.search(r'for \$\d+.*per', text_lower):
-            return "entity * value", None, None
-
-        # "sells/sold ... for $X" could be MUL if it's unit pricing
-        if re.search(r'sells?.*for.*\$\d+', text_lower):
-            return "entity * value", None, None
-
-        # "remainder/rest" + price → multiply remaining by price
-        if ('remainder' in text_lower or 'rest' in text_lower) and '$' in text_lower:
-            return "entity * value", None, None
-
-        # Check for value reference phrases - these ADD a fraction of previous value
-        # But NOT if there's a price pattern (already handled above)
-        for phrase, mult in self.VALUE_REFS.items():
-            if phrase in text_lower and '$' not in text_lower:
-                return "entity + value", "_prev", mult
-
-        # Check for multiplication keywords
-        if any(kw in text_lower for kw in ['times', 'multiplied', 'doubled', 'tripled']):
-            return "entity * value", None, None
-
-        # Check for division keywords
-        if any(kw in text_lower for kw in ['divided', 'split', 'shared equally', 'half of']):
-            return "entity / value", None, None
-
-        # Subtraction verbs (consumption) - "bakes with X eggs" = uses eggs
-        # Use word boundaries to avoid "seattle" matching "eat"
-        # NOTE: "gave him/her" = receiving (not subtraction), so check context
-        if re.search(r'\bgave\s+(him|her|them|me)\b', text_lower):
-            return "value", None, None
-
-        sub_verbs = ['ate', 'eats', 'eat', 'gave', 'gives', 'spent', 'lost',
-                     'used', 'took', 'baked', 'bakes', 'bake', 'drank', 'threw']
-        for verb in sub_verbs:
-            if re.search(rf'\b{verb}\b', text_lower):
-                return "entity - value", None, None
-
-        # Selling without price pattern is also consumption (giving away inventory)
-        # But only if not a "has/have" sentence (initial state)
-        if any(v in text_lower for v in ['sold', 'sells', 'sell']):
-            if ' has ' not in text_lower and ' have ' not in text_lower:
-                return "entity - value", None, None
-
-        # SET verbs (initial state) - check before ADD
-        set_verbs = ['has', 'have', 'had', 'starts', 'started', 'owns',
-                     'contains', 'is', 'was', 'are', 'were', 'lay', 'lays', 'takes']
-        for verb in set_verbs:
-            if re.search(rf'\b{verb}\b', text_lower):
-                return "value", None, None
-
-        # Addition verbs - includes spending/putting in (cost accumulation)
-        add_verbs = ['found', 'received', 'earned', 'won', 'bought', 'got',
-                     'collected', 'picked', 'gathered', 'gained',
-                     'puts', 'put', 'spent', 'invested', 'added']
-        for verb in add_verbs:
-            if re.search(rf'\b{verb}\b', text_lower):
-                return "entity + value", None, None
-
-        # Default to value assignment
+        # Default: operation type will be determined by template matching
         return "value", None, None
 
     def _link_spans(self, graph: SpanGraph, entity_tracker: Dict[str, str]):
-        """Link spans via entity references and sequence.
+        """Link spans via sequence edges.
 
-        This creates the edges that enable composition.
+        Per CLAUDE.md: NO hardcoded pronoun lists.
+        Entity linking should come from cross-attention patterns.
+        Sequence edges provide basic structure; cross-attention edges
+        should be added based on attention matrix (in build_graph).
         """
         node_ids = list(graph.nodes.keys())
 
@@ -587,7 +410,7 @@ class SpanGraphBuilder:
                     weight=0.5
                 ))
 
-            # Link via entity reference
+            # Link via explicit reference (from structural extraction)
             if node.reference:
                 ref_lower = node.reference.lower()
                 if ref_lower in entity_tracker:
@@ -599,19 +422,8 @@ class SpanGraphBuilder:
                         weight=1.0
                     ))
 
-            # Link via pronoun resolution
-            if node.entity and node.entity.lower() in self.PRONOUNS:
-                # Find most recent non-pronoun entity
-                for prev_idx in range(i - 1, -1, -1):
-                    prev_node = graph.nodes[node_ids[prev_idx]]
-                    if prev_node.entity and prev_node.entity.lower() not in self.PRONOUNS:
-                        graph.add_edge(SpanEdge(
-                            source_id=node_ids[prev_idx],
-                            target_id=node_id,
-                            edge_type="entity_ref",
-                            weight=1.0
-                        ))
-                        break
+            # Cross-attention based linking would be added here
+            # using the attention matrix (not hardcoded pronoun lists)
 
 
 class SpanGraphExecutor:

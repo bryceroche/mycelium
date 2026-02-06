@@ -272,17 +272,20 @@ class AttentionGraphBuilder:
         attention_matrix: np.ndarray,
         tokens: List[str]
     ) -> List[Tuple[int, int]]:
-        """Detect span boundaries using sentence-level splits.
+        """Detect span boundaries using Panama Hats algorithm.
 
-        Math word problems have ~1 operation per sentence. Split on:
-        1. Sentence endings (.!?)
-        2. "and" in compound sentences (unless in comparison phrases)
+        Pure attention-connectivity based detection - NO punctuation heuristics.
+        Per CLAUDE.md: avoid hardcoded rules, let attention patterns guide segmentation.
 
-        The "and" split is critical: "she eats three AND bakes muffins with four"
-        contains TWO operations that must be separate spans.
+        Panama Hats insight: tokens with high mutual attention form a cohesive span.
+        "half the price of the cheese" = ONE span, not fragments.
 
-        Only refine (sub-split) if a sentence span is very long (>15 tokens)
-        AND has a clear connectivity drop.
+        Algorithm:
+        1. Start with whole sequence
+        2. Find point where connectivity drops most (cross < internal)
+        3. If drop is significant, split there
+        4. Recursively apply to each half
+        5. Stop when no significant drops or spans too small
 
         Args:
             attention_matrix: (seq_len, seq_len) attention weights
@@ -295,67 +298,73 @@ class AttentionGraphBuilder:
         if n <= 2:
             return [(0, n)]
 
-        # Build token text for pattern checking
-        tokens_lower = [t.lower() for t in tokens]
+        # Recursively split based on connectivity drops
+        spans = self._recursive_panama_split(attention_matrix, 0, n, min_span_size=3)
 
-        # Check if text contains comparison phrases that use "and"
-        # e.g., "as many apples as oranges and bananas" - don't split
-        text_for_check = ' '.join(tokens_lower)
-        has_comparison = 'as many' in text_for_check or 'as much' in text_for_check
+        # Sort by start position
+        spans.sort(key=lambda x: x[0])
 
-        # Split on sentence endings AND on "and" (for compound operations)
-        boundaries = [0]
-        for i, token in enumerate(tokens):
-            token_lower = token.lower()
+        return spans
 
-            # Split on sentence endings
-            if token in ['.', '!', '?'] and i > 0 and i < n - 1:
-                boundaries.append(i + 1)
+    def _recursive_panama_split(
+        self,
+        attention_matrix: np.ndarray,
+        start: int,
+        end: int,
+        min_span_size: int = 3,
+        max_depth: int = 10
+    ) -> List[Tuple[int, int]]:
+        """Recursively split span using connectivity drops.
 
-            # Split on "and" for compound sentences (multiple operations)
-            # But NOT if in a comparison phrase like "as many X as Y"
-            elif token_lower == 'and' and i > 2 and i < n - 2 and not has_comparison:
-                # Check that both sides have substance (not just "and the...")
-                # Require at least 3 tokens before and after
-                boundaries.append(i)  # "and" starts the new span
+        Args:
+            attention_matrix: Full attention matrix
+            start: Start index of current span
+            end: End index of current span
+            min_span_size: Minimum tokens per span
+            max_depth: Maximum recursion depth
 
-        boundaries.append(n)
+        Returns:
+            List of (start, end) tuples for detected spans
+        """
+        span_size = end - start
 
-        # Sort and deduplicate boundaries
-        boundaries = sorted(set(boundaries))
+        # Base case: span too small to split
+        if span_size < min_span_size * 2 or max_depth <= 0:
+            return [(start, end)]
 
-        # Only refine very long spans (>15 tokens) using connectivity drops
-        refined = []
-        for i in range(len(boundaries) - 1):
-            start, end = boundaries[i], boundaries[i + 1]
+        # Find best split point based on connectivity drop
+        best_split = None
+        best_drop_ratio = 1.0  # Lower = stronger boundary
 
-            if end - start > 15:
-                # Look for the strongest connectivity drop within the span
-                # Require at least 5 tokens in each half to avoid tiny fragments
-                best_split = None
-                best_drop_ratio = 1.0  # Lower = better split
+        # Search for split points (need min_span_size tokens on each side)
+        for j in range(start + min_span_size, end - min_span_size + 1):
+            left_conn = self.compute_span_connectivity(attention_matrix, start, j)
+            right_conn = self.compute_span_connectivity(attention_matrix, j, end)
+            cross_conn = self._compute_cross_attention(attention_matrix, start, j, j, end)
 
-                for j in range(start + 5, end - 5):
-                    left_conn = self.compute_span_connectivity(attention_matrix, start, j)
-                    right_conn = self.compute_span_connectivity(attention_matrix, j, end)
-                    cross_conn = self._compute_cross_attention(attention_matrix, start, j, j, end)
+            internal_avg = (left_conn + right_conn) / 2
 
-                    internal_avg = (left_conn + right_conn) / 2
-                    if internal_avg > 0:
-                        drop_ratio = cross_conn / internal_avg
-                        if drop_ratio < self.boundary_drop_threshold and drop_ratio < best_drop_ratio:
-                            best_drop_ratio = drop_ratio
-                            best_split = j
+            if internal_avg > 1e-8:
+                drop_ratio = cross_conn / internal_avg
 
-                if best_split is not None:
-                    refined.append((start, best_split))
-                    refined.append((best_split, end))
-                else:
-                    refined.append((start, end))
-            else:
-                refined.append((start, end))
+                # Found a stronger boundary
+                if drop_ratio < best_drop_ratio:
+                    best_drop_ratio = drop_ratio
+                    best_split = j
 
-        return refined
+        # If we found a significant connectivity drop, split there
+        if best_split is not None and best_drop_ratio < self.boundary_drop_threshold:
+            # Recursively split both halves
+            left_spans = self._recursive_panama_split(
+                attention_matrix, start, best_split, min_span_size, max_depth - 1
+            )
+            right_spans = self._recursive_panama_split(
+                attention_matrix, best_split, end, min_span_size, max_depth - 1
+            )
+            return left_spans + right_spans
+        else:
+            # No significant drop - this is a cohesive span
+            return [(start, end)]
 
     def _compute_cross_attention(
         self,

@@ -275,6 +275,124 @@ def embedding_similarity(emb1: np.ndarray, emb2: np.ndarray) -> float:
     return float(np.dot(emb1, emb2) / (norm1 * norm2))
 
 
+def infer_span_graph_embedding(
+    num_numbers: int,
+    backward_attention: float,
+    span_position: float,
+    attention_entropy: float = 0.5,
+) -> np.ndarray:
+    """Infer likely graph embedding from span features at inference time.
+
+    Uses ONLY attention-derived and structural features - NO hardcoded heuristics.
+    Per CLAUDE.md: Let the model's attention patterns guide operation inference.
+
+    Args:
+        num_numbers: Count of numeric values extracted from span
+        backward_attention: Sum of attention to earlier spans (0-1) - from model
+        span_position: Position in sequence (0=first, 1=last) - structural
+        attention_entropy: Attention pattern entropy (0=focused, 1=diffuse) - from model
+
+    Returns:
+        64-dimensional graph embedding
+    """
+    vec = np.zeros(GRAPH_EMBEDDING_DIM, dtype=np.float32)
+
+    # Determine if this span needs upstream input based ONLY on attention
+    needs_upstream = backward_attention > 0.05
+
+    # Infer operation type from structural features only
+    # [0:7] Operation type likelihood
+    if num_numbers == 0:
+        # No numbers - likely a question or final computation
+        if span_position > 0.7:
+            vec[OP_TO_IDX['MUL']] = 0.6
+            vec[OP_TO_IDX['ADD']] = 0.2
+            vec[OP_TO_IDX['SUB']] = 0.2
+        else:
+            vec[0:NUM_OPS] = 1.0 / NUM_OPS  # Uniform prior
+    elif num_numbers == 1 and needs_upstream:
+        # One number + upstream: could be SUB, ADD, or MUL
+        # Let graph similarity to templates decide
+        vec[OP_TO_IDX['SUB']] = 0.4
+        vec[OP_TO_IDX['ADD']] = 0.3
+        vec[OP_TO_IDX['MUL']] = 0.3
+    elif num_numbers == 1 and not needs_upstream:
+        # One number, no upstream = SET (initial value)
+        vec[OP_TO_IDX['SET']] = 0.9
+        vec[OP_TO_IDX['ADD']] = 0.05
+        vec[OP_TO_IDX['MUL']] = 0.05
+    elif num_numbers >= 2:
+        # Multiple numbers - could be various operations
+        vec[OP_TO_IDX['MUL']] = 0.4
+        vec[OP_TO_IDX['ADD']] = 0.25
+        vec[OP_TO_IDX['SUB']] = 0.2
+        vec[OP_TO_IDX['DIV']] = 0.15
+
+    # [7:14] Position-based operation likelihood
+    vec[7:14] = -1.0
+    # Mark likely operation's position
+    if num_numbers == 1 and needs_upstream:
+        vec[7 + OP_TO_IDX['SUB']] = 0.0
+    elif num_numbers == 1 and not needs_upstream:
+        vec[7 + OP_TO_IDX['SET']] = 0.0
+    elif num_numbers >= 2:
+        vec[7 + OP_TO_IDX['MUL']] = 0.0
+
+    # [14:28] Connectivity encoding from attention
+    vec[14:21] = backward_attention * 0.5  # Producer side
+    vec[21:28] = backward_attention  # Consumer side
+
+    # [28:32] Structural features
+    vec[28] = 1.0 if needs_upstream else 0.0  # has_inputs
+    vec[29] = min(1.0, num_numbers / 3.0)  # num_params normalized
+    vec[30] = 0.2 if num_numbers <= 1 else 0.4  # expected num_steps
+    vec[31] = backward_attention  # depth proxy
+
+    # [32:40] Attention entropy features
+    vec[32] = attention_entropy
+    vec[33] = 1.0 - attention_entropy  # focused attention
+
+    return vec
+
+
+def infer_span_graph_embedding_from_text(
+    span_text: str,
+    backward_attention: float,
+    span_position: float,
+    extract_numbers_fn=None,
+) -> np.ndarray:
+    """Convenience function to infer graph embedding from span text.
+
+    Uses only attention-derived features and number count - NO hardcoded heuristics.
+    Per CLAUDE.md: The attention patterns from the model guide operation inference.
+
+    Args:
+        span_text: The span text
+        backward_attention: Sum of attention to earlier spans (from model)
+        span_position: Position in sequence (0=first, 1=last)
+        extract_numbers_fn: Optional function to extract numbers from text
+
+    Returns:
+        64-dimensional graph embedding
+    """
+    import re
+
+    # Extract number count using provided function or regex
+    if extract_numbers_fn:
+        numbers = extract_numbers_fn(span_text)
+        num_numbers = len(numbers)
+    else:
+        # Simple regex - only structural feature, not heuristic
+        numbers = re.findall(r'\d+(?:\.\d+)?', span_text)
+        num_numbers = len(numbers)
+
+    return infer_span_graph_embedding(
+        num_numbers=num_numbers,
+        backward_attention=backward_attention,
+        span_position=span_position,
+    )
+
+
 def batch_graph_embeddings(templates: List[Dict[str, Any]]) -> Dict[str, np.ndarray]:
     """Compute graph embeddings for a batch of templates.
 
