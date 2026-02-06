@@ -166,10 +166,10 @@ class TemplateStore:
     
     def __init__(
         self,
-        embedding_weight: float = 0.3,
-        attention_weight: float = 0.3,
-        backward_attention_weight: float = 0.25,
-        graph_weight: float = 0.15
+        embedding_weight: float = 0.55,  # Increased: semantic matching is primary signal
+        attention_weight: float = 0.15,  # Reduced: attention signature often missing
+        backward_attention_weight: float = 0.15,  # Reduced: was dominating early spans
+        graph_weight: float = 0.15,  # Keep for operation structure matching
     ):
         """
         Initialize template store with quad-signal matching.
@@ -399,6 +399,16 @@ class TemplateStore:
             ba_diffs = np.abs(self._backward_attention_vec - query_backward_attention)
             ba_sims = np.exp(-ba_diffs / 2.0)  # Scale of 2.0 gives reasonable falloff
 
+            # POSITION-DEPENDENT WEIGHTING:
+            # For first span (query_ba ≈ 0), backward_attention has no meaning
+            # because there's no upstream context. Use embedding only.
+            # For later spans, backward_attention helps distinguish consuming ops.
+            # Linear ramp: ba_weight goes from 0 at query_ba=0 to full at query_ba>=1.0
+            ba_weight_factor = min(1.0, query_backward_attention)  # 0 to 1
+            effective_ba_weight = self.backward_attention_weight * ba_weight_factor
+            # Redistribute the "lost" weight to embedding for first spans
+            effective_emb_weight = self.embedding_weight + (self.backward_attention_weight - effective_ba_weight)
+
             # Cross-attention bias: boost templates with inputs when span needs upstream
             # This is derived from attention signals, not heuristics
             upstream_bias = np.zeros(len(emb_sims))
@@ -408,10 +418,10 @@ class TemplateStore:
                     if template.subgraph and template.subgraph.get("inputs"):
                         upstream_bias[i] = 0.10  # Reduced since backward_attention now handles this
 
-            # Combined score for ranking using all four signals
+            # Combined score for ranking using position-adaptive weights
             initial_scores = (
-                self.embedding_weight * emb_sims +
-                self.backward_attention_weight * ba_sims +
+                effective_emb_weight * emb_sims +
+                effective_ba_weight * ba_sims +
                 self.graph_weight * graph_sims +
                 upstream_bias
             )
@@ -428,10 +438,11 @@ class TemplateStore:
             att_sim = self._attention_correlation(attention, best_match.attention_signature)
             att_sim_normalized = (att_sim + 1) / 2
 
+            # Use same position-adaptive weights for final combined score
             combined = (
-                self.embedding_weight * best_emb_sim +
+                effective_emb_weight * best_emb_sim +
                 self.attention_weight * att_sim_normalized +
-                self.backward_attention_weight * best_ba_sim +
+                effective_ba_weight * best_ba_sim +
                 self.graph_weight * best_graph_sim
             )
 
@@ -485,10 +496,15 @@ class TemplateStore:
             ba_diffs = np.abs(self._backward_attention_vec - query_backward_attention)
             ba_sims = np.exp(-ba_diffs / 2.0)
 
+            # POSITION-DEPENDENT WEIGHTING (same as find_best_match)
+            ba_weight_factor = min(1.0, query_backward_attention)
+            effective_ba_weight = self.backward_attention_weight * ba_weight_factor
+            effective_emb_weight = self.embedding_weight + (self.backward_attention_weight - effective_ba_weight)
+
             # Initial ranking by all signals except attention pattern (computed per candidate)
             initial_scores = (
-                self.embedding_weight * emb_sims +
-                self.backward_attention_weight * ba_sims +
+                effective_emb_weight * emb_sims +
+                effective_ba_weight * ba_sims +
                 self.graph_weight * graph_sims
             )
             top_k_indices = np.argsort(initial_scores)[-k:][::-1]
@@ -503,9 +519,9 @@ class TemplateStore:
                 att_sim = self._attention_correlation(attention, template.attention_signature)
                 att_sim_normalized = (att_sim + 1) / 2
                 combined = (
-                    self.embedding_weight * emb_sim +
+                    effective_emb_weight * emb_sim +
                     self.attention_weight * att_sim_normalized +
-                    self.backward_attention_weight * ba_sim +
+                    effective_ba_weight * ba_sim +
                     self.graph_weight * graph_sim
                 )
                 matches.append((template, combined, emb_sim, att_sim, graph_sim))

@@ -71,18 +71,23 @@ class DualSignalSolver:
         self,
         templates_path: Optional[str] = None,
         model_path: Optional[str] = None,
-        embedding_weight: float = 0.9,
-        attention_weight: float = 0.1,
+        embedding_weight: float = 0.55,  # Semantic matching is primary signal
+        attention_weight: float = 0.15,  # Attention signature often missing
+        backward_attention_weight: float = 0.15,  # Reduced: was dominating early spans
+        graph_weight: float = 0.15,  # Operation structure matching
         use_db: bool = False,
         mock_model: bool = False,
     ):
-        """Initialize the dual-signal solver.
+        """Initialize the quad-signal solver.
 
         Args:
             templates_path: Path to templates JSON (pipeline auto-discovers if None)
             model_path: Path to fine-tuned MiniLM model
             embedding_weight: Weight for embedding similarity [0-1]
-            attention_weight: Weight for attention similarity [0-1]
+            attention_weight: Weight for attention pattern similarity [0-1]
+            backward_attention_weight: Weight for backward attention similarity [0-1]
+                HIGH = consuming op (SUB, MUL, ADD), LOW = initializing op (SET)
+            graph_weight: Weight for graph structure similarity [0-1]
             use_db: Whether to persist to database
             mock_model: If True, use mock embeddings for testing without GPU
         """
@@ -90,6 +95,8 @@ class DualSignalSolver:
         self.model_path = model_path or str(MODEL_PATH)
         self.embedding_weight = embedding_weight
         self.attention_weight = attention_weight
+        self.backward_attention_weight = backward_attention_weight
+        self.graph_weight = graph_weight
         self.use_db = use_db
         self.mock_model = mock_model
 
@@ -121,6 +128,8 @@ class DualSignalSolver:
                     model_path=model_to_use,
                     embedding_weight=self.embedding_weight,
                     attention_weight=self.attention_weight,
+                    backward_attention_weight=self.backward_attention_weight,
+                    graph_weight=self.graph_weight,
                 )
 
             # Pipeline loads templates in __init__ (qwen_templates.json or deduplicated_templates.json)

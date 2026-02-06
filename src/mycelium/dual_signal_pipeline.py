@@ -91,26 +91,31 @@ class DualSignalPipeline:
     def __init__(
         self,
         model_path: Optional[str] = None,
-        embedding_weight: float = 0.5,
-        attention_weight: float = 0.3,
-        graph_weight: float = 0.2,
+        embedding_weight: float = 0.55,  # Semantic matching is primary signal
+        attention_weight: float = 0.15,  # Attention signature often missing
+        backward_attention_weight: float = 0.15,  # Reduced: was dominating early spans
+        graph_weight: float = 0.15,  # Operation structure matching
         device: str = "auto",
         templates_path: Optional[str] = None,
     ):
-        """Initialize the triple-signal pipeline.
+        """Initialize the quad-signal pipeline.
 
         Args:
             model_path: Path to fine-tuned MiniLM model checkpoint.
                        Uses default path if not provided.
             embedding_weight: Weight for embedding similarity in matching [0-1].
-            attention_weight: Weight for attention similarity in matching [0-1].
+            attention_weight: Weight for attention pattern similarity [0-1].
+            backward_attention_weight: Weight for backward attention similarity [0-1].
+                HIGH backward_attention = consuming op (SUB, MUL, ADD, DIV)
+                LOW backward_attention = initializing op (SET)
             graph_weight: Weight for computation graph similarity [0-1].
             device: Device for inference ("auto", "cuda", "cpu")
             templates_path: Optional path to load/save templates JSON
 
-        Triple-signal approach:
+        Quad-signal approach:
         - Embedding: Captures lexical/semantic similarity
         - Attention: Captures structural processing patterns
+        - Backward Attention: Distinguishes consuming ops from SET ops
         - Graph: Captures operational computation structure
         """
         # Resolve model path
@@ -126,10 +131,11 @@ class DualSignalPipeline:
         # Initialize span detector with fine-tuned model
         self.detector = SpanDetector(model_path=model_path, device=device)
 
-        # Initialize template store with triple-signal weights
+        # Initialize template store with quad-signal weights
         self.store = TemplateStore(
             embedding_weight=embedding_weight,
             attention_weight=attention_weight,
+            backward_attention_weight=backward_attention_weight,
             graph_weight=graph_weight,
         )
 
@@ -288,11 +294,12 @@ class DualSignalPipeline:
             extract_numbers_fn=self.graph_executor.extract_numbers,
         )
 
-        # Find best template match using triple signals
+        # Find best template match using quad signals
         result = self.store.find_best_match(
             span_embedding, attention_flat,
             graph_embedding=span_graph_embedding,
-            needs_upstream=incoming_cross_attention > 0.05
+            needs_upstream=incoming_cross_attention > 0.05,
+            query_backward_attention=incoming_cross_attention,
         )
 
         if result:
