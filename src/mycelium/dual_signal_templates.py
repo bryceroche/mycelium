@@ -315,7 +315,8 @@ class TemplateStore:
         embedding: np.ndarray,
         attention: np.ndarray,
         graph_embedding: Optional[np.ndarray] = None,
-        min_score: float = 0.0
+        min_score: float = 0.0,
+        needs_upstream: bool = False,
     ) -> Optional[Tuple[DualSignalTemplate, float, float, float, float]]:
         """
         Find the best matching template using triple signals.
@@ -326,11 +327,15 @@ class TemplateStore:
         Uses vectorized matrix multiplication for O(1) matching against
         all templates simultaneously (vs O(N) Python loop).
 
+        Cross-attention signal: If needs_upstream=True, bias toward templates
+        that have inputs defined (chaining templates).
+
         Args:
             embedding: Query embedding vector
             attention: Query attention pattern
             graph_embedding: Query graph structure embedding (optional)
             min_score: Minimum score threshold (default 0, always match)
+            needs_upstream: If True, prefer templates with inputs (from cross-attention)
 
         Returns:
             Tuple of (template, combined_score, embedding_sim, attention_sim, graph_sim)
@@ -361,9 +366,22 @@ class TemplateStore:
             else:
                 graph_sims = np.full(len(emb_sims), 0.5)  # Neutral default
 
+            # Cross-attention bias: boost templates with inputs when span needs upstream
+            # This is derived from attention signals, not heuristics
+            upstream_bias = np.zeros(len(emb_sims))
+            if needs_upstream:
+                for i, tid in enumerate(self._template_ids):
+                    template = self.templates[tid]
+                    if template.subgraph and template.subgraph.get("inputs"):
+                        upstream_bias[i] = 0.15  # Boost templates that expect upstream inputs
+
             # Combined score for ranking (attention computed only for top candidate)
-            # Use embedding + graph for initial ranking, then refine with attention
-            initial_scores = self.embedding_weight * emb_sims + self.graph_weight * graph_sims
+            # Use embedding + graph + upstream bias for initial ranking
+            initial_scores = (
+                self.embedding_weight * emb_sims +
+                self.graph_weight * graph_sims +
+                upstream_bias
+            )
             best_idx = int(np.argmax(initial_scores))
 
             best_emb_sim = float(emb_sims[best_idx])

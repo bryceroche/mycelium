@@ -441,14 +441,16 @@ class AttentionGraphBuilder:
         # Build spans
         spans = self.build_spans(attention_matrix, tokens, text)
 
-        # Build cross-span edges
+        # Build cross-span edges (both directions)
+        # Forward: earlier spans attending to later spans
+        # Backward: later spans looking back to earlier spans (for chaining)
         edges = []
         for i, span1 in enumerate(spans):
             for j, span2 in enumerate(spans):
-                if i >= j:
+                if i == j:
                     continue
 
-                # Compute cross-attention between spans
+                # Compute cross-attention: how much span[i] attends to span[j]
                 cross_attn = self._compute_cross_attention(
                     attention_matrix,
                     span1.start_idx, span1.end_idx,
@@ -562,8 +564,21 @@ class GraphExecutor:
         self._number_pattern = re.compile(r'[\$]?(\d+(?:,\d{3})*(?:\.\d+)?)')
         self._fraction_pattern = re.compile(r'(\d+)/(\d+)')
 
+    # Word numbers mapping
+    _WORD_TO_NUM = {
+        'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4,
+        'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9,
+        'ten': 10, 'eleven': 11, 'twelve': 12, 'thirteen': 13,
+        'fourteen': 14, 'fifteen': 15, 'sixteen': 16, 'seventeen': 17,
+        'eighteen': 18, 'nineteen': 19, 'twenty': 20, 'thirty': 30,
+        'forty': 40, 'fifty': 50, 'sixty': 60, 'seventy': 70,
+        'eighty': 80, 'ninety': 90, 'hundred': 100, 'thousand': 1000,
+        'half': 0.5, 'quarter': 0.25, 'third': 1/3, 'fourth': 0.25,
+        'twice': 2, 'double': 2, 'triple': 3, 'dozen': 12,
+    }
+
     def extract_numbers(self, text: str) -> List[float]:
-        """Extract all numeric values from text."""
+        """Extract all numeric values from text, including word numbers."""
         import re
         numbers = []
 
@@ -584,6 +599,13 @@ class GraphExecutor:
                 numbers.append(float(num_str))
             except ValueError:
                 pass
+
+        # Extract word numbers (three, four, etc.)
+        text_lower = text.lower()
+        for word, value in self._WORD_TO_NUM.items():
+            # Match whole word only
+            if re.search(rf'\b{word}\b', text_lower):
+                numbers.append(float(value))
 
         return numbers
 
@@ -1021,16 +1043,32 @@ class GraphExecutor:
             if i < len(numbers):
                 param_values[name] = numbers[i]
 
+        # FALLBACK: If DSL expects 2+ params but span only has 1 number,
+        # use upstream entity value for the first param (chaining behavior).
+        # This handles cases where a self-contained template matched but
+        # the span actually needs to chain from upstream.
+        # e.g., "she eats three" with SUB(normal_cost, sale_cost) template:
+        #   - span has 1 number (3)
+        #   - need upstream value (16) for first param
+        #   - compute: 16 - 3 = 13
+        if len(param_names) >= 2 and len(numbers) == 1 and entity_values:
+            # Use last known entity value for first param, span number for second
+            upstream_val = list(entity_values.values())[-1]
+            param_values[param_names[0]] = upstream_val
+            param_values[param_names[1]] = numbers[0]
+
         # Resolve input values from entity state via cross-attention
         input_values: Dict[str, float] = {}
         if dsl.inputs:
             # Find upstream spans via cross-attention edges
+            # Edge (src, dst, weight) means span[src] attends to span[dst]
+            # Current span looking back = edges where src == span_idx and dst < span_idx
             upstream_entities = []
             for src, dst, weight in sorted(graph.edges, key=lambda e: -e[2]):
-                if dst == span_idx and src < len(graph.spans):
-                    src_span = graph.spans[src]
-                    if src_span.entities:
-                        best = max(src_span.entities, key=lambda e: e.attention_received)
+                if src == span_idx and dst < span_idx and dst < len(graph.spans):
+                    upstream_span = graph.spans[dst]
+                    if upstream_span.entities:
+                        best = max(upstream_span.entities, key=lambda e: e.attention_received)
                         name = best.text.lower()
                         if name in entity_values:
                             upstream_entities.append((name, entity_values[name], weight))
@@ -1147,6 +1185,12 @@ class GraphExecutor:
                         f"[{dsl.template_id}] {current_entity} = {result} "
                         f"(steps: {len(dsl.steps)})"
                     )
+                else:
+                    # Execution failed - log for debugging
+                    trace.append(
+                        f"[{dsl.template_id}] span {span_idx} execution failed "
+                        f"(params: {list(dsl.params.keys())}, inputs: {list(dsl.inputs.keys())})"
+                    )
             else:
                 # Fallback to flat DSL
                 numbers = self.extract_numbers(span.text)
@@ -1176,16 +1220,22 @@ class GraphExecutor:
     # uses attention signals for all entity resolution.
 
     def _topological_sort(self, graph: SpanGraph) -> List[int]:
-        """Topological sort of spans based on cross-attention edges."""
+        """Topological sort of spans based on cross-attention edges.
+
+        Edge (src, dst, weight) means span[src] attends to span[dst].
+        Semantically: span[src] reads from span[dst], so span[src] depends on span[dst].
+        We need to process span[dst] before span[src].
+        """
         n = len(graph.spans)
         if n == 0:
             return []
 
-        # Build incoming edge counts
+        # Build dependency graph: span[src] depends on span[dst]
+        # So incoming[src].add(dst) - src has incoming dependency from dst
         incoming = {i: set() for i in range(n)}
         for src, dst, weight in graph.edges:
             if weight > 0.02:  # Significant dependency threshold
-                incoming[dst].add(src)
+                incoming[src].add(dst)  # src depends on dst
 
         # Kahn's algorithm
         order = []

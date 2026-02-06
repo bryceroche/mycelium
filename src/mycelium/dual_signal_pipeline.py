@@ -198,7 +198,19 @@ class DualSignalPipeline:
         span_subgraphs = []  # (span_idx, subgraph_dict)
 
         for span_idx, span in enumerate(graph.spans):
-            match_result = self._match_span_to_template(span, attention_matrix, tokens)
+            # Compute backward attention: how much this span attends to earlier spans
+            # High backward attention = span depends on upstream context
+            # Edge (src, dst, weight) means span[src] attends to span[dst]
+            # So span_idx looking back = edges where src == span_idx and dst < span_idx
+            backward_attention = sum(
+                weight for src, dst, weight in graph.edges
+                if src == span_idx and dst < span_idx
+            )
+
+            match_result = self._match_span_to_template(
+                span, attention_matrix, tokens,
+                incoming_cross_attention=backward_attention
+            )
             if match_result:
                 matched_operations.append(match_result)
                 # Every template now has a subgraph (converted from legacy if needed)
@@ -224,6 +236,7 @@ class DualSignalPipeline:
         span: Span,
         full_attention_matrix: np.ndarray,
         full_tokens: List[str],
+        incoming_cross_attention: float = 0.0,
     ) -> Optional[MatchedOperation]:
         """Match a detected span to the best template.
 
@@ -231,10 +244,14 @@ class DualSignalPipeline:
         No generalization at inference time - templates were generalized at
         training time (Qwen) and their centroids were computed from raw examples.
 
+        Uses incoming cross-attention to bias toward templates that need
+        upstream inputs (chaining) vs self-contained templates.
+
         Args:
             span: Detected span with token_indices into full attention matrix
             full_attention_matrix: Full attention matrix for the WHOLE problem
             full_tokens: All tokens from the full problem
+            incoming_cross_attention: Sum of attention weights from previous spans
 
         Returns:
             MatchedOperation if match found, None otherwise
@@ -253,10 +270,13 @@ class DualSignalPipeline:
         # Flatten attention for matching
         attention_flat = span_attention.flatten()
 
-        # Find best template match (triple-signal matching)
-        # Note: graph_embedding=None means all templates get neutral 0.5 graph similarity
-        # Future: could infer expected graph structure from span text
-        result = self.store.find_best_match(span_embedding, attention_flat, graph_embedding=None)
+        # Find best template match using cross-attention signal
+        # High incoming cross-attention = span needs upstream inputs
+        result = self.store.find_best_match(
+            span_embedding, attention_flat,
+            graph_embedding=None,
+            needs_upstream=incoming_cross_attention > 0.05  # Threshold for dependency
+        )
 
         if result:
             template, combined_score, emb_sim, att_sim, graph_sim = result
