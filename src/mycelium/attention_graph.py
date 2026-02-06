@@ -274,8 +274,12 @@ class AttentionGraphBuilder:
     ) -> List[Tuple[int, int]]:
         """Detect span boundaries using sentence-level splits.
 
-        Math word problems have ~1 operation per sentence. Split on sentence
-        endings (.!?) only — NOT on commas, which fragment logical operations.
+        Math word problems have ~1 operation per sentence. Split on:
+        1. Sentence endings (.!?)
+        2. "and" in compound sentences (unless in comparison phrases)
+
+        The "and" split is critical: "she eats three AND bakes muffins with four"
+        contains TWO operations that must be separate spans.
 
         Only refine (sub-split) if a sentence span is very long (>15 tokens)
         AND has a clear connectivity drop.
@@ -291,12 +295,34 @@ class AttentionGraphBuilder:
         if n <= 2:
             return [(0, n)]
 
-        # Split on sentence endings only (not commas)
+        # Build token text for pattern checking
+        tokens_lower = [t.lower() for t in tokens]
+
+        # Check if text contains comparison phrases that use "and"
+        # e.g., "as many apples as oranges and bananas" - don't split
+        text_for_check = ' '.join(tokens_lower)
+        has_comparison = 'as many' in text_for_check or 'as much' in text_for_check
+
+        # Split on sentence endings AND on "and" (for compound operations)
         boundaries = [0]
         for i, token in enumerate(tokens):
+            token_lower = token.lower()
+
+            # Split on sentence endings
             if token in ['.', '!', '?'] and i > 0 and i < n - 1:
                 boundaries.append(i + 1)
+
+            # Split on "and" for compound sentences (multiple operations)
+            # But NOT if in a comparison phrase like "as many X as Y"
+            elif token_lower == 'and' and i > 2 and i < n - 2 and not has_comparison:
+                # Check that both sides have substance (not just "and the...")
+                # Require at least 3 tokens before and after
+                boundaries.append(i)  # "and" starts the new span
+
         boundaries.append(n)
+
+        # Sort and deduplicate boundaries
+        boundaries = sorted(set(boundaries))
 
         # Only refine very long spans (>15 tokens) using connectivity drops
         refined = []

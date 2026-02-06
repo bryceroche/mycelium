@@ -55,10 +55,12 @@ class DualSignalTemplate:
     attention_signature: np.ndarray  # Flattened or aggregated attention pattern
     pattern: str = ""  # Normalized pattern: "[NAME] sold [N] [ITEM]"
     subgraph: Optional[Dict[str, Any]] = None  # SubGraphDSL dict for execution
+    graph_embedding: Optional[np.ndarray] = None  # Computation graph embedding (64-dim)
     span_examples: List[str] = field(default_factory=list)
     embedding_welford: WelfordStats = field(default_factory=WelfordStats)
     attention_welford: WelfordStats = field(default_factory=WelfordStats)
     outcome_welford: WelfordStats = field(default_factory=WelfordStats)
+    graph_welford: WelfordStats = field(default_factory=WelfordStats)  # Stats for graph similarity
     match_count: int = 0
     success_count: int = 0
     cross_entity_attention: float = 0.0
@@ -90,7 +92,7 @@ class DualSignalTemplate:
     
     def to_dict(self) -> Dict[str, Any]:
         """Serialize template to dictionary."""
-        return {
+        result = {
             "template_id": self.template_id,
             "subgraph": self.subgraph,
             "pattern": self.pattern,
@@ -100,23 +102,43 @@ class DualSignalTemplate:
             "embedding_welford": self.embedding_welford.to_dict(),
             "attention_welford": self.attention_welford.to_dict(),
             "outcome_welford": self.outcome_welford.to_dict(),
+            "graph_welford": self.graph_welford.to_dict(),
             "match_count": self.match_count,
             "success_count": self.success_count
         }
+        if self.graph_embedding is not None:
+            result["graph_embedding"] = self.graph_embedding.tolist()
+        return result
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "DualSignalTemplate":
         """Deserialize template from dictionary."""
+        graph_emb = None
+        if "graph_embedding" in d:
+            graph_emb = np.array(d["graph_embedding"], dtype=np.float32)
+
+        # Handle attention_signature - may not exist in older templates
+        if "attention_signature" in d:
+            attention_sig = np.array(d["attention_signature"])
+        else:
+            # Default to zero attention signature
+            attention_sig = np.zeros(384, dtype=np.float32)
+
+        # Handle pattern_examples vs span_examples (different naming in files)
+        span_examples = d.get("span_examples", d.get("pattern_examples", []))
+
         return cls(
             template_id=d["template_id"],
             embedding_centroid=np.array(d["embedding_centroid"]),
-            attention_signature=np.array(d["attention_signature"]),
+            attention_signature=attention_sig,
             pattern=d.get("pattern", ""),
             subgraph=d.get("subgraph"),
-            span_examples=d.get("span_examples", []),
-            embedding_welford=WelfordStats.from_dict(d["embedding_welford"]),
-            attention_welford=WelfordStats.from_dict(d["attention_welford"]),
-            outcome_welford=WelfordStats.from_dict(d["outcome_welford"]),
+            graph_embedding=graph_emb,
+            span_examples=span_examples,
+            embedding_welford=WelfordStats.from_dict(d.get("embedding_welford", {})),
+            attention_welford=WelfordStats.from_dict(d.get("attention_welford", {})),
+            outcome_welford=WelfordStats.from_dict(d.get("outcome_welford", {})),
+            graph_welford=WelfordStats.from_dict(d.get("graph_welford", {})),
             match_count=d.get("match_count", 0),
             success_count=d.get("success_count", 0)
         )
@@ -133,45 +155,72 @@ class TemplateStore:
     matters more for different problem types.
     """
     
-    def __init__(self, embedding_weight: float = 0.5, attention_weight: float = 0.5):
+    def __init__(
+        self,
+        embedding_weight: float = 0.5,
+        attention_weight: float = 0.3,
+        graph_weight: float = 0.2
+    ):
         """
-        Initialize template store.
+        Initialize template store with triple-signal matching.
 
         Args:
             embedding_weight: Initial weight for embedding similarity [0-1]
             attention_weight: Initial weight for attention similarity [0-1]
+            graph_weight: Initial weight for graph structure similarity [0-1]
         """
         self.templates: Dict[str, DualSignalTemplate] = OrderedDict()
         self.embedding_weight = embedding_weight
         self.attention_weight = attention_weight
+        self.graph_weight = graph_weight
 
-        # Vectorized centroid matrix for fast matching (built lazily)
+        # Vectorized matrices for fast matching (built lazily)
         self._centroid_matrix: Optional[np.ndarray] = None  # (N, dim) normalized
+        self._graph_matrix: Optional[np.ndarray] = None  # (N, 64) normalized
         self._template_ids: Optional[List[str]] = None  # parallel list of IDs
 
         # Track weight learning
         self.weight_welford = WelfordStats()  # Tracks optimal weight estimation
-        self._weight_history: List[Tuple[float, bool]] = []  # (weight, success) pairs
+        self._weight_history: List[Tuple[float, float, float, bool]] = []  # (emb, att, graph, success)
 
     def _invalidate_centroid_cache(self) -> None:
-        """Invalidate the vectorized centroid matrix (call after add/remove)."""
+        """Invalidate the vectorized matrices (call after add/remove)."""
         self._centroid_matrix = None
+        self._graph_matrix = None
         self._template_ids = None
 
     def _ensure_centroid_matrix(self) -> None:
-        """Build the vectorized centroid matrix if not cached."""
+        """Build the vectorized centroid and graph matrices if not cached."""
         if self._centroid_matrix is not None:
             return
         if not self.templates:
             return
 
         self._template_ids = list(self.templates.keys())
+
+        # Build embedding centroid matrix
         centroids = [self.templates[tid].embedding_centroid for tid in self._template_ids]
         self._centroid_matrix = np.array(centroids, dtype=np.float32)
         # Pre-normalize rows for fast cosine similarity via dot product
         norms = np.linalg.norm(self._centroid_matrix, axis=1, keepdims=True)
         norms = np.maximum(norms, 1e-10)
         self._centroid_matrix = self._centroid_matrix / norms
+
+        # Build graph embedding matrix (if templates have graph embeddings)
+        graph_embeddings = []
+        for tid in self._template_ids:
+            t = self.templates[tid]
+            if t.graph_embedding is not None:
+                graph_embeddings.append(t.graph_embedding)
+            else:
+                # Default zero vector if no graph embedding
+                graph_embeddings.append(np.zeros(64, dtype=np.float32))
+
+        self._graph_matrix = np.array(graph_embeddings, dtype=np.float32)
+        # Pre-normalize for fast cosine similarity
+        norms = np.linalg.norm(self._graph_matrix, axis=1, keepdims=True)
+        norms = np.maximum(norms, 1e-10)
+        self._graph_matrix = self._graph_matrix / norms
 
     def add_template(self, template: DualSignalTemplate) -> None:
         """Add a template to the store."""
@@ -230,38 +279,46 @@ class TemplateStore:
         return float(num / denom)
     
     def compute_match_score(
-        self, 
-        embedding: np.ndarray, 
+        self,
+        embedding: np.ndarray,
         attention: np.ndarray,
-        template: DualSignalTemplate
-    ) -> Tuple[float, float, float]:
+        template: DualSignalTemplate,
+        graph_embedding: Optional[np.ndarray] = None
+    ) -> Tuple[float, float, float, float]:
         """
-        Compute combined match score using both signals.
-        
+        Compute combined match score using triple signals.
+
         Returns:
-            Tuple of (combined_score, embedding_sim, attention_sim)
+            Tuple of (combined_score, embedding_sim, attention_sim, graph_sim)
         """
         emb_sim = self._cosine_similarity(embedding, template.embedding_centroid)
         att_sim = self._attention_correlation(attention, template.attention_signature)
-        
-        # Normalize to [0, 1] range (correlation can be negative)
+
+        # Normalize attention to [0, 1] range (correlation can be negative)
         att_sim_normalized = (att_sim + 1) / 2
-        
+
+        # Graph similarity (if available)
+        graph_sim = 0.5  # Neutral default
+        if graph_embedding is not None and template.graph_embedding is not None:
+            graph_sim = self._cosine_similarity(graph_embedding, template.graph_embedding)
+
         combined = (
-            self.embedding_weight * emb_sim + 
-            self.attention_weight * att_sim_normalized
+            self.embedding_weight * emb_sim +
+            self.attention_weight * att_sim_normalized +
+            self.graph_weight * graph_sim
         )
-        
-        return combined, emb_sim, att_sim
+
+        return combined, emb_sim, att_sim, graph_sim
     
     def find_best_match(
         self,
         embedding: np.ndarray,
         attention: np.ndarray,
+        graph_embedding: Optional[np.ndarray] = None,
         min_score: float = 0.0
-    ) -> Optional[Tuple[DualSignalTemplate, float, float, float]]:
+    ) -> Optional[Tuple[DualSignalTemplate, float, float, float, float]]:
         """
-        Find the best matching template for given signals.
+        Find the best matching template using triple signals.
 
         Following CLAUDE.md principle: ALWAYS route to best match,
         let failures drive learning rather than arbitrary thresholds.
@@ -272,10 +329,11 @@ class TemplateStore:
         Args:
             embedding: Query embedding vector
             attention: Query attention pattern
+            graph_embedding: Query graph structure embedding (optional)
             min_score: Minimum score threshold (default 0, always match)
 
         Returns:
-            Tuple of (template, combined_score, embedding_sim, attention_sim)
+            Tuple of (template, combined_score, embedding_sim, attention_sim, graph_sim)
             or None if no templates exist
         """
         if not self.templates:
@@ -284,30 +342,49 @@ class TemplateStore:
         # Vectorized cosine similarity via matrix multiply
         self._ensure_centroid_matrix()
         if self._centroid_matrix is not None:
-            # Normalize query
+            # Normalize embedding query
             query = embedding.astype(np.float32)
             norm = np.linalg.norm(query)
             if norm > 0:
                 query = query / norm
 
-            # Single matrix multiply: (N, dim) @ (dim,) -> (N,)
-            sims = self._centroid_matrix @ query
-            best_idx = int(np.argmax(sims))
-            best_emb_sim = float(sims[best_idx])
+            # Embedding similarity: (N, dim) @ (dim,) -> (N,)
+            emb_sims = self._centroid_matrix @ query
+
+            # Graph similarity (vectorized if graph_embedding provided)
+            if graph_embedding is not None and self._graph_matrix is not None:
+                graph_query = graph_embedding.astype(np.float32)
+                gnorm = np.linalg.norm(graph_query)
+                if gnorm > 0:
+                    graph_query = graph_query / gnorm
+                graph_sims = self._graph_matrix @ graph_query
+            else:
+                graph_sims = np.full(len(emb_sims), 0.5)  # Neutral default
+
+            # Combined score for ranking (attention computed only for top candidate)
+            # Use embedding + graph for initial ranking, then refine with attention
+            initial_scores = self.embedding_weight * emb_sims + self.graph_weight * graph_sims
+            best_idx = int(np.argmax(initial_scores))
+
+            best_emb_sim = float(emb_sims[best_idx])
+            best_graph_sim = float(graph_sims[best_idx])
 
             best_tid = self._template_ids[best_idx]
             best_match = self.templates[best_tid]
 
-            # Attention correlation (cheap for the single best match)
+            # Attention correlation (computed only for best match)
             att_sim = self._attention_correlation(attention, best_match.attention_signature)
             att_sim_normalized = (att_sim + 1) / 2
 
-            combined = (self.embedding_weight * best_emb_sim +
-                        self.attention_weight * att_sim_normalized)
+            combined = (
+                self.embedding_weight * best_emb_sim +
+                self.attention_weight * att_sim_normalized +
+                self.graph_weight * best_graph_sim
+            )
 
             if combined < min_score:
                 return None
-            return best_match, combined, best_emb_sim, att_sim
+            return best_match, combined, best_emb_sim, att_sim, best_graph_sim
 
         return None
 
@@ -315,93 +392,112 @@ class TemplateStore:
         self,
         embedding: np.ndarray,
         attention: np.ndarray,
+        graph_embedding: Optional[np.ndarray] = None,
         k: int = 5,
-    ) -> List[Tuple[DualSignalTemplate, float, float, float]]:
+    ) -> List[Tuple[DualSignalTemplate, float, float, float, float]]:
         """
-        Find top-k matching templates.
+        Find top-k matching templates using triple signals.
 
         Useful for MCTS exploration where we want to consider
         multiple candidates.
+
+        Returns:
+            List of (template, combined_score, embedding_sim, attention_sim, graph_sim) tuples
         """
         if not self.templates:
             return []
 
-        # Vectorized: get top-k by embedding similarity
+        # Vectorized matching
         self._ensure_centroid_matrix()
         if self._centroid_matrix is not None:
+            # Embedding similarity
             query = embedding.astype(np.float32)
             norm = np.linalg.norm(query)
             if norm > 0:
                 query = query / norm
+            emb_sims = self._centroid_matrix @ query
 
-            sims = self._centroid_matrix @ query
-            top_k_indices = np.argsort(sims)[-k:][::-1]
+            # Graph similarity
+            if graph_embedding is not None and self._graph_matrix is not None:
+                graph_query = graph_embedding.astype(np.float32)
+                gnorm = np.linalg.norm(graph_query)
+                if gnorm > 0:
+                    graph_query = graph_query / gnorm
+                graph_sims = self._graph_matrix @ graph_query
+            else:
+                graph_sims = np.full(len(emb_sims), 0.5)
+
+            # Initial ranking by embedding + graph (attention computed per candidate)
+            initial_scores = self.embedding_weight * emb_sims + self.graph_weight * graph_sims
+            top_k_indices = np.argsort(initial_scores)[-k:][::-1]
 
             matches = []
             for idx in top_k_indices:
                 tid = self._template_ids[idx]
                 template = self.templates[tid]
-                emb_sim = float(sims[idx])
+                emb_sim = float(emb_sims[idx])
+                graph_sim = float(graph_sims[idx])
                 att_sim = self._attention_correlation(attention, template.attention_signature)
                 att_sim_normalized = (att_sim + 1) / 2
-                combined = (self.embedding_weight * emb_sim +
-                            self.attention_weight * att_sim_normalized)
-                matches.append((template, combined, emb_sim, att_sim))
+                combined = (
+                    self.embedding_weight * emb_sim +
+                    self.attention_weight * att_sim_normalized +
+                    self.graph_weight * graph_sim
+                )
+                matches.append((template, combined, emb_sim, att_sim, graph_sim))
             return matches
 
         return []
     
     def update_weights_from_outcome(
-        self, 
-        embedding_sim: float, 
-        attention_sim: float, 
-        success: bool
+        self,
+        embedding_sim: float,
+        attention_sim: float,
+        success: bool,
+        graph_sim: float = 0.5
     ) -> None:
         """
         Learn optimal signal weights from outcomes.
-        
+
         Track which signal was more predictive of success
         and adjust weights accordingly.
         """
-        # Simple heuristic: if one signal was high and we succeeded,
-        # or one signal was low and we failed, increase its weight
-        
-        # Store for batch learning
-        self._weight_history.append((embedding_sim, attention_sim, success))
+        # Store for batch learning (3 signals now)
+        self._weight_history.append((embedding_sim, attention_sim, graph_sim, success))
         
         # Update weights every 100 observations
         if len(self._weight_history) >= 100:
             self._recompute_weights()
     
     def _recompute_weights(self) -> None:
-        """Recompute optimal weights from accumulated history."""
+        """Recompute optimal weights from accumulated history using 3 signals."""
         if len(self._weight_history) < 10:
             return
-        
-        # Simple linear regression to find optimal weights
-        # that best predict success from the two signals
-        
+
+        # Linear regression to find optimal weights for triple signals
         emb_sims = np.array([h[0] for h in self._weight_history])
-        att_sims = np.array([(h[1] + 1) / 2 for h in self._weight_history])  # Normalize
-        outcomes = np.array([1.0 if h[2] else 0.0 for h in self._weight_history])
-        
-        # Stack features
-        X = np.column_stack([emb_sims, att_sims])
-        
+        att_sims = np.array([(h[1] + 1) / 2 for h in self._weight_history])  # Normalize correlation
+        graph_sims = np.array([h[2] for h in self._weight_history])
+        outcomes = np.array([1.0 if h[3] else 0.0 for h in self._weight_history])
+
+        # Stack features (3 signals now)
+        X = np.column_stack([emb_sims, att_sims, graph_sims])
+
         # Add small regularization for stability
-        XtX = X.T @ X + 0.01 * np.eye(2)
+        XtX = X.T @ X + 0.01 * np.eye(3)
         Xty = X.T @ outcomes
-        
+
         try:
             weights = np.linalg.solve(XtX, Xty)
             # Normalize to sum to 1
-            total = abs(weights[0]) + abs(weights[1])
+            total = abs(weights[0]) + abs(weights[1]) + abs(weights[2])
             if total > 0:
                 self.embedding_weight = abs(weights[0]) / total
                 self.attention_weight = abs(weights[1]) / total
+                self.graph_weight = abs(weights[2]) / total
         except np.linalg.LinAlgError:
             pass  # Keep current weights if solve fails
-        
+
         # Clear history (keep last 50 for continuity)
         self._weight_history = self._weight_history[-50:]
     
@@ -426,17 +522,19 @@ class TemplateStore:
         return {
             "embedding_weight": self.embedding_weight,
             "attention_weight": self.attention_weight,
+            "graph_weight": self.graph_weight,
             "templates": {
                 tid: t.to_dict() for tid, t in self.templates.items()
             }
         }
-    
+
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "TemplateStore":
         """Deserialize store from dictionary."""
         store = cls(
             embedding_weight=d.get("embedding_weight", 0.5),
-            attention_weight=d.get("attention_weight", 0.5)
+            attention_weight=d.get("attention_weight", 0.3),
+            graph_weight=d.get("graph_weight", 0.2)
         )
         for tid, tdict in d.get("templates", {}).items():
             store.templates[tid] = DualSignalTemplate.from_dict(tdict)

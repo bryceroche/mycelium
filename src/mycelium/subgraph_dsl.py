@@ -188,15 +188,21 @@ class SubGraphDSL:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> SubGraphDSL:
-        """Deserialize from dict."""
+    def from_dict(cls, d: dict, template_id: str = "unknown", pattern: str = "") -> SubGraphDSL:
+        """Deserialize from dict.
+
+        Args:
+            d: Dict with params, inputs, steps, output (and optionally template_id, pattern)
+            template_id: Fallback template_id if not in dict
+            pattern: Fallback pattern if not in dict
+        """
         return cls(
-            template_id=d["template_id"],
-            pattern=d["pattern"],
+            template_id=d.get("template_id", template_id),
+            pattern=d.get("pattern", pattern),
             params=d.get("params", {}),
             inputs=d.get("inputs", {}),
-            steps=[SubGraphStep.from_dict(s) for s in d["steps"]],
-            output=d["output"],
+            steps=[SubGraphStep.from_dict(s) for s in d.get("steps", [])],
+            output=d.get("output", "result"),
         )
 
     def __repr__(self) -> str:
