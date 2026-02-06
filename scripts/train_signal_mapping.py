@@ -2,31 +2,15 @@
 """Train a mapping from MiniLM embeddings to Qwen attention signals."""
 
 import json
+import sys
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from pathlib import Path
 
-
-class SignalMapper(nn.Module):
-    """MLP to map MiniLM embeddings (384-dim) to Qwen signals (3-dim)."""
-
-    def __init__(self, input_dim=384, hidden_dim=128, output_dim=3):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(0.1),
-            nn.Linear(hidden_dim, hidden_dim // 2),
-            nn.ReLU(),
-            nn.Dropout(0.1),
-            nn.Linear(hidden_dim // 2, output_dim),
-            nn.Sigmoid()  # Signals are normalized to [0, 1]
-        )
-
-    def forward(self, x):
-        return self.net(x)
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+from mycelium.signal_mapper import SignalMapper
 
 
 def load_training_data(templates_path: str = "specialized_templates.json"):

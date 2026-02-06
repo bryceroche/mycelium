@@ -866,93 +866,6 @@ def create_template_from_span(
 
 
 # ============================================================
-# Integration with Mycelium
-# ============================================================
-
-class DualSignalRouter:
-    """
-    High-level router that integrates dual-signal matching with
-    the Mycelium tree structure.
-    
-    This bridges the template system to the signature tree
-    described in CLAUDE.md.
-    """
-    
-    def __init__(
-        self,
-        model_path: Optional[str] = None,
-        embedding_weight: float = 0.5,
-        attention_weight: float = 0.5
-    ):
-        self.detector = SpanDetector(model_path=model_path)
-        self.store = TemplateStore(
-            embedding_weight=embedding_weight,
-            attention_weight=attention_weight
-        )
-    
-    def process_dag_step(
-        self, 
-        step_text: str
-    ) -> Optional[Tuple[DualSignalTemplate, float]]:
-        """
-        Route a DAG step to the best matching template.
-        
-        Args:
-            step_text: Text description of the DAG step
-        
-        Returns:
-            Tuple of (matched_template, confidence_score) or None
-        """
-        # Extract features
-        embedding, attention, tokens = self.detector.extract_features(step_text)
-        attention_flat = attention.flatten()
-        
-        # Find best match
-        result = self.store.find_best_match(embedding, attention_flat)
-        
-        if result is None:
-            return None
-        
-        template, score, emb_sim, att_sim = result
-        
-        # Update Welford stats
-        template.embedding_welford.update(emb_sim)
-        template.attention_welford.update(att_sim)
-        
-        return template, score
-    
-    def record_outcome(
-        self,
-        template_id: str,
-        success: bool,
-        embedding_sim: Optional[float] = None,
-        attention_sim: Optional[float] = None
-    ) -> None:
-        """
-        Record execution outcome for learning.
-        
-        This feeds the variance-based decomposition system.
-        """
-        template = self.store.get_template(template_id)
-        if template:
-            template.record_outcome(success)
-        
-        # Update weight learning
-        if embedding_sim is not None and attention_sim is not None:
-            self.store.update_weights_from_outcome(
-                embedding_sim, attention_sim, success
-            )
-    
-    def get_decomposition_candidates(self) -> List[DualSignalTemplate]:
-        """
-        Get templates that should be considered for decomposition.
-        
-        Per CLAUDE.md: High variance indicates need for decomposition.
-        """
-        return self.store.get_high_variance_templates()
-
-
-# ============================================================
 # CLI / Testing
 # ============================================================
 
@@ -1042,20 +955,6 @@ if __name__ == "__main__":
     print(f"   [OK] Mean: {welford.mean:.4f}")
     print(f"   [OK] Variance: {welford.variance:.4f}")
     print(f"   [OK] Std: {welford.std:.4f}")
-
-    # Test full router
-    print("\n6. Testing DualSignalRouter...")
-    router = DualSignalRouter(embedding_weight=0.6, attention_weight=0.4)
-
-    # Add the template
-    router.store.add_template(template)
-
-    # Route a query
-    result = router.process_dag_step("Calculate 5 minus 2")
-    if result:
-        matched, score = result
-        print(f"   [OK] Routed to: {matched.template_id}")
-        print(f"       Score: {score:.4f}")
 
     print("\n" + "=" * 60)
     print("All tests passed!")

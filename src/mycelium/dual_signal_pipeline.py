@@ -135,11 +135,8 @@ class DualSignalPipeline:
 
         # Initialize attention graph builder for span detection
         # Uses attention signals (not hardcoded lists) per CLAUDE.md
-        self.graph_builder = AttentionGraphBuilder(
-            entity_threshold=0.08,  # Tuned: "jordan" has 0.112 attention_received
-            connectivity_threshold=0.1,
-            boundary_drop_threshold=0.5,
-        )
+        # Thresholds defined in AttentionGraphBuilder defaults
+        self.graph_builder = AttentionGraphBuilder()
 
         # Initialize graph executor for computing answers
         self.graph_executor = GraphExecutor()
