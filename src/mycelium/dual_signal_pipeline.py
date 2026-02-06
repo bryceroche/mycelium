@@ -90,23 +90,27 @@ class DualSignalPipeline:
     def __init__(
         self,
         model_path: Optional[str] = None,
-        embedding_weight: float = 0.9,
-        attention_weight: float = 0.1,
+        embedding_weight: float = 0.5,
+        attention_weight: float = 0.3,
+        graph_weight: float = 0.2,
         device: str = "auto",
         templates_path: Optional[str] = None,
     ):
-        """Initialize the dual-signal pipeline.
+        """Initialize the triple-signal pipeline.
 
         Args:
             model_path: Path to fine-tuned MiniLM model checkpoint.
                        Uses default path if not provided.
             embedding_weight: Weight for embedding similarity in matching [0-1].
-                            Default 0.9 because base MiniLM attention patterns
-                            are not discriminative (always ~0.999 correlation).
-                            Re-balance toward attention once model is fine-tuned.
-            attention_weight: Weight for attention similarity in matching [0-1]
+            attention_weight: Weight for attention similarity in matching [0-1].
+            graph_weight: Weight for computation graph similarity [0-1].
             device: Device for inference ("auto", "cuda", "cpu")
             templates_path: Optional path to load/save templates JSON
+
+        Triple-signal approach:
+        - Embedding: Captures lexical/semantic similarity
+        - Attention: Captures structural processing patterns
+        - Graph: Captures operational computation structure
         """
         # Resolve model path
         if model_path is None:
@@ -121,10 +125,11 @@ class DualSignalPipeline:
         # Initialize span detector with fine-tuned model
         self.detector = SpanDetector(model_path=model_path, device=device)
 
-        # Initialize template store
+        # Initialize template store with triple-signal weights
         self.store = TemplateStore(
             embedding_weight=embedding_weight,
             attention_weight=attention_weight,
+            graph_weight=graph_weight,
         )
 
         # Initialize attention graph builder for span detection
@@ -248,11 +253,13 @@ class DualSignalPipeline:
         # Flatten attention for matching
         attention_flat = span_attention.flatten()
 
-        # Find best template match
-        result = self.store.find_best_match(span_embedding, attention_flat)
+        # Find best template match (triple-signal matching)
+        # Note: graph_embedding=None means all templates get neutral 0.5 graph similarity
+        # Future: could infer expected graph structure from span text
+        result = self.store.find_best_match(span_embedding, attention_flat, graph_embedding=None)
 
         if result:
-            template, combined_score, emb_sim, att_sim = result
+            template, combined_score, emb_sim, att_sim, graph_sim = result
             confidence = self._compute_confidence(template, combined_score)
 
             return MatchedOperation(
@@ -308,6 +315,7 @@ class DualSignalPipeline:
         success: bool,
         embedding_sim: Optional[float] = None,
         attention_sim: Optional[float] = None,
+        graph_sim: Optional[float] = None,
     ) -> None:
         """Record execution outcome for learning.
 
@@ -319,15 +327,17 @@ class DualSignalPipeline:
             success: Whether execution was successful
             embedding_sim: Embedding similarity from the match
             attention_sim: Attention similarity from the match
+            graph_sim: Graph structure similarity from the match
         """
         template = self.store.get_template(template_id)
         if template:
             template.record_outcome(success)
 
-        # Update signal weight learning
+        # Update signal weight learning (all 3 signals)
         if embedding_sim is not None and attention_sim is not None:
             self.store.update_weights_from_outcome(
-                embedding_sim, attention_sim, success
+                embedding_sim, attention_sim, success,
+                graph_sim=graph_sim if graph_sim is not None else 0.5
             )
 
     def get_decomposition_candidates(self) -> List[DualSignalTemplate]:
@@ -565,9 +575,12 @@ class DualSignalPipeline:
             if centroid is not None:
                 embedding = np.array(centroid, dtype=np.float32)
 
-                # Skip attention centroid computation for bulk-loaded templates
-                # (too slow for 23K+ templates; embedding_weight=0.9 dominates anyway)
-                attention_flat = np.zeros(100, dtype=np.float32)
+                # Load pre-computed attention signature if available
+                if "attention_signature" in tpl_dict:
+                    attention_flat = np.array(tpl_dict["attention_signature"], dtype=np.float32)
+                else:
+                    # Default to zeros if not pre-computed
+                    attention_flat = np.zeros(100, dtype=np.float32)
             else:
                 # Legacy: re-embed from pattern examples or description
                 text_for_embedding = tpl_dict.get("description", tpl_dict.get("pattern", ""))
@@ -579,12 +592,18 @@ class DualSignalPipeline:
                     attention = attention.mean(axis=0)
                 attention_flat = attention.flatten()
 
+            # Load graph embedding if present
+            graph_emb = None
+            if "graph_embedding" in tpl_dict:
+                graph_emb = np.array(tpl_dict["graph_embedding"], dtype=np.float32)
+
             return DualSignalTemplate(
                 template_id=tpl_dict["template_id"],
                 embedding_centroid=embedding,
                 attention_signature=attention_flat,
                 pattern=tpl_dict.get("pattern", ""),
                 subgraph=subgraph,
+                graph_embedding=graph_emb,
                 span_examples=patterns,
             )
         except Exception as e:
