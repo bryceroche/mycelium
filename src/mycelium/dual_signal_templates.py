@@ -56,6 +56,9 @@ class DualSignalTemplate:
     pattern: str = ""  # Normalized pattern: "[NAME] sold [N] [ITEM]"
     subgraph: Optional[Dict[str, Any]] = None  # SubGraphDSL dict for execution
     graph_embedding: Optional[np.ndarray] = None  # Computation graph embedding (64-dim)
+    backward_attention: float = 0.5  # Cross-attention to earlier spans (0=initial, high=depends on upstream)
+    attention_entropy: float = 0.5  # Attention focus (low=specific, high=diffuse)
+    span_position: float = 0.5  # Position in problem (0=start, 1=end)
     span_examples: List[str] = field(default_factory=list)
     embedding_welford: WelfordStats = field(default_factory=WelfordStats)
     attention_welford: WelfordStats = field(default_factory=WelfordStats)
@@ -98,6 +101,9 @@ class DualSignalTemplate:
             "pattern": self.pattern,
             "embedding_centroid": self.embedding_centroid.tolist(),
             "attention_signature": self.attention_signature.tolist(),
+            "backward_attention": self.backward_attention,
+            "attention_entropy": self.attention_entropy,
+            "span_position": self.span_position,
             "span_examples": self.span_examples[:10],
             "embedding_welford": self.embedding_welford.to_dict(),
             "attention_welford": self.attention_welford.to_dict(),
@@ -134,6 +140,9 @@ class DualSignalTemplate:
             pattern=d.get("pattern", ""),
             subgraph=d.get("subgraph"),
             graph_embedding=graph_emb,
+            backward_attention=d.get("backward_attention", 0.5),
+            attention_entropy=d.get("attention_entropy", 0.5),
+            span_position=d.get("span_position", 0.5),
             span_examples=span_examples,
             embedding_welford=WelfordStats.from_dict(d.get("embedding_welford", {})),
             attention_welford=WelfordStats.from_dict(d.get("attention_welford", {})),
@@ -157,36 +166,43 @@ class TemplateStore:
     
     def __init__(
         self,
-        embedding_weight: float = 0.5,
+        embedding_weight: float = 0.3,
         attention_weight: float = 0.3,
-        graph_weight: float = 0.2
+        backward_attention_weight: float = 0.25,
+        graph_weight: float = 0.15
     ):
         """
-        Initialize template store with triple-signal matching.
+        Initialize template store with quad-signal matching.
 
         Args:
             embedding_weight: Initial weight for embedding similarity [0-1]
-            attention_weight: Initial weight for attention similarity [0-1]
+            attention_weight: Initial weight for attention pattern similarity [0-1]
+            backward_attention_weight: Initial weight for backward attention similarity [0-1]
+                HIGH backward_attention = consuming op (SUB, MUL, ADD, DIV)
+                LOW backward_attention = initializing op (SET)
             graph_weight: Initial weight for graph structure similarity [0-1]
         """
         self.templates: Dict[str, DualSignalTemplate] = OrderedDict()
         self.embedding_weight = embedding_weight
         self.attention_weight = attention_weight
+        self.backward_attention_weight = backward_attention_weight
         self.graph_weight = graph_weight
 
         # Vectorized matrices for fast matching (built lazily)
         self._centroid_matrix: Optional[np.ndarray] = None  # (N, dim) normalized
         self._graph_matrix: Optional[np.ndarray] = None  # (N, 64) normalized
+        self._backward_attention_vec: Optional[np.ndarray] = None  # (N,) template backward_attention values
         self._template_ids: Optional[List[str]] = None  # parallel list of IDs
 
         # Track weight learning
         self.weight_welford = WelfordStats()  # Tracks optimal weight estimation
-        self._weight_history: List[Tuple[float, float, float, bool]] = []  # (emb, att, graph, success)
+        self._weight_history: List[Tuple[float, float, float, float, bool]] = []  # (emb, att, ba, graph, success)
 
     def _invalidate_centroid_cache(self) -> None:
         """Invalidate the vectorized matrices (call after add/remove)."""
         self._centroid_matrix = None
         self._graph_matrix = None
+        self._backward_attention_vec = None
         self._template_ids = None
 
     def _ensure_centroid_matrix(self) -> None:
@@ -221,6 +237,11 @@ class TemplateStore:
         norms = np.linalg.norm(self._graph_matrix, axis=1, keepdims=True)
         norms = np.maximum(norms, 1e-10)
         self._graph_matrix = self._graph_matrix / norms
+
+        # Build backward_attention vector for attention-based matching
+        self._backward_attention_vec = np.array([
+            self.templates[tid].backward_attention for tid in self._template_ids
+        ], dtype=np.float32)
 
     def add_template(self, template: DualSignalTemplate) -> None:
         """Add a template to the store."""
@@ -317,9 +338,10 @@ class TemplateStore:
         graph_embedding: Optional[np.ndarray] = None,
         min_score: float = 0.0,
         needs_upstream: bool = False,
+        query_backward_attention: float = 0.5,
     ) -> Optional[Tuple[DualSignalTemplate, float, float, float, float]]:
         """
-        Find the best matching template using triple signals.
+        Find the best matching template using quad signals.
 
         Following CLAUDE.md principle: ALWAYS route to best match,
         let failures drive learning rather than arbitrary thresholds.
@@ -330,12 +352,17 @@ class TemplateStore:
         Cross-attention signal: If needs_upstream=True, bias toward templates
         that have inputs defined (chaining templates).
 
+        Backward attention matching: Templates with similar backward_attention
+        to the query are preferred. HIGH backward_attention = consuming op
+        (SUB, MUL, ADD), LOW = initializing op (SET).
+
         Args:
             embedding: Query embedding vector
             attention: Query attention pattern
             graph_embedding: Query graph structure embedding (optional)
             min_score: Minimum score threshold (default 0, always match)
             needs_upstream: If True, prefer templates with inputs (from cross-attention)
+            query_backward_attention: Query span's backward attention value
 
         Returns:
             Tuple of (template, combined_score, embedding_sim, attention_sim, graph_sim)
@@ -366,6 +393,12 @@ class TemplateStore:
             else:
                 graph_sims = np.full(len(emb_sims), 0.5)  # Neutral default
 
+            # Backward attention similarity (closer values = higher score)
+            # Use Gaussian-like similarity: exp(-|diff|/scale)
+            # Scale factor based on observed range (0 to ~8)
+            ba_diffs = np.abs(self._backward_attention_vec - query_backward_attention)
+            ba_sims = np.exp(-ba_diffs / 2.0)  # Scale of 2.0 gives reasonable falloff
+
             # Cross-attention bias: boost templates with inputs when span needs upstream
             # This is derived from attention signals, not heuristics
             upstream_bias = np.zeros(len(emb_sims))
@@ -373,12 +406,12 @@ class TemplateStore:
                 for i, tid in enumerate(self._template_ids):
                     template = self.templates[tid]
                     if template.subgraph and template.subgraph.get("inputs"):
-                        upstream_bias[i] = 0.15  # Boost templates that expect upstream inputs
+                        upstream_bias[i] = 0.10  # Reduced since backward_attention now handles this
 
-            # Combined score for ranking (attention computed only for top candidate)
-            # Use embedding + graph + upstream bias for initial ranking
+            # Combined score for ranking using all four signals
             initial_scores = (
                 self.embedding_weight * emb_sims +
+                self.backward_attention_weight * ba_sims +
                 self.graph_weight * graph_sims +
                 upstream_bias
             )
@@ -386,6 +419,7 @@ class TemplateStore:
 
             best_emb_sim = float(emb_sims[best_idx])
             best_graph_sim = float(graph_sims[best_idx])
+            best_ba_sim = float(ba_sims[best_idx])
 
             best_tid = self._template_ids[best_idx]
             best_match = self.templates[best_tid]
@@ -397,6 +431,7 @@ class TemplateStore:
             combined = (
                 self.embedding_weight * best_emb_sim +
                 self.attention_weight * att_sim_normalized +
+                self.backward_attention_weight * best_ba_sim +
                 self.graph_weight * best_graph_sim
             )
 
@@ -412,9 +447,10 @@ class TemplateStore:
         attention: np.ndarray,
         graph_embedding: Optional[np.ndarray] = None,
         k: int = 5,
+        query_backward_attention: float = 0.5,
     ) -> List[Tuple[DualSignalTemplate, float, float, float, float]]:
         """
-        Find top-k matching templates using triple signals.
+        Find top-k matching templates using quad signals.
 
         Useful for MCTS exploration where we want to consider
         multiple candidates.
@@ -445,8 +481,16 @@ class TemplateStore:
             else:
                 graph_sims = np.full(len(emb_sims), 0.5)
 
-            # Initial ranking by embedding + graph (attention computed per candidate)
-            initial_scores = self.embedding_weight * emb_sims + self.graph_weight * graph_sims
+            # Backward attention similarity
+            ba_diffs = np.abs(self._backward_attention_vec - query_backward_attention)
+            ba_sims = np.exp(-ba_diffs / 2.0)
+
+            # Initial ranking by all signals except attention pattern (computed per candidate)
+            initial_scores = (
+                self.embedding_weight * emb_sims +
+                self.backward_attention_weight * ba_sims +
+                self.graph_weight * graph_sims
+            )
             top_k_indices = np.argsort(initial_scores)[-k:][::-1]
 
             matches = []
@@ -455,11 +499,13 @@ class TemplateStore:
                 template = self.templates[tid]
                 emb_sim = float(emb_sims[idx])
                 graph_sim = float(graph_sims[idx])
+                ba_sim = float(ba_sims[idx])
                 att_sim = self._attention_correlation(attention, template.attention_signature)
                 att_sim_normalized = (att_sim + 1) / 2
                 combined = (
                     self.embedding_weight * emb_sim +
                     self.attention_weight * att_sim_normalized +
+                    self.backward_attention_weight * ba_sim +
                     self.graph_weight * graph_sim
                 )
                 matches.append((template, combined, emb_sim, att_sim, graph_sim))
@@ -472,7 +518,8 @@ class TemplateStore:
         embedding_sim: float,
         attention_sim: float,
         success: bool,
-        graph_sim: float = 0.5
+        graph_sim: float = 0.5,
+        backward_attention_sim: float = 0.5
     ) -> None:
         """
         Learn optimal signal weights from outcomes.
@@ -480,39 +527,41 @@ class TemplateStore:
         Track which signal was more predictive of success
         and adjust weights accordingly.
         """
-        # Store for batch learning (3 signals now)
-        self._weight_history.append((embedding_sim, attention_sim, graph_sim, success))
-        
+        # Store for batch learning (4 signals now)
+        self._weight_history.append((embedding_sim, attention_sim, backward_attention_sim, graph_sim, success))
+
         # Update weights every 100 observations
         if len(self._weight_history) >= 100:
             self._recompute_weights()
-    
+
     def _recompute_weights(self) -> None:
-        """Recompute optimal weights from accumulated history using 3 signals."""
+        """Recompute optimal weights from accumulated history using 4 signals."""
         if len(self._weight_history) < 10:
             return
 
-        # Linear regression to find optimal weights for triple signals
+        # Linear regression to find optimal weights for quad signals
         emb_sims = np.array([h[0] for h in self._weight_history])
         att_sims = np.array([(h[1] + 1) / 2 for h in self._weight_history])  # Normalize correlation
-        graph_sims = np.array([h[2] for h in self._weight_history])
-        outcomes = np.array([1.0 if h[3] else 0.0 for h in self._weight_history])
+        ba_sims = np.array([h[2] for h in self._weight_history])
+        graph_sims = np.array([h[3] for h in self._weight_history])
+        outcomes = np.array([1.0 if h[4] else 0.0 for h in self._weight_history])
 
-        # Stack features (3 signals now)
-        X = np.column_stack([emb_sims, att_sims, graph_sims])
+        # Stack features (4 signals now)
+        X = np.column_stack([emb_sims, att_sims, ba_sims, graph_sims])
 
         # Add small regularization for stability
-        XtX = X.T @ X + 0.01 * np.eye(3)
+        XtX = X.T @ X + 0.01 * np.eye(4)
         Xty = X.T @ outcomes
 
         try:
             weights = np.linalg.solve(XtX, Xty)
             # Normalize to sum to 1
-            total = abs(weights[0]) + abs(weights[1]) + abs(weights[2])
+            total = abs(weights[0]) + abs(weights[1]) + abs(weights[2]) + abs(weights[3])
             if total > 0:
                 self.embedding_weight = abs(weights[0]) / total
                 self.attention_weight = abs(weights[1]) / total
-                self.graph_weight = abs(weights[2]) / total
+                self.backward_attention_weight = abs(weights[2]) / total
+                self.graph_weight = abs(weights[3]) / total
         except np.linalg.LinAlgError:
             pass  # Keep current weights if solve fails
 
@@ -540,6 +589,7 @@ class TemplateStore:
         return {
             "embedding_weight": self.embedding_weight,
             "attention_weight": self.attention_weight,
+            "backward_attention_weight": self.backward_attention_weight,
             "graph_weight": self.graph_weight,
             "templates": {
                 tid: t.to_dict() for tid, t in self.templates.items()
@@ -550,9 +600,10 @@ class TemplateStore:
     def from_dict(cls, d: Dict[str, Any]) -> "TemplateStore":
         """Deserialize store from dictionary."""
         store = cls(
-            embedding_weight=d.get("embedding_weight", 0.5),
+            embedding_weight=d.get("embedding_weight", 0.3),
             attention_weight=d.get("attention_weight", 0.3),
-            graph_weight=d.get("graph_weight", 0.2)
+            backward_attention_weight=d.get("backward_attention_weight", 0.25),
+            graph_weight=d.get("graph_weight", 0.15)
         )
         for tid, tdict in d.get("templates", {}).items():
             store.templates[tid] = DualSignalTemplate.from_dict(tdict)
