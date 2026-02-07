@@ -84,6 +84,9 @@ paper.md
 # Trained models (large files)
 trained_model/*
 !trained_model/.gitkeep
+models/
+*.safetensors
+*.tar.gz
 
 # Notes and notebooks
 notes1.py
