@@ -14,17 +14,16 @@ INFERENCE: Problem text → 3 specialists → candidate search → symbolic exec
 
 ## Core Scripts
 
-| Script | Purpose |
-|--------|---------|
-| `v6_e2e_pipeline.py` | Main E2E pipeline with batching + pruning |
-| `v6_executor.py` | Symbolic executor (ADD, SUB, MUL, DIV) |
-| `v6_candidate_generator.py` | Enumerate span groupings |
-| `v6_eval_quick.py` | Quick evaluation |
-| `v6_diagnostic.py` | Error attribution logging |
-| `v6_train_segmenter_clean.py` | Train BIO segmenter |
-| `v6_train_classifier_multispan.py` | Train operation classifier |
-| `v6_train_extractor_multispan.py` | Train argument extractor |
-| `v6_generate_multispan_*.py` | Generate training data |
+**Inference** (`inference/`):
+- `e2e_pipeline.py` — Main E2E pipeline
+- `executor.py` — Symbolic executor
+- `candidate_generator.py` — Span groupings
+- `eval_quick.py` — Evaluation
+- `diagnostic.py` — Error attribution
+
+**Training** (`train/`):
+- `train_*.py` — Train models
+- `generate_*.py` — Generate data
 
 
 ## Current Architecture (3 Models)
@@ -108,3 +107,6 @@ bd ready        # See available work
 bd create --title="..." --type=bug|task|feature
 bd close <id>   # Complete work
 ```
+
+Bozeman MT
+

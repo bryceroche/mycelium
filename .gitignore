@@ -101,7 +101,6 @@ notebooks/
 # Secrets (AWS credentials, API keys, etc)
 secrets/
 untracked/
-plan/
 
 # Removed from git history
 structure.png

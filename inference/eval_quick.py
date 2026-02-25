@@ -4,7 +4,7 @@
 import json
 import argparse
 from tqdm import tqdm
-from v6_e2e_pipeline import MyceliumPipeline
+from e2e_pipeline import MyceliumPipeline
 
 
 def main():

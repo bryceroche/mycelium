@@ -100,7 +100,7 @@ class WeightedTrainer(Trainer):
         outputs = model(**inputs)
         logits = outputs.logits
 
-        loss_fct = nn.CrossEntropyLoss(weight=self.class_weights.to(logits.device))
+        loss_fct = nn.CrossEntropyLoss(weight=self.class_weights.to(logits.device, dtype=logits.dtype))
         loss = loss_fct(logits.view(-1, len(LABELS)), labels.view(-1))
 
         return (loss, outputs) if return_outputs else loss

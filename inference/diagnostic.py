@@ -13,8 +13,8 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoModelForCausalLM, AutoModelForTokenClassification
 
 # Import local modules
-from v6_candidate_generator import generate_candidate_groupings
-from v6_executor import DSLExecutor
+from candidate_generator import generate_candidate_groupings
+from executor import DSLExecutor
 
 # Model paths
 SEGMENTER_PATH = "/opt/dlami/nvme/models/qwen05b_segmenter_clean/final"
@@ -314,7 +314,7 @@ class DiagnosticPipeline:
                         print(f"                {' → '.join(exec_parts[4:])}")
 
                     # Score
-                    from v6_executor import score_candidate
+                    from executor import score_candidate
                     score = score_candidate(answer, None, trace)
                     avg_conf = total_confidence / len(operations) if operations else 0
                     score += avg_conf * 0.5
