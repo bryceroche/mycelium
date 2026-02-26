@@ -52,69 +52,27 @@ Thumbs.db
 uv.lock
 notes/
 *.db
-!mycelium_768.db
 *.db-shm
 *.db-wal
-# Generated JSON template files (keep deduplicated_templates.json tracked)
-scripts/*.json
-src/mycelium/*.json
 *.json
 !deduplicated_templates.json
 !package.json
 !pyproject.json
 !.beads/*.json
-mycelium_768.db
-paper.docx
-paper.html
-mycelium.db
-task.md
-task2.md
-paper.pdf
-header_image.png
-Myceliumv3.txt
 logs/
 *.log
-paper.txt
-paper.md
 *.backup.*
 *.db.backup*
 .coverage
 *.centroid_cache.npz
 
 # Trained models (large files)
-trained_model/*
-!trained_model/.gitkeep
 models/
 checkpoints/
-minilm_finetuned/
 *.safetensors
 *.tar.gz
 
-# Notes and notebooks
-notes1.py
-docs/
-deploy/
-screen_shots/
-assets/
-notebooks/
-
-# Secrets (AWS credentials, API keys, etc)
+# untracked folders
 secrets/
 untracked/
-
-# Removed from git history
-structure.png
-structurev2.png
-math_l3_analysis.md
-math_l3_failures.json
-idea1.md
-aws_setup.md
-models/*.pt
-mycelium-v4-architecture.md
 findings/
-*.npy
-data/v6/v6_*
-# Model checkpoints - too large for git
-deberta_op_classifier/
-t5_gold_predictor/
-gold_region_labels*.json
