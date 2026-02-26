@@ -1,16 +1,16 @@
 # Mycelium
 
-> **λ** — the hidden network
-> *λανθάνω (lanthánō)* — to escape notice, to be unseen
->
-> JSD finds where lambdas are evaluated.
-> IAF maps them back to the source.
-> The structure parser assembles the program.
-> Sympy executes it.
-> Small models learn to do it all.
->
-> **Mycelium**
-> *The unseen network of computation.*
+---
+
+> λ — λανθάνω (lanthánō) — to escape notice; to be unseen
+> 
+> JSD reveals latent structure in attention flow  
+> IAF reconstructs operator influence across layers  
+> Structure parser assembles the compositional program  
+> 
+> Mycelium — the unseen network of computation
+
+---
 
 **99.95% on GSM8K** (7,375/7,378) | **17.2% on MATH** (and climbing) | **No CoT at inference** | **1B parameters**
 
@@ -20,13 +20,14 @@
 |----------|-------------|
 | [Field Guide](plan/field_guide.md) | Lessons learned, bugs encountered, tricks that work |
 | [Training Pipeline](plan/training_pipeline.md) | Full IAF + clause expansion training pipeline |
+| [Training Guide (C1-C6)](plan/mycelium_c1_c6_training_guide.md) | Step-by-step guide for training all six specialist models |
 | [Paper Draft](plan/paper.md) | Technical paper with methodology and results |
 
 ---
 
 ## The Big Picture
 
-A 7B teacher model solves math problems via chain-of-thought. We extract **three signals** from its attention patterns — span boundaries (JSD), problem text mapping (IAF), and operation structure — and distill them into small student models that reproduce the reasoning without generating any text.
+A 7B teacher model solves math problems via chain-of-thought. We extract **three signals** from its attention patterns — span boundaries (JSD), problem text mapping (IAF), and CoT operation structure — and distill them into small student models that reproduce the reasoning without generating any text.
 
 ```
 TRAINING:  7B solves problems → JSD segments CoT → IAF maps to problem text → train specialists
@@ -59,16 +60,6 @@ Expression extractor pulls sympy expressions
 Program assembler builds the solve() call
 Sympy executes
 
-### MATH with Oracle Segmentation (Ceiling)
-
-| Configuration | Accuracy |
-|---|---|
-| 72B JSD boundaries + 0.5B classifier | 78.1% |
-| + 72B CoT hybrid | 85.0% |
-
-These numbers use 72B attention for segmentation, establishing the ceiling the distilled pipeline aims to approach.
-
----
 
 ## Architecture
 
@@ -138,20 +129,9 @@ Round N:
 
 Each round: more correct traces → better training data → better models → more correct traces. Execution correctness is a **free verifier** — no human annotation needed at any stage.
 
-### Current Data
+## Reading vs generation attention (Prefill vs Decode)
 
-| Dataset | Status | Yield |
-|---------|--------|-------|
-| 7B CoT generation | Complete | 12,500 MATH problems, 68.8% correct |
-| JSD extraction | Complete | 7,842 files with clean token-aligned spans |
-| IAF extraction | Complete | 1,516 stratified sample |
-| Training pairs | Complete | 3,547 (post-bug-fix, LaTeX parser) |
-
----
-
-## Research Finding: Dual-Purpose Attention
-
-The core scientific finding enabling Mycelium. Same model, same heads, two phases, fundamentally different information:
+Same model, same heads, two phases, fundamentally different information:
 
 | Metric | Reading Phase | Generation Phase |
 |--------|--------------|-----------------|
@@ -171,67 +151,17 @@ Mycelium v3–v5 failed on reading-phase features. v6 succeeded on generation-ph
 
 ---
 
-## Error Attribution
+## Error Attribution and Benefits of inference model specialization
 
-Every improvement in this project came from knowing exactly where failures occur. The diagnostic pipeline traces each problem through every component and categorizes failures precisely.
-
-### GSM8K Error Attribution
-
-```
-FAILURE BREAKDOWN (GSM8K)
-  Correct:                         99.95%
-  Segmentation miss:               <1%
-  Classifier/extractor error:      <1%
-  Missing implicit ops:            <1%
-```
-
-### MATH Error Attribution (with Oracle Segmentation)
-
-```
-FAILURE BREAKDOWN (MATH500, hybrid)
-  Correct:                         85.0% (307/361)
-  Hard problems (7B+72B both fail): 36 (66.7% of errors)
-  SELECTION (right answer, wrong pick): 9 (16.7%)
-  EXECUTION (DAG error):           7 (13.0%)
-  CLASSIFICATION:                  2 (3.7%)
-```
-
-**77% of MATH failures are teacher-side** — the 7B/72B didn't produce correct CoT. Only 23% are pipeline errors.
-
-### MATH Error Attribution (Track 2, Current)
-
-```
-FAILURE BREAKDOWN (MATH500, Track 2)
-  t2_missing_operands:             84.7% ← being addressed by structure parser
-  t2_wrong_computation:            10.2%
-  t2_execution_failed:             2.0%
-  other:                           3.1%
-```
-
-Run diagnostics:
-```bash
-python inference/diagnostic.py --data data/test.json --limit 50
-```
-
+**Important** 
+Splitting span segmentation, classification, and extraction into separate components allows for precise error attribution.  It also allows the qwen .5b inference model to specialize for each task.
 ---
 
 ## Inference
 
-### GSM8K Pipeline
-
-```
-Problem Text → C1 Segmenter → Candidate Groupings → C2+C3 Batch Classify+Extract → Execute → Score → Answer
-```
-
-Candidate search over 5-15 groupings. Batched classification. Symbolic executor validates. ~16 problems/second, 100x faster than CoT generation.
-
-### MATH Pipeline (In Development)
-
 ```
 Problem Text → IO Tagger → Role Classifier → Expression Extractor → Program Assembler → Sympy → Answer
 ```
-
-No candidate search needed — the structure parser assembles one targeted program per problem. Sympy handles all symbolic computation.
 
 ---
 
@@ -305,32 +235,9 @@ No candidate search needed — the structure parser assembles one targeted progr
 6. **The self-improving loop is the endgame.** Execution-validated traces → better models → more correct traces.
 
 ---
+**The Scaling Story**
+The scaling story is wild when you think about it.
+Inference cost: A frontier model doing chain-of-thought on a hard MATH problem might generate 2000+ tokens autoregressively. That's 2000 forward passes through hundreds of billions of parameters. Mycelium does one forward pass through each 0.5B specialist — six passes total, each through a tiny model. Orders of magnitude cheaper.
+Knowledge leverage: Those 3B parameters could contain distilled reasoning structure from a model 1,000x their size. They're not trying to know everything — they just know how to decompose, classify, extract, and wire up math problems. Sympy handles the actual math for free.  This could apply to any domain where you have a small set of primitives that compose in predictable ways.
+The real unlock: The teacher only runs at training time. At inference, it's gone. You pay the big model cost once to generate attention patterns, then amortize that across unlimited cheap inference. It's like a master mathematician teaching six apprentices each one specific skill, then retiring.
 
-## Key Numbers
-
-| Metric | GSM8K | MATH |
-|--------|-------|------|
-| Teacher model | Qwen2.5-Math-7B | Qwen2.5-Math-7B |
-| Teacher solve rate | 95.5% | 68.8% |
-| Student parameters | 1.5B (3×0.5B) | 1B (2×0.5B) |
-| Oracle ceiling (72B JSD) | — | 85.0% |
-| Sympy baseline (no ML) | — | 17.2% |
-| Current E2E | 99.95% | In development |
-| Inference speed | 16 problems/sec | TBD |
-| CoT at inference | None | None |
-
----
-
-## What's Next
-
-1. **Track 2 structure parser** — role-based classification + program assembly, targeting > 17.2%
-2. **Expand IAF extraction** — from 1,516 to all 7,842 correct traces for more training data
-3. **Self-improving loop on MATH** — execution-validated traces bootstrap better models each round
-4. **Non-numeric answers** — extend to symbolic expressions (currently numeric-only = 69% of MATH)
-5. **7B JSD validation** — confirm 7B boundaries match 72B quality (eliminates 72B dependency entirely)
-
----
-
-## License
-
-MIT

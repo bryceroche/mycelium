@@ -89,127 +89,40 @@ class Candidate:
 
 
 # ============================================================
-# Number Extraction Utilities
+# DELETED: Number Extraction, Domain Constants, Bridging Templates, Goal Hints
+# ============================================================
+#
+# The following sections were INTENTIONALLY DELETED on 2026-02-25:
+#
+# 1. WORD_TO_NUM dictionary (hand-coded word→number mapping)
+# 2. extract_numbers() function (regex-based number extraction)
+# 3. DOMAIN_CONSTANTS (hard-coded time/unit conversions)
+# 4. BRIDGING_TEMPLATES (hand-coded lambda implementations)
+# 5. GOAL_HINTS (keyword→template heuristics)
+# 6. get_goal_hints() function (keyword matching)
+#
+# These were all hand-coded heuristics that should be replaced with
+# trained models (C3 extractor, C4 implicit ops, C6 goal resolver).
+#
+# DO NOT RECREATE THESE HEURISTICS - train models instead.
+# See DEPRECATED_CODE_AUDIT.md for the migration plan.
+#
 # ============================================================
 
-# Spelled-out number mapping
-WORD_TO_NUM = {
-    "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4,
-    "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9,
-    "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13,
-    "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17,
-    "eighteen": 18, "nineteen": 19, "twenty": 20, "thirty": 30,
-    "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70,
-    "eighty": 80, "ninety": 90, "hundred": 100, "thousand": 1000,
-    "million": 1000000, "billion": 1000000000,
-    # Fractional
-    "half": 0.5, "third": 1/3, "quarter": 0.25, "fourth": 0.25,
-    "fifth": 0.2, "sixth": 1/6, "eighth": 0.125, "tenth": 0.1,
-    "twice": 2, "double": 2, "triple": 3, "dozen": 12,
-}
-
+# Stub functions - raise errors if called
 def extract_numbers(text: str) -> List[float]:
-    """Extract all numeric values from text, including spelled-out numbers."""
-    numbers = []
-    
-    # Numeric patterns: integers, decimals, comma-separated, dollar amounts
-    numeric_pattern = r'(?<![a-zA-Z])\$?(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)\%?(?![a-zA-Z])'
-    for match in re.finditer(numeric_pattern, text):
-        val = match.group(1).replace(",", "")
-        try:
-            numbers.append(float(val))
-        except ValueError:
-            pass
-    
-    # Spelled-out numbers
-    text_lower = text.lower()
-    for word, val in WORD_TO_NUM.items():
-        if re.search(r'\b' + word + r'\b', text_lower):
-            numbers.append(val)
-    
-    return numbers
-
-
-# ============================================================
-# Domain Constants (discovered from orphan operand analysis)
-# ============================================================
-
-DOMAIN_CONSTANTS = {
-    # Time
-    60: "minutes/hour",
-    24: "hours/day",
-    7: "days/week",
-    52: "weeks/year",
-    12: "months/year",
-    365: "days/year",
-    # Units
-    100: "percentage, cm/m",
-    1000: "g/kg, m/km",
-}
-
-DOMAIN_CONSTANT_VALUES = list(DOMAIN_CONSTANTS.keys())
-
-
-# ============================================================
-# IB-Discovered Bridging Templates (from GSM8K)
-# ============================================================
-
-BRIDGING_TEMPLATES = {
-    # T7: Accumulator ADD (position 0.89, both operands derived)
-    "ACC_ADD": lambda results: sum(results),
-    
-    # Accumulator SUB (max - sum of rest)
-    "ACC_SUB": lambda results: max(results) - sum(r for r in results if r != max(results)) if len(results) > 1 else results[0],
-    
-    # T0: Derived Division (average, split equally, per person)
-    "AVG": lambda results: sum(results) / len(results) if results else 0,
-    
-    # Derived division with count
-    "DIV_DERIVED": lambda results: results[0] / results[1] if len(results) >= 2 and results[1] != 0 else None,
-    
-    # T9: Derived Multiplication (unit conversions, rate calculations)
-    "MUL_DERIVED": lambda results: results[0] * results[1] if len(results) >= 2 else None,
-    
-    # SUB derived (difference between two derived results)
-    "SUB_DERIVED": lambda results: abs(results[0] - results[1]) if len(results) >= 2 else None,
-}
-
-
-# ============================================================
-# Goal Hints (simple keyword matching for C6 functionality)
-# ============================================================
-
-GOAL_HINTS = {
-    "total": ["ACC_ADD", "MUL_DERIVED"],
-    "altogether": ["ACC_ADD"],
-    "combined": ["ACC_ADD"],
-    "sum": ["ACC_ADD"],
-    "how many": ["ACC_ADD", "ACC_SUB", "MUL_DERIVED"],
-    "how much": ["ACC_ADD", "ACC_SUB", "MUL_DERIVED"],
-    "difference": ["ACC_SUB", "SUB_DERIVED"],
-    "change": ["ACC_SUB"],
-    "remaining": ["ACC_SUB"],
-    "left": ["ACC_SUB"],
-    "average": ["AVG"],
-    "mean": ["AVG"],
-    "per": ["DIV_DERIVED"],
-    "each": ["DIV_DERIVED", "MUL_DERIVED"],
-    "ratio": ["DIV_DERIVED"],
-    "times": ["MUL_DERIVED"],
-    "percent": ["MUL_DERIVED", "DIV_DERIVED"],
-}
+    """STUB: Regex number extraction removed. Train C3 extractor instead."""
+    raise NotImplementedError(
+        "extract_numbers() has been removed. "
+        "Train a C3 extractor model to handle number extraction."
+    )
 
 def get_goal_hints(question: str) -> List[str]:
-    """Extract goal hints from the question text."""
-    hints = set()
-    question_lower = question.lower()
-    for keyword, templates in GOAL_HINTS.items():
-        if keyword in question_lower:
-            hints.update(templates)
-    # If no hints found, try all
-    if not hints:
-        hints = set(BRIDGING_TEMPLATES.keys())
-    return list(hints)
+    """STUB: Keyword matching removed. Train C6 goal resolver instead."""
+    raise NotImplementedError(
+        "get_goal_hints() has been removed. "
+        "Train a C6 goal resolver model to detect answer types."
+    )
 
 
 # ============================================================
@@ -393,88 +306,25 @@ class Segmenter:
 
 
 # ============================================================
-# Candidate Grouping Generator
+# DELETED: Candidate Grouping Generator
+# ============================================================
+#
+# generate_candidate_groupings() was INTENTIONALLY DELETED on 2026-02-25.
+# It contained ~80 lines of hand-coded heuristics for span grouping.
+#
+# Replace with trained C2 grouping model that learns relationships from data.
+# See DEPRECATED_CODE_AUDIT.md for details.
+#
 # ============================================================
 
 def generate_candidate_groupings(spans: List[Span], max_group_size: int = 3) -> List[List[SpanGroup]]:
-    """
-    Generate candidate groupings of spans.
-    
-    Heuristics:
-    - All individual spans (each is its own operation)
-    - Adjacent pairs
-    - All pairs
-    - Triplets (if <= 5 spans)
-    - Mixed: some grouped, some individual
-    """
-    n = len(spans)
-    if n == 0:
-        return []
-    if n == 1:
-        return [[SpanGroup(spans=[spans[0]], text=spans[0].text)]]
-    
-    candidates = []
-    
-    # Candidate 1: All individual
-    all_individual = [SpanGroup(spans=[s], text=s.text) for s in spans]
-    candidates.append(all_individual)
-    
-    # Adjacent pairs + remaining individual
-    for i in range(n - 1):
-        grouping = []
-        for j in range(n):
-            if j == i:
-                pair_text = f"<<{spans[j].text}>> <<{spans[j+1].text}>>"
-                grouping.append(SpanGroup(spans=[spans[j], spans[j+1]], text=pair_text))
-            elif j == i + 1:
-                continue  # already included in pair
-            else:
-                grouping.append(SpanGroup(spans=[spans[j]], text=spans[j].text))
-        candidates.append(grouping)
-    
-    # All adjacent pairs (if even number)
-    if n >= 4 and n % 2 == 0:
-        grouping = []
-        for i in range(0, n, 2):
-            pair_text = f"<<{spans[i].text}>> <<{spans[i+1].text}>>"
-            grouping.append(SpanGroup(spans=[spans[i], spans[i+1]], text=pair_text))
-        candidates.append(grouping)
-    
-    # Non-adjacent pairs (for n <= 6 to keep combinatorics reasonable)
-    if n <= 6:
-        for i in range(n):
-            for j in range(i + 2, n):  # skip adjacent (already covered)
-                grouping = []
-                used = {i, j}
-                pair_text = f"<<{spans[i].text}>> <<{spans[j].text}>>"
-                grouping.append(SpanGroup(spans=[spans[i], spans[j]], text=pair_text))
-                for k in range(n):
-                    if k not in used:
-                        grouping.append(SpanGroup(spans=[spans[k]], text=spans[k].text))
-                candidates.append(grouping)
-    
-    # Triplets (if n <= 5)
-    if n <= 5 and n >= 3:
-        for combo in itertools.combinations(range(n), 3):
-            grouping = []
-            triple_text = " ".join(f"<<{spans[c].text}>>" for c in combo)
-            triple_spans = [spans[c] for c in combo]
-            grouping.append(SpanGroup(spans=triple_spans, text=triple_text))
-            for k in range(n):
-                if k not in combo:
-                    grouping.append(SpanGroup(spans=[spans[k]], text=spans[k].text))
-            candidates.append(grouping)
-    
-    # Deduplicate (by span index tuples)
-    seen = set()
-    unique_candidates = []
-    for grouping in candidates:
-        key = tuple(tuple(s.start for s in g.spans) for g in sorted(grouping, key=lambda g: g.spans[0].start))
-        if key not in seen:
-            seen.add(key)
-            unique_candidates.append(grouping)
-    
-    return unique_candidates
+    """STUB: Heuristic grouping has been removed. Train C2 model instead."""
+    raise NotImplementedError(
+        "generate_candidate_groupings() has been removed. "
+        "The heuristic approach was deprecated. "
+        "Implement a trained C2 grouping model instead. "
+        "See DEPRECATED_CODE_AUDIT.md for details."
+    )
 
 
 # ============================================================
@@ -624,122 +474,31 @@ class Extractor:
 
 
 # ============================================================
-# Bridging Search
+# DELETED: Bridging Search
+# ============================================================
+#
+# bridging_search() was INTENTIONALLY DELETED on 2026-02-25.
+# It contained ~110 lines of hand-coded bridging heuristics using:
+# - BRIDGING_TEMPLATES (deleted)
+# - DOMAIN_CONSTANT_VALUES (deleted)
+# - Hard-coded two-hop search patterns
+#
+# Replace with trained C4 bridging model that learns implicit operations.
+# See DEPRECATED_CODE_AUDIT.md for details.
+#
 # ============================================================
 
-def bridging_search(explicit_results: List[float], 
+def bridging_search(explicit_results: List[float],
                     goal_hints: List[str],
                     gold_answer: Optional[float] = None,
                     max_hops: int = 2) -> List[GraphNode]:
-    """
-    Search for bridging operations that connect explicit results to the answer.
-    
-    Tries:
-    1. Single bridging template on all explicit results
-    2. Bridging template + domain constant
-    3. Two-hop chains (template → template, template → constant → template)
-    """
-    if not explicit_results:
-        return []
-    
-    candidates = []
-    
-    # === One-hop: direct bridging templates ===
-    for template_name in goal_hints:
-        if template_name not in BRIDGING_TEMPLATES:
-            continue
-        func = BRIDGING_TEMPLATES[template_name]
-        try:
-            result = func(explicit_results)
-            if result is not None and math.isfinite(result):
-                node = GraphNode(
-                    id=f"bridge_0",
-                    operation=template_name,
-                    params=explicit_results.copy(),
-                    result=result,
-                    source="bridging"
-                )
-                candidates.append(([node], result))
-        except (ValueError, ZeroDivisionError, OverflowError):
-            pass
-    
-    # === One-hop: explicit result OP domain_constant ===
-    for result in explicit_results:
-        for const in DOMAIN_CONSTANT_VALUES:
-            for op_name in ["MUL", "DIV", "ADD", "SUB"]:
-                val = execute_operation(op_name, [result, const])
-                if val is not None:
-                    node = GraphNode(
-                        id=f"bridge_const",
-                        operation=f"{op_name}_CONST",
-                        params=[result, const],
-                        result=val,
-                        source="bridging"
-                    )
-                    candidates.append(([node], val))
-                # Reverse order for non-commutative
-                if op_name in ("SUB", "DIV"):
-                    val2 = execute_operation(op_name, [const, result])
-                    if val2 is not None:
-                        node = GraphNode(
-                            id=f"bridge_const_rev",
-                            operation=f"{op_name}_CONST_REV",
-                            params=[const, result],
-                            result=val2,
-                            source="bridging"
-                        )
-                        candidates.append(([node], val2))
-    
-    # === Two-hop: bridging → bridging ===
-    if max_hops >= 2 and len(explicit_results) >= 2:
-        # First hop: aggregate subsets
-        for size in range(2, len(explicit_results) + 1):
-            for subset in itertools.combinations(explicit_results, size):
-                subset_list = list(subset)
-                remaining = [r for r in explicit_results if r not in subset_list]
-                
-                for t1_name in BRIDGING_TEMPLATES:
-                    func1 = BRIDGING_TEMPLATES[t1_name]
-                    try:
-                        intermediate = func1(subset_list)
-                        if intermediate is None or not math.isfinite(intermediate):
-                            continue
-                    except:
-                        continue
-                    
-                    # Second hop: combine intermediate with remaining
-                    all_for_hop2 = [intermediate] + remaining
-                    for t2_name in goal_hints:
-                        if t2_name not in BRIDGING_TEMPLATES:
-                            continue
-                        func2 = BRIDGING_TEMPLATES[t2_name]
-                        try:
-                            final = func2(all_for_hop2)
-                            if final is not None and math.isfinite(final):
-                                nodes = [
-                                    GraphNode(id="bridge_hop1", operation=t1_name,
-                                              params=subset_list, result=intermediate, source="bridging"),
-                                    GraphNode(id="bridge_hop2", operation=t2_name,
-                                              params=all_for_hop2, result=final, source="bridging")
-                                ]
-                                candidates.append((nodes, final))
-                        except:
-                            pass
-                    
-                    # Second hop: intermediate OP constant
-                    for const in DOMAIN_CONSTANT_VALUES:
-                        for op_name in ["MUL", "DIV"]:
-                            val = execute_operation(op_name, [intermediate, const])
-                            if val is not None:
-                                nodes = [
-                                    GraphNode(id="bridge_hop1", operation=t1_name,
-                                              params=subset_list, result=intermediate, source="bridging"),
-                                    GraphNode(id="bridge_hop2_const", operation=f"{op_name}_CONST",
-                                              params=[intermediate, const], result=val, source="bridging")
-                                ]
-                                candidates.append((nodes, val))
-    
-    return candidates
+    """STUB: Heuristic bridging has been removed. Train C4 model instead."""
+    raise NotImplementedError(
+        "bridging_search() has been removed. "
+        "The heuristic approach was deprecated. "
+        "Implement a trained C4 bridging model instead. "
+        "See DEPRECATED_CODE_AUDIT.md for details."
+    )
 
 
 # ============================================================

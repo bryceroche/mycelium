@@ -1,481 +1,243 @@
-# The Semantic Abacus
-
-## Recovering Computation Graphs from Chain-of-Thought via Attention Distillation
-
-**Author:** Bryce Roche  
-**Code:** github.com/bryceroche/mycelium (MIT License)  
-**Contact:** bryceroche@fungifactor.com
-
----
-
-*The physical abacus decomposed arithmetic into mechanical bead manipulation — separating the computation from the understanding. A child who doesn't understand multiplication can still slide beads correctly and get the right answer. The mechanical procedure IS the computation. Understanding is unnecessary.*
-
-*This project builds a semantic abacus for mathematical reasoning. The "beads" are text spans identified by attention dynamics. The "rods" are operation templates discovered by Information Bottleneck compression. The "sliding" is a symbolic executor that performs the actual mathematics. Six small models learn to operate the abacus. None of them understand mathematics. All of them, together, solve it.*
+# Mycelium v6: Attention Distillation for Mathematical Reasoning
+## Paper Sections — Draft for Integration
 
 ---
 
 ## Abstract
 
-Chain-of-thought reasoning in large language models encodes a recoverable computation graph. We show that this graph can be extracted, decomposed, and distilled into six specialized small models (Qwen-0.5B, 896M parameters each) that together replicate the teacher's reasoning without generating intermediate tokens.
-
-Our method uses Jensen-Shannon Divergence on the teacher model's attention dynamics to segment chain-of-thought into computation spans, then applies the Information Bottleneck principle to discover operation templates unsupervised — recovering both the explicit operations stated in problem text and the implicit bridging operations that exist only as computation. Six lightweight student models learn to segment, classify, extract arguments, discover implicit operations, resolve dependencies, and identify goals — producing the same computation graph the teacher performed through chain-of-thought, but without generating reasoning tokens.
-
-Key results on GSM8K:
-
-1. Six 0.5B models achieve **99.96% accuracy** (7,375/7,378) — recovering 97.5% of problems solvable by the 7B teacher
-2. JSD segmentation achieves 92.9% span F1 with zero harmful merges; self-supervised labels outperform gold annotations
-3. Information Bottleneck discovers 10 operation templates unsupervised, naturally separating explicit operations from implicit bridging patterns
-4. Operation taxonomy, bridging templates, and domain constants all discovered from data — zero hand-coding
-5. Error attribution identifies the bottleneck at every stage, enabling targeted improvement from 22% to 99.96%
-
-Preliminary results on MATH500 demonstrate generalization: IB discovers 115 templates across 7 mathematical domains with 99% purity, and cross-domain template overlap (60-95 shared templates between categories) suggests mathematical operations are domain-agnostic.
-
-The architecture requires no dataset-specific assumptions. The operation taxonomy emerges from the computation, not from the researcher.
-
-
-## The Semantic Abacus
-
-The physical abacus was one of humanity's great cognitive inventions. Not because it could compute — any arrangement of stones can tally — but because it decomposed computation into a mechanical procedure that required no mathematical understanding to execute. A merchant who couldn't explain why multiplication works could nonetheless compute the price of 48 bolts of silk at 2 drachmas each by sliding beads along rods. The knowledge lived in the device and the procedure, not in the operator.
-
-Our architecture follows the same principle. Consider the problem: "Natalia sold clips to 48 of her friends in April, and then she sold half as many clips in May. How many clips did Natalia sell altogether in April and May?"
-
-A large language model solves this by generating chain-of-thought: "48 / 2 = 24 clips in May. 48 + 24 = 72 clips altogether." This works, but requires the model to understand division, understand "half as many," generate coherent text, and compute accurately — all simultaneously, in a single forward pass per token.
-
-The semantic abacus decomposes this:
-
-**Beads.** JSD segmentation identifies the operand-carrying spans in the problem text: `[48 of her friends]`, `[half as many clips]`. These are the beads — discrete units of meaning, identified by where the teacher model's attention shifts during its own reasoning.
-
-**Rods.** Information Bottleneck compression discovers that "half as many" belongs to the same operation template as "a third of," "twice as much," and "four times the amount" — they all reduce to a multiplicative scaling operation. The rod is `MUL(quantity, fraction)`. IB found 10 such rods on GSM8K, and 115 on MATH, without being told what to look for.
-
-**Sliding.** A symbolic executor computes `48 / 2 = 24`, then `48 + 24 = 72`. It doesn't understand the problem. It receives typed arguments and an operation label, and it evaluates. The mechanical procedure IS the computation.
-
-**The operator.** Six small models (0.5B parameters each) learn to operate the abacus — identifying beads, placing them on rods, and deciding when to slide. None of them understand mathematics. The segmenter recognizes span boundaries. The classifier picks the rod. The extractor reads the bead values. They are merchants, not mathematicians.
-
-The physical abacus had a property that made it revolutionary: it was **portable**. The knowledge was in the device, not the operator. Any merchant could use it. The semantic abacus shares this property. The knowledge lives in the IB-discovered template structure and the symbolic executor. The 0.5B models are replaceable operators. Swap the executor for one that does chemistry and the same architecture could work on stoichiometry problems. The abacus doesn't care what you're counting.
-
-
-## λ — The Hidden Network
-
-Lambda — from the Greek λανθάνω (*lanthano*): to be hidden, to escape notice.
-
-Lambda operates at every level of this project:
-
-**λ the function.** The project recovers hidden functions from text. "Bob bought 5 apples at $2 each" contains an invisible `λ(price, quantity): price × quantity` that the teacher model computes but never names. The chain-of-thought is a trace of lambda evaluations. We extract those lambdas, give them names (IB templates), and distill them into small models that can evaluate them directly.
-
-**λ the IB parameter.** The compression parameter β controls the information-relevance tradeoff — literally a dial that governs how much hidden structure becomes visible. At β = 0, everything is hidden (one template). At β → ∞, everything is visible (each span unique). The plateaus between these extremes are the moments where genuine structure crystallizes from noise. β is the lambda that reveals lambdas.
-
-**λ the bridging operations.** Templates T7 (accumulator), T0 (derived division), T9 (derived multiplication) are anonymous functions in the truest sense. No span in the problem text maps to them. No words describe them. They exist purely as computation — the implicit operations that bridge explicit results into final answers. On GSM8K, 26.2% of all computation steps are these invisible lambdas. IB discovered them from structural signatures alone: late chain position, zero operands from problem text, all derived inputs.
-
-**λ the eigenvalue.** In the IB annealing, the phase transitions where template count jumps — those are bifurcation points. The system's eigenvalues cross zero. Lambda as the parameter that governs when hidden structure becomes visible is literally what β does in the annealing curve. The template count is a step function of β, and each step is a lambda becoming visible.
-
-**λ the mycelium.** Mushrooms appear on the surface — visible, countable, apparently independent. Underground, an invisible network of mycelium connects them, decomposes organic matter into simple molecules, and distributes nutrients across entire forests. The explicit operations are mushrooms. The implicit bridging operations are mycelium. The hidden network beneath the surface, connecting the visible structures, is made of lambdas. IB makes the mycelium visible.
-
-The entire architecture is a lambda-recovery machine. JSD finds where lambdas are evaluated (attention shifts). IB discovers what the lambdas compute (template structure). The executor evaluates them (symbolic computation). The six small models learn to invoke them (span identification + operation classification). And the name — Mycelium — is the hidden network of lambdas that connects everything we can see.
-
-
-## The Computation Graph
-
-A math word problem encodes a computation graph with two kinds of structure:
-
-**Explicit structure** — operations stated in the problem text. "Bob bought 5 apples at $2 each" contains a multiplication: MUL(5, 2) = 10. The operands and the operation's intent are visible in the text.
-
-**Implicit structure** — operations required by mathematics but never mentioned. "How much change did she receive?" requires subtracting the total cost from the payment, but the total cost itself may require summing several sub-totals that were computed explicitly. These bridging operations appear in the chain-of-thought but have no corresponding text span in the problem.
-
-Our pipeline recovers both. On GSM8K, problems average 3.4 chain-of-thought computation steps but only 2.2 map to problem text spans. The gap of ~1.2 steps per problem represents the implicit operations — the lambdas connecting the visible structures.
-
-
-## JSD Segmentation
-
-### Attention Dynamics During Generation
-
-When a language model generates chain-of-thought, its attention to the input problem text fluctuates in a structured way. During the computation "48 / 2 = 24", the model's attention pattern follows a characteristic sequence:
-
-1. **Retrieval phase** — high attention to problem tokens containing "48" and "half"
-2. **Computation phase** — attention shifts inward as the model computes
-3. **Output phase** — low input attention while writing the result
-
-The transition between computation steps creates a measurable discontinuity in the attention distribution over the problem text. We detect these boundaries using Jensen-Shannon Divergence between consecutive attention distributions.
-
-### The Algorithm
-
-For each generated token $t$, we compute the attention distribution $A_t$ over all input tokens, averaged across attention heads. The JSD between consecutive distributions measures how much the model's "focus" has shifted:
-
-$$\text{JSD}(A_t \| A_{t+1}) = \frac{1}{2} D_{KL}(A_t \| M) + \frac{1}{2} D_{KL}(A_{t+1} \| M)$$
-
-where $M = \frac{1}{2}(A_t + A_{t+1})$.
-
-JSD spikes mark span boundaries — moments where the model shifts from one computation to another. We apply Savitzky-Golay smoothing (window=5) to reduce noise, then detect peaks above a threshold. The segments between peaks correspond to individual computation steps.
-
-### Results
-
-Trained on 6,623 problems with correct chain-of-thought (filtered from 7,473 by verifying the teacher's answer):
-
-| Metric | Score |
-|--------|-------|
-| Span F1 | 92.86% |
-| Token accuracy | 81.49% |
-| Harmful merges | 0 |
-
-The segmenter over-segments by design — splitting one operation into two pieces is recoverable downstream (the candidate search can re-merge them), but merging two operations into one span destroys information irreversibly.
-
-### Self-Supervised Labels Beat Gold
-
-A critical finding: segmentation labels derived from the teacher model's chain-of-thought attention dynamics outperform labels derived from gold annotations (GSM8K's `<<48/2=24>>` markers) for multi-span problems. The gold annotations mark arithmetic expressions but miss semantic boundaries — they don't capture that "sold apples for $2 each" and "bought 5 apples" are separate operand-providing clauses that feed into the same multiplication.
-
-The teacher's attention dynamics capture what the model actually computed, which is richer than what the annotation format can express.
-
-
-## Information Bottleneck Template Discovery
-
-### The Problem with Hand-Coded Taxonomies
-
-The obvious approach to classifying operations is to define a label set: {ADD, SUB, MUL, DIV}. This works for GSM8K but fails to scale. MATH problems involve trigonometry, combinatorics, algebraic manipulation, modular arithmetic, and dozens of other operations. Hand-coding the taxonomy for each benchmark is fragile, incomplete, and doesn't generalize.
-
-### IB Discovers the Taxonomy
-
-The Information Bottleneck (Tishby et al., 2000) compresses representations while preserving relevant structure. We apply it to chain-of-thought computation spans: compress the surface variation of spans into templates while preserving their computational structure.
-
-For each span, we extract structural features:
-- **Operator signature**: which symbols appear (+, -, ×, ÷, ^, √, etc.)
-- **Operand provenance**: how many operands come from the problem text vs. prior computation steps
-- **Result properties**: integer vs. decimal, magnitude, sign
-- **Position**: where in the computation chain this step occurs
-- **Algebraic complexity**: presence of variables, function calls, exponents
-
-The IB algorithm runs deterministic annealing over a compression parameter β. At low β, all spans collapse to one template. At high β, each span is unique. Between these extremes, the template count curve reveals plateaus — stable template counts that persist across a range of β values. The longest plateau indicates the natural granularity of the operation taxonomy.
-
-### Results on GSM8K
-
-Running IB on 20,152 computation steps from 6,888 correctly-solved problems:
-
-| Template | Size | Type | Primary Op | Chain Position | From Problem | Derived |
-|----------|------|------|------------|----------------|-------------|---------|
-| T1 | 2,798 (13.9%) | Explicit | MUL | 0.18 (early) | 2.0 | 0.0 |
-| T3 | 2,328 (11.6%) | Explicit | MUL | 0.21 (early) | 1.0 | 0.0 |
-| T6 | 2,237 (11.1%) | Explicit | ADD/SUB | 0.13 (early) | 2.0 | 0.0 |
-| T5 | 1,958 (9.7%) | Explicit | DIV | 0.39 (mid) | 1.0 | 0.0 |
-| T7 | 1,849 (9.2%) | **Implicit** | ADD | 0.89 (late) | 0.0 | 2.0 |
-| T0 | 2,061 (10.2%) | **Implicit** | DIV | 0.72 (late) | 0.0 | 0.69 |
-| T9 | 1,362 (6.8%) | **Implicit** | MUL | 0.58 (mid) | 0.0 | 0.68 |
-
-IB naturally separated the 14,880 explicit operations (73.8%) from the 5,272 implicit operations (26.2%) without being told which was which. The separation emerged from structural features alone — explicit operations have high operand-from-problem counts and early chain positions; implicit operations have high derived-operand counts and late chain positions.
-
-The three implicit templates correspond to recognizable mathematical patterns:
-- **T7 (Accumulator)**: ADD all parallel results at the end of a chain — "total", "altogether", "combined"
-- **T0 (Derived Division)**: Divide a derived result — "average", "split equally", "per person"
-- **T9 (Derived Multiplication)**: Multiply derived values mid-chain — unit conversions, rate calculations
-
-T9 is particularly notable: we would not have included it in a hand-coded taxonomy. It captures mid-chain scaling operations that transform intermediate results — converting hours to minutes, applying percentage multipliers, scaling rates. IB found this pattern because it has a distinctive structural signature (mid-chain position, all derived operands, exclusively multiplication).
-
-### Why IB Succeeds Where Embeddings Failed
-
-An earlier version (v4) attempted template discovery using text embeddings and attention-derived features. It achieved ARI=0.024 (effectively random) and collapsed to 2 templates. The failure was fundamental: text embeddings capture semantic similarity ("48/2=24" is similar to "the price was halved") but not operational identity. "48/2=24" and "60/3=20" are the SAME operation (divide, two problem operands) but have completely different textual content.
-
-Structural features — operator symbols, operand provenance, result type — are operation-discriminative by construction. "48/2=24" and "60/3=20" have identical structural signatures regardless of the surrounding text. This is why IB with structural features finds clean templates while IB with embeddings finds noise.
-
-### Domain Constants
-
-An analysis of operand provenance revealed a class of values that appear in chain-of-thought but trace to neither the problem text nor prior computation results — orphan operands. Frequency analysis across 20,152 steps:
-
-| Constant | Occurrences | Meaning |
-|----------|-------------|---------|
-| 100 | 1,203 | Percentage conversion |
-| 60 | 487 | Minutes/hour |
-| 12 | 312 | Months/year, dozen |
-| 7 | 289 | Days/week |
-| 24 | 198 | Hours/day |
-| 52 | 142 | Weeks/year |
-
-These domain constants represent world knowledge the teacher uses but the problem doesn't state. "How many weeks?" requires knowing 52. These constants were discovered from data — filtering for operands with >80% orphan rate — not hand-coded.
-
-Adding domain constants to the bridging search recovered 4.9 percentage points of accuracy, including 8.6% of implicit operation failures where the missing element was a unit conversion constant.
-
-
-## Six-Model Pipeline
-
-### Architecture
-
-Six specialized models decompose mathematical reasoning into focused, independently trainable tasks:
-
-```
-Problem text
-    │
-    ├───────────────────────────────────┐
-    ▼                                   ▼
-┌─────────────────────┐    ┌─────────────────────┐
-│ C1: SEGMENTER       │    │ C6: GOAL RESOLVER   │
-│ BIO token tagging   │    │ Answer type + hint   │
-│ → clause-level spans│    │                      │
-└─────────┬───────────┘    └─────────┬───────────┘
-          │                          │
-          ▼                          │
-┌─────────────────────┐              │
-│ C2: CLASSIFIER      │              │
-│ Candidate groupings │              │
-│ → operation labels  │              │
-└─────────┬───────────┘              │
-          ▼                          │
-┌─────────────────────┐              │
-│ C3: ARG EXTRACTOR   │              │
-│ → typed arguments   │              │
-└─────────┬───────────┘              │
-          ▼                          │
-┌─────────────────────┐              │
-│ C4: IMPLICIT OPS    │◄─────────────┘
-│ Bridging operations │              │
-└─────────┬───────────┘              │
-          ▼                          │
-┌─────────────────────┐              │
-│ C5: DEP RESOLVER    │◄─────────────┘
-│ Execution DAG       │
-└─────────┬───────────┘
-          ▼
-   Symbolic Executor
-   (validates candidates)
-          ▼
-       Answer
-```
-
-Each model is Qwen-0.5B (896M parameters), fine-tuned for one task. Total: ~5.4B parameters across six models, each specialized for a focused subtask. At inference, no chain-of-thought is generated — the pipeline produces a computation graph directly from the problem text.
-
-### Why Six Models Instead of One
-
-We tried training a single model to generate the full computation as a DSL program (seq2seq). It reached 22.2% accuracy — a hard ceiling imposed by insufficient model capacity for the compound task.
-
-The decomposed pipeline works because each subtask is simple enough for 0.5B parameters:
-- The segmenter just tags tokens (BIO classification)
-- The classifier just picks one of ~10 labels given highlighted text
-- The argument extractor just finds numbers and their sources
-- Each model's training signal is clean — no competing objectives
-
-This is the Unix philosophy applied to neural networks: do one thing well.
-
-### Grouping as Search
-
-A key architectural decision: we do not train a model to predict how spans group into operations. Early experiments showed this task has a circular dependency — deciding whether two spans participate in the same operation requires knowing what operation they'd form, which is the classifier's job.
-
-Instead, we **enumerate candidate groupings** and evaluate each through the full pipeline. For a problem with N spans, heuristics generate 5-15 plausible groupings. Each candidate is classified, arguments are extracted, the graph is executed symbolically, and the result is scored. The candidate producing a valid, goal-consistent answer wins.
-
-The search space is tiny (2-4 spans yield 2-15 candidates). The symbolic executor runs in microseconds. Search is cheap; generation is expensive.
-
-This embodies a general principle: **search where the space is small, learn where the space is large.** Groupings: small space, searched. Bridging operations: small space, searched. Classification (understanding language): large space, learned. Argument extraction (understanding context): large space, learned.
-
-### Self-Training from the Executor
-
-The pipeline generates its own training data. At 99.96% accuracy, 7,375 problems produce correct computation graphs where every operation label is execution-verified — the symbolic executor proved it produces the gold answer. These verified traces are strictly higher quality than the original IB-derived labels.
-
-Retraining on execution-verified traces is distillation from the executor, not from the teacher. Traditional distillation: teacher generates, student imitates. Our approach: student generates candidates, executor proves which is correct, student learns from the proof. The executor is a mathematical oracle — every verified trace carries a proof that the labels are correct.
-
-This creates a self-improving loop: train → evaluate → extract verified traces → retrain → evaluate. Each round produces better labels, which produce better models, which produce more correct solutions, which produce more verified labels. Convergence occurs when the pipeline produces the same set of correct solutions two rounds in a row.
-
-
-## Error Attribution
-
-The decomposed architecture enables precise error diagnosis. When the pipeline produces a wrong answer, we compare each component's output against the teacher's chain-of-thought to identify exactly which component failed:
-
-```
-FAILURE BREAKDOWN (20 diagnostic problems):
-  Segmentation miss:           0/20  ( 0%)
-  Classifier/extractor error:  4/20  (20%)
-  Missing implicit ops:       15/20  (75%)
-  Scoring picked wrong:        0/20  ( 0%)
-```
-
-This is the whole reason for decomposing into separate components. With the seq2seq model, we got 22% accuracy and had no idea why. With six components, we know that segmentation works (0% errors), scoring works (0% errors), and 75% of failures come from one source: missing implicit bridging operations.
-
-Every improvement from 22% to 99.96% was targeted at a measured bottleneck. We never guessed where to optimize.
-
-
-## Results
-
-### Accuracy Progression on GSM8K
-
-| Stage | Accuracy | What Changed |
-|-------|----------|-------------|
-| 22.2% | Monolithic seq2seq | Qwen-0.5B capacity ceiling |
-| 65.0% | Six specialists + basic bridging | Decomposed architecture |
-| 81.2% | IB-discovered bridging templates | T7, T0, T9 implicit ops |
-| 87.7% | Domain constants from orphan operands | Unit conversions, time constants |
-| 93.1% | Spelled-out numbers + expanded constants | "two" → 2, "dozen" → 12 |
-| **99.96%** | **Universal bridging + two-hop chains** | **3 failures remaining** |
-
-The three remaining failures require operations not yet in the executor (POW for exponential growth, COMB for combinatorics, and a number parsing fix). The path to 100% is clear.
-
-### Tricks Ranked by Impact
-
-| Trick | Accuracy Jump | What It Fixed |
-|-------|---------------|---------------|
-| Decompose into 6 models | 22% → 65% | Capacity ceiling |
-| IB bridging templates | 65% → 81% | Missing implicit ops |
-| Domain constants | 81% → 88% | Unit conversions, time constants |
-| Spelled-out numbers | 88% → 93% | "two" not recognized as 2 |
-| Two-hop chains | 93% → 99%+ | Complex derived computations |
-| Universal bridging | 99%+ → 99.96% | Long-tail edge cases |
-
-### Component Performance
-
-| Component | Metric | Score |
-|-----------|--------|-------|
-| C1: Segmenter | Span F1 | 92.86% |
-| C1: Segmenter | Harmful merges | 0 |
-| C2: Classifier (single-span) | Accuracy | 71.5% |
-| C2: Classifier (multi-span) | Accuracy | 45.2% |
-| IB Template Discovery | Templates found | 10 |
-| IB Template Discovery | Explicit/implicit split | Clean (73.8% / 26.2%) |
-| E2E Pipeline | GSM8K accuracy | 99.96% (7,375 / 7,378) |
-
-A 45% multi-span classifier produces 99.96% end-to-end accuracy. The search + executor compensates for imperfect classification by evaluating all plausible candidates and accepting any that produce the correct answer through valid symbolic execution. The classifier doesn't need to be perfect — it needs to be good enough that the correct candidate is somewhere in the search space.
-
-### Teacher Model
-
-| Metric | Score |
-|--------|-------|
-| Qwen-7B solve rate | 95.5% |
-| Problems with correct CoT | 6,623 / 7,473 |
-| Average CoT steps per problem | 3.4 |
-| Average mapped spans per problem | 2.2 |
-| Implicit operations per problem | ~1.2 |
-
-
-## Scaling to MATH
-
-### Preliminary Results on MATH500
-
-The architecture scales without structural changes. Running the same pipeline on MATH500 (the 500-problem MATH benchmark):
-
-**Teacher data generation (hybrid approach):**
-- Qwen2.5-Math-7B-Instruct: 293/500 correct (58.6%)
-- Qwen2.5-Math-72B-Instruct on 7B failures: 100/207 correct (48.3%)
-- Combined: 393/500 (78.6%) — training data for the pipeline
-
-**IB template discovery on MATH:**
-- 115 templates discovered with plateau at k=116 (silhouette-validated)
-- 99% operator purity, 99% result type purity
-- 63% explicit, 27% implicit, 10% constants/derived
-- Top 20 templates cover 40% of steps; top 77 cover 90%
-
-**Cross-domain template overlap:**
-
-|  | Algebra | Geometry | IntAlg | NumThy | PreAlg | PreCalc |
-|--|---------|----------|--------|--------|--------|---------|
-| Algebra | 92 | 77 | 90 | 69 | 80 | 86 |
-| Geometry | 77 | 90 | 85 | 60 | 74 | 86 |
-
-High overlap (60-95 shared templates) across all category pairs. Mathematical operations are domain-agnostic — the same IB-discovered templates appear in algebra, geometry, number theory, and precalculus. This is a key finding: the operation vocabulary is universal, and category-specific behavior emerges from which subset of operations each problem invokes, not from fundamentally different operations.
-
-**New operations discovered (not present in GSM8K):**
-- Exponentiation: POW, SQRT, LOG
-- Trigonometry: SIN, COS, ARCSIN
-- Combinatorics: FACTORIAL, CHOOSE, PERMUTE
-- Geometry: AREA, DISTANCE, ANGLE
-- Algebra: SOLVE (equation solving)
-
-**Type signatures for search constraint:**
-A type system constrains the bridging search to prevent false positives at scale. Each operation template receives typed inputs and outputs (COUNT, MONEY, ANGLE, EXPRESSION, etc.). The homogeneity constraint — you cannot ADD(money, angle) — eliminates 60-90% of candidate chains before execution, keeping the search space tractable despite 115 templates.
-
-### The Hybrid Teacher Approach
-
-A cost optimization: not all problems need the expensive 72B teacher. Running the cheaper 7B first, then 72B only on failures, reduces cost by ~35% while preserving coverage. For the full MATH training set (12,500 problems), the hybrid approach is essential:
-
-| Step | Problems | Model | Estimated Cost |
-|------|----------|-------|---------------|
-| 7B pass | 12,500 | Qwen-Math-7B | ~$100 |
-| 72B on failures | ~5,250 | Qwen-Math-72B | ~$270 |
-| Total | ~11,150 correct CoTs | | ~$370 |
-
-
-## The Overfitting Argument
-
-Our system is a structured lookup table, and that's the point.
-
-Traditional machine learning guards against memorization because training data is a sample from a larger unknown distribution. But mathematical operations are not sampled from infinity. There are a finite number of ways to add, subtract, multiply, divide, and compose them. Once you've seen "sold half," "gave away a third," and "lost a quarter," you've covered fractional reduction. New phrasings map to existing operations.
-
-Templates are not answers — they are operation types. Memorizing "Sally has 5 apples" doesn't help solve "Bob has 7 oranges," but recognizing both as SET operations does. The lookup table maps infinite surface variation to finite operational invariants.
-
-IB formalizes this intuition. The compression-relevance tradeoff finds the minimal set of templates that preserves computational structure while discarding lexical noise. The plateau in the annealing curve is empirical evidence that the operation space has natural finite dimensionality.
-
-The MATH results strengthen this argument: 115 templates cover 90% of computation steps across seven mathematical domains. Despite the surface diversity of trigonometry, combinatorics, algebra, and geometry, the underlying operation vocabulary is finite and discoverable.
-
-
-## The Primes Analogy
-
-Primes are the atoms of arithmetic. Every integer has a unique prime decomposition — a fundamental theorem that says complex structure reduces to simple, irreducible components.
-
-Atomic spans are the primes of mathematical language. "Person has N items" is irreducible — it cannot be decomposed further without losing operational meaning. Every math problem has a unique decomposition into atomic spans, and every atomic span maps to exactly one computation. The Fundamental Theorem of Arithmetic has an analog in mathematical language.
-
-This analogy guided many design decisions. When faced with a choice — should we merge these two operations? — the answer was always: only if their prime decompositions are the same. IB formalizes this: two spans map to the same template if and only if they preserve the same computational structure under compression.
-
-
-## The Quiet Singularity and Saddle Crossings
-
-A Pringle chip is a hyperbolic paraboloid — a saddle surface curving upward along one axis and down along the perpendicular axis. At the center, you're at maximum height in one direction and minimum height in the other.
-
-Saddle crossings don't announce themselves. You could pass through one without fireworks, only noticing later that the dynamics have different character. The singularity isn't a moment where everything accelerates. It's a moment of extreme sensitivity to which unstable manifold we depart along. Small perturbations now mean dramatically different basins of attraction later. On the Pringle, whether you're ascending or descending depends entirely on which direction you're moving — suggesting the singularity might be accelerating and decelerating simultaneously along different axes.
-
-This project is a small example: one person with Claude building a system that extracts and distills the reasoning patterns of a 7-billion-parameter model into six specialized small models. The capability of the small group rises.
-
-
-## Related Work
-
-**Chain-of-thought distillation.** Prior work distills CoT by training smaller models to generate reasoning text (Ho et al., 2022; Magister et al., 2023). We distill the computation structure rather than the text, avoiding the generation bottleneck entirely.
-
-**Program synthesis from natural language.** Our DSL execution is related to semantic parsing (Liang, 2016) and neural program induction (Reed & de Freitas, 2016). The difference is that our programs are derived from attention dynamics rather than learned end-to-end.
-
-**Mechanistic interpretability.** Our use of attention patterns to extract computation structure connects to work on understanding transformer internals (Elhage et al., 2021; Olsson et al., 2022). We apply these techniques constructively — not to understand what the model does, but to build a system that does the same thing faster.
-
-**MiniLM and attention distillation.** MiniLM (Wang et al., 2020) was trained with attention transfer loss. This makes attention-pattern models natural students for our pipeline, as they were designed to mimic attention distributions from larger teachers.
-
-**Information Bottleneck in NLP.** IB has been applied to text classification and representation learning (Tishby et al., 2000), but not to discovering operation taxonomies from computation traces. Our application is novel: IB compresses surface variation of mathematical operations to reveal their computational invariants.
-
-
-## Future Work
-
-### Full MATH Evaluation
-
-Training the six-model pipeline on 12,500 MATH problems (with the 115 IB-discovered templates and expanded executor operations) and evaluating on MATH500. Preliminary segmentation transfer results suggest the architecture scales without retraining the segmenter — only the classifier and extractor need MATH-specific templates.
-
-### Self-Training Loop at Scale
-
-The self-training pipeline — train, evaluate, extract execution-verified traces, retrain — has not yet been run at scale. On GSM8K, it promises to lift the classifier from 45% to 75%+ using labels proven correct by the symbolic executor. On MATH, with 115 templates and sparser training data per template, self-training may be essential for achieving high end-to-end accuracy.
-
-### Layers of Abstraction
-
-There are layers of abstraction we could apply to our structured lookup table. Humans recognize patterns across scales and frequencies. My son learning the Rubik's Cube mirrors me tackling the Mycelium problem — both involve decomposing a complex state into a sequence of known transformations. We suspect these abstraction layers correspond to matching over compressed representations of composed graphs.
-
-### Cross-Model Validation
-
-Preliminary experiments show that attention patterns generalize across model families. JSD segmentation trained on Qwen-7B spans transfers to Llama-3-8B and Mistral-7B with minimal degradation. This suggests the computation graph structure is a property of the mathematical reasoning itself, not an artifact of a particular model's architecture.
-
-### Beyond Mathematics
-
-The semantic abacus has no assumption that limits it to mathematics. Any domain with finite operational vocabulary under infinite lexical variation is a candidate: chemistry (stoichiometry), physics (free body diagrams), logic (propositional reasoning), law (statutory interpretation). The IB discovers the operations, the executor evaluates them, the small models learn to operate the abacus. The abacus doesn't care what you're counting.
-
-
-## Acknowledgments
-
-Built with Claude Code. The velocity of iteration was extraordinary — enabling thinking at a higher level of abstraction, focusing on system design rather than implementation details. This project was like a choose-your-own-adventure book where Claude was the narrator asking questions about direction and I was the reader, with answers largely guided by primes.
-
-
-## References
-
-Elhage, N., et al. (2021). A Mathematical Framework for Transformer Circuits. Anthropic.
-
-Ho, N., et al. (2022). Large Language Models Are Reasoning Teachers. arXiv:2212.10071.
-
-Liang, P. (2016). Learning Executable Semantic Parsers for Natural Language Understanding. Communications of the ACM.
-
-Magister, L. C., et al. (2023). Teaching Small Language Models to Reason. ACL.
-
-Olsson, C., et al. (2022). In-context Learning and Induction Heads. arXiv:2209.11895.
-
-Reed, S., & de Freitas, N. (2016). Neural Programmer-Interpreters. ICLR.
-
-Tishby, N., Pereira, F., & Bialek, W. (2000). The Information Bottleneck Method. arXiv:physics/0004057.
-
-Vaswani, A., et al. (2017). Attention Is All You Need. NeurIPS.
-
-Wang, W., et al. (2020). MiniLM: Deep Self-Attention Distillation for Task-Agnostic Compression of Pre-Trained Transformers. NeurIPS.
+We present Mycelium v6, an attention distillation architecture that extracts computational structure from large language model attention patterns and compiles it into a lightweight, executable reasoning pipeline. Our approach decomposes mathematical problem-solving into four components — segmentation, classification, argument extraction, and dependency resolution — each independently trainable and diagnosable. Using Jensen-Shannon Divergence (JSD) boundaries derived from a 72B teacher model's generation-phase attention to segment chains of thought into computation steps, combined with a 0.5B classifier for operation labeling, we achieve 78.1% accuracy on numeric MATH500 problems. A hybrid strategy that supplements 7B chain-of-thought with targeted 72B generation on failed problems reaches 85.0%. Error attribution analysis reveals that 77% of remaining failures originate from teacher model limitations rather than pipeline errors, establishing a clear ceiling for the current approach. We introduce a self-improving distillation loop that leverages execution-validated traces to iteratively train a standalone 0.5B segmenter, progressively removing dependence on the 72B teacher at inference time. Our results demonstrate that generation-phase attention structure provides a viable supervision signal for distilling mathematical reasoning into models orders of magnitude smaller than the teacher.
 
 ---
 
-**Open Source:** github.com/bryceroche/mycelium (MIT License)
+## 1. Introduction
+
+Large language models solve mathematical problems by generating chain-of-thought (CoT) reasoning: hundreds of tokens of natural language to arrive at a numerical answer. This is effective but expensive — a 72B parameter model writes an extended prose argument when the underlying computation may require only a handful of arithmetic operations. The reasoning is encoded in the model's attention patterns, not merely in the text it produces.
+
+Mycelium asks whether we can extract that reasoning directly from attention structure and compile it into a small, efficient, executable program. The key insight enabling this work is a distinction between two phases of transformer attention. During the *reading phase* (processing the input problem), attention heads organize by linguistic structure — syntax, entity boundaries, and coreference patterns. During the *generation phase* (producing the CoT solution), the same attention heads reorganize by computational structure — operation boundaries, operand routing, and result production. This phase distinction, which we characterize using token-level Jensen-Shannon Divergence (JSD), means that generation-phase attention provides clean supervision signal for identifying mathematical operations, while reading-phase attention does not.
+
+Previous iterations of this architecture (Mycelium v3–v5) attempted to extract operation boundaries from reading-phase attention and consistently failed — producing linguistically coherent clusters that did not correspond to mathematical operations. The shift to generation-phase attention boundaries in v6 produced an immediate and dramatic improvement, from 5% to 78% end-to-end accuracy, validating the dual-phase attention hypothesis through an engineering outcome.
+
+Our contributions are:
+
+1. A four-component decomposed pipeline (segmenter, classifier, extractor, dependency resolver) for mathematical reasoning that enables precise error attribution and independent component optimization.
+
+2. Empirical validation that generation-phase JSD boundaries from a 72B teacher model, combined with a 0.5B classifier, achieve 85% accuracy on MATH — demonstrating that computational structure can be distilled across a 144x parameter gap.
+
+3. An error attribution framework that precisely identifies failure sources across pipeline components and teacher model limitations, revealing that 77% of residual errors are teacher-side rather than pipeline-side.
+
+4. A self-improving distillation loop that uses execution-validated traces to iteratively train smaller models to replicate teacher-quality segmentation without requiring teacher inference at deployment.
+
+---
+
+## 2. Background and Motivation
+
+### 2.1 Dual-Phase Attention Structure
+
+Decoder-only transformers process mathematical problems in two distinct phases. During input processing (the reading phase), attention heads distribute across the problem text according to linguistic patterns. During output generation (the generation phase), attention heads redistribute according to computational patterns — cycling through operand retrieval, arithmetic computation, and result production for each reasoning step.
+
+We measure these phase transitions using token-level Jensen-Shannon Divergence (JSD) between consecutive attention distributions. Peaks in the JSD signal, smoothed with a Savitzky-Golay filter (window size 5), correspond to boundaries between computational steps in the generated chain of thought. These boundaries align with operation transitions (e.g., from a multiplication step to an addition step) rather than linguistic transitions (e.g., sentence boundaries).
+
+This finding has a critical implication for distillation: any system attempting to extract mathematical reasoning structure from transformer attention must attend to generation-phase patterns. Reading-phase attention, despite being easier to capture (requiring only a forward pass on the input), encodes the wrong structure for mathematical operation extraction.
+
+### 2.2 From Monolithic to Decomposed Reasoning
+
+Prior approaches to mathematical reasoning distillation typically train a single model end-to-end to map problems to answers, either through CoT generation or direct prediction. These monolithic approaches suffer from a fundamental diagnosability problem: when the system produces a wrong answer, it is impossible to determine whether the failure arose from incorrect problem parsing, wrong operation selection, incorrect argument binding, or faulty execution.
+
+Mycelium v6 decomposes reasoning into four independently trainable and testable components. This decomposition enables precise error attribution — when the final answer is wrong, we can identify exactly which component failed and direct improvement effort accordingly.
+
+---
+
+## 3. Method
+
+### 3.1 Architecture Overview
+
+The Mycelium v6 pipeline consists of four sequential components:
+
+**Component 1: Segmenter.** Identifies computation-step boundaries in the chain-of-thought text. During training, boundaries are derived from JSD peaks in the 72B teacher model's generation-phase attention. The goal of the self-improving loop (Section 5) is to train a 0.5B model to predict these boundaries independently.
+
+**Component 2: Classifier.** A 0.5B Qwen model that labels each identified span with one of 77 coarse operation categories. Trained on spans derived from JSD boundaries with labels parsed from the CoT text (e.g., a span containing "48 / 2 = 24" is labeled as DIV).
+
+**Component 3: Argument Extractor.** Identifies the numerical operands for each classified operation. Uses a combination of direct number extraction from spans and \boxed{} pattern matching for final answers in MATH-format problems.
+
+**Component 4: Dependency Resolver.** Determines the execution ordering of operations by identifying which operations depend on the outputs of previous operations. For linear chains (common in simpler problems), a sequential heuristic suffices. For DAG structures in complex problems, pairwise edge prediction determines dependencies.
+
+### 3.2 Self-Supervised Label Generation
+
+Training labels for all components are derived from the teacher model's own computation, without gold annotations:
+
+1. **CoT Generation:** Qwen2.5-Math-7B-Instruct generates chain-of-thought solutions for each problem.
+2. **JSD Segmentation:** The 72B model's generation-phase attention is captured, and JSD with Savitzky-Golay smoothing (w=5) identifies computation step boundaries.
+3. **Operation Parsing:** Each CoT segment is parsed for arithmetic expressions (e.g., "48 / 2 = 24" yields operation=DIV, args=[48, 2]).
+4. **Operand Grounding:** Parsed operands are located in the original problem text via string matching, establishing the mapping between problem regions and operations.
+
+This pipeline produces (span, operation, arguments) tuples that serve as training data for the classifier and extractor. Critically, self-supervised labels derived from the teacher model's computation structure were found to outperform gold annotations for multi-span problems in earlier experiments, validating the use of attention-derived supervision.
+
+### 3.3 Answer Selection
+
+The pipeline employs a prioritized answer selection strategy:
+
+1. **\boxed{} extraction** (highest priority): If a classified span contains a LaTeX \boxed{} expression, the enclosed value is extracted directly. This handles 69% of correct answers.
+2. **ASSIGN operation result**: If the dependency graph contains an ASSIGN operation with no downstream dependents (a sink node), its result is returned. This handles 29% of correct answers.
+3. **Last computation fallback**: The result of the final executed operation is returned. This handles 2% of correct answers.
+
+### 3.4 Hybrid Teacher Strategy
+
+The 7B teacher model fails to produce correct CoT for approximately 16–18% of MATH problems, primarily in Intermediate Algebra and Precalculus categories requiring extended multi-step reasoning. We employ a hybrid strategy:
+
+1. Run 7B CoT generation on all problems (fast, cheap).
+2. Evaluate pipeline outputs against known answers.
+3. Re-run only the failed problem indices through 72B CoT generation (expensive, targeted).
+4. Process the 72B CoT through the same pipeline.
+
+This reduces 72B compute by approximately 83% compared to running 72B on all problems, while recovering a substantial fraction of teacher-side failures.
+
+---
+
+## 4. Results
+
+### 4.1 MATH500 Evaluation
+
+We evaluate on the numeric-answer subset of MATH500 (361 problems, excluding symbolic and expression answers which comprise 37% of the benchmark).
+
+| Configuration | Accuracy | Problems |
+|---|---|---|
+| Trained segmenter (GSM8K) | 5.0% | 1/20 |
+| 72B JSD boundaries + 0.5B classifier | 78.1% | 282/361 |
+| + 72B CoT hybrid | 85.0% | 307/361 |
+
+The dramatic improvement from 5% to 78.1% upon switching from the trained segmenter to 72B JSD boundaries confirms that segmentation quality is the critical bottleneck, and that generation-phase attention provides the correct supervision signal.
+
+### 4.2 Accuracy by Category
+
+| Category | Accuracy |
+|---|---|
+| Number Theory | 90.4% (47/52) |
+| Prealgebra | 88.1% (52/59) |
+| Counting & Probability | 84.0% (21/25) |
+| Algebra | 83.7% (77/92) |
+| Geometry | 66.7% (14/21) |
+| Intermediate Algebra | 53.6% (30/56) |
+| Precalculus | 45.5% (5/11) |
+
+Performance correlates strongly with reasoning chain length. Categories requiring shorter computation chains (Number Theory, Prealgebra) approach 90%, while categories requiring extended multi-step reasoning (Intermediate Algebra, Precalculus) degrade to approximately 50%. This pattern is consistent with DAG resolution errors compounding across longer chains.
+
+### 4.3 Error Attribution
+
+We apply a hierarchical error attribution framework to the 54 failures in the hybrid configuration:
+
+| Error Type | Count | % | Description |
+|---|---|---|---|
+| Hard problems (both 7B/72B fail) | 36 | 66.7% | Neither teacher produces correct CoT |
+| SELECTION | 9 | 16.7% | Pipeline computed correct answer but returned wrong result |
+| EXECUTION | 7 | 13.0% | Answer present in CoT numbers but computed incorrectly |
+| CLASSIFICATION | 2 | 3.7% | Wrong operation type predicted |
+
+The dominant finding is that **77% of failures (ANSWER_NOT_IN_COT + TEACHER_ERROR from the 7B-only evaluation) are teacher-side errors**, not pipeline errors. Only 18 of 54 hybrid failures are attributable to the pipeline itself. This establishes an important ceiling: the pipeline's accuracy is bounded by teacher model quality, particularly on problems requiring sophisticated multi-step reasoning.
+
+Among pipeline-fixable errors, SELECTION (wrong result chosen from correctly computed candidates) and EXECUTION (incorrect DAG traversal) account for the majority, suggesting that improvements to graph resolution logic would yield the highest marginal returns.
+
+### 4.4 Teacher Model Performance
+
+Qwen2.5-Math-7B-Instruct achieves an 83–84% solve rate on the full 12,500-problem MATH dataset, consistent with published benchmarks. This high base accuracy means the self-improving loop (Section 5) can bootstrap from approximately 10,000+ correct CoT traces — a substantial training corpus for the segmenter distillation.
+
+---
+
+## 5. Self-Improving Distillation Loop
+
+The results in Section 4 use 72B JSD boundaries for segmentation — requiring a 72B forward pass at inference. The core objective of Mycelium is a system that runs entirely on 0.5B models. We propose a self-improving distillation loop to close this gap.
+
+### 5.1 Motivation
+
+The 78.1% result represents the *distillation ceiling* — the maximum accuracy achievable if the 0.5B segmenter perfectly replicates 72B JSD boundary detection. The self-improving loop aims to approach this ceiling iteratively.
+
+### 5.2 Loop Architecture
+
+**Round 1 (Bootstrap):**
+1. Generate 7B CoT on all 12,500 MATH problems (text generation only, no attention extraction).
+2. Run end-to-end pipeline using 0.5B confidence thresholding for segmentation. Instead of 72B JSD boundaries, the 0.5B classifier's own prediction confidence defines span boundaries: high-confidence windows are classified as operation spans, low-confidence windows are rejected.
+3. Evaluate against known answers. Every problem where the pipeline produces the correct final answer yields an execution-validated training example with (span boundary, operation label, arguments) tuples.
+4. Run 72B CoT (text only) on failed problem indices. Process through the pipeline, adding newly correct traces to the training set.
+5. Retrain the 0.5B classifier and train a new 0.5B segmenter on the accumulated validated traces.
+
+**Round N (Iteration):**
+1. Re-run the full pipeline with the updated 0.5B segmenter.
+2. Collect newly correct traces; add to the training corpus.
+3. Mop up failures with 72B CoT.
+4. Retrain models.
+
+### 5.3 Convergence Properties
+
+Each round has two beneficial dynamics:
+
+- **More correct traces** → larger, more diverse training set → better segmenter and classifier.
+- **Decreasing 72B dependence** → fewer problems require 72B CoT mop-up as the pipeline improves.
+
+The loop converges when accuracy plateaus between rounds (delta < 1%). At convergence, 72B is only needed for the genuinely hard problems where neither 7B nor 72B CoT produces a correct answer — a small fixed set.
+
+### 5.4 Execution Validation as Free Supervision
+
+A key property of the self-improving loop is that execution correctness serves as a *free verifier*. No human annotations are required at any stage. If the pipeline produces the correct numerical answer, the intermediate representations (span boundaries, operation labels, argument bindings) were necessarily correct enough to support that answer. This allows the system to generate its own training labels at scale, with mathematical correctness as the only supervision signal.
+
+This is analogous to rejection sampling in reinforcement learning: generate many candidate programs, retain only those that execute to the correct answer, and train on the survivors.
+
+---
+
+## 6. Discussion
+
+### 6.1 What the 0.5B Classifier Is Actually Doing
+
+Analysis of answer sources reveals that 69% of correct answers come from direct \boxed{} extraction — finding the span containing the final answer format and parsing the number. This path requires the classifier to locate the right span but does not exercise the full computation DAG. The remaining 29% come from ASSIGN operations, where the pipeline genuinely computes through intermediate steps. The accuracy breakdown by answer source would further illuminate how much of the pipeline's computation chain is contributing versus how much is riding on pattern matching.
+
+### 6.2 The Segmentation Bottleneck
+
+The most striking result is the 5% → 78.1% improvement from swapping a trained segmenter for 72B JSD boundaries. This demonstrates that segmentation quality dominates all other pipeline components. A classifier with only 60% standalone accuracy produces 78% end-to-end accuracy when given clean spans — because many classification errors fall on operations that don't affect the final answer, and because the \boxed{} extraction path bypasses classification entirely for many problems.
+
+This has implications for resource allocation in distillation systems: investing in segmentation quality yields higher returns than improving downstream classification, extraction, or execution.
+
+### 6.3 Coverage Limitations
+
+The current system evaluates only on numeric-answer MATH problems (361/500 = 72% of MATH500). The remaining 28% involve symbolic expressions, sets, variable-form answers, or geometric constructions that the current DSL cannot represent. Extending coverage to these problem types requires expanding the DSL vocabulary and the argument extraction machinery — a significant but well-defined engineering challenge.
+
+### 6.4 Relationship to Prior Work
+
+Mycelium v6 differs from standard knowledge distillation approaches in that it distills *computational structure* (attention-derived span boundaries and operation labels) rather than output distributions or intermediate representations. The teacher model provides supervision through the structure of its computation, not through its predictions. This is closer in spirit to mechanistic interpretability — extracting the algorithm a model has learned — applied as a training signal for a smaller model.
+
+---
+
+## 7. Conclusion
+
+We have demonstrated that generation-phase attention structure from large language models provides viable supervision for training small models to perform mathematical reasoning. The Mycelium v6 pipeline achieves 85% on numeric MATH problems using a 0.5B classifier with 72B-derived segmentation boundaries, with 77% of remaining failures attributable to teacher model limitations rather than pipeline errors. The self-improving distillation loop provides a path to removing the 72B inference dependency entirely, using execution-validated traces as a free supervision signal. The core finding — that generation-phase and reading-phase attention encode fundamentally different structure, and only the former supports mathematical operation extraction — has implications for any system attempting to distill structured reasoning from transformer models.
+
+---
+
+## Appendix A: Error Attribution Framework
+
+```python
+def attribute_error(problem, predicted, gold):
+    """Hierarchical error attribution for pipeline failures."""
+    
+    # Level 1: Teacher-side errors
+    if gold_answer not in cot_numbers:
+        return "ANSWER_NOT_IN_COT"
+    if cot_boxed_answer != gold_answer:
+        return "TEACHER_ERROR"
+    
+    # Level 2: Pipeline errors
+    if span_count_wrong(predicted.spans, gold.spans):
+        return "SEGMENTATION"
+    for pred_op, gold_op in zip(predicted.ops, gold.ops):
+        if pred_op != gold_op:
+            return "CLASSIFICATION"
+    for pred_args, gold_args in zip(predicted.args, gold.args):
+        if pred_args != gold_args:
+            return "EXTRACTION"
+    if predicted.edges != gold.edges:
+        return "DEPENDENCY"
+    
+    # Level 3: Execution errors
+    if correct_answer in computed_intermediates:
+        return "SELECTION"
+    return "EXECUTION"
+```
+
+This framework first separates teacher-side failures (the model didn't produce the answer) from pipeline failures (the answer was available but processing failed), then further decomposes pipeline failures by component. This enables targeted optimization: if 60% of failures are ANSWER_NOT_IN_COT, improving the pipeline yields diminishing returns — the teacher model must be upgraded or supplemented.

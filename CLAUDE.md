@@ -108,5 +108,24 @@ bd create --title="..." --type=bug|task|feature
 bd close <id>   # Complete work
 ```
 
+
+## Shell Command Delegation
+
+**Always delegate long-running bash/SSH commands to Sonnet or Haiku subagents.** This keeps the main conversation responsive while remote GPU/VM work runs in parallel.
+
+Use `haiku` for quick status checks, `sonnet` for complex setup/debugging.
+
+```python
+# Good - user can keep talking while this runs
+Task(
+    prompt="SSH to VM and run extraction...",
+    subagent_type="Bash",
+    model="sonnet"
+)
+
+# Bad - blocks conversation for 30+ seconds
+Bash(command="ssh ubuntu@... long command")
+```
+
 Bozeman MT
 
