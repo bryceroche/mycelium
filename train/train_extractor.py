@@ -145,12 +145,31 @@ def main():
     model = AutoModelForCausalLM.from_pretrained(
         MODEL_NAME,
         trust_remote_code=True,
-        torch_dtype=torch.bfloat16,
+        torch_dtype=torch.float32,
     )
 
     model.config.pad_token_id = tokenizer.pad_token_id
     model.resize_token_embeddings(len(tokenizer))
-    print(f"Model parameters: {model.num_parameters()/1e6:.1f}M")
+
+    # Partial layer freezing: freeze first 16 layers, train last 8 + LM head
+    # Qwen2-0.5B has 24 layers total
+    freeze_layers = 16
+    for name, param in model.named_parameters():
+        # Always train embeddings (we added special tokens) and LM head
+        if "embed" in name or "lm_head" in name:
+            param.requires_grad = True
+        # Freeze early layers
+        elif "layers." in name:
+            layer_num = int(name.split("layers.")[1].split(".")[0])
+            param.requires_grad = (layer_num >= freeze_layers)
+        else:
+            # Final layer norm etc - train these
+            param.requires_grad = True
+
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total = model.num_parameters()
+    print(f"Partial freeze: {trainable:,} / {total:,} params trainable ({100*trainable/total:.1f}%)")
+    print(f"  Frozen: layers 0-{freeze_layers-1}, Training: layers {freeze_layers}-23 + LM head")
 
     # Training arguments
     output_dir = "/opt/dlami/nvme/models/qwen05b_extractor_multispan"
@@ -160,10 +179,10 @@ def main():
     training_args = TrainingArguments(
         output_dir=output_dir,
         num_train_epochs=3,
-        per_device_train_batch_size=4,
-        per_device_eval_batch_size=4,
-        gradient_accumulation_steps=8,
-        learning_rate=2e-5,
+        per_device_train_batch_size=8,  # Larger batch with partial freeze
+        per_device_eval_batch_size=8,
+        gradient_accumulation_steps=4,
+        learning_rate=5e-5,  # Slightly higher LR since fewer params
         weight_decay=0.01,
         eval_strategy="epoch",
         save_strategy="epoch",
@@ -171,10 +190,13 @@ def main():
         metric_for_best_model="eval_loss",
         greater_is_better=False,
         logging_steps=50,
-        bf16=True,
+        fp16=False,  # Disabled - CUBLAS issues on this driver
         report_to="none",
         save_total_limit=2,
         warmup_ratio=0.1,
+        lr_scheduler_type="cosine",
+        dataloader_num_workers=4,
+        dataloader_pin_memory=True,
     )
 
     # Data collator

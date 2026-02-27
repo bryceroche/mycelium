@@ -35,14 +35,11 @@ class Qwen2ForTokenClassification(PreTrainedModel):
     def __init__(self, config, num_labels=2):
         super().__init__(config)
         self.num_labels = num_labels
-        # Load model in FP32 to avoid BF16 CUBLAS errors on this GPU
         self.qwen = AutoModel.from_pretrained(
             config._name_or_path,
+            config=config,
             trust_remote_code=True,
-            torch_dtype=torch.float32,
         )
-        # Explicitly convert all parameters to FP32
-        self.qwen = self.qwen.float()
         self.dropout = nn.Dropout(0.1)
         self.classifier = nn.Linear(config.hidden_size, num_labels)
 
@@ -319,17 +316,14 @@ def main():
     print("\nLoading model...")
     from transformers import AutoConfig
     config = AutoConfig.from_pretrained(MODEL_NAME, trust_remote_code=True)
-    config.torch_dtype = torch.float32  # Override default BF16
     model = Qwen2ForTokenClassification(config, num_labels=len(LABELS))
-    # Convert all weights to fp32 to avoid BF16 CUBLAS errors
-    model = model.float()
 
     # Set label mappings on config
     model.config.id2label = id2label
     model.config.label2id = label2id
 
     # Convert to bfloat16
-    # model = model.to(torch.float16)  # Using default fp32
+    model = model.to(torch.bfloat16)
 
     print(f"Model parameters: {sum(p.numel() for p in model.parameters())/1e6:.1f}M")
 
@@ -355,7 +349,7 @@ def main():
         metric_for_best_model="span_f1",
         greater_is_better=True,
         logging_steps=50,
-        # fp16=True,  # Disabled due to CUDA issues
+        bf16=True,
         report_to="none",
         save_total_limit=2,
         warmup_ratio=0.1,

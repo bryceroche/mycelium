@@ -2,8 +2,12 @@
 """
 Mycelium v6: Train C2 Classifier on IB-Discovered Templates
 
-100-class sequence classification on Qwen-0.5B using 17,101
-labeled pairs from Information Bottleneck template discovery.
+Sequence classification on Qwen-0.5B using hierarchically-labeled
+samples from Information Bottleneck template discovery.
+
+Supports two data formats:
+- v1: template_id field with separate template_map.json
+- v2: operator field directly in classifier_labels_v2.json
 """
 
 import json
@@ -29,8 +33,24 @@ import sys
 MODEL_NAME = "Qwen/Qwen2-0.5B"
 
 
-def load_ib_labels(labels_path: str, template_map_path: str):
-    """Load IB-labeled training data."""
+def load_ib_labels_v2(labels_path: str):
+    """Load IB-labeled training data (v2 format with operator field)."""
+    with open(labels_path) as f:
+        labels_data = json.load(f)
+
+    # Build label mappings from operator field
+    operators = sorted(set(d["operator"] for d in labels_data))
+    id2label = {i: op for i, op in enumerate(operators)}
+    label2id = {op: i for op, i in zip(operators, range(len(operators)))}
+
+    print(f"Loaded {len(labels_data)} labeled samples")
+    print(f"Operator classes: {len(operators)}")
+
+    return labels_data, id2label, label2id
+
+
+def load_ib_labels_v1(labels_path: str, template_map_path: str):
+    """Load IB-labeled training data (v1 format with template_id)."""
     with open(labels_path) as f:
         labels_data = json.load(f)
 
@@ -50,9 +70,9 @@ def load_ib_labels(labels_path: str, template_map_path: str):
 
 
 def prepare_input_text(sample: dict) -> str:
-    """Format input text with optional span markers."""
-    # Use raw_expression as primary input, with category context
-    text = sample["raw_expression"]
+    """Format input text with optional category context."""
+    # v2 format uses 'text', v1 uses 'raw_expression'
+    text = sample.get("text", sample.get("raw_expression", ""))
     category = sample.get("category", "")
 
     # Add category as context prefix
@@ -61,8 +81,27 @@ def prepare_input_text(sample: dict) -> str:
     return text
 
 
-def prepare_dataset(data: list, template_to_idx: dict, tokenizer, max_length=256):
-    """Prepare HuggingFace dataset."""
+def prepare_dataset_v2(data: list, label2id: dict, tokenizer, max_length=256):
+    """Prepare HuggingFace dataset (v2 format with operator field)."""
+    texts = [prepare_input_text(d) for d in data]
+    labels = [label2id[d["operator"]] for d in data]
+
+    encodings = tokenizer(
+        texts,
+        truncation=True,
+        max_length=max_length,
+        padding=False,
+    )
+
+    return Dataset.from_dict({
+        "input_ids": encodings["input_ids"],
+        "attention_mask": encodings["attention_mask"],
+        "labels": labels,
+    })
+
+
+def prepare_dataset_v1(data: list, template_to_idx: dict, tokenizer, max_length=256):
+    """Prepare HuggingFace dataset (v1 format with template_id)."""
     texts = [prepare_input_text(d) for d in data]
     labels = [template_to_idx[d["template_id"]] for d in data]
 
@@ -124,13 +163,17 @@ class WeightedTrainer(Trainer):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--labels-path", default="/home/ubuntu/data/ib_results/classifier_labels.json")
-    parser.add_argument("--template-map-path", default="/home/ubuntu/data/ib_results/template_map.json")
-    parser.add_argument("--output-dir", default="/home/ubuntu/models/c2_ib_templates")
+    parser.add_argument("--labels-path", default="data/ib_templates/classifier_labels_v2.json")
+    parser.add_argument("--template-map-path", default=None, help="Only needed for v1 format")
+    parser.add_argument("--output-dir", default="models/c2_ib_templates")
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--learning-rate", type=float, default=3e-5)
     parser.add_argument("--max-length", type=int, default=256)
+    parser.add_argument("--format", choices=["v1", "v2"], default="v2",
+                        help="Data format: v2 (operator field) or v1 (template_id)")
+    parser.add_argument("--freeze-backbone", action="store_true",
+                        help="Freeze Qwen backbone, train only classification head")
     args = parser.parse_args()
 
     print("=" * 70)
@@ -139,21 +182,30 @@ def main():
     sys.stdout.flush()
 
     # Load data
-    print("\nLoading IB-labeled data...")
+    print(f"\nLoading IB-labeled data ({args.format} format)...")
     sys.stdout.flush()
 
-    labels_data, id2label, label2id, template_to_idx = load_ib_labels(
-        args.labels_path, args.template_map_path
-    )
+    template_to_idx = None  # Only used for v1 format
+    if args.format == "v2":
+        labels_data, id2label, label2id = load_ib_labels_v2(args.labels_path)
+    else:
+        if not args.template_map_path:
+            raise ValueError("--template-map-path required for v1 format")
+        labels_data, id2label, label2id, template_to_idx = load_ib_labels_v1(
+            args.labels_path, args.template_map_path
+        )
     num_labels = len(id2label)
 
-    # Show top templates
-    print("\nTop 10 templates by frequency:")
-    template_counts = Counter(d["template_id"] for d in labels_data)
-    for tid, count in template_counts.most_common(10):
-        idx = template_to_idx[tid]
-        name = id2label[idx]
-        print(f"  {name}: {count}")
+    # Show top operators/templates by frequency
+    print("\nTop 10 classes by frequency:")
+    if args.format == "v2":
+        op_counts = Counter(d["operator"] for d in labels_data)
+        for op, count in op_counts.most_common(10):
+            print(f"  {op}: {count}")
+    else:
+        template_counts = Counter(d["template_id"] for d in labels_data)
+        for tid, count in template_counts.most_common(10):
+            print(f"  {tid}: {count}")
     sys.stdout.flush()
 
     # Load tokenizer
@@ -176,7 +228,10 @@ def main():
     sys.stdout.flush()
 
     # Compute class weights
-    train_labels = [template_to_idx[d["template_id"]] for d in train_data]
+    if args.format == "v2":
+        train_labels = [label2id[d["operator"]] for d in train_data]
+    else:
+        train_labels = [template_to_idx[d["template_id"]] for d in train_data]
     unique_labels = sorted(set(train_labels))
 
     class_weights = compute_class_weight(
@@ -198,8 +253,12 @@ def main():
     print("\nPreparing datasets...")
     sys.stdout.flush()
 
-    train_dataset = prepare_dataset(train_data, template_to_idx, tokenizer, args.max_length)
-    eval_dataset = prepare_dataset(eval_data, template_to_idx, tokenizer, args.max_length)
+    if args.format == "v2":
+        train_dataset = prepare_dataset_v2(train_data, label2id, tokenizer, args.max_length)
+        eval_dataset = prepare_dataset_v2(eval_data, label2id, tokenizer, args.max_length)
+    else:
+        train_dataset = prepare_dataset_v1(train_data, template_to_idx, tokenizer, args.max_length)
+        eval_dataset = prepare_dataset_v1(eval_data, template_to_idx, tokenizer, args.max_length)
 
     # Load model
     print("\nLoading model...")
@@ -215,31 +274,49 @@ def main():
     )
 
     model.config.pad_token_id = tokenizer.pad_token_id
-    print(f"Model parameters: {model.num_parameters()/1e6:.1f}M")
+
+    # Freeze backbone, train only classification head
+    if args.freeze_backbone:
+        for name, param in model.named_parameters():
+            if "classifier" not in name and "score" not in name:
+                param.requires_grad = False
+        trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        total = model.num_parameters()
+        print(f"Frozen backbone: {trainable:,} / {total:,} params trainable ({100*trainable/total:.2f}%)")
+    else:
+        print(f"Full fine-tuning: {model.num_parameters()/1e6:.1f}M parameters")
+
     print(f"Classification head: {num_labels} classes")
     sys.stdout.flush()
 
     # Training arguments
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
+    # Adjust LR and epochs based on frozen vs full fine-tuning
+    lr = args.learning_rate if not args.freeze_backbone else 1e-3  # Higher LR for linear probe
+    epochs = args.epochs if not args.freeze_backbone else 3  # Fewer epochs for linear probe
+
     training_args = TrainingArguments(
         output_dir=args.output_dir,
-        num_train_epochs=args.epochs,
+        num_train_epochs=epochs,
         per_device_train_batch_size=args.batch_size,
-        per_device_eval_batch_size=args.batch_size,
-        gradient_accumulation_steps=2,
-        learning_rate=args.learning_rate,
+        per_device_eval_batch_size=args.batch_size * 2,
+        gradient_accumulation_steps=1,  # No accumulation needed with frozen backbone
+        learning_rate=lr,
         weight_decay=0.01,
         eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
         metric_for_best_model="accuracy",
         greater_is_better=True,
-        logging_steps=100,
-        fp16=False,
+        logging_steps=50,
+        fp16=False,  # Disabled - CUBLAS issues on this driver
         report_to="none",
         save_total_limit=2,
         warmup_ratio=0.1,
+        lr_scheduler_type="cosine",  # Cosine decay
+        dataloader_num_workers=4,  # Faster data loading
+        dataloader_pin_memory=True,
     )
 
     # Data collator

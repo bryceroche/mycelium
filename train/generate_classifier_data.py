@@ -92,35 +92,14 @@ def extract_numbers_from_text(text):
 
 
 def parse_operation_type(step_text):
-    """Parse operation type from CoT step text."""
-    # Look for operation patterns
-    text_lower = step_text.lower()
+    """
+    DEPRECATED: Keyword heuristics removed.
 
-    # Check for explicit operations
-    if any(op in text_lower for op in ['+', 'add', 'plus', 'sum', 'total', 'combined']):
-        if '-' not in step_text or text_lower.count('+') > text_lower.count('-'):
-            return "ADD"
-    if any(op in text_lower for op in ['-', 'subtract', 'minus', 'less', 'remain', 'left', 'difference']):
-        if '+' not in step_text or text_lower.count('-') > text_lower.count('+'):
-            return "SUB"
-    if any(op in text_lower for op in ['*', '×', 'multiply', 'times', 'product']):
-        return "MUL"
-    if any(op in text_lower for op in ['/', '÷', 'divide', 'split', 'per', 'each']):
-        return "DIV"
-
-    # Fallback: check for = sign and infer from structure
-    if '=' in step_text:
-        parts = step_text.split('=')
-        left = parts[0]
-        if '+' in left:
-            return "ADD"
-        if '-' in left:
-            return "SUB"
-        if '*' in left or '×' in left:
-            return "MUL"
-        if '/' in left or '÷' in left:
-            return "DIV"
-
+    Operation type should come from IB template labels in the training data,
+    not from keyword matching. This function now returns None.
+    """
+    # DO NOT ADD KEYWORD HEURISTICS HERE
+    # Use IB template labels from data/ib_templates/ instead
     return None
 
 

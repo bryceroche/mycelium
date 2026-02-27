@@ -1,6 +1,9 @@
 # Mycelium v6
 
-**99.95% accuracy on GSM8K** (7,375/7,378 correct) | **16 problems/second** | **100x faster than CoT**
+## avoid these like the plague!  if you spot these patterns in our repo pls purge immediately!
+avoid keyword heuristics
+avoid hardcoded patterns
+avoid regex
 
 ## What This Is
 
@@ -30,11 +33,13 @@ INFERENCE: Problem text → 3 specialists → candidate search → symbolic exec
 
 | Model | Task | Approach |
 |-------|------|----------|
-| C1: Segmenter | BIO token tagging | Token classification head |
+| C1: Relevance Scorer | Per-token relevance (0-1) | Regression head (MSE loss) |
 | C2: Classifier | Span group → operation (ADD/SUB/MUL/DIV) | Sequence classification |
 | C3: Extractor | Operation → typed arguments | Generative (Instruct) |
 
 All models are Qwen-0.5B (~500M params each).
+
+**C1 Note:** Outputs continuous relevance scores, NOT binary IO tags. Teacher attention is scattered (non-contiguous clusters), not ribbons. Binary tagging = premature collapse. See `plan/six_model.md`.
 
 
 ## The Inference Pipeline
@@ -45,19 +50,6 @@ All models are Qwen-0.5B (~500M params each).
 4. **Execute + score + pick** best answer
 
 **Key trick:** Batch all candidates together. Cuts latency from ~20s to ~2s per problem.
-
-
-## The Accuracy Journey
-
-```
-22%    → Qwen-0.5B baseline (autoregressive)
-65%    → Decomposition into 3 specialists
-81%    → Improved segmentation + candidate search
-93%    → Better extraction (spelled-out numbers)
-99.95% → Comprehensive bridging search
-```
-
-3 remaining failures: combinatorics puzzle, exponential growth, number parsing edge case.
 
 
 ## Core Principles
@@ -97,6 +89,24 @@ Small numbers (2-10) excluded — they're in problem text or derived, not world 
 - ACC_SUB: max minus others ("remaining", "change")
 - AVG: mean of results ("average")
 - DERIVED_MUL: product of recent results (unit conversion)
+
+
+## Training Data Prep (Lambda MapReduce)
+
+**Bring compute to data, not data to compute.**
+
+For large-scale training data extraction (C1 relevance, C2 templates, etc.):
+- Chunk large files into ~200MB pieces ("golden_medusa" chunks)
+- Process chunks via AWS Lambda in parallel
+- Lambda reads/writes S3 directly, no data movement
+
+```
+S3 chunks (200MB) → 74 parallel Lambdas → S3 (extracted data)
+```
+
+**Why not EC2?** Moving 16GB+ to/from EC2 is slow and costs egress. Lambda runs adjacent to S3.
+
+**Golden Medusa chunks:** `s3://mycelium-data/iaf_extraction/chunked/`
 
 
 ## Beads Workflow

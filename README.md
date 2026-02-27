@@ -4,25 +4,28 @@
 
 > λ — λανθάνω (lanthánō) — to escape notice; to be unseen
 > 
-> JSD reveals latent structure in attention flow  
-> IAF reconstructs operator influence across layers  
-> Structure parser assembles the compositional program  
+> JSD reveals latent boundaries in the flow of attention  
+> IAF separates reading from reasoning — the dual phases hidden in every forward pass  
+> FFT extracts the frequency of thought — each oscillation a computation the model never knew it performed  
+> IB discovers the taxonomy of operations — spectral lines emerging from continuous signal  
+> The prism decomposes. The specialists distill. Sympy collapses the wave function  
 > 
-> Mycelium — the unseen network of computation
+> Mycelium — the unseen network of computation, made visible
 
 ---
-
-**99.95% on GSM8K** (7,375/7,378) | **17.2% on MATH** (and climbing) | **No CoT at inference** | **1B parameters**
 
 ## Documentation
 
 | Document | Description |
 |----------|-------------|
+| [What we are building](plan/section_lkup.md) | Lookup table approach for inference |
+| [Six Model Training Guide](plan/six_model.md) | Step-by-step guide for training all six specialist models |
+| [MCTS Wrapper](plan/mcts_wrapper.md) | Monte Carlo Tree Search layer design |
+| [Wave Function Collapse](plan/section_wfc.md) | Beam inference via wave function collapse |
+| [Observations: Abacus](plan/obs_abacus.md) | Abacus analogy and observations |
+| [Observations: Prism](plan/obs_prism.md) | Prism analogy and observations |
+| [Observations: Lambda](plan/obs_lambda.md) | Lambda (λανθάνω) etymology and observations |
 | [Field Guide](plan/field_guide.md) | Lessons learned, bugs encountered, tricks that work |
-| [Training Pipeline](plan/training_pipeline.md) | Full IAF + clause expansion training pipeline |
-| [Training Guide (C1-C6)](plan/mycelium_c1_c6_training_guide.md) | Step-by-step guide for training all six specialist models |
-| [Paper Draft](plan/paper.md) | Technical paper with methodology and results |
-
 ---
 
 ## The Big Picture
@@ -68,6 +71,7 @@ Same model, same heads, two phases, fundamentally different information:
 ## Error Attribution and Benefits of inference model specialization
 
 Splitting span segmentation, classification, and extraction into separate components allows for precise error attribution.  It also allows the qwen .5b inference model to specialize for each task.
+
 ---
 
 ### Tricks That Work

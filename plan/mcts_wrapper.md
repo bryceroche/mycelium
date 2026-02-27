@@ -27,27 +27,6 @@ This makes the MCTS rollout trivially cheap. Generate a candidate path through t
 
 Each level of the tree corresponds to a pipeline stage where the model's confidence is below a threshold. High-confidence decisions don't branch — they pass through as-is.
 
-```
-                        Problem Text
-                             │
-                    ┌────────┼────────┐
-                    │   C1 Segmentations   │  (usually 1 — segmentation is rarely ambiguous)
-                    │        │              │
-                    └────────┼────────┘
-                             │
-              ┌──────────────┼──────────────┐
-              │              │              │
-         C2: QUAD_SOLVE  C2: FACTOR   C2: SIMPLIFY     ← main branching point
-              │              │              │
-         C3: x²+3x-10=0 C3: (x+5)(x-2) C3: x²+3x-10  ← second branching point
-              │              │              │
-         C5: DAG         C5: DAG       C5: DAG          ← usually deterministic
-              │              │              │
-         Sympy: ✓        Sympy: ✓      Sympy: ✗         ← free verification
-         x={2,-5}        x={2,-5}      (no solve)
-              │              │
-         Both correct — stop early
-```
 
 **Key insight:** Most branches die at sympy execution. Wrong template + wrong expression = sympy crash. This natural pruning keeps the effective branching factor small even when theoretical branching factor is large.
 
@@ -67,51 +46,6 @@ Not all pipeline stages contribute equal uncertainty. Based on our error attribu
 | C6 (Goal Resolver) | Low (1–2) | Answer format is almost always unambiguous from the question. |
 
 **Practical implication:** MCTS search concentrates on the C2 × C3 subspace. A tree exploring 5 C2 options × 3 C3 options × 1 everything else = 15 candidate paths. At ~3ms per sympy execution, that's 45ms of verification. Negligible.
-
----
-
-## The Algorithm
-
-```
-function MCTS_Solve(problem):
-
-    # Phase 1: Run the deterministic stages
-    clauses = C1.segment(problem)                    # usually unambiguous
-    goals = C6.classify_goal(problem)                # usually unambiguous
-
-    # Phase 2: Get candidate distributions for ambiguous stages
-    for each clause:
-        template_dist = C2.classify(clause)          # top-k templates with probabilities
-        
-    # Phase 3: Tree search over uncertain decisions
-    candidates = []
-    for template_combo in top_k_combinations(template_dists):
-        
-        for each clause, template in zip(clauses, template_combo):
-            expressions = C3.extract_top_k(clause, template)    # top-k expressions
-            
-            for expr_combo in top_k_combinations(expressions):
-                dag = C5.resolve_dependencies(clauses, expr_combo)
-                bridged_dag = C4.add_bridging(dag)
-                
-                # Phase 4: Free verification
-                result = sympy.execute(bridged_dag, goals)
-                
-                if result.valid:
-                    candidates.append({
-                        "answer": result.answer,
-                        "path": (template_combo, expr_combo, dag),
-                        "confidence": product_of_probabilities(template_combo, expr_combo)
-                    })
-
-    # Phase 5: Select answer
-    if len(candidates) == 0:
-        return FAILED
-    if all candidates agree:
-        return candidates[0].answer                  # high confidence
-    else:
-        return majority_vote(candidates)             # or highest joint probability
-```
 
 ---
 
@@ -195,29 +129,5 @@ Use MCTS results to improve the base models. When MCTS finds that the argmax pat
 ---
 
 ## The Big Picture
-
-```
-┌─────────────────────────────────────────────────────┐
-│                    MCTS Search Layer                 │
-│                                                     │
-│   ┌─────┐   ┌─────┐   ┌─────┐   ┌─────┐          │
-│   │ C1  │──▶│ C2  │──▶│ C3  │──▶│ C5  │──┐       │
-│   │Segm.│   │Class│   │Extr.│   │ DAG │  │       │
-│   └─────┘   └──┬──┘   └──┬──┘   └─────┘  │       │
-│                │  ↕       │  ↕              │       │
-│              branch    branch              │       │
-│              if low    if low              ▼       │
-│              conf.     conf.          ┌────────┐   │
-│                                       │ Sympy  │   │
-│   ┌─────┐   ┌─────┐                  │Execute │   │
-│   │ C6  │   │ C4  │──────────────────▶│& Verify│   │
-│   │Goal │   │Bridge│                  └────┬───┘   │
-│   └─────┘   └─────┘                       │       │
-│                                       ✓ or ✗       │
-│                                                     │
-│   Search budget: 1 pass (easy) to 50 paths (hard)  │
-│   Total params: ~3B learned + sympy (deterministic) │
-└─────────────────────────────────────────────────────┘
-```
 
 The six specialists provide the moves. Sympy provides the evaluation. MCTS provides the search. Together: a system that can explore structured reasoning paths at negligible cost compared to having a large model explore by generating thousands of tokens.

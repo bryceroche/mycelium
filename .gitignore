@@ -39,7 +39,8 @@ ideas.md
 
 # Results and data
 results/
-data/
+data/*.json
+data/*.db
 *.db
 *.sqlite
 
