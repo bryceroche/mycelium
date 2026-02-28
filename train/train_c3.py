@@ -197,7 +197,7 @@ def main():
     model = AutoModelForCausalLM.from_pretrained(
         MODEL_NAME,
         trust_remote_code=True,
-        torch_dtype=torch.float16,
+        torch_dtype=torch.float32,
     )
     model.config.pad_token_id = tokenizer.pad_token_id
 

@@ -6,7 +6,7 @@
 > 
 > JSD reveals latent boundaries in the flow of attention  
 > IAF separates reading from reasoning — the dual phases hidden in every forward pass  
-> The heart beat of attention heads pulse between thought and ground — each silence a computation the model never knew it performed  
+> The heartbeat of an attention head pulses between thought and ground — each silence a computation the model never knew it performed  
 > IB discovers the taxonomy of operations — spectral lines emerging from continuous signal  
 > The prism decomposes. The specialists distill. Sympy collapses the wave function  
 > 
