@@ -1,11 +1,36 @@
 # Mycelium v6
 
-## avoid these like the plague!  if you spot these patterns in our repo pls purge immediately!
+## Large Files will FREEZE you
+Check the size of the file before opening it
+Do not open any file over 5MB 
+Many of our files in S3 are over 5MB DO NOT OPEN THEM
+never cat or print large JSON files. 
+Use head -c 1000 or python -c "import json; d=json.load(open(f)); print(len(d))" for inspection
+
+**Safe preview method:**
+```bash
+aws s3 cp s3://mycelium-data/path/to/file.json - | head -c 3000
+```
+
+## Use Lambda Map Reduce to process S3 files
+Do not copy them to EC2 VM
+Process directly in S3 with Lambda Map Reduce 
+Set Lambda memory to 3GB NOT 1GB
+
+
+## GSM8K Data Quarantine
+
+All GSM8K data has been moved to `s3://mycelium-data/archive/gsm8k/`.
+**NEVER use GSM8K for training C2/C3** - it only has 6 basic operations.
+**ALWAYS use MATH data** - it has 40 IB templates.
+
+## avoid these patterns like the plague  
+if you spot these patterns in our repo pls purge immediately!
 avoid keyword heuristics
 avoid hardcoded patterns
 avoid regex
 
-## What This Is
+## What we are building
 
 A 72B teacher model solves math problems via chain-of-thought. We extract computation structure from its attention patterns and distill it into three 0.5B student models that reproduce the reasoning without generating any text at inference.
 
@@ -14,37 +39,17 @@ TRAINING:  Teacher solves problems → extract spans via JSD → train 3 special
 INFERENCE: Problem text → 3 specialists → candidate search → symbolic executor → answer
 ```
 
-
-## Core Scripts
-
-**Inference** (`inference/`):
-- `e2e_pipeline.py` — Main E2E pipeline
-- `executor.py` — Symbolic executor
-- `candidate_generator.py` — Span groupings
-- `eval_quick.py` — Evaluation
-- `diagnostic.py` — Error attribution
-
-**Training** (`train/`):
-- `train_*.py` — Train models
-- `generate_*.py` — Generate data
-
-
-## Current Architecture (3 Models)
+## Current Architecture 
 
 | Model | Task | Approach |
 |-------|------|----------|
-| C1: Relevance Scorer | Per-token relevance (0-1) | Regression head (MSE loss) |
 | C2: Classifier | Span group → operation (ADD/SUB/MUL/DIV) | Sequence classification |
 | C3: Extractor | Operation → typed arguments | Generative (Instruct) |
 
 All models are Qwen-0.5B (~500M params each).
 
-**C1 Note:** Outputs continuous relevance scores, NOT binary IO tags. Teacher attention is scattered (non-contiguous clusters), not ribbons. Binary tagging = premature collapse. See `plan/six_model.md`.
-
-
 ## The Inference Pipeline
 
-1. **Segment** problem text into spans (C1)
 2. **Generate candidate groupings** (search, not learned — 5-15 candidates)
 3. **Classify + extract** each group (C2, C3)
 4. **Execute + score + pick** best answer
@@ -62,52 +67,6 @@ Models don't need to be perfect. Bad predictions fail to produce valid answers �
 
 **Error attribution drives development.**
 Every improvement came from diagnosing failures.
-
-
-## Aspirational: Full 6-Model Architecture
-
-The current 3-model architecture achieves 99.95%. Planned additions for MATH dataset:
-
-| Model | Task | Why Needed |
-|-------|------|------------|
-| C4: Implicit Ops | Bridging pattern detection | Handle "total", "average", "remaining" |
-| C5: Dep Resolver | Wire execution DAG | Connect operations that share values |
-| C6: Goal Resolver | Answer type + hint | "How much change?" → try SUB |
-
-**Domain constants** — only genuinely orphaned values (>80% orphan rate):
-```python
-DOMAIN_CONSTANTS = {
-    60: "min/hr", 24: "hr/day", 7: "day/wk",
-    52: "wk/yr", 12: "mo/yr", 365: "day/yr",
-    100: "%", 1000: "g/kg",
-}
-```
-Small numbers (2-10) excluded — they're in problem text or derived, not world knowledge.
-
-**Bridging templates** (IB-discovered):
-- ACC_ADD: sum all results ("total", "altogether")
-- ACC_SUB: max minus others ("remaining", "change")
-- AVG: mean of results ("average")
-- DERIVED_MUL: product of recent results (unit conversion)
-
-
-## Training Data Prep (Lambda MapReduce)
-
-**Bring compute to data, not data to compute.**
-
-For large-scale training data extraction (C1 relevance, C2 templates, etc.):
-- Chunk large files into ~200MB pieces ("golden_medusa" chunks)
-- Process chunks via AWS Lambda in parallel
-- Lambda reads/writes S3 directly, no data movement
-
-```
-S3 chunks (200MB) → 74 parallel Lambdas → S3 (extracted data)
-```
-
-**Why not EC2?** Moving 16GB+ to/from EC2 is slow and costs egress. Lambda runs adjacent to S3.
-
-**Golden Medusa chunks:** `s3://mycelium-data/iaf_extraction/chunked/`
-
 
 ## Beads Workflow
 
