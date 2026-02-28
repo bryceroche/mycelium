@@ -83,7 +83,6 @@ data/
 # Lambda build artifacts
 lambda/*/lambda.zip
 lambda/*/package/
-!ib_true_templates.json
 
 # Shell scripts
 *.sh
