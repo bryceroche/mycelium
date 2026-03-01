@@ -104,18 +104,20 @@ class C3Extractor:
     def __init__(self, model_path: str):
         self.tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
         self.model = AutoModelForCausalLM.from_pretrained(
-            model_path, trust_remote_code=True, torch_dtype=torch.float16
+            model_path, trust_remote_code=True, torch_dtype=torch.float32,
+            attn_implementation="eager"  # Avoid SDPA CUBLAS issues
         )
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
             self.tokenizer.padding_side = "left"  # For batch generation
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # Force CPU due to CUDA driver issues on some VMs
+        self.device = torch.device("cpu")
         self.model = self.model.to(self.device)
         self.model.eval()
         print(f"C3 loaded on {self.device}")
 
-    def extract_batch(self, problems: list, templates: list, batch_size: int = 8) -> list:
+    def extract_batch(self, problems: list, templates: list, batch_size: int = 1) -> list:
         """Batch extract expressions."""
         all_results = []
 
@@ -157,25 +159,27 @@ class C3Extractor:
 # Sympy Utilities
 # ============================================================
 
-def eval_expr(expr_str: str):
+def check_answer(predicted: str, gold: str) -> bool:
+    """Check if predicted expression matches gold - handles both numeric and symbolic."""
     try:
-        expr = sympy.sympify(expr_str)
-        result = float(expr.evalf())
-        if result == result:  # Not NaN
-            return result, True
+        pred = sympy.sympify(predicted)
+        gold_expr = sympy.sympify(gold)
+        # Try numeric equality first
+        if pred.is_number and gold_expr.is_number:
+            return abs(float(pred) - float(gold_expr)) < 1e-6
+        # Try symbolic equivalence
+        return sympy.simplify(pred - gold_expr) == 0
     except:
-        pass
-    return None, False
+        return False
 
 
-def numeric_match(pred_expr: str, gold_expr: str, tol: float = 1e-4) -> bool:
-    pred_val, pred_ok = eval_expr(pred_expr)
-    gold_val, gold_ok = eval_expr(gold_expr)
-    if pred_ok and gold_ok:
-        if gold_val == 0:
-            return abs(pred_val) < tol
-        return abs(pred_val - gold_val) / max(abs(gold_val), 1e-10) < tol
-    return False
+def is_valid_sympy(expr_str: str) -> bool:
+    """Check if expression is valid sympy."""
+    try:
+        sympy.sympify(expr_str)
+        return True
+    except:
+        return False
 
 
 # ============================================================
@@ -280,29 +284,29 @@ def run_test(c2_path: str, c3_path: str, data_path: str, n_problems: int = 50):
 
     # C3: Batch extract (using gold templates for evaluation)
     print("\nRunning C3 batch extraction...")
+    torch.cuda.empty_cache()  # Clear CUDA cache before C3
     templates = [p["template"] for p in problems]
-    c3_exprs = c3.extract_batch(texts, templates, batch_size=8)
+    c3_exprs = c3.extract_batch(texts, templates, batch_size=1)
 
     # C3 metrics
     sympy_valid = 0
-    numeric_correct = 0
+    symbolic_correct = 0
     exact_match = 0
 
     for i, (prob, pred_expr) in enumerate(zip(problems, c3_exprs)):
         gold_expr = prob["gold_expression"]
 
         # Valid sympy?
-        _, is_valid = eval_expr(pred_expr)
-        if is_valid:
+        if is_valid_sympy(pred_expr):
             sympy_valid += 1
 
         # Exact match?
         if pred_expr.strip() == gold_expr.strip():
             exact_match += 1
 
-        # Numeric match?
-        if numeric_match(pred_expr, gold_expr):
-            numeric_correct += 1
+        # Symbolic/numeric equivalence?
+        if check_answer(pred_expr, gold_expr):
+            symbolic_correct += 1
 
     # Results
     print("\n" + "=" * 70)
@@ -315,19 +319,19 @@ def run_test(c2_path: str, c3_path: str, data_path: str, n_problems: int = 50):
     print(f"  Top-1:        {c2_top1_correct}/{len(problems)} ({100*c2_top1_correct/len(problems):.1f}%)")
     print()
     print("C3 Extractor (using gold templates):")
-    print(f"  Sympy valid:  {sympy_valid}/{len(problems)} ({100*sympy_valid/len(problems):.1f}%)")
-    print(f"  Exact match:  {exact_match}/{len(problems)} ({100*exact_match/len(problems):.1f}%)")
-    print(f"  Numeric match: {numeric_correct}/{len(problems)} ({100*numeric_correct/len(problems):.1f}%)")
+    print(f"  Sympy valid:    {sympy_valid}/{len(problems)} ({100*sympy_valid/len(problems):.1f}%)")
+    print(f"  Exact match:    {exact_match}/{len(problems)} ({100*exact_match/len(problems):.1f}%)")
+    print(f"  Symbolic match: {symbolic_correct}/{len(problems)} ({100*symbolic_correct/len(problems):.1f}%)")
     print("=" * 70)
 
     # Show some examples
     print("\nSample predictions:")
-    for i in range(min(5, len(problems))):
+    for i in range(min(10, len(problems))):
         prob = problems[i]
         pred = c3_exprs[i]
         gold = prob["gold_expression"]
         c2_labels = [l for l,_ in c2_results[i]["labels"][:3]]
-        match = "✓" if numeric_match(pred, gold) else "✗"
+        match = "✓" if check_answer(pred, gold) else "✗"
         print(f"\n{i+1}. Template: {prob['template']}")
         print(f"   C2 predicted: {c2_labels}")
         print(f"   Gold: {gold}")
@@ -338,7 +342,7 @@ def run_test(c2_path: str, c3_path: str, data_path: str, n_problems: int = 50):
         "c2_top1": c2_top1_correct,
         "c3_valid": sympy_valid,
         "c3_exact": exact_match,
-        "c3_numeric": numeric_correct,
+        "c3_symbolic": symbolic_correct,
         "total": len(problems)
     }
 

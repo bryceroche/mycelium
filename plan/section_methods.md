@@ -12,7 +12,7 @@ This pattern — generate locally, stream to object storage, process later — r
 
 ### Lambda MapReduce on S3
 
-AWS Lambda functions with 1-10GB memory and 300-second timeouts process individual IAF chunks in parallel. A coordinator script invokes one Lambda per chunk, collects results, and aggregates. This pattern handled:
+AWS Lambda functions with 1-10GB memory and 300-second timeouts process individual IAF chunks in parallel.  We used 3GB memory and 200MB IAF files for processing. A coordinator script invokes one Lambda per chunk, collects results, and aggregates. This pattern handled:
 
 - **IAF extraction**: Per-head, per-token attention-to-input fractions across all generation tokens
 - **Heartbeat analysis**: Thresholding and run-length encoding of IAF traces to count computation pulses
@@ -34,9 +34,7 @@ Modern transformer implementations in HuggingFace expose per-layer, per-head att
 
 The critical architectural decision: we use HuggingFace's native attention extraction rather than custom hooks or activation patching. This ensures compatibility across model families (Llama, Mistral, Qwen) and versions, at the cost of extracting ALL attention rather than surgically targeting specific layers. The 33GB data volume is a direct consequence of this choice, justified by the S3 daemon making storage tractable and Lambda MapReduce making processing parallel.
 
-### vLLM Where Possible
-
-For inference-only tasks (generating CoT solutions, running the student pipeline), we use vLLM for its significantly higher throughput. vLLM's PagedAttention and continuous batching achieve 3-5x speedup over naive HuggingFace generation. However, vLLM does not expose raw attention matrices, so attention extraction still requires HuggingFace. The pipeline bifurcates: vLLM for fast generation, HuggingFace for attention analysis.
+16 A100 GPUs on Lambda Cloud with daemon sync to AWS S3 took ~6 hours to process ~7k MATH problems with full IAF extraction ~33GB of data.
 
 ### GPU Vectorization vs Python Loops
 
@@ -56,7 +54,7 @@ where $A^{(h)}$ is the attention matrix for head h. High IAF indicates the model
 
 IAF is the foundation signal. It separates reading from reasoning — the dual phases hidden in every forward pass. The binary alternation between high-IAF and low-IAF states produces the heartbeat.
 
-### The Heartbeat: Two Phases of Attention
+### The Heartbeat: Two Phases of Attention (Prefill & Decode)
 
 The IAF trace for a single computing head, viewed as a time series over generation tokens, exhibits binary switching between two states:
 
@@ -176,25 +174,12 @@ The 30-cluster solution at gain ≥ 0.15 was selected as the operating point, pr
 
 Small clusters (< min_size) that emerge during annealing are reabsorbed into their parent cluster — a "surface tension" mechanism that prevents proliferation of singleton or near-singleton templates that would provide too few training examples for the classifier. Setting min_size = 50 preserved rare but genuine operations (LOG: 441 steps, COMBINATORICS: 386 steps) while eliminating statistical artifacts.
 
-### Embedding Choice: Why Not Ask Qwen to Classify
-
-A natural question: why not simply prompt Qwen-0.5B (or a larger model) to classify each step's operation type? "Is this addition, multiplication, or division?"
-
-The answer is philosophical and practical. Philosophically, Mycelium's thesis is that operation types are **discovered** from attention patterns, not pre-specified. Asking a model to classify presupposes the taxonomy; IB discovers it. Practically, LLM classification introduces its own error modes — hallucinated labels, inconsistent granularity, sensitivity to prompt phrasing. IB on embeddings is deterministic and reproducible.
-
-The labels emerge from the data through information-theoretic optimization, not from a language model's interpretation of a prompt. This is the difference between asking a spectrometer to identify spectral lines and asking a human to name the colors they see.
-
-### Text Embeddings vs Math-Only Embeddings
-
-Early IB runs on full-text embeddings (including English prose surrounding mathematical expressions) consistently produced taxonomies dominated by topic similarity rather than operational similarity. Trigonometric steps clustered with other trigonometric steps regardless of operation (sin vs cos vs tan), because the surrounding text ("the triangle has angle...") dominated the embedding space.
-
-Extracting only mathematical expressions before embedding — stripping English and retaining LaTeX and symbolic content — improved cluster coherence by forcing the embedding to represent operational structure rather than topical context. However, the dominant factor in template quality was the presence of Y labels in the IB objective, not the embedding modality.
 
 ## X.5 Distributed Training: 8 × A10G
 
 ### Distributed Data Parallel (DDP)
 
-The C3 expression extractor trains on 28K+ examples using PyTorch's DistributedDataParallel across 8 A10G GPUs (g5.48xlarge instance, ~$16/hr). Each GPU processes a shard of the dataset with synchronized gradient updates. At 94-100% GPU utilization and 14-20GB memory per device, the 8-GPU configuration achieves near-linear scaling for the 0.5B parameter model.
+The C3 expression extractor trains on 28K+ examples using PyTorch's DistributedDataParallel across 8 A10 GPUs for IAF Extraction. Each GPU processes a shard of the dataset with synchronized gradient updates. At 94-100% GPU utilization and 14-20GB memory per device, the 8-GPU configuration achieves near-linear scaling for the 0.5B parameter model.
 
 ### Training Considerations: EOS Tokens and Data Quality
 
@@ -252,18 +237,6 @@ Our empirical observation: moderate overfitting (training loss significantly bel
 - **Early stopping on sympy parse rate**, not on validation loss — because lower loss on the wrong format is worse than higher loss on the right format
 
 The distinction between format memorization (desirable) and content memorization (mixed) suggests a two-phase training approach: first overfit to learn the output format with high learning rate, then fine-tune for content generalization with low learning rate and modest regularization.
-
-## X.8 Sympy as the Execution Engine: Why Not a DSL
-
-An early design consideration was whether to define a custom domain-specific language (DSL) for mathematical operations or to use sympy's existing symbolic algebra system.
-
-Arguments for a DSL: potentially simpler parsing, guaranteed coverage of exactly the operations we need, no ambiguity from sympy's internal representation choices (like division as multiplication by inverse).
-
-Arguments for sympy: mature symbolic computation engine with 15+ years of development, handles edge cases (division by zero, complex numbers, symbolic simplification) that a custom DSL would need to reimagine, extensive documentation and community support, and — critically — automatic verification. If sympy evaluates an expression and produces a result, that result is mathematically correct. A custom DSL would need its own verification layer.
-
-We chose sympy. The representation quirks (Pow for everything, Mul for division) caused friction in Y-label extraction but are manageable engineering issues. The alternative — building and debugging a custom symbolic computation engine — would have consumed months of development time for uncertain benefit.
-
-The principle: use the most mature, well-tested tool for execution, even if its interface is imperfect. Engineering effort is better spent on the novel components (attention extraction, IB discovery, specialist training) than on reinventing symbolic algebra.
 
 ## X.9 Ideas Explored and Deferred
 
