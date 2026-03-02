@@ -33,6 +33,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.data.distributed import DistributedSampler
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
 from transformers import AutoModel, AutoTokenizer
 
 # Add parent to path for imports
@@ -203,6 +206,8 @@ class Phase2Trainer:
     - Pretrained encoders (MiniLM, RoBERTa): frozen or 1e-6
     - New heads (message gates, C4): 1e-4
     - Message networks: 1e-4
+
+    Supports DDP for multi-GPU training.
     """
 
     def __init__(
@@ -211,10 +216,21 @@ class Phase2Trainer:
         lr_config: Optional[Dict] = None,
         loss_weights: Optional[Dict] = None,
         device: torch.device = None,
+        local_rank: int = -1,
     ):
-        self.pipeline = pipeline
-        self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.pipeline.to(self.device)
+        self.local_rank = local_rank
+        self.is_main = local_rank <= 0  # True for single-GPU or rank 0
+
+        if local_rank >= 0:
+            self.device = torch.device(f"cuda:{local_rank}")
+            pipeline = pipeline.to(self.device)
+            self.pipeline = DDP(pipeline, device_ids=[local_rank], find_unused_parameters=True)
+            self.pipeline_unwrapped = pipeline
+        else:
+            self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            pipeline.to(self.device)
+            self.pipeline = pipeline
+            self.pipeline_unwrapped = pipeline
 
         # Default lr config
         if lr_config is None:
@@ -251,11 +267,12 @@ class Phase2Trainer:
     def _build_param_groups(self) -> List[Dict]:
         """Build optimizer parameter groups with different learning rates."""
         groups = []
+        p = self.pipeline_unwrapped  # Use unwrapped for param access
 
         # C2 encoder (low lr or frozen)
         c2_encoder_params = []
-        if hasattr(self.pipeline.c2.c2, 'backbone'):
-            c2_encoder_params = list(self.pipeline.c2.c2.backbone.parameters())
+        if hasattr(p.c2.c2, 'backbone'):
+            c2_encoder_params = list(p.c2.c2.backbone.parameters())
         if c2_encoder_params:
             groups.append({
                 "params": c2_encoder_params,
@@ -265,8 +282,8 @@ class Phase2Trainer:
 
         # C3 encoder (low lr or frozen)
         c3_encoder_params = []
-        if hasattr(self.pipeline.c3.c3, 'backbone'):
-            c3_encoder_params = list(self.pipeline.c3.c3.backbone.parameters())
+        if hasattr(p.c3.c3, 'backbone'):
+            c3_encoder_params = list(p.c3.c3.backbone.parameters())
         if c3_encoder_params:
             groups.append({
                 "params": c3_encoder_params,
@@ -276,11 +293,11 @@ class Phase2Trainer:
 
         # C2/C3 heads and message gates (normal lr)
         head_params = []
-        if hasattr(self.pipeline.c2.c2, 'classifier'):
-            head_params.extend(self.pipeline.c2.c2.classifier.parameters())
-        head_params.extend(self.pipeline.c2.msg_gate.parameters())
-        head_params.extend(self.pipeline.c3.msg_gate.parameters())
-        head_params.extend(self.pipeline.c3.op_embedding.parameters())
+        if hasattr(p.c2.c2, 'classifier'):
+            head_params.extend(p.c2.c2.classifier.parameters())
+        head_params.extend(p.c2.msg_gate.parameters())
+        head_params.extend(p.c3.msg_gate.parameters())
+        head_params.extend(p.c3.op_embedding.parameters())
         if head_params:
             groups.append({
                 "params": head_params,
@@ -290,14 +307,14 @@ class Phase2Trainer:
 
         # C4 assembler (normal lr)
         groups.append({
-            "params": list(self.pipeline.c4.parameters()),
+            "params": list(p.c4.parameters()),
             "lr": self.lr_config["assembler"],
             "name": "c4_assembler",
         })
 
         # Message networks (normal lr)
         groups.append({
-            "params": list(self.pipeline.messages.parameters()),
+            "params": list(p.messages.parameters()),
             "lr": self.lr_config["messages"],
             "name": "message_networks",
         })
@@ -373,14 +390,14 @@ class Phase2Trainer:
 
         self.optimizer.step()
 
-        # Anneal Gumbel temperature
-        self.pipeline.c4.discretizer.anneal()
+        # Anneal Gumbel temperature (use unwrapped for non-DDP methods)
+        self.pipeline_unwrapped.c4.discretizer.anneal()
 
         # Update step count
         self.global_step += 1
 
         loss_log["total_loss"] = total_loss.item()
-        loss_log["gumbel_tau"] = self.pipeline.c4.discretizer.get_tau()
+        loss_log["gumbel_tau"] = self.pipeline_unwrapped.c4.discretizer.get_tau()
         loss_log["reward_baseline"] = self.reward_baseline
 
         return loss_log
@@ -393,7 +410,7 @@ class Phase2Trainer:
             loss_log = self.train_step(batch)
             epoch_losses.append(loss_log)
 
-            if batch_idx % 50 == 0:
+            if batch_idx % 50 == 0 and self.is_main:
                 avg = {
                     k: sum(d.get(k, 0) for d in epoch_losses[-50:]) / min(50, len(epoch_losses))
                     for k in loss_log
@@ -446,13 +463,16 @@ class Phase2Trainer:
         }
 
     def save_checkpoint(self, path: str, extra_state: Dict = None):
-        """Save training checkpoint."""
+        """Save training checkpoint (only rank 0 saves)."""
+        if not self.is_main:
+            return
+
         state = {
-            "pipeline_state_dict": self.pipeline.state_dict(),
+            "pipeline_state_dict": self.pipeline_unwrapped.state_dict(),
             "optimizer_state_dict": self.optimizer.state_dict(),
             "global_step": self.global_step,
             "reward_baseline": self.reward_baseline,
-            "gumbel_tau": self.pipeline.c4.discretizer.get_tau(),
+            "gumbel_tau": self.pipeline_unwrapped.c4.discretizer.get_tau(),
             "lr_config": self.lr_config,
             "loss_weights": self.loss_weights,
         }
@@ -464,17 +484,18 @@ class Phase2Trainer:
 
     def load_checkpoint(self, path: str):
         """Load training checkpoint."""
-        state = torch.load(path, map_location=self.device)
+        state = torch.load(path, map_location=self.device, weights_only=False)
 
-        self.pipeline.load_state_dict(state["pipeline_state_dict"])
+        self.pipeline_unwrapped.load_state_dict(state["pipeline_state_dict"])
         self.optimizer.load_state_dict(state["optimizer_state_dict"])
         self.global_step = state.get("global_step", 0)
         self.reward_baseline = state.get("reward_baseline", 0.5)
 
         if "gumbel_tau" in state:
-            self.pipeline.c4.discretizer.tau.fill_(state["gumbel_tau"])
+            self.pipeline_unwrapped.c4.discretizer.tau.fill_(state["gumbel_tau"])
 
-        print(f"Loaded checkpoint from {path} (step {self.global_step})")
+        if self.is_main:
+            print(f"Loaded checkpoint from {path} (step {self.global_step})")
 
 
 # ---------------------------------------------------------------------------
@@ -556,18 +577,33 @@ def main():
     parser.add_argument("--resume", type=str, default=None,
                         help="Resume from checkpoint")
 
+    # DDP support
+    parser.add_argument("--local_rank", type=int, default=-1,
+                        help="Local rank for distributed training (set by torchrun)")
+
     args = parser.parse_args()
 
+    # Initialize distributed training
+    local_rank = int(os.environ.get("LOCAL_RANK", args.local_rank))
+    if local_rank >= 0:
+        dist.init_process_group(backend="nccl")
+        torch.cuda.set_device(local_rank)
+        is_main = local_rank == 0
+    else:
+        is_main = True
+
     # Create output dir
-    os.makedirs(args.output_dir, exist_ok=True)
+    if is_main:
+        os.makedirs(args.output_dir, exist_ok=True)
 
     # Load tokenizer (use C2's tokenizer for simplicity)
     from transformers import AutoTokenizer
     tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 
     # Load pretrained C2
-    print(f"Loading C2 from {args.c2_checkpoint}...")
-    c2_state = torch.load(args.c2_checkpoint, map_location="cpu")
+    if is_main:
+        print(f"Loading C2 from {args.c2_checkpoint}...")
+    c2_state = torch.load(args.c2_checkpoint, map_location="cpu", weights_only=False)
 
     # Reconstruct C2 model
     from models.train_c2 import C2Model
@@ -578,8 +614,9 @@ def main():
     c2_model.load_state_dict(c2_state["model_state_dict"])
 
     # Load pretrained C3
-    print(f"Loading C3 from {args.c3_checkpoint}...")
-    c3_state = torch.load(args.c3_checkpoint, map_location="cpu")
+    if is_main:
+        print(f"Loading C3 from {args.c3_checkpoint}...")
+    c3_state = torch.load(args.c3_checkpoint, map_location="cpu", weights_only=False)
 
     # Reconstruct C3 model
     from models.c3_extractor import C3SpanExtractor
@@ -587,7 +624,8 @@ def main():
     c3_model.load_state_dict(c3_state["model_state_dict"])
 
     # Create pipeline
-    print("Creating constraint pipeline...")
+    if is_main:
+        print("Creating constraint pipeline...")
     pipeline = MyceliumConstraintPipeline(
         c2_model=c2_model,
         c3_model=c3_model,
@@ -597,10 +635,11 @@ def main():
     )
 
     # Print parameter counts
-    counts = count_parameters(pipeline)
-    print("\nParameter counts:")
-    for name, count in counts.items():
-        print(f"  {name}: {count:,}")
+    if is_main:
+        counts = count_parameters(pipeline)
+        print("\nParameter counts:")
+        for name, count in counts.items():
+            print(f"  {name}: {count:,}")
 
     # Create trainer
     lr_config = {
@@ -620,6 +659,7 @@ def main():
         pipeline=pipeline,
         lr_config=lr_config,
         loss_weights=loss_weights,
+        local_rank=local_rank,
     )
 
     # Resume if requested
@@ -628,20 +668,25 @@ def main():
 
     # Enable gradient checkpointing if requested
     if args.gradient_checkpointing:
-        if hasattr(pipeline.c3.c3, 'backbone') and hasattr(pipeline.c3.c3.backbone, 'gradient_checkpointing_enable'):
-            pipeline.c3.c3.backbone.gradient_checkpointing_enable()
-            print("Enabled gradient checkpointing for C3")
+        p = trainer.pipeline_unwrapped
+        if hasattr(p.c3.c3, 'backbone') and hasattr(p.c3.c3.backbone, 'gradient_checkpointing_enable'):
+            p.c3.c3.backbone.gradient_checkpointing_enable()
+            if is_main:
+                print("Enabled gradient checkpointing for C3")
 
     # Load data
-    print(f"\nLoading training data from {args.data_path}...")
+    if is_main:
+        print(f"\nLoading training data from {args.data_path}...")
     train_data = load_training_data(args.data_path)
-    print(f"Loaded {len(train_data)} training examples")
+    if is_main:
+        print(f"Loaded {len(train_data)} training examples")
 
     # Curriculum stages
     if args.curriculum:
         curriculum_steps = [int(s) for s in args.curriculum_steps.split(",")]
         curriculum_steps.append(None)  # Final stage: all steps
-        print(f"Curriculum learning enabled: stages {curriculum_steps}")
+        if is_main:
+            print(f"Curriculum learning enabled: stages {curriculum_steps}")
     else:
         curriculum_steps = [None]  # No curriculum
 
@@ -664,7 +709,8 @@ def main():
     belief_shift_history = []
 
     # Training loop with curriculum
-    print("\nStarting training...")
+    if is_main:
+        print("\nStarting training...")
     for epoch in range(args.epochs):
         # Determine curriculum stage
         if args.curriculum:
@@ -675,9 +721,10 @@ def main():
             max_steps = None
             stage_name = "all steps"
 
-        print(f"\n{'='*60}")
-        print(f"Epoch {epoch + 1}/{args.epochs} (Curriculum: {stage_name})")
-        print(f"{'='*60}")
+        if is_main:
+            print(f"\n{'='*60}")
+            print(f"Epoch {epoch + 1}/{args.epochs} (Curriculum: {stage_name})")
+            print(f"{'='*60}")
 
         # Create dataset for this curriculum stage
         train_dataset = Phase2Dataset(
@@ -691,12 +738,23 @@ def main():
             op_weights = train_dataset.op_weights
             trainer.op_weights = op_weights  # Pass to trainer
 
-        train_loader = DataLoader(
-            train_dataset,
-            batch_size=args.batch_size,
-            shuffle=True,
-            collate_fn=collate_fn,
-        )
+        # Use DistributedSampler for DDP
+        if local_rank >= 0:
+            sampler = DistributedSampler(train_dataset, shuffle=True)
+            sampler.set_epoch(epoch)  # For proper shuffling
+            train_loader = DataLoader(
+                train_dataset,
+                batch_size=args.batch_size,
+                sampler=sampler,
+                collate_fn=collate_fn,
+            )
+        else:
+            train_loader = DataLoader(
+                train_dataset,
+                batch_size=args.batch_size,
+                shuffle=True,
+                collate_fn=collate_fn,
+            )
 
         # Train
         epoch_losses = trainer.train_epoch(train_loader, epoch)
@@ -706,20 +764,21 @@ def main():
         avg_belief_shift = sum(d.get("belief_shift", 0) for d in epoch_losses) / len(epoch_losses)
         belief_shift_history.append(avg_belief_shift)
 
-        print(f"\nEpoch {epoch + 1} complete:")
-        print(f"  Avg loss: {avg_loss:.4f}")
-        print(f"  Avg belief_shift: {avg_belief_shift:.4f}")
+        if is_main:
+            print(f"\nEpoch {epoch + 1} complete:")
+            print(f"  Avg loss: {avg_loss:.4f}")
+            print(f"  Avg belief_shift: {avg_belief_shift:.4f}")
 
-        # Monitor belief_shift trend
-        if len(belief_shift_history) >= 3:
-            recent = belief_shift_history[-3:]
-            if all(recent[i] > recent[i-1] for i in range(1, len(recent))):
-                print("  ⚠️  belief_shift increasing - forward pass may be degrading")
-            elif all(recent[i] < recent[i-1] for i in range(1, len(recent))):
-                print("  ✓ belief_shift decreasing - beliefs converging on round 0")
+            # Monitor belief_shift trend
+            if len(belief_shift_history) >= 3:
+                recent = belief_shift_history[-3:]
+                if all(recent[i] > recent[i-1] for i in range(1, len(recent))):
+                    print("  [!] belief_shift increasing - forward pass may be degrading")
+                elif all(recent[i] < recent[i-1] for i in range(1, len(recent))):
+                    print("  [ok] belief_shift decreasing - beliefs converging on round 0")
 
         # Evaluate
-        if val_loader:
+        if val_loader and is_main:
             metrics = trainer.evaluate(val_loader)
             print(f"  Validation: acc={metrics['accuracy']:.4f}, "
                   f"exec_success={metrics['exec_success_rate']:.4f}")
@@ -735,7 +794,12 @@ def main():
     # Save final model
     final_path = os.path.join(args.output_dir, "final_model.pt")
     trainer.save_checkpoint(final_path, {"epoch": args.epochs})
-    print(f"\nTraining complete. Final model saved to {final_path}")
+    if is_main:
+        print(f"\nTraining complete. Final model saved to {final_path}")
+
+    # Cleanup DDP
+    if local_rank >= 0:
+        dist.destroy_process_group()
 
 
 if __name__ == "__main__":
