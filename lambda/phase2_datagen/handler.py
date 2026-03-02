@@ -186,17 +186,65 @@ def process_single_problem(problem: Dict) -> Optional[Dict]:
 s3 = boto3.client('s3')
 
 
+def process_iaf_record(record: Dict) -> Optional[Dict]:
+    """
+    Process an IAF extraction record into Phase 2 format.
+
+    IAF format has:
+      - generated_cot: The CoT reasoning
+      - problem_text: Original problem
+      - solution: Ground truth answer
+    """
+    problem_text = record.get("problem_text", "")
+    cot_text = record.get("generated_cot", "")
+    solution = record.get("solution", "")
+
+    # Try to extract numeric answer from solution
+    answer = None
+    if solution:
+        # Look for boxed answer first
+        boxed = re.search(r'\\boxed\{([^}]+)\}', solution)
+        if boxed:
+            ans_str = boxed.group(1)
+            nums = re.findall(r'-?\d+(?:\.\d+)?', ans_str)
+            if nums:
+                try:
+                    answer = float(nums[-1])
+                except ValueError:
+                    pass
+
+        # Fallback: last number in solution
+        if answer is None:
+            nums = re.findall(r'-?\d+(?:\.\d+)?', solution)
+            if nums:
+                try:
+                    answer = float(nums[-1])
+                except ValueError:
+                    pass
+
+    if answer is None:
+        return None
+
+    # Create problem dict for processing
+    return {
+        "problem": problem_text,
+        "solution": cot_text,  # Use generated_cot as solution
+        "answer": answer,
+        "level": record.get("level", "unknown"),
+    }
+
+
 def lambda_handler(event, context):
     """
     Lambda entry point.
 
-    Event format:
+    Event format for IAF chunks:
     {
         "input_bucket": "mycelium-data",
-        "input_key": "math/chunk_001.json",
+        "input_key": "iaf_extraction/chunked/instance1_iaf_v3_gpu0_valid_chunk_000.json",
         "output_bucket": "mycelium-data",
         "output_prefix": "phase2/processed/",
-        "chunk_id": "001"
+        "chunk_id": "000"
     }
 
     Or for direct data:
@@ -217,7 +265,14 @@ def lambda_handler(event, context):
 
             response = s3.get_object(Bucket=input_bucket, Key=input_key)
             content = response["Body"].read().decode("utf-8")
-            problems = json.loads(content)
+            raw_data = json.loads(content)
+
+            # Convert IAF records to problem format
+            problems = []
+            for record in raw_data:
+                prob = process_iaf_record(record)
+                if prob:
+                    problems.append(prob)
 
         # Process each problem
         results = []

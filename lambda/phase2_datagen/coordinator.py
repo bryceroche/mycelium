@@ -80,6 +80,24 @@ class Mapper:
         print(f"Loaded {len(data)} problems")
         return data
 
+    def list_iaf_chunks(self) -> List[str]:
+        """List all IAF chunk files in the input prefix."""
+        prefix = self.config.input_key
+        if not prefix.endswith('/'):
+            prefix += '/'
+
+        chunks = []
+        paginator = self.s3.get_paginator('list_objects_v2')
+
+        for page in paginator.paginate(Bucket=self.config.input_bucket, Prefix=prefix):
+            for obj in page.get('Contents', []):
+                key = obj['Key']
+                if key.endswith('.json'):
+                    chunks.append(key)
+
+        print(f"Found {len(chunks)} IAF chunk files")
+        return chunks
+
     def partition(self, data: List[Dict]) -> List[Tuple[str, List[Dict]]]:
         """Partition data into chunks."""
         chunks = []
@@ -91,14 +109,36 @@ class Mapper:
         print(f"Partitioned into {len(chunks)} chunks of ~{self.config.chunk_size} each")
         return chunks
 
-    def invoke_lambda(self, chunk_id: str, chunk_data: List[Dict]) -> Dict:
-        """Invoke Lambda function for one chunk."""
-        payload = {
-            "problems": chunk_data,
-            "output_bucket": self.config.output_bucket,
-            "output_prefix": f"{self.config.output_prefix}chunks/",
-            "chunk_id": chunk_id,
-        }
+    def partition_iaf_chunks(self, chunk_keys: List[str]) -> List[Tuple[str, str]]:
+        """Create chunk tasks for IAF files (one Lambda per file)."""
+        tasks = []
+        for i, key in enumerate(chunk_keys):
+            chunk_id = f"{i:04d}"
+            tasks.append((chunk_id, key))
+        return tasks
+
+    def invoke_lambda(self, chunk_id: str, chunk_data_or_key) -> Dict:
+        """Invoke Lambda function for one chunk.
+
+        chunk_data_or_key: Either a list of problems (direct) or an S3 key (IAF mode)
+        """
+        if isinstance(chunk_data_or_key, str):
+            # IAF mode: pass S3 key
+            payload = {
+                "input_bucket": self.config.input_bucket,
+                "input_key": chunk_data_or_key,
+                "output_bucket": self.config.output_bucket,
+                "output_prefix": f"{self.config.output_prefix}chunks/",
+                "chunk_id": chunk_id,
+            }
+        else:
+            # Direct mode: pass problems list
+            payload = {
+                "problems": chunk_data_or_key,
+                "output_bucket": self.config.output_bucket,
+                "output_prefix": f"{self.config.output_prefix}chunks/",
+                "chunk_id": chunk_id,
+            }
 
         try:
             response = self.lambda_client.invoke(
@@ -231,8 +271,13 @@ class Reducer:
 # Main coordinator
 # ---------------------------------------------------------------------------
 
-def run_map_reduce(config: MapReduceConfig):
-    """Run full map-reduce pipeline."""
+def run_map_reduce(config: MapReduceConfig, iaf_mode: bool = False):
+    """Run full map-reduce pipeline.
+
+    Args:
+        config: MapReduceConfig
+        iaf_mode: If True, treat input as IAF chunk directory
+    """
     start_time = time.time()
 
     # Map phase
@@ -241,8 +286,15 @@ def run_map_reduce(config: MapReduceConfig):
     print("=" * 60)
 
     mapper = Mapper(config)
-    input_data = mapper.load_input_data()
-    chunks = mapper.partition(input_data)
+
+    if iaf_mode:
+        # IAF mode: list chunk files and process each
+        chunk_keys = mapper.list_iaf_chunks()
+        chunks = mapper.partition_iaf_chunks(chunk_keys)
+    else:
+        # Direct mode: load and partition data
+        input_data = mapper.load_input_data()
+        chunks = mapper.partition(input_data)
 
     print(f"\nInvoking {len(chunks)} Lambda functions (max {config.max_parallel} parallel)...")
     map_results = mapper.map_parallel(chunks)
@@ -307,17 +359,19 @@ def main():
     parser = argparse.ArgumentParser(description="Phase 2 Data Generation via Lambda Map-Reduce")
 
     parser.add_argument("--input", type=str, required=True,
-                        help="Input S3 path (s3://bucket/key.json)")
+                        help="Input S3 path (s3://bucket/key.json or s3://bucket/prefix/ for IAF)")
     parser.add_argument("--output", type=str, required=True,
                         help="Output S3 path (s3://bucket/prefix/)")
     parser.add_argument("--lambda-function", type=str, default="phase2-datagen",
                         help="Lambda function name")
     parser.add_argument("--chunk-size", type=int, default=500,
-                        help="Problems per Lambda invocation")
+                        help="Problems per Lambda invocation (ignored in IAF mode)")
     parser.add_argument("--max-parallel", type=int, default=50,
                         help="Max concurrent Lambda invocations")
     parser.add_argument("--timeout", type=int, default=900,
                         help="Lambda timeout in seconds")
+    parser.add_argument("--iaf", action="store_true",
+                        help="IAF mode: input is a directory of IAF chunk files")
 
     args = parser.parse_args()
 
@@ -336,7 +390,7 @@ def main():
         timeout=args.timeout,
     )
 
-    run_map_reduce(config)
+    run_map_reduce(config, iaf_mode=args.iaf)
 
 
 if __name__ == "__main__":
