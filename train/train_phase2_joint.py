@@ -225,9 +225,16 @@ class Phase2Trainer:
 
         if local_rank >= 0:
             # DDP mode
+            # Note: some parameters may be unused on certain examples (execution paths vary)
+            # Using broadcast_buffers=False and gradient_as_bucket_view=True for efficiency
             self.device = torch.device(f"cuda:{local_rank}")
             pipeline = pipeline.to(self.device)
-            self.pipeline = DDP(pipeline, device_ids=[local_rank], find_unused_parameters=True)
+            self.pipeline = DDP(
+                pipeline,
+                device_ids=[local_rank],
+                broadcast_buffers=False,
+                gradient_as_bucket_view=True,
+            )
             self.pipeline_unwrapped = pipeline
         elif use_data_parallel:
             # DataParallel mode - simpler multi-GPU
