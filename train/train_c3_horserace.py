@@ -158,6 +158,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--model", choices=['roberta', 'roberta-large'], required=True)
     p.add_argument("--data-path", default="s3://mycelium-data/c3_span_training/c3_train_with_priors.jsonl")
+    p.add_argument("--preprocessed-path", default=None, help="Path to preprocessed .pt file (skip tokenization if provided)")
     p.add_argument("--output-dir", default="models/c3_horserace")
     p.add_argument("--epochs", type=int, default=5)
     p.add_argument("--batch-size", type=int, default=4)
@@ -173,16 +174,34 @@ def main():
     else: device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     main_proc = lr == 0
     if main_proc: print("=" * 70 + f"\nC3 SPAN EXTRACTOR - {args.model.upper()} + Slot Embeddings\n" + "=" * 70 + f"\nModel: {model_name}\nDevice: {device}, World size: {ws}")
-    if args.data_path.startswith("s3://"): 
-        s3 = boto3.client('s3'); r = s3.get_object(Bucket=args.data_path.split('/')[2], Key='/'.join(args.data_path.split('/')[3:]))
-        raw = [json.loads(l) for l in r['Body'].iter_lines() if l]
+
+    # Load data - either from preprocessed .pt or raw jsonl
+    if args.preprocessed_path:
+        if main_proc: print(f"Loading preprocessed data from: {args.preprocessed_path}")
+        if args.preprocessed_path.startswith("s3://"):
+            s3 = boto3.client('s3'); bucket = args.preprocessed_path.split('/')[2]; key = '/'.join(args.preprocessed_path.split('/')[3:])
+            local_path = f"/tmp/{key.split('/')[-1]}"; s3.download_file(bucket, key, local_path)
+            data = torch.load(local_path)
+        else:
+            data = torch.load(args.preprocessed_path)
+        n_examples = data['input_ids'].shape[0]
+        if main_proc: print(f"Loaded {n_examples} preprocessed examples")
+        # Create list of dicts for compatibility with existing DS class
+        ref = [{'input_ids': data['input_ids'][i], 'attention_mask': data['attention_mask'][i],
+                'start_targets': data['start_targets'][i], 'end_targets': data['end_targets'][i],
+                'operand_mask': data['operand_mask'][i]} for i in range(n_examples)]
     else:
-        with open(args.data_path) as f: raw = [json.loads(l) for l in f if l.strip()]
-    if main_proc: print(f"Loaded {len(raw)} raw examples")
-    tok = AutoTokenizer.from_pretrained(model_name)
-    if tok.pad_token is None: tok.pad_token = tok.eos_token
-    ref = [reformat_example(ex, tok) for ex in raw]; ref = [r for r in ref if r]
-    if main_proc: print(f"Reformatted: {len(ref)} examples")
+        if args.data_path.startswith("s3://"):
+            s3 = boto3.client('s3'); r = s3.get_object(Bucket=args.data_path.split('/')[2], Key='/'.join(args.data_path.split('/')[3:]))
+            raw = [json.loads(l) for l in r['Body'].iter_lines() if l]
+        else:
+            with open(args.data_path) as f: raw = [json.loads(l) for l in f if l.strip()]
+        if main_proc: print(f"Loaded {len(raw)} raw examples")
+        tok = AutoTokenizer.from_pretrained(model_name)
+        if tok.pad_token is None: tok.pad_token = tok.eos_token
+        ref = [reformat_example(ex, tok) for ex in raw]; ref = [r for r in ref if r]
+        if main_proc: print(f"Reformatted: {len(ref)} examples")
+
     random.seed(42); random.shuffle(ref); si = int(len(ref) * 0.9); tr, va = ref[:si], ref[si:]
     if main_proc: print(f"Train: {len(tr)}, Val: {len(va)}")
     tds, vds = DS(tr), DS(va)
