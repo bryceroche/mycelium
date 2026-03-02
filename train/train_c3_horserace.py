@@ -23,16 +23,18 @@ class C3SlotExtractor(nn.Module):
 
     def forward(self, input_ids, attention_mask):
         hidden = self.backbone(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state
+        batch_size, seq_len, hidden_size = hidden.shape
         device = hidden.device
-        start_list, end_list = [], []
-        for slot in range(MAX_OPERANDS):
-            slot_emb = self.slot_embeddings(torch.tensor(slot, device=device))
-            slot_hidden = hidden + slot_emb.unsqueeze(0).unsqueeze(0)
-            start_list.append(self.start_head(slot_hidden))
-            end_list.append(self.end_head(slot_hidden))
-        start_logits = torch.cat(start_list, dim=-1)
-        end_logits = torch.cat(end_list, dim=-1)
-        mask = attention_mask.unsqueeze(-1)
+        # Vectorized slot embeddings: (4, hidden)
+        slot_ids = torch.arange(MAX_OPERANDS, device=device)
+        slot_embs = self.slot_embeddings(slot_ids)  # (4, hidden)
+        # Broadcast: (B, seq, 1, H) + (1, 1, 4, H) -> (B, seq, 4, H)
+        slot_hidden = hidden.unsqueeze(2) + slot_embs.view(1, 1, MAX_OPERANDS, hidden_size)
+        # Apply heads: (B, seq, 4, H) -> (B, seq, 4, 1) -> (B, seq, 4)
+        start_logits = self.start_head(slot_hidden).squeeze(-1)  # (B, seq, 4)
+        end_logits = self.end_head(slot_hidden).squeeze(-1)  # (B, seq, 4)
+        # Mask padding tokens
+        mask = attention_mask.unsqueeze(-1)  # (B, seq, 1)
         return start_logits.masked_fill(mask == 0, float('-inf')), end_logits.masked_fill(mask == 0, float('-inf'))
 
 def char_to_token_position(char_pos, offset_mapping):
