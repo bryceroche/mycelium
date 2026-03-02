@@ -155,11 +155,13 @@ def evaluate(model, dl, device):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--model", choices=['roberta', 'roberta-large'], required=True)
-    p.add_argument("--data-path", default="s3://mycelium-data/c3_pointer_training/track_a_b_pointer.jsonl")
+    p.add_argument("--data-path", default="s3://mycelium-data/c3_span_training/c3_train_with_priors.jsonl")
     p.add_argument("--output-dir", default="models/c3_horserace")
     p.add_argument("--epochs", type=int, default=5)
     p.add_argument("--batch-size", type=int, default=4)
     p.add_argument("--learning-rate", type=float, default=2e-5)
+    p.add_argument("--slot-lr", type=float, default=1e-4, help="Learning rate for slot embeddings and heads")
+    p.add_argument("--grad-accum-steps", type=int, default=4, help="Gradient accumulation steps for larger effective batch")
     args = p.parse_args()
     model_name, output_dir = MODELS[args.model], f"{args.output_dir}/{args.model}"
     lr, ws, ddp = int(os.environ.get("LOCAL_RANK", 0)), int(os.environ.get("WORLD_SIZE", 1)), int(os.environ.get("WORLD_SIZE", 1)) > 1
@@ -192,17 +194,29 @@ def main():
         from torch.nn.parallel import DistributedDataParallel as DDP
         model = DDP(model, device_ids=[lr], find_unused_parameters=True)
     if main_proc: print(f"Trainable params: {sum(p.numel() for p in model.parameters() if p.requires_grad):,}")
-    opt = torch.optim.AdamW(model.parameters(), lr=args.learning_rate)
+    # Two-group optimizer: higher LR for slot embeddings + heads, lower for backbone
+    base_model = model.module if ddp else model
+    backbone_params = list(base_model.backbone.parameters())
+    slot_params = list(base_model.slot_embeddings.parameters()) + list(base_model.start_head.parameters()) + list(base_model.end_head.parameters())
+    opt = torch.optim.AdamW([
+        {'params': backbone_params, 'lr': args.learning_rate},
+        {'params': slot_params, 'lr': args.slot_lr}
+    ])
+    if main_proc: print(f"Optimizer: backbone LR={args.learning_rate}, slot LR={args.slot_lr}, grad_accum={args.grad_accum_steps}")
     if main_proc: Path(output_dir).mkdir(parents=True, exist_ok=True)
     best = 0
     for ep in range(args.epochs):
         if ts: ts.set_epoch(ep)
-        model.train(); tl_loss = 0
+        model.train(); tl_loss = 0; accum_loss = 0
+        opt.zero_grad()
         for bi, b in enumerate(tl):
             ids, mask = b['input_ids'].to(device), b['attention_mask'].to(device)
-            opt.zero_grad(); sl, el = model(ids, mask); loss = compute_loss(sl, el, b, device)
-            loss.backward(); torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0); opt.step(); tl_loss += loss.item()
-            if main_proc and (bi + 1) % 100 == 0: print(f"  Epoch {ep+1}, Batch {bi+1}/{len(tl)}, Loss: {loss.item():.4f}")
+            sl, el = model(ids, mask); loss = compute_loss(sl, el, b, device) / args.grad_accum_steps
+            loss.backward(); accum_loss += loss.item() * args.grad_accum_steps
+            if (bi + 1) % args.grad_accum_steps == 0 or (bi + 1) == len(tl):
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0); opt.step(); opt.zero_grad()
+                tl_loss += accum_loss; accum_loss = 0
+            if main_proc and (bi + 1) % 100 == 0: print(f"  Epoch {ep+1}, Batch {bi+1}/{len(tl)}, Loss: {loss.item() * args.grad_accum_steps:.4f}")
         if main_proc:
             em = model.module if ddp else model; m = evaluate(em, vl, device)
             print(f"\nEpoch {ep+1}:\n  Loss: {tl_loss/len(tl):.4f}\n  Exact: {m['exact_match']:.3f}, Start: {m['start_acc']:.3f}, End: {m['end_acc']:.3f}")
