@@ -336,6 +336,8 @@ class Phase2Trainer:
         One training step.
 
         Processes one example at a time due to variable span group counts.
+        For DDP: expects batch_size=1, processes single example then syncs.
+        For single-GPU: can handle multi-example batches.
         """
         self.pipeline.train()
         self.optimizer.zero_grad()
@@ -365,7 +367,7 @@ class Phase2Trainer:
             else:
                 gold_adjacency = None
 
-            # Forward
+            # Forward (DDP will handle gradient sync on backward)
             output = self.pipeline(
                 span_groups=span_groups,
                 gold_ops=gold_ops,
@@ -783,6 +785,8 @@ def main():
         if is_main:
             print(f"\n{'='*60}")
             print(f"Epoch {epoch + 1}/{args.epochs} (Curriculum: {stage_name})")
+            if use_ddp:
+                print(f"DDP: batch_size=1 x {torch.cuda.device_count()} GPUs = effective batch {torch.cuda.device_count()}")
             print(f"{'='*60}")
 
         # Create dataset for this curriculum stage
@@ -798,15 +802,18 @@ def main():
             trainer.op_weights = op_weights  # Pass to trainer
 
         # Use DistributedSampler for DDP
-        if local_rank >= 0:
+        if use_ddp:
+            # DDP requires batch_size=1 since we process variable-length examples
             sampler = DistributedSampler(train_dataset, shuffle=True)
             sampler.set_epoch(epoch)  # For proper shuffling
             train_loader = DataLoader(
                 train_dataset,
-                batch_size=args.batch_size,
+                batch_size=1,  # Must be 1 for DDP with our variable-length data
                 sampler=sampler,
                 collate_fn=collate_fn,
+                num_workers=2,
             )
+            effective_batch = torch.cuda.device_count()  # 8 GPUs = effective batch 8
         else:
             train_loader = DataLoader(
                 train_dataset,
@@ -814,6 +821,7 @@ def main():
                 shuffle=True,
                 collate_fn=collate_fn,
             )
+            effective_batch = args.batch_size
 
         # Train
         epoch_losses = trainer.train_epoch(train_loader, epoch)
