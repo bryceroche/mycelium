@@ -404,6 +404,15 @@ class Phase2Trainer:
         # Backward
         total_loss.backward()
 
+        # Log message network gradient norms (for debugging belief_shift)
+        msg_grad_norm = 0.0
+        msg_param_count = 0
+        for p in self.pipeline_unwrapped.messages.parameters():
+            if p.grad is not None:
+                msg_grad_norm += p.grad.norm().item() ** 2
+                msg_param_count += 1
+        msg_grad_norm = msg_grad_norm ** 0.5 if msg_param_count > 0 else 0.0
+
         # Gradient clipping
         torch.nn.utils.clip_grad_norm_(self.pipeline.parameters(), max_norm=1.0)
 
@@ -418,6 +427,7 @@ class Phase2Trainer:
         loss_log["total_loss"] = total_loss.item()
         loss_log["gumbel_tau"] = self.pipeline_unwrapped.c4.discretizer.get_tau()
         loss_log["reward_baseline"] = self.reward_baseline
+        loss_log["msg_grad"] = msg_grad_norm
 
         return loss_log
 
@@ -441,6 +451,7 @@ class Phase2Trainer:
                     f"C4: {avg.get('c4_loss', 0):.4f} | "
                     f"RL: {avg.get('reinforce_loss', 0):.4f} | "
                     f"Δbelief: {avg.get('belief_shift', 0):.4f} | "
+                    f"msg∇: {avg.get('msg_grad', 0):.2e} | "
                     f"τ: {avg.get('gumbel_tau', 0):.3f}"
                 )
 
