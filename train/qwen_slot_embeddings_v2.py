@@ -1,14 +1,13 @@
 """
 Qwen 0.5B + Slot Embeddings for C3 v2
-Uses rebuilt training data with PRIOR injection (93.5% coverage vs 24%)
+Uses pre-tokenized training data from RoBERTa-large format
 """
-import json
 import torch
 import torch.nn as nn
 import numpy as np
 import subprocess
 from transformers import (
-    AutoTokenizer, 
+    AutoTokenizer,
     AutoModel,
     TrainingArguments,
     Trainer,
@@ -20,6 +19,7 @@ from dataclasses import dataclass
 MAX_OPERANDS = 4
 MAX_SEQ_LEN = 512
 MODEL_NAME = "Qwen/Qwen2.5-0.5B"
+DATA_PATH = "s3://mycelium-data/c3_span_training/c3_train_roberta_large.pt"
 
 class QwenSpanExtractorWithSlots(nn.Module):
     def __init__(self, num_slots=MAX_OPERANDS):
@@ -52,69 +52,27 @@ class QwenSpanExtractorWithSlots(nn.Module):
         return {'loss': loss, 'start_logits': start_logits, 'end_logits': end_logits}
 
 
-class C3QwenDatasetV2(Dataset):
-    """Dataset using rebuilt data with PRIOR injection."""
-    
-    def __init__(self, path, tokenizer, max_len=MAX_SEQ_LEN):
-        self.tokenizer = tokenizer
-        self.max_len = max_len
-        self.examples = []
-        
-        with open(path) as f:
-            for line in f:
-                ex = json.loads(line)
-                
-                # Use pre-built input_text with PRIORs injected
-                input_text = ex.get('input_text', '')
-                if not input_text:
-                    continue
-                
-                for slot_idx, span in enumerate(ex.get('spans', [])[:MAX_OPERANDS]):
-                    # Skip spans with invalid positions
-                    if span.get('span_start', -1) < 0:
-                        continue
-                    
-                    self.examples.append({
-                        'input_text': input_text,
-                        'span_start': span['span_start'],
-                        'span_end': span['span_end'],
-                        'span_text': span.get('span_text', ''),
-                        'slot_id': slot_idx
-                    })
-        
-        print(f"Loaded {len(self.examples)} training pairs")
-    
+class C3PreTokenizedDataset(Dataset):
+    """Dataset using pre-tokenized .pt data."""
+
+    def __init__(self, data_dict):
+        self.input_ids = data_dict['input_ids']
+        self.attention_mask = data_dict['attention_mask']
+        self.slot_ids = data_dict['slot_ids']
+        self.start_positions = data_dict['start_positions']
+        self.end_positions = data_dict['end_positions']
+        print(f"Loaded {len(self.input_ids)} training pairs")
+
     def __len__(self):
-        return len(self.examples)
-    
+        return len(self.input_ids)
+
     def __getitem__(self, idx):
-        ex = self.examples[idx]
-        encoding = self.tokenizer(
-            ex['input_text'],
-            max_length=self.max_len, truncation=True,
-            padding='max_length', return_offsets_mapping=True, return_tensors='pt'
-        )
-        
-        offset_mapping = encoding['offset_mapping'][0].tolist()
-        start_char = ex['span_start']
-        end_char = ex['span_end']
-        
-        # Convert char positions to token positions
-        start_token = 0
-        end_token = 0
-        for i, (s, e) in enumerate(offset_mapping):
-            if s <= start_char < e:
-                start_token = i
-            if s < end_char <= e:
-                end_token = i
-                break
-        
         return {
-            'input_ids': encoding['input_ids'].squeeze(),
-            'attention_mask': encoding['attention_mask'].squeeze(),
-            'slot_ids': torch.tensor(ex['slot_id']),
-            'start_positions': torch.tensor(start_token),
-            'end_positions': torch.tensor(end_token)
+            'input_ids': self.input_ids[idx],
+            'attention_mask': self.attention_mask[idx],
+            'slot_ids': self.slot_ids[idx],
+            'start_positions': self.start_positions[idx],
+            'end_positions': self.end_positions[idx]
         }
 
 
@@ -152,59 +110,63 @@ def compute_metrics(eval_pred: EvalPrediction):
     }
 
 
-print("Downloading rebuilt data with PRIOR injection...")
-subprocess.run(['aws', 's3', 'cp', 's3://mycelium-data/c3_span_training/c3_train_with_priors.jsonl', '/tmp/c3_train.jsonl'], check=True)
+if __name__ == "__main__":
+    print(f"Downloading pre-tokenized data from {DATA_PATH}...")
+    subprocess.run(['aws', 's3', 'cp', DATA_PATH, '/tmp/c3_train.pt'], check=True)
 
-print("Loading Qwen model with slot embeddings...")
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
-if tokenizer.pad_token is None:
-    tokenizer.pad_token = tokenizer.eos_token
+    print("Loading pre-tokenized data...")
+    data_dict = torch.load('/tmp/c3_train.pt')
 
-model = QwenSpanExtractorWithSlots(num_slots=MAX_OPERANDS)
-model = model.cuda()
-print(f"Total params: {sum(p.numel() for p in model.parameters()):,}")
+    print("Loading Qwen model with slot embeddings...")
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
 
-dataset = C3QwenDatasetV2('/tmp/c3_train.jsonl', tokenizer)
-train_size = int(0.9 * len(dataset))
-train_dataset, eval_dataset = torch.utils.data.random_split(dataset, [train_size, len(dataset) - train_size])
-print(f"Train: {len(train_dataset)}, Eval: {len(eval_dataset)}")
+    model = QwenSpanExtractorWithSlots(num_slots=MAX_OPERANDS)
+    model = model.cuda()
+    print(f"Total params: {sum(p.numel() for p in model.parameters()):,}")
 
-training_args = TrainingArguments(
-    output_dir="./qwen_slots_v2_checkpoints",
-    num_train_epochs=10,
-    per_device_train_batch_size=8,
-    per_device_eval_batch_size=8,
-    warmup_steps=500,
-    weight_decay=0.01,
-    learning_rate=2e-5,
-    logging_steps=100,
-    eval_strategy="epoch",
-    save_strategy="epoch",
-    metric_for_best_model="exact_match",
-    greater_is_better=True,
-    load_best_model_at_end=True,
-    report_to="none",
-    fp16=False,
-    dataloader_num_workers=4,
-)
+    dataset = C3PreTokenizedDataset(data_dict)
+    train_size = int(0.9 * len(dataset))
+    train_dataset, eval_dataset = torch.utils.data.random_split(dataset, [train_size, len(dataset) - train_size])
+    print(f"Train: {len(train_dataset)}, Eval: {len(eval_dataset)}")
 
-trainer = SlotQATrainer(
-    model=model,
-    args=training_args,
-    train_dataset=train_dataset,
-    eval_dataset=eval_dataset,
-    data_collator=DataCollatorWithSlots(),
-    compute_metrics=compute_metrics,
-)
+    training_args = TrainingArguments(
+        output_dir="./qwen_slots_v2_checkpoints",
+        num_train_epochs=10,
+        per_device_train_batch_size=8,
+        per_device_eval_batch_size=8,
+        warmup_steps=500,
+        weight_decay=0.01,
+        learning_rate=2e-5,
+        logging_steps=100,
+        eval_strategy="epoch",
+        save_strategy="epoch",
+        metric_for_best_model="exact_match",
+        greater_is_better=True,
+        load_best_model_at_end=True,
+        report_to="none",
+        fp16=False,
+        dataloader_num_workers=4,
+    )
 
-print("Training Qwen + slot embeddings v2 (with PRIOR injection)...")
-trainer.train()
+    trainer = SlotQATrainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        data_collator=DataCollatorWithSlots(),
+        compute_metrics=compute_metrics,
+    )
 
-results = trainer.evaluate()
-print(f"\n=== QWEN + SLOTS v2 RESULTS ===")
-print(f"Exact Match: {results['eval_exact_match']*100:.1f}%")
-print(f"Start Acc: {results['eval_start_accuracy']*100:.1f}%")
-print(f"End Acc: {results['eval_end_accuracy']*100:.1f}%")
+    print("Training Qwen + slot embeddings v2...")
+    trainer.train()
 
-torch.save(model.state_dict(), "./qwen_slots_v2_best.pt")
-print("Saved!")
+    results = trainer.evaluate()
+    print(f"\n=== QWEN + SLOTS v2 RESULTS ===")
+    print(f"Exact Match: {results['eval_exact_match']*100:.1f}%")
+    print(f"Start Acc: {results['eval_start_accuracy']*100:.1f}%")
+    print(f"End Acc: {results['eval_end_accuracy']*100:.1f}%")
+
+    torch.save(model.state_dict(), "./qwen_slots_v2_best.pt")
+    print("Saved!")
