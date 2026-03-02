@@ -363,8 +363,13 @@ class MyceliumConstraintPipeline(nn.Module):
             [float(state.execution_result.success)] * n,
             device=device
         )
+        # Handle None intermediate results
+        intermediates = state.execution_result.intermediate
+        if intermediates is None:
+            intermediates = []
+        # Convert any None values to 0.0 and ensure we have n values
         exec_results = torch.tensor(
-            state.execution_result.intermediate[:n] if state.execution_result.intermediate else [0.0] * n,
+            [(float(v) if v is not None else 0.0) for v in intermediates[:n]] + [0.0] * max(0, n - len(intermediates)),
             device=device
         )
 
