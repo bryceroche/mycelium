@@ -36,9 +36,15 @@ class C2Classifier(nn.Module):
             nn.Linear(hidden_size // 4, 1)             # 96 -> 1
         )
 
+    def mean_pooling(self, model_output, attention_mask):
+        """Mean pooling - matches training code."""
+        token_embeddings = model_output.last_hidden_state
+        input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+        return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
+
     def forward(self, input_ids, attention_mask):
         outputs = self.backbone(input_ids=input_ids, attention_mask=attention_mask)
-        pooled = outputs.pooler_output  # Use pooler output
+        pooled = self.mean_pooling(outputs, attention_mask)  # MEAN POOLING - critical!
         logits = self.classifier(pooled)
         heartbeat = self.heartbeat_head(pooled)
         return logits, heartbeat
