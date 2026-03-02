@@ -217,16 +217,26 @@ class Phase2Trainer:
         loss_weights: Optional[Dict] = None,
         device: torch.device = None,
         local_rank: int = -1,
+        use_data_parallel: bool = False,
     ):
         self.local_rank = local_rank
         self.is_main = local_rank <= 0  # True for single-GPU or rank 0
+        self.use_data_parallel = use_data_parallel
 
         if local_rank >= 0:
+            # DDP mode
             self.device = torch.device(f"cuda:{local_rank}")
             pipeline = pipeline.to(self.device)
             self.pipeline = DDP(pipeline, device_ids=[local_rank], find_unused_parameters=True)
             self.pipeline_unwrapped = pipeline
+        elif use_data_parallel:
+            # DataParallel mode - simpler multi-GPU
+            self.device = torch.device("cuda:0")
+            pipeline = pipeline.to(self.device)
+            self.pipeline = nn.DataParallel(pipeline)
+            self.pipeline_unwrapped = pipeline
         else:
+            # Single GPU mode
             self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
             pipeline.to(self.device)
             self.pipeline = pipeline
@@ -577,20 +587,27 @@ def main():
     parser.add_argument("--resume", type=str, default=None,
                         help="Resume from checkpoint")
 
-    # DDP support
+    # Multi-GPU support
     parser.add_argument("--local_rank", type=int, default=-1,
                         help="Local rank for distributed training (set by torchrun)")
+    parser.add_argument("--data-parallel", action="store_true",
+                        help="Use DataParallel for single-node multi-GPU")
 
     args = parser.parse_args()
 
     # Initialize distributed training
     local_rank = int(os.environ.get("LOCAL_RANK", args.local_rank))
-    if local_rank >= 0:
+    use_ddp = local_rank >= 0
+    use_dp = args.data_parallel and torch.cuda.device_count() > 1
+
+    if use_ddp:
         dist.init_process_group(backend="nccl")
         torch.cuda.set_device(local_rank)
         is_main = local_rank == 0
     else:
         is_main = True
+        if use_dp:
+            print(f"Using DataParallel with {torch.cuda.device_count()} GPUs")
 
     # Create output dir
     if is_main:
@@ -701,6 +718,7 @@ def main():
         lr_config=lr_config,
         loss_weights=loss_weights,
         local_rank=local_rank,
+        use_data_parallel=use_dp,
     )
 
     # Resume if requested
