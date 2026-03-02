@@ -67,20 +67,18 @@ logs/
 .coverage
 *.centroid_cache.npz
 
-# Trained models (large files) - but track Python source
-models/*
-!models/*.py
+# Checkpoints and large binary files
 checkpoints/
 *.safetensors
 *.tar.gz
+*.pt
+*.bin
 
-# untracked folders - but track Python source
+# untracked folders
 experiments/
 secrets/
 untracked/
 findings/
-data/*
-!data/*.py
 
 # Lambda build artifacts
 lambda/*/lambda.zip
