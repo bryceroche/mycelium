@@ -611,7 +611,30 @@ def main():
         backbone_name="sentence-transformers/all-MiniLM-L6-v2",
         num_labels=N_OPS,
     )
-    c2_model.load_state_dict(c2_state["model_state_dict"])
+
+    # Handle op count mismatch (old checkpoint has fewer ops)
+    ckpt_state = c2_state["model_state_dict"]
+    ckpt_num_ops = ckpt_state["classifier.4.weight"].shape[0]
+    if ckpt_num_ops != N_OPS:
+        if is_main:
+            print(f"  Adapting C2 checkpoint: {ckpt_num_ops} ops -> {N_OPS} ops")
+        # Copy existing op weights, leave new ops at random init
+        new_state = c2_model.state_dict()
+        for k, v in ckpt_state.items():
+            if k in new_state:
+                if v.shape == new_state[k].shape:
+                    new_state[k] = v
+                elif "classifier.4" in k:
+                    # Partial copy for classifier head
+                    if len(v.shape) == 2:  # weight
+                        new_state[k][:ckpt_num_ops] = v
+                    else:  # bias
+                        new_state[k][:ckpt_num_ops] = v
+                else:
+                    new_state[k] = v
+        c2_model.load_state_dict(new_state)
+    else:
+        c2_model.load_state_dict(ckpt_state)
 
     # Load pretrained C3
     if is_main:
@@ -621,7 +644,15 @@ def main():
     # Reconstruct C3 model
     from models.c3_extractor import C3SpanExtractor
     c3_model = C3SpanExtractor()
-    c3_model.load_state_dict(c3_state["model_state_dict"])
+
+    # Handle potential architecture mismatch
+    ckpt_state = c3_state["model_state_dict"]
+    try:
+        c3_model.load_state_dict(ckpt_state)
+    except RuntimeError as e:
+        if is_main:
+            print(f"  C3 checkpoint mismatch, loading with strict=False: {e}")
+        c3_model.load_state_dict(ckpt_state, strict=False)
 
     # Create pipeline
     if is_main:
