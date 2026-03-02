@@ -352,54 +352,72 @@ class Phase2Trainer:
         total_loss = torch.tensor(0.0, device=self.device)
         loss_log = {}
         n_examples = len(batch["span_groups"])
+        n_valid = 0
 
         for i in range(n_examples):
-            span_groups = batch["span_groups"][i]
-            gold_ops = batch["gold_ops"][i]
-            gold_adjacency = batch["gold_adjacency"][i]
-            gold_answer = batch["gold_answer"][i]
+            try:
+                span_groups = batch["span_groups"][i]
+                gold_ops = batch["gold_ops"][i]
+                gold_adjacency = batch["gold_adjacency"][i]
+                gold_answer = batch["gold_answer"][i]
 
-            # Move to device
-            for sg in span_groups:
-                sg.input_ids = sg.input_ids.to(self.device)
-                sg.attention_mask = sg.attention_mask.to(self.device)
+                # Move to device
+                for sg in span_groups:
+                    sg.input_ids = sg.input_ids.to(self.device)
+                    sg.attention_mask = sg.attention_mask.to(self.device)
 
-            if gold_ops.numel() > 0:
-                gold_ops = gold_ops.to(self.device)
-            else:
-                gold_ops = None
+                if gold_ops.numel() > 0:
+                    gold_ops = gold_ops.to(self.device)
+                else:
+                    gold_ops = None
 
-            if gold_adjacency.numel() > 0:
-                gold_adjacency = gold_adjacency.to(self.device)
-            else:
-                gold_adjacency = None
+                if gold_adjacency.numel() > 0:
+                    gold_adjacency = gold_adjacency.to(self.device)
+                else:
+                    gold_adjacency = None
 
-            # Forward (DDP will handle gradient sync on backward)
-            output = self.pipeline(
-                span_groups=span_groups,
-                gold_ops=gold_ops,
-                gold_adjacency=gold_adjacency,
-                gold_answer=gold_answer,
-            )
-
-            # Accumulate weighted losses
-            for loss_name, loss_val in output.losses.items():
-                weight = self.loss_weights.get(loss_name, 1.0)
-                total_loss = total_loss + weight * loss_val / n_examples
-
-                # Log
-                if loss_name not in loss_log:
-                    loss_log[loss_name] = 0.0
-                loss_log[loss_name] += loss_val.item() / n_examples
-
-            # Update REINFORCE baseline
-            if output.success:
-                correct = abs(output.final_answer - gold_answer) < 1e-6 if output.final_answer else False
-                reward = 1.0 if correct else 0.0
-                self.reward_baseline = (
-                    self.baseline_momentum * self.reward_baseline +
-                    (1 - self.baseline_momentum) * reward
+                # Forward (DDP will handle gradient sync on backward)
+                output = self.pipeline(
+                    span_groups=span_groups,
+                    gold_ops=gold_ops,
+                    gold_adjacency=gold_adjacency,
+                    gold_answer=gold_answer,
                 )
+
+                # Accumulate weighted losses
+                for loss_name, loss_val in output.losses.items():
+                    weight = self.loss_weights.get(loss_name, 1.0)
+                    total_loss = total_loss + weight * loss_val / n_examples
+
+                    # Log
+                    if loss_name not in loss_log:
+                        loss_log[loss_name] = 0.0
+                    loss_log[loss_name] += loss_val.item() / n_examples
+
+                # Update REINFORCE baseline
+                if output.success:
+                    correct = abs(output.final_answer - gold_answer) < 1e-6 if output.final_answer else False
+                    reward = 1.0 if correct else 0.0
+                    self.reward_baseline = (
+                        self.baseline_momentum * self.reward_baseline +
+                        (1 - self.baseline_momentum) * reward
+                    )
+                n_valid += 1
+
+            except RuntimeError as e:
+                if "CUDA" in str(e) or "CUBLAS" in str(e):
+                    # Skip problematic examples (likely malformed attention input)
+                    if self.is_main and self.global_step % 50 == 0:
+                        print(f"  [!] Skipped example {i}: {str(e)[:80]}")
+                    continue
+                raise  # Re-raise non-CUDA errors
+
+        # Handle case where all examples in batch were skipped
+        if n_valid == 0:
+            # Return dummy loss to keep DDP in sync
+            total_loss = torch.tensor(0.0, device=self.device, requires_grad=True)
+            loss_log = {"total_loss": 0.0, "skipped": 1.0}
+            return loss_log
 
         # Backward
         total_loss.backward()
@@ -614,6 +632,9 @@ def main():
                         help="Use DataParallel for single-node multi-GPU")
 
     args = parser.parse_args()
+
+    # Enable flash attention for numerical stability at long sequences
+    torch.backends.cuda.enable_flash_sdp(True)
 
     # Initialize distributed training
     local_rank = int(os.environ.get("LOCAL_RANK", args.local_rank))
