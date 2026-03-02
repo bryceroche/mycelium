@@ -1,15 +1,17 @@
 """
-C1: Heartbeat Counter - Predicts pulse count from problem text
+C1: Heartbeat Counter - Predicts pulse count range from problem text
 
-Regression with learned uncertainty: predicts mean + variance per problem.
-Output "4.1 ± 0.8" gives per-problem search budget directly from uncertainty.
+Outputs Gaussian range (mu, sigma) for adaptive C2 budget:
+- mu = predicted pulse count
+- sigma = uncertainty (learned per-problem)
+- range = [floor(mu - sigma), ceil(mu + sigma)]
 
-Why regression over binned classification:
-- Pulse count is ordinal (3 is between 2 and 4)
-- MSE respects ordering; classification treats 2→3 error same as 2→7
-- Continuous output useful as soft constraint for C2
+C2 uses this range as operation budget hint. MCTS uses range width for search:
+- Tight range → greedy is enough
+- Wide range → explore more
 """
 import json
+import math
 import torch
 import torch.nn as nn
 import numpy as np
@@ -25,53 +27,76 @@ from torch.utils.data import Dataset
 from dataclasses import dataclass
 
 MAX_SEQ_LEN = 256
-MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"  # 22M params, same family as C2
+MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 DATA_PATH = "s3://mycelium-data/c2_training/c2_train_with_heartbeats.json"
+
+# Clamp log_var to prevent degenerate variance
+LOG_VAR_MIN = -4.0  # min sigma = exp(-2) ≈ 0.14
+LOG_VAR_MAX = 4.0   # max sigma = exp(2) ≈ 7.4
 
 
 class C1HeartbeatRegressor(nn.Module):
-    """Predicts heartbeat count from problem text."""
+    """
+    Predicts pulse count as Gaussian: mu ± sigma.
 
-    def __init__(self, predict_variance=False):
+    Separate heads for mean and log-variance to allow independent capacity.
+    """
+
+    def __init__(self):
         super().__init__()
         self.encoder = AutoModel.from_pretrained(MODEL_NAME)
         hidden_size = self.encoder.config.hidden_size  # 384 for MiniLM
-        self.predict_variance = predict_variance
 
-        if predict_variance:
-            # Predict mean and log_variance for uncertainty
-            self.head = nn.Linear(hidden_size, 2)
-        else:
-            self.head = nn.Linear(hidden_size, 1)
+        # Separate heads for mu and log_var
+        self.mu_head = nn.Linear(hidden_size, 1)
+        self.logvar_head = nn.Linear(hidden_size, 1)
 
     def forward(self, input_ids, attention_mask, labels=None):
+        # Encode
         outputs = self.encoder(input_ids=input_ids, attention_mask=attention_mask)
-        # Mean pooling
         token_embeddings = outputs.last_hidden_state
-        input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-        pooled = torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
 
-        out = self.head(pooled)
+        # Mean pooling
+        mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+        pooled = torch.sum(token_embeddings * mask_expanded, 1) / torch.clamp(mask_expanded.sum(1), min=1e-9)
+
+        # Predict mu and log_var
+        mu = self.mu_head(pooled).squeeze(-1)
+        log_var = self.logvar_head(pooled).squeeze(-1)
+
+        # Clamp log_var to prevent degenerate variance
+        log_var = torch.clamp(log_var, LOG_VAR_MIN, LOG_VAR_MAX)
 
         loss = None
         if labels is not None:
-            if self.predict_variance:
-                mean, log_var = out[:, 0], out[:, 1]
-                # Gaussian NLL loss
-                var = torch.exp(log_var)
-                loss = 0.5 * (log_var + (labels - mean)**2 / var).mean()
-                predictions = mean
-            else:
-                predictions = out.squeeze(-1)
-                loss = nn.MSELoss()(predictions, labels)
-        else:
-            predictions = out[:, 0] if self.predict_variance else out.squeeze(-1)
+            # Gaussian NLL loss
+            var = torch.exp(log_var)
+            loss = 0.5 * (log_var + (labels - mu) ** 2 / var).mean()
 
-        return {'loss': loss, 'predictions': predictions, 'logits': out}
+        return {
+            'loss': loss,
+            'mu': mu,
+            'log_var': log_var,
+            'logits': torch.stack([mu, log_var], dim=-1)  # For Trainer compatibility
+        }
+
+    def predict_range(self, input_ids, attention_mask):
+        """Inference: returns (mu, sigma, range_low, range_high)."""
+        with torch.no_grad():
+            out = self.forward(input_ids, attention_mask)
+            mu = out['mu']
+            sigma = torch.exp(0.5 * out['log_var'])
+            range_low = torch.floor(mu - sigma)
+            range_high = torch.ceil(mu + sigma)
+        return mu, sigma, range_low, range_high
 
 
 class C1Dataset(Dataset):
-    """Dataset for heartbeat count regression."""
+    """Dataset for heartbeat count regression.
+
+    Expects format: {"problem_text": "...", "pulse_count": N}
+    Also supports legacy format: {"text": "...", "heartbeat_count": N}
+    """
 
     def __init__(self, examples, tokenizer, max_len=MAX_SEQ_LEN):
         self.examples = examples
@@ -83,8 +108,13 @@ class C1Dataset(Dataset):
 
     def __getitem__(self, idx):
         ex = self.examples[idx]
+
+        # Support both new and legacy format
+        text = ex.get('problem_text', ex.get('text', ''))
+        pulse_count = ex.get('pulse_count', ex.get('heartbeat_count', 0))
+
         encoding = self.tokenizer(
-            ex['text'],
+            text,
             max_length=self.max_len,
             truncation=True,
             padding='max_length',
@@ -93,7 +123,7 @@ class C1Dataset(Dataset):
         return {
             'input_ids': encoding['input_ids'].squeeze(),
             'attention_mask': encoding['attention_mask'].squeeze(),
-            'labels': torch.tensor(float(ex['heartbeat_count']), dtype=torch.float32)
+            'labels': torch.tensor(float(pulse_count), dtype=torch.float32)
         }
 
 
@@ -114,61 +144,56 @@ class C1Trainer(Trainer):
             outputs = model(**inputs)
         if prediction_loss_only:
             return (outputs['loss'], None, None)
-        # Return full logits (mean, log_var) for uncertainty analysis
         return (outputs['loss'], outputs['logits'], inputs['labels'])
 
 
 def compute_metrics(eval_pred: EvalPrediction):
-    logits = eval_pred.predictions
+    """Compute range-aware metrics for C1."""
+    logits = eval_pred.predictions  # (N, 2) = [mu, log_var]
     labels = eval_pred.label_ids
 
-    # Handle both variance and non-variance modes
-    if logits.ndim == 2 and logits.shape[1] == 2:
-        # Variance mode: logits = (mean, log_var)
-        preds = logits[:, 0]
-        log_var = logits[:, 1]
-        std = np.exp(0.5 * log_var)  # predicted uncertainty
-    else:
-        preds = logits.squeeze()
-        std = None
+    mu = logits[:, 0]
+    log_var = logits[:, 1]
+    sigma = np.exp(0.5 * log_var)
 
-    # MSE and MAE
-    mse = ((preds - labels) ** 2).mean()
-    mae = np.abs(preds - labels).mean()
-    errors = np.abs(preds - labels)
+    # Point estimate metrics
+    errors = np.abs(mu - labels)
+    mse = ((mu - labels) ** 2).mean()
+    mae = errors.mean()
 
-    # Accuracy within ±1 and ±2
-    acc_1 = (errors <= 1).mean()
-    acc_2 = (errors <= 2).mean()
+    # Range metrics
+    range_low = np.floor(mu - sigma)
+    range_high = np.ceil(mu + sigma)
+    range_width = range_high - range_low
 
-    # Correlation of predictions with labels
-    corr = np.corrcoef(preds, labels)[0, 1]
+    # Range accuracy: target falls within [mu - sigma, mu + sigma]
+    in_range = (labels >= range_low) & (labels <= range_high)
+    range_accuracy = in_range.mean()
 
-    metrics = {
-        'mse': float(mse),
+    # Tight range accuracy: width <= 2 AND target in range
+    tight_and_correct = (range_width <= 2) & in_range
+    tight_range_accuracy = tight_and_correct.mean()
+
+    # Calibration: does sigma correlate with actual error?
+    uncertainty_error_corr = np.corrcoef(sigma, errors)[0, 1]
+    if np.isnan(uncertainty_error_corr):
+        uncertainty_error_corr = 0.0
+
+    # Prediction-target correlation (discrimination ability)
+    pred_target_corr = np.corrcoef(mu, labels)[0, 1]
+    if np.isnan(pred_target_corr):
+        pred_target_corr = 0.0
+
+    return {
         'mae': float(mae),
         'rmse': float(np.sqrt(mse)),
-        'acc_within_1': float(acc_1),
-        'acc_within_2': float(acc_2),
-        'correlation': float(corr)
+        'range_accuracy': float(range_accuracy),
+        'tight_range_accuracy': float(tight_range_accuracy),
+        'mean_sigma': float(sigma.mean()),
+        'mean_range_width': float(range_width.mean()),
+        'uncertainty_error_corr': float(uncertainty_error_corr),
+        'pred_target_corr': float(pred_target_corr),
     }
-
-    # Uncertainty calibration metrics (if variance mode)
-    if std is not None:
-        # Does predicted uncertainty correlate with actual error?
-        uncertainty_corr = np.corrcoef(std, errors)[0, 1]
-        # What % of predictions fall within predicted ±1σ?
-        within_1sigma = (errors <= std).mean()
-        # Mean predicted std
-        mean_std = std.mean()
-
-        metrics.update({
-            'mean_predicted_std': float(mean_std),
-            'uncertainty_error_corr': float(uncertainty_corr),
-            'within_1sigma': float(within_1sigma),  # Should be ~68% if calibrated
-        })
-
-    return metrics
 
 
 if __name__ == "__main__":
@@ -183,12 +208,13 @@ if __name__ == "__main__":
     print(f"Loaded {len(examples)} examples")
 
     # Analyze target distribution
-    heartbeats = [ex['heartbeat_count'] for ex in examples]
-    print(f"Heartbeat stats: min={min(heartbeats)}, max={max(heartbeats)}, mean={np.mean(heartbeats):.2f}, std={np.std(heartbeats):.2f}")
+    pulse_counts = [ex.get('pulse_count', ex.get('heartbeat_count', 0)) for ex in examples]
+    print(f"Pulse stats: min={min(pulse_counts)}, max={max(pulse_counts)}, "
+          f"mean={np.mean(pulse_counts):.2f}, std={np.std(pulse_counts):.2f}")
 
     print(f"Loading tokenizer and model: {MODEL_NAME}")
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-    model = C1HeartbeatRegressor(predict_variance=True)
+    model = C1HeartbeatRegressor()
     model = model.cuda()
     print(f"Total params: {sum(p.numel() for p in model.parameters()):,}")
 
@@ -214,8 +240,8 @@ if __name__ == "__main__":
         logging_steps=50,
         eval_strategy="epoch",
         save_strategy="epoch",
-        metric_for_best_model="mae",
-        greater_is_better=False,
+        metric_for_best_model="range_accuracy",
+        greater_is_better=True,
         load_best_model_at_end=True,
         report_to="none",
         fp16=True,
@@ -231,21 +257,33 @@ if __name__ == "__main__":
         compute_metrics=compute_metrics,
     )
 
-    print("Training C1 heartbeat regressor...")
+    print("Training C1 heartbeat regressor (Gaussian range)...")
     trainer.train()
 
     results = trainer.evaluate()
-    print(f"\n=== C1 RESULTS ===")
-    print(f"MAE: {results['eval_mae']:.2f} heartbeats")
+    print(f"\n{'='*50}")
+    print("C1 HEARTBEAT REGRESSOR RESULTS")
+    print('='*50)
+    print(f"MAE: {results['eval_mae']:.2f} pulses")
     print(f"RMSE: {results['eval_rmse']:.2f}")
-    print(f"Acc within ±1: {results['eval_acc_within_1']*100:.1f}%")
-    print(f"Acc within ±2: {results['eval_acc_within_2']*100:.1f}%")
-    print(f"Correlation: {results['eval_correlation']:.3f}")
-    if 'eval_mean_predicted_std' in results:
-        print(f"\n=== UNCERTAINTY CALIBRATION ===")
-        print(f"Mean predicted σ: {results['eval_mean_predicted_std']:.2f}")
-        print(f"Uncertainty-error correlation: {results['eval_uncertainty_error_corr']:.3f}")
-        print(f"Within ±1σ: {results['eval_within_1sigma']*100:.1f}% (ideal: 68%)")
+    print(f"Pred-Target Correlation: {results['eval_pred_target_corr']:.3f}")
+    print()
+    print("RANGE METRICS:")
+    print(f"  Range Accuracy (target in ±1σ): {results['eval_range_accuracy']*100:.1f}%")
+    print(f"  Tight Range Accuracy (width≤2 & correct): {results['eval_tight_range_accuracy']*100:.1f}%")
+    print(f"  Mean σ: {results['eval_mean_sigma']:.2f}")
+    print(f"  Mean Range Width: {results['eval_mean_range_width']:.1f}")
+    print()
+    print("CALIBRATION:")
+    print(f"  Uncertainty-Error Correlation: {results['eval_uncertainty_error_corr']:.3f}")
+    print(f"  (Higher = model knows when it's uncertain)")
 
+    # Save model
     torch.save(model.state_dict(), "./c1_heartbeat_best.pt")
-    print("Saved!")
+    print(f"\nModel saved to ./c1_heartbeat_best.pt")
+
+    # Save to S3
+    print("Uploading to S3...")
+    subprocess.run(['aws', 's3', 'cp', './c1_heartbeat_best.pt',
+                    's3://mycelium-data/models/c1_heartbeat/model.pt'], check=True)
+    print("Done!")
