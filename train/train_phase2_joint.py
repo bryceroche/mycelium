@@ -637,22 +637,32 @@ def main():
         c2_model.load_state_dict(ckpt_state)
 
     # Load pretrained C3
-    if is_main:
-        print(f"Loading C3 from {args.c3_checkpoint}...")
-    c3_state = torch.load(args.c3_checkpoint, map_location="cpu", weights_only=False)
-
-    # Reconstruct C3 model
     from models.c3_extractor import C3SpanExtractor
-    c3_model = C3SpanExtractor()
 
-    # Handle potential architecture mismatch
-    ckpt_state = c3_state["model_state_dict"]
-    try:
-        c3_model.load_state_dict(ckpt_state)
-    except RuntimeError as e:
+    if args.c3_checkpoint and os.path.exists(args.c3_checkpoint):
         if is_main:
-            print(f"  C3 checkpoint mismatch, loading with strict=False: {e}")
-        c3_model.load_state_dict(ckpt_state, strict=False)
+            print(f"Loading C3 from {args.c3_checkpoint}...")
+        c3_state = torch.load(args.c3_checkpoint, map_location="cpu", weights_only=False)
+        ckpt_state = c3_state["model_state_dict"]
+
+        # Check if checkpoint architecture matches
+        # Our C3 uses Qwen2 backbone.layers, old C3 used roberta encoder.layer
+        has_qwen_keys = any("backbone.layers" in k for k in ckpt_state.keys())
+
+        if has_qwen_keys:
+            c3_model = C3SpanExtractor()
+            c3_model.load_state_dict(ckpt_state)
+            if is_main:
+                print("  C3 checkpoint loaded successfully")
+        else:
+            if is_main:
+                print("  C3 checkpoint architecture mismatch (RoBERTa vs Qwen2)")
+                print("  Initializing C3 fresh from Qwen2-0.5B pretrained weights")
+            c3_model = C3SpanExtractor()  # Fresh init from HuggingFace
+    else:
+        if is_main:
+            print("No C3 checkpoint found, initializing fresh from Qwen2-0.5B")
+        c3_model = C3SpanExtractor()
 
     # Create pipeline
     if is_main:
