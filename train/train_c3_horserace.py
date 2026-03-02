@@ -165,6 +165,8 @@ def main():
     p.add_argument("--learning-rate", type=float, default=2e-5)
     p.add_argument("--slot-lr", type=float, default=1e-4, help="Learning rate for slot embeddings and heads")
     p.add_argument("--grad-accum-steps", type=int, default=4, help="Gradient accumulation steps for larger effective batch")
+    p.add_argument("--resume", default=None, help="Path to checkpoint to resume from")
+    p.add_argument("--start-epoch", type=int, default=0, help="Epoch to start from when resuming")
     args = p.parse_args()
     model_name, output_dir = MODELS[args.model], f"{args.output_dir}/{args.model}"
     lr, ws, ddp = int(os.environ.get("LOCAL_RANK", 0)), int(os.environ.get("WORLD_SIZE", 1)), int(os.environ.get("WORLD_SIZE", 1)) > 1
@@ -174,6 +176,10 @@ def main():
     else: device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     main_proc = lr == 0
     if main_proc: print("=" * 70 + f"\nC3 SPAN EXTRACTOR - {args.model.upper()} + Slot Embeddings\n" + "=" * 70 + f"\nModel: {model_name}\nDevice: {device}, World size: {ws}")
+
+    # Always load tokenizer (needed for saving checkpoints)
+    tok = AutoTokenizer.from_pretrained(model_name)
+    if tok.pad_token is None: tok.pad_token = tok.eos_token
 
     # Load data - either from preprocessed .pt or raw jsonl
     if args.preprocessed_path:
@@ -211,6 +217,12 @@ def main():
     else: ts = None; tl = torch.utils.data.DataLoader(tds, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True, collate_fn=collate)
     vl = torch.utils.data.DataLoader(vds, batch_size=args.batch_size * 2, num_workers=4, pin_memory=True, collate_fn=collate)
     model = C3SlotExtractor(model_name).to(device)
+    if args.resume:
+        if main_proc: print(f"Resuming from checkpoint: {args.resume}")
+        ckpt = torch.load(args.resume, map_location=device)
+        model.load_state_dict(ckpt['model_state_dict'])
+        best = ckpt.get('metrics', {}).get('exact_match', 0)
+        if main_proc: print(f"  Loaded epoch {ckpt.get('epoch', '?')}, best={best:.3f}")
     if ddp:
         from torch.nn.parallel import DistributedDataParallel as DDP
         model = DDP(model, device_ids=[lr], find_unused_parameters=True)
@@ -225,8 +237,8 @@ def main():
     ])
     if main_proc: print(f"Optimizer: backbone LR={args.learning_rate}, slot LR={args.slot_lr}, grad_accum={args.grad_accum_steps}")
     if main_proc: Path(output_dir).mkdir(parents=True, exist_ok=True)
-    best = 0
-    for ep in range(args.epochs):
+    if not args.resume: best = 0
+    for ep in range(args.start_epoch, args.epochs):
         if ts: ts.set_epoch(ep)
         model.train(); tl_loss = 0; accum_loss = 0
         opt.zero_grad()
