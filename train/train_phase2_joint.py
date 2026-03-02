@@ -61,18 +61,81 @@ class Phase2Example:
 
 
 class Phase2Dataset(Dataset):
-    """Dataset for Phase 2 joint training."""
+    """Dataset for Phase 2 joint training with curriculum and oversampling."""
 
     def __init__(
         self,
         examples: List[Dict],
         tokenizer,
         max_length: int = 256,
+        max_steps: int = None,  # Curriculum: filter by max steps
+        oversample_rare_ops: bool = True,
     ):
-        self.examples = examples
         self.tokenizer = tokenizer
         self.max_length = max_length
         self.op_to_idx = {op: i for i, op in enumerate(OP_LABELS)}
+
+        # Filter by max steps for curriculum learning
+        if max_steps is not None:
+            examples = [ex for ex in examples if ex.get("n_steps", len(ex.get("span_groups", []))) <= max_steps]
+
+        # Compute operation frequencies for inverse weighting
+        op_counts = {op: 0 for op in OP_LABELS}
+        for ex in examples:
+            for op in ex.get("gold_ops", []):
+                if op in op_counts:
+                    op_counts[op] += 1
+
+        total_ops = sum(op_counts.values()) + 1e-6
+        self.op_weights = {op: total_ops / (count + 1) for op, count in op_counts.items()}
+
+        # Normalize weights (mean=1)
+        mean_weight = sum(self.op_weights.values()) / len(self.op_weights)
+        self.op_weights = {op: w / mean_weight for op, w in self.op_weights.items()}
+
+        # Oversample examples with rare operations
+        if oversample_rare_ops:
+            examples = self._oversample_rare(examples)
+
+        self.examples = examples
+        print(f"Dataset: {len(self.examples)} examples (max_steps={max_steps})")
+        print(f"Op weights (top 5 rare): {sorted(self.op_weights.items(), key=lambda x: -x[1])[:5]}")
+
+    def _oversample_rare(self, examples: List[Dict]) -> List[Dict]:
+        """Oversample examples containing rare operations."""
+        from collections import Counter
+        import random
+
+        # Count examples per dominant operation
+        op_example_counts = Counter()
+        for ex in examples:
+            ops = ex.get("gold_ops", [])
+            if ops:
+                # Use most rare op in the example
+                rarest_op = max(ops, key=lambda o: self.op_weights.get(o, 1))
+                op_example_counts[rarest_op] += 1
+
+        # Target: bring each operation to at least median count
+        median_count = sorted(op_example_counts.values())[len(op_example_counts) // 2] if op_example_counts else 100
+
+        # Collect examples by their rarest op
+        op_examples = {op: [] for op in OP_LABELS}
+        for ex in examples:
+            ops = ex.get("gold_ops", [])
+            if ops:
+                rarest_op = max(ops, key=lambda o: self.op_weights.get(o, 1))
+                op_examples[rarest_op].append(ex)
+
+        # Oversample
+        oversampled = list(examples)
+        for op, exs in op_examples.items():
+            if exs and len(exs) < median_count:
+                n_oversample = min(median_count - len(exs), len(exs) * 2)  # Cap at 3x
+                oversampled.extend(random.choices(exs, k=n_oversample))
+
+        random.shuffle(oversampled)
+        print(f"Oversampled: {len(examples)} → {len(oversampled)} examples")
+        return oversampled
 
     def __len__(self):
         return len(self.examples)
@@ -323,7 +386,7 @@ class Phase2Trainer:
         return loss_log
 
     def train_epoch(self, dataloader: DataLoader, epoch: int) -> List[Dict]:
-        """Full training epoch."""
+        """Full training epoch with belief_shift monitoring."""
         epoch_losses = []
 
         for batch_idx, batch in enumerate(dataloader):
@@ -341,6 +404,7 @@ class Phase2Trainer:
                     f"C2: {avg.get('c2_loss', 0):.4f} | "
                     f"C4: {avg.get('c4_loss', 0):.4f} | "
                     f"RL: {avg.get('reinforce_loss', 0):.4f} | "
+                    f"Δbelief: {avg.get('belief_shift', 0):.4f} | "
                     f"τ: {avg.get('gumbel_tau', 0):.3f}"
                 )
 
@@ -478,6 +542,16 @@ def main():
     parser.add_argument("--n-belief-rounds", type=int, default=3)
     parser.add_argument("--msg-dim", type=int, default=64)
 
+    # Curriculum learning
+    parser.add_argument("--curriculum", action="store_true",
+                        help="Enable curriculum: epoch 1 ≤8 steps, epoch 2 ≤15, then all")
+    parser.add_argument("--curriculum-steps", type=str, default="8,15",
+                        help="Comma-separated max steps per curriculum stage")
+
+    # Memory optimization
+    parser.add_argument("--gradient-checkpointing", action="store_true",
+                        help="Enable gradient checkpointing for C3")
+
     # Resume
     parser.add_argument("--resume", type=str, default=None,
                         help="Resume from checkpoint")
@@ -552,24 +626,33 @@ def main():
     if args.resume:
         trainer.load_checkpoint(args.resume)
 
+    # Enable gradient checkpointing if requested
+    if args.gradient_checkpointing:
+        if hasattr(pipeline.c3.c3, 'backbone') and hasattr(pipeline.c3.c3.backbone, 'gradient_checkpointing_enable'):
+            pipeline.c3.c3.backbone.gradient_checkpointing_enable()
+            print("Enabled gradient checkpointing for C3")
+
     # Load data
     print(f"\nLoading training data from {args.data_path}...")
     train_data = load_training_data(args.data_path)
     print(f"Loaded {len(train_data)} training examples")
 
-    train_dataset = Phase2Dataset(train_data, tokenizer)
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=args.batch_size,
-        shuffle=True,
-        collate_fn=collate_fn,
-    )
+    # Curriculum stages
+    if args.curriculum:
+        curriculum_steps = [int(s) for s in args.curriculum_steps.split(",")]
+        curriculum_steps.append(None)  # Final stage: all steps
+        print(f"Curriculum learning enabled: stages {curriculum_steps}")
+    else:
+        curriculum_steps = [None]  # No curriculum
+
+    # Store op_weights from first dataset for REINFORCE weighting
+    op_weights = None
 
     # Validation data
     val_loader = None
     if args.val_path:
         val_data = load_training_data(args.val_path)
-        val_dataset = Phase2Dataset(val_data, tokenizer)
+        val_dataset = Phase2Dataset(val_data, tokenizer, max_steps=None)
         val_loader = DataLoader(
             val_dataset,
             batch_size=args.batch_size,
@@ -577,29 +660,77 @@ def main():
             collate_fn=collate_fn,
         )
 
-    # Training loop
+    # Track belief_shift history for monitoring
+    belief_shift_history = []
+
+    # Training loop with curriculum
     print("\nStarting training...")
     for epoch in range(args.epochs):
+        # Determine curriculum stage
+        if args.curriculum:
+            stage_idx = min(epoch, len(curriculum_steps) - 1)
+            max_steps = curriculum_steps[stage_idx]
+            stage_name = f"≤{max_steps} steps" if max_steps else "all steps"
+        else:
+            max_steps = None
+            stage_name = "all steps"
+
         print(f"\n{'='*60}")
-        print(f"Epoch {epoch + 1}/{args.epochs}")
+        print(f"Epoch {epoch + 1}/{args.epochs} (Curriculum: {stage_name})")
         print(f"{'='*60}")
+
+        # Create dataset for this curriculum stage
+        train_dataset = Phase2Dataset(
+            train_data, tokenizer,
+            max_steps=max_steps,
+            oversample_rare_ops=True,
+        )
+
+        # Store op_weights for potential REINFORCE weighting
+        if op_weights is None:
+            op_weights = train_dataset.op_weights
+            trainer.op_weights = op_weights  # Pass to trainer
+
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=args.batch_size,
+            shuffle=True,
+            collate_fn=collate_fn,
+        )
 
         # Train
         epoch_losses = trainer.train_epoch(train_loader, epoch)
 
         # Summarize epoch
         avg_loss = sum(d["total_loss"] for d in epoch_losses) / len(epoch_losses)
-        print(f"\nEpoch {epoch + 1} complete. Avg loss: {avg_loss:.4f}")
+        avg_belief_shift = sum(d.get("belief_shift", 0) for d in epoch_losses) / len(epoch_losses)
+        belief_shift_history.append(avg_belief_shift)
+
+        print(f"\nEpoch {epoch + 1} complete:")
+        print(f"  Avg loss: {avg_loss:.4f}")
+        print(f"  Avg belief_shift: {avg_belief_shift:.4f}")
+
+        # Monitor belief_shift trend
+        if len(belief_shift_history) >= 3:
+            recent = belief_shift_history[-3:]
+            if all(recent[i] > recent[i-1] for i in range(1, len(recent))):
+                print("  ⚠️  belief_shift increasing - forward pass may be degrading")
+            elif all(recent[i] < recent[i-1] for i in range(1, len(recent))):
+                print("  ✓ belief_shift decreasing - beliefs converging on round 0")
 
         # Evaluate
         if val_loader:
             metrics = trainer.evaluate(val_loader)
-            print(f"Validation: acc={metrics['accuracy']:.4f}, "
+            print(f"  Validation: acc={metrics['accuracy']:.4f}, "
                   f"exec_success={metrics['exec_success_rate']:.4f}")
 
         # Save checkpoint
         ckpt_path = os.path.join(args.output_dir, f"checkpoint_epoch{epoch + 1}.pt")
-        trainer.save_checkpoint(ckpt_path, {"epoch": epoch + 1})
+        trainer.save_checkpoint(ckpt_path, {
+            "epoch": epoch + 1,
+            "curriculum_stage": stage_name,
+            "belief_shift": avg_belief_shift,
+        })
 
     # Save final model
     final_path = os.path.join(args.output_dir, "final_model.pt")
