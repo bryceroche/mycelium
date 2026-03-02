@@ -10,7 +10,7 @@
 > IB discovers the taxonomy of operations — spectral lines emerging from continuous signal  
 > The prism decomposes. The specialists distill. Sympy collapses the wave function  
 > 
-> Mycelium — the unseen network of computation
+> Mycelium — the unseen network of computation, made visible  
 
 
 ---
@@ -22,11 +22,9 @@
 | [What we are building](plan/section_lkup.md) | Lookup table approach for inference |
 | [Six Model Training Guide](plan/six_model.md) | Step-by-step guide for training all six specialist models |
 | [MCTS Wrapper](plan/mcts_wrapper.md) | Monte Carlo Tree Search layer design |
-| [Wave Function Collapse](plan/section_wfc.md) | Beam inference via wave function collapse |
 | [Observations: Abacus](plan/obs_abacus.md) | Abacus analogy and observations |
 | [Observations: Prism](plan/obs_prism.md) | Prism analogy and observations |
 | [Observations: Lambda](plan/obs_lambda.md) | Lambda (λανθάνω) etymology and observations |
-| [Field Guide](plan/field_guide.md) | Lessons learned, bugs encountered, tricks that work |
 ---
 
 ## The Big Picture

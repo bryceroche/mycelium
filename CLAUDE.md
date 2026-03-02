@@ -1,5 +1,7 @@
 # Mycelium v6
 
+Distill math reasoning from attention patterns
+
 ## Large Files will FREEZE you
 Check the size of the file before opening it
 Do not open any file over 5MB 
@@ -18,6 +20,9 @@ Process directly in S3 with Lambda Map Reduce
 Set Lambda memory to 3GB NOT 1GB
 
 
+## A10G doesn't support bfloat16 Use float32 for compatibility
+torch_dtype=torch.float32  
+
 ## GSM8K Data Quarantine
 
 All GSM8K data has been moved to `s3://mycelium-data/archive/gsm8k/`.
@@ -35,38 +40,11 @@ avoid regex
 A 72B teacher model solves math problems via chain-of-thought. We extract computation structure from its attention patterns and distill it into three 0.5B student models that reproduce the reasoning without generating any text at inference.
 
 ```
-TRAINING:  Teacher solves problems → extract spans via JSD → train 3 specialists
-INFERENCE: Problem text → 3 specialists → candidate search → symbolic executor → answer
+C2: What operations?         MiniLM-22M (multi-label)
+C3: Extract operand spans    Qwen-0.5B (SQuAD-style start/end)
+C4: Assemble expression      Deterministic (template + resolved operands)
+Sympy: Evaluate
 ```
-
-## Current Architecture 
-
-| Model | Task | Approach |
-|-------|------|----------|
-| C2: Classifier | Span group → operation (ADD/SUB/MUL/DIV) | Sequence classification |
-| C3: Extractor | Operation → typed arguments | Generative (Instruct) |
-
-All models are Qwen-0.5B (~500M params each).
-
-## The Inference Pipeline
-
-2. **Generate candidate groupings** (search, not learned — 5-15 candidates)
-3. **Classify + extract** each group (C2, C3)
-4. **Execute + score + pick** best answer
-
-**Key trick:** Batch all candidates together. Cuts latency from ~20s to ~2s per problem.
-
-
-## Core Principles
-
-**Search where the space is small, learn where the space is large.**
-Groupings (5-15 candidates): searched. Classification (language understanding): learned.
-
-**The executor is the validator.**
-Models don't need to be perfect. Bad predictions fail to produce valid answers → eliminated.
-
-**Error attribution drives development.**
-Every improvement came from diagnosing failures.
 
 ## Beads Workflow
 
@@ -95,6 +73,4 @@ Task(
 # Bad - blocks conversation for 30+ seconds
 Bash(command="ssh ubuntu@... long command")
 ```
-
-Bozeman MT
 
