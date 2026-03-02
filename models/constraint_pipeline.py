@@ -490,6 +490,15 @@ class MyceliumConstraintPipeline(nn.Module):
             ).abs().mean()
             losses["convergence_loss"] = delta
 
+        # Parameter regularization: ensure all message network params get gradients
+        # (needed for DDP to work with variable execution paths)
+        param_reg = torch.tensor(0.0, device=device, requires_grad=True)
+        for module in [self.messages, self.c4, self.c2.msg_gate, self.c3.msg_gate]:
+            for param in module.parameters():
+                if param.requires_grad:
+                    param_reg = param_reg + 1e-8 * param.pow(2).sum()
+        losses["param_reg"] = param_reg
+
         return losses
 
     def _extract_values(self, state: PipelineState) -> List[List[Optional[float]]]:
