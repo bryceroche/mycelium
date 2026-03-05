@@ -2,16 +2,19 @@
 
 ---
 
+> The Shadow of Intelligence
 > λ — λανθάνω (lanthánō) — to escape notice; to be unseen
 > 
-> JSD reveals latent boundaries in the flow of attention  
-> IAF separates reading from reasoning — the dual phases hidden in every forward pass  
-> The heartbeat of an attention head pulses between thought and ground — each silence a computation the model never knew it performed  
-> IB discovers the taxonomy of operations — spectral lines emerging from continuous signal  
-> The prism decomposes. The specialists distill. Sympy collapses the wave function  
+> JSD reveals latent boundaries in the flow of attention
+> IAF separates reading from reasoning — the dual phases hidden in every forward pass
+> The heartbeat of an attention head pulses between thought and ground — each silence a computation the model never knew it performed
+> A telegraph signal — the hidden Markov state snaps, never drifts
+> Count the knot crossings where the problem surprised the mind that solved it
+> IB discovers the taxonomy of operations — spectral lines emerging from continuous signal
+> The prism decomposes. The specialists distill. SymPy collapses the wave function
+> Beliefs propagate through learned potentials — each node correcting what it cannot see
 > 
-> Mycelium — the unseen network of computation, made visible  
-
+> Mycelium — the unseen network of computation, made visible
 
 ---
 
