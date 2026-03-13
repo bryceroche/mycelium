@@ -1,77 +1,104 @@
 # Mycelium v7
 
-Distill mathematical reasoning from a 7B teacher's attention patterns. A 0.5B canonicalizer transcodes compressed problem text into explicit telegraphic instructions. A learned energy landscape refines rough to precise. SymPy certifies truth. They co-evolve.
+Distill mathematical reasoning from a 7B teacher's attention patterns. An assembly line of 0.5B specialists transcodes compressed problem text into explicit telegraphic instructions through gradual descent — each worker crosses one representational boundary, each step is small, difficulty is distributed evenly. A learned energy landscape refines rough to precise. SymPy certifies truth. The pipeline breathes — expand, collapse, verify, correct, repeat. They co-evolve.
 
 ---
 
-## Seven Principles
+## Eight Principles
 
-Seven ways of distributing. Each one prevents concentration into a single point of failure.
+Eight ways of distributing. Each one prevents concentration into a single point of failure.
 
 ```
 1. EXPAND      distribute the PROBLEM across steps
                1 ambiguous blob → N explicit instructions
 
-2. DECOMPOSE   distribute the WORK across workers  
-               each step is independent, forms a DAG
+2. DECOMPOSE   distribute the WORK across workers
+               each worker crosses ONE representational boundary
 
 3. SMOOTH      distribute the EFFORT evenly
-               each step is ~4 tokens, uniform difficulty
+               no worker is dramatically harder than any other
+               coefficient of variation across workers < 0.3
 
-4. VERIFY      distribute the CHECKING per step
+4. BREATHE     distribute the RECOVERY across cycles
+               expand → collapse → verify → expand again if wrong
+               C1-B's bp_depth sets the breath budget
+
+5. VERIFY      distribute the CHECKING per step
                SymPy executes each instruction, oracle certifies
 
-5. LOW → HIGH  distribute the PRECISION between model and ODE
+6. LOW → HIGH  distribute the PRECISION between model and ODE
                rough telegrams → ODE refines → precise SymPy
 
-6. COMPRESS    distribute the LOAD away from the model
+7. COMPRESS    distribute the LOAD away from the model
                minimal tokens, zero syntax noise, lossless meaning
 
-7. EVOLVE      distribute the LEARNING across cycles
-               verified solutions train both models, oracle grounds evolution
+8. EVOLVE      distribute the LEARNING across cycles
+               verified solutions train all components, oracle grounds evolution
 ```
 
-Every design decision passes this test: does it help expand, decompose, smooth, verify, refine, compress, or evolve? If not, we don't need it.
+Every design decision passes this test: does it help expand, decompose, smooth, breathe, verify, refine, compress, or evolve? If not, we don't need it.
+
+When a worker struggles, SPLIT it (DECOMPOSE + SMOOTH). When the pipeline fails on a step, BREATHE (expand back, localize error, try correction, collapse again). When accuracy plateaus, EVOLVE (harvest verified traces, retrain from fresh LoRA).
 
 ---
 
-## The Core Insight: Transcoding, Not Reasoning
+## The Core Insight: Gradual Descent, Not Reasoning
 
-Mathematical problem text is BADLY compressed — ambiguous, implicit, everything jammed together. The canonicalizer TRANSCODES it into WELL compressed telegraphic instructions — explicit, unambiguous, minimal.
-
-```
-Bad compression (input):
-    "If x² + y² = 90 and xy = 27, what is (x+y)²?"
-    One sentence. Two equations, one target, an implicit expansion,
-    substitution, and computation all hidden inside.
-
-Good compression (output):
-    GIVEN x^2+y^2=90
-    GIVEN xy=27
-    EXPAND (x+y)^2
-    SUBS _prev x^2+y^2 90
-    EVAL _prev
-    Five telegrams. Everything explicit. Nothing hidden. ~20 tokens total.
-```
-
-Structure EXPANDS (1 blob → 5 steps). Content COMPRESSES (each step is ~4 tokens). The diamond shape:
+Mathematical problem text is BADLY compressed — ambiguous, implicit, everything jammed together. The assembly line TRANSCODES it into WELL compressed telegraphic instructions through five representational layers. Each layer boundary is crossed by exactly one specialist. No large leaps.
 
 ```
-         Raw problem (1 sentence, everything hidden)
+Layer 0:  RAW PROBLEM TEXT
+          "If x² + y² = 90 and xy = 27, what is (x+y)²?"
               │
-         EXPAND structure
+          ── C1-A: compressed natural language → explicit structure ──
               │
-    ┌────┬────┼────┬────┐
-  GIVEN GIVEN EXPAND SUBS EVAL    ← widest: 5 explicit steps
-    │    │     │     │    │
-    └────┴─────┴─────┴────┘
+Layer 1:  SCAFFOLD
+          5 steps: [GIVEN, GIVEN, EXPAND, SUBS, EVAL]
               │
-         COMPRESS content (each step = VERB + ARGUMENTS)
+          ── Narrator (LoRA C): structure → natural language description ──
               │
-         EXECUTE (SymPy evaluates each line)
+Layer 2:  NARRATION
+          "State the equation x² + y² = 90"
+          "Substitute x² + y² = 90 into the expansion"
               │
-         COLLAPSE to answer
+          ── Slot Tagger (LoRA E) + Resolver (LoRA F): description → bound values ──
+              │
+Layer 2.5: BOUND PARAMETERS
+          SLOT_1 = 90 (from step_1), SLOT_2 = expansion (from step_3)
+              │
+          ── Translator (LoRA D): narration + values → rough expression ──
+              │
+Layer 3:  ROUGH EXPRESSION
+          SUBS _prev x^2+y^2 90
+              │
+          ── Energy landscape + ODE: rough → precise ──
+              │
+Layer 4:  SYMPY EXECUTION
+          subs(prev_result, x**2+y**2, 90) → 144 ✓
 ```
+
+The diamond shape: structure EXPANDS (1 blob → 5 steps). Content COMPRESSES (each step → ~4 tokens). Both happen simultaneously across the worker chain.
+
+---
+
+## The Breathing Model
+
+The pipeline breathes. Each step inhales (expands compressed reference into explicit meaning) then exhales (collapses into verified result). C1-B's bp_depth prediction sets the breath budget.
+
+```
+Breath cycle per step:
+    INHALE:  Narrator expands scaffold into description
+             Slot Tagger identifies parameter references
+             Resolver binds references to concrete values
+    EXHALE:  Translator formats expression
+             ODE refines rough → precise
+             SymPy executes and verifies
+
+    PASS → result enters state table for next step's breathing
+    FAIL → factor graph localizes error → next breath corrects
+```
+
+Breath 1 might get it right. Breath 2 corrects what breath 1 missed. The whole solution emerges from accumulated verified breaths, not from a single large generation.
 
 ---
 
@@ -92,12 +119,15 @@ Structure EXPANDS (1 blob → 5 steps). Content COMPRESSES (each step is ~4 toke
 12. No regex in inference path — model generates, SymPy parses
 13. Delete landmines — don't quarantine, delete
 14. Validate on 10 problems before scaling to 50 or 500
-15. Stage-based model loading — 3 loads total, not per-problem
+15. Stage-based model loading — minimize loads, not per-problem
 16. Training targets are ROUGH — right neighborhood, not exact syntax
+17. Each normalizer matches its model's training distribution (see C1-A preprocessor below)
 ```
 
 ---
+
 ## THE MYCELIUM BUG LIST
+
 ```
  1. Generate, never extract (sixteen twenty-one → 1621)
  2. Perfect boundaries don't exist (but boundary COUNT matters)
@@ -111,11 +141,17 @@ Structure EXPANDS (1 blob → 5 steps). Content COMPRESSES (each step is ~4 toke
 10. Checkpoint to S3 (ephemeral storage will betray you)
 11. Never open large files (head -c 3000)
 12. Model learns what you show it, not what you intend
-13. LoRA scale = alpha/rank. Scale > 1.0 destroys base model behavior. Use scale ≤ 1.0 for generation tasks.
-14. Compare SymPy execution results to gold, never raw model output. Model outputs expressions, SymPy performs operations.
-15. Never inject data into prompts at inference that wasn't present during training. If training shows `Values: 4, 2, 1` then inference must show `Values: 4, 2, 1`, not `Values: 4, 2, 1, prev=(49, -28, -28)`.
-16. Eval pipeline must use the exact same prompt formatting function as training data construction. Never rebuild prompts by hand in eval code. Import the same function.
+13. LoRA scale = alpha/rank. Scale > 1.0 destroys base model behavior
+14. Compare SymPy execution results to gold, never raw model output
+15. Never inject data into prompts at inference that wasn't present during training
+16. Eval pipeline must use the exact same prompt formatting function as training
+17. Each component's preprocessor must match what it was trained with
+    (C1-A uses whitespace-only because antlr4 wasn't installed during training)
+18. Normalize BOTH input and target in training data
+    (Slot Tagger v1 failed: narrations had LaTeX, targets were normalized)
 ```
+
+---
 
 ## C1-A Preprocessor (FROZEN — DO NOT MODIFY)
 
@@ -135,14 +171,17 @@ def preprocess_latex_c1a(text):
 
 # Downstream components (Slot Tagger, Translator) — SEPARATE normalizers
 def preprocess_latex_slot_tagger(text):
-    """Full LaTeX normalization. Uses antlr4 + parse_latex."""
+    """Full LaTeX normalization for slot tagger and downstream."""
     # \frac{A}{x-5} → A/(x-5)
     # \sqrt{x} → sqrt(x)
-    # etc.
+    # \left( \right) → ( )
+    # Applied to BOTH narration input AND operand targets during extraction
     ...
 ```
 
 Two functions, two code paths, clearly named. Never swap them.
+
+---
 
 ## Large Files Will FREEZE You
 
@@ -155,6 +194,74 @@ aws s3 cp s3://mycelium-data-v7/path/to/file.json - | head -c 3000
 ---
 
 ## Architecture — The Assembly Line
+
+### The Gradual Descent Workers
+
+```
+Worker          Model              Job (ONE boundary)              Current Status
+──────────────────────────────────────────────────────────────────────────────────
+C1-A            Qwen-0.5B+LoRA     text → structure scaffold       frozen, F1=0.741
+C1-B            Qwen-0.5B+LoRA     → bp_depth + co-transitions     frozen, BP 62%
+Narrator        Qwen-0.5B+LoRA C   scaffold → step description     trained
+Slot Tagger     Qwen-0.5B+LoRA E   narration → tagged slots        retraining (norm fix)
+Resolver        Qwen-0.5B+LoRA F   slot desc → step_id binding     90% accuracy
+Translator      Qwen-0.5B+LoRA D   narration+values → expression   100% parseable
+Energy+ODE      learned MLPs        rough → precise                 trained
+SymPy           symbolic engine     execute + verify                deterministic
+Factor Graph    energy-based        error localize + correct        97.8% / 90.9%
+```
+
+All learned components share the same Qwen-0.5B base. Different LoRA adapters, instant switching via PEFT (~3-4MB per adapter).
+
+### The Binding Split (Slot Tagger → Resolver → Translator)
+
+The old monolithic Translator was doing three jobs at once (Bug #8). Now:
+
+```
+=== SLOT TAGGER (LoRA E) ===
+Input:
+    Narration: Subtract the area of the circle from the area of the square
+    Extract slots:
+Output:
+    SLOT_1 REF the area of the circle
+    SLOT_2 REF the area of the square
+    -- or for literals --
+    SLOT_1 REF the radius
+    SLOT_2 LITERAL 2
+
+=== RESOLVER (LoRA F) ===
+Input:
+    Slots:
+      SLOT_1: the area of the circle
+      SLOT_2: the area of the square
+    State:
+      step_1: Find the side length of the square → 10
+      step_2: Compute the area of the square → 100
+      step_3: Find the area of the circle with radius 5 → 25*pi
+    Resolve:
+Output:
+    SLOT_1 step_3
+    SLOT_2 step_2
+
+=== TRANSLATOR (LoRA D) ===
+Input:
+    Narration: Subtract the area of the circle from the area of the square
+    Values:
+      SLOT_1 = 25*pi
+      SLOT_2 = 100
+    Expression:
+Output:
+    100 - 25*pi
+```
+
+Key design decisions:
+- Line-based format, not JSON (Qwen-0.5B can't reliably generate balanced braces)
+- Resolver outputs step_ids, not values (pipeline code dereferences)
+- LITERALs bypass the Resolver entirely
+- Slot Tagger expands anaphora ("itself" → "the radius") so Resolver never sees coreference
+- State table carries narrator descriptions from every prior step (language-to-language matching)
+- GIVEN/SETUP steps surface problem values into state table — no special "problem text" section
+- Stop sequences at inference: ["\n\n", "Human:"] for all models
 
 ### The Telegraphic Instruction Language
 
@@ -177,44 +284,28 @@ ANSWER      final result                _prev
 
 ### C1-A: The Structural Guide (frozen, F1=0.741)
 
-Tells the canonicalizer HOW MANY instructions to write and WHAT TYPE each one is.
+Tells the assembly line HOW MANY instructions to write and WHAT TYPE each one is.
 
 ```
-Input:  raw problem text
+Input:  raw problem text (whitespace-cleaned only — no antlr4)
 Output: boundary_count (N boundaries → N+1 steps)
         scaffold_types per step (7 classes, from scaffold MLP on hidden states)
+        cached hidden states (896-dim) shared with downstream
 ```
 
-C1-A provides the TEMPLATE. The canonicalizer fills in the ARGUMENTS.
+C1-A provides the TEMPLATE. The assembly line fills in the CONTENT.
+
+### C1-B: The Breath Budget (frozen, BP 62%, MAE 1.37)
+
+Predicts belief propagation depth and co-transition statistics. Sets how many expand-collapse cycles the factor graph allows before giving up.
 
 ```
-C1-A says:          4 steps: [GIVEN, EXPAND, SUBS, EVAL]
-Canonicalizer adds: GIVEN x^2+y^2=90; EXPAND (x+y)^2; SUBS _prev x^2+y^2 90; EVAL _prev
+1-2 steps  → bp_depth=1.0 (simple, fast)
+3-4 steps  → bp_depth=2.0 (medium)
+5+ steps   → bp_depth=3.0 (complex)
 ```
-
-### The Canonicalizer (Qwen-0.5B + LoRA — the ONLY text generator)
-
-Transcodes problem text into telegraphic instructions. ONE model, ONE job, ONE output format.
-
-```
-Input:
-    Problem: [full problem text]
-    Structure: N steps [SCAFFOLD_TYPE, SCAFFOLD_TYPE, ...]
-    Rewrite as instructions:
-
-Output:
-    GIVEN x^2+y^2=90
-    GIVEN xy=27
-    EXPAND (x+y)^2
-    SUBS _prev x^2+y^2 90
-    EVAL _prev
-```
-
-The output is ROUGH. Carets not double-stars. No Eq() wrappers. No Symbol declarations. Right neighborhood, not precise syntax. The ODE handles precision.
 
 ### Energy Landscape (learned MLPs, alternating pair terms)
-
-The mountain topography. Correct instruction sequences sit in energy basins. The ODE walks downhill toward them.
 
 ```
 Node energy:    MLP(instruction_embedding) → scalar
@@ -228,15 +319,9 @@ Total energy:   E = Σ node_energy(h_i) + λ Σ_{i<j} pair_energy(h_i, h_j)
                 π-normalized across nodes for scale invariance
 
 Training:       contrastive on correct vs incorrect instruction sequences
-                Shuffle correct sequence → high energy (wrong order)
-                Correct sequence → low energy (right basin)
 ```
 
-The alternating structure encodes the mathematical truth that operation order matters: EXPAND before SUBS works, SUBS before EXPAND doesn't.
-
 ### ODE Solver (refines rough → precise)
-
-The hiker navigating downhill on the energy landscape.
 
 ```
 Dynamics:   dh/dt = -∇E(h)  (gradient descent on learned energy)
@@ -245,15 +330,9 @@ Bounds:     tanh * 0.1 (prevents explosion)
 π-norm:     at input, state, and energy levels
 
 What it refines:
-    Rough telegrams → precise SymPy function calls
     x^2 → x**2
     sin30 → sin(pi/6)
     SUBS _prev x^2+y^2 90 → subs(prev_result, x**2+y**2, 90)
-
-Integration time from C1-A boundary count:
-    1-2 steps  → bp_depth=1.0 (simple, fast)
-    3-4 steps  → bp_depth=2.0 (medium)
-    5+ steps   → bp_depth=3.0 (complex)
 ```
 
 ### SymPy Oracle (incorruptible)
@@ -268,7 +347,7 @@ The oracle CAN'T be fooled — math is right or wrong
 Grounds the entire feedback loop
 ```
 
-### Factor Graph (verification + error localization)
+### Factor Graph (verification + error localization + breathing)
 
 ```
 After ODE converges:
@@ -278,11 +357,11 @@ After ODE converges:
 
 Error localization: 97.8% accuracy
 Correction convergence: 90.9%
+
+Controls breathing: bp_depth from C1-B sets max correction cycles
 ```
 
 ### Scaffold Perturbation Recovery (when C1-A is wrong)
-
-The structural guide can be wrong and the building still stands.
 
 ```
 If ODE can't converge (energy stays high):
@@ -304,54 +383,54 @@ If NOTHING works:
 
 ## Inference Pipeline (stage-based)
 
-Three model loads total. Clean integer problem_id keys throughout.
+Minimize model loads. Clean integer problem_id keys throughout.
 
 ```
-Stage 1: Load C1-A (frozen)
-         Run ALL problems → boundaries + scaffold types
+Stage 1: Load C1-A (frozen, whitespace-only preprocessor)
+         Run ALL problems → boundaries + scaffold types + cached hidden states
          Save per problem_id
          Unload C1-A
 
-Stage 2: Switch to canonicalizer LoRA adapter (same Qwen-0.5B base)
-         For each problem:
-             Input: problem text + structure hint from C1-A
-             Output: telegraphic instruction sequence (~4 tokens per step)
-         Wave batching across problems
-         Unload canonicalizer
+Stage 2: Load assembly line LoRAs sequentially (same Qwen-0.5B base)
+         For each problem, for each step:
+             Narrator (LoRA C):     scaffold → step description
+             Slot Tagger (LoRA E):  description → tagged slots
+             Resolver (LoRA F):     slots + state table → bindings
+             Translator (LoRA D):   description + values → rough expression
+         LoRA hot-swap between workers (~3-4MB, instant via PEFT)
+         Wave batching across problems where possible
 
 Stage 3: Load energy landscape + ODE
          For each problem:
              Refine rough telegrams → precise SymPy
              Execute each instruction
              Verify energy is low
-             If high: perturb scaffold → retry
+             If high: perturb scaffold → retry (breathing)
          Unload
 ```
-
-C1-A and canonicalizer share the same Qwen-0.5B base. Different LoRA adapters, instant switching via PEFT.
 
 ---
 
 ## The Three-Body System
 
 ```
-Canonicalizer (creative):     rough telegrams (direction)
-Energy Landscape (critic):     order-aware evaluation (structure)
-SymPy (oracle):               incorruptible truth (precision)
+Assembly Line (creative):      rough telegrams through gradual descent
+Energy Landscape (critic):     order-aware evaluation
+SymPy (oracle):               incorruptible truth
 
-Creator → Critic → Oracle → verified traces → both retrain → cycle
+Creator → Critic → Oracle → verified traces → all retrain → cycle
 ```
 
-### Self-Improvement Loop (Principle 7: EVOLVE)
+### Self-Improvement Loop (Principle 8: EVOLVE)
 
 ```
 For each cycle:
-    1. Train canonicalizer (fresh LoRA from base on ALL accumulated data)
+    1. Train all LoRAs (fresh from base on ALL accumulated data)
     2. Train energy landscape (contrastive on ALL accumulated pairs)
     3. Stage-based inference on all problems
     4. SymPy oracle verifies answers
     5. Harvest from correct solutions:
-       - Verified (rough telegram → precise SymPy) pairs
+       - Verified trace pairs for each worker
        - Correct/incorrect sequence pairs for energy landscape
        - Scaffold corrections for C1-A (Phase 5)
        - Per-instruction error rates for SMOOTH monitoring
@@ -366,6 +445,14 @@ Oracle-grounded: only execution-verified traces enter training.
 ### Error Attribution (maintaining SMOOTH)
 
 ```
+Per-worker accuracy:
+    C1-A:         F1=0.741 (frozen)
+    Narrator:     ??%
+    Slot Tagger:  fixing (LaTeX normalization)
+    Resolver:     90%
+    Translator:   100% parseable
+    ODE+Energy:   ??%
+
 Per-verb error rates:
     GIVEN:    ??%
     EVAL:     ??%
@@ -377,9 +464,9 @@ Per-verb error rates:
 Coefficient of variation = std(rates) / mean(rates)
 Target: CV < 0.3 (difficulty evenly distributed)
 
-If APPLY at 30% while others at 5%:
-    Split: APPLY → APPLY_IDENTIFY + APPLY_EXECUTE
-    Keep splitting until balanced
+If any worker or verb is dramatically harder:
+    Split it. Keep splitting until balanced.
+    (Example: monolithic Translator → Slot Tagger + Resolver + Translator)
 ```
 
 ### Data Provenance
@@ -387,11 +474,14 @@ If APPLY at 30% while others at 5%:
 ```
 Every harvested trace carries:
     problem_id, step_idx, verb
-    rough_telegram (canonicalizer output)
+    narrator_text (LoRA C output)
+    slot_tags (LoRA E output)
+    resolved_bindings (LoRA F output)
+    rough_expression (LoRA D output)
     refined_sympy (ODE output)
     executed_result (SymPy output)
     cycle_harvested, model_version, energy_score
-    was_corrected, was_scaffold_perturbed
+    was_corrected, was_scaffold_perturbed, breath_number
 ```
 
 ### Versioned Rollback
@@ -399,7 +489,10 @@ Every harvested trace carries:
 ```
 s3://mycelium-data-v7/cycles/
 ├── cycle_0/
-│   ├── canonicalizer_lora/
+│   ├── narrator_lora/
+│   ├── slot_tagger_lora/
+│   ├── resolver_lora/
+│   ├── translator_lora/
 │   ├── energy_model.pt
 │   ├── results.json
 │   ├── harvested_traces.jsonl
@@ -411,25 +504,61 @@ s3://mycelium-data-v7/cycles/
 
 ---
 
-## Canonicalizer Training
+## Training Data Formats
 
-### Target Format: ROUGH Telegrams
+### Slot Tagger Training
 
 ```
-Targets are ROUGH — right neighborhood, not exact syntax.
-The ODE handles precision. The model handles direction.
+Input:
+    Narration: Subtract the area of the circle from the area of the square
+    Extract slots:
+Target:
+    SLOT_1 REF the area of the circle
+    SLOT_2 REF the area of the square
 
-DO train on:     SOLVE x^2-9 x           (rough, ~4 tokens)
-DON'T train on:  solve(Eq(x**2-9,0), x)  (precise, teaches fragile exactness)
-
-DO train on:     EVAL 1/2*8*10*sin30      (rough, student math)
-DON'T train on:  evaluate(Rational(1,2)*8*10*sin(pi/6))  (precise, compiler code)
-
-DO train on:     SUBS _prev x^2+y^2 90   (rough, telegraphic)
-DON'T train on:  subs(prev, {x**2+y**2: 90})  (precise, dict syntax)
+Extraction: from existing ~10K CoT parses
+    - Identify operand references in narrator text
+    - Expand anaphora ("itself" → repeated description)
+    - Normalize BOTH narration AND target with slot_tagger normalizer
+    - Mark literal constants as LITERAL, references as REF
 ```
 
-### Training Config
+### Resolver Training
+
+```
+Input:
+    Slots:
+      SLOT_1: the area of the circle
+    State:
+      step_1: Find the side length → 10
+      step_2: Compute the area of the square → 100
+      step_3: Find the area of the circle with radius 5 → 25*pi
+    Resolve:
+Target:
+    SLOT_1 step_3
+
+Extraction: from same CoT parses
+    - State table built from prior steps' narrator outputs + values
+    - REF slots only (LITERALs bypass Resolver)
+    - Output is step_id, not value
+```
+
+### Translator Training
+
+```
+Input:
+    Narration: Subtract the area of the circle from the area of the square
+    Values:
+      SLOT_1 = 25*pi
+      SLOT_2 = 100
+    Expression:
+Target:
+    100 - 25*pi
+
+Stop sequences: ["\n\n", "Human:", "="] (unless Eq() expressions expected)
+```
+
+### Canonicalizer Training (legacy, may be superseded by assembly line)
 
 ```
 Base:       Qwen/Qwen2.5-0.5B (always fresh, never continue previous)
@@ -439,26 +568,11 @@ Batch:      4, grad_accum 8 (effective 32)
 LR:         2e-4, cosine schedule
 dtype:      float32 (A10G)
 Split:      problem-level (never step-level)
-Validation: targets must contain a valid VERB and at least one argument
+
+Targets are ROUGH — right neighborhood, not exact syntax.
+DO train on:     SOLVE x^2-9 x
+DON'T train on:  solve(Eq(x**2-9,0), x)
 ```
-
-### Building Training Data
-
-Source: Sonnet batch API converts 50K CoT steps into rough telegrams.
-
-```
-Sonnet prompt:
-    "Convert this math step into a telegraphic instruction.
-     Format: VERB argument1 argument2
-     Use rough math notation (^ not **, fractions as a/b).
-     Output ONE line only. 3-6 tokens maximum."
-
-Validate: each target starts with a valid VERB
-          each target is < 10 tokens
-          reject any target containing English words (except VERB)
-```
-
-Save to s3://mycelium-data-v7/training_data/canonicalizer/
 
 ---
 
@@ -468,13 +582,23 @@ Save to s3://mycelium-data-v7/training_data/canonicalizer/
 ```
 s3://mycelium-data-v7/
 ├── training_data/
-│   └── canonicalizer/        # rough telegram targets
+│   ├── canonicalizer/            # rough telegram targets
+│   ├── slot_tagger_train.jsonl   # 49,643 examples
+│   ├── resolver_train.jsonl      # 17,328 examples
+│   └── translator_v3_train.jsonl # 36,268 examples
 ├── models/
-│   └── canonicalizer/        # Qwen-0.5B + LoRA
-├── cycles/                   # feedback loop versioned rollback
-├── evaluation/               # per-verb error attribution
-├── feedback_loop/            # harvested traces
-└── checkpoints/              # crash recovery
+│   ├── canonicalizer/            # Qwen-0.5B + LoRA
+│   ├── slot_tagger/              # LoRA E
+│   ├── resolver/                 # LoRA F
+│   └── translator_v3/            # LoRA D
+├── scripts/
+│   ├── extract_slot_resolver_data.py
+│   ├── train_slot_resolver_translator.py
+│   └── full_pipeline.py
+├── cycles/                       # feedback loop versioned rollback
+├── evaluation/                   # per-verb + per-worker error attribution
+├── feedback_loop/                # harvested traces
+└── checkpoints/                  # crash recovery
 ```
 
 ### Frozen Models (read-only from old bucket)
@@ -539,9 +663,12 @@ scripts/
 ├── staged_inference.py               # Batched stage pipeline (Stage 1-2-3)
 ├── stage1_c1a_inference.py           # Stage 1: C1-A batch segmentation
 ├── train_canonicalizer.py            # Qwen-0.5B + LoRA training
+├── train_slot_resolver_translator.py # Binding split training
+├── extract_slot_resolver_data.py     # Training data extraction from CoT
+├── full_pipeline.py                  # Full assembly line pipeline
 ├── build_canonicalizer_data.py       # Sonnet → rough telegram targets
 ├── test_pipeline_e2e.py              # End-to-end pipeline test
-└── deprecated/                       # Phased out: two-model split (LoRA C/D)
+└── deprecated/                       # Phased out: pre-binding-split monolithic translator
 
 plan/
 ├── oracle.py                         # SymPy execution + timeout + parse_latex
@@ -561,8 +688,8 @@ src/
 # Run 50-problem eval with batched stage inference
 python scripts/eval.py --problems data/math_50_test.jsonl --n 50
 
-# Custom canonicalizer model
-python scripts/eval.py --canonicalizer /path/to/model --n 20
+# Custom model paths
+python scripts/eval.py --narrator /path/to/lora_c --slot-tagger /path/to/lora_e --n 20
 ```
 
 ---
@@ -570,25 +697,15 @@ python scripts/eval.py --canonicalizer /path/to/model --n 20
 ## MVP Build Order
 
 ```
-Day 1:  Build canonicalizer training data (Sonnet → rough telegrams)
-        Train canonicalizer. Test on 10 problems.
-
-Day 2:  Wire stage-based pipeline: C1-A → canonicalizer → ODE → SymPy
-        Test on 10 problems: do telegrams execute?
-
-Day 3:  Add ODE with node energy. Does refinement help?
-
-Day 4:  Add alternating pair energy. 50-problem eval.
-
-Day 5:  Scaffold perturbation + Parts Lookup. 50-problem eval.
-
-Day 6:  Feedback loop cycle 0. Harvest traces.
-
-Day 7:  Cycles 1-3. Convergence curve.
-
-Day 8-12: Polish from error attribution. 200-problem stress test.
-
-Day 13: March 22, 2026 — MATH500 benchmark.
+Day 1-4:  ✅ Build canonicalizer training data + train + test
+Day 5-6:  ✅ Wire stage-based pipeline: C1-A → canonicalizer → ODE → SymPy
+Day 7:    ✅ Diagnose Translator bottleneck → binding split design
+Day 8:    ✅ Implement Slot Tagger + Resolver + Translator v3
+Day 9:    ✅ Train binding split. Resolver 90%, Translator 100% parseable
+Day 10:   🔄 Fix Slot Tagger LaTeX normalization. Retrain.
+Day 11:   Full cascade eval. Error attribution across all workers.
+Day 12:   Self-improvement loop cycle 0. Harvest traces.
+Day 13:   March 22, 2026 — MATH500 benchmark.
 ```
 
 ---
@@ -596,9 +713,10 @@ Day 13: March 22, 2026 — MATH500 benchmark.
 ## Future Directions
 
 - C1-A joins feedback loop (scaffold corrections as training data)
-- C1-B for adaptive ODE integration time
+- C1-B adaptive ODE integration time based on problem complexity
 - Laplace spectral fingerprint (telegraph poles/residues conditioning ODE)
 - Teacher trajectory distillation (full path supervision from IAF data)
 - MCTS for solution path discovery (search over SymPy transformations)
 - Scale to Qwen-1.8B if 0.5B ceiling is too low
 - CoT distillation baseline for paper comparison
+- Parts Lookup retrieval for theorem/identity database
