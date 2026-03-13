@@ -365,3 +365,84 @@ def compare_answers(predicted: Any, gold: str,
         return str(predicted).strip() == gold.strip()
     finally:
         signal.signal(signal.SIGALRM, old_handler)
+
+
+# ─────────────────────────────────────────────────────────────
+# Robust string comparison (for translator eval)
+# ─────────────────────────────────────────────────────────────
+
+import re
+
+def normalize_latex(s: str) -> str:
+    """Normalize LaTeX to plain notation."""
+    # \frac{a}{b} -> (a)/(b)
+    s = re.sub(r'\\frac\{([^}]+)\}\{([^}]+)\}', r'(\1)/(\2)', s)
+    # \text{...} -> ...
+    s = re.sub(r'\\text\{([^}]+)\}', r'\1', s)
+    # \quad, \, etc -> space
+    s = re.sub(r'\\quad|\\,|\\;|\\!', ' ', s)
+    # other latex commands -> empty
+    s = re.sub(r'\\[a-zA-Z]+', '', s)
+    # braces -> parens
+    s = s.replace('{', '(').replace('}', ')')
+    return s.strip()
+
+
+def extract_numbers(s: str) -> list:
+    """Extract all numbers from a string."""
+    # Find integers, decimals, fractions
+    nums = re.findall(r'-?\d+(?:\.\d+)?(?:/\d+)?', s)
+    return sorted(nums)
+
+
+def robust_compare(pred: str, gold: str) -> tuple:
+    """
+    Robust comparison for translator evaluation.
+
+    Returns (match: bool, match_type: str).
+    Match types: exact, whitespace, latex_norm, numbers, sympy, numeric, no_match
+    """
+    p, g = pred.strip(), gold.strip()
+
+    # 1. Exact match
+    if p == g:
+        return True, 'exact'
+
+    # 2. Whitespace normalization
+    if p == g.lstrip() or p.replace(' ', '') == g.replace(' ', ''):
+        return True, 'whitespace'
+
+    # 3. LaTeX normalization
+    pn, gn = normalize_latex(p), normalize_latex(g)
+    if pn == gn:
+        return True, 'latex_norm'
+
+    # 4. Number extraction (handles x=3 vs 3, k=5 and k=-3 vs 5,-3)
+    p_nums, g_nums = extract_numbers(pn), extract_numbers(gn)
+    if p_nums and p_nums == g_nums and len(p_nums) >= 1:
+        return True, 'numbers'
+
+    # 5. Symbolic comparison via sympy
+    def to_sympy_safe(s):
+        s = s.replace('^', '**')
+        s = re.sub(r'(\d)([a-zA-Z])', r'\1*\2', s)  # implicit mult
+        return sympify(s, evaluate=False)
+
+    try:
+        ps = to_sympy_safe(pn)
+        gs = to_sympy_safe(gn)
+        if sympy.simplify(ps - gs) == 0:
+            return True, 'sympy'
+    except Exception:
+        pass
+
+    # 6. Numeric evaluation
+    try:
+        pv = float(to_sympy_safe(pn).evalf())
+        gv = float(to_sympy_safe(gn).evalf())
+        if abs(pv - gv) < 1e-6:
+            return True, 'numeric'
+    except Exception:
+        pass
+
+    return False, 'no_match'

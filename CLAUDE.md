@@ -112,7 +112,37 @@ Structure EXPANDS (1 blob → 5 steps). Content COMPRESSES (each step is ~4 toke
 11. Never open large files (head -c 3000)
 12. Model learns what you show it, not what you intend
 13. LoRA scale = alpha/rank. Scale > 1.0 destroys base model behavior. Use scale ≤ 1.0 for generation tasks.
+14. Compare SymPy execution results to gold, never raw model output. Model outputs expressions, SymPy performs operations.
+15. Never inject data into prompts at inference that wasn't present during training. If training shows `Values: 4, 2, 1` then inference must show `Values: 4, 2, 1`, not `Values: 4, 2, 1, prev=(49, -28, -28)`.
+16. Eval pipeline must use the exact same prompt formatting function as training data construction. Never rebuild prompts by hand in eval code. Import the same function.
 ```
+
+## C1-A Preprocessor (FROZEN — DO NOT MODIFY)
+
+```
+C1-A was trained WITHOUT antlr4. Its preprocessor is whitespace-only.
+Do not install antlr4 on C1-A's inference path.
+Downstream components use their own normalizers.
+```
+
+C1-A's `preprocess_latex` falls back to `' '.join(text.split())` because antlr4 wasn't installed during training. This is now a **fact about C1-A's world**, not a bug to fix. The model learned on whitespace-cleaned text. Changing this breaks train/inference distribution.
+
+```python
+# C1-A's preprocessor — DO NOT MODIFY
+def preprocess_latex_c1a(text):
+    """Whitespace cleaning only. Matches C1-A training distribution."""
+    return ' '.join(text.split())
+
+# Downstream components (Slot Tagger, Translator) — SEPARATE normalizers
+def preprocess_latex_slot_tagger(text):
+    """Full LaTeX normalization. Uses antlr4 + parse_latex."""
+    # \frac{A}{x-5} → A/(x-5)
+    # \sqrt{x} → sqrt(x)
+    # etc.
+    ...
+```
+
+Two functions, two code paths, clearly named. Never swap them.
 
 ## Large Files Will FREEZE You
 
