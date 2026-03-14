@@ -6,16 +6,16 @@
 >
 > *λ — λανθάνω (lanthánō) — to escape notice; to be unseen*
 >
-> JSD reveals latent boundaries in the flow of attention
-> IAF separates reading from reasoning — the dual phases hidden in every forward pass
-> The heartbeat of an attention head pulses between thought and ground — each silence a computation the model never knew it performed
-> A telegraph signal — the hidden Markov state snaps, never drifts
-> Count the knot crossings where the problem surprised the mind that solved it
-> IB discovers the taxonomy of operations — spectral lines emerging from continuous signal
-> The prism decomposes. The canonicalizer transcodes. SymPy collapses the wave function
-> Beliefs propagate through learned potentials — the alternator antisymmetrizes — swap two steps and the energy field inverts
-> Low-resolution telegrams land in the right basin. The ODE walks downhill to precision.
-> Bad compression becomes good compression. Structure expands. Content compresses. Meaning is preserved.
+> JSD reveals latent boundaries in the flow of attention  
+> IAF separates reading from reasoning — the dual phases hidden in every forward pass  
+> The heartbeat of an attention head pulses between thought and ground — each silence a computation the model never knew it performed  
+> A telegraph signal — the hidden Markov state snaps, never drifts  
+> Count the knot crossings where the problem surprised the mind that solved it  
+> IB discovers the taxonomy of operations — spectral lines emerging from continuous signal  
+> The prism decomposes. The canonicalizer transcodes. SymPy collapses the wave function  
+> Beliefs propagate through learned potentials — the alternator antisymmetrizes — swap two steps and the energy field inverts  
+> Low-resolution telegrams land in the right basin. The ODE walks downhill to precision  
+> Bad compression becomes good compression. Structure expands. Content compresses. Meaning is preserved  
 >
 > Mycelium — the unseen network of computation, made visible
 
