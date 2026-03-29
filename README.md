@@ -126,7 +126,7 @@ Why SmolLM2-135M base: small enough that single-shot ceiling is genuinely low. L
 ## Training
 
 ### Data
-Collect correct solutions from a strong model (Qwen-7B), segment at natural joints (99.5% detection rate), format as breath sequences. Each breath is a separate training example — the model never sees the full solution. Target: ~20K+ breath-structured examples from GSM8K + MATH train.
+Collect correct solutions from Qwen-0.5B (joint detection already validated at 99.5% on this model), segment at natural joints, format as breath sequences. Each breath is a separate training example — the model never sees the full solution. Target: ~20K+ breath-structured examples from GSM8K + MATH train.
 
 ### Three Phases (Smooth Transitions)
 
@@ -181,9 +181,9 @@ Train the same architecture at 50M, 135M, 360M, 1.7B. Measure emergent step size
 |---------|------|
 | **Rate-distortion codec** | Breathing = lossy compression at each collapse. Rate = collapse budget. Distortion = information loss. Model learns optimal tradeoff for its capacity. |
 | **Keyframes/interframes** | Expands are keyframes (full resolution). Collapses are interframes (compressed pointers). Like video compression. |
-| **Capacity-granularity** | Teacher processes ~16 micro-ops per breath. Student (135M) can't hold all 16. Externalizes through multiple breaths. Step size scales with capacity. |
+| **Capacity-granularity** | Larger models process ~16 micro-ops per breath. Student (135M) can't hold all 16. Externalizes through multiple breaths. Step size scales with capacity. |
 | **π-normalization** | Model-agnostic attention thresholds for joint detection. Works across scales. |
-| **Laplace spectral fingerprint** | Eigenvalues of dependency graph Laplacian. Captures solution topology. Open thread. |
+| **Bidirectional breathing** | Forward: problem→answer. Backward: answer→problem. Both descend same energy landscape. Reflection = geometric transformation, not metacognition. |
 | **Alternating energy** | Expand increases local entropy, collapse decreases it. Correct solutions descend globally while oscillating locally. |
 
 ---
@@ -195,7 +195,7 @@ Train the same architecture at 50M, 135M, 360M, 1.7B. Measure emergent step size
 python scripts/eval_single_shot.py --model SmolLM2-135M --dataset math500
 
 # Generate breath-structured training data
-python scripts/collect_solutions.py --model Qwen-7B --dataset gsm8k
+python scripts/collect_solutions.py --model Qwen-0.5B --dataset gsm8k
 python scripts/segment_breaths.py --input solutions/ --output breaths/
 
 # Phase 1: Imitation training

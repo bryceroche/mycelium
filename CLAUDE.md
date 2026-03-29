@@ -159,10 +159,14 @@ The operation type determines the expected step characteristics:
 
 ### Collection
 ```
-1. Collect correct solutions from Qwen-7B (or stronger) on:
+1. Collect correct solutions from Qwen-0.5B on:
    - GSM8K (~7.5K problems, grade school math)
    - MATH train (~7.5K problems, competition math)
    Generate 4–8 solutions per problem, keep only SymPy-verified correct
+
+   Why Qwen-0.5B (not 7B): Start with the model we understand.
+   Joint detection already validated at 99.5% on Qwen-0.5B.
+   Smaller model = simpler analysis = faster iteration.
 
 2. Segment at natural joints using 99.5% joint detection pipeline
    Each joint = LaTeX expression SymPy can parse
@@ -306,7 +310,7 @@ The token budget is the bottleneck.
 - Larger models achieve lower rates = more aggressive compression
 
 ### Capacity-Granularity Relationship
-- The teacher (7B) processes ~16 micro-operations per breath
+- A larger model processes ~16 micro-operations per breath
 - The student (135M) can't hold all 16 simultaneously
 - It externalizes working memory through multiple breaths
 - Step size scales with model capacity — publishable scaling result
@@ -326,36 +330,44 @@ The token budget is the bottleneck.
 
 ---
 
-## Speculative Directions (Flagged Honestly)
+## Research Directions
 
-These ideas came up in brainstorming. Some may be deep, some may be noise.
-Each needs rigorous testing before committing.
+### Prioritized: Reflection as Geometric Transformation
 
-### Diffusion Model for Low-Resolution Pointers
+Reflection is NOT metacognitive ("Am I on track?"). It IS a geometric transformation of the energy landscape.
+
+**Bidirectional Breathing:**
+- Forward pass: expand from problem toward answer (normal breathing)
+- Backward pass: expand from answer toward problem
+- Both traverse the SAME energy landscape — just in opposite directions
+- Meet in the middle = bidirectional search = fewer total breaths
+
+**Why this is geometric:**
+- The energy landscape is a surface. Forward breathing descends it.
+- Backward breathing ALSO descends it (from the other side).
+- Reflection = running the backward pass to verify the forward pass
+- If forward and backward meet at the same collapsed state, that's validation
+- No metacognition needed. Just geometry.
+
+**When backward is available:**
+- Answer form is constrained ("find the integer", "solve for x")
+- Known answer structure (polynomial, fraction, etc.)
+- Verification problems (check if this answer is correct)
+
+### Deprioritized: Diffusion Denoiser
 - The collapse is a low-res pointer. Could a diffusion model "super-resolve" it?
-- Denoise the lossy collapse into a richer state for the next expansion
 - Risk: adds complexity to an aggressively simple architecture
-- Test: does denoised state lead to better next-expansion quality?
+- Deferred until core breathing is proven
 
-### Energy Resonance
+### Later: Energy Resonance
 - Do correct solutions exhibit resonant patterns in the energy landscape?
-- Frequency of expand/collapse oscillation might correlate with problem difficulty
 - Natural frequency = the problem's "breathing rate"
-- If the model matches this frequency, it's in resonance = optimal stepping
+- Interesting but not blocking current work
 
-### Reflection Step
-- After N breaths, pause and generate a [REFLECT] phase
-- Model reviews its collapsed state and asks: "Am I on track?"
-- Could catch systematic drift that per-step energy doesn't detect
-- Where in the loop? Every 5 breaths? When energy progress stalls?
-- Needs experimentation. Gut says this matters but unproven.
-
-### Bidirectional Breathing
-- Forward: expand from problem toward answer
-- Backward: expand from answer toward problem (when answer structure is known)
-- Meet in the middle — reduces total breaths needed
-- Only works when answer form is constrained (e.g., "find the integer")
-- May connect to bidirectional search in MCTS
+### Later: Laplace Spectral Fingerprint
+- Eigenvalues of dependency graph capture solution topology
+- Open thread — needs rework for text-based features
+- Interesting but not blocking current work
 
 ---
 
@@ -454,15 +466,17 @@ NEW FOR v16:
 ## Milestones
 
 ```
-M0: Training data pipeline
-    Collect solutions, segment at joints, format as breath sequences
-    Validate: ~20K+ breath-structured training examples
-    Validate: step-size distribution matches expected 6-10 steps/problem
-
-M1: SmolLM2-135M single-shot baseline
+M0: SmolLM2-135M single-shot baseline (STEP ZERO)
     Evaluate on GSM8K and MATH-500 (all difficulty levels)
     Validate: establish capacity ceiling per difficulty level
     Expect: very low on MATH L4-L5 (this is the bar breathing must clear)
+    THIS COMES FIRST — can't measure improvement without baseline
+
+M1: Training data pipeline
+    Collect solutions from Qwen-0.5B, segment at joints, format as breath sequences
+    Why Qwen-0.5B: joint detection already validated at 99.5%
+    Validate: ~20K+ breath-structured training examples
+    Validate: step-size distribution matches expected 6-10 steps/problem
 
 M2: Phase 1 — Imitation
     Continued pretraining on breath-structured data
