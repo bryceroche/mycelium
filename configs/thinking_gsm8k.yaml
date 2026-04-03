@@ -1,0 +1,115 @@
+# Mycelium v18 - Integrated Thinking Configuration
+# GSM8K Training with Deep Supervision
+
+# Model
+model:
+  name: "unsloth/Llama-3.2-1B-Instruct"
+  torch_dtype: "bfloat16"
+
+# Architecture
+architecture:
+  # AllLayerPerceiver
+  num_transformer_layers: 16
+  d_transformer: 2048
+  d_perceiver: 1024
+  num_queries: 4
+  num_perceiver_layers: 7
+  max_passes: 20
+
+  # State
+  state_size: 64
+  num_tokens: 4
+
+  # Residual
+  alpha_init: 0.1
+
+# Thinking
+thinking:
+  max_passes: 10
+  confidence_threshold: 0.8
+  min_passes: 1  # always do at least 1 pass
+
+# Training
+training:
+  # Phase 1: Freeze transformer
+  phase1:
+    epochs: 10
+    freeze_transformer: true
+    learning_rate: 1.0e-4
+    weight_decay: 0.01
+
+  # Phase 2: End-to-end
+  phase2:
+    epochs: 20
+    freeze_transformer: false
+    learning_rate: 1.0e-5
+    weight_decay: 0.01
+
+  # Common settings
+  batch_size: 4
+  gradient_accumulation_steps: 8
+  effective_batch_size: 32
+  max_grad_norm: 1.0
+  warmup_steps: 100
+
+  # State scale warmup (over first 5 epochs)
+  state_scale_warmup:
+    enabled: true
+    start_scale: 0.1
+    end_scale: 1.0
+    warmup_epochs: 5
+
+  # Deep supervision
+  deep_supervision:
+    enabled: true
+    weight_schedule: "linear"  # later passes get higher weight
+
+  # Optimizer
+  optimizer: "adamw"
+  scheduler: "cosine"
+
+# Data
+data:
+  train_dataset: "gsm8k"
+  train_split: "train"
+  eval_split: "test"
+  max_seq_length: 512
+
+# Generation (for eval)
+generation:
+  max_new_tokens: 512
+  do_sample: false  # greedy (temperature=0)
+
+# Evaluation
+evaluation:
+  eval_every_n_steps: 500
+  eval_batch_size: 8
+  num_eval_samples: 100  # minimum for reliable accuracy
+
+  # Metrics to track
+  metrics:
+    - thinking_accuracy
+    - single_shot_accuracy
+    - zeros_accuracy  # ablation
+    - avg_passes
+    - avg_confidence
+    - pass_n_accuracy  # accuracy at each pass count
+
+# Logging
+logging:
+  project: "mycelium-v18"
+  run_name: "thinking-gsm8k"
+  log_every_n_steps: 10
+  save_every_n_steps: 1000
+
+# Hardware
+hardware:
+  device: "cuda"
+  mixed_precision: true
+  gradient_checkpointing: true  # for 10 passes in 24GB
+
+# Checkpoints
+checkpoints:
+  save_dir: "checkpoints/thinking_gsm8k"
+  save_total_limit: 3
+  load_from: null  # or path to resume
