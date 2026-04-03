@@ -1,22 +1,23 @@
-# Mycelium v18 — Integrated Thinking
+# Mycelium v19 — Asymmetric Hourglass
 
 > **A transformer that THINKS before it SPEAKS.**
 >
-> Multiple forward passes to understand. A single generation pass to answer.
-> 108M parameters deciding what goes on a 64-float sticky note.
+> The intelligence is in COMPRESSION (what to keep), not DECOMPRESSION (how to project).
+> 89x more params deciding what fits through 64 floats than deciding how to use them.
 
 ---
 
 ## Current State (April 3, 2026)
 
 ```
-Architecture:        Llama 3.2 1B-Instruct + 7-Layer AllLayerPerceiver (108M)
-Status:              ARCHITECTURE PIVOT — Integrated Thinking
+Architecture:        DECOMPRESSOR (MLP, 1.3M) → Llama 16L → COMPRESSOR (7L, 120M)
+Status:              ARCHITECTURE REFINEMENT — Asymmetric Hourglass
 
-LANDMARK RESULTS (prior work):
-  SmolLM2 two-step:   0% → 80.4% (32 floats, +90 point ablation)
-  SmolLM2 three-step: 0% → 52%   (64 floats)
-  Llama two-step:     0% → 83%   (tight bottleneck scales)
+PROVEN RESULTS:
+  Single-step arithmetic: 100%
+  Two-step arithmetic:    54-57%
+  Three-step arithmetic:  19-22%
+  Hypersphere constraint: Works as well as learnable alpha
 
 Target:              GSM8K thinking accuracy > 35% (single-shot baseline)
 ```
@@ -25,94 +26,92 @@ Target:              GSM8K thinking accuracy > 35% (single-shot baseline)
 
 ## What Mycelium Does
 
-Mycelium trains a transformer to reason through **multiple internal passes** before generating any text. Each pass:
-1. Processes the problem through all 16 Llama layers
-2. A 7-layer Perceiver reads ALL layers and compresses to 64 floats
-3. State accumulates via residual connection
-4. When confident, generate the final answer
+Mycelium trains a transformer to reason through **multiple internal passes** before generating any text. The transformer is SANDWICHED between asymmetric compression engines:
 
-The model never generates text during thinking. It gets multiple forward passes to understand, then speaks from accumulated understanding.
+1. **DECOMPRESSOR** (MLP, 1.3M): Projects 64-float state into input bias — EASY job
+2. **TRANSFORMER** (16 layers, 1.23B): Runs PRISTINE — no modification
+3. **COMPRESSOR** (7 layers, 120M): Squeezes all 16 layer hidden states to 64 floats — HARD job
+
+The state lives on a **hypersphere** of radius √64. Each pass rotates the state to a new position. When confident, generate the final answer.
 
 ---
 
 ## The Architecture
 
 ```
-                    ┌──────────────────────────────────────────────────────┐
-                    │                                                      │
-                    ▼                                                      │
-[problem tokens] + [4 state pseudo-tokens]                                │
-        │                                                                 │
-        ▼                                                                 │
-   Layer 1 → Layer 2 → ... → Layer 16                                     │
-        │         │                │                                      │
-        │         │    (all layers saved)                                 │
-        ▼         ▼                ▼                                      │
-   ┌──────────────────────────────────┐                                   │
-   │  7-LAYER PERCEIVER (108M params) │                                   │
-   │  Pass-conditioned layer gate     │                                   │
-   │  4 queries → 64 floats           │ ← TIGHT BOTTLENECK               │
-   └──────────────────────────────────┘                                   │
-        │                                                                 │
-        ▼                                                                 │
-   state = state + alpha * compressed   ← RESIDUAL                       │
-        │                                                                 │
-        ├──→ ConfidenceHead → ready?                                      │
-        │         │                                                       │
-        │     NO  │  YES → GENERATE ANSWER                                │
-        │         │                                                       │
-        └─────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────┐
+│                                                           │
+│  DECOMPRESSOR (MLP, 1.3M params)                          │
+│  64 floats → 512 → 2048 → residual stream bias            │
+│         │                                                 │
+│         ▼                                                 │
+│  [bias + problem tokens] → Llama layers 1-16 (untouched)  │
+│         │                                                 │
+│         ▼                                                 │
+│  COMPRESSOR (7 layers, 120M params)                       │
+│  all 16 layer hidden states → compress → 64 floats        │
+│         │                                                 │
+│         ▼                                                 │
+│  state = normalize(state + delta) * √64  ← HYPERSPHERE    │
+│         │                                                 │
+│         ├──→ Confidence → ready? ──→ GENERATE             │
+│         │                                                 │
+│         └──→ loop back to DECOMPRESSOR                    │
+│                                                           │
+└───────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Why This Works
 
-**Tight bottleneck (64 floats)**: Forces incremental thinking. The model can't solve GSM8K in one pass — it needs 3-5 passes, each extracting value + context + intent.
+**Tight bottleneck (64 floats)**: Forces incremental thinking. The model can't solve complex problems in one pass — it needs multiple rotations on the hypersphere.
 
-**Massive compressor (108M params)**: The asymmetry is the point. 108M parameters deciding what goes on a 64-float sticky note. Like a brilliant editor writing a one-sentence summary.
+**Intentional asymmetry (121M total)**: 120M params deciding what to COMPRESS (hard — must select from 16 layers), only 1.3M params deciding how to DECOMPRESS (easy — just project faithfully). Like a brilliant editor compressing a book into one sentence (hard) versus a reader interpreting that sentence (easier).
 
-**All-layer reading**: The Perceiver reads ALL 16 transformer layers with pass-conditioned attention. Early passes focus on parsing layers (1-8), later passes on reasoning layers (12-16).
+**Pristine transformer**: Llama runs exactly as pretrained. The decompressor modifies what goes IN, the compressor reads what comes OUT. No architectural surgery.
 
-**Residual accumulation**: `state = state + alpha * delta`. Each pass ADDS to understanding, doesn't replace. Gradients flow directly through addition.
+**Hypersphere constraint**: State magnitude is always √64. Each pass is a rotation, not a magnitude change. No learnable alpha, no explosion, no collapse.
 
-**No generation during thinking**: Forward passes without text generation are cheap. 10 thinking passes ≈ generating 200 tokens.
+**Bias injection**: The decompressor produces bias that modulates ALL input positions — not just prepended tokens. Every token in the problem is influenced by accumulated understanding.
 
 ---
 
 ## Components
 
 ```
-Llama 3.2 1B-Instruct:  1.23B   (35% GSM8K single-shot — strong gradient signal)
-AllLayerPerceiver:      ~108M   (7 layers, pass-conditioned, all-layer reading)
-StateInjector:          ~130K   (64 floats → 4 pseudo-tokens)
+Llama 3.2 1B-Instruct:  1.23B   (35% GSM8K — strong gradient signal)
+Compressor:             ~120M   (7 layers, HARD job — selecting what matters)
+Decompressor:           ~1.3M   (MLP, EASY job — just projecting)
 ConfidenceHead:         ~2K     (when to stop thinking?)
 ────────────────────────────────
-Total:                  ~1.34B
-Bottleneck:             64 floats (2,048 bits)
+Total:                  ~1.35B
+New params:             ~121M   (9% of total model)
+Asymmetry:              89x more params for compression than decompression
+Bottleneck:             64 floats on hypersphere (radius ≈ 8.0)
 ```
 
 ---
 
 ## Training
 
-**Phase 1**: Freeze transformer, train perceiver + injector + confidence head (5-10 epochs)
+**Phase 1**: Freeze transformer, train decompressor + compressor + confidence head (5-10 epochs)
 
 **Phase 2**: Unfreeze everything, end-to-end (10-20 epochs)
 
 **Deep supervision**: Every thinking pass gets direct gradient (predicts answer from current state)
 
-**State scale warmup**: 0.1 → 1.0 over first 5 epochs
+**State scale warmup**: 0.1 → 1.0 over first 5 epochs (let bias strength increase gradually)
 
 ---
 
 ## Why This Beats Previous Approaches
 
-| Approach | Problem | Integrated Thinking |
-|----------|---------|-------------------|
-| External loop (v16) | Slow (generation each pass), lossy | Fast (forward passes only), rich |
-| Hourglass (v4) | Distribution mismatch mid-layers | Compression after all layers |
-| Text breathing (v10-v15) | No gradients through text | Continuous compression, full gradients |
+| Approach | Problem | Asymmetric Hourglass |
+|----------|---------|---------------------|
+| Prepended tokens (v18) | Transformer might ignore them | Bias modulates ALL positions |
+| Symmetric (105M / 105M) | Decompression doesn't need that much capacity | 89x more for compression |
+| Learnable alpha | Another hyperparameter | Hypersphere handles magnitude |
 
 ---
 
@@ -120,9 +119,10 @@ Bottleneck:             64 floats (2,048 bits)
 
 ```
 COMPLETE:  Tight bottleneck proof-of-concept (80.4% two-step, 52% three-step)
-COMPLETE:  Llama two-step (83%)
+COMPLETE:  Llama curriculum (100% / 57% / 22% on L0/L1/L2)
+COMPLETE:  Hypersphere constraint validation
 
-CURRENT:   Build integrated thinking architecture
+CURRENT:   Build asymmetric hourglass architecture
            GSM8K thinking accuracy > 35% (single-shot baseline)
            GSM8K thinking accuracy > 45% (+10 points)
 
@@ -133,9 +133,13 @@ FUTURE:    MATH L1-L5 (capacity extension on competition math)
 
 ## Key Insight
 
-Current LLMs generate tokens immediately — one forward pass per word. This architecture decouples thinking from speaking. The model processes the problem multiple times internally, accumulating compressed insights, before producing a single token of output.
+The transformer is SANDWICHED, not modified. It processes exactly as Llama was pretrained to process.
 
-When it finally speaks, it speaks from a place of accumulated understanding.
+The **compressor** has the HARD job: "read everything the transformer thought across all 16 layers and squeeze the most important findings into 64 floats." This is why it gets 120M params.
+
+The **decompressor** has the EASY job: "take 64 floats and project them into something the transformer can use." This is why it only needs 1.3M params.
+
+The asymmetry is intentional: **compression is selection, decompression is projection.**
 
 ---
 
