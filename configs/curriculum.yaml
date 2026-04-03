@@ -1,0 +1,165 @@
+# Mycelium v18 - Curriculum Learning Configuration
+# Start VERY easy, ramp up SLOWLY
+
+# Model
+model:
+  name: "unsloth/Llama-3.2-1B-Instruct"
+  torch_dtype: "bfloat16"
+
+# Architecture (same as thinking_gsm8k)
+architecture:
+  num_transformer_layers: 16
+  d_transformer: 2048
+  d_perceiver: 1024
+  num_queries: 4
+  num_perceiver_layers: 7
+  max_passes: 20
+  state_size: 64
+  num_tokens: 4
+  alpha_init: 0.1
+
+# SAFETY LIMITS
+safety:
+  max_passes_hard_limit: 10  # NEVER exceed this
+  min_confidence_to_stop: 0.7  # Must be at least this confident to stop
+  timeout_seconds: 30  # Max time per problem
+
+# Thinking (conservative for curriculum)
+thinking:
+  max_passes: 5  # Start low, increase with difficulty
+  confidence_threshold: 0.8
+  min_passes: 1
+
+# Curriculum levels
+curriculum:
+  # Advancement requires BOTH accuracy threshold AND min epochs at current level
+  levels:
+    0:  # Single-step arithmetic
+      name: "single_step"
+      data_file: "data/curriculum/level_0_single_step.jsonl"
+      max_passes: 3
+      accuracy_threshold: 0.90  # Must hit 90% to advance
+      min_epochs: 2
+    1:  # Two-step arithmetic
+      name: "two_step"
+      data_file: "data/curriculum/level_1_two_step.jsonl"
+      max_passes: 4
+      accuracy_threshold: 0.85
+      min_epochs: 3
+    2:  # Three-step arithmetic
+      name: "three_step"
+      data_file: "data/curriculum/level_2_three_step.jsonl"
+      max_passes: 5
+      accuracy_threshold: 0.75
+      min_epochs: 3
+    3:  # Four-step arithmetic
+      name: "four_step"
+      data_file: "data/curriculum/level_3_four_step.jsonl"
+      max_passes: 6
+      accuracy_threshold: 0.70
+      min_epochs: 4
+    4:  # Simple word problems
+      name: "simple_word"
+      data_file: "data/curriculum/level_4_simple_word.jsonl"
+      max_passes: 6
+      accuracy_threshold: 0.70
+      min_epochs: 4
+    5:  # Two-step word problems
+      name: "two_step_word"
+      data_file: "data/curriculum/level_5_two_step_word.jsonl"
+      max_passes: 8
+      accuracy_threshold: 0.60
+      min_epochs: 5
+    6:  # GSM8K easy (future)
+      name: "gsm8k_easy"
+      data_file: null  # Will filter from gsm8k
+      max_passes: 10
+      accuracy_threshold: 0.50
+      min_epochs: 5
+
+  # Start at level 0
+  start_level: 0
+
+  # How to handle advancement
+  advancement:
+    check_every_n_steps: 200
+    require_consecutive_passes: 2  # Must pass threshold 2x in a row
+
+# Training (same structure, tuned for curriculum)
+training:
+  phase1:
+    epochs_per_level: 10  # Max epochs at any level
+    freeze_transformer: true
+    learning_rate: 1.0e-4
+    weight_decay: 0.01
+
+  phase2:
+    epochs_per_level: 15
+    freeze_transformer: false
+    learning_rate: 2.0e-5
+    weight_decay: 0.01
+
+  # Conservative batch sizes
+  batch_size: 8
+  gradient_accumulation_steps: 4
+  effective_batch_size: 32
+  max_grad_norm: 1.0
+  warmup_steps: 50
+
+  # State scale warmup (per level)
+  state_scale_warmup:
+    enabled: true
+    start_scale: 0.1
+    end_scale: 1.0
+    warmup_epochs: 3
+
+  # Deep supervision
+  deep_supervision:
+    enabled: true
+    weight_schedule: "linear"
+
+  optimizer: "adamw"
+  scheduler: "cosine"
+
+# Data
+data:
+  curriculum_dir: "data/curriculum"
+  max_seq_length: 256  # Short for arithmetic
+  shuffle: true
+  num_workers: 4
+
+# Generation
+generation:
+  max_new_tokens: 128  # Short answers for arithmetic
+  do_sample: false
+
+# Evaluation (frequent for curriculum)
+evaluation:
+  eval_every_n_steps: 100  # Check often
+  eval_batch_size: 16
+  num_eval_samples: 100
+
+  metrics:
+    - thinking_accuracy
+    - zeros_accuracy
+    - avg_passes
+    - pass_by_pass_accuracy
+
+# Logging
+logging:
+  project: "mycelium-v18-curriculum"
+  run_name: null  # Auto-generated based on level
+  log_every_n_steps: 10
+  save_every_n_steps: 500
+
+# Hardware
+hardware:
+  device: "cuda"
+  mixed_precision: true
+  gradient_checkpointing: false  # Not needed for short sequences
+
+# Checkpoints
+checkpoints:
+  save_dir: "checkpoints/curriculum"
+  save_total_limit: 5
+  save_on_level_advance: true
