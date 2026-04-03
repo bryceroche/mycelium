@@ -1,211 +1,141 @@
-# Mycelium v16 — Breathing Models
+# Mycelium v18 — Integrated Thinking
 
-> **A small model that cannot solve hard problems in a single pass can solve them
-> by learning to decompose into steps that fit within its capacity.**
+> **A transformer that THINKS before it SPEAKS.**
 >
-> Compression happens in latent space. Gradients flow through. The model is born breathing.
+> Multiple forward passes to understand. A single generation pass to answer.
+> 108M parameters deciding what goes on a 64-float sticky note.
 
 ---
 
-## Current State (April 1, 2026)
+## Current State (April 3, 2026)
 
 ```
-Architecture:        SmolLM2-135M + CompressionHead (32 floats) + StateInjector (4 pseudo-tokens)
-Status:              TWO-STEP ARITHMETIC PROVEN — 0% → 80.4% through breathing
+Architecture:        Llama 3.2 1B-Instruct + 7-Layer AllLayerPerceiver (108M)
+Status:              ARCHITECTURE PIVOT — Integrated Thinking
 
-LANDMARK RESULT:
-  Single-shot accuracy:     0%
-  Breathing accuracy:       80.4% (both steps correct)
-  Ablation (real vs zeros): 96% vs 6% (+90 point delta)
-  State vector:             32 floats (1,024 bits)
-  New parameters:           ~600K (0.4% of model)
+LANDMARK RESULTS (prior work):
+  SmolLM2 two-step:   0% → 80.4% (32 floats, +90 point ablation)
+  SmolLM2 three-step: 0% → 52%   (64 floats)
+  Llama two-step:     0% → 83%   (tight bottleneck scales)
 
-Next:                Three-step arithmetic with 64-float state
+Target:              GSM8K thinking accuracy > 35% (single-shot baseline)
 ```
 
 ---
 
 ## What Mycelium Does
 
-Mycelium trains a vanilla transformer (SmolLM2-135M) to reason in **expand-collapse cycles** with **differentiable latent-space compression**. Instead of text-based memory, the model compresses its reasoning into a state vector that persists between breaths.
+Mycelium trains a transformer to reason through **multiple internal passes** before generating any text. Each pass:
+1. Processes the problem through all 16 Llama layers
+2. A 7-layer Perceiver reads ALL layers and compresses to 64 floats
+3. State accumulates via residual connection
+4. When confident, generate the final answer
 
-The model never sees its full solution history. It sees only the problem and pseudo-token embeddings derived from its last state vector. The state vector IS the memory.
-
----
-
-## Why Latent-Space Compression
-
-Previous approaches (v10-v15) used text-based compression with [EXPAND]/[COLLAPSE] markers. The problem: **text is discrete, you can't backprop through it.**
-
-The new approach:
-- **State vector**: Continuous floats (not text tokens) — scales with difficulty (32 → 64 → 128 → 256 → 512)
-- **Fully differentiable**: Gradients flow from answer loss back through every breath
-- **Autoencoder warmup**: Solves cold start by pretraining on oracle collapses
-
-```
-Old: hidden_states -> [COLLAPSE] text -> next breath (no gradients)
-New: hidden_states -> CompressionHead -> state vector -> StateInjector -> next breath (gradients!)
-```
+The model never generates text during thinking. It gets multiple forward passes to understand, then speaks from accumulated understanding.
 
 ---
 
-## The Breathing Cycle
+## The Architecture
 
 ```
-Input:   [state_tokens (4)] + [BREATH n/max] + [problem_tokens]
-         |
-         SmolLM2-135M generates reasoning
-         |
-Output:  hidden_states -> CompressionHead -> state vector
-         |
-         state vector -> StateInjector -> pseudo-tokens for next breath
-```
-
-The model loops until `\boxed{}` or max breaths.
-
----
-
-## The Entropy Wave
-
-Token-level entropy across breaths forms a sine wave:
-
-```
-H(t)
- |.--.
- |/   \  .--.
- |      \/   \  .--.
- |            \/   \  ..
- |                  \/  \-> answer
- |------------------------------- breaths
-```
-
-Each breath: entropy rises during generation (exploring), falls during compression (committing). The LOCAL oscillation is the breathing rhythm. The GLOBAL envelope descends toward the answer.
-
-**Thermodynamic view:** Mathematical reasoning is heat engine cycles. Problem = high energy. Answer = low energy. Each breath removes entropy. Larger model = more entropy per cycle = fewer breaths needed.
-
----
-
-## Architecture
-
-```
-SmolLM2-135M:       135M params (base model)
-CompressionHead:    Perceiver-style encoder (hidden -> state vector)
-StateInjector:      State -> pseudo-tokens (prepended to input)
-StateDecoder:       Phase 0 only (discarded after autoencoder warmup)
-```
-
-### CompressionHead
-Perceiver-style cross-attention: learned queries attend to hidden states, project to state vector.
-
-### StateInjector
-Splits state vector into chunks, projects each to d_model (576), adds positional embeddings.
-
----
-
-## Three-Phase Training
-
-### Phase 0: Autoencoder Warmup
-Train encoder+decoder on oracle collapses. Solves cold start — gives the compressor a meaningful latent space before any breathing. Decoder is discarded after.
-
-### Phase 1: Frozen Compressor
-Train transformer + injector to USE state vectors. Compressor frozen from Phase 0.
-
-**State scale warmup:** 0.1 → 1.0 over first 5 epochs (prevents pseudo-token interference)
-
-### Phase 2: End-to-End
-Unfreeze everything. Gradients flow from answer loss through state vector. Compression co-evolves with generation.
-
----
-
-## Data
-
-```
-Phase 0:  Oracle collapses from GSM8K/MATH solutions
-Phase 1:  Breath-structured sequences from strong model
-Phase 2:  GSM8K → MATH train
-Never:    MATH-500 (evaluation only)
+                    ┌──────────────────────────────────────────────────────┐
+                    │                                                      │
+                    ▼                                                      │
+[problem tokens] + [4 state pseudo-tokens]                                │
+        │                                                                 │
+        ▼                                                                 │
+   Layer 1 → Layer 2 → ... → Layer 16                                     │
+        │         │                │                                      │
+        │         │    (all layers saved)                                 │
+        ▼         ▼                ▼                                      │
+   ┌──────────────────────────────────┐                                   │
+   │  7-LAYER PERCEIVER (108M params) │                                   │
+   │  Pass-conditioned layer gate     │                                   │
+   │  4 queries → 64 floats           │ ← TIGHT BOTTLENECK               │
+   └──────────────────────────────────┘                                   │
+        │                                                                 │
+        ▼                                                                 │
+   state = state + alpha * compressed   ← RESIDUAL                       │
+        │                                                                 │
+        ├──→ ConfidenceHead → ready?                                      │
+        │         │                                                       │
+        │     NO  │  YES → GENERATE ANSWER                                │
+        │         │                                                       │
+        └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## File Structure
+## Why This Works
+
+**Tight bottleneck (64 floats)**: Forces incremental thinking. The model can't solve GSM8K in one pass — it needs 3-5 passes, each extracting value + context + intent.
+
+**Massive compressor (108M params)**: The asymmetry is the point. 108M parameters deciding what goes on a 64-float sticky note. Like a brilliant editor writing a one-sentence summary.
+
+**All-layer reading**: The Perceiver reads ALL 16 transformer layers with pass-conditioned attention. Early passes focus on parsing layers (1-8), later passes on reasoning layers (12-16).
+
+**Residual accumulation**: `state = state + alpha * delta`. Each pass ADDS to understanding, doesn't replace. Gradients flow directly through addition.
+
+**No generation during thinking**: Forward passes without text generation are cheap. 10 thinking passes ≈ generating 200 tokens.
+
+---
+
+## Components
 
 ```
-src/
-  compression_head.py      # Perceiver encoder: hidden -> state
-  state_injector.py        # State -> pseudo-tokens
-  state_decoder.py         # Decoder for autoencoder (Phase 0 only)
-  breathing_model.py       # Full recurrent loop
-
-scripts/
-  train_autoencoder.py     # Phase 0: autoencoder warmup
-  train_phase1.py          # Phase 1: frozen compressor
-  train_two_step.py        # Two-step arithmetic training
-  train_two_step_v2.py     # Two-step v2 (state scale warmup)
-  ablation_state_vs_zeros.py  # State ablation testing
-  eval_breathing.py        # Evaluation
-  eval_phase1_quick.py     # Quick eval
-  generate_step_solutions*.py  # Data generation
-
-configs/
-  autoencoder.yaml         # Phase 0 config
-  phase1_gsm8k.yaml        # Phase 1 config
+Llama 3.2 1B-Instruct:  1.23B   (35% GSM8K single-shot — strong gradient signal)
+AllLayerPerceiver:      ~108M   (7 layers, pass-conditioned, all-layer reading)
+StateInjector:          ~130K   (64 floats → 4 pseudo-tokens)
+ConfidenceHead:         ~2K     (when to stop thinking?)
+────────────────────────────────
+Total:                  ~1.34B
+Bottleneck:             64 floats (2,048 bits)
 ```
+
+---
+
+## Training
+
+**Phase 1**: Freeze transformer, train perceiver + injector + confidence head (5-10 epochs)
+
+**Phase 2**: Unfreeze everything, end-to-end (10-20 epochs)
+
+**Deep supervision**: Every thinking pass gets direct gradient (predicts answer from current state)
+
+**State scale warmup**: 0.1 → 1.0 over first 5 epochs
+
+---
+
+## Why This Beats Previous Approaches
+
+| Approach | Problem | Integrated Thinking |
+|----------|---------|-------------------|
+| External loop (v16) | Slow (generation each pass), lossy | Fast (forward passes only), rich |
+| Hourglass (v4) | Distribution mismatch mid-layers | Compression after all layers |
+| Text breathing (v10-v15) | No gradients through text | Continuous compression, full gradients |
 
 ---
 
 ## Milestones
 
 ```
-M0:    COMPLETE — SmolLM2-135M baseline (0% GSM8K, 0% MATH-500)
-M0.5:  COMPLETE — Architecture built (CompressionHead, StateInjector, etc.)
-M0.75: COMPLETE — Oracle collapse data (206K breaths from 36K GSM8K solutions)
-M1:    COMPLETE — Phase 0 autoencoder warmup (loss 1.59 → 0.44, t-SNE structured)
+COMPLETE:  Tight bottleneck proof-of-concept (80.4% two-step, 52% three-step)
+COMPLETE:  Llama two-step (83%)
 
-M2:    COMPLETE — Two-step arithmetic (LANDMARK RESULT)
-       32-float state, 4 pseudo-tokens, breath counter, supervised
-       Training: Epoch 1 B1=58%/B2=7% → Epoch 10 B1=88%/B2=91%/Both=80.4%
-       Ablation: real state 96% vs zeros 6% (+90 point delta)
-       0% single-shot → 80.4% with breathing. Core thesis proven.
+CURRENT:   Build integrated thinking architecture
+           GSM8K thinking accuracy > 35% (single-shot baseline)
+           GSM8K thinking accuracy > 45% (+10 points)
 
-M3:    Three-step arithmetic (NEXT)
-       ((a+b)*c)-d with 64-float state, 3 breaths
-
-M4:    Easy GSM8K (128-float state, 3-5 breaths)
-M5:    Full GSM8K (256-float state, 10 breaths, autonomous decomposition)
-M6:    MATH L1-L3 (512-float state)
-M7:    THE HEADLINE — MATH L4-L5 (capacity extension on competition math)
-M8:    Scaling analysis (50M → 1.7B)
+FUTURE:    MATH L1-L5 (capacity extension on competition math)
 ```
 
 ---
 
-## Critical Rules
+## Key Insight
 
-```
- 1. SmolLM2-135M BASE (not instruct) — no single-shot habits
- 2. State vector ramps with difficulty: 32 → 64 → 128 → 256 → 512
- 3. State scale warmup: 0.1 → 1.0 over first 5 epochs
- 4. Breath counter [BREATH n/max] in prompt
- 5. Ablation (real state vs zeros) at every major checkpoint
- 6. Temperature = 0 for all evaluations
- 7. N >= 100 problems for any accuracy measurement
- 8. MATH-500 NEVER in training data
- 9. One difficulty level at a time: arithmetic → GSM8K → MATH
-10. Increase state size only when accuracy plateaus
-```
+Current LLMs generate tokens immediately — one forward pass per word. This architecture decouples thinking from speaking. The model processes the problem multiple times internally, accumulating compressed insights, before producing a single token of output.
 
----
-
-## Hardware
-
-```
-Training:    SmolLM2-135M + ~600K params fits easily on A10G (24GB)
-Phase 0:     ~2-4 hours on A10G
-Phase 1:     ~8-16 hours on A10G
-Phase 2:     ~24-48 hours on A10G
-Cost:        ~$50-100 on AWS spot for full pipeline
-```
+When it finally speaks, it speaks from a place of accumulated understanding.
 
 ---
 
@@ -213,11 +143,8 @@ Cost:        ~$50-100 on AWS spot for full pipeline
 
 **MATH-500 benchmark: April 22, 2026**
 
-Target: breathing accuracy > single-shot on Level 4-5 problems.
+Target: thinking accuracy > single-shot on Level 4-5 problems.
 
 ---
 
-> *Good expansion is expansion that's easy to collapse.*
-> *Good collapse is collapse that sets up the next expansion.*
-> *The model descends the energy landscape one breath at a time.*
-> *Small steps. Continuous gradients. Always learning.*
+> *Think hard, compress tight, speak from understanding.*

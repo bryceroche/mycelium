@@ -1,9 +1,9 @@
-# Mycelium v17 — Breathing Models (Llama 3.2 1B)
+# Mycelium v18 — Integrated Thinking (Llama 3.2 1B-Instruct)
 
-A transformer (Llama 3.2 1B) trained to reason in expand-collapse cycles with **differentiable latent-space compression**. The model solves problems beyond its single-shot capacity by taking small, verified steps, externalizing working memory through a learned 512-float state vector.
+A transformer that THINKS before it SPEAKS. Insert a 7-layer Perceiver compression engine (108M params) AFTER the final transformer layer, reading from ALL 16 layers with pass-conditioned attention. The model thinks in a loop — each pass processes through Llama's 16 layers, the Perceiver reads all layers and squeezes to a TIGHT 64-float state vector, accumulated via residual connection. 108M parameters deciding what goes on a 64-float sticky note.
 
-> Good expansion is expansion that's easy to collapse.
-> Good collapse is collapse that sets up the next expansion.
+> The model gets multiple forward passes to understand before producing a single token.
+> Think hard, compress tight, speak from understanding.
 
 ---
 
@@ -15,274 +15,419 @@ MATH-500 NEVER in training data
 
 ---
 
-## Current State (April 2, 2026)
+## Current State (April 3, 2026)
 
 ```
-Architecture:        Llama 3.2 1B + CompressionHead (64 queries, breath-conditioned) + StateInjector (8 pseudo-tokens)
+Architecture:        Llama 3.2 1B-Instruct + 7-Layer AllLayerPerceiver (108M) + StateInjector + ConfidenceHead
 Context window:      128K tokens
-Compression:         Differentiable latent-space (512-float state vector)
-Status:              ENGINE SWAP — Llama 3.2 1B replaces SmolLM2-135M
+Compression:         64 floats (TIGHT bottleneck, residual accumulation)
+Status:              ARCHITECTURE PIVOT — Integrated Thinking replaces external compression loop
 
-ENGINE SWAP RATIONALE:
-  SmolLM2-135M proved the architecture (80.4% two-step, 52% three-step)
-  but can't parse word problems — doesn't understand "half as many"
-  Llama 3.2 1B: 1.23B params, 9T tokens, distilled from 8B/70B, ~44% GSM8K instruct
+PIVOT RATIONALE:
+  External compression loop: generate 512 tokens → compress text → loop
+    Slow: autoregressive generation at every breath
+    Lossy: text compression loses information
 
-ARCHITECTURE (unchanged except d_model):
-  CompressionHead:   64 queries (breath-conditioned) → cross-attend → 512 floats
-  StateInjector:     512 floats → 8 pseudo-tokens (simple projection)
-  Transformer sees:  [8 pseudo-tokens] + [BREATH 3/10] + [problem tokens]
-  d_model:           2048 (was 576 for SmolLM2)
+  Integrated Thinking: forward pass (no generation) → compress hidden states → loop
+    Fast: forward passes without generation are cheap (10 passes ≈ 200 tokens)
+    Rich: compresses full internal representation, not text
+    All-layer: Perceiver reads ALL 16 transformer layers
+
+ARCHITECTURE:
+  AllLayerPerceiver:  7 layers, 108M params, reads all 16 Llama layers
+                      Pass-conditioned attention (which layers matter NOW?)
+                      4 queries → 64 floats (TIGHT)
+  StateInjector:      64 floats → 4 pseudo-tokens (simple projection)
+  ConfidenceHead:     64 floats → scalar (when to stop thinking?)
+  ResidualState:      state = state + alpha * delta (accumulate, don't replace)
+  d_model:            2048 (Llama), 1024 (Perceiver internal)
+
+WHY INSTRUCT (not BASE):
+  Base model:    4% GSM8K single-shot — insufficient gradient signal
+  Instruct:      35% GSM8K single-shot — strong signal from day one
+  We need the model to already understand math — we're teaching it to THINK harder
 
 SMOLLM2 PROOF-OF-CONCEPT (COMPLETE):
   Two-step arithmetic:   0% → 80.4% (32 floats, 4 queries)
   Three-step arithmetic: 0% → 52%   (64 floats, 4 queries)
   Ablation delta:        +90 points (real state vs zeros)
 
-Core principle:      Compression happens in LATENT SPACE, not text space.
-                     The state vector is a continuous representation that
-                     gradients can flow through from answer loss back
-                     through every breath.
+LLAMA TWO-STEP (COMPLETE):
+  Two-step arithmetic:   0% → 83%
+  Proves: tight bottleneck works at scale
 
-Next:                Retrain autoencoder for Llama hidden states (2048-dim)
-                     → Arithmetic smoke tests → GSM8K with alternating breaths
+Core principle:      Thinking happens in PASSES, not text.
+                     The model processes the problem multiple times
+                     internally before producing ANY output tokens.
+                     Each pass compresses insights into 64 floats.
+                     When confident, generate answer from accumulated state.
+
+Target:              GSM8K thinking accuracy > 35% (single-shot baseline)
 ```
 
 ---
 
-## The Breathing Cycle (Latent-Space Version)
+## The Thinking Cycle (NOT Breathing)
 
-Each breath is one forward pass with state injection:
+Each pass is one forward pass with state injection — NO text generation:
 
 ```
-Input:   [state_tokens (8)] + [problem_tokens]
-         |
-         Llama 3.2 1B generates reasoning
-         |
-Output:  hidden_states -> CompressionHead -> 512-float state vector
-         |
-         state vector -> StateInjector -> 8 pseudo-tokens for next breath
+                    ┌──────────────────────────────────────────────────────┐
+                    │                                                      │
+                    ▼                                                      │
+[problem tokens] + [4 state pseudo-tokens]                                │
+        │                                                                 │
+        ▼                                                                 │
+   Layer 1 → Layer 2 → ... → Layer 16                                     │
+        │         │                │                                      │
+        │         │    (all layers saved)                                 │
+        ▼         ▼                ▼                                      │
+   ┌──────────────────────────────────┐                                   │
+   │  7-LAYER PERCEIVER (108M params) │                                   │
+   │                                  │                                   │
+   │  Pass-conditioned layer gate:    │                                   │
+   │  "Which Llama layers matter      │                                   │
+   │   for THIS thinking pass?"       │                                   │
+   │                                  │                                   │
+   │  7× (cross-attn + self-attn      │                                   │
+   │      + FFN)                      │                                   │
+   │                                  │                                   │
+   │  4 queries → 64 floats           │ ← TIGHT BOTTLENECK               │
+   └──────────────────────────────────┘                                   │
+        │                                                                 │
+        ▼                                                                 │
+   state = state + alpha * compressed   ← RESIDUAL (not replace)         │
+        │                                                                 │
+        ├──→ ConfidenceHead(state) → ready?                               │
+        │         │                                                       │
+        │     NO  │  YES                                                  │
+        │         │                                                       │
+        │         ▼                                                       │
+        │    GENERATE ANSWER (final pass, text output)                    │
+        │                                                                 │
+        └─────────────────────────────────────────────────────────────────┘
+              (loop back: inject state, run transformer again)
 ```
 
 Critical architecture:
-- **State vector**: 512 floats (not text) — continuous, differentiable
-- **Pseudo-tokens**: 8 learned embeddings prepended to input
-- **Compression**: Perceiver-style cross-attention (queries attend to hidden states)
-- **Fully differentiable**: Gradients flow from answer loss through state vector
+- **State vector**: 64 floats (TIGHT) — forces incremental thinking
+- **Pseudo-tokens**: 4 learned embeddings prepended to input
+- **All-layer reading**: Perceiver sees all 16 transformer layers, not just last
+- **Pass-conditioned**: Layer gate focuses on different layers per pass
+- **Residual accumulation**: state += alpha * delta (gradients flow through addition)
+- **Confidence head**: Decides when to stop thinking and generate
+- **No generation during thinking**: Forward passes only, FAST
 
-The model loops until `\boxed{}` or max 20 breaths.
+The model loops until confident or max passes, then generates answer from final state.
+
+---
+
+## Why 64 Floats (The Tight Bottleneck)
+
+```
+32 floats:   too tight for word problems (can encode a value but not its context)
+64 floats:   sweet spot — "24 AND it's May sales AND I need the total next"
+             Values + context + intent. Still forces 3-5 passes for multi-step problems.
+128 floats:  too loose — model might encode full solution in 2 passes
+512 floats:  no compression pressure at all
+
+64 floats = 2,048 bits
+A GSM8K step needs ~47 meaningful bits (number + operation + context)
+64 floats gives enough precision but forces incremental thinking
+```
+
+The asymmetry is the point: **108M params to DECIDE, 64 floats to STORE**. Like a brilliant editor who can only write a one-sentence summary — the quality depends on how good the editor is, not how long the sentence is.
 
 ---
 
 ## Architecture Components
 
-### CompressionHead (~8.5M params)
-Breath-conditioned Perceiver encoder: hidden states + breath_num -> 512-float state vector
-
-64 queries give fine-grained extraction. Breath embedding tells the compression head where it is.
-At breath 1, ask "what's the setup?" At breath 5, ask "what progress and what's left?"
+### AllLayerPerceiver (~108M params)
+7-layer perceiver that reads ALL 16 Llama layers with pass-conditioned attention:
 
 ```python
-# src/compression_head.py
-class CompressionHead(nn.Module):
-    def __init__(self, d_model=2048, state_size=512, num_queries=64, max_breaths=20):
-        self.queries = nn.Parameter(torch.randn(num_queries, d_model))  # learned
-        self.breath_embed = nn.Embedding(max_breaths, d_model)  # breath conditioning
-        self.cross_attn = nn.MultiheadAttention(d_model, num_heads=8)
-        self.norm = nn.LayerNorm(d_model)
-        self.project = nn.Linear(d_model, state_size // num_queries)  # 2048 -> 8
+# src/all_layer_perceiver.py
+class AllLayerPerceiver(nn.Module):
+    def __init__(self,
+                 num_transformer_layers=16,
+                 d_transformer=2048,
+                 d_perceiver=1024,
+                 num_queries=4,
+                 num_perceiver_layers=7,
+                 state_size=64,
+                 max_passes=20):
+        super().__init__()
 
-    def forward(self, hidden_states, breath_num):
-        # hidden_states: (batch, seq_len, 2048)
-        # breath_num: (batch,) or scalar — which breath we're on (0-indexed)
+        # Learned queries (4 queries, perceiver space)
+        self.queries = nn.Parameter(torch.randn(num_queries, d_perceiver))
+        self.pass_embed = nn.Embedding(max_passes, d_perceiver)
 
-        # Condition queries on breath number
-        breath_context = self.breath_embed(breath_num)  # (batch, d_model) or (d_model,)
-        conditioned_queries = self.queries + breath_context.unsqueeze(-2)  # broadcast add
+        # Pass-conditioned layer gate — which of Llama's 16 layers to focus on
+        self.layer_gate = nn.Sequential(
+            nn.Linear(d_perceiver, 64),
+            nn.ReLU(),
+            nn.Linear(64, num_transformer_layers),
+            nn.Softmax(dim=-1),
+        )
 
-        compressed, _ = self.cross_attn(query=conditioned_queries, key=hidden_states, value=hidden_states)
-        compressed = self.norm(compressed)
-        # compressed: (batch, 64, 2048)
+        # Project from Llama (2048) to perceiver (1024)
+        self.input_project = nn.Linear(d_transformer, d_perceiver)
 
-        chunks = self.project(compressed)  # (batch, 64, 8)
-        return chunks.flatten(start_dim=1)  # (batch, 512)
+        # 7-layer perceiver stack
+        self.layers = nn.ModuleList([
+            nn.ModuleDict({
+                'cross_attn': nn.MultiheadAttention(d_perceiver, num_heads=8, batch_first=True),
+                'cross_norm': nn.LayerNorm(d_perceiver),
+                'self_attn': nn.MultiheadAttention(d_perceiver, num_heads=8, batch_first=True),
+                'self_norm': nn.LayerNorm(d_perceiver),
+                'ffn': nn.Sequential(
+                    nn.Linear(d_perceiver, d_perceiver * 4),
+                    nn.GELU(),
+                    nn.Linear(d_perceiver * 4, d_perceiver),
+                ),
+                'ffn_norm': nn.LayerNorm(d_perceiver),
+            })
+            for _ in range(num_perceiver_layers)
+        ])
+
+        # Final projection: 1024 → 16 per query → 64 total
+        self.project_out = nn.Linear(d_perceiver, state_size // num_queries)
+
+    def forward(self, all_layer_hidden_states, pass_num):
+        # all_layer_hidden_states: list of 16 tensors, each (batch, seq_len, 2048)
+        batch_size = all_layer_hidden_states[0].size(0)
+
+        # Pass-conditioned queries
+        pass_context = self.pass_embed(torch.tensor(pass_num, device=self.queries.device))
+        queries = (self.queries + pass_context).unsqueeze(0).expand(batch_size, -1, -1)
+
+        # Pass-conditioned layer importance
+        layer_weights = self.layer_gate(pass_context)  # (16,) softmax
+
+        # Weighted combination of ALL transformer layers
+        stacked = torch.stack(all_layer_hidden_states, dim=0)  # (16, batch, seq, 2048)
+        combined = (stacked * layer_weights.view(16, 1, 1, 1)).sum(dim=0)  # (batch, seq, 2048)
+
+        # Project to perceiver dimension
+        kv = self.input_project(combined)  # (batch, seq, 1024)
+
+        # 7 layers of deep compression processing
+        for layer in self.layers:
+            attended, _ = layer['cross_attn'](query=queries, key=kv, value=kv)
+            queries = layer['cross_norm'](queries + attended)
+            refined, _ = layer['self_attn'](query=queries, key=queries, value=queries)
+            queries = layer['self_norm'](queries + refined)
+            queries = layer['ffn_norm'](queries + layer['ffn'](queries))
+
+        # Project to tight bottleneck
+        state_delta = self.project_out(queries)  # (batch, 4, 16)
+        return state_delta.flatten(start_dim=1)  # (batch, 64)
 ```
 
-### StateInjector (~1M params)
-Converts 512-float state vector to 8 pseudo-tokens (simple projection, transformer attention does the smart work)
+### What the Layer Gate Learns
+
+```
+Pass 1 (parsing):   layer gate focuses on layers 1-8 (basic features, number extraction)
+Pass 3 (reasoning): layer gate focuses on layers 8-12 (relationships, structure)
+Pass 5 (solving):   layer gate focuses on layers 12-16 (answer-oriented features)
+```
+
+The perceiver learns which layers contain what it needs for each stage of thinking.
+
+### StateInjector (~130K params)
+Converts 64-float state vector to 4 pseudo-tokens:
 
 ```python
 # src/state_injector.py
 class StateInjector(nn.Module):
-    def __init__(self, state_size=512, d_model=2048, num_tokens=8):
-        self.project = nn.Linear(state_size // num_tokens, d_model)  # 64 -> 2048
+    def __init__(self, state_size=64, d_model=2048, num_tokens=4):
+        self.project = nn.Linear(state_size // num_tokens, d_model)  # 16 → 2048
         self.position_embed = nn.Parameter(torch.randn(num_tokens, d_model))
         self.norm = nn.LayerNorm(d_model)
 
-    def forward(self, state_vector, scale=1.0):
-        # state_vector: (batch, 512)
-        chunks = state_vector.reshape(-1, 8, 64)
+    def forward(self, state_vector):
+        # state_vector: (batch, 64)
+        chunks = state_vector.reshape(-1, 4, 16)
         tokens = self.project(chunks) + self.position_embed
-        return self.norm(tokens) * scale  # (batch, 8, 2048)
+        return self.norm(tokens)  # (batch, 4, 2048)
 ```
 
-### StateDecoder (~8M params) — Phase 0 only
-Reconstructs hidden states from state vector (autoencoder training)
+### ConfidenceHead (~2K params)
+Decides when to stop thinking and generate:
 
 ```python
-# src/state_decoder.py
-class StateDecoder(nn.Module):
-    def __init__(self, state_size=512, d_model=2048, max_seq_len=64):
-        self.project = nn.Linear(state_size, max_seq_len * d_model)
-        self.refine = nn.TransformerEncoder(...)  # 2 layers
+# src/confidence_head.py
+class ConfidenceHead(nn.Module):
+    def __init__(self, state_size=64):
+        self.net = nn.Sequential(
+            nn.Linear(state_size, 32),
+            nn.ReLU(),
+            nn.Linear(32, 1),
+            nn.Sigmoid(),
+        )
 
     def forward(self, state_vector):
-        # state_vector: (batch, 512)
-        return reconstructed  # (batch, 64, 2048)
+        return self.net(state_vector)  # (batch, 1) confidence 0-1
 ```
 
-### BreathingModel — Full Recurrent Loop
+### ThinkingModel — Full Loop
 ```python
-# src/breathing_model.py
-class BreathingModel(nn.Module):
-    def __init__(self):
-        self.transformer = AutoModelForCausalLM.from_pretrained(
-            "meta-llama/Llama-3.2-1B",
-            torch_dtype=torch.bfloat16,
-        )
-        self.compressor = CompressionHead(d_model=2048, state_size=512, num_queries=64)
-        self.injector = StateInjector(state_size=512, d_model=2048, num_tokens=8)
+# src/thinking_model.py
+class ThinkingModel(nn.Module):
+    def __init__(self, model_name="unsloth/Llama-3.2-1B-Instruct"):
+        self.transformer = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.compressor = AllLayerPerceiver(...)
+        self.injector = StateInjector(state_size=64, d_model=2048, num_tokens=4)
+        self.confidence = ConfidenceHead(state_size=64)
+        self.alpha = nn.Parameter(torch.tensor(0.1))  # learnable residual weight
 
-    def breathe(self, problem_text, max_breaths=20):
-        state = self.injector.get_empty_state()  # zeros (batch, 512)
-        for breath_num in range(max_breaths):
-            # Inject state as 8 pseudo-tokens
-            state_tokens = self.injector(state)
-            # Generate with transformer (sees [BREATH n/max] in prompt)
-            hidden_states = self.forward_with_state(state_tokens, problem_text, breath_num)
-            # Compress to new state (breath-conditioned queries)
-            state = self.compressor(hidden_states, breath_num=breath_num)
-            if has_boxed_answer: break
-        return state, generated_text
+    def think(self, problem_text, max_passes=10, confidence_threshold=0.8):
+        state = torch.zeros(1, 64, device=self.device)
+
+        for pass_num in range(max_passes):
+            state_tokens = self.injector(state)  # (1, 4, 2048)
+            input_embeds = torch.cat([state_tokens, prompt_embeds], dim=1)
+
+            # Forward through ALL 16 layers, collect hidden states
+            outputs = self.transformer(inputs_embeds=input_embeds, output_hidden_states=True)
+            all_layer_hidden = list(outputs.hidden_states[1:])  # 16 layers
+
+            # Perceiver reads all layers, compresses to 64 floats
+            state_delta = self.compressor(all_layer_hidden, pass_num)
+
+            # Residual update: accumulate, don't replace
+            state = state + self.alpha * state_delta
+
+            if self.confidence(state).item() > confidence_threshold:
+                break
+
+        return state
+
+    def generate_answer(self, problem_text, state):
+        # Final pass: generate text from accumulated state
+        state_tokens = self.injector(state)
+        input_embeds = torch.cat([state_tokens, prompt_embeds], dim=1)
+        return self.transformer.generate(inputs_embeds=input_embeds, max_new_tokens=512)
 ```
 
 ### Parameter Count
 ```
-Llama 3.2 1B:       1.23B (frozen in Phase 0, trainable in Phase 1-2)
-CompressionHead:    ~8.5M (64 queries + breath embedding + attention + projection)
-StateInjector:      ~1M (8 tokens × 2048 d_model)
-StateDecoder:       ~8M   (Phase 0 only, discarded after)
-Total trainable:    ~9.5M (Phase 0), ~1.24B (Phase 1-2)
+Llama 3.2 1B-Instruct:  1.23B   (frozen Phase 1, fine-tuned Phase 2)
+AllLayerPerceiver:      ~108M   (7 layers, all-layer reading, pass-conditioned)
+StateInjector:          ~130K   (4 tokens × 2048 d_model)
+ConfidenceHead:         ~2K     (tiny MLP)
+Alpha:                  1       (learnable scalar)
+────────────────────────────────
+Total:                  ~1.34B
+New parameters:         ~108M   (8% of total model)
+Bottleneck:             64 floats
 ```
 
 ---
 
-## Two-Phase Training (Proven Recipe)
+## Two-Phase Training
 
-The original three-phase plan (freeze then unfreeze) turned out to be unnecessary.
-The autoencoder + state scale warmup is sufficient for co-adaptation.
-
-### Phase 0: Autoencoder Warmup — "Give the compressor a meaningful starting point"
+### Phase 1: Freeze Transformer, Train Compression
 ```
-Problem:    Cold start. Random compression head outputs garbage vectors.
-Solution:   Train encoder+decoder on oracle collapses BEFORE any breathing.
-Data:       Oracle-optimal collapses from GSM8K/MATH solutions
-Objective:  Reconstruction loss (MSE on hidden states)
-Duration:   2-4 hours on A10G (must re-run for Llama 2048-dim hidden states)
+Trainable:  AllLayerPerceiver + StateInjector + ConfidenceHead + alpha
+Frozen:     Transformer (already gets 35% on GSM8K)
+Duration:   5-10 epochs
 
-IMPORTANT FOR ENGINE SWAP:
-- Pre-compute hidden states: run 206K collapses through frozen Llama 3.2 1B
-- Memmap to disk (~80GB for 206K × 50 tokens × 2048 dims × 4 bytes)
-- Then autoencoder trains on pure tensors — no transformer in the loop, fast
-
-After Phase 0:
-- Compression head outputs MEANINGFUL 512-float vectors
-- Similar collapses -> similar state vectors (cosine similarity)
-- t-SNE shows structure (variance ratio > 0.1)
-- Decoder is DISCARDED — only encoder continues to breathing
+The transformer runs normally (it already understands math).
+The perceiver learns to extract useful state from all layers.
+The confidence head learns when the state is sufficient.
+Low risk: can't hurt the transformer's existing capability.
 ```
 
-Config: `configs/autoencoder.yaml`
-Script: `scripts/train_autoencoder.py`
-
-### Phase 1: End-to-End Breathing — "Co-evolve compression and generation"
+### Phase 2: End-to-End
 ```
-Objective:  Full differentiable training through the state vector
-Trainable:  Everything (CompressionHead + Transformer + StateInjector)
-Initialized: CompressionHead from Phase 0 autoencoder
-Loss:       Answer correctness (gradients flow through state!)
-Duration:   4-8 hours per difficulty level
+Trainable:  Everything
+Duration:   10-20 epochs
 
-Key insight: State scale warmup (0.1 → 1.0 over 5 epochs) provides
-the adjustment period. No frozen phase needed.
+Now the transformer adapts to USE the state information.
+The perceiver adapts to what the transformer NEEDS.
+Co-evolution: better thinking ↔ better compression.
 
-Why this works:
-- Autoencoder gives good enough starting point
-- Scale warmup gives transformer time to adjust to pseudo-tokens
-- Compressor and transformer co-evolve from the start
-- Proven by SmolLM2 two-step (80.4%) and three-step (52%) results
+Start with max_passes=3, increase to 5, then 10.
 ```
 
-Config: `configs/gsm8k_easy.yaml`
-Script: `scripts/train_gsm8k_easy.py`
+### Deep Supervision (Solves Vanishing Gradient)
+Every thinking pass tries to predict the answer from the CURRENT state:
 
----
-
-## Why Latent-Space (Not Text-Based)
-
-| Aspect | Text-Based (v10-v15) | Latent-Space (v16+) |
-|--------|---------------------|-------------------|
-| Compression | [COLLAPSE] text tokens | 512-float vector |
-| Differentiable | No — text is discrete | Yes — gradients flow through |
-| Gradient signal | None through compression | Full backprop through state |
-| Cold start | Model must learn format | Autoencoder pretraining |
-| Token budget | Explicit (100-200 tokens) | Implicit (512 floats) |
-| Information density | Low (~200 tokens of text) | High (512 floats) |
-
-**The key insight:** Text compression can't be trained end-to-end because text is discrete. You can't backprop through "x^2 - 5x + 6 = (x-2)(x-3)". But you CAN backprop through a 512-float vector that represents the same information.
-
----
-
-## The Energy Landscape (Still Entropy-Based)
-
-Token-level entropy still serves as the energy landscape:
-
-```
-H(t) = -sum p(token_i | context) * log p(token_i | context)
-```
-
-During generation, model entropy is HIGH (exploring).
-During verified mathematical statements, entropy is LOW (committing).
-
-**Difference from text-based:** We no longer need explicit [EXPAND]/[COLLAPSE] markers. The compression happens in latent space automatically. The entropy signal guides what gets preserved in the state vector.
-
-### Training Signal (Phase 2)
 ```python
-reward = answer_correct * compression_quality
-       = (1 if \boxed{} matches gold else 0) * state_utilization
+def train_with_deep_supervision(model, problem, gold_answer):
+    state, all_states = model.think(problem, max_passes=10)
 
-# Gradient flows:
-# answer_loss -> transformer -> state_tokens -> injector -> state_vector -> compressor
+    total_loss = 0.0
+    for i, intermediate_state in enumerate(all_states[1:]):
+        state_tokens = model.injector(intermediate_state)
+        outputs = model.transformer(inputs_embeds=..., labels=answer_ids)
+        weight = (i + 1) / len(all_states)  # later passes weighted more
+        total_loss += weight * outputs.loss
+
+    total_loss.backward()
+```
+
+Every pass gets gradient. No vanishing gradient through the residual connection.
+
+### State Scale Warmup (Proven Schedule)
+```
+Epoch 1-2:   scale = 0.1
+Epoch 3-4:   scale = 0.3
+Epoch 5-6:   scale = 0.5
+Epoch 7-8:   scale = 0.7
+Epoch 9-10:  scale = 1.0
+```
+
+---
+
+## Why This Is Better Than Before
+
+### vs External Compression Loop (v16)
+```
+Before: generate 512 tokens → compress text → generate 512 tokens → ...
+        Slow: autoregressive generation at every breath
+        Lossy: text compression loses information
+
+Now:    forward pass (no generation) → compress hidden states → loop
+        Fast: forward passes without generation are cheap
+        Rich: compresses full internal representation, not text
+        10 thinking passes ≈ cost of generating ~200 tokens
+```
+
+### vs Hourglass Bottleneck (v4)
+```
+Before: bottleneck IN THE MIDDLE of layers → distribution mismatch
+
+Now:    bottleneck AFTER all layers → no distribution mismatch
+        All 16 layers run normally. Compression happens after.
+```
+
+### vs Text-Based Breathing (v10-v15)
+```
+Before: [EXPAND] tags, [COLLAPSE] tags, token budgets
+        Text is discrete — no gradients through compression
+
+Now:    No tags. No format. Compression is continuous.
+        Gradients flow through. Architecture handles everything.
 ```
 
 ---
 
 ## Data
 
-### Oracle Collapses (Phase 0)
 ```
-Source:     Strong model solutions segmented at natural joints
-Format:     JSONL with collapse_text field
-Location:   s3://mycelium-data-v7/breath_data/gsm8k_oracle_v1/breath_sequences.jsonl
-Content:    Mathematical statements like "x^2 - 5x + 6 = (x-2)(x-3)"
-Re-run through Llama 3.2 1B for 2048-dim hidden states
+Training:   GSM8K train split (~7,473 problems + gold answers)
+            Use Instruct chat template for prompting
+            CoT format for generating training signal
+
+Eval:       GSM8K test split (1,319 problems)
+
+Never:      MATH-500 (final evaluation only)
 ```
 
-### Breath Sequences (Phase 1-2)
-```
-Source:     Qwen-0.5B or Llama-3.2-1B-Instruct correct solutions on GSM8K + MATH
-Format:     Problem + state history -> next generation
-```
+No oracle collapses. No THINK/COMPUTE pairs. Just problems and answers.
 
 ---
 
@@ -291,24 +436,18 @@ Format:     Problem + state history -> next generation
 ```
 src/
   __init__.py              # Package exports
-  compression_head.py      # Perceiver encoder: hidden -> state (d_model=2048)
-  state_injector.py        # State -> pseudo-tokens (d_model=2048)
-  state_decoder.py         # Decoder for autoencoder (Phase 0 only)
-  breathing_model.py       # Full recurrent loop (Llama 3.2 1B)
+  all_layer_perceiver.py   # 7-layer perceiver reading all transformer layers
+  state_injector.py        # State → pseudo-tokens (64 → 4 tokens)
+  confidence_head.py       # Readiness judge (when to stop thinking)
+  thinking_model.py        # Full thinking loop
 
 scripts/
-  precompute_hidden.py     # Pre-compute Llama hidden states for autoencoder
-  train_autoencoder.py     # Phase 0: autoencoder warmup
-  train_two_step.py        # Two-step arithmetic smoke test
-  train_three_step.py      # Three-step arithmetic smoke test
-  train_alternating.py     # GSM8K with alternating EXPAND/COLLAPSE
-  eval_breathing.py        # Evaluation
+  train_thinking.py        # Training with deep supervision
+  eval_thinking.py         # Accuracy vs passes, ablation
+  visualize_thinking.py    # Plot accuracy vs num_passes curve
 
 configs/
-  autoencoder.yaml         # Phase 0 config (d_model: 2048)
-  two_step.yaml            # Smoke test config
-  three_step.yaml          # Smoke test config
-  gsm8k_alternating.yaml   # Main GSM8K config
+  thinking_gsm8k.yaml      # Hyperparameters
 ```
 
 ---
@@ -318,37 +457,19 @@ configs/
 ### Models
 ```
 ENGINE:
-meta-llama/Llama-3.2-1B (BASE, not Instruct) — production engine
-  1.23B params, 9T tokens, 2048 hidden dim, 128K context
-  Use bfloat16 for memory efficiency
+unsloth/Llama-3.2-1B-Instruct — thinking engine
+  1.23B params, 16 layers, 2048 hidden dim, 128K context
+  35% GSM8K single-shot with CoT (strong gradient signal)
+  Use bfloat16
 
 REFERENCE (SmolLM2 proof-of-concept):
-HuggingFaceTB/SmolLM2-135M — proved architecture works on arithmetic
-  135M params, 576 hidden dim, 8K context
-  Results: 80.4% two-step, 52% three-step
-```
-
-### Models on S3
-```
-REFERENCE (superseded by entropy-based landscape):
-s3://mycelium-data-v7/models/e_edge_v1/                    # Gap difficulty (96.5% AUC, hidden states)
-s3://mycelium-data-v7/models/e_node_base_v1/                # Joint quality (82%, hidden states)
-s3://mycelium-data-v7/models/e_edge_text_v1/                # Text-based E_edge (78% AUC)
-s3://mycelium-data-v7/models/grpo_lora_v1/                  # Wave coherence LoRA (reference)
-
-FROZEN (read-only reference):
-s3://mycelium-data/models/c1a_coarse_v6_aux_telegraph/      # Boundary detection F1=0.741
-s3://mycelium-data/models/c1b_sequence_v5/                  # BP depth prediction
-s3://mycelium-data/ib_cluster_to_type.json                  # 8 IB type mapping (3 expand + 5 collapse)
-
-DON'T USE:
-s3://mycelium-data-v7/models/cycle*_specialists/            # LoRA specialists (suppress reasoning)
+HuggingFaceTB/SmolLM2-135M — proved tight bottleneck works
+  80.4% two-step, 52% three-step, +90 point ablation delta
 ```
 
 ### VMs
 ```
 AWS EC2 g5.xlarge (~$1/hr, A10G 24GB) — primary training
-AWS EC2 g5.48xlarge (~$16/hr) — large batch generation if needed
 SSH: ssh -i ~/.ssh/mycelium-key.pem ubuntu@<IP>
 ```
 
@@ -357,95 +478,96 @@ SSH: ssh -i ~/.ssh/mycelium-key.pem ubuntu@<IP>
 ## Milestones
 
 ```
-SMOLLM2 PROOF-OF-CONCEPT (COMPLETE):
-M0: COMPLETE — SmolLM2-135M single-shot baseline
-    GSM8K: 0/1319 = 0.0%, MATH-500: 0/500 = 0.0%
+PROOF-OF-CONCEPT (COMPLETE):
+M0: SmolLM2 baseline: 0% GSM8K, 0% MATH-500
+M1: Tight bottleneck works: 80.4% two-step, 52% three-step
+M2: Llama two-step: 83% (tight bottleneck scales)
 
-M0.5: COMPLETE — Architecture built
-    CompressionHead, StateInjector, StateDecoder, BreathingModel
+INTEGRATED THINKING (CURRENT):
+M3: Build architecture
+    AllLayerPerceiver, StateInjector, ConfidenceHead, ThinkingModel
 
-M0.75: COMPLETE — Oracle collapse data (206K breaths)
-    36K correct GSM8K solutions, oracle-optimal compression
+M4: Validation checkpoints
+    V1: Forward pass works with pseudo-tokens
+    V2: Gradients flow through all passes (deep supervision)
+    V3: State accumulates (pass_3 > pass_1 accuracy)
+    V4: Thinking ≈ single-shot (neutral)
+    V5: Thinking > single-shot (THE RESULT)
 
-M1: COMPLETE — Phase 0 autoencoder warmup (SmolLM2)
-    5 epochs, loss 1.59 → 0.44
-    t-SNE: structured (variance ratio 0.674)
+M5: GSM8K thinking accuracy > 35%
+    Baseline is 35% single-shot. Beat it with thinking passes.
 
-M2: COMPLETE — Two-step arithmetic (LANDMARK RESULT)
-    0% single-shot → 80.4% with breathing
-    Ablation: real state 96% vs zeros 6% (+90 point delta)
+M6: GSM8K thinking accuracy > 45%
+    +10 points from thinking.
 
-M3: COMPLETE — Three-step arithmetic
-    0% single-shot → 52% with breathing
-    Core thesis proven: breathing extends capacity
+M7: MATH L1-L3
+    512-float state (loosened bottleneck for harder problems)
 
-LLAMA 3.2 1B ENGINE SWAP (CURRENT):
-M4: Autoencoder retrain for Llama hidden states
-    Pre-compute 206K collapses through Llama 3.2 1B → 2048-dim hidden states
-    Retrain encoder+decoder, validate t-SNE structure
-    Duration: 2-4 hours
-
-M5: Arithmetic smoke tests (FAST)
-    Two-step: expect >70% within 3-5 epochs (faster than SmolLM2)
-    Three-step: expect >40% within 5-10 epochs
-    Verify ablation delta still large
-
-M6: GSM8K with alternating EXPAND/COLLAPSE breaths (THE MAIN EVENT)
-    EXPAND: 512 tokens, parse and explore
-    COLLAPSE: 64 tokens, compute and commit
-    Target: >15% accuracy on easy GSM8K
-
-M7: Full GSM8K
-    512-float state, up to 10 breaths
-    Autonomous decomposition: model decides where to split
-
-M8: MATH L1-L3
-    512-float state, 10+ breaths
-
-M9: THE HEADLINE — MATH L4-L5
+M8: THE HEADLINE — MATH L4-L5
     Non-zero accuracy where single-shot gets 0%
-    Capacity extension on competition math
 ```
 
 ---
 
-## The Scoreboard
+## What to Monitor
 
+### Per Epoch
 ```
-Task                    SmolLM2-135M    Llama-3.2-1B    Status
-Two-step arithmetic     80.4%           ???             Smoke test
-Three-step arithmetic   52%             ???             Smoke test
-Easy GSM8K              3% (failed)     ???             Main event
-Full GSM8K              —               ???             Target
-MATH L4-5               —               ???             Headline
+thinking_accuracy:    accuracy after N thinking passes + generation
+single_shot_accuracy: same model, no thinking, just generate
+zeros_accuracy:       thinking with zeros state (ablation)
+avg_passes:           how many passes before confident
 ```
 
-The SmolLM2 column proves the architecture. The Llama column proves the capability. Together they tell the story: differentiable latent compression works at multiple scales, and a capable engine unlocks word problems.
+### Per Pass
+```
+pass_1_accuracy:  can answer from 1 pass?
+pass_3_accuracy:  from 3 passes?
+pass_5_accuracy:  from 5 passes?
+Accuracy should INCREASE with passes.
+```
+
+### State Health
+```
+state_norm:        should grow (accumulating)
+state_delta_norm:  should be stable
+alpha:             learnable weight (should be positive, moderate)
+grad_norm:         nonzero at all passes (deep supervision)
+```
+
+### The Key Plot
+```
+X-axis: number of thinking passes
+Y-axis: accuracy
+
+Accuracy should increase with passes, then plateau.
+Easy problems: plateau early (2-3 passes)
+Hard problems: plateau late (8-10 passes)
+```
 
 ---
 
 ## Critical Rules
 
 ```
- 1. Llama 3.2 1B BASE (not Instruct) — no instruction-following habits
- 2. Use bfloat16 for Llama — designed for bf16, fp32 wastes memory
- 3. Update tokenizer everywhere — Llama tokenizer != SmolLM2 tokenizer
- 4. Final architecture: 64 queries → 512 floats → 8 pseudo-tokens (unchanged)
- 5. d_model = 2048 for all compression components (was 576)
- 6. Compression head is BREATH-CONDITIONED — queries shift based on breath number
- 7. State scale warmup: 0.1 → 1.0 over first 5 epochs (enables co-adaptation)
- 8. Breath counter [BREATH n/max] in prompt — transformer knows where it is
- 9. Breath embedding in compression head — compressor knows where it is
-10. Autoencoder warmup (Phase 0) MUST be retrained for Llama hidden states
-11. Pre-compute hidden states before autoencoder training — faster, no transformer in loop
-12. Train end-to-end from start — no frozen phase needed (proven by SmolLM2)
-13. Gradients flow through state vector — this is the whole point
-14. Ablation (real state vs zeros) at every major checkpoint
-15. Temperature = 0 for all evaluations
-16. N >= 100 problems for any accuracy measurement
-17. MATH-500 NEVER in training data
-18. Don't skip arithmetic smoke tests — verify architecture works with new engine first
-19. Handoff doc before closing any session
+ 1. Llama 3.2 1B-Instruct (NOT base) — need 35% baseline for gradient signal
+ 2. Use bfloat16 for Llama
+ 3. Start with 64-float bottleneck — TIGHT (don't loosen until accuracy plateaus)
+ 4. 7-layer perceiver reads ALL 16 transformer layers
+ 5. Pass-conditioned layer gate — perceiver learns which layers matter when
+ 6. Residual state: state = state + alpha * delta (ACCUMULATE, don't replace)
+ 7. Deep supervision: every pass gets direct gradient
+ 8. State scale warmup: 0.1 → 1.0 over first 5 epochs
+ 9. Start with max_passes=3, increase gradually to 10
+10. Freeze transformer Phase 1, unfreeze Phase 2
+11. NO text generation during thinking — forward passes only, FAST
+12. Confidence head decides when to stop (adaptive compute)
+13. Ablation (real state vs zeros) at every checkpoint
+14. Temperature = 0 for all evaluations
+15. N >= 100 problems for any accuracy measurement
+16. MATH-500 NEVER in training data
+17. Gradient clipping max_norm=1.0
+18. Handoff doc before closing any session
 ```
 
 ---
@@ -453,24 +575,17 @@ The SmolLM2 column proves the architecture. The Llama column proves the capabili
 ## Bug List
 
 ```
-CARRIED FROM v10:
+CARRIED:
 27. max_tokens=512 truncates before \boxed{}. Use 2048+.
 28. parse_latex() on non-LaTeX corrupts. Only call if contains backslash.
-29. Implicit mult breaks function names. Protect reserved words.
-30. Verification bottleneck: 29b != 29*b to naive parser.
-31. LoRA specialists SUPPRESS reasoning. Don't use.
-34. Sudden bottleneck -> collapse (no gradient signal). Fix: gradual training.
+35. Temperature must be 0 (greedy) for eval.
+37. Small sample sizes lie. Always N>=100.
 
-NEW FOR v16:
-35. Temperature must be 0 (greedy) for eval. 0.7 caused 8->24% baseline shift.
-36. vLLM process isolation kills global state. Run bottleneck BETWEEN calls, not inside.
-37. Small sample sizes lie. N=20 -> 35%, N=100 -> 26% on same data. Always N>=100.
-38. Always verify baseline on SAME problem set before comparing.
-
-NEW FOR v17 (Llama swap):
-39. Llama tokenizer is different — update ALL data pipelines, not just model loading.
-40. Use BASE model, not Instruct. Instruct has instruction-following habits we don't want.
-41. bf16 required for Llama — fp32 doubles memory usage for no benefit.
+NEW FOR v18:
+42. Use chat template for Instruct model — tokenizer.apply_chat_template required
+43. output_hidden_states=True to get all 16 layers
+44. hidden_states[0] is embedding layer — use hidden_states[1:] for 16 transformer layers
+45. Gradient clipping essential — large norms observed with deep supervision
 ```
 
 ---
@@ -478,30 +593,30 @@ NEW FOR v17 (Llama swap):
 ## Hardware
 
 ```
-Training:    Llama 3.2 1B (~2.5GB bf16) + 9.5M params fits on A10G (24GB)
-Phase 0:     ~2-4 hours on A10G (pre-compute hidden states + autoencoder)
-Phase 1:     ~4-8 hours per difficulty level (end-to-end breathing)
-Cost:        ~$75-150 on AWS spot for full curriculum (~3-5 days)
+Training:    Llama 3.2 1B (~2.5GB bf16) + ~108M perceiver fits on A10G (24GB)
+             With gradient checkpointing: 10 passes easily fits
+Phase 1:     ~1-2 days on A10G
+Phase 2:     ~2-3 days on A10G
+Cost:        ~$75-150 on AWS spot
 ```
 
 ---
 
-## Accelerated Curriculum
-
-Llama 3.2 1B already understands math and language. The curriculum is faster because we're only teaching it to breathe, not arithmetic.
+## Bottleneck Ramp (After Core Result)
 
 ```
-Day 1 morning:    Pre-compute Llama hidden states + retrain autoencoder (2-4 hours)
-Day 1 afternoon:  Two-step arithmetic smoke test (expect 80%+ within 3-5 epochs)
-Day 1 evening:    Three-step arithmetic smoke test (expect 50%+ within 5-10 epochs)
-Day 2:            GSM8K with alternating EXPAND/COLLAPSE breaths (THE REAL TEST)
-Day 3+:           Full GSM8K, then MATH
+Stage 1:  64 floats,  4 queries   (forces incremental thinking) ← START HERE
+Stage 2:  128 floats, 8 queries   (more per pass)
+Stage 3:  256 floats, 16 queries  (efficient compression)
+Stage 4:  512 floats, 32 queries  (full capacity, adaptive passes)
+
+Each stage: prove it works, then loosen. Don't loosen until accuracy plateaus.
 ```
 
 ---
 
 ## MATH-500 Deadline: April 22, 2026
 
-Engine swap → smoke tests → GSM8K → full GSM8K → MATH.
-Target: breathing accuracy > single-shot on L4-L5 problems.
-The undeniable result: solving previously unsolvable problems through differentiable compression.
+GSM8K first (prove thinking helps) → MATH (prove it scales to harder problems).
+Target: thinking accuracy > single-shot on L4-L5 problems.
+The undeniable result: solving previously unsolvable problems through integrated thinking.
