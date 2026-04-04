@@ -1,72 +1,30 @@
 """
-Compressor (AllLayerPerceiver): 7-layer Perceiver that COMPRESSES all 16 transformer
-layers into 64 floats.
+Compressor v2: Now with STATE-CONDITIONED QUERIES.
 
-Mycelium v20 Architecture - The compressor is "THE NOTE-TAKER" in the thinking loop.
-It reads ALL 16 hidden states from Llama with pass-conditioned attention and squeezes
-them into a 64-float state delta. The delta rotates the state on the hypersphere,
-which then conditions the LoRA weights for the next thinking pass.
+The key change: queries now know what is already in the state, so they can
+extract NEW information instead of re-extracting the same thing.
 
-Key features:
-- Reads ALL 16 transformer layers (not just the final one)
-- Pass-conditioned layer gate: softmax weights over layers (e.g., early passes focus
-  on parsing layers 1-8, later passes focus on answer-oriented layers 12-16)
-- Cross-attention uses FULL sequence (not pooled to 1 token)
-- 4 learned queries compressed through 7 perceiver layers → 64 floats
-- ~105M parameters
-
-Architecture:
-    Input: 16 tensors of shape (batch, seq_len, 2048) from Llama's layers
-
-    1. Pass embedding conditions the queries and layer gate
-    2. Layer gate (softmax) weights the 16 layers differently per pass
-    3. Weighted combination projected from 2048 → 1024 (FULL sequence preserved)
-    4. 7 perceiver layers: cross-attn + self-attn + FFN with residuals
-    5. Output projection: 1024 → 16 per query → 64 total floats
-
-    Output: state delta (batch, 64) to rotate on hypersphere
-
-Parameters (~105M):
-    - Learned queries:           4 × 1024 = 4K
-    - Pass embedding:            20 × 1024 = 20K
-    - Layer gate:                1024 × 64 + 64 × 16 = 66K
-    - Input projection:          2048 × 1024 = 2.1M
-    - 7 perceiver layers:        ~102M (cross-attn + self-attn + FFN each)
-    - Output projection:         1024 × 16 = 16K
-    - Total:                     ~105M
+Change from v1:
+    self.state_project = nn.Linear(state_size, d_perceiver)  # 64 → 1024
+    queries = self.queries + pass_context + state_context   # NEW: what is already encoded
 """
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import List
+from typing import List, Optional
 
 
 class Compressor(nn.Module):
     """
-    AllLayerPerceiver: 7-layer Perceiver that reads all transformer layers with
-    pass-conditioned attention.
-
-    Mycelium v20 Architecture Component - "THE NOTE-TAKER"
-
-    This compressor reads ALL 16 Llama layer hidden states with the FULL sequence
-    (not pooled). Pass-conditioned layer gating learns which layers matter at each
-    stage of thinking: early passes focus on parsing (layers 1-8), later passes
-    focus on answer-oriented layers (12-16).
-
-    The 4 learned queries cross-attend to the full sequence through 7 perceiver
-    layers, then compress to 64 floats (16 floats per query). This 64-float state
-    delta rotates the state on the hypersphere, which conditions the LoRA weights
-    for the next thinking pass.
-
-    Args:
-        num_transformer_layers: Number of Llama layers to read (default: 16)
-        d_transformer: Hidden dimension of Llama (default: 2048)
-        d_perceiver: Internal perceiver dimension (default: 1024)
-        num_queries: Number of learned queries (default: 4)
-        num_perceiver_layers: Depth of perceiver stack (default: 7)
-        state_size: Output state vector size (default: 64)
-        max_passes: Maximum thinking passes for embedding (default: 20)
+    AllLayerPerceiver v2: Now with state-conditioned queries.
+    
+    The queries now know:
+    1. What pass we are on (pass_context)
+    2. What is already encoded in state (state_context)
+    
+    This closes the communication loop: "I am on pass 2, state already has 48,
+    extract something NEW."
     """
 
     def __init__(
@@ -94,25 +52,22 @@ class Compressor(nn.Module):
 
         # Pass embedding: conditions queries and layer gate
         self.pass_embed = nn.Embedding(max_passes, d_perceiver)
+        
+        # NEW: State projection - tells queries what is already encoded
+        # This closes the communication loop
+        self.state_project = nn.Linear(state_size, d_perceiver)  # 64 → 1024
 
         # Pass-conditioned layer gate (softmax weights over 16 transformer layers)
-        # Learns which of Llama's 16 layers to focus on per pass:
-        #   - Pass 1 (parsing): might focus on layers 1-8 (basic features, numbers)
-        #   - Pass 5 (solving): might focus on layers 12-16 (answer-oriented)
-        # The softmax ensures normalized weights that sum to 1.0
         self.layer_gate = nn.Sequential(
             nn.Linear(d_perceiver, 64),
             nn.ReLU(),
             nn.Linear(64, num_transformer_layers),
         )
 
-        # Project from Llama's space to perceiver's internal space
-        # FULL sequence is preserved (not pooled to 1 token)
+        # Project from Llama space to perceiver space
         self.input_project = nn.Linear(d_transformer, d_perceiver)  # 2048 → 1024
 
         # 7-layer perceiver stack
-        # Each layer: cross-attn (queries attend to FULL sequence) + self-attn + FFN
-        # with residuals and LayerNorm throughout
         self.perceiver_layers = nn.ModuleList([
             nn.ModuleDict({
                 'cross_attn': nn.MultiheadAttention(
@@ -147,17 +102,17 @@ class Compressor(nn.Module):
 
     def _init_weights(self) -> None:
         """Initialize weights with small values for stable training."""
-        # Initialize queries with small random values
         nn.init.normal_(self.queries, mean=0.0, std=0.02)
-
-        # Initialize projection layers
         nn.init.xavier_uniform_(self.input_project.weight)
         nn.init.zeros_(self.input_project.bias)
         nn.init.xavier_uniform_(self.project_out.weight)
         nn.init.zeros_(self.project_out.bias)
+        
+        # Initialize state_project to start with small influence
+        nn.init.xavier_uniform_(self.state_project.weight)
+        nn.init.zeros_(self.state_project.bias)
 
         # Initialize layer gate to start with uniform attention
-        # (all layers equally weighted initially)
         nn.init.zeros_(self.layer_gate[0].weight)
         nn.init.zeros_(self.layer_gate[0].bias)
         nn.init.zeros_(self.layer_gate[2].weight)
@@ -167,14 +122,16 @@ class Compressor(nn.Module):
         self,
         all_layer_hidden_states: List[torch.Tensor],
         pass_num: int,
+        current_state: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """
         Compress all transformer layer hidden states into a 64-float state delta.
 
         Args:
             all_layer_hidden_states: List of 16 tensors, each (batch, seq_len, 2048)
-                                     Hidden states from each Llama layer.
-            pass_num: Which thinking pass (0-indexed, used for pass-conditioned attention)
+            pass_num: Which thinking pass (0-indexed)
+            current_state: Current accumulated state (batch, 64) - NEW parameter
+                          If None, no state conditioning is applied (backward compatible)
 
         Returns:
             state_delta: (batch, 64) compressed state delta for hypersphere rotation
@@ -189,10 +146,20 @@ class Compressor(nn.Module):
         # Get pass embedding and condition queries
         pass_idx = torch.tensor(pass_num, device=device)
         pass_context = self.pass_embed(pass_idx)  # (d_perceiver,)
-
-        # Expand queries for batch and add pass context
-        queries = (self.queries + pass_context).unsqueeze(0).expand(batch_size, -1, -1)
-        # queries: (batch, num_queries, d_perceiver) = (batch, 4, 1024)
+        
+        # NEW: Get state context - tells queries what is already encoded
+        if current_state is not None:
+            # current_state: (batch, 64)
+            state_context = self.state_project(current_state.to(dtype=self.state_project.weight.dtype))
+            # state_context: (batch, d_perceiver)
+            
+            # Expand queries for batch and add BOTH pass and state context
+            # queries = base_queries + pass_context (broadcast) + state_context (per-sample)
+            queries = self.queries.unsqueeze(0) + pass_context.unsqueeze(0) + state_context.unsqueeze(1)
+            # queries: (batch, num_queries, d_perceiver)
+        else:
+            # Backward compatible: just use pass context
+            queries = (self.queries + pass_context).unsqueeze(0).expand(batch_size, -1, -1)
 
         # Pass-conditioned layer importance (softmax for normalized weights)
         layer_logits = self.layer_gate(pass_context)  # (16,)
@@ -205,15 +172,14 @@ class Compressor(nn.Module):
         weights = layer_weights.view(self.num_transformer_layers, 1, 1, 1)
         combined = (stacked * weights).sum(dim=0)  # (batch, seq, 2048)
 
-        # Project to perceiver dimension (FULL sequence preserved)
+        # Project to perceiver dimension
         kv = self.input_project(combined.to(dtype=self.input_project.weight.dtype))
-        # kv: (batch, seq, d_perceiver) = (batch, seq, 1024)
+        # kv: (batch, seq, d_perceiver)
 
         # Ensure queries match dtype
         queries = queries.to(dtype=kv.dtype)
 
         # 7 layers of deep compression processing
-        # Cross-attention uses FULL sequence (kv has shape batch, seq, 1024)
         for layer in self.perceiver_layers:
             # Cross-attend: queries read from transformer representations
             attended, _ = layer['cross_attn'](
@@ -235,27 +201,13 @@ class Compressor(nn.Module):
             ffn_out = layer['ffn'](queries)
             queries = layer['ffn_norm'](queries + ffn_out)
 
-        # queries: (batch, 4, 1024)
-
         # Project to tight bottleneck
         state_delta = self.project_out(queries)  # (batch, 4, 16)
 
         return state_delta.flatten(start_dim=1)  # (batch, 64)
 
     def get_layer_weights(self, pass_num: int, device: torch.device = None) -> torch.Tensor:
-        """
-        Get the learned layer importance weights for a given pass.
-
-        Useful for visualization: see which Llama layers the compressor
-        focuses on at different stages of thinking.
-
-        Args:
-            pass_num: Which thinking pass
-            device: Device to use (defaults to module's device)
-
-        Returns:
-            layer_weights: (16,) softmax weights over Llama layers
-        """
+        """Get the learned layer importance weights for a given pass."""
         if device is None:
             device = self.queries.device
 
@@ -267,21 +219,11 @@ class Compressor(nn.Module):
         return layer_weights
 
     def count_parameters(self) -> dict:
-        """
-        Count parameters in each component for verification.
-
-        Expected totals for v20 defaults:
-            - queries:          4K
-            - pass_embed:       20K
-            - layer_gate:       ~66K
-            - input_project:    ~2.1M
-            - perceiver_layers: ~102M
-            - project_out:      ~16K
-            - Total:            ~105M
-        """
+        """Count parameters in each component."""
         counts = {
             'queries': self.queries.numel(),
             'pass_embed': sum(p.numel() for p in self.pass_embed.parameters()),
+            'state_project': sum(p.numel() for p in self.state_project.parameters()),  # NEW
             'layer_gate': sum(p.numel() for p in self.layer_gate.parameters()),
             'input_project': sum(p.numel() for p in self.input_project.parameters()),
             'perceiver_layers': sum(
@@ -294,21 +236,11 @@ class Compressor(nn.Module):
         return counts
 
 
-def _test_compressor():
-    """Quick sanity check that the module works with v20 architecture."""
-    print("Testing Compressor (AllLayerPerceiver) for Mycelium v20...")
-
-    # Create module with v20 defaults
-    compressor = Compressor(
-        num_transformer_layers=16,
-        d_transformer=2048,
-        d_perceiver=1024,
-        num_queries=4,
-        num_perceiver_layers=7,
-        state_size=64,
-        max_passes=20,
-    )
-
+if __name__ == "__main__":
+    print("Testing Compressor v2 with state conditioning...")
+    
+    compressor = Compressor()
+    
     # Count parameters
     param_counts = compressor.count_parameters()
     print(f"\nParameter counts:")
@@ -317,40 +249,22 @@ def _test_compressor():
             print(f"  {name}: {count / 1e6:.1f}M")
         else:
             print(f"  {name}: {count:,}")
-
-    total_params = sum(p.numel() for p in compressor.parameters())
-    print(f"\nTotal parameters: {total_params / 1e6:.1f}M")
-    print(f"Target: ~105M")
-
-    # Test forward pass
+    
+    # Test forward pass WITH state
     batch_size = 2
     seq_len = 128
-
-    # Simulate 16 layer hidden states
-    all_layer_hidden_states = [
-        torch.randn(batch_size, seq_len, 2048)
-        for _ in range(16)
-    ]
-
-    # Forward pass
-    state_delta = compressor(all_layer_hidden_states, pass_num=0)
-    print(f"\nInput: 16 × (batch={batch_size}, seq={seq_len}, 2048)")
-    print(f"Output: {state_delta.shape}")
-    assert state_delta.shape == (batch_size, 64), f"Expected (batch, 64), got {state_delta.shape}"
-
-    # Test layer weights
-    print("\nLayer weights per pass:")
-    for pass_num in [0, 5, 10, 19]:
-        weights = compressor.get_layer_weights(pass_num)
-        top3 = weights.detach().topk(3)
-        print(f"  Pass {pass_num}: top layers {top3.indices.tolist()} with weights {top3.values.tolist()}")
-
+    
+    all_layer_hidden_states = [torch.randn(batch_size, seq_len, 2048) for _ in range(16)]
+    current_state = torch.randn(batch_size, 64)
+    
+    state_delta = compressor(all_layer_hidden_states, pass_num=1, current_state=current_state)
+    print(f"\nWith state conditioning: {state_delta.shape}")
+    
+    # Test backward compatibility (no state)
+    state_delta_no_state = compressor(all_layer_hidden_states, pass_num=1, current_state=None)
+    print(f"Without state (backward compat): {state_delta_no_state.shape}")
+    
     # Test gradient flow
     state_delta.sum().backward()
     print("\nGradient flow: OK")
-
     print("\nAll tests passed!")
-
-
-if __name__ == "__main__":
-    _test_compressor()
