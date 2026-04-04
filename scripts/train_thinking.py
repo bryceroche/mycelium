@@ -95,7 +95,7 @@ except ImportError:
 
 CONFIG = {
     # Model
-    "model_name": "meta-llama/Llama-3.2-1B-Instruct",
+    "model_name": "meta-llama/Llama-3.2-1B",  # BASE model - has knowledge, we provide skill
 
     # Architecture
     "state_size": 64,
@@ -350,24 +350,16 @@ def compute_deep_supervision_loss(
     """
     device = model.device
 
-    # Prepare question prompt (with instruction for step-by-step reasoning)
-    formatted_prompt = f"""Solve this math problem step by step. Put your final answer in \\boxed{{}}.
-
-Problem: {problem_text}
-
-Solution:"""
-    messages = [{"role": "user", "content": formatted_prompt}]
-    prompt_text = model.tokenizer.apply_chat_template(
-        messages,
-        add_generation_prompt=True,
-        tokenize=False,
-    )
+    # Prepare question prompt (BASE model - simple completion format)
+    # For arithmetic: "48 / 2 =" -> model completes with "24"
+    # For word problems: "Problem: ... Answer:" -> model completes
+    prompt_text = problem_text
 
     # Tokenize prompt
     prompt_encoding = model.tokenizer(
         prompt_text,
         return_tensors="pt",
-        add_special_tokens=False,
+        add_special_tokens=True,
         truncation=True,
         max_length=512,
     ).to(device)
@@ -824,7 +816,7 @@ def train(config: Dict, phase: int, resume_path: Optional[str] = None, weights_o
     # Create model
     print("\nCreating ThinkingModel (v20 State-Conditioned LoRA)...")
     model = ThinkingModel(
-        model_name=config.get("model_name", "meta-llama/Llama-3.2-1B-Instruct"),
+        model_name=config.get("model_name", "meta-llama/Llama-3.2-1B"),
         state_size=config.get("state_size", 64),
         lora_rank=config.get("lora_rank", 4),
         num_queries=config.get("num_queries", 4),

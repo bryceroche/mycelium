@@ -93,7 +93,7 @@ class ThinkingModel(nn.Module):
 
     def __init__(
         self,
-        model_name: str = "meta-llama/Llama-3.2-1B-Instruct",
+        model_name: str = "meta-llama/Llama-3.2-1B",  # BASE model - has knowledge, we provide skill
         state_size: int = 64,
         lora_rank: int = 4,
         num_queries: int = 4,
@@ -237,35 +237,14 @@ class ThinkingModel(nn.Module):
         remove_lora(self.transformer)
 
     def _get_prompt_ids(self, problem_text: str) -> torch.Tensor:
-        """Apply chat template and get input token IDs."""
-        # Wrap problem with instruction (same as baseline evaluation)
-        formatted_prompt = f"""Solve this math problem step by step. Put your final answer in \\boxed{{}}.
-
-Problem: {problem_text}
-
-Solution:"""
-        messages = [{"role": "user", "content": formatted_prompt}]
-
-        # apply_chat_template may return tensor or BatchEncoding depending on version
-        result = self.tokenizer.apply_chat_template(
-            messages,
-            add_generation_prompt=True,
+        """Get input token IDs for BASE model (pure completion, no chat template)."""
+        # For BASE model: simple completion format
+        # The model continues from where the prompt ends
+        prompt_ids = self.tokenizer(
+            problem_text,
             return_tensors="pt",
-        )
-
-        # Handle both tensor and BatchEncoding return types
-        if hasattr(result, 'input_ids'):
-            prompt_ids = result.input_ids.to(self.device)
-        elif isinstance(result, torch.Tensor):
-            prompt_ids = result.to(self.device)
-        else:
-            # Fallback: tokenize the string output
-            prompt_text = self.tokenizer.apply_chat_template(
-                messages, add_generation_prompt=True, tokenize=False
-            )
-            prompt_ids = self.tokenizer(
-                prompt_text, return_tensors="pt", add_special_tokens=False
-            ).input_ids.to(self.device)
+            add_special_tokens=True,
+        ).input_ids.to(self.device)
 
         return prompt_ids
 
