@@ -1,57 +1,71 @@
 #!/usr/bin/env python3
 """
-Mycelium v18 Training Script: Deep Supervision for Integrated Thinking
+Mycelium v20 Training Script: Deep Supervision for State-Conditioned LoRA Thinking
 
 This script trains the ThinkingModel on GSM8K with deep supervision, where every
 thinking pass predicts the answer and receives direct gradient signal.
 
-Key features:
-1. Two-phase training:
-   - Phase 1: Freeze transformer, train perceiver + injector + confidence
-   - Phase 2: Unfreeze everything for end-to-end training
+Architecture Overview (v20 - State-Conditioned LoRA):
+    STATE (64 floats on hypersphere)
+        |
+        v
+    HYPERNETWORK (StateConditionedLoRA, ~1.1M) -> LoRA scales
+        |
+        v
+    Scale learned A/B templates -> Apply LoRA to Q, K, V, O in ALL 16 layers
+        |
+        v
+    [problem tokens] -> Llama layers 1-16 (WITH LoRA modifications)
+        |          |         |              |
+      (all 16 layer hidden states saved)
+        |          |         |              |
+        v          v         v              v
+    7-LAYER PERCEIVER COMPRESSOR (105M params) -> 64-float state delta
+        |
+        v
+    state = normalize(state + delta) * sqrt(64)  <- HYPERSPHERE
+        |
+        +---> ConfidenceHead -> ready?
 
-2. Deep supervision:
-   - Every thinking pass predicts the answer from current state
-   - Weight increases with pass number: weight = (pass_num + 1) / num_passes
-   - Sum weighted losses across all passes
-   - Every pass gets direct gradient, no vanishing gradient
-
-3. State scale warmup:
-   - Scale pseudo-tokens by factor that ramps 0.1 -> 1.0 over 5 epochs
-   - Gives transformer time to adjust to pseudo-token distribution
-
-4. Confidence loss:
-   - Confidence should increase over passes
-   - Target confidence = (pass_num + 1) / max_passes
+Key Features:
+1. Deep supervision: Every intermediate state tries to answer (not just final)
+2. Loss weighted by pass number (later passes weighted more)
+3. Confidence loss to teach when to stop
+4. Efficiency penalty for too many passes
+5. Two-phase training:
+   - Phase 1: Freeze Llama, train LoRA templates + Perceiver + Confidence (5-10 epochs)
+   - Phase 2: Unfreeze Llama, end-to-end (10-20 epochs)
 
 Usage:
-    # Phase 1: Train compression components only
-    python scripts/train_thinking.py --config configs/thinking_gsm8k.yaml --phase 1
+    # Phase 1: Train LoRA templates + Perceiver + Confidence only
+    python scripts/train_thinking.py --phase 1
 
     # Phase 2: End-to-end training
-    python scripts/train_thinking.py --config configs/thinking_gsm8k.yaml --phase 2
+    python scripts/train_thinking.py --phase 2 --resume checkpoints/phase1_best.pt
+
+    # Quick test
+    python scripts/train_thinking.py --debug
 
     # Resume from checkpoint
-    python scripts/train_thinking.py --config configs/thinking_gsm8k.yaml --resume checkpoint.pt
+    python scripts/train_thinking.py --resume checkpoints/latest.pt
 """
 
 import argparse
-import os
-import sys
-import re
-import math
 import json
+import math
+import os
+import re
+import sys
 import time
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch.utils.data import DataLoader, Dataset
-import yaml
 from tqdm import tqdm
 
 # Add src to path for imports
@@ -59,7 +73,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src import ThinkingModel
 
-# Optional wandb import
+# Optional imports
 try:
     import wandb
     WANDB_AVAILABLE = True
@@ -67,75 +81,148 @@ except ImportError:
     WANDB_AVAILABLE = False
     print("wandb not available, logging to console only")
 
-# Optional datasets import (HuggingFace)
 try:
     from datasets import load_dataset
     DATASETS_AVAILABLE = True
 except ImportError:
     DATASETS_AVAILABLE = False
-    print("datasets not available, cannot load GSM8K")
+    print("datasets not available, will use local JSONL files")
+
+
+# ============================================================================
+# Configuration
+# ============================================================================
+
+CONFIG = {
+    # Model
+    "model_name": "meta-llama/Llama-3.2-1B-Instruct",
+
+    # Architecture
+    "state_size": 64,
+    "lora_rank": 4,
+    "num_queries": 4,
+    "num_perceiver_layers": 7,
+    "d_perceiver": 1024,
+    "max_passes": 20,
+
+    # Thinking - FIXED 3 PASSES (no confidence head, no early stopping)
+    "confidence_threshold": 1.0,  # Never early stop - always do all passes
+    "curriculum_max_passes": [3],  # Always 3 passes (add confidence head back later)
+    "curriculum_epochs": [0],      # No curriculum - fixed at 3
+
+    # Training
+    "batch_size": 8,           # Increased - was only using 12% GPU
+    "grad_accum_steps": 2,     # Effective batch size = 16
+    "learning_rate": 1e-4,
+    "weight_decay": 0.01,
+    "max_grad_norm": 1.0,
+    "warmup_steps": 100,
+
+    # Phase-specific
+    "epochs": 20,
+    "phase1_epochs": 5,        # Freeze Llama
+    "phase2_epochs": 15,       # End-to-end
+
+    # Loss weights (DISABLED - only using answer loss with fixed 3 passes)
+    "confidence_loss_weight": 0.0,  # Not training confidence head yet
+    "efficiency_penalty_weight": 0.0,  # No penalty - always 3 passes
+
+    # Evaluation
+    "eval_every_n_epochs": 1,
+    "num_eval_samples": 100,
+    "num_train_samples": None,  # None = use all
+
+    # Logging
+    "log_every_n_steps": 10,
+    "save_every_n_epochs": 1,
+    "project_name": "mycelium-v20-thinking",
+    "run_name": f"train-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
+
+    # Checkpoints
+    "checkpoint_dir": "checkpoints/v20",
+
+    # Hardware
+    "device": "cuda",
+}
 
 
 # ============================================================================
 # Data Loading
 # ============================================================================
 
-class GSM8KDataset(Dataset):
-    """
-    GSM8K dataset wrapper for training.
+def load_gsm8k_hf(split: str = "train", max_samples: Optional[int] = None) -> List[Dict]:
+    """Load GSM8K from HuggingFace datasets."""
+    if not DATASETS_AVAILABLE:
+        raise RuntimeError("datasets library required: pip install datasets")
 
-    Each item contains:
-        - question: The problem text
-        - answer: The full solution with reasoning
-        - gold_answer: The extracted numeric answer
-    """
+    dataset = load_dataset("gsm8k", "main", split=split)
 
-    def __init__(self, split: str = "train", max_samples: Optional[int] = None):
-        """
-        Load GSM8K dataset.
+    data = []
+    for i, item in enumerate(dataset):
+        if max_samples and i >= max_samples:
+            break
 
-        Args:
-            split: "train" or "test"
-            max_samples: Limit number of samples (for debugging)
-        """
-        if not DATASETS_AVAILABLE:
-            raise RuntimeError("datasets library required: pip install datasets")
-
-        self.data = load_dataset("gsm8k", "main", split=split)
-
-        if max_samples is not None:
-            self.data = self.data.select(range(min(max_samples, len(self.data))))
-
-        print(f"Loaded GSM8K {split}: {len(self.data)} examples")
-
-    def __len__(self) -> int:
-        return len(self.data)
-
-    def __getitem__(self, idx: int) -> Dict[str, str]:
-        item = self.data[idx]
-
-        # Extract the numeric answer from the solution
-        # GSM8K format: reasoning ... #### answer
+        # Extract numeric answer from GSM8K format: reasoning ... #### answer
         answer_text = item["answer"]
-        gold_answer = self._extract_gold_answer(answer_text)
+        gold_answer = ""
+        if "####" in answer_text:
+            gold_answer = answer_text.split("####")[-1].strip().replace(",", "")
 
-        return {
+        data.append({
             "question": item["question"],
             "answer": answer_text,
             "gold_answer": gold_answer,
-        }
+        })
 
-    @staticmethod
-    def _extract_gold_answer(answer_text: str) -> str:
-        """Extract the numeric answer from GSM8K format."""
-        # GSM8K uses #### to mark the final answer
-        if "####" in answer_text:
-            answer = answer_text.split("####")[-1].strip()
-            # Remove commas from numbers
-            answer = answer.replace(",", "")
-            return answer
-        return ""
+    print(f"Loaded GSM8K {split}: {len(data)} examples")
+    return data
 
+
+def load_gsm8k_jsonl(filepath: str, max_samples: Optional[int] = None) -> List[Dict]:
+    """Load GSM8K from local JSONL file."""
+    data = []
+    with open(filepath) as f:
+        for i, line in enumerate(f):
+            if max_samples and i >= max_samples:
+                break
+            item = json.loads(line)
+            data.append({
+                "question": item.get("question", item.get("problem", "")),
+                "answer": item.get("answer", item.get("solution", "")),
+                "gold_answer": item.get("gold_answer", item.get("final_answer", "")),
+            })
+
+    print(f"Loaded {filepath}: {len(data)} examples")
+    return data
+
+
+def load_data(split: str, config: Dict) -> List[Dict]:
+    """Load training or evaluation data."""
+    max_samples = config.get("num_train_samples") if split == "train" else config.get("num_eval_samples")
+
+    # Try HuggingFace first
+    if DATASETS_AVAILABLE:
+        try:
+            return load_gsm8k_hf(split, max_samples)
+        except Exception as e:
+            print(f"Failed to load from HuggingFace: {e}")
+
+    # Fallback to local files
+    local_paths = {
+        "train": ["data/gsm8k_train.jsonl", "data/gsm8k/train.jsonl"],
+        "test": ["data/gsm8k_test.jsonl", "data/gsm8k/test.jsonl"],
+    }
+
+    for path in local_paths.get(split, []):
+        if os.path.exists(path):
+            return load_gsm8k_jsonl(path, max_samples)
+
+    raise RuntimeError(f"Could not load GSM8K {split} data. Install datasets or provide local files.")
+
+
+# ============================================================================
+# Answer Extraction and Verification
+# ============================================================================
 
 def extract_answer_from_text(text: str) -> Optional[str]:
     """
@@ -154,9 +241,7 @@ def extract_answer_from_text(text: str) -> Optional[str]:
 
     # Try GSM8K #### format
     if "####" in text:
-        answer = text.split("####")[-1].strip()
-        answer = answer.replace(",", "")
-        # Extract just the number
+        answer = text.split("####")[-1].strip().replace(",", "")
         number_match = re.search(r'-?[\d.]+', answer)
         if number_match:
             return number_match.group()
@@ -167,7 +252,7 @@ def extract_answer_from_text(text: str) -> Optional[str]:
     if answer_match:
         return answer_match.group(1).replace(",", "")
 
-    # Try to find the last number in the text
+    # Last number in text
     numbers = re.findall(r'-?[\d,]+(?:\.\d+)?', text)
     if numbers:
         return numbers[-1].replace(",", "")
@@ -176,22 +261,13 @@ def extract_answer_from_text(text: str) -> Optional[str]:
 
 
 def check_answer(predicted: str, gold: str) -> bool:
-    """
-    Check if predicted answer matches gold answer.
-
-    Handles:
-    - Integer comparison
-    - Float comparison with tolerance
-    - String comparison as fallback
-    """
-    if predicted is None:
+    """Check if predicted answer matches gold answer."""
+    if predicted is None or not gold:
         return False
 
-    # Normalize
     predicted = predicted.strip().lower()
     gold = gold.strip().lower()
 
-    # Try numeric comparison
     try:
         pred_num = float(predicted)
         gold_num = float(gold)
@@ -205,7 +281,6 @@ def check_answer(predicted: str, gold: str) -> bool:
     except ValueError:
         pass
 
-    # String comparison
     return predicted == gold
 
 
@@ -213,61 +288,75 @@ def check_answer(predicted: str, gold: str) -> bool:
 # Training Utilities
 # ============================================================================
 
-def compute_state_scale(epoch: int, config: Dict) -> float:
-    """
-    Compute state scale for warmup.
+def get_curriculum_max_passes(epoch: int, config: Dict) -> int:
+    """Get max_passes for current epoch based on curriculum."""
+    curriculum_epochs = config.get("curriculum_epochs", [0, 5, 10, 15])
+    curriculum_passes = config.get("curriculum_max_passes", [3, 5, 7, 10])
 
-    Scale ramps from start_scale to end_scale over warmup_epochs.
-    After warmup, scale is fixed at end_scale.
-    """
-    warmup_cfg = config["training"]["state_scale_warmup"]
+    for i in range(len(curriculum_epochs) - 1, -1, -1):
+        if epoch >= curriculum_epochs[i]:
+            return curriculum_passes[i]
 
-    if not warmup_cfg["enabled"]:
-        return 1.0
+    return curriculum_passes[0]
 
-    start_scale = warmup_cfg["start_scale"]
-    end_scale = warmup_cfg["end_scale"]
-    warmup_epochs = warmup_cfg["warmup_epochs"]
 
-    if epoch >= warmup_epochs:
-        return end_scale
+def compute_cosine_similarity(states: List[torch.Tensor]) -> List[float]:
+    """Compute cosine similarity between consecutive states."""
+    if len(states) < 2:
+        return []
 
-    # Linear interpolation
-    progress = epoch / warmup_epochs
-    return start_scale + progress * (end_scale - start_scale)
+    similarities = []
+    for i in range(1, len(states)):
+        s1 = states[i - 1].flatten()
+        s2 = states[i].flatten()
+        sim = F.cosine_similarity(s1.unsqueeze(0), s2.unsqueeze(0)).item()
+        similarities.append(sim)
 
+    return similarities
+
+
+# ============================================================================
+# Deep Supervision Loss
+# ============================================================================
 
 def compute_deep_supervision_loss(
     model: ThinkingModel,
     problem_text: str,
     gold_answer: str,
     all_states: List[torch.Tensor],
+    confidences: List[float],
+    max_passes: int,
     config: Dict,
-    state_scale: float = 1.0,
 ) -> Tuple[torch.Tensor, Dict[str, float]]:
     """
     Compute deep supervision loss across all thinking passes.
 
-    Every intermediate state predicts the answer. Weight increases
-    with pass number so later passes (which should be better)
-    contribute more to the loss.
+    Every intermediate state tries to predict the answer. Loss is weighted
+    by pass number so later passes (which should be better) contribute more.
+
+    Gradient flows: answer_loss -> logits -> LoRA -> state -> compressor
 
     Args:
         model: The ThinkingModel
         problem_text: The input problem
         gold_answer: The target answer
-        all_states: List of state tensors from model.think()
+        all_states: List of state tensors from model.think() [initial, pass1, pass2, ...]
+        confidences: List of confidence values from model.think()
+        max_passes: Maximum passes for this curriculum stage
         config: Training configuration
-        state_scale: Current state scale for warmup
 
     Returns:
         Tuple of (total_loss, metrics_dict)
     """
     device = model.device
-    dtype = next(model.transformer.parameters()).dtype
 
-    # Prepare prompt
-    messages = [{"role": "user", "content": problem_text}]
+    # Prepare question prompt (with instruction for step-by-step reasoning)
+    formatted_prompt = f"""Solve this math problem step by step. Put your final answer in \\boxed{{}}.
+
+Problem: {problem_text}
+
+Solution:"""
+    messages = [{"role": "user", "content": formatted_prompt}]
     prompt_text = model.tokenizer.apply_chat_template(
         messages,
         add_generation_prompt=True,
@@ -279,11 +368,10 @@ def compute_deep_supervision_loss(
         prompt_text,
         return_tensors="pt",
         add_special_tokens=False,
+        truncation=True,
+        max_length=512,
     ).to(device)
     prompt_ids = prompt_encoding.input_ids  # (1, prompt_len)
-
-    # Get prompt embeddings
-    prompt_embeds = model.transformer.get_input_embeddings()(prompt_ids)
 
     # Prepare gold answer tokens for teacher forcing
     # Format: "The answer is X."
@@ -294,10 +382,12 @@ def compute_deep_supervision_loss(
         add_special_tokens=False,
     ).to(device)
     answer_ids = answer_encoding.input_ids  # (1, answer_len)
-    answer_embeds = model.transformer.get_input_embeddings()(answer_ids)
+
+    # Concatenate for teacher-forced loss
+    full_ids = torch.cat([prompt_ids, answer_ids], dim=1)
 
     # Deep supervision: compute loss for each intermediate state
-    # Skip the first state (zeros) which is all_states[0]
+    # Skip the first state (initial random) which is all_states[0]
     intermediate_states = all_states[1:]  # States after each thinking pass
     num_passes = len(intermediate_states)
 
@@ -305,40 +395,27 @@ def compute_deep_supervision_loss(
     pass_losses = []
 
     for i, state in enumerate(intermediate_states):
-        # Apply state scale warmup
-        scaled_state = state * state_scale
+        # Apply LoRA from this intermediate state
+        model.apply_lora(state)
 
-        # Inject state as pseudo-tokens
-        state_tokens = model.injector(scaled_state)
-        state_tokens = state_tokens.to(dtype=dtype)
+        # Forward with teacher forcing
+        outputs = model.transformer(
+            input_ids=full_ids,
+            use_cache=False,
+        )
 
-        # Build input: [state_tokens] + [prompt] + [answer]
-        # We want to compute loss on the answer tokens only
-        input_embeds = torch.cat([state_tokens, prompt_embeds, answer_embeds], dim=1)
+        # Remove LoRA after forward
+        model.remove_lora()
 
-        # Create labels: -100 for state+prompt (ignore), actual IDs for answer
-        num_state_tokens = state_tokens.size(1)
+        # Compute loss on answer tokens only
         prompt_len = prompt_ids.size(1)
         answer_len = answer_ids.size(1)
 
-        # Labels: [-100, -100, ..., answer_token_1, answer_token_2, ...]
-        labels = torch.full(
-            (1, num_state_tokens + prompt_len + answer_len),
-            -100,
-            dtype=torch.long,
-            device=device,
-        )
-        labels[0, num_state_tokens + prompt_len:] = answer_ids[0]
+        # Shift logits and labels for next-token prediction
+        logits = outputs.logits[:, prompt_len - 1:-1, :]  # (1, answer_len, vocab_size)
+        targets = answer_ids.squeeze(0)  # (answer_len,)
 
-        # Forward pass with labels
-        outputs = model.transformer(
-            inputs_embeds=input_embeds,
-            labels=labels,
-            return_dict=True,
-        )
-
-        # Get loss for this pass
-        pass_loss = outputs.loss
+        pass_loss = F.cross_entropy(logits.squeeze(0), targets)
 
         # Weight increases with pass number (later = better = higher weight)
         # weight = (i + 1) / num_passes
@@ -348,44 +425,43 @@ def compute_deep_supervision_loss(
         total_loss = total_loss + weighted_loss
         pass_losses.append(pass_loss.item())
 
-    # Normalize by sum of weights (1 + 2 + ... + n) / n = (n+1)/2 / n
-    # Actually, keep as is - the weights already sum to roughly 1
-    # sum of (i+1)/n for i in 0..n-1 = sum(1..n)/n = (n+1)/2 / n * n = (n+1)/2
-    # So normalize by (n+1)/2
+    # Normalize by sum of weights: (1 + 2 + ... + n) / n = (n+1)/2
     normalization = (num_passes + 1) / 2
     total_loss = total_loss / normalization
 
+    # SIMPLIFIED: No confidence loss or efficiency penalty
+    # Just train on answer loss with fixed 3 passes
+    # Add confidence head back once accuracy improves
+    combined_loss = total_loss
+
     metrics = {
-        "pass_losses": pass_losses,
+        "answer_loss": total_loss.item(),
+        "confidence_loss": 0.0,  # Not training confidence head
+        "efficiency_penalty": 0.0,  # No penalty for passes
         "num_passes": num_passes,
         "early_pass_loss": pass_losses[0] if pass_losses else 0.0,
         "late_pass_loss": pass_losses[-1] if pass_losses else 0.0,
+        "pass_losses": pass_losses,
     }
 
-    return total_loss, metrics
+    return combined_loss, metrics
 
 
 def compute_confidence_loss(
     confidences: List[float],
     max_passes: int,
+    device: torch.device,
 ) -> torch.Tensor:
     """
-    Compute confidence loss to encourage increasing confidence over passes.
+    Compute confidence loss to teach when to stop thinking.
 
-    Target: confidence should increase with pass number.
-    Target confidence at pass i = (i + 1) / max_passes
+    Target: confidence should increase with pass number, reaching
+    high values after sufficient passes.
 
-    Args:
-        confidences: List of confidence values from model.think()
-        max_passes: Maximum number of passes (for normalization)
-
-    Returns:
-        MSE loss between actual and target confidences
+    Target progression: min((pass + 1) / max_passes + 0.1, 0.95)
     """
     if not confidences:
-        return torch.tensor(0.0)
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        return torch.tensor(0.0, device=device)
 
     total_loss = 0.0
     for i, conf in enumerate(confidences):
@@ -395,7 +471,7 @@ def compute_confidence_loss(
         loss = (conf - target_conf) ** 2
         total_loss += loss
 
-    return torch.tensor(total_loss / len(confidences), device=device)
+    return torch.tensor(total_loss / len(confidences), device=device, requires_grad=True)
 
 
 # ============================================================================
@@ -405,46 +481,28 @@ def compute_confidence_loss(
 @torch.no_grad()
 def evaluate(
     model: ThinkingModel,
-    eval_dataset: GSM8KDataset,
+    eval_data: List[Dict],
     config: Dict,
-    state_scale: float = 1.0,
-    num_samples: Optional[int] = None,
+    epoch: int = 0,
 ) -> Dict[str, float]:
     """
     Evaluate model on GSM8K.
 
     Computes:
     - thinking_accuracy: Accuracy after N thinking passes
-    - single_shot_accuracy: Accuracy without thinking (direct generation)
-    - zeros_accuracy: Thinking with zeros state (ablation)
+    - pass_N_accuracy: Accuracy from intermediate state at pass N
     - avg_passes: Average number of thinking passes
     - avg_confidence: Average final confidence
-
-    Args:
-        model: The ThinkingModel to evaluate
-        eval_dataset: GSM8K evaluation dataset
-        config: Configuration dict
-        state_scale: Current state scale
-        num_samples: Number of samples to evaluate (defaults to config)
-
-    Returns:
-        Dictionary of metrics
+    - cosine_similarities: State rotation between passes
     """
     model.eval()
 
-    if num_samples is None:
-        num_samples = config["evaluation"]["num_eval_samples"]
+    max_passes = get_curriculum_max_passes(epoch, config)
+    confidence_threshold = config.get("confidence_threshold", 0.8)
+    num_samples = min(config.get("num_eval_samples", 100), len(eval_data))
 
-    num_samples = min(num_samples, len(eval_dataset))
-
-    max_passes = config["thinking"]["max_passes"]
-    confidence_threshold = config["thinking"]["confidence_threshold"]
-    max_new_tokens = config["generation"]["max_new_tokens"]
-
-    # Metrics accumulators
+    # Metrics
     thinking_correct = 0
-    single_shot_correct = 0
-    zeros_correct = 0
     total_passes = 0
     total_confidence = 0.0
 
@@ -452,109 +510,77 @@ def evaluate(
     pass_correct = {i: 0 for i in range(1, max_passes + 1)}
     pass_counts = {i: 0 for i in range(1, max_passes + 1)}
 
-    for idx in tqdm(range(num_samples), desc="Evaluating", leave=False):
-        item = eval_dataset[idx]
+    # Cosine similarities
+    all_cosine_sims = []
+
+    pbar = tqdm(range(num_samples), desc="Evaluating", leave=False)
+    for idx in pbar:
+        item = eval_data[idx]
         question = item["question"]
         gold = item["gold_answer"]
 
-        # 1. Thinking accuracy: use solve()
+        if not gold:
+            continue
+
         try:
-            result = model.solve(
+            # Think
+            state, all_states, confidences = model.think(
                 problem_text=question,
                 max_passes=max_passes,
                 confidence_threshold=confidence_threshold,
-                max_new_tokens=max_new_tokens,
             )
 
-            predicted = extract_answer_from_text(result["answer"])
-            if check_answer(predicted, gold):
-                thinking_correct += 1
-
-            num_passes = result["num_passes"]
-            total_passes += num_passes
-
-            if result["confidences"]:
-                total_confidence += result["confidences"][-1]
-
-            # Track per-pass accuracy
-            if num_passes in pass_correct:
-                pass_counts[num_passes] += 1
-                if check_answer(predicted, gold):
-                    pass_correct[num_passes] += 1
-
-        except Exception as e:
-            print(f"Error in thinking evaluation: {e}")
-
-        # 2. Single-shot accuracy: generate without thinking
-        try:
-            messages = [{"role": "user", "content": question}]
-            prompt_text = model.tokenizer.apply_chat_template(
-                messages,
-                add_generation_prompt=True,
-                tokenize=False,
-            )
-
-            inputs = model.tokenizer(
-                prompt_text,
-                return_tensors="pt",
-            ).to(model.device)
-
-            with torch.no_grad():
-                outputs = model.transformer.generate(
-                    **inputs,
-                    max_new_tokens=max_new_tokens,
-                    do_sample=False,
-                    pad_token_id=model.tokenizer.pad_token_id,
-                )
-
-            single_shot_text = model.tokenizer.decode(outputs[0], skip_special_tokens=True)
-            predicted = extract_answer_from_text(single_shot_text)
-
-            if check_answer(predicted, gold):
-                single_shot_correct += 1
-
-        except Exception as e:
-            print(f"Error in single-shot evaluation: {e}")
-
-        # 3. Zeros ablation: thinking with zeros state
-        try:
-            zeros_state = model.injector.get_empty_state(
-                batch_size=1,
-                device=model.device,
-            )
-
-            # Generate from zeros state
+            # Generate answer
             answer = model.generate_answer(
                 problem_text=question,
-                state=zeros_state,
-                max_new_tokens=max_new_tokens,
+                state=state,
+                max_new_tokens=256,
             )
 
             predicted = extract_answer_from_text(answer)
-            if check_answer(predicted, gold):
-                zeros_correct += 1
+            correct = check_answer(predicted, gold)
+
+            if correct:
+                thinking_correct += 1
+
+            num_passes = len(confidences)
+            total_passes += num_passes
+
+            if confidences:
+                total_confidence += confidences[-1]
+
+            # Track per-pass
+            if num_passes in pass_counts:
+                pass_counts[num_passes] += 1
+                if correct:
+                    pass_correct[num_passes] += 1
+
+            # Cosine similarities
+            cosine_sims = compute_cosine_similarity(all_states)
+            if cosine_sims:
+                all_cosine_sims.extend(cosine_sims)
 
         except Exception as e:
-            print(f"Error in zeros evaluation: {e}")
+            print(f"Evaluation error: {e}")
+            continue
 
     # Compute metrics
     metrics = {
         "thinking_accuracy": thinking_correct / num_samples if num_samples > 0 else 0.0,
-        "single_shot_accuracy": single_shot_correct / num_samples if num_samples > 0 else 0.0,
-        "zeros_accuracy": zeros_correct / num_samples if num_samples > 0 else 0.0,
         "avg_passes": total_passes / num_samples if num_samples > 0 else 0.0,
         "avg_confidence": total_confidence / num_samples if num_samples > 0 else 0.0,
         "num_samples": num_samples,
     }
 
-    # Add per-pass accuracy
+    # Per-pass accuracy
     for num_pass in pass_correct:
         if pass_counts[num_pass] > 0:
             metrics[f"pass_{num_pass}_accuracy"] = pass_correct[num_pass] / pass_counts[num_pass]
             metrics[f"pass_{num_pass}_count"] = pass_counts[num_pass]
 
-    # Compute ablation delta (the key metric)
-    metrics["ablation_delta"] = metrics["thinking_accuracy"] - metrics["zeros_accuracy"]
+    # Cosine similarity
+    if all_cosine_sims:
+        metrics["avg_cosine_similarity"] = sum(all_cosine_sims) / len(all_cosine_sims)
 
     model.train()
     return metrics
@@ -583,6 +609,7 @@ def save_checkpoint(
         "step": step,
         "config": config,
         "metrics": metrics,
+        "architecture": "v20_state_conditioned_lora",
     }
 
     torch.save(checkpoint, path)
@@ -609,50 +636,49 @@ def load_checkpoint(
     print(f"Loaded checkpoint from {path}")
     print(f"  Epoch: {checkpoint.get('epoch', 'unknown')}")
     print(f"  Step: {checkpoint.get('step', 'unknown')}")
+    print(f"  Architecture: {checkpoint.get('architecture', 'unknown')}")
 
     return checkpoint
 
 
 # ============================================================================
-# Main Training Loop
+# Training Loop
 # ============================================================================
 
 def train_epoch(
     model: ThinkingModel,
-    train_dataset: GSM8KDataset,
+    train_data: List[Dict],
     optimizer: AdamW,
     scheduler: CosineAnnealingLR,
     config: Dict,
     epoch: int,
     global_step: int,
-    state_scale: float,
 ) -> Tuple[int, Dict[str, float]]:
     """
-    Train for one epoch.
+    Train for one epoch with deep supervision.
 
     Args:
         model: The ThinkingModel
-        train_dataset: Training dataset
+        train_data: Training data
         optimizer: AdamW optimizer
         scheduler: Learning rate scheduler
         config: Training configuration
         epoch: Current epoch number
         global_step: Global step counter
-        state_scale: Current state scale for warmup
 
     Returns:
         Tuple of (new_global_step, epoch_metrics)
     """
     model.train()
 
-    batch_size = config["training"]["batch_size"]
-    grad_accum_steps = config["training"]["gradient_accumulation_steps"]
-    max_grad_norm = config["training"]["max_grad_norm"]
-    max_passes = config["thinking"]["max_passes"]
-    confidence_threshold = config["thinking"]["confidence_threshold"]
-    log_every = config["logging"]["log_every_n_steps"]
-    eval_every = config["evaluation"]["eval_every_n_steps"]
-    save_every = config["logging"]["save_every_n_steps"]
+    batch_size = config.get("batch_size", 1)
+    grad_accum_steps = config.get("grad_accum_steps", 4)
+    max_grad_norm = config.get("max_grad_norm", 1.0)
+    log_every = config.get("log_every_n_steps", 10)
+
+    # Get curriculum max_passes
+    max_passes = get_curriculum_max_passes(epoch, config)
+    confidence_threshold = config.get("confidence_threshold", 0.8)
 
     # Metrics accumulators
     total_loss = 0.0
@@ -661,11 +687,13 @@ def train_epoch(
     total_passes = 0
     num_batches = 0
 
-    # Shuffle indices
-    indices = torch.randperm(len(train_dataset)).tolist()
+    # Shuffle data
+    import random
+    indices = list(range(len(train_data)))
+    random.shuffle(indices)
 
     # Progress bar
-    pbar = tqdm(range(0, len(indices), batch_size), desc=f"Epoch {epoch}")
+    pbar = tqdm(range(0, len(indices), batch_size), desc=f"Epoch {epoch + 1} (max_passes={max_passes})")
 
     optimizer.zero_grad()
 
@@ -676,9 +704,10 @@ def train_epoch(
         batch_answer_loss = 0.0
         batch_conf_loss = 0.0
         batch_passes = 0
+        valid_samples = 0
 
         for idx in batch_indices:
-            item = train_dataset[idx]
+            item = train_data[idx]
             question = item["question"]
             gold_answer = item["gold_answer"]
 
@@ -695,32 +724,32 @@ def train_epoch(
                 )
 
                 # Deep supervision loss
-                answer_loss, metrics = compute_deep_supervision_loss(
+                loss, metrics = compute_deep_supervision_loss(
                     model=model,
                     problem_text=question,
                     gold_answer=gold_answer,
                     all_states=all_states,
+                    confidences=confidences,
+                    max_passes=max_passes,
                     config=config,
-                    state_scale=state_scale,
                 )
 
-                # Confidence loss
-                conf_loss = compute_confidence_loss(confidences, max_passes)
-                conf_loss = conf_loss.to(model.device)
-
-                # Total loss
-                # Weight confidence loss lower (0.1) as it's auxiliary
-                loss = answer_loss + 0.1 * conf_loss
-
-                # Accumulate for gradient accumulation
-                batch_loss = batch_loss + loss / len(batch_indices)
-                batch_answer_loss += answer_loss.item() / len(batch_indices)
-                batch_conf_loss += conf_loss.item() / len(batch_indices)
-                batch_passes += metrics["num_passes"] / len(batch_indices)
+                batch_loss = batch_loss + loss
+                batch_answer_loss += metrics["answer_loss"]
+                batch_conf_loss += metrics["confidence_loss"]
+                batch_passes += metrics["num_passes"]
+                valid_samples += 1
 
             except Exception as e:
                 print(f"Error processing sample {idx}: {e}")
                 continue
+
+        # Skip if no valid samples
+        if valid_samples == 0:
+            continue
+
+        # Average over batch
+        batch_loss = batch_loss / valid_samples
 
         # Backward pass with gradient accumulation
         batch_loss = batch_loss / grad_accum_steps
@@ -742,29 +771,27 @@ def train_epoch(
 
             # Accumulate metrics
             total_loss += batch_loss.item() * grad_accum_steps
-            total_answer_loss += batch_answer_loss
-            total_conf_loss += batch_conf_loss
-            total_passes += batch_passes
+            total_answer_loss += batch_answer_loss / valid_samples
+            total_conf_loss += batch_conf_loss / valid_samples
+            total_passes += batch_passes / valid_samples
             num_batches += 1
 
             # Update progress bar
             pbar.set_postfix({
                 "loss": f"{batch_loss.item() * grad_accum_steps:.4f}",
-                "passes": f"{batch_passes:.1f}",
+                "passes": f"{batch_passes / valid_samples:.1f}",
                 "lr": f"{scheduler.get_last_lr()[0]:.2e}",
-                "scale": f"{state_scale:.2f}",
             })
 
             # Logging
             if global_step % log_every == 0 and WANDB_AVAILABLE and wandb.run is not None:
                 wandb.log({
                     "train/loss": batch_loss.item() * grad_accum_steps,
-                    "train/answer_loss": batch_answer_loss,
-                    "train/confidence_loss": batch_conf_loss,
-                    "train/avg_passes": batch_passes,
-                    "train/state_scale": state_scale,
+                    "train/answer_loss": batch_answer_loss / valid_samples,
+                    "train/confidence_loss": batch_conf_loss / valid_samples,
+                    "train/avg_passes": batch_passes / valid_samples,
+                    "train/max_passes": max_passes,
                     "train/learning_rate": scheduler.get_last_lr()[0],
-                    "train/alpha": model.alpha.item(),
                     "train/epoch": epoch,
                     "train/step": global_step,
                 })
@@ -775,14 +802,13 @@ def train_epoch(
         "answer_loss": total_answer_loss / num_batches if num_batches > 0 else 0.0,
         "confidence_loss": total_conf_loss / num_batches if num_batches > 0 else 0.0,
         "avg_passes": total_passes / num_batches if num_batches > 0 else 0.0,
-        "state_scale": state_scale,
-        "alpha": model.alpha.item(),
+        "max_passes": max_passes,
     }
 
     return global_step, epoch_metrics
 
 
-def train(config: Dict, phase: int, resume_path: Optional[str] = None) -> None:
+def train(config: Dict, phase: int, resume_path: Optional[str] = None, weights_only: bool = False) -> None:
     """
     Main training function.
 
@@ -792,20 +818,19 @@ def train(config: Dict, phase: int, resume_path: Optional[str] = None) -> None:
         resume_path: Path to checkpoint to resume from
     """
     # Device setup
-    device = torch.device(config["hardware"]["device"] if torch.cuda.is_available() else "cpu")
+    device = torch.device(config.get("device", "cuda") if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
     # Create model
-    print("\nCreating ThinkingModel...")
+    print("\nCreating ThinkingModel (v20 State-Conditioned LoRA)...")
     model = ThinkingModel(
-        model_name=config["model"]["name"],
-        state_size=config["architecture"]["state_size"],
-        num_pseudo_tokens=config["architecture"]["num_tokens"],
-        num_queries=config["architecture"]["num_queries"],
-        num_perceiver_layers=config["architecture"]["num_perceiver_layers"],
-        d_perceiver=config["architecture"]["d_perceiver"],
-        max_passes=config["architecture"]["max_passes"],
-        alpha_init=config["architecture"]["alpha_init"],
+        model_name=config.get("model_name", "meta-llama/Llama-3.2-1B-Instruct"),
+        state_size=config.get("state_size", 64),
+        lora_rank=config.get("lora_rank", 4),
+        num_queries=config.get("num_queries", 4),
+        num_perceiver_layers=config.get("num_perceiver_layers", 7),
+        d_perceiver=config.get("d_perceiver", 1024),
+        max_passes=config.get("max_passes", 20),
     )
     model = model.to(device)
 
@@ -819,47 +844,74 @@ def train(config: Dict, phase: int, resume_path: Optional[str] = None) -> None:
             print(f"  {name}: {count:,}")
 
     # Phase-specific setup
-    phase_key = f"phase{phase}"
-    phase_config = config["training"][phase_key]
-
-    if phase_config["freeze_transformer"]:
+    if phase == 1:
         model.freeze_transformer()
-        print(f"\nPhase {phase}: Transformer FROZEN")
+        num_epochs = config.get("phase1_epochs", 5)
+        print(f"\nPhase 1: Transformer FROZEN, training LoRA + Perceiver + Confidence")
     else:
         model.unfreeze_transformer()
-        print(f"\nPhase {phase}: Transformer UNFROZEN (end-to-end)")
+        num_epochs = config.get("phase2_epochs", 15)
+        print(f"\nPhase 2: Transformer UNFROZEN, end-to-end training")
 
     # Count trainable parameters
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Trainable parameters: {trainable_params:,}")
 
-    # Load datasets
-    print("\nLoading GSM8K...")
-    train_dataset = GSM8KDataset(split="train")
-    eval_dataset = GSM8KDataset(split="test")
+    # Load data
+    print("\nLoading data...")
+    train_data = load_data("train", config)
+    eval_data = load_data("test", config)
 
     # Optimizer and scheduler
-    learning_rate = phase_config["learning_rate"]
-    weight_decay = phase_config["weight_decay"]
-    num_epochs = phase_config["epochs"]
-    warmup_steps = config["training"]["warmup_steps"]
+    # Different LRs for different components to handle gradient imbalance
+    # Perceiver is close to loss (small LR ok), templates are far (need bigger push)
+    base_lr = config.get("learning_rate", 1e-4)
+    template_lr = config.get("template_lr", 1e-3)      # 10x higher (100x was too aggressive)
+    hypernetwork_lr = config.get("hypernetwork_lr", 1e-3)  # 10x higher
+    weight_decay = config.get("weight_decay", 0.01)
+    warmup_steps = config.get("warmup_steps", 100)
+
+    # Separate parameter groups
+    template_params = []
+    hypernetwork_params = []
+    other_params = []
+
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+        if "A_templates" in name or "B_templates" in name:
+            template_params.append(param)
+        elif "state_to_scales" in name:
+            hypernetwork_params.append(param)
+        else:
+            other_params.append(param)
+
+    param_groups = [
+        {"params": other_params, "lr": base_lr},           # Perceiver, confidence
+        {"params": template_params, "lr": template_lr},     # LoRA templates (10x)
+        {"params": hypernetwork_params, "lr": hypernetwork_lr},  # Hypernetwork (10x)
+    ]
+
+    print(f"\nOptimizer parameter groups:")
+    print(f"  Perceiver/other: {len(other_params)} params, lr={base_lr}")
+    print(f"  LoRA templates:  {len(template_params)} params, lr={template_lr}")
+    print(f"  Hypernetwork:    {len(hypernetwork_params)} params, lr={hypernetwork_lr}")
 
     optimizer = AdamW(
-        model.get_trainable_parameters(),
-        lr=learning_rate,
+        param_groups,
         weight_decay=weight_decay,
     )
 
     # Calculate total steps for scheduler
-    batch_size = config["training"]["batch_size"]
-    grad_accum = config["training"]["gradient_accumulation_steps"]
-    steps_per_epoch = len(train_dataset) // (batch_size * grad_accum)
+    batch_size = config.get("batch_size", 1)
+    grad_accum = config.get("grad_accum_steps", 4)
+    steps_per_epoch = len(train_data) // (batch_size * grad_accum)
     total_steps = steps_per_epoch * num_epochs
 
     scheduler = CosineAnnealingLR(
         optimizer,
         T_max=total_steps,
-        eta_min=learning_rate * 0.1,
+        eta_min=base_lr * 0.1,
     )
 
     # Resume from checkpoint if specified
@@ -867,30 +919,35 @@ def train(config: Dict, phase: int, resume_path: Optional[str] = None) -> None:
     global_step = 0
 
     if resume_path and os.path.exists(resume_path):
-        checkpoint = load_checkpoint(resume_path, model, optimizer, scheduler)
-        start_epoch = checkpoint.get("epoch", 0) + 1
-        global_step = checkpoint.get("step", 0)
-        print(f"Resuming from epoch {start_epoch}, step {global_step}")
+        if weights_only:
+            # Only load model weights, not optimizer/scheduler (for LR scheme changes)
+            checkpoint = load_checkpoint(resume_path, model, None, None)
+            print("Loaded model weights only (fresh optimizer/scheduler)")
+        else:
+            checkpoint = load_checkpoint(resume_path, model, optimizer, scheduler)
+            start_epoch = checkpoint.get("epoch", 0) + 1
+            global_step = checkpoint.get("step", 0)
+            print(f"Resuming from epoch {start_epoch}, step {global_step}")
 
     # Initialize wandb
     if WANDB_AVAILABLE:
         try:
             wandb.init(
-                project=config["logging"]["project"],
-                name=f"{config['logging']['run_name']}-phase{phase}",
+                project=config.get("project_name", "mycelium-v20-thinking"),
+                name=f"{config.get('run_name', 'train')}-phase{phase}",
                 config=config,
             )
         except Exception as e:
             print(f"wandb init failed: {e}")
 
     # Checkpoint directory
-    save_dir = Path(config["checkpoints"]["save_dir"])
+    save_dir = Path(config.get("checkpoint_dir", "checkpoints/v20"))
     save_dir.mkdir(parents=True, exist_ok=True)
 
     # Training loop
     print(f"\nStarting training: Phase {phase}, {num_epochs} epochs")
     print(f"  Batch size: {batch_size} x {grad_accum} = {batch_size * grad_accum} effective")
-    print(f"  Learning rate: {learning_rate}")
+    print(f"  Learning rates: perceiver={base_lr}, templates={template_lr}, hypernetwork={hypernetwork_lr}")
     print(f"  Total steps: {total_steps}")
 
     best_accuracy = 0.0
@@ -900,20 +957,19 @@ def train(config: Dict, phase: int, resume_path: Optional[str] = None) -> None:
         print(f"Epoch {epoch + 1}/{num_epochs}")
         print(f"{'='*60}")
 
-        # Compute state scale for warmup
-        state_scale = compute_state_scale(epoch, config)
-        print(f"State scale: {state_scale:.2f}")
+        # Get curriculum max_passes
+        curr_max_passes = get_curriculum_max_passes(epoch, config)
+        print(f"Curriculum max_passes: {curr_max_passes}")
 
         # Train
         global_step, epoch_metrics = train_epoch(
             model=model,
-            train_dataset=train_dataset,
+            train_data=train_data,
             optimizer=optimizer,
             scheduler=scheduler,
             config=config,
             epoch=epoch,
             global_step=global_step,
-            state_scale=state_scale,
         )
 
         print(f"\nEpoch {epoch + 1} training metrics:")
@@ -921,50 +977,43 @@ def train(config: Dict, phase: int, resume_path: Optional[str] = None) -> None:
             print(f"  {name}: {value:.4f}")
 
         # Evaluate
-        print("\nEvaluating...")
-        eval_metrics = evaluate(
-            model=model,
-            eval_dataset=eval_dataset,
-            config=config,
-            state_scale=state_scale,
-        )
+        if (epoch + 1) % config.get("eval_every_n_epochs", 1) == 0:
+            print("\nEvaluating...")
+            eval_metrics = evaluate(
+                model=model,
+                eval_data=eval_data,
+                config=config,
+                epoch=epoch,
+            )
 
-        print(f"\nEpoch {epoch + 1} evaluation metrics:")
-        for name, value in eval_metrics.items():
-            if isinstance(value, float):
-                print(f"  {name}: {value:.4f}")
-            else:
-                print(f"  {name}: {value}")
+            print(f"\nEpoch {epoch + 1} evaluation metrics:")
+            for name, value in eval_metrics.items():
+                if isinstance(value, float):
+                    print(f"  {name}: {value:.4f}")
+                else:
+                    print(f"  {name}: {value}")
 
-        # Log to wandb
-        if WANDB_AVAILABLE and wandb.run is not None:
-            wandb.log({
-                f"eval/{k}": v for k, v in eval_metrics.items()
-                if isinstance(v, (int, float))
-            })
-            wandb.log({f"epoch/{k}": v for k, v in epoch_metrics.items()})
-            wandb.log({"epoch": epoch + 1})
+            # Log to wandb
+            if WANDB_AVAILABLE and wandb.run is not None:
+                wandb.log({
+                    f"eval/{k}": v for k, v in eval_metrics.items()
+                    if isinstance(v, (int, float))
+                })
+                wandb.log({f"epoch/{k}": v for k, v in epoch_metrics.items()})
+                wandb.log({"epoch": epoch + 1})
 
-        # Save checkpoint
-        is_best = eval_metrics["thinking_accuracy"] > best_accuracy
-        if is_best:
-            best_accuracy = eval_metrics["thinking_accuracy"]
-            print(f"\nNew best accuracy: {best_accuracy:.4f}")
+            # Check for best model
+            is_best = eval_metrics.get("thinking_accuracy", 0) > best_accuracy
+            if is_best:
+                best_accuracy = eval_metrics["thinking_accuracy"]
+                print(f"\nNew best accuracy: {best_accuracy:.4f}")
+        else:
+            eval_metrics = {}
+            is_best = False
 
-        # Save latest
-        save_checkpoint(
-            model=model,
-            optimizer=optimizer,
-            scheduler=scheduler,
-            epoch=epoch,
-            step=global_step,
-            config=config,
-            metrics=eval_metrics,
-            path=str(save_dir / f"checkpoint_phase{phase}_latest.pt"),
-        )
-
-        # Save best
-        if is_best:
+        # Save checkpoints
+        if (epoch + 1) % config.get("save_every_n_epochs", 1) == 0:
+            # Save latest
             save_checkpoint(
                 model=model,
                 optimizer=optimizer,
@@ -973,33 +1022,45 @@ def train(config: Dict, phase: int, resume_path: Optional[str] = None) -> None:
                 step=global_step,
                 config=config,
                 metrics=eval_metrics,
-                path=str(save_dir / f"checkpoint_phase{phase}_best.pt"),
+                path=str(save_dir / f"phase{phase}_latest.pt"),
             )
 
-        # Save periodic
-        if (epoch + 1) % 5 == 0:
-            save_checkpoint(
-                model=model,
-                optimizer=optimizer,
-                scheduler=scheduler,
-                epoch=epoch,
-                step=global_step,
-                config=config,
-                metrics=eval_metrics,
-                path=str(save_dir / f"checkpoint_phase{phase}_epoch{epoch + 1}.pt"),
-            )
+            # Save best
+            if is_best:
+                save_checkpoint(
+                    model=model,
+                    optimizer=optimizer,
+                    scheduler=scheduler,
+                    epoch=epoch,
+                    step=global_step,
+                    config=config,
+                    metrics=eval_metrics,
+                    path=str(save_dir / f"phase{phase}_best.pt"),
+                )
+
+            # Save periodic
+            if (epoch + 1) % 5 == 0:
+                save_checkpoint(
+                    model=model,
+                    optimizer=optimizer,
+                    scheduler=scheduler,
+                    epoch=epoch,
+                    step=global_step,
+                    config=config,
+                    metrics=eval_metrics,
+                    path=str(save_dir / f"phase{phase}_epoch{epoch + 1}.pt"),
+                )
 
     # Final evaluation
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Final Evaluation")
-    print("="*60)
+    print("=" * 60)
 
     final_metrics = evaluate(
         model=model,
-        eval_dataset=eval_dataset,
+        eval_data=eval_data,
         config=config,
-        state_scale=1.0,
-        num_samples=min(200, len(eval_dataset)),  # More samples for final eval
+        epoch=num_epochs - 1,
     )
 
     print("\nFinal metrics:")
@@ -1025,13 +1086,7 @@ def train(config: Dict, phase: int, resume_path: Optional[str] = None) -> None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Train ThinkingModel on GSM8K with deep supervision"
-    )
-    parser.add_argument(
-        "--config",
-        type=str,
-        default="configs/thinking_gsm8k.yaml",
-        help="Path to config file",
+        description="Train ThinkingModel v20 on GSM8K with deep supervision"
     )
     parser.add_argument(
         "--phase",
@@ -1051,31 +1106,82 @@ def main():
         action="store_true",
         help="Debug mode: smaller dataset, fewer epochs",
     )
+    parser.add_argument(
+        "--weights-only",
+        action="store_true",
+        help="Only load model weights from checkpoint, not optimizer/scheduler (use when changing LR scheme)",
+    )
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=None,
+        help="Override number of epochs",
+    )
+    parser.add_argument(
+        "--lr",
+        type=float,
+        default=None,
+        help="Override learning rate",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=None,
+        help="Override batch size",
+    )
+    parser.add_argument(
+        "--eval-samples",
+        type=int,
+        default=None,
+        help="Override number of evaluation samples",
+    )
+    parser.add_argument(
+        "--train-samples",
+        type=int,
+        default=None,
+        help="Limit training samples for faster iteration",
+    )
 
     args = parser.parse_args()
 
-    # Load config
-    config_path = Path(args.config)
-    if not config_path.exists():
-        print(f"Config file not found: {config_path}")
-        sys.exit(1)
+    # Copy config and apply overrides
+    config = CONFIG.copy()
 
-    with open(config_path) as f:
-        config = yaml.safe_load(f)
+    if args.epochs is not None:
+        if args.phase == 1:
+            config["phase1_epochs"] = args.epochs
+        else:
+            config["phase2_epochs"] = args.epochs
 
-    print(f"Loaded config from: {config_path}")
+    if args.lr is not None:
+        config["learning_rate"] = args.lr
+
+    if args.batch_size is not None:
+        config["batch_size"] = args.batch_size
+
+    if args.eval_samples is not None:
+        config["num_eval_samples"] = args.eval_samples
+
+    if args.train_samples is not None:
+        config["num_train_samples"] = args.train_samples
 
     # Debug mode adjustments
     if args.debug:
         print("\n*** DEBUG MODE ***")
-        config["training"]["phase1"]["epochs"] = 2
-        config["training"]["phase2"]["epochs"] = 2
-        config["evaluation"]["num_eval_samples"] = 20
-        config["logging"]["log_every_n_steps"] = 1
-        config["logging"]["save_every_n_steps"] = 100
+        config["phase1_epochs"] = 2
+        config["phase2_epochs"] = 2
+        config["num_eval_samples"] = 20
+        config["num_train_samples"] = 100
+        config["log_every_n_steps"] = 1
+        config["curriculum_max_passes"] = [2, 3]
+        config["curriculum_epochs"] = [0, 1]
+
+    print("\nConfiguration:")
+    for key, value in config.items():
+        print(f"  {key}: {value}")
 
     # Run training
-    train(config, args.phase, args.resume)
+    train(config, args.phase, args.resume, args.weights_only)
 
 
 if __name__ == "__main__":

@@ -1,31 +1,54 @@
-# Mycelium v19 - Symmetric Hourglass Architecture
+# Mycelium v20 - State-Conditioned LoRA Architecture
+#
+# The state vector REWIRES the transformer through state-conditioned LoRA.
+# 64 floats generate scaling factors for learned LoRA templates, changing
+# HOW the transformer attends at every layer on every thinking pass.
 #
 # Components:
-#   Decompressor    - 7-layer perceiver expanding state → bias (105M params)
-#   Compressor      - 7-layer perceiver compressing all layers → state (105M params)
-#   ConfidenceHead  - Decides when to stop thinking (~2K params)
-#   ThinkingModel   - Full thinking loop (DECOMPRESSOR → Llama → COMPRESSOR)
+#   StateConditionedLoRA - Hypernetwork: state -> LoRA scales (~1.1M params)
+#   Compressor          - 7-layer perceiver: all layers -> state delta (~105M params)
+#   ConfidenceHead      - Decides when to stop thinking (~2K params)
+#   ThinkingModel       - Full thinking loop (LoRA -> Llama -> Compress -> Rotate)
+#   LoRAHookManager     - Manages state-conditioned LoRA hooks on attention layers
 #
-# Legacy (v18):
-#   AllLayerPerceiver - Previous compressor implementation
-#   StateInjector     - Previous state → pseudo-tokens (replaced by Decompressor)
+# Legacy (v19):
+#   Decompressor        - Previous state -> bias approach (replaced by LoRA)
+#   AllLayerPerceiver   - Previous compressor implementation
 
-from .decompressor import Decompressor
+from .state_conditioned_lora import StateConditionedLoRA
 from .compressor import Compressor
 from .confidence_head import ConfidenceHead
 from .thinking_model import ThinkingModel
+from .lora_hooks import LoRAHookManager, apply_lora, remove_lora
 
 # Legacy exports for backward compatibility
-from .all_layer_perceiver import AllLayerPerceiver
-from .state_injector import StateInjector
+try:
+    from .decompressor import Decompressor
+except ImportError:
+    Decompressor = None
+
+try:
+    from .all_layer_perceiver import AllLayerPerceiver
+except ImportError:
+    AllLayerPerceiver = None
+
+try:
+    from .state_injector import StateInjector
+except ImportError:
+    StateInjector = None
 
 __all__ = [
-    # v19 Symmetric Hourglass
-    "Decompressor",
+    # v20 State-Conditioned LoRA Architecture
+    "StateConditionedLoRA",
     "Compressor",
     "ConfidenceHead",
     "ThinkingModel",
-    # Legacy (v18)
+    # LoRA Hooks (state-conditioned attention modification)
+    "LoRAHookManager",
+    "apply_lora",
+    "remove_lora",
+    # Legacy (v19)
+    "Decompressor",
     "AllLayerPerceiver",
     "StateInjector",
 ]

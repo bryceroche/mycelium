@@ -333,6 +333,12 @@ class ThinkingModel(nn.Module):
         # Get base embeddings
         embeds = self.transformer.get_input_embeddings()(input_ids)
 
+        # Create bias mask: 1 for problem positions, 0 for answer positions
+        # This matches generation where only problem gets bias
+        seq_len = embeds.size(1)
+        bias_mask = torch.zeros(1, seq_len, 1, device=self.device, dtype=embeds.dtype)
+        bias_mask[0, :prompt_len, 0] = 1.0  # Only bias the problem portion
+
         # Initialize state on hypersphere
         state = self.init_state(batch_size=1)
 
@@ -343,8 +349,8 @@ class ThinkingModel(nn.Module):
             bias = self.decompressor(state, pass_num, scale=scale)
             bias = bias.to(dtype=embeds.dtype)
 
-            # Add bias to ALL positions (not prepend)
-            input_embeds = embeds + bias
+            # Add bias ONLY to problem positions (not answer) - matches generation
+            input_embeds = embeds + bias * bias_mask
 
             # Forward through transformer
             outputs = self.transformer(
