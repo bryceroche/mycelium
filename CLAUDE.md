@@ -1,530 +1,313 @@
-# Mycelium v19 — Asymmetric Hourglass (Llama 3.2 1B-Instruct)
+# CLAUDE.md — Mycelium Breathing Models
 
-A transformer that THINKS before it SPEAKS. Sandwich Llama between a lightweight **DECOMPRESSOR** (1.3M params) that projects state into input bias, and a heavy **COMPRESSOR** (120M params) that squeezes all 16 layer hidden states back into 64 floats. The transformer runs PRISTINE — no layer splitting, no architectural surgery.
+## Project Overview
 
-> The intelligence is in COMPRESSION (what to keep), not DECOMPRESSION (how to project).
-> 89x more params deciding what fits through 64 floats than deciding how to use them.
+Mycelium is a multi-month research project building differentiable recurrent reasoning architectures for small language models. The core idea: a small model that can't chain reasoning internally learns to chain through external differentiable compression. The model thinks in a loop — each pass processes the problem, compresses its understanding into a tight state vector, and uses that state to think DIFFERENTLY on the next pass through state-conditioned LoRA.
 
----
-
-Only train on the AWS VM — PEM key in ~/.ssh/mycelium-key.pem
-Limit timeouts to less than 2 minutes
-Always use vLLM + stage-based batching when possible, otherwise HF Transformers
-Temperature = 0 (greedy) for all evals
-MATH-500 NEVER in training data
+**Lead researcher:** Bryce (Manhattan Beach, CA)
+**Target benchmark:** MATH-500 (deadline: April 22, 2026)
+**Infrastructure:** AWS EC2 g5.xlarge (A10G 24GB), S3 bucket mycelium-data-v7
 
 ---
 
-## Current State (April 3, 2026)
+## Current Architecture (v20 — State-Conditioned LoRA)
 
 ```
-Architecture:        DECOMPRESSOR (7L, 105M) → Llama 16L (untouched) → COMPRESSOR (7L, 105M)
-Context window:      128K tokens
-Compression:         64 floats on HYPERSPHERE (radius √64 ≈ 8.0)
-Status:              ARCHITECTURE REFINEMENT — Symmetric Hourglass
-
-KEY INSIGHT:
-  The transformer stays PRISTINE. No layer splitting. No architectural surgery.
-  It processes exactly as Llama was pretrained to process.
-
-  The DECOMPRESSOR modifies what goes INTO the transformer.
-  The COMPRESSOR reads what comes OUT of the transformer.
-  The transformer is sandwiched between them.
-
-ARCHITECTURE:
-  DECOMPRESSOR:    Simple MLP, ~1.3M params
-                   64 floats → 512 → 2048 → residual stream bias
-                   EASY job: just project faithfully
-
-  TRANSFORMER:     Llama 3.2 1B-Instruct, 16 layers, UNTOUCHED
-                   Runs exactly as pretrained
-
-  COMPRESSOR:      7 layers, ~120M params
-                   All 16 layer hidden states → compress → 64 floats
-                   HARD job: must SELECT what matters
-                   Pass-conditioned layer gate (which layers matter NOW?)
-
-  HYPERSPHERE:     state = normalize(state + delta) * √64
-                   No learnable alpha. Constant magnitude. Each pass is a rotation.
-
-  ConfidenceHead:  64 floats → scalar (when to stop thinking?)
-
-ASYMMETRY (intentional):
-  Simple MLP IN (decompression), 16 layers THROUGH (transformer), 7 layers OUT (compression)
-  The narrow point is 64 floats
-  89x more params for compression than decompression — because compression is HARD
-
-PROVEN RESULTS:
-  Single-step arithmetic: 100% (L0)
-  Two-step arithmetic:    54-57% (L1)
-  Three-step arithmetic:  19-22% (L2)
-  Hypersphere vs alpha:   Nearly identical performance
-
-Core principle:      The transformer is SANDWICHED, not modified.
-                     Decompressor: "expand state into something that changes how transformer processes"
-                     Compressor: "squeeze the most important findings into 64 floats"
+┌──────────────────────────────────────────────────────────────────┐
+│                                                                  │
+│  STATE (64 floats on hypersphere)                                │
+│  STRATEGY (512 floats, ephemeral)                                │
+│     │                                                            │
+│     ├──→ HYPERNETWORK (576 → 512 → 256 LoRA scales)              │
+│     │         │                                                  │
+│     │         ▼                                                  │
+│     │    LoRA applied as additive term (no hooks):               │
+│     │    q = W_q @ x + (A @ diag(scales) @ B) @ x               │
+│     │    Applied to Q,K,V,O at all 16 layers                    │
+│     │         │                                                  │
+│     │         ▼                                                  │
+│     │    [problem tokens] → Llama 1-16 (WITH LoRA)               │
+│     │         │          │         │              │              │
+│     │       (all 16 layer hidden states saved)                   │
+│     │         │          │         │              │              │
+│     │         ▼          ▼         ▼              ▼              │
+│     │    7-LAYER PERCEIVER COMPRESSOR (105M params)               │
+│     │    reads ALL layers, pass-conditioned attention             │
+│     │         │                    │                             │
+│     │         ▼                    ▼                             │
+│     │    64-float state delta    512-float strategy               │
+│     │         │                    │                             │
+│     │         ▼                    └──→ feeds hypernetwork        │
+│     └──→ state = normalize(state + delta) * √64                  │
+│               │                                                  │
+│               ├──→ SymPy Probe → per-pass gradient               │
+│               │                                                  │
+│               ├──→ ConfidenceHead → ready? (disabled, fixed 3)   │
+│               │         │                                        │
+│               │     YES ▼                                        │
+│               │    GENERATE ANSWER                               │
+│               │                                                  │
+│               └──→ NO: loop back                                 │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
 ```
+
+### Components
+
+| Component | Params | Description |
+|-----------|--------|-------------|
+| Llama 3.2 1B Base | 1.23B | `unsloth/Llama-3.2-1B` (BASE, not instruct). Frozen. Processes problem with LoRA-modified attention. |
+| 7-Layer Perceiver | ~105M | d_perceiver=1024, 4 queries, reads ALL 16 Llama layers via pass-conditioned layer gate. Outputs state delta (64 floats) AND strategy (512 floats). |
+| State-Conditioned LoRA | ~1.1M | Learned A/B templates (rank 4) for Q,K,V,O at all 16 layers. Hypernetwork takes state+strategy (576 floats) → 256 LoRA scales. Templates modulated by scales. **K,V templates are (4, 512) not (4, 2048) due to Llama's GQA (8 KV heads).** |
+| SymPy Probe | ~65 | Linear(64, 1). Reads state, predicts intermediate value. SymPy precomputes targets. Per-pass gradient signal. |
+| ConfidenceHead | ~2.1K | Currently disabled. Passes fixed at 3. Will re-enable after accuracy climbs. |
+
+### Key Design Decisions
+
+- **Base model, not Instruct.** Instruct already chains reasoning in one shot (42% GSM8K). Base model CANNOT chain (0% on chained arithmetic) but knows individual operations (70%). The architecture provides the chaining the base model lacks.
+- **64-float bottleneck.** Tight enough to force incremental thinking (can't encode full solution), loose enough for value + context + intent per pass.
+- **512-float strategy (side channel).** Ephemeral, doesn't accumulate, feeds only into hypernetwork. Can't bypass bottleneck. Gives hypernetwork 9x more information than state alone.
+- **Hypersphere normalization.** `state = normalize(state + delta) * √64`. Constant magnitude, changing direction. Each pass is a rotation. No explosion/collapse.
+- **LoRA as additive term.** `q = W_q @ x + (x @ B.T) * scales @ A.T`. No hooks, no weight modification. Clean, differentiable, fast.
+- **Separate learning rates.** Perceiver: 1e-4, LoRA templates: 1e-3 (10x), Hypernetwork: 1e-3 (10x). There's a 4530x gradient imbalance between perceiver and templates — the higher template LR compensates.
+- **Transformer stays FROZEN.** Unfreezing at 1e-6 caused instability (40% cap, volatile). Frozen: stable 53%.
 
 ---
 
-## The Thinking Cycle
+## Proven Results
 
 ```
-┌───────────────────────────────────────────────────────────┐
-│                                                           │
-│  DECOMPRESSOR (7 layers, 105M)                            │
-│  64 floats → expand → residual stream bias                │
-│         │                                                 │
-│         ▼                                                 │
-│  [bias + problem tokens] → Llama layers 1-16 (untouched)  │
-│         │                                                 │
-│         ▼                                                 │
-│  COMPRESSOR (7 layers, 105M)                              │
-│  all 16 layer hidden states → compress → 64 floats        │
-│         │                                                 │
-│         ▼                                                 │
-│  state = normalize(state + delta) * √64  ← HYPERSPHERE    │
-│         │                                                 │
-│         ├──→ Confidence → ready? ──→ GENERATE             │
-│         │                                                 │
-│         └──→ loop back to DECOMPRESSOR                    │
-│                                                           │
-└───────────────────────────────────────────────────────────┘
+Task                        Baseline    With Breathing    Architecture
+─────────────────────────────────────────────────────────────────────
+Single-step arithmetic      70%         100%              Llama 1B, 64-float, LoRA
+Two-step arithmetic         0%          53%               Llama 1B, 64-float, LoRA
+  (theoretical ceiling)                 (49%)             (53% > 49% → LoRA improves per-step)
+Three-step arithmetic       0%          52%               SmolLM2-135M, 64-float, pseudo-tokens
+Two-step arithmetic         0%          83%               Llama 1B, 512-float, pseudo-tokens (earlier arch)
+Two-step arithmetic         0%          80.4%             SmolLM2-135M, 32-float, pseudo-tokens
 ```
 
-Each thinking pass:
-```
-Pass 1:
-  DECOMPRESSOR(state) → bias
-  [problem + bias] → Layer 1 → 2 → ... → 16 → hidden states
-  COMPRESSOR(all layer hidden states) → delta
-  state = normalize(state + delta) * √64
-
-Pass 2:
-  DECOMPRESSOR(state) → bias
-  [problem + bias] → Layer 1 → 2 → ... → 16 → hidden states
-  COMPRESSOR(all layer hidden states) → delta
-  state = normalize(state + delta) * √64
-
-Pass 3:
-  DECOMPRESSOR(state) → bias
-  [problem + bias] → Layer 1 → 2 → ... → 16 → hidden states
-  COMPRESSOR(all layer hidden states) → delta
-  state = normalize(state + delta) * √64
-  Confidence > threshold → GENERATE ANSWER
-```
-
-Critical architecture:
-- **Transformer is PRISTINE**: Llama runs exactly as pretrained, 16 layers, no modification
-- **Decompressor**: 7 layers expanding 64 floats into input bias
-- **Compressor**: 7 layers squeezing all 16 layer hidden states into 64 floats
-- **Hypersphere**: State lives on sphere of radius √64, each pass is a rotation
-- **No alpha**: Magnitude is constant, perceiver just outputs direction
-- **Symmetric capacity**: 105M params on each side of the hourglass
+Key finding: 53% exceeds the theoretical ceiling of 49% (70%×70%), meaning the LoRA attention modifications improve per-step accuracy from 70% to ~72.8%. The compression is essentially lossless.
 
 ---
 
-## Why 64 Floats (The Tight Bottleneck)
+## What's Being Built Right Now
+
+### Side Channel (state + strategy)
+
+The previous 53% used only 64-float state to drive LoRA. The hypernetwork was starving — 64 floats → 256 scales meant ~0.25 floats per scale. The compressor now outputs TWO signals:
 
 ```
-64 floats = the narrow point of the hourglass
-105M params EXPANDING into that point
-105M params COMPRESSING out of that point
-
-The asymmetry is extreme:
-  210M total params deciding what goes through 64 floats
-  Like two brilliant editors collaborating on a one-sentence summary
-
-32 floats:   too tight for word problems
-64 floats:   sweet spot — value + context + intent
-128 floats:  too loose — might encode full solution in 2 passes
-512 floats:  no compression pressure
+STATE (64 floats):    Content (numbers, values). Accumulates on hypersphere.
+STRATEGY (512 floats): Meta-information (what to focus on next). Ephemeral, consumed each pass.
 ```
 
----
+The hypernetwork reads both (576 floats) for richer LoRA generation. Strategy can't bypass bottleneck because it doesn't persist across passes.
 
-## Architecture Components
+**Status:** Architecture implemented. LoRA changed to additive term (no hooks). Training needs to be run.
 
-### Decompressor (~1.3M params)
-Lightweight MLP that projects 64-float state into input bias.
+### LoRA as Additive Term (Performance Fix)
 
-The decompressor has the EASY job: just project 64 floats into 2048-dim bias.
-No hard decisions about what to keep — just faithful translation.
+Previous implementation used forward hooks to apply/remove LoRA every pass. Slow (~13 min per epoch). Changed to:
 
 ```python
-# src/decompressor.py
-class Decompressor(nn.Module):
-    def __init__(self, state_size=64, d_model=2048, d_hidden=512, max_passes=20):
-        super().__init__()
-
-        # Pass embedding: tells MLP which thinking pass we're on
-        self.pass_embed = nn.Embedding(max_passes, state_size)  # 1.3K params
-
-        # Simple MLP: 64 → 512 → 512 → 2048
-        self.mlp = nn.Sequential(
-            nn.Linear(state_size, d_hidden),    # 64 → 512
-            nn.GELU(),
-            nn.Linear(d_hidden, d_hidden),      # 512 → 512
-            nn.GELU(),
-            nn.Linear(d_hidden, d_model),       # 512 → 2048
-        )
-        self.output_norm = nn.LayerNorm(d_model)
-
-    def forward(self, state, pass_num, scale=1.0):
-        # state: (batch, 64)
-        # Returns: bias to add to input embeddings (batch, 1, 2048)
-
-        pass_context = self.pass_embed(torch.tensor(pass_num, device=state.device))
-        x = state + pass_context
-
-        bias = self.mlp(x)
-        bias = self.output_norm(bias)
-        return bias.unsqueeze(1) * scale  # (batch, 1, 2048)
+q = layer.q_proj(hidden) + (hidden @ B.T) * scales @ A.T
 ```
 
-### Compressor (~120M params)
-7-layer perceiver that reads ALL 16 transformer layers and compresses to 64 floats.
+No hooks. No weight modification. Just parallel additive computation. Should be significantly faster.
 
-The compressor has the HARD job: read all 16 layers across full sequence,
-decide what matters, and squeeze into 64 floats. This is why it needs 89x more params.
+**Status:** Implemented but not yet trained with this approach.
 
+---
+
+## Training Setup
+
+### Data
+- Two-step arithmetic: procedural generation, `(a op1 b) op2 c`
+- Three-step arithmetic: procedural generation, `((a op1 b) op2 c) op3 d`
+- GSM8K: `data/gsm8k_easy.jsonl` (4,232 problems), full GSM8K train (7,473)
+- SymPy probe targets: precomputed intermediate values per step
+
+### Training Loop
 ```python
-# src/compressor.py
-class Compressor(nn.Module):
-    def __init__(self,
-                 num_transformer_layers=16,
-                 d_transformer=2048,
-                 d_internal=1024,
-                 num_queries=4,
-                 num_layers=7,
-                 state_size=64,
-                 max_passes=20):
-        super().__init__()
-
-        # Learned queries
-        self.queries = nn.Parameter(torch.randn(num_queries, d_internal) * 0.02)
-        self.pass_embed = nn.Embedding(max_passes, d_internal)
-
-        # Pass-conditioned layer gate
-        self.layer_gate = nn.Sequential(
-            nn.Linear(d_internal, 64),
-            nn.ReLU(),
-            nn.Linear(64, num_transformer_layers),
-        )
-
-        # Project transformer hidden states to internal dim
-        self.input_project = nn.Linear(d_transformer, d_internal)
-
-        # 7-layer perceiver stack
-        self.layers = nn.ModuleList([
-            nn.ModuleDict({
-                'cross_attn': nn.MultiheadAttention(d_internal, num_heads=8, batch_first=True),
-                'cross_norm': nn.LayerNorm(d_internal),
-                'self_attn': nn.MultiheadAttention(d_internal, num_heads=8, batch_first=True),
-                'self_norm': nn.LayerNorm(d_internal),
-                'ffn': nn.Sequential(
-                    nn.Linear(d_internal, d_internal * 4),
-                    nn.GELU(),
-                    nn.Linear(d_internal * 4, d_internal),
-                ),
-                'ffn_norm': nn.LayerNorm(d_internal),
-            })
-            for _ in range(num_layers)
-        ])
-
-        # Project to state size
-        self.project_out = nn.Linear(d_internal, state_size // num_queries)  # 16
-
-    def forward(self, all_layer_hidden_states, pass_num):
-        # all_layer_hidden_states: list of 16 tensors, each (batch, seq, 2048)
-        batch_size = all_layer_hidden_states[0].size(0)
-        device = all_layer_hidden_states[0].device
-
-        # Pass-conditioned queries
-        pass_context = self.pass_embed(torch.tensor(pass_num, device=device))
-        queries = (self.queries + pass_context).unsqueeze(0).expand(batch_size, -1, -1)
-
-        # Pass-conditioned layer weights
-        layer_logits = self.layer_gate(pass_context)  # (16,)
-        layer_weights = F.softmax(layer_logits, dim=-1)
-
-        # Weighted combination of ALL transformer layers
-        stacked = torch.stack([h.float() for h in all_layer_hidden_states], dim=0)
-        combined = (stacked * layer_weights.view(-1, 1, 1, 1)).sum(dim=0)
-
-        # Pool and project
-        pooled = combined.mean(dim=1)  # (batch, 2048)
-        kv = self.input_project(pooled).unsqueeze(1)  # (batch, 1, d_internal)
-
-        # 7 layers of compression
-        for layer in self.layers:
-            attended, _ = layer['cross_attn'](queries, kv, kv)
-            queries = layer['cross_norm'](queries + attended)
-            refined, _ = layer['self_attn'](queries, queries, queries)
-            queries = layer['self_norm'](queries + refined)
-            queries = layer['ffn_norm'](queries + layer['ffn'](queries))
-
-        # Project to state
-        state_chunks = self.project_out(queries)  # (batch, 4, 16)
-        return state_chunks.flatten(start_dim=1)  # (batch, 64)
+for pass_num in range(3):  # fixed 3 passes
+    # Apply LoRA (additive, from state + strategy)
+    # Forward through Llama (frozen, output_hidden_states=True)
+    # Perceiver compresses all 16 layers → state_delta (64) + strategy (512)
+    # State: accumulate on hypersphere
+    # Probe: MSE(probe(state), sympy_target) → per-pass gradient
+    
+# Final: teacher-forced answer loss
+# Total: answer_loss + 0.5 * probe_loss
+# Gradient clipping: max_norm=1.0
 ```
 
-### ThinkingModel — Full Loop
+### Optimizer
 ```python
-# src/thinking_model.py
-class ThinkingModel(nn.Module):
-    def __init__(self, model_name="meta-llama/Llama-3.2-1B-Instruct"):
-        self.transformer = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16)
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-
-        # Asymmetric: lightweight decompressor, heavy compressor
-        self.decompressor = Decompressor(state_size=64, d_model=2048, d_hidden=512)  # 1.3M
-        self.compressor = Compressor(state_size=64, d_transformer=2048, num_layers=7)  # 120M
-        self.confidence = ConfidenceHead(state_size=64)
-
-        self.state_size = 64
-        self.state_radius = math.sqrt(64)  # ≈ 8.0
-
-    def init_state(self, batch_size=1):
-        """Initialize state on hypersphere."""
-        state = torch.randn(batch_size, self.state_size, device=self.device)
-        return F.normalize(state, dim=-1) * self.state_radius
-
-    def update_state(self, state, delta):
-        """Rotate state on hypersphere."""
-        return F.normalize(state + delta, dim=-1) * self.state_radius
-
-    def think(self, problem_text, max_passes=10, confidence_threshold=0.8, scale=1.0):
-        state = self.init_state()
-        prompt_embeds = self.get_prompt_embeds(problem_text)
-
-        for pass_num in range(max_passes):
-            # DECOMPRESS: state → bias (EASY, just project)
-            bias = self.decompressor(state, pass_num, scale=scale)  # (1, 1, 2048)
-
-            # TRANSFORMER: [bias + problem] → all 16 layers
-            input_embeds = prompt_embeds + bias  # bias modulates all positions
-            outputs = self.transformer(inputs_embeds=input_embeds, output_hidden_states=True)
-            all_layer_hidden = list(outputs.hidden_states[1:])  # 16 layers
-
-            # COMPRESS: all layers → 64 floats (HARD, must select)
-            delta = self.compressor(all_layer_hidden, pass_num)
-
-            # HYPERSPHERE: rotate state
-            state = self.update_state(state, delta)
-
-            if self.confidence(state).item() > confidence_threshold:
-                break
-
-        return state
-
-    def generate_answer(self, problem_text, state, scale=1.0):
-        bias = self.decompressor(state, pass_num=0, scale=scale)
-        input_embeds = self.get_prompt_embeds(problem_text) + bias
-        return self.transformer.generate(inputs_embeds=input_embeds, max_new_tokens=512)
-```
-
-### Parameter Count
-```
-Llama 3.2 1B-Instruct:  1.23B   (frozen Phase 1, fine-tuned Phase 2)
-Compressor:             ~120M   (7 layers, HARD job — selecting what matters)
-Decompressor:           ~1.3M   (simple MLP, EASY job — just projecting)
-ConfidenceHead:         ~2K     (tiny MLP)
-────────────────────────────────
-Total:                  ~1.35B
-New parameters:         ~121M   (9% of total model, was 15% with symmetric)
-Bottleneck:             64 floats on hypersphere
-Asymmetry:              89x more params for compression than decompression
+AdamW([
+    {'params': perceiver_params, 'lr': 1e-4},
+    {'params': lora_template_params, 'lr': 1e-3},   # 10x (gradient imbalance fix)
+    {'params': hypernetwork_params, 'lr': 1e-3},     # 10x
+    {'params': probe_params, 'lr': 1e-4},
+])
+# Transformer is FROZEN — not in optimizer
 ```
 
 ---
 
-## Two-Phase Training
-
-### Phase 1: Freeze Transformer, Train Hourglass
-```
-Trainable:  Decompressor + Compressor + ConfidenceHead
-Frozen:     Transformer (already gets 35% on GSM8K)
-Duration:   5-10 epochs
-
-The transformer runs normally (it already understands math).
-The decompressor learns to expand state into useful bias.
-The compressor learns to extract useful state from all layers.
-Low risk: can't hurt the transformer's existing capability.
-```
-
-### Phase 2: End-to-End
-```
-Trainable:  Everything
-Duration:   10-20 epochs
-
-Now the transformer adapts to USE the bias information.
-Co-evolution: better decompression ↔ better processing ↔ better compression.
-```
-
-### Deep Supervision
-Every thinking pass tries to predict the answer from the CURRENT state:
-```python
-for pass_num, intermediate_state in enumerate(all_states):
-    bias = decompressor(intermediate_state, pass_num)
-    outputs = transformer(inputs_embeds=prompt_embeds + bias, labels=answer_ids)
-    weight = (pass_num + 1) / len(all_states)
-    total_loss += weight * outputs.loss
-```
-
-### State Scale Warmup (Proven Schedule)
-```
-Epoch 1-2:   scale = 0.1   (bias barely affects transformer)
-Epoch 3-4:   scale = 0.3
-Epoch 5-6:   scale = 0.5
-Epoch 7-8:   scale = 0.7
-Epoch 9-10:  scale = 1.0   (full bias strength)
-```
-
----
-
-## Why This Is Better Than Before
-
-### vs Prepended Pseudo-Tokens (v18)
-```
-Before: 4 pseudo-tokens prepended to input
-        Transformer might attend to them, might ignore them
-        Position 0-3 are "special" — distribution shift
-
-Now:    Bias added to ALL input positions
-        Every token in the problem is modulated by state
-        No "special" positions — uniform influence
-```
-
-### vs StateInjector (~130K params)
-```
-Before: Simple projection: 64 → 4 tokens (~130K params)
-        Had to compete for attention at positions 0-3
-
-Now:    Simple MLP: 64 → 512 → 2048 (~1.3M params)
-        Adds bias to ALL positions uniformly
-        10x more capacity, much better influence mechanism
-```
-
-### Intentional Asymmetry
-```
-Before: ~108M compressor, ~130K injector (accidental asymmetry)
-
-Now:    ~120M compressor, ~1.3M decompressor (intentional asymmetry)
-        89x more params for compression than decompression
-        Because compression is HARD (selecting what matters)
-        Decompression is EASY (just projecting faithfully)
-```
-
----
-
-## File Structure
+## File Structure (Expected)
 
 ```
 src/
-  __init__.py           # Package exports
-  decompressor.py       # Simple MLP state → bias (1.3M) — EASY job
-  compressor.py         # 7-layer all-layer → state (120M) — HARD job
-  confidence_head.py    # When to stop thinking
-  thinking_model.py     # Full thinking loop
-
+  thinking_model.py              # ThinkingModel (main class)
+  all_layer_perceiver.py         # 7-layer perceiver, two output heads (state + strategy)
+  state_conditioned_lora.py      # Templates + hypernetwork, additive LoRA
+  confidence_head.py             # Readiness judge (currently disabled)
+  
 scripts/
-  train_thinking.py     # Training with deep supervision
-  eval_thinking.py      # Accuracy vs passes, ablation
+  train_thinking.py              # Main training script
+  eval_thinking.py               # Accuracy, ablation, probe analysis
+  generate_arithmetic.py         # Procedural arithmetic data generation
 
-configs/
-  thinking_gsm8k.yaml   # Hyperparameters
+data/
+  gsm8k_easy.jsonl               # 4,232 easy GSM8K problems
+  
+checkpoints/
+  phase1_best.pt                 # Best two-step checkpoint (53%)
+  
+logs/
+  train_*.log                    # Training logs
 ```
 
 ---
 
-## Milestones
+## Known Bugs & Gotchas
 
 ```
-PROOF-OF-CONCEPT (COMPLETE):
-M0: SmolLM2 baseline: 0% GSM8K
-M1: Tight bottleneck works: 80.4% two-step, 52% three-step
-M2: Llama two-step: 83%
-M3: Hypersphere constraint: works as well as alpha
+Bug #26/#27: DataCollatorForLanguageModeling overwrites label masking
+Bug #35: Temperature must be 0 for eval. 0.7 caused massive baseline shift.
+Bug #37: Small eval sets lie. Always N≥100.
+Bug #38: Always verify baseline on SAME problem set with SAME prompt format.
 
-ASYMMETRIC HOURGLASS (CURRENT):
-M4: Build asymmetric architecture
-    Decompressor (MLP, 1.3M), Compressor (7L, 120M)
+GQA: Llama 3.2 1B uses Grouped Query Attention (8 KV heads, 32 Q heads).
+     K,V projections are (2048, 512) not (2048, 2048).
+     LoRA templates for K,V must be (rank, 512) not (rank, 2048).
 
-M5: Validation checkpoints
-    V1: Forward pass works with bias injection
-    V2: Gradients flow through all passes
-    V3: State accumulates (pass_3 > pass_1 accuracy)
-    V4: Thinking ≈ single-shot (neutral)
-    V5: Thinking > single-shot (THE RESULT)
+Tokenizer: Llama 3.2 uses its own tokenizer. Don't mix with SmolLM2's.
 
-M6: GSM8K thinking accuracy > 35% (single-shot baseline)
+Answer extraction: Strip trailing periods ("72." → "72"). Check for \boxed{}, 
+     ####, and last-number-in-text fallbacks. We've been bitten by extraction 
+     bugs 3+ times.
 
-M7: GSM8K thinking accuracy > 45% (+10 points)
+Prompt format: Instruct model needs chat template + "Solve step by step" for 42%.
+     Base model with raw text gets 4-5% on GSM8K. We use the BASE model.
+     For arithmetic: simple completion format "48 / 2 =" works at 70%.
 
-M8: MATH L1-L5 (capacity extension)
-```
+Gradient imbalance: Perceiver gets 4530x more gradient than LoRA templates.
+     Fix: 10x higher LR for templates (1e-3 vs 1e-4).
 
----
+Unfreezing Llama: Caused instability even at 1e-6 LR. Keep frozen until 
+     the architecture is proven on word problems.
 
-## Critical Rules
+Efficiency penalty: 0.01 * num_passes caused model to always stop at 1 pass.
+     Removed. Passes fixed at 3. Re-add confidence head later.
 
-```
- 1. Llama 3.2 1B-Instruct (NOT base) — need 35% baseline for gradient signal
- 2. Use bfloat16 for Llama
- 3. 64-float bottleneck on HYPERSPHERE (radius √64)
- 4. Transformer stays PRISTINE — no layer splitting, no modification
- 5. Decompressor: Simple MLP (1.3M), EASY job — just project state → bias
- 6. Compressor: 7 layers (120M), HARD job — select from all 16 transformer layers → state
- 7. Pass-conditioned layer gate in compressor
- 8. Hypersphere update: state = normalize(state + delta) * √64
- 9. NO learnable alpha — hypersphere handles magnitude
-10. Deep supervision: every pass gets direct gradient
-11. State scale warmup: 0.1 → 1.0 over first 5 epochs
-12. Freeze transformer Phase 1, unfreeze Phase 2
-13. Bias modulates ALL input positions, not just prepended tokens
-14. Ablation (real state vs zeros) at every checkpoint
-15. Temperature = 0 for all evaluations
-16. N >= 100 problems for any accuracy measurement
-17. MATH-500 NEVER in training data
-18. Handoff doc before closing any session
+State conditioning: Adding current_state as input to perceiver queries HURT
+     performance (50% vs 53%). The pass embedding alone is sufficient. Reverted.
+
+Bias injection: Adding state as bias to embeddings CORRUPTED pretrained 
+     representations. Model mode-collapsed (output "30" for everything). 
+     Don't add bias to embeddings — use pseudo-tokens or LoRA only.
 ```
 
 ---
 
-## Bug List
+## AWS Setup
 
-```
-CARRIED:
-27. max_tokens=512 truncates before \boxed{}. Use 2048+.
-28. parse_latex() on non-LaTeX corrupts. Only call if contains backslash.
-35. Temperature must be 0 (greedy) for eval.
-37. Small sample sizes lie. Always N>=100.
+```bash
+# SSH to VM
+ssh -i ~/.ssh/mycelium-key.pem ubuntu@<IP>
 
-FOR v19:
-42. Use chat template for Instruct model
-43. output_hidden_states=True to get all 16 layers
-44. hidden_states[0] is embedding layer — use hidden_states[1:] for transformer layers
-45. Gradient clipping essential with deep supervision
-46. Bias should be ADDED to embeddings, not concatenated
-```
+# The IP changes — check AWS console for current g5.xlarge
+# Instance type: g5.xlarge (A10G 24GB, ~$1/hr)
+# OS: Ubuntu 24
+# Python: 3.x with torch, transformers, sympy
 
----
+# S3 bucket
+aws s3 ls s3://mycelium-data-v7/
 
-## Hardware
+# Project directory on VM
+cd ~/mycelium
 
-```
-Training:    Llama 1.23B + ~210M hourglass fits on A10G (24GB)
-             With gradient checkpointing: 10 passes fits
-Phase 1:     ~1-2 days on A10G
-Phase 2:     ~2-3 days on A10G
-Cost:        ~$75-150 on AWS spot
+# Training with tmux (ALWAYS use tmux — session loss caused significant context loss before)
+tmux new -s train
+python scripts/train_thinking.py --config configs/thinking_gsm8k.yaml
+
+# Monitor
+tail -f logs/train_*.log
 ```
 
 ---
 
-## MATH-500 Deadline: April 22, 2026
+## What to Do Next (Priority Order)
 
-GSM8K first (prove thinking helps) → MATH (prove it scales).
-Target: thinking accuracy > single-shot on L4-L5 problems.
-The undeniable result: solving previously unsolvable problems through symmetric compression.
+### 1. Train Side Channel + Additive LoRA on Two-Step Arithmetic
+
+The architecture is implemented but not trained with:
+- 512-float strategy side channel
+- Additive LoRA (no hooks)
+- SymPy probe for per-pass gradient
+
+Train on two-step arithmetic. Target: >53% (previous best without side channel).
+
+### 2. If >53%: Three-Step Arithmetic
+
+```
+Three-step ceiling: 72.8%³ = 38.6%
+Previous three-step best: 22% (without SymPy probe or side channel)
+With probe + side channel: should significantly exceed 22%
+```
+
+### 3. GSM8K Word Problems
+
+Base model understands "half of 48 is 24" and does arithmetic at 70%. The gap is format/parsing, not capability. The thinking loop should bridge arithmetic → word problems.
+
+### 4. MATH-500 Benchmark (April 22 deadline)
+
+---
+
+## Architecture Evolution (How We Got Here)
+
+```
+v10-v15: Text-based compression ([EXPAND]/[COLLAPSE] tags) → abandoned (not differentiable)
+v16:     Latent-space bottleneck (SmolLM2-135M, pseudo-tokens) → 80.4% two-step ✓
+v17:     Engine swap to Llama 3.2 1B (richer hidden dim 2048)
+v18:     Integrated thinking (no text generation during thinking passes)
+v19:     64-float tight bottleneck + 7-layer perceiver + all-layer reading
+v20:     State-conditioned LoRA (state rewires attention, not just pseudo-tokens) → 53% ✓
+v20.1:   Side channel (512-float strategy) + additive LoRA → TRAINING NOW
+```
+
+Key insight at each pivot:
+- v15→v16: Text compression isn't differentiable. Latent compression is.
+- v16→v17: SmolLM2-135M can't parse word problems. Llama 1B can.
+- v17→v18: Generating text at each breath is slow. Forward passes are cheap.
+- v18→v19: Model must be forced to think incrementally. Tight bottleneck.
+- v19→v20: Pseudo-tokens get ignored (4/104 = 3.8%). LoRA rewires attention — can't be ignored.
+- v20→v20.1: 64 floats starved the hypernetwork. Side channel gives 9x more info.
+
+---
+
+## Experiments That Failed (Don't Repeat)
+
+| Experiment | Result | Why It Failed |
+|------------|--------|---------------|
+| Text-based [EXPAND]/[COLLAPSE] | Matched or hurt vanilla | Not differentiable |
+| SmolLM2-135M on word problems | 0% | Can't parse "half as many" |
+| Llama 1B base on GSM8K (raw) | 4-5% | Format issue, not capability |
+| Llama 1B instruct with breathing | 11% (vs 42% baseline) | Instruct already chains; breathing hurts |
+| Bias injection into embeddings | 0%, mode collapse | Corrupts pretrained representations |
+| State conditioning in perceiver | 50% (vs 53%) | Added noise, pass embed sufficient |
+| Unfreezing Llama at 1e-6 | 40% volatile (vs 53%) | Destabilizes training |
+| Efficiency penalty on passes | 1-pass collapse | Model games it, always stops early |
+| Alternating EXPAND/COLLAPSE breaths | 3% on GSM8K | SmolLM2 couldn't parse word problems |
