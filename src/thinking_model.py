@@ -57,6 +57,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from .state_conditioned_lora import StateConditionedLoRA
 from .lora_hooks import apply_lora, remove_lora
+from .additive_lora import AdditiveLoRAManager, apply_lora_additive, remove_lora_additive
 from .compressor import Compressor
 from .confidence_head import ConfidenceHead
 
@@ -70,7 +71,7 @@ class ThinkingModel(nn.Module):
     2. APPLY LORA: scales modify Q, K, V, O projections in all 16 layers
     3. TRANSFORMER: forward pass with LoRA-modified attention
     4. COMPRESS: Perceiver reads all 16 layers -> 64-float delta
-    5. REMOVE LORA: clean up hooks before next pass
+    5. REMOVE LORA: restore original projection forwards before next pass
     6. HYPERSPHERE: state = normalize(state + delta) * sqrt(64)
     7. Check confidence, break if above threshold
 
@@ -80,15 +81,18 @@ class ThinkingModel(nn.Module):
     - State-derived scales select the mix of templates per pass
     - Same problem, different attention patterns each pass
     - Transformer can't ignore the state - it's in the weights
+    - LoRA applied as additive term inline (no hooks) for speed
 
     Args:
-        model_name: HuggingFace model name for Llama 3.2 1B-Instruct
+        model_name: HuggingFace model name for Llama 3.2 1B
         state_size: Size of the state vector (default: 64)
         lora_rank: LoRA rank - number of attention styles per projection (default: 4)
         num_queries: Number of compressor queries (default: 4)
         num_perceiver_layers: Depth of perceiver compressor (default: 7)
         d_perceiver: Internal dimension of perceiver (default: 1024)
         max_passes: Maximum thinking passes (default: 20)
+        use_hooks: If True, use legacy hook-based LoRA. If False (default),
+                   use fast additive LoRA via monkey-patched forwards.
     """
 
     def __init__(
@@ -100,6 +104,7 @@ class ThinkingModel(nn.Module):
         num_perceiver_layers: int = 7,
         d_perceiver: int = 1024,
         max_passes: int = 20,
+        use_hooks: bool = False,  # False = additive LoRA (fast), True = hook-based (legacy)
     ) -> None:
         super().__init__()
 
@@ -107,6 +112,7 @@ class ThinkingModel(nn.Module):
         self.state_size = state_size
         self.lora_rank = lora_rank
         self.max_passes = max_passes
+        self.use_hooks = use_hooks
 
         # Hypersphere radius = sqrt(64) approx 8.0
         self.state_radius = math.sqrt(state_size)
@@ -216,25 +222,32 @@ class ThinkingModel(nn.Module):
         """
         return F.normalize(state + delta, dim=-1) * self.state_radius
 
-    def apply_lora(self, state: torch.Tensor) -> None:
+    def apply_lora(self, state: torch.Tensor, strategy: Optional[torch.Tensor] = None) -> None:
         """
         Apply state-conditioned LoRA to all 16 attention layers.
 
-        Uses lora_hooks.apply_lora to register forward hooks that modify
-        Q, K, V, O projection outputs based on state-derived scales.
+        Uses either additive LoRA (default, fast) or hook-based LoRA (legacy)
+        depending on self.use_hooks.
 
         Args:
             state: State vector (batch, 64) on hypersphere
+            strategy: Optional strategy vector (batch, 512) for v3 hypernetwork
         """
-        apply_lora(self.transformer, self.lora, state)
+        if self.use_hooks:
+            apply_lora(self.transformer, self.lora, state)
+        else:
+            apply_lora_additive(self.transformer, self.lora, state, strategy=strategy)
 
     def remove_lora(self) -> None:
         """
-        Remove all LoRA hooks from transformer.
+        Remove all LoRA modifications from transformer.
 
-        Must be called after each thinking pass to prevent hook accumulation.
+        Must be called after each thinking pass to prevent accumulation.
         """
-        remove_lora(self.transformer)
+        if self.use_hooks:
+            remove_lora(self.transformer)
+        else:
+            remove_lora_additive(self.transformer)
 
     def _get_prompt_ids(self, problem_text: str) -> torch.Tensor:
         """Get input token IDs for BASE model (pure completion, no chat template)."""

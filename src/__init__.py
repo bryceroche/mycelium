@@ -9,7 +9,8 @@
 #   Compressor          - 7-layer perceiver: all layers -> state delta (~105M params)
 #   ConfidenceHead      - Decides when to stop thinking (~2K params)
 #   ThinkingModel       - Full thinking loop (LoRA -> Llama -> Compress -> Rotate)
-#   LoRAHookManager     - Manages state-conditioned LoRA hooks on attention layers
+#   AdditiveLoRAManager  - Fast inline LoRA via monkey-patched forwards (default)
+#   LoRAHookManager     - Legacy hook-based LoRA (slower, kept for compatibility)
 #
 # Legacy (v19):
 #   Decompressor        - Previous state -> bias approach (replaced by LoRA)
@@ -20,6 +21,7 @@ from .compressor import Compressor
 from .confidence_head import ConfidenceHead
 from .thinking_model import ThinkingModel
 from .lora_hooks import LoRAHookManager, apply_lora, remove_lora
+from .additive_lora import AdditiveLoRAManager, apply_lora_additive, remove_lora_additive
 
 # Legacy exports for backward compatibility
 try:
@@ -43,10 +45,14 @@ __all__ = [
     "Compressor",
     "ConfidenceHead",
     "ThinkingModel",
-    # LoRA Hooks (state-conditioned attention modification)
+    # LoRA application (state-conditioned attention modification)
     "LoRAHookManager",
     "apply_lora",
     "remove_lora",
+    # Additive LoRA (fast, no hooks — default)
+    "AdditiveLoRAManager",
+    "apply_lora_additive",
+    "remove_lora_additive",
     # Legacy (v19)
     "Decompressor",
     "AllLayerPerceiver",
