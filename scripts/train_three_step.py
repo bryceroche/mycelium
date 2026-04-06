@@ -1,13 +1,11 @@
 """
-Train with Strategy Channel v3: Additive LoRA + strategy side channel.
+Three-step arithmetic training with strategy channel v3.
 
-Changes from baseline (53%):
-- Compressor outputs state_delta (64) + strategy (512)
-- Hypernetwork takes state (64) + strategy (512) = 576 floats → 256 scales
-- Additive LoRA (no hooks) — monkey-patched forwards, post-LoRA hidden states
-- Separate learning rates: perceiver 1e-4, templates/hypernetwork 1e-3
-- Hypersphere state init (not zeros)
-- BOTH answer loss + probe loss (probe alone capped at 2.8%)
+Warm-started from two-step 85.4% checkpoint (strategy_v3_85pct.pt).
+Three passes for three operations: ((a op1 b) op2 c) op3 d
+
+Target: >52% (previous best was 52% on SmolLM2, 22% on Llama without answer loss)
+Ceiling: 92.4%^3 = 78.9% (based on two-step effective per-step)
 """
 
 import random
@@ -25,7 +23,9 @@ from src.state_conditioned_lora_v3 import StateConditionedLoRA
 from src.additive_lora import AdditiveLoRAManager
 
 
-class TwoStepArithmeticDataset(Dataset):
+class ThreeStepArithmeticDataset(Dataset):
+    """((a op1 b) op2 c) op3 d — three chained operations."""
+
     def __init__(self, num_samples=10000, seed=42):
         random.seed(seed)
         self.samples = []
@@ -34,28 +34,40 @@ class TwoStepArithmeticDataset(Dataset):
             a = random.randint(2, 50)
             b = random.randint(2, 50)
             c = random.randint(2, 50)
+            d = random.randint(2, 50)
 
+            # Step 1
             if random.random() < 0.5:
                 op1 = '+'
-                intermediate = a + b
+                v1 = a + b
             else:
                 a = b * random.randint(2, 10)
                 op1 = '/'
-                intermediate = a // b
+                v1 = a // b
 
+            # Step 2
             if random.random() < 0.5:
                 op2 = '+'
-                final = intermediate + c
+                v2 = v1 + c
             else:
                 op2 = '-'
-                final = intermediate - c
+                v2 = v1 - c
 
-            problem = f"({a} {op1} {b}) {op2} {c} ="
+            # Step 3
+            if random.random() < 0.5:
+                op3 = '+'
+                v3 = v2 + d
+            else:
+                op3 = '-'
+                v3 = v2 - d
+
+            problem = f"(({a} {op1} {b}) {op2} {c}) {op3} {d} ="
             self.samples.append({
                 'problem': problem,
-                'answer': str(final),
-                'intermediate': intermediate,
-                'final': final,
+                'answer': str(v3),
+                'v1': v1,  # after step 1
+                'v2': v2,  # after step 2
+                'v3': v3,  # final answer
             })
 
     def __len__(self):
@@ -66,7 +78,7 @@ class TwoStepArithmeticDataset(Dataset):
 
 
 class ThinkingModelV3(nn.Module):
-    """ThinkingModel with strategy channel."""
+    """ThinkingModel with strategy channel — same architecture as two-step."""
 
     def __init__(self, model_name='unsloth/Llama-3.2-1B'):
         super().__init__()
@@ -78,11 +90,9 @@ class ThinkingModelV3(nn.Module):
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        # Freeze transformer
         for param in self.transformer.parameters():
             param.requires_grad = False
 
-        # Config
         self.d_model = self.transformer.config.hidden_size
         self.num_layers = self.transformer.config.num_hidden_layers
         num_kv_heads = self.transformer.config.num_key_value_heads
@@ -93,7 +103,6 @@ class ThinkingModelV3(nn.Module):
         self.strategy_size = 512
         self.state_radius = (self.state_size ** 0.5)
 
-        # Compressor v3: outputs state_delta + strategy
         self.compressor = Compressor(
             num_transformer_layers=self.num_layers,
             d_transformer=self.d_model,
@@ -104,7 +113,6 @@ class ThinkingModelV3(nn.Module):
             strategy_size=self.strategy_size,
         )
 
-        # Hypernetwork v3: takes state + strategy
         self.lora = StateConditionedLoRA(
             d_model=self.d_model,
             d_kv=d_kv,
@@ -114,45 +122,31 @@ class ThinkingModelV3(nn.Module):
             num_layers=self.num_layers,
         )
 
-        # Probe head
         self.probe_head = nn.Linear(self.state_size, 1)
 
-        # Learned initial state (replaces random init — eliminates eval variance)
-        # Normalized to hypersphere at forward time
-        self.initial_state = nn.Parameter(torch.randn(self.state_size) * 0.01)
-
     def thinking_pass(self, input_ids, attention_mask, state, strategy, pass_num):
-        """Single thinking pass with additive LoRA (no hooks)."""
-
-        # Apply additive LoRA with state + strategy
         lora_mods = self.lora(state, strategy)
         manager = AdditiveLoRAManager(self.transformer)
         manager.apply(lora_mods)
 
         try:
-            # Forward pass — hidden states are POST-LoRA because
-            # additive LoRA monkey-patches the projection forwards
             outputs = self.transformer(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
                 output_hidden_states=True,
             )
-            hidden_states = list(outputs.hidden_states[1:])  # skip embedding
+            hidden_states = list(outputs.hidden_states[1:])
         finally:
             manager.remove()
 
-        # Compress -> state_delta + new_strategy
         state_delta, new_strategy = self.compressor(hidden_states, pass_num)
 
-        # Accumulate state on hypersphere
         new_state = state + state_delta
         new_state = F.normalize(new_state, dim=-1) * self.state_radius
 
         return new_state, new_strategy
 
     def compute_answer_loss(self, state, strategy, prompt_ids, answer_ids):
-        """Teacher-forced answer loss: apply final state LoRA, generate answer tokens."""
-        # Apply additive LoRA with final state + strategy
         lora_mods = self.lora(state, strategy)
         manager = AdditiveLoRAManager(self.transformer)
         manager.apply(lora_mods)
@@ -163,12 +157,10 @@ class ThinkingModelV3(nn.Module):
         finally:
             manager.remove()
 
-        # Loss on answer tokens only
         prompt_len = prompt_ids.size(1)
-        logits = outputs.logits[:, prompt_len - 1:-1, :]  # (batch, answer_len, vocab)
-        targets = answer_ids  # (batch, answer_len)
+        logits = outputs.logits[:, prompt_len - 1:-1, :]
+        targets = answer_ids
 
-        # Flatten for cross-entropy
         loss = F.cross_entropy(
             logits.reshape(-1, logits.size(-1)),
             targets.reshape(-1),
@@ -176,14 +168,8 @@ class ThinkingModelV3(nn.Module):
         )
         return loss
 
-    def get_initial_state(self, batch_size, device):
-        """Get learned initial state, normalized to hypersphere and expanded to batch."""
-        state = F.normalize(self.initial_state.unsqueeze(0), dim=-1) * self.state_radius
-        return state.expand(batch_size, -1).clone()
-
-    def forward_train(self, problems, answers, intermediates_t, finals_t, num_passes=2):
-        """Full training forward: thinking passes + answer loss + probe loss."""
-        # Tokenize problems
+    def forward_train(self, problems, answers, v1_t, v2_t, v3_t, num_passes=3):
+        """Three thinking passes + answer loss + probe loss at each step."""
         inputs = self.tokenizer(
             problems, return_tensors='pt', padding=True,
             truncation=True, max_length=128,
@@ -191,7 +177,6 @@ class ThinkingModelV3(nn.Module):
         input_ids = inputs['input_ids'].to(self.transformer.device)
         attention_mask = inputs['attention_mask'].to(self.transformer.device)
 
-        # Tokenize answers (e.g. " 72")
         answer_texts = [f" {a}" for a in answers]
         answer_inputs = self.tokenizer(
             answer_texts, return_tensors='pt', padding=True,
@@ -202,8 +187,9 @@ class ThinkingModelV3(nn.Module):
         batch_size = input_ids.size(0)
         device = input_ids.device
 
-        # Learned initial state on hypersphere
-        state = self.get_initial_state(batch_size, device)
+        # Random init on hypersphere (robust eval showed zero variance)
+        state = torch.randn(batch_size, self.state_size, device=device)
+        state = F.normalize(state, dim=-1) * self.state_radius
         strategy = torch.zeros(batch_size, self.strategy_size, device=device)
 
         all_states = []
@@ -214,41 +200,39 @@ class ThinkingModelV3(nn.Module):
             )
             all_states.append(state)
 
-        # --- ANSWER LOSS (teacher-forced generation) ---
-        # Deep supervision: each state tries to generate the answer
-        # Later passes weighted more heavily
+        # --- ANSWER LOSS (deep supervision) ---
         answer_loss = torch.tensor(0.0, device=device)
         for i, s in enumerate(all_states):
             weight = (i + 1) / num_passes
             pass_answer_loss = self.compute_answer_loss(s, strategy, input_ids, answer_ids)
             answer_loss = answer_loss + weight * pass_answer_loss
-        # Normalize by sum of weights
         answer_loss = answer_loss / ((num_passes + 1) / 2)
 
-        # --- PROBE LOSS (per-step gradient signal) ---
+        # --- PROBE LOSS (per-step gradient: 3 targets for 3 passes) ---
         pred1 = self.probe_head(all_states[0]).squeeze(-1)
         pred2 = self.probe_head(all_states[1]).squeeze(-1)
-        probe_loss = F.mse_loss(pred1, intermediates_t) + F.mse_loss(pred2, finals_t)
+        pred3 = self.probe_head(all_states[2]).squeeze(-1)
+        probe_loss = (F.mse_loss(pred1, v1_t) +
+                      F.mse_loss(pred2, v2_t) +
+                      F.mse_loss(pred3, v3_t))
 
-        # Combined loss
         total_loss = answer_loss + 0.5 * probe_loss
 
         return total_loss, answer_loss.item(), probe_loss.item(), all_states
 
 
-def evaluate(model, eval_dataset, device):
-    """Evaluate by generating answers and checking if final number is correct."""
+def evaluate(model, eval_dataset, device, num_passes=3):
+    """Evaluate by generating answers and checking final number."""
     model.eval()
     correct = 0
     total = 0
 
     with torch.no_grad():
         for i in range(0, len(eval_dataset), 8):
-            batch_samples = [eval_dataset[j] for j in range(i, min(i + 8, len(eval_dataset)))]
+            batch_samples = eval_dataset.samples[i:i + 8]
             problems = [s['problem'] for s in batch_samples]
-            gold_answers = [s['final'] for s in batch_samples]
+            gold_answers = [s['v3'] for s in batch_samples]
 
-            # Think
             inputs = model.tokenizer(
                 problems, return_tensors='pt', padding=True,
                 truncation=True, max_length=128,
@@ -257,15 +241,15 @@ def evaluate(model, eval_dataset, device):
             attention_mask = inputs['attention_mask'].to(device)
 
             batch_size = input_ids.size(0)
-            state = model.get_initial_state(batch_size, device)
+            state = torch.randn(batch_size, model.state_size, device=device)
+            state = F.normalize(state, dim=-1) * model.state_radius
             strategy = torch.zeros(batch_size, model.strategy_size, device=device)
 
-            for pass_num in range(2):
+            for pass_num in range(num_passes):
                 state, strategy = model.thinking_pass(
                     input_ids, attention_mask, state, strategy, pass_num
                 )
 
-            # Generate with final state
             lora_mods = model.lora(state, strategy)
             manager = AdditiveLoRAManager(model.transformer)
             manager.apply(lora_mods)
@@ -281,14 +265,12 @@ def evaluate(model, eval_dataset, device):
             finally:
                 manager.remove()
 
-            # Extract generated answers
             for j in range(batch_size):
                 prompt_len = input_ids[j].size(0)
                 gen_ids = generated[j][prompt_len:]
                 gen_text = model.tokenizer.decode(gen_ids, skip_special_tokens=True).strip()
-
-                # Extract number from generated text
                 gen_text = gen_text.rstrip('.')
+
                 try:
                     pred = int(gen_text.split()[0]) if gen_text else None
                 except (ValueError, IndexError):
@@ -302,16 +284,11 @@ def evaluate(model, eval_dataset, device):
 
 
 def train():
-    print("Training with Strategy Channel v3 (Additive LoRA + Strategy + Answer Loss)")
+    print("THREE-STEP ARITHMETIC: Strategy Channel v3 + Answer Loss")
     print("=" * 60)
-    print("Architecture:")
-    print("  - Additive LoRA (no hooks, post-LoRA hidden states)")
-    print("  - Compressor outputs state (64) + strategy (512)")
-    print("  - Hypernetwork takes 576 floats (2.25 per scale)")
-    print("  - Loss = answer_loss + 0.5 * probe_loss")
-    print("  - Deep supervision: each pass tries to generate answer")
-    print("  - Separate LRs: perceiver 1e-4, templates/hypernetwork 1e-3")
-    print("  - Hypersphere state init")
+    print("Warm start from two-step 85.4% checkpoint")
+    print("Architecture: same as two-step, 3 passes instead of 2")
+    print("Target: >52% (prev best). Ceiling: 78.9% (92.4%^3)")
     print("=" * 60)
 
     device = torch.device('cuda')
@@ -320,29 +297,34 @@ def train():
     model.compressor = model.compressor.to(device)
     model.lora = model.lora.to(device)
     model.probe_head = model.probe_head.to(device)
-    model.initial_state = nn.Parameter(model.initial_state.data.to(device))
 
-    train_dataset = TwoStepArithmeticDataset(num_samples=5000, seed=42)
-    eval_dataset = TwoStepArithmeticDataset(num_samples=500, seed=123)
+    # Warm start: load two-step checkpoint
+    ckpt_path = '/home/ubuntu/mycelium/checkpoints/strategy_v3_85pct.pt'
+    ckpt = torch.load(ckpt_path, map_location=device, weights_only=True)
+    model.compressor.load_state_dict(ckpt['compressor'])
+    model.lora.load_state_dict(ckpt['lora'])
+    model.probe_head.load_state_dict(ckpt['probe_head'])
+    print(f"Loaded two-step checkpoint: epoch {ckpt['epoch']}, accuracy {ckpt['accuracy']:.1f}%")
+
+    train_dataset = ThreeStepArithmeticDataset(num_samples=5000, seed=42)
+    eval_dataset = ThreeStepArithmeticDataset(num_samples=500, seed=123)
     train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
 
-    # Separate learning rates
+    # Lower LR for fine-tuning from warm start
     optimizer = torch.optim.AdamW([
-        {'params': list(model.compressor.parameters()), 'lr': 1e-4},
-        {'params': list(model.lora.A_templates) + list(model.lora.B_templates), 'lr': 1e-3},
-        {'params': list(model.lora.state_to_scales.parameters()), 'lr': 1e-3},
-        {'params': list(model.probe_head.parameters()), 'lr': 1e-4},
-        {'params': [model.initial_state], 'lr': 1e-3},
+        {'params': list(model.compressor.parameters()), 'lr': 3e-5},
+        {'params': list(model.lora.A_templates) + list(model.lora.B_templates), 'lr': 3e-4},
+        {'params': list(model.lora.state_to_scales.parameters()), 'lr': 3e-4},
+        {'params': list(model.probe_head.parameters()), 'lr': 3e-5},
     ])
 
     trainable = (list(model.compressor.parameters()) +
                  list(model.lora.parameters()) +
-                 list(model.probe_head.parameters()) +
-                 [model.initial_state])
+                 list(model.probe_head.parameters()))
     print(f"Trainable params: {sum(p.numel() for p in trainable):,}")
-    print(f"LR: perceiver=1e-4, templates=1e-3, hypernetwork=1e-3, probe=1e-4")
+    print(f"LR: perceiver=3e-5, templates=3e-4, hypernetwork=3e-4 (0.3x two-step)")
 
-    num_epochs = 20
+    num_epochs = 10
     best_accuracy = 0.0
 
     for epoch in range(num_epochs):
@@ -355,19 +337,23 @@ def train():
         for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}", leave=False):
             problems = batch['problem']
             answers = batch['answer']
-            intermediates = torch.tensor(
-                [float(s) / 1000.0 for s in batch['intermediate']],
+            v1_t = torch.tensor(
+                [float(s) / 1000.0 for s in batch['v1']],
                 dtype=torch.float32, device=device
             )
-            finals = torch.tensor(
-                [float(s) / 1000.0 for s in batch['final']],
+            v2_t = torch.tensor(
+                [float(s) / 1000.0 for s in batch['v2']],
+                dtype=torch.float32, device=device
+            )
+            v3_t = torch.tensor(
+                [float(s) / 1000.0 for s in batch['v3']],
                 dtype=torch.float32, device=device
             )
 
             optimizer.zero_grad()
 
             total_loss, ans_loss, prb_loss, _ = model.forward_train(
-                problems, answers, intermediates, finals, num_passes=2
+                problems, answers, v1_t, v2_t, v3_t, num_passes=3
             )
             total_loss.backward()
 
@@ -383,8 +369,7 @@ def train():
         avg_answer = epoch_answer_loss / num_batches
         avg_probe = epoch_probe_loss / num_batches
 
-        # Eval: generate answers and check accuracy
-        accuracy = evaluate(model, eval_dataset, device)
+        accuracy = evaluate(model, eval_dataset, device, num_passes=3)
 
         if accuracy > best_accuracy:
             best_accuracy = accuracy
@@ -393,14 +378,15 @@ def train():
                 'compressor': model.compressor.state_dict(),
                 'lora': model.lora.state_dict(),
                 'probe_head': model.probe_head.state_dict(),
-                'initial_state': model.initial_state.data,
                 'accuracy': accuracy,
-            }, 'checkpoints/strategy_v3_best.pt')
+            }, 'checkpoints/three_step_best.pt')
             print(f"  -> Saved new best checkpoint")
 
         print(f"Epoch {epoch+1}: total={avg_total:.4f} answer={avg_answer:.4f} probe={avg_probe:.6f} | Acc={accuracy:.1f}% (best={best_accuracy:.1f}%)")
 
-    print(f"\nFinal: {best_accuracy:.1f}% (baseline: 53%)")
+    print(f"\nFinal: {best_accuracy:.1f}%")
+    print(f"Previous three-step bests: 52% (SmolLM2), 22% (Llama no answer loss)")
+    print(f"Theoretical ceiling: 78.9% (92.4%^3)")
 
 
 if __name__ == '__main__':

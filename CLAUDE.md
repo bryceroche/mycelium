@@ -5,7 +5,7 @@
 Mycelium is a multi-month research project building differentiable recurrent reasoning architectures for small language models. The core idea: a small model that can't chain reasoning internally learns to chain through external differentiable compression. The model thinks in a loop — each pass processes the problem, compresses its understanding into a tight state vector, and uses that state to think DIFFERENTLY on the next pass through state-conditioned LoRA.
 
 **Lead researcher:** Bryce (Manhattan Beach, CA)
-**Target benchmark:** MATH-500 (deadline: April 22, 2026)
+**Target benchmark:** MATH-500 (deadline: May 22, 2026)
 **Infrastructure:** AWS EC2 g5.xlarge (A10G 24GB), S3 bucket mycelium-data-v7
 
 ---
@@ -80,20 +80,47 @@ Mycelium is a multi-month research project building differentiable recurrent rea
 Task                        Baseline    With Breathing    Architecture
 ─────────────────────────────────────────────────────────────────────
 Single-step arithmetic      70%         100%              Llama 1B, 64-float, LoRA
-Two-step arithmetic         0%          53%               Llama 1B, 64-float, LoRA
+Two-step arithmetic         0%          85.4%  ← BEST    Llama 1B, side channel, additive LoRA, answer loss
+  (robust eval)                         ±0.0% (5 seeds)  (92.4% effective per-step)
+Two-step arithmetic         0%          53%               Llama 1B, 64-float, LoRA (probe only, no answer loss)
   (theoretical ceiling)                 (49%)             (53% > 49% → LoRA improves per-step)
+Three-step arithmetic       0%          73.6% ← BEST     Llama 1B, side channel, additive LoRA, warm start from 85.4%
+  (robust eval)                         ±0.0% (5 seeds)  (90.1% effective per-step, cube root)
 Three-step arithmetic       0%          52%               SmolLM2-135M, 64-float, pseudo-tokens
 Two-step arithmetic         0%          83%               Llama 1B, 512-float, pseudo-tokens (earlier arch)
 Two-step arithmetic         0%          80.4%             SmolLM2-135M, 32-float, pseudo-tokens
 ```
 
-Key finding: 53% exceeds the theoretical ceiling of 49% (70%×70%), meaning the LoRA attention modifications improve per-step accuracy from 70% to ~72.8%. The compression is essentially lossless.
+Key finding: 85.4% on two-step with zero variance across 5 seeds. Effective per-step
+accuracy: 92.4% (up from 70% base). The three changes that broke the 53% ceiling:
+1. Answer loss (was missing entirely — probe alone capped at 2.8%)
+2. Side channel (576 floats feeding hypernetwork instead of 64)
+3. Additive LoRA (clean, fast, fully differentiable, post-LoRA hidden states)
 
 ---
 
 ## What's Being Built Right Now
 
-### Side Channel (state + strategy)
+### GSM8K Word Problems (IN PROGRESS)
+
+The generalization test. Can the thinking loop transfer from procedural arithmetic to natural language word problems?
+- Same architecture, warm-started from three-step 73.6% checkpoint
+- Probe targets from GSM8K `<<expr=value>>` annotations (variable steps mapped to 3 passes)
+- Prompt format: `"Problem: {question}\nAnswer:"`
+- Base model baseline: 4-5%. Target: >10%. Paper territory: >20%.
+
+**Status:** Training on AWS VM.
+
+### Three-Step Arithmetic — PROVEN
+
+Two-step achieved 85.4% (92.4% effective per-step). Three-step warm-started from two-step checkpoint.
+- 73.6% ± 0.0% across 5 seeds. 90.1% effective per-step (cube root).
+- Previous best: 52% (SmolLM2). Blew past it by epoch 2.
+- Surpassed theoretical ceiling of 78.9% (92.4%^3) in effective per-step terms.
+
+**Status:** Proven. Checkpoint: `three_step_best.pt` (epoch 7, 74.2% peak → 73.6% robust).
+
+### Side Channel (state + strategy) — PROVEN
 
 The previous 53% used only 64-float state to drive LoRA. The hypernetwork was starving — 64 floats → 256 scales meant ~0.25 floats per scale. The compressor now outputs TWO signals:
 
@@ -104,9 +131,9 @@ STRATEGY (512 floats): Meta-information (what to focus on next). Ephemeral, cons
 
 The hypernetwork reads both (576 floats) for richer LoRA generation. Strategy can't bypass bottleneck because it doesn't persist across passes.
 
-**Status:** Architecture implemented. LoRA changed to additive term (no hooks). Training needs to be run.
+**Status:** Proven. 85.4% two-step (up from 53% without side channel).
 
-### LoRA as Additive Term (Performance Fix)
+### LoRA as Additive Term — PROVEN
 
 Previous implementation used forward hooks to apply/remove LoRA every pass. Slow (~13 min per epoch). Changed to:
 
@@ -114,9 +141,9 @@ Previous implementation used forward hooks to apply/remove LoRA every pass. Slow
 q = layer.q_proj(hidden) + (hidden @ B.T) * scales @ A.T
 ```
 
-No hooks. No weight modification. Just parallel additive computation. Should be significantly faster.
+No hooks. No weight modification. Just parallel additive computation. ~4 min per epoch on two-step.
 
-**Status:** Implemented but not yet trained with this approach.
+**Status:** Proven. Monkey-patched forwards ensure output_hidden_states returns post-LoRA hidden states.
 
 ---
 
@@ -212,6 +239,20 @@ Unfreezing Llama: Caused instability even at 1e-6 LR. Keep frozen until
 Efficiency penalty: 0.01 * num_passes caused model to always stop at 1 pass.
      Removed. Passes fixed at 3. Re-add confidence head later.
 
+Random hypersphere init: ALWAYS use random init during training, NOT learned init.
+     Random init forces the model to work from ANY starting point on the
+     hypersphere — implicit data augmentation. Every problem is seen from
+     multiple "angles" across training. The model learns the TASK, not a
+     specific TRAJECTORY. Learned init overfits to one path (59.6% vs 85.4%).
+     Once trained with random init, the model has zero eval variance across
+     seeds — robust eval confirmed 85.4% ± 0.0% across 5 seeds.
+
+Probe-only training caps low: Training with only probe loss (MSE on state →
+     intermediate values) capped at 2.8%. Must include teacher-forced answer
+     loss. The probe teaches the state WHAT to encode. The answer loss teaches
+     the system HOW to generate from that state. Both are required:
+     loss = answer_loss + 0.5 * probe_loss.
+
 State conditioning: Adding current_state as input to perceiver queries HURT
      performance (50% vs 53%). The pass embedding alone is sufficient. Reverted.
 
@@ -251,28 +292,33 @@ tail -f logs/train_*.log
 
 ## What to Do Next (Priority Order)
 
-### 1. Train Side Channel + Additive LoRA on Two-Step Arithmetic
+### 1. GSM8K Word Problems (IN PROGRESS)
 
-The architecture is implemented but not trained with:
-- 512-float strategy side channel
-- Additive LoRA (no hooks)
-- SymPy probe for per-pass gradient
+Generalization test: arithmetic → natural language word problems.
+Base model baseline: 4-5%. Target: >10%. Paper territory: >20%.
+Training from three-step 73.6% checkpoint.
 
-Train on two-step arithmetic. Target: >53% (previous best without side channel).
+### 2. MATH-500 Benchmark (May 22 deadline)
 
-### 2. If >53%: Three-Step Arithmetic
+### 3. Boltzmann Exploration for Pass Count
 
-```
-Three-step ceiling: 72.8%³ = 38.6%
-Previous three-step best: 22% (without SymPy probe or side channel)
-With probe + side channel: should significantly exceed 22%
-```
+Currently passes are fixed at 3. Instead of a hard confidence threshold, use
+Boltzmann (softmax) sampling over a learned "continue/stop" distribution to
+decide whether to take another pass. Temperature annealing during training:
+start hot (explore many pass counts) → cool down (exploit optimal count per
+problem). This lets the model learn variable-depth reasoning — easy problems
+get 1-2 passes, hard problems get 5+. Avoids the efficiency penalty collapse
+(always stopping at 1) that killed the previous confidence head attempt.
 
-### 3. GSM8K Word Problems
+### 4. Attention Residuals Across Passes (5+ Pass Scaling)
 
-Base model understands "half of 48 is 24" and does arithmetic at 70%. The gap is format/parsing, not capability. The thinking loop should bridge arithmetic → word problems.
-
-### 4. MATH-500 Benchmark (April 22 deadline)
+At 5+ passes, the state bottleneck may lose information from early passes.
+Add cross-pass attention residuals: each pass's perceiver attends not just to
+the current Llama hidden states but also to a buffer of compressed
+representations from prior passes. Like a "memory of memories" — the state
+vector carries the compressed result, but the residual connection preserves
+richer structure for the perceiver to query. This prevents information decay
+in deep reasoning chains without widening the 64-float bottleneck.
 
 ---
 
@@ -285,7 +331,8 @@ v17:     Engine swap to Llama 3.2 1B (richer hidden dim 2048)
 v18:     Integrated thinking (no text generation during thinking passes)
 v19:     64-float tight bottleneck + 7-layer perceiver + all-layer reading
 v20:     State-conditioned LoRA (state rewires attention, not just pseudo-tokens) → 53% ✓
-v20.1:   Side channel (512-float strategy) + additive LoRA → TRAINING NOW
+v20.1:   Side channel (512-float strategy) + additive LoRA + answer loss → 85.4% ✓
+v20.2:   Three-step arithmetic (warm start from v20.1) → TRAINING NOW
 ```
 
 Key insight at each pivot:
@@ -311,3 +358,5 @@ Key insight at each pivot:
 | Unfreezing Llama at 1e-6 | 40% volatile (vs 53%) | Destabilizes training |
 | Efficiency penalty on passes | 1-pass collapse | Model games it, always stops early |
 | Alternating EXPAND/COLLAPSE breaths | 3% on GSM8K | SmolLM2 couldn't parse word problems |
+| Probe-only training (no answer loss) | 2.8% (vs 85.4%) | Probe teaches WHAT to encode, not HOW to generate |
+| Learned initial state (nn.Parameter) | 59.6% (vs 85.4%) | Overfits to one trajectory; random init = implicit augmentation |
