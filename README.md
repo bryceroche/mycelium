@@ -1,154 +1,105 @@
-# Mycelium v19 — Asymmetric Hourglass
+# Mycelium — Breathing Models
 
-> **A transformer that THINKS before it SPEAKS.**
->
-> The intelligence is in COMPRESSION (what to keep), not DECOMPRESSION (how to project).
-> 89x more params deciding what fits through 64 floats than deciding how to use them.
+Differentiable recurrent reasoning for small language models. A frozen base LLM that can't chain reasoning internally learns to chain through external differentiable compression — thinking in a loop where each pass rewires its own attention via state-conditioned LoRA.
 
----
-
-## Current State (April 3, 2026)
-
-```
-Architecture:        DECOMPRESSOR (MLP, 1.3M) → Llama 16L → COMPRESSOR (7L, 120M)
-Status:              ARCHITECTURE REFINEMENT — Asymmetric Hourglass
-
-PROVEN RESULTS:
-  Single-step arithmetic: 100%
-  Two-step arithmetic:    54-57%
-  Three-step arithmetic:  19-22%
-  Hypersphere constraint: Works as well as learnable alpha
-
-Target:              GSM8K thinking accuracy > 35% (single-shot baseline)
-```
+**Lead:** Bryce Roche · **Target:** MATH-500 · **Deadline:** May 22, 2026
 
 ---
 
-## What Mycelium Does
+## Proven Results
 
-Mycelium trains a transformer to reason through **multiple internal passes** before generating any text. The transformer is SANDWICHED between asymmetric compression engines:
+| Task | Base | With Breathing | Notes |
+|---|---|---|---|
+| Single-step arithmetic | 70% | **100%** | Llama 1B, 64-float state |
+| Two-step arithmetic | 0% | **85.4% ± 0.0%** | 5 seeds, side channel + additive LoRA |
+| Three-step arithmetic | 0% | **73.6% ± 0.0%** | 5 seeds, warm-started from two-step |
+| GSM8K (hybrid, epoch 1) | 6.2% | 6.6% | Initial result, training in progress |
 
-1. **DECOMPRESSOR** (MLP, 1.3M): Projects 64-float state into input bias — EASY job
-2. **TRANSFORMER** (16 layers, 1.23B): Runs PRISTINE — no modification
-3. **COMPRESSOR** (7 layers, 120M): Squeezes all 16 layer hidden states to 64 floats — HARD job
-
-The state lives on a **hypersphere** of radius √64. Each pass rotates the state to a new position. When confident, generate the final answer.
-
----
-
-## The Architecture
-
-```
-┌───────────────────────────────────────────────────────────┐
-│                                                           │
-│  DECOMPRESSOR (MLP, 1.3M params)                          │
-│  64 floats → 512 → 2048 → residual stream bias            │
-│         │                                                 │
-│         ▼                                                 │
-│  [bias + problem tokens] → Llama layers 1-16 (untouched)  │
-│         │                                                 │
-│         ▼                                                 │
-│  COMPRESSOR (7 layers, 120M params)                       │
-│  all 16 layer hidden states → compress → 64 floats        │
-│         │                                                 │
-│         ▼                                                 │
-│  state = normalize(state + delta) * √64  ← HYPERSPHERE    │
-│         │                                                 │
-│         ├──→ Confidence → ready? ──→ GENERATE             │
-│         │                                                 │
-│         └──→ loop back to DECOMPRESSOR                    │
-│                                                           │
-└───────────────────────────────────────────────────────────┘
-```
+Two-step 85.4% → 92.4% effective per-step (up from 70% base).
+Three-step 73.6% → 90.1% effective per-step (cube root).
 
 ---
 
-## Why This Works
+## Architecture (v20.1 — State-Conditioned LoRA)
 
-**Tight bottleneck (64 floats)**: Forces incremental thinking. The model can't solve complex problems in one pass — it needs multiple rotations on the hypersphere.
+```
+state (64) ──┐
+strategy(512)┴──→ HYPERNETWORK ──→ 256 LoRA scales
+                                       │
+                                       ▼
+              [problem] → Llama 16L (frozen, additive LoRA on Q,K,V,O)
+                              │ all-layer hidden states
+                              ▼
+                       7-LAYER PERCEIVER (~105M)
+                              │
+                    ┌─────────┴─────────┐
+                    ▼                   ▼
+            64-float state delta   512-float strategy
+                    │
+                    ▼
+            normalize(state + delta) * √64    (loop ×3)
+```
 
-**Intentional asymmetry (121M total)**: 120M params deciding what to COMPRESS (hard — must select from 16 layers), only 1.3M params deciding how to DECOMPRESS (easy — just project faithfully). Like a brilliant editor compressing a book into one sentence (hard) versus a reader interpreting that sentence (easier).
-
-**Pristine transformer**: Llama runs exactly as pretrained. The decompressor modifies what goes IN, the compressor reads what comes OUT. No architectural surgery.
-
-**Hypersphere constraint**: State magnitude is always √64. Each pass is a rotation, not a magnitude change. No learnable alpha, no explosion, no collapse.
-
-**Bias injection**: The decompressor produces bias that modulates ALL input positions — not just prepended tokens. Every token in the problem is influenced by accumulated understanding.
+- **Llama 3.2 1B base** (frozen). Not instruct — instruct already chains in one shot.
+- **64-float state** on the hypersphere — tight enough to force incremental thinking.
+- **512-float strategy** side channel — ephemeral, feeds only the hypernetwork.
+- **Additive LoRA** — no hooks, no weight modification: `q = W_q x + (x B^T) · scales · A^T`.
+- **7-layer perceiver compressor** reads all 16 Llama layers with pass-conditioned attention.
 
 ---
 
-## Components
+## Next Direction (v21 — Page-Based State Accumulation)
+
+Single overwriting state has amnesia — each pass partially erases the previous one through hypersphere rotation. The fix: **append, don't overwrite.**
 
 ```
-Llama 3.2 1B-Instruct:  1.23B   (35% GSM8K — strong gradient signal)
-Compressor:             ~120M   (7 layers, HARD job — selecting what matters)
-Decompressor:           ~1.3M   (MLP, EASY job — just projecting)
-ConfidenceHead:         ~2K     (when to stop thinking?)
-────────────────────────────────
-Total:                  ~1.35B
-New params:             ~121M   (9% of total model)
-Asymmetry:              89x more params for compression than decompression
-Bottleneck:             64 floats on hypersphere (radius ≈ 8.0)
+Cycle 1: compress → 64-float page → append
+Cycle 2: compress → 64-float page → append
+Cycle 3: compress → 64-float page → append
+                                                          ↓
+Hypernetwork cross-attends over ALL pages → LoRA scales
+```
+
+- **No amnesia.** Page 1 is preserved exactly through pass N.
+- **Variable-length thinking is free.** Cross-attention handles 2 pages or 8.
+- **Frequency bands emerge naturally.** Each cycle encodes a different level of detail.
+- **Free interpretability.** Attention weights show which past cycles drove each decision.
+- **Hybrid path baked in.** Pages → pseudo-tokens for generation (LoRA off).
+
+Per-pass bottleneck stays at 64 floats. ~+800K params total. See `plan/page_state_handoff.md`.
+
+---
+
+## Repo Layout
+
+```
+src/
+  thinking_model.py            # main model
+  all_layer_perceiver.py       # 7-layer perceiver, dual heads (state + strategy)
+  state_conditioned_lora.py    # additive LoRA + hypernetwork
+  pseudo_token_head.py         # soft-prompt head for hybrid generation
+scripts/
+  train_thinking.py            # arithmetic + GSM8K training
+  train_gsm8k_hybrid.py        # LoRA thinking + pseudo-token generation
+plan/
+  page_state_handoff.md        # v21 architecture spec
+checkpoints/
+  three_step_best.pt           # 73.6% three-step (warm-start source)
 ```
 
 ---
 
-## Training
-
-**Phase 1**: Freeze transformer, train decompressor + compressor + confidence head (5-10 epochs)
-
-**Phase 2**: Unfreeze everything, end-to-end (10-20 epochs)
-
-**Deep supervision**: Every thinking pass gets direct gradient (predicts answer from current state)
-
-**State scale warmup**: 0.1 → 1.0 over first 5 epochs (let bias strength increase gradually)
-
----
-
-## Why This Beats Previous Approaches
-
-| Approach | Problem | Asymmetric Hourglass |
-|----------|---------|---------------------|
-| Prepended tokens (v18) | Transformer might ignore them | Bias modulates ALL positions |
-| Symmetric (105M / 105M) | Decompression doesn't need that much capacity | 89x more for compression |
-| Learnable alpha | Another hyperparameter | Hypersphere handles magnitude |
-
----
-
-## Milestones
+## Architecture Evolution
 
 ```
-COMPLETE:  Tight bottleneck proof-of-concept (80.4% two-step, 52% three-step)
-COMPLETE:  Llama curriculum (100% / 57% / 22% on L0/L1/L2)
-COMPLETE:  Hypersphere constraint validation
-
-CURRENT:   Build asymmetric hourglass architecture
-           GSM8K thinking accuracy > 35% (single-shot baseline)
-           GSM8K thinking accuracy > 45% (+10 points)
-
-FUTURE:    MATH L1-L5 (capacity extension on competition math)
+v15  Text-based [EXPAND]/[COLLAPSE]    →  not differentiable, abandoned
+v16  SmolLM2-135M latent bottleneck    →  80.4% two-step ✓
+v17  Llama 3.2 1B engine swap          →  richer hidden states
+v18  No text generation while thinking →  forward passes only
+v19  64-float bottleneck + 7L perceiver
+v20  State-conditioned LoRA            →  53% two-step
+v20.1 Side channel + additive LoRA     →  85.4% two-step, 73.6% three-step ✓
+v21  Page-based state accumulation     →  NEXT
 ```
 
----
-
-## Key Insight
-
-The transformer is SANDWICHED, not modified. It processes exactly as Llama was pretrained to process.
-
-The **compressor** has the HARD job: "read everything the transformer thought across all 16 layers and squeeze the most important findings into 64 floats." This is why it gets 120M params.
-
-The **decompressor** has the EASY job: "take 64 floats and project them into something the transformer can use." This is why it only needs 1.3M params.
-
-The asymmetry is intentional: **compression is selection, decompression is projection.**
-
----
-
-## Deadline
-
-**MATH-500 benchmark: April 22, 2026**
-
-Target: thinking accuracy > single-shot on Level 4-5 problems.
-
----
-
-> *Think hard, compress tight, speak from understanding.*
+See `CLAUDE.md` for full project context, known bugs, and training setup.

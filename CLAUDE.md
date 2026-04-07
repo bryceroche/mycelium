@@ -101,15 +101,64 @@ accuracy: 92.4% (up from 70% base). The three changes that broke the 53% ceiling
 
 ## What's Being Built Right Now
 
-### GSM8K Word Problems (IN PROGRESS)
+### Page-Based State Accumulation (NEXT — v21)
 
-The generalization test. Can the thinking loop transfer from procedural arithmetic to natural language word problems?
-- Same architecture, warm-started from three-step 73.6% checkpoint
-- Probe targets from GSM8K `<<expr=value>>` annotations (variable steps mapped to 3 passes)
-- Prompt format: `"Problem: {question}\nAnswer:"`
-- Base model baseline: 4-5%. Target: >10%. Paper territory: >20%.
+Single overwriting state has amnesia: each thinking pass partially erases the
+previous one through hypersphere rotation. Page-based architecture: each pass
+appends a 64-float "page" to a notebook, nothing is overwritten, hypernetwork
+attends over all pages with cross-attention to generate LoRA scales.
 
-**Status:** Training on AWS VM.
+```
+state_pages = []
+for pass_num in range(max_passes):
+    if state_pages:
+        lora_scales, attn = page_hypernetwork(state_pages, strategy)
+    else:
+        lora_scales = zeros(256)
+    apply_lora(lora_scales)
+    hs = llama(problem, output_hidden_states=True).hidden_states[1:]
+    remove_lora()
+    page, strategy = perceiver(hs, pass_num)
+    page = normalize(page) * sqrt(64)  # per-page normalization
+    state_pages.append(page)            # APPEND, not overwrite
+# generation: pages → pseudo_tokens via cross-attention, LoRA OFF
+```
+
+What this fixes:
+- **No amnesia.** Page 1 is preserved exactly through pass N. Hypernet's
+  cross-attention retrieves it directly. No rotation dilution.
+- **Variable-length thinking is free.** Easy: 2 pages (128 floats). Hard: 8
+  pages (512 floats). Attention handles any sequence length.
+- **Frequency bands emerge naturally.** Each pass sees different LoRA-modified
+  hidden states, so each page captures a different level of detail.
+- **Free interpretability.** Attention weights over pages = which thinking
+  cycles mattered for each subsequent decision.
+- **Hybrid path baked in.** Pages → pseudo-tokens for generation (LoRA OFF),
+  pages → LoRA for thinking. Best of both architectures.
+
+Per-pass bottleneck stays at 64 floats. Still tight. Still incremental. But
+nothing is lost. Plan doc: `plan/page_state_handoff.md`.
+
+**Status:** Architecture defined. Implementation next.
+
+### GSM8K Hybrid (LoRA thinking + pseudo-token generation) — INITIAL RESULT
+
+The arithmetic-trained LoRA destroys language generation on GSM8K — it
+collapses into "Answer 1600\nAnswer 1600..." spam, learned from being trained
+to "emit a number, immediately, then stop." Diagnosis confirmed by inspection.
+
+Fix: hybrid path. Thinking passes use LoRA (powerful attention rewiring).
+Generation uses pseudo-tokens prepended to embeddings, LoRA OFF (gentle state
+injection that doesn't override the language head). Trained from scratch on
+GSM8K (not warm-started from arithmetic) on full reasoning traces.
+
+- Real verified baseline (3-shot, no thinking, 500 problems): **6.2%**
+- Hybrid epoch 1: **6.6%** (+0.4 points, beats baseline by ~0.4 σ — needs more)
+- Old LoRA-only path: 5.0% (worse than baseline)
+
+**Status:** Epoch 1 promising, need more epochs and seeds for confidence.
+Checkpoint: `gsm8k_hybrid_best.pt`. Page-based architecture (above) is the
+next major step.
 
 ### Three-Step Arithmetic — PROVEN
 
@@ -227,7 +276,12 @@ Answer extraction: Strip trailing periods ("72." → "72"). Check for \boxed{},
      bugs 3+ times.
 
 Prompt format: Instruct model needs chat template + "Solve step by step" for 42%.
-     Base model with raw text gets 4-5% on GSM8K. We use the BASE model.
+     Base model on GSM8K (verified 500 problems):
+       - zero-shot raw "Problem: ... Answer:": 4-5% (matches old CLAUDE.md note)
+       - 3-shot prompted with "The answer is X" extraction: 6.2% ← REAL BASELINE
+     Inspecting 30 problems gave a misleading 16.7% — first 8 GSM8K problems
+     are the famous easy canonical ones (Natalia clips, Weng babysitting). Bug
+     #37 again. Always verify on N≥500 before trusting a baseline.
      For arithmetic: simple completion format "48 / 2 =" works at 70%.
 
 Gradient imbalance: Perceiver gets 4530x more gradient than LoRA templates.
