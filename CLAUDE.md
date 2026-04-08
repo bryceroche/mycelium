@@ -354,7 +354,30 @@ Training from three-step 73.6% checkpoint.
 
 ### 2. MATH-500 Benchmark (May 22 deadline)
 
-### 3. Boltzmann Exploration for Pass Count
+### 3. Dual LoRA: Forward Computation + Verification Mirror (v22)
+
+Two sets of LoRA templates — `forward` (computation: narrow, sequential
+attention) and `verify` (consistency-checking: broad, relational attention) —
+blended by a learned sigmoid weight per cycle. The hypernetwork outputs
+`(forward_scales, verify_scales, blend)`, and the additive LoRA term is
+`(1-blend) * q_forward + blend * q_verify`. The model gradually rotates from
+building an answer to checking it — the geometric mirror of computation on
+the same hypersphere.
+
+The blend weight traces a natural sigmoid arc across cycles: early passes are
+near-pure forward (parse, compute), later passes near-pure verify (check
+intermediates, confirm relationships). Reflection point ≈ blend 0.5.
+
+This is also where the confidence head finally earns its keep: with pages +
+blend history as input, it can learn "don't stop until verification has
+happened," trained against a correctness signal (no efficiency penalty —
+which broke it last time). Easy problems verify in 2 cycles, hard ones in 8.
+
+Adds ~1.1M params (second template set). Plan doc: `plan/dual_lora_verification.md`.
+
+**Status:** Architecture defined. Phase 2 — after GSM8K baseline with single LoRA.
+
+### 4. Boltzmann Exploration for Pass Count
 
 Currently passes are fixed at 3. Instead of a hard confidence threshold, use
 Boltzmann (softmax) sampling over a learned "continue/stop" distribution to
@@ -364,7 +387,7 @@ problem). This lets the model learn variable-depth reasoning — easy problems
 get 1-2 passes, hard problems get 5+. Avoids the efficiency penalty collapse
 (always stopping at 1) that killed the previous confidence head attempt.
 
-### 4. Attention Residuals Across Passes (5+ Pass Scaling)
+### 5. Attention Residuals Across Passes (5+ Pass Scaling)
 
 At 5+ passes, the state bottleneck may lose information from early passes.
 Add cross-pass attention residuals: each pass's perceiver attends not just to

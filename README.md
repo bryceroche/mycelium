@@ -68,6 +68,24 @@ Hypernetwork cross-attends over ALL pages → LoRA scales
 
 Per-pass bottleneck stays at 64 floats. ~+800K params total. See `plan/page_state_handoff.md`.
 
+**Smoke test (April 2026):** Two-step arithmetic, warm-started from v20.1 — pages hit **86.2%** (vs 85.4% v20.1 baseline). No regression. Architecture preserved.
+
+---
+
+## After GSM8K (v22 — Dual LoRA Verification Mirror)
+
+Two sets of LoRA templates blended by a learned sigmoid weight:
+
+- **Forward templates** — narrow, sequential attention for computation
+- **Verify templates** — broad, relational attention for consistency checking
+- **Blend weight** — smooth sigmoid trajectory, early cycles compute, later cycles verify
+
+```
+LoRA term = (1-blend)·q_forward + blend·q_verify
+```
+
+The model rotates from building an answer to checking it — the geometric mirror of computation on the same hypersphere. Re-enables the confidence head with a correctness signal: easy problems verify in 2 cycles, hard ones in 8. Adds ~1.1M params. See `plan/dual_lora_verification.md`.
+
 ---
 
 ## Repo Layout
@@ -99,7 +117,8 @@ v18  No text generation while thinking →  forward passes only
 v19  64-float bottleneck + 7L perceiver
 v20  State-conditioned LoRA            →  53% two-step
 v20.1 Side channel + additive LoRA     →  85.4% two-step, 73.6% three-step ✓
-v21  Page-based state accumulation     →  NEXT
+v21  Page-based state accumulation     →  86.2% two-step ✓ (smoke test)
+v22  Dual LoRA (forward + verify mirror) →  PLANNED (post-GSM8K)
 ```
 
 See `CLAUDE.md` for full project context, known bugs, and training setup.
