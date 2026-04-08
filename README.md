@@ -70,6 +70,25 @@ Per-pass bottleneck stays at 64 floats. ~+800K params total. See `plan/page_stat
 
 **Smoke test (April 2026):** Two-step arithmetic, warm-started from v20.1 — pages hit **86.2%** (vs 85.4% v20.1 baseline). No regression. Architecture preserved.
 
+**But the pages don't encode anything.** A cosine-similarity diagnostic on the 86.2% checkpoint revealed that last pages are essentially constant across problems (same-answer cos sim 1.0000, diff-answer 0.9998, delta 0.0002; 28/64 dims dead). The entire breathing architecture collapsed into a learned static LoRA — one good configuration applied to every input. The 85.4%/86.2% came from the LoRA→generation path, not from per-problem thinking. That's why every readout head (log-mag, digit) failed on L0 arithmetic: there's nothing in the pages to read.
+
+---
+
+## Current Direction (v21.2 — Contrastive Page Loss)
+
+**Fix: directly attack the fixed-point collapse.** Add a contrastive loss that forces last pages to differ across problems with different answers, keeping the generation loss that makes them correct.
+
+```python
+total_loss = generation_loss + 0.3 * contrastive_page_loss(last_page, gold)
+
+# contrastive: O(batch²) pairwise signal
+#   pull same-answer pages together, push diff-answer pages apart (margin 0.2)
+```
+
+O(batch²) pairwise gradient is orders of magnitude stronger than any tiny linear head on 64 floats. Head-based losses can predict the dataset mean; contrastive cannot be satisfied by constant pages. Expect a temporary accuracy dip as the model unlearns the static-LoRA shortcut, then recovery above 85% with per-problem pages. See `plan/contrastive_page_loss_handoff.md`.
+
+Verify with `scripts/diag_pages.py` — a well-trained model should show same-answer cos sim > 0.9, diff-answer < 0.5, per-dim std > 0.1 across most dims.
+
 ---
 
 ## After GSM8K (v22 — Dual LoRA Verification Mirror)
@@ -117,7 +136,8 @@ v18  No text generation while thinking →  forward passes only
 v19  64-float bottleneck + 7L perceiver
 v20  State-conditioned LoRA            →  53% two-step
 v20.1 Side channel + additive LoRA     →  85.4% two-step, 73.6% three-step ✓
-v21  Page-based state accumulation     →  86.2% two-step ✓ (smoke test)
+v21  Page-based state accumulation     →  86.2% two-step ✓ (but pages are constant)
+v21.2 Contrastive page loss            →  BUILDING — break the fixed-point collapse
 v22  Dual LoRA (forward + verify mirror) →  PLANNED (post-GSM8K)
 ```
 

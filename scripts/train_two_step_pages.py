@@ -83,7 +83,7 @@ class PageThinkingModel(nn.Module):
         d_kv = num_kv_heads * head_dim
 
         self.page_size = 64
-        self.strategy_size = 512
+        self.strategy_size = 64
         self.page_radius = (self.page_size ** 0.5)
 
         self.compressor = Compressor(

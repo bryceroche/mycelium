@@ -100,7 +100,7 @@ class ThinkingModelV3(nn.Module):
         d_kv = num_kv_heads * head_dim
 
         self.state_size = 64
-        self.strategy_size = 512
+        self.strategy_size = 64
         self.state_radius = (self.state_size ** 0.5)
 
         self.compressor = Compressor(

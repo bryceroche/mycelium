@@ -33,7 +33,7 @@ class Compressor(nn.Module):
         num_queries: int = 4,
         num_perceiver_layers: int = 7,
         state_size: int = 64,
-        strategy_size: int = 512,  # NEW: strategy vector size
+        strategy_size: int = 64,  # shrunk from 512 → 64 to close bypass
         max_passes: int = 20,
     ) -> None:
         super().__init__()

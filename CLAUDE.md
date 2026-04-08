@@ -141,7 +141,101 @@ nothing is lost. Plan doc: `plan/page_state_handoff.md`.
 
 **Status:** Architecture defined. Implementation next.
 
-### GSM8K Hybrid (LoRA thinking + pseudo-token generation) — INITIAL RESULT
+### Contrastive Page Loss (v21.2 — CURRENT DIRECTION)
+
+The log-head, digit-head, and stepping-stones curriculum all failed on L0
+arithmetic — territory where token-level loss got us 85.4%. Running a page
+content diagnostic on the 86.2% `two_step_pages_best.pt` checkpoint revealed
+why:
+
+```
+Last-page cosine similarity (200 problems):
+  same answer : 1.0000
+  diff answer : 0.9998
+  delta       : 0.0002   ← pages are constant across problems
+  per-dim std : 0.0127 mean, 28/64 dims have std < 0.01
+```
+
+**The pages don't encode anything.** The whole architecture collapsed to a
+learned static LoRA: the hypernetwork found one good LoRA configuration for
+two-step arithmetic and the compressor outputs approximately the same vector
+for every input. The "thinking loop" is an illusion. That's why no readout
+head can extract answers — there's nothing to extract.
+
+**Fix: contrastive page loss.** Don't ask the pages to predict the answer.
+Ask them to *be different* for different problems, while keeping the
+generation loss that makes them *correct*. The only joint solution is
+per-problem pages that contribute to correct answers.
+
+```python
+def contrastive_page_loss(last_pages, gold_answers):
+    normed = F.normalize(last_pages, dim=-1)
+    sim = normed @ normed.T                              # (B, B)
+    same = (gold_answers.unsqueeze(0) == gold_answers.unsqueeze(1)).float()
+    pos = (1.0 - sim) * same                             # pull together
+    neg = F.relu(sim - 0.2) * (1.0 - same)               # push apart, margin 0.2
+    return pos.sum() / same.sum().clamp(1) + neg.sum() / (1 - same).sum().clamp(1)
+
+total_loss = generation_loss + 0.3 * contrastive_page_loss(last_page, gold)
+```
+
+Why contrastive works where head-based losses failed:
+- Log/digit heads: gradient from a tiny linear on 64 floats. Model predicts mean/mode.
+- Contrastive: O(batch²) signal — every problem pushes every other. BATCH-LEVEL,
+  not per-sample. Directly penalizes the exact pathology (constant pages).
+
+Expect a temporary accuracy dip as the model unlearns the static-LoRA shortcut,
+then recovery above 85% once per-problem LoRA configurations emerge. Verify
+with the cosine-similarity diagnostic after training.
+
+PageToTokens stays as the generation path (LoRA off). All heads (log, digit)
+are deferred until the contrastive loss produces pages with actual per-problem
+variance — at which point they should "just work" on bounded targets.
+
+Plan doc: `plan/contrastive_page_loss_handoff.md`.
+Diagnostic: `scripts/diag_pages.py` (cosine sim between last pages).
+
+**Status:** Building. This is the architectural unblocker.
+
+### Log-Answer Head (v21.1 — DEFERRED pending pages that actually encode)
+
+Every GSM8K generation attempt collapsed to one of two failure modes:
+LoRA-only ran into "emit number immediately" (arithmetic-training spillover),
+and hybrid-short-completion ran into "The answer is X. The answer is X. ..."
+number-spam (training target was 6 tokens, so the model learned to skip
+reasoning entirely). The thinking chain works fine — the readout is broken.
+
+**Pivot: delete the readout problem.** Train the last page to encode the
+answer directly, read it out with two tiny linear heads:
+
+```
+last_page (64 floats)
+    ├──  Linear(64, 1) → log10(|ans| + 1)
+    └──  Linear(64, 1) → P(ans >= 0)  (sigmoid)
+
+answer = sign * (10^log_mag - 1)
+loss   = MSE(log_mag, log10(|gold|+1)) + 0.1 * BCE(sign_logit, gold >= 0)
+```
+
+No generation. No tokenized completions. No teacher forcing. 130 new params.
+
+Why this is different from the previous probe-only attempt (capped at 2.8%):
+the old probe used raw values (loss exploded to 1.26B), trained on
+intermediates not finals, and competed with a generation loss. The log-head
+runs in bounded log space (0→6 for GSM8K), trains only on the final answer,
+and is the *primary* objective with no generation loss to fight.
+
+Two eval metrics: **exact** (rounded equality) and **tol1%** (within 1% of
+gold — directional correctness even when integer rounding fails on large
+answers). If exact lags tol1%, the pages are right and we need output
+precision (mantissa + exponent upgrade, not an architecture change).
+
+PageToTokens kept as fallback for MATH-500 (non-numeric answers).
+Plan doc: `plan/log_answer_head.md`. Script: `scripts/train_gsm8k_answerhead.py`.
+
+**Status:** Built. Warm-starts from `two_step_pages_best.pt` (v21 86.2% two-step).
+
+### GSM8K Hybrid (LoRA thinking + pseudo-token generation) — ARCHIVED
 
 The arithmetic-trained LoRA destroys language generation on GSM8K — it
 collapses into "Answer 1600\nAnswer 1600..." spam, learned from being trained

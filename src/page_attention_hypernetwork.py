@@ -18,7 +18,7 @@ class PageAttentionHypernetwork(nn.Module):
         d_model: int = 2048,
         d_kv: int = 512,
         page_size: int = 64,
-        strategy_size: int = 512,
+        strategy_size: int = 64,
         rank: int = 4,
         num_layers: int = 16,
         num_projections: int = 4,
