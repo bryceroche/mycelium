@@ -74,20 +74,25 @@ Per-pass bottleneck stays at 64 floats. ~+800K params total. See `plan/page_stat
 
 ---
 
-## Current Direction (v21.2 — Contrastive Page Loss)
+## Current Direction (v21.2 — Contrastive Page Loss → 91.6%)
 
-**Fix: directly attack the fixed-point collapse.** Add a contrastive loss that forces last pages to differ across problems with different answers, keeping the generation loss that makes them correct.
+**Fix: directly attack the fixed-point collapse.** Add a loss that forces last pages to differ across problems while keeping the generation loss that makes them correct. First run broke the 85.4%/86.2% plateau on epoch 1:
 
-```python
-total_loss = generation_loss + 0.3 * contrastive_page_loss(last_page, gold)
-
-# contrastive: O(batch²) pairwise signal
-#   pull same-answer pages together, push diff-answer pages apart (margin 0.2)
+```
+Epoch 1: 91.6%  page_cos 0.41  per-dim std 0.0964  dead dims 1/64
 ```
 
-O(batch²) pairwise gradient is orders of magnitude stronger than any tiny linear head on 64 floats. Head-based losses can predict the dataset mean; contrastive cannot be satisfied by constant pages. Expect a temporary accuracy dip as the model unlearns the static-LoRA shortcut, then recovery above 85% with per-problem pages. See `plan/contrastive_page_loss_handoff.md`.
+Per-dim std 7.6× higher, dead dims 28 → 1, pages cluster by answer. The architecture finally uses the pages.
 
-Verify with `scripts/diag_pages.py` — a well-trained model should show same-answer cos sim > 0.9, diff-answer < 0.5, per-dim std > 0.1 across most dims.
+Margin contrastive is fragile (91.6% vs 68.8% across identical configs — one-sided ReLU, knife-edge λ). Stable recipe: **target-cosine loss**, a bidirectional quadratic attractor at cos=0.4 for diff-answer pairs, constant λ=0.05, no schedule.
+
+```python
+total_loss = generation_loss + 0.05 * target_cos_page_loss(last_page, gold)
+# pos: (1 - cos) on same-answer pairs
+# neg: (cos - 0.4)² on diff-answer pairs  ← self-stabilizing, no knife edge
+```
+
+See `plan/fixed_point_collapse_findings.md`. Verify with `scripts/diag_pages.py`.
 
 ---
 

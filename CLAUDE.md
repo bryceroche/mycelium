@@ -141,12 +141,10 @@ nothing is lost. Plan doc: `plan/page_state_handoff.md`.
 
 **Status:** Architecture defined. Implementation next.
 
-### Contrastive Page Loss (v21.2 — CURRENT DIRECTION)
+### Contrastive Page Loss (v21.2 — BREAKTHROUGH → 91.6%)
 
-The log-head, digit-head, and stepping-stones curriculum all failed on L0
-arithmetic — territory where token-level loss got us 85.4%. Running a page
-content diagnostic on the 86.2% `two_step_pages_best.pt` checkpoint revealed
-why:
+Running a page-content diagnostic on the 86.2% `two_step_pages_best.pt`
+checkpoint revealed the pages were constant:
 
 ```
 Last-page cosine similarity (200 problems):
@@ -156,46 +154,53 @@ Last-page cosine similarity (200 problems):
   per-dim std : 0.0127 mean, 28/64 dims have std < 0.01
 ```
 
-**The pages don't encode anything.** The whole architecture collapsed to a
-learned static LoRA: the hypernetwork found one good LoRA configuration for
-two-step arithmetic and the compressor outputs approximately the same vector
-for every input. The "thinking loop" is an illusion. That's why no readout
-head can extract answers — there's nothing to extract.
+The whole architecture had collapsed to a learned static LoRA — one good
+configuration applied to every input. The "thinking loop" was an illusion.
 
-**Fix: contrastive page loss.** Don't ask the pages to predict the answer.
-Ask them to *be different* for different problems, while keeping the
-generation loss that makes them *correct*. The only joint solution is
-per-problem pages that contribute to correct answers.
+**Fix: contrastive page loss.** Force pages to *differ* across problems while
+keeping the generation loss that makes them *correct*. First run (margin
+contrastive, λ=0.3) hit a new all-time best:
 
-```python
-def contrastive_page_loss(last_pages, gold_answers):
-    normed = F.normalize(last_pages, dim=-1)
-    sim = normed @ normed.T                              # (B, B)
-    same = (gold_answers.unsqueeze(0) == gold_answers.unsqueeze(1)).float()
-    pos = (1.0 - sim) * same                             # pull together
-    neg = F.relu(sim - 0.2) * (1.0 - same)               # push apart, margin 0.2
-    return pos.sum() / same.sum().clamp(1) + neg.sum() / (1 - same).sum().clamp(1)
-
-total_loss = generation_loss + 0.3 * contrastive_page_loss(last_page, gold)
+```
+Epoch 1: 91.6%  page_cos 0.41  per-dim std 0.0964  dead dims 1/64
+         within-answer cos = 1.0000  (answer-keyed equivalence classes)
 ```
 
-Why contrastive works where head-based losses failed:
-- Log/digit heads: gradient from a tiny linear on 64 floats. Model predicts mean/mode.
-- Contrastive: O(batch²) signal — every problem pushes every other. BATCH-LEVEL,
-  not per-sample. Directly penalizes the exact pathology (constant pages).
+Per-dim std **7.6× higher**, dead dims **28 → 1**, and pages cluster by
+answer (same gold → identical page). The architecture works as designed —
+we just never gave it a reason to use the pages.
 
-Expect a temporary accuracy dip as the model unlearns the static-LoRA shortcut,
-then recovery above 85% once per-problem LoRA configurations emerge. Verify
-with the cosine-similarity diagnostic after training.
+**But margin contrastive is a knife edge.** Identical config gave 91.6% on
+one run and 68.8% on the next (batch-order dependent). λ=0.3 overshoots by
+E5 (page_cos → 0.03, accuracy collapses to 57–72%); λ=0.05 undershoots.
+One-sided ReLU: nothing stops diff pairs going fully orthogonal.
 
-PageToTokens stays as the generation path (LoRA off). All heads (log, digit)
-are deferred until the contrastive loss produces pages with actual per-problem
-variance — at which point they should "just work" on bounded targets.
+**Stable recipe: target-cosine loss.** Bidirectional, per-pair quadratic
+attractor at cos=0.4 for different-answer pairs, plus the same-answer pull:
 
-Plan doc: `plan/contrastive_page_loss_handoff.md`.
-Diagnostic: `scripts/diag_pages.py` (cosine sim between last pages).
+```python
+def target_cos_page_loss(last_pages, gold_answers, target_cos=0.4):
+    normed = F.normalize(last_pages.float(), dim=-1)
+    sim = normed @ normed.T
+    same = (gold_answers[:, None] == gold_answers[None, :]).float()
+    same = same * (1 - torch.eye(len(same), device=sim.device))
+    diff = (1 - same) * (1 - torch.eye(len(same), device=sim.device))
+    pos = ((1 - sim) * same).sum() / same.sum().clamp(1)
+    neg = (((sim - target_cos) ** 2) * diff).sum() / diff.sum().clamp(1)
+    return pos + neg
 
-**Status:** Building. This is the architectural unblocker.
+total_loss = generation_loss + 0.05 * target_cos_page_loss(last_page, gold)
+```
+
+Fixed-point attractor in both directions: pairs above 0.4 get pushed down,
+below 0.4 get pulled up. Self-stabilizing, no schedule, constant λ=0.05.
+This is the canonical addition for all future training runs.
+
+Findings doc: `plan/fixed_point_collapse_findings.md`.
+Loss: `src/contrastive_page_loss.py`. Script: `scripts/train_two_step_contrastive.py`.
+Diagnostic: `scripts/diag_pages.py`.
+
+**Status:** 91.6% proven with margin (fragile). Target-cos recipe verifying now.
 
 ### Log-Answer Head (v21.1 — DEFERRED pending pages that actually encode)
 
