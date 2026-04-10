@@ -89,6 +89,8 @@ Three-step arithmetic       0%          83.4% ← BEST     Llama 1B, page-based,
 Three-step arithmetic       0%          73.6%             Llama 1B, side channel, additive LoRA, warm start from 85.4%
   (robust eval)                         ±0.0% (5 seeds)  (90.1% effective per-step, cube root)
 L2 word ops                 0.6%        53.4%             CoT targets + pass-conditioned hypernetwork
+L3 named qty (dual LoRA)    18.8%       96.0% ← BEST     Dual LoRA verification (+7.4 pts over single)
+L3 named qty (single LoRA) 18.8%       88.6%             CoT targets + warm start from L2
 L2 word ops (terse targets) 0.6%        12.2%             Terse "143" targets → number-spam (format bug)
 Three-step w/ pass-cond     0%          55.4%             Pass-conditioned hypernetwork (pages differentiate but accuracy drops)
 Three-step arithmetic       0%          52%               SmolLM2-135M, 64-float, pseudo-tokens
@@ -552,7 +554,11 @@ q = layer.q_proj(hidden) + q_lora
 Adds ~1.1M params (second template set). Plan docs: `plan/dual_lora_verification.md`,
 `plan/morning_handoff.md`.
 
-**Status:** Architecture defined. Implementation after L3 baseline.
+**Status:** PROVEN. 96.0% on L3 (vs 88.6% single LoRA, +7.4 pts).
+Blend trajectory: 0.15→0.30 over 8 epochs — model discovers verification helps.
+Verification is a generalization tool (helps most at epoch 1, less when memorized).
+Confidence head needs per-pass correctness training for dynamic stopping.
+Checkpoint: `dual_lora_L3_best.pt` (epoch 5, 96.0%).
 
 ### 3. MATH-500 Benchmark (May 22 deadline)
 
@@ -593,8 +599,9 @@ v21:     Page-based state accumulation → 86.2% two-step ✓ (but pages constan
 v21.2:   Target-cosine contrastive → 94.8% two-step, 83.4% three-step ✓
 v21.3:   Pass-conditioned hypernetwork → pages differentiate ✓ (p2v3=0.30)
 v21.4:   Stepping stones L2 word ops → 53.4% ✓ (CoT targets breakthrough)
-v21.5:   Stepping stones L3 named qty → NEXT
-v22:     Dual LoRA (forward + verify) → NEXT (after L3 baseline)
+v21.5:   Stepping stones L3 named qty → 88.6% single LoRA ✓
+v22:     Dual LoRA (forward + verify) → 96.0% L3 ✓ (+7.4 pts, verification proven)
+v22.1:   L4 two-step word problems → NEXT
 ```
 
 Key insight at each pivot:

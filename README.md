@@ -14,11 +14,14 @@ Differentiable recurrent reasoning for small language models. A frozen base LLM 
 | Two-step arithmetic | 0% | **94.8%** | Page-based + target-cos contrastive |
 | Three-step arithmetic | 0% | **83.4%** | Page-based + contrastive, warm-started |
 | L2 word ops | 0.6% | **53.4%** | CoT targets + pass-conditioned hypernetwork |
+| L3 named qty (single LoRA) | 18.8% | **88.6%** | CoT + warm start from L2 |
+| L3 named qty (dual LoRA) | 18.8% | **96.0%** | Dual LoRA verification (+7.4 pts over single) |
 | GSM8K (hybrid, epoch 1) | 6.2% | 6.6% | Initial result, training in progress |
 
 Two-step 94.8% → 97.4% effective per-step (up from 70% base).
 Three-step 83.4% → 93.8% effective per-step (cube root).
 L2 word ops: 53.4% from 0.6% baseline — CoT targets were the breakthrough (12.2% with terse targets).
+L3 dual LoRA: 96.0% vs 88.6% single LoRA — verification templates catch errors forward-only misses.
 
 ---
 
@@ -100,19 +103,23 @@ See `plan/morning_handoff.md` for implementation order.
 
 ---
 
-## Priority 2: Dual LoRA Verification (v22)
+## Dual LoRA Verification (v22 — PROVEN)
 
 Two sets of LoRA templates blended by a learned sigmoid weight per pass:
 
 - **Forward templates** — narrow, sequential attention for computation
 - **Verify templates** — broad, relational attention for consistency checking
-- **Blend weight** — learned sigmoid, early passes compute, later passes verify
+- **Blend weight** — learned sigmoid, starts ~0.15, climbs to ~0.30 over training
 
 ```
 LoRA term = (1-blend)·q_forward + blend·q_verify
 ```
 
-The model rotates from building an answer to checking it. Even on easy problems, verification catches the ~2.6% per-step errors. The confidence head reads pages AND blend history to learn: "don't stop until verification has happened." Adds ~1.1M params. See `plan/dual_lora_verification.md`, `plan/morning_handoff.md`.
+**Result: 96.0% on L3 (vs 88.6% single LoRA) — +7.4 points.** Verification is a generalization tool: it helps most on unseen problems, less needed on memorized ones. The blend trajectory shows the model discovering verification's value over training.
+
+Key finding: the confidence head needs per-pass correctness training (not always target=1.0). Currently broken for dynamic stopping but the fixed-pass dual LoRA result is proven.
+
+See `plan/dual_lora_verification.md`, `plan/morning_handoff.md`.
 
 ---
 
@@ -149,8 +156,9 @@ v21  Page-based state accumulation     →  86.2% two-step ✓ (but pages are co
 v21.2 Target-cosine contrastive        →  94.8% two-step, 83.4% three-step ✓ (but pages copy)
 v21.3 Pass-conditioned hypernetwork     →  pages differentiate ✓ (p2v3=0.30)
 v21.4 Stepping stones L2               →  53.4% word ops ✓ (CoT targets)
-v21.5 Stepping stones L3               →  NEXT — named quantities + dual LoRA
-v22  Dual LoRA (forward + verify mirror) →  NEXT — blended computation/verification
+v21.5 Stepping stones L3               →  88.6% single LoRA ✓
+v22  Dual LoRA (forward + verify)       →  96.0% L3 ✓ (+7.4 pts over single)
+v22.1 L4 two-step word problems        →  NEXT
 ```
 
 See `CLAUDE.md` for full project context, known bugs, and training setup.
