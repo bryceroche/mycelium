@@ -1,10 +1,15 @@
 """
 PageAttentionHypernetwork: cross-attention over a list of 64-float "pages" + a
-512-float strategy → 256 LoRA scales, packaged in the same lora_mods dict
-shape that AdditiveLoRAManager expects.
+512-float strategy + pass number → 256 LoRA scales, packaged in the same
+lora_mods dict shape that AdditiveLoRAManager expects.
 
 Replaces StateConditionedLoRA's flat Linear(576→256) hypernet. Templates
 (A/B) live here so this module is a drop-in for v21.
+
+Pass conditioning (v21.3): the hypernetwork receives a pass_num embedding so
+that different passes produce different LoRA configs even when pages are
+identical. This breaks the circular copy loop:
+  same pages → same LoRA → same hidden states → same pages
 """
 
 import torch
@@ -25,6 +30,8 @@ class PageAttentionHypernetwork(nn.Module):
         attn_dim: int = 256,
         num_query_heads: int = 4,
         num_attn_heads: int = 4,
+        max_passes: int = 10,
+        pass_embed_dim: int = 256,
     ):
         super().__init__()
         self.d_model = d_model
@@ -58,9 +65,13 @@ class PageAttentionHypernetwork(nn.Module):
         )
         self.page_norm = nn.LayerNorm(attn_dim)
 
-        # Combine page summary + strategy → scales
+        # Pass embedding — breaks the circular copy loop
+        self.pass_embed = nn.Embedding(max_passes, pass_embed_dim)
+        self.pass_embed_dim = pass_embed_dim
+
+        # Combine page summary + strategy + pass embedding → scales
         num_scales = num_layers * num_projections * rank
-        combined_dim = num_query_heads * attn_dim + strategy_size
+        combined_dim = num_query_heads * attn_dim + strategy_size + pass_embed_dim
         self.combine = nn.Sequential(
             nn.Linear(combined_dim, 512),
             nn.GELU(),
@@ -72,13 +83,20 @@ class PageAttentionHypernetwork(nn.Module):
         self,
         state_pages: List[torch.Tensor],
         strategy: torch.Tensor,
+        pass_num: int = 0,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
         """Returns (all_scales: (B, num_scales), attn_weights or None)."""
         batch_size = strategy.size(0)
+        device = strategy.device
+
+        # Pass embedding — same for entire batch
+        pass_t = torch.tensor([pass_num], device=device)
+        pass_emb = self.pass_embed(pass_t).expand(batch_size, -1)  # (B, pass_embed_dim)
+
         if len(state_pages) == 0:
             num_scales = self.num_layers * self.num_projections * self.rank
             return (
-                torch.zeros(batch_size, num_scales, device=strategy.device, dtype=strategy.dtype),
+                torch.zeros(batch_size, num_scales, device=device, dtype=strategy.dtype),
                 None,
             )
         pages = torch.stack(state_pages, dim=1)            # (B, P, page_size)
@@ -89,7 +107,7 @@ class PageAttentionHypernetwork(nn.Module):
         )                                                  # (B, Q, attn_dim)
         attended = self.page_norm(attended)
         page_summary = attended.flatten(start_dim=1)       # (B, Q*attn_dim)
-        combined = torch.cat([page_summary, strategy], dim=-1)
+        combined = torch.cat([page_summary, strategy, pass_emb], dim=-1)
         scales = self.combine(combined)                    # (B, num_scales)
         return scales, attn_weights
 
@@ -97,8 +115,9 @@ class PageAttentionHypernetwork(nn.Module):
         self,
         state_pages: List[torch.Tensor],
         strategy: torch.Tensor,
+        pass_num: int = 0,
     ) -> Dict[int, Dict[str, Dict[str, torch.Tensor]]]:
-        all_scales, _ = self.compute_scales(state_pages, strategy)
+        all_scales, _ = self.compute_scales(state_pages, strategy, pass_num)
         batch_size = all_scales.size(0)
         all_scales = all_scales.reshape(
             batch_size, self.num_layers, self.num_projections, self.rank,

@@ -80,12 +80,17 @@ Mycelium is a multi-month research project building differentiable recurrent rea
 Task                        Baseline    With Breathing    Architecture
 ─────────────────────────────────────────────────────────────────────
 Single-step arithmetic      70%         100%              Llama 1B, 64-float, LoRA
-Two-step arithmetic         0%          85.4%  ← BEST    Llama 1B, side channel, additive LoRA, answer loss
+Two-step arithmetic         0%          94.8%  ← BEST    Llama 1B, page-based, target-cos contrastive
+Two-step arithmetic         0%          85.4%             Llama 1B, side channel, additive LoRA, answer loss
   (robust eval)                         ±0.0% (5 seeds)  (92.4% effective per-step)
 Two-step arithmetic         0%          53%               Llama 1B, 64-float, LoRA (probe only, no answer loss)
   (theoretical ceiling)                 (49%)             (53% > 49% → LoRA improves per-step)
-Three-step arithmetic       0%          73.6% ← BEST     Llama 1B, side channel, additive LoRA, warm start from 85.4%
+Three-step arithmetic       0%          83.4% ← BEST     Llama 1B, page-based, target-cos contrastive (1 effective pass)
+Three-step arithmetic       0%          73.6%             Llama 1B, side channel, additive LoRA, warm start from 85.4%
   (robust eval)                         ±0.0% (5 seeds)  (90.1% effective per-step, cube root)
+L2 word ops                 0.6%        53.4%             CoT targets + pass-conditioned hypernetwork
+L2 word ops (terse targets) 0.6%        12.2%             Terse "143" targets → number-spam (format bug)
+Three-step w/ pass-cond     0%          55.4%             Pass-conditioned hypernetwork (pages differentiate but accuracy drops)
 Three-step arithmetic       0%          52%               SmolLM2-135M, 64-float, pseudo-tokens
 Two-step arithmetic         0%          83%               Llama 1B, 512-float, pseudo-tokens (earlier arch)
 Two-step arithmetic         0%          80.4%             SmolLM2-135M, 32-float, pseudo-tokens
@@ -96,6 +101,11 @@ accuracy: 92.4% (up from 70% base). The three changes that broke the 53% ceiling
 1. Answer loss (was missing entirely — probe alone capped at 2.8%)
 2. Side channel (576 floats feeding hypernetwork instead of 64)
 3. Additive LoRA (clean, fast, fully differentiable, post-LoRA hidden states)
+
+L2 word ops breakthrough: CoT targets matching the base model's natural style
+("half of 48 = 24. 24 plus 48 = 72. The answer is 72.") jumped accuracy from
+12.2% (terse targets) to 53.4%. The base model already shows chain-of-thought
+capability in its completions — training targets must match this natural style.
 
 ---
 
@@ -141,7 +151,40 @@ nothing is lost. Plan doc: `plan/page_state_handoff.md`.
 
 **Status:** Architecture defined. Implementation next.
 
-### Contrastive Page Loss (v21.2 — BREAKTHROUGH → 91.6%)
+### Pass-Conditioned Hypernetwork (v21.3 — PROVEN)
+
+The page diagnostic on the 83.4% three-step checkpoint revealed pages 2-3 were
+identical (cosine 1.0000). A circular copy loop: same pages → same LoRA → same
+hidden states → same perceiver output → same pages. No page-level penalty could
+break it (tried anti-copying at λ=1.0 — pages stayed at cos 1.0000).
+
+**Fix: inject pass_num into the hypernetwork.** The hypernetwork receives a
+learned pass embedding so different passes produce different LoRA even with
+identical pages. Breaks the symmetry at the INPUT (LoRA generation), not the
+OUTPUT (pages).
+
+```python
+# In PageAttentionHypernetwork.__init__:
+self.pass_embed = nn.Embedding(max_passes, 256)
+
+# In compute_scales:
+pass_emb = self.pass_embed(pass_num)
+combined = torch.cat([page_summary, strategy, pass_emb], dim=-1)
+scales = self.combine(combined)
+```
+
+Result: p2v3 dropped from 1.0000 → 0.30 on epoch 1. Pages are genuinely
+different. The architectural fix worked where loss-based penalties could not.
+
+However, for three-step arithmetic the model gets 83.4% with one effective pass
+(static pages). Forcing three different passes makes each weaker (55.4% peak).
+Multi-pass thinking is the right architecture for HARDER problems (word problems)
+where different passes genuinely need different cognitive operations (parse vs
+compute vs verify). Three-step arithmetic doesn't need it.
+
+**Status:** Proven (breaks page copying). Carry forward to stepping stones.
+
+### Contrastive Page Loss (v21.2 → v21.3)
 
 Running a page-content diagnostic on the 86.2% `two_step_pages_best.pt`
 checkpoint revealed the pages were constant:
@@ -157,50 +200,58 @@ Last-page cosine similarity (200 problems):
 The whole architecture had collapsed to a learned static LoRA — one good
 configuration applied to every input. The "thinking loop" was an illusion.
 
-**Fix: contrastive page loss.** Force pages to *differ* across problems while
-keeping the generation loss that makes them *correct*. First run (margin
-contrastive, λ=0.3) hit a new all-time best:
+**Two proven failure modes:**
 
-```
-Epoch 1: 91.6%  page_cos 0.41  per-dim std 0.0964  dead dims 1/64
-         within-answer cos = 1.0000  (answer-keyed equivalence classes)
-```
+1. **Fixed-point collapse** — all pages constant across all problems.
+   Discovered at 85.4% checkpoint (page cosine 0.9998 across problems).
 
-Per-dim std **7.6× higher**, dead dims **28 → 1**, and pages cluster by
-answer (same gold → identical page). The architecture works as designed —
-we just never gave it a reason to use the pages.
+2. **Page copying** — page 1 constant, pages 2-3 identical within each
+   problem. Discovered at 83.4% three-step checkpoint (page 2-3 cos 1.0000).
+   Pages 2&3 learned identical LoRA configs — three passes collapsed to one.
 
-**But margin contrastive is a knife edge.** Identical config gave 91.6% on
-one run and 68.8% on the next (batch-order dependent). λ=0.3 overshoots by
-E5 (page_cos → 0.03, accuracy collapses to 57–72%); λ=0.05 undershoots.
-One-sided ReLU: nothing stops diff pairs going fully orthogonal.
+**Evolution of contrastive losses:**
 
-**Stable recipe: target-cosine loss.** Bidirectional, per-pair quadratic
-attractor at cos=0.4 for different-answer pairs, plus the same-answer pull:
+- **v21.2a Margin contrastive** (last page only): 91.6% two-step but fragile
+  (68.8% on same config, batch-order dependent). One-sided ReLU, knife-edge λ.
+
+- **v21.2b Target-cosine** (last page, then all pages): Stable but requires
+  choosing target_cos (0.4 → overshooting, 0.7 → better). Best: 83.4% three-step
+  with target=0.7 on last page. Per-page variant with within_target=0.3 failed:
+  81.6→71.0% (within-term too weak at λ=0.05 against answer loss gradient).
+
+- **v21.3 SupCon + anti-copying** (current): Two principled constraints, no
+  arbitrary targets. Supervised contrastive (SupCon) on ALL pages — temperature
+  controls geometry, not a target cosine. Soft quadratic anti-copying penalty
+  above cos=0.7 between pages within a problem — free below 0.7, the model
+  discovers its own within-problem geometry.
 
 ```python
-def target_cos_page_loss(last_pages, gold_answers, target_cos=0.4):
-    normed = F.normalize(last_pages.float(), dim=-1)
-    sim = normed @ normed.T
-    same = (gold_answers[:, None] == gold_answers[None, :]).float()
-    same = same * (1 - torch.eye(len(same), device=sim.device))
-    diff = (1 - same) * (1 - torch.eye(len(same), device=sim.device))
-    pos = ((1 - sim) * same).sum() / same.sum().clamp(1)
-    neg = (((sim - target_cos) ** 2) * diff).sum() / diff.sum().clamp(1)
-    return pos + neg
+def breathing_contrastive_loss(all_pages, gold_answers, temperature=0.1):
+    loss = 0.0
+    # Term 1: per-page SupCon (same answer → together, diff → apart)
+    for page in all_pages:
+        loss += supervised_contrastive(page, gold_answers, temperature)
+    # Term 2: anti-copying (free below 0.7, quadratic above)
+    for i, j in pairs:
+        within_cos = cos(page_i, page_j)
+        loss += relu(within_cos - 0.7)² .mean()
+    return loss / len(all_pages)
 
-total_loss = generation_loss + 0.05 * target_cos_page_loss(last_page, gold)
+total_loss = generation_loss + 0.05 * breathing_contrastive_loss(all_pages, gold)
 ```
 
-Fixed-point attractor in both directions: pairs above 0.4 get pushed down,
-below 0.4 get pulled up. Self-stabilizing, no schedule, constant λ=0.05.
-This is the canonical addition for all future training runs.
+Key design choices:
+- **SupCon over target-cosine**: no target to choose, geometry emerges from data
+- **Anti-copying threshold 0.7**: matches empirical cross-problem sweet spot,
+  ungameable, model is free below 0.7 to discover its own page geometry
+- **λ=0.05 constant**: SupCon is self-regulating, no schedule needed
+- **Temperature=0.1**: standard SupCon, controls cluster tightness
 
 Findings doc: `plan/fixed_point_collapse_findings.md`.
-Loss: `src/contrastive_page_loss.py`. Script: `scripts/train_two_step_contrastive.py`.
-Diagnostic: `scripts/diag_pages.py`.
+Loss: `src/contrastive_page_loss.py`. Script: `scripts/train_three_step_contrastive.py`.
+Diagnostics: `scripts/diag_pages.py`, `scripts/diag_three_pages.py`.
 
-**Status:** 91.6% proven with margin (fragile). Target-cos recipe verifying now.
+**Status:** SupCon + anti-copying recipe ready. Training next.
 
 ### Log-Answer Head (v21.1 — DEFERRED pending pages that actually encode)
 
@@ -412,6 +463,12 @@ State conditioning: Adding current_state as input to perceiver queries HURT
 Bias injection: Adding state as bias to embeddings CORRUPTED pretrained 
      representations. Model mode-collapsed (output "30" for everything). 
      Don't add bias to embeddings — use pseudo-tokens or LoRA only.
+
+CoT targets: Always train on chain-of-thought targets that match the base
+     model's natural completion style. Terse targets ("143") cause number-spam
+     from arithmetic training spillover. CoT targets ("half of 48 = 24. 24
+     plus 48 = 72. The answer is 72.") jump L2 from 12.2% to 53.4%.
+     Check base model generations FIRST to see what style it naturally produces.
 ```
 
 ---
@@ -445,36 +502,59 @@ tail -f logs/train_*.log
 
 ## What to Do Next (Priority Order)
 
-### 1. GSM8K Word Problems (IN PROGRESS)
+### 1. L3 Named Quantities (NEXT)
 
-Generalization test: arithmetic → natural language word problems.
-Base model baseline: 4-5%. Target: >10%. Paper territory: >20%.
-Training from three-step 73.6% checkpoint.
+L2 word ops achieved 53.4% with CoT targets. Next level:
 
-### 2. MATH-500 Benchmark (May 22 deadline)
+```
+L2: "half of 48 plus 48"                   → 53.4% ✓ (CoT targets)
+L3: "Jamie had 56 cookies and gave 2 away" → NEXT (named quantities)
+L4: 2-step word problems, small numbers     (easy GSM8K style, 4-6 passes)
+L5: Full GSM8K                             (complex multi-step, 6-12 passes)
+```
 
-### 3. Dual LoRA: Forward Computation + Verification Mirror (v22)
+Recipe (proven on L2): 20K problems, CoT targets matching base model style,
+target-cos contrastive (0.7), pass-conditioned hypernetwork, patience=2,
+warm-start from L2 CoT best checkpoint (53.4%).
+
+If L3 fails (<20%): frozen Llama may not parse narrative context ("Jamie had
+56 cookies" is harder than "56 minus 2"). Consider unfreezing at 1e-7.
+
+Plan docs: `plan/stepping_stones_handoff.md`, `plan/morning_handoff.md`.
+
+### 2. Dual LoRA: Forward Computation + Verification Mirror (v22)
 
 Two sets of LoRA templates — `forward` (computation: narrow, sequential
 attention) and `verify` (consistency-checking: broad, relational attention) —
-blended by a learned sigmoid weight per cycle. The hypernetwork outputs
+blended by a learned sigmoid weight per pass. The hypernetwork outputs
 `(forward_scales, verify_scales, blend)`, and the additive LoRA term is
 `(1-blend) * q_forward + blend * q_verify`. The model gradually rotates from
-building an answer to checking it — the geometric mirror of computation on
-the same hypersphere.
+building an answer to checking it.
 
-The blend weight traces a natural sigmoid arc across cycles: early passes are
-near-pure forward (parse, compute), later passes near-pure verify (check
-intermediates, confirm relationships). Reflection point ≈ blend 0.5.
+Even on easy problems, verification catches the ~2.6% per-step errors:
+```
+Without verification: 97.4% per-step
+With verification:    potentially 99%+ per-step (errors caught before output)
+```
 
-This is also where the confidence head finally earns its keep: with pages +
-blend history as input, it can learn "don't stop until verification has
-happened," trained against a correctness signal (no efficiency penalty —
-which broke it last time). Easy problems verify in 2 cycles, hard ones in 8.
+The confidence head reads pages + blend history, trained with correctness
+signal (no efficiency penalty). Learns "don't stop until verification has
+happened (blend > 0.5)." Easy problems: 2 passes. Hard: 8.
 
-Adds ~1.1M params (second template set). Plan doc: `plan/dual_lora_verification.md`.
+```python
+# Blended application (additive, no hooks):
+q_forward = (hidden @ A_forward.T) * forward_scales @ B_forward
+q_verify = (hidden @ A_verify.T) * verify_scales @ B_verify
+q_lora = (1 - blend) * q_forward + blend * q_verify
+q = layer.q_proj(hidden) + q_lora
+```
 
-**Status:** Architecture defined. Phase 2 — after GSM8K baseline with single LoRA.
+Adds ~1.1M params (second template set). Plan docs: `plan/dual_lora_verification.md`,
+`plan/morning_handoff.md`.
+
+**Status:** Architecture defined. Implementation after L3 baseline.
+
+### 3. MATH-500 Benchmark (May 22 deadline)
 
 ### 4. Boltzmann Exploration for Pass Count
 
@@ -508,7 +588,13 @@ v18:     Integrated thinking (no text generation during thinking passes)
 v19:     64-float tight bottleneck + 7-layer perceiver + all-layer reading
 v20:     State-conditioned LoRA (state rewires attention, not just pseudo-tokens) → 53% ✓
 v20.1:   Side channel (512-float strategy) + additive LoRA + answer loss → 85.4% ✓
-v20.2:   Three-step arithmetic (warm start from v20.1) → TRAINING NOW
+v20.2:   Three-step arithmetic (warm start from v20.1) → 73.6% three-step ✓
+v21:     Page-based state accumulation → 86.2% two-step ✓ (but pages constant)
+v21.2:   Target-cosine contrastive → 94.8% two-step, 83.4% three-step ✓
+v21.3:   Pass-conditioned hypernetwork → pages differentiate ✓ (p2v3=0.30)
+v21.4:   Stepping stones L2 word ops → 53.4% ✓ (CoT targets breakthrough)
+v21.5:   Stepping stones L3 named qty → NEXT
+v22:     Dual LoRA (forward + verify) → NEXT (after L3 baseline)
 ```
 
 Key insight at each pivot:
@@ -518,6 +604,7 @@ Key insight at each pivot:
 - v18→v19: Model must be forced to think incrementally. Tight bottleneck.
 - v19→v20: Pseudo-tokens get ignored (4/104 = 3.8%). LoRA rewires attention — can't be ignored.
 - v20→v20.1: 64 floats starved the hypernetwork. Side channel gives 9x more info.
+- v21.3→v21.4: Terse targets cause number-spam. CoT targets match base model's natural style.
 
 ---
 
@@ -536,3 +623,9 @@ Key insight at each pivot:
 | Alternating EXPAND/COLLAPSE breaths | 3% on GSM8K | SmolLM2 couldn't parse word problems |
 | Probe-only training (no answer loss) | 2.8% (vs 85.4%) | Probe teaches WHAT to encode, not HOW to generate |
 | Learned initial state (nn.Parameter) | 59.6% (vs 85.4%) | Overfits to one trajectory; random init = implicit augmentation |
+| Target-cos contrastive (last page only) | 83.4% three-step | Pages 2&3 identical (cos=1.0) — last-page-only contrastive doesn't prevent page copying |
+| Per-page target-cos with within_target=0.3 | 81.6→71.0% | Within-term too weak at λ=0.05; answer loss gradient overwhelms it, accuracy degrades |
+| Margin contrastive (λ=0.3) | 91.6% or 68.8% | One-sided ReLU, batch-order dependent, knife-edge λ — not reproducible |
+| SupCon (temperature 0.1-0.3) | 49-67% | Overshoots — pushes page_cos to 0.02-0.09, way past 0.7 sweet spot |
+| Forced multi-pass on 3-step arith | 55.4% (vs 83.4%) | Problem doesn't need 3 passes. One effective pass suffices. Architecture correct, problem too easy. |
+| Terse answer targets on L2 word ops | 12.2% (vs 53.4% CoT) | Model learns number-spam from arithmetic training spillover. CoT targets matching base model's natural completion style fix it. |

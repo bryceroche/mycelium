@@ -67,7 +67,7 @@ def forward_train_contrastive(model, problems, answers, finals_t, num_passes=2):
 
     # Contrastive loss on the last page.
     last_page = state_pages[-1].to(torch.float32)
-    c_loss = target_cos_page_loss(last_page, finals_t, target_cos=0.4)
+    c_loss = target_cos_page_loss(last_page, finals_t, target_cos=0.7)
 
     # Diagnostic: mean off-diagonal cosine similarity (lower is better).
     with torch.no_grad():

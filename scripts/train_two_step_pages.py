@@ -117,7 +117,7 @@ class PageThinkingModel(nn.Module):
             )
             hidden_states = list(outputs.hidden_states[1:])
         else:
-            lora_mods = self.hypernet(state_pages, strategy)
+            lora_mods = self.hypernet(state_pages, strategy, pass_num=pass_num)
             manager = AdditiveLoRAManager(self.transformer)
             manager.apply(lora_mods)
             try:
@@ -134,8 +134,8 @@ class PageThinkingModel(nn.Module):
         page = F.normalize(page_delta, dim=-1) * self.page_radius
         return page, new_strategy
 
-    def compute_answer_loss(self, state_pages, strategy, prompt_ids, answer_ids):
-        lora_mods = self.hypernet(state_pages, strategy)
+    def compute_answer_loss(self, state_pages, strategy, prompt_ids, answer_ids, pass_num=0):
+        lora_mods = self.hypernet(state_pages, strategy, pass_num=pass_num)
         manager = AdditiveLoRAManager(self.transformer)
         manager.apply(lora_mods)
         try:
@@ -222,7 +222,7 @@ def evaluate(model, eval_dataset, device, num_passes=2):
                 )
                 state_pages.append(page)
 
-            lora_mods = model.hypernet(state_pages, strategy)
+            lora_mods = model.hypernet(state_pages, strategy, pass_num=num_passes)
             manager = AdditiveLoRAManager(model.transformer)
             manager.apply(lora_mods)
             try:

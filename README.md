@@ -11,12 +11,14 @@ Differentiable recurrent reasoning for small language models. A frozen base LLM 
 | Task | Base | With Breathing | Notes |
 |---|---|---|---|
 | Single-step arithmetic | 70% | **100%** | Llama 1B, 64-float state |
-| Two-step arithmetic | 0% | **85.4% ± 0.0%** | 5 seeds, side channel + additive LoRA |
-| Three-step arithmetic | 0% | **73.6% ± 0.0%** | 5 seeds, warm-started from two-step |
+| Two-step arithmetic | 0% | **94.8%** | Page-based + target-cos contrastive |
+| Three-step arithmetic | 0% | **83.4%** | Page-based + contrastive, warm-started |
+| L2 word ops | 0.6% | **53.4%** | CoT targets + pass-conditioned hypernetwork |
 | GSM8K (hybrid, epoch 1) | 6.2% | 6.6% | Initial result, training in progress |
 
-Two-step 85.4% → 92.4% effective per-step (up from 70% base).
-Three-step 73.6% → 90.1% effective per-step (cube root).
+Two-step 94.8% → 97.4% effective per-step (up from 70% base).
+Three-step 83.4% → 93.8% effective per-step (cube root).
+L2 word ops: 53.4% from 0.6% baseline — CoT targets were the breakthrough (12.2% with terse targets).
 
 ---
 
@@ -74,41 +76,43 @@ Per-pass bottleneck stays at 64 floats. ~+800K params total. See `plan/page_stat
 
 ---
 
-## Current Direction (v21.2 — Contrastive Page Loss → 91.6%)
+## Current Direction (v21.4 → L3 + Dual LoRA Verification)
 
-**Fix: directly attack the fixed-point collapse.** Add a loss that forces last pages to differ across problems while keeping the generation loss that makes them correct. First run broke the 85.4%/86.2% plateau on epoch 1:
+Two proven failure modes in page-based breathing, both solved:
+
+1. **Fixed-point collapse** — pages constant across problems. Fix: target-cosine contrastive loss (self-stabilizing at cos=0.7). → 94.8% two-step, 83.4% three-step.
+2. **Page copying** — pages 2-3 identical within each problem. Fix: pass-conditioned hypernetwork (pass embedding breaks the circular copy loop). → p2v3 dropped from 1.000 to 0.30.
+
+Key finding: three-step arithmetic doesn't need multi-pass thinking. The model gets 83.4% with one effective pass. Multi-pass is the right architecture for HARDER problems where different passes need different cognitive operations.
+
+**L2 word ops (53.4%):** CoT targets matching the base model's natural style were the breakthrough fix. Terse answer targets ("143") caused number-spam; CoT targets ("the square of 8 = 64. 64 plus 79 = 143. The answer is 143.") jumped accuracy from 12.2% to 53.4%.
+
+**Next: L3 named quantities + dual LoRA verification.**
 
 ```
-Epoch 1: 91.6%  page_cos 0.41  per-dim std 0.0964  dead dims 1/64
+L2: "half of 48 plus 48"                   → 53.4% ✓ (CoT targets)
+L3: "Jamie had 56 cookies and gave 2 away" → NEXT (named quantities, warm from L2)
+L4: 2-step word problems, small numbers     → easy GSM8K style (4-6 passes)
+L5: Full GSM8K                             → complex multi-step (6-12 passes)
 ```
 
-Per-dim std 7.6× higher, dead dims 28 → 1, pages cluster by answer. The architecture finally uses the pages.
-
-Margin contrastive is fragile (91.6% vs 68.8% across identical configs — one-sided ReLU, knife-edge λ). Stable recipe: **target-cosine loss**, a bidirectional quadratic attractor at cos=0.4 for diff-answer pairs, constant λ=0.05, no schedule.
-
-```python
-total_loss = generation_loss + 0.05 * target_cos_page_loss(last_page, gold)
-# pos: (1 - cos) on same-answer pairs
-# neg: (cos - 0.4)² on diff-answer pairs  ← self-stabilizing, no knife edge
-```
-
-See `plan/fixed_point_collapse_findings.md`. Verify with `scripts/diag_pages.py`.
+See `plan/morning_handoff.md` for implementation order.
 
 ---
 
-## After GSM8K (v22 — Dual LoRA Verification Mirror)
+## Priority 2: Dual LoRA Verification (v22)
 
-Two sets of LoRA templates blended by a learned sigmoid weight:
+Two sets of LoRA templates blended by a learned sigmoid weight per pass:
 
 - **Forward templates** — narrow, sequential attention for computation
 - **Verify templates** — broad, relational attention for consistency checking
-- **Blend weight** — smooth sigmoid trajectory, early cycles compute, later cycles verify
+- **Blend weight** — learned sigmoid, early passes compute, later passes verify
 
 ```
 LoRA term = (1-blend)·q_forward + blend·q_verify
 ```
 
-The model rotates from building an answer to checking it — the geometric mirror of computation on the same hypersphere. Re-enables the confidence head with a correctness signal: easy problems verify in 2 cycles, hard ones in 8. Adds ~1.1M params. See `plan/dual_lora_verification.md`.
+The model rotates from building an answer to checking it. Even on easy problems, verification catches the ~2.6% per-step errors. The confidence head reads pages AND blend history to learn: "don't stop until verification has happened." Adds ~1.1M params. See `plan/dual_lora_verification.md`, `plan/morning_handoff.md`.
 
 ---
 
@@ -142,8 +146,11 @@ v19  64-float bottleneck + 7L perceiver
 v20  State-conditioned LoRA            →  53% two-step
 v20.1 Side channel + additive LoRA     →  85.4% two-step, 73.6% three-step ✓
 v21  Page-based state accumulation     →  86.2% two-step ✓ (but pages are constant)
-v21.2 Contrastive page loss            →  BUILDING — break the fixed-point collapse
-v22  Dual LoRA (forward + verify mirror) →  PLANNED (post-GSM8K)
+v21.2 Target-cosine contrastive        →  94.8% two-step, 83.4% three-step ✓ (but pages copy)
+v21.3 Pass-conditioned hypernetwork     →  pages differentiate ✓ (p2v3=0.30)
+v21.4 Stepping stones L2               →  53.4% word ops ✓ (CoT targets)
+v21.5 Stepping stones L3               →  NEXT — named quantities + dual LoRA
+v22  Dual LoRA (forward + verify mirror) →  NEXT — blended computation/verification
 ```
 
 See `CLAUDE.md` for full project context, known bugs, and training setup.

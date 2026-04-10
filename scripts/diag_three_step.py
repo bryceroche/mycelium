@@ -1,0 +1,143 @@
+"""Diagnostic: are the 73.6% three-step pages constant or differentiated?"""
+import random, sys, torch, torch.nn.functional as F
+from collections import defaultdict
+sys.path.insert(0, "/home/ubuntu/mycelium")
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from src.compressor_v3 import Compressor
+from src.page_attention_hypernetwork import PageAttentionHypernetwork
+from src.additive_lora import AdditiveLoRAManager
+
+CKPT = "checkpoints/three_step_best.pt"
+NUM_PROBLEMS = 200
+NUM_PASSES = 3
+
+def gen_three_step(n, seed=0):
+    rng = random.Random(seed)
+    out = []
+    for _ in range(n):
+        a = rng.randint(2, 50); b = rng.randint(2, 50)
+        c = rng.randint(2, 50); d = rng.randint(2, 50)
+        if rng.random() < 0.5:
+            op1, v1 = "+", a + b
+        else:
+            a = b * rng.randint(2, 10); op1, v1 = "/", a // b
+        if rng.random() < 0.5:
+            op2, v2 = "+", v1 + c
+        else:
+            op2, v2 = "-", v1 - c
+        if rng.random() < 0.5:
+            op3, v3 = "+", v2 + d
+        else:
+            op3, v3 = "-", v2 - d
+        out.append({"problem": f"(({a} {op1} {b}) {op2} {c}) {op3} {d} =", "final": v3})
+    return out
+
+def main():
+    device = torch.device("cuda")
+    tokenizer = AutoTokenizer.from_pretrained("unsloth/Llama-3.2-1B")
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    transformer = AutoModelForCausalLM.from_pretrained(
+        "unsloth/Llama-3.2-1B", torch_dtype=torch.bfloat16, device_map="auto")
+    for p in transformer.parameters():
+        p.requires_grad = False
+    d_model = transformer.config.hidden_size
+    num_layers = transformer.config.num_hidden_layers
+    num_kv_heads = transformer.config.num_key_value_heads
+    head_dim = d_model // transformer.config.num_attention_heads
+    d_kv = num_kv_heads * head_dim
+    compressor = Compressor(
+        num_transformer_layers=num_layers, d_transformer=d_model,
+        d_perceiver=1024, num_queries=4, num_perceiver_layers=7,
+        state_size=64, strategy_size=512).to(device)
+    hypernet = PageAttentionHypernetwork(
+        d_model=d_model, d_kv=d_kv, page_size=64,
+        strategy_size=512, rank=4, num_layers=num_layers).to(device)
+    ck = torch.load(CKPT, map_location="cpu", weights_only=False)
+    compressor.load_state_dict(ck["compressor"])
+    hypernet.load_state_dict(ck["hypernet"])
+    print(f"Loaded {CKPT} (epoch={ck.get('epoch','?')} acc={ck.get('accuracy','?')}%)")
+    compressor.eval(); hypernet.eval()
+    page_radius = 64 ** 0.5
+    problems = gen_three_step(NUM_PROBLEMS, seed=0)
+    last_pages = []
+    finals = []
+    BS = 16
+    with torch.no_grad():
+        for i in range(0, len(problems), BS):
+            batch = problems[i:i+BS]
+            texts = [p["problem"] for p in batch]
+            inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=128)
+            input_ids = inputs["input_ids"].to(device)
+            attn_mask = inputs["attention_mask"].to(device)
+            bsz = input_ids.size(0)
+            state_pages = []
+            strategy = torch.zeros(bsz, 512, device=device)
+            for pn in range(NUM_PASSES):
+                if pn == 0:
+                    out = transformer(input_ids=input_ids, attention_mask=attn_mask, output_hidden_states=True)
+                    hs = list(out.hidden_states[1:])
+                else:
+                    mods = hypernet(state_pages, strategy)
+                    mgr = AdditiveLoRAManager(transformer)
+                    mgr.apply(mods)
+                    try:
+                        out = transformer(input_ids=input_ids, attention_mask=attn_mask, output_hidden_states=True)
+                        hs = list(out.hidden_states[1:])
+                    finally:
+                        mgr.remove()
+                delta, strategy = compressor(hs, pn)
+                page = F.normalize(delta, dim=-1) * page_radius
+                state_pages.append(page)
+            last_pages.append(state_pages[-1].float().cpu())
+            finals.extend([p["final"] for p in batch])
+    last = torch.cat(last_pages, dim=0)
+    finals_t = torch.tensor(finals)
+    n = F.normalize(last, dim=-1)
+    sim = n @ n.T
+    N = last.size(0)
+    ii, jj = torch.triu_indices(N, N, offset=1)
+    pair_sim = sim[ii, jj]
+    pair_same = (finals_t[ii] == finals_t[jj])
+    same_sim = pair_sim[pair_same]
+    diff_sim = pair_sim[~pair_same]
+    page_std = last.std(dim=0)
+    print("\n=== THREE-STEP PAGE DIAGNOSTIC (non-contrastive 73.6%) ===")
+    print(f"N={N}  unique answers: {len(torch.unique(finals_t))}")
+    print(f"Same-answer pairs: {int(pair_same.sum())}  Diff-answer pairs: {int((~pair_same).sum())}")
+    print(f"\nLast-page cosine similarity:")
+    if len(same_sim) > 0:
+        print(f"  same answer : mean={same_sim.mean():.4f}  std={same_sim.std():.4f}  n={len(same_sim)}")
+    else:
+        print(f"  same answer : no pairs (all unique answers)")
+    print(f"  diff answer : mean={diff_sim.mean():.4f}  std={diff_sim.std():.4f}  n={len(diff_sim)}")
+    if len(same_sim) > 0:
+        print(f"  delta       : {same_sim.mean() - diff_sim.mean():+.4f}")
+    print(f"\nPer-dim std: mean={page_std.mean():.4f}  max={page_std.max():.4f}  min={page_std.min():.4f}")
+    print(f"Dead dims (std<0.01): {int((page_std < 0.01).sum())}/64")
+    by_ans = defaultdict(list)
+    for i, f in enumerate(finals):
+        by_ans[f].append(i)
+    top = sorted(by_ans.items(), key=lambda kv: -len(kv[1]))[:5]
+    print("\nTop answer groups:")
+    for ans, idxs in top:
+        if len(idxs) < 2: continue
+        sub = n[idxs]
+        sm = sub @ sub.T
+        m = sm[torch.triu_indices(len(idxs), len(idxs), offset=1).unbind()].mean()
+        print(f"  answer={ans:>4d}  n={len(idxs)}  within-group cos={m:.4f}")
+    print()
+    if len(same_sim) > 0 and same_sim.mean() - diff_sim.mean() < 0.005:
+        print("VERDICT: Pages are CONSTANT (fixed-point collapse). Contrastive IS needed.")
+    elif len(same_sim) > 0 and same_sim.mean() - diff_sim.mean() > 0.05:
+        print("VERDICT: Pages are DIFFERENTIATED. Contrastive is UNNECESSARY.")
+    elif len(same_sim) == 0:
+        if diff_sim.std() > 0.01:
+            print("VERDICT: Pages show variation (all unique answers, checking spread).")
+        else:
+            print("VERDICT: Pages are CONSTANT (no variation in diff-pair similarities).")
+    else:
+        print("VERDICT: Weak differentiation. Contrastive may help but is not critical.")
+
+if __name__ == "__main__":
+    main()
