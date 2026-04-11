@@ -552,6 +552,7 @@ def train(args):
 
     ckpt_name = f"checkpoints/quad_lora_{level.replace('.', '')}_best.pt"
     best = 0.0
+    best_head = 0.0
     patience_counter = 0
 
     for epoch in range(args.epochs):
@@ -630,9 +631,16 @@ def train(args):
             num_passes=args.num_passes, gsm8k_mode=is_gsm8k(level),
         )
 
-        acc = gen_acc  # use generation accuracy for checkpointing (proven metric)
-        if acc > best:
-            best = acc
+        # Track both metrics — early stop only when BOTH plateau
+        improved = False
+        if gen_acc > best:
+            best = gen_acc
+            improved = True
+        if head_acc > best_head:
+            best_head = head_acc
+            improved = True
+
+        if improved:
             patience_counter = 0
             torch.save({
                 'epoch': epoch + 1,
@@ -640,11 +648,11 @@ def train(args):
                 'hypernet': model.hypernet.state_dict(),
                 'confidence_head': model.confidence_head.state_dict(),
                 'answer_head': answer_head.state_dict(),
-                'accuracy': acc,
+                'accuracy': gen_acc,
                 'head_accuracy': head_acc,
                 'level': level,
             }, ckpt_name)
-            print(f"  -> saved checkpoint {ckpt_name} (gen={acc:.1f}% head={head_acc:.1f}%)")
+            print(f"  -> saved checkpoint {ckpt_name} (gen={gen_acc:.1f}% head={head_acc:.1f}%)")
         else:
             patience_counter += 1
 
@@ -674,7 +682,7 @@ def train(args):
             break
 
     print(f"\n{'='*60}")
-    print(f"Level {level} final: gen={best:.1f}% (baseline gen={base_gen:.1f}% head={base_head:.1f}%)")
+    print(f"Level {level} final: gen={best:.1f}% head={best_head:.1f}% (baseline gen={base_gen:.1f}% head={base_head:.1f}%)")
     print(f"Checkpoint: {ckpt_name}")
     print(f"{'='*60}")
 
