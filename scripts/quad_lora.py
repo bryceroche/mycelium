@@ -758,9 +758,12 @@ def warm_start_quad_from_dual(
 
     Args:
         quad_model: QuadLoRAModel to warm-start
-        dual_checkpoint_path: path to dual LoRA checkpoint .pt file
+        dual_checkpoint_path: path string OR already-loaded checkpoint dict
     """
-    ckpt = torch.load(dual_checkpoint_path, map_location='cpu', weights_only=True)
+    if isinstance(dual_checkpoint_path, dict):
+        ckpt = dual_checkpoint_path
+    else:
+        ckpt = torch.load(dual_checkpoint_path, map_location='cpu', weights_only=True)
 
     # --- Compressor (same architecture, direct load) ---
     if 'compressor' in ckpt:
