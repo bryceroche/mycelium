@@ -104,15 +104,44 @@ Key findings across levels:
 
 ---
 
-## Next: Three Fixes for the GSM8K Ceiling (v22.3)
+## Next: Four-Mode LoRA (v23 — Parse, Compute, Verify, Answer)
+
+Evolution from dual LoRA (forward + verify) to four specialized cognitive modes, each with its own LoRA templates, blended via a 4-way softmax:
+
+```
+PARSE:    Read the problem, extract quantities and relationships
+COMPUTE:  Apply operations to extracted quantities
+VERIFY:   Check that the solution is internally consistent
+ANSWER:   Shape hidden states for clean answer extraction
+```
+
+Each mode has its own A/B templates (~1.1M params each, ~4.4M total LoRA). A quad hypernetwork generates per-mode scales + 4-way softmax blend weights. The model learns a natural cognitive trajectory:
+
+```
+Easy problem:   PARSE → COMPUTE → ANSWER          (3 passes)
+Hard problem:   PARSE → PARSE+COMPUTE → COMPUTE → COMPUTE+VERIFY → VERIFY → ANSWER  (6 passes)
+```
+
+**Why four modes (not two)?** Evidence from results:
+- PARSE vs COMPUTE: L1 94.8% (arithmetic) vs L2 53.4% (word ops) — the gap IS parsing
+- COMPUTE vs VERIFY: Blend adapts to difficulty (+7.4 pts on L3, heavy verify on GSM8K)
+- VERIFY vs ANSWER: Separates "checking work" from "reporting answer" — enables digit-based answer head
+
+**Answer head** reads the last page (produced by ANSWER-focused compression) and predicts digits directly: sign (2-way), length (6-way), per-position digit (10-way). No generation, no regex. ~4K params.
+
+See `plan/four_mode_lora.md` for full architecture spec.
+
+---
+
+## Three Fixes for the GSM8K Ceiling (v22.3 — BUILT)
 
 GSM8K plateaued at 17.8% — three root causes identified, three targeted fixes:
 
-**1. Gradient scaling per cycle.** Early cycles get weak gradient (attenuated through later cycles). Fix: scale gradient inversely to distance from loss. `page = scale_gradient(page, num_passes - pass_num)`. One line, no architecture change.
+**1. Gradient scaling per cycle.** Earlier cycles get amplified gradient (capped at 4x).
 
-**2. Fresh data every epoch.** 20K problems memorized by epoch 3 (ans_loss → 0.0000). Fix: procedurally generate new problems each epoch. For GSM8K: augment with number/name swaps.
+**2. Fresh data every epoch.** Procedural levels regenerate; GSM8K augments via number swaps.
 
-**3. Fill the L4→L5 gap.** L4 (100%) → GSM8K (17.8%) is a cliff. Fix: intermediate levels.
+**3. Fill the L4→L5 gap.** Intermediate levels L4.5 → L4.7 → L4.9 bridge to full GSM8K.
 
 ```
 L4:    2-step, [1-200]            → 100% ✓
@@ -122,27 +151,15 @@ L4.9:  GSM8K easy (2-3 step)      → ??? (real formatting)
 L5:    Full GSM8K                  → 17.8% → ???
 ```
 
-See `plan/three_fixes_handoff.md` for implementation details.
+Infrastructure built: `scripts/train_three_fixes.py`, `scripts/datasets_L45_L47.py`, `scripts/datasets_L49_gsm8k.py`.
 
 ---
 
 ## Dual LoRA Verification (v22 — PROVEN)
 
-Two sets of LoRA templates blended by a learned sigmoid weight per pass:
+Two sets of LoRA templates blended by a learned sigmoid weight per pass. The model naturally adapts verification intensity to problem difficulty (blend ~0.25 easy, ~0.65 GSM8K).
 
-- **Forward templates** — narrow, sequential attention for computation
-- **Verify templates** — broad, relational attention for consistency checking
-- **Blend weight** — learned sigmoid, starts ~0.15, climbs to ~0.30 over training
-
-```
-LoRA term = (1-blend)·q_forward + blend·q_verify
-```
-
-**Result: 96.0% on L3 (vs 88.6% single LoRA) — +7.4 points.** Verification is a generalization tool: it helps most on unseen problems, less needed on memorized ones. The blend trajectory shows the model discovering verification's value over training.
-
-Key finding: the confidence head needs per-pass correctness training (not always target=1.0). Currently broken for dynamic stopping but the fixed-pass dual LoRA result is proven.
-
-See `plan/dual_lora_verification.md`, `plan/morning_handoff.md`.
+**Result: 96.0% on L3 (vs 88.6% single LoRA) — +7.4 points.** Evolved into four-mode LoRA (above).
 
 ---
 
@@ -183,7 +200,8 @@ v21.5 Stepping stones L3               →  88.6% single LoRA ✓
 v22  Dual LoRA (forward + verify)       →  96.0% L3 ✓ (+7.4 pts over single)
 v22.1 L4 two-step word problems        →  100.0% ✓ (1 epoch, instant generalization)
 v22.2 GSM8K dual LoRA                  →  17.8% ✓ (8.1x over 2.2% baseline, 5 passes)
-v22.3 Three fixes (grad scale + fresh data + gap fill)  →  NEXT
+v22.3 Three fixes (grad scale + fresh data + gap fill)  →  BUILT
+v23   Four-mode LoRA (parse + compute + verify + answer) →  NEXT
 ```
 
 See `CLAUDE.md` for full project context, known bugs, and training setup.

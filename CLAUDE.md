@@ -526,67 +526,73 @@ tail -f logs/train_*.log
 
 ## What to Do Next (Priority Order)
 
-### 1. Three Fixes for GSM8K Ceiling (v22.3 — NEXT)
+### 1. Four-Mode LoRA (v23 — NEXT)
 
-GSM8K plateaued at 17.8% (epoch 6). Three root causes, three fixes:
+Evolution from dual LoRA (forward + verify) to four specialized cognitive modes:
 
-**Fix 1: Gradient scaling per cycle.** Earlier cycles get weak gradient
-(attenuated through later cycles' compression). Scale inversely:
+```
+PARSE:    Read the problem, extract quantities and relationships (language-heavy)
+COMPUTE:  Apply operations to extracted quantities (math-heavy)
+VERIFY:   Check that the solution is internally consistent (broad, relational)
+ANSWER:   Shape hidden states for clean answer extraction (extraction-focused)
+```
+
+Each mode has its own A/B LoRA templates (~1.1M params each, ~4.4M total).
+Quad hypernetwork generates per-mode scales + 4-way softmax blend weights.
 
 ```python
-def scale_gradient(tensor, scale):
-    return tensor + (scale - 1.0) * tensor.detach()
-
-# cycle 0 = 3x, cycle 1 = 2x, cycle 2 = 1x (for 3 passes)
-grad_scale = float(num_passes - pass_num)
-page = scale_gradient(page, grad_scale)
+class QuadHypernetwork(nn.Module):
+    def forward(self, page_summary, strategy, pass_embed):
+        out = self.scales_net(cat([page_summary, strategy, pass_embed], dim=-1))
+        parse_scales   = tanh(out[:, 0:256])
+        compute_scales = tanh(out[:, 256:512])
+        verify_scales  = tanh(out[:, 512:768])
+        answer_scales  = tanh(out[:, 768:1024])
+        blend = softmax(out[:, 1024:1028], dim=-1)  # 4-way, sums to 1.0
+        return scales, blend
 ```
 
-One line per cycle. No architecture change. NOT deep supervision (which
-would fight the bottleneck by forcing each cycle to predict the final answer).
+**Why four modes (evidence from results):**
+- PARSE vs COMPUTE: L1 94.8% (arithmetic) vs L2 53.4% (word ops) — gap IS parsing
+- COMPUTE vs VERIFY: Blend adapts to difficulty (+7.4 pts on L3)
+- VERIFY vs ANSWER: Separates "checking" from "reporting" — enables answer head
 
-**Fix 2: Fresh data every epoch.** 20K problems memorized by epoch 3
-(ans_loss → 0.0000 while eval collapses). Generate new problems each epoch
-for procedural levels. For GSM8K: augment with number/name swaps so 7,473
-problems become effectively infinite.
+**Answer head** reads last page (ANSWER-focused compression), predicts digits
+directly: sign (2-way), length (6-way), per-position digit (10-way). ~4K params.
+No generation, no regex extraction. Loss: `0.3 * answer_head_loss`.
 
-**Fix 3: Fill the L4→L5 gap.** L4 (100%) → GSM8K (17.8%) is a cliff.
-Add intermediate levels:
-
+**Combined loss:**
 ```
-L4:    2-step, [1-200]            → 100% ✓
-L4.5:  2-step, [1-2000]           → ??? (bigger numbers)
-L4.7:  3-step, [1-5000]           → ??? (more steps)
-L4.9:  GSM8K easy (2-3 step)      → ??? (real formatting)
-L5:    Full GSM8K                  → 17.8% → ???
+total = generation_loss + 0.05 * contrastive + 0.1 * confidence + 0.3 * answer_head
 ```
 
-Implementation order:
-1. Add gradient scaling (one line per cycle)
-2. Add fresh data generation per epoch
-3. Train L4.5 (quick test of both fixes)
-4. If L4.5 improves → L4.7 → L4.9 → retrain GSM8K with all fixes
+Training plan: Phase 1 on L3 (compare 4-mode vs 2-mode 96.0% baseline),
+then curriculum L4 → L4.5 → L4.7 → L4.9 → L5 with three fixes.
 
-Plan doc: `plan/three_fixes_handoff.md`.
+Plan doc: `plan/four_mode_lora.md`.
 
-### 2. Dual LoRA Verification (v22 — PROVEN)
+### 2. Three Fixes for GSM8K Ceiling (v22.3 — BUILT)
+
+Infrastructure built, ready to train. Three fixes:
+1. Gradient scaling per cycle (earlier cycles get amplified grad, cap 4x)
+2. Fresh data every epoch (procedural regeneration + GSM8K number-swap augmentation)
+3. Fill L4→L5 gap (L4.5/L4.7/L4.9 intermediate levels)
+
+Scripts: `scripts/train_three_fixes.py`, `scripts/datasets_L45_L47.py`,
+`scripts/datasets_L49_gsm8k.py`. Plan: `plan/three_fixes_handoff.md`.
+
+### 3. Dual LoRA Verification (v22 — PROVEN)
 
 Two sets of LoRA templates — `forward` (computation) and `verify` (consistency
-checking) — blended by a learned sigmoid weight per pass. The model naturally
-adapts verification intensity to problem difficulty:
-
-```
-Easy problems (L3-L4):  blend ≈ 0.25  (barely verifies)
-Hard problems (GSM8K):  blend ≈ 0.65  (heavy verification)
-As overfitting:         blend drifts down (stops verifying memorized answers)
-```
+checking) — blended by a learned sigmoid weight per pass. Evolved into
+four-mode LoRA (above). Results carry forward.
 
 **Status:** PROVEN. 96.0% on L3 (+7.4 pts over single LoRA). 17.8% on GSM8K.
 Checkpoint: `dual_lora_L3_best.pt`, `dual_lora_L4_best.pt`, `dual_lora_gsm8k_best.pt`.
 
-### 3. MATH-500 Benchmark (May 22 deadline)
+### 4. MATH-500 Benchmark (May 22 deadline)
 
-### 4. Boltzmann Exploration for Pass Count
+### 5. Boltzmann Exploration for Pass Count
 
 Currently passes are fixed at 3-5. Instead of a hard confidence threshold, use
 Boltzmann (softmax) sampling over a learned "continue/stop" distribution to
@@ -596,7 +602,7 @@ problem). This lets the model learn variable-depth reasoning — easy problems
 get 1-2 passes, hard problems get 5+. Avoids the efficiency penalty collapse
 (always stopping at 1) that killed the previous confidence head attempt.
 
-### 5. Attention Residuals Across Passes (5+ Pass Scaling)
+### 6. Attention Residuals Across Passes (5+ Pass Scaling)
 
 At 5+ passes, the state bottleneck may lose information from early passes.
 Add cross-pass attention residuals: each pass's perceiver attends not just to
@@ -627,7 +633,8 @@ v21.5:   Stepping stones L3 named qty → 88.6% single LoRA ✓
 v22:     Dual LoRA (forward + verify) → 96.0% L3 ✓ (+7.4 pts, verification proven)
 v22.1:   L4 two-step word problems → 100.0% ✓ (1 epoch, instant generalization)
 v22.2:   GSM8K dual LoRA → 17.8% ✓ (8.1x over 2.2%, 5 passes, blend ≈ 0.65)
-v22.3:   Three fixes (grad scale + fresh data + gap fill) → NEXT
+v22.3:   Three fixes (grad scale + fresh data + gap fill) → BUILT
+v23:     Four-mode LoRA (parse + compute + verify + answer) → NEXT
 ```
 
 Key insight at each pivot:
