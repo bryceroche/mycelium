@@ -493,18 +493,19 @@ def train(args):
     # ------- Optimizer: four template sets + shared + heads -------
     template_param_groups = []
     for mode in MODE_NAMES:
+        A_list, B_list = model.hypernet._template_lists[mode]
         template_param_groups.append({
-            'params': (list(model.hypernet.templates[mode]['A'].parameters())
-                       + list(model.hypernet.templates[mode]['B'].parameters())),
+            'params': list(A_list.parameters()) + list(B_list.parameters()),
             'lr': 5e-4,
         })
 
     # Collect shared hypernetwork params (everything that isn't templates)
     template_param_ids = set()
     for mode in MODE_NAMES:
-        for p in model.hypernet.templates[mode]['A'].parameters():
+        A_list, B_list = model.hypernet._template_lists[mode]
+        for p in A_list.parameters():
             template_param_ids.add(id(p))
-        for p in model.hypernet.templates[mode]['B'].parameters():
+        for p in B_list.parameters():
             template_param_ids.add(id(p))
     shared_hypernet_params = [
         p for p in model.hypernet.parameters()
