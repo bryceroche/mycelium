@@ -355,8 +355,9 @@ def log_mode_grad_norms(model):
     """
     norms = {}
     for mode in MODE_NAMES:
-        A_params = list(model.hypernet.templates[mode]['A'].parameters())
-        B_params = list(model.hypernet.templates[mode]['B'].parameters())
+        A_list, B_list = model.hypernet._template_lists[mode]
+        A_params = list(A_list.parameters())
+        B_params = list(B_list.parameters())
         total_norm = 0.0
         count = 0
         for p in A_params + B_params:
@@ -534,8 +535,8 @@ def train(args):
     for mode in MODE_NAMES:
         n = sum(
             p.numel()
-            for p in list(model.hypernet.templates[mode]['A'].parameters())
-            + list(model.hypernet.templates[mode]['B'].parameters())
+            for p in list(model.hypernet._template_lists[mode][0].parameters())
+            + list(model.hypernet._template_lists[mode][1].parameters())
         )
         print(f"  {mode:8s} templates: {n:,}")
     print(f"  answer_head: {sum(p.numel() for p in answer_head.parameters()):,}")
