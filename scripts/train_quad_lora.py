@@ -74,14 +74,14 @@ def make_dataset(level, num_samples, seed):
         raise ValueError(f"Unknown level: {level}")
 
 
-def make_eval_dataset(level):
+def make_eval_dataset(level, num_samples=200):
     """Build a fixed eval dataset for *level*."""
     if level == 'L4.5':
         from scripts.datasets_L45_L47 import L45TwoStepWordDataset
-        return L45TwoStepWordDataset(num_samples=500, seed=99999)
+        return L45TwoStepWordDataset(num_samples=num_samples, seed=99999)
     elif level == 'L4.7':
         from scripts.datasets_L45_L47 import L47ThreeStepWordDataset
-        return L47ThreeStepWordDataset(num_samples=500, seed=99999)
+        return L47ThreeStepWordDataset(num_samples=num_samples, seed=99999)
     elif level == 'L4.9':
         from scripts.datasets_L49_gsm8k import L49GSM8KEasyDataset
         return L49GSM8KEasyDataset(split='test')
@@ -90,10 +90,10 @@ def make_eval_dataset(level):
         return GSM8KDataset(split='test')
     elif level == 'L4':
         from scripts.train_dual_lora_L4 import L4TwoStepWordDataset
-        return L4TwoStepWordDataset(num_samples=500, seed=99999)
+        return L4TwoStepWordDataset(num_samples=num_samples, seed=99999)
     elif level == 'L3':
         from scripts.train_stepping_stones_L3 import L3NamedQtyDataset
-        return L3NamedQtyDataset(num_samples=500, seed=123)
+        return L3NamedQtyDataset(num_samples=num_samples, seed=123)
     else:
         raise ValueError(f"Unknown level: {level}")
 
@@ -249,7 +249,7 @@ def evaluate(model, answer_head, eval_dataset, device, num_passes=5,
     gen_correct = 0
     head_correct = 0
     total = 0
-    eval_batch = 4 if gsm8k_mode else 8
+    eval_batch = 4 if gsm8k_mode else 16
     max_length = 192 if gsm8k_mode else 128
     max_new_tokens = 150 if gsm8k_mode else 50
 
@@ -470,9 +470,9 @@ def train(args):
     model = QuadLoRAModel()
     model.compressor = model.compressor.to(device=device, dtype=torch.bfloat16)
     model.hypernet = model.hypernet.to(device=device, dtype=torch.bfloat16)
-    model.confidence_head = model.confidence_head.to(device)
+    model.confidence_head = model.confidence_head.to(device=device, dtype=torch.bfloat16)
 
-    # Answer head — small, float32 for digit classification stability
+    # Answer head — small, kept in float32 for digit classification stability
     answer_head = AnswerHead(page_size=model.page_size).to(device)
 
     if warm_path:
@@ -480,7 +480,7 @@ def train(args):
         try_warm_start(model, answer_head, warm_path)
 
     # Fixed eval dataset
-    eval_dataset = make_eval_dataset(level)
+    eval_dataset = make_eval_dataset(level, num_samples=args.eval_size)
     print(f"\nEval dataset: {len(eval_dataset)} problems")
 
     # Sequence length settings
@@ -707,10 +707,12 @@ if __name__ == '__main__':
                    help='Answer head loss weight')
     p.add_argument('--num_train', type=int, default=20000,
                    help='Number of training problems per epoch (procedural)')
+    p.add_argument('--eval_size', type=int, default=200,
+                   help='Number of eval problems (200 quick, 500 thorough)')
 
     args = p.parse_args()
 
     if args.batch_size is None:
-        args.batch_size = 16 if is_procedural(args.level) else 8
+        args.batch_size = 32 if is_procedural(args.level) else 8
 
     train(args)
