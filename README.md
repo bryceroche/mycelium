@@ -104,6 +104,28 @@ Key findings across levels:
 
 ---
 
+## Next: Three Fixes for the GSM8K Ceiling (v22.3)
+
+GSM8K plateaued at 17.8% — three root causes identified, three targeted fixes:
+
+**1. Gradient scaling per cycle.** Early cycles get weak gradient (attenuated through later cycles). Fix: scale gradient inversely to distance from loss. `page = scale_gradient(page, num_passes - pass_num)`. One line, no architecture change.
+
+**2. Fresh data every epoch.** 20K problems memorized by epoch 3 (ans_loss → 0.0000). Fix: procedurally generate new problems each epoch. For GSM8K: augment with number/name swaps.
+
+**3. Fill the L4→L5 gap.** L4 (100%) → GSM8K (17.8%) is a cliff. Fix: intermediate levels.
+
+```
+L4:    2-step, [1-200]            → 100% ✓
+L4.5:  2-step, [1-2000]           → ??? (bigger numbers)
+L4.7:  3-step, [1-5000]           → ??? (more steps)
+L4.9:  GSM8K easy (2-3 step)      → ??? (real formatting)
+L5:    Full GSM8K                  → 17.8% → ???
+```
+
+See `plan/three_fixes_handoff.md` for implementation details.
+
+---
+
 ## Dual LoRA Verification (v22 — PROVEN)
 
 Two sets of LoRA templates blended by a learned sigmoid weight per pass:
@@ -161,6 +183,7 @@ v21.5 Stepping stones L3               →  88.6% single LoRA ✓
 v22  Dual LoRA (forward + verify)       →  96.0% L3 ✓ (+7.4 pts over single)
 v22.1 L4 two-step word problems        →  100.0% ✓ (1 epoch, instant generalization)
 v22.2 GSM8K dual LoRA                  →  17.8% ✓ (8.1x over 2.2% baseline, 5 passes)
+v22.3 Three fixes (grad scale + fresh data + gap fill)  →  NEXT
 ```
 
 See `CLAUDE.md` for full project context, known bugs, and training setup.

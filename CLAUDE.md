@@ -479,6 +479,20 @@ CoT targets: Always train on chain-of-thought targets that match the base
      from arithmetic training spillover. CoT targets ("half of 48 = 24. 24
      plus 48 = 72. The answer is 72.") jump L2 from 12.2% to 53.4%.
      Check base model generations FIRST to see what style it naturally produces.
+
+GSM8K overfitting: With 7,473 fixed training problems, answer loss drops to
+     0.39 by epoch 11 but accuracy plateaus at 17.8% (epoch 6) then wobbles
+     15-17%. The model memorizes CoT traces without generalizing. Fix: fresh
+     data every epoch (procedural for L0-L4, augmented for GSM8K).
+
+L4→L5 cliff: L4 hits 100% but GSM8K starts at 17.8%. The gap is too large
+     for curriculum transfer alone. Need intermediate levels (L4.5, L4.7, L4.9)
+     to gradually increase number range and step count.
+
+Gradient attenuation: Earlier thinking cycles get weak gradient (attenuated
+     through later cycles' compression steps). Use gradient scaling:
+     scale = num_passes - pass_num. NOT deep supervision (which fights
+     the bottleneck by forcing each cycle to predict the full answer).
 ```
 
 ---
@@ -512,67 +526,69 @@ tail -f logs/train_*.log
 
 ## What to Do Next (Priority Order)
 
-### 1. L3 Named Quantities (NEXT)
+### 1. Three Fixes for GSM8K Ceiling (v22.3 — NEXT)
 
-L2 word ops achieved 53.4% with CoT targets. Next level:
+GSM8K plateaued at 17.8% (epoch 6). Three root causes, three fixes:
 
-```
-L2: "half of 48 plus 48"                   → 53.4% ✓ (CoT targets)
-L3: "Jamie had 56 cookies and gave 2 away" → NEXT (named quantities)
-L4: 2-step word problems, small numbers     (easy GSM8K style, 4-6 passes)
-L5: Full GSM8K                             (complex multi-step, 6-12 passes)
-```
-
-Recipe (proven on L2): 20K problems, CoT targets matching base model style,
-target-cos contrastive (0.7), pass-conditioned hypernetwork, patience=2,
-warm-start from L2 CoT best checkpoint (53.4%).
-
-If L3 fails (<20%): frozen Llama may not parse narrative context ("Jamie had
-56 cookies" is harder than "56 minus 2"). Consider unfreezing at 1e-7.
-
-Plan docs: `plan/stepping_stones_handoff.md`, `plan/morning_handoff.md`.
-
-### 2. Dual LoRA: Forward Computation + Verification Mirror (v22)
-
-Two sets of LoRA templates — `forward` (computation: narrow, sequential
-attention) and `verify` (consistency-checking: broad, relational attention) —
-blended by a learned sigmoid weight per pass. The hypernetwork outputs
-`(forward_scales, verify_scales, blend)`, and the additive LoRA term is
-`(1-blend) * q_forward + blend * q_verify`. The model gradually rotates from
-building an answer to checking it.
-
-Even on easy problems, verification catches the ~2.6% per-step errors:
-```
-Without verification: 97.4% per-step
-With verification:    potentially 99%+ per-step (errors caught before output)
-```
-
-The confidence head reads pages + blend history, trained with correctness
-signal (no efficiency penalty). Learns "don't stop until verification has
-happened (blend > 0.5)." Easy problems: 2 passes. Hard: 8.
+**Fix 1: Gradient scaling per cycle.** Earlier cycles get weak gradient
+(attenuated through later cycles' compression). Scale inversely:
 
 ```python
-# Blended application (additive, no hooks):
-q_forward = (hidden @ A_forward.T) * forward_scales @ B_forward
-q_verify = (hidden @ A_verify.T) * verify_scales @ B_verify
-q_lora = (1 - blend) * q_forward + blend * q_verify
-q = layer.q_proj(hidden) + q_lora
+def scale_gradient(tensor, scale):
+    return tensor + (scale - 1.0) * tensor.detach()
+
+# cycle 0 = 3x, cycle 1 = 2x, cycle 2 = 1x (for 3 passes)
+grad_scale = float(num_passes - pass_num)
+page = scale_gradient(page, grad_scale)
 ```
 
-Adds ~1.1M params (second template set). Plan docs: `plan/dual_lora_verification.md`,
-`plan/morning_handoff.md`.
+One line per cycle. No architecture change. NOT deep supervision (which
+would fight the bottleneck by forcing each cycle to predict the final answer).
 
-**Status:** PROVEN. 96.0% on L3 (vs 88.6% single LoRA, +7.4 pts).
-Blend trajectory: 0.15→0.30 over 8 epochs — model discovers verification helps.
-Verification is a generalization tool (helps most at epoch 1, less when memorized).
-Confidence head needs per-pass correctness training for dynamic stopping.
-Checkpoint: `dual_lora_L3_best.pt` (epoch 5, 96.0%).
+**Fix 2: Fresh data every epoch.** 20K problems memorized by epoch 3
+(ans_loss → 0.0000 while eval collapses). Generate new problems each epoch
+for procedural levels. For GSM8K: augment with number/name swaps so 7,473
+problems become effectively infinite.
+
+**Fix 3: Fill the L4→L5 gap.** L4 (100%) → GSM8K (17.8%) is a cliff.
+Add intermediate levels:
+
+```
+L4:    2-step, [1-200]            → 100% ✓
+L4.5:  2-step, [1-2000]           → ??? (bigger numbers)
+L4.7:  3-step, [1-5000]           → ??? (more steps)
+L4.9:  GSM8K easy (2-3 step)      → ??? (real formatting)
+L5:    Full GSM8K                  → 17.8% → ???
+```
+
+Implementation order:
+1. Add gradient scaling (one line per cycle)
+2. Add fresh data generation per epoch
+3. Train L4.5 (quick test of both fixes)
+4. If L4.5 improves → L4.7 → L4.9 → retrain GSM8K with all fixes
+
+Plan doc: `plan/three_fixes_handoff.md`.
+
+### 2. Dual LoRA Verification (v22 — PROVEN)
+
+Two sets of LoRA templates — `forward` (computation) and `verify` (consistency
+checking) — blended by a learned sigmoid weight per pass. The model naturally
+adapts verification intensity to problem difficulty:
+
+```
+Easy problems (L3-L4):  blend ≈ 0.25  (barely verifies)
+Hard problems (GSM8K):  blend ≈ 0.65  (heavy verification)
+As overfitting:         blend drifts down (stops verifying memorized answers)
+```
+
+**Status:** PROVEN. 96.0% on L3 (+7.4 pts over single LoRA). 17.8% on GSM8K.
+Checkpoint: `dual_lora_L3_best.pt`, `dual_lora_L4_best.pt`, `dual_lora_gsm8k_best.pt`.
 
 ### 3. MATH-500 Benchmark (May 22 deadline)
 
 ### 4. Boltzmann Exploration for Pass Count
 
-Currently passes are fixed at 3. Instead of a hard confidence threshold, use
+Currently passes are fixed at 3-5. Instead of a hard confidence threshold, use
 Boltzmann (softmax) sampling over a learned "continue/stop" distribution to
 decide whether to take another pass. Temperature annealing during training:
 start hot (explore many pass counts) → cool down (exploit optimal count per
@@ -611,6 +627,7 @@ v21.5:   Stepping stones L3 named qty → 88.6% single LoRA ✓
 v22:     Dual LoRA (forward + verify) → 96.0% L3 ✓ (+7.4 pts, verification proven)
 v22.1:   L4 two-step word problems → 100.0% ✓ (1 epoch, instant generalization)
 v22.2:   GSM8K dual LoRA → 17.8% ✓ (8.1x over 2.2%, 5 passes, blend ≈ 0.65)
+v22.3:   Three fixes (grad scale + fresh data + gap fill) → NEXT
 ```
 
 Key insight at each pivot:
