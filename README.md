@@ -16,12 +16,15 @@ Differentiable recurrent reasoning for small language models. A frozen base LLM 
 | L2 word ops | 0.6% | **53.4%** | CoT targets + pass-conditioned hypernetwork |
 | L3 named qty (single LoRA) | 18.8% | **88.6%** | CoT + warm start from L2 |
 | L3 named qty (dual LoRA) | 18.8% | **96.0%** | Dual LoRA verification (+7.4 pts over single) |
-| GSM8K (hybrid, epoch 1) | 6.2% | 6.6% | Initial result, training in progress |
+| L4 two-step word problems | 40.8% | **100.0%** | Dual LoRA, warm from L3, 1 epoch |
+| **GSM8K** | **2.2%** | **17.8%** | **Dual LoRA, 5 passes, curriculum L0→L4→GSM8K** |
 
 Two-step 94.8% → 97.4% effective per-step (up from 70% base).
 Three-step 83.4% → 93.8% effective per-step (cube root).
 L2 word ops: 53.4% from 0.6% baseline — CoT targets were the breakthrough (12.2% with terse targets).
 L3 dual LoRA: 96.0% vs 88.6% single LoRA — verification templates catch errors forward-only misses.
+L4 two-step WP: 100.0% in 1 epoch — model generalizes from L3 to diverse two-step word problems.
+GSM8K: 17.8% from 2.2% baseline (8.1x). Frozen 1B base model + 110M learned params. Blend ≈ 0.65 — model uses heavy verification on hard problems.
 
 ---
 
@@ -79,27 +82,25 @@ Per-pass bottleneck stays at 64 floats. ~+800K params total. See `plan/page_stat
 
 ---
 
-## Current Direction (v21.4 → L3 + Dual LoRA Verification)
+## Curriculum: L0 → GSM8K (PROVEN)
 
-Two proven failure modes in page-based breathing, both solved:
-
-1. **Fixed-point collapse** — pages constant across problems. Fix: target-cosine contrastive loss (self-stabilizing at cos=0.7). → 94.8% two-step, 83.4% three-step.
-2. **Page copying** — pages 2-3 identical within each problem. Fix: pass-conditioned hypernetwork (pass embedding breaks the circular copy loop). → p2v3 dropped from 1.000 to 0.30.
-
-Key finding: three-step arithmetic doesn't need multi-pass thinking. The model gets 83.4% with one effective pass. Multi-pass is the right architecture for HARDER problems where different passes need different cognitive operations.
-
-**L2 word ops (53.4%):** CoT targets matching the base model's natural style were the breakthrough fix. Terse answer targets ("143") caused number-spam; CoT targets ("the square of 8 = 64. 64 plus 79 = 143. The answer is 143.") jumped accuracy from 12.2% to 53.4%.
-
-**Next: L3 named quantities + dual LoRA verification.**
+Complete stepping stones curriculum, each level warm-started from the previous:
 
 ```
-L2: "half of 48 plus 48"                   → 53.4% ✓ (CoT targets)
-L3: "Jamie had 56 cookies and gave 2 away" → NEXT (named quantities, warm from L2)
-L4: 2-step word problems, small numbers     → easy GSM8K style (4-6 passes)
-L5: Full GSM8K                             → complex multi-step (6-12 passes)
+L0: single-step arithmetic (70% → 100%)     ✓
+L1: two-step arithmetic (0% → 94.8%)        ✓  target-cos contrastive
+L2: word ops (0.6% → 53.4%)                 ✓  CoT targets breakthrough
+L3: named quantities (18.8% → 96.0%)        ✓  dual LoRA verification (+7.4 pts)
+L4: two-step word problems (40.8% → 100%)   ✓  1 epoch, instant generalization
+GSM8K: (2.2% → 17.8%)                       ✓  8.1x, 5 passes, blend ≈ 0.65
 ```
 
-See `plan/morning_handoff.md` for implementation order.
+Key findings across levels:
+- **CoT targets** matching base model's natural style (L2: 12.2% → 53.4%)
+- **Dual LoRA verification** helps most on hard/unseen problems (blend adapts to difficulty)
+- **Curriculum warm-starting** enables each level to build on the previous
+- **Easy problems don't need per-problem pages** (L4: page_cos=1.0 is correct behavior)
+- **Hard problems use heavy verification** (GSM8K: blend ≈ 0.65 vs L4: blend ≈ 0.25)
 
 ---
 
@@ -158,7 +159,8 @@ v21.3 Pass-conditioned hypernetwork     →  pages differentiate ✓ (p2v3=0.30)
 v21.4 Stepping stones L2               →  53.4% word ops ✓ (CoT targets)
 v21.5 Stepping stones L3               →  88.6% single LoRA ✓
 v22  Dual LoRA (forward + verify)       →  96.0% L3 ✓ (+7.4 pts over single)
-v22.1 L4 two-step word problems        →  NEXT
+v22.1 L4 two-step word problems        →  100.0% ✓ (1 epoch, instant generalization)
+v22.2 GSM8K dual LoRA                  →  17.8% ✓ (8.1x over 2.2% baseline, 5 passes)
 ```
 
 See `CLAUDE.md` for full project context, known bugs, and training setup.

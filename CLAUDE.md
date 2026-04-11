@@ -91,6 +91,9 @@ Three-step arithmetic       0%          73.6%             Llama 1B, side channel
 L2 word ops                 0.6%        53.4%             CoT targets + pass-conditioned hypernetwork
 L3 named qty (dual LoRA)    18.8%       96.0% ← BEST     Dual LoRA verification (+7.4 pts over single)
 L3 named qty (single LoRA) 18.8%       88.6%             CoT targets + warm start from L2
+L4 two-step word problems   40.8%       100.0% ← BEST     Dual LoRA, warm from L3, 1 epoch
+GSM8K (dual LoRA)           2.2%        17.8%  ← BEST     Dual LoRA, 5 passes, curriculum L0→L4→GSM8K (8.1x)
+GSM8K (hybrid, epoch 1)     6.2%        6.6%              Old hybrid path (LoRA thinking + pseudo-token gen)
 L2 word ops (terse targets) 0.6%        12.2%             Terse "143" targets → number-spam (format bug)
 Three-step w/ pass-cond     0%          55.4%             Pass-conditioned hypernetwork (pages differentiate but accuracy drops)
 Three-step arithmetic       0%          52%               SmolLM2-135M, 64-float, pseudo-tokens
@@ -108,6 +111,11 @@ L2 word ops breakthrough: CoT targets matching the base model's natural style
 ("half of 48 = 24. 24 plus 48 = 72. The answer is 72.") jumped accuracy from
 12.2% (terse targets) to 53.4%. The base model already shows chain-of-thought
 capability in its completions — training targets must match this natural style.
+
+GSM8K result: 17.8% from 2.2% baseline (8.1x) using full curriculum warm-start
+(L0→L1→L2→L3→L4→GSM8K), dual LoRA verification with 5 thinking passes.
+Blend ≈ 0.65 on GSM8K (heavy verification) vs ≈ 0.25 on easy problems —
+the model naturally adapts verification intensity to problem difficulty.
 
 ---
 
@@ -601,7 +609,8 @@ v21.3:   Pass-conditioned hypernetwork → pages differentiate ✓ (p2v3=0.30)
 v21.4:   Stepping stones L2 word ops → 53.4% ✓ (CoT targets breakthrough)
 v21.5:   Stepping stones L3 named qty → 88.6% single LoRA ✓
 v22:     Dual LoRA (forward + verify) → 96.0% L3 ✓ (+7.4 pts, verification proven)
-v22.1:   L4 two-step word problems → NEXT
+v22.1:   L4 two-step word problems → 100.0% ✓ (1 epoch, instant generalization)
+v22.2:   GSM8K dual LoRA → 17.8% ✓ (8.1x over 2.2%, 5 passes, blend ≈ 0.65)
 ```
 
 Key insight at each pivot:
