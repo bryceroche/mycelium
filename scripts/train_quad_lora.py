@@ -470,7 +470,7 @@ def train(args):
     model = QuadLoRAModel()
     model.compressor = model.compressor.to(device=device, dtype=torch.bfloat16)
     model.hypernet = model.hypernet.to(device=device, dtype=torch.bfloat16)
-    model.confidence_head = model.confidence_head.to(device=device, dtype=torch.bfloat16)
+    model.confidence_head = model.confidence_head.to(device)
 
     # Answer head — small, kept in float32 for digit classification stability
     answer_head = AnswerHead(page_size=model.page_size).to(device)
