@@ -79,18 +79,24 @@ GSM8K: (2.2% → 17.8%)                       ✓  8.1x improvement
 
 ## What to Do Next (Priority)
 
-### 1. Entropy Flow + Surprise Detection (v24.5 — NEXT)
-Track entropy across cycles. Good thinking = steady reduction (smooth current flow). Bad thinking = choppy jumps (sparks). GRU-based confidence head outputs (confidence, smoothness). ~216K params.
+### 1. Fresh Curriculum with Pi-Harmonic (v24.5 — IN PROGRESS)
+Train from scratch L3 → L4 → L5 with pi-harmonic encoding. No warm-start from old checkpoints — the new DCT-like orthogonal basis is incompatible with old transformer-style encoding (24% → 16% regression when warm-starting).
 
-### 2. Three Fixes for GSM8K Ceiling (v22.3 — BUILT)
-- Gradient scaling per cycle (earlier = amplified, capped 4x)
-- Fresh data every epoch (procedural regen + GSM8K number-swap augmentation)
-- Fill L4→L5 gap (L4.5/L4.7/L4.9 intermediate levels)
+```
+L3: 8 epochs, 3 passes, fresh data, target >85%
+L4: 6 epochs, 3 passes, warm from L3, target >90%
+L5: 20 epochs, 5 passes, warm from L4, target >25%
+```
+
+Key settings: `--lam_answer 1.0` (primary anti-collapse), atom LR 1e-4 (slow), hypernetwork LR 1e-3 (fast).
+
+### 2. Entropy Flow + Surprise Detection (v24.5)
+Track entropy across cycles. GRU-based confidence head outputs (confidence, smoothness). ~216K params.
 
 ### 3. Perceiver Skip Connection (v24.2 — DESIGNED)
 Private 4096-float memory across passes (mid-layer query states). Second gradient path to earlier cycles.
 
-### 4. MATH-500 Benchmark (May 22 deadline)
+### 4. MATH-500 Benchmark (June 1 deadline)
 
 ---
 
