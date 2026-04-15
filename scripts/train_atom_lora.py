@@ -160,6 +160,7 @@ def forward_train(model, answer_head, problems, answers, finals_t,
     state_pages = []
     atom_scales_history = []  # list of (B, num_atoms) tensors
     mid_states_history = []   # list of (B, num_queries, d_perceiver) tensors
+    pre_tanh_history = []     # list of (B, num_atoms) tensors for regularization
 
     for pass_num in range(num_passes):
         if pass_num == 0:
@@ -172,10 +173,11 @@ def forward_train(model, answer_head, problems, answers, finals_t,
             atom_scales = torch.zeros(
                 batch_size, model.num_atoms, device=device,
             )
+            pre_tanh = torch.zeros_like(atom_scales)
         else:
-            # Atom LoRA from pages
-            atom_scales = model.hypernet(
-                state_pages, pass_num=pass_num,
+            # Atom LoRA from pages (with pre-tanh for regularization)
+            atom_scales, pre_tanh = model.hypernet(
+                state_pages, pass_num=pass_num, return_pre_tanh=True,
             )
             manager = AtomAdditiveLoRAManager(model.transformer)
             manager.apply(model.atoms, atom_scales)
@@ -216,11 +218,13 @@ def forward_train(model, answer_head, problems, answers, finals_t,
             atom_scales = atom_scales * atom_mask
 
         atom_scales_history.append(atom_scales)
+        pre_tanh_history.append(pre_tanh)
 
     # ------- Answer loss (teacher-forced with atom LoRA) -------
-    final_atom_scales = model.hypernet(
-        state_pages, pass_num=num_passes,
+    final_atom_scales, final_pre_tanh = model.hypernet(
+        state_pages, pass_num=num_passes, return_pre_tanh=True,
     )
+    pre_tanh_history.append(final_pre_tanh)
     manager = AtomAdditiveLoRAManager(model.transformer)
     manager.apply(model.atoms, final_atom_scales)
     try:
@@ -276,7 +280,12 @@ def forward_train(model, answer_head, problems, answers, finals_t,
         else:
             cross_pass_cos = torch.tensor(0.0, device=device)
 
-    return (ans_loss, c_loss, conf_loss, ah_loss,
+    # ------- Pre-tanh regularization (keeps tanh gradient alive) -------
+    # Penalize squared logits to prevent saturation (|x| < 2 has usable gradient)
+    all_pre_tanh = torch.cat(pre_tanh_history, dim=0)  # (P*B, num_atoms)
+    scale_reg_loss = (all_pre_tanh ** 2).mean()
+
+    return (ans_loss, c_loss, conf_loss, ah_loss, scale_reg_loss,
             page_cos_mean, active_atoms_mean, scale_std, cross_pass_cos,
             confidence.mean(), state_pages)
 
@@ -325,6 +334,7 @@ def forward_train_cached(model, answer_head, problems, answers, finals_t,
 
     atom_scales_history = []
     mid_states_history = []
+    pre_tanh_history = []
 
     for pass_num in range(start_pass, num_passes):
         if pass_num == 0:
@@ -337,10 +347,11 @@ def forward_train_cached(model, answer_head, problems, answers, finals_t,
             atom_scales = torch.zeros(
                 batch_size, model.num_atoms, device=device,
             )
+            pre_tanh = torch.zeros_like(atom_scales)
         else:
-            # Atom LoRA from pages
-            atom_scales = model.hypernet(
-                state_pages, pass_num=pass_num,
+            # Atom LoRA from pages (with pre-tanh for regularization)
+            atom_scales, pre_tanh = model.hypernet(
+                state_pages, pass_num=pass_num, return_pre_tanh=True,
             )
             manager = AtomAdditiveLoRAManager(model.transformer)
             manager.apply(model.atoms, atom_scales)
@@ -380,11 +391,13 @@ def forward_train_cached(model, answer_head, problems, answers, finals_t,
             atom_scales = atom_scales * atom_mask
 
         atom_scales_history.append(atom_scales)
+        pre_tanh_history.append(pre_tanh)
 
     # ------- Answer loss (teacher-forced with atom LoRA) -------
-    final_atom_scales = model.hypernet(
-        state_pages, pass_num=num_passes,
+    final_atom_scales, final_pre_tanh = model.hypernet(
+        state_pages, pass_num=num_passes, return_pre_tanh=True,
     )
+    pre_tanh_history.append(final_pre_tanh)
     manager = AtomAdditiveLoRAManager(model.transformer)
     manager.apply(model.atoms, final_atom_scales)
     try:
@@ -435,7 +448,11 @@ def forward_train_cached(model, answer_head, problems, answers, finals_t,
         else:
             cross_pass_cos = torch.tensor(0.0, device=device)
 
-    return (ans_loss, c_loss, conf_loss, ah_loss,
+    # ------- Pre-tanh regularization (keeps tanh gradient alive) -------
+    all_pre_tanh = torch.cat(pre_tanh_history, dim=0)
+    scale_reg_loss = (all_pre_tanh ** 2).mean()
+
+    return (ans_loss, c_loss, conf_loss, ah_loss, scale_reg_loss,
             page_cos_mean, active_atoms_mean, scale_std, cross_pass_cos,
             confidence.mean(), state_pages)
 
@@ -785,6 +802,7 @@ def train(args):
     print(f"  lam            = {args.lam}")
     print(f"  lam_conf       = {args.lam_conf}")
     print(f"  lam_answer     = {args.lam_answer}")
+    print(f"  lam_scale_reg  = {args.lam_scale_reg}")
     print(f"  num_atoms      = {args.num_atoms}")
     print(f"  atom_rank      = {args.atom_rank}")
     print(f"  num_train      = {args.num_train}")
@@ -901,7 +919,7 @@ def train(args):
             collate_fn=collate_fn,
         )
 
-        ep_ans = ep_ctr = ep_conf = ep_head = ep_cos = 0.0
+        ep_ans = ep_ctr = ep_conf = ep_head = ep_cos = ep_scale_reg = 0.0
         ep_active = ep_std = ep_xpass = 0.0
         cache_hits = cache_full = 0
         nb = 0
@@ -951,7 +969,7 @@ def train(args):
                 # 10%: full run (implicit else)
 
             if cached_pages is not None:
-                (ans_loss, c_loss, conf_loss, ah_loss,
+                (ans_loss, c_loss, conf_loss, ah_loss, scale_reg,
                  page_cos, active_atoms, s_std, xpass_cos,
                  conf_mean, state_pages) = forward_train_cached(
                     model, answer_head, problems, answers, finals_t,
@@ -961,7 +979,7 @@ def train(args):
                     max_answer_length=max_answer_length,
                 )
             else:
-                (ans_loss, c_loss, conf_loss, ah_loss,
+                (ans_loss, c_loss, conf_loss, ah_loss, scale_reg,
                  page_cos, active_atoms, s_std, xpass_cos,
                  conf_mean, state_pages) = forward_train(
                     model, answer_head, problems, answers, finals_t,
@@ -979,7 +997,8 @@ def train(args):
             total_loss = (ans_loss
                           + args.lam * c_loss
                           + args.lam_conf * conf_loss
-                          + args.lam_answer * ah_loss)
+                          + args.lam_answer * ah_loss
+                          + args.lam_scale_reg * scale_reg)
             total_loss.backward()
             torch.nn.utils.clip_grad_norm_(trainable, 1.0)
             optimizer.step()
@@ -988,6 +1007,7 @@ def train(args):
             ep_ctr += c_loss.item()
             ep_conf += conf_loss.item()
             ep_head += ah_loss.item()
+            ep_scale_reg += scale_reg.item()
             ep_cos += page_cos.item()
             ep_active += active_atoms.item()
             ep_std += s_std.item()
@@ -1053,7 +1073,7 @@ def train(args):
         print(
             f"Epoch {epoch+1}: "
             f"ans={ep_ans/nb:.4f} contr={ep_ctr/nb:.2f} "
-            f"conf={ep_conf/nb:.2f} head={ep_head/nb:.2f} "
+            f"conf={ep_conf/nb:.2f} head={ep_head/nb:.2f} scale_reg={ep_scale_reg/nb:.2f} "
             f"page_cos={ep_cos/nb:.2f} "
             f"active={ep_active/nb:.1f}/{args.num_atoms} "
             f"scale_std={ep_std/nb:.3f} "
@@ -1106,6 +1126,8 @@ if __name__ == '__main__':
                    help='Confidence loss weight')
     p.add_argument('--lam_answer', type=float, default=0.3,
                    help='Answer head loss weight')
+    p.add_argument('--lam_scale_reg', type=float, default=0.1,
+                   help='Pre-tanh scale regularization weight (keeps gradient alive)')
     p.add_argument('--num_atoms', type=int, default=64,
                    help='Number of LoRA atoms')
     p.add_argument('--atom_rank', type=int, default=6,

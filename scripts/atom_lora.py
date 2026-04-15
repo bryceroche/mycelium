@@ -25,7 +25,7 @@ sys.path.insert(0, '/home/ubuntu/mycelium')
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from src.compressor_v3 import Compressor
@@ -381,7 +381,8 @@ class AtomHypernetwork(nn.Module):
         self.pass_project = nn.Linear(pass_embed_dim, pass_embed_dim)
 
         # --- Deep MLP: 1024 (page_summary) + 512 (pass_embed) = 1536 -> 64 ---
-        self.scale_net = nn.Sequential(
+        # Split into pre-tanh and tanh for regularization access
+        self.scale_mlp = nn.Sequential(
             nn.Linear(1024 + pass_embed_dim, 1024),
             nn.GELU(),
             nn.Dropout(0.1),
@@ -393,10 +394,13 @@ class AtomHypernetwork(nn.Module):
             nn.Linear(1024, 512),
             nn.GELU(),
             nn.Linear(512, num_atoms),
-            nn.Tanh(),  # bounded [-1, 1], independent, no competition
         )
+        self.scale_activation = nn.Tanh()  # bounded [-1, 1], independent
         # Gentle bias: tanh(0.05)≈0.05 → atoms barely active but gradient flows
-        self.scale_net[-2].bias.data.fill_(0.05)
+        self.scale_mlp[-1].bias.data.fill_(0.05)
+
+        # For backward compat: scale_net wraps the full pipeline
+        self.scale_net = nn.Sequential(self.scale_mlp, self.scale_activation)
 
     def fourier_encode(self, pass_num: int, device: torch.device) -> torch.Tensor:
         """Encode pass number as smooth Fourier features."""
@@ -408,20 +412,26 @@ class AtomHypernetwork(nn.Module):
         self,
         state_pages: List[torch.Tensor],
         pass_num: int,
-    ) -> torch.Tensor:
+        return_pre_tanh: bool = False,
+    ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         """
         Args:
             state_pages: list of (batch, page_size) tensors (accumulated pages)
             pass_num: int (0-indexed)
+            return_pre_tanh: if True, also return pre-tanh values for regularization
 
         Returns:
             atom_scales: (batch, num_atoms) tanh-bounded in [-1, 1]
+            pre_tanh: (batch, num_atoms) raw MLP output (only if return_pre_tanh=True)
         """
         if len(state_pages) == 0:
             # Pass 0: no pages yet, return zeros (no LoRA modification)
             batch_size = 1  # caller must handle
             device = self.page_query.device
-            return torch.zeros(batch_size, self.num_atoms, device=device)
+            zeros = torch.zeros(batch_size, self.num_atoms, device=device)
+            if return_pre_tanh:
+                return zeros, zeros
+            return zeros
 
         batch_size = state_pages[0].size(0)
         device = state_pages[0].device
@@ -450,8 +460,11 @@ class AtomHypernetwork(nn.Module):
 
         # Combine and generate atom scales
         combined = torch.cat([page_summary, pass_emb], dim=-1)  # (B, 1536)
-        atom_scales = self.scale_net(combined)                   # (B, num_atoms)
+        pre_tanh = self.scale_mlp(combined)                      # (B, num_atoms)
+        atom_scales = self.scale_activation(pre_tanh)            # (B, num_atoms)
 
+        if return_pre_tanh:
+            return atom_scales, pre_tanh
         return atom_scales
 
 
