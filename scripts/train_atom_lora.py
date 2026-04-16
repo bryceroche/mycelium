@@ -713,23 +713,31 @@ def collate_fn(batch):
 # Warm-start logic
 # ---------------------------------------------------------------------------
 
-def try_warm_start(model, answer_head, warm_path):
-    """Try atom checkpoint first; fall back to perceiver-only warm start."""
+def try_warm_start(model, answer_head, warm_path, skip_perceiver=False):
+    """Try atom checkpoint first; fall back to perceiver-only warm start.
+
+    If skip_perceiver=True, skip loading the compressor (perceiver) and let it
+    stay randomly initialized. This is useful when the perceiver is stuck in a
+    bad mode (e.g., constant pages) and needs to learn fresh.
+    """
     ckpt = torch.load(warm_path, map_location='cpu', weights_only=True)
 
     if 'atoms' in ckpt:
         # Atom checkpoint — load directly
         print(f"  Loading atom checkpoint from {warm_path}")
 
-        # Compressor
-        own = model.compressor.state_dict()
-        loaded = 0
-        for k, v in ckpt['compressor'].items():
-            if k in own and own[k].shape == v.shape:
-                own[k] = v
-                loaded += 1
-        model.compressor.load_state_dict(own, strict=False)
-        print(f"  compressor: loaded {loaded}/{len(own)}")
+        # Compressor (skip if resetting perceiver)
+        if skip_perceiver:
+            print(f"  compressor: SKIPPED (--skip_perceiver flag)")
+        else:
+            own = model.compressor.state_dict()
+            loaded = 0
+            for k, v in ckpt['compressor'].items():
+                if k in own and own[k].shape == v.shape:
+                    own[k] = v
+                    loaded += 1
+            model.compressor.load_state_dict(own, strict=False)
+            print(f"  compressor: loaded {loaded}/{len(own)}")
 
         # Atoms
         if 'atoms' in ckpt:
@@ -800,9 +808,12 @@ def train(args):
     print(f"  epochs         = {args.epochs}")
     print(f"  patience       = {args.patience}")
     print(f"  lam            = {args.lam}")
+    if args.lam_anneal_to is not None:
+        print(f"  lam_anneal_to  = {args.lam_anneal_to} (after epoch {args.lam_anneal_after})")
     print(f"  lam_conf       = {args.lam_conf}")
     print(f"  lam_answer     = {args.lam_answer}")
     print(f"  lam_scale_reg  = {args.lam_scale_reg}")
+    print(f"  skip_perceiver = {args.skip_perceiver}")
     print(f"  num_atoms      = {args.num_atoms}")
     print(f"  atom_rank      = {args.atom_rank}")
     print(f"  num_train      = {args.num_train}")
@@ -827,7 +838,9 @@ def train(args):
 
     if warm_path:
         print(f"\nWarm-starting from {warm_path}")
-        try_warm_start(model, answer_head, warm_path)
+        if args.skip_perceiver:
+            print("  (--skip_perceiver: perceiver will stay random)")
+        try_warm_start(model, answer_head, warm_path, skip_perceiver=args.skip_perceiver)
 
     # Fixed eval dataset
     eval_dataset = make_eval_dataset(level, num_samples=args.eval_size)
@@ -900,6 +913,14 @@ def train(args):
         model.train()
         answer_head.train()
         t0 = time.time()
+
+        # Contrastive annealing: strong early, then back off
+        if args.lam_anneal_to is not None and epoch >= args.lam_anneal_after:
+            effective_lam = args.lam_anneal_to
+            if epoch == args.lam_anneal_after:
+                print(f"  [epoch {epoch+1}] Annealing lam: {args.lam} -> {effective_lam}")
+        else:
+            effective_lam = args.lam
 
         # Fresh data per epoch (Fix 2)
         epoch_seed = epoch * 1000 + 42
@@ -995,7 +1016,7 @@ def train(args):
                     cache.store(problem_hash, state_pages, epoch)
 
             total_loss = (ans_loss
-                          + args.lam * c_loss
+                          + effective_lam * c_loss
                           + args.lam_conf * conf_loss
                           + args.lam_answer * ah_loss
                           + args.lam_scale_reg * scale_reg)
@@ -1138,6 +1159,12 @@ if __name__ == '__main__':
                    help='Number of eval problems (200 quick, 500 thorough)')
     p.add_argument('--use_cache', action='store_true',
                    help='Enable page cache for faster training (v24.4)')
+    p.add_argument('--skip_perceiver', action='store_true',
+                   help='Skip loading perceiver from warm checkpoint (reset it)')
+    p.add_argument('--lam_anneal_to', type=float, default=None,
+                   help='Anneal contrastive to this value (default: no annealing)')
+    p.add_argument('--lam_anneal_after', type=int, default=2,
+                   help='Start using annealed lam after this epoch (default: 2)')
 
     args = p.parse_args()
 
