@@ -31,6 +31,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from src.compressor_v3 import Compressor, ResidualPageGate
 from src.sympy_evaluator import SymPyEvaluator
 from src.sympy_result_encoder import SymPyResultEncoder, format_sympy_context
+from src.pattern_memory import PatternMemory
+from src.pattern_classifier import classify_pattern
 
 
 # ---------------------------------------------------------------------------
@@ -717,8 +719,14 @@ class AtomLoRAModel(nn.Module):
     def __init__(self, model_name: str = 'unsloth/Llama-3.2-1B',
                  num_atoms: int = 64, atom_rank: int = 6,
                  pass_embed_scale: float = 1.0,
-                 skip_pass_embed: bool = False):
+                 skip_pass_embed: bool = False,
+                 use_pattern_memory: bool = False,
+                 pattern_memory_db_path: str = "pattern_memory.db"):
         super().__init__()
+
+        # --- Pattern memory (long-term SQLite-backed pattern storage) ---
+        self.pattern_memory = PatternMemory(db_path=pattern_memory_db_path) if use_pattern_memory else None
+        self.pattern_hint = None  # Set by solve_with_memory if a good pattern is found
 
         # --- Frozen transformer ---
         self.transformer = AutoModelForCausalLM.from_pretrained(
@@ -1017,6 +1025,135 @@ class AtomLoRAModel(nn.Module):
             page = page * grad_scale + page.detach() * (1.0 - grad_scale)
 
         return page, atom_scales, current_mid_states, updated_sympy_results
+
+    def solve_with_memory(
+        self,
+        problem_text: str,
+        problem_ids: torch.Tensor,
+        max_passes: int = 5,
+        epoch: int = 0,
+    ) -> Tuple[Optional[int], Optional[int]]:
+        """
+        Full solve with pattern memory integration.
+
+        Queries pattern memory after pass 1 to retrieve similar patterns.
+        Sets self.pattern_hint if a good match is found (score > 0.5).
+        Checks for 'answer' in sympy_results or confidence for early stopping.
+
+        Args:
+            problem_text: The problem text string
+            problem_ids: Tokenized problem (B, seq_len)
+            max_passes: Maximum number of thinking passes
+            epoch: Current training epoch (for pattern memory updates)
+
+        Returns:
+            (answer, used_pattern_id): The predicted answer and ID of pattern used (if any)
+        """
+        device = problem_ids.device
+        batch_size = problem_ids.size(0)
+
+        # Create attention mask (1 for real tokens, 0 for padding)
+        attention_mask = (problem_ids != self.tokenizer.pad_token_id).long()
+
+        state_pages: List[torch.Tensor] = []
+        sympy_results: Dict[str, float] = {}
+        used_pattern_id: Optional[int] = None
+        prev_mid_states: Optional[List[torch.Tensor]] = None
+
+        for pass_num in range(max_passes):
+            # === THINK ===
+            page, atom_scales, current_mid_states, sympy_results = self.thinking_pass_with_sympy(
+                problem_text=problem_text,
+                input_ids=problem_ids,
+                attention_mask=attention_mask,
+                state_pages=state_pages,
+                pass_num=pass_num,
+                sympy_results=sympy_results,
+                teacher_sympy=None,  # No teacher forcing during solve
+                prev_mid_states=prev_mid_states,
+                max_passes=max_passes,
+            )
+            state_pages.append(page)
+            prev_mid_states = [current_mid_states] if prev_mid_states is None else prev_mid_states + [current_mid_states]
+
+            # === QUERY PATTERN MEMORY (after pass 1) ===
+            if pass_num == 0 and self.pattern_memory is not None:
+                matches = self.pattern_memory.query(page[0], top_k=3)  # Use first item in batch
+
+                if matches and matches[0]['score'] > 0.5:
+                    best = matches[0]
+                    used_pattern_id = best['pattern_id']
+
+                    # Inject pattern hint as context for next pass
+                    hint = f"Suggested approach ({best['type']}, "
+                    hint += f"{best['success_rate']:.0%} success): "
+                    hint += best['template']
+                    self.pattern_hint = hint
+                else:
+                    self.pattern_hint = None
+
+            # === CHECK STOPPING: answer in sympy_results ===
+            if 'answer' in sympy_results:
+                answer = int(sympy_results['answer'])
+                return answer, used_pattern_id
+
+            # === CHECK STOPPING: confidence ===
+            if pass_num >= 1 and len(state_pages) > 0:
+                conf = self.confidence_head(state_pages)
+                if conf.mean().item() > 0.9:
+                    break
+
+        # Extract answer from answer head
+        if len(state_pages) > 0:
+            answer = self.answer_head.decode(state_pages[-1])
+            return answer[0].item(), used_pattern_id
+        else:
+            return None, used_pattern_id
+
+    def after_solve(
+        self,
+        problem_text: str,
+        state_pages: List[torch.Tensor],
+        sympy_steps: Optional[List[str]],
+        was_correct: bool,
+        used_pattern_id: Optional[int],
+        epoch: int = 0,
+    ) -> None:
+        """
+        Post-solve: update pattern memory based on outcome.
+
+        Called after checking whether the answer was correct.
+        - If a pattern was used, records success/failure
+        - If answer was correct and we have sympy_steps, stores new pattern
+
+        Args:
+            problem_text: The original problem text
+            state_pages: List of page tensors from thinking passes
+            sympy_steps: Optional list of SymPy step strings (for storing new patterns)
+            was_correct: Whether the predicted answer matched gold
+            used_pattern_id: ID of pattern that was used (if any)
+            epoch: Current training epoch
+        """
+        if self.pattern_memory is None:
+            return
+
+        # Update outcome if we used a pattern
+        if used_pattern_id is not None:
+            self.pattern_memory.record_outcome(used_pattern_id, was_correct, epoch)
+
+        # Store new pattern if successful and we have SymPy steps
+        if was_correct and sympy_steps and len(state_pages) > 0:
+            # Auto-classify pattern type
+            pattern_type = classify_pattern(sympy_steps)
+            template = "; ".join(sympy_steps)
+
+            self.pattern_memory.store(
+                page_embedding=state_pages[0],  # Use first page (problem encoding)
+                sympy_template=template,
+                pattern_type=pattern_type,
+                example_problem=problem_text[:200],
+                epoch=epoch,
+            )
 
 
 # ---------------------------------------------------------------------------
