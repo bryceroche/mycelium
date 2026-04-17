@@ -217,12 +217,15 @@ def forward_train_with_sympy(
 
     for pass_num in range(num_passes):
         # Execute teacher SymPy code for this pass if available
+        # IMPORTANT: Execute ALL steps up to current pass as one block,
+        # so variables from earlier steps are in namespace (e.g., v2 = 48 + v1)
         if use_teacher:
             for b in range(batch_size):
-                if pass_num < len(sympy_steps_batch[b]):
-                    teacher_code = sympy_steps_batch[b][pass_num]
-                    step_results = SymPyEvaluator.safe_eval(teacher_code)
-                    sympy_results_batch[b].update(step_results)
+                steps_to_run = sympy_steps_batch[b][:pass_num + 1]
+                if steps_to_run:
+                    cumulative_code = '\n'.join(steps_to_run)
+                    step_results = SymPyEvaluator.safe_eval(cumulative_code)
+                    sympy_results_batch[b] = step_results  # Replace, not update
 
         # First pass: no LoRA (no pages yet)
         if pass_num == 0:
@@ -745,6 +748,18 @@ def train(args):
                 + args.lam_answer_head * ah_loss
                 + args.lam_sympy * sympy_loss
             )
+
+            # NaN check - catch issues early
+            if torch.isnan(total_loss) or torch.isinf(total_loss):
+                print(f"\n[WARNING] NaN/Inf detected in batch!")
+                print(f"  ans_loss: {ans_loss.item()}")
+                print(f"  ctr_loss: {ctr_loss.item()}")
+                print(f"  ah_loss: {ah_loss.item()}")
+                print(f"  sympy_loss: {sympy_loss.item()}")
+                print(f"  Skipping this batch...")
+                optimizer.zero_grad()
+                continue
+
             total_loss.backward()
             torch.nn.utils.clip_grad_norm_(trainable, 1.0)
             optimizer.step()

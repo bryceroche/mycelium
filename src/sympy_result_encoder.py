@@ -101,6 +101,12 @@ class SymPyResultEncoder(nn.Module):
         encoded = torch.zeros(self.max_variables * 2, device=device)
 
         for i, v in enumerate(values[:self.max_variables]):
+            # Guard against nan/inf values from SymPy
+            if not math.isfinite(v):
+                v = 0.0
+            # Clamp to reasonable range to avoid overflow
+            v = max(-1e9, min(1e9, v))
+
             # Normalized value (rough centering for typical GSM8K ranges)
             encoded[i * 2] = v / 1000.0
 
@@ -182,6 +188,11 @@ class SymPyResultEncoder(nn.Module):
                 values = list(results.values())[:self.max_variables]
                 encoded = torch.zeros(self.max_variables * 2, device=device)
                 for i, v in enumerate(values):
+                    # Guard against nan/inf values from SymPy
+                    if not math.isfinite(v):
+                        v = 0.0
+                    # Clamp to reasonable range to avoid overflow
+                    v = max(-1e9, min(1e9, v))
                     encoded[i * 2] = v / 1000.0
                     sign = 1.0 if v >= 0 else -1.0
                     encoded[i * 2 + 1] = sign * math.log(abs(v) + 1.0)
