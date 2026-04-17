@@ -840,6 +840,11 @@ def train(args):
         else:
             patience_counter += 1
 
+        # Guard against all-NaN epochs
+        if nb == 0:
+            print(f"Epoch {epoch+1}: ALL BATCHES NaN - training diverged! Stopping.")
+            break
+
         print(
             f"Epoch {epoch+1}: "
             f"ans={ep_ans/nb:.4f} ctr={ep_ctr/nb:.3f} ah={ep_ah/nb:.3f} sympy={ep_sympy/nb:.3f} "
