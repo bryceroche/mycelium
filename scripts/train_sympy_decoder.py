@@ -137,8 +137,10 @@ def format_sympy_context(results: Dict) -> str:
     return "Known values: " + ", ".join(parts) + ". "
 
 
-def get_teacher_forcing_prob(epoch: int) -> float:
-    """Progressive teacher forcing schedule."""
+def get_teacher_forcing_prob(epoch: int, always: bool = False) -> float:
+    """Progressive teacher forcing schedule. If always=True, return 1.0."""
+    if always:
+        return 1.0
     if epoch < 5:
         return 1.0
     elif epoch < 10:
@@ -728,7 +730,7 @@ def train(args):
         sympy_encoder.train()
         t0 = time.time()
 
-        tf_prob = get_teacher_forcing_prob(epoch)
+        tf_prob = get_teacher_forcing_prob(epoch, always=args.always_teacher)
         print(f"\n[Epoch {epoch+1}/{args.epochs}] Teacher forcing: {tf_prob:.0%}")
 
         ep_dec = ep_ctr = ep_ah = ep_sreg = 0.0
@@ -858,6 +860,8 @@ if __name__ == '__main__':
                         help='Apply Fourier atom init + frequency-aware residual gate (fresh training only)')
     parser.add_argument('--fresh_atoms', action='store_true',
                         help='Skip loading atoms from checkpoint (use with --fourier_init)')
+    parser.add_argument('--always_teacher', action='store_true',
+                        help='100%% teacher forcing all epochs (no annealing)')
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--batch_size', type=int, default=4)
     parser.add_argument('--max_passes', type=int, default=5)
