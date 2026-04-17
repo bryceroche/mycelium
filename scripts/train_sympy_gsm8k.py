@@ -615,7 +615,11 @@ def train(args):
     model = AtomLoRAModel(
         num_atoms=args.num_atoms,
         atom_rank=args.atom_rank,
+        use_pattern_memory=args.use_pattern_memory,
+        pattern_memory_db_path=args.pattern_memory_db,
     )
+    if args.use_pattern_memory:
+        print(f"Pattern Memory ENABLED (db: {args.pattern_memory_db})")
     model.compressor = model.compressor.to(device=device, dtype=torch.bfloat16)
     model.hypernet = model.hypernet.to(device=device, dtype=torch.bfloat16)
     model.atoms = model.atoms.to(device=device, dtype=torch.bfloat16)
@@ -818,6 +822,19 @@ def train(args):
             f"[{elapsed:.0f}s]"
         )
 
+        # Pattern memory maintenance (if enabled)
+        if args.use_pattern_memory and model.pattern_memory is not None:
+            # Prune low-value patterns and get stats
+            pruned = model.pattern_memory.prune(
+                min_success_rate=0.3, min_uses=3, max_patterns=10000,
+            )
+            stats = model.pattern_memory.stats()
+            print(
+                f"  Pattern Memory: {stats.get('total_patterns', 0)} patterns, "
+                f"{stats.get('avg_success_rate', 0):.1%} avg success, "
+                f"pruned {pruned}"
+            )
+
         if patience_counter >= args.patience:
             print(f"\nEarly stopping: no improvement for {args.patience} epochs")
             break
@@ -890,6 +907,14 @@ if __name__ == '__main__':
     parser.add_argument(
         '--atom_rank', type=int, default=6,
         help='Rank of each LoRA atom (default: 6)',
+    )
+    parser.add_argument(
+        '--use_pattern_memory', action='store_true',
+        help='Enable Pattern Memory (SQLite long-term memory for reasoning patterns)',
+    )
+    parser.add_argument(
+        '--pattern_memory_db', type=str, default='pattern_memory.db',
+        help='Path to Pattern Memory SQLite database (default: pattern_memory.db)',
     )
 
     args = parser.parse_args()
