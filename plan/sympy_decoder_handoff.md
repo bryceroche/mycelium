@@ -30,9 +30,11 @@ AFTER (clean):
 
 ## Architecture
 
-### SymPy Decoder (~5M params)
+### SymPy Decoder (~8M params)
 
-A small transformer decoder that reads a page and emits a SymPy expression token by token.
+A small transformer decoder that reads a page as 64 TOKENS (one per dimension) and emits a SymPy expression. The decoder cross-attends over page dimensions, selectively querying specific frequency bands for specific token predictions.
+
+**Why 64 tokens instead of 1 vector:** The original decoder read the page through a pinhole — one linear projection collapsing 64 floats into a single 256-dim vector. The decoder couldn't selectively attend to specific page dimensions. With the page as 64 tokens, the decoder's cross-attention can query: "to predict the operator, look at mid-frequency dims 20-30" and "to predict the number, look at high-frequency dims 50-60."
 
 ```python
 import torch
@@ -40,132 +42,168 @@ import torch.nn as nn
 
 class SymPyDecoder(nn.Module):
     """
-    Small decoder that reads a 64-float page and emits a SymPy expression.
+    Decoder that reads a 64-float page as 64 separate tokens
+    and emits a SymPy expression.
     
-    Tiny math-specific vocabulary (~50 tokens).
-    2-layer transformer decoder (~5M params).
-    Completely separate from the LLM's generation path.
+    Key change from v1: page enters as a SEQUENCE of 64 tokens,
+    not a single vector. The decoder cross-attends over page dimensions,
+    enabling selective reading of specific frequency bands.
+    
+    3-layer transformer decoder, 256 dim, ~8M params.
     """
     
     def __init__(self, page_size=64, d_model=256, nhead=4, 
-                 num_layers=2, max_tokens=40):
+                 num_layers=3, max_tokens=40):
         super().__init__()
         self.d_model = d_model
         self.max_tokens = max_tokens
+        self.page_size = page_size
         
         # Math-specific vocabulary
         self.vocab = SymPyVocab()
         vocab_size = len(self.vocab)
         
-        # Token embedding
+        # Token embedding (for decoder's own tokens)
         self.embed = nn.Embedding(vocab_size, d_model)
         self.pos_embed = nn.Embedding(max_tokens, d_model)
         
-        # Page projection (page → decoder memory)
-        self.page_project = nn.Sequential(
+        # === PAGE AS 64 TOKENS (key change) ===
+        self.page_dim_embed = nn.Sequential(
+            nn.Linear(1, d_model),
+            nn.GELU(),
+            nn.Linear(d_model, d_model),
+        )
+        self.page_pos_embed = nn.Embedding(page_size, d_model)
+        self.page_norm = nn.LayerNorm(d_model)
+        
+        # Project accumulated SymPy results as additional memory tokens
+        self.result_project = nn.Sequential(
             nn.Linear(page_size, d_model),
             nn.GELU(),
             nn.Linear(d_model, d_model),
         )
         
-        # Also project accumulated SymPy results as additional memory
-        self.result_project = nn.Sequential(
-            nn.Linear(page_size, d_model),  # result_encoder output is page_size
-            nn.GELU(),
-            nn.Linear(d_model, d_model),
-        )
-        
-        # Transformer decoder
+        # 3-layer transformer decoder
         decoder_layer = nn.TransformerDecoderLayer(
-            d_model=d_model,
-            nhead=nhead,
+            d_model=d_model, nhead=nhead,
             dim_feedforward=d_model * 4,
-            dropout=0.1,
-            batch_first=True,
+            dropout=0.1, batch_first=True,
         )
         self.decoder = nn.TransformerDecoder(decoder_layer, num_layers=num_layers)
         
         # Output projection
         self.output = nn.Linear(d_model, vocab_size)
-        
-        # Layer norm
         self.norm = nn.LayerNorm(d_model)
     
-    def forward(self, page, result_embedding=None, target_tokens=None):
-        """
-        page: (batch, 64) — current page from perceiver
-        result_embedding: (batch, 64) — encoded previous SymPy results (optional)
-        target_tokens: (batch, seq) — teacher-forced target (training only)
-        
-        returns: logits (batch, seq, vocab_size)
-        """
-        batch_size = page.size(0)
+    def prepare_page_memory(self, page, result_embedding=None):
+        """Convert page to 64 memory tokens for cross-attention."""
         device = page.device
-        
-        # Build memory from page (+ optional previous results)
-        page_mem = self.page_project(page).unsqueeze(1)  # (batch, 1, d_model)
+        page_tokens = page.unsqueeze(-1)  # (batch, 64, 1)
+        page_embedded = self.page_dim_embed(page_tokens)  # (batch, 64, d_model)
+        positions = torch.arange(self.page_size, device=device)
+        page_embedded = page_embedded + self.page_pos_embed(positions)
+        page_embedded = self.page_norm(page_embedded)
         
         if result_embedding is not None:
             result_mem = self.result_project(result_embedding).unsqueeze(1)
-            memory = torch.cat([page_mem, result_mem], dim=1)  # (batch, 2, d_model)
+            memory = torch.cat([page_embedded, result_mem], dim=1)
         else:
-            memory = page_mem  # (batch, 1, d_model)
+            memory = page_embedded
+        return memory
+    
+    def forward(self, page, result_embedding=None, target_tokens=None):
+        device = page.device
+        memory = self.prepare_page_memory(page, result_embedding)
         
         if target_tokens is not None:
-            # Teacher forcing
             seq_len = target_tokens.size(1)
             tgt = self.embed(target_tokens) + self.pos_embed(
-                torch.arange(seq_len, device=device)
-            )
+                torch.arange(seq_len, device=device))
             tgt = self.norm(tgt)
-            
-            # Causal mask
             causal_mask = nn.Transformer.generate_square_subsequent_mask(
-                seq_len, device=device
-            )
-            
+                seq_len, device=device)
             out = self.decoder(tgt, memory, tgt_mask=causal_mask)
-            return self.output(out)  # (batch, seq, vocab_size)
+            return self.output(out)
         else:
-            # Autoregressive generation
             return self.generate(memory, device)
     
-    def generate(self, memory, device, temperature=0.0):
-        """
-        Autoregressive generation of SymPy expression.
-        Returns: list of token strings
-        """
-        batch_size = memory.size(0)
-        
-        # Start with BOS token
+    def generate(self, memory, device, temperature=0.0, min_tokens=5):
+        """Autoregressive generation with EOS blocking for first min_tokens."""
         tokens = [self.vocab.bos_id]
-        
         for step in range(self.max_tokens):
-            token_ids = torch.tensor([tokens], device=device)  # (1, seq)
+            token_ids = torch.tensor([tokens], device=device)
             tgt = self.embed(token_ids) + self.pos_embed(
-                torch.arange(len(tokens), device=device)
-            )
+                torch.arange(len(tokens), device=device))
             tgt = self.norm(tgt)
-            
             causal_mask = nn.Transformer.generate_square_subsequent_mask(
-                len(tokens), device=device
-            )
-            
+                len(tokens), device=device)
             out = self.decoder(tgt, memory, tgt_mask=causal_mask)
-            logits = self.output(out[:, -1, :])  # (1, vocab_size)
-            
+            logits = self.output(out[:, -1, :])
+            if step < min_tokens:
+                logits[:, self.vocab.eos_id] = -1e9
             if temperature == 0:
                 next_token = logits.argmax(dim=-1).item()
             else:
                 probs = torch.softmax(logits / temperature, dim=-1)
                 next_token = torch.multinomial(probs, 1).item()
-            
             tokens.append(next_token)
-            
             if next_token == self.vocab.eos_id:
                 break
+        return self.vocab.decode(tokens[1:-1])
+    
+    def forward_scheduled_sampling(self, page, target_tokens,
+                                    result_embedding=None, sample_rate=0.0):
+        """
+        Scheduled sampling: with probability sample_rate, use decoder's
+        own prediction instead of teacher token. Prevents collapse to
+        safe default at generation time.
         
-        return self.vocab.decode(tokens[1:-1])  # strip BOS/EOS
+        sample_rate=0.0: pure teacher forcing (early training)
+        sample_rate=0.2: 80% teacher, 20% self (mid training)
+        sample_rate=0.5: half and half (late training)
+        """
+        device = page.device
+        memory = self.prepare_page_memory(page, result_embedding)
+        batch_size, seq_len = target_tokens.shape
+        input_tokens = target_tokens[:, :1]  # BOS
+        all_logits = []
+        
+        for t in range(1, seq_len):
+            tgt = self.embed(input_tokens) + self.pos_embed(
+                torch.arange(input_tokens.size(1), device=device))
+            tgt = self.norm(tgt)
+            causal_mask = nn.Transformer.generate_square_subsequent_mask(
+                input_tokens.size(1), device=device)
+            out = self.decoder(tgt, memory, tgt_mask=causal_mask)
+            logits = self.output(out[:, -1:, :])
+            all_logits.append(logits)
+            
+            if self.training and torch.rand(1).item() < sample_rate:
+                next_token = logits.squeeze(1).argmax(dim=-1, keepdim=True)
+            else:
+                next_token = target_tokens[:, t:t+1]
+            input_tokens = torch.cat([input_tokens, next_token], dim=1)
+        
+        return torch.cat(all_logits, dim=1)
+```
+
+**Page cross-attention enables frequency-selective reading:**
+
+```
+Predicting "v1":     cross-attend to low-freq dims 0-15 (which variable?)
+Predicting "=":      no page attention needed (always "=")
+Predicting "48":     cross-attend to high-freq dims 40-63 (exact number)
+Predicting "/":      cross-attend to mid-freq dims 16-40 (operation type)
+Predicting "2":      cross-attend to high-freq dims 40-63 (exact operand)
+```
+
+**Scheduled sampling ramp (competence-based, not epoch-based):**
+
+```
+dec_loss > 1.0:   sample_rate = 0.0  (still learning format)
+dec_loss 0.5-1.0: sample_rate = 0.2  (format learned, start self-reliance)
+dec_loss 0.2-0.5: sample_rate = 0.5  (mostly competent)
+dec_loss < 0.2:   sample_rate = 0.8  (self-reliant, teacher as safety net)
 ```
 
 ### Math-Specific Vocabulary (~50 tokens)
@@ -426,6 +464,27 @@ Phase 3 (epoch 11+):   0% teacher forcing
   Decoder generates all expressions independently.
   Model has learned the format and can formulate on its own.
 ```
+
+### Adaptive Data Weighting (AdaBoost-Inspired)
+
+After each epoch, reweight training problems by difficulty. Problems the model solved correctly get downweighted. Problems it got wrong get upweighted. Training compute flows to the model's frontier — no wasted epochs on easy problems.
+
+```python
+# After each epoch eval:
+for i, (problem, was_correct) in enumerate(eval_results):
+    if was_correct:
+        sample_weights[i] *= 0.5   # solved — see less often
+    else:
+        sample_weights[i] *= 2.0   # failed — see more often
+
+# Normalize weights
+sample_weights = sample_weights / sample_weights.sum() * len(problems)
+
+# Use weighted sampling in the next epoch's dataloader
+sampler = torch.utils.data.WeightedRandomSampler(sample_weights, len(problems))
+```
+
+This directly fights overfitting: easy problems fade from training before the model memorizes them. Hard problems get repeated until the model learns them. Ten lines of code, proven technique (AdaBoost is 30 years old), directly addresses the overfitting pattern we've seen at every difficulty level.
 
 ### Training Data: Per-Step SymPy Annotations
 
