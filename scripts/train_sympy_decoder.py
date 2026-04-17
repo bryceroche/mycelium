@@ -523,8 +523,9 @@ def evaluate(
 # Checkpoint loading (selective)
 # ---------------------------------------------------------------------------
 
-def try_warm_start(model, answer_head, checkpoint_path, fresh_compressor=False):
-    """Warm-start from checkpoint. Optionally skip compressor (fresh perceiver)."""
+def try_warm_start(model, answer_head, checkpoint_path,
+                   fresh_compressor=False, fresh_atoms=False):
+    """Warm-start from checkpoint. Optionally skip compressor and/or atoms."""
     ckpt = torch.load(checkpoint_path, map_location='cpu', weights_only=True)
 
     if 'atoms' not in ckpt:
@@ -534,6 +535,8 @@ def try_warm_start(model, answer_head, checkpoint_path, fresh_compressor=False):
     print(f"  Loading from {checkpoint_path}")
     if fresh_compressor:
         print(f"  ** FRESH COMPRESSOR ** — resetting perceiver")
+    if fresh_atoms:
+        print(f"  ** FRESH ATOMS ** — keeping Fourier init (not loading from checkpoint)")
 
     # Compressor
     if not fresh_compressor:
@@ -549,14 +552,17 @@ def try_warm_start(model, answer_head, checkpoint_path, fresh_compressor=False):
         print(f"  compressor: FRESH (0/{len(model.compressor.state_dict())})")
 
     # Atoms
-    own_a = model.atoms.state_dict()
-    loaded_a = 0
-    for k, v in ckpt['atoms'].items():
-        if k in own_a and own_a[k].shape == v.shape:
-            own_a[k] = v
-            loaded_a += 1
-    model.atoms.load_state_dict(own_a, strict=False)
-    print(f"  atoms: loaded {loaded_a}/{len(own_a)}")
+    if not fresh_atoms:
+        own_a = model.atoms.state_dict()
+        loaded_a = 0
+        for k, v in ckpt['atoms'].items():
+            if k in own_a and own_a[k].shape == v.shape:
+                own_a[k] = v
+                loaded_a += 1
+        model.atoms.load_state_dict(own_a, strict=False)
+        print(f"  atoms: loaded {loaded_a}/{len(own_a)}")
+    else:
+        print(f"  atoms: FRESH/FOURIER (0/{len(model.atoms.state_dict())})")
 
     # Hypernet
     if 'hypernet' in ckpt:
@@ -664,7 +670,8 @@ def train(args):
     if args.checkpoint:
         print(f"\nWarm-starting from {args.checkpoint}")
         try_warm_start(model, answer_head, args.checkpoint,
-                       fresh_compressor=args.fresh_compressor)
+                       fresh_compressor=args.fresh_compressor,
+                       fresh_atoms=args.fresh_atoms)
 
     # --- Data ---
     train_dataset = GSM8KSymPyDataset(max_samples=args.max_samples)
@@ -849,6 +856,8 @@ if __name__ == '__main__':
     parser.add_argument('--fresh_compressor', action='store_true')
     parser.add_argument('--fourier_init', action='store_true',
                         help='Apply Fourier atom init + frequency-aware residual gate (fresh training only)')
+    parser.add_argument('--fresh_atoms', action='store_true',
+                        help='Skip loading atoms from checkpoint (use with --fourier_init)')
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--batch_size', type=int, default=4)
     parser.add_argument('--max_passes', type=int, default=5)
