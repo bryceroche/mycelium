@@ -404,6 +404,7 @@ def evaluate(
 
     samples_printed = 0
     max_diag_prints = 10  # Print first 10 eval samples for debugging
+    page_norms_collected = []  # Track page differentiation
 
     with torch.no_grad():
         for i in range(0, len(eval_dataset), eval_batch):
@@ -434,6 +435,19 @@ def evaluate(
                 mid_states_history.append(current_mid_states)
 
             # --- Generation-based eval ---
+            # Append "The answer is " prefix so the model just outputs the number.
+            # The thinking already happened in the passes — generation just extracts.
+            prefix_text = "The answer is "
+            prefix_ids = model.tokenizer.encode(
+                prefix_text, add_special_tokens=False, return_tensors='pt',
+            ).to(device)  # (1, P)
+            prefix_ids = prefix_ids.expand(batch_size, -1)  # (B, P)
+            gen_input_ids = torch.cat([input_ids, prefix_ids], dim=1)
+            gen_attn_mask = torch.cat([
+                attention_mask,
+                torch.ones(batch_size, prefix_ids.size(1), device=device, dtype=attention_mask.dtype),
+            ], dim=1)
+
             final_atom_scales = model.hypernet(
                 state_pages, pass_num=len(state_pages),
             )
@@ -441,8 +455,8 @@ def evaluate(
             manager.apply(model.atoms, final_atom_scales)
             try:
                 generated = model.transformer.generate(
-                    input_ids=input_ids, attention_mask=attention_mask,
-                    max_new_tokens=max_new_tokens, do_sample=False,
+                    input_ids=gen_input_ids, attention_mask=gen_attn_mask,
+                    max_new_tokens=20, do_sample=False,
                     pad_token_id=model.tokenizer.pad_token_id,
                 )
             finally:
@@ -452,23 +466,34 @@ def evaluate(
             last_page = state_pages[-1].float()
             head_preds = answer_head.decode(last_page)  # (B,) tensor of ints
 
+            # Track page differentiation (are pages different across problems?)
+            page_norms_collected.append(last_page.detach().cpu())
+
             for j in range(batch_size):
                 gold = gold_answers[j]
 
-                # Generation accuracy
-                prompt_len = input_ids[j].size(0)
-                gen_ids = generated[j][prompt_len:]
+                # Generation accuracy — extract just the completion after prefix
+                full_prompt_len = gen_input_ids[j].size(0)
+                gen_ids = generated[j][full_prompt_len:]
                 gen_text = model.tokenizer.decode(
                     gen_ids, skip_special_tokens=True,
                 ).strip()
+                # With "The answer is " prefix, model should output just a number
                 pred = extract_answer_from_text(gen_text)
 
-                # Diagnostic: print first N eval generations
+                # Diagnostic: print first N eval generations + answer head internals
                 if samples_printed < max_diag_prints:
                     samples_printed += 1
                     print(f"  [eval {samples_printed}] gold={gold} pred={pred} "
                           f"head={head_preds[j].item() if gold is not None else '?'}")
                     print(f"    gen: {gen_text[:200]}")
+                    # Answer head internals for first 3 samples
+                    if samples_printed <= 3:
+                        s_log, l_log, d_logs = answer_head(last_page[j:j+1])
+                        print(f"    head sign:   {F.softmax(s_log, dim=-1)[0].tolist()}")
+                        print(f"    head length: {F.softmax(l_log, dim=-1)[0].tolist()}")
+                        digits = [d.argmax(dim=-1).item() for d in d_logs]
+                        print(f"    head digits: {digits}")
 
                 if pred is not None and gold is not None:
                     try:
@@ -493,6 +518,17 @@ def evaluate(
                         pass
 
                 total += 1
+
+    # Page differentiation diagnostic
+    if page_norms_collected:
+        all_pages = torch.cat(page_norms_collected, dim=0)  # (N, 64)
+        normed_pages = F.normalize(all_pages, dim=-1)
+        cos_sim = normed_pages @ normed_pages.T
+        N = cos_sim.size(0)
+        off_diag = (cos_sim.sum() - N) / max(N * (N - 1), 1)
+        page_std = all_pages.std(dim=0).mean()
+        print(f"  [page diag] N={N} avg_cos_sim={off_diag:.4f} "
+              f"per_dim_std={page_std:.4f} page_norm={all_pages.norm(dim=-1).mean():.2f}")
 
     gen_acc = 100.0 * gen_correct / total if total > 0 else 0.0
     head_acc = 100.0 * head_correct / total if total > 0 else 0.0
