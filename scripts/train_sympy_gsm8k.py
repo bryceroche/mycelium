@@ -332,14 +332,25 @@ def forward_train_with_sympy(
     last_page = state_pages[-1].float()
     ah_loss = answer_head_loss(answer_head, last_page, finals_t)
 
-    # ------- SymPy signal loss (optional: probe head on last page predicts final answer) -------
-    # This encourages the page to encode the actual numeric answer
-    probe_pred = model.probe_head(last_page).squeeze(-1)  # (B,)
+    # ------- SymPy signal loss (probe head on last page predicts log-scaled answer) -------
+    # gold_log range is [0, ~12] for GSM8K answers (up to ~100K)
+    # Clamp probe output to prevent runaway MSE when weights diverge
+    raw_probe = model.probe_head(last_page).squeeze(-1)  # (B,)
+    probe_pred = torch.clamp(raw_probe, -1.0, 15.0)
     gold_log = torch.log(torch.abs(finals_t.float()) + 1.0)  # log scale
     sympy_signal_loss = F.mse_loss(probe_pred, gold_log)
 
     # ------- Diagnostics -------
     with torch.no_grad():
+        # Log probe head stats on first call (helps debug sympy_signal_loss)
+        if not hasattr(forward_train_with_sympy, '_logged_probe') or not forward_train_with_sympy._logged_probe:
+            forward_train_with_sympy._logged_probe = True
+            print(f"  [probe diag] raw_probe: {raw_probe.detach().tolist()}")
+            print(f"  [probe diag] clamped:   {probe_pred.detach().tolist()}")
+            print(f"  [probe diag] gold_log:  {gold_log.detach().tolist()}")
+            print(f"  [probe diag] gold_ans:  {gold_answers[:4]}")
+            print(f"  [probe diag] mse:       {sympy_signal_loss.item():.4f}")
+
         # Page cosine similarity (off-diagonal mean)
         normed = F.normalize(last_page, dim=-1)
         sim = normed @ normed.T
@@ -390,6 +401,9 @@ def evaluate(
     eval_batch = 4
     max_length = 192
     max_new_tokens = 80
+
+    samples_printed = 0
+    max_diag_prints = 10  # Print first 10 eval samples for debugging
 
     with torch.no_grad():
         for i in range(0, len(eval_dataset), eval_batch):
@@ -448,6 +462,13 @@ def evaluate(
                     gen_ids, skip_special_tokens=True,
                 ).strip()
                 pred = extract_answer_from_text(gen_text)
+
+                # Diagnostic: print first N eval generations
+                if samples_printed < max_diag_prints:
+                    samples_printed += 1
+                    print(f"  [eval {samples_printed}] gold={gold} pred={pred} "
+                          f"head={head_preds[j].item() if gold is not None else '?'}")
+                    print(f"    gen: {gen_text[:200]}")
 
                 if pred is not None and gold is not None:
                     try:
@@ -719,6 +740,7 @@ def train(args):
         # Get teacher forcing probability for this epoch
         tf_prob = get_teacher_forcing_prob(epoch)
         print(f"\n[Epoch {epoch+1}/{args.epochs}] Teacher forcing: {tf_prob:.0%}")
+        forward_train_with_sympy._logged_probe = False  # Reset probe diag for this epoch
 
         ep_ans = ep_ctr = ep_ah = ep_sympy = 0.0
         ep_cos = ep_active = 0.0
