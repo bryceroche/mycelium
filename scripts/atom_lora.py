@@ -512,6 +512,10 @@ class AtomHypernetwork(nn.Module):
         blend = torch.sigmoid(self.blend_logit)  # scalar in (0, 1)
         pre_tanh = blend * direct_logits + (1 - blend) * context_logits
 
+        # Hard clamp: makes tanh saturation impossible.
+        # tanh(3) = 0.995, gradient = 0.01 — small but non-zero.
+        pre_tanh = torch.clamp(pre_tanh, -3.0, 3.0)
+
         atom_scales = self.scale_activation(pre_tanh)  # (B, num_atoms)
 
         if return_pre_tanh:
