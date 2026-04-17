@@ -657,6 +657,9 @@ def train(args):
     print(f"SymPy decoder: {decoder_params:,} params ({decoder_params/1e6:.1f}M)")
     print(f"  vocab size: {len(sympy_decoder.vocab)}")
 
+    # --- SymPy result encoder ---
+    sympy_encoder = SymPyResultEncoder(page_size=64).to(device)
+
     # --- Warm start (overwrites Fourier-initialized atoms if checkpoint has them) ---
     if args.checkpoint:
         print(f"\nWarm-starting from {args.checkpoint}")
