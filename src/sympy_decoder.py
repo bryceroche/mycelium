@@ -364,13 +364,6 @@ class SymPyDecoder(nn.Module):
         # logits: (batch, seq-1, vocab_size) — predictions for positions 1..seq-1
         # labels: target_tokens[:, 1:] — actual tokens at positions 1..seq-1
 
-        # Block EOS predictions for first min_tokens positions during training.
-        # Prevents degenerate minimum where decoder emits <eos> immediately.
-        # Minimum expression is ~5 tokens: "v1 = 48" → [v1, =, 4, 8, <eos>]
-        min_tokens = 5
-        for pos in range(min(min_tokens, logits.size(1))):
-            logits[:, pos, self.vocab.eos_id] = -1e9
-
         labels = target_tokens[:, 1:]  # (batch, seq-1)
 
         loss = F.cross_entropy(
