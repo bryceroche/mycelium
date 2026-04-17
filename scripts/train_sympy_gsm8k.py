@@ -62,6 +62,7 @@ from scripts.train_stepping_stones import extract_answer
 from src.contrastive_page_loss import per_page_contrastive_loss
 from src.sympy_evaluator import SymPyEvaluator
 from src.sympy_result_encoder import SymPyResultEncoder, format_sympy_context
+from src.pattern_classifier import classify_pattern
 
 
 # ---------------------------------------------------------------------------
@@ -721,6 +722,7 @@ def train(args):
 
         ep_ans = ep_ctr = ep_ah = ep_sympy = 0.0
         ep_cos = ep_active = 0.0
+        ep_patterns_stored = 0
         nb = 0
 
         for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}", leave=False):
@@ -767,6 +769,31 @@ def train(args):
             total_loss.backward()
             torch.nn.utils.clip_grad_norm_(trainable, 1.0)
             optimizer.step()
+
+            # --- Pattern Memory: store successful patterns ---
+            if args.use_pattern_memory and model.pattern_memory is not None and len(state_pages) > 0:
+                with torch.no_grad():
+                    # Decode predictions from answer head
+                    last_page = state_pages[-1].float()
+                    predictions = answer_head.decode(last_page)  # (B,)
+
+                    # Compare to gold and store patterns for correct answers
+                    for b in range(len(problems)):
+                        pred = predictions[b].item()
+                        gold = gold_ints[b]
+                        was_correct = (pred == gold)
+
+                        # Store successful patterns with SymPy steps
+                        if was_correct and sympy_steps[b]:
+                            model.after_solve(
+                                problem_text=problems[b],
+                                state_pages=[sp[b:b+1] for sp in state_pages],  # Single sample pages
+                                sympy_steps=sympy_steps[b],
+                                was_correct=True,
+                                used_pattern_id=None,  # No pattern queried during training (yet)
+                                epoch=epoch,
+                            )
+                            ep_patterns_stored += 1
 
             ep_ans += ans_loss.item()
             ep_ctr += ctr_loss.item()
@@ -824,16 +851,26 @@ def train(args):
 
         # Pattern memory maintenance (if enabled)
         if args.use_pattern_memory and model.pattern_memory is not None:
-            # Prune low-value patterns and get stats
-            pruned = model.pattern_memory.prune(
-                min_success_rate=0.3, min_uses=3, max_patterns=10000,
-            )
+            # Get stats before pruning
             stats = model.pattern_memory.stats()
+            # Prune low-value patterns (after 2nd epoch)
+            pruned = 0
+            if epoch >= 1:
+                pruned = model.pattern_memory.prune(
+                    min_success_rate=0.3, min_uses=3, max_patterns=10000,
+                )
             print(
-                f"  Pattern Memory: {stats.get('total_patterns', 0)} patterns, "
-                f"{stats.get('avg_success_rate', 0):.1%} avg success, "
-                f"pruned {pruned}"
+                f"  Pattern Memory: +{ep_patterns_stored} stored this epoch, "
+                f"{stats.get('total_patterns', 0)} total patterns, "
+                f"{stats.get('avg_success_rate', 0):.1%} avg success"
+                + (f", pruned {pruned}" if pruned > 0 else "")
             )
+            # Print pattern type distribution
+            type_dist = stats.get('type_distribution', {})
+            if type_dist:
+                top_types = sorted(type_dist.items(), key=lambda x: -x[1])[:5]
+                types_str = ", ".join(f"{t}:{c}" for t, c in top_types)
+                print(f"  Pattern Types: {types_str}")
 
         if patience_counter >= args.patience:
             print(f"\nEarly stopping: no improvement for {args.patience} epochs")
