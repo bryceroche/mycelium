@@ -11,6 +11,21 @@ Usage:
     # -> "half_of"
 """
 
+import re
+
+
+def _has_division_by(combined: str, divisor: int) -> bool:
+    """Check if combined string has division by exactly this divisor (word boundary)."""
+    # Match "/ N" where N is exactly the divisor (not "/ 25" matching "/ 2")
+    pattern = rf'/ {divisor}(?![0-9])'
+    return bool(re.search(pattern, combined))
+
+
+def _has_multiply_by(combined: str, multiplier: int) -> bool:
+    """Check if combined string has multiplication by exactly this multiplier."""
+    pattern = rf'\* {multiplier}(?![0-9])'
+    return bool(re.search(pattern, combined))
+
 
 def classify_pattern(sympy_steps: list[str]) -> str:
     """
@@ -38,23 +53,23 @@ def classify_pattern(sympy_steps: list[str]) -> str:
     combined = " ".join(sympy_steps).lower()
 
     # Half of: divide by 2 or multiply by 0.5
-    if "/ 2" in combined or "* 0.5" in combined:
+    if _has_division_by(combined, 2) or "* 0.5" in combined:
         return "half_of"
 
     # Double of: multiply by 2
-    elif "* 2" in combined:
+    elif _has_multiply_by(combined, 2):
         return "double_of"
 
     # Third of: divide by 3
-    elif "/ 3" in combined:
+    elif _has_division_by(combined, 3):
         return "third_of"
 
     # Triple of: multiply by 3
-    elif "* 3" in combined:
+    elif _has_multiply_by(combined, 3):
         return "triple_of"
 
     # Percent of: divide by 100, multiply by 0.01, or contains "percent"
-    elif "/ 100" in combined or "percent" in combined or "* 0.01" in combined:
+    elif _has_division_by(combined, 100) or "percent" in combined or "* 0.01" in combined:
         return "percent_of"
 
     # Rate times time: contains time-related words
@@ -191,6 +206,14 @@ def _run_tests():
     print("\nTesting edge cases:")
     test("case insensitive", ["V1 = X / 2", "ANSWER = V1"], "half_of")
     test("whitespace handling", ["  v1 = 10 * 2  "], "double_of")
+
+    # --- Word boundary tests (bug fix) ---
+    print("\nTesting word boundaries:")
+    test("/ 25 is not half_of", ["v1 = 375 / 25", "answer = v1"], "divide")
+    test("/ 20 is not half_of", ["v1 = 100 / 20", "answer = v1"], "divide")
+    test("/ 30 is not third_of", ["v1 = 90 / 30", "answer = v1"], "divide")
+    test("* 20 is not double_of", ["v1 = 5 * 20", "answer = v1"], "multiply")
+    test("* 30 is not triple_of", ["v1 = 3 * 30", "answer = v1"], "multiply")
 
     # --- Priority tests (order matters in the if-elif chain) ---
     print("\nTesting priority (first match wins):")
