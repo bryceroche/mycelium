@@ -573,27 +573,35 @@ def get_teacher_forcing_prob(epoch: int) -> float:
 # Warm-start logic
 # ---------------------------------------------------------------------------
 
-def try_warm_start(model: AtomLoRAModel, answer_head: AnswerHead, checkpoint_path: str):
+def try_warm_start(model: AtomLoRAModel, answer_head: AnswerHead, checkpoint_path: str,
+                   fresh_compressor: bool = False):
     """
     Warm-start model from checkpoint.
 
     Tries to load atom checkpoint first; falls back to perceiver-only warm start.
+    If fresh_compressor=True, skip loading compressor/perceiver weights (reset to
+    fresh init) while keeping atoms, hypernetwork, and heads.
     """
     ckpt = torch.load(checkpoint_path, map_location='cpu', weights_only=True)
 
     if 'atoms' in ckpt:
         # Atom checkpoint -- load directly
         print(f"  Loading atom checkpoint from {checkpoint_path}")
+        if fresh_compressor:
+            print(f"  ** FRESH COMPRESSOR ** — skipping compressor weights (resetting perceiver)")
 
         # Compressor
-        own = model.compressor.state_dict()
-        loaded = 0
-        for k, v in ckpt['compressor'].items():
-            if k in own and own[k].shape == v.shape:
-                own[k] = v
-                loaded += 1
-        model.compressor.load_state_dict(own, strict=False)
-        print(f"  compressor: loaded {loaded}/{len(own)}")
+        if not fresh_compressor:
+            own = model.compressor.state_dict()
+            loaded = 0
+            for k, v in ckpt['compressor'].items():
+                if k in own and own[k].shape == v.shape:
+                    own[k] = v
+                    loaded += 1
+            model.compressor.load_state_dict(own, strict=False)
+            print(f"  compressor: loaded {loaded}/{len(own)}")
+        else:
+            print(f"  compressor: FRESH (0/{len(model.compressor.state_dict())})")
 
         # Atoms
         if 'atoms' in ckpt:
@@ -639,8 +647,8 @@ def try_warm_start(model: AtomLoRAModel, answer_head: AnswerHead, checkpoint_pat
             answer_head.load_state_dict(own_ah, strict=False)
             print(f"  answer_head: loaded {loaded_ah}/{len(own_ah)}")
 
-        # Residual gate
-        if 'residual_gate' in ckpt:
+        # Residual gate (skip if fresh compressor — gate is coupled with page dynamics)
+        if 'residual_gate' in ckpt and not fresh_compressor:
             own_rg = model.residual_gate.state_dict()
             loaded_rg = 0
             for k, v in ckpt['residual_gate'].items():
@@ -649,6 +657,8 @@ def try_warm_start(model: AtomLoRAModel, answer_head: AnswerHead, checkpoint_pat
                     loaded_rg += 1
             model.residual_gate.load_state_dict(own_rg, strict=False)
             print(f"  residual_gate: loaded {loaded_rg}/{len(own_rg)}")
+        elif fresh_compressor:
+            print(f"  residual_gate: FRESH (coupled with compressor)")
 
     else:
         # Non-atom checkpoint -- load perceiver only
@@ -710,7 +720,8 @@ def train(args):
     # Warm start if checkpoint provided
     if args.checkpoint:
         print(f"\nWarm-starting from {args.checkpoint}")
-        try_warm_start(model, answer_head, args.checkpoint)
+        try_warm_start(model, answer_head, args.checkpoint,
+                       fresh_compressor=args.fresh_compressor)
 
     # Load datasets
     train_dataset = GSM8KSymPyDataset(max_samples=args.max_samples)
@@ -1029,6 +1040,10 @@ if __name__ == '__main__':
     parser.add_argument(
         '--atom_rank', type=int, default=6,
         help='Rank of each LoRA atom (default: 6)',
+    )
+    parser.add_argument(
+        '--fresh_compressor', action='store_true',
+        help='Reset compressor/perceiver to fresh init (keep atoms + hypernetwork)',
     )
     parser.add_argument(
         '--use_pattern_memory', action='store_true',
