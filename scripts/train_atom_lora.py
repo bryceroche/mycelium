@@ -816,6 +816,8 @@ def train(args):
     print(f"  skip_perceiver = {args.skip_perceiver}")
     print(f"  num_atoms      = {args.num_atoms}")
     print(f"  atom_rank      = {args.atom_rank}")
+    print(f"  pass_embed_scale = {args.pass_embed_scale}")
+    print(f"  skip_pass_embed  = {args.skip_pass_embed}")
     print(f"  num_train      = {args.num_train}")
     print(f"  warm           = {warm_path}")
     print(f"  procedural     = {is_procedural(level)}")
@@ -827,11 +829,15 @@ def train(args):
     model = AtomLoRAModel(
         num_atoms=args.num_atoms,
         atom_rank=args.atom_rank,
+        pass_embed_scale=args.pass_embed_scale,
+        skip_pass_embed=args.skip_pass_embed,
     )
     model.compressor = model.compressor.to(device=device, dtype=torch.bfloat16)
     model.hypernet = model.hypernet.to(device=device, dtype=torch.bfloat16)
     model.atoms = model.atoms.to(device=device, dtype=torch.bfloat16)
     model.confidence_head = model.confidence_head.to(device)  # fp32 (small)
+    model.residual_gate = model.residual_gate.to(device=device, dtype=torch.bfloat16)  # v24.8
+    model.probe_head = model.probe_head.to(device)  # fp32
 
     # Answer head — small, kept in float32 for digit classification stability
     answer_head = AnswerHead(page_size=model.page_size).to(device)
@@ -1063,6 +1069,10 @@ def train(args):
             print(f"  cache: graduated={new_graduated} hits={cache_hits} full={cache_full} "
                   f"stored={cache_stats['total_entries']}")
 
+        # Blend values (v24.7 gradient coupling) — extract BEFORE checkpoint save
+        hypernet_blend = torch.sigmoid(model.hypernet.blend_logit).item()
+        compressor_blend = torch.sigmoid(model.compressor.blend_logit).item()
+
         # Track both metrics — early stop only when BOTH plateau
         improved = False
         if gen_acc > best:
@@ -1081,11 +1091,14 @@ def train(args):
                 'hypernet': model.hypernet.state_dict(),
                 'confidence_head': model.confidence_head.state_dict(),
                 'answer_head': answer_head.state_dict(),
+                'residual_gate': model.residual_gate.state_dict(),  # v24.8
                 'accuracy': gen_acc,
                 'head_accuracy': head_acc,
                 'level': level,
                 'num_atoms': args.num_atoms,
                 'atom_rank': args.atom_rank,
+                'hypernet_blend': hypernet_blend,
+                'compressor_blend': compressor_blend,
             }, ckpt_name)
             print(f"  -> saved checkpoint {ckpt_name} (gen={gen_acc:.1f}% head={head_acc:.1f}%)")
         else:
@@ -1101,6 +1114,11 @@ def train(args):
             f"xpass_cos={ep_xpass/nb:.2f} | "
             f"Acc={gen_acc:.1f}% head={head_acc:.1f}% "
             f"best={best:.1f}% [{elapsed:.0f}s]"
+        )
+        # Gradient coupling blends (v24.7) — direct vs contextual path weights
+        print(
+            f"  blends: hypernet={hypernet_blend:.3f} compressor={compressor_blend:.3f} "
+            f"(1.0=direct, 0.0=contextual)"
         )
         # Gradient norms
         gn = grad_norms
@@ -1153,6 +1171,10 @@ if __name__ == '__main__':
                    help='Number of LoRA atoms')
     p.add_argument('--atom_rank', type=int, default=6,
                    help='Rank of each LoRA atom')
+    p.add_argument('--pass_embed_scale', type=float, default=1.0,
+                   help='Scale factor for pass embedding (0.1 forces page usage)')
+    p.add_argument('--skip_pass_embed', action='store_true',
+                   help='Remove pass embedding entirely (v24.6: pages are the only input)')
     p.add_argument('--num_train', type=int, default=20000,
                    help='Number of training problems per epoch (procedural)')
     p.add_argument('--eval_size', type=int, default=50,

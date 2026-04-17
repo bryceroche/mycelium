@@ -333,6 +333,11 @@ def compute_page_jacobian(
     # Add Fourier structural identity (after normalization)
     next_page = model.fourier_page.apply(next_page, pass_num)
 
+    # v24.8: Apply residual gate blending with current_page
+    # This is the KEY step that should shift eigenvalues by ~0.5
+    if hasattr(model, 'residual_gate') and model.residual_gate is not None:
+        next_page = model.residual_gate(next_page, current_page)
+
     # Compute Jacobian row by row
     jacobian = torch.zeros(page_size, page_size, device=device)
 
@@ -412,6 +417,10 @@ def compute_page_jacobian_batched(
         # Normalize and apply Fourier encoding
         next_page = F.normalize(page_delta, dim=-1) * model.page_radius
         next_page = model.fourier_page.apply(next_page, pass_num)
+
+        # v24.8: Apply residual gate blending with current_page
+        if hasattr(model, 'residual_gate') and model.residual_gate is not None:
+            next_page = model.residual_gate(next_page, page_batched)
 
         return next_page.squeeze(0)  # remove batch dim
 
@@ -831,6 +840,8 @@ def main():
                         help='Use batched Jacobian computation (faster but more memory)')
     parser.add_argument('--test', action='store_true',
                         help='Run standalone test (no checkpoint needed)')
+    parser.add_argument('--skip_pass_embed', action='store_true',
+                        help='Use skip_pass_embed architecture (v24.6)')
     args = parser.parse_args()
 
     # If no checkpoint or --test flag, run standalone test
@@ -858,12 +869,13 @@ def main():
         output_path = os.path.join(output_path, f'jacobian_{ckpt_name}.png')
 
     # Load model
-    print(f"Loading AtomLoRAModel (atoms={args.num_atoms}, rank={args.atom_rank})...")
-    model = AtomLoRAModel(num_atoms=args.num_atoms, atom_rank=args.atom_rank)
+    print(f"Loading AtomLoRAModel (atoms={args.num_atoms}, rank={args.atom_rank}, skip_pass_embed={args.skip_pass_embed})...")
+    model = AtomLoRAModel(num_atoms=args.num_atoms, atom_rank=args.atom_rank, skip_pass_embed=args.skip_pass_embed)
     model.compressor = model.compressor.to(device=device, dtype=torch.bfloat16)
     model.hypernet = model.hypernet.to(device=device, dtype=torch.bfloat16)
     model.atoms = model.atoms.to(device=device, dtype=torch.bfloat16)
     model.confidence_head = model.confidence_head.to(device)
+    model.residual_gate = model.residual_gate.to(device=device, dtype=torch.bfloat16)  # v24.8
     model.fourier_page = model.fourier_page.to(device)
     model.probe_head = model.probe_head.to(device)
 
