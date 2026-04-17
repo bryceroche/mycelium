@@ -209,6 +209,7 @@ def forward_train_with_sympy(
     state_pages = []
     atom_scales_history = []
     mid_states_history = []
+    pre_tanh_history = []  # v24.7: track pre-tanh values for scale regularization
 
     # Track accumulated SymPy results per problem
     sympy_results_batch = [{} for _ in range(batch_size)]
@@ -238,9 +239,12 @@ def forward_train_with_sympy(
             atom_scales = torch.zeros(
                 batch_size, model.num_atoms, device=device,
             )
+            pre_tanh = torch.zeros_like(atom_scales)
         else:
-            # Generate atom scales from pages + pass number
-            atom_scales = model.hypernet(state_pages, pass_num=pass_num)
+            # Generate atom scales from pages + pass number (with pre-tanh for reg)
+            atom_scales, pre_tanh = model.hypernet(
+                state_pages, pass_num=pass_num, return_pre_tanh=True,
+            )
 
             # Apply atom LoRA via monkey-patching
             manager = AtomAdditiveLoRAManager(model.transformer)
@@ -287,6 +291,7 @@ def forward_train_with_sympy(
 
         state_pages.append(page)
         atom_scales_history.append(atom_scales)
+        pre_tanh_history.append(pre_tanh)
 
     # ------- Answer loss (teacher-forced generation with atom LoRA) -------
     # Build CoT answer targets from SymPy results
@@ -304,7 +309,10 @@ def forward_train_with_sympy(
     )
     answer_ids = answer_inputs['input_ids'].to(device)
 
-    final_atom_scales = model.hypernet(state_pages, pass_num=num_passes)
+    final_atom_scales, final_pre_tanh = model.hypernet(
+        state_pages, pass_num=num_passes, return_pre_tanh=True,
+    )
+    pre_tanh_history.append(final_pre_tanh)
     manager = AtomAdditiveLoRAManager(model.transformer)
     manager.apply(model.atoms, final_atom_scales)
     try:
@@ -340,6 +348,11 @@ def forward_train_with_sympy(
     gold_log = torch.log(torch.abs(finals_t.float()) + 1.0)  # log scale
     sympy_signal_loss = F.mse_loss(probe_pred, gold_log)
 
+    # ------- Pre-tanh regularization (v24.7: keeps tanh gradient alive) -------
+    # Penalize squared logits to prevent saturation (|x| < 2 has usable gradient)
+    all_pre_tanh = torch.cat(pre_tanh_history, dim=0)  # (P*B, num_atoms)
+    scale_reg_loss = (all_pre_tanh ** 2).mean()
+
     # ------- Diagnostics -------
     with torch.no_grad():
         # Log probe head stats on first call (helps debug sympy_signal_loss)
@@ -364,7 +377,7 @@ def forward_train_with_sympy(
         active_atoms_mean = active_per_pass.mean().item()
 
     return (
-        answer_loss, contrastive_loss, ah_loss, sympy_signal_loss,
+        answer_loss, contrastive_loss, ah_loss, sympy_signal_loss, scale_reg_loss,
         page_cos_mean, active_atoms_mean, state_pages
     )
 
@@ -664,6 +677,8 @@ def train(args):
     print(f"  lam_contrastive = {args.lam_contrastive}")
     print(f"  lam_answer_head = {args.lam_answer_head}")
     print(f"  lam_sympy       = {args.lam_sympy}")
+    print(f"  lam_scale_reg   = {args.lam_scale_reg}")
+    print(f"  skip_pass_embed = True")
     print("=" * 70)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -673,6 +688,7 @@ def train(args):
     model = AtomLoRAModel(
         num_atoms=args.num_atoms,
         atom_rank=args.atom_rank,
+        skip_pass_embed=True,  # v24.7: forces hypernetwork to read pages, not pass number
         use_pattern_memory=args.use_pattern_memory,
         pattern_memory_db_path=args.pattern_memory_db,
     )
@@ -778,7 +794,7 @@ def train(args):
         print(f"\n[Epoch {epoch+1}/{args.epochs}] Teacher forcing: {tf_prob:.0%}")
         forward_train_with_sympy._logged_probe = False  # Reset probe diag for this epoch
 
-        ep_ans = ep_ctr = ep_ah = ep_sympy = 0.0
+        ep_ans = ep_ctr = ep_ah = ep_sympy = ep_scale_reg = 0.0
         ep_cos = ep_active = 0.0
         ep_patterns_stored = 0
         nb = 0
@@ -798,7 +814,7 @@ def train(args):
 
             optimizer.zero_grad()
 
-            (ans_loss, ctr_loss, ah_loss, sympy_loss,
+            (ans_loss, ctr_loss, ah_loss, sympy_loss, scale_reg,
              page_cos, active_atoms, state_pages) = forward_train_with_sympy(
                 model, answer_head, sympy_encoder,
                 problems, gold_ints, sympy_steps,
@@ -811,6 +827,7 @@ def train(args):
                 + args.lam_contrastive * ctr_loss
                 + args.lam_answer_head * ah_loss
                 + args.lam_sympy * sympy_loss
+                + args.lam_scale_reg * scale_reg
             )
 
             # NaN check - catch issues early
@@ -857,6 +874,7 @@ def train(args):
             ep_ctr += ctr_loss.item()
             ep_ah += ah_loss.item()
             ep_sympy += sympy_loss.item()
+            ep_scale_reg += scale_reg.item()
             ep_cos += page_cos
             ep_active += active_atoms
             nb += 1
@@ -905,7 +923,7 @@ def train(args):
 
         print(
             f"Epoch {epoch+1}: "
-            f"ans={ep_ans/nb:.4f} ctr={ep_ctr/nb:.3f} ah={ep_ah/nb:.3f} sympy={ep_sympy/nb:.3f} "
+            f"ans={ep_ans/nb:.4f} ctr={ep_ctr/nb:.3f} ah={ep_ah/nb:.3f} sympy={ep_sympy/nb:.3f} sreg={ep_scale_reg/nb:.3f} "
             f"page_cos={ep_cos/nb:.3f} active={ep_active/nb:.1f} | "
             f"Acc: gen={gen_acc:.1f}% head={head_acc:.1f}% "
             f"best_gen={best_gen:.1f}% best_head={best_head:.1f}% "
@@ -993,12 +1011,16 @@ if __name__ == '__main__':
         help='Contrastive loss weight (default: 0.01, mild)',
     )
     parser.add_argument(
-        '--lam_answer_head', type=float, default=0.3,
-        help='Answer head loss weight (default: 0.3)',
+        '--lam_answer_head', type=float, default=1.0,
+        help='Answer head loss weight (default: 1.0, demands per-problem page content)',
     )
     parser.add_argument(
         '--lam_sympy', type=float, default=0.1,
         help='SymPy signal loss weight (default: 0.1)',
+    )
+    parser.add_argument(
+        '--lam_scale_reg', type=float, default=0.1,
+        help='Pre-tanh scale regularization weight (default: 0.1, prevents tanh saturation)',
     )
     parser.add_argument(
         '--num_atoms', type=int, default=64,
