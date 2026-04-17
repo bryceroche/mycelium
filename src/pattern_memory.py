@@ -141,8 +141,8 @@ class PatternMemory:
     def _embedding_to_numpy(self, embedding) -> np.ndarray:
         """Convert embedding (tensor or ndarray) to float32 numpy array."""
         if hasattr(embedding, 'detach'):
-            # PyTorch tensor
-            return embedding.detach().cpu().numpy().astype(np.float32)
+            # PyTorch tensor - convert to float32 BEFORE numpy (BFloat16 not supported)
+            return embedding.detach().float().cpu().numpy()
         elif isinstance(embedding, np.ndarray):
             return embedding.astype(np.float32)
         else:
