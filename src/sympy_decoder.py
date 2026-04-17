@@ -327,6 +327,10 @@ class SymPyDecoder(nn.Module):
                 out = self.decoder(tgt, mem, tgt_mask=causal_mask)
                 logits = self.output(out[:, -1, :])  # (1, vocab_size)
 
+                # Block EOS for first min_tokens steps — must produce an expression
+                if step < 5:
+                    logits[:, self.vocab.eos_id] = -1e9
+
                 if temperature == 0:
                     next_token = logits.argmax(dim=-1).item()
                 else:
@@ -359,6 +363,13 @@ class SymPyDecoder(nn.Module):
         logits = self.forward(page, result_embedding, target_tokens=target_tokens)
         # logits: (batch, seq-1, vocab_size) — predictions for positions 1..seq-1
         # labels: target_tokens[:, 1:] — actual tokens at positions 1..seq-1
+
+        # Block EOS predictions for first min_tokens positions during training.
+        # Prevents degenerate minimum where decoder emits <eos> immediately.
+        # Minimum expression is ~5 tokens: "v1 = 48" → [v1, =, 4, 8, <eos>]
+        min_tokens = 5
+        for pos in range(min(min_tokens, logits.size(1))):
+            logits[:, pos, self.vocab.eos_id] = -1e9
 
         labels = target_tokens[:, 1:]  # (batch, seq-1)
 
