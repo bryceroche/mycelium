@@ -635,6 +635,11 @@ def train(args):
         atom_rank=args.atom_rank,
         skip_pass_embed=True,  # MANDATORY
     )
+    # --- Fourier init (before .to(device), operates on CPU tensors) ---
+    if args.fourier_init:
+        print()
+        apply_fourier_inits(model)
+
     model.compressor = model.compressor.to(device=device, dtype=torch.bfloat16)
     model.hypernet = model.hypernet.to(device=device, dtype=torch.bfloat16)
     model.atoms = model.atoms.to(device=device, dtype=torch.bfloat16)
@@ -651,14 +656,6 @@ def train(args):
     decoder_params = sum(p.numel() for p in sympy_decoder.parameters())
     print(f"SymPy decoder: {decoder_params:,} params ({decoder_params/1e6:.1f}M)")
     print(f"  vocab size: {len(sympy_decoder.vocab)}")
-
-    # --- SymPy result encoder ---
-    sympy_encoder = SymPyResultEncoder(page_size=64).to(device)
-
-    # --- Fourier init (fresh training only, before warm start) ---
-    if args.fourier_init:
-        print()
-        apply_fourier_inits(model)
 
     # --- Warm start (overwrites Fourier-initialized atoms if checkpoint has them) ---
     if args.checkpoint:
