@@ -58,6 +58,7 @@ from scripts.atom_lora import (
 from src.sympy_decoder import SymPyDecoder, SymPyVocab
 from src.sympy_evaluator import SymPyEvaluator
 from src.sympy_result_encoder import SymPyResultEncoder
+from src.fourier_init import apply_fourier_inits
 
 
 # ---------------------------------------------------------------------------
@@ -654,7 +655,12 @@ def train(args):
     # --- SymPy result encoder ---
     sympy_encoder = SymPyResultEncoder(page_size=64).to(device)
 
-    # --- Warm start ---
+    # --- Fourier init (fresh training only, before warm start) ---
+    if args.fourier_init:
+        print()
+        apply_fourier_inits(model)
+
+    # --- Warm start (overwrites Fourier-initialized atoms if checkpoint has them) ---
     if args.checkpoint:
         print(f"\nWarm-starting from {args.checkpoint}")
         try_warm_start(model, answer_head, args.checkpoint,
@@ -841,6 +847,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='SymPy Decoder Training (v24.9)')
     parser.add_argument('--checkpoint', type=str, default=None)
     parser.add_argument('--fresh_compressor', action='store_true')
+    parser.add_argument('--fourier_init', action='store_true',
+                        help='Apply Fourier atom init + frequency-aware residual gate (fresh training only)')
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--batch_size', type=int, default=4)
     parser.add_argument('--max_passes', type=int, default=5)
