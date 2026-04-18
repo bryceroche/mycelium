@@ -523,7 +523,7 @@ class AtomHypernetwork(nn.Module):
             msg_cat = torch.cat(msg_list[:self.max_messages], dim=-1)  # (B, message_dim * max_messages)
             msg_summary = self.message_project(msg_cat.to(dtype=page_summary.dtype))  # (B, 256)
         else:
-            msg_summary = torch.zeros(batch_size, 256, device=device)
+            msg_summary = torch.zeros(batch_size, 256, device=device, dtype=page_summary.dtype)
 
         # Generate contextual logits (with or without pass embedding)
         if self.skip_pass_embed:
