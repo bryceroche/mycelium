@@ -1,22 +1,20 @@
 """
-SymPy Decoder v2 — Page as 64 Tokens + Scheduled Sampling (v24.9)
+SymPy Decoder v3 — 8 Frequency Band Tokens + Scheduled Sampling (v24.9)
 
-A dedicated decoder (~8M params) that reads 64-float pages as 64 SEPARATE
-TOKENS and emits SymPy expressions. Each page dimension is a cross-attention
-token, enabling selective frequency-band reading.
+A dedicated decoder that reads 64-float pages as 8 FREQUENCY BAND tokens
+(8 floats per band) and emits SymPy expressions.
 
-v1 problem: decoder read page through a pinhole (one Linear projection
-collapsing 64 floats to one vector). Couldn't selectively attend to specific
-page dimensions. Collapsed to same output for all problems.
+v2 problem: 64 single-float tokens, but diagnostic showed 68% of variance
+in 10 dims. 54 of 64 tokens were noise drowning the signal.
 
-v2 fix: page enters as 64 tokens. Cross-attention can query "look at high-freq
-dims 50-60 for numbers" and "look at mid-freq dims 20-30 for operations."
-Scheduled sampling bridges the teacher forcing / inference gap.
+v3 fix: 8 bands of 8 floats each. Each band is a frequency band aligned
+with pi-harmonic encoding. Linear(8, 256) has 8x richer input signal per
+token. Decoder cross-attends over 8 meaningful bands, not 64 thin tokens.
 
 Architecture:
   - Tiny math vocabulary (~50 tokens): digits, operators, variables, assignment
   - 3-layer transformer decoder, d_model=256, 4 heads
-  - Cross-attends over 64 page dimension tokens + optional previous results
+  - Cross-attends over 8 frequency band tokens + optional previous results
   - Scheduled sampling: gradually replace teacher tokens with own predictions
 """
 
@@ -166,24 +164,36 @@ class SymPyVocab:
 
 class SymPyDecoder(nn.Module):
     """
-    v2: Decoder that reads a 64-float page as 64 SEPARATE TOKENS and emits
-    a SymPy expression. The decoder cross-attends over page dimensions,
-    enabling selective reading of specific frequency bands.
+    v3: Decoder reads page as 8 FREQUENCY BAND tokens (8 floats each).
 
-    Key change from v1: page enters as a SEQUENCE of 64 tokens, not a single
-    vector. The decoder's cross-attention can query: "to predict the operator,
-    look at mid-frequency dims" and "to predict the number, look at high-freq dims."
+    Diagnostic showed 68% of page variance is in 10 dims, 54 dims are constant.
+    With 64 single-float tokens, 54 are noise drowning 10 signals.
+    With 8 bands of 8 floats each, every band carries meaningful signal
+    through its Linear(8, 256) projection.
 
-    3-layer transformer decoder, 256 dim, ~8M params.
+    Aligned with pi-harmonic page encoding:
+      Band 0 (dims 0-7):   lowest frequency — problem type, category
+      Band 1 (dims 8-15):  low freq — magnitude, structure
+      Band 2 (dims 16-23): mid-low — key quantities
+      Band 3 (dims 24-31): mid — relationships
+      Band 4 (dims 32-39): mid-high — operations
+      Band 5 (dims 40-47): high — specific numbers
+      Band 6 (dims 48-55): higher — exact values
+      Band 7 (dims 56-63): highest — corrections, precision
+
+    3-layer transformer decoder, 256 dim.
     Includes scheduled sampling to bridge the teacher forcing gap.
     """
 
     def __init__(self, page_size: int = 64, d_model: int = 256, nhead: int = 4,
-                 num_layers: int = 3, max_tokens: int = 40, dropout: float = 0.1):
+                 num_layers: int = 3, max_tokens: int = 40, dropout: float = 0.1,
+                 num_bands: int = 8):
         super().__init__()
         self.d_model = d_model
         self.max_tokens = max_tokens
         self.page_size = page_size
+        self.num_bands = num_bands
+        self.band_size = page_size // num_bands  # 8 floats per band
 
         # Math-specific vocabulary
         self.vocab = SymPyVocab()
@@ -193,14 +203,14 @@ class SymPyDecoder(nn.Module):
         self.embed = nn.Embedding(vocab_size, d_model)
         self.pos_embed = nn.Embedding(max_tokens, d_model)
 
-        # === PAGE AS 64 TOKENS (v2 key change) ===
-        # Each page dimension becomes a separate token for cross-attention
-        self.page_dim_embed = nn.Sequential(
-            nn.Linear(1, d_model),
+        # === PAGE AS 8 FREQUENCY BANDS (v3 key change) ===
+        # Each band is 8 floats → d_model (8x richer input than single-float tokens)
+        self.band_embed = nn.Sequential(
+            nn.Linear(self.band_size, d_model),
             nn.GELU(),
             nn.Linear(d_model, d_model),
         )
-        self.page_pos_embed = nn.Embedding(page_size, d_model)
+        self.band_pos = nn.Embedding(num_bands, d_model)
         self.page_norm = nn.LayerNorm(d_model)
 
         # Project accumulated SymPy results as additional memory token
@@ -236,27 +246,28 @@ class SymPyDecoder(nn.Module):
     def _build_memory(self, page: torch.Tensor,
                       result_embedding: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
-        Convert page to 64 memory tokens for cross-attention.
+        Convert page to 8 frequency band tokens for cross-attention.
 
-        page: (batch, 64) → (batch, 64, d_model) — one token per dimension
+        page: (batch, 64) → reshape to (batch, 8, 8) → project to (batch, 8, d_model)
         result_embedding: (batch, 64) → (batch, 1, d_model)
 
-        Returns: (batch, 64 or 65, d_model)
+        Returns: (batch, 8 or 9, d_model)
         """
         device = page.device
 
-        # Each page dim becomes a separate token
-        page_tokens = page.unsqueeze(-1)  # (batch, 64, 1)
-        page_embedded = self.page_dim_embed(page_tokens)  # (batch, 64, d_model)
-        positions = torch.arange(self.page_size, device=device)
-        page_embedded = page_embedded + self.page_pos_embed(positions)
-        page_embedded = self.page_norm(page_embedded)
+        # Split page into 8 frequency bands of 8 floats each
+        bands = page.view(page.size(0), self.num_bands, self.band_size)  # (batch, 8, 8)
+        band_tokens = self.band_embed(bands)  # (batch, 8, d_model)
+        band_tokens = band_tokens + self.band_pos(
+            torch.arange(self.num_bands, device=device)
+        )
+        band_tokens = self.page_norm(band_tokens)
 
         if result_embedding is not None:
             result_mem = self.result_project(result_embedding).unsqueeze(1)  # (batch, 1, d_model)
-            memory = torch.cat([page_embedded, result_mem], dim=1)  # (batch, 65, d_model)
+            memory = torch.cat([band_tokens, result_mem], dim=1)  # (batch, 9, d_model)
         else:
-            memory = page_embedded  # (batch, 64, d_model)
+            memory = band_tokens  # (batch, 8, d_model)
 
         return memory
 
