@@ -839,16 +839,24 @@ class AtomLoRAModel(nn.Module):
         batch_size = input_ids.size(0)
 
         if len(state_pages) == 0:
-            # First pass: no LoRA (no pages to condition on)
-            atom_scales = torch.zeros(
-                batch_size, self.atoms.num_atoms,
+            # First pass: feed zero page to hypernetwork so LoRA is active
+            # (critical for per-cycle targets where pass 0 gets supervision)
+            zero_page = torch.zeros(
+                batch_size, self.page_size,
                 device=input_ids.device, dtype=torch.float32,
             )
-            outputs = self.transformer(
-                input_ids=input_ids, attention_mask=attention_mask,
-                output_hidden_states=True,
-            )
-            hidden_states = list(outputs.hidden_states[1:])
+            atom_scales = self.hypernet([zero_page], pass_num=0)
+
+            manager = AtomAdditiveLoRAManager(self.transformer)
+            manager.apply(self.atoms, atom_scales)
+            try:
+                outputs = self.transformer(
+                    input_ids=input_ids, attention_mask=attention_mask,
+                    output_hidden_states=True,
+                )
+                hidden_states = list(outputs.hidden_states[1:])
+            finally:
+                manager.remove()
         else:
             # Generate atom scales from pages + pass number
             atom_scales = self.hypernet(state_pages, pass_num)

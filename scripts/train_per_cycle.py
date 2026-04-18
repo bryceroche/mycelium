@@ -170,17 +170,23 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
     valid_cycles = 0
 
     for pass_num in range(num_passes):
-        if pass_num == 0:
-            # First pass: no LoRA (no pages yet)
-            outputs = model.transformer(
-                inputs_embeds=problem_embeds, attention_mask=attention_mask,
-                output_hidden_states=True,
+        if pass_num == 0 and len(state_pages) == 0:
+            # First pass: use a zero page as seed so hypernetwork is active
+            # This gives atoms gradient from pass 0 (critical for L3 1-step)
+            zero_page = torch.zeros(batch_size, model.page_size, device=device)
+            atom_scales, pre_tanh = model.hypernet(
+                [zero_page], pass_num=0, return_pre_tanh=True,
             )
-            hidden_states = list(outputs.hidden_states[1:])
-            atom_scales = torch.zeros(
-                batch_size, model.num_atoms, device=device,
-            )
-            pre_tanh = torch.zeros_like(atom_scales)
+            manager = AtomAdditiveLoRAManager(model.transformer)
+            manager.apply(model.atoms, atom_scales)
+            try:
+                outputs = model.transformer(
+                    inputs_embeds=problem_embeds, attention_mask=attention_mask,
+                    output_hidden_states=True,
+                )
+                hidden_states = list(outputs.hidden_states[1:])
+            finally:
+                manager.remove()
         else:
             # Atom LoRA from pages (with pre-tanh for regularization)
             atom_scales, pre_tanh = model.hypernet(
