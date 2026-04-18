@@ -614,7 +614,8 @@ def log_page_variance(state_pages, device):
 # ---------------------------------------------------------------------------
 
 def try_warm_start(model, answer_head, warm_path, skip_perceiver=False):
-    """Try atom checkpoint first; fall back to perceiver-only warm start."""
+    """Try atom checkpoint first; fall back to perceiver-only warm start.
+    Returns optimizer state dict if present in checkpoint, else None."""
     ckpt = torch.load(warm_path, map_location='cpu', weights_only=True)
 
     if 'atoms' in ckpt:
@@ -682,12 +683,28 @@ def try_warm_start(model, answer_head, warm_path, skip_perceiver=False):
             model.residual_gate.load_state_dict(own_rg, strict=False)
             print(f"  residual_gate: loaded {loaded_rg}/{len(own_rg)}")
 
+        if 'message_generator' in ckpt:
+            own_mg = model.message_generator.state_dict()
+            loaded_mg = 0
+            for k, v in ckpt['message_generator'].items():
+                if k in own_mg and own_mg[k].shape == v.shape:
+                    own_mg[k] = v
+                    loaded_mg += 1
+            model.message_generator.load_state_dict(own_mg, strict=False)
+            print(f"  message_generator: loaded {loaded_mg}/{len(own_mg)}")
+
+        if 'optimizer' in ckpt:
+            print(f"  optimizer state: found")
+            return ckpt['optimizer']
+        return None
+
     else:
         print(f"  Warm-starting perceiver only from {warm_path}")
         warm_start_atom_from_checkpoint(model, ckpt)
         print(f"  atoms: fresh init (no atom equivalent in checkpoint)")
         print(f"  hypernet: fresh init (new architecture)")
         print(f"  answer_head: fresh init")
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -734,11 +751,12 @@ def train(args):
     # Answer head -- small, kept in float32 for digit classification stability
     answer_head = AnswerHead(page_size=model.page_size).to(device)
 
+    saved_optim_state = None
     if warm_path:
         print(f"\nWarm-starting from {warm_path}")
         if args.skip_perceiver:
             print("  (--skip_perceiver: perceiver will stay random)")
-        try_warm_start(model, answer_head, warm_path, skip_perceiver=args.skip_perceiver)
+        saved_optim_state = try_warm_start(model, answer_head, warm_path, skip_perceiver=args.skip_perceiver)
 
     # --- Data ---
     train_path = os.path.join(args.data_dir, f'{level}_train.jsonl')
@@ -775,15 +793,24 @@ def train(args):
     atom_A_params = list(model.atoms.A.values()) if hasattr(model.atoms.A, 'values') else list(model.atoms.A.parameters())
     atom_B_params = list(model.atoms.B.values()) if hasattr(model.atoms.B, 'values') else list(model.atoms.B.parameters())
 
+    s = args.lr_scale
     optimizer = torch.optim.AdamW([
-        {'params': list(model.compressor.parameters()), 'lr': 1e-4, 'weight_decay': 0.01},
-        {'params': atom_A_params, 'lr': 1e-4, 'weight_decay': 0.05},
-        {'params': atom_B_params, 'lr': 1e-4, 'weight_decay': 0.05},
-        {'params': list(model.hypernet.parameters()), 'lr': 1e-3, 'weight_decay': 0.1},
-        {'params': list(model.confidence_head.parameters()), 'lr': 1e-3, 'weight_decay': 0.01},
-        {'params': list(answer_head.parameters()), 'lr': 3e-3, 'weight_decay': 0.01},
-        {'params': list(model.message_generator.parameters()), 'lr': 1e-3, 'weight_decay': 0.01},
+        {'params': list(model.compressor.parameters()), 'lr': 1e-4 * s, 'weight_decay': 0.01},
+        {'params': atom_A_params, 'lr': 1e-4 * s, 'weight_decay': 0.05},
+        {'params': atom_B_params, 'lr': 1e-4 * s, 'weight_decay': 0.05},
+        {'params': list(model.hypernet.parameters()), 'lr': 1e-3 * s, 'weight_decay': 0.1},
+        {'params': list(model.confidence_head.parameters()), 'lr': 1e-3 * s, 'weight_decay': 0.01},
+        {'params': list(answer_head.parameters()), 'lr': 3e-3 * s, 'weight_decay': 0.01},
+        {'params': list(model.message_generator.parameters()), 'lr': 1e-3 * s, 'weight_decay': 0.01},
     ])
+
+    # Load optimizer state if available from warm start
+    if saved_optim_state is not None:
+        try:
+            optimizer.load_state_dict(saved_optim_state)
+            print("  optimizer state: loaded from checkpoint")
+        except Exception as e:
+            print(f"  optimizer state: couldn't load ({e}), starting fresh")
 
     trainable = (
         list(model.compressor.parameters())
@@ -909,6 +936,7 @@ def train(args):
                 'answer_head': answer_head.state_dict(),
                 'residual_gate': model.residual_gate.state_dict(),
                 'message_generator': model.message_generator.state_dict(),
+                'optimizer': optimizer.state_dict(),
                 'accuracy': final_acc,
                 'per_cycle_acc': per_cycle_acc,
                 'level': level,
@@ -996,6 +1024,8 @@ if __name__ == '__main__':
                    help='Confidence loss weight')
     p.add_argument('--lam_scale_reg', type=float, default=0.1,
                    help='Pre-tanh scale regularization weight')
+    p.add_argument('--lr_scale', type=float, default=1.0,
+                   help='Scale all learning rates (use 0.7 when resuming to protect cycle 1)')
     p.add_argument('--num_atoms', type=int, default=64,
                    help='Number of LoRA atoms')
     p.add_argument('--atom_rank', type=int, default=6,
