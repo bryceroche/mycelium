@@ -82,9 +82,15 @@ class PerCycleDataset(Dataset):
         cycle_targets = item['cycle_targets']
         # Truncate to max_passes if needed
         cycle_targets = cycle_targets[:self.max_passes]
+        # Generation targets: equation strings (e.g. "160 - 63 = 97")
+        # Falls back to stringified numbers if not present
+        gen_targets = item.get('cycle_gen_targets',
+                               [str(ct) for ct in cycle_targets])
+        gen_targets = gen_targets[:self.max_passes]
         return {
             'problem': item['problem'],
             'cycle_targets': cycle_targets,
+            'cycle_gen_targets': gen_targets,
             'final_answer': item['final_answer'],
             'num_steps': min(item.get('num_steps', len(cycle_targets)), self.max_passes),
         }
@@ -103,17 +109,25 @@ def per_cycle_collate_fn(batch):
     # Pad cycle_targets to max_steps, track mask
     padded_targets = []
     mask = []
+    # Collect gen_targets per cycle position: list of max_steps lists
+    gen_targets_by_cycle = [[] for _ in range(max_steps)]
     for s in batch:
         ct = s['cycle_targets']
+        gt = s.get('cycle_gen_targets', [str(c) for c in ct])
         pad_len = max_steps - len(ct)
-        # Pad with 0 (will be masked out)
         padded_targets.append(ct + [0] * pad_len)
         mask.append([1.0] * len(ct) + [0.0] * pad_len)
+        for i in range(max_steps):
+            if i < len(gt):
+                gen_targets_by_cycle[i].append(gt[i])
+            else:
+                gen_targets_by_cycle[i].append("0")  # placeholder for padded
 
     return {
         'problem': problems,
-        'cycle_targets': torch.tensor(padded_targets, dtype=torch.long),  # (B, max_steps)
-        'cycle_mask': torch.tensor(mask, dtype=torch.float32),            # (B, max_steps)
+        'cycle_targets': torch.tensor(padded_targets, dtype=torch.long),
+        'cycle_mask': torch.tensor(mask, dtype=torch.float32),
+        'cycle_gen_targets': gen_targets_by_cycle,  # list of max_steps x list of B strings
         'final_answer': finals,
         'num_steps': num_steps_list,
         'max_steps': max_steps,
@@ -125,7 +139,8 @@ def per_cycle_collate_fn(batch):
 # ---------------------------------------------------------------------------
 
 def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_mask,
-                            finals_t, num_passes=5, max_length=192,
+                            finals_t, cycle_gen_targets=None,
+                            num_passes=5, max_length=192,
                             lam_gen=1.0, lam_ah=0.5):
     """Forward pass with hybrid per-cycle loss: generation + answer head.
 
@@ -243,7 +258,12 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
             if mask_val.sum() > 0:
                 # === GENERATION LOSS (strong gradient engine) ===
                 # Tokenize short target: just the number as text (e.g. "48")
-                target_strs = [str(ct.item()) for ct in cycle_target]
+                # Use equation gen targets if available (e.g. "160 - 63 = 97")
+                # Otherwise fall back to stringified numbers
+                if cycle_gen_targets is not None and pass_num < len(cycle_gen_targets):
+                    target_strs = cycle_gen_targets[pass_num]  # list of B strings
+                else:
+                    target_strs = [str(ct.item()) for ct in cycle_target]
                 target_inputs = model.tokenizer(
                     target_strs, return_tensors='pt', padding=True,
                     add_special_tokens=False,
@@ -758,6 +778,7 @@ def train(args):
             problems = batch['problem']
             cycle_targets = batch['cycle_targets']  # (B, max_steps)
             cycle_mask = batch['cycle_mask']          # (B, max_steps)
+            cycle_gen_targets = batch.get('cycle_gen_targets')  # list of max_steps x B strings
 
             finals_raw = batch['final_answer']
             finals_list = []
@@ -774,7 +795,8 @@ def train(args):
              page_cos, active_atoms, s_std, xpass_cos,
              conf_mean, state_pages, per_cycle_preds) = forward_train_per_cycle(
                 model, answer_head, problems, cycle_targets, cycle_mask,
-                finals_t, num_passes=args.num_passes, max_length=max_length,
+                finals_t, cycle_gen_targets=cycle_gen_targets,
+                num_passes=args.num_passes, max_length=max_length,
             )
 
             total_loss = (args.lam_gen * gen_loss
