@@ -357,6 +357,8 @@ class AtomHypernetwork(nn.Module):
         pass_embed_dim: int = 512,  # kept for backward compat, ignored if skip_pass_embed
         pass_embed_scale: float = 1.0,  # kept for backward compat
         skip_pass_embed: bool = False,
+        message_dim: int = 16,
+        max_messages: int = 12,
     ):
         super().__init__()
         self.page_size = page_size
@@ -365,6 +367,8 @@ class AtomHypernetwork(nn.Module):
         self.num_query_heads = num_query_heads
         self.pass_embed_scale = pass_embed_scale
         self.skip_pass_embed = skip_pass_embed
+        self.message_dim = message_dim
+        self.max_messages = max_messages
 
         # ===== DIRECT PATH (v24.7 — clean gradient highway) =====
         # Reads last page only, bypasses cross-attention softmax
@@ -408,6 +412,13 @@ class AtomHypernetwork(nn.Module):
         # Flatten 4 queries x 512 dim = 2048 -> summary 1024
         self.summary_project = nn.Linear(num_query_heads * attn_dim, 1024)
 
+        # --- Message projection (read inter-cycle messages) ---
+        self.message_project = nn.Sequential(
+            nn.Linear(message_dim * max_messages, 256),
+            nn.GELU(),
+            nn.Linear(256, 256),
+        )
+
         # --- Fourier pass encoding (conditional, skipped in v24.6) ---
         if not skip_pass_embed:
             self.register_buffer(
@@ -415,10 +426,10 @@ class AtomHypernetwork(nn.Module):
                 torch.exp(torch.arange(0, pass_embed_dim, 2) * -(math.log(10000.0) / pass_embed_dim))
             )
             self.pass_project = nn.Linear(pass_embed_dim, pass_embed_dim)
-            mlp_input_dim = 1024 + pass_embed_dim  # page_summary + pass_embed = 1536
+            mlp_input_dim = 1024 + pass_embed_dim + 256  # page_summary + pass_embed + msg_summary = 1792
         else:
-            # No pass embedding — pages are the ONLY input to the hypernetwork
-            mlp_input_dim = 1024  # page_summary only
+            # No pass embedding — pages + messages are the inputs to the hypernetwork
+            mlp_input_dim = 1024 + 256  # page_summary + msg_summary = 1280
 
         # --- Deep MLP: mlp_input_dim -> 1024 -> 512 -> 64 ---
         # Split into pre-tanh and tanh for regularization access
@@ -453,6 +464,7 @@ class AtomHypernetwork(nn.Module):
         state_pages: List[torch.Tensor],
         pass_num: int,
         return_pre_tanh: bool = False,
+        messages: Optional[List[torch.Tensor]] = None,
     ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         """
         Args:
@@ -501,15 +513,28 @@ class AtomHypernetwork(nn.Module):
         # Flatten queries -> summary
         page_summary = self.summary_project(queries.flatten(1))  # (B, 1024)
 
+        # Read messages
+        if messages and len(messages) > 0:
+            msg_list = list(messages)
+            # Pad to max_messages
+            if len(msg_list) < self.max_messages:
+                pad = [torch.zeros_like(msg_list[0])] * (self.max_messages - len(msg_list))
+                msg_list = msg_list + pad
+            msg_cat = torch.cat(msg_list[:self.max_messages], dim=-1)  # (B, message_dim * max_messages)
+            msg_summary = self.message_project(msg_cat.float())  # (B, 256)
+        else:
+            msg_summary = torch.zeros(batch_size, 256, device=device)
+
         # Generate contextual logits (with or without pass embedding)
         if self.skip_pass_embed:
-            # v24.6: Pages are the ONLY input — no pass embedding shortcut
-            context_logits = self.scale_mlp(page_summary)  # (B, num_atoms)
+            # v24.6: Pages + messages are the inputs — no pass embedding shortcut
+            combined = torch.cat([page_summary, msg_summary], dim=-1)  # (B, 1280)
+            context_logits = self.scale_mlp(combined)  # (B, num_atoms)
         else:
             # Legacy: include Fourier pass encoding
             pass_emb = self.fourier_encode(pass_num, device).unsqueeze(0).expand(batch_size, -1)  # (B, 512)
             pass_emb = pass_emb * self.pass_embed_scale
-            combined = torch.cat([page_summary, pass_emb], dim=-1)  # (B, 1536)
+            combined = torch.cat([page_summary, pass_emb, msg_summary], dim=-1)  # (B, 1792)
             context_logits = self.scale_mlp(combined)  # (B, num_atoms)
 
         # ===== BLEND direct + contextual =====
@@ -717,6 +742,39 @@ class AtomConfidenceHead(nn.Module):
 
 
 # ---------------------------------------------------------------------------
+# CycleMessageGenerator — direct last-layer signal bypassing perceiver
+# ---------------------------------------------------------------------------
+class CycleMessageGenerator(nn.Module):
+    """
+    Generates a small message from Llama's last layer output.
+    Bypasses the perceiver compression bottleneck entirely.
+
+    The message is a POST-IT NOTE — quick, direct, uncompressed.
+    The page is the FORMAL RECORD — rich, compressed, multi-layer.
+    """
+    def __init__(self, d_model=2048, message_dim=16):
+        super().__init__()
+        self.message_dim = message_dim
+
+        # Mean-pool last layer → project to small message
+        self.net = nn.Sequential(
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, 256),
+            nn.GELU(),
+            nn.Linear(256, message_dim),
+        )
+
+    def forward(self, last_layer_hidden):
+        """
+        last_layer_hidden: (batch, seq_len, d_model) — Llama's final layer
+        returns: (batch, message_dim) — small direct signal
+        """
+        pooled = last_layer_hidden.mean(dim=1).float()  # (batch, d_model) — cast to float32
+        message = self.net(pooled)  # (batch, message_dim)
+        return message
+
+
+# ---------------------------------------------------------------------------
 # AtomLoRAModel — main model class
 # ---------------------------------------------------------------------------
 class AtomLoRAModel(nn.Module):
@@ -808,6 +866,9 @@ class AtomLoRAModel(nn.Module):
             page_size=self.page_size, hidden=128, num_heads=4,
         )
 
+        # --- Cycle message generator (direct last-layer signal, bypasses perceiver) ---
+        self.message_generator = CycleMessageGenerator(d_model=2048, message_dim=16)
+
         # --- Pi-harmonic page encoding (DCT-like orthogonal basis, zero learnable params) ---
         self.fourier_page = PiHarmonicPageEncoding(page_size=self.page_size)
 
@@ -830,7 +891,8 @@ class AtomLoRAModel(nn.Module):
         pass_num: int,
         max_passes: int = 3,
         prev_mid_states: Optional[List[torch.Tensor]] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        messages: Optional[List[torch.Tensor]] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         One thinking pass with atom LoRA.
 
@@ -842,23 +904,24 @@ class AtomLoRAModel(nn.Module):
             max_passes:      int, total passes (for gradient scaling)
             prev_mid_states: Optional list of (B, num_queries, d_perceiver) tensors
                 from previous passes' perceiver mid-layer states.
+            messages:        Optional list of (B, message_dim) accumulated messages
 
         Returns:
             page:               (B, page_size) normalized on hypersphere
             atom_scales:        (B, num_atoms) the scales used this pass
             current_mid_states: (B, num_queries, d_perceiver) detached mid-layer states
+            message:            (B, message_dim) direct signal from last layer
         """
         batch_size = input_ids.size(0)
 
         if len(state_pages) == 0:
             # First pass: feed zero page to hypernetwork so LoRA is active
-            # (critical for per-cycle targets where pass 0 gets supervision)
             hyper_dtype = next(self.hypernet.parameters()).dtype
             zero_page = torch.zeros(
                 batch_size, self.page_size,
                 device=input_ids.device, dtype=hyper_dtype,
             )
-            atom_scales = self.hypernet([zero_page], pass_num=0)
+            atom_scales = self.hypernet([zero_page], pass_num=0, messages=messages)
 
             manager = AtomAdditiveLoRAManager(self.transformer)
             manager.apply(self.atoms, atom_scales)
@@ -871,10 +934,9 @@ class AtomLoRAModel(nn.Module):
             finally:
                 manager.remove()
         else:
-            # Generate atom scales from pages + pass number
-            atom_scales = self.hypernet(state_pages, pass_num)
+            # Generate atom scales from pages + messages + pass number
+            atom_scales = self.hypernet(state_pages, pass_num, messages=messages)
 
-            # Apply atom LoRA via monkey-patching
             manager = AtomAdditiveLoRAManager(self.transformer)
             manager.apply(self.atoms, atom_scales)
             try:
@@ -914,7 +976,10 @@ class AtomLoRAModel(nn.Module):
         if grad_scale != 1.0 and page.requires_grad:
             page = page * grad_scale + page.detach() * (1.0 - grad_scale)
 
-        return page, atom_scales, current_mid_states
+        # Generate message: direct signal from last layer, bypasses perceiver
+        message = self.message_generator(hidden_states[-1])
+
+        return page, atom_scales, current_mid_states, message
 
     def thinking_pass_with_sympy(
         self,

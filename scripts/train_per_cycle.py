@@ -187,6 +187,7 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
     cycle_mask = cycle_mask.to(device)
 
     state_pages = []
+    messages = []
     atom_scales_history = []
     mid_states_history = []
     pre_tanh_history = []
@@ -196,17 +197,19 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
     valid_cycles = 0
 
     for pass_num in range(num_passes):
-        # --- Get atom scales for this cycle ---
+        # --- Get atom scales for this cycle (pages + messages) ---
         if pass_num == 0 and len(state_pages) == 0:
             hyper_dtype = next(model.hypernet.parameters()).dtype
             zero_page = torch.zeros(batch_size, model.page_size,
                                     device=device, dtype=hyper_dtype)
             atom_scales, pre_tanh = model.hypernet(
                 [zero_page], pass_num=0, return_pre_tanh=True,
+                messages=messages if messages else None,
             )
         else:
             atom_scales, pre_tanh = model.hypernet(
                 state_pages, pass_num=pass_num, return_pre_tanh=True,
+                messages=messages if messages else None,
             )
 
         # --- Think: run transformer with this cycle's LoRA ---
@@ -241,6 +244,10 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
         page = scale_gradient(page, grad_scale)
 
         state_pages.append(page)
+
+        # Generate message: direct signal from last layer, bypasses perceiver
+        message = model.message_generator(hidden_states[-1])
+        messages.append(message)
 
         # Atom dropout during training: randomly zero 10% of atom scales
         if model.training and pass_num > 0:
@@ -303,11 +310,13 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
                 gen_loss_this = (gen_loss_per_sample * mask_val).sum() / mask_val.sum()
                 per_cycle_gen_loss = per_cycle_gen_loss + gen_loss_this
 
-                # === ANSWER HEAD LOSS (shaping signal) ===
+                # === ANSWER HEAD LOSS (shaping signal, higher weight for cycle 2+) ===
                 current_page = page.float()
                 ah_loss_this = answer_head_loss(answer_head, current_page, cycle_target)
+                # Cycle 2+ needs stronger shaping — gen loss is too easy to shortcut
+                ah_weight = 3.0 if pass_num > 0 else 1.0
                 mask_frac = mask_val.mean()
-                per_cycle_ah_loss = per_cycle_ah_loss + ah_loss_this * mask_frac
+                per_cycle_ah_loss = per_cycle_ah_loss + ah_loss_this * mask_frac * ah_weight
                 valid_cycles += 1
 
             # Record predictions for diagnostics
@@ -402,14 +411,17 @@ def evaluate_per_cycle(model, answer_head, eval_dataset, device,
             batch_size = input_ids.size(0)
 
             state_pages = []
+            eval_messages = []
             mid_states_history = []
 
             for pass_num in range(num_passes):
-                page, _scales, current_mid_states = model.thinking_pass(
+                page, _scales, current_mid_states, message = model.thinking_pass(
                     input_ids, attention_mask, state_pages, pass_num,
                     prev_mid_states=mid_states_history if mid_states_history else None,
+                    messages=eval_messages if eval_messages else None,
                 )
                 state_pages.append(page)
+                eval_messages.append(message)
                 mid_states_history.append(current_mid_states)
 
                 # Per-cycle answer head evaluation
@@ -733,6 +745,7 @@ def train(args):
         {'params': list(model.hypernet.parameters()), 'lr': 1e-3, 'weight_decay': 0.1},
         {'params': list(model.confidence_head.parameters()), 'lr': 1e-3, 'weight_decay': 0.01},
         {'params': list(answer_head.parameters()), 'lr': 3e-3, 'weight_decay': 0.01},
+        {'params': list(model.message_generator.parameters()), 'lr': 1e-3, 'weight_decay': 0.01},
     ])
 
     trainable = (
@@ -741,6 +754,7 @@ def train(args):
         + list(model.hypernet.parameters())
         + list(model.confidence_head.parameters())
         + list(answer_head.parameters())
+        + list(model.message_generator.parameters())
     )
     print(f"Trainable params: {sum(p.numel() for p in trainable):,}")
     print(f"  atoms: {sum(p.numel() for p in model.atoms.parameters()):,} "
@@ -749,6 +763,7 @@ def train(args):
     print(f"  compressor: {sum(p.numel() for p in model.compressor.parameters()):,}")
     print(f"  answer_head: {sum(p.numel() for p in answer_head.parameters()):,}")
     print(f"  confidence_head: {sum(p.numel() for p in model.confidence_head.parameters()):,}")
+    print(f"  message_gen: {sum(p.numel() for p in model.message_generator.parameters()):,}")
     print(f"GPU mem after init: {torch.cuda.memory_allocated()/1e9:.2f} GB")
 
     # Baseline eval
@@ -856,6 +871,7 @@ def train(args):
                 'confidence_head': model.confidence_head.state_dict(),
                 'answer_head': answer_head.state_dict(),
                 'residual_gate': model.residual_gate.state_dict(),
+                'message_generator': model.message_generator.state_dict(),
                 'accuracy': final_acc,
                 'per_cycle_acc': per_cycle_acc,
                 'level': level,
