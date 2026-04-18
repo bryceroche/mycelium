@@ -841,9 +841,10 @@ class AtomLoRAModel(nn.Module):
         if len(state_pages) == 0:
             # First pass: feed zero page to hypernetwork so LoRA is active
             # (critical for per-cycle targets where pass 0 gets supervision)
+            hyper_dtype = next(self.hypernet.parameters()).dtype
             zero_page = torch.zeros(
                 batch_size, self.page_size,
-                device=input_ids.device, dtype=torch.float32,
+                device=input_ids.device, dtype=hyper_dtype,
             )
             atom_scales = self.hypernet([zero_page], pass_num=0)
 

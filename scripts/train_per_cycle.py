@@ -173,7 +173,10 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
         if pass_num == 0 and len(state_pages) == 0:
             # First pass: use a zero page as seed so hypernetwork is active
             # This gives atoms gradient from pass 0 (critical for L3 1-step)
-            zero_page = torch.zeros(batch_size, model.page_size, device=device)
+            # Match dtype of hypernetwork (bfloat16 when model loaded in bf16)
+            hyper_dtype = next(model.hypernet.parameters()).dtype
+            zero_page = torch.zeros(batch_size, model.page_size,
+                                    device=device, dtype=hyper_dtype)
             atom_scales, pre_tanh = model.hypernet(
                 [zero_page], pass_num=0, return_pre_tanh=True,
             )
