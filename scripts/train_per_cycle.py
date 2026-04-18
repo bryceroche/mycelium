@@ -253,11 +253,16 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
                 # Teacher-forced generation with THIS cycle's LoRA
                 target_embeds = embed_layer(target_ids)
                 full_embeds = torch.cat([problem_embeds, target_embeds], dim=1)
+                # Attention mask: ones for problem, ones for non-pad target tokens
+                target_attn = (target_ids != model.tokenizer.pad_token_id).long()
+                full_attn = torch.cat([attention_mask, target_attn], dim=1)
                 manager = AtomAdditiveLoRAManager(model.transformer)
                 manager.apply(model.atoms, atom_scales)
                 try:
                     gen_outputs = model.transformer(
-                        inputs_embeds=full_embeds, use_cache=False,
+                        inputs_embeds=full_embeds,
+                        attention_mask=full_attn,
+                        use_cache=False,
                     )
                 finally:
                     manager.remove()
