@@ -197,6 +197,10 @@ class LoRAAtoms(nn.Module):
         A = self.A[proj_name][:, layer_idx]  # (num_atoms, d_model, rank)
         B = self.B[proj_name][:, layer_idx]  # (num_atoms, rank, proj_dim)
 
+        # Ensure consistent dtype (atom_scales may be float32 from hypernet)
+        hidden = hidden.to(dtype=A.dtype)
+        atom_scales = atom_scales.to(dtype=A.dtype)
+
         # Batched: all atoms at once
         # hidden: (B, S, D) @ A: (A, D, R) -> projections: (B, A, S, R)
         projections = torch.einsum('bsd,adr->basr', hidden, A)
