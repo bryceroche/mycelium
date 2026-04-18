@@ -197,6 +197,27 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
     valid_cycles = 0
 
     for pass_num in range(num_passes):
+        # --- For cycle 2+: inject previous answer as text context ---
+        if pass_num > 0 and len(state_pages) > 0:
+            with torch.no_grad():
+                prev_preds = answer_head.decode(state_pages[-1].float())  # (B,)
+            # Build context strings: "Step 1 result: 160\n"
+            context_strs = [f"Step {pass_num} result: {int(p.item())}\n" for p in prev_preds]
+            # Re-tokenize: context + original problem
+            augmented = [ctx + prob for ctx, prob in zip(context_strs, problems)]
+            aug_inputs = model.tokenizer(
+                augmented, return_tensors='pt', padding=True,
+                truncation=True, max_length=max_length + 20,
+            )
+            cycle_input_ids = aug_inputs['input_ids'].to(device)
+            cycle_attention_mask = aug_inputs['attention_mask'].to(device)
+            cycle_embeds = embed_layer(cycle_input_ids)
+            cycle_prompt_len = cycle_input_ids.size(1)
+        else:
+            cycle_embeds = problem_embeds
+            cycle_attention_mask = attention_mask
+            cycle_prompt_len = prompt_len
+
         # --- Get atom scales for this cycle (pages + messages) ---
         if pass_num == 0 and len(state_pages) == 0:
             hyper_dtype = next(model.hypernet.parameters()).dtype
@@ -217,7 +238,7 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
         manager.apply(model.atoms, atom_scales)
         try:
             outputs = model.transformer(
-                inputs_embeds=problem_embeds, attention_mask=attention_mask,
+                inputs_embeds=cycle_embeds, attention_mask=cycle_attention_mask,
                 output_hidden_states=True,
             )
             hidden_states = list(outputs.hidden_states[1:])
@@ -278,11 +299,11 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
                 target_ids = target_inputs['input_ids'].to(device)  # (B, T)
 
                 # Teacher-forced generation with THIS cycle's LoRA
+                # Use augmented input (with injected context) for cycle 2+
                 target_embeds = embed_layer(target_ids)
-                full_embeds = torch.cat([problem_embeds, target_embeds], dim=1)
-                # Attention mask: ones for problem, ones for non-pad target tokens
+                full_embeds = torch.cat([cycle_embeds, target_embeds], dim=1)
                 target_attn = (target_ids != model.tokenizer.pad_token_id).long()
-                full_attn = torch.cat([attention_mask, target_attn], dim=1)
+                full_attn = torch.cat([cycle_attention_mask, target_attn], dim=1)
                 manager = AtomAdditiveLoRAManager(model.transformer)
                 manager.apply(model.atoms, atom_scales)
                 try:
@@ -295,7 +316,7 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
                     manager.remove()
 
                 # Cross-entropy on target tokens only
-                gen_logits = gen_outputs.logits[:, prompt_len - 1:-1, :]
+                gen_logits = gen_outputs.logits[:, cycle_prompt_len - 1:-1, :]
                 gen_loss_this = F.cross_entropy(
                     gen_logits.reshape(-1, gen_logits.size(-1)),
                     target_ids.reshape(-1),
@@ -415,8 +436,23 @@ def evaluate_per_cycle(model, answer_head, eval_dataset, device,
             mid_states_history = []
 
             for pass_num in range(num_passes):
+                # For cycle 2+: inject previous answer as text context
+                if pass_num > 0 and len(state_pages) > 0:
+                    prev_preds = answer_head.decode(state_pages[-1].float())
+                    context_strs = [f"Step {pass_num} result: {int(p.item())}\n" for p in prev_preds]
+                    augmented = [ctx + prob for ctx, prob in zip(context_strs, problems)]
+                    aug_inputs = model.tokenizer(
+                        augmented, return_tensors='pt', padding=True,
+                        truncation=True, max_length=max_length + 20,
+                    )
+                    eval_ids = aug_inputs['input_ids'].to(device)
+                    eval_mask = aug_inputs['attention_mask'].to(device)
+                else:
+                    eval_ids = input_ids
+                    eval_mask = attention_mask
+
                 page, _scales, current_mid_states, message = model.thinking_pass(
-                    input_ids, attention_mask, state_pages, pass_num,
+                    eval_ids, eval_mask, state_pages, pass_num,
                     prev_mid_states=mid_states_history if mid_states_history else None,
                     messages=eval_messages if eval_messages else None,
                 )
