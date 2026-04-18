@@ -525,6 +525,9 @@ class AtomHypernetwork(nn.Module):
         else:
             msg_summary = torch.zeros(batch_size, 256, device=device)
 
+        # Cast msg_summary to match page_summary dtype (bfloat16)
+        msg_summary = msg_summary.to(dtype=page_summary.dtype)
+
         # Generate contextual logits (with or without pass embedding)
         if self.skip_pass_embed:
             # v24.6: Pages + messages are the inputs — no pass embedding shortcut
