@@ -693,6 +693,7 @@ def train(args):
     model.confidence_head = model.confidence_head.to(device)  # fp32 (small)
     model.residual_gate = model.residual_gate.to(device=device, dtype=torch.bfloat16)
     model.probe_head = model.probe_head.to(device)
+    model.message_generator = model.message_generator.to(device)  # fp32 (small)
 
     # Answer head -- small, kept in float32 for digit classification stability
     answer_head = AnswerHead(page_size=model.page_size).to(device)
