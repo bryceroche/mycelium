@@ -536,15 +536,22 @@ class AnswerHead(nn.Module):
     - digit_heads: max_digits x Linear(page_size, 10) -> 0-9 per position
     """
 
-    def __init__(self, page_size: int = 64, max_digits: int = 6):
+    def __init__(self, page_size: int = 64, max_digits: int = 6, hidden: int = 256):
         super().__init__()
         self.page_size = page_size
         self.max_digits = max_digits
 
-        self.sign_head = nn.Linear(page_size, 2)
-        self.length_head = nn.Linear(page_size, max_digits)
+        # Shared encoder: page -> richer representation
+        self.encoder = nn.Sequential(
+            nn.Linear(page_size, hidden),
+            nn.GELU(),
+            nn.Linear(hidden, hidden),
+            nn.GELU(),
+        )
+        self.sign_head = nn.Linear(hidden, 2)
+        self.length_head = nn.Linear(hidden, max_digits)
         self.digit_heads = nn.ModuleList([
-            nn.Linear(page_size, 10) for _ in range(max_digits)
+            nn.Linear(hidden, 10) for _ in range(max_digits)
         ])
 
     def forward(
@@ -560,9 +567,10 @@ class AnswerHead(nn.Module):
             digit_logits:  list of max_digits x (B, 10)
         """
         page = last_page.float()
-        sign_logits = self.sign_head(page)
-        length_logits = self.length_head(page)
-        digit_logits = [head(page) for head in self.digit_heads]
+        h = self.encoder(page)
+        sign_logits = self.sign_head(h)
+        length_logits = self.length_head(h)
+        digit_logits = [head(h) for head in self.digit_heads]
         return sign_logits, length_logits, digit_logits
 
     @torch.no_grad()

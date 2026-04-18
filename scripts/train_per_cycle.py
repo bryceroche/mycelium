@@ -669,7 +669,7 @@ def train(args):
         {'params': atom_B_params, 'lr': 1e-4, 'weight_decay': 0.05},
         {'params': list(model.hypernet.parameters()), 'lr': 1e-3, 'weight_decay': 0.1},
         {'params': list(model.confidence_head.parameters()), 'lr': 1e-3, 'weight_decay': 0.01},
-        {'params': list(answer_head.parameters()), 'lr': 1e-3, 'weight_decay': 0.01},
+        {'params': list(answer_head.parameters()), 'lr': 3e-3, 'weight_decay': 0.01},
     ])
 
     trainable = (
