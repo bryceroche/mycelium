@@ -125,10 +125,17 @@ def per_cycle_collate_fn(batch):
 # ---------------------------------------------------------------------------
 
 def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_mask,
-                            finals_t, num_passes=5, max_length=192):
-    """Forward pass with per-cycle answer head loss.
+                            finals_t, num_passes=5, max_length=192,
+                            lam_gen=1.0, lam_ah=0.5):
+    """Forward pass with hybrid per-cycle loss: generation + answer head.
 
-    Computes answer_head_loss at EACH cycle. No CoT generation.
+    Each cycle:
+    1. Thinks (transformer + perceiver -> page)
+    2. Generates the intermediate result as short text (e.g. "48") with LoRA ON
+    3. Predicts via answer head (shaping signal)
+
+    The generation loss POWERS learning (strong gradient from token CE).
+    The answer head loss SHAPES what each cycle learns (per-cycle targets).
 
     Args:
         model:         AtomLoRAModel
@@ -139,9 +146,11 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
         finals_t:      (B,) final answer tensor (for contrastive loss)
         num_passes:    int, number of thinking passes
         max_length:    int, max tokenization length
+        lam_gen:       float, weight for per-cycle generation loss (default 1.0)
+        lam_ah:        float, weight for per-cycle answer head loss (default 0.5)
 
     Returns:
-        (per_cycle_ah_loss, c_loss, conf_loss, scale_reg_loss,
+        (gen_loss, ah_loss, c_loss, conf_loss, scale_reg_loss,
          page_cos_mean, active_atoms_mean, scale_std, cross_pass_cos,
          confidence_mean, state_pages, per_cycle_preds)
     """
@@ -157,6 +166,7 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
     batch_size = input_ids.size(0)
     embed_layer = model.transformer.model.embed_tokens
     problem_embeds = embed_layer(input_ids)
+    prompt_len = input_ids.size(1)
 
     cycle_targets = cycle_targets.to(device)
     cycle_mask = cycle_mask.to(device)
@@ -166,47 +176,37 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
     mid_states_history = []
     pre_tanh_history = []
     per_cycle_ah_loss = torch.tensor(0.0, device=device)
+    per_cycle_gen_loss = torch.tensor(0.0, device=device)
     per_cycle_preds = []  # list of (B,) tensors for diagnostics
     valid_cycles = 0
 
     for pass_num in range(num_passes):
+        # --- Get atom scales for this cycle ---
         if pass_num == 0 and len(state_pages) == 0:
-            # First pass: use a zero page as seed so hypernetwork is active
-            # This gives atoms gradient from pass 0 (critical for L3 1-step)
-            # Match dtype of hypernetwork (bfloat16 when model loaded in bf16)
             hyper_dtype = next(model.hypernet.parameters()).dtype
             zero_page = torch.zeros(batch_size, model.page_size,
                                     device=device, dtype=hyper_dtype)
             atom_scales, pre_tanh = model.hypernet(
                 [zero_page], pass_num=0, return_pre_tanh=True,
             )
-            manager = AtomAdditiveLoRAManager(model.transformer)
-            manager.apply(model.atoms, atom_scales)
-            try:
-                outputs = model.transformer(
-                    inputs_embeds=problem_embeds, attention_mask=attention_mask,
-                    output_hidden_states=True,
-                )
-                hidden_states = list(outputs.hidden_states[1:])
-            finally:
-                manager.remove()
         else:
-            # Atom LoRA from pages (with pre-tanh for regularization)
             atom_scales, pre_tanh = model.hypernet(
                 state_pages, pass_num=pass_num, return_pre_tanh=True,
             )
-            manager = AtomAdditiveLoRAManager(model.transformer)
-            manager.apply(model.atoms, atom_scales)
-            try:
-                outputs = model.transformer(
-                    inputs_embeds=problem_embeds, attention_mask=attention_mask,
-                    output_hidden_states=True,
-                )
-                hidden_states = list(outputs.hidden_states[1:])
-            finally:
-                manager.remove()
 
-        # Perceiver outputs (page, strategy) -- we discard strategy
+        # --- Think: run transformer with this cycle's LoRA ---
+        manager = AtomAdditiveLoRAManager(model.transformer)
+        manager.apply(model.atoms, atom_scales)
+        try:
+            outputs = model.transformer(
+                inputs_embeds=problem_embeds, attention_mask=attention_mask,
+                output_hidden_states=True,
+            )
+            hidden_states = list(outputs.hidden_states[1:])
+        finally:
+            manager.remove()
+
+        # --- Perceiver: compress to page ---
         page_delta, _strategy, current_mid_states = model.compressor(
             hidden_states, pass_num,
             prev_mid_states=mid_states_history if mid_states_history else None,
@@ -235,27 +235,64 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
         atom_scales_history.append(atom_scales)
         pre_tanh_history.append(pre_tanh)
 
-        # ------- Per-cycle answer head loss -------
+        # ------- Per-cycle losses (generation + answer head) -------
         if pass_num < cycle_targets.size(1):
-            current_page = page.float()
             cycle_target = cycle_targets[:, pass_num]   # (B,)
             mask_val = cycle_mask[:, pass_num]           # (B,)
 
             if mask_val.sum() > 0:
-                # Compute answer head loss for this cycle
+                # === GENERATION LOSS (strong gradient engine) ===
+                # Tokenize short target: just the number as text (e.g. "48")
+                target_strs = [str(ct.item()) for ct in cycle_target]
+                target_inputs = model.tokenizer(
+                    target_strs, return_tensors='pt', padding=True,
+                    add_special_tokens=False,
+                )
+                target_ids = target_inputs['input_ids'].to(device)  # (B, T)
+
+                # Teacher-forced generation with THIS cycle's LoRA
+                target_embeds = embed_layer(target_ids)
+                full_embeds = torch.cat([problem_embeds, target_embeds], dim=1)
+                manager = AtomAdditiveLoRAManager(model.transformer)
+                manager.apply(model.atoms, atom_scales)
+                try:
+                    gen_outputs = model.transformer(
+                        inputs_embeds=full_embeds, use_cache=False,
+                    )
+                finally:
+                    manager.remove()
+
+                # Cross-entropy on target tokens only
+                gen_logits = gen_outputs.logits[:, prompt_len - 1:-1, :]
+                gen_loss_this = F.cross_entropy(
+                    gen_logits.reshape(-1, gen_logits.size(-1)),
+                    target_ids.reshape(-1),
+                    ignore_index=model.tokenizer.pad_token_id,
+                    reduction='none',
+                )
+                # Mask per sample, then average
+                target_mask = (target_ids != model.tokenizer.pad_token_id).float()
+                gen_loss_per_sample = (gen_loss_this.view(batch_size, -1) * target_mask).sum(dim=1)
+                gen_loss_per_sample = gen_loss_per_sample / target_mask.sum(dim=1).clamp(min=1)
+                # Apply cycle mask
+                gen_loss_this = (gen_loss_per_sample * mask_val).sum() / mask_val.sum()
+                per_cycle_gen_loss = per_cycle_gen_loss + gen_loss_this
+
+                # === ANSWER HEAD LOSS (shaping signal) ===
+                current_page = page.float()
                 ah_loss_this = answer_head_loss(answer_head, current_page, cycle_target)
-                # Weight by mask fraction (handle variable-length batches)
                 mask_frac = mask_val.mean()
                 per_cycle_ah_loss = per_cycle_ah_loss + ah_loss_this * mask_frac
                 valid_cycles += 1
 
             # Record predictions for diagnostics
             with torch.no_grad():
-                preds = answer_head.decode(current_page)
+                preds = answer_head.decode(page.float())
                 per_cycle_preds.append(preds)
 
-    # Normalize per-cycle loss by number of valid cycles
+    # Normalize losses by number of valid cycles
     if valid_cycles > 0:
+        per_cycle_gen_loss = per_cycle_gen_loss / valid_cycles
         per_cycle_ah_loss = per_cycle_ah_loss / valid_cycles
 
     # ------- Confidence loss (pages only, no blend history) -------
@@ -294,7 +331,7 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
     all_pre_tanh = torch.cat(pre_tanh_history, dim=0)
     scale_reg_loss = (all_pre_tanh ** 2).mean()
 
-    return (per_cycle_ah_loss, c_loss, conf_loss, scale_reg_loss,
+    return (per_cycle_gen_loss, per_cycle_ah_loss, c_loss, conf_loss, scale_reg_loss,
             page_cos_mean, active_atoms_mean, scale_std, cross_pass_cos,
             confidence.mean(), state_pages, per_cycle_preds)
 
@@ -595,6 +632,7 @@ def train(args):
     print(f"  batch_size     = {args.batch_size}")
     print(f"  epochs         = {args.epochs}")
     print(f"  patience       = {args.patience}")
+    print(f"  lam_gen        = {args.lam_gen}")
     print(f"  lam_answer     = {args.lam_answer}")
     print(f"  lam_contrastive= {args.lam_contrastive}")
     print(f"  lam_conf       = {args.lam_conf}")
@@ -705,7 +743,7 @@ def train(args):
         t0 = time.time()
 
         # Re-shuffle data each epoch (DataLoader shuffle=True handles this)
-        ep_ah = ep_ctr = ep_conf = ep_scale_reg = ep_cos = 0.0
+        ep_gen = ep_ah = ep_ctr = ep_conf = ep_scale_reg = ep_cos = 0.0
         ep_active = ep_std = ep_xpass = 0.0
         ep_page_var = 0.0
         ep_dead_dims = 0.0
@@ -727,14 +765,15 @@ def train(args):
 
             optimizer.zero_grad()
 
-            (ah_loss, c_loss, conf_loss, scale_reg,
+            (gen_loss, ah_loss, c_loss, conf_loss, scale_reg,
              page_cos, active_atoms, s_std, xpass_cos,
              conf_mean, state_pages, per_cycle_preds) = forward_train_per_cycle(
                 model, answer_head, problems, cycle_targets, cycle_mask,
                 finals_t, num_passes=args.num_passes, max_length=max_length,
             )
 
-            total_loss = (args.lam_answer * ah_loss
+            total_loss = (args.lam_gen * gen_loss
+                          + args.lam_answer * ah_loss
                           + args.lam_contrastive * c_loss
                           + args.lam_conf * conf_loss
                           + args.lam_scale_reg * scale_reg)
@@ -742,6 +781,7 @@ def train(args):
             torch.nn.utils.clip_grad_norm_(trainable, 1.0)
             optimizer.step()
 
+            ep_gen += gen_loss.item()
             ep_ah += ah_loss.item()
             ep_ctr += c_loss.item()
             ep_conf += conf_loss.item()
@@ -803,7 +843,7 @@ def train(args):
 
         print(
             f"Epoch {epoch+1}: "
-            f"ah={ep_ah/nb:.4f} contr={ep_ctr/nb:.2f} "
+            f"gen={ep_gen/nb:.4f} ah={ep_ah/nb:.4f} contr={ep_ctr/nb:.2f} "
             f"conf={ep_conf/nb:.2f} scale_reg={ep_scale_reg/nb:.2f} "
             f"page_cos={ep_cos/nb:.2f} "
             f"active={ep_active/nb:.1f}/{args.num_atoms} "
@@ -866,8 +906,10 @@ if __name__ == '__main__':
     p.add_argument('--num_passes', type=int, default=3,
                    help='Number of thinking passes per problem')
     p.add_argument('--patience', type=int, default=3)
-    p.add_argument('--lam_answer', type=float, default=1.0,
-                   help='Per-cycle answer head loss weight (primary)')
+    p.add_argument('--lam_gen', type=float, default=1.0,
+                   help='Per-cycle generation loss weight (engine)')
+    p.add_argument('--lam_answer', type=float, default=0.5,
+                   help='Per-cycle answer head loss weight (shaping)')
     p.add_argument('--lam_contrastive', type=float, default=0.05,
                    help='Contrastive loss weight')
     p.add_argument('--lam_conf', type=float, default=0.1,
