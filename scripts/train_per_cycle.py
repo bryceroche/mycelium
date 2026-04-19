@@ -498,16 +498,17 @@ def evaluate_per_cycle(model, answer_head, eval_dataset, device,
 
                         max_steps_seen = max(max_steps_seen, pass_num + 1)
 
-            # Final accuracy: answer_head on last page delta vs final_answer
-            if len(state_pages) >= 2:
-                last_page = (state_pages[-1] - state_pages[-2]).float()
-            else:
-                last_page = state_pages[-1].float()
-            final_preds = answer_head.decode(last_page)
-
+            # Final accuracy: use the LAST SUPERVISED cycle's answer head prediction
+            # For 2-step problems with 3 passes, the answer is in cycle 1 (pass_num=1)
             for j in range(batch_size):
                 gold = gold_finals[j]
-                pred_val = final_preds[j].item()
+                ct = cycle_targets_list[j]
+                last_supervised = min(len(ct), len(state_pages)) - 1  # last cycle with a target
+                if last_supervised > 0:
+                    final_page = (state_pages[last_supervised] - state_pages[last_supervised - 1]).float()
+                else:
+                    final_page = state_pages[last_supervised].float()
+                pred_val = answer_head.decode(final_page[j:j+1])[0].item()
                 try:
                     if int(pred_val) == int(gold):
                         final_correct += 1
