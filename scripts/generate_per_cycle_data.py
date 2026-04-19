@@ -365,7 +365,12 @@ def _l45_sub_sub_sub(rng):
         f"They {v1} {a} {t1}, {v2} {b} {t2}, and {v3} {c} {t3}. "
         f"How many {obj} are left?"
     )
-    return problem, [mid1, mid2, result], result
+    gen_targets = [
+        f"They started with {start} {obj} and {v1} {a}. {start} - {a} = {mid1} {obj} remaining.",
+        f"Then they {v2} {b} more. {mid1} - {b} = {mid2} {obj} remaining.",
+        f"Finally they {v3} {c}. {mid2} - {c} = {result} {obj} left.",
+    ]
+    return problem, [mid1, mid2, result], result, gen_targets
 
 
 def _l45_add_sub_add(rng):
@@ -389,7 +394,12 @@ def _l45_add_sub_add(rng):
         f"and {v_gain2} {c} {s2} {t3}. "
         f"How many {obj} does {name} have now?"
     )
-    return problem, [mid1, mid2, result], result
+    gen_targets = [
+        f"{name} had {start} {obj} and {v_gain1} {a} more. {start} + {a} = {mid1} {obj} now.",
+        f"Then {name} {v_lose} {b}. {mid1} - {b} = {mid2} {obj} remaining.",
+        f"Then {name} {v_gain2} {c} more. {mid2} + {c} = {result} {obj} total.",
+    ]
+    return problem, [mid1, mid2, result], result, gen_targets
 
 
 def _l45_sub_add_sub(rng):
@@ -413,7 +423,12 @@ def _l45_sub_add_sub(rng):
         f"and {v_lose2} {c} {t3}. "
         f"How many {obj} does {name} have now?"
     )
-    return problem, [mid1, mid2, result], result
+    gen_targets = [
+        f"{name} had {start} {obj} and {v_lose1} {a}. {start} - {a} = {mid1} {obj} remaining.",
+        f"Then {name} {v_gain} {b} more. {mid1} + {b} = {mid2} {obj} now.",
+        f"Then {name} {v_lose2} {c}. {mid2} - {c} = {result} {obj} remaining.",
+    ]
+    return problem, [mid1, mid2, result], result, gen_targets
 
 
 def _l45_double_sub_add(rng):
@@ -430,7 +445,12 @@ def _l45_double_sub_add(rng):
         f"then gave {b} away, and later found {c} more. "
         f"How many {obj} does {name} have now?"
     )
-    return problem, [mid1, mid2, result], result
+    gen_targets = [
+        f"{name} had {start} {obj} and doubled them. {start} * 2 = {mid1} {obj} now.",
+        f"Then {name} gave {b} away. {mid1} - {b} = {mid2} {obj} remaining.",
+        f"Then {name} found {c} more. {mid2} + {c} = {result} {obj} total.",
+    ]
+    return problem, [mid1, mid2, result], result, gen_targets
 
 
 def _l45_extract_sub_sub(rng):
@@ -449,7 +469,12 @@ def _l45_extract_sub_sub(rng):
         f"{name} gives {a} to {friend} and then loses {c}. "
         f"How many {obj} does {name} have left?"
     )
-    return problem, [mid1, mid2, result], result
+    gen_targets = [
+        f"{name} has {start} {obj} in the collection.",
+        f"{name} gives {a} to {friend}. {start} - {a} = {mid2} {obj} remaining.",
+        f"Then {name} loses {c} more. {mid2} - {c} = {result} {obj} left.",
+    ]
+    return problem, [mid1, mid2, result], result, gen_targets
 
 
 def _l45_half_add_sub(rng):
@@ -466,7 +491,12 @@ def _l45_half_add_sub(rng):
         f"then found {b} more, and later used {c}. "
         f"How many {obj} does {name} have now?"
     )
-    return problem, [mid1, mid2, result], result
+    gen_targets = [
+        f"{name} had {start} {obj} and gave half away. {start} / 2 = {mid1} {obj} kept.",
+        f"Then {name} found {b} more. {mid1} + {b} = {mid2} {obj} now.",
+        f"Then {name} used {c}. {mid2} - {c} = {result} {obj} remaining.",
+    ]
+    return problem, [mid1, mid2, result], result, gen_targets
 
 
 L45_GENERATORS = [_l45_sub_sub_sub, _l45_add_sub_add, _l45_sub_add_sub,
