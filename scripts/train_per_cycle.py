@@ -331,7 +331,12 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
                 gen_loss_this = (gen_loss_per_sample * mask_val).sum() / mask_val.sum()
 
                 # === ANSWER HEAD LOSS ===
-                current_page = page.float()
+                # For cycle 2+: read the DELTA (new info only, not persisted cycle 1)
+                # This prevents the answer head from copying cycle 1's number
+                if pass_num > 0 and len(state_pages) >= 2:
+                    current_page = (state_pages[-1] - state_pages[-2]).float()
+                else:
+                    current_page = page.float()
                 ah_loss_this = answer_head_loss(answer_head, current_page, cycle_target)
                 mask_frac = mask_val.mean()
 
@@ -467,7 +472,11 @@ def evaluate_per_cycle(model, answer_head, eval_dataset, device,
                 mid_states_history.append(current_mid_states)
 
                 # Per-cycle answer head evaluation
-                current_page = page.float()
+                # For cycle 2+: read the delta (new info, not persisted)
+                if pass_num > 0 and len(state_pages) >= 2:
+                    current_page = (state_pages[-1] - state_pages[-2]).float()
+                else:
+                    current_page = page.float()
                 preds = answer_head.decode(current_page)  # (B,)
 
                 for j in range(batch_size):
@@ -489,8 +498,11 @@ def evaluate_per_cycle(model, answer_head, eval_dataset, device,
 
                         max_steps_seen = max(max_steps_seen, pass_num + 1)
 
-            # Final accuracy: answer_head on last page vs final_answer
-            last_page = state_pages[-1].float()
+            # Final accuracy: answer_head on last page delta vs final_answer
+            if len(state_pages) >= 2:
+                last_page = (state_pages[-1] - state_pages[-2]).float()
+            else:
+                last_page = state_pages[-1].float()
             final_preds = answer_head.decode(last_page)
 
             for j in range(batch_size):
