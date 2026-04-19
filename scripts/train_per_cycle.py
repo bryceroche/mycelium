@@ -994,8 +994,8 @@ def train(args):
         )
 
         # Auto-graduation: check if any cycle crossed 90% threshold
-        for cyc_idx, acc_str in enumerate(per_cycle_acc):
-            acc_val = float(acc_str.strip('%')) / 100.0
+        for cyc_idx, acc_val_raw in enumerate(per_cycle_acc):
+            acc_val = float(str(acc_val_raw).strip('%')) / 100.0 if isinstance(acc_val_raw, str) else acc_val_raw / 100.0
             if acc_val >= GRADUATION_THRESHOLD and cyc_idx not in graduated_cycles:
                 graduated_cycles.add(cyc_idx)
                 print(f"  ** Cycle {cyc_idx+1} GRADUATED at {acc_str} — detaching from later gradients **")
