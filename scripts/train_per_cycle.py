@@ -276,7 +276,15 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
         grad_scale = min(float(num_passes - pass_num), 4.0)
         page = scale_gradient(page, grad_scale)
 
-        state_pages.append(page)
+        # Detach converged cycles' pages so later cycles' gradient
+        # doesn't destabilize them. Cycle 0 is converged at 95%+.
+        # It gets gradient from its OWN loss but not from cycles 2-3.
+        if pass_num == 0:
+            state_pages.append(page.detach())
+            # Keep the live page for cycle 0's own losses below
+            cycle0_live_page = page
+        else:
+            state_pages.append(page)
 
         # Generate message: direct signal from last layer, bypasses perceiver
         message = model.message_generator(hidden_states[-1])
