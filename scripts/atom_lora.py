@@ -775,6 +775,27 @@ class CycleMessageGenerator(nn.Module):
 
 
 # ---------------------------------------------------------------------------
+# OrdinalAttentionHead — teaches atoms WHERE to look per cycle
+# ---------------------------------------------------------------------------
+class OrdinalAttentionHead(nn.Module):
+    """
+    Predicts which sentence/step this cycle focuses on.
+    Provides direct gradient to atoms: "at cycle 2, attend to sentence 2."
+    """
+    def __init__(self, page_size=64, max_sentences=8):
+        super().__init__()
+        self.head = nn.Sequential(
+            nn.Linear(page_size, 64),
+            nn.GELU(),
+            nn.Linear(64, max_sentences),
+        )
+
+    def forward(self, page):
+        """page: (B, page_size) -> logits: (B, max_sentences)"""
+        return self.head(page.float())
+
+
+# ---------------------------------------------------------------------------
 # AtomLoRAModel — main model class
 # ---------------------------------------------------------------------------
 class AtomLoRAModel(nn.Module):
@@ -868,6 +889,9 @@ class AtomLoRAModel(nn.Module):
 
         # --- Cycle message generator (direct last-layer signal, bypasses perceiver) ---
         self.message_generator = CycleMessageGenerator(d_model=2048, message_dim=16)
+
+        # --- Ordinal attention head (teaches atoms WHERE to look per cycle) ---
+        self.ordinal_head = OrdinalAttentionHead(page_size=self.page_size, max_sentences=8)
 
         # --- Pi-harmonic page encoding (DCT-like orthogonal basis, zero learnable params) ---
         self.fourier_page = PiHarmonicPageEncoding(page_size=self.page_size)

@@ -192,6 +192,7 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
     mid_states_history = []
     pre_tanh_history = []
     per_cycle_ah_loss = torch.tensor(0.0, device=device)
+    per_cycle_ordinal_loss = torch.tensor(0.0, device=device)
     per_cycle_gen_loss = torch.tensor(0.0, device=device)
     per_cycle_preds = []  # list of (B,) tensors for diagnostics
     valid_cycles = 0
@@ -340,6 +341,14 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
                 ah_loss_this = answer_head_loss(answer_head, current_page, cycle_target)
                 mask_frac = mask_val.mean()
 
+                # === ORDINAL ATTENTION LOSS (WHERE to look) ===
+                # Target: cycle 0 → sentence 0, cycle 1 → sentence 1, etc.
+                ordinal_logits = model.ordinal_head(page)  # (B, max_sentences)
+                ordinal_target = torch.full((batch_size,), pass_num,
+                                            dtype=torch.long, device=device)
+                ordinal_loss_this = F.cross_entropy(ordinal_logits, ordinal_target)
+                per_cycle_ordinal_loss = per_cycle_ordinal_loss + ordinal_loss_this * mask_frac
+
                 # Per-cycle weight flip:
                 # Cycle 1 (parsing): gen loss drives, answer head supplements
                 # Cycle 2+ (computation): answer head DOMINATES, gen is background
@@ -360,6 +369,7 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
     if valid_cycles > 0:
         per_cycle_gen_loss = per_cycle_gen_loss / valid_cycles
         per_cycle_ah_loss = per_cycle_ah_loss / valid_cycles
+        per_cycle_ordinal_loss = per_cycle_ordinal_loss / valid_cycles
 
     # ------- Confidence loss (pages only, no blend history) -------
     confidence = model.confidence_head(state_pages)
@@ -397,7 +407,8 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
     all_pre_tanh = torch.cat(pre_tanh_history, dim=0)
     scale_reg_loss = (all_pre_tanh ** 2).mean()
 
-    return (per_cycle_gen_loss, per_cycle_ah_loss, c_loss, conf_loss, scale_reg_loss,
+    return (per_cycle_gen_loss, per_cycle_ah_loss, per_cycle_ordinal_loss,
+            c_loss, conf_loss, scale_reg_loss,
             page_cos_mean, active_atoms_mean, scale_std, cross_pass_cos,
             confidence.mean(), state_pages, per_cycle_preds)
 
@@ -702,6 +713,16 @@ def try_warm_start(model, answer_head, warm_path, skip_perceiver=False):
             model.residual_gate.load_state_dict(own_rg, strict=False)
             print(f"  residual_gate: loaded {loaded_rg}/{len(own_rg)}")
 
+        if 'ordinal_head' in ckpt:
+            own_oh = model.ordinal_head.state_dict()
+            loaded_oh = 0
+            for k, v in ckpt['ordinal_head'].items():
+                if k in own_oh and own_oh[k].shape == v.shape:
+                    own_oh[k] = v
+                    loaded_oh += 1
+            model.ordinal_head.load_state_dict(own_oh, strict=False)
+            print(f"  ordinal_head: loaded {loaded_oh}/{len(own_oh)}")
+
         if 'message_generator' in ckpt:
             own_mg = model.message_generator.state_dict()
             loaded_mg = 0
@@ -766,6 +787,7 @@ def train(args):
     model.residual_gate = model.residual_gate.to(device=device, dtype=torch.bfloat16)
     model.probe_head = model.probe_head.to(device)
     model.message_generator = model.message_generator.to(device)  # fp32 (small)
+    model.ordinal_head = model.ordinal_head.to(device)  # fp32 (small)
 
     # Answer head -- small, kept in float32 for digit classification stability
     answer_head = AnswerHead(page_size=model.page_size).to(device)
@@ -821,6 +843,7 @@ def train(args):
         {'params': list(model.confidence_head.parameters()), 'lr': 1e-3 * s, 'weight_decay': 0.01},
         {'params': list(answer_head.parameters()), 'lr': 3e-3 * s, 'weight_decay': 0.01},
         {'params': list(model.message_generator.parameters()), 'lr': 1e-3 * s, 'weight_decay': 0.01},
+        {'params': list(model.ordinal_head.parameters()), 'lr': 1e-3 * s, 'weight_decay': 0.01},
     ])
 
     # Load optimizer state if available from warm start
@@ -838,6 +861,7 @@ def train(args):
         + list(model.confidence_head.parameters())
         + list(answer_head.parameters())
         + list(model.message_generator.parameters())
+        + list(model.ordinal_head.parameters())
     )
     print(f"Trainable params: {sum(p.numel() for p in trainable):,}")
     print(f"  atoms: {sum(p.numel() for p in model.atoms.parameters()):,} "
@@ -866,7 +890,7 @@ def train(args):
         t0 = time.time()
 
         # Re-shuffle data each epoch (DataLoader shuffle=True handles this)
-        ep_gen = ep_ah = ep_ctr = ep_conf = ep_scale_reg = ep_cos = 0.0
+        ep_gen = ep_ah = ep_ordinal = ep_ctr = ep_conf = ep_scale_reg = ep_cos = 0.0
         ep_active = ep_std = ep_xpass = 0.0
         ep_page_var = 0.0
         ep_dead_dims = 0.0
@@ -889,7 +913,7 @@ def train(args):
 
             optimizer.zero_grad()
 
-            (gen_loss, ah_loss, c_loss, conf_loss, scale_reg,
+            (gen_loss, ah_loss, ordinal_loss, c_loss, conf_loss, scale_reg,
              page_cos, active_atoms, s_std, xpass_cos,
              conf_mean, state_pages, per_cycle_preds) = forward_train_per_cycle(
                 model, answer_head, problems, cycle_targets, cycle_mask,
@@ -899,6 +923,7 @@ def train(args):
 
             total_loss = (args.lam_gen * gen_loss
                           + args.lam_answer * ah_loss
+                          + 1.0 * ordinal_loss
                           + args.lam_contrastive * c_loss
                           + args.lam_conf * conf_loss
                           + args.lam_scale_reg * scale_reg)
@@ -907,6 +932,7 @@ def train(args):
             optimizer.step()
 
             ep_gen += gen_loss.item()
+            ep_ordinal += ordinal_loss.item()
             ep_ah += ah_loss.item()
             ep_ctr += c_loss.item()
             ep_conf += conf_loss.item()
@@ -955,6 +981,7 @@ def train(args):
                 'answer_head': answer_head.state_dict(),
                 'residual_gate': model.residual_gate.state_dict(),
                 'message_generator': model.message_generator.state_dict(),
+                'ordinal_head': model.ordinal_head.state_dict(),
                 'optimizer': optimizer.state_dict(),
                 'accuracy': final_acc,
                 'per_cycle_acc': per_cycle_acc,
@@ -970,7 +997,7 @@ def train(args):
 
         print(
             f"Epoch {epoch+1}: "
-            f"gen={ep_gen/nb:.4f} ah={ep_ah/nb:.4f} contr={ep_ctr/nb:.2f} "
+            f"gen={ep_gen/nb:.4f} ah={ep_ah/nb:.4f} ord={ep_ordinal/nb:.3f} contr={ep_ctr/nb:.2f} "
             f"conf={ep_conf/nb:.2f} scale_reg={ep_scale_reg/nb:.2f} "
             f"page_cos={ep_cos/nb:.2f} "
             f"active={ep_active/nb:.1f}/{args.num_atoms} "
