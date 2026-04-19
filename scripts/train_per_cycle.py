@@ -188,6 +188,7 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
 
     state_pages = []
     messages = []
+    prev_predictions = []  # list of (B,) tensors — accumulated answer head predictions
     atom_scales_history = []
     mid_states_history = []
     pre_tanh_history = []
@@ -198,17 +199,27 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
     valid_cycles = 0
 
     for pass_num in range(num_passes):
-        # --- For cycle 2+: inject previous answer as text context ---
+        # --- For cycle 2+: inject ALL previous answers as text context ---
         if pass_num > 0 and len(state_pages) > 0:
+            # Decode latest cycle's prediction and accumulate
             with torch.no_grad():
-                prev_preds = answer_head.decode(state_pages[-1].float())  # (B,)
-            # Build context strings: "Step 1 result: 160\n"
-            context_strs = [f"Step {pass_num} result: {int(p.item())}\n" for p in prev_preds]
-            # Re-tokenize: context + original problem
+                if len(state_pages) >= 2:
+                    latest_page = (state_pages[-1] - state_pages[-2]).float()
+                else:
+                    latest_page = state_pages[-1].float()
+                latest_preds = answer_head.decode(latest_page)  # (B,)
+                prev_predictions.append(latest_preds)
+            # Build cumulative context: "Step 1 result: 263\nStep 2 result: 346\n"
+            context_strs = []
+            for b in range(batch_size):
+                ctx = ""
+                for step_i, preds in enumerate(prev_predictions):
+                    ctx += f"Step {step_i + 1} result: {int(preds[b].item())}\n"
+                context_strs.append(ctx)
             augmented = [ctx + prob for ctx, prob in zip(context_strs, problems)]
             aug_inputs = model.tokenizer(
                 augmented, return_tensors='pt', padding=True,
-                truncation=True, max_length=max_length + 20,
+                truncation=True, max_length=max_length + 20 * len(prev_predictions),
             )
             cycle_input_ids = aug_inputs['input_ids'].to(device)
             cycle_attention_mask = aug_inputs['attention_mask'].to(device)
@@ -455,17 +466,28 @@ def evaluate_per_cycle(model, answer_head, eval_dataset, device,
 
             state_pages = []
             eval_messages = []
+            eval_prev_predictions = []
             mid_states_history = []
 
             for pass_num in range(num_passes):
-                # For cycle 2+: inject previous answer as text context
+                # For cycle 2+: inject ALL previous answers as text context
                 if pass_num > 0 and len(state_pages) > 0:
-                    prev_preds = answer_head.decode(state_pages[-1].float())
-                    context_strs = [f"Step {pass_num} result: {int(p.item())}\n" for p in prev_preds]
+                    if len(state_pages) >= 2:
+                        latest_page = (state_pages[-1] - state_pages[-2]).float()
+                    else:
+                        latest_page = state_pages[-1].float()
+                    latest_preds = answer_head.decode(latest_page)
+                    eval_prev_predictions.append(latest_preds)
+                    context_strs = []
+                    for b in range(batch_size):
+                        ctx = ""
+                        for step_i, preds in enumerate(eval_prev_predictions):
+                            ctx += f"Step {step_i + 1} result: {int(preds[b].item())}\n"
+                        context_strs.append(ctx)
                     augmented = [ctx + prob for ctx, prob in zip(context_strs, problems)]
                     aug_inputs = model.tokenizer(
                         augmented, return_tensors='pt', padding=True,
-                        truncation=True, max_length=max_length + 20,
+                        truncation=True, max_length=max_length + 20 * len(eval_prev_predictions),
                     )
                     eval_ids = aug_inputs['input_ids'].to(device)
                     eval_mask = aug_inputs['attention_mask'].to(device)
