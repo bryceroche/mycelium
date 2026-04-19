@@ -329,15 +329,21 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
                 gen_loss_per_sample = gen_loss_per_sample / target_mask.sum(dim=1).clamp(min=1)
                 # Apply cycle mask
                 gen_loss_this = (gen_loss_per_sample * mask_val).sum() / mask_val.sum()
-                per_cycle_gen_loss = per_cycle_gen_loss + gen_loss_this
 
-                # === ANSWER HEAD LOSS (shaping signal, higher weight for cycle 2+) ===
+                # === ANSWER HEAD LOSS ===
                 current_page = page.float()
                 ah_loss_this = answer_head_loss(answer_head, current_page, cycle_target)
-                # Cycle 2+ needs stronger shaping — gen loss is too easy to shortcut
-                ah_weight = 3.0 if pass_num > 0 else 1.0
                 mask_frac = mask_val.mean()
-                per_cycle_ah_loss = per_cycle_ah_loss + ah_loss_this * mask_frac * ah_weight
+
+                # Per-cycle weight flip:
+                # Cycle 1 (parsing): gen loss drives, answer head supplements
+                # Cycle 2+ (computation): answer head DOMINATES, gen is background
+                if pass_num == 0:
+                    per_cycle_gen_loss = per_cycle_gen_loss + gen_loss_this * 1.0
+                    per_cycle_ah_loss = per_cycle_ah_loss + ah_loss_this * mask_frac * 0.5
+                else:
+                    per_cycle_gen_loss = per_cycle_gen_loss + gen_loss_this * 0.1
+                    per_cycle_ah_loss = per_cycle_ah_loss + ah_loss_this * mask_frac * 5.0
                 valid_cycles += 1
 
             # Record predictions for diagnostics
