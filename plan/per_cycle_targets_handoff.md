@@ -313,6 +313,122 @@ If variance spreads → curriculum is working as designed
 
 ---
 
+## The Deeper Insight: Decomposition IS Pattern Matching
+
+Per-cycle targets aren't just about arithmetic steps. They're about PATTERN RECOGNITION ORDER. Each cycle matches one pattern from the model's library and reports the result.
+
+"Half as many clips in May" is not five separate words to parse — it's ONE pattern: "half as many [X] in [time] → X_new = X_previous / 2". The model should recognize the WHOLE PHRASE as a unit, like "Panama hat" is one concept, not "Panama" + "hat".
+
+```
+Over-decomposed (too many cycles, too small patterns):
+  Cycle 1: "she" → subject
+  Cycle 2: "sold" → verb
+  Cycle 3: "half" → divide by 2
+  Cycle 4: "as many" → reference previous
+  Six cycles for one operation. Wasteful.
+
+Right-sized (one pattern per cycle):
+  Cycle 1: "sold [X] clips in April" → v1 = 48 (one pattern, one cycle)
+  Cycle 2: "half as many in May" → v2 = v1 / 2 (one pattern, one cycle)
+  Cycle 3: "how many total" → answer = v1 + v2 (one pattern, one cycle)
+  Three cycles. Each matches the LARGEST pattern that fits.
+```
+
+### The 64 Atoms ARE the Pattern Library
+
+The 64 atoms aren't matched one by one. They're BLENDED. The hypernetwork outputs 64 independent scales and the attention modification is the weighted sum of all active atoms:
+
+```
+Cycle 1 scales: [0.8, 0.0, 0.3, -0.2, 0.0, 0.9, 0.0, ...]
+
+LoRA_output = 0.8 * atom_0 + 0.3 * atom_2 + (-0.2) * atom_3 + 0.9 * atom_5 + ...
+```
+
+This is like color blending. Red + blue = purple. Atom 0 + atom 5 = a COMPOSITE attention pattern that neither atom represents alone:
+
+```
+Atom 0 alone:    attends to sentence subjects ("Natalia", "she")
+Atom 5 alone:    attends to numbers ("48", "24")  
+Atom 0 + 5:      attends to subject-number relationships ("Natalia sold 48")
+                  A composite pattern from blending two atoms
+```
+
+The pattern library isn't 64 discrete patterns. It's a CONTINUOUS 64-dimensional space. Each point is a unique blend of atoms producing a unique attention modification. The hypernetwork navigates this space, finding the point that recognizes the right pattern for each cycle.
+
+```
+64 atoms with continuous scales [-1.0 to +1.0]:
+  The space of possible attention patterns is infinite
+  Every blend is a unique pattern recognizer
+  The hypernetwork learns to navigate to the right blend per cycle
+  
+Cycle 1: navigate to point [0.8, 0.0, 0.3, ...] → recognizes "quantity assignment"
+Cycle 2: navigate to point [0.1, 0.7, 0.0, ...] → recognizes "fractional relationship"
+Cycle 3: navigate to point [0.0, 0.2, 0.0, ...] → recognizes "sum query"
+```
+
+### Fourier Atoms Enable Multi-Scale Patterns
+
+The Fourier initialization gives atoms different SCALES:
+
+```
+Low-frequency atoms (0-15):   recognize LARGE patterns
+  "half as many in May" as ONE unit
+  "X percent more than Y" as ONE unit
+  "bought N at $M each" as ONE unit
+
+High-frequency atoms (48-63): recognize SMALL patterns
+  "48" → a number
+  "half" → divide by 2
+  "total" → sum
+```
+
+Easy problems activate mostly low-frequency atoms — one large pattern per cycle, few cycles needed. Hard problems with unfamiliar structure activate more high-frequency atoms — smaller patterns, more cycles needed. The decomposition granularity adapts to the problem.
+
+### The Curriculum Builds the Pattern Library
+
+Each stepping stone adds patterns to the atom library:
+
+```
+L3:   learns single-operation patterns
+      "X gave away Y" → subtraction
+      "X got Y more" → addition
+
+L4:   learns two-step composition patterns
+      "X gave away Y then got Z" → subtract then add
+
+L4.5: learns multiplicative relationship patterns
+      "half of X" → X/2
+      "three times as many" → X*3
+
+L4.7: learns percentage and rate patterns
+      "X% of Y" → Y * X/100
+      "at $Y each" → N * Y
+
+L5:   COMBINES patterns from all levels
+      Recognizes large composite patterns from the library
+      Falls back to smaller patterns when composite doesn't match
+```
+
+The per-cycle targets teach which pattern to match at each cycle. The Fourier atoms provide the pattern templates. The curriculum grows the library. The hypernetwork learns to navigate to the right blend.
+
+### Phase 2: Self-Guided Decomposition (Future)
+
+In Phase 2, when we remove teacher targets, the model uses its learned pattern library to decompose on its own:
+
+```
+Phase 1: We say "cycle 1 extracts 48, cycle 2 computes 24"
+Phase 2: The model says "I recognize two patterns here. Two cycles."
+         It matches the largest patterns it knows and allocates one cycle each.
+         
+Small model (1B):   small patterns, many cycles (fine decomposition)
+Large model (8B):   large patterns, few cycles (coarse decomposition)
+Same architecture, same training, different decomposition — adapted to capacity.
+```
+
+The number of cycles = number of patterns needed. The confidence head says "I've matched all the patterns I can find — stop." The decomposition granularity emerges from the model's pattern library size, which emerges from its capacity, which emerges from its parameter count.
+
+---
+
 ## How the Thinking Loop Finally Works
 
 ```
