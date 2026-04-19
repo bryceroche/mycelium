@@ -141,7 +141,8 @@ def per_cycle_collate_fn(batch):
 def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_mask,
                             finals_t, cycle_gen_targets=None,
                             num_passes=5, max_length=192,
-                            lam_gen=1.0, lam_ah=0.5):
+                            lam_gen=1.0, lam_ah=0.5,
+                            graduated_cycles=None):
     """Forward pass with hybrid per-cycle loss: generation + answer head.
 
     Each cycle:
@@ -276,13 +277,11 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
         grad_scale = min(float(num_passes - pass_num), 4.0)
         page = scale_gradient(page, grad_scale)
 
-        # Detach converged cycles' pages so later cycles' gradient
-        # doesn't destabilize them. Cycle 0 is converged at 95%+.
-        # It gets gradient from its OWN loss but not from cycles 2-3.
-        if pass_num == 0:
+        # Auto-graduation: detach converged cycles' pages so later cycles'
+        # gradient doesn't destabilize them. Each cycle graduates at 90%+
+        # and gets protected. The frontier advances automatically.
+        if graduated_cycles and pass_num in graduated_cycles:
             state_pages.append(page.detach())
-            # Keep the live page for cycle 0's own losses below
-            cycle0_live_page = page
         else:
             state_pages.append(page)
 
@@ -912,6 +911,8 @@ def train(args):
 
     ckpt_name = f"checkpoints/per_cycle_{level.replace('.', '')}_best.pt"
     best_final = 0.0
+    graduated_cycles = set()  # cycles that hit 90%+ and get detached
+    GRADUATION_THRESHOLD = 0.90
     patience_counter = 0
 
     for epoch in range(args.epochs):
@@ -949,6 +950,7 @@ def train(args):
                 model, answer_head, problems, cycle_targets, cycle_mask,
                 finals_t, cycle_gen_targets=cycle_gen_targets,
                 num_passes=args.num_passes, max_length=max_length,
+                graduated_cycles=graduated_cycles,
             )
 
             total_loss = (args.lam_gen * gen_loss
@@ -990,6 +992,13 @@ def train(args):
             model, answer_head, eval_dataset, device,
             num_passes=args.num_passes, max_length=max_length,
         )
+
+        # Auto-graduation: check if any cycle crossed 90% threshold
+        for cyc_idx, acc_str in enumerate(per_cycle_acc):
+            acc_val = float(acc_str.strip('%')) / 100.0
+            if acc_val >= GRADUATION_THRESHOLD and cyc_idx not in graduated_cycles:
+                graduated_cycles.add(cyc_idx)
+                print(f"  ** Cycle {cyc_idx+1} GRADUATED at {acc_str} — detaching from later gradients **")
 
         # Gradient coupling blends (v24.7)
         hypernet_blend = torch.sigmoid(model.hypernet.blend_logit).item()
