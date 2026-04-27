@@ -13,7 +13,7 @@ answer_head_loss():
 """
 
 from tinygrad import Tensor, dtypes
-from tinygrad.nn import Linear, LayerNorm
+from tinygrad_port.nn_utils import Linear, LayerNorm
 from typing import List, Tuple
 import math
 
@@ -39,7 +39,7 @@ class AnswerHead:
 
         # Per-cycle embedding: Embedding(max_cycles, hidden)
         # In tinygrad: just a weight matrix, index with weight[idx]
-        self.cycle_embed_weight = Tensor.randn(max_cycles, hidden)
+        self.cycle_embed_weight = Tensor.randn(max_cycles, hidden).requires_grad_()
 
         # Shared encoder: page + cycle_embed -> richer representation
         # Layer 1: Linear(page_size + hidden, hidden) -> GELU -> LayerNorm
@@ -150,7 +150,7 @@ class AtomConfidenceHead:
         self.head_dim = hidden // num_heads
 
         self.page_project = Linear(page_size, hidden)
-        self.query = Tensor.randn(1, hidden) * 0.02
+        self.query = (Tensor.randn(1, hidden) * 0.02).requires_grad_()
 
         # Cross-attention layer 1
         self.attn1_q_proj = Linear(hidden, hidden)

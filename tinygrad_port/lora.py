@@ -17,7 +17,7 @@ import math
 from typing import Dict, List, Optional, Tuple
 
 from tinygrad import Tensor, dtypes
-from tinygrad.nn import Linear
+from tinygrad_port.nn_utils import Linear
 
 
 # ---------------------------------------------------------------------------
@@ -59,10 +59,10 @@ class LoRAAtoms:
             # Gaussian init scaled by 0.01, matching PyTorch version
             self.A[proj_name] = Tensor.randn(
                 num_atoms, num_layers, d_model, rank
-            ).mul(0.01)
+            ).mul(0.01).requires_grad_()
             self.B[proj_name] = Tensor.randn(
                 num_atoms, num_layers, rank, proj_dim
-            ).mul(0.01)
+            ).mul(0.01).requires_grad_()
 
     def parameters(self) -> List[Tensor]:
         """Return all trainable parameters (for optimizer)."""

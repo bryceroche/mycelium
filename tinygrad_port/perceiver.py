@@ -8,7 +8,7 @@ Port of src/compressor_v3.py (PyTorch) -> tinygrad.
 """
 
 from tinygrad import Tensor, dtypes
-from tinygrad.nn import Linear, LayerNorm
+from tinygrad_port.nn_utils import Linear, LayerNorm
 import math
 from typing import List, Optional, Tuple
 
@@ -103,7 +103,7 @@ class HaarWaveletPreprocess:
         apery = [1.0 / (k + 1) ** 3 for k in range(max_level + 1)]
         total = sum(apery)
         apery_norm = [w / total * (max_level + 1) for w in apery]
-        self.level_weights = Tensor(apery_norm).reshape(max_level + 1)
+        self.level_weights = Tensor(apery_norm).reshape(max_level + 1).requires_grad_()
 
     def __call__(self, hidden_states: Tensor) -> Tensor:
         """
@@ -268,10 +268,10 @@ class Perceiver:
             self.wavelet = None
 
         # Learned queries: (num_queries, d_perceiver)
-        self.queries = Tensor.randn(num_queries, d_perceiver) * 0.02
+        self.queries = (Tensor.randn(num_queries, d_perceiver) * 0.02).requires_grad_()
 
         # Pass embedding: (max_passes, d_perceiver)
-        self.pass_embed = Tensor.randn(max_passes, d_perceiver) * 0.02
+        self.pass_embed = (Tensor.randn(max_passes, d_perceiver) * 0.02).requires_grad_()
 
         # Layer gate: Linear(d_perceiver, 64) -> ReLU -> Linear(64, num_transformer_layers)
         self.layer_gate_1 = Linear(d_perceiver, 64)

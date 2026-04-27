@@ -16,12 +16,12 @@ class CycleMessageGenerator:
     def __init__(self, d_model=2048, message_dim=32):
         self.message_dim = message_dim
         # LayerNorm + projection
-        self.ln_weight = Tensor.ones(d_model)
-        self.ln_bias = Tensor.zeros(d_model)
-        self.w1 = Tensor.randn(512, d_model) * (2 / d_model) ** 0.5
-        self.b1 = Tensor.zeros(512)
-        self.w2 = Tensor.randn(message_dim, 512) * (2 / 512) ** 0.5
-        self.b2 = Tensor.zeros(message_dim)
+        self.ln_weight = Tensor.ones(d_model).requires_grad_()
+        self.ln_bias = Tensor.zeros(d_model).requires_grad_()
+        self.w1 = (Tensor.randn(512, d_model) * (2 / d_model) ** 0.5).requires_grad_()
+        self.b1 = Tensor.zeros(512).requires_grad_()
+        self.w2 = (Tensor.randn(message_dim, 512) * (2 / 512) ** 0.5).requires_grad_()
+        self.b2 = Tensor.zeros(message_dim).requires_grad_()
 
     def __call__(self, last_layer_hidden):
         # Mean pool over sequence

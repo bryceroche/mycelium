@@ -390,14 +390,23 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
                 total_supervised = cycle_targets.size(1)
                 fade_w = per_cycle_target_weight(final_accuracy, pass_num, total_supervised)
 
-                # Per-cycle weight flip:
-                # Cycle 1 (parsing): gen loss drives, answer head supplements
-                # Cycle 2+ (computation): answer head DOMINATES, gen is background
+                # Conditional gen loss: gen gated by answer head correctness.
+                # Low head_loss (close to correct) → gen active.
+                # High head_loss (wrong) → gen suppressed.
+                # Smooth sigmoid, fully differentiable, no thresholds.
+                with torch.no_grad():
+                    # head_loss ranges 0 (perfect) to ~18 (random) on GSM8K
+                    # sigmoid(-loss + 15) maps: 18→0.05, 14→0.73, 10→0.99
+                    head_confidence = torch.sigmoid(-ah_loss_this + 15.0)
+                gen_weight = 0.1 * head_confidence  # 0.0 to 0.1
+
                 if pass_num == 0:
+                    # Cycle 1 (parsing): gen always active, head light
                     per_cycle_gen_loss = per_cycle_gen_loss + gen_loss_this * 1.0 * fade_w
                     per_cycle_ah_loss = per_cycle_ah_loss + ah_loss_this * mask_frac * 0.5 * fade_w
                 else:
-                    per_cycle_gen_loss = per_cycle_gen_loss + gen_loss_this * 0.1 * fade_w
+                    # Cycle 2+ (computation): gen gated by correctness
+                    per_cycle_gen_loss = per_cycle_gen_loss + gen_loss_this * gen_weight * fade_w
                     per_cycle_ah_loss = per_cycle_ah_loss + ah_loss_this * mask_frac * 5.0 * fade_w
                 valid_cycles += 1
 

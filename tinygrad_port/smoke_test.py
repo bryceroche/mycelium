@@ -8,7 +8,8 @@ print("=== Testing Perceiver ===")
 from tinygrad_port.perceiver import Perceiver
 perc = Perceiver(page_size=64, d_transformer=2048, num_perceiver_layers=7, num_queries=4, use_wavelet=False)
 hidden_states = [Tensor.randn(2, 32, 2048) for _ in range(16)]
-page_delta = perc(hidden_states, pass_num=0)
+result = perc(hidden_states, pass_num=0)
+page_delta = result[0] if isinstance(result, tuple) else result
 print(f"  Page delta: {page_delta.shape} (expected: 2, 64)")
 
 print()
@@ -44,24 +45,26 @@ print(f"  Problem 1: {batch['problems'][0][:60]}...")
 
 print()
 print("=== Backward Pass Test ===")
+Tensor.training = True
 from tinygrad_port.hypernetwork import AtomHypernetwork
 from tinygrad.nn.optim import AdamW
 from tinygrad.nn.state import get_parameters
 
 hyper = AtomHypernetwork(page_size=64, num_atoms=64)
-params = get_parameters(hyper)
-opt = AdamW(params, lr=1e-3)
+all_params = get_parameters(hyper)
 
 pages = [Tensor.randn(2, 64) for _ in range(3)]
 scales = hyper(pages, pass_num=1)
 loss = scales.square().mean()
-opt.zero_grad()
 loss.backward()
-opt.step()
-print(f"  Backward + step OK, loss={loss.numpy():.6f}")
 
-grad_norms = [p.grad.square().sum().sqrt().numpy() if p.grad is not None else 0.0 for p in params[:5]]
-print(f"  First 5 grad norms: {grad_norms}")
+# Filter to params that got gradients (some aren't in computation path)
+with_grad = [p for p in all_params if p.grad is not None]
+print(f"  Params with grad: {len(with_grad)}/{len(all_params)}")
+
+opt = AdamW(with_grad, lr=1e-3)
+opt.step()
+print(f"  Backward + optimizer step OK, loss={loss.numpy():.6f}")
 
 print()
 print("=" * 60)

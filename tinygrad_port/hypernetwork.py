@@ -9,7 +9,7 @@ Original: scripts/atom_lora.py (PyTorch)
 """
 
 from tinygrad import Tensor, dtypes
-from tinygrad.nn import Linear, LayerNorm
+from tinygrad_port.nn_utils import Linear, LayerNorm
 import math
 from typing import List, Optional, Tuple, Union
 
@@ -124,12 +124,12 @@ class AtomHypernetwork:
         self.direct_lin2 = Linear(512, num_atoms)
 
         # ===== BLEND (learnable mixing of direct + contextual) =====
-        self.blend_logit = Tensor.zeros(1)  # scalar, sigmoid -> (0, 1)
+        self.blend_logit = Tensor.zeros(1).requires_grad_()  # scalar, sigmoid -> (0, 1)
 
         # ===== CONTEXTUAL PATH: 6-layer cross-attention (~100M) =====
         self.page_project = Linear(page_size, attn_dim)
         # Learnable query heads: (num_query_heads, attn_dim), small init
-        self.page_query = Tensor.randn(num_query_heads, attn_dim) * 0.02
+        self.page_query = (Tensor.randn(num_query_heads, attn_dim) * 0.02).requires_grad_()
 
         # N cross-attention layers
         self.cross_attn_layers = [

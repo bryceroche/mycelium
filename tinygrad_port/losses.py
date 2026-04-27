@@ -49,13 +49,13 @@ def answer_head_loss(answer_head, page, gold_answers, cycle_num=0):
         row = [int(ch) for ch in s] + [0] * (max_digits - len(s))
         gold_digit_matrix.append(row)
 
-    # Sign loss
+    # Sign loss (cross entropy)
     sign_target = Tensor(gold_sign, dtype=dtypes.int32)
-    loss = sign_logits.log_softmax(axis=-1).gather(sign_target.unsqueeze(-1), dim=-1).squeeze(-1).mean().neg()
+    loss = sign_logits.sparse_categorical_crossentropy(sign_target)
 
     # Length loss
     length_target = Tensor(gold_length, dtype=dtypes.int32)
-    loss = loss + length_logits.log_softmax(axis=-1).gather(length_target.unsqueeze(-1), dim=-1).squeeze(-1).mean().neg()
+    loss = loss + length_logits.sparse_categorical_crossentropy(length_target)
 
     # Per-digit losses (masked by actual digit count)
     for i in range(max_digits):
@@ -64,10 +64,11 @@ def answer_head_loss(answer_head, page, gold_answers, cycle_num=0):
         if mask_sum > 0:
             digit_target = Tensor([gold_digit_matrix[b][i] for b in range(batch_size)], dtype=dtypes.int32)
             mask_t = Tensor(mask_vals)
-            # Cross entropy per sample
-            log_probs = digit_logits[i].log_softmax(axis=-1)
-            per_sample = log_probs.gather(digit_target.unsqueeze(-1), dim=-1).squeeze(-1).neg()
-            loss = loss + (per_sample * mask_t).sum() / mask_sum
+            # sparse_categorical_crossentropy returns scalar mean — we need per-sample
+            # Use manual: -log_softmax indexed by target
+            per_sample_ce = digit_logits[i].sparse_categorical_crossentropy(digit_target)
+            # This is already a mean — weight by mask proportion
+            loss = loss + per_sample_ce * (sum(mask_vals) / batch_size)
 
     return loss
 

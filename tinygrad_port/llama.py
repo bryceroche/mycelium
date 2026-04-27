@@ -96,12 +96,25 @@ class Attention:
         self.wo = Linear(dim, dim, bias=False)                          # 2048 -> 2048
 
     def __call__(self, x: Tensor, rope: RotaryEmbedding, mask: Optional[Tensor] = None,
-                 start_pos: int = 0) -> Tensor:
+                 start_pos: int = 0, lora_atoms=None, atom_scales=None,
+                 layer_idx: int = 0) -> Tensor:
         B, S, D = x.shape
 
-        q = self.wq(x).reshape(B, S, self.n_heads, self.head_dim).transpose(1, 2)      # (B, 32, S, 64)
-        k = self.wk(x).reshape(B, S, self.n_kv_heads, self.head_dim).transpose(1, 2)   # (B, 8, S, 64)
-        v = self.wv(x).reshape(B, S, self.n_kv_heads, self.head_dim).transpose(1, 2)   # (B, 8, S, 64)
+        # Base projections (frozen Llama weights)
+        q = self.wq(x)  # (B, S, 2048)
+        k = self.wk(x)  # (B, S, 512)
+        v = self.wv(x)  # (B, S, 512)
+
+        # Add LoRA deltas if atoms are active
+        if lora_atoms is not None and atom_scales is not None:
+            q = q + lora_atoms.apply(x, layer_idx, "q_proj", atom_scales)
+            k = k + lora_atoms.apply(x, layer_idx, "k_proj", atom_scales)
+            v = v + lora_atoms.apply(x, layer_idx, "v_proj", atom_scales)
+
+        # Reshape for multi-head attention
+        q = q.reshape(B, S, self.n_heads, self.head_dim).transpose(1, 2)      # (B, 32, S, 64)
+        k = k.reshape(B, S, self.n_kv_heads, self.head_dim).transpose(1, 2)   # (B, 8, S, 64)
+        v = v.reshape(B, S, self.n_kv_heads, self.head_dim).transpose(1, 2)   # (B, 8, S, 64)
 
         # Apply RoPE to Q and K
         q = rope(q, start_pos)
@@ -121,7 +134,12 @@ class Attention:
 
         attn = attn.softmax(axis=-1)
         out = (attn @ v).transpose(1, 2).reshape(B, S, D)  # (B, S, 2048)
-        return self.wo(out)
+
+        # Output projection + optional LoRA
+        base_out = self.wo(out)
+        if lora_atoms is not None and atom_scales is not None:
+            base_out = base_out + lora_atoms.apply(out, layer_idx, "o_proj", atom_scales)
+        return base_out
 
 
 # ---------------------------------------------------------------------------
@@ -150,8 +168,11 @@ class TransformerBlock:
         self.ffn_norm = RMSNorm(dim)
 
     def __call__(self, x: Tensor, rope: RotaryEmbedding,
-                 mask: Optional[Tensor] = None, start_pos: int = 0) -> Tensor:
-        h = x + self.attention(self.attention_norm(x), rope, mask, start_pos)
+                 mask: Optional[Tensor] = None, start_pos: int = 0,
+                 lora_atoms=None, atom_scales=None, layer_idx: int = 0) -> Tensor:
+        h = x + self.attention(self.attention_norm(x), rope, mask, start_pos,
+                               lora_atoms=lora_atoms, atom_scales=atom_scales,
+                               layer_idx=layer_idx)
         return h + self.feed_forward(self.ffn_norm(h))
 
 
@@ -172,15 +193,17 @@ class Llama:
         self.rope = RotaryEmbedding(dim // n_heads, max_seq_len)
 
     def __call__(self, tokens: Tensor, output_hidden_states: bool = False,
-                 start_pos: int = 0) -> Tuple[Tensor, Optional[List[Tensor]]]:
+                 start_pos: int = 0, lora_atoms=None,
+                 atom_scales=None) -> Tuple[Tensor, Optional[List[Tensor]]]:
         """
-        Forward pass.
+        Forward pass with optional LoRA injection.
 
         Args:
             tokens: (B, S) integer token ids
-            output_hidden_states: if True, return list of hidden states from
-                each layer (needed by the perceiver in the breathing loop)
-            start_pos: position offset for RoPE (for KV-cache inference)
+            output_hidden_states: if True, return list of hidden states
+            start_pos: position offset for RoPE
+            lora_atoms: LoRAAtoms instance (optional — for breathing cycles)
+            atom_scales: (B, num_atoms) tanh-bounded scales (optional)
 
         Returns:
             logits: (B, S, vocab_size)
@@ -193,8 +216,10 @@ class Llama:
         S = tokens.shape[1]
         mask = Tensor.full((S, S), float("-inf")).triu(1).reshape(1, 1, S, S)
 
-        for layer in self.layers:
-            x = layer(x, self.rope, mask, start_pos)
+        for i, layer in enumerate(self.layers):
+            x = layer(x, self.rope, mask, start_pos,
+                      lora_atoms=lora_atoms, atom_scales=atom_scales,
+                      layer_idx=i)
             if output_hidden_states:
                 hidden_states.append(x)
 
