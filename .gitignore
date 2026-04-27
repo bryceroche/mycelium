@@ -1,0 +1,100 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+ideas.md
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+
+# Results and data
+results/
+data/*.json
+data/*.db
+data/*.jsonl
+*.db
+*.sqlite
+*.yaml
+!.beads/*.yaml
+!configs/*.yaml
+*.jsonl
+!.beads/*.jsonl
+
+# OS
+.DS_Store
+Thumbs.db
+
+# uv
+.uv/
+uv.lock
+notes/
+*.db
+*.db-shm
+*.db-wal
+*.json
+!deduplicated_templates.json
+!package.json
+!pyproject.json
+!.beads/*.json
+logs/
+*.log
+*.backup.*
+*.db.backup*
+.coverage
+*.centroid_cache.npz
+
+# Checkpoints and large binary files
+checkpoints/
+*.safetensors
+*.tar.gz
+*.pt
+*.bin
+
+# untracked folders
+experiments/
+secrets/
+untracked/
+findings/
+docs/
+
+# Lambda build artifacts
+lambda/*/lambda.zip
+lambda/*/package/
+
+# Shell scripts
+*.sh
+checkpoints/
+*.pt
+__pycache__/
+*.pyc
+.DS_Store
