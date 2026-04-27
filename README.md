@@ -218,7 +218,23 @@ Training accelerates as the model improves — virtuous cycle.
 
 See `plan/page_cache_replay.md` for full design.
 
-## Entropy Flow + Surprise Detection (v24.5 — NEXT)
+## Fresh Curriculum (v24.5 — IN PROGRESS)
+
+Train from scratch with pi-harmonic encoding (DCT-like orthogonal basis).
+Old checkpoints used transformer-style encoding — warm-starting caused
+catastrophic regression (24% → 16%). Fresh L3 → L4 → L5 curriculum required.
+
+```
+L3: 8 epochs, target >85% (fresh start, no warm)
+L4: 6 epochs, target >90% (warm from L3)
+L5: 20 epochs, target >25% (warm from L4)
+```
+
+Key: `answer_head_loss = 1.0` (anti-collapse), atom LR 1e-4, hypernetwork 1e-3.
+
+See `plan/fresh_curriculum_handoff.md` for full recipe.
+
+## Entropy Flow + Surprise Detection (v24.5)
 
 Track entropy of thinking across cycles. Measure surprise (unexpected entropy
 drops). Add smoothness signal to confidence head — "was my thinking smooth?"
@@ -319,7 +335,8 @@ v24.1 Fourier pass encoding                            →  13.3% GSM8K epoch 3 
 v24.2 Perceiver skip connection                        →  DESIGNED
 v24.3 Haar wavelet preprocessing                       →  10.9% GSM8K epoch 1 (4x baseline) ✓
 v24.4 Page cache + replay buffer                       →  IMPLEMENTED
-v24.5 Entropy flow + surprise + smoothness confidence  →  NEXT
+v24.5 Fresh curriculum (pi-harmonic, L3→L4→L5)        →  IN PROGRESS
+v24.6 Entropy flow + surprise + smoothness confidence  →  NEXT
 ```
 
 See `CLAUDE.md` for full project context, known bugs, and training setup.

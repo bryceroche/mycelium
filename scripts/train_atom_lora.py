@@ -160,6 +160,7 @@ def forward_train(model, answer_head, problems, answers, finals_t,
     state_pages = []
     atom_scales_history = []  # list of (B, num_atoms) tensors
     mid_states_history = []   # list of (B, num_queries, d_perceiver) tensors
+    pre_tanh_history = []     # list of (B, num_atoms) tensors for regularization
 
     for pass_num in range(num_passes):
         if pass_num == 0:
@@ -172,10 +173,11 @@ def forward_train(model, answer_head, problems, answers, finals_t,
             atom_scales = torch.zeros(
                 batch_size, model.num_atoms, device=device,
             )
+            pre_tanh = torch.zeros_like(atom_scales)
         else:
-            # Atom LoRA from pages
-            atom_scales = model.hypernet(
-                state_pages, pass_num=pass_num,
+            # Atom LoRA from pages (with pre-tanh for regularization)
+            atom_scales, pre_tanh = model.hypernet(
+                state_pages, pass_num=pass_num, return_pre_tanh=True,
             )
             manager = AtomAdditiveLoRAManager(model.transformer)
             manager.apply(model.atoms, atom_scales)
@@ -216,11 +218,13 @@ def forward_train(model, answer_head, problems, answers, finals_t,
             atom_scales = atom_scales * atom_mask
 
         atom_scales_history.append(atom_scales)
+        pre_tanh_history.append(pre_tanh)
 
     # ------- Answer loss (teacher-forced with atom LoRA) -------
-    final_atom_scales = model.hypernet(
-        state_pages, pass_num=num_passes,
+    final_atom_scales, final_pre_tanh = model.hypernet(
+        state_pages, pass_num=num_passes, return_pre_tanh=True,
     )
+    pre_tanh_history.append(final_pre_tanh)
     manager = AtomAdditiveLoRAManager(model.transformer)
     manager.apply(model.atoms, final_atom_scales)
     try:
@@ -276,7 +280,12 @@ def forward_train(model, answer_head, problems, answers, finals_t,
         else:
             cross_pass_cos = torch.tensor(0.0, device=device)
 
-    return (ans_loss, c_loss, conf_loss, ah_loss,
+    # ------- Pre-tanh regularization (keeps tanh gradient alive) -------
+    # Penalize squared logits to prevent saturation (|x| < 2 has usable gradient)
+    all_pre_tanh = torch.cat(pre_tanh_history, dim=0)  # (P*B, num_atoms)
+    scale_reg_loss = (all_pre_tanh ** 2).mean()
+
+    return (ans_loss, c_loss, conf_loss, ah_loss, scale_reg_loss,
             page_cos_mean, active_atoms_mean, scale_std, cross_pass_cos,
             confidence.mean(), state_pages)
 
@@ -325,6 +334,7 @@ def forward_train_cached(model, answer_head, problems, answers, finals_t,
 
     atom_scales_history = []
     mid_states_history = []
+    pre_tanh_history = []
 
     for pass_num in range(start_pass, num_passes):
         if pass_num == 0:
@@ -337,10 +347,11 @@ def forward_train_cached(model, answer_head, problems, answers, finals_t,
             atom_scales = torch.zeros(
                 batch_size, model.num_atoms, device=device,
             )
+            pre_tanh = torch.zeros_like(atom_scales)
         else:
-            # Atom LoRA from pages
-            atom_scales = model.hypernet(
-                state_pages, pass_num=pass_num,
+            # Atom LoRA from pages (with pre-tanh for regularization)
+            atom_scales, pre_tanh = model.hypernet(
+                state_pages, pass_num=pass_num, return_pre_tanh=True,
             )
             manager = AtomAdditiveLoRAManager(model.transformer)
             manager.apply(model.atoms, atom_scales)
@@ -380,11 +391,13 @@ def forward_train_cached(model, answer_head, problems, answers, finals_t,
             atom_scales = atom_scales * atom_mask
 
         atom_scales_history.append(atom_scales)
+        pre_tanh_history.append(pre_tanh)
 
     # ------- Answer loss (teacher-forced with atom LoRA) -------
-    final_atom_scales = model.hypernet(
-        state_pages, pass_num=num_passes,
+    final_atom_scales, final_pre_tanh = model.hypernet(
+        state_pages, pass_num=num_passes, return_pre_tanh=True,
     )
+    pre_tanh_history.append(final_pre_tanh)
     manager = AtomAdditiveLoRAManager(model.transformer)
     manager.apply(model.atoms, final_atom_scales)
     try:
@@ -435,7 +448,11 @@ def forward_train_cached(model, answer_head, problems, answers, finals_t,
         else:
             cross_pass_cos = torch.tensor(0.0, device=device)
 
-    return (ans_loss, c_loss, conf_loss, ah_loss,
+    # ------- Pre-tanh regularization (keeps tanh gradient alive) -------
+    all_pre_tanh = torch.cat(pre_tanh_history, dim=0)
+    scale_reg_loss = (all_pre_tanh ** 2).mean()
+
+    return (ans_loss, c_loss, conf_loss, ah_loss, scale_reg_loss,
             page_cos_mean, active_atoms_mean, scale_std, cross_pass_cos,
             confidence.mean(), state_pages)
 
@@ -696,23 +713,31 @@ def collate_fn(batch):
 # Warm-start logic
 # ---------------------------------------------------------------------------
 
-def try_warm_start(model, answer_head, warm_path):
-    """Try atom checkpoint first; fall back to perceiver-only warm start."""
+def try_warm_start(model, answer_head, warm_path, skip_perceiver=False):
+    """Try atom checkpoint first; fall back to perceiver-only warm start.
+
+    If skip_perceiver=True, skip loading the compressor (perceiver) and let it
+    stay randomly initialized. This is useful when the perceiver is stuck in a
+    bad mode (e.g., constant pages) and needs to learn fresh.
+    """
     ckpt = torch.load(warm_path, map_location='cpu', weights_only=True)
 
     if 'atoms' in ckpt:
         # Atom checkpoint — load directly
         print(f"  Loading atom checkpoint from {warm_path}")
 
-        # Compressor
-        own = model.compressor.state_dict()
-        loaded = 0
-        for k, v in ckpt['compressor'].items():
-            if k in own and own[k].shape == v.shape:
-                own[k] = v
-                loaded += 1
-        model.compressor.load_state_dict(own, strict=False)
-        print(f"  compressor: loaded {loaded}/{len(own)}")
+        # Compressor (skip if resetting perceiver)
+        if skip_perceiver:
+            print(f"  compressor: SKIPPED (--skip_perceiver flag)")
+        else:
+            own = model.compressor.state_dict()
+            loaded = 0
+            for k, v in ckpt['compressor'].items():
+                if k in own and own[k].shape == v.shape:
+                    own[k] = v
+                    loaded += 1
+            model.compressor.load_state_dict(own, strict=False)
+            print(f"  compressor: loaded {loaded}/{len(own)}")
 
         # Atoms
         if 'atoms' in ckpt:
@@ -783,10 +808,16 @@ def train(args):
     print(f"  epochs         = {args.epochs}")
     print(f"  patience       = {args.patience}")
     print(f"  lam            = {args.lam}")
+    if args.lam_anneal_to is not None:
+        print(f"  lam_anneal_to  = {args.lam_anneal_to} (after epoch {args.lam_anneal_after})")
     print(f"  lam_conf       = {args.lam_conf}")
     print(f"  lam_answer     = {args.lam_answer}")
+    print(f"  lam_scale_reg  = {args.lam_scale_reg}")
+    print(f"  skip_perceiver = {args.skip_perceiver}")
     print(f"  num_atoms      = {args.num_atoms}")
     print(f"  atom_rank      = {args.atom_rank}")
+    print(f"  pass_embed_scale = {args.pass_embed_scale}")
+    print(f"  skip_pass_embed  = {args.skip_pass_embed}")
     print(f"  num_train      = {args.num_train}")
     print(f"  warm           = {warm_path}")
     print(f"  procedural     = {is_procedural(level)}")
@@ -798,18 +829,24 @@ def train(args):
     model = AtomLoRAModel(
         num_atoms=args.num_atoms,
         atom_rank=args.atom_rank,
+        pass_embed_scale=args.pass_embed_scale,
+        skip_pass_embed=args.skip_pass_embed,
     )
     model.compressor = model.compressor.to(device=device, dtype=torch.bfloat16)
     model.hypernet = model.hypernet.to(device=device, dtype=torch.bfloat16)
     model.atoms = model.atoms.to(device=device, dtype=torch.bfloat16)
     model.confidence_head = model.confidence_head.to(device)  # fp32 (small)
+    model.residual_gate = model.residual_gate.to(device=device, dtype=torch.bfloat16)  # v24.8
+    model.probe_head = model.probe_head.to(device)  # fp32
 
     # Answer head — small, kept in float32 for digit classification stability
     answer_head = AnswerHead(page_size=model.page_size).to(device)
 
     if warm_path:
         print(f"\nWarm-starting from {warm_path}")
-        try_warm_start(model, answer_head, warm_path)
+        if args.skip_perceiver:
+            print("  (--skip_perceiver: perceiver will stay random)")
+        try_warm_start(model, answer_head, warm_path, skip_perceiver=args.skip_perceiver)
 
     # Fixed eval dataset
     eval_dataset = make_eval_dataset(level, num_samples=args.eval_size)
@@ -883,6 +920,14 @@ def train(args):
         answer_head.train()
         t0 = time.time()
 
+        # Contrastive annealing: strong early, then back off
+        if args.lam_anneal_to is not None and epoch >= args.lam_anneal_after:
+            effective_lam = args.lam_anneal_to
+            if epoch == args.lam_anneal_after:
+                print(f"  [epoch {epoch+1}] Annealing lam: {args.lam} -> {effective_lam}")
+        else:
+            effective_lam = args.lam
+
         # Fresh data per epoch (Fix 2)
         epoch_seed = epoch * 1000 + 42
         if is_procedural(level):
@@ -901,7 +946,7 @@ def train(args):
             collate_fn=collate_fn,
         )
 
-        ep_ans = ep_ctr = ep_conf = ep_head = ep_cos = 0.0
+        ep_ans = ep_ctr = ep_conf = ep_head = ep_cos = ep_scale_reg = 0.0
         ep_active = ep_std = ep_xpass = 0.0
         cache_hits = cache_full = 0
         nb = 0
@@ -951,7 +996,7 @@ def train(args):
                 # 10%: full run (implicit else)
 
             if cached_pages is not None:
-                (ans_loss, c_loss, conf_loss, ah_loss,
+                (ans_loss, c_loss, conf_loss, ah_loss, scale_reg,
                  page_cos, active_atoms, s_std, xpass_cos,
                  conf_mean, state_pages) = forward_train_cached(
                     model, answer_head, problems, answers, finals_t,
@@ -961,7 +1006,7 @@ def train(args):
                     max_answer_length=max_answer_length,
                 )
             else:
-                (ans_loss, c_loss, conf_loss, ah_loss,
+                (ans_loss, c_loss, conf_loss, ah_loss, scale_reg,
                  page_cos, active_atoms, s_std, xpass_cos,
                  conf_mean, state_pages) = forward_train(
                     model, answer_head, problems, answers, finals_t,
@@ -977,9 +1022,10 @@ def train(args):
                     cache.store(problem_hash, state_pages, epoch)
 
             total_loss = (ans_loss
-                          + args.lam * c_loss
+                          + effective_lam * c_loss
                           + args.lam_conf * conf_loss
-                          + args.lam_answer * ah_loss)
+                          + args.lam_answer * ah_loss
+                          + args.lam_scale_reg * scale_reg)
             total_loss.backward()
             torch.nn.utils.clip_grad_norm_(trainable, 1.0)
             optimizer.step()
@@ -988,6 +1034,7 @@ def train(args):
             ep_ctr += c_loss.item()
             ep_conf += conf_loss.item()
             ep_head += ah_loss.item()
+            ep_scale_reg += scale_reg.item()
             ep_cos += page_cos.item()
             ep_active += active_atoms.item()
             ep_std += s_std.item()
@@ -1022,6 +1069,10 @@ def train(args):
             print(f"  cache: graduated={new_graduated} hits={cache_hits} full={cache_full} "
                   f"stored={cache_stats['total_entries']}")
 
+        # Blend values (v24.7 gradient coupling) — extract BEFORE checkpoint save
+        hypernet_blend = torch.sigmoid(model.hypernet.blend_logit).item()
+        compressor_blend = torch.sigmoid(model.compressor.blend_logit).item()
+
         # Track both metrics — early stop only when BOTH plateau
         improved = False
         if gen_acc > best:
@@ -1040,11 +1091,14 @@ def train(args):
                 'hypernet': model.hypernet.state_dict(),
                 'confidence_head': model.confidence_head.state_dict(),
                 'answer_head': answer_head.state_dict(),
+                'residual_gate': model.residual_gate.state_dict(),  # v24.8
                 'accuracy': gen_acc,
                 'head_accuracy': head_acc,
                 'level': level,
                 'num_atoms': args.num_atoms,
                 'atom_rank': args.atom_rank,
+                'hypernet_blend': hypernet_blend,
+                'compressor_blend': compressor_blend,
             }, ckpt_name)
             print(f"  -> saved checkpoint {ckpt_name} (gen={gen_acc:.1f}% head={head_acc:.1f}%)")
         else:
@@ -1053,13 +1107,18 @@ def train(args):
         print(
             f"Epoch {epoch+1}: "
             f"ans={ep_ans/nb:.4f} contr={ep_ctr/nb:.2f} "
-            f"conf={ep_conf/nb:.2f} head={ep_head/nb:.2f} "
+            f"conf={ep_conf/nb:.2f} head={ep_head/nb:.2f} scale_reg={ep_scale_reg/nb:.2f} "
             f"page_cos={ep_cos/nb:.2f} "
             f"active={ep_active/nb:.1f}/{args.num_atoms} "
             f"scale_std={ep_std/nb:.3f} "
             f"xpass_cos={ep_xpass/nb:.2f} | "
             f"Acc={gen_acc:.1f}% head={head_acc:.1f}% "
             f"best={best:.1f}% [{elapsed:.0f}s]"
+        )
+        # Gradient coupling blends (v24.7) — direct vs contextual path weights
+        print(
+            f"  blends: hypernet={hypernet_blend:.3f} compressor={compressor_blend:.3f} "
+            f"(1.0=direct, 0.0=contextual)"
         )
         # Gradient norms
         gn = grad_norms
@@ -1106,16 +1165,28 @@ if __name__ == '__main__':
                    help='Confidence loss weight')
     p.add_argument('--lam_answer', type=float, default=0.3,
                    help='Answer head loss weight')
+    p.add_argument('--lam_scale_reg', type=float, default=0.1,
+                   help='Pre-tanh scale regularization weight (keeps gradient alive)')
     p.add_argument('--num_atoms', type=int, default=64,
                    help='Number of LoRA atoms')
     p.add_argument('--atom_rank', type=int, default=6,
                    help='Rank of each LoRA atom')
+    p.add_argument('--pass_embed_scale', type=float, default=1.0,
+                   help='Scale factor for pass embedding (0.1 forces page usage)')
+    p.add_argument('--skip_pass_embed', action='store_true',
+                   help='Remove pass embedding entirely (v24.6: pages are the only input)')
     p.add_argument('--num_train', type=int, default=20000,
                    help='Number of training problems per epoch (procedural)')
     p.add_argument('--eval_size', type=int, default=50,
                    help='Number of eval problems (200 quick, 500 thorough)')
     p.add_argument('--use_cache', action='store_true',
                    help='Enable page cache for faster training (v24.4)')
+    p.add_argument('--skip_perceiver', action='store_true',
+                   help='Skip loading perceiver from warm checkpoint (reset it)')
+    p.add_argument('--lam_anneal_to', type=float, default=None,
+                   help='Anneal contrastive to this value (default: no annealing)')
+    p.add_argument('--lam_anneal_after', type=int, default=2,
+                   help='Start using annealed lam after this epoch (default: 2)')
 
     args = p.parse_args()
 

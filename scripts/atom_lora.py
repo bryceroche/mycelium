@@ -25,10 +25,14 @@ sys.path.insert(0, '/home/ubuntu/mycelium')
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from src.compressor_v3 import Compressor
+from src.compressor_v3 import Compressor, ResidualPageGate
+from src.sympy_evaluator import SymPyEvaluator
+from src.sympy_result_encoder import SymPyResultEncoder, format_sympy_context
+from src.pattern_memory import PatternMemory
+from src.pattern_classifier import classify_pattern
 
 
 # ---------------------------------------------------------------------------
@@ -318,15 +322,24 @@ class AtomAdditiveLoRAManager:
 # ---------------------------------------------------------------------------
 class AtomHypernetwork(nn.Module):
     """
-    Hypernetwork that reads accumulated pages + pass embedding and outputs
+    Hypernetwork that reads accumulated pages and outputs
     64 independent atom scales via tanh (NOT softmax).
 
     No strategy input — removed as redundant with page attention.
+    No pass embedding (v24.6) — pass_num was a shortcut that let the model
+    ignore pages entirely. Pages are now the ONLY input.
+
+    v24.7 adds DIRECT PATH skip connection for gradient coupling:
+    - Direct path: last_page -> linear -> GELU -> linear -> logits
+    - Contextual path: cross-attention over all pages -> MLP -> logits
+    - Learnable blend parameter mixes the two paths
+    The direct path bypasses the softmax in cross-attention, giving gradient
+    a clean highway from scales back to pages.
 
     Architecture:
-    - 2-layer cross-attention over pages (4 queries, 8 heads, d=512)
-    - Fourier pass encoding (continuous, no max_passes limit)
-    - Deep MLP: 1536 -> 1024 -> 1024 -> 512 -> 64
+    - DIRECT PATH: Linear(64, 256) -> GELU -> Linear(256, 64) [gradient highway]
+    - CONTEXTUAL PATH: 2-layer cross-attention + deep MLP [rich context]
+    - Blend: sigmoid(learned) mixes direct and contextual logits
     - Final: tanh (independent, no competition)
     """
 
@@ -337,15 +350,33 @@ class AtomHypernetwork(nn.Module):
         attn_dim: int = 512,
         num_query_heads: int = 4,
         num_attn_heads: int = 8,
-        pass_embed_dim: int = 512,
+        pass_embed_dim: int = 512,  # kept for backward compat, ignored if skip_pass_embed
+        pass_embed_scale: float = 1.0,  # kept for backward compat
+        skip_pass_embed: bool = False,
     ):
         super().__init__()
         self.page_size = page_size
         self.num_atoms = num_atoms
         self.attn_dim = attn_dim
         self.num_query_heads = num_query_heads
+        self.pass_embed_scale = pass_embed_scale
+        self.skip_pass_embed = skip_pass_embed
 
-        # --- Page reading: 2-layer cross-attention ---
+        # ===== DIRECT PATH (v24.7 — clean gradient highway) =====
+        # Reads last page only, bypasses cross-attention softmax
+        self.direct_path = nn.Sequential(
+            nn.Linear(page_size, 256),
+            nn.GELU(),
+            nn.Dropout(0.1),
+            nn.Linear(256, num_atoms),
+        )
+
+        # ===== BLEND (learnable mixing of direct + contextual) =====
+        # Initialize to 0.5 (balanced). Model can shift during training.
+        # sigmoid(0.0) = 0.5
+        self.blend_logit = nn.Parameter(torch.tensor(0.0))
+
+        # --- Page reading: 2-layer cross-attention (CONTEXTUAL PATH) ---
         self.page_project = nn.Linear(page_size, attn_dim)
 
         self.page_query = nn.Parameter(torch.randn(num_query_heads, attn_dim) * 0.02)
@@ -373,16 +404,22 @@ class AtomHypernetwork(nn.Module):
         # Flatten 4 queries x 512 dim = 2048 -> summary 1024
         self.summary_project = nn.Linear(num_query_heads * attn_dim, 1024)
 
-        # --- Fourier pass encoding (continuous, no max_passes limit) ---
-        self.register_buffer(
-            'fourier_freqs',
-            torch.exp(torch.arange(0, pass_embed_dim, 2) * -(math.log(10000.0) / pass_embed_dim))
-        )
-        self.pass_project = nn.Linear(pass_embed_dim, pass_embed_dim)
+        # --- Fourier pass encoding (conditional, skipped in v24.6) ---
+        if not skip_pass_embed:
+            self.register_buffer(
+                'fourier_freqs',
+                torch.exp(torch.arange(0, pass_embed_dim, 2) * -(math.log(10000.0) / pass_embed_dim))
+            )
+            self.pass_project = nn.Linear(pass_embed_dim, pass_embed_dim)
+            mlp_input_dim = 1024 + pass_embed_dim  # page_summary + pass_embed = 1536
+        else:
+            # No pass embedding — pages are the ONLY input to the hypernetwork
+            mlp_input_dim = 1024  # page_summary only
 
-        # --- Deep MLP: 1024 (page_summary) + 512 (pass_embed) = 1536 -> 64 ---
-        self.scale_net = nn.Sequential(
-            nn.Linear(1024 + pass_embed_dim, 1024),
+        # --- Deep MLP: mlp_input_dim -> 1024 -> 512 -> 64 ---
+        # Split into pre-tanh and tanh for regularization access
+        self.scale_mlp = nn.Sequential(
+            nn.Linear(mlp_input_dim, 1024),
             nn.GELU(),
             nn.Dropout(0.1),
             nn.LayerNorm(1024),
@@ -393,10 +430,13 @@ class AtomHypernetwork(nn.Module):
             nn.Linear(1024, 512),
             nn.GELU(),
             nn.Linear(512, num_atoms),
-            nn.Tanh(),  # bounded [-1, 1], independent, no competition
         )
+        self.scale_activation = nn.Tanh()  # bounded [-1, 1], independent
         # Gentle bias: tanh(0.05)≈0.05 → atoms barely active but gradient flows
-        self.scale_net[-2].bias.data.fill_(0.05)
+        self.scale_mlp[-1].bias.data.fill_(0.05)
+
+        # For backward compat: scale_net wraps the full pipeline
+        self.scale_net = nn.Sequential(self.scale_mlp, self.scale_activation)
 
     def fourier_encode(self, pass_num: int, device: torch.device) -> torch.Tensor:
         """Encode pass number as smooth Fourier features."""
@@ -408,28 +448,40 @@ class AtomHypernetwork(nn.Module):
         self,
         state_pages: List[torch.Tensor],
         pass_num: int,
-    ) -> torch.Tensor:
+        return_pre_tanh: bool = False,
+    ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         """
         Args:
             state_pages: list of (batch, page_size) tensors (accumulated pages)
             pass_num: int (0-indexed)
+            return_pre_tanh: if True, also return pre-tanh values for regularization
 
         Returns:
             atom_scales: (batch, num_atoms) tanh-bounded in [-1, 1]
+            pre_tanh: (batch, num_atoms) raw MLP output (only if return_pre_tanh=True)
         """
         if len(state_pages) == 0:
             # Pass 0: no pages yet, return zeros (no LoRA modification)
             batch_size = 1  # caller must handle
             device = self.page_query.device
-            return torch.zeros(batch_size, self.num_atoms, device=device)
+            zeros = torch.zeros(batch_size, self.num_atoms, device=device)
+            if return_pre_tanh:
+                return zeros, zeros
+            return zeros
 
         batch_size = state_pages[0].size(0)
         device = state_pages[0].device
 
-        # Stack and project pages
+        # Stack pages
         pages = torch.stack(state_pages, dim=1)         # (B, P, page_size)
-        pages_proj = self.page_project(pages)            # (B, P, attn_dim)
+        last_page = pages[:, -1, :]                     # (B, page_size)
 
+        # ===== DIRECT PATH (v24.7 — gradient highway) =====
+        # Bypasses cross-attention softmax, clean gradient to last_page
+        direct_logits = self.direct_path(last_page)     # (B, num_atoms)
+
+        # ===== CONTEXTUAL PATH (existing — attention over all pages) =====
+        pages_proj = self.page_project(pages)            # (B, P, attn_dim)
         queries = self.page_query.unsqueeze(0).expand(batch_size, -1, -1)  # (B, Q, attn_dim)
 
         # Layer 1: cross-attention + FFN
@@ -445,13 +497,25 @@ class AtomHypernetwork(nn.Module):
         # Flatten queries -> summary
         page_summary = self.summary_project(queries.flatten(1))  # (B, 1024)
 
-        # Fourier pass encoding
-        pass_emb = self.fourier_encode(pass_num, device).unsqueeze(0).expand(batch_size, -1)  # (B, 512)
+        # Generate contextual logits (with or without pass embedding)
+        if self.skip_pass_embed:
+            # v24.6: Pages are the ONLY input — no pass embedding shortcut
+            context_logits = self.scale_mlp(page_summary)  # (B, num_atoms)
+        else:
+            # Legacy: include Fourier pass encoding
+            pass_emb = self.fourier_encode(pass_num, device).unsqueeze(0).expand(batch_size, -1)  # (B, 512)
+            pass_emb = pass_emb * self.pass_embed_scale
+            combined = torch.cat([page_summary, pass_emb], dim=-1)  # (B, 1536)
+            context_logits = self.scale_mlp(combined)  # (B, num_atoms)
 
-        # Combine and generate atom scales
-        combined = torch.cat([page_summary, pass_emb], dim=-1)  # (B, 1536)
-        atom_scales = self.scale_net(combined)                   # (B, num_atoms)
+        # ===== BLEND direct + contextual =====
+        blend = torch.sigmoid(self.blend_logit)  # scalar in (0, 1)
+        pre_tanh = blend * direct_logits + (1 - blend) * context_logits
 
+        atom_scales = self.scale_activation(pre_tanh)  # (B, num_atoms)
+
+        if return_pre_tanh:
+            return atom_scales, pre_tanh
         return atom_scales
 
 
@@ -653,8 +717,16 @@ class AtomLoRAModel(nn.Module):
     """
 
     def __init__(self, model_name: str = 'unsloth/Llama-3.2-1B',
-                 num_atoms: int = 64, atom_rank: int = 6):
+                 num_atoms: int = 64, atom_rank: int = 6,
+                 pass_embed_scale: float = 1.0,
+                 skip_pass_embed: bool = False,
+                 use_pattern_memory: bool = False,
+                 pattern_memory_db_path: str = "pattern_memory.db"):
         super().__init__()
+
+        # --- Pattern memory (long-term SQLite-backed pattern storage) ---
+        self.pattern_memory = PatternMemory(db_path=pattern_memory_db_path) if use_pattern_memory else None
+        self.pattern_hint = None  # Set by solve_with_memory if a good pattern is found
 
         # --- Frozen transformer ---
         self.transformer = AutoModelForCausalLM.from_pretrained(
@@ -706,6 +778,8 @@ class AtomLoRAModel(nn.Module):
             num_query_heads=4,
             num_attn_heads=8,
             pass_embed_dim=512,
+            pass_embed_scale=pass_embed_scale,
+            skip_pass_embed=skip_pass_embed,
         )
 
         # --- Answer head (digit extraction from last page) ---
@@ -723,6 +797,14 @@ class AtomLoRAModel(nn.Module):
 
         # --- Probe head (intermediate value supervision) ---
         self.probe_head = nn.Linear(self.page_size, 1)
+
+        # --- Residual page gate (v24.8 — per-dimension blending of new and old page) ---
+        # Shifts eigenvalues by ~0.5, converting contracting dynamics to stable.
+        # gate approx 1: keep new_page (overwrite), gate approx 0: keep old_page (preserve)
+        self.residual_gate = ResidualPageGate(page_size=self.page_size)
+
+        # --- SymPy result encoder (v24.6 — encodes SymPy results into page vectors) ---
+        self.sympy_encoder = SymPyResultEncoder(page_size=self.page_size, max_variables=8)
 
     def thinking_pass(
         self,
@@ -781,8 +863,10 @@ class AtomLoRAModel(nn.Module):
 
         # Compress all 16 layers -> page delta (strategy discarded)
         # Pass prev_mid_states for skip connection
+        # Pass state_pages for page communication (v24.8) — perceiver sees previous pages
         page_delta, _strategy, current_mid_states = self.compressor(
             hidden_states, pass_num, prev_mid_states=prev_mid_states,
+            state_pages=state_pages,
         )
 
         # Normalize on hypersphere
@@ -791,12 +875,285 @@ class AtomLoRAModel(nn.Module):
         # Add Fourier structural identity (after normalization)
         page = self.fourier_page.apply(page, pass_num)
 
+        # Apply residual page gate (v24.8) — per-dimension blending with previous page
+        # This shifts eigenvalues by ~0.5, converting contracting dynamics to stable.
+        # Only apply if we have previous pages to blend with.
+        # v24.8 FIX: Do NOT re-normalize after residual — let the blend stand.
+        # The normalization happens BEFORE (line 860), residual blends the normalized
+        # page with old_page. Re-normalizing washes out the eigenvalue shift.
+        if len(state_pages) > 0:
+            page = self.residual_gate(page, state_pages[-1])
+
         # Gradient scaling for earlier cycles (amplify earlier passes)
         grad_scale = min(float(max_passes - pass_num), 4.0)
         if grad_scale != 1.0 and page.requires_grad:
             page = page * grad_scale + page.detach() * (1.0 - grad_scale)
 
         return page, atom_scales, current_mid_states
+
+    def thinking_pass_with_sympy(
+        self,
+        problem_text: str,
+        input_ids: torch.Tensor,
+        attention_mask: torch.Tensor,
+        state_pages: List[torch.Tensor],
+        pass_num: int,
+        sympy_results: Dict[str, float],
+        teacher_sympy: Optional[str] = None,
+        prev_mid_states: Optional[List[torch.Tensor]] = None,
+        max_passes: int = 3,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict[str, float]]:
+        """
+        One thinking pass with atom LoRA, integrating SymPy evaluation.
+
+        This method extends thinking_pass by:
+        1. Formatting accumulated SymPy results as text context (prepended to problem)
+        2. Running the normal thinking pass
+        3. Encoding any new SymPy results into the page (before hypersphere normalization)
+        4. Returning updated sympy_results dict
+
+        Args:
+            problem_text:    Original problem text (used for context formatting)
+            input_ids:       (B, seq_len) tokenized problem (without sympy context)
+            attention_mask:  (B, seq_len)
+            state_pages:     list of (B, page_size) accumulated pages
+            pass_num:        int (0-indexed)
+            sympy_results:   Dict[str, float] accumulated results from previous passes
+            teacher_sympy:   Optional SymPy code string for teacher forcing during training.
+                            If provided, evaluates this code and encodes results.
+                            If None, skips SymPy evaluation (inference uses separate generation).
+            prev_mid_states: Optional list of (B, num_queries, d_perceiver) tensors
+                            from previous passes' perceiver mid-layer states.
+            max_passes:      int, total passes (for gradient scaling)
+
+        Returns:
+            page:               (B, page_size) normalized on hypersphere
+            atom_scales:        (B, num_atoms) the scales used this pass
+            current_mid_states: (B, num_queries, d_perceiver) detached mid-layer states
+            updated_sympy_results: Dict[str, float] with any new results from this pass
+        """
+        batch_size = input_ids.size(0)
+        device = input_ids.device
+
+        # --- Step 1: Format SymPy context and re-tokenize if we have results ---
+        if sympy_results:
+            # Format accumulated results as text context
+            context = format_sympy_context(sympy_results)
+            # Prepend context to problem text
+            augmented_text = context + problem_text
+
+            # Re-tokenize with context
+            tokenized = self.tokenizer(
+                augmented_text,
+                return_tensors='pt',
+                padding=True,
+                truncation=True,
+                max_length=512,
+            )
+            input_ids = tokenized['input_ids'].to(device)
+            attention_mask = tokenized['attention_mask'].to(device)
+
+            # Handle batch size mismatch (tokenizer returns B=1 for single string)
+            if input_ids.size(0) == 1 and batch_size > 1:
+                input_ids = input_ids.expand(batch_size, -1)
+                attention_mask = attention_mask.expand(batch_size, -1)
+
+        # --- Step 2: Run normal thinking pass (hypernetwork → atoms → Llama → perceiver) ---
+        if len(state_pages) == 0:
+            # First pass: no LoRA (no pages to condition on)
+            atom_scales = torch.zeros(
+                batch_size, self.atoms.num_atoms,
+                device=device, dtype=torch.float32,
+            )
+            outputs = self.transformer(
+                input_ids=input_ids, attention_mask=attention_mask,
+                output_hidden_states=True,
+            )
+            hidden_states = list(outputs.hidden_states[1:])
+        else:
+            # Generate atom scales from pages + pass number
+            atom_scales = self.hypernet(state_pages, pass_num)
+
+            # Apply atom LoRA via monkey-patching
+            manager = AtomAdditiveLoRAManager(self.transformer)
+            manager.apply(self.atoms, atom_scales)
+            try:
+                outputs = self.transformer(
+                    input_ids=input_ids, attention_mask=attention_mask,
+                    output_hidden_states=True,
+                )
+                hidden_states = list(outputs.hidden_states[1:])
+            finally:
+                manager.remove()
+
+        # Compress all 16 layers -> page delta (strategy discarded)
+        page_delta, _strategy, current_mid_states = self.compressor(
+            hidden_states, pass_num, prev_mid_states=prev_mid_states,
+            state_pages=state_pages,
+        )
+
+        # --- Step 3: Evaluate teacher SymPy and encode results into page delta ---
+        updated_sympy_results = dict(sympy_results)  # Copy to avoid mutation
+
+        if teacher_sympy is not None:
+            # Teacher forcing: evaluate provided SymPy code
+            new_results = SymPyEvaluator.safe_eval(teacher_sympy)
+            if new_results:
+                # Merge new results into accumulated results
+                updated_sympy_results.update(new_results)
+
+                # Encode SymPy results into a page-compatible vector
+                sympy_encoding = self.sympy_encoder(new_results, device=device)
+
+                # Add to page delta BEFORE hypersphere normalization
+                # This allows SymPy results to influence the page content
+                page_delta = page_delta + sympy_encoding.unsqueeze(0).expand(batch_size, -1)
+
+        # --- Step 4: Normalize on hypersphere (after SymPy encoding added) ---
+        page = F.normalize(page_delta, dim=-1) * self.page_radius
+
+        # Add Fourier structural identity (after normalization)
+        page = self.fourier_page.apply(page, pass_num)
+
+        # Apply residual page gate (v24.8)
+        if len(state_pages) > 0:
+            page = self.residual_gate(page, state_pages[-1])
+
+        # Gradient scaling for earlier cycles
+        grad_scale = min(float(max_passes - pass_num), 4.0)
+        if grad_scale != 1.0 and page.requires_grad:
+            page = page * grad_scale + page.detach() * (1.0 - grad_scale)
+
+        return page, atom_scales, current_mid_states, updated_sympy_results
+
+    def solve_with_memory(
+        self,
+        problem_text: str,
+        problem_ids: torch.Tensor,
+        max_passes: int = 5,
+        epoch: int = 0,
+    ) -> Tuple[Optional[int], Optional[int]]:
+        """
+        Full solve with pattern memory integration.
+
+        Queries pattern memory after pass 1 to retrieve similar patterns.
+        Sets self.pattern_hint if a good match is found (score > 0.5).
+        Checks for 'answer' in sympy_results or confidence for early stopping.
+
+        Args:
+            problem_text: The problem text string
+            problem_ids: Tokenized problem (B, seq_len)
+            max_passes: Maximum number of thinking passes
+            epoch: Current training epoch (for pattern memory updates)
+
+        Returns:
+            (answer, used_pattern_id): The predicted answer and ID of pattern used (if any)
+        """
+        device = problem_ids.device
+        batch_size = problem_ids.size(0)
+
+        # Create attention mask (1 for real tokens, 0 for padding)
+        attention_mask = (problem_ids != self.tokenizer.pad_token_id).long()
+
+        state_pages: List[torch.Tensor] = []
+        sympy_results: Dict[str, float] = {}
+        used_pattern_id: Optional[int] = None
+        prev_mid_states: Optional[List[torch.Tensor]] = None
+
+        for pass_num in range(max_passes):
+            # === THINK ===
+            page, atom_scales, current_mid_states, sympy_results = self.thinking_pass_with_sympy(
+                problem_text=problem_text,
+                input_ids=problem_ids,
+                attention_mask=attention_mask,
+                state_pages=state_pages,
+                pass_num=pass_num,
+                sympy_results=sympy_results,
+                teacher_sympy=None,  # No teacher forcing during solve
+                prev_mid_states=prev_mid_states,
+                max_passes=max_passes,
+            )
+            state_pages.append(page)
+            prev_mid_states = [current_mid_states] if prev_mid_states is None else prev_mid_states + [current_mid_states]
+
+            # === QUERY PATTERN MEMORY (after pass 1) ===
+            if pass_num == 0 and self.pattern_memory is not None:
+                matches = self.pattern_memory.query(page[0], top_k=3)  # Use first item in batch
+
+                if matches and matches[0]['score'] > 0.5:
+                    best = matches[0]
+                    used_pattern_id = best['pattern_id']
+
+                    # Inject pattern hint as context for next pass
+                    hint = f"Suggested approach ({best['type']}, "
+                    hint += f"{best['success_rate']:.0%} success): "
+                    hint += best['template']
+                    self.pattern_hint = hint
+                else:
+                    self.pattern_hint = None
+
+            # === CHECK STOPPING: answer in sympy_results ===
+            if 'answer' in sympy_results:
+                answer = int(sympy_results['answer'])
+                return answer, used_pattern_id
+
+            # === CHECK STOPPING: confidence ===
+            if pass_num >= 1 and len(state_pages) > 0:
+                conf = self.confidence_head(state_pages)
+                if conf.mean().item() > 0.9:
+                    break
+
+        # Extract answer from answer head
+        if len(state_pages) > 0:
+            answer = self.answer_head.decode(state_pages[-1])
+            return answer[0].item(), used_pattern_id
+        else:
+            return None, used_pattern_id
+
+    def after_solve(
+        self,
+        problem_text: str,
+        state_pages: List[torch.Tensor],
+        sympy_steps: Optional[List[str]],
+        was_correct: bool,
+        used_pattern_id: Optional[int],
+        epoch: int = 0,
+    ) -> None:
+        """
+        Post-solve: update pattern memory based on outcome.
+
+        Called after checking whether the answer was correct.
+        - If a pattern was used, records success/failure
+        - If answer was correct and we have sympy_steps, stores new pattern
+
+        Args:
+            problem_text: The original problem text
+            state_pages: List of page tensors from thinking passes
+            sympy_steps: Optional list of SymPy step strings (for storing new patterns)
+            was_correct: Whether the predicted answer matched gold
+            used_pattern_id: ID of pattern that was used (if any)
+            epoch: Current training epoch
+        """
+        if self.pattern_memory is None:
+            return
+
+        # Update outcome if we used a pattern
+        if used_pattern_id is not None:
+            self.pattern_memory.record_outcome(used_pattern_id, was_correct, epoch)
+
+        # Store new pattern if successful and we have SymPy steps
+        if was_correct and sympy_steps and len(state_pages) > 0:
+            # Auto-classify pattern type
+            pattern_type = classify_pattern(sympy_steps)
+            template = "; ".join(sympy_steps)
+
+            self.pattern_memory.store(
+                page_embedding=state_pages[0],  # Use first page (problem encoding)
+                sympy_template=template,
+                pattern_type=pattern_type,
+                example_problem=problem_text[:200],
+                epoch=epoch,
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -849,6 +1206,19 @@ def warm_start_atom_from_checkpoint(
         print(f"  probe_head: loaded {loaded}/{len(own)}")
     else:
         print("  probe_head: fresh init (not in checkpoint)")
+
+    # --- Residual gate (v24.8) ---
+    if 'residual_gate' in ckpt:
+        own = atom_model.residual_gate.state_dict()
+        loaded = 0
+        for k, v in ckpt['residual_gate'].items():
+            if k in own and own[k].shape == v.shape:
+                own[k] = v
+                loaded += 1
+        atom_model.residual_gate.load_state_dict(own, strict=False)
+        print(f"  residual_gate: loaded {loaded}/{len(own)}")
+    else:
+        print("  residual_gate: fresh init (v24.8 — per-dimension page blending)")
 
     # --- Everything else is fresh ---
     print("  atoms: fresh init (64 rank-6 atoms, 0.01 scale)")
