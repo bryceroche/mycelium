@@ -512,6 +512,10 @@ class AtomHypernetwork(nn.Module):
         blend = torch.sigmoid(self.blend_logit)  # scalar in (0, 1)
         pre_tanh = blend * direct_logits + (1 - blend) * context_logits
 
+        # Hard clamp: makes tanh saturation impossible.
+        # tanh(3) = 0.995, gradient = 0.01 — small but non-zero.
+        pre_tanh = torch.clamp(pre_tanh, -3.0, 3.0)
+
         atom_scales = self.scale_activation(pre_tanh)  # (B, num_atoms)
 
         if return_pre_tanh:
@@ -532,15 +536,22 @@ class AnswerHead(nn.Module):
     - digit_heads: max_digits x Linear(page_size, 10) -> 0-9 per position
     """
 
-    def __init__(self, page_size: int = 64, max_digits: int = 6):
+    def __init__(self, page_size: int = 64, max_digits: int = 6, hidden: int = 256):
         super().__init__()
         self.page_size = page_size
         self.max_digits = max_digits
 
-        self.sign_head = nn.Linear(page_size, 2)
-        self.length_head = nn.Linear(page_size, max_digits)
+        # Shared encoder: page -> richer representation
+        self.encoder = nn.Sequential(
+            nn.Linear(page_size, hidden),
+            nn.GELU(),
+            nn.Linear(hidden, hidden),
+            nn.GELU(),
+        )
+        self.sign_head = nn.Linear(hidden, 2)
+        self.length_head = nn.Linear(hidden, max_digits)
         self.digit_heads = nn.ModuleList([
-            nn.Linear(page_size, 10) for _ in range(max_digits)
+            nn.Linear(hidden, 10) for _ in range(max_digits)
         ])
 
     def forward(
@@ -556,9 +567,10 @@ class AnswerHead(nn.Module):
             digit_logits:  list of max_digits x (B, 10)
         """
         page = last_page.float()
-        sign_logits = self.sign_head(page)
-        length_logits = self.length_head(page)
-        digit_logits = [head(page) for head in self.digit_heads]
+        h = self.encoder(page)
+        sign_logits = self.sign_head(h)
+        length_logits = self.length_head(h)
+        digit_logits = [head(h) for head in self.digit_heads]
         return sign_logits, length_logits, digit_logits
 
     @torch.no_grad()
@@ -835,16 +847,25 @@ class AtomLoRAModel(nn.Module):
         batch_size = input_ids.size(0)
 
         if len(state_pages) == 0:
-            # First pass: no LoRA (no pages to condition on)
-            atom_scales = torch.zeros(
-                batch_size, self.atoms.num_atoms,
-                device=input_ids.device, dtype=torch.float32,
+            # First pass: feed zero page to hypernetwork so LoRA is active
+            # (critical for per-cycle targets where pass 0 gets supervision)
+            hyper_dtype = next(self.hypernet.parameters()).dtype
+            zero_page = torch.zeros(
+                batch_size, self.page_size,
+                device=input_ids.device, dtype=hyper_dtype,
             )
-            outputs = self.transformer(
-                input_ids=input_ids, attention_mask=attention_mask,
-                output_hidden_states=True,
-            )
-            hidden_states = list(outputs.hidden_states[1:])
+            atom_scales = self.hypernet([zero_page], pass_num=0)
+
+            manager = AtomAdditiveLoRAManager(self.transformer)
+            manager.apply(self.atoms, atom_scales)
+            try:
+                outputs = self.transformer(
+                    input_ids=input_ids, attention_mask=attention_mask,
+                    output_hidden_states=True,
+                )
+                hidden_states = list(outputs.hidden_states[1:])
+            finally:
+                manager.remove()
         else:
             # Generate atom scales from pages + pass number
             atom_scales = self.hypernet(state_pages, pass_num)
