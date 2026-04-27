@@ -82,9 +82,15 @@ class PerCycleDataset(Dataset):
         cycle_targets = item['cycle_targets']
         # Truncate to max_passes if needed
         cycle_targets = cycle_targets[:self.max_passes]
+        # Generation targets: equation strings (e.g. "160 - 63 = 97")
+        # Falls back to stringified numbers if not present
+        gen_targets = item.get('cycle_gen_targets',
+                               [str(ct) for ct in cycle_targets])
+        gen_targets = gen_targets[:self.max_passes]
         return {
             'problem': item['problem'],
             'cycle_targets': cycle_targets,
+            'cycle_gen_targets': gen_targets,
             'final_answer': item['final_answer'],
             'num_steps': min(item.get('num_steps', len(cycle_targets)), self.max_passes),
         }
@@ -103,17 +109,25 @@ def per_cycle_collate_fn(batch):
     # Pad cycle_targets to max_steps, track mask
     padded_targets = []
     mask = []
+    # Collect gen_targets per cycle position: list of max_steps lists
+    gen_targets_by_cycle = [[] for _ in range(max_steps)]
     for s in batch:
         ct = s['cycle_targets']
+        gt = s.get('cycle_gen_targets', [str(c) for c in ct])
         pad_len = max_steps - len(ct)
-        # Pad with 0 (will be masked out)
         padded_targets.append(ct + [0] * pad_len)
         mask.append([1.0] * len(ct) + [0.0] * pad_len)
+        for i in range(max_steps):
+            if i < len(gt):
+                gen_targets_by_cycle[i].append(gt[i])
+            else:
+                gen_targets_by_cycle[i].append("0")  # placeholder for padded
 
     return {
         'problem': problems,
-        'cycle_targets': torch.tensor(padded_targets, dtype=torch.long),  # (B, max_steps)
-        'cycle_mask': torch.tensor(mask, dtype=torch.float32),            # (B, max_steps)
+        'cycle_targets': torch.tensor(padded_targets, dtype=torch.long),
+        'cycle_mask': torch.tensor(mask, dtype=torch.float32),
+        'cycle_gen_targets': gen_targets_by_cycle,  # list of max_steps x list of B strings
         'final_answer': finals,
         'num_steps': num_steps_list,
         'max_steps': max_steps,
@@ -125,7 +139,8 @@ def per_cycle_collate_fn(batch):
 # ---------------------------------------------------------------------------
 
 def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_mask,
-                            finals_t, num_passes=5, max_length=192,
+                            finals_t, cycle_gen_targets=None,
+                            num_passes=5, max_length=192,
                             lam_gen=1.0, lam_ah=0.5):
     """Forward pass with hybrid per-cycle loss: generation + answer head.
 
@@ -172,6 +187,7 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
     cycle_mask = cycle_mask.to(device)
 
     state_pages = []
+    messages = []
     atom_scales_history = []
     mid_states_history = []
     pre_tanh_history = []
@@ -181,17 +197,40 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
     valid_cycles = 0
 
     for pass_num in range(num_passes):
-        # --- Get atom scales for this cycle ---
+        # --- For cycle 2+: inject previous answer as text context ---
+        if pass_num > 0 and len(state_pages) > 0:
+            with torch.no_grad():
+                prev_preds = answer_head.decode(state_pages[-1].float())  # (B,)
+            # Build context strings: "Step 1 result: 160\n"
+            context_strs = [f"Step {pass_num} result: {int(p.item())}\n" for p in prev_preds]
+            # Re-tokenize: context + original problem
+            augmented = [ctx + prob for ctx, prob in zip(context_strs, problems)]
+            aug_inputs = model.tokenizer(
+                augmented, return_tensors='pt', padding=True,
+                truncation=True, max_length=max_length + 20,
+            )
+            cycle_input_ids = aug_inputs['input_ids'].to(device)
+            cycle_attention_mask = aug_inputs['attention_mask'].to(device)
+            cycle_embeds = embed_layer(cycle_input_ids)
+            cycle_prompt_len = cycle_input_ids.size(1)
+        else:
+            cycle_embeds = problem_embeds
+            cycle_attention_mask = attention_mask
+            cycle_prompt_len = prompt_len
+
+        # --- Get atom scales for this cycle (pages + messages) ---
         if pass_num == 0 and len(state_pages) == 0:
             hyper_dtype = next(model.hypernet.parameters()).dtype
             zero_page = torch.zeros(batch_size, model.page_size,
                                     device=device, dtype=hyper_dtype)
             atom_scales, pre_tanh = model.hypernet(
                 [zero_page], pass_num=0, return_pre_tanh=True,
+                messages=messages if messages else None,
             )
         else:
             atom_scales, pre_tanh = model.hypernet(
                 state_pages, pass_num=pass_num, return_pre_tanh=True,
+                messages=messages if messages else None,
             )
 
         # --- Think: run transformer with this cycle's LoRA ---
@@ -199,7 +238,7 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
         manager.apply(model.atoms, atom_scales)
         try:
             outputs = model.transformer(
-                inputs_embeds=problem_embeds, attention_mask=attention_mask,
+                inputs_embeds=cycle_embeds, attention_mask=cycle_attention_mask,
                 output_hidden_states=True,
             )
             hidden_states = list(outputs.hidden_states[1:])
@@ -227,6 +266,10 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
 
         state_pages.append(page)
 
+        # Generate message: direct signal from last layer, bypasses perceiver
+        message = model.message_generator(hidden_states[-1])
+        messages.append(message)
+
         # Atom dropout during training: randomly zero 10% of atom scales
         if model.training and pass_num > 0:
             atom_mask = (torch.rand_like(atom_scales) > 0.1).float()
@@ -243,7 +286,12 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
             if mask_val.sum() > 0:
                 # === GENERATION LOSS (strong gradient engine) ===
                 # Tokenize short target: just the number as text (e.g. "48")
-                target_strs = [str(ct.item()) for ct in cycle_target]
+                # Use equation gen targets if available (e.g. "160 - 63 = 97")
+                # Otherwise fall back to stringified numbers
+                if cycle_gen_targets is not None and pass_num < len(cycle_gen_targets):
+                    target_strs = cycle_gen_targets[pass_num]  # list of B strings
+                else:
+                    target_strs = [str(ct.item()) for ct in cycle_target]
                 target_inputs = model.tokenizer(
                     target_strs, return_tensors='pt', padding=True,
                     add_special_tokens=False,
@@ -251,19 +299,24 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
                 target_ids = target_inputs['input_ids'].to(device)  # (B, T)
 
                 # Teacher-forced generation with THIS cycle's LoRA
+                # Use augmented input (with injected context) for cycle 2+
                 target_embeds = embed_layer(target_ids)
-                full_embeds = torch.cat([problem_embeds, target_embeds], dim=1)
+                full_embeds = torch.cat([cycle_embeds, target_embeds], dim=1)
+                target_attn = (target_ids != model.tokenizer.pad_token_id).long()
+                full_attn = torch.cat([cycle_attention_mask, target_attn], dim=1)
                 manager = AtomAdditiveLoRAManager(model.transformer)
                 manager.apply(model.atoms, atom_scales)
                 try:
                     gen_outputs = model.transformer(
-                        inputs_embeds=full_embeds, use_cache=False,
+                        inputs_embeds=full_embeds,
+                        attention_mask=full_attn,
+                        use_cache=False,
                     )
                 finally:
                     manager.remove()
 
                 # Cross-entropy on target tokens only
-                gen_logits = gen_outputs.logits[:, prompt_len - 1:-1, :]
+                gen_logits = gen_outputs.logits[:, cycle_prompt_len - 1:-1, :]
                 gen_loss_this = F.cross_entropy(
                     gen_logits.reshape(-1, gen_logits.size(-1)),
                     target_ids.reshape(-1),
@@ -276,13 +329,26 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
                 gen_loss_per_sample = gen_loss_per_sample / target_mask.sum(dim=1).clamp(min=1)
                 # Apply cycle mask
                 gen_loss_this = (gen_loss_per_sample * mask_val).sum() / mask_val.sum()
-                per_cycle_gen_loss = per_cycle_gen_loss + gen_loss_this
 
-                # === ANSWER HEAD LOSS (shaping signal) ===
-                current_page = page.float()
+                # === ANSWER HEAD LOSS ===
+                # For cycle 2+: read the DELTA (new info only, not persisted cycle 1)
+                # This prevents the answer head from copying cycle 1's number
+                if pass_num > 0 and len(state_pages) >= 2:
+                    current_page = (state_pages[-1] - state_pages[-2]).float()
+                else:
+                    current_page = page.float()
                 ah_loss_this = answer_head_loss(answer_head, current_page, cycle_target)
                 mask_frac = mask_val.mean()
-                per_cycle_ah_loss = per_cycle_ah_loss + ah_loss_this * mask_frac
+
+                # Per-cycle weight flip:
+                # Cycle 1 (parsing): gen loss drives, answer head supplements
+                # Cycle 2+ (computation): answer head DOMINATES, gen is background
+                if pass_num == 0:
+                    per_cycle_gen_loss = per_cycle_gen_loss + gen_loss_this * 1.0
+                    per_cycle_ah_loss = per_cycle_ah_loss + ah_loss_this * mask_frac * 0.5
+                else:
+                    per_cycle_gen_loss = per_cycle_gen_loss + gen_loss_this * 0.1
+                    per_cycle_ah_loss = per_cycle_ah_loss + ah_loss_this * mask_frac * 5.0
                 valid_cycles += 1
 
             # Record predictions for diagnostics
@@ -377,18 +443,40 @@ def evaluate_per_cycle(model, answer_head, eval_dataset, device,
             batch_size = input_ids.size(0)
 
             state_pages = []
+            eval_messages = []
             mid_states_history = []
 
             for pass_num in range(num_passes):
-                page, _scales, current_mid_states = model.thinking_pass(
-                    input_ids, attention_mask, state_pages, pass_num,
+                # For cycle 2+: inject previous answer as text context
+                if pass_num > 0 and len(state_pages) > 0:
+                    prev_preds = answer_head.decode(state_pages[-1].float())
+                    context_strs = [f"Step {pass_num} result: {int(p.item())}\n" for p in prev_preds]
+                    augmented = [ctx + prob for ctx, prob in zip(context_strs, problems)]
+                    aug_inputs = model.tokenizer(
+                        augmented, return_tensors='pt', padding=True,
+                        truncation=True, max_length=max_length + 20,
+                    )
+                    eval_ids = aug_inputs['input_ids'].to(device)
+                    eval_mask = aug_inputs['attention_mask'].to(device)
+                else:
+                    eval_ids = input_ids
+                    eval_mask = attention_mask
+
+                page, _scales, current_mid_states, message = model.thinking_pass(
+                    eval_ids, eval_mask, state_pages, pass_num,
                     prev_mid_states=mid_states_history if mid_states_history else None,
+                    messages=eval_messages if eval_messages else None,
                 )
                 state_pages.append(page)
+                eval_messages.append(message)
                 mid_states_history.append(current_mid_states)
 
                 # Per-cycle answer head evaluation
-                current_page = page.float()
+                # For cycle 2+: read the delta (new info, not persisted)
+                if pass_num > 0 and len(state_pages) >= 2:
+                    current_page = (state_pages[-1] - state_pages[-2]).float()
+                else:
+                    current_page = page.float()
                 preds = answer_head.decode(current_page)  # (B,)
 
                 for j in range(batch_size):
@@ -410,13 +498,17 @@ def evaluate_per_cycle(model, answer_head, eval_dataset, device,
 
                         max_steps_seen = max(max_steps_seen, pass_num + 1)
 
-            # Final accuracy: answer_head on last page vs final_answer
-            last_page = state_pages[-1].float()
-            final_preds = answer_head.decode(last_page)
-
+            # Final accuracy: use the LAST SUPERVISED cycle's answer head prediction
+            # For 2-step problems with 3 passes, the answer is in cycle 1 (pass_num=1)
             for j in range(batch_size):
                 gold = gold_finals[j]
-                pred_val = final_preds[j].item()
+                ct = cycle_targets_list[j]
+                last_supervised = min(len(ct), len(state_pages)) - 1  # last cycle with a target
+                if last_supervised > 0:
+                    final_page = (state_pages[last_supervised] - state_pages[last_supervised - 1]).float()
+                else:
+                    final_page = state_pages[last_supervised].float()
+                pred_val = answer_head.decode(final_page[j:j+1])[0].item()
                 try:
                     if int(pred_val) == int(gold):
                         final_correct += 1
@@ -541,7 +633,8 @@ def log_page_variance(state_pages, device):
 # ---------------------------------------------------------------------------
 
 def try_warm_start(model, answer_head, warm_path, skip_perceiver=False):
-    """Try atom checkpoint first; fall back to perceiver-only warm start."""
+    """Try atom checkpoint first; fall back to perceiver-only warm start.
+    Returns optimizer state dict if present in checkpoint, else None."""
     ckpt = torch.load(warm_path, map_location='cpu', weights_only=True)
 
     if 'atoms' in ckpt:
@@ -609,12 +702,28 @@ def try_warm_start(model, answer_head, warm_path, skip_perceiver=False):
             model.residual_gate.load_state_dict(own_rg, strict=False)
             print(f"  residual_gate: loaded {loaded_rg}/{len(own_rg)}")
 
+        if 'message_generator' in ckpt:
+            own_mg = model.message_generator.state_dict()
+            loaded_mg = 0
+            for k, v in ckpt['message_generator'].items():
+                if k in own_mg and own_mg[k].shape == v.shape:
+                    own_mg[k] = v
+                    loaded_mg += 1
+            model.message_generator.load_state_dict(own_mg, strict=False)
+            print(f"  message_generator: loaded {loaded_mg}/{len(own_mg)}")
+
+        if 'optimizer' in ckpt:
+            print(f"  optimizer state: found")
+            return ckpt['optimizer']
+        return None
+
     else:
         print(f"  Warm-starting perceiver only from {warm_path}")
         warm_start_atom_from_checkpoint(model, ckpt)
         print(f"  atoms: fresh init (no atom equivalent in checkpoint)")
         print(f"  hypernet: fresh init (new architecture)")
         print(f"  answer_head: fresh init")
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -656,15 +765,17 @@ def train(args):
     model.confidence_head = model.confidence_head.to(device)  # fp32 (small)
     model.residual_gate = model.residual_gate.to(device=device, dtype=torch.bfloat16)
     model.probe_head = model.probe_head.to(device)
+    model.message_generator = model.message_generator.to(device)  # fp32 (small)
 
     # Answer head -- small, kept in float32 for digit classification stability
     answer_head = AnswerHead(page_size=model.page_size).to(device)
 
+    saved_optim_state = None
     if warm_path:
         print(f"\nWarm-starting from {warm_path}")
         if args.skip_perceiver:
             print("  (--skip_perceiver: perceiver will stay random)")
-        try_warm_start(model, answer_head, warm_path, skip_perceiver=args.skip_perceiver)
+        saved_optim_state = try_warm_start(model, answer_head, warm_path, skip_perceiver=args.skip_perceiver)
 
     # --- Data ---
     train_path = os.path.join(args.data_dir, f'{level}_train.jsonl')
@@ -701,14 +812,24 @@ def train(args):
     atom_A_params = list(model.atoms.A.values()) if hasattr(model.atoms.A, 'values') else list(model.atoms.A.parameters())
     atom_B_params = list(model.atoms.B.values()) if hasattr(model.atoms.B, 'values') else list(model.atoms.B.parameters())
 
+    s = args.lr_scale
     optimizer = torch.optim.AdamW([
-        {'params': list(model.compressor.parameters()), 'lr': 1e-4, 'weight_decay': 0.01},
-        {'params': atom_A_params, 'lr': 1e-4, 'weight_decay': 0.05},
-        {'params': atom_B_params, 'lr': 1e-4, 'weight_decay': 0.05},
-        {'params': list(model.hypernet.parameters()), 'lr': 1e-3, 'weight_decay': 0.1},
-        {'params': list(model.confidence_head.parameters()), 'lr': 1e-3, 'weight_decay': 0.01},
-        {'params': list(answer_head.parameters()), 'lr': 3e-3, 'weight_decay': 0.01},
+        {'params': list(model.compressor.parameters()), 'lr': 1e-4 * s, 'weight_decay': 0.01},
+        {'params': atom_A_params, 'lr': 1e-4 * s, 'weight_decay': 0.05},
+        {'params': atom_B_params, 'lr': 1e-4 * s, 'weight_decay': 0.05},
+        {'params': list(model.hypernet.parameters()), 'lr': 1e-3 * s, 'weight_decay': 0.1},
+        {'params': list(model.confidence_head.parameters()), 'lr': 1e-3 * s, 'weight_decay': 0.01},
+        {'params': list(answer_head.parameters()), 'lr': 3e-3 * s, 'weight_decay': 0.01},
+        {'params': list(model.message_generator.parameters()), 'lr': 1e-3 * s, 'weight_decay': 0.01},
     ])
+
+    # Load optimizer state if available from warm start
+    if saved_optim_state is not None:
+        try:
+            optimizer.load_state_dict(saved_optim_state)
+            print("  optimizer state: loaded from checkpoint")
+        except Exception as e:
+            print(f"  optimizer state: couldn't load ({e}), starting fresh")
 
     trainable = (
         list(model.compressor.parameters())
@@ -716,6 +837,7 @@ def train(args):
         + list(model.hypernet.parameters())
         + list(model.confidence_head.parameters())
         + list(answer_head.parameters())
+        + list(model.message_generator.parameters())
     )
     print(f"Trainable params: {sum(p.numel() for p in trainable):,}")
     print(f"  atoms: {sum(p.numel() for p in model.atoms.parameters()):,} "
@@ -724,6 +846,7 @@ def train(args):
     print(f"  compressor: {sum(p.numel() for p in model.compressor.parameters()):,}")
     print(f"  answer_head: {sum(p.numel() for p in answer_head.parameters()):,}")
     print(f"  confidence_head: {sum(p.numel() for p in model.confidence_head.parameters()):,}")
+    print(f"  message_gen: {sum(p.numel() for p in model.message_generator.parameters()):,}")
     print(f"GPU mem after init: {torch.cuda.memory_allocated()/1e9:.2f} GB")
 
     # Baseline eval
@@ -753,6 +876,7 @@ def train(args):
             problems = batch['problem']
             cycle_targets = batch['cycle_targets']  # (B, max_steps)
             cycle_mask = batch['cycle_mask']          # (B, max_steps)
+            cycle_gen_targets = batch.get('cycle_gen_targets')  # list of max_steps x B strings
 
             finals_raw = batch['final_answer']
             finals_list = []
@@ -769,7 +893,8 @@ def train(args):
              page_cos, active_atoms, s_std, xpass_cos,
              conf_mean, state_pages, per_cycle_preds) = forward_train_per_cycle(
                 model, answer_head, problems, cycle_targets, cycle_mask,
-                finals_t, num_passes=args.num_passes, max_length=max_length,
+                finals_t, cycle_gen_targets=cycle_gen_targets,
+                num_passes=args.num_passes, max_length=max_length,
             )
 
             total_loss = (args.lam_gen * gen_loss
@@ -829,6 +954,8 @@ def train(args):
                 'confidence_head': model.confidence_head.state_dict(),
                 'answer_head': answer_head.state_dict(),
                 'residual_gate': model.residual_gate.state_dict(),
+                'message_generator': model.message_generator.state_dict(),
+                'optimizer': optimizer.state_dict(),
                 'accuracy': final_acc,
                 'per_cycle_acc': per_cycle_acc,
                 'level': level,
@@ -916,6 +1043,8 @@ if __name__ == '__main__':
                    help='Confidence loss weight')
     p.add_argument('--lam_scale_reg', type=float, default=0.1,
                    help='Pre-tanh scale regularization weight')
+    p.add_argument('--lr_scale', type=float, default=1.0,
+                   help='Scale all learning rates (use 0.7 when resuming to protect cycle 1)')
     p.add_argument('--num_atoms', type=int, default=64,
                    help='Number of LoRA atoms')
     p.add_argument('--atom_rank', type=int, default=6,

@@ -129,7 +129,8 @@ def _l3_add(rng):
         f"{name} has {a} {obj}. {name} buys {b} more. How many {obj} does {name} have now?",
     ]
     problem = rng.choice(templates)
-    return problem, [result], result
+    gen = f"{name} had {a} and got {b} more. {a} + {b} = {result} {obj} total."
+    return problem, [result], result, [gen]
 
 
 def _l3_sub(rng):
@@ -145,7 +146,8 @@ def _l3_sub(rng):
         f"{name} had {a} {obj}. {name} ate {b} of them. How many {obj} are left?",
     ]
     problem = rng.choice(templates)
-    return problem, [result], result
+    gen = f"{name} started with {a} and lost {b}. {a} - {b} = {result} {obj} remaining."
+    return problem, [result], result, [gen]
 
 
 def _l3_double(rng):
@@ -158,7 +160,8 @@ def _l3_double(rng):
         f"{name} has {a} {obj}. {name} gets the same amount again. How many {obj} does {name} have now?",
     ]
     problem = rng.choice(templates)
-    return problem, [result], result
+    gen = f"{name} had {a} {obj} and doubled them. {a} * 2 = {result} {obj} now."
+    return problem, [result], result, [gen]
 
 
 def _l3_half(rng):
@@ -171,7 +174,8 @@ def _l3_half(rng):
         f"{name} has {a} {obj}. {name} splits them evenly with a friend. How many does {name} keep?",
     ]
     problem = rng.choice(templates)
-    return problem, [result], result
+    gen = f"{name} had {a} {obj} and gave half away. {a} / 2 = {result} {obj} kept."
+    return problem, [result], result, [gen]
 
 
 def _l3_triple(rng):
@@ -180,7 +184,8 @@ def _l3_triple(rng):
     a = rng.randint(10, 100)
     result = a * 3
     problem = f"{name} had {a} {obj}. {name} tripled the collection. How many {obj} does {name} have now?"
-    return problem, [result], result
+    gen = f"{name} had {a} {obj} and tripled them. {a} * 3 = {result} {obj} now."
+    return problem, [result], result, [gen]
 
 
 def _l3_multiply(rng):
@@ -194,7 +199,8 @@ def _l3_multiply(rng):
         f"There are {a} boxes with {b} {obj} each. How many {obj} are there in total?",
     ]
     problem = rng.choice(templates)
-    return problem, [result], result
+    gen = f"There are {a} groups of {b}. {a} * {b} = {result} {obj} total."
+    return problem, [result], result, [gen]
 
 
 L3_GENERATORS = [_l3_add, _l3_sub, _l3_double, _l3_half, _l3_triple, _l3_multiply]
@@ -220,7 +226,11 @@ def _l4_sub_sub(rng):
         f"They {v1} {a} {t1} and {v2} {b} {t2}. "
         f"How many {obj} are left?"
     )
-    return problem, [mid, result], result
+    gen_targets = [
+        f"They started with {start} {obj} and {v1} {a}. {start} - {a} = {mid} {obj} remaining.",
+        f"Then they {v2} {b} more. {mid} - {b} = {result} {obj} left.",
+    ]
+    return problem, [mid, result], result, gen_targets
 
 
 def _l4_add_add(rng):
@@ -239,7 +249,11 @@ def _l4_add_add(rng):
         f"{name} {v1} {a} {s1} {t1} and {v2} {b} {s2} {t2}. "
         f"How many {obj} does {name} have now?"
     )
-    return problem, [mid, result], result
+    gen_targets = [
+        f"{name} had {start} {obj} and {v1} {a} more. {start} + {a} = {mid} {obj} now.",
+        f"Then {name} {v2} {b} more. {mid} + {b} = {result} {obj} total.",
+    ]
+    return problem, [mid, result], result, gen_targets
 
 
 def _l4_sub_add(rng):
@@ -258,7 +272,11 @@ def _l4_sub_add(rng):
         f"{name} {v_lose} {a} {t1}, then {v_gain} {b} {s_gain} {t2}. "
         f"How many {obj} does {name} have now?"
     )
-    return problem, [mid, result], result
+    gen_targets = [
+        f"{name} had {start} {obj} and {v_lose} {a}. {start} - {a} = {mid} {obj} remaining.",
+        f"Then {name} {v_gain} {b} more. {mid} + {b} = {result} {obj} now.",
+    ]
+    return problem, [mid, result], result, gen_targets
 
 
 def _l4_add_sub(rng):
@@ -277,7 +295,11 @@ def _l4_add_sub(rng):
         f"{name} {v_gain} {a} {s_gain} {t1}, then {v_lose} {b} {t2}. "
         f"How many {obj} does {name} have now?"
     )
-    return problem, [mid, result], result
+    gen_targets = [
+        f"{name} had {start} {obj} and {v_gain} {a} more. {start} + {a} = {mid} {obj} now.",
+        f"Then {name} {v_lose} {b}. {mid} - {b} = {result} {obj} remaining.",
+    ]
+    return problem, [mid, result], result, gen_targets
 
 
 def _l4_half_add(rng):
@@ -291,7 +313,11 @@ def _l4_half_add(rng):
         f"{name} had {start} {obj}. {name} gave half to a friend, "
         f"then found {b} more. How many {obj} does {name} have now?"
     )
-    return problem, [mid, result], result
+    gen_targets = [
+        f"{name} had {start} {obj} and gave half away. {start} / 2 = {mid} {obj} kept.",
+        f"Then {name} found {b} more. {mid} + {b} = {result} {obj} now.",
+    ]
+    return problem, [mid, result], result, gen_targets
 
 
 def _l4_double_sub(rng):
@@ -305,7 +331,11 @@ def _l4_double_sub(rng):
         f"{name} had {start} {obj}. {name} doubled the collection, "
         f"then gave {b} away. How many {obj} does {name} have now?"
     )
-    return problem, [mid, result], result
+    gen_targets = [
+        f"{name} had {start} {obj} and doubled them. {start} * 2 = {mid} {obj} now.",
+        f"Then {name} gave {b} away. {mid} - {b} = {result} {obj} remaining.",
+    ]
+    return problem, [mid, result], result, gen_targets
 
 
 L4_GENERATORS = [_l4_sub_sub, _l4_add_add, _l4_sub_add, _l4_add_sub,
@@ -696,7 +726,14 @@ def generate_level(level, num_problems, seed):
         attempts += 1
         gen = rng.choice(generators)
         try:
-            problem, cycle_targets, final_answer = gen(rng)
+            result = gen(rng)
+            if len(result) == 4:
+                problem, cycle_targets, final_answer, gen_targets = result
+            else:
+                problem, cycle_targets, final_answer = result
+                # Auto-generate gen_targets: first cycle is just the number,
+                # later cycles are just the number (no equation available)
+                gen_targets = [str(ct) for ct in cycle_targets]
         except (ValueError, ZeroDivisionError):
             continue
 
@@ -711,6 +748,7 @@ def generate_level(level, num_problems, seed):
         samples.append({
             'problem': problem,
             'cycle_targets': cycle_targets,
+            'cycle_gen_targets': gen_targets,
             'final_answer': final_answer,
             'num_steps': len(cycle_targets),
             'level': level,
