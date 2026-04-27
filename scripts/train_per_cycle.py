@@ -456,6 +456,70 @@ def generate_translation_drills(num_per_pattern=200, rng=None):
 
 
 # ---------------------------------------------------------------------------
+# Split generation: atoms ON for equation setup, atoms OFF for arithmetic
+# ---------------------------------------------------------------------------
+
+def split_generate(model, input_ids, attention_mask, atom_scales, max_setup=30, max_compute=15):
+    """Split generation: atoms ON for equation setup, atoms OFF for arithmetic.
+
+    Phase A: Generate with LoRA until '=' token (atoms steer parsing)
+    Phase B: Continue WITHOUT LoRA (vanilla Llama computes arithmetic)
+
+    Returns the full generated token sequence (generated part only, not prompt).
+    Processes one sample at a time (batch_size=1).
+    """
+    device = input_ids.device
+    tokenizer = model.tokenizer
+
+    # Find the '=' token ID
+    equals_ids = set(tokenizer.encode("=", add_special_tokens=False))
+    eos_id = tokenizer.eos_token_id
+
+    # Phase A: Generate with LoRA (atoms ON)
+    mgr = AtomAdditiveLoRAManager(model.transformer)
+    mgr.apply(model.atoms, atom_scales)
+
+    generated_ids = input_ids.clone()
+    gen_attn = attention_mask.clone()
+    phase_a_len = 0
+
+    try:
+        for step in range(max_setup):
+            outputs = model.transformer(generated_ids, attention_mask=gen_attn)
+            next_logits = outputs.logits[:, -1, :]
+            next_token = next_logits.argmax(dim=-1, keepdim=True)
+
+            generated_ids = torch.cat([generated_ids, next_token], dim=1)
+            gen_attn = torch.cat([gen_attn, torch.ones_like(next_token)], dim=1)
+            phase_a_len += 1
+
+            # Stop at '=' — Phase B takes over
+            if next_token.item() in equals_ids:
+                break
+            # Also stop at EOS
+            if next_token.item() == eos_id:
+                break
+    finally:
+        mgr.remove()
+
+    # Phase B: Continue WITHOUT LoRA (vanilla Llama computes)
+    for step in range(max_compute):
+        outputs = model.transformer(generated_ids, attention_mask=gen_attn)
+        next_logits = outputs.logits[:, -1, :]
+        next_token = next_logits.argmax(dim=-1, keepdim=True)
+
+        generated_ids = torch.cat([generated_ids, next_token], dim=1)
+        gen_attn = torch.cat([gen_attn, torch.ones_like(next_token)], dim=1)
+
+        if next_token.item() == eos_id:
+            break
+
+    # Return only the generated part (not the prompt)
+    prompt_len = input_ids.size(1)
+    return generated_ids[:, prompt_len:]
+
+
+# ---------------------------------------------------------------------------
 # Per-cycle JSONL Dataset
 # ---------------------------------------------------------------------------
 
@@ -1046,7 +1110,7 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
 # ---------------------------------------------------------------------------
 
 def evaluate_per_cycle(model, eval_dataset, device,
-                       num_passes=5, max_length=192):
+                       num_passes=5, max_length=192, split_gen=False):
     """Evaluate via generation + regex extraction at each cycle.
 
     Returns:
@@ -1100,23 +1164,35 @@ def evaluate_per_cycle(model, eval_dataset, device,
 
             # Generate with LoRA for cycle 1 (using initial_scales)
             prompt_len = input_ids.size(1)
-            mgr = AtomAdditiveLoRAManager(model.transformer)
-            mgr.apply(model.atoms, initial_scales)
-            try:
-                gen_out = model.transformer.generate(
-                    input_ids=input_ids, attention_mask=attention_mask,
-                    max_new_tokens=60, do_sample=False,
-                    pad_token_id=model.tokenizer.pad_token_id,
-                    eos_token_id=model.tokenizer.eos_token_id,
-                )
-            finally:
-                mgr.remove()
+            if split_gen:
+                # Split generation: one sample at a time
+                cycle_preds = []
+                for b in range(batch_size):
+                    b_ids = input_ids[b:b+1]
+                    b_mask = attention_mask[b:b+1]
+                    b_scales = initial_scales[b:b+1]
+                    gen_tokens = split_generate(model, b_ids, b_mask, b_scales)
+                    gen_text = model.tokenizer.decode(gen_tokens[0], skip_special_tokens=False)
+                    pred_val = extract_answer_from_text(gen_text)
+                    cycle_preds.append(pred_val)
+            else:
+                mgr = AtomAdditiveLoRAManager(model.transformer)
+                mgr.apply(model.atoms, initial_scales)
+                try:
+                    gen_out = model.transformer.generate(
+                        input_ids=input_ids, attention_mask=attention_mask,
+                        max_new_tokens=60, do_sample=False,
+                        pad_token_id=model.tokenizer.pad_token_id,
+                        eos_token_id=model.tokenizer.eos_token_id,
+                    )
+                finally:
+                    mgr.remove()
 
-            cycle_preds = []
-            for b in range(batch_size):
-                gen_text = model.tokenizer.decode(gen_out[b][prompt_len:], skip_special_tokens=False)
-                pred_val = extract_answer_from_text(gen_text)
-                cycle_preds.append(pred_val)
+                cycle_preds = []
+                for b in range(batch_size):
+                    gen_text = model.tokenizer.decode(gen_out[b][prompt_len:], skip_special_tokens=False)
+                    pred_val = extract_answer_from_text(gen_text)
+                    cycle_preds.append(pred_val)
             eval_pred_vals.append(cycle_preds)
             eval_prev_predictions.append(cycle_preds)
 
@@ -1173,24 +1249,36 @@ def evaluate_per_cycle(model, eval_dataset, device,
                 # Generate text with LoRA applied
                 eval_prompt_len = eval_ids.size(1)
 
-                manager = AtomAdditiveLoRAManager(model.transformer)
-                manager.apply(model.atoms, current_gen_scales)
-                try:
-                    gen_out = model.transformer.generate(
-                        input_ids=eval_ids, attention_mask=eval_mask,
-                        max_new_tokens=60, do_sample=False,
-                        pad_token_id=model.tokenizer.pad_token_id,
-                        eos_token_id=model.tokenizer.eos_token_id,
-                    )
-                finally:
-                    manager.remove()
+                if split_gen:
+                    # Split generation: one sample at a time
+                    cycle_preds = []
+                    for b in range(batch_size):
+                        b_ids = eval_ids[b:b+1]
+                        b_mask = eval_mask[b:b+1]
+                        b_scales = current_gen_scales[b:b+1]
+                        gen_tokens = split_generate(model, b_ids, b_mask, b_scales)
+                        gen_text = model.tokenizer.decode(gen_tokens[0], skip_special_tokens=False)
+                        pred_val = extract_answer_from_text(gen_text)
+                        cycle_preds.append(pred_val)
+                else:
+                    manager = AtomAdditiveLoRAManager(model.transformer)
+                    manager.apply(model.atoms, current_gen_scales)
+                    try:
+                        gen_out = model.transformer.generate(
+                            input_ids=eval_ids, attention_mask=eval_mask,
+                            max_new_tokens=60, do_sample=False,
+                            pad_token_id=model.tokenizer.pad_token_id,
+                            eos_token_id=model.tokenizer.eos_token_id,
+                        )
+                    finally:
+                        manager.remove()
 
-                # Extract predictions from generated text
-                cycle_preds = []
-                for b in range(batch_size):
-                    gen_text = model.tokenizer.decode(gen_out[b][eval_prompt_len:], skip_special_tokens=False)
-                    pred_val = extract_answer_from_text(gen_text)
-                    cycle_preds.append(pred_val)
+                    # Extract predictions from generated text
+                    cycle_preds = []
+                    for b in range(batch_size):
+                        gen_text = model.tokenizer.decode(gen_out[b][eval_prompt_len:], skip_special_tokens=False)
+                        pred_val = extract_answer_from_text(gen_text)
+                        cycle_preds.append(pred_val)
                 eval_pred_vals.append(cycle_preds)
                 eval_prev_predictions.append(cycle_preds)
 
@@ -1246,7 +1334,8 @@ def evaluate_per_cycle(model, eval_dataset, device,
 # ---------------------------------------------------------------------------
 
 def infer_single(model, problem_text, device,
-                 max_passes=5, confidence_threshold=0.9, max_length=192):
+                 max_passes=5, confidence_threshold=0.9, max_length=192,
+                 split_gen=False):
     """Infer answer for a single problem using generation + confidence stopping.
 
     Returns:
@@ -1282,19 +1371,23 @@ def infer_single(model, problem_text, device,
 
         # Generate with LoRA for cycle 1 (using initial_scales)
         prompt_len = input_ids.size(1)
-        mgr = AtomAdditiveLoRAManager(model.transformer)
-        mgr.apply(model.atoms, initial_scales)
-        try:
-            gen_out = model.transformer.generate(
-                input_ids=input_ids, attention_mask=attention_mask,
-                max_new_tokens=60, do_sample=False,
-                pad_token_id=model.tokenizer.pad_token_id,
-                eos_token_id=model.tokenizer.eos_token_id,
-            )
-        finally:
-            mgr.remove()
+        if split_gen:
+            gen_tokens = split_generate(model, input_ids, attention_mask, initial_scales)
+            gen_text = model.tokenizer.decode(gen_tokens[0], skip_special_tokens=False)
+        else:
+            mgr = AtomAdditiveLoRAManager(model.transformer)
+            mgr.apply(model.atoms, initial_scales)
+            try:
+                gen_out = model.transformer.generate(
+                    input_ids=input_ids, attention_mask=attention_mask,
+                    max_new_tokens=60, do_sample=False,
+                    pad_token_id=model.tokenizer.pad_token_id,
+                    eos_token_id=model.tokenizer.eos_token_id,
+                )
+            finally:
+                mgr.remove()
+            gen_text = model.tokenizer.decode(gen_out[0][prompt_len:], skip_special_tokens=False)
 
-        gen_text = model.tokenizer.decode(gen_out[0][prompt_len:], skip_special_tokens=False)
         last_pred = extract_answer_from_text(gen_text)
         infer_prev_predictions.append(last_pred if last_pred is not None else 0)
 
@@ -1315,19 +1408,22 @@ def infer_single(model, problem_text, device,
             prev_scales = next_scales  # advance for next cycle
 
             # Generate with LoRA applied
-            manager = AtomAdditiveLoRAManager(model.transformer)
-            manager.apply(model.atoms, current_gen_scales)
-            try:
-                gen_out = model.transformer.generate(
-                    input_ids=input_ids, attention_mask=attention_mask,
-                    max_new_tokens=60, do_sample=False,
-                    pad_token_id=model.tokenizer.pad_token_id,
-                    eos_token_id=model.tokenizer.eos_token_id,
-                )
-            finally:
-                manager.remove()
-
-            gen_text = model.tokenizer.decode(gen_out[0][prompt_len:], skip_special_tokens=False)
+            if split_gen:
+                gen_tokens = split_generate(model, input_ids, attention_mask, current_gen_scales)
+                gen_text = model.tokenizer.decode(gen_tokens[0], skip_special_tokens=False)
+            else:
+                manager = AtomAdditiveLoRAManager(model.transformer)
+                manager.apply(model.atoms, current_gen_scales)
+                try:
+                    gen_out = model.transformer.generate(
+                        input_ids=input_ids, attention_mask=attention_mask,
+                        max_new_tokens=60, do_sample=False,
+                        pad_token_id=model.tokenizer.pad_token_id,
+                        eos_token_id=model.tokenizer.eos_token_id,
+                    )
+                finally:
+                    manager.remove()
+                gen_text = model.tokenizer.decode(gen_out[0][prompt_len:], skip_special_tokens=False)
             last_pred = extract_answer_from_text(gen_text)
             infer_prev_predictions.append(last_pred if last_pred is not None else 0)
             last_pass_num = pass_num
@@ -1562,6 +1658,7 @@ def train(args):
     per_cycle_acc, final_acc = evaluate_per_cycle(
         model, eval_dataset, device,
         num_passes=args.num_passes, max_length=max_length,
+        split_gen=args.split_gen,
     )
     print(f"\nBaseline: final={final_acc:.1f}%  per_cycle={[f'{a:.1f}%' for a in per_cycle_acc]}\n")
 
@@ -1656,6 +1753,7 @@ def train(args):
         per_cycle_acc, final_acc = evaluate_per_cycle(
             model, eval_dataset, device,
             num_passes=args.num_passes, max_length=max_length,
+            split_gen=args.split_gen,
         )
 
         improved = False
@@ -1767,6 +1865,8 @@ if __name__ == '__main__':
                    help='LR warmup epochs (default: 5)')
     p.add_argument('--drill_ratio', type=float, default=0.5,
                    help='Fraction of batch that is arithmetic drills (default: 0.3)')
+    p.add_argument('--split_gen', action='store_true',
+                   help='Split generation: atoms for setup, vanilla for arithmetic')
 
     args = p.parse_args()
     train(args)
