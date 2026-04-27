@@ -652,8 +652,8 @@ class BreathingController(nn.Module):
         page = F.normalize(page, dim=-1) * math.sqrt(self.page_dim)
 
         pre_tanh = self.scale_head(shared)
-        pre_tanh = torch.clamp(pre_tanh, -3.0, 3.0)
-        scales = torch.tanh(pre_tanh)
+        pre_tanh = torch.clamp(pre_tanh, -0.5, 0.5)
+        scales = torch.tanh(pre_tanh)  # output range ~[-0.46, 0.46], optimal for GSM8K
 
         focus = self.focus_head(shared)
 

@@ -87,6 +87,102 @@ def scale_gradient(tensor, scale):
 
 
 # ---------------------------------------------------------------------------
+# Cross-cycle penalty — penalize cycle N when its wrong output cascades
+# ---------------------------------------------------------------------------
+
+def soft_token_match(gen_logits, target_ids, pad_id):
+    """Differentiable measure of generation accuracy. No argmax.
+
+    Returns mean probability assigned to correct tokens (0-1).
+    Gradient flows through softmax back to logits.
+    """
+    probs = F.softmax(gen_logits, dim=-1)  # (B, T, vocab)
+    mask = (target_ids != pad_id).float()  # (B, T)
+    # Probability assigned to each target token
+    target_probs = probs.gather(-1, target_ids.clamp(min=0).unsqueeze(-1)).squeeze(-1)  # (B, T)
+    # Mean over valid positions
+    masked_probs = (target_probs * mask).sum(dim=-1) / mask.sum(dim=-1).clamp(min=1)  # (B,)
+    return masked_probs.mean()  # scalar
+
+
+def cross_cycle_penalty(gen_logits_list, target_ids_list, pad_id):
+    """Penalize cycle N when its error cascades to cycle N+1.
+
+    Only activates when BOTH cycles are wrong — amplifies the signal
+    on the upstream error that caused downstream failure.
+    """
+    if len(gen_logits_list) < 2:
+        return torch.tensor(0.0, device=gen_logits_list[0].device)
+
+    penalty = 0.0
+    count = 0
+    for i in range(len(gen_logits_list) - 1):
+        c1_acc = soft_token_match(gen_logits_list[i], target_ids_list[i], pad_id)
+        c2_acc = soft_token_match(gen_logits_list[i+1], target_ids_list[i+1], pad_id)
+        penalty = penalty + (1.0 - c1_acc) * (1.0 - c2_acc)
+        count += 1
+    return penalty / max(count, 1)
+
+
+# ---------------------------------------------------------------------------
+# Answer-weighted position mask — upweight tokens after #### marker
+# ---------------------------------------------------------------------------
+
+def build_answer_position_weights(target_ids, tokenizer, answer_weight=10.0):
+    """Build per-position weights: 1.0 for text, answer_weight for tokens after ####.
+
+    The answer tokens are what matter for accuracy. Word tokens
+    ("cookies", "remaining") dominate gen_loss but don't affect accuracy.
+    This gives 10x gradient to the answer tokens.
+    """
+    batch_size, seq_len = target_ids.shape
+    weights = torch.ones(batch_size, seq_len, device=target_ids.device)
+
+    # Encode "####" to find marker tokens
+    hash_tokens = tokenizer.encode("####", add_special_tokens=False)
+    hash_len = len(hash_tokens)
+
+    for b in range(batch_size):
+        ids = target_ids[b].tolist()
+        # Find #### subsequence
+        for i in range(len(ids) - hash_len + 1):
+            if ids[i:i + hash_len] == hash_tokens:
+                # Everything from #### onward gets high weight
+                weights[b, i:] = answer_weight
+                break
+
+    return weights
+
+
+# ---------------------------------------------------------------------------
+# Computation correctness check — reward correct math even on wrong input
+# ---------------------------------------------------------------------------
+
+def check_computation_correct(generated_text):
+    """Is the model's own equation self-consistent?
+
+    Extracts "A op B = C" and verifies A op B actually equals C.
+    Returns True (correct), False (wrong), or None (can't determine).
+    """
+    match = re.search(r'(\d+)\s*([+\-*/x×])\s*(\d+)\s*=\s*(\d+)', generated_text)
+    if not match:
+        return None
+    a = int(match.group(1))
+    op = match.group(2)
+    b = int(match.group(3))
+    c = int(match.group(4))
+    if op in ('+',):
+        return (a + b) == c
+    if op in ('-',):
+        return (a - b) == c
+    if op in ('*', 'x', '×'):
+        return (a * b) == c
+    if op in ('/',):
+        return b != 0 and (a // b) == c
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Generation target dropout — force computation instead of copying
 # ---------------------------------------------------------------------------
 
@@ -274,6 +370,91 @@ def generate_arithmetic_drills(num_problems=2000, rng=None):
     return drills
 
 
+def generate_translation_drills(num_per_pattern=200, rng=None):
+    """Generate natural-language-to-equation translation drills.
+
+    Each drill maps a GSM8K-style phrase to a number: "half as many as 48 #### 24"
+    Teaches atoms to steer Llama from natural language into equation-solving mode.
+    """
+    if rng is None:
+        rng = random.Random(43)
+
+    # (template, arg_generator, compute_fn)
+    # Templates use {a} and optionally {b}
+    patterns = [
+        # Multiplicative
+        ("half as many as {a}", lambda r: (r.randint(4, 400),), lambda a: a // 2,
+         "{a} / 2 = {r}"),
+        ("twice as many as {a}", lambda r: (r.randint(2, 200),), lambda a: a * 2,
+         "{a} * 2 = {r}"),
+        ("three times more than {a}", lambda r: (r.randint(2, 100),), lambda a: a * 3,
+         "{a} * 3 = {r}"),
+        ("a third of {a}", lambda r: (r.randint(3, 300) // 3 * 3,), lambda a: a // 3,
+         "{a} / 3 = {r}"),
+        ("a quarter of {a}", lambda r: (r.randint(4, 400) // 4 * 4,), lambda a: a // 4,
+         "{a} / 4 = {r}"),
+        ("four times as many as {a}", lambda r: (r.randint(2, 100),), lambda a: a * 4,
+         "{a} * 4 = {r}"),
+        # Additive/subtractive
+        ("{a} more than {b}", lambda r: (r.randint(1, 200), r.randint(1, 200)),
+         lambda a, b: a + b, "{b} + {a} = {r}"),
+        ("{a} less than {b}", lambda r: (r.randint(1, 100), r.randint(101, 300)),
+         lambda a, b: b - a, "{b} - {a} = {r}"),
+        ("{a} items at ${b} each", lambda r: (r.randint(2, 30), r.randint(1, 50)),
+         lambda a, b: a * b, "{a} * {b} = {r}"),
+        ("{a} split equally among {b}", lambda r: (r.randint(2, 20) * r.randint(2, 15), None),
+         None, None),  # special case below
+        ("{a} percent of {b}", lambda r: (r.choice([10, 20, 25, 50, 75]), r.randint(10, 500)),
+         lambda a, b: a * b // 100, "{b} * {a} / 100 = {r}"),
+    ]
+
+    drills = []
+    for pattern_tuple in patterns:
+        template = pattern_tuple[0]
+
+        for _ in range(num_per_pattern):
+            # Special case: split equally (need divisible numbers)
+            if "split equally" in template:
+                divisor = rng.randint(2, 15)
+                quotient = rng.randint(2, 30)
+                a = divisor * quotient
+                b = divisor
+                result = quotient
+                text = template.format(a=a, b=b)
+                eq = f"{a} / {b} = {result}"
+            else:
+                gen_args = pattern_tuple[1]
+                compute_fn = pattern_tuple[2]
+                eq_template = pattern_tuple[3]
+                args = gen_args(rng)
+                if len(args) == 1:
+                    a = args[0]
+                    result = compute_fn(a)
+                    text = template.format(a=a)
+                    eq = eq_template.format(a=a, r=result)
+                else:
+                    a, b = args
+                    result = compute_fn(a, b)
+                    text = template.format(a=a, b=b)
+                    eq = eq_template.format(a=a, b=b, r=result)
+
+            if result < 0:
+                continue  # skip negatives
+
+            problem = text
+            gen_target = f"{eq}. #### {result}"
+
+            drills.append({
+                'problem': problem,
+                'cycle_targets': [result],
+                'cycle_gen_targets': [gen_target],
+                'final_answer': result,
+                'num_steps': 1,
+            })
+
+    return drills
+
+
 # ---------------------------------------------------------------------------
 # Per-cycle JSONL Dataset
 # ---------------------------------------------------------------------------
@@ -298,9 +479,12 @@ class PerCycleDataset(Dataset):
         self.drill_ratio = drill_ratio
         self.epoch = 0  # set externally each epoch
         if drill_ratio > 0:
-            self.drills = generate_arithmetic_drills(num_problems=2000)
+            self.arith_drills = generate_arithmetic_drills(num_problems=2000)
+            self.trans_drills = generate_translation_drills(num_per_pattern=200)
+            print(f"  Generated {len(self.arith_drills)} arithmetic + {len(self.trans_drills)} translation drills")
         else:
-            self.drills = []
+            self.arith_drills = []
+            self.trans_drills = []
         with open(jsonl_path, 'r') as f:
             for line in f:
                 line = line.strip()
@@ -317,10 +501,14 @@ class PerCycleDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, idx):
-        # With drill_ratio probability, return an arithmetic drill instead
-        if self.drills and random.random() < self.drill_ratio:
+        # With drill_ratio probability, return a drill instead of GSM8K
+        # 60% of drills are translation, 40% arithmetic (= 30%/20% of total at drill_ratio=0.5)
+        if (self.arith_drills or self.trans_drills) and random.random() < self.drill_ratio:
             drill_rng = random.Random(self.epoch * 99999 + idx)
-            drill = drill_rng.choice(self.drills)
+            if self.trans_drills and drill_rng.random() < 0.6:
+                drill = drill_rng.choice(self.trans_drills)
+            else:
+                drill = drill_rng.choice(self.arith_drills) if self.arith_drills else drill_rng.choice(self.trans_drills)
             # Apply number augmentation to drills too
             if self.augment:
                 aug_rng = random.Random(self.epoch * 12345 + idx + 1000000)
@@ -475,6 +663,8 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
     per_cycle_gen_loss = torch.tensor(0.0, device=device)
     per_cycle_preds = []  # list of (B,) tensors for diagnostics
     cycle_gen_logits_list = []  # collect gen_logits per cycle for context injection
+    cycle_gen_logits_diff = []  # NON-detached logits for cross-cycle penalty
+    cycle_target_ids_list = []  # target token IDs per cycle for cross-cycle penalty
     valid_cycles = 0
 
     # Total supervised cycles from the data
@@ -573,9 +763,12 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
             target_mask = (target_ids != model.tokenizer.pad_token_id).float()
             gen_loss_per_sample = (gen_loss_this.view(batch_size, -1) * target_mask).sum(dim=1)
             gen_loss_per_sample = gen_loss_per_sample / target_mask.sum(dim=1).clamp(min=1)
+
             gen_loss_this = (gen_loss_per_sample * mask_val).sum() / mask_val.sum()
 
             cycle_gen_logits_list.append(gen_logits.detach())
+            cycle_gen_logits_diff.append(gen_logits)  # keep grad for cross-cycle penalty
+            cycle_target_ids_list.append(target_ids)
 
             fade_w = per_cycle_target_weight(final_accuracy, pass_num, total_supervised)
             # Cycle 1: always full weight (nothing to copy yet)
@@ -611,7 +804,8 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
                 for b in range(batch_size):
                     text = model.tokenizer.decode(pred_tokens[b], skip_special_tokens=True)
                     val = extract_answer_from_text(text)
-                    latest_preds.append(val if val is not None else 0)
+                    val = max(min(val, 999999999), -999999999) if val is not None else 0
+                    latest_preds.append(val)
                 latest_preds_t = torch.tensor(latest_preds, dtype=torch.long, device=device)
                 prev_predictions.append(latest_preds_t)
             # Build cumulative context: "Step 1 result: 263\nStep 2 result: 346\n"
@@ -724,34 +918,14 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
                 target_mask = (target_ids != model.tokenizer.pad_token_id).float()
                 gen_loss_per_sample = (gen_loss_this.view(batch_size, -1) * target_mask).sum(dim=1)
                 gen_loss_per_sample = gen_loss_per_sample / target_mask.sum(dim=1).clamp(min=1)
-                gen_loss_this = (gen_loss_per_sample * mask_val).sum() / mask_val.sum()
 
                 cycle_gen_logits_list.append(gen_logits.detach())
+                cycle_gen_logits_diff.append(gen_logits)  # keep grad for cross-cycle penalty
+                cycle_target_ids_list.append(target_ids)
 
                 fade_w = per_cycle_target_weight(final_accuracy, pass_num, total_supervised)
 
-                # Three-tier per-sample gating
-                with torch.no_grad():
-                    pred_tokens = gen_logits.argmax(dim=-1)
-                    per_sample_weights = torch.ones(batch_size, device=device)
-                    for b in range(batch_size):
-                        text = model.tokenizer.decode(pred_tokens[b], skip_special_tokens=True)
-                        pred_val = extract_answer_from_text(text)
-                        if pred_val is not None:
-                            is_copy = False
-                            for prev_preds in prev_predictions:
-                                if int(prev_preds[b].item()) == pred_val:
-                                    is_copy = True
-                                    break
-                            if is_copy:
-                                per_sample_weights[b] = 0.0
-                            elif pred_val == int(cycle_target[b].item()):
-                                per_sample_weights[b] = 1.0
-                            else:
-                                per_sample_weights[b] = 0.1
-                        else:
-                            per_sample_weights[b] = 0.1
-                weighted_gen = (gen_loss_per_sample * per_sample_weights * mask_val).sum() / mask_val.sum()
+                weighted_gen = (gen_loss_per_sample * mask_val).sum() / mask_val.sum()
                 per_cycle_gen_loss = per_cycle_gen_loss + weighted_gen * fade_w
                 valid_cycles += 1
 
@@ -813,6 +987,13 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
         scale_collapse_penalty = scale_collapse_penalty + F.relu(1.0 - s.norm(dim=-1)).mean()
     scale_collapse_penalty = scale_collapse_penalty / max(len(all_scales), 1)
 
+    # ------- Cross-cycle penalty (cascade error signal) -------
+    pad_id = model.tokenizer.pad_token_id
+    if len(cycle_gen_logits_diff) >= 2 and len(cycle_target_ids_list) >= 2:
+        xc_penalty = cross_cycle_penalty(cycle_gen_logits_diff, cycle_target_ids_list, pad_id)
+    else:
+        xc_penalty = torch.tensor(0.0, device=device)
+
     # ------- Atom diagnostics -------
     with torch.no_grad():
         last_page = state_pages[-1].float()
@@ -857,7 +1038,7 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
             c_loss, conf_loss, scale_reg_loss, iso_loss,
             page_cos_mean, active_atoms_mean, scale_std, cross_pass_cos,
             conf_loss.detach(), state_pages, per_cycle_preds, diversity_loss,
-            scale_collapse_penalty)
+            scale_collapse_penalty, xc_penalty)
 
 
 # ---------------------------------------------------------------------------
@@ -1323,7 +1504,7 @@ def train(args):
     aug_str = f" (augment={args.augment}, dropout={args.dropout_prob})" if args.augment else ""
     print(f"\nTrain dataset: {len(train_dataset)} problems from {train_path}{aug_str}")
     if args.drill_ratio > 0:
-        print(f"  Arithmetic drills: {args.drill_ratio:.0%} of training batches")
+        print(f"  Drills: {args.drill_ratio:.0%} of batches (60% translation, 40% arithmetic)")
 
     if os.path.exists(eval_path):
         # Eval is NEVER augmented
@@ -1402,6 +1583,7 @@ def train(args):
         ep_gen = ep_ctr = ep_conf = ep_scale_reg = ep_iso = ep_cos = 0.0
         ep_active = ep_std = ep_xpass = 0.0
         ep_div = 0.0
+        ep_xc = 0.0
         ep_page_var = 0.0
         ep_dead_dims = 0.0
         nb = 0
@@ -1426,7 +1608,7 @@ def train(args):
             (gen_loss, c_loss, conf_loss, scale_reg, iso_loss,
              page_cos, active_atoms, s_std, xpass_cos,
              conf_mean, state_pages, per_cycle_preds, div_loss,
-             scale_collapse) = forward_train_per_cycle(
+             scale_collapse, xc_loss) = forward_train_per_cycle(
                 model, problems, cycle_targets, cycle_mask,
                 finals_t, cycle_gen_targets=cycle_gen_targets,
                 num_passes=args.num_passes, max_length=max_length,
@@ -1439,7 +1621,8 @@ def train(args):
                           + args.lam_scale_reg * scale_reg
                           + 0.01 * iso_loss
                           + args.lam_diversity * div_loss
-                          + 0.05 * scale_collapse)
+                          + 0.05 * scale_collapse
+                          + 0.1 * xc_loss)
             total_loss.backward()
             torch.nn.utils.clip_grad_norm_(trainable, 1.0)
             optimizer.step()
@@ -1450,6 +1633,7 @@ def train(args):
             ep_scale_reg += scale_reg.item()
             ep_iso += iso_loss.item()
             ep_div += div_loss.item()
+            ep_xc += xc_loss.item() if hasattr(xc_loss, 'item') else float(xc_loss)
             ep_cos += page_cos.item()
             ep_active += active_atoms.item()
             ep_std += s_std.item()
@@ -1501,7 +1685,7 @@ def train(args):
             f"Epoch {epoch+1}: "
             f"gen={ep_gen/nb:.4f} contr={ep_ctr/nb:.2f} "
             f"conf={ep_conf/nb:.2f} scale_reg={ep_scale_reg/nb:.2f} iso={ep_iso/nb:.4f} "
-            f"div={ep_div/nb:.4f} "
+            f"div={ep_div/nb:.4f} xc={ep_xc/nb:.4f} "
             f"page_cos={ep_cos/nb:.2f} "
             f"active={ep_active/nb:.1f}/{args.num_atoms} "
             f"scale_std={ep_std/nb:.3f} "
@@ -1546,7 +1730,7 @@ if __name__ == '__main__':
     )
     p.add_argument(
         '--level', type=str, required=True,
-        choices=['L3', 'L4', 'L4.5', 'L4.7', 'L4.9', 'L5', 'gsm8k'],
+        choices=['L3', 'L4', 'L4.5', 'L4.7', 'L4.9', 'L5', 'gsm8k', 'gsm8k_s1'],
         help='Curriculum level to train',
     )
     p.add_argument('--data_dir', type=str, default='data/per_cycle/',
@@ -1581,7 +1765,7 @@ if __name__ == '__main__':
                    help='Generation target dropout probability (default: 0.15)')
     p.add_argument('--warmup_epochs', type=int, default=5,
                    help='LR warmup epochs (default: 5)')
-    p.add_argument('--drill_ratio', type=float, default=0.3,
+    p.add_argument('--drill_ratio', type=float, default=0.5,
                    help='Fraction of batch that is arithmetic drills (default: 0.3)')
 
     args = p.parse_args()
