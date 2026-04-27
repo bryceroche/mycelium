@@ -203,12 +203,8 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
         if pass_num > 0 and len(state_pages) > 0:
             # Decode latest cycle's prediction and accumulate
             with torch.no_grad():
-                if len(state_pages) >= 2:
-                    latest_page = (state_pages[-1] - state_pages[-2]).float()
-                else:
-                    latest_page = state_pages[-1].float()
-                latest_msg = messages[-1] if messages else None
-                latest_preds = answer_head.decode(latest_page, message=latest_msg)  # (B,)
+                latest_page = state_pages[-1].float()
+                latest_preds = answer_head.decode(latest_page)  # (B,)
                 prev_predictions.append(latest_preds)
             # Build cumulative context: "Step 1 result: 263\nStep 2 result: 346\n"
             context_strs = []
@@ -347,15 +343,9 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
                 gen_loss_this = (gen_loss_per_sample * mask_val).sum() / mask_val.sum()
 
                 # === ANSWER HEAD LOSS ===
-                # For cycle 2+: read the DELTA (new info only, not persisted cycle 1)
-                # This prevents the answer head from copying cycle 1's number
-                if pass_num > 0 and len(state_pages) >= 2:
-                    current_page = (state_pages[-1] - state_pages[-2]).float()
-                else:
-                    current_page = page.float()
-                # Pass message to answer head — direct signal survives at deeper cycles
-                cycle_message = messages[-1] if messages else None
-                ah_loss_this = answer_head_loss(answer_head, current_page, cycle_target, message=cycle_message)
+                # Read the raw page for this cycle
+                current_page = page.float()
+                ah_loss_this = answer_head_loss(answer_head, current_page, cycle_target)
                 mask_frac = mask_val.mean()
 
                 # === ORDINAL ATTENTION LOSS (WHERE to look) ===
@@ -379,8 +369,7 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
 
             # Record predictions for diagnostics
             with torch.no_grad():
-                diag_msg = messages[-1] if messages else None
-                preds = answer_head.decode(page.float(), message=diag_msg)
+                preds = answer_head.decode(page.float())
                 per_cycle_preds.append(preds)
 
     # Normalize losses by number of valid cycles
@@ -389,10 +378,23 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
         per_cycle_ah_loss = per_cycle_ah_loss / valid_cycles
         per_cycle_ordinal_loss = per_cycle_ordinal_loss / valid_cycles
 
-    # ------- Confidence loss (pages only, no blend history) -------
-    confidence = model.confidence_head(state_pages)
-    conf_target = torch.ones_like(confidence)
-    conf_loss = F.binary_cross_entropy(confidence, conf_target)
+    # ------- Confidence loss: "would the answer head be correct if we stopped here?" -------
+    # Train per-cycle: compare answer_head prediction to gold final answer at each page
+    conf_loss = torch.tensor(0.0, device=device)
+    with torch.no_grad():
+        for pg_idx, pg in enumerate(state_pages):
+            pred = answer_head.decode(pg.float())  # (B,)
+            is_correct = (pred == finals_t).float().unsqueeze(-1)  # (B, 1)
+            conf_targets_per_page = is_correct
+    # Now train confidence head on each page
+    for pg_idx, pg in enumerate(state_pages):
+        # Confidence head reads the page and predicts if answer would be right
+        conf_pred = model.confidence_head([pg])  # (B, 1)
+        with torch.no_grad():
+            pred = answer_head.decode(pg.float())
+            target = (pred == finals_t).float().unsqueeze(-1)  # (B, 1)
+        conf_loss = conf_loss + F.binary_cross_entropy(conf_pred, target)
+    conf_loss = conf_loss / max(len(state_pages), 1)
 
     # ------- Contrastive loss -------
     c_loss = per_page_contrastive_loss(
@@ -428,7 +430,7 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
     return (per_cycle_gen_loss, per_cycle_ah_loss, per_cycle_ordinal_loss,
             c_loss, conf_loss, scale_reg_loss,
             page_cos_mean, active_atoms_mean, scale_std, cross_pass_cos,
-            confidence.mean(), state_pages, per_cycle_preds)
+            conf_loss.detach(), state_pages, per_cycle_preds)
 
 
 # ---------------------------------------------------------------------------
@@ -479,12 +481,8 @@ def evaluate_per_cycle(model, answer_head, eval_dataset, device,
             for pass_num in range(num_passes):
                 # For cycle 2+: inject ALL previous answers as text context
                 if pass_num > 0 and len(state_pages) > 0:
-                    if len(state_pages) >= 2:
-                        latest_page = (state_pages[-1] - state_pages[-2]).float()
-                    else:
-                        latest_page = state_pages[-1].float()
-                    eval_latest_msg = eval_messages[-1] if eval_messages else None
-                    latest_preds = answer_head.decode(latest_page, message=eval_latest_msg)
+                    latest_page = state_pages[-1].float()
+                    latest_preds = answer_head.decode(latest_page)
                     eval_prev_predictions.append(latest_preds)
                     context_strs = []
                     for b in range(batch_size):
@@ -512,14 +510,9 @@ def evaluate_per_cycle(model, answer_head, eval_dataset, device,
                 eval_messages.append(message)
                 mid_states_history.append(current_mid_states)
 
-                # Per-cycle answer head evaluation
-                # For cycle 2+: read the delta (new info, not persisted)
-                if pass_num > 0 and len(state_pages) >= 2:
-                    current_page = (state_pages[-1] - state_pages[-2]).float()
-                else:
-                    current_page = page.float()
-                eval_cycle_msg = eval_messages[-1] if eval_messages else None
-                preds = answer_head.decode(current_page, message=eval_cycle_msg)  # (B,)
+                # Per-cycle answer head evaluation — read raw page
+                current_page = page.float()
+                preds = answer_head.decode(current_page)  # (B,)
 
                 for j in range(batch_size):
                     ct = cycle_targets_list[j]
@@ -546,12 +539,8 @@ def evaluate_per_cycle(model, answer_head, eval_dataset, device,
                 gold = gold_finals[j]
                 ct = cycle_targets_list[j]
                 last_supervised = min(len(ct), len(state_pages)) - 1  # last cycle with a target
-                if last_supervised > 0:
-                    final_page = (state_pages[last_supervised] - state_pages[last_supervised - 1]).float()
-                else:
-                    final_page = state_pages[last_supervised].float()
-                final_msg = eval_messages[last_supervised][j:j+1] if eval_messages and last_supervised < len(eval_messages) else None
-                pred_val = answer_head.decode(final_page[j:j+1], message=final_msg)[0].item()
+                final_page = state_pages[last_supervised].float()
+                pred_val = answer_head.decode(final_page[j:j+1])[0].item()
                 try:
                     if int(pred_val) == int(gold):
                         final_correct += 1
@@ -732,6 +721,12 @@ def try_warm_start(model, answer_head, warm_path, skip_perceiver=False):
                 if k in own_ah and own_ah[k].shape == v.shape:
                     own_ah[k] = v
                     loaded_ah += 1
+                elif k in own_ah and 'encoder.0.weight' in k:
+                    # Partial warm start: copy overlapping dims when sizes differ
+                    min_dim = min(v.shape[1], own_ah[k].shape[1])
+                    own_ah[k][:, :min_dim] = v[:, :min_dim]
+                    loaded_ah += 1
+                    print(f"    {k}: partial copy ({min_dim}/{own_ah[k].shape[1]} dims from {v.shape[1]})")
             answer_head.load_state_dict(own_ah, strict=False)
             print(f"  answer_head: loaded {loaded_ah}/{len(own_ah)}")
 
@@ -878,13 +873,11 @@ def train(args):
         {'params': list(model.ordinal_head.parameters()), 'lr': 1e-3 * s, 'weight_decay': 0.01},
     ])
 
-    # Load optimizer state if available from warm start
+    # Note: optimizer state loading disabled — architecture changes between
+    # checkpoints cause shape mismatches in momentum buffers. Fresh optimizer
+    # with lr_scale is sufficient for warm starts.
     if saved_optim_state is not None:
-        try:
-            optimizer.load_state_dict(saved_optim_state)
-            print("  optimizer state: loaded from checkpoint")
-        except Exception as e:
-            print(f"  optimizer state: couldn't load ({e}), starting fresh")
+        print("  optimizer state: skipped (architecture may have changed)")
 
     trainable = (
         list(model.compressor.parameters())

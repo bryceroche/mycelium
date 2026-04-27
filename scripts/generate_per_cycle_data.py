@@ -515,6 +515,7 @@ def _l47_four_ops_linear(rng):
     start = rng.randint(50, 300)
     vals = [start]
     ops_text = []
+    ops_sym = []  # track +/- and amounts for gen_targets
     for i in range(4):
         cur = vals[-1]
         if rng.random() < 0.5 and cur > 20:
@@ -522,11 +523,13 @@ def _l47_four_ops_linear(rng):
             vals.append(cur - amt)
             v, _ = rng.choice(LOSE_VERBS)
             ops_text.append(f"{v} {amt}")
+            ops_sym.append(('-', amt))
         else:
             amt = rng.randint(5, 150)
             vals.append(cur + amt)
             v, s = rng.choice(GAIN_VERBS)
             ops_text.append(f"{v} {amt} {s}")
+            ops_sym.append(('+', amt))
     times = [t1, t2, t3, t4]
     actions = ", ".join(f"{ops_text[i]} {times[i]}" for i in range(4))
     problem = (
@@ -534,8 +537,17 @@ def _l47_four_ops_linear(rng):
         f"{name} {actions}. "
         f"How many {obj} does {name} have now?"
     )
-    cycle_targets = vals[1:]  # 4 intermediate results
-    return problem, cycle_targets, cycle_targets[-1]
+    cycle_targets = vals[1:]
+    gen_targets = []
+    for i in range(4):
+        prev = vals[i]
+        op, amt = ops_sym[i]
+        result = vals[i + 1]
+        if i == 0:
+            gen_targets.append(f"{name} had {start} {obj} and {ops_text[i]}. {prev} {op} {amt} = {result} {obj} now.")
+        else:
+            gen_targets.append(f"Then {name} {ops_text[i]}. {prev} {op} {amt} = {result} {obj} now.")
+    return problem, cycle_targets, cycle_targets[-1], gen_targets
 
 
 def _l47_buy_sell_profit(rng):
@@ -544,18 +556,24 @@ def _l47_buy_sell_profit(rng):
     item, unit = rng.choice(STORE_ITEMS)
     qty_bought = rng.randint(10, 80)
     cost_each = rng.randint(2, 15)
-    total_cost = qty_bought * cost_each  # step 1
+    total_cost = qty_bought * cost_each
     qty_sold = rng.randint(5, qty_bought - 1)
     sell_price = cost_each + rng.randint(1, 5)
-    revenue = qty_sold * sell_price  # step 2
-    remaining = qty_bought - qty_sold  # step 3
-    result = revenue - total_cost  # step 4: profit (can be negative = loss)
+    revenue = qty_sold * sell_price
+    remaining = qty_bought - qty_sold
+    result = revenue - total_cost
     problem = (
         f"{name} bought {qty_bought} {item} at {cost_each} {unit} each. "
         f"{name} sold {qty_sold} of them at {sell_price} {unit} each. "
         f"How much profit or loss did {name} make?"
     )
-    return problem, [total_cost, revenue, remaining, result], result
+    gen_targets = [
+        f"{name} bought {qty_bought} {item} at {cost_each} each. {qty_bought} * {cost_each} = {total_cost} {unit} total cost.",
+        f"{name} sold {qty_sold} at {sell_price} each. {qty_sold} * {sell_price} = {revenue} {unit} revenue.",
+        f"{name} has {qty_bought} - {qty_sold} = {remaining} {item} remaining.",
+        f"Profit is {revenue} - {total_cost} = {result} {unit}.",
+    ]
+    return problem, [total_cost, revenue, remaining, result], result, gen_targets
 
 
 def _l47_multi_person(rng):
@@ -564,20 +582,26 @@ def _l47_multi_person(rng):
     obj = rng.choice(OBJECTS)
     start = rng.randint(60, 300)
     a = rng.randint(10, start // 3)
-    mid1 = start - a  # after giving to B
+    mid1 = start - a
     b = rng.randint(10, mid1 // 2)
-    mid2 = mid1 - b  # after giving to C
+    mid2 = mid1 - b
     c = rng.randint(10, 200)
-    mid3 = mid2 + c  # found more
+    mid3 = mid2 + c
     d = rng.randint(1, mid3 - 1)
-    result = mid3 - d  # gave some away
+    result = mid3 - d
     problem = (
         f"{names[0]} had {start} {obj}. "
         f"{names[0]} gave {a} to {names[1]}, gave {b} to {names[2]}, "
         f"found {c} more, and then donated {d} to charity. "
         f"How many {obj} does {names[0]} have now?"
     )
-    return problem, [mid1, mid2, mid3, result], result
+    gen_targets = [
+        f"{names[0]} had {start} {obj} and gave {a} to {names[1]}. {start} - {a} = {mid1} {obj} remaining.",
+        f"Then {names[0]} gave {b} to {names[2]}. {mid1} - {b} = {mid2} {obj} remaining.",
+        f"Then {names[0]} found {c} more. {mid2} + {c} = {mid3} {obj} now.",
+        f"Then {names[0]} donated {d} to charity. {mid3} - {d} = {result} {obj} remaining.",
+    ]
+    return problem, [mid1, mid2, mid3, result], result, gen_targets
 
 
 def _l47_rate_problem(rng):
@@ -585,18 +609,24 @@ def _l47_rate_problem(rng):
     name = rng.choice(NAMES)
     rate = rng.randint(5, 30)
     time1 = rng.randint(2, 8)
-    done1 = rate * time1  # step 1
+    done1 = rate * time1
     time2 = rng.randint(1, 5)
-    done2 = rate * time2  # step 2
-    total_done = done1 + done2  # step 3
+    done2 = rate * time2
+    total_done = done1 + done2
     total_pages = total_done + rng.randint(10, 100)
-    remaining = total_pages - total_done  # step 4
+    remaining = total_pages - total_done
     problem = (
         f"{name} reads {rate} pages per hour. "
         f"{name} read for {time1} hours in the morning and {time2} hours in the afternoon. "
         f"The book has {total_pages} pages. How many pages are left to read?"
     )
-    return problem, [done1, done2, total_done, remaining], remaining
+    gen_targets = [
+        f"{name} read {rate} pages/hour for {time1} hours. {rate} * {time1} = {done1} pages in the morning.",
+        f"Then {name} read for {time2} more hours. {rate} * {time2} = {done2} pages in the afternoon.",
+        f"Total pages read: {done1} + {done2} = {total_done} pages.",
+        f"The book has {total_pages} pages. {total_pages} - {total_done} = {remaining} pages left.",
+    ]
+    return problem, [done1, done2, total_done, remaining], remaining, gen_targets
 
 
 L47_GENERATORS = [_l47_four_ops_linear, _l47_buy_sell_profit,

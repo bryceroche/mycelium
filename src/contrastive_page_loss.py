@@ -121,13 +121,15 @@ def per_page_contrastive_loss(
         neg_loss = (((sim - cross_target) ** 2) * diff).sum() / diff.sum().clamp(1)
         loss = loss + pos_loss + neg_loss
 
-    # Term 3: within-problem page diversity
+    # Term 3: within-problem page diversity (notebook pages should differ)
+    # With appended pages (no blending), push cosine below within_target
     for i in range(len(all_pages)):
         for j in range(i + 1, len(all_pages)):
             page_i = F.normalize(all_pages[i].float(), dim=-1)
             page_j = F.normalize(all_pages[j].float(), dim=-1)
             within_cos = (page_i * page_j).sum(dim=-1)  # (B,)
-            within_loss = ((within_cos - within_target) ** 2).mean()
+            # Penalize if pages are too similar — each page should capture different info
+            within_loss = F.relu(within_cos - within_target).mean()
             loss = loss + within_loss
 
     return loss

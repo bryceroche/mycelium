@@ -98,3 +98,6 @@ checkpoints/
 __pycache__/
 *.pyc
 .DS_Store
+
+# Claude Code local memory
+.claude/

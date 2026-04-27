@@ -1,0 +1,7 @@
+{
+  "last_failure": "2026-04-20T04:07:19.990988-07:00",
+  "failure_count": 1,
+  "backoff_until": "2026-04-20T04:07:49.990989-07:00",
+  "needs_manual_sync": false,
+  "failure_reason": "git pull failed in worktree: signal: killed\nFrom https://github.com/bryceroche/mycelium\n * branch            beads-sync -\u003e FETCH_HEAD\n"
+}

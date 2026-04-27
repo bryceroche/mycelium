@@ -565,17 +565,14 @@ class AnswerHead(nn.Module):
     - digit_heads: max_digits x Linear(page_size, 10) -> 0-9 per position
     """
 
-    def __init__(self, page_size: int = 64, max_digits: int = 6, hidden: int = 256,
-                 message_dim: int = 16):
+    def __init__(self, page_size: int = 64, max_digits: int = 6, hidden: int = 256):
         super().__init__()
         self.page_size = page_size
         self.max_digits = max_digits
-        self.message_dim = message_dim
 
-        # Shared encoder: page_delta + message -> richer representation
-        # Message provides uncompressed signal that survives at deeper cycles
+        # Shared encoder: page -> richer representation
         self.encoder = nn.Sequential(
-            nn.Linear(page_size + message_dim, hidden),
+            nn.Linear(page_size, hidden),
             nn.GELU(),
             nn.Linear(hidden, hidden),
             nn.GELU(),
@@ -587,12 +584,11 @@ class AnswerHead(nn.Module):
         ])
 
     def forward(
-        self, last_page: torch.Tensor, message: Optional[torch.Tensor] = None,
+        self, last_page: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor, List[torch.Tensor]]:
         """
         Args:
-            last_page: (B, page_size) — page delta or raw page
-            message:   (B, message_dim) — optional direct signal from last layer
+            last_page: (B, page_size) — raw page
 
         Returns:
             sign_logits:   (B, 2)
@@ -600,31 +596,24 @@ class AnswerHead(nn.Module):
             digit_logits:  list of max_digits x (B, 10)
         """
         page = last_page.float()
-        if message is not None:
-            combined = torch.cat([page, message.float()], dim=-1)
-        else:
-            # Pad with zeros if no message (backward compat)
-            combined = torch.cat([page, torch.zeros(page.size(0), self.message_dim,
-                                                     device=page.device)], dim=-1)
-        h = self.encoder(combined)
+        h = self.encoder(page)
         sign_logits = self.sign_head(h)
         length_logits = self.length_head(h)
         digit_logits = [head(h) for head in self.digit_heads]
         return sign_logits, length_logits, digit_logits
 
     @torch.no_grad()
-    def decode(self, last_page: torch.Tensor, message: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def decode(self, last_page: torch.Tensor) -> torch.Tensor:
         """
         Decode predicted answer as integer tensor (B,).
 
         Args:
             last_page: (B, page_size)
-            message:   (B, message_dim) optional
 
         Returns:
             answers: (B,) integer tensor
         """
-        sign_logits, length_logits, digit_logits = self.forward(last_page, message)
+        sign_logits, length_logits, digit_logits = self.forward(last_page)
         batch_size = last_page.size(0)
 
         num_digits = length_logits.argmax(dim=-1) + 1  # (B,) 1-indexed
@@ -649,7 +638,6 @@ def answer_head_loss(
     answer_head: AnswerHead,
     last_page: torch.Tensor,
     gold_answers: torch.Tensor,
-    message: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """
     Compute answer head loss from gold integer answers.
@@ -658,12 +646,11 @@ def answer_head_loss(
         answer_head: AnswerHead module
         last_page:   (B, page_size)
         gold_answers: (B,) integer tensor
-        message:     (B, message_dim) optional direct signal
 
     Returns:
         loss: scalar tensor
     """
-    sign_logits, length_logits, digit_logits = answer_head(last_page, message)
+    sign_logits, length_logits, digit_logits = answer_head(last_page)
     device = last_page.device
     batch_size = last_page.size(0)
 
@@ -999,15 +986,6 @@ class AtomLoRAModel(nn.Module):
         # Add Fourier structural identity (after normalization)
         page = self.fourier_page.apply(page, pass_num)
 
-        # Apply residual page gate (v24.8) — per-dimension blending with previous page
-        # This shifts eigenvalues by ~0.5, converting contracting dynamics to stable.
-        # Only apply if we have previous pages to blend with.
-        # v24.8 FIX: Do NOT re-normalize after residual — let the blend stand.
-        # The normalization happens BEFORE (line 860), residual blends the normalized
-        # page with old_page. Re-normalizing washes out the eigenvalue shift.
-        if len(state_pages) > 0:
-            page = self.residual_gate(page, state_pages[-1])
-
         # Gradient scaling for earlier cycles (amplify earlier passes)
         grad_scale = min(float(max_passes - pass_num), 4.0)
         if grad_scale != 1.0 and page.requires_grad:
@@ -1141,10 +1119,6 @@ class AtomLoRAModel(nn.Module):
 
         # Add Fourier structural identity (after normalization)
         page = self.fourier_page.apply(page, pass_num)
-
-        # Apply residual page gate (v24.8)
-        if len(state_pages) > 0:
-            page = self.residual_gate(page, state_pages[-1])
 
         # Gradient scaling for earlier cycles
         grad_scale = min(float(max_passes - pass_num), 4.0)
