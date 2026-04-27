@@ -86,7 +86,7 @@ with torch.no_grad():
                 eval_ids = input_ids
                 eval_mask = attention_mask
 
-            page, _scales, mid_states, message = model.thinking_pass(
+            page, _scales, mid_states, message, _raw_page = model.thinking_pass(
                 eval_ids, eval_mask, state_pages, pass_num,
                 prev_mid_states=mid_states_history if mid_states_history else None,
                 messages=messages if messages else None,

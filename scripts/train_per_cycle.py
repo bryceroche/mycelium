@@ -198,6 +198,7 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
     cycle_mask = cycle_mask.to(device)
 
     state_pages = []
+    raw_pages = []
     messages = []
     prev_predictions = []  # list of (B,) tensors — accumulated answer head predictions
     # Track which targets have been consumed (per-sample, prevents repeating)
@@ -273,10 +274,8 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
             prev_mid_states=mid_states_history if mid_states_history else None,
         )
         mid_states_history.append(current_mid_states)
+        raw_pages.append(page_delta)
         page = F.normalize(page_delta, dim=-1) * model.page_radius
-
-        # Add Fourier structural identity (after normalization)
-        page = model.fourier_page.apply(page, pass_num)
 
         # Page noise during training
         if model.training:
@@ -413,23 +412,24 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
         per_cycle_ah_loss = per_cycle_ah_loss / valid_cycles
         per_cycle_ordinal_loss = per_cycle_ordinal_loss / valid_cycles
 
-    # ------- Confidence loss: "would the answer head be correct if we stopped here?" -------
-    # Train per-cycle: compare answer_head prediction to gold final answer at each page
+    # ------- Confidence head: correctness signal + entropy regularization -------
     conf_loss = torch.tensor(0.0, device=device)
-    with torch.no_grad():
-        for pg_idx, pg in enumerate(state_pages):
-            pred = answer_head.decode(pg.float())  # (B,)
-            is_correct = (pred == finals_t).float().unsqueeze(-1)  # (B, 1)
-            conf_targets_per_page = is_correct
-    # Now train confidence head on each page
+    exit_probs = []
     for pg_idx, pg in enumerate(state_pages):
-        # Confidence head reads the page and predicts if answer would be right
-        conf_pred = model.confidence_head([pg])  # (B, 1)
+        conf_pred = model.confidence_head(state_pages[:pg_idx+1])  # reads first k pages
+        exit_probs.append(conf_pred.mean())  # average confidence across batch
         with torch.no_grad():
-            pred = answer_head.decode(pg.float())
+            pred = answer_head.decode(pg.float(), cycle_num=pg_idx)
             target = (pred == finals_t).float().unsqueeze(-1)  # (B, 1)
         conf_loss = conf_loss + F.binary_cross_entropy(conf_pred, target)
     conf_loss = conf_loss / max(len(state_pages), 1)
+
+    # Entropy reg: prevent collapse to "always stop at cycle N"
+    if len(exit_probs) > 1:
+        exit_dist = torch.stack(exit_probs)
+        exit_dist = exit_dist / (exit_dist.sum() + 1e-8)
+        entropy = -(exit_dist * torch.log(exit_dist + 1e-8)).sum()
+        conf_loss = conf_loss - 0.01 * entropy  # maximize entropy
 
     # ------- Contrastive loss -------
     c_loss = per_page_contrastive_loss(
@@ -462,8 +462,15 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
     all_pre_tanh = torch.cat(pre_tanh_history, dim=0)
     scale_reg_loss = (all_pre_tanh ** 2).mean()
 
+    # ------- Isotropic regularization (raw pages before normalization) -------
+    if raw_pages:
+        raw_pages_flat = torch.cat(raw_pages, dim=0)  # (cycles*B, 64)
+        iso_loss = model.isotropic_reg(raw_pages_flat.float())
+    else:
+        iso_loss = torch.tensor(0.0, device=device)
+
     return (per_cycle_gen_loss, per_cycle_ah_loss, per_cycle_ordinal_loss,
-            c_loss, conf_loss, scale_reg_loss,
+            c_loss, conf_loss, scale_reg_loss, iso_loss,
             page_cos_mean, active_atoms_mean, scale_std, cross_pass_cos,
             conf_loss.detach(), state_pages, per_cycle_preds)
 
@@ -536,7 +543,7 @@ def evaluate_per_cycle(model, answer_head, eval_dataset, device,
                     eval_ids = input_ids
                     eval_mask = attention_mask
 
-                page, _scales, current_mid_states, message = model.thinking_pass(
+                page, _scales, current_mid_states, message, _raw_page = model.thinking_pass(
                     eval_ids, eval_mask, state_pages, pass_num,
                     prev_mid_states=mid_states_history if mid_states_history else None,
                     messages=eval_messages if eval_messages else None,
@@ -624,7 +631,7 @@ def infer_single(model, answer_head, problem_text, device,
         mid_states_history = []
 
         for pass_num in range(max_passes):
-            page, _scales, current_mid_states = model.thinking_pass(
+            page, _scales, current_mid_states, _message, _raw_page = model.thinking_pass(
                 input_ids, attention_mask, state_pages, pass_num,
                 prev_mid_states=mid_states_history if mid_states_history else None,
             )
@@ -952,7 +959,7 @@ def train(args):
         t0 = time.time()
 
         # Re-shuffle data each epoch (DataLoader shuffle=True handles this)
-        ep_gen = ep_ah = ep_ordinal = ep_ctr = ep_conf = ep_scale_reg = ep_cos = 0.0
+        ep_gen = ep_ah = ep_ordinal = ep_ctr = ep_conf = ep_scale_reg = ep_iso = ep_cos = 0.0
         ep_active = ep_std = ep_xpass = 0.0
         ep_page_var = 0.0
         ep_dead_dims = 0.0
@@ -975,7 +982,7 @@ def train(args):
 
             optimizer.zero_grad()
 
-            (gen_loss, ah_loss, ordinal_loss, c_loss, conf_loss, scale_reg,
+            (gen_loss, ah_loss, ordinal_loss, c_loss, conf_loss, scale_reg, iso_loss,
              page_cos, active_atoms, s_std, xpass_cos,
              conf_mean, state_pages, per_cycle_preds) = forward_train_per_cycle(
                 model, answer_head, problems, cycle_targets, cycle_mask,
@@ -989,7 +996,8 @@ def train(args):
                           + 1.0 * ordinal_loss
                           + args.lam_contrastive * c_loss
                           + args.lam_conf * conf_loss
-                          + args.lam_scale_reg * scale_reg)
+                          + args.lam_scale_reg * scale_reg
+                          + 0.01 * iso_loss)
             total_loss.backward()
             torch.nn.utils.clip_grad_norm_(trainable, 1.0)
             optimizer.step()
@@ -1000,6 +1008,7 @@ def train(args):
             ep_ctr += c_loss.item()
             ep_conf += conf_loss.item()
             ep_scale_reg += scale_reg.item()
+            ep_iso += iso_loss.item()
             ep_cos += page_cos.item()
             ep_active += active_atoms.item()
             ep_std += s_std.item()
@@ -1061,7 +1070,7 @@ def train(args):
         print(
             f"Epoch {epoch+1}: "
             f"gen={ep_gen/nb:.4f} ah={ep_ah/nb:.4f} ord={ep_ordinal/nb:.3f} contr={ep_ctr/nb:.2f} "
-            f"conf={ep_conf/nb:.2f} scale_reg={ep_scale_reg/nb:.2f} "
+            f"conf={ep_conf/nb:.2f} scale_reg={ep_scale_reg/nb:.2f} iso={ep_iso/nb:.4f} "
             f"page_cos={ep_cos/nb:.2f} "
             f"active={ep_active/nb:.1f}/{args.num_atoms} "
             f"scale_std={ep_std/nb:.3f} "

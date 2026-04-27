@@ -358,7 +358,7 @@ class AtomHypernetwork(nn.Module):
         pass_embed_dim: int = 512,  # kept for backward compat, ignored if skip_pass_embed
         pass_embed_scale: float = 1.0,  # kept for backward compat
         skip_pass_embed: bool = False,
-        message_dim: int = 16,
+        message_dim: int = 32,
         max_messages: int = 12,
     ):
         super().__init__()
@@ -769,16 +769,16 @@ class CycleMessageGenerator(nn.Module):
     The message is a POST-IT NOTE — quick, direct, uncompressed.
     The page is the FORMAL RECORD — rich, compressed, multi-layer.
     """
-    def __init__(self, d_model=2048, message_dim=16):
+    def __init__(self, d_model=2048, message_dim=32):
         super().__init__()
         self.message_dim = message_dim
 
-        # Mean-pool last layer → project to small message
+        # Mean-pool last layer → project to message (~1M params)
         self.net = nn.Sequential(
             nn.LayerNorm(d_model),
-            nn.Linear(d_model, 256),
+            nn.Linear(d_model, 512),
             nn.GELU(),
-            nn.Linear(256, message_dim),
+            nn.Linear(512, message_dim),
         )
 
     def forward(self, last_layer_hidden):
@@ -810,6 +810,33 @@ class OrdinalAttentionHead(nn.Module):
     def forward(self, page):
         """page: (B, page_size) -> logits: (B, max_sentences)"""
         return self.head(page.float())
+
+
+# ---------------------------------------------------------------------------
+# IsotropicRegularizer — pushes page distribution toward isotropic Gaussian
+# ---------------------------------------------------------------------------
+class IsotropicRegularizer(nn.Module):
+    """Forces page distribution toward isotropic Gaussian. Zero learnable params."""
+    def __init__(self, target_var=1.0, corr_weight=0.1):
+        super().__init__()
+        self.target_var = target_var
+        self.corr_weight = corr_weight
+
+    def forward(self, pages_batch):
+        """pages_batch: (N, 64) raw perceiver output before normalization."""
+        if pages_batch.size(0) < 4:
+            return torch.tensor(0.0, device=pages_batch.device)
+        dim_means = pages_batch.mean(dim=0)
+        mean_loss = (dim_means ** 2).mean()
+        dim_vars = pages_batch.var(dim=0)
+        var_loss = ((dim_vars - self.target_var) ** 2).mean()
+        normalized = (pages_batch - dim_means) / (dim_vars.sqrt() + 1e-8)
+        batch_size = pages_batch.size(0)
+        correlation = (normalized.T @ normalized) / batch_size
+        identity = torch.eye(pages_batch.size(1), device=pages_batch.device)
+        off_diagonal = correlation - identity
+        corr_loss = (off_diagonal ** 2).mean()
+        return mean_loss + var_loss + self.corr_weight * corr_loss
 
 
 # ---------------------------------------------------------------------------
@@ -905,13 +932,16 @@ class AtomLoRAModel(nn.Module):
         )
 
         # --- Cycle message generator (direct last-layer signal, bypasses perceiver) ---
-        self.message_generator = CycleMessageGenerator(d_model=2048, message_dim=16)
+        self.message_generator = CycleMessageGenerator(d_model=2048, message_dim=32)
 
         # --- Ordinal attention head (teaches atoms WHERE to look per cycle) ---
         self.ordinal_head = OrdinalAttentionHead(page_size=self.page_size, max_sentences=8)
 
         # --- Pi-harmonic page encoding (DCT-like orthogonal basis, zero learnable params) ---
         self.fourier_page = PiHarmonicPageEncoding(page_size=self.page_size)
+
+        # --- Isotropic regularizer (pushes raw pages toward isotropic Gaussian) ---
+        self.isotropic_reg = IsotropicRegularizer()
 
         # --- Probe head (intermediate value supervision) ---
         self.probe_head = nn.Linear(self.page_size, 1)
@@ -933,7 +963,7 @@ class AtomLoRAModel(nn.Module):
         max_passes: int = 3,
         prev_mid_states: Optional[List[torch.Tensor]] = None,
         messages: Optional[List[torch.Tensor]] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         One thinking pass with atom LoRA.
 
@@ -952,6 +982,7 @@ class AtomLoRAModel(nn.Module):
             atom_scales:        (B, num_atoms) the scales used this pass
             current_mid_states: (B, num_queries, d_perceiver) detached mid-layer states
             message:            (B, message_dim) direct signal from last layer
+            page_delta:         (B, page_size) raw perceiver output before normalization
         """
         batch_size = input_ids.size(0)
 
@@ -1009,7 +1040,7 @@ class AtomLoRAModel(nn.Module):
         # Generate message: direct signal from last layer, bypasses perceiver
         message = self.message_generator(hidden_states[-1])
 
-        return page, atom_scales, current_mid_states, message
+        return page, atom_scales, current_mid_states, message, page_delta
 
     def thinking_pass_with_sympy(
         self,
@@ -1022,7 +1053,7 @@ class AtomLoRAModel(nn.Module):
         teacher_sympy: Optional[str] = None,
         prev_mid_states: Optional[List[torch.Tensor]] = None,
         max_passes: int = 3,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict[str, float]]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict[str, float], torch.Tensor]:
         """
         One thinking pass with atom LoRA, integrating SymPy evaluation.
 
@@ -1051,6 +1082,7 @@ class AtomLoRAModel(nn.Module):
             atom_scales:        (B, num_atoms) the scales used this pass
             current_mid_states: (B, num_queries, d_perceiver) detached mid-layer states
             updated_sympy_results: Dict[str, float] with any new results from this pass
+            page_delta:         (B, page_size) raw perceiver output before normalization
         """
         batch_size = input_ids.size(0)
         device = input_ids.device
@@ -1137,7 +1169,7 @@ class AtomLoRAModel(nn.Module):
         if grad_scale != 1.0 and page.requires_grad:
             page = page * grad_scale + page.detach() * (1.0 - grad_scale)
 
-        return page, atom_scales, current_mid_states, updated_sympy_results
+        return page, atom_scales, current_mid_states, updated_sympy_results, page_delta
 
     def solve_with_memory(
         self,
@@ -1175,7 +1207,7 @@ class AtomLoRAModel(nn.Module):
 
         for pass_num in range(max_passes):
             # === THINK ===
-            page, atom_scales, current_mid_states, sympy_results = self.thinking_pass_with_sympy(
+            page, atom_scales, current_mid_states, sympy_results, _raw_page = self.thinking_pass_with_sympy(
                 problem_text=problem_text,
                 input_ids=problem_ids,
                 attention_mask=attention_mask,

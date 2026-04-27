@@ -90,7 +90,7 @@ with torch.no_grad():
                 em = attn_mask
                 pl = input_ids.size(1)
 
-            page, sc, ms, msg = model.thinking_pass(
+            page, sc, ms, msg, _raw_page = model.thinking_pass(
                 eid, em, state_pages, pn,
                 prev_mid_states=mid_hist if mid_hist else None,
                 messages=messages if messages else None,
@@ -186,7 +186,7 @@ with torch.no_grad():
             else:
                 eid = input_ids
                 em = attn_mask
-            page, sc, ms, msg = model.thinking_pass(
+            page, sc, ms, msg, _raw_page = model.thinking_pass(
                 eid, em, state_pages, pn,
                 prev_mid_states=mid_hist if mid_hist else None,
                 messages=messages if messages else None,
