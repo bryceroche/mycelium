@@ -1,18 +1,15 @@
 """
-64-Atom LoRA Architecture (v24).
+64-Atom LoRA Architecture (v27 — unified BreathingController).
 
-Replace named LoRA templates (parse/compute/verify/answer) with 64 anonymous
-rank-6 atoms (~100M params), independently scaled by a 10M-param hypernetwork.
-The model discovers its own cognitive decomposition.
+64 anonymous rank-6 LoRA atoms (~82M params), independently scaled by a
+unified BreathingController that replaces the separate perceiver + hypernetwork
++ bypass + message generator.
 
 Key design choices:
 - Tanh activation (NOT softmax): atoms are independent, no competition, no mode collapse
 - Batched einsum: all 64 atoms applied simultaneously, no per-atom loops
-- No strategy side channel: hypernetwork reads pages + pass embed only
-- Symmetric capacity: ~105M compress (perceiver) ~ 100M expand (atoms)
-
-Evolution from QuadLoRA (v23): removes named modes, softmax blend, entropy
-regularization. Adds 64 anonymous atoms with independent tanh scaling.
+- BreathingController reads ALL Llama hidden layers + history -> page + scales + focus
+- One network, one understanding, two outputs (record + plan)
 """
 
 import math
@@ -25,7 +22,7 @@ sys.path.insert(0, '/home/ubuntu/mycelium')
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -722,6 +719,9 @@ class AtomLoRAModel(nn.Module):
         # --- Möbius transform (conformal warp for page diversity, cycle 2+) ---
         self.mobius = MobiusTransform(dim=self.page_size, max_focus_norm=0.5)
 
+        # --- Isotropic regularizer (per-dim variance → 1, correlation → 0) ---
+        self.isotropic_reg = IsotropicRegularizer()
+
         # --- Breathing controller (v27: unified perceiver + hypernetwork) ---
         self.controller = BreathingController(
             num_layers=self.num_layers,
@@ -822,375 +822,64 @@ class AtomLoRAModel(nn.Module):
         # page_delta (=page), hidden_pool, focus, bypass_vec (None)
         return page, next_scales, None, None, page, hidden_pool, focus, None
 
-    # NOTE: thinking_pass_legacy, thinking_pass_with_sympy, solve_with_memory,
-    # and after_solve have been removed. Use thinking_pass() with the unified
-    # BreathingController.
-    _DEAD_METHODS_REMOVED = True  # sentinel for grep
-            max_passes:      int, total passes (for gradient scaling)
-            prev_mid_states: Optional list of (B, num_queries, d_perceiver) tensors
-                from previous passes' perceiver mid-layer states.
-            messages:        Optional list of (B, message_dim) accumulated messages
-            bypass_vectors:  Optional list of (B, 512) bypass vectors from previous cycles
+    def two_pass_cycle1(self, input_ids, attention_mask):
+        """Two-pass cycle 1: vanilla comprehension -> informed initial scales.
+
+        Pass 1: Llama WITHOUT LoRA -> controller reads comprehension -> initial scales
+        Pass 2: Llama WITH LoRA -> controller reads modified comprehension -> scales for cycle 2
 
         Returns:
-            page:               (B, page_size) normalized on hypersphere
-            atom_scales:        (B, num_atoms) the scales used this pass
-            current_mid_states: (B, num_queries, d_perceiver) detached mid-layer states
-            message:            (B, message_dim) direct signal from last layer
-            page_delta:         (B, page_size) raw perceiver output before normalization
-            hidden_pool:        (B, d_model) mean-pooled last hidden layer
-            focus:              (B, 64) Mobius focus point
-            bypass_vec:         (B, 512) bypass vector for this cycle
+            page_0:         (B, 64) page from vanilla pass (observation)
+            hidden_pool_0:  (B, 2048) hidden pool from vanilla pass
+            page_1:         (B, 64) page from LoRA pass (actual cycle 1)
+            hidden_pool_1:  (B, 2048) hidden pool from LoRA pass
+            initial_scales: (B, 64) scales produced from vanilla comprehension
+            next_scales:    (B, 64) scales for cycle 2
+            focus_1:        (B, 64) Mobius focus for page_1
+            outputs_lora:   CausalLMOutputWithPast from LoRA pass (for generation)
         """
-        batch_size = input_ids.size(0)
+        # Pass 1: vanilla Llama (no LoRA)
+        outputs_vanilla = self.transformer(
+            input_ids=input_ids, attention_mask=attention_mask,
+            output_hidden_states=True,
+        )
+        hidden_states_vanilla = list(outputs_vanilla.hidden_states[1:])
+        hidden_pool_0 = hidden_states_vanilla[-1].mean(dim=1).float()
 
-        if len(state_pages) == 0:
-            # First pass: feed zero page to hypernetwork so LoRA is active
-            hyper_dtype = next(self.hypernet.parameters()).dtype
-            zero_page = torch.zeros(
-                batch_size, self.page_size,
-                device=input_ids.device, dtype=hyper_dtype,
-            )
-            atom_scales, focus = self.hypernet([zero_page], pass_num=0, messages=messages, text_context=text_context, bypass_summary=None)
-
-            manager = AtomAdditiveLoRAManager(self.transformer)
-            manager.apply(self.atoms, atom_scales)
-            try:
-                outputs = self.transformer(
-                    input_ids=input_ids, attention_mask=attention_mask,
-                    output_hidden_states=True,
-                )
-                hidden_states = list(outputs.hidden_states[1:])
-            finally:
-                manager.remove()
-        else:
-            # Compute bypass summary from accumulated bypass vectors
-            if bypass_vectors and len(bypass_vectors) > 0:
-                bypass_summary = torch.stack(bypass_vectors, dim=0).mean(dim=0)  # (B, 512)
-            else:
-                bypass_summary = None
-
-            # Generate atom scales from pages + messages + pass number
-            atom_scales, focus = self.hypernet(state_pages, pass_num, messages=messages, text_context=text_context, bypass_summary=bypass_summary)
-
-            manager = AtomAdditiveLoRAManager(self.transformer)
-            manager.apply(self.atoms, atom_scales)
-            try:
-                outputs = self.transformer(
-                    input_ids=input_ids, attention_mask=attention_mask,
-                    output_hidden_states=True,
-                )
-                hidden_states = list(outputs.hidden_states[1:])
-            finally:
-                manager.remove()
-
-        # Compress all 16 layers -> page delta (strategy discarded)
-        # Pass prev_mid_states for skip connection
-        # Pass state_pages for page communication (v24.8) — perceiver sees previous pages
-        page_delta, _strategy, current_mid_states = self.compressor(
-            hidden_states, pass_num, prev_mid_states=prev_mid_states,
-            state_pages=state_pages,
+        # Controller reads vanilla comprehension -> initial scales
+        page_0, initial_scales, focus_0 = self.controller(
+            hidden_states_vanilla, [], [],
         )
 
-        # Normalize to hypersphere. No encoding — let the atoms/perceiver
-        # produce natural diversity. Encoding was masking the true signal.
-        page = F.normalize(page_delta, dim=-1) * self.page_radius
-
-        # Möbius warp: push page to this cycle's focus region (cycle 2+)
-        if pass_num > 0:
-            page = self.mobius(page, focus)
-
-        # Gradient scaling for earlier cycles (amplify earlier passes)
-        grad_scale = min(float(max_passes - pass_num), 4.0)
-        if grad_scale != 1.0 and page.requires_grad:
-            page = page * grad_scale + page.detach() * (1.0 - grad_scale)
-
-        # Generate message: direct signal from last layer, bypasses perceiver
-        message = self.message_generator(hidden_states[-1])
-
-        # Mean-pooled last hidden layer for answer head
-        hidden_pool = hidden_states[-1].mean(dim=1).float()  # (B, d_model)
-
-        # Differentiable bypass: rich signal from hidden states to hypernetwork
-        bypass_vec = self.bypass(hidden_pool)
-
-        return page, atom_scales, current_mid_states, message, page_delta, hidden_pool, focus, bypass_vec
-
-    def thinking_pass_with_sympy(
-        self,
-        problem_text: str,
-        input_ids: torch.Tensor,
-        attention_mask: torch.Tensor,
-        state_pages: List[torch.Tensor],
-        pass_num: int,
-        sympy_results: Dict[str, float],
-        teacher_sympy: Optional[str] = None,
-        prev_mid_states: Optional[List[torch.Tensor]] = None,
-        max_passes: int = 3,
-        text_context: Optional[torch.Tensor] = None,
-        bypass_vectors: Optional[List[torch.Tensor]] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict[str, float], torch.Tensor]:
-        """
-        One thinking pass with atom LoRA, integrating SymPy evaluation.
-
-        This method extends thinking_pass by:
-        1. Formatting accumulated SymPy results as text context (prepended to problem)
-        2. Running the normal thinking pass
-        3. Encoding any new SymPy results into the page (before hypersphere normalization)
-        4. Returning updated sympy_results dict
-
-        Args:
-            problem_text:    Original problem text (used for context formatting)
-            input_ids:       (B, seq_len) tokenized problem (without sympy context)
-            attention_mask:  (B, seq_len)
-            state_pages:     list of (B, page_size) accumulated pages
-            pass_num:        int (0-indexed)
-            sympy_results:   Dict[str, float] accumulated results from previous passes
-            teacher_sympy:   Optional SymPy code string for teacher forcing during training.
-                            If provided, evaluates this code and encodes results.
-                            If None, skips SymPy evaluation (inference uses separate generation).
-            prev_mid_states: Optional list of (B, num_queries, d_perceiver) tensors
-                            from previous passes' perceiver mid-layer states.
-            max_passes:      int, total passes (for gradient scaling)
-
-        Returns:
-            page:               (B, page_size) normalized on hypersphere
-            atom_scales:        (B, num_atoms) the scales used this pass
-            current_mid_states: (B, num_queries, d_perceiver) detached mid-layer states
-            updated_sympy_results: Dict[str, float] with any new results from this pass
-            page_delta:         (B, page_size) raw perceiver output before normalization
-        """
-        batch_size = input_ids.size(0)
-        device = input_ids.device
-
-        # --- Step 1: Format SymPy context and re-tokenize if we have results ---
-        if sympy_results:
-            # Format accumulated results as text context
-            context = format_sympy_context(sympy_results)
-            # Prepend context to problem text
-            augmented_text = context + problem_text
-
-            # Re-tokenize with context
-            tokenized = self.tokenizer(
-                augmented_text,
-                return_tensors='pt',
-                padding=True,
-                truncation=True,
-                max_length=512,
-            )
-            input_ids = tokenized['input_ids'].to(device)
-            attention_mask = tokenized['attention_mask'].to(device)
-
-            # Handle batch size mismatch (tokenizer returns B=1 for single string)
-            if input_ids.size(0) == 1 and batch_size > 1:
-                input_ids = input_ids.expand(batch_size, -1)
-                attention_mask = attention_mask.expand(batch_size, -1)
-
-        # --- Step 2: Run normal thinking pass (hypernetwork → atoms → Llama → perceiver) ---
-        if len(state_pages) == 0:
-            # First pass: no LoRA (no pages to condition on)
-            atom_scales = torch.zeros(
-                batch_size, self.atoms.num_atoms,
-                device=device, dtype=torch.float32,
-            )
-            outputs = self.transformer(
+        # Pass 2: Llama WITH LoRA (atom-modified attention)
+        manager = AtomAdditiveLoRAManager(self.transformer)
+        manager.apply(self.atoms, initial_scales)
+        try:
+            outputs_lora = self.transformer(
                 input_ids=input_ids, attention_mask=attention_mask,
                 output_hidden_states=True,
             )
-            hidden_states = list(outputs.hidden_states[1:])
-        else:
-            # Compute bypass summary from accumulated bypass vectors
-            if bypass_vectors and len(bypass_vectors) > 0:
-                bypass_summary = torch.stack(bypass_vectors, dim=0).mean(dim=0)  # (B, 512)
-            else:
-                bypass_summary = None
+        finally:
+            manager.remove()
 
-            # Generate atom scales from pages + pass number
-            atom_scales, _focus = self.hypernet(state_pages, pass_num, text_context=text_context, bypass_summary=bypass_summary)
+        hidden_states_lora = list(outputs_lora.hidden_states[1:])
+        hidden_pool_1 = hidden_states_lora[-1].mean(dim=1).float()
 
-            # Apply atom LoRA via monkey-patching
-            manager = AtomAdditiveLoRAManager(self.transformer)
-            manager.apply(self.atoms, atom_scales)
-            try:
-                outputs = self.transformer(
-                    input_ids=input_ids, attention_mask=attention_mask,
-                    output_hidden_states=True,
-                )
-                hidden_states = list(outputs.hidden_states[1:])
-            finally:
-                manager.remove()
-
-        # Compress all 16 layers -> page delta (strategy discarded)
-        page_delta, _strategy, current_mid_states = self.compressor(
-            hidden_states, pass_num, prev_mid_states=prev_mid_states,
-            state_pages=state_pages,
+        # Controller reads LoRA-modified comprehension -> page + next scales
+        page_1, next_scales, focus_1 = self.controller(
+            hidden_states_lora, [page_0], [hidden_pool_0.detach()],
         )
 
-        # --- Step 3: Evaluate teacher SymPy and encode results into page delta ---
-        updated_sympy_results = dict(sympy_results)  # Copy to avoid mutation
+        # Mobius warp page_1 (it's the second page, so warp)
+        page_1 = self.mobius(page_1, focus_1)
 
-        if teacher_sympy is not None:
-            # Teacher forcing: evaluate provided SymPy code
-            new_results = SymPyEvaluator.safe_eval(teacher_sympy)
-            if new_results:
-                # Merge new results into accumulated results
-                updated_sympy_results.update(new_results)
+        return (page_0, hidden_pool_0.detach(), page_1, hidden_pool_1,
+                initial_scales, next_scales, focus_1, outputs_lora)
 
-                # Encode SymPy results into a page-compatible vector
-                sympy_encoding = self.sympy_encoder(new_results, device=device)
-
-                # Add to page delta BEFORE hypersphere normalization
-                # This allows SymPy results to influence the page content
-                page_delta = page_delta + sympy_encoding.unsqueeze(0).expand(batch_size, -1)
-
-        # --- Step 4: Normalize to hypersphere (no encoding) ---
-        page = F.normalize(page_delta, dim=-1) * self.page_radius
-
-        # Gradient scaling for earlier cycles
-        grad_scale = min(float(max_passes - pass_num), 4.0)
-        if grad_scale != 1.0 and page.requires_grad:
-            page = page * grad_scale + page.detach() * (1.0 - grad_scale)
-
-        # Mean-pooled last hidden layer for bypass
-        hidden_pool = hidden_states[-1].mean(dim=1).float()  # (B, d_model)
-
-        # Differentiable bypass: rich signal from hidden states to hypernetwork
-        bypass_vec = self.bypass(hidden_pool)
-
-        return page, atom_scales, current_mid_states, updated_sympy_results, page_delta, bypass_vec
-
-    def solve_with_memory(
-        self,
-        problem_text: str,
-        problem_ids: torch.Tensor,
-        max_passes: int = 5,
-        epoch: int = 0,
-    ) -> Tuple[Optional[int], Optional[int]]:
-        """
-        Full solve with pattern memory integration.
-
-        Queries pattern memory after pass 1 to retrieve similar patterns.
-        Sets self.pattern_hint if a good match is found (score > 0.5).
-        Checks for 'answer' in sympy_results or confidence for early stopping.
-
-        Args:
-            problem_text: The problem text string
-            problem_ids: Tokenized problem (B, seq_len)
-            max_passes: Maximum number of thinking passes
-            epoch: Current training epoch (for pattern memory updates)
-
-        Returns:
-            (answer, used_pattern_id): The predicted answer and ID of pattern used (if any)
-        """
-        device = problem_ids.device
-        batch_size = problem_ids.size(0)
-
-        # Create attention mask (1 for real tokens, 0 for padding)
-        attention_mask = (problem_ids != self.tokenizer.pad_token_id).long()
-
-        state_pages: List[torch.Tensor] = []
-        sympy_results: Dict[str, float] = {}
-        used_pattern_id: Optional[int] = None
-        prev_mid_states: Optional[List[torch.Tensor]] = None
-
-        for pass_num in range(max_passes):
-            # === THINK ===
-            page, atom_scales, current_mid_states, sympy_results, _raw_page, _bypass_vec = self.thinking_pass_with_sympy(
-                problem_text=problem_text,
-                input_ids=problem_ids,
-                attention_mask=attention_mask,
-                state_pages=state_pages,
-                pass_num=pass_num,
-                sympy_results=sympy_results,
-                teacher_sympy=None,  # No teacher forcing during solve
-                prev_mid_states=prev_mid_states,
-                max_passes=max_passes,
-            )
-            state_pages.append(page)
-            prev_mid_states = [current_mid_states] if prev_mid_states is None else prev_mid_states + [current_mid_states]
-
-            # === QUERY PATTERN MEMORY (after pass 1) ===
-            if pass_num == 0 and self.pattern_memory is not None:
-                matches = self.pattern_memory.query(page[0], top_k=3)  # Use first item in batch
-
-                if matches and matches[0]['score'] > 0.5:
-                    best = matches[0]
-                    used_pattern_id = best['pattern_id']
-
-                    # Inject pattern hint as context for next pass
-                    hint = f"Suggested approach ({best['type']}, "
-                    hint += f"{best['success_rate']:.0%} success): "
-                    hint += best['template']
-                    self.pattern_hint = hint
-                else:
-                    self.pattern_hint = None
-
-            # === CHECK STOPPING: answer in sympy_results ===
-            if 'answer' in sympy_results:
-                answer = int(sympy_results['answer'])
-                return answer, used_pattern_id
-
-            # === CHECK STOPPING: confidence ===
-            if pass_num >= 1 and len(state_pages) > 0:
-                conf = self.confidence_head(state_pages)
-                if conf.mean().item() > 0.9:
-                    break
-
-        # Extract answer from answer head
-        if len(state_pages) > 0:
-            answer = self.answer_head.decode(state_pages[-1])
-            return answer[0].item(), used_pattern_id
-        else:
-            return None, used_pattern_id
-
-    def after_solve(
-        self,
-        problem_text: str,
-        state_pages: List[torch.Tensor],
-        sympy_steps: Optional[List[str]],
-        was_correct: bool,
-        used_pattern_id: Optional[int],
-        epoch: int = 0,
-    ) -> None:
-        """
-        Post-solve: update pattern memory based on outcome.
-
-        Called after checking whether the answer was correct.
-        - If a pattern was used, records success/failure
-        - If answer was correct and we have sympy_steps, stores new pattern
-
-        Args:
-            problem_text: The original problem text
-            state_pages: List of page tensors from thinking passes
-            sympy_steps: Optional list of SymPy step strings (for storing new patterns)
-            was_correct: Whether the predicted answer matched gold
-            used_pattern_id: ID of pattern that was used (if any)
-            epoch: Current training epoch
-        """
-        if self.pattern_memory is None:
-            return
-
-        # Update outcome if we used a pattern
-        if used_pattern_id is not None:
-            self.pattern_memory.record_outcome(used_pattern_id, was_correct, epoch)
-
-        # Store new pattern if successful and we have SymPy steps
-        if was_correct and sympy_steps and len(state_pages) > 0:
-            # Auto-classify pattern type
-            pattern_type = classify_pattern(sympy_steps)
-            template = "; ".join(sympy_steps)
-
-            self.pattern_memory.store(
-                page_embedding=state_pages[0],  # Use first page (problem encoding)
-                sympy_template=template,
-                pattern_type=pattern_type,
-                example_problem=problem_text[:200],
-                epoch=epoch,
-            )
 
 
 # ---------------------------------------------------------------------------
-# Warm start from any previous checkpoint (perceiver only)
+# Warm start from any previous checkpoint
 # ---------------------------------------------------------------------------
 def warm_start_atom_from_checkpoint(
     atom_model: AtomLoRAModel,
@@ -1199,11 +888,8 @@ def warm_start_atom_from_checkpoint(
     """
     Warm-start an AtomLoRAModel from a previous checkpoint.
 
-    Only loads compressor (perceiver) weights — everything else is fresh:
-    - atoms: fresh random init (completely different structure from named templates)
-    - hypernet: fresh init (different output dimension, no strategy input)
-    - answer_head: fresh init
-    - confidence_head: fresh init
+    Loads controller and atoms weights where shapes match.
+    Everything else is fresh init.
 
     Args:
         atom_model: AtomLoRAModel to warm-start
@@ -1214,49 +900,33 @@ def warm_start_atom_from_checkpoint(
     else:
         ckpt = checkpoint
 
-    # --- Compressor (perceiver — same architecture, direct load) ---
-    if 'compressor' in ckpt:
-        own = atom_model.compressor.state_dict()
+    # --- Controller ---
+    if 'controller' in ckpt:
+        own = atom_model.controller.state_dict()
         loaded = 0
-        for k, v in ckpt['compressor'].items():
+        for k, v in ckpt['controller'].items():
             if k in own and own[k].shape == v.shape:
                 own[k] = v
                 loaded += 1
-        atom_model.compressor.load_state_dict(own, strict=False)
-        print(f"  compressor: loaded {loaded}/{len(own)}")
+        atom_model.controller.load_state_dict(own, strict=False)
+        print(f"  controller: loaded {loaded}/{len(own)}")
     else:
-        print("  compressor: not found in checkpoint, fresh init")
+        print("  controller: not found in checkpoint, fresh init")
 
-    # --- Probe head ---
-    if 'probe_head' in ckpt:
-        own = atom_model.probe_head.state_dict()
+    # --- Atoms ---
+    if 'atoms' in ckpt:
+        own = atom_model.atoms.state_dict()
         loaded = 0
-        for k, v in ckpt['probe_head'].items():
+        for k, v in ckpt['atoms'].items():
             if k in own and own[k].shape == v.shape:
                 own[k] = v
                 loaded += 1
-        atom_model.probe_head.load_state_dict(own, strict=False)
-        print(f"  probe_head: loaded {loaded}/{len(own)}")
+        atom_model.atoms.load_state_dict(own, strict=False)
+        print(f"  atoms: loaded {loaded}/{len(own)}")
     else:
-        print("  probe_head: fresh init (not in checkpoint)")
-
-    # --- Residual gate (v24.8) ---
-    if 'residual_gate' in ckpt:
-        own = atom_model.residual_gate.state_dict()
-        loaded = 0
-        for k, v in ckpt['residual_gate'].items():
-            if k in own and own[k].shape == v.shape:
-                own[k] = v
-                loaded += 1
-        atom_model.residual_gate.load_state_dict(own, strict=False)
-        print(f"  residual_gate: loaded {loaded}/{len(own)}")
-    else:
-        print("  residual_gate: fresh init (v24.8 — per-dimension page blending)")
+        print("  atoms: fresh init (64 rank-6 atoms, 0.01 scale)")
 
     # --- Everything else is fresh ---
-    print("  atoms: fresh init (64 rank-6 atoms, 0.01 scale)")
-    print("  hypernet: fresh init (new architecture, no strategy)")
-    print("  answer_head: fresh init")
     print("  confidence_head: fresh init")
 
 
@@ -1264,48 +934,18 @@ def warm_start_atom_from_checkpoint(
 # Self-test
 # ---------------------------------------------------------------------------
 if __name__ == '__main__':
-    import time
-
     device = 'cpu'
     torch.manual_seed(42)
 
     print("=" * 60)
-    print("64-Atom LoRA Architecture — Self-Test")
+    print("64-Atom LoRA Architecture — Self-Test (v27 cleanup)")
     print("=" * 60)
 
     # ---------------------------------------------------------------
-    # 1. Test AtomHypernetwork
-    # ---------------------------------------------------------------
-    print("\n--- AtomHypernetwork ---")
-    hypernet = AtomHypernetwork(page_size=64, num_atoms=64).to(device)
-
-    # Empty pages (pass 0)
-    scales_empty = hypernet([], pass_num=0)
-    print(f"  Empty pages -> scales shape: {scales_empty.shape}, "
-          f"all zeros: {(scales_empty == 0).all().item()}")
-
-    # With pages
-    batch = 4
-    pages = [torch.randn(batch, 64, device=device) for _ in range(3)]
-    scales = hypernet(pages, pass_num=1)
-    print(f"  3 pages -> scales shape: {scales.shape}, "
-          f"range: [{scales.min().item():.3f}, {scales.max().item():.3f}]")
-    active = (scales.abs() > 0.1).float().mean().item()
-    print(f"  Fraction with |scale| > 0.1: {active:.2%}")
-
-    # Different passes should give different scales
-    scales_p1 = hypernet(pages, pass_num=1)
-    scales_p2 = hypernet(pages, pass_num=2)
-    cos_sim = F.cosine_similarity(scales_p1, scales_p2, dim=-1).mean().item()
-    print(f"  Pass 1 vs pass 2 cosine: {cos_sim:.4f} (should be < 1.0)")
-
-    hypernet_params = sum(p.numel() for p in hypernet.parameters())
-    print(f"  Params: {hypernet_params / 1e6:.2f}M")
-
-    # ---------------------------------------------------------------
-    # 2. Test LoRAAtoms
+    # 1. Test LoRAAtoms
     # ---------------------------------------------------------------
     print("\n--- LoRAAtoms ---")
+    batch = 4
     atoms = LoRAAtoms(d_model=2048, d_kv=512, rank=6, num_atoms=64, num_layers=16)
 
     hidden = torch.randn(batch, 32, 2048)  # (B, seq, d_model)
@@ -1321,7 +961,7 @@ if __name__ == '__main__':
     print(f"  Params: {atom_params / 1e6:.2f}M")
 
     # ---------------------------------------------------------------
-    # 3. Test AtomAdditiveLoRAManager with mock Llama layers
+    # 2. Test AtomAdditiveLoRAManager with mock Llama layers
     # ---------------------------------------------------------------
     print("\n--- AtomAdditiveLoRAManager (mock) ---")
 
@@ -1379,32 +1019,10 @@ if __name__ == '__main__':
     print(f"  After remove, max diff from baseline: {restore_diff:.9f} (should be ~0)")
 
     # ---------------------------------------------------------------
-    # 4. Test AnswerHead encode/decode
-    # ---------------------------------------------------------------
-    print("\n--- AnswerHead ---")
-    answer_head = AnswerHead(page_size=64, max_digits=6)
-
-    last_page = torch.randn(batch, 64)
-    sign_logits, length_logits, digit_logits = answer_head(last_page)
-    print(f"  sign_logits: {sign_logits.shape}")
-    print(f"  length_logits: {length_logits.shape}")
-    print(f"  digit_logits: {len(digit_logits)} x {digit_logits[0].shape}")
-
-    decoded = answer_head.decode(last_page)
-    print(f"  Decoded answers: {decoded.tolist()}")
-
-    # Test loss
-    gold = torch.tensor([42, -137, 5, 9999], dtype=torch.long)
-    loss = answer_head_loss(answer_head, last_page, gold)
-    print(f"  Answer head loss: {loss.item():.4f}")
-
-    ah_params = sum(p.numel() for p in answer_head.parameters())
-    print(f"  Params: {ah_params:,}")
-
-    # ---------------------------------------------------------------
-    # 5. Test AtomConfidenceHead
+    # 3. Test AtomConfidenceHead
     # ---------------------------------------------------------------
     print("\n--- AtomConfidenceHead ---")
+    pages = [torch.randn(batch, 64, device=device) for _ in range(3)]
     conf_head = AtomConfidenceHead(page_size=64, hidden=128, num_heads=4)
 
     confidence = conf_head(pages)
@@ -1415,40 +1033,31 @@ if __name__ == '__main__':
     print(f"  Params: {conf_params:,}")
 
     # ---------------------------------------------------------------
-    # 6. Test gradient flow
+    # 4. Test BreathingController
     # ---------------------------------------------------------------
-    print("\n--- Gradient flow ---")
+    print("\n--- BreathingController ---")
+    ctrl = BreathingController(num_layers=16, hidden_dim=2048, internal_dim=1536,
+                               num_heads=8, page_dim=64, num_atoms=64)
 
-    # End-to-end: pages -> hypernet -> scales -> atoms -> output -> loss
-    test_pages = [torch.randn(2, 64, requires_grad=True) for _ in range(2)]
-    test_hidden = torch.randn(2, 8, 2048)
+    # Simulate hidden states from 16 Llama layers
+    fake_hidden = [torch.randn(batch, 10, 2048) for _ in range(16)]
+    history_pages = [torch.randn(batch, 64) for _ in range(2)]
+    history_hiddens = [torch.randn(batch, 2048) for _ in range(2)]
 
-    test_scales = hypernet(test_pages, pass_num=1)
-    test_out = atoms.apply(test_hidden, layer_idx=0, proj_name='q_proj', atom_scales=test_scales)
-    test_loss = test_out.sum()
-    test_loss.backward()
+    page, scales, focus = ctrl(fake_hidden, history_pages, history_hiddens)
+    print(f"  page: {page.shape}, scales: {scales.shape}, focus: {focus.shape}")
+    print(f"  scales range: [{scales.min().item():.3f}, {scales.max().item():.3f}]")
 
-    pages_grad = all(p.grad is not None and p.grad.abs().sum() > 0 for p in test_pages)
-    hypernet_grad = any(
-        p.grad is not None and p.grad.abs().sum() > 0
-        for p in hypernet.parameters() if p.requires_grad
-    )
-    atoms_grad = any(
-        p.grad is not None and p.grad.abs().sum() > 0
-        for p in atoms.parameters() if p.requires_grad
-    )
-    print(f"  Pages have gradient:    {pages_grad}")
-    print(f"  Hypernet has gradient:  {hypernet_grad}")
-    print(f"  Atoms have gradient:    {atoms_grad}")
+    ctrl_params = sum(p.numel() for p in ctrl.parameters())
+    print(f"  Params: {ctrl_params / 1e6:.2f}M")
 
     # ---------------------------------------------------------------
-    # 7. Parameter count summary
+    # 5. Parameter count summary
     # ---------------------------------------------------------------
     print("\n--- Parameter Count Summary ---")
     components = {
         'LoRAAtoms': atoms,
-        'AtomHypernetwork': hypernet,
-        'AnswerHead': answer_head,
+        'BreathingController': ctrl,
         'AtomConfidenceHead': conf_head,
     }
     total = 0
@@ -1460,7 +1069,7 @@ if __name__ == '__main__':
         else:
             print(f"  {name:25s}: {count:,}")
     print(f"  {'TOTAL (trainable)':25s}: {total / 1e6:.2f}M")
-    print(f"  (+ ~105M perceiver, + 1.23B frozen Llama)")
+    print(f"  (+ 1.23B frozen Llama)")
 
     print("\n" + "=" * 60)
     print("All tests passed.")

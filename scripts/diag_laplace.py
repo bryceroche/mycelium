@@ -15,21 +15,13 @@ from scripts.atom_lora import AtomLoRAModel, AtomAdditiveLoRAManager
 
 def load_model(ckpt_path, device):
     model = AtomLoRAModel()
-    model.compressor = model.compressor.to(device=device, dtype=torch.bfloat16)
-    model.hypernet = model.hypernet.to(device=device, dtype=torch.bfloat16)
     model.atoms = model.atoms.to(device=device, dtype=torch.bfloat16)
+    model.controller = model.controller.to(device=device, dtype=torch.bfloat16)
     model.confidence_head = model.confidence_head.to(device)
-    model.residual_gate = model.residual_gate.to(device=device, dtype=torch.bfloat16)
-    model.probe_head = model.probe_head.to(device)
-    model.message_generator = model.message_generator.to(device)
-    model.ordinal_head = model.ordinal_head.to(device)
     model.mobius = model.mobius.to(device)
-    if hasattr(model, 'bypass'):
-        model.bypass = model.bypass.to(device)
 
     ckpt = torch.load(ckpt_path, map_location='cpu')
-    for name in ['compressor', 'atoms', 'hypernet', 'confidence_head',
-                 'residual_gate', 'message_generator', 'ordinal_head', 'bypass']:
+    for name in ['atoms', 'controller', 'confidence_head']:
         if name in ckpt:
             obj = getattr(model, name)
             own = obj.state_dict()
@@ -136,26 +128,35 @@ def run_diagnostic(model, samples, device, num_passes=3, num_problems=20):
         attention_mask = inputs['attention_mask'].to(device)
 
         state_pages = []
-        mid_states_history = []
-        messages = []
-        bypass_vectors = []
+        history_hiddens = []
         all_scales = []
         all_raw_pages = []
+        prev_scales = None
 
         with torch.no_grad():
-            for pass_num in range(num_passes):
-                page, scales, mid_states, message, raw_page, _hidden, _focus, bypass_vec = model.thinking_pass(
+            # Two-pass cycle 1
+            (page_0, hp_0, page_1, hp_1,
+             initial_scales, next_scales, focus_1, _) = model.two_pass_cycle1(
+                input_ids, attention_mask,
+            )
+            state_pages.extend([page_0, page_1])
+            history_hiddens.extend([hp_0, hp_1])
+            all_scales.extend([initial_scales.squeeze(0), next_scales.squeeze(0)])
+            all_raw_pages.extend([page_0.squeeze(0), page_1.squeeze(0)])
+            prev_scales = next_scales
+
+            # Cycles 2+ (one pass each)
+            for pass_num in range(1, num_passes):
+                page, scales, _mid, _msg, raw_page, hidden_pool, _focus, _bv = model.thinking_pass(
                     input_ids, attention_mask, state_pages, pass_num,
-                    prev_mid_states=mid_states_history if mid_states_history else None,
-                    messages=messages if messages else None,
-                    bypass_vectors=bypass_vectors if bypass_vectors else None,
+                    history_hiddens=history_hiddens,
+                    prev_scales=prev_scales,
                 )
                 state_pages.append(page)
-                mid_states_history.append(mid_states)
-                messages.append(message)
-                bypass_vectors.append(bypass_vec)
+                history_hiddens.append(hidden_pool)
                 all_scales.append(scales.squeeze(0))
                 all_raw_pages.append(raw_page.squeeze(0))
+                prev_scales = scales
 
         # Analyze this problem's page trajectory
         pages_squeezed = [p.squeeze(0) for p in state_pages]

@@ -5,44 +5,43 @@
 Mycelium builds differentiable recurrent reasoning for small language models. A frozen base LLM that can't chain reasoning internally learns to chain through external compression — thinking in a loop where each pass rewires its own attention via state-conditioned LoRA. The core thesis: **decomposition is everything.** Each thinking cycle matches one pattern from a learned library, computes one result, and records it in a growing notebook. The model breathes: EXPAND (think in natural language) → COLLAPSE (compress to 64 floats) → repeat.
 
 **Lead:** Bryce (Manhattan Beach, CA) · **Target:** MATH-500 · **Deadline:** July 1, 2026
-**Infrastructure:** AWS EC2 g5.xlarge (A10G 24GB), S3 bucket mycelium-data-v7
+**Infrastructure:** AWS EC2 g5.xlarge (A10G 24GB)
 
 ---
 
-## Architecture (v26.0 — Generation-Only + Anti-Memorization)
+## Architecture (v27.0 — Unified BreathingController)
 
 ```
-GROWING NOTEBOOK: [page_1, page_2, ..., page_N]  (64 floats each, APPENDED)
-MESSAGES: [msg_1, msg_2, ..., msg_N]  (32 floats each, direct from last layer)
-     │
-     ▼
-ATOM HYPERNETWORK (101M params, 6-layer cross-attention)
-  Cross-attention over ALL pages + messages → 64 tanh scales
-     │
-     ▼
-64 RANK-6 LORA ATOMS (~82M params, Fourier-initialized, orthogonal)
-  q = W_q x + Σi (scale_i * (x @ B_i^T) @ A_i^T)
-     │
-     ▼
-LLAMA 3.2 1B BASE (frozen) + text-injected previous results
-  "Step 1 result: 160\nStep 2 result: 97\n[problem text]"
-     │
-     ▼
-HAAR WAVELET PREPROCESS (2x compression, frequency structure)
-     │
-     ▼
-7-LAYER PERCEIVER (~105M) → FRESH 64-float page → APPEND to notebook
-     │
-     ▼
-GENERATION produces "sentence. #### {number}</s>" per cycle (NO answer head)
-  Extraction via regex on #### marker → metric + gating
+Problem text + text injection ("Step 1: 240\nStep 2: 80")
+  │
+  ▼
+LLAMA 3.2 1B BASE (frozen, atom-modified attention)
+  │
+  ├── all 16 layers of hidden states
+  │     │
+  │     └── BREATHING CONTROLLER (~190M, reads ALL layers)
+  │           │
+  │           ├── reads current hidden states (what Llama just computed)
+  │           ├── cross-attends over history (previous pages + hidden pools)
+  │           │
+  │           ├── PAGE HEAD → 64-float page → Mobius → append to notebook
+  │           │                (what was understood — the record)
+  │           │
+  │           ├── SCALE HEAD → 64 atom scales → applied to NEXT cycle
+  │           │                (what to think about next — the plan)
+  │           │
+  │           └── FOCUS HEAD → 64 Mobius focus floats
+  │                            (where on the sphere to record)
+  │
+  └── logits → GENERATION → "240 episodes #### 240</s>"
+                              (the output, scored by extraction)
 ```
 
-**Critical design: APPEND, don't blend.** Each cycle's perceiver outputs a FRESH page appended to the notebook. No residual gate. No blending. No delta. The hypernetwork reads the full notebook via attention — like flipping through a real notebook.
+**Two pillars:**
+- **BreathingController (~190M):** OBSERVE — reads Llama's hidden states, produces page + scales from shared understanding
+- **64 LoRA Atoms (~82M):** BREATHE — modify how Llama attends, Fourier-initialized, tanh-scaled
 
-**Generation-only (v26.0):** Answer head removed after 5 failed attempts on GSM8K (4% peak, actively hurt generation 56%→46%). Generation IS the output. Each cycle generates a natural sentence ending with `#### {number}</s>`. Extraction via regex. Three-tier gating: correct=1.0, wrong=0.1, copying consumed=0.0.
-
-**Anti-memorization (v26.1):** Number augmentation (different numbers every epoch), generation target dropout (mask equation results 15%), label smoothing 0.05. Prevents the gen_loss→0.07 overfitting failure.
+**Why unified?** The old separate perceiver (105M) + hypernetwork (101M) failed: the hypernetwork produced IDENTICAL scales for every problem at cycle 1 (constant function) because it read compressed pages, not raw hidden states. The controller reads hidden states directly — different problems always produce different scales.
 
 **Key components:**
 - **Llama 3.2 1B base** (frozen, NOT instruct — base can't chain, instruct already can)
@@ -50,19 +49,16 @@ GENERATION produces "sentence. #### {number}</s>" per cycle (NO answer head)
 - **64 anonymous LoRA atoms** (Fourier-initialized, orthogonal) — the pattern library
 - **Per-cycle intermediate targets** — each cycle predicts ONE intermediate result
 - **Text injection** (cumulative) — all previous results as actual text tokens
-- **Cycle message generator** — 32-float direct signal from last layer, bypasses perceiver
 - **Generation-only loss** — no answer head, gen cross-entropy is the only training signal
 - **#### marker format** — each cycle ends with `#### {number}</s>` for clean extraction
 - **EOS weighted 5x** — teaches clean breath boundaries
 - **Three-tier gating** — correct=1.0, wrong=0.1, copying consumed target=0.0
 - **Number augmentation** — randomize all numbers each epoch (anti-memorization)
-- **Gen target dropout** — mask equation results 15% (anti-copying)
-- **Label smoothing 0.05** — prevents gen_loss collapse to zero
-- **Natural sentence gen targets** — full expansion per cycle (the model BREATHES)
-- **Tanh scaling with hard clamp [-3, 3]** — no softmax, no mode collapse, no saturation
-- **Haar wavelet preprocessing** — 2x input compression, 4x faster attention
-- **Pi-harmonic page encoding** — frequency identity per dimension (coarse→fine)
-- **skip_pass_embed=True** — hypernetwork reads pages, can't shortcut via pass number
+- **Gen target dropout 15%** — mask equation results (anti-copying)
+- **Label smoothing 0.05** — prevents gen_loss collapse
+- **Scale diversity loss** — penalizes similar scales between cycles (target cos < 0.3)
+- **Mobius transform** — conformal warp for page diversity on hypersphere
+- **Tanh scaling with hard clamp [-3, 3]** — no softmax, no mode collapse
 
 ---
 
@@ -72,10 +68,10 @@ GENERATION produces "sentence. #### {number}</s>" per cycle (NO answer head)
 Each cycle handles one piece. "160 - 63" is easy. Knowing to do "160 - 63" is the hard part. The model learns to break hard problems into easy pieces.
 
 ### 2. Patterns Are the Vocabulary of Decomposition
-64 atoms BLEND continuously — an infinite space of attention modifications. Each point is a unique pattern recognizer. The hypernetwork navigates to the right blend per cycle.
+64 atoms BLEND continuously — an infinite space of attention modifications. Each point is a unique pattern recognizer. The controller navigates to the right blend per cycle.
 
-### 3. Match the Largest Pattern That Fits (Panama Hats)
-"Half as many clips in May" is ONE pattern, not five words. Larger patterns = fewer cycles = less error compounding. Fourier atom init: low-frequency atoms for large patterns, high-frequency for fine detail.
+### 3. The System Observes Itself
+One controller reads what Llama computed (OBSERVE), records understanding (page), and plans the next step (scales). Record and plan come from the same act of self-reflection.
 
 ---
 
@@ -88,24 +84,9 @@ Each cycle handles one piece. "160 - 63" is easy. Knowing to do "160 - 63" is th
 | Three-step arithmetic | 0% | **83.4%** | 93.8% per-step |
 | L2 word ops | 0.6% | **53.4%** | CoT targets breakthrough |
 | L3 named qty | 18.8% | **96.0%** | Dual LoRA verification |
-| **L4 per-cycle** | 6.0% | **91.0%** | **Page delta breakthrough** |
-| **L4.5 per-cycle** | — | **94.5%** | Growing notebook, cycle 2 = 85.5% ep1 |
-| GSM8K | 2.2% | **13%** | Gen-only + augmentation, training in progress |
-
----
-
-## Eight Breakthroughs
-
-| # | Fix | Impact | Detail |
-|---|-----|--------|--------|
-| 1 | Per-cycle intermediate targets | Cycles non-redundant | Each cycle predicts ONE intermediate number |
-| 2 | Hybrid generation loss | 1000x gradient to atoms | Gen loss = engine, answer head = verification |
-| 3 | Page delta for answer head | 5% → 89% cycle 2 | Isolates new computation from persisted copy |
-| 4 | Text injection (cumulative) | Llama reads intermediates | "Step 1 result: 160\n" as actual text |
-| 5 | Natural sentence gen targets | Full expansion per cycle | The model BREATHES (inhale in language, exhale through bottleneck) |
-| 6 | Growing notebook (remove gate) | 85.5% cycle 2 on epoch 1 | Fresh pages, no convergence, no degradation |
-| 7 | Generation-only (drop answer head) | No gradient conflict | 5 answer head attempts failed on GSM8K, hurt generation |
-| 8 | Number augmentation + dropout | Anti-memorization | Different numbers each epoch, can't memorize or copy |
+| L4 two-step word | 6.0% | **91.0%** | Page delta breakthrough |
+| L4.5 three-step word | — | **94.5%** | Growing notebook |
+| GSM8K | 2.2% | **training** | BreathingController, xpass_cos=-0.2 |
 
 ---
 
@@ -113,69 +94,58 @@ Each cycle handles one piece. "160 - 63" is easy. Knowing to do "160 - 63" is th
 
 ```
 L0: single-step arithmetic (70% → 100%)     ✓
-L1: two-step arithmetic (0% → 94.8%)        ✓  target-cos contrastive
-L2: word ops (0.6% → 53.4%)                 ✓  CoT targets
-L3: named quantities (18.8% → 96.0%)        ✓  dual LoRA verification
-L4: two-step word (6% → 91%)                ✓  per-cycle + page delta
-L4.5: three-step word (94.5%)               ✓  growing notebook
-L4.7: four-step word                        → NEXT
-L4.9: five-step word                        → NEXT
-GSM8K: (2.2% → 13% → target >30%)          → IN PROGRESS (gen-only + augmentation)
+L1: two-step arithmetic (0% → 94.8%)        ✓
+L2: word ops (0.6% → 53.4%)                 ✓
+L3: named quantities (18.8% → 96.0%)        ✓
+L4: two-step word (6% → 91%)                ✓
+L4.5: three-step word (94.5%)               ✓
+GSM8K: (2.2% → training)                    → IN PROGRESS (BreathingController)
 ```
 
 ---
 
 ## What to Do Next (Priority)
 
-### 1. GSM8K with Anti-Memorization (IN PROGRESS)
-Generation-only training with number augmentation + gen target dropout + label smoothing.
-Training on 2-3 step subset (3,965 train / 100 eval). Best: 13% final accuracy.
-Key question: can augmentation prevent overfitting while allowing learning?
+### 1. GSM8K with BreathingController (IN PROGRESS)
+Unified controller training from scratch. xpass_cos = -0.2 (scales genuinely diverse).
+10 min/epoch (53% faster than old architecture). Watching gen_loss drop.
 
-### 2. Push through L4.7 → L4.9
-Each level adds one cycle. Notebook grows. Pattern library expands.
+### 2. Confidence Head + Variable Cycles
+Train confidence to decide when to stop. Enable 3-8 cycles per problem.
 
-### 3. Confidence Head + Variable Cycles
-Train confidence to decide when to stop. Enable 3-8 cycles per problem for GSM8K.
-
-### 4. Gentle Training Wheel Removal (Phase 2)
+### 3. Gentle Training Wheel Removal
 Blend teacher and autonomous decompositions. Increase autonomy based on competence.
 
-### 5. MATH-500 (July 1 deadline)
+### 4. MATH-500 (July 1 deadline)
 
 ---
 
 ## Design Decisions
 
-- **APPEND pages, don't blend.** Residual gate caused convergence (page_cos 0.91 at depth 3). Removing it: fresh independent pages. Hypernetwork reads full history via attention.
+- **Unified controller, not separate perceiver+hypernetwork.** Separate hypernetwork collapsed to constant function. Controller reads hidden states directly — can't collapse.
+- **APPEND pages, don't blend.** Residual gate caused convergence (page_cos 0.91 at depth 3). Fresh independent pages.
 - **Base model, not Instruct.** Instruct chains at 42%. Base: 0% chained. Architecture provides chaining.
-- **Fourier atom init.** 384 orthogonal basis functions. 45/64 active. Multi-scale pattern library.
+- **Fourier atom init.** Orthogonal basis functions. Multi-scale pattern library.
 - **Per-cycle targets, not CoT.** CoT makes cycles redundant. Per-cycle targets force each cycle to do one job.
-- **Generation-only (no answer head).** Five answer head versions all failed on GSM8K (4% peak). Generation IS the output.
-- **Three-tier gating.** Correct new target=1.0, wrong=0.1, copying consumed=0.0. Breaks cycle 2 copying.
+- **Generation-only (no answer head).** Five answer head versions all failed on GSM8K (4% peak).
+- **Scale diversity loss.** Direct pressure to differentiate cycles. Without it, hypernetwork produces identical scales.
 - **Number augmentation.** Randomize all numbers each epoch. Prevents memorization.
-- **Label smoothing 0.05.** Prevents gen_loss collapse. Floor keeps gradient flowing.
-- **Natural sentences.** Each cycle BREATHES — full inhale (natural language), full exhale (compress to 64 floats).
-- **Text injection (cumulative).** Cycle N sees ALL previous results as text. Llama needs TEXT, not vectors.
-- **Hard clamp [-3, 3].** Tanh saturation permanently solved. Previous: sreg=49,944. After: 0.2.
-- **skip_pass_embed=True.** Without it, hypernetwork uses pass number as shortcut, ignoring pages.
-- **Separate LRs.** Perceiver: 1e-4, atoms: 1e-4, hypernetwork: 3e-4 (reduced for 101M scale).
+- **Label smoothing 0.05.** Prevents gen_loss collapse.
 - **No graduation/detach.** Every scheme destabilized training. Plain full-weight training works best.
 - **64-float bottleneck.** Forces incremental thinking. Notebook GROWS (8 cycles = 512 total).
-- **Smooth transitions only.** No discrete hyperparameter jumps. Sigmoid ramps, not if-statements.
 
 ---
 
 ## Loop-Alive Checklist (EVERY training script)
 
 ```
-□ skip_pass_embed=True
 □ scale_reg active (hard clamp [-3, 3])
-□ skip connections / direct_path in hypernetwork
 □ No residual gate (APPEND pages, don't blend)
 □ EOS weighted 5x in generation loss
 □ #### marker in gen targets for extraction
 □ --augment flag for GSM8K (anti-memorization)
+□ scale_diversity_loss active (target_cos=0.3)
+□ Controller reads ALL 16 Llama layers
 ```
 
 ---
@@ -184,33 +154,28 @@ Blend teacher and autonomous decompositions. Increase autonomy based on competen
 
 | Bug | Impact |
 |-----|--------|
-| DataCollatorForLanguageModeling overwrites label masking | Fails silently |
 | Temperature > 0 at eval | Baseline shift |
 | Small eval sets (N<100) | Misleading accuracy |
-| GQA K,V dims = (4, 512) not (4, 2048) | 8 KV heads |
 | Answer extraction edge cases | Strip periods, \boxed{}, ####, last-number |
-| Softmax mode collapse | One mode dominates (quad LoRA failure) |
-| Residual gate at depth 3+ | Pages converge, delta = noise → REMOVED |
-| Cycle 2 copies cycle 1 without delta/fresh pages | 60% of errors exact copies |
+| Cycle 2 copies cycle 1 | Three-tier gating: copying=0.0 reward |
 | Generation rambles past correct answer | EOS 5x weight + #### marker format |
-| Discrete graduation thresholds | Destabilize equilibrium → don't use |
-| SymPy through LLM generation | Contamination → use separate decoder |
-| Text injection only last step (not cumulative) | Cycle 3 loses step 1's result |
-| Answer head on GSM8K (5 versions) | 4% peak, hurt generation → REMOVED |
 | gen_loss collapse without augmentation | 0.07 train, 7% eval = memorization |
-| Full trifecta too strong (aug+drop+smooth) | gen_loss 1.78, can't learn → reduced |
-| GSM8K data uses 'problem' not 'question' key | KeyError in augmentation → fixed |
+| Separate hypernetwork constant function | Scales identical all problems → use controller |
+| Bypass/message/text-context collapsed | All intermediaries → constant. Controller reads direct |
 | Extracted numbers overflow torch.long | Clamp to [-999999999, 999999999] |
+| NoneType in eval prev_preds | Guard with `if val is not None else 0` |
 
 ---
 
 ## AWS Setup
 
 ```bash
-ssh -i ~/.ssh/mycelium-key.pem ubuntu@<IP>  # IP changes, check AWS console
-tmux new -s train
-python scripts/train_per_cycle.py --level L4.5
-tail -f logs/train_per_cycle_*.log
+aws ec2 start-instances --instance-ids i-08c1c295a4113a908
+ssh -i ~/.ssh/mycelium-key.pem ubuntu@<IP>  # IP changes on restart
+cd ~/mycelium && tmux new -s train
+python3 scripts/train_per_cycle.py --level gsm8k --data_dir data/per_cycle \
+  --epochs 50 --num_passes 3 --patience 30 --batch_size 4 \
+  --warm_from checkpoints/per_cycle_gsm8k_best.pt --lr_scale 0.5 --augment
 ```
 
 Instance: g5.xlarge (A10G 24GB, ~$1/hr)
@@ -225,18 +190,15 @@ v16   SmolLM2-135M latent bottleneck     → 80.4% two-step ✓
 v17   Llama 3.2 1B engine               → richer hidden states
 v20   State-conditioned LoRA             → 85.4% two-step ✓
 v21   Page-based accumulation            → pages constant (cosine 0.9998)
-v21.2 Target-cosine contrastive          → 94.8% two-step ✓ (pages alive)
+v21.2 Target-cosine contrastive          → 94.8% two-step ✓
 v22   Dual LoRA verification             → 96.0% L3 ✓
-v22.2 GSM8K curriculum                   → 17.8% ✓ (8.1x)
-v23   Four-mode LoRA                     → mode collapse, abandoned
+v22.2 GSM8K curriculum                   → 17.8% ✓
 v24   64-Atom LoRA + Fourier init        → 93% L3, 91% L4 ✓
-v25   Per-cycle targets                  → 89% L4 ✓ (page delta breakthrough)
-v25.1 Cycle message (16-float bypass)    → direct signal, no perceiver
-v25.2 Text injection (cumulative)        → Llama reads intermediates natively ✓
-v25.3 Natural sentence gen targets       → full expansion, the model breathes ✓
+v25   Per-cycle targets                  → 89% L4 ✓
 v25.4 Growing notebook (remove gate)     → fresh pages, no degradation ✓
-v26.0 Generation-only (drop answer head) → no gradient conflict, #### extraction
-v26.1 Number augmentation + dropout      → anti-memorization trifecta
+v26.0 Generation-only (drop answer head) → no gradient conflict
+v26.1 Number augmentation + dropout      → anti-memorization
+v27.0 BreathingController (unified)      → scales diverse (xpass_cos=-0.2), 53% faster
 ```
 
 ---
@@ -245,26 +207,16 @@ v26.1 Number augmentation + dropout      → anti-memorization trifecta
 
 | What | Result | Lesson |
 |------|--------|--------|
-| Text [EXPAND]/[COLLAPSE] | Matched vanilla | Must be differentiable |
 | Llama instruct + breathing | 11% | Already chains — use base |
-| Unfreezing Llama 1e-6 | 40% volatile | Keep frozen |
 | Quad LoRA softmax | Mode collapse | Use tanh, no competition |
-| Answer head loss only (no gen) | 0.0002 gradient | Need hybrid gen+head loss |
-| Bare number targets ("97") | 3-5% cycle 2 | LLM guesses, doesn't compute |
-| Equation targets ("160-63=97") | 3-5% cycle 2 | Format, not computation |
-| Raw page for cycle 2+ answer | 3-5% cycle 2 | Copies cycle 1 (60% exact) |
-| SymPy through LLM head | Contamination | Separate decoder needed |
-| SymPy decoder (premature) | 0% | Pages not rich enough yet |
-| Dynamic detach at 90% | Crashes | Disrupts equilibrium |
-| Loss skip for graduated | Collapse to 0% | No anchor |
+| Answer head (5 versions on GSM8K) | 4% peak, hurt gen | Remove — generation IS the output |
 | Residual gate blending | cos(2,3)=0.91 | Pages converge → APPEND instead |
-| Message in answer head | 0.5% after 6 ep | Fresh head can't learn dual input |
-| AH reading pages (900K) | Collapsed to "10" | Number isn't in 64-float page |
-| AH reading pages (7.7M) | 4% peak | More capacity, still wrong input |
-| AH reading hidden states (10.9M) | 4%, hurt gen 56%→46% | Wrong gradient corrupts atoms |
-| AH reading digit logits (916K) | Declining after ep 2 | Still wrong representation |
-| Soft-token AH (128K vocab) | OOM | softmax @ embeddings too large |
-| Full trifecta regularization | gen_loss 1.78, 8% eval | Too strong, gradient strangled |
+| Dynamic detach/graduation | Crashes, collapse | Disrupts equilibrium → don't use |
+| Full trifecta regularization | gen_loss 1.78 | Too strong → reduce dropout/smoothing |
+| Separate hypernetwork | Constant function | Reads pages not hidden states → controller |
+| Bypass (512 floats) | Collapsed to constant | Intermediary without training signal → controller |
+| Message generator | Collapsed to constant | Same problem → controller reads direct |
+| Text context for hypernetwork | Ignored | No pressure to use it → diversity loss |
 
 ---
 
@@ -272,26 +224,25 @@ v26.1 Number augmentation + dropout      → anti-memorization trifecta
 
 ```
 scripts/
-  atom_lora.py                   # Model: AtomLoRAModel, hypernetwork, perceiver, atoms
-  train_per_cycle.py             # v26 training: gen-only + augmentation + three-tier gating
+  atom_lora.py                   # Model: AtomLoRAModel, BreathingController, LoRAAtoms
+  train_per_cycle.py             # Training: gen-only + augmentation + controller
   generate_per_cycle_data.py     # Data gen: L3-L4.9 with cycle_targets + gen_targets
   parse_gsm8k.py                 # Parse GSM8K built-in step annotations
   annotate_gsm8k_cycles.py       # Claude API: decompose GSM8K problems
-  diag_cycle2.py                 # Diagnostic: correct/wrong predictions
-  diag_page_variance.py          # Diagnostic: per-dim variance
-  diag_gsm8k_compare.py          # Diagnostic: GSM8K cycle comparison
-  diag_gsm8k_failures.py         # Diagnostic: GSM8K failure analysis
+  diag_laplace.py                # Diagnostic: page trajectory analysis (FFT, convergence)
+  diag_debug_cycles.py           # Diagnostic: full chain inspection per problem
 plan/
-  project_outline.md             # Core thesis: decomposition through pattern matching
-  per_cycle_targets_handoff.md   # v25: per-cycle intermediate targets
-  append_pages_handoff.md        # v25.4: growing notebook
-  cycle_message_handoff.md       # 16-float message channel
-  confidence_autonomy_handoff.md # Confidence head + training wheel removal
-  fourier_init_handoff.md        # Fourier atom init
-  sympy_decoder_handoff.md       # SymPy decoder (parked)
-  generation_only_handoff.md     # v26: drop answer head, #### extraction
-  augmentation_dropout_handoff.md # v26.1: anti-memorization trifecta
-tinygrad_port/                   # Complete tinygrad port (14 files, validated on CUDA)
+  project_outline.md             # Core thesis
+  breathing_controller_handoff.md # Current architecture
+  generation_only_handoff.md     # Drop answer head
+  augmentation_dropout_handoff.md # Anti-memorization
+  per_cycle_targets_handoff.md   # Per-cycle intermediate targets
+  append_pages_handoff.md        # Growing notebook
+  confidence_autonomy_handoff.md # Confidence head (next feature)
+  mobius_transform_handoff.md    # Page diversity
+  isotropic_confidence_handoff.md # Isotropic regularizer
+src/
+  contrastive_page_loss.py       # Cross-problem page diversity loss
 data/
   per_cycle/                     # Generated JSONL: L3-L4.9 + GSM8K
 ```

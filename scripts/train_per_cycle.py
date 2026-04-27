@@ -43,6 +43,27 @@ from src.contrastive_page_loss import per_page_contrastive_loss
 
 
 # ---------------------------------------------------------------------------
+# LR warmup scheduler
+# ---------------------------------------------------------------------------
+
+class WarmupScheduler:
+    """Linear LR warmup over first N epochs, then constant."""
+    def __init__(self, optimizer, warmup_epochs=5):
+        self.optimizer = optimizer
+        self.warmup_epochs = warmup_epochs
+        self.base_lrs = [pg['lr'] for pg in optimizer.param_groups]
+
+    def step(self, epoch):
+        if epoch < self.warmup_epochs:
+            factor = 0.1 + 0.9 * (epoch / self.warmup_epochs)
+        else:
+            factor = 1.0
+        for pg, base_lr in zip(self.optimizer.param_groups, self.base_lrs):
+            pg['lr'] = base_lr * factor
+        return factor
+
+
+# ---------------------------------------------------------------------------
 # Answer extraction from generated text
 # ---------------------------------------------------------------------------
 
@@ -201,6 +222,59 @@ def simple_augment(problem, rng):
 
 
 # ---------------------------------------------------------------------------
+# Arithmetic drill generation (anti-arithmetic-error training)
+# ---------------------------------------------------------------------------
+
+def generate_arithmetic_drills(num_problems=2000, rng=None):
+    """Generate simple arithmetic drill problems for atom training.
+
+    Each drill is a 1-cycle problem: "A op B = C #### C</s>"
+    Operations: +, -, *, with numbers in GSM8K-typical ranges.
+
+    Returns list of dicts matching GSM8K data format.
+    """
+    if rng is None:
+        rng = random.Random(42)
+
+    drills = []
+    ops = [
+        ('addition', '+', lambda a, b: a + b),
+        ('subtraction', '-', lambda a, b: a - b),
+        ('multiplication', '*', lambda a, b: a * b),
+    ]
+
+    for _ in range(num_problems):
+        op_name, op_sym, op_fn = rng.choice(ops)
+
+        if op_name == 'multiplication':
+            # GSM8K-typical ranges for multiplication
+            a = rng.randint(2, 50)
+            b = rng.randint(2, 30)
+        elif op_name == 'subtraction':
+            a = rng.randint(10, 500)
+            b = rng.randint(1, a)  # ensure non-negative result
+        else:  # addition
+            a = rng.randint(1, 500)
+            b = rng.randint(1, 500)
+
+        result = op_fn(a, b)
+
+        # Format as a simple word problem
+        problem = f"What is {a} {op_sym} {b}?"
+        gen_target = f"{a} {op_sym} {b} = {result}. #### {result}"
+
+        drills.append({
+            'problem': problem,
+            'cycle_targets': [result],
+            'cycle_gen_targets': [gen_target],
+            'final_answer': result,
+            'num_steps': 1,
+        })
+
+    return drills
+
+
+# ---------------------------------------------------------------------------
 # Per-cycle JSONL Dataset
 # ---------------------------------------------------------------------------
 
@@ -215,12 +289,18 @@ class PerCycleDataset(Dataset):
     """
 
     def __init__(self, jsonl_path: str, max_passes: int = 5,
-                 augment: bool = False, dropout_prob: float = 0.3):
+                 augment: bool = False, dropout_prob: float = 0.3,
+                 drill_ratio: float = 0.0):
         self.samples = []
         self.max_passes = max_passes
         self.augment = augment
         self.dropout_prob = dropout_prob
+        self.drill_ratio = drill_ratio
         self.epoch = 0  # set externally each epoch
+        if drill_ratio > 0:
+            self.drills = generate_arithmetic_drills(num_problems=2000)
+        else:
+            self.drills = []
         with open(jsonl_path, 'r') as f:
             for line in f:
                 line = line.strip()
@@ -237,6 +317,23 @@ class PerCycleDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, idx):
+        # With drill_ratio probability, return an arithmetic drill instead
+        if self.drills and random.random() < self.drill_ratio:
+            drill_rng = random.Random(self.epoch * 99999 + idx)
+            drill = drill_rng.choice(self.drills)
+            # Apply number augmentation to drills too
+            if self.augment:
+                aug_rng = random.Random(self.epoch * 12345 + idx + 1000000)
+                drill = simple_augment(drill, aug_rng)
+            return {
+                'problem': drill['problem'],
+                'cycle_targets': drill['cycle_targets'][:self.max_passes],
+                'cycle_gen_targets': drill['cycle_gen_targets'][:self.max_passes],
+                'final_answer': drill['final_answer'],
+                'num_steps': 1,
+            }
+
+        # Normal sample
         item = self.samples[idx]
 
         # Number augmentation: different random numbers each epoch
@@ -380,9 +477,132 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
     cycle_gen_logits_list = []  # collect gen_logits per cycle for context injection
     valid_cycles = 0
 
-    for pass_num in range(num_passes):
+    # Total supervised cycles from the data
+    total_supervised = cycle_targets.size(1)
+
+    # === CYCLE 1: TWO-PASS (vanilla comprehension -> informed scales) ===
+    (page_0, hidden_pool_0, page_1, hidden_pool_1,
+     initial_scales, next_scales, focus_1, outputs_lora) = model.two_pass_cycle1(
+        input_ids, attention_mask,
+    )
+
+    # Page noise during training
+    if model.training:
+        page_0 = page_0 + torch.randn_like(page_0) * 0.05
+        page_1 = page_1 + torch.randn_like(page_1) * 0.05
+
+    # Gradient scaling for cycle 1 pages (capped at 4x)
+    grad_scale_0 = min(float(num_passes), 4.0)
+    page_0 = scale_gradient(page_0, grad_scale_0)
+    grad_scale_1 = min(float(num_passes - 0), 4.0)  # pass_num=0 for cycle 1
+    page_1 = scale_gradient(page_1, grad_scale_1)
+
+    # Store in accumulators
+    state_pages.append(page_0)
+    state_pages.append(page_1)
+    history_hiddens.append(hidden_pool_0)
+    history_hiddens.append(hidden_pool_1)
+    all_scales.append(initial_scales)
+    all_scales.append(next_scales)
+    prev_scales = next_scales
+
+    # Collect raw pages for isotropic reg
+    raw_pages.append(page_0)
+    raw_pages.append(page_1)
+
+    atom_scales_history.append(initial_scales)
+    atom_scales_history.append(next_scales)
+
+    # --- Cycle 1 generation loss (using initial_scales for LoRA) ---
+    pass_num = 0  # cycle 1 corresponds to pass_num=0 in the target array
+    if pass_num < cycle_targets.size(1):
+        cycle_target = cycle_targets[:, pass_num]   # (B,)
+        mask_val = cycle_mask[:, pass_num]           # (B,)
+
+        if mask_val.sum() > 0:
+            # Build gen targets
+            if cycle_gen_targets is not None and pass_num < len(cycle_gen_targets):
+                target_strs = cycle_gen_targets[pass_num]  # list of B strings
+            else:
+                target_strs = [str(ct.item()) for ct in cycle_target]
+
+            cycle_numbers = [str(ct.item()) for ct in cycle_target]
+            target_strs = [f"{text} #### {num}" for text, num in zip(target_strs, cycle_numbers)]
+
+            target_inputs = model.tokenizer(
+                target_strs, return_tensors='pt', padding=True,
+                add_special_tokens=False,
+            )
+            target_ids = target_inputs['input_ids'].to(device)
+            eos_id = model.tokenizer.eos_token_id
+            if eos_id is not None:
+                eos_col = torch.full((target_ids.size(0), 1), eos_id,
+                                     dtype=target_ids.dtype, device=device)
+                target_ids = torch.cat([target_ids, eos_col], dim=1)
+
+            # Teacher-forced generation with LoRA (using initial_scales from pass 2)
+            target_embeds = embed_layer(target_ids)
+            full_embeds = torch.cat([problem_embeds, target_embeds], dim=1)
+            target_attn = (target_ids != model.tokenizer.pad_token_id).long()
+            full_attn = torch.cat([attention_mask, target_attn], dim=1)
+            mgr = AtomAdditiveLoRAManager(model.transformer)
+            mgr.apply(model.atoms, initial_scales)
+            try:
+                gen_outputs = model.transformer(
+                    inputs_embeds=full_embeds,
+                    attention_mask=full_attn,
+                    use_cache=False,
+                )
+            finally:
+                mgr.remove()
+
+            gen_logits = gen_outputs.logits[:, prompt_len - 1:-1, :]
+            eos_id = model.tokenizer.eos_token_id
+            vocab_size = gen_logits.size(-1)
+            token_weights = torch.ones(vocab_size, device=device, dtype=gen_logits.dtype)
+            if eos_id is not None and eos_id < vocab_size:
+                token_weights[eos_id] = 5.0
+            gen_loss_this = F.cross_entropy(
+                gen_logits.reshape(-1, gen_logits.size(-1)),
+                target_ids.reshape(-1),
+                weight=token_weights,
+                ignore_index=model.tokenizer.pad_token_id,
+                reduction='none',
+                label_smoothing=0.05,
+            )
+            target_mask = (target_ids != model.tokenizer.pad_token_id).float()
+            gen_loss_per_sample = (gen_loss_this.view(batch_size, -1) * target_mask).sum(dim=1)
+            gen_loss_per_sample = gen_loss_per_sample / target_mask.sum(dim=1).clamp(min=1)
+            gen_loss_this = (gen_loss_per_sample * mask_val).sum() / mask_val.sum()
+
+            cycle_gen_logits_list.append(gen_logits.detach())
+
+            fade_w = per_cycle_target_weight(final_accuracy, pass_num, total_supervised)
+            # Cycle 1: always full weight (nothing to copy yet)
+            per_cycle_gen_loss = per_cycle_gen_loss + gen_loss_this * fade_w
+            valid_cycles += 1
+
+        # Record predictions for diagnostics
+        with torch.no_grad():
+            if cycle_gen_logits_list:
+                last_logits = cycle_gen_logits_list[-1]
+                pred_tokens = last_logits.argmax(dim=-1)
+                preds_list = []
+                for b in range(batch_size):
+                    text = model.tokenizer.decode(pred_tokens[b], skip_special_tokens=True)
+                    val = extract_answer_from_text(text)
+                    v = val if val is not None else 0
+                    v = max(min(v, 999999999), -999999999)
+                    preds_list.append(v)
+                preds = torch.tensor(preds_list, dtype=torch.long, device=device)
+            else:
+                preds = torch.zeros(batch_size, dtype=torch.long, device=device)
+            per_cycle_preds.append(preds)
+
+    # === CYCLES 2+ (one pass each) ===
+    for pass_num in range(1, num_passes):
         # --- For cycle 2+: inject ALL previous answers as text context ---
-        if pass_num > 0 and len(state_pages) > 0:
+        if len(state_pages) > 0:
             # Extract prediction from last cycle's gen_logits via argmax + decode
             with torch.no_grad():
                 prev_logits = cycle_gen_logits_list[-1]  # (B, T, vocab)
@@ -438,8 +658,8 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
         history_hiddens.append(hidden_pool)
         all_scales.append(next_scales)
 
-        # Current cycle's scales for generation (prev_scales for cycle 1+, zero for cycle 0)
-        current_gen_scales = prev_scales  # None for cycle 0 => no LoRA
+        # Current cycle's scales for generation (prev_scales for cycle 1+)
+        current_gen_scales = prev_scales
 
         # Advance: next cycle will use these scales
         prev_scales = next_scales
@@ -453,17 +673,11 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
 
             if mask_val.sum() > 0:
                 # === GENERATION LOSS ===
-                # Tokenize short target: just the number as text (e.g. "48")
-                # Use equation gen targets if available (e.g. "160 - 63 = 97")
-                # Otherwise fall back to stringified numbers
                 if cycle_gen_targets is not None and pass_num < len(cycle_gen_targets):
                     target_strs = cycle_gen_targets[pass_num]  # list of B strings
                 else:
                     target_strs = [str(ct.item()) for ct in cycle_target]
 
-                # Append #### answer marker to each target
-                # Format: "{natural sentence} #### {number}"
-                # The number comes from cycle_target for this cycle
                 cycle_numbers = [str(ct.item()) for ct in cycle_target]
                 target_strs = [f"{text} #### {num}" for text, num in zip(target_strs, cycle_numbers)]
 
@@ -472,44 +686,28 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
                     add_special_tokens=False,
                 )
                 target_ids = target_inputs['input_ids'].to(device)  # (B, T)
-                # Append EOS token so model learns when to stop
                 eos_id = model.tokenizer.eos_token_id
                 if eos_id is not None:
                     eos_col = torch.full((target_ids.size(0), 1), eos_id,
                                          dtype=target_ids.dtype, device=device)
                     target_ids = torch.cat([target_ids, eos_col], dim=1)
 
-                # Teacher-forced generation with THIS cycle's LoRA
-                # Use augmented input (with injected context) for cycle 2+
-                # For cycle 0: no LoRA (current_gen_scales is None)
-                # For cycle 1+: use current_gen_scales (scales used for this cycle's Llama forward)
                 target_embeds = embed_layer(target_ids)
                 full_embeds = torch.cat([cycle_embeds, target_embeds], dim=1)
                 target_attn = (target_ids != model.tokenizer.pad_token_id).long()
                 full_attn = torch.cat([cycle_attention_mask, target_attn], dim=1)
-                if current_gen_scales is not None:
-                    manager = AtomAdditiveLoRAManager(model.transformer)
-                    manager.apply(model.atoms, current_gen_scales)
-                    try:
-                        gen_outputs = model.transformer(
-                            inputs_embeds=full_embeds,
-                            attention_mask=full_attn,
-                            use_cache=False,
-                        )
-                    finally:
-                        manager.remove()
-                else:
-                    # Cycle 0: no LoRA applied
+                manager = AtomAdditiveLoRAManager(model.transformer)
+                manager.apply(model.atoms, current_gen_scales)
+                try:
                     gen_outputs = model.transformer(
                         inputs_embeds=full_embeds,
                         attention_mask=full_attn,
                         use_cache=False,
                     )
+                finally:
+                    manager.remove()
 
-                # Cross-entropy on target tokens only
                 gen_logits = gen_outputs.logits[:, cycle_prompt_len - 1:-1, :]
-                # Weight EOS 5x: stopping at the right place is more important
-                # than getting any individual word right
                 eos_id = model.tokenizer.eos_token_id
                 vocab_size = gen_logits.size(-1)
                 token_weights = torch.ones(vocab_size, device=device, dtype=gen_logits.dtype)
@@ -523,51 +721,38 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
                     reduction='none',
                     label_smoothing=0.05,
                 )
-                # Mask per sample, then average
                 target_mask = (target_ids != model.tokenizer.pad_token_id).float()
                 gen_loss_per_sample = (gen_loss_this.view(batch_size, -1) * target_mask).sum(dim=1)
                 gen_loss_per_sample = gen_loss_per_sample / target_mask.sum(dim=1).clamp(min=1)
-                # Apply cycle mask
                 gen_loss_this = (gen_loss_per_sample * mask_val).sum() / mask_val.sum()
 
-                # Store gen_logits for this cycle (for text injection into next cycle)
                 cycle_gen_logits_list.append(gen_logits.detach())
 
-                # Smooth fading: intermediate cycle targets fade as accuracy climbs
-                total_supervised = cycle_targets.size(1)
                 fade_w = per_cycle_target_weight(final_accuracy, pass_num, total_supervised)
 
-                # Three-tier per-sample gating:
-                #   Correct new target → 1.0 (full reward)
-                #   Wrong but trying   → 0.1 (reduced, still learns language)
-                #   Copying consumed   → 0.0 (zero reward for repeating)
-                if pass_num == 0:
-                    # Cycle 1: always full weight (nothing to copy yet)
-                    per_cycle_gen_loss = per_cycle_gen_loss + gen_loss_this * fade_w
-                else:
-                    with torch.no_grad():
-                        pred_tokens = gen_logits.argmax(dim=-1)
-                        per_sample_weights = torch.ones(batch_size, device=device)
-                        for b in range(batch_size):
-                            text = model.tokenizer.decode(pred_tokens[b], skip_special_tokens=True)
-                            pred_val = extract_answer_from_text(text)
-                            if pred_val is not None:
-                                # Check if copying a consumed target
-                                is_copy = False
-                                for prev_preds in prev_predictions:
-                                    if int(prev_preds[b].item()) == pred_val:
-                                        is_copy = True
-                                        break
-                                if is_copy:
-                                    per_sample_weights[b] = 0.0  # copying → zero reward
-                                elif pred_val == int(cycle_target[b].item()):
-                                    per_sample_weights[b] = 1.0  # correct → full reward
-                                else:
-                                    per_sample_weights[b] = 0.1  # wrong → reduced
+                # Three-tier per-sample gating
+                with torch.no_grad():
+                    pred_tokens = gen_logits.argmax(dim=-1)
+                    per_sample_weights = torch.ones(batch_size, device=device)
+                    for b in range(batch_size):
+                        text = model.tokenizer.decode(pred_tokens[b], skip_special_tokens=True)
+                        pred_val = extract_answer_from_text(text)
+                        if pred_val is not None:
+                            is_copy = False
+                            for prev_preds in prev_predictions:
+                                if int(prev_preds[b].item()) == pred_val:
+                                    is_copy = True
+                                    break
+                            if is_copy:
+                                per_sample_weights[b] = 0.0
+                            elif pred_val == int(cycle_target[b].item()):
+                                per_sample_weights[b] = 1.0
                             else:
-                                per_sample_weights[b] = 0.1  # no extraction → reduced
-                    weighted_gen = (gen_loss_per_sample * per_sample_weights * mask_val).sum() / mask_val.sum()
-                    per_cycle_gen_loss = per_cycle_gen_loss + weighted_gen * fade_w
+                                per_sample_weights[b] = 0.1
+                        else:
+                            per_sample_weights[b] = 0.1
+                weighted_gen = (gen_loss_per_sample * per_sample_weights * mask_val).sum() / mask_val.sum()
+                per_cycle_gen_loss = per_cycle_gen_loss + weighted_gen * fade_w
                 valid_cycles += 1
 
             # Record predictions for diagnostics (extract from gen_logits)
@@ -579,7 +764,6 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
                     for b in range(batch_size):
                         text = model.tokenizer.decode(pred_tokens[b], skip_special_tokens=True)
                         val = extract_answer_from_text(text)
-                        # Clamp to prevent overflow in torch.long
                         v = val if val is not None else 0
                         v = max(min(v, 999999999), -999999999)
                         preds_list.append(v)
@@ -622,6 +806,12 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
 
     # ------- Scale diversity loss (computed ONCE after all cycles) -------
     diversity_loss = scale_diversity_loss(all_scales, target_cos=0.3)
+
+    # ------- Scale collapse penalty (cycle 3 was collapsing to norm 0.08) -------
+    scale_collapse_penalty = torch.tensor(0.0, device=device)
+    for s in all_scales:
+        scale_collapse_penalty = scale_collapse_penalty + F.relu(1.0 - s.norm(dim=-1)).mean()
+    scale_collapse_penalty = scale_collapse_penalty / max(len(all_scales), 1)
 
     # ------- Atom diagnostics -------
     with torch.no_grad():
@@ -666,7 +856,8 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
     return (per_cycle_gen_loss,
             c_loss, conf_loss, scale_reg_loss, iso_loss,
             page_cos_mean, active_atoms_mean, scale_std, cross_pass_cos,
-            conf_loss.detach(), state_pages, per_cycle_preds, diversity_loss)
+            conf_loss.detach(), state_pages, per_cycle_preds, diversity_loss,
+            scale_collapse_penalty)
 
 
 # ---------------------------------------------------------------------------
@@ -715,9 +906,60 @@ def evaluate_per_cycle(model, eval_dataset, device,
             history_hiddens = []
             prev_scales = None  # no LoRA for cycle 0
 
-            for pass_num in range(num_passes):
-                # For cycle 2+: inject ALL previous answers as text context
-                if pass_num > 0 and len(state_pages) > 0 and eval_prev_predictions:
+            # === CYCLE 1: TWO-PASS ===
+            (page_0, hidden_pool_0, page_1, hidden_pool_1,
+             initial_scales, next_scales_c1, focus_1, outputs_lora) = model.two_pass_cycle1(
+                input_ids, attention_mask,
+            )
+            state_pages.append(page_0)
+            state_pages.append(page_1)
+            history_hiddens.append(hidden_pool_0)
+            history_hiddens.append(hidden_pool_1)
+            prev_scales = next_scales_c1
+
+            # Generate with LoRA for cycle 1 (using initial_scales)
+            prompt_len = input_ids.size(1)
+            mgr = AtomAdditiveLoRAManager(model.transformer)
+            mgr.apply(model.atoms, initial_scales)
+            try:
+                gen_out = model.transformer.generate(
+                    input_ids=input_ids, attention_mask=attention_mask,
+                    max_new_tokens=60, do_sample=False,
+                    pad_token_id=model.tokenizer.pad_token_id,
+                    eos_token_id=model.tokenizer.eos_token_id,
+                )
+            finally:
+                mgr.remove()
+
+            cycle_preds = []
+            for b in range(batch_size):
+                gen_text = model.tokenizer.decode(gen_out[b][prompt_len:], skip_special_tokens=False)
+                pred_val = extract_answer_from_text(gen_text)
+                cycle_preds.append(pred_val)
+            eval_pred_vals.append(cycle_preds)
+            eval_prev_predictions.append(cycle_preds)
+
+            # Per-cycle accuracy for pass_num=0
+            for j in range(batch_size):
+                ct = cycle_targets_list[j]
+                if 0 < len(ct):
+                    gold_cycle = ct[0]
+                    pred_val = cycle_preds[j]
+                    if 0 not in per_cycle_correct:
+                        per_cycle_correct[0] = 0
+                        per_cycle_total[0] = 0
+                    per_cycle_total[0] += 1
+                    try:
+                        if pred_val is not None and int(pred_val) == int(gold_cycle):
+                            per_cycle_correct[0] += 1
+                    except (ValueError, TypeError):
+                        pass
+                    max_steps_seen = max(max_steps_seen, 1)
+
+            # === CYCLES 2+ ===
+            for pass_num in range(1, num_passes):
+                # Inject ALL previous answers as text context
+                if eval_prev_predictions:
                     context_strs = []
                     for b in range(batch_size):
                         ctx = ""
@@ -744,37 +986,28 @@ def evaluate_per_cycle(model, eval_dataset, device,
                 history_hiddens.append(hidden_pool)
 
                 # Current cycle's scales for generation
-                current_gen_scales = prev_scales  # None for cycle 0
+                current_gen_scales = prev_scales
                 prev_scales = next_scales  # advance for next cycle
 
                 # Generate text with LoRA applied
-                prompt_len = eval_ids.size(1)
+                eval_prompt_len = eval_ids.size(1)
 
-                if current_gen_scales is not None:
-                    manager = AtomAdditiveLoRAManager(model.transformer)
-                    manager.apply(model.atoms, current_gen_scales)
-                    try:
-                        gen_out = model.transformer.generate(
-                            input_ids=eval_ids, attention_mask=eval_mask,
-                            max_new_tokens=60, do_sample=False,
-                            pad_token_id=model.tokenizer.pad_token_id,
-                            eos_token_id=model.tokenizer.eos_token_id,
-                        )
-                    finally:
-                        manager.remove()
-                else:
-                    # Cycle 0: no LoRA
+                manager = AtomAdditiveLoRAManager(model.transformer)
+                manager.apply(model.atoms, current_gen_scales)
+                try:
                     gen_out = model.transformer.generate(
                         input_ids=eval_ids, attention_mask=eval_mask,
                         max_new_tokens=60, do_sample=False,
                         pad_token_id=model.tokenizer.pad_token_id,
                         eos_token_id=model.tokenizer.eos_token_id,
                     )
+                finally:
+                    manager.remove()
 
                 # Extract predictions from generated text
-                cycle_preds = []  # list of int or None for this cycle
+                cycle_preds = []
                 for b in range(batch_size):
-                    gen_text = model.tokenizer.decode(gen_out[b][prompt_len:], skip_special_tokens=False)
+                    gen_text = model.tokenizer.decode(gen_out[b][eval_prompt_len:], skip_special_tokens=False)
                     pred_val = extract_answer_from_text(gen_text)
                     cycle_preds.append(pred_val)
                 eval_pred_vals.append(cycle_preds)
@@ -855,7 +1088,39 @@ def infer_single(model, problem_text, device,
         last_pred = None
         infer_prev_predictions = []  # list of extracted ints per cycle
 
-        for pass_num in range(max_passes):
+        # === CYCLE 1: TWO-PASS ===
+        (page_0, hidden_pool_0, page_1, hidden_pool_1,
+         initial_scales, next_scales_c1, focus_1, outputs_lora) = model.two_pass_cycle1(
+            input_ids, attention_mask,
+        )
+        state_pages.append(page_0)
+        state_pages.append(page_1)
+        history_hiddens.append(hidden_pool_0)
+        history_hiddens.append(hidden_pool_1)
+        prev_scales = next_scales_c1
+
+        # Generate with LoRA for cycle 1 (using initial_scales)
+        prompt_len = input_ids.size(1)
+        mgr = AtomAdditiveLoRAManager(model.transformer)
+        mgr.apply(model.atoms, initial_scales)
+        try:
+            gen_out = model.transformer.generate(
+                input_ids=input_ids, attention_mask=attention_mask,
+                max_new_tokens=60, do_sample=False,
+                pad_token_id=model.tokenizer.pad_token_id,
+                eos_token_id=model.tokenizer.eos_token_id,
+            )
+        finally:
+            mgr.remove()
+
+        gen_text = model.tokenizer.decode(gen_out[0][prompt_len:], skip_special_tokens=False)
+        last_pred = extract_answer_from_text(gen_text)
+        infer_prev_predictions.append(last_pred if last_pred is not None else 0)
+
+        last_pass_num = 0
+
+        # === CYCLES 2+ ===
+        for pass_num in range(1, max_passes):
             page, next_scales, _mid, _msg, _raw_page, hidden_pool, _focus, _bypass = model.thinking_pass(
                 input_ids, attention_mask, state_pages, pass_num,
                 history_hiddens=history_hiddens,
@@ -865,43 +1130,33 @@ def infer_single(model, problem_text, device,
             history_hiddens.append(hidden_pool)
 
             # Current cycle's scales for generation
-            current_gen_scales = prev_scales  # None for cycle 0
+            current_gen_scales = prev_scales
             prev_scales = next_scales  # advance for next cycle
 
-            # Generate with LoRA applied (or no LoRA for cycle 0)
-            if current_gen_scales is not None:
-                manager = AtomAdditiveLoRAManager(model.transformer)
-                manager.apply(model.atoms, current_gen_scales)
-                try:
-                    gen_out = model.transformer.generate(
-                        input_ids=input_ids, attention_mask=attention_mask,
-                        max_new_tokens=60, do_sample=False,
-                        pad_token_id=model.tokenizer.pad_token_id,
-                        eos_token_id=model.tokenizer.eos_token_id,
-                    )
-                finally:
-                    manager.remove()
-            else:
-                # Cycle 0: no LoRA
+            # Generate with LoRA applied
+            manager = AtomAdditiveLoRAManager(model.transformer)
+            manager.apply(model.atoms, current_gen_scales)
+            try:
                 gen_out = model.transformer.generate(
                     input_ids=input_ids, attention_mask=attention_mask,
                     max_new_tokens=60, do_sample=False,
                     pad_token_id=model.tokenizer.pad_token_id,
                     eos_token_id=model.tokenizer.eos_token_id,
                 )
+            finally:
+                manager.remove()
 
-            prompt_len = input_ids.size(1)
             gen_text = model.tokenizer.decode(gen_out[0][prompt_len:], skip_special_tokens=False)
             last_pred = extract_answer_from_text(gen_text)
             infer_prev_predictions.append(last_pred if last_pred is not None else 0)
+            last_pass_num = pass_num
 
             # Confidence-based early stopping (after at least 1 pass)
-            if pass_num >= 1:
-                conf = model.confidence_head(state_pages)
-                if conf.mean().item() > confidence_threshold:
-                    break
+            conf = model.confidence_head(state_pages)
+            if conf.mean().item() > confidence_threshold:
+                break
 
-        return last_pred, pass_num + 1
+        return last_pred, last_pass_num + 1
 
 
 # ---------------------------------------------------------------------------
@@ -1032,15 +1287,16 @@ def train(args):
     print(f"  lam_diversity  = {args.lam_diversity}")
     print(f"  num_atoms      = {args.num_atoms}")
     print(f"  atom_rank      = {args.atom_rank}")
+    print(f"  drill_ratio    = {args.drill_ratio}")
     print(f"  data_dir       = {args.data_dir}")
     print(f"  warm_from      = {warm_path}")
+    print(f"  warmup_epochs  = {args.warmup_epochs}")
     print("=" * 60)
 
     device = torch.device('cuda')
     model = AtomLoRAModel(
         num_atoms=args.num_atoms,
         atom_rank=args.atom_rank,
-        skip_pass_embed=True,  # v24.6: pages are the only input
     )
     model.atoms = model.atoms.to(device=device, dtype=torch.bfloat16)
     model.controller = model.controller.to(device=device, dtype=torch.bfloat16)
@@ -1062,9 +1318,12 @@ def train(args):
 
     train_dataset = PerCycleDataset(train_path, max_passes=args.num_passes,
                                      augment=args.augment,
-                                     dropout_prob=args.dropout_prob)
+                                     dropout_prob=args.dropout_prob,
+                                     drill_ratio=args.drill_ratio)
     aug_str = f" (augment={args.augment}, dropout={args.dropout_prob})" if args.augment else ""
     print(f"\nTrain dataset: {len(train_dataset)} problems from {train_path}{aug_str}")
+    if args.drill_ratio > 0:
+        print(f"  Arithmetic drills: {args.drill_ratio:.0%} of training batches")
 
     if os.path.exists(eval_path):
         # Eval is NEVER augmented
@@ -1094,9 +1353,11 @@ def train(args):
     optimizer = torch.optim.AdamW([
         {'params': atom_A_params, 'lr': 1e-4 * s, 'weight_decay': 0.05},
         {'params': atom_B_params, 'lr': 1e-4 * s, 'weight_decay': 0.05},
-        {'params': list(model.controller.parameters()), 'lr': 1e-4 * s, 'weight_decay': 0.01},
+        {'params': list(model.controller.parameters()), 'lr': 3e-4 * s, 'weight_decay': 0.01},
         {'params': list(model.confidence_head.parameters()), 'lr': 1e-3 * s, 'weight_decay': 0.01},
     ])
+
+    scheduler = WarmupScheduler(optimizer, warmup_epochs=args.warmup_epochs)
 
     # Note: optimizer state loading disabled -- architecture changes between
     # checkpoints cause shape mismatches in momentum buffers. Fresh optimizer
@@ -1130,6 +1391,7 @@ def train(args):
     patience_counter = 0
 
     for epoch in range(args.epochs):
+        warmup_factor = scheduler.step(epoch)
         model.train()
         t0 = time.time()
 
@@ -1163,7 +1425,8 @@ def train(args):
 
             (gen_loss, c_loss, conf_loss, scale_reg, iso_loss,
              page_cos, active_atoms, s_std, xpass_cos,
-             conf_mean, state_pages, per_cycle_preds, div_loss) = forward_train_per_cycle(
+             conf_mean, state_pages, per_cycle_preds, div_loss,
+             scale_collapse) = forward_train_per_cycle(
                 model, problems, cycle_targets, cycle_mask,
                 finals_t, cycle_gen_targets=cycle_gen_targets,
                 num_passes=args.num_passes, max_length=max_length,
@@ -1175,7 +1438,8 @@ def train(args):
                           + args.lam_conf * conf_loss
                           + args.lam_scale_reg * scale_reg
                           + 0.01 * iso_loss
-                          + args.lam_diversity * div_loss)
+                          + args.lam_diversity * div_loss
+                          + 0.05 * scale_collapse)
             total_loss.backward()
             torch.nn.utils.clip_grad_norm_(trainable, 1.0)
             optimizer.step()
@@ -1242,7 +1506,8 @@ def train(args):
             f"active={ep_active/nb:.1f}/{args.num_atoms} "
             f"scale_std={ep_std/nb:.3f} "
             f"xpass_cos={ep_xpass/nb:.2f} | "
-            f"Final={final_acc:.1f}% best={best_final:.1f}% [{elapsed:.0f}s]"
+            f"Final={final_acc:.1f}% best={best_final:.1f}% "
+            f"warmup={warmup_factor:.2f} [{elapsed:.0f}s]"
         )
         # Per-cycle accuracy breakdown
         print(
@@ -1314,6 +1579,10 @@ if __name__ == '__main__':
                    help='Enable number augmentation + gen target dropout (anti-memorization)')
     p.add_argument('--dropout_prob', type=float, default=0.15,
                    help='Generation target dropout probability (default: 0.15)')
+    p.add_argument('--warmup_epochs', type=int, default=5,
+                   help='LR warmup epochs (default: 5)')
+    p.add_argument('--drill_ratio', type=float, default=0.3,
+                   help='Fraction of batch that is arithmetic drills (default: 0.3)')
 
     args = p.parse_args()
     train(args)
