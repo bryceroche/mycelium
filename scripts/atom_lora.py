@@ -565,14 +565,17 @@ class AnswerHead(nn.Module):
     - digit_heads: max_digits x Linear(page_size, 10) -> 0-9 per position
     """
 
-    def __init__(self, page_size: int = 64, max_digits: int = 6, hidden: int = 256):
+    def __init__(self, page_size: int = 64, max_digits: int = 6, hidden: int = 256,
+                 message_dim: int = 16):
         super().__init__()
         self.page_size = page_size
         self.max_digits = max_digits
+        self.message_dim = message_dim
 
-        # Shared encoder: page -> richer representation
+        # Shared encoder: page_delta + message -> richer representation
+        # Message provides uncompressed signal that survives at deeper cycles
         self.encoder = nn.Sequential(
-            nn.Linear(page_size, hidden),
+            nn.Linear(page_size + message_dim, hidden),
             nn.GELU(),
             nn.Linear(hidden, hidden),
             nn.GELU(),
@@ -584,11 +587,12 @@ class AnswerHead(nn.Module):
         ])
 
     def forward(
-        self, last_page: torch.Tensor,
+        self, last_page: torch.Tensor, message: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, List[torch.Tensor]]:
         """
         Args:
-            last_page: (B, page_size)
+            last_page: (B, page_size) — page delta or raw page
+            message:   (B, message_dim) — optional direct signal from last layer
 
         Returns:
             sign_logits:   (B, 2)
@@ -596,24 +600,31 @@ class AnswerHead(nn.Module):
             digit_logits:  list of max_digits x (B, 10)
         """
         page = last_page.float()
-        h = self.encoder(page)
+        if message is not None:
+            combined = torch.cat([page, message.float()], dim=-1)
+        else:
+            # Pad with zeros if no message (backward compat)
+            combined = torch.cat([page, torch.zeros(page.size(0), self.message_dim,
+                                                     device=page.device)], dim=-1)
+        h = self.encoder(combined)
         sign_logits = self.sign_head(h)
         length_logits = self.length_head(h)
         digit_logits = [head(h) for head in self.digit_heads]
         return sign_logits, length_logits, digit_logits
 
     @torch.no_grad()
-    def decode(self, last_page: torch.Tensor) -> torch.Tensor:
+    def decode(self, last_page: torch.Tensor, message: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
         Decode predicted answer as integer tensor (B,).
 
         Args:
             last_page: (B, page_size)
+            message:   (B, message_dim) optional
 
         Returns:
             answers: (B,) integer tensor
         """
-        sign_logits, length_logits, digit_logits = self.forward(last_page)
+        sign_logits, length_logits, digit_logits = self.forward(last_page, message)
         batch_size = last_page.size(0)
 
         num_digits = length_logits.argmax(dim=-1) + 1  # (B,) 1-indexed
@@ -638,6 +649,7 @@ def answer_head_loss(
     answer_head: AnswerHead,
     last_page: torch.Tensor,
     gold_answers: torch.Tensor,
+    message: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """
     Compute answer head loss from gold integer answers.
@@ -646,11 +658,12 @@ def answer_head_loss(
         answer_head: AnswerHead module
         last_page:   (B, page_size)
         gold_answers: (B,) integer tensor
+        message:     (B, message_dim) optional direct signal
 
     Returns:
         loss: scalar tensor
     """
-    sign_logits, length_logits, digit_logits = answer_head(last_page)
+    sign_logits, length_logits, digit_logits = answer_head(last_page, message)
     device = last_page.device
     batch_size = last_page.size(0)
 

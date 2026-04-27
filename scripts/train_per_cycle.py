@@ -141,8 +141,7 @@ def per_cycle_collate_fn(batch):
 def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_mask,
                             finals_t, cycle_gen_targets=None,
                             num_passes=5, max_length=192,
-                            lam_gen=1.0, lam_ah=0.5,
-                            graduated_cycles=None):
+                            lam_gen=1.0, lam_ah=0.5):
     """Forward pass with hybrid per-cycle loss: generation + answer head.
 
     Each cycle:
@@ -208,7 +207,8 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
                     latest_page = (state_pages[-1] - state_pages[-2]).float()
                 else:
                     latest_page = state_pages[-1].float()
-                latest_preds = answer_head.decode(latest_page)  # (B,)
+                latest_msg = messages[-1] if messages else None
+                latest_preds = answer_head.decode(latest_page, message=latest_msg)  # (B,)
                 prev_predictions.append(latest_preds)
             # Build cumulative context: "Step 1 result: 263\nStep 2 result: 346\n"
             context_strs = []
@@ -277,13 +277,10 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
         grad_scale = min(float(num_passes - pass_num), 4.0)
         page = scale_gradient(page, grad_scale)
 
-        # Auto-graduation: detach converged cycles' pages so later cycles'
-        # gradient doesn't destabilize them. Each cycle graduates at 90%+
-        # and gets protected. The frontier advances automatically.
-        if graduated_cycles and pass_num in graduated_cycles:
-            state_pages.append(page.detach())
-        else:
-            state_pages.append(page)
+        # Pages always stay in the computation graph — later cycles need
+        # the gradient highway through earlier pages. Graduation works by
+        # skipping the graduated cycle's LOSS, not by detaching the page.
+        state_pages.append(page)
 
         # Generate message: direct signal from last layer, bypasses perceiver
         message = model.message_generator(hidden_states[-1])
@@ -356,7 +353,9 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
                     current_page = (state_pages[-1] - state_pages[-2]).float()
                 else:
                     current_page = page.float()
-                ah_loss_this = answer_head_loss(answer_head, current_page, cycle_target)
+                # Pass message to answer head — direct signal survives at deeper cycles
+                cycle_message = messages[-1] if messages else None
+                ah_loss_this = answer_head_loss(answer_head, current_page, cycle_target, message=cycle_message)
                 mask_frac = mask_val.mean()
 
                 # === ORDINAL ATTENTION LOSS (WHERE to look) ===
@@ -380,7 +379,8 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
 
             # Record predictions for diagnostics
             with torch.no_grad():
-                preds = answer_head.decode(page.float())
+                diag_msg = messages[-1] if messages else None
+                preds = answer_head.decode(page.float(), message=diag_msg)
                 per_cycle_preds.append(preds)
 
     # Normalize losses by number of valid cycles
@@ -483,7 +483,8 @@ def evaluate_per_cycle(model, answer_head, eval_dataset, device,
                         latest_page = (state_pages[-1] - state_pages[-2]).float()
                     else:
                         latest_page = state_pages[-1].float()
-                    latest_preds = answer_head.decode(latest_page)
+                    eval_latest_msg = eval_messages[-1] if eval_messages else None
+                    latest_preds = answer_head.decode(latest_page, message=eval_latest_msg)
                     eval_prev_predictions.append(latest_preds)
                     context_strs = []
                     for b in range(batch_size):
@@ -517,7 +518,8 @@ def evaluate_per_cycle(model, answer_head, eval_dataset, device,
                     current_page = (state_pages[-1] - state_pages[-2]).float()
                 else:
                     current_page = page.float()
-                preds = answer_head.decode(current_page)  # (B,)
+                eval_cycle_msg = eval_messages[-1] if eval_messages else None
+                preds = answer_head.decode(current_page, message=eval_cycle_msg)  # (B,)
 
                 for j in range(batch_size):
                     ct = cycle_targets_list[j]
@@ -548,7 +550,8 @@ def evaluate_per_cycle(model, answer_head, eval_dataset, device,
                     final_page = (state_pages[last_supervised] - state_pages[last_supervised - 1]).float()
                 else:
                     final_page = state_pages[last_supervised].float()
-                pred_val = answer_head.decode(final_page[j:j+1])[0].item()
+                final_msg = eval_messages[last_supervised][j:j+1] if eval_messages and last_supervised < len(eval_messages) else None
+                pred_val = answer_head.decode(final_page[j:j+1], message=final_msg)[0].item()
                 try:
                     if int(pred_val) == int(gold):
                         final_correct += 1
@@ -911,8 +914,8 @@ def train(args):
 
     ckpt_name = f"checkpoints/per_cycle_{level.replace('.', '')}_best.pt"
     best_final = 0.0
-    graduated_cycles = set()  # cycles that hit 90%+ and get detached
-    GRADUATION_THRESHOLD = 0.90
+    # Graduation parked — disrupts equilibrium worse than oscillation.
+    # All cycles train at full weight. Track peak accuracy.
     patience_counter = 0
 
     for epoch in range(args.epochs):
@@ -950,7 +953,6 @@ def train(args):
                 model, answer_head, problems, cycle_targets, cycle_mask,
                 finals_t, cycle_gen_targets=cycle_gen_targets,
                 num_passes=args.num_passes, max_length=max_length,
-                graduated_cycles=graduated_cycles,
             )
 
             total_loss = (args.lam_gen * gen_loss
@@ -992,13 +994,6 @@ def train(args):
             model, answer_head, eval_dataset, device,
             num_passes=args.num_passes, max_length=max_length,
         )
-
-        # Auto-graduation: check if any cycle crossed 90% threshold
-        for cyc_idx, acc_val_raw in enumerate(per_cycle_acc):
-            acc_val = float(str(acc_val_raw).strip('%')) / 100.0 if isinstance(acc_val_raw, str) else acc_val_raw / 100.0
-            if acc_val >= GRADUATION_THRESHOLD and cyc_idx not in graduated_cycles:
-                graduated_cycles.add(cyc_idx)
-                print(f"  ** Cycle {cyc_idx+1} GRADUATED at {acc_str} — detaching from later gradients **")
 
         # Gradient coupling blends (v24.7)
         hypernet_blend = torch.sigmoid(model.hypernet.blend_logit).item()
