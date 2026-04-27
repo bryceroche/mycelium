@@ -9,19 +9,19 @@ Mycelium builds differentiable recurrent reasoning for small language models. A 
 
 ---
 
-## Architecture (v25.4 — Growing Notebook)
+## Architecture (v26.0 — Generation-Only + Anti-Memorization)
 
 ```
 GROWING NOTEBOOK: [page_1, page_2, ..., page_N]  (64 floats each, APPENDED)
-MESSAGES: [msg_1, msg_2, ..., msg_N]  (16 floats each, direct from last layer)
+MESSAGES: [msg_1, msg_2, ..., msg_N]  (32 floats each, direct from last layer)
      │
      ▼
-ATOM HYPERNETWORK (10M params)
-  2-layer cross-attention over ALL pages + messages → 64 tanh scales
+ATOM HYPERNETWORK (101M params, 6-layer cross-attention)
+  Cross-attention over ALL pages + messages → 64 tanh scales
      │
      ▼
 64 RANK-6 LORA ATOMS (~82M params, Fourier-initialized, orthogonal)
-  q = W_q x + Σᵢ (scaleᵢ · (x @ Bᵢᵀ) @ Aᵢᵀ)
+  q = W_q x + Σi (scale_i * (x @ B_i^T) @ A_i^T)
      │
      ▼
 LLAMA 3.2 1B BASE (frozen) + text-injected previous results
@@ -34,11 +34,15 @@ HAAR WAVELET PREPROCESS (2x compression, frequency structure)
 7-LAYER PERCEIVER (~105M) → FRESH 64-float page → APPEND to notebook
      │
      ▼
-ANSWER HEAD reads each cycle's OWN page directly (no delta, no blending)
-GENERATION produces natural sentences with embedded computation per cycle
+GENERATION produces "sentence. #### {number}</s>" per cycle (NO answer head)
+  Extraction via regex on #### marker → metric + gating
 ```
 
-**Critical design: APPEND, don't blend.** Each cycle's perceiver outputs a FRESH page appended to the notebook. No residual gate. No blending. No delta. The hypernetwork reads the full notebook via attention — like flipping through a real notebook. The answer head reads each cycle's own page directly — same quality at every depth.
+**Critical design: APPEND, don't blend.** Each cycle's perceiver outputs a FRESH page appended to the notebook. No residual gate. No blending. No delta. The hypernetwork reads the full notebook via attention — like flipping through a real notebook.
+
+**Generation-only (v26.0):** Answer head removed after 5 failed attempts on GSM8K (4% peak, actively hurt generation 56%→46%). Generation IS the output. Each cycle generates a natural sentence ending with `#### {number}</s>`. Extraction via regex. Three-tier gating: correct=1.0, wrong=0.1, copying consumed=0.0.
+
+**Anti-memorization (v26.1):** Number augmentation (different numbers every epoch), generation target dropout (mask equation results 15%), label smoothing 0.05. Prevents the gen_loss→0.07 overfitting failure.
 
 **Key components:**
 - **Llama 3.2 1B base** (frozen, NOT instruct — base can't chain, instruct already can)
@@ -46,8 +50,14 @@ GENERATION produces natural sentences with embedded computation per cycle
 - **64 anonymous LoRA atoms** (Fourier-initialized, orthogonal) — the pattern library
 - **Per-cycle intermediate targets** — each cycle predicts ONE intermediate result
 - **Text injection** (cumulative) — all previous results as actual text tokens
-- **Cycle message generator** — 16-float direct signal from last layer, bypasses perceiver
-- **Hybrid loss** — gen loss powers learning (1000x gradient), answer head verifies correctness
+- **Cycle message generator** — 32-float direct signal from last layer, bypasses perceiver
+- **Generation-only loss** — no answer head, gen cross-entropy is the only training signal
+- **#### marker format** — each cycle ends with `#### {number}</s>` for clean extraction
+- **EOS weighted 5x** — teaches clean breath boundaries
+- **Three-tier gating** — correct=1.0, wrong=0.1, copying consumed target=0.0
+- **Number augmentation** — randomize all numbers each epoch (anti-memorization)
+- **Gen target dropout** — mask equation results 15% (anti-copying)
+- **Label smoothing 0.05** — prevents gen_loss collapse to zero
 - **Natural sentence gen targets** — full expansion per cycle (the model BREATHES)
 - **Tanh scaling with hard clamp [-3, 3]** — no softmax, no mode collapse, no saturation
 - **Haar wavelet preprocessing** — 2x input compression, 4x faster attention
@@ -79,12 +89,12 @@ Each cycle handles one piece. "160 - 63" is easy. Knowing to do "160 - 63" is th
 | L2 word ops | 0.6% | **53.4%** | CoT targets breakthrough |
 | L3 named qty | 18.8% | **96.0%** | Dual LoRA verification |
 | **L4 per-cycle** | 6.0% | **91.0%** | **Page delta breakthrough** |
-| **L4.5 per-cycle** | — | **training** | **Growing notebook, cycle 2 = 85.5% ep1** |
-| GSM8K | 2.2% | **17.8%** | 8.1x, curriculum L0→L4→GSM8K |
+| **L4.5 per-cycle** | — | **94.5%** | Growing notebook, cycle 2 = 85.5% ep1 |
+| GSM8K | 2.2% | **13%** | Gen-only + augmentation, training in progress |
 
 ---
 
-## Six Breakthroughs
+## Eight Breakthroughs
 
 | # | Fix | Impact | Detail |
 |---|-----|--------|--------|
@@ -94,6 +104,8 @@ Each cycle handles one piece. "160 - 63" is easy. Knowing to do "160 - 63" is th
 | 4 | Text injection (cumulative) | Llama reads intermediates | "Step 1 result: 160\n" as actual text |
 | 5 | Natural sentence gen targets | Full expansion per cycle | The model BREATHES (inhale in language, exhale through bottleneck) |
 | 6 | Growing notebook (remove gate) | 85.5% cycle 2 on epoch 1 | Fresh pages, no convergence, no degradation |
+| 7 | Generation-only (drop answer head) | No gradient conflict | 5 answer head attempts failed on GSM8K, hurt generation |
+| 8 | Number augmentation + dropout | Anti-memorization | Different numbers each epoch, can't memorize or copy |
 
 ---
 
@@ -105,32 +117,31 @@ L1: two-step arithmetic (0% → 94.8%)        ✓  target-cos contrastive
 L2: word ops (0.6% → 53.4%)                 ✓  CoT targets
 L3: named quantities (18.8% → 96.0%)        ✓  dual LoRA verification
 L4: two-step word (6% → 91%)                ✓  per-cycle + page delta
-L4.5: three-step word                       → IN PROGRESS (growing notebook)
+L4.5: three-step word (94.5%)               ✓  growing notebook
 L4.7: four-step word                        → NEXT
 L4.9: five-step word                        → NEXT
-GSM8K: (2.2% → 17.8% → target >30%)        → after curriculum
+GSM8K: (2.2% → 13% → target >30%)          → IN PROGRESS (gen-only + augmentation)
 ```
 
 ---
 
 ## What to Do Next (Priority)
 
-### 1. L4.5 with Growing Notebook (IN PROGRESS)
-Cycle 2 hit 85.5% on epoch 1. Watching cycle 3 — should learn now that pages don't converge.
+### 1. GSM8K with Anti-Memorization (IN PROGRESS)
+Generation-only training with number augmentation + gen target dropout + label smoothing.
+Training on 2-3 step subset (3,965 train / 100 eval). Best: 13% final accuracy.
+Key question: can augmentation prevent overfitting while allowing learning?
 
 ### 2. Push through L4.7 → L4.9
 Each level adds one cycle. Notebook grows. Pattern library expands.
 
-### 3. GSM8K Decomposition
-Run `scripts/annotate_gsm8k_cycles.py` (Claude API) for 7,473 problems.
-
-### 4. Confidence Head + Variable Cycles
+### 3. Confidence Head + Variable Cycles
 Train confidence to decide when to stop. Enable 3-8 cycles per problem for GSM8K.
 
-### 5. Gentle Training Wheel Removal (Phase 2)
-Blend teacher and autonomous decompositions. Increase autonomy based on competence (0% → 20% → 50% → 80% → 100%).
+### 4. Gentle Training Wheel Removal (Phase 2)
+Blend teacher and autonomous decompositions. Increase autonomy based on competence.
 
-### 6. MATH-500 (July 1 deadline)
+### 5. MATH-500 (July 1 deadline)
 
 ---
 
@@ -140,12 +151,15 @@ Blend teacher and autonomous decompositions. Increase autonomy based on competen
 - **Base model, not Instruct.** Instruct chains at 42%. Base: 0% chained. Architecture provides chaining.
 - **Fourier atom init.** 384 orthogonal basis functions. 45/64 active. Multi-scale pattern library.
 - **Per-cycle targets, not CoT.** CoT makes cycles redundant. Per-cycle targets force each cycle to do one job.
-- **Hybrid loss (flipped per cycle).** Cycle 1: gen=1.0, ah=0.5. Cycle 2+: gen=0.1, ah=5.0.
+- **Generation-only (no answer head).** Five answer head versions all failed on GSM8K (4% peak). Generation IS the output.
+- **Three-tier gating.** Correct new target=1.0, wrong=0.1, copying consumed=0.0. Breaks cycle 2 copying.
+- **Number augmentation.** Randomize all numbers each epoch. Prevents memorization.
+- **Label smoothing 0.05.** Prevents gen_loss collapse. Floor keeps gradient flowing.
 - **Natural sentences.** Each cycle BREATHES — full inhale (natural language), full exhale (compress to 64 floats).
 - **Text injection (cumulative).** Cycle N sees ALL previous results as text. Llama needs TEXT, not vectors.
 - **Hard clamp [-3, 3].** Tanh saturation permanently solved. Previous: sreg=49,944. After: 0.2.
 - **skip_pass_embed=True.** Without it, hypernetwork uses pass number as shortcut, ignoring pages.
-- **Separate LRs.** Perceiver: 1e-4, atoms: 1e-4, hypernetwork: 1e-3.
+- **Separate LRs.** Perceiver: 1e-4, atoms: 1e-4, hypernetwork: 3e-4 (reduced for 101M scale).
 - **No graduation/detach.** Every scheme destabilized training. Plain full-weight training works best.
 - **64-float bottleneck.** Forces incremental thinking. Notebook GROWS (8 cycles = 512 total).
 - **Smooth transitions only.** No discrete hyperparameter jumps. Sigmoid ramps, not if-statements.
@@ -157,9 +171,11 @@ Blend teacher and autonomous decompositions. Increase autonomy based on competen
 ```
 □ skip_pass_embed=True
 □ scale_reg active (hard clamp [-3, 3])
-□ lam_answer_head ≥ 1.0
 □ skip connections / direct_path in hypernetwork
 □ No residual gate (APPEND pages, don't blend)
+□ EOS weighted 5x in generation loss
+□ #### marker in gen targets for extraction
+□ --augment flag for GSM8K (anti-memorization)
 ```
 
 ---
@@ -176,10 +192,15 @@ Blend teacher and autonomous decompositions. Increase autonomy based on competen
 | Softmax mode collapse | One mode dominates (quad LoRA failure) |
 | Residual gate at depth 3+ | Pages converge, delta = noise → REMOVED |
 | Cycle 2 copies cycle 1 without delta/fresh pages | 60% of errors exact copies |
-| Generation rambles past correct answer | Extract FIRST equation, not last number |
+| Generation rambles past correct answer | EOS 5x weight + #### marker format |
 | Discrete graduation thresholds | Destabilize equilibrium → don't use |
 | SymPy through LLM generation | Contamination → use separate decoder |
 | Text injection only last step (not cumulative) | Cycle 3 loses step 1's result |
+| Answer head on GSM8K (5 versions) | 4% peak, hurt generation → REMOVED |
+| gen_loss collapse without augmentation | 0.07 train, 7% eval = memorization |
+| Full trifecta too strong (aug+drop+smooth) | gen_loss 1.78, can't learn → reduced |
+| GSM8K data uses 'problem' not 'question' key | KeyError in augmentation → fixed |
+| Extracted numbers overflow torch.long | Clamp to [-999999999, 999999999] |
 
 ---
 
@@ -214,6 +235,8 @@ v25.1 Cycle message (16-float bypass)    → direct signal, no perceiver
 v25.2 Text injection (cumulative)        → Llama reads intermediates natively ✓
 v25.3 Natural sentence gen targets       → full expansion, the model breathes ✓
 v25.4 Growing notebook (remove gate)     → fresh pages, no degradation ✓
+v26.0 Generation-only (drop answer head) → no gradient conflict, #### extraction
+v26.1 Number augmentation + dropout      → anti-memorization trifecta
 ```
 
 ---
@@ -236,6 +259,12 @@ v25.4 Growing notebook (remove gate)     → fresh pages, no degradation ✓
 | Loss skip for graduated | Collapse to 0% | No anchor |
 | Residual gate blending | cos(2,3)=0.91 | Pages converge → APPEND instead |
 | Message in answer head | 0.5% after 6 ep | Fresh head can't learn dual input |
+| AH reading pages (900K) | Collapsed to "10" | Number isn't in 64-float page |
+| AH reading pages (7.7M) | 4% peak | More capacity, still wrong input |
+| AH reading hidden states (10.9M) | 4%, hurt gen 56%→46% | Wrong gradient corrupts atoms |
+| AH reading digit logits (916K) | Declining after ep 2 | Still wrong representation |
+| Soft-token AH (128K vocab) | OOM | softmax @ embeddings too large |
+| Full trifecta regularization | gen_loss 1.78, 8% eval | Too strong, gradient strangled |
 
 ---
 
@@ -243,12 +272,15 @@ v25.4 Growing notebook (remove gate)     → fresh pages, no degradation ✓
 
 ```
 scripts/
-  atom_lora.py                   # Model: AtomLoRAModel, AnswerHead, CycleMessageGenerator
-  train_per_cycle.py             # v25 training: per-cycle + hybrid loss + growing notebook
+  atom_lora.py                   # Model: AtomLoRAModel, hypernetwork, perceiver, atoms
+  train_per_cycle.py             # v26 training: gen-only + augmentation + three-tier gating
   generate_per_cycle_data.py     # Data gen: L3-L4.9 with cycle_targets + gen_targets
+  parse_gsm8k.py                 # Parse GSM8K built-in step annotations
   annotate_gsm8k_cycles.py       # Claude API: decompose GSM8K problems
   diag_cycle2.py                 # Diagnostic: correct/wrong predictions
   diag_page_variance.py          # Diagnostic: per-dim variance
+  diag_gsm8k_compare.py          # Diagnostic: GSM8K cycle comparison
+  diag_gsm8k_failures.py         # Diagnostic: GSM8K failure analysis
 plan/
   project_outline.md             # Core thesis: decomposition through pattern matching
   per_cycle_targets_handoff.md   # v25: per-cycle intermediate targets
@@ -257,6 +289,9 @@ plan/
   confidence_autonomy_handoff.md # Confidence head + training wheel removal
   fourier_init_handoff.md        # Fourier atom init
   sympy_decoder_handoff.md       # SymPy decoder (parked)
+  generation_only_handoff.md     # v26: drop answer head, #### extraction
+  augmentation_dropout_handoff.md # v26.1: anti-memorization trifecta
+tinygrad_port/                   # Complete tinygrad port (14 files, validated on CUDA)
 data/
-  per_cycle/                     # Generated JSONL: L3-L4.9
+  per_cycle/                     # Generated JSONL: L3-L4.9 + GSM8K
 ```

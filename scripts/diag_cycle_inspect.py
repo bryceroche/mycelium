@@ -103,7 +103,7 @@ with torch.no_grad():
                 eval_mask = attention_mask
                 text_input = problem
 
-            page, scales, mid_states, message, _raw_page, hidden_pool = model.thinking_pass(
+            page, scales, mid_states, message, _raw_page, hidden_pool, _focus = model.thinking_pass(
                 eval_ids, eval_mask, state_pages, pass_num,
                 prev_mid_states=mid_states_history if mid_states_history else None,
                 messages=messages if messages else None,

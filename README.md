@@ -19,10 +19,10 @@ Differentiable recurrent reasoning for small language models. A frozen 1B-parame
 | Named quantities | 18.8% | **96.0%** | 5.1x |
 | **Two-step word problems** | **6.0%** | **91.0%** | **15.2x** |
 | **Three-step word problems** | — | **94.5%** | **Growing notebook** |
-| Four-step word problems | — | *training* | In progress |
-| GSM8K grade school math | 2.2% | **17.8%** | 8.1x |
+| Four-step word problems | — | *next* | After GSM8K |
+| **GSM8K grade school math** | **2.2%** | **13%** | **Training (gen-only + augmentation)** |
 
-**Key:** Llama 3.2 1B (frozen) + 203M trainable parameters. The base model scores 0% on chained arithmetic. Our architecture provides the chaining through a differentiable compression loop.
+**Key:** Llama 3.2 1B (frozen) + ~292M trainable parameters. The base model scores 0% on chained arithmetic. Our architecture provides the chaining through a differentiable compression loop.
 
 ---
 
@@ -102,21 +102,19 @@ Component                    Params      Role
 Llama 3.2 1B (frozen)        1,230M      Comprehends (reads with modified attention)
 7-Layer Perceiver             105M       Collapses (16 layers → 64 floats)
 64 LoRA Atoms (rank 6)         82M       Pattern library (Fourier-initialized)
-Atom Hypernetwork              10M       Pattern matcher (navigates atom space)
-Answer Head                   100K       Verifier (digit prediction per cycle)
-Cycle Message Generator       533K       Direct bypass (16 floats, no compression)
-Page-to-Tokens                0.5M       Generation bridge
-Confidence Head                79K       Stop decision (when done thinking)
+Atom Hypernetwork             101M       The brain (reads notebook → atom scales)
+Confidence Head               2.5M       Stop decision (when done thinking)
+Message Generator             1.1M       Direct bypass (32 floats, no compression)
 ──────────────────────────────────────────────────────────────
-Total:                       ~1.43B
-Trainable:                    ~203M     (14.2%)
-Frozen:                       1.23B     (85.8%)
+Total:                       ~1.52B
+Trainable:                    ~292M     (19.2%)
+Frozen:                       1.23B     (80.8%)
 Notebook:                     64N floats (grows with cycles)
 ```
 
 ---
 
-## Six Breakthroughs
+## Eight Breakthroughs
 
 1. **Per-cycle intermediate targets** — each cycle does ONE job. CoT targets made cycles redundant.
 2. **Hybrid generation loss** — 1000x gradient to atoms. Answer head alone: 0.0002 gradient (starving).
@@ -124,6 +122,8 @@ Notebook:                     64N floats (grows with cycles)
 4. **Text injection** — Llama needs TEXT, not continuous vectors. "Step 1 result: 160\n" as actual tokens.
 5. **Natural sentence targets** — the model must BREATHE. Terse targets suppressed expansion.
 6. **Growing notebook** — remove residual gate, append fresh pages. Cycle 2 hit 85.5% on epoch 1.
+7. **Generation-only (drop answer head)** — 5 answer head versions failed on GSM8K. Generation IS the output.
+8. **Number augmentation** — randomize numbers each epoch. Prevents memorization, forces computation.
 
 ---
 
@@ -140,8 +140,8 @@ Notebook:                     64N floats (grows with cycles)
 ## What's Next
 
 ```
-1. L4.7 (4-step) → L4.9 (5-step) curriculum     ← in progress
-2. GSM8K per-cycle decomposition (7,473 problems)
+1. GSM8K with anti-memorization training          ← IN PROGRESS
+2. L4.7 (4-step) → L4.9 (5-step) curriculum
 3. Confidence head (variable cycle count per problem)
 4. Gentle training wheel removal (self-decomposition)
 5. MATH-500 benchmark (July 1 deadline)
@@ -158,6 +158,8 @@ Notebook:                     64N floats (grows with cycles)
 - **Per-cycle intermediate targets** — each cycle does one step, not the whole problem
 - **Page delta** (for blended architectures) — one line fix, 5% → 89%
 - **Text injection** — bridge between compressed state and LLM's native text format
+- **Generation-only training** — no separate answer head, extraction from generated text
+- **Number augmentation** — anti-memorization through per-epoch number randomization
 
 ---
 

@@ -322,6 +322,104 @@ class AtomAdditiveLoRAManager:
 
 
 # ---------------------------------------------------------------------------
+# MobiusTransform — conformal warp on the hypersphere for page diversity
+# ---------------------------------------------------------------------------
+class MobiusTransform(nn.Module):
+    """Möbius transformation on the unit sphere in R^n.
+
+    Warps the sphere by expanding around a focus point and compressing
+    away from it. Conformal, bijective, stays on the sphere.
+    Zero learnable parameters — pure math.
+    """
+
+    def __init__(self, dim=64, max_focus_norm=0.5):
+        super().__init__()
+        self.dim = dim
+        self.max_focus_norm = max_focus_norm
+
+    def forward(self, page, focus):
+        """
+        page:  (batch, 64) — on the hypersphere (normalized)
+        focus: (batch, 64) — from hypernetwork (will be constrained to ball)
+        Returns: warped page on the hypersphere
+        """
+        # Constrain focus inside unit ball
+        focus_norm = focus.norm(dim=-1, keepdim=True).clamp(min=1e-8)
+        focus = focus * (self.max_focus_norm * torch.tanh(focus_norm) / focus_norm)
+
+        # Normalize page to unit sphere
+        x = page / page.norm(dim=-1, keepdim=True).clamp(min=1e-8)
+
+        # Möbius transformation: T_a(x) = (1 - |a|²)(x - a) / |x - a|² + a
+        a = focus
+        a_norm_sq = (a * a).sum(dim=-1, keepdim=True)
+        diff = x - a
+        diff_norm_sq = (diff * diff).sum(dim=-1, keepdim=True).clamp(min=1e-8)
+
+        transformed = (1.0 - a_norm_sq) * diff / diff_norm_sq + a
+
+        # Re-normalize and scale back to page radius
+        transformed = F.normalize(transformed, dim=-1)
+        transformed = transformed * math.sqrt(self.dim)
+
+        return transformed
+
+
+# ---------------------------------------------------------------------------
+# encode_text_context — non-differentiable input to break fixed-point collapse
+# ---------------------------------------------------------------------------
+def encode_text_context(prev_results, max_steps=8, device=None):
+    """Encode previous cycle results as a fixed-size float vector.
+
+    Non-differentiable input that breaks hypernetwork fixed-point collapse.
+    Each cycle gets genuinely different context based on what was computed.
+
+    Args:
+        prev_results: list of extracted numbers from previous cycles
+        max_steps: max previous results to encode
+        device: torch device
+    Returns:
+        context: (max_steps * 2,) tensor — pairs of (step_exists, normalized_value)
+    """
+    context = torch.zeros(max_steps * 2)
+    for i, val in enumerate(prev_results):
+        if i < max_steps:
+            context[i * 2] = 1.0
+            context[i * 2 + 1] = float(val) / 1000.0
+    if device is not None:
+        context = context.to(device)
+    return context
+
+
+def scale_diversity_loss(all_scales, target_cos=0.3):
+    """Penalize similar atom scales between consecutive cycles.
+
+    Forces the hypernetwork to produce different scales per cycle,
+    breaking the fixed-point collapse (scales cos(2,3)=0.999).
+
+    Args:
+        all_scales: list of (batch, 64) scale tensors, one per cycle
+        target_cos: max allowed cosine before penalty (0.3 = meaningfully different)
+    Returns:
+        scalar loss
+    """
+    if len(all_scales) < 2:
+        return torch.tensor(0.0, device=all_scales[0].device)
+
+    diversity_loss = 0.0
+    num_pairs = 0
+
+    for i in range(len(all_scales) - 1):
+        cos = F.cosine_similarity(
+            all_scales[i], all_scales[i + 1], dim=-1
+        ).mean()
+        diversity_loss += F.relu(cos - target_cos)
+        num_pairs += 1
+
+    return diversity_loss / max(num_pairs, 1)
+
+
+# ---------------------------------------------------------------------------
 # AtomHypernetwork — reads pages + pass number -> 64 atom scales
 # ---------------------------------------------------------------------------
 class AtomHypernetwork(nn.Module):
@@ -411,6 +509,21 @@ class AtomHypernetwork(nn.Module):
             nn.Linear(512, 512),
         )
 
+        # --- Text context projection (v26.2: breaks fixed-point collapse) ---
+        self.context_dim = 16  # max_steps=8 * 2
+        self.context_project = nn.Sequential(
+            nn.Linear(self.context_dim, 128),
+            nn.GELU(),
+            nn.Linear(128, 512),
+        )
+
+        # --- Bypass projection (v26.3: rich differentiable signal) ---
+        self.bypass_dim = 512
+        self.bypass_project = nn.Sequential(
+            nn.Linear(self.bypass_dim, 512),
+            nn.GELU(),
+        )
+
         # --- Fourier pass encoding (conditional, skipped in v24.6) ---
         if not skip_pass_embed:
             self.register_buffer(
@@ -418,9 +531,9 @@ class AtomHypernetwork(nn.Module):
                 torch.exp(torch.arange(0, pass_embed_dim, 2) * -(math.log(10000.0) / pass_embed_dim))
             )
             self.pass_project = nn.Linear(pass_embed_dim, pass_embed_dim)
-            mlp_input_dim = 2048 + pass_embed_dim + 512
+            mlp_input_dim = 2048 + pass_embed_dim + 512 + 512 + 512
         else:
-            mlp_input_dim = 2048 + 512  # summary + msg_summary = 2560
+            mlp_input_dim = 2048 + 512 + 512 + 512  # summary + msg_summary + context + bypass = 3584
 
         # --- Deep MLP: 2560 -> 2048 -> 1024 -> 512 -> 64 ---
         self.scale_mlp = nn.Sequential(
@@ -441,6 +554,13 @@ class AtomHypernetwork(nn.Module):
 
         self.scale_net = nn.Sequential(self.scale_mlp, self.scale_activation)
 
+        # Möbius focus head: where on the sphere this cycle's page lands
+        self.focus_head = nn.Sequential(
+            nn.Linear(mlp_input_dim, 256),
+            nn.GELU(),
+            nn.Linear(256, 64),
+        )
+
     def fourier_encode(self, pass_num: int, device: torch.device) -> torch.Tensor:
         """Encode pass number as smooth Fourier features."""
         t = pass_num * self.fourier_freqs.to(device)  # (dim/2,)
@@ -453,6 +573,8 @@ class AtomHypernetwork(nn.Module):
         pass_num: int,
         return_pre_tanh: bool = False,
         messages: Optional[List[torch.Tensor]] = None,
+        text_context: Optional[torch.Tensor] = None,
+        bypass_summary: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         """
         Args:
@@ -469,9 +591,10 @@ class AtomHypernetwork(nn.Module):
             batch_size = 1  # caller must handle
             device = self.page_query.device
             zeros = torch.zeros(batch_size, self.num_atoms, device=device)
+            zero_focus = torch.zeros(batch_size, 64, device=device)
             if return_pre_tanh:
-                return zeros, zeros
-            return zeros
+                return zeros, zeros, zero_focus
+            return zeros, zero_focus
 
         batch_size = state_pages[0].size(0)
         device = state_pages[0].device
@@ -510,15 +633,30 @@ class AtomHypernetwork(nn.Module):
         else:
             msg_summary = torch.zeros(batch_size, 512, device=device, dtype=page_summary.dtype)
 
+        # Project text context (breaks fixed-point collapse)
+        if text_context is not None:
+            ctx_features = self.context_project(text_context.to(dtype=page_summary.dtype))
+        else:
+            ctx_features = torch.zeros(batch_size, 512, device=device, dtype=page_summary.dtype)
+
+        # Project bypass vectors (rich differentiable signal)
+        if bypass_summary is not None:
+            bypass_features = self.bypass_project(bypass_summary.to(dtype=page_summary.dtype))
+        else:
+            bypass_features = torch.zeros(batch_size, 512, device=device, dtype=page_summary.dtype)
+
         # Generate contextual logits
         if self.skip_pass_embed:
-            combined = torch.cat([page_summary, msg_summary], dim=-1)  # (B, 2560)
+            combined = torch.cat([page_summary, msg_summary, ctx_features, bypass_features], dim=-1)  # (B, 3584)
             context_logits = self.scale_mlp(combined)
         else:
             pass_emb = self.fourier_encode(pass_num, device).unsqueeze(0).expand(batch_size, -1)
             pass_emb = pass_emb * self.pass_embed_scale
-            combined = torch.cat([page_summary, pass_emb, msg_summary], dim=-1)
+            combined = torch.cat([page_summary, pass_emb, msg_summary, ctx_features, bypass_features], dim=-1)
             context_logits = self.scale_mlp(combined)
+
+        # Möbius focus point (branches off combined, same as scale MLP input)
+        focus = self.focus_head(combined)  # (B, 64)
 
         # ===== BLEND direct + contextual =====
         blend = torch.sigmoid(self.blend_logit)  # scalar in (0, 1)
@@ -531,8 +669,8 @@ class AtomHypernetwork(nn.Module):
         atom_scales = self.scale_activation(pre_tanh)  # (B, num_atoms)
 
         if return_pre_tanh:
-            return atom_scales, pre_tanh
-        return atom_scales
+            return atom_scales, pre_tanh, focus
+        return atom_scales, focus
 
 
 # ---------------------------------------------------------------------------
@@ -1128,6 +1266,33 @@ class IsotropicRegularizer(nn.Module):
 
 
 # ---------------------------------------------------------------------------
+# DifferentiableBypass — rich differentiable projection bypassing compressor
+# ---------------------------------------------------------------------------
+class DifferentiableBypass(nn.Module):
+    """512-float differentiable projection from Llama's hidden states
+    directly to the hypernetwork, bypassing the 64-float compressor.
+
+    Creates genuine recurrent gradient: cycle 1's atoms get gradient
+    from cycle 2's loss flowing through the bypass.
+    """
+    def __init__(self, hidden_dim=2048, bypass_dim=512):
+        super().__init__()
+        self.bypass_dim = bypass_dim
+        self.project = nn.Sequential(
+            nn.Linear(hidden_dim, 1024),
+            nn.LayerNorm(1024),
+            nn.GELU(),
+            nn.Linear(1024, bypass_dim),
+            nn.LayerNorm(bypass_dim),
+            nn.GELU(),
+        )
+
+    def forward(self, hidden_pool):
+        """hidden_pool: (batch, 2048) -> (batch, 512)"""
+        return self.project(hidden_pool)
+
+
+# ---------------------------------------------------------------------------
 # AtomLoRAModel — main model class
 # ---------------------------------------------------------------------------
 class AtomLoRAModel(nn.Module):
@@ -1242,6 +1407,12 @@ class AtomLoRAModel(nn.Module):
         # --- SymPy result encoder (v24.6 — encodes SymPy results into page vectors) ---
         self.sympy_encoder = SymPyResultEncoder(page_size=self.page_size, max_variables=8)
 
+        # --- Möbius transform (conformal warp for page diversity, cycle 2+) ---
+        self.mobius = MobiusTransform(dim=self.page_size, max_focus_norm=0.5)
+
+        # --- Differentiable bypass (v26.3: rich signal bypassing compressor) ---
+        self.bypass = DifferentiableBypass(hidden_dim=self.d_model, bypass_dim=512)
+
     def thinking_pass(
         self,
         input_ids: torch.Tensor,
@@ -1251,6 +1422,8 @@ class AtomLoRAModel(nn.Module):
         max_passes: int = 3,
         prev_mid_states: Optional[List[torch.Tensor]] = None,
         messages: Optional[List[torch.Tensor]] = None,
+        text_context: Optional[torch.Tensor] = None,
+        bypass_vectors: Optional[List[torch.Tensor]] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         One thinking pass with atom LoRA.
@@ -1264,6 +1437,7 @@ class AtomLoRAModel(nn.Module):
             prev_mid_states: Optional list of (B, num_queries, d_perceiver) tensors
                 from previous passes' perceiver mid-layer states.
             messages:        Optional list of (B, message_dim) accumulated messages
+            bypass_vectors:  Optional list of (B, 512) bypass vectors from previous cycles
 
         Returns:
             page:               (B, page_size) normalized on hypersphere
@@ -1271,6 +1445,9 @@ class AtomLoRAModel(nn.Module):
             current_mid_states: (B, num_queries, d_perceiver) detached mid-layer states
             message:            (B, message_dim) direct signal from last layer
             page_delta:         (B, page_size) raw perceiver output before normalization
+            hidden_pool:        (B, d_model) mean-pooled last hidden layer
+            focus:              (B, 64) Mobius focus point
+            bypass_vec:         (B, 512) bypass vector for this cycle
         """
         batch_size = input_ids.size(0)
 
@@ -1281,7 +1458,7 @@ class AtomLoRAModel(nn.Module):
                 batch_size, self.page_size,
                 device=input_ids.device, dtype=hyper_dtype,
             )
-            atom_scales = self.hypernet([zero_page], pass_num=0, messages=messages)
+            atom_scales, focus = self.hypernet([zero_page], pass_num=0, messages=messages, text_context=text_context, bypass_summary=None)
 
             manager = AtomAdditiveLoRAManager(self.transformer)
             manager.apply(self.atoms, atom_scales)
@@ -1294,8 +1471,14 @@ class AtomLoRAModel(nn.Module):
             finally:
                 manager.remove()
         else:
+            # Compute bypass summary from accumulated bypass vectors
+            if bypass_vectors and len(bypass_vectors) > 0:
+                bypass_summary = torch.stack(bypass_vectors, dim=0).mean(dim=0)  # (B, 512)
+            else:
+                bypass_summary = None
+
             # Generate atom scales from pages + messages + pass number
-            atom_scales = self.hypernet(state_pages, pass_num, messages=messages)
+            atom_scales, focus = self.hypernet(state_pages, pass_num, messages=messages, text_context=text_context, bypass_summary=bypass_summary)
 
             manager = AtomAdditiveLoRAManager(self.transformer)
             manager.apply(self.atoms, atom_scales)
@@ -1320,6 +1503,10 @@ class AtomLoRAModel(nn.Module):
         # produce natural diversity. Encoding was masking the true signal.
         page = F.normalize(page_delta, dim=-1) * self.page_radius
 
+        # Möbius warp: push page to this cycle's focus region (cycle 2+)
+        if pass_num > 0:
+            page = self.mobius(page, focus)
+
         # Gradient scaling for earlier cycles (amplify earlier passes)
         grad_scale = min(float(max_passes - pass_num), 4.0)
         if grad_scale != 1.0 and page.requires_grad:
@@ -1331,7 +1518,10 @@ class AtomLoRAModel(nn.Module):
         # Mean-pooled last hidden layer for answer head
         hidden_pool = hidden_states[-1].mean(dim=1).float()  # (B, d_model)
 
-        return page, atom_scales, current_mid_states, message, page_delta, hidden_pool
+        # Differentiable bypass: rich signal from hidden states to hypernetwork
+        bypass_vec = self.bypass(hidden_pool)
+
+        return page, atom_scales, current_mid_states, message, page_delta, hidden_pool, focus, bypass_vec
 
     def thinking_pass_with_sympy(
         self,
@@ -1344,6 +1534,8 @@ class AtomLoRAModel(nn.Module):
         teacher_sympy: Optional[str] = None,
         prev_mid_states: Optional[List[torch.Tensor]] = None,
         max_passes: int = 3,
+        text_context: Optional[torch.Tensor] = None,
+        bypass_vectors: Optional[List[torch.Tensor]] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict[str, float], torch.Tensor]:
         """
         One thinking pass with atom LoRA, integrating SymPy evaluation.
@@ -1414,8 +1606,14 @@ class AtomLoRAModel(nn.Module):
             )
             hidden_states = list(outputs.hidden_states[1:])
         else:
+            # Compute bypass summary from accumulated bypass vectors
+            if bypass_vectors and len(bypass_vectors) > 0:
+                bypass_summary = torch.stack(bypass_vectors, dim=0).mean(dim=0)  # (B, 512)
+            else:
+                bypass_summary = None
+
             # Generate atom scales from pages + pass number
-            atom_scales = self.hypernet(state_pages, pass_num)
+            atom_scales, _focus = self.hypernet(state_pages, pass_num, text_context=text_context, bypass_summary=bypass_summary)
 
             # Apply atom LoRA via monkey-patching
             manager = AtomAdditiveLoRAManager(self.transformer)
@@ -1460,7 +1658,13 @@ class AtomLoRAModel(nn.Module):
         if grad_scale != 1.0 and page.requires_grad:
             page = page * grad_scale + page.detach() * (1.0 - grad_scale)
 
-        return page, atom_scales, current_mid_states, updated_sympy_results, page_delta
+        # Mean-pooled last hidden layer for bypass
+        hidden_pool = hidden_states[-1].mean(dim=1).float()  # (B, d_model)
+
+        # Differentiable bypass: rich signal from hidden states to hypernetwork
+        bypass_vec = self.bypass(hidden_pool)
+
+        return page, atom_scales, current_mid_states, updated_sympy_results, page_delta, bypass_vec
 
     def solve_with_memory(
         self,
@@ -1498,7 +1702,7 @@ class AtomLoRAModel(nn.Module):
 
         for pass_num in range(max_passes):
             # === THINK ===
-            page, atom_scales, current_mid_states, sympy_results, _raw_page = self.thinking_pass_with_sympy(
+            page, atom_scales, current_mid_states, sympy_results, _raw_page, _bypass_vec = self.thinking_pass_with_sympy(
                 problem_text=problem_text,
                 input_ids=problem_ids,
                 attention_mask=attention_mask,

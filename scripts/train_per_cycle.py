@@ -21,6 +21,7 @@ Usage:
 import argparse
 import json
 import os
+import random
 import re
 import sys
 import time
@@ -36,6 +37,9 @@ from scripts.atom_lora import (
     AtomLoRAModel,
     AtomAdditiveLoRAManager,
     warm_start_atom_from_checkpoint,
+    encode_text_context,
+    scale_diversity_loss,
+    DifferentiableBypass,
 )
 from src.contrastive_page_loss import per_page_contrastive_loss
 
@@ -64,6 +68,141 @@ def scale_gradient(tensor, scale):
 
 
 # ---------------------------------------------------------------------------
+# Generation target dropout — force computation instead of copying
+# ---------------------------------------------------------------------------
+
+def dropout_gen_target(gen_text, target_number, dropout_prob=0.3, rng=None):
+    """Randomly mask equation results so the model must compute, not copy.
+
+    With probability `dropout_prob`, activates masking on this example.
+    When active, each equation result (the Z in "X op Y = Z") independently
+    has a 50% chance of being replaced with "___".
+
+    The #### marker is NEVER masked — it's the extraction target.
+
+    Args:
+        gen_text: generation target string (e.g. "She has 5 + 3 = 8 apples. #### 8")
+        target_number: the final answer (unused, reserved for safety checks)
+        dropout_prob: probability that any masking happens at all (default 0.3)
+        rng: random.Random instance (created fresh if None)
+
+    Returns:
+        gen_text with some equation results replaced by "___", or unchanged.
+    """
+    if rng is None:
+        rng = random.Random()
+
+    # With probability (1 - dropout_prob), return unchanged
+    if rng.random() >= dropout_prob:
+        return gen_text
+
+    # Split off the #### marker so we never touch it
+    marker_pattern = r'(####\s*[-]?\d+)'
+    marker_match = re.search(marker_pattern, gen_text)
+    if marker_match:
+        body = gen_text[:marker_match.start()]
+        tail = gen_text[marker_match.start():]
+    else:
+        body = gen_text
+        tail = ''
+
+    # Mask equation results in the body only
+    eq_pattern = r'(\d+)\s*([+\-*/×÷])\s*(\d+)\s*(=)\s*(\d+)'
+
+    def _mask_result(m):
+        if rng.random() < 0.5:
+            return f'{m.group(1)} {m.group(2)} {m.group(3)} {m.group(4)} ___'
+        return m.group(0)
+
+    body = re.sub(eq_pattern, _mask_result, body)
+
+    return body + tail
+
+
+# ---------------------------------------------------------------------------
+# Number augmentation (anti-memorization)
+# ---------------------------------------------------------------------------
+
+def extract_base_numbers(question):
+    """Find all whole numbers in question text, return list of (match, int)."""
+    return [(m.group(), int(m.group())) for m in re.finditer(r'\b(\d+)\b', question)]
+
+
+def replace_numbers_in_text(text, number_map):
+    """Replace old->new numbers in text.
+
+    Sorts replacements by length descending so '160' is replaced before '16'.
+    """
+    # Sort by length of old string descending, then by value descending
+    sorted_pairs = sorted(number_map.items(), key=lambda kv: (-len(kv[0]), kv[0]))
+    for old_str, new_str in sorted_pairs:
+        text = text.replace(old_str, new_str)
+    return text
+
+
+def simple_augment(problem, rng):
+    """Randomize all numbers in a problem by a shared scale factor.
+
+    Args:
+        problem: dict with 'question', 'cycle_targets', 'cycle_gen_targets', etc.
+        rng: random.Random instance for reproducibility.
+
+    Returns:
+        New dict with scaled numbers (original is not mutated).
+    """
+    question = problem.get('question', problem.get('problem', ''))
+    matches = extract_base_numbers(question)
+    if not matches:
+        return problem
+
+    # Pick a single scale factor so ratios are preserved
+    scale = rng.uniform(0.5, 2.0)
+
+    # Build old_str -> new_str map for the question
+    number_map = {}
+    for match_str, match_int in matches:
+        new_val = max(1, round(match_int * scale))
+        number_map[match_str] = str(new_val)
+
+    new_question = replace_numbers_in_text(question, number_map)
+
+    # Scale cycle_targets by the same factor
+    old_targets = problem.get('cycle_targets', [])
+    new_targets = [max(1, round(t * scale)) for t in old_targets]
+
+    # Scale cycle_gen_targets: replace numbers in text AND update #### markers
+    old_gen_targets = problem.get('cycle_gen_targets', [])
+    new_gen_targets = []
+    for i, gt in enumerate(old_gen_targets):
+        new_text = replace_numbers_in_text(gt, number_map)
+        # Also replace any previously-computed target numbers that appear in
+        # later gen targets (chain of intermediate results)
+        for j, ot in enumerate(old_targets):
+            old_t_str = str(ot)
+            new_t_str = str(new_targets[j])
+            if old_t_str != new_t_str:
+                new_text = new_text.replace(old_t_str, new_t_str)
+        # Update #### marker to match the new target for this cycle
+        if i < len(new_targets):
+            new_text = re.sub(r'####\s*[-]?\d+', f'#### {new_targets[i]}', new_text)
+        new_gen_targets.append(new_text)
+
+    # Build augmented problem (don't mutate original)
+    augmented = dict(problem)
+    # Write back using whichever key the data uses
+    q_key = 'question' if 'question' in problem else 'problem'
+    augmented[q_key] = new_question
+    augmented['cycle_targets'] = new_targets
+    if old_gen_targets:
+        augmented['cycle_gen_targets'] = new_gen_targets
+    # Update final_answer if present
+    if 'final_answer' in problem:
+        augmented['final_answer'] = new_targets[-1] if new_targets else problem['final_answer']
+
+    return augmented
+
+
+# ---------------------------------------------------------------------------
 # Per-cycle JSONL Dataset
 # ---------------------------------------------------------------------------
 
@@ -72,11 +211,18 @@ class PerCycleDataset(Dataset):
 
     Each line: {"problem": "...", "cycle_targets": [48, 24, 72],
                 "final_answer": 72, "num_steps": 3}
+
+    When augment=True, numbers are randomized each epoch (anti-memorization)
+    and generation targets get equation-result dropout (anti-copying).
     """
 
-    def __init__(self, jsonl_path: str, max_passes: int = 5):
+    def __init__(self, jsonl_path: str, max_passes: int = 5,
+                 augment: bool = False, dropout_prob: float = 0.3):
         self.samples = []
         self.max_passes = max_passes
+        self.augment = augment
+        self.dropout_prob = dropout_prob
+        self.epoch = 0  # set externally each epoch
         with open(jsonl_path, 'r') as f:
             for line in f:
                 line = line.strip()
@@ -85,11 +231,21 @@ class PerCycleDataset(Dataset):
                 item = json.loads(line)
                 self.samples.append(item)
 
+    def set_epoch(self, epoch):
+        """Call before each epoch to change augmentation seed."""
+        self.epoch = epoch
+
     def __len__(self):
         return len(self.samples)
 
     def __getitem__(self, idx):
         item = self.samples[idx]
+
+        # Number augmentation: different random numbers each epoch
+        if self.augment:
+            aug_rng = random.Random(self.epoch * 12345 + idx)
+            item = simple_augment(item, aug_rng)
+
         cycle_targets = item['cycle_targets']
         # Truncate to max_passes if needed
         cycle_targets = cycle_targets[:self.max_passes]
@@ -98,6 +254,17 @@ class PerCycleDataset(Dataset):
         gen_targets = item.get('cycle_gen_targets',
                                [str(ct) for ct in cycle_targets])
         gen_targets = gen_targets[:self.max_passes]
+
+        # Generation target dropout: mask equation results
+        if self.augment:
+            drop_rng = random.Random(self.epoch * 67890 + idx)
+            for i in range(len(gen_targets)):
+                target_num = cycle_targets[i] if i < len(cycle_targets) else 0
+                gen_targets[i] = dropout_gen_target(
+                    gen_targets[i], target_num,
+                    dropout_prob=self.dropout_prob, rng=drop_rng,
+                )
+
         return {
             'problem': item['problem'],
             'cycle_targets': cycle_targets,
@@ -206,6 +373,8 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
     raw_pages = []
     messages = []
     prev_predictions = []  # list of (B,) tensors -- accumulated gen predictions
+    all_scales = []      # for diversity loss
+    bypass_vectors = []  # for differentiable bypass
     atom_scales_history = []
     mid_states_history = []
     pre_tanh_history = []
@@ -249,19 +418,38 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
             cycle_attention_mask = attention_mask
             cycle_prompt_len = prompt_len
 
+        # --- Build text context for hypernetwork (breaks fixed-point collapse) ---
+        text_ctx_list = []
+        for b in range(batch_size):
+            prev_nums = []
+            for prev_preds in prev_predictions:
+                prev_nums.append(int(prev_preds[b].item()))
+            text_ctx_list.append(encode_text_context(prev_nums, device=device))
+        text_context = torch.stack(text_ctx_list)  # (B, 16)
+
+        # --- Compute bypass summary for hypernetwork ---
+        if bypass_vectors and len(bypass_vectors) > 0:
+            bypass_summary = torch.stack(bypass_vectors, dim=0).mean(dim=0)
+        else:
+            bypass_summary = None
+
         # --- Get atom scales for this cycle (pages + messages) ---
         if pass_num == 0 and len(state_pages) == 0:
             hyper_dtype = next(model.hypernet.parameters()).dtype
             zero_page = torch.zeros(batch_size, model.page_size,
                                     device=device, dtype=hyper_dtype)
-            atom_scales, pre_tanh = model.hypernet(
+            atom_scales, pre_tanh, _focus = model.hypernet(
                 [zero_page], pass_num=0, return_pre_tanh=True,
                 messages=messages if messages else None,
+                text_context=text_context,
+                bypass_summary=bypass_summary,
             )
         else:
-            atom_scales, pre_tanh = model.hypernet(
+            atom_scales, pre_tanh, _focus = model.hypernet(
                 state_pages, pass_num=pass_num, return_pre_tanh=True,
                 messages=messages if messages else None,
+                text_context=text_context,
+                bypass_summary=bypass_summary,
             )
 
         # --- Think: run transformer with this cycle's LoRA ---
@@ -301,6 +489,15 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
         # Generate message: direct signal from last layer, bypasses perceiver
         message = model.message_generator(hidden_states[-1])
         messages.append(message)
+
+        # Differentiable bypass: rich signal from hidden states to hypernetwork
+        hidden_pool = hidden_states[-1].mean(dim=1).float()  # (B, d_model)
+        if hasattr(model, 'bypass'):
+            bypass_vec = model.bypass(hidden_pool)
+            all_scales.append(atom_scales)
+            bypass_vectors.append(bypass_vec)
+        else:
+            all_scales.append(atom_scales)
 
         # Atom dropout during training: randomly zero 10% of atom scales
         if model.training and pass_num > 0:
@@ -375,6 +572,7 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
                     weight=token_weights,
                     ignore_index=model.tokenizer.pad_token_id,
                     reduction='none',
+                    label_smoothing=0.05,
                 )
                 # Mask per sample, then average
                 target_mask = (target_ids != model.tokenizer.pad_token_id).float()
@@ -387,12 +585,40 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
                 cycle_gen_logits_list.append(gen_logits.detach())
 
                 # Smooth fading: intermediate cycle targets fade as accuracy climbs
-                # Dormant below 70%, fully faded above 90%. Final cycle always 1.0.
                 total_supervised = cycle_targets.size(1)
                 fade_w = per_cycle_target_weight(final_accuracy, pass_num, total_supervised)
 
-                # Generation loss at full weight for all cycles
-                per_cycle_gen_loss = per_cycle_gen_loss + gen_loss_this * fade_w
+                # Three-tier per-sample gating:
+                #   Correct new target → 1.0 (full reward)
+                #   Wrong but trying   → 0.1 (reduced, still learns language)
+                #   Copying consumed   → 0.0 (zero reward for repeating)
+                if pass_num == 0:
+                    # Cycle 1: always full weight (nothing to copy yet)
+                    per_cycle_gen_loss = per_cycle_gen_loss + gen_loss_this * fade_w
+                else:
+                    with torch.no_grad():
+                        pred_tokens = gen_logits.argmax(dim=-1)
+                        per_sample_weights = torch.ones(batch_size, device=device)
+                        for b in range(batch_size):
+                            text = model.tokenizer.decode(pred_tokens[b], skip_special_tokens=True)
+                            pred_val = extract_answer_from_text(text)
+                            if pred_val is not None:
+                                # Check if copying a consumed target
+                                is_copy = False
+                                for prev_preds in prev_predictions:
+                                    if int(prev_preds[b].item()) == pred_val:
+                                        is_copy = True
+                                        break
+                                if is_copy:
+                                    per_sample_weights[b] = 0.0  # copying → zero reward
+                                elif pred_val == int(cycle_target[b].item()):
+                                    per_sample_weights[b] = 1.0  # correct → full reward
+                                else:
+                                    per_sample_weights[b] = 0.1  # wrong → reduced
+                            else:
+                                per_sample_weights[b] = 0.1  # no extraction → reduced
+                    weighted_gen = (gen_loss_per_sample * per_sample_weights * mask_val).sum() / mask_val.sum()
+                    per_cycle_gen_loss = per_cycle_gen_loss + weighted_gen * fade_w
                 valid_cycles += 1
 
             # Record predictions for diagnostics (extract from gen_logits)
@@ -445,6 +671,9 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
         state_pages, finals_t, cross_target=0.7, within_target=0.3,
     )
 
+    # ------- Scale diversity loss (computed ONCE after all cycles) -------
+    diversity_loss = scale_diversity_loss(all_scales, target_cos=0.3)
+
     # ------- Atom diagnostics -------
     with torch.no_grad():
         last_page = state_pages[-1].float()
@@ -454,11 +683,11 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
         off_diag = sim - torch.eye(B, device=sim.device)
         page_cos_mean = off_diag.sum() / max(B * (B - 1), 1)
 
-        all_scales = torch.stack(atom_scales_history, dim=0)  # (P, B, A)
-        active_per_pass = (all_scales.abs() > 0.1).float().sum(dim=-1)
+        diag_scales = torch.stack(atom_scales_history, dim=0)  # (P, B, A)
+        active_per_pass = (diag_scales.abs() > 0.1).float().sum(dim=-1)
         active_atoms_mean = active_per_pass.mean()
 
-        scale_std = all_scales.std(dim=-1).mean()
+        scale_std = diag_scales.std(dim=-1).mean()
 
         if len(atom_scales_history) >= 2:
             s0 = F.normalize(atom_scales_history[0], dim=-1)
@@ -481,7 +710,7 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
     return (per_cycle_gen_loss,
             c_loss, conf_loss, scale_reg_loss, iso_loss,
             page_cos_mean, active_atoms_mean, scale_std, cross_pass_cos,
-            conf_loss.detach(), state_pages, per_cycle_preds)
+            conf_loss.detach(), state_pages, per_cycle_preds, diversity_loss)
 
 
 # ---------------------------------------------------------------------------
@@ -527,6 +756,7 @@ def evaluate_per_cycle(model, eval_dataset, device,
             eval_messages = []
             eval_prev_predictions = []
             mid_states_history = []
+            bypass_vectors = []
             embed_layer = model.transformer.model.embed_tokens
             eval_pred_vals = []  # list of lists: per cycle, per sample predicted values
 
@@ -550,31 +780,52 @@ def evaluate_per_cycle(model, eval_dataset, device,
                     eval_ids = input_ids
                     eval_mask = attention_mask
 
-                page, _scales, current_mid_states, message, _raw_page, hidden_pool = model.thinking_pass(
+                # Build text context for hypernetwork
+                text_ctx_list = []
+                for b in range(batch_size):
+                    prev_nums = []
+                    for prev_preds in eval_prev_predictions:
+                        prev_nums.append(int(prev_preds[b]))
+                    text_ctx_list.append(encode_text_context(prev_nums, device=device))
+                text_context = torch.stack(text_ctx_list)  # (B, 16)
+
+                page, _scales, current_mid_states, message, _raw_page, hidden_pool, _focus, bypass_vec = model.thinking_pass(
                     eval_ids, eval_mask, state_pages, pass_num,
                     prev_mid_states=mid_states_history if mid_states_history else None,
                     messages=eval_messages if eval_messages else None,
+                    text_context=text_context,
+                    bypass_vectors=bypass_vectors,
                 )
                 state_pages.append(page)
                 eval_messages.append(message)
                 mid_states_history.append(current_mid_states)
+                bypass_vectors.append(bypass_vec)
 
                 # Generate text with LoRA applied
                 prompt_len = eval_ids.size(1)
 
                 # Get atom scales for generation
+                if bypass_vectors and len(bypass_vectors) > 0:
+                    eval_bypass_summary = torch.stack(bypass_vectors, dim=0).mean(dim=0)
+                else:
+                    eval_bypass_summary = None
+
                 if pass_num == 0 and len(state_pages) == 1:
                     hyper_dtype = next(model.hypernet.parameters()).dtype
                     zero_page = torch.zeros(batch_size, model.page_size,
                                             device=device, dtype=hyper_dtype)
-                    atom_scales, _ = model.hypernet(
+                    atom_scales, _, _focus = model.hypernet(
                         [zero_page], pass_num=0, return_pre_tanh=True,
                         messages=eval_messages if eval_messages else None,
+                        text_context=text_context,
+                        bypass_summary=eval_bypass_summary,
                     )
                 else:
-                    atom_scales, _ = model.hypernet(
+                    atom_scales, _, _focus = model.hypernet(
                         state_pages, pass_num=pass_num, return_pre_tanh=True,
                         messages=eval_messages if eval_messages else None,
+                        text_context=text_context,
+                        bypass_summary=eval_bypass_summary,
                     )
 
                 manager = AtomAdditiveLoRAManager(model.transformer)
@@ -669,28 +920,47 @@ def infer_single(model, problem_text, device,
 
         state_pages = []
         mid_states_history = []
+        bypass_vectors = []
         embed_layer = model.transformer.model.embed_tokens
         last_pred = None
+        infer_prev_predictions = []  # list of extracted ints per cycle
 
         for pass_num in range(max_passes):
-            page, _scales, current_mid_states, _message, _raw_page, hidden_pool = model.thinking_pass(
+            # Build text context for hypernetwork
+            text_context = encode_text_context(
+                infer_prev_predictions, device=device,
+            ).unsqueeze(0)  # (1, 16) — single sample
+
+            page, _scales, current_mid_states, _message, _raw_page, hidden_pool, _focus, bypass_vec = model.thinking_pass(
                 input_ids, attention_mask, state_pages, pass_num,
                 prev_mid_states=mid_states_history if mid_states_history else None,
+                text_context=text_context,
+                bypass_vectors=bypass_vectors,
             )
             state_pages.append(page)
             mid_states_history.append(current_mid_states)
+            bypass_vectors.append(bypass_vec)
 
             # Get atom scales for generation
+            if bypass_vectors and len(bypass_vectors) > 0:
+                infer_bypass_summary = torch.stack(bypass_vectors, dim=0).mean(dim=0)
+            else:
+                infer_bypass_summary = None
+
             if pass_num == 0:
                 hyper_dtype = next(model.hypernet.parameters()).dtype
                 zero_page = torch.zeros(1, model.page_size,
                                         device=device, dtype=hyper_dtype)
-                atom_scales, _ = model.hypernet(
+                atom_scales, _, _focus = model.hypernet(
                     [zero_page], pass_num=0, return_pre_tanh=True,
+                    text_context=text_context,
+                    bypass_summary=infer_bypass_summary,
                 )
             else:
-                atom_scales, _ = model.hypernet(
+                atom_scales, _, _focus = model.hypernet(
                     state_pages, pass_num=pass_num, return_pre_tanh=True,
+                    text_context=text_context,
+                    bypass_summary=infer_bypass_summary,
                 )
 
             # Generate with LoRA applied
@@ -709,6 +979,7 @@ def infer_single(model, problem_text, device,
             prompt_len = input_ids.size(1)
             gen_text = model.tokenizer.decode(gen_out[0][prompt_len:], skip_special_tokens=False)
             last_pred = extract_answer_from_text(gen_text)
+            infer_prev_predictions.append(last_pred if last_pred is not None else 0)
 
             # Confidence-based early stopping (after at least 1 pass)
             if pass_num >= 1:
@@ -858,6 +1129,16 @@ def try_warm_start(model, warm_path, skip_perceiver=False):
             model.message_generator.load_state_dict(own_mg, strict=False)
             print(f"  message_generator: loaded {loaded_mg}/{len(own_mg)}")
 
+        if 'bypass' in ckpt and hasattr(model, 'bypass'):
+            own_bp = model.bypass.state_dict()
+            loaded_bp = 0
+            for k, v in ckpt['bypass'].items():
+                if k in own_bp and own_bp[k].shape == v.shape:
+                    own_bp[k] = v
+                    loaded_bp += 1
+            model.bypass.load_state_dict(own_bp, strict=False)
+            print(f"  bypass: loaded {loaded_bp}/{len(own_bp)}")
+
         if 'optimizer' in ckpt:
             print(f"  optimizer state: found")
             return ckpt['optimizer']
@@ -890,6 +1171,7 @@ def train(args):
     print(f"  lam_contrastive= {args.lam_contrastive}")
     print(f"  lam_conf       = {args.lam_conf}")
     print(f"  lam_scale_reg  = {args.lam_scale_reg}")
+    print(f"  lam_diversity  = {args.lam_diversity}")
     print(f"  skip_perceiver = {args.skip_perceiver}")
     print(f"  num_atoms      = {args.num_atoms}")
     print(f"  atom_rank      = {args.atom_rank}")
@@ -912,6 +1194,11 @@ def train(args):
     model.message_generator = model.message_generator.to(device)  # fp32 (small)
     model.ordinal_head = model.ordinal_head.to(device)  # fp32 (small)
 
+    # Differentiable bypass: create if not already on the model
+    if not hasattr(model, 'bypass'):
+        model.bypass = DifferentiableBypass(hidden_dim=2048, bypass_dim=512)
+    model.bypass = model.bypass.to(device)  # fp32 (small)
+
     saved_optim_state = None
     if warm_path:
         print(f"\nWarm-starting from {warm_path}")
@@ -928,10 +1215,14 @@ def train(args):
         print(f"Expected JSONL format: {{\"problem\": \"...\", \"cycle_targets\": [...], \"final_answer\": N, \"num_steps\": N}}")
         sys.exit(1)
 
-    train_dataset = PerCycleDataset(train_path, max_passes=args.num_passes)
-    print(f"\nTrain dataset: {len(train_dataset)} problems from {train_path}")
+    train_dataset = PerCycleDataset(train_path, max_passes=args.num_passes,
+                                     augment=args.augment,
+                                     dropout_prob=args.dropout_prob)
+    aug_str = f" (augment={args.augment}, dropout={args.dropout_prob})" if args.augment else ""
+    print(f"\nTrain dataset: {len(train_dataset)} problems from {train_path}{aug_str}")
 
     if os.path.exists(eval_path):
+        # Eval is NEVER augmented
         eval_dataset = PerCycleDataset(eval_path, max_passes=args.num_passes)
         print(f"Eval dataset: {len(eval_dataset)} problems from {eval_path}")
     else:
@@ -963,6 +1254,7 @@ def train(args):
         {'params': list(model.confidence_head.parameters()), 'lr': 1e-3 * s, 'weight_decay': 0.01},
         {'params': list(model.message_generator.parameters()), 'lr': 1e-3 * s, 'weight_decay': 0.01},
         {'params': list(model.ordinal_head.parameters()), 'lr': 1e-3 * s, 'weight_decay': 0.01},
+        {'params': list(model.bypass.parameters()), 'lr': 1e-4 * s, 'weight_decay': 0.01},
     ])
 
     # Note: optimizer state loading disabled -- architecture changes between
@@ -978,6 +1270,7 @@ def train(args):
         + list(model.confidence_head.parameters())
         + list(model.message_generator.parameters())
         + list(model.ordinal_head.parameters())
+        + list(model.bypass.parameters())
     )
     print(f"Trainable params: {sum(p.numel() for p in trainable):,}")
     print(f"  atoms: {sum(p.numel() for p in model.atoms.parameters()):,} "
@@ -986,6 +1279,7 @@ def train(args):
     print(f"  compressor: {sum(p.numel() for p in model.compressor.parameters()):,}")
     print(f"  confidence_head: {sum(p.numel() for p in model.confidence_head.parameters()):,}")
     print(f"  message_gen: {sum(p.numel() for p in model.message_generator.parameters()):,}")
+    print(f"  bypass: {sum(p.numel() for p in model.bypass.parameters()):,}")
     print(f"GPU mem after init: {torch.cuda.memory_allocated()/1e9:.2f} GB")
 
     # Baseline eval
@@ -1005,9 +1299,13 @@ def train(args):
         model.train()
         t0 = time.time()
 
+        # Update augmentation seed for this epoch (different numbers each epoch)
+        train_dataset.set_epoch(epoch)
+
         # Re-shuffle data each epoch (DataLoader shuffle=True handles this)
         ep_gen = ep_ctr = ep_conf = ep_scale_reg = ep_iso = ep_cos = 0.0
         ep_active = ep_std = ep_xpass = 0.0
+        ep_div = 0.0
         ep_page_var = 0.0
         ep_dead_dims = 0.0
         nb = 0
@@ -1031,7 +1329,7 @@ def train(args):
 
             (gen_loss, c_loss, conf_loss, scale_reg, iso_loss,
              page_cos, active_atoms, s_std, xpass_cos,
-             conf_mean, state_pages, per_cycle_preds) = forward_train_per_cycle(
+             conf_mean, state_pages, per_cycle_preds, div_loss) = forward_train_per_cycle(
                 model, problems, cycle_targets, cycle_mask,
                 finals_t, cycle_gen_targets=cycle_gen_targets,
                 num_passes=args.num_passes, max_length=max_length,
@@ -1042,7 +1340,8 @@ def train(args):
                           + args.lam_contrastive * c_loss
                           + args.lam_conf * conf_loss
                           + args.lam_scale_reg * scale_reg
-                          + 0.01 * iso_loss)
+                          + 0.01 * iso_loss
+                          + args.lam_diversity * div_loss)
             total_loss.backward()
             torch.nn.utils.clip_grad_norm_(trainable, 1.0)
             optimizer.step()
@@ -1052,6 +1351,7 @@ def train(args):
             ep_conf += conf_loss.item()
             ep_scale_reg += scale_reg.item()
             ep_iso += iso_loss.item()
+            ep_div += div_loss.item()
             ep_cos += page_cos.item()
             ep_active += active_atoms.item()
             ep_std += s_std.item()
@@ -1096,6 +1396,7 @@ def train(args):
                 'residual_gate': model.residual_gate.state_dict(),
                 'message_generator': model.message_generator.state_dict(),
                 'ordinal_head': model.ordinal_head.state_dict(),
+                'bypass': model.bypass.state_dict(),
                 'optimizer': optimizer.state_dict(),
                 'accuracy': final_acc,
                 'per_cycle_acc': per_cycle_acc,
@@ -1113,6 +1414,7 @@ def train(args):
             f"Epoch {epoch+1}: "
             f"gen={ep_gen/nb:.4f} contr={ep_ctr/nb:.2f} "
             f"conf={ep_conf/nb:.2f} scale_reg={ep_scale_reg/nb:.2f} iso={ep_iso/nb:.4f} "
+            f"div={ep_div/nb:.4f} "
             f"page_cos={ep_cos/nb:.2f} "
             f"active={ep_active/nb:.1f}/{args.num_atoms} "
             f"scale_std={ep_std/nb:.3f} "
@@ -1182,6 +1484,8 @@ if __name__ == '__main__':
                    help='Confidence loss weight')
     p.add_argument('--lam_scale_reg', type=float, default=0.1,
                    help='Pre-tanh scale regularization weight')
+    p.add_argument('--lam_diversity', type=float, default=0.1,
+                   help='Scale diversity loss weight (default: 0.1)')
     p.add_argument('--lr_scale', type=float, default=1.0,
                    help='Scale all learning rates (use 0.7 when resuming to protect cycle 1)')
     p.add_argument('--num_atoms', type=int, default=64,
@@ -1190,6 +1494,10 @@ if __name__ == '__main__':
                    help='Rank of each LoRA atom')
     p.add_argument('--skip_perceiver', action='store_true',
                    help='Skip loading perceiver from warm checkpoint')
+    p.add_argument('--augment', action='store_true',
+                   help='Enable number augmentation + gen target dropout (anti-memorization)')
+    p.add_argument('--dropout_prob', type=float, default=0.15,
+                   help='Generation target dropout probability (default: 0.15)')
 
     args = p.parse_args()
     train(args)
