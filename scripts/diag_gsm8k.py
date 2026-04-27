@@ -64,6 +64,7 @@ with torch.no_grad():
         attn_mask = inputs['attention_mask'].to(device)
 
         state_pages = []
+        hidden_pools = []
         messages = []
         mid_hist = []
         prev_preds = []
@@ -76,7 +77,7 @@ with torch.no_grad():
 
         for pn in range(n_cycles):
             if pn > 0 and len(state_pages) > 0:
-                lp_val = int(answer_head.decode(state_pages[-1].float())[0].item())
+                lp_val = int(answer_head.decode(state_pages[-1].float(), hidden_pool=hidden_pools[-1])[0].item())
                 prev_preds.append(lp_val)
                 ctx = ''.join(f'Step {si+1} result: {pp}\n'
                               for si, pp in enumerate(prev_preds))
@@ -90,16 +91,17 @@ with torch.no_grad():
                 em = attn_mask
                 pl = input_ids.size(1)
 
-            page, sc, ms, msg, _raw_page = model.thinking_pass(
+            page, sc, ms, msg, _raw_page, hidden_pool = model.thinking_pass(
                 eid, em, state_pages, pn,
                 prev_mid_states=mid_hist if mid_hist else None,
                 messages=messages if messages else None,
             )
             state_pages.append(page)
+            hidden_pools.append(hidden_pool)
             messages.append(msg)
             mid_hist.append(ms)
 
-            ah_pred = int(answer_head.decode(page.float())[0].item())
+            ah_pred = int(answer_head.decode(page.float(), hidden_pool=hidden_pool)[0].item())
             page_norm = page.float().norm().item()
 
             # Generate
@@ -110,6 +112,7 @@ with torch.no_grad():
                     input_ids=eid, attention_mask=em,
                     max_new_tokens=50, do_sample=False,
                     pad_token_id=model.tokenizer.pad_token_id or model.tokenizer.eos_token_id,
+                    eos_token_id=model.tokenizer.eos_token_id,
                 )
                 gen_text = model.tokenizer.decode(gen_out[0][pl:], skip_special_tokens=True)
             finally:
@@ -170,12 +173,13 @@ with torch.no_grad():
         input_ids = inputs['input_ids'].to(device)
         attn_mask = inputs['attention_mask'].to(device)
         state_pages = []
+        hidden_pools = []
         messages = []
         mid_hist = []
         prev_preds = []
         for pn in range(min(len(ct), 2)):
             if pn > 0:
-                lp_val = int(answer_head.decode(state_pages[-1].float())[0].item())
+                lp_val = int(answer_head.decode(state_pages[-1].float(), hidden_pool=hidden_pools[-1])[0].item())
                 prev_preds.append(lp_val)
                 ctx = ''.join(f'Step {si+1} result: {pp}\n'
                               for si, pp in enumerate(prev_preds))
@@ -186,12 +190,13 @@ with torch.no_grad():
             else:
                 eid = input_ids
                 em = attn_mask
-            page, sc, ms, msg, _raw_page = model.thinking_pass(
+            page, sc, ms, msg, _raw_page, hidden_pool = model.thinking_pass(
                 eid, em, state_pages, pn,
                 prev_mid_states=mid_hist if mid_hist else None,
                 messages=messages if messages else None,
             )
             state_pages.append(page)
+            hidden_pools.append(hidden_pool)
             messages.append(msg)
             mid_hist.append(ms)
         if len(state_pages) >= 2:

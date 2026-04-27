@@ -538,48 +538,60 @@ class AtomHypernetwork(nn.Module):
 # ---------------------------------------------------------------------------
 # AnswerHead — digit-based answer extraction from last page
 # ---------------------------------------------------------------------------
-class AnswerHead(nn.Module):
-    """
-    Reads the last page (64 floats) and predicts the answer as digits.
-
-    Three sub-heads:
-    - sign_head:   Linear(page_size, 2)           -> positive or negative
-    - length_head: Linear(page_size, max_digits)   -> how many digits
-    - digit_heads: max_digits x Linear(page_size, 10) -> 0-9 per position
-    """
+class HiddenStateAnswerHead(nn.Module):
+    """40M answer head — the correctness gatekeeper.
+    (Renamed from AnswerHead for backward compat.)"""
 
     def __init__(self, page_size: int = 64, max_digits: int = 8,
-                 hidden: int = 512, max_cycles: int = 12):
+                 hidden: int = 1024, num_layers: int = 6,
+                 max_cycles: int = 12, d_model: int = 2048):
         super().__init__()
         self.page_size = page_size
         self.max_digits = max_digits
+        self.d_model = d_model
 
-        # Per-cycle embedding so the head knows which reasoning pass it's on
-        self.cycle_embed = nn.Embedding(max_cycles, hidden)
+        # Per-cycle embedding
+        self.cycle_embed = nn.Embedding(max_cycles, 256)
 
-        # Shared encoder: page + cycle embedding -> richer representation (~5M params)
-        self.encoder = nn.Sequential(
-            nn.Linear(page_size + hidden, hidden),
-            nn.GELU(),
+        # Transform: page(64) + hidden_states_pool(2048) + cycle(256) → 1024
+        # No bottleneck — the number info is spread across 2048 hidden dims.
+        self.input_transform = nn.Sequential(
+            nn.Linear(page_size + d_model + 256, hidden),
             nn.LayerNorm(hidden),
-            nn.Linear(hidden, hidden),
-            nn.GELU(),
-            nn.LayerNorm(hidden),
-            nn.Linear(hidden, hidden),
             nn.GELU(),
         )
+
+        # 6-layer deep encoder on transformed input
+        layers = []
+        for i in range(num_layers):
+            layers.extend([
+                nn.Linear(hidden, hidden),
+                nn.LayerNorm(hidden),
+                nn.GELU(),
+                nn.Dropout(0.1),
+            ])
+        self.encoder = nn.Sequential(*layers)
+
+        # Prediction heads (deeper digit heads for better discrimination)
         self.sign_head = nn.Linear(hidden, 2)
         self.length_head = nn.Linear(hidden, max_digits)
         self.digit_heads = nn.ModuleList([
-            nn.Linear(hidden, 10) for _ in range(max_digits)
+            nn.Sequential(
+                nn.Linear(hidden, 256),
+                nn.GELU(),
+                nn.Linear(256, 10),
+            )
+            for _ in range(max_digits)
         ])
 
     def forward(
         self, last_page: torch.Tensor, cycle_num: int = 0,
+        hidden_pool: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, List[torch.Tensor]]:
         """
         Args:
-            last_page:  (B, page_size) — raw page
+            last_page:    (B, page_size) — raw page
+            hidden_pool:  (B, d_model) — mean-pooled last Llama layer (optional)
             cycle_num:  int — which reasoning cycle (0-indexed)
 
         Returns:
@@ -589,28 +601,37 @@ class AnswerHead(nn.Module):
         """
         page = last_page.float()
         cycle_idx = torch.tensor(cycle_num, device=page.device)
-        cycle_emb = self.cycle_embed(cycle_idx)              # (hidden,)
-        cycle_emb = cycle_emb.unsqueeze(0).expand(page.size(0), -1)  # (B, hidden)
-        combined = torch.cat([page, cycle_emb], dim=-1)      # (B, page_size + hidden)
-        h = self.encoder(combined)
+        cycle_emb = self.cycle_embed(cycle_idx)              # (256,)
+        cycle_emb = cycle_emb.unsqueeze(0).expand(page.size(0), -1)  # (B, 256)
+        # Combine page + hidden states + cycle embedding
+        if hidden_pool is not None:
+            hp = hidden_pool.float()
+        else:
+            hp = torch.zeros(page.size(0), self.d_model, device=page.device)
+        combined = torch.cat([page, hp, cycle_emb], dim=-1)  # (B, 64 + 2048 + 256)
+        transformed = self.input_transform(combined)          # (B, 512)
+        h = self.encoder(transformed)
         sign_logits = self.sign_head(h)
         length_logits = self.length_head(h)
         digit_logits = [head(h) for head in self.digit_heads]
         return sign_logits, length_logits, digit_logits
 
     @torch.no_grad()
-    def decode(self, last_page: torch.Tensor, cycle_num: int = 0) -> torch.Tensor:
+    def decode(self, last_page: torch.Tensor, cycle_num: int = 0,
+               hidden_pool: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
         Decode predicted answer as integer tensor (B,).
 
         Args:
             last_page: (B, page_size)
             cycle_num: int — which reasoning cycle (0-indexed)
+            hidden_pool: (B, d_model) — mean-pooled last Llama layer (optional)
 
         Returns:
             answers: (B,) integer tensor
         """
-        sign_logits, length_logits, digit_logits = self.forward(last_page, cycle_num=cycle_num)
+        sign_logits, length_logits, digit_logits = self.forward(
+            last_page, cycle_num=cycle_num, hidden_pool=hidden_pool)
         batch_size = last_page.size(0)
 
         num_digits = length_logits.argmax(dim=-1) + 1  # (B,) 1-indexed
@@ -631,11 +652,230 @@ class AnswerHead(nn.Module):
         return answers
 
 
+# Backward compat alias
+AnswerHead = HiddenStateAnswerHead
+
+
+# ---------------------------------------------------------------------------
+# SoftTokenAnswerHead — reads generation logits via differentiable soft tokens
+# ---------------------------------------------------------------------------
+class SoftTokenAnswerHead(nn.Module):
+    """Reads DIGIT-RELEVANT logits from generation output.
+    Only extracts logits for tokens 0-9, minus, EOS (~12 tokens).
+    Tiny, fast, no OOM. Fully differentiable through logit indexing.
+
+    The generation produces correct numbers 56% of the time.
+    The digit logits show WHICH digits have high probability at WHICH positions.
+    """
+    def __init__(self, tokenizer, max_seq=50, hidden_dim=512,
+                 num_layers=3, max_digits=8, max_cycles=12):
+        super().__init__()
+        self.max_digits = max_digits
+        self.max_seq = max_seq
+
+        # Find token IDs for digits 0-9, minus, EOS
+        digit_ids = []
+        for d in "0123456789":
+            toks = tokenizer.encode(d, add_special_tokens=False)
+            if toks:
+                digit_ids.append(toks[0])
+        minus_toks = tokenizer.encode("-", add_special_tokens=False)
+        if minus_toks:
+            digit_ids.append(minus_toks[0])
+        if tokenizer.eos_token_id is not None:
+            digit_ids.append(tokenizer.eos_token_id)
+        self.register_buffer('digit_token_ids', torch.tensor(digit_ids, dtype=torch.long))
+        self.num_digit_tokens = len(digit_ids)
+
+        # Per-cycle embedding
+        self.cycle_embed = nn.Embedding(max_cycles, 64)
+
+        # Reader: flattened digit logits + cycle → predictions
+        input_dim = self.num_digit_tokens * max_seq + 64
+        layers = []
+        for i in range(num_layers):
+            in_d = input_dim if i == 0 else hidden_dim
+            layers.extend([
+                nn.Linear(in_d, hidden_dim),
+                nn.LayerNorm(hidden_dim),
+                nn.GELU(),
+            ])
+        self.reader = nn.Sequential(*layers)
+
+        self.sign_head = nn.Linear(hidden_dim, 2)
+        self.length_head = nn.Linear(hidden_dim, max_digits)
+        self.digit_heads = nn.ModuleList([
+            nn.Linear(hidden_dim, 10) for _ in range(max_digits)
+        ])
+
+    def _extract_digit_logits(self, gen_logits):
+        """Extract only digit-relevant logits: (B, seq, 128K) → (B, max_seq, ~12)"""
+        # Index into vocab dimension for digit tokens only
+        digit_logits = gen_logits[:, :, self.digit_token_ids]  # (B, seq, num_digit_tokens)
+        B = digit_logits.size(0)
+        seq = digit_logits.size(1)
+        # Pad or truncate sequence to max_seq
+        if seq < self.max_seq:
+            pad = torch.zeros(B, self.max_seq - seq, self.num_digit_tokens,
+                              device=digit_logits.device, dtype=digit_logits.dtype)
+            digit_logits = torch.cat([digit_logits, pad], dim=1)
+        else:
+            digit_logits = digit_logits[:, :self.max_seq, :]
+        return digit_logits.float()  # (B, max_seq, num_digit_tokens)
+
+    def forward(self, gen_logits, cycle_num=0):
+        """
+        gen_logits: (batch, seq_len, vocab_size)
+        cycle_num: int
+        Returns: sign_logits, length_logits, list of digit_logits
+        """
+        digit_logits = self._extract_digit_logits(gen_logits)  # (B, max_seq, ~12)
+        flat = digit_logits.reshape(digit_logits.size(0), -1)  # (B, max_seq * ~12)
+
+        cycle_ctx = self.cycle_embed(
+            torch.tensor(cycle_num, device=flat.device)
+        ).expand(flat.size(0), -1)
+
+        combined = torch.cat([flat, cycle_ctx], dim=-1)
+        hidden = self.reader(combined)
+
+        sign = self.sign_head(hidden)
+        length = self.length_head(hidden)
+        digits = [head(hidden) for head in self.digit_heads]
+        return sign, length, digits
+
+    @torch.no_grad()
+    def decode(self, gen_logits, cycle_num=0):
+        """Decode predicted answer as integer tensor (B,)."""
+        sign_logits, length_logits, digit_logits = self.forward(gen_logits, cycle_num)
+        batch_size = gen_logits.size(0)
+
+        num_digits = length_logits.argmax(dim=-1) + 1
+        is_negative = sign_logits.argmax(dim=-1) == 1
+
+        answers = torch.zeros(batch_size, dtype=torch.long, device=gen_logits.device)
+        for i in range(self.max_digits):
+            digit = digit_logits[i].argmax(dim=-1)
+            answers = answers * 10 + digit
+
+        trim_power = (self.max_digits - num_digits).clamp(min=0)
+        divisor = (10 ** trim_power).long()
+        answers = answers // divisor
+        answers = torch.where(is_negative, -answers, answers)
+        return answers
+
+
+def soft_answer_head_loss(
+    head: SoftTokenAnswerHead,
+    gen_logits: torch.Tensor,
+    gold_answers: torch.Tensor,
+    cycle_num: int = 0,
+) -> torch.Tensor:
+    """
+    Compute loss for SoftTokenAnswerHead from gold integer answers.
+
+    Args:
+        head:         SoftTokenAnswerHead module
+        gen_logits:   (B, seq_len, vocab_size) -- raw generation output
+        gold_answers: (B,) integer tensor
+        cycle_num:    int -- which reasoning cycle (0-indexed)
+
+    Returns:
+        loss: scalar tensor
+    """
+    sign_logits, length_logits, digit_logits = head(gen_logits, cycle_num=cycle_num)
+    device = gen_logits.device
+    batch_size = gen_logits.size(0)
+
+    gold_abs = gold_answers.abs()
+    gold_sign = (gold_answers < 0).long()  # 0=positive, 1=negative
+
+    gold_strings = [str(v.item()) for v in gold_abs]
+    max_digits = head.max_digits
+
+    gold_length = torch.tensor(
+        [len(s) - 1 for s in gold_strings],  # 0-indexed for CE
+        dtype=torch.long, device=device,
+    )
+    gold_length = gold_length.clamp(max=max_digits - 1)
+
+    # Digit matrix (left-aligned, most significant first)
+    gold_digit_matrix = torch.zeros(
+        batch_size, max_digits, dtype=torch.long, device=device,
+    )
+    for b, s in enumerate(gold_strings):
+        s = s[:max_digits]
+        for i, ch in enumerate(s):
+            gold_digit_matrix[b, i] = int(ch)
+
+    # Losses
+    loss = F.cross_entropy(sign_logits, gold_sign)
+    loss = loss + F.cross_entropy(length_logits, gold_length)
+
+    for i in range(max_digits):
+        mask = torch.tensor(
+            [1.0 if i < len(gold_strings[b]) else 0.0 for b in range(batch_size)],
+            device=device,
+        )
+        if mask.sum() > 0:
+            digit_loss = F.cross_entropy(
+                digit_logits[i], gold_digit_matrix[:, i], reduction='none',
+            )
+            loss = loss + (digit_loss * mask).sum() / mask.sum()
+
+    return loss
+
+
+def soft_answer_head_loss_per_sample(
+    head: SoftTokenAnswerHead,
+    gen_logits: torch.Tensor,
+    gold_answers: torch.Tensor,
+    cycle_num: int = 0,
+) -> torch.Tensor:
+    """Per-sample loss for SoftTokenAnswerHead. Returns (B,) tensor."""
+    sign_logits, length_logits, digit_logits = head(gen_logits, cycle_num=cycle_num)
+    device = gen_logits.device
+    batch_size = gen_logits.size(0)
+
+    gold_abs = gold_answers.abs()
+    gold_sign = (gold_answers < 0).long()
+
+    gold_strings = [str(v.item()) for v in gold_abs]
+    max_digits = head.max_digits
+
+    gold_length = torch.tensor(
+        [len(s) - 1 for s in gold_strings], dtype=torch.long, device=device,
+    ).clamp(max=max_digits - 1)
+
+    gold_digit_matrix = torch.zeros(batch_size, max_digits, dtype=torch.long, device=device)
+    for b, s in enumerate(gold_strings):
+        for i, ch in enumerate(s[:max_digits]):
+            gold_digit_matrix[b, i] = int(ch)
+
+    # Per-sample losses
+    per_sample = F.cross_entropy(sign_logits, gold_sign, reduction='none')
+    per_sample = per_sample + F.cross_entropy(length_logits, gold_length, reduction='none')
+
+    for i in range(max_digits):
+        mask = torch.tensor(
+            [1.0 if i < len(gold_strings[b]) else 0.0 for b in range(batch_size)],
+            device=device,
+        )
+        if mask.sum() > 0:
+            digit_loss = F.cross_entropy(
+                digit_logits[i], gold_digit_matrix[:, i], reduction='none',
+            )
+            per_sample = per_sample + digit_loss * mask
+
+    return per_sample  # (B,)
+
+
 def answer_head_loss(
     answer_head: AnswerHead,
     last_page: torch.Tensor,
     gold_answers: torch.Tensor,
     cycle_num: int = 0,
+    hidden_pool: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """
     Compute answer head loss from gold integer answers.
@@ -645,11 +885,13 @@ def answer_head_loss(
         last_page:   (B, page_size)
         gold_answers: (B,) integer tensor
         cycle_num:   int — which reasoning cycle (0-indexed)
+        hidden_pool: (B, d_model) — mean-pooled last Llama layer (optional)
 
     Returns:
         loss: scalar tensor
     """
-    sign_logits, length_logits, digit_logits = answer_head(last_page, cycle_num=cycle_num)
+    sign_logits, length_logits, digit_logits = answer_head(
+        last_page, cycle_num=cycle_num, hidden_pool=hidden_pool)
     device = last_page.device
     batch_size = last_page.size(0)
 
@@ -690,6 +932,52 @@ def answer_head_loss(
             loss = loss + (digit_loss * mask).sum() / mask.sum()
 
     return loss
+
+
+def answer_head_loss_per_sample(
+    answer_head: AnswerHead,
+    last_page: torch.Tensor,
+    gold_answers: torch.Tensor,
+    cycle_num: int = 0,
+    hidden_pool: Optional[torch.Tensor] = None,
+) -> torch.Tensor:
+    """Per-sample answer head loss. Returns (B,) tensor, not scalar."""
+    sign_logits, length_logits, digit_logits = answer_head(
+        last_page, cycle_num=cycle_num, hidden_pool=hidden_pool)
+    device = last_page.device
+    batch_size = last_page.size(0)
+
+    gold_abs = gold_answers.abs()
+    gold_sign = (gold_answers < 0).long()
+
+    gold_strings = [str(v.item()) for v in gold_abs]
+    max_digits = answer_head.max_digits
+
+    gold_length = torch.tensor(
+        [len(s) - 1 for s in gold_strings], dtype=torch.long, device=device,
+    ).clamp(max=max_digits - 1)
+
+    gold_digit_matrix = torch.zeros(batch_size, max_digits, dtype=torch.long, device=device)
+    for b, s in enumerate(gold_strings):
+        for i, ch in enumerate(s[:max_digits]):
+            gold_digit_matrix[b, i] = int(ch)
+
+    # Per-sample losses
+    per_sample = F.cross_entropy(sign_logits, gold_sign, reduction='none')
+    per_sample = per_sample + F.cross_entropy(length_logits, gold_length, reduction='none')
+
+    for i in range(max_digits):
+        mask = torch.tensor(
+            [1.0 if i < len(gold_strings[b]) else 0.0 for b in range(batch_size)],
+            device=device,
+        )
+        if mask.sum() > 0:
+            digit_loss = F.cross_entropy(
+                digit_logits[i], gold_digit_matrix[:, i], reduction='none',
+            )
+            per_sample = per_sample + digit_loss * mask
+
+    return per_sample  # (B,)
 
 
 # ---------------------------------------------------------------------------
@@ -1040,7 +1328,10 @@ class AtomLoRAModel(nn.Module):
         # Generate message: direct signal from last layer, bypasses perceiver
         message = self.message_generator(hidden_states[-1])
 
-        return page, atom_scales, current_mid_states, message, page_delta
+        # Mean-pooled last hidden layer for answer head
+        hidden_pool = hidden_states[-1].mean(dim=1).float()  # (B, d_model)
+
+        return page, atom_scales, current_mid_states, message, page_delta, hidden_pool
 
     def thinking_pass_with_sympy(
         self,

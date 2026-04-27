@@ -77,6 +77,7 @@ with torch.no_grad():
         attention_mask = inputs['attention_mask'].to(device)
 
         state_pages = []
+        hidden_pools = []
         messages = []
         mid_states_history = []
 
@@ -87,7 +88,7 @@ with torch.no_grad():
                     prev_page = (state_pages[-1] - state_pages[-2]).float()
                 else:
                     prev_page = state_pages[-1].float()
-                prev_pred = answer_head.decode(prev_page)
+                prev_pred = answer_head.decode(prev_page, hidden_pool=hidden_pools[-1])
                 ctx = f"Step {pass_num} result: {int(prev_pred[0].item())}\n"
                 aug = ctx + problem
                 aug_inp = model.tokenizer(
@@ -102,12 +103,13 @@ with torch.no_grad():
                 eval_mask = attention_mask
                 text_input = problem
 
-            page, scales, mid_states, message, _raw_page = model.thinking_pass(
+            page, scales, mid_states, message, _raw_page, hidden_pool = model.thinking_pass(
                 eval_ids, eval_mask, state_pages, pass_num,
                 prev_mid_states=mid_states_history if mid_states_history else None,
                 messages=messages if messages else None,
             )
             state_pages.append(page)
+            hidden_pools.append(hidden_pool)
             messages.append(message)
             mid_states_history.append(mid_states)
 
@@ -116,7 +118,7 @@ with torch.no_grad():
                 read_page = (state_pages[-1] - state_pages[-2]).float()
             else:
                 read_page = page.float()
-            pred = int(answer_head.decode(read_page)[0].item())
+            pred = int(answer_head.decode(read_page, hidden_pool=hidden_pool)[0].item())
 
             # Gold target
             gold = cycle_targets[pass_num] if pass_num < len(cycle_targets) else "N/A"

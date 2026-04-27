@@ -67,13 +67,14 @@ with torch.no_grad():
         attention_mask = inputs['attention_mask'].to(device)
 
         state_pages = []
+        hidden_pools = []
         messages = []
         mid_states_history = []
 
         for pass_num in range(3):
             # Text injection for cycle 2+
             if pass_num > 0 and len(state_pages) > 0:
-                prev_pred = answer_head.decode(state_pages[-1].float())
+                prev_pred = answer_head.decode(state_pages[-1].float(), hidden_pool=hidden_pools[-1])
                 ctx = f"Step {pass_num} result: {int(prev_pred[0].item())}\n"
                 aug = ctx + problem
                 aug_inp = model.tokenizer(
@@ -86,18 +87,19 @@ with torch.no_grad():
                 eval_ids = input_ids
                 eval_mask = attention_mask
 
-            page, _scales, mid_states, message, _raw_page = model.thinking_pass(
+            page, _scales, mid_states, message, _raw_page, hidden_pool = model.thinking_pass(
                 eval_ids, eval_mask, state_pages, pass_num,
                 prev_mid_states=mid_states_history if mid_states_history else None,
                 messages=messages if messages else None,
             )
             state_pages.append(page)
+            hidden_pools.append(hidden_pool)
             messages.append(message)
             mid_states_history.append(mid_states)
 
         # Decode predictions
-        pred_c1 = int(answer_head.decode(state_pages[0].float())[0].item())
-        pred_c2 = int(answer_head.decode(state_pages[1].float())[0].item())
+        pred_c1 = int(answer_head.decode(state_pages[0].float(), hidden_pool=hidden_pools[0])[0].item())
+        pred_c2 = int(answer_head.decode(state_pages[1].float(), hidden_pool=hidden_pools[1])[0].item())
 
         entry = {
             'problem': problem,
