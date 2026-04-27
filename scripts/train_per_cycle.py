@@ -37,9 +37,7 @@ from scripts.atom_lora import (
     AtomLoRAModel,
     AtomAdditiveLoRAManager,
     warm_start_atom_from_checkpoint,
-    encode_text_context,
     scale_diversity_loss,
-    DifferentiableBypass,
 )
 from src.contrastive_page_loss import per_page_contrastive_loss
 
@@ -371,13 +369,12 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
 
     state_pages = []
     raw_pages = []
-    messages = []
     prev_predictions = []  # list of (B,) tensors -- accumulated gen predictions
     all_scales = []      # for diversity loss
-    bypass_vectors = []  # for differentiable bypass
     atom_scales_history = []
-    mid_states_history = []
     pre_tanh_history = []
+    history_hiddens = []  # mean-pooled hidden states from previous cycles (for controller)
+    prev_scales = None    # scales for current cycle's Llama forward (None = no LoRA for cycle 0)
     per_cycle_gen_loss = torch.tensor(0.0, device=device)
     per_cycle_preds = []  # list of (B,) tensors for diagnostics
     cycle_gen_logits_list = []  # collect gen_logits per cycle for context injection
@@ -414,64 +411,18 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
             cycle_embeds = embed_layer(cycle_input_ids)
             cycle_prompt_len = cycle_input_ids.size(1)
         else:
+            cycle_input_ids = input_ids
             cycle_embeds = problem_embeds
             cycle_attention_mask = attention_mask
             cycle_prompt_len = prompt_len
 
-        # --- Build text context for hypernetwork (breaks fixed-point collapse) ---
-        text_ctx_list = []
-        for b in range(batch_size):
-            prev_nums = []
-            for prev_preds in prev_predictions:
-                prev_nums.append(int(prev_preds[b].item()))
-            text_ctx_list.append(encode_text_context(prev_nums, device=device))
-        text_context = torch.stack(text_ctx_list)  # (B, 16)
-
-        # --- Compute bypass summary for hypernetwork ---
-        if bypass_vectors and len(bypass_vectors) > 0:
-            bypass_summary = torch.stack(bypass_vectors, dim=0).mean(dim=0)
-        else:
-            bypass_summary = None
-
-        # --- Get atom scales for this cycle (pages + messages) ---
-        if pass_num == 0 and len(state_pages) == 0:
-            hyper_dtype = next(model.hypernet.parameters()).dtype
-            zero_page = torch.zeros(batch_size, model.page_size,
-                                    device=device, dtype=hyper_dtype)
-            atom_scales, pre_tanh, _focus = model.hypernet(
-                [zero_page], pass_num=0, return_pre_tanh=True,
-                messages=messages if messages else None,
-                text_context=text_context,
-                bypass_summary=bypass_summary,
-            )
-        else:
-            atom_scales, pre_tanh, _focus = model.hypernet(
-                state_pages, pass_num=pass_num, return_pre_tanh=True,
-                messages=messages if messages else None,
-                text_context=text_context,
-                bypass_summary=bypass_summary,
-            )
-
-        # --- Think: run transformer with this cycle's LoRA ---
-        manager = AtomAdditiveLoRAManager(model.transformer)
-        manager.apply(model.atoms, atom_scales)
-        try:
-            outputs = model.transformer(
-                inputs_embeds=cycle_embeds, attention_mask=cycle_attention_mask,
-                output_hidden_states=True,
-            )
-            hidden_states = list(outputs.hidden_states[1:])
-        finally:
-            manager.remove()
-
-        # --- Perceiver: compress to page ---
-        page_delta, _strategy, current_mid_states = model.compressor(
-            hidden_states, pass_num,
-            prev_mid_states=mid_states_history if mid_states_history else None,
+        # --- Think via controller: Llama forward + controller produces page + next_scales ---
+        page, next_scales, _mid, _msg, raw_page, hidden_pool, focus, _bypass = model.thinking_pass(
+            cycle_input_ids, cycle_attention_mask,
+            state_pages, pass_num,
+            history_hiddens=history_hiddens,
+            prev_scales=prev_scales,
         )
-        mid_states_history.append(current_mid_states)
-        raw_pages.append(page_delta)
-        page = F.normalize(page_delta, dim=-1) * model.page_radius
 
         # Page noise during training
         if model.training:
@@ -481,31 +432,19 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
         grad_scale = min(float(num_passes - pass_num), 4.0)
         page = scale_gradient(page, grad_scale)
 
-        # Pages always stay in the computation graph -- later cycles need
-        # the gradient highway through earlier pages. Graduation works by
-        # skipping the graduated cycle's LOSS, not by detaching the page.
+        if raw_page is not None:
+            raw_pages.append(raw_page)
         state_pages.append(page)
+        history_hiddens.append(hidden_pool)
+        all_scales.append(next_scales)
 
-        # Generate message: direct signal from last layer, bypasses perceiver
-        message = model.message_generator(hidden_states[-1])
-        messages.append(message)
+        # Current cycle's scales for generation (prev_scales for cycle 1+, zero for cycle 0)
+        current_gen_scales = prev_scales  # None for cycle 0 => no LoRA
 
-        # Differentiable bypass: rich signal from hidden states to hypernetwork
-        hidden_pool = hidden_states[-1].mean(dim=1).float()  # (B, d_model)
-        if hasattr(model, 'bypass'):
-            bypass_vec = model.bypass(hidden_pool)
-            all_scales.append(atom_scales)
-            bypass_vectors.append(bypass_vec)
-        else:
-            all_scales.append(atom_scales)
+        # Advance: next cycle will use these scales
+        prev_scales = next_scales
 
-        # Atom dropout during training: randomly zero 10% of atom scales
-        if model.training and pass_num > 0:
-            atom_mask = (torch.rand_like(atom_scales) > 0.1).float()
-            atom_scales = atom_scales * atom_mask
-
-        atom_scales_history.append(atom_scales)
-        pre_tanh_history.append(pre_tanh)
+        atom_scales_history.append(next_scales)
 
         # ------- Per-cycle generation loss -------
         if pass_num < cycle_targets.size(1):
@@ -542,20 +481,30 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
 
                 # Teacher-forced generation with THIS cycle's LoRA
                 # Use augmented input (with injected context) for cycle 2+
+                # For cycle 0: no LoRA (current_gen_scales is None)
+                # For cycle 1+: use current_gen_scales (scales used for this cycle's Llama forward)
                 target_embeds = embed_layer(target_ids)
                 full_embeds = torch.cat([cycle_embeds, target_embeds], dim=1)
                 target_attn = (target_ids != model.tokenizer.pad_token_id).long()
                 full_attn = torch.cat([cycle_attention_mask, target_attn], dim=1)
-                manager = AtomAdditiveLoRAManager(model.transformer)
-                manager.apply(model.atoms, atom_scales)
-                try:
+                if current_gen_scales is not None:
+                    manager = AtomAdditiveLoRAManager(model.transformer)
+                    manager.apply(model.atoms, current_gen_scales)
+                    try:
+                        gen_outputs = model.transformer(
+                            inputs_embeds=full_embeds,
+                            attention_mask=full_attn,
+                            use_cache=False,
+                        )
+                    finally:
+                        manager.remove()
+                else:
+                    # Cycle 0: no LoRA applied
                     gen_outputs = model.transformer(
                         inputs_embeds=full_embeds,
                         attention_mask=full_attn,
                         use_cache=False,
                     )
-                finally:
-                    manager.remove()
 
                 # Cross-entropy on target tokens only
                 gen_logits = gen_outputs.logits[:, cycle_prompt_len - 1:-1, :]
@@ -696,9 +645,16 @@ def forward_train_per_cycle(model, problems, cycle_targets, cycle_mask,
         else:
             cross_pass_cos = torch.tensor(0.0, device=device)
 
-    # ------- Pre-tanh regularization -------
-    all_pre_tanh = torch.cat(pre_tanh_history, dim=0)
-    scale_reg_loss = (all_pre_tanh ** 2).mean()
+    # ------- Scale regularization -------
+    # With controller: regularize scales directly (no separate pre-tanh)
+    if pre_tanh_history:
+        all_pre_tanh = torch.cat(pre_tanh_history, dim=0)
+        scale_reg_loss = (all_pre_tanh ** 2).mean()
+    elif all_scales:
+        all_scales_cat = torch.cat([s.unsqueeze(0) for s in all_scales], dim=0)
+        scale_reg_loss = (all_scales_cat ** 2).mean()
+    else:
+        scale_reg_loss = torch.tensor(0.0, device=device)
 
     # ------- Isotropic regularization (raw pages before normalization) -------
     if raw_pages:
@@ -753,12 +709,11 @@ def evaluate_per_cycle(model, eval_dataset, device,
             batch_size = input_ids.size(0)
 
             state_pages = []
-            eval_messages = []
             eval_prev_predictions = []
-            mid_states_history = []
-            bypass_vectors = []
             embed_layer = model.transformer.model.embed_tokens
             eval_pred_vals = []  # list of lists: per cycle, per sample predicted values
+            history_hiddens = []
+            prev_scales = None  # no LoRA for cycle 0
 
             for pass_num in range(num_passes):
                 # For cycle 2+: inject ALL previous answers as text context
@@ -780,65 +735,41 @@ def evaluate_per_cycle(model, eval_dataset, device,
                     eval_ids = input_ids
                     eval_mask = attention_mask
 
-                # Build text context for hypernetwork
-                text_ctx_list = []
-                for b in range(batch_size):
-                    prev_nums = []
-                    for prev_preds in eval_prev_predictions:
-                        prev_nums.append(int(prev_preds[b]))
-                    text_ctx_list.append(encode_text_context(prev_nums, device=device))
-                text_context = torch.stack(text_ctx_list)  # (B, 16)
-
-                page, _scales, current_mid_states, message, _raw_page, hidden_pool, _focus, bypass_vec = model.thinking_pass(
+                page, next_scales, _mid, _msg, _raw_page, hidden_pool, _focus, _bypass = model.thinking_pass(
                     eval_ids, eval_mask, state_pages, pass_num,
-                    prev_mid_states=mid_states_history if mid_states_history else None,
-                    messages=eval_messages if eval_messages else None,
-                    text_context=text_context,
-                    bypass_vectors=bypass_vectors,
+                    history_hiddens=history_hiddens,
+                    prev_scales=prev_scales,
                 )
                 state_pages.append(page)
-                eval_messages.append(message)
-                mid_states_history.append(current_mid_states)
-                bypass_vectors.append(bypass_vec)
+                history_hiddens.append(hidden_pool)
+
+                # Current cycle's scales for generation
+                current_gen_scales = prev_scales  # None for cycle 0
+                prev_scales = next_scales  # advance for next cycle
 
                 # Generate text with LoRA applied
                 prompt_len = eval_ids.size(1)
 
-                # Get atom scales for generation
-                if bypass_vectors and len(bypass_vectors) > 0:
-                    eval_bypass_summary = torch.stack(bypass_vectors, dim=0).mean(dim=0)
+                if current_gen_scales is not None:
+                    manager = AtomAdditiveLoRAManager(model.transformer)
+                    manager.apply(model.atoms, current_gen_scales)
+                    try:
+                        gen_out = model.transformer.generate(
+                            input_ids=eval_ids, attention_mask=eval_mask,
+                            max_new_tokens=60, do_sample=False,
+                            pad_token_id=model.tokenizer.pad_token_id,
+                            eos_token_id=model.tokenizer.eos_token_id,
+                        )
+                    finally:
+                        manager.remove()
                 else:
-                    eval_bypass_summary = None
-
-                if pass_num == 0 and len(state_pages) == 1:
-                    hyper_dtype = next(model.hypernet.parameters()).dtype
-                    zero_page = torch.zeros(batch_size, model.page_size,
-                                            device=device, dtype=hyper_dtype)
-                    atom_scales, _, _focus = model.hypernet(
-                        [zero_page], pass_num=0, return_pre_tanh=True,
-                        messages=eval_messages if eval_messages else None,
-                        text_context=text_context,
-                        bypass_summary=eval_bypass_summary,
-                    )
-                else:
-                    atom_scales, _, _focus = model.hypernet(
-                        state_pages, pass_num=pass_num, return_pre_tanh=True,
-                        messages=eval_messages if eval_messages else None,
-                        text_context=text_context,
-                        bypass_summary=eval_bypass_summary,
-                    )
-
-                manager = AtomAdditiveLoRAManager(model.transformer)
-                manager.apply(model.atoms, atom_scales)
-                try:
+                    # Cycle 0: no LoRA
                     gen_out = model.transformer.generate(
                         input_ids=eval_ids, attention_mask=eval_mask,
                         max_new_tokens=60, do_sample=False,
                         pad_token_id=model.tokenizer.pad_token_id,
                         eos_token_id=model.tokenizer.eos_token_id,
                     )
-                finally:
-                    manager.remove()
 
                 # Extract predictions from generated text
                 cycle_preds = []  # list of int or None for this cycle
@@ -919,62 +850,45 @@ def infer_single(model, problem_text, device,
         attention_mask = inputs['attention_mask'].to(device)
 
         state_pages = []
-        mid_states_history = []
-        bypass_vectors = []
-        embed_layer = model.transformer.model.embed_tokens
+        history_hiddens = []
+        prev_scales = None  # no LoRA for cycle 0
         last_pred = None
         infer_prev_predictions = []  # list of extracted ints per cycle
 
         for pass_num in range(max_passes):
-            # Build text context for hypernetwork
-            text_context = encode_text_context(
-                infer_prev_predictions, device=device,
-            ).unsqueeze(0)  # (1, 16) — single sample
-
-            page, _scales, current_mid_states, _message, _raw_page, hidden_pool, _focus, bypass_vec = model.thinking_pass(
+            page, next_scales, _mid, _msg, _raw_page, hidden_pool, _focus, _bypass = model.thinking_pass(
                 input_ids, attention_mask, state_pages, pass_num,
-                prev_mid_states=mid_states_history if mid_states_history else None,
-                text_context=text_context,
-                bypass_vectors=bypass_vectors,
+                history_hiddens=history_hiddens,
+                prev_scales=prev_scales,
             )
             state_pages.append(page)
-            mid_states_history.append(current_mid_states)
-            bypass_vectors.append(bypass_vec)
+            history_hiddens.append(hidden_pool)
 
-            # Get atom scales for generation
-            if bypass_vectors and len(bypass_vectors) > 0:
-                infer_bypass_summary = torch.stack(bypass_vectors, dim=0).mean(dim=0)
+            # Current cycle's scales for generation
+            current_gen_scales = prev_scales  # None for cycle 0
+            prev_scales = next_scales  # advance for next cycle
+
+            # Generate with LoRA applied (or no LoRA for cycle 0)
+            if current_gen_scales is not None:
+                manager = AtomAdditiveLoRAManager(model.transformer)
+                manager.apply(model.atoms, current_gen_scales)
+                try:
+                    gen_out = model.transformer.generate(
+                        input_ids=input_ids, attention_mask=attention_mask,
+                        max_new_tokens=60, do_sample=False,
+                        pad_token_id=model.tokenizer.pad_token_id,
+                        eos_token_id=model.tokenizer.eos_token_id,
+                    )
+                finally:
+                    manager.remove()
             else:
-                infer_bypass_summary = None
-
-            if pass_num == 0:
-                hyper_dtype = next(model.hypernet.parameters()).dtype
-                zero_page = torch.zeros(1, model.page_size,
-                                        device=device, dtype=hyper_dtype)
-                atom_scales, _, _focus = model.hypernet(
-                    [zero_page], pass_num=0, return_pre_tanh=True,
-                    text_context=text_context,
-                    bypass_summary=infer_bypass_summary,
-                )
-            else:
-                atom_scales, _, _focus = model.hypernet(
-                    state_pages, pass_num=pass_num, return_pre_tanh=True,
-                    text_context=text_context,
-                    bypass_summary=infer_bypass_summary,
-                )
-
-            # Generate with LoRA applied
-            manager = AtomAdditiveLoRAManager(model.transformer)
-            manager.apply(model.atoms, atom_scales)
-            try:
+                # Cycle 0: no LoRA
                 gen_out = model.transformer.generate(
                     input_ids=input_ids, attention_mask=attention_mask,
                     max_new_tokens=60, do_sample=False,
                     pad_token_id=model.tokenizer.pad_token_id,
                     eos_token_id=model.tokenizer.eos_token_id,
                 )
-            finally:
-                manager.remove()
 
             prompt_len = input_ids.size(1)
             gen_text = model.tokenizer.decode(gen_out[0][prompt_len:], skip_special_tokens=False)
@@ -995,7 +909,7 @@ def infer_single(model, problem_text, device,
 # ---------------------------------------------------------------------------
 
 def log_atom_grad_norms(model):
-    """Log gradient norms for atom A params, atom B params, and hypernetwork."""
+    """Log gradient norms for atom A params, atom B params, and controller."""
     norms = {}
 
     a_norm = 0.0
@@ -1014,13 +928,13 @@ def log_atom_grad_norms(model):
             b_count += 1
     norms['atoms_B'] = b_norm / max(b_count, 1)
 
-    h_norm = 0.0
-    h_count = 0
-    for p in model.hypernet.parameters():
+    c_norm = 0.0
+    c_count = 0
+    for p in model.controller.parameters():
         if p.grad is not None:
-            h_norm += p.grad.norm().item()
-            h_count += 1
-    norms['hypernet'] = h_norm / max(h_count, 1)
+            c_norm += p.grad.norm().item()
+            c_count += 1
+    norms['controller'] = c_norm / max(c_count, 1)
 
     return norms
 
@@ -1047,7 +961,7 @@ def log_page_variance(state_pages, device):
 # Warm-start logic
 # ---------------------------------------------------------------------------
 
-def try_warm_start(model, warm_path, skip_perceiver=False):
+def try_warm_start(model, warm_path):
     """Try atom checkpoint first; fall back to perceiver-only warm start.
     Returns optimizer state dict if present in checkpoint, else None."""
     ckpt = torch.load(warm_path, map_location='cpu', weights_only=True)
@@ -1055,37 +969,24 @@ def try_warm_start(model, warm_path, skip_perceiver=False):
     if 'atoms' in ckpt:
         print(f"  Loading atom checkpoint from {warm_path}")
 
-        if skip_perceiver:
-            print(f"  compressor: SKIPPED (--skip_perceiver flag)")
-        else:
-            own = model.compressor.state_dict()
-            loaded = 0
-            for k, v in ckpt['compressor'].items():
-                if k in own and own[k].shape == v.shape:
-                    own[k] = v
-                    loaded += 1
-            model.compressor.load_state_dict(own, strict=False)
-            print(f"  compressor: loaded {loaded}/{len(own)}")
+        own_a = model.atoms.state_dict()
+        loaded_a = 0
+        for k, v in ckpt['atoms'].items():
+            if k in own_a and own_a[k].shape == v.shape:
+                own_a[k] = v
+                loaded_a += 1
+        model.atoms.load_state_dict(own_a, strict=False)
+        print(f"  atoms: loaded {loaded_a}/{len(own_a)}")
 
-        if 'atoms' in ckpt:
-            own_a = model.atoms.state_dict()
-            loaded_a = 0
-            for k, v in ckpt['atoms'].items():
-                if k in own_a and own_a[k].shape == v.shape:
-                    own_a[k] = v
-                    loaded_a += 1
-            model.atoms.load_state_dict(own_a, strict=False)
-            print(f"  atoms: loaded {loaded_a}/{len(own_a)}")
-
-        if 'hypernet' in ckpt:
-            own_h = model.hypernet.state_dict()
-            loaded_h = 0
-            for k, v in ckpt['hypernet'].items():
-                if k in own_h and own_h[k].shape == v.shape:
-                    own_h[k] = v
-                    loaded_h += 1
-            model.hypernet.load_state_dict(own_h, strict=False)
-            print(f"  hypernet: loaded {loaded_h}/{len(own_h)}")
+        if 'controller' in ckpt:
+            own_ctrl = model.controller.state_dict()
+            loaded_ctrl = 0
+            for k, v in ckpt['controller'].items():
+                if k in own_ctrl and own_ctrl[k].shape == v.shape:
+                    own_ctrl[k] = v
+                    loaded_ctrl += 1
+            model.controller.load_state_dict(own_ctrl, strict=False)
+            print(f"  controller: loaded {loaded_ctrl}/{len(own_ctrl)}")
 
         if 'confidence_head' in ckpt:
             own_c = model.confidence_head.state_dict()
@@ -1097,48 +998,6 @@ def try_warm_start(model, warm_path, skip_perceiver=False):
             model.confidence_head.load_state_dict(own_c, strict=False)
             print(f"  confidence_head: loaded {loaded_c}/{len(own_c)}")
 
-        # Skip answer_head -- removed from architecture
-
-        if 'residual_gate' in ckpt:
-            own_rg = model.residual_gate.state_dict()
-            loaded_rg = 0
-            for k, v in ckpt['residual_gate'].items():
-                if k in own_rg and own_rg[k].shape == v.shape:
-                    own_rg[k] = v
-                    loaded_rg += 1
-            model.residual_gate.load_state_dict(own_rg, strict=False)
-            print(f"  residual_gate: loaded {loaded_rg}/{len(own_rg)}")
-
-        if 'ordinal_head' in ckpt:
-            own_oh = model.ordinal_head.state_dict()
-            loaded_oh = 0
-            for k, v in ckpt['ordinal_head'].items():
-                if k in own_oh and own_oh[k].shape == v.shape:
-                    own_oh[k] = v
-                    loaded_oh += 1
-            model.ordinal_head.load_state_dict(own_oh, strict=False)
-            print(f"  ordinal_head: loaded {loaded_oh}/{len(own_oh)}")
-
-        if 'message_generator' in ckpt:
-            own_mg = model.message_generator.state_dict()
-            loaded_mg = 0
-            for k, v in ckpt['message_generator'].items():
-                if k in own_mg and own_mg[k].shape == v.shape:
-                    own_mg[k] = v
-                    loaded_mg += 1
-            model.message_generator.load_state_dict(own_mg, strict=False)
-            print(f"  message_generator: loaded {loaded_mg}/{len(own_mg)}")
-
-        if 'bypass' in ckpt and hasattr(model, 'bypass'):
-            own_bp = model.bypass.state_dict()
-            loaded_bp = 0
-            for k, v in ckpt['bypass'].items():
-                if k in own_bp and own_bp[k].shape == v.shape:
-                    own_bp[k] = v
-                    loaded_bp += 1
-            model.bypass.load_state_dict(own_bp, strict=False)
-            print(f"  bypass: loaded {loaded_bp}/{len(own_bp)}")
-
         if 'optimizer' in ckpt:
             print(f"  optimizer state: found")
             return ckpt['optimizer']
@@ -1148,7 +1007,6 @@ def try_warm_start(model, warm_path, skip_perceiver=False):
         print(f"  Warm-starting perceiver only from {warm_path}")
         warm_start_atom_from_checkpoint(model, ckpt)
         print(f"  atoms: fresh init (no atom equivalent in checkpoint)")
-        print(f"  hypernet: fresh init (new architecture)")
         return None
 
 
@@ -1172,7 +1030,6 @@ def train(args):
     print(f"  lam_conf       = {args.lam_conf}")
     print(f"  lam_scale_reg  = {args.lam_scale_reg}")
     print(f"  lam_diversity  = {args.lam_diversity}")
-    print(f"  skip_perceiver = {args.skip_perceiver}")
     print(f"  num_atoms      = {args.num_atoms}")
     print(f"  atom_rank      = {args.atom_rank}")
     print(f"  data_dir       = {args.data_dir}")
@@ -1185,26 +1042,14 @@ def train(args):
         atom_rank=args.atom_rank,
         skip_pass_embed=True,  # v24.6: pages are the only input
     )
-    model.compressor = model.compressor.to(device=device, dtype=torch.bfloat16)
-    model.hypernet = model.hypernet.to(device=device, dtype=torch.bfloat16)
     model.atoms = model.atoms.to(device=device, dtype=torch.bfloat16)
+    model.controller = model.controller.to(device=device, dtype=torch.bfloat16)
     model.confidence_head = model.confidence_head.to(device)  # fp32 (small)
-    model.residual_gate = model.residual_gate.to(device=device, dtype=torch.bfloat16)
-    model.probe_head = model.probe_head.to(device)
-    model.message_generator = model.message_generator.to(device)  # fp32 (small)
-    model.ordinal_head = model.ordinal_head.to(device)  # fp32 (small)
-
-    # Differentiable bypass: create if not already on the model
-    if not hasattr(model, 'bypass'):
-        model.bypass = DifferentiableBypass(hidden_dim=2048, bypass_dim=512)
-    model.bypass = model.bypass.to(device)  # fp32 (small)
 
     saved_optim_state = None
     if warm_path:
         print(f"\nWarm-starting from {warm_path}")
-        if args.skip_perceiver:
-            print("  (--skip_perceiver: perceiver will stay random)")
-        saved_optim_state = try_warm_start(model, warm_path, skip_perceiver=args.skip_perceiver)
+        saved_optim_state = try_warm_start(model, warm_path)
 
     # --- Data ---
     train_path = os.path.join(args.data_dir, f'{level}_train.jsonl')
@@ -1241,20 +1086,16 @@ def train(args):
         collate_fn=per_cycle_collate_fn,
     )
 
-    # ------- Optimizer: atoms A/B + hypernet + compressor + heads -------
+    # ------- Optimizer: atoms A/B + controller + confidence head -------
     atom_A_params = list(model.atoms.A.values()) if hasattr(model.atoms.A, 'values') else list(model.atoms.A.parameters())
     atom_B_params = list(model.atoms.B.values()) if hasattr(model.atoms.B, 'values') else list(model.atoms.B.parameters())
 
     s = args.lr_scale
     optimizer = torch.optim.AdamW([
-        {'params': list(model.compressor.parameters()), 'lr': 1e-4 * s, 'weight_decay': 0.01},
         {'params': atom_A_params, 'lr': 1e-4 * s, 'weight_decay': 0.05},
         {'params': atom_B_params, 'lr': 1e-4 * s, 'weight_decay': 0.05},
-        {'params': list(model.hypernet.parameters()), 'lr': 3e-4 * s, 'weight_decay': 0.1},
+        {'params': list(model.controller.parameters()), 'lr': 1e-4 * s, 'weight_decay': 0.01},
         {'params': list(model.confidence_head.parameters()), 'lr': 1e-3 * s, 'weight_decay': 0.01},
-        {'params': list(model.message_generator.parameters()), 'lr': 1e-3 * s, 'weight_decay': 0.01},
-        {'params': list(model.ordinal_head.parameters()), 'lr': 1e-3 * s, 'weight_decay': 0.01},
-        {'params': list(model.bypass.parameters()), 'lr': 1e-4 * s, 'weight_decay': 0.01},
     ])
 
     # Note: optimizer state loading disabled -- architecture changes between
@@ -1264,22 +1105,15 @@ def train(args):
         print("  optimizer state: skipped (architecture may have changed)")
 
     trainable = (
-        list(model.compressor.parameters())
-        + list(model.atoms.parameters())
-        + list(model.hypernet.parameters())
+        list(model.atoms.parameters())
+        + list(model.controller.parameters())
         + list(model.confidence_head.parameters())
-        + list(model.message_generator.parameters())
-        + list(model.ordinal_head.parameters())
-        + list(model.bypass.parameters())
     )
     print(f"Trainable params: {sum(p.numel() for p in trainable):,}")
     print(f"  atoms: {sum(p.numel() for p in model.atoms.parameters()):,} "
           f"({args.num_atoms} atoms, rank {args.atom_rank})")
-    print(f"  hypernet: {sum(p.numel() for p in model.hypernet.parameters()):,}")
-    print(f"  compressor: {sum(p.numel() for p in model.compressor.parameters()):,}")
+    print(f"  controller: {sum(p.numel() for p in model.controller.parameters()):,}")
     print(f"  confidence_head: {sum(p.numel() for p in model.confidence_head.parameters()):,}")
-    print(f"  message_gen: {sum(p.numel() for p in model.message_generator.parameters()):,}")
-    print(f"  bypass: {sum(p.numel() for p in model.bypass.parameters()):,}")
     print(f"GPU mem after init: {torch.cuda.memory_allocated()/1e9:.2f} GB")
 
     # Baseline eval
@@ -1376,10 +1210,6 @@ def train(args):
             num_passes=args.num_passes, max_length=max_length,
         )
 
-        # Gradient coupling blends (v24.7)
-        hypernet_blend = torch.sigmoid(model.hypernet.blend_logit).item()
-        compressor_blend = torch.sigmoid(model.compressor.blend_logit).item()
-
         improved = False
         if final_acc > best_final:
             best_final = final_acc
@@ -1389,22 +1219,15 @@ def train(args):
             patience_counter = 0
             torch.save({
                 'epoch': epoch + 1,
-                'compressor': model.compressor.state_dict(),
                 'atoms': model.atoms.state_dict(),
-                'hypernet': model.hypernet.state_dict(),
+                'controller': model.controller.state_dict(),
                 'confidence_head': model.confidence_head.state_dict(),
-                'residual_gate': model.residual_gate.state_dict(),
-                'message_generator': model.message_generator.state_dict(),
-                'ordinal_head': model.ordinal_head.state_dict(),
-                'bypass': model.bypass.state_dict(),
                 'optimizer': optimizer.state_dict(),
                 'accuracy': final_acc,
                 'per_cycle_acc': per_cycle_acc,
                 'level': level,
                 'num_atoms': args.num_atoms,
                 'atom_rank': args.atom_rank,
-                'hypernet_blend': hypernet_blend,
-                'compressor_blend': compressor_blend,
             }, ckpt_name)
             print(f"  -> saved checkpoint {ckpt_name} (final={final_acc:.1f}%)")
         else:
@@ -1429,17 +1252,12 @@ def train(args):
         print(
             f"  page_var={ep_page_var/nb:.4f} dead_dims={ep_dead_dims/nb:.1f}/64"
         )
-        # Gradient coupling blends
-        print(
-            f"  blends: hypernet={hypernet_blend:.3f} compressor={compressor_blend:.3f} "
-            f"(1.0=direct, 0.0=contextual)"
-        )
         # Gradient norms
         gn = grad_norms
         print(
             f"  grad norms: "
             f"atoms_A={gn['atoms_A']:.4f} atoms_B={gn['atoms_B']:.4f} "
-            f"hypernet={gn['hypernet']:.4f}"
+            f"controller={gn['controller']:.4f}"
         )
 
         if patience_counter >= args.patience:
@@ -1492,8 +1310,6 @@ if __name__ == '__main__':
                    help='Number of LoRA atoms')
     p.add_argument('--atom_rank', type=int, default=6,
                    help='Rank of each LoRA atom')
-    p.add_argument('--skip_perceiver', action='store_true',
-                   help='Skip loading perceiver from warm checkpoint')
     p.add_argument('--augment', action='store_true',
                    help='Enable number augmentation + gen target dropout (anti-memorization)')
     p.add_argument('--dropout_prob', type=float, default=0.15,

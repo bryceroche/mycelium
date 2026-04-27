@@ -28,11 +28,6 @@ import torch.nn.functional as F
 from typing import Dict, List, Optional, Tuple, Union
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from src.compressor_v3 import Compressor, ResidualPageGate
-from src.sympy_evaluator import SymPyEvaluator
-from src.sympy_result_encoder import SymPyResultEncoder, format_sympy_context
-from src.pattern_memory import PatternMemory
-from src.pattern_classifier import classify_pattern
 
 
 # ---------------------------------------------------------------------------
@@ -419,703 +414,10 @@ def scale_diversity_loss(all_scales, target_cos=0.3):
     return diversity_loss / max(num_pairs, 1)
 
 
-# ---------------------------------------------------------------------------
-# AtomHypernetwork — reads pages + pass number -> 64 atom scales
-# ---------------------------------------------------------------------------
-class AtomHypernetwork(nn.Module):
-    """
-    Hypernetwork that reads accumulated pages and outputs
-    64 independent atom scales via tanh (NOT softmax).
 
-    No strategy input — removed as redundant with page attention.
-    No pass embedding (v24.6) — pass_num was a shortcut that let the model
-    ignore pages entirely. Pages are now the ONLY input.
 
-    v24.7 adds DIRECT PATH skip connection for gradient coupling:
-    - Direct path: last_page -> linear -> GELU -> linear -> logits
-    - Contextual path: cross-attention over all pages -> MLP -> logits
-    - Learnable blend parameter mixes the two paths
-    The direct path bypasses the softmax in cross-attention, giving gradient
-    a clean highway from scales back to pages.
 
-    Architecture:
-    - DIRECT PATH: Linear(64, 256) -> GELU -> Linear(256, 64) [gradient highway]
-    - CONTEXTUAL PATH: 2-layer cross-attention + deep MLP [rich context]
-    - Blend: sigmoid(learned) mixes direct and contextual logits
-    - Final: tanh (independent, no competition)
-    """
 
-    def __init__(
-        self,
-        page_size: int = 64,
-        num_atoms: int = 64,
-        attn_dim: int = 1024,
-        num_query_heads: int = 8,
-        num_attn_heads: int = 16,
-        num_attn_layers: int = 6,
-        pass_embed_dim: int = 512,  # kept for backward compat, ignored if skip_pass_embed
-        pass_embed_scale: float = 1.0,  # kept for backward compat
-        skip_pass_embed: bool = False,
-        message_dim: int = 32,
-        max_messages: int = 12,
-    ):
-        super().__init__()
-        self.page_size = page_size
-        self.num_atoms = num_atoms
-        self.attn_dim = attn_dim
-        self.num_query_heads = num_query_heads
-        self.pass_embed_scale = pass_embed_scale
-        self.skip_pass_embed = skip_pass_embed
-        self.message_dim = message_dim
-        self.max_messages = max_messages
-
-        # ===== DIRECT PATH (gradient highway — reads last page only) =====
-        self.direct_path = nn.Sequential(
-            nn.Linear(page_size, 512),
-            nn.GELU(),
-            nn.Dropout(0.1),
-            nn.Linear(512, num_atoms),
-        )
-
-        # ===== BLEND (learnable mixing of direct + contextual) =====
-        self.blend_logit = nn.Parameter(torch.tensor(0.0))
-
-        # --- Page reading: 6-layer cross-attention (CONTEXTUAL PATH, ~100M) ---
-        self.page_project = nn.Linear(page_size, attn_dim)
-        self.page_query = nn.Parameter(torch.randn(num_query_heads, attn_dim) * 0.02)
-
-        # Build N attention layers dynamically
-        self.attn_layers = nn.ModuleList()
-        self.attn_norms = nn.ModuleList()
-        self.ffn_layers = nn.ModuleList()
-        self.ffn_norms = nn.ModuleList()
-        for _ in range(num_attn_layers):
-            self.attn_layers.append(
-                nn.MultiheadAttention(attn_dim, num_heads=num_attn_heads, batch_first=True)
-            )
-            self.attn_norms.append(nn.LayerNorm(attn_dim))
-            self.ffn_layers.append(nn.Sequential(
-                nn.Linear(attn_dim, attn_dim * 4), nn.GELU(), nn.Linear(attn_dim * 4, attn_dim),
-            ))
-            self.ffn_norms.append(nn.LayerNorm(attn_dim))
-
-        # Flatten queries -> summary
-        self.summary_project = nn.Linear(num_query_heads * attn_dim, 2048)
-
-        # --- Message projection (read inter-cycle messages) ---
-        self.message_project = nn.Sequential(
-            nn.Linear(message_dim * max_messages, 512),
-            nn.GELU(),
-            nn.Linear(512, 512),
-        )
-
-        # --- Text context projection (v26.2: breaks fixed-point collapse) ---
-        self.context_dim = 16  # max_steps=8 * 2
-        self.context_project = nn.Sequential(
-            nn.Linear(self.context_dim, 128),
-            nn.GELU(),
-            nn.Linear(128, 512),
-        )
-
-        # --- Bypass projection (v26.3: rich differentiable signal) ---
-        self.bypass_dim = 512
-        self.bypass_project = nn.Sequential(
-            nn.Linear(self.bypass_dim, 512),
-            nn.GELU(),
-        )
-
-        # --- Fourier pass encoding (conditional, skipped in v24.6) ---
-        if not skip_pass_embed:
-            self.register_buffer(
-                'fourier_freqs',
-                torch.exp(torch.arange(0, pass_embed_dim, 2) * -(math.log(10000.0) / pass_embed_dim))
-            )
-            self.pass_project = nn.Linear(pass_embed_dim, pass_embed_dim)
-            mlp_input_dim = 2048 + pass_embed_dim + 512 + 512 + 512
-        else:
-            mlp_input_dim = 2048 + 512 + 512 + 512  # summary + msg_summary + context + bypass = 3584
-
-        # --- Deep MLP: 2560 -> 2048 -> 1024 -> 512 -> 64 ---
-        self.scale_mlp = nn.Sequential(
-            nn.Linear(mlp_input_dim, 2048),
-            nn.GELU(),
-            nn.Dropout(0.1),
-            nn.LayerNorm(2048),
-            nn.Linear(2048, 1024),
-            nn.GELU(),
-            nn.Dropout(0.1),
-            nn.LayerNorm(1024),
-            nn.Linear(1024, 512),
-            nn.GELU(),
-            nn.Linear(512, num_atoms),
-        )
-        self.scale_activation = nn.Tanh()
-        self.scale_mlp[-1].bias.data.fill_(0.05)
-
-        self.scale_net = nn.Sequential(self.scale_mlp, self.scale_activation)
-
-        # Möbius focus head: where on the sphere this cycle's page lands
-        self.focus_head = nn.Sequential(
-            nn.Linear(mlp_input_dim, 256),
-            nn.GELU(),
-            nn.Linear(256, 64),
-        )
-
-    def fourier_encode(self, pass_num: int, device: torch.device) -> torch.Tensor:
-        """Encode pass number as smooth Fourier features."""
-        t = pass_num * self.fourier_freqs.to(device)  # (dim/2,)
-        encoding = torch.cat([torch.sin(t), torch.cos(t)])  # (dim,)
-        return self.pass_project(encoding)
-
-    def forward(
-        self,
-        state_pages: List[torch.Tensor],
-        pass_num: int,
-        return_pre_tanh: bool = False,
-        messages: Optional[List[torch.Tensor]] = None,
-        text_context: Optional[torch.Tensor] = None,
-        bypass_summary: Optional[torch.Tensor] = None,
-    ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
-        """
-        Args:
-            state_pages: list of (batch, page_size) tensors (accumulated pages)
-            pass_num: int (0-indexed)
-            return_pre_tanh: if True, also return pre-tanh values for regularization
-
-        Returns:
-            atom_scales: (batch, num_atoms) tanh-bounded in [-1, 1]
-            pre_tanh: (batch, num_atoms) raw MLP output (only if return_pre_tanh=True)
-        """
-        if len(state_pages) == 0:
-            # Pass 0: no pages yet, return zeros (no LoRA modification)
-            batch_size = 1  # caller must handle
-            device = self.page_query.device
-            zeros = torch.zeros(batch_size, self.num_atoms, device=device)
-            zero_focus = torch.zeros(batch_size, 64, device=device)
-            if return_pre_tanh:
-                return zeros, zeros, zero_focus
-            return zeros, zero_focus
-
-        batch_size = state_pages[0].size(0)
-        device = state_pages[0].device
-
-        # Stack pages
-        pages = torch.stack(state_pages, dim=1)         # (B, P, page_size)
-        last_page = pages[:, -1, :]                     # (B, page_size)
-
-        # ===== DIRECT PATH (v24.7 — gradient highway) =====
-        # Bypasses cross-attention softmax, clean gradient to last_page
-        direct_logits = self.direct_path(last_page)     # (B, num_atoms)
-
-        # ===== CONTEXTUAL PATH (6-layer cross-attention, ~100M) =====
-        pages_proj = self.page_project(pages)            # (B, P, attn_dim)
-        queries = self.page_query.unsqueeze(0).expand(batch_size, -1, -1)  # (B, Q, attn_dim)
-
-        # N-layer cross-attention + FFN with residual connections
-        for attn, norm, ffn, ffn_norm in zip(
-            self.attn_layers, self.attn_norms, self.ffn_layers, self.ffn_norms
-        ):
-            att_out, _ = attn(query=queries, key=pages_proj, value=pages_proj)
-            queries = norm(queries + att_out)
-            queries = ffn_norm(queries + ffn(queries))
-
-        # Flatten queries -> summary
-        page_summary = self.summary_project(queries.flatten(1))  # (B, 2048)
-
-        # Read messages
-        if messages and len(messages) > 0:
-            msg_list = list(messages)
-            if len(msg_list) < self.max_messages:
-                pad = [torch.zeros_like(msg_list[0])] * (self.max_messages - len(msg_list))
-                msg_list = msg_list + pad
-            msg_cat = torch.cat(msg_list[:self.max_messages], dim=-1)
-            msg_summary = self.message_project(msg_cat.to(dtype=page_summary.dtype))  # (B, 512)
-        else:
-            msg_summary = torch.zeros(batch_size, 512, device=device, dtype=page_summary.dtype)
-
-        # Project text context (breaks fixed-point collapse)
-        if text_context is not None:
-            ctx_features = self.context_project(text_context.to(dtype=page_summary.dtype))
-        else:
-            ctx_features = torch.zeros(batch_size, 512, device=device, dtype=page_summary.dtype)
-
-        # Project bypass vectors (rich differentiable signal)
-        if bypass_summary is not None:
-            bypass_features = self.bypass_project(bypass_summary.to(dtype=page_summary.dtype))
-        else:
-            bypass_features = torch.zeros(batch_size, 512, device=device, dtype=page_summary.dtype)
-
-        # Generate contextual logits
-        if self.skip_pass_embed:
-            combined = torch.cat([page_summary, msg_summary, ctx_features, bypass_features], dim=-1)  # (B, 3584)
-            context_logits = self.scale_mlp(combined)
-        else:
-            pass_emb = self.fourier_encode(pass_num, device).unsqueeze(0).expand(batch_size, -1)
-            pass_emb = pass_emb * self.pass_embed_scale
-            combined = torch.cat([page_summary, pass_emb, msg_summary, ctx_features, bypass_features], dim=-1)
-            context_logits = self.scale_mlp(combined)
-
-        # Möbius focus point (branches off combined, same as scale MLP input)
-        focus = self.focus_head(combined)  # (B, 64)
-
-        # ===== BLEND direct + contextual =====
-        blend = torch.sigmoid(self.blend_logit)  # scalar in (0, 1)
-        pre_tanh = blend * direct_logits + (1 - blend) * context_logits
-
-        # Hard clamp: makes tanh saturation impossible.
-        # tanh(3) = 0.995, gradient = 0.01 — small but non-zero.
-        pre_tanh = torch.clamp(pre_tanh, -3.0, 3.0)
-
-        atom_scales = self.scale_activation(pre_tanh)  # (B, num_atoms)
-
-        if return_pre_tanh:
-            return atom_scales, pre_tanh, focus
-        return atom_scales, focus
-
-
-# ---------------------------------------------------------------------------
-# AnswerHead — digit-based answer extraction from last page
-# ---------------------------------------------------------------------------
-class HiddenStateAnswerHead(nn.Module):
-    """40M answer head — the correctness gatekeeper.
-    (Renamed from AnswerHead for backward compat.)"""
-
-    def __init__(self, page_size: int = 64, max_digits: int = 8,
-                 hidden: int = 1024, num_layers: int = 6,
-                 max_cycles: int = 12, d_model: int = 2048):
-        super().__init__()
-        self.page_size = page_size
-        self.max_digits = max_digits
-        self.d_model = d_model
-
-        # Per-cycle embedding
-        self.cycle_embed = nn.Embedding(max_cycles, 256)
-
-        # Transform: page(64) + hidden_states_pool(2048) + cycle(256) → 1024
-        # No bottleneck — the number info is spread across 2048 hidden dims.
-        self.input_transform = nn.Sequential(
-            nn.Linear(page_size + d_model + 256, hidden),
-            nn.LayerNorm(hidden),
-            nn.GELU(),
-        )
-
-        # 6-layer deep encoder on transformed input
-        layers = []
-        for i in range(num_layers):
-            layers.extend([
-                nn.Linear(hidden, hidden),
-                nn.LayerNorm(hidden),
-                nn.GELU(),
-                nn.Dropout(0.1),
-            ])
-        self.encoder = nn.Sequential(*layers)
-
-        # Prediction heads (deeper digit heads for better discrimination)
-        self.sign_head = nn.Linear(hidden, 2)
-        self.length_head = nn.Linear(hidden, max_digits)
-        self.digit_heads = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(hidden, 256),
-                nn.GELU(),
-                nn.Linear(256, 10),
-            )
-            for _ in range(max_digits)
-        ])
-
-    def forward(
-        self, last_page: torch.Tensor, cycle_num: int = 0,
-        hidden_pool: Optional[torch.Tensor] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor, List[torch.Tensor]]:
-        """
-        Args:
-            last_page:    (B, page_size) — raw page
-            hidden_pool:  (B, d_model) — mean-pooled last Llama layer (optional)
-            cycle_num:  int — which reasoning cycle (0-indexed)
-
-        Returns:
-            sign_logits:   (B, 2)
-            length_logits: (B, max_digits)
-            digit_logits:  list of max_digits x (B, 10)
-        """
-        page = last_page.float()
-        cycle_idx = torch.tensor(cycle_num, device=page.device)
-        cycle_emb = self.cycle_embed(cycle_idx)              # (256,)
-        cycle_emb = cycle_emb.unsqueeze(0).expand(page.size(0), -1)  # (B, 256)
-        # Combine page + hidden states + cycle embedding
-        if hidden_pool is not None:
-            hp = hidden_pool.float()
-        else:
-            hp = torch.zeros(page.size(0), self.d_model, device=page.device)
-        combined = torch.cat([page, hp, cycle_emb], dim=-1)  # (B, 64 + 2048 + 256)
-        transformed = self.input_transform(combined)          # (B, 512)
-        h = self.encoder(transformed)
-        sign_logits = self.sign_head(h)
-        length_logits = self.length_head(h)
-        digit_logits = [head(h) for head in self.digit_heads]
-        return sign_logits, length_logits, digit_logits
-
-    @torch.no_grad()
-    def decode(self, last_page: torch.Tensor, cycle_num: int = 0,
-               hidden_pool: Optional[torch.Tensor] = None) -> torch.Tensor:
-        """
-        Decode predicted answer as integer tensor (B,).
-
-        Args:
-            last_page: (B, page_size)
-            cycle_num: int — which reasoning cycle (0-indexed)
-            hidden_pool: (B, d_model) — mean-pooled last Llama layer (optional)
-
-        Returns:
-            answers: (B,) integer tensor
-        """
-        sign_logits, length_logits, digit_logits = self.forward(
-            last_page, cycle_num=cycle_num, hidden_pool=hidden_pool)
-        batch_size = last_page.size(0)
-
-        num_digits = length_logits.argmax(dim=-1) + 1  # (B,) 1-indexed
-        is_negative = sign_logits.argmax(dim=-1) == 1   # (B,)
-
-        answers = torch.zeros(batch_size, dtype=torch.long, device=last_page.device)
-        for i in range(self.max_digits):
-            digit = digit_logits[i].argmax(dim=-1)  # (B,)
-            answers = answers * 10 + digit
-
-        # Trim to predicted length
-        trim_power = (self.max_digits - num_digits).clamp(min=0)
-        divisor = (10 ** trim_power).long()
-        answers = answers // divisor
-
-        # Apply sign
-        answers = torch.where(is_negative, -answers, answers)
-        return answers
-
-
-# Backward compat alias
-AnswerHead = HiddenStateAnswerHead
-
-
-# ---------------------------------------------------------------------------
-# SoftTokenAnswerHead — reads generation logits via differentiable soft tokens
-# ---------------------------------------------------------------------------
-class SoftTokenAnswerHead(nn.Module):
-    """Reads DIGIT-RELEVANT logits from generation output.
-    Only extracts logits for tokens 0-9, minus, EOS (~12 tokens).
-    Tiny, fast, no OOM. Fully differentiable through logit indexing.
-
-    The generation produces correct numbers 56% of the time.
-    The digit logits show WHICH digits have high probability at WHICH positions.
-    """
-    def __init__(self, tokenizer, max_seq=50, hidden_dim=512,
-                 num_layers=3, max_digits=8, max_cycles=12):
-        super().__init__()
-        self.max_digits = max_digits
-        self.max_seq = max_seq
-
-        # Find token IDs for digits 0-9, minus, EOS
-        digit_ids = []
-        for d in "0123456789":
-            toks = tokenizer.encode(d, add_special_tokens=False)
-            if toks:
-                digit_ids.append(toks[0])
-        minus_toks = tokenizer.encode("-", add_special_tokens=False)
-        if minus_toks:
-            digit_ids.append(minus_toks[0])
-        if tokenizer.eos_token_id is not None:
-            digit_ids.append(tokenizer.eos_token_id)
-        self.register_buffer('digit_token_ids', torch.tensor(digit_ids, dtype=torch.long))
-        self.num_digit_tokens = len(digit_ids)
-
-        # Per-cycle embedding
-        self.cycle_embed = nn.Embedding(max_cycles, 64)
-
-        # Reader: flattened digit logits + cycle → predictions
-        input_dim = self.num_digit_tokens * max_seq + 64
-        layers = []
-        for i in range(num_layers):
-            in_d = input_dim if i == 0 else hidden_dim
-            layers.extend([
-                nn.Linear(in_d, hidden_dim),
-                nn.LayerNorm(hidden_dim),
-                nn.GELU(),
-            ])
-        self.reader = nn.Sequential(*layers)
-
-        self.sign_head = nn.Linear(hidden_dim, 2)
-        self.length_head = nn.Linear(hidden_dim, max_digits)
-        self.digit_heads = nn.ModuleList([
-            nn.Linear(hidden_dim, 10) for _ in range(max_digits)
-        ])
-
-    def _extract_digit_logits(self, gen_logits):
-        """Extract only digit-relevant logits: (B, seq, 128K) → (B, max_seq, ~12)"""
-        # Index into vocab dimension for digit tokens only
-        digit_logits = gen_logits[:, :, self.digit_token_ids]  # (B, seq, num_digit_tokens)
-        B = digit_logits.size(0)
-        seq = digit_logits.size(1)
-        # Pad or truncate sequence to max_seq
-        if seq < self.max_seq:
-            pad = torch.zeros(B, self.max_seq - seq, self.num_digit_tokens,
-                              device=digit_logits.device, dtype=digit_logits.dtype)
-            digit_logits = torch.cat([digit_logits, pad], dim=1)
-        else:
-            digit_logits = digit_logits[:, :self.max_seq, :]
-        return digit_logits.float()  # (B, max_seq, num_digit_tokens)
-
-    def forward(self, gen_logits, cycle_num=0):
-        """
-        gen_logits: (batch, seq_len, vocab_size)
-        cycle_num: int
-        Returns: sign_logits, length_logits, list of digit_logits
-        """
-        digit_logits = self._extract_digit_logits(gen_logits)  # (B, max_seq, ~12)
-        flat = digit_logits.reshape(digit_logits.size(0), -1)  # (B, max_seq * ~12)
-
-        cycle_ctx = self.cycle_embed(
-            torch.tensor(cycle_num, device=flat.device)
-        ).expand(flat.size(0), -1)
-
-        combined = torch.cat([flat, cycle_ctx], dim=-1)
-        hidden = self.reader(combined)
-
-        sign = self.sign_head(hidden)
-        length = self.length_head(hidden)
-        digits = [head(hidden) for head in self.digit_heads]
-        return sign, length, digits
-
-    @torch.no_grad()
-    def decode(self, gen_logits, cycle_num=0):
-        """Decode predicted answer as integer tensor (B,)."""
-        sign_logits, length_logits, digit_logits = self.forward(gen_logits, cycle_num)
-        batch_size = gen_logits.size(0)
-
-        num_digits = length_logits.argmax(dim=-1) + 1
-        is_negative = sign_logits.argmax(dim=-1) == 1
-
-        answers = torch.zeros(batch_size, dtype=torch.long, device=gen_logits.device)
-        for i in range(self.max_digits):
-            digit = digit_logits[i].argmax(dim=-1)
-            answers = answers * 10 + digit
-
-        trim_power = (self.max_digits - num_digits).clamp(min=0)
-        divisor = (10 ** trim_power).long()
-        answers = answers // divisor
-        answers = torch.where(is_negative, -answers, answers)
-        return answers
-
-
-def soft_answer_head_loss(
-    head: SoftTokenAnswerHead,
-    gen_logits: torch.Tensor,
-    gold_answers: torch.Tensor,
-    cycle_num: int = 0,
-) -> torch.Tensor:
-    """
-    Compute loss for SoftTokenAnswerHead from gold integer answers.
-
-    Args:
-        head:         SoftTokenAnswerHead module
-        gen_logits:   (B, seq_len, vocab_size) -- raw generation output
-        gold_answers: (B,) integer tensor
-        cycle_num:    int -- which reasoning cycle (0-indexed)
-
-    Returns:
-        loss: scalar tensor
-    """
-    sign_logits, length_logits, digit_logits = head(gen_logits, cycle_num=cycle_num)
-    device = gen_logits.device
-    batch_size = gen_logits.size(0)
-
-    gold_abs = gold_answers.abs()
-    gold_sign = (gold_answers < 0).long()  # 0=positive, 1=negative
-
-    gold_strings = [str(v.item()) for v in gold_abs]
-    max_digits = head.max_digits
-
-    gold_length = torch.tensor(
-        [len(s) - 1 for s in gold_strings],  # 0-indexed for CE
-        dtype=torch.long, device=device,
-    )
-    gold_length = gold_length.clamp(max=max_digits - 1)
-
-    # Digit matrix (left-aligned, most significant first)
-    gold_digit_matrix = torch.zeros(
-        batch_size, max_digits, dtype=torch.long, device=device,
-    )
-    for b, s in enumerate(gold_strings):
-        s = s[:max_digits]
-        for i, ch in enumerate(s):
-            gold_digit_matrix[b, i] = int(ch)
-
-    # Losses
-    loss = F.cross_entropy(sign_logits, gold_sign)
-    loss = loss + F.cross_entropy(length_logits, gold_length)
-
-    for i in range(max_digits):
-        mask = torch.tensor(
-            [1.0 if i < len(gold_strings[b]) else 0.0 for b in range(batch_size)],
-            device=device,
-        )
-        if mask.sum() > 0:
-            digit_loss = F.cross_entropy(
-                digit_logits[i], gold_digit_matrix[:, i], reduction='none',
-            )
-            loss = loss + (digit_loss * mask).sum() / mask.sum()
-
-    return loss
-
-
-def soft_answer_head_loss_per_sample(
-    head: SoftTokenAnswerHead,
-    gen_logits: torch.Tensor,
-    gold_answers: torch.Tensor,
-    cycle_num: int = 0,
-) -> torch.Tensor:
-    """Per-sample loss for SoftTokenAnswerHead. Returns (B,) tensor."""
-    sign_logits, length_logits, digit_logits = head(gen_logits, cycle_num=cycle_num)
-    device = gen_logits.device
-    batch_size = gen_logits.size(0)
-
-    gold_abs = gold_answers.abs()
-    gold_sign = (gold_answers < 0).long()
-
-    gold_strings = [str(v.item()) for v in gold_abs]
-    max_digits = head.max_digits
-
-    gold_length = torch.tensor(
-        [len(s) - 1 for s in gold_strings], dtype=torch.long, device=device,
-    ).clamp(max=max_digits - 1)
-
-    gold_digit_matrix = torch.zeros(batch_size, max_digits, dtype=torch.long, device=device)
-    for b, s in enumerate(gold_strings):
-        for i, ch in enumerate(s[:max_digits]):
-            gold_digit_matrix[b, i] = int(ch)
-
-    # Per-sample losses
-    per_sample = F.cross_entropy(sign_logits, gold_sign, reduction='none')
-    per_sample = per_sample + F.cross_entropy(length_logits, gold_length, reduction='none')
-
-    for i in range(max_digits):
-        mask = torch.tensor(
-            [1.0 if i < len(gold_strings[b]) else 0.0 for b in range(batch_size)],
-            device=device,
-        )
-        if mask.sum() > 0:
-            digit_loss = F.cross_entropy(
-                digit_logits[i], gold_digit_matrix[:, i], reduction='none',
-            )
-            per_sample = per_sample + digit_loss * mask
-
-    return per_sample  # (B,)
-
-
-def answer_head_loss(
-    answer_head: AnswerHead,
-    last_page: torch.Tensor,
-    gold_answers: torch.Tensor,
-    cycle_num: int = 0,
-    hidden_pool: Optional[torch.Tensor] = None,
-) -> torch.Tensor:
-    """
-    Compute answer head loss from gold integer answers.
-
-    Args:
-        answer_head: AnswerHead module
-        last_page:   (B, page_size)
-        gold_answers: (B,) integer tensor
-        cycle_num:   int — which reasoning cycle (0-indexed)
-        hidden_pool: (B, d_model) — mean-pooled last Llama layer (optional)
-
-    Returns:
-        loss: scalar tensor
-    """
-    sign_logits, length_logits, digit_logits = answer_head(
-        last_page, cycle_num=cycle_num, hidden_pool=hidden_pool)
-    device = last_page.device
-    batch_size = last_page.size(0)
-
-    gold_abs = gold_answers.abs()
-    gold_sign = (gold_answers < 0).long()  # 0=positive, 1=negative
-
-    gold_strings = [str(v.item()) for v in gold_abs]
-    max_digits = answer_head.max_digits
-
-    gold_length = torch.tensor(
-        [len(s) - 1 for s in gold_strings],  # 0-indexed for CE
-        dtype=torch.long, device=device,
-    )
-    gold_length = gold_length.clamp(max=max_digits - 1)
-
-    # Digit matrix (left-aligned, most significant first)
-    gold_digit_matrix = torch.zeros(
-        batch_size, max_digits, dtype=torch.long, device=device,
-    )
-    for b, s in enumerate(gold_strings):
-        s = s[:max_digits]
-        for i, ch in enumerate(s):
-            gold_digit_matrix[b, i] = int(ch)
-
-    # Losses
-    loss = F.cross_entropy(sign_logits, gold_sign)
-    loss = loss + F.cross_entropy(length_logits, gold_length)
-
-    for i in range(max_digits):
-        mask = torch.tensor(
-            [1.0 if i < len(gold_strings[b]) else 0.0 for b in range(batch_size)],
-            device=device,
-        )
-        if mask.sum() > 0:
-            digit_loss = F.cross_entropy(
-                digit_logits[i], gold_digit_matrix[:, i], reduction='none',
-            )
-            loss = loss + (digit_loss * mask).sum() / mask.sum()
-
-    return loss
-
-
-def answer_head_loss_per_sample(
-    answer_head: AnswerHead,
-    last_page: torch.Tensor,
-    gold_answers: torch.Tensor,
-    cycle_num: int = 0,
-    hidden_pool: Optional[torch.Tensor] = None,
-) -> torch.Tensor:
-    """Per-sample answer head loss. Returns (B,) tensor, not scalar."""
-    sign_logits, length_logits, digit_logits = answer_head(
-        last_page, cycle_num=cycle_num, hidden_pool=hidden_pool)
-    device = last_page.device
-    batch_size = last_page.size(0)
-
-    gold_abs = gold_answers.abs()
-    gold_sign = (gold_answers < 0).long()
-
-    gold_strings = [str(v.item()) for v in gold_abs]
-    max_digits = answer_head.max_digits
-
-    gold_length = torch.tensor(
-        [len(s) - 1 for s in gold_strings], dtype=torch.long, device=device,
-    ).clamp(max=max_digits - 1)
-
-    gold_digit_matrix = torch.zeros(batch_size, max_digits, dtype=torch.long, device=device)
-    for b, s in enumerate(gold_strings):
-        for i, ch in enumerate(s[:max_digits]):
-            gold_digit_matrix[b, i] = int(ch)
-
-    # Per-sample losses
-    per_sample = F.cross_entropy(sign_logits, gold_sign, reduction='none')
-    per_sample = per_sample + F.cross_entropy(length_logits, gold_length, reduction='none')
-
-    for i in range(max_digits):
-        mask = torch.tensor(
-            [1.0 if i < len(gold_strings[b]) else 0.0 for b in range(batch_size)],
-            device=device,
-        )
-        if mask.sum() > 0:
-            digit_loss = F.cross_entropy(
-                digit_logits[i], gold_digit_matrix[:, i], reduction='none',
-            )
-            per_sample = per_sample + digit_loss * mask
-
-    return per_sample  # (B,)
 
 
 # ---------------------------------------------------------------------------
@@ -1184,58 +486,8 @@ class AtomConfidenceHead(nn.Module):
         return self.output(q.squeeze(1))  # (B, 1)
 
 
-# ---------------------------------------------------------------------------
-# CycleMessageGenerator — direct last-layer signal bypassing perceiver
-# ---------------------------------------------------------------------------
-class CycleMessageGenerator(nn.Module):
-    """
-    Generates a small message from Llama's last layer output.
-    Bypasses the perceiver compression bottleneck entirely.
-
-    The message is a POST-IT NOTE — quick, direct, uncompressed.
-    The page is the FORMAL RECORD — rich, compressed, multi-layer.
-    """
-    def __init__(self, d_model=2048, message_dim=32):
-        super().__init__()
-        self.message_dim = message_dim
-
-        # Mean-pool last layer → project to message (~1M params)
-        self.net = nn.Sequential(
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, 512),
-            nn.GELU(),
-            nn.Linear(512, message_dim),
-        )
-
-    def forward(self, last_layer_hidden):
-        """
-        last_layer_hidden: (batch, seq_len, d_model) — Llama's final layer
-        returns: (batch, message_dim) — small direct signal
-        """
-        pooled = last_layer_hidden.mean(dim=1).float()  # (batch, d_model) — cast to float32
-        message = self.net(pooled)  # (batch, message_dim)
-        return message
 
 
-# ---------------------------------------------------------------------------
-# OrdinalAttentionHead — teaches atoms WHERE to look per cycle
-# ---------------------------------------------------------------------------
-class OrdinalAttentionHead(nn.Module):
-    """
-    Predicts which sentence/step this cycle focuses on.
-    Provides direct gradient to atoms: "at cycle 2, attend to sentence 2."
-    """
-    def __init__(self, page_size=64, max_sentences=8):
-        super().__init__()
-        self.head = nn.Sequential(
-            nn.Linear(page_size, 64),
-            nn.GELU(),
-            nn.Linear(64, max_sentences),
-        )
-
-    def forward(self, page):
-        """page: (B, page_size) -> logits: (B, max_sentences)"""
-        return self.head(page.float())
 
 
 # ---------------------------------------------------------------------------
@@ -1265,31 +517,152 @@ class IsotropicRegularizer(nn.Module):
         return mean_loss + var_loss + self.corr_weight * corr_loss
 
 
-# ---------------------------------------------------------------------------
-# DifferentiableBypass — rich differentiable projection bypassing compressor
-# ---------------------------------------------------------------------------
-class DifferentiableBypass(nn.Module):
-    """512-float differentiable projection from Llama's hidden states
-    directly to the hypernetwork, bypassing the 64-float compressor.
 
-    Creates genuine recurrent gradient: cycle 1's atoms get gradient
-    from cycle 2's loss flowing through the bypass.
+
+# ---------------------------------------------------------------------------
+# BreathingController — unified perceiver + hypernetwork replacement
+# ---------------------------------------------------------------------------
+class BreathingController(nn.Module):
+    """Unified controller: reads Llama's hidden states, produces page + scales + focus.
+
+    Replaces separate perceiver (105M) + hypernetwork (101M) + bypass (5M) + message (1M).
+    One network, one understanding, two outputs (record + plan).
     """
-    def __init__(self, hidden_dim=2048, bypass_dim=512):
+    def __init__(self, num_layers=16, hidden_dim=2048,
+                 internal_dim=1536, num_heads=8,
+                 page_dim=64, num_atoms=64, max_cycles=12,
+                 num_history_layers=6):
         super().__init__()
-        self.bypass_dim = bypass_dim
-        self.project = nn.Sequential(
-            nn.Linear(hidden_dim, 1024),
-            nn.LayerNorm(1024),
-            nn.GELU(),
-            nn.Linear(1024, bypass_dim),
-            nn.LayerNorm(bypass_dim),
+        self.internal_dim = internal_dim
+        self.page_dim = page_dim
+        self.num_atoms = num_atoms
+
+        # Learned weighted combination of all Llama layers
+        self.layer_weights = nn.Parameter(torch.ones(num_layers) / num_layers)
+
+        # Project weighted hidden states to internal dimension
+        self.current_project = nn.Sequential(
+            nn.Linear(hidden_dim, internal_dim),
+            nn.LayerNorm(internal_dim),
             nn.GELU(),
         )
 
-    def forward(self, hidden_pool):
-        """hidden_pool: (batch, 2048) -> (batch, 512)"""
-        return self.project(hidden_pool)
+        # Project each history entry (page + hidden_pool) to internal dim
+        self.history_entry_project = nn.Linear(page_dim + hidden_dim, internal_dim)
+
+        # Cross-attention: current understanding queries history
+        self.history_attn_layers = nn.ModuleList()
+        for _ in range(num_history_layers):
+            self.history_attn_layers.append(nn.ModuleDict({
+                'attn': nn.MultiheadAttention(
+                    embed_dim=internal_dim, num_heads=num_heads, batch_first=True
+                ),
+                'norm1': nn.LayerNorm(internal_dim),
+                'ff': nn.Sequential(
+                    nn.Linear(internal_dim, internal_dim * 4),
+                    nn.GELU(),
+                    nn.Linear(internal_dim * 4, internal_dim),
+                ),
+                'norm2': nn.LayerNorm(internal_dim),
+            }))
+
+        # Shared trunk: integrate current + history
+        self.trunk = nn.Sequential(
+            nn.Linear(internal_dim * 2, internal_dim),
+            nn.LayerNorm(internal_dim),
+            nn.GELU(),
+            nn.Linear(internal_dim, internal_dim),
+            nn.LayerNorm(internal_dim),
+            nn.GELU(),
+            nn.Linear(internal_dim, internal_dim),
+            nn.LayerNorm(internal_dim),
+            nn.GELU(),
+            nn.Linear(internal_dim, internal_dim),
+            nn.LayerNorm(internal_dim),
+            nn.GELU(),
+        )
+
+        # Page head: "what did I understand?"
+        self.page_head = nn.Sequential(
+            nn.Linear(internal_dim, 512),
+            nn.GELU(),
+            nn.Linear(512, 256),
+            nn.GELU(),
+            nn.Linear(256, page_dim),
+        )
+
+        # Scale head: "what should I think about next?"
+        self.scale_head = nn.Sequential(
+            nn.Linear(internal_dim, 512),
+            nn.GELU(),
+            nn.Linear(512, 256),
+            nn.GELU(),
+            nn.Linear(256, num_atoms),
+        )
+
+        # Möbius focus head
+        self.focus_head = nn.Sequential(
+            nn.Linear(internal_dim, 256),
+            nn.GELU(),
+            nn.Linear(256, page_dim),
+        )
+
+    def forward(self, hidden_states_all_layers, history_pages, history_hiddens,
+                return_pre_tanh=False):
+        """
+        Args:
+            hidden_states_all_layers: list of 16 tensors, each (batch, seq, 2048)
+            history_pages: list of previous cycle pages [(batch, 64), ...]
+            history_hiddens: list of previous cycle hidden pools [(batch, 2048), ...]
+            return_pre_tanh: if True, also return pre-tanh scale values
+        Returns:
+            page, scales, focus (and optionally pre_tanh)
+        """
+        # Weighted combination of all Llama layers
+        weights = F.softmax(self.layer_weights, dim=0)
+        combined_hidden = sum(
+            w * h.mean(dim=1) for w, h in zip(weights, hidden_states_all_layers)
+        )  # (batch, 2048)
+
+        current = self.current_project(combined_hidden)  # (batch, internal_dim)
+
+        # Read history
+        if len(history_pages) > 0:
+            history_entries = []
+            for pg, hid in zip(history_pages, history_hiddens):
+                entry = torch.cat([pg.to(current.dtype), hid.to(current.dtype)], dim=-1)
+                projected = self.history_entry_project(entry)
+                history_entries.append(projected)
+
+            history_seq = torch.stack(history_entries, dim=1)  # (batch, N, internal_dim)
+
+            query = current.unsqueeze(1)  # (batch, 1, internal_dim)
+            for layer in self.history_attn_layers:
+                attn_out, _ = layer['attn'](query, history_seq, history_seq)
+                query = layer['norm1'](query + attn_out)
+                ff_out = layer['ff'](query)
+                query = layer['norm2'](query + ff_out)
+
+            history_ctx = query.squeeze(1)  # (batch, internal_dim)
+        else:
+            history_ctx = torch.zeros_like(current)
+
+        # Shared trunk
+        shared = self.trunk(torch.cat([current, history_ctx], dim=-1))
+
+        # Two heads
+        page = self.page_head(shared)
+        page = F.normalize(page, dim=-1) * math.sqrt(self.page_dim)
+
+        pre_tanh = self.scale_head(shared)
+        pre_tanh = torch.clamp(pre_tanh, -3.0, 3.0)
+        scales = torch.tanh(pre_tanh)
+
+        focus = self.focus_head(shared)
+
+        if return_pre_tanh:
+            return page, scales, pre_tanh, focus
+        return page, scales, focus
 
 
 # ---------------------------------------------------------------------------
@@ -1297,28 +670,18 @@ class DifferentiableBypass(nn.Module):
 # ---------------------------------------------------------------------------
 class AtomLoRAModel(nn.Module):
     """
-    64-Atom LoRA model: anonymous atoms with independent tanh scaling.
+    64-Atom LoRA model with unified BreathingController (v27).
 
     - Llama 3.2 1B frozen
-    - 7-layer perceiver compressor (strategy output ignored)
-    - Page-based state accumulation (64-float pages on hypersphere)
-    - AtomHypernetwork: pages + pass -> 64 atom scales
+    - BreathingController: reads all Llama layers + history -> page + scales + focus
     - LoRAAtoms: 64 rank-6 atoms applied via batched einsum
-    - AnswerHead: digit extraction from last page
     - AtomConfidenceHead: stop decision from pages
+    - MobiusTransform: conformal warp for page diversity
     """
 
     def __init__(self, model_name: str = 'unsloth/Llama-3.2-1B',
-                 num_atoms: int = 64, atom_rank: int = 6,
-                 pass_embed_scale: float = 1.0,
-                 skip_pass_embed: bool = False,
-                 use_pattern_memory: bool = False,
-                 pattern_memory_db_path: str = "pattern_memory.db"):
+                 num_atoms: int = 64, atom_rank: int = 6):
         super().__init__()
-
-        # --- Pattern memory (long-term SQLite-backed pattern storage) ---
-        self.pattern_memory = PatternMemory(db_path=pattern_memory_db_path) if use_pattern_memory else None
-        self.pattern_hint = None  # Set by solve_with_memory if a good pattern is found
 
         # --- Frozen transformer ---
         self.transformer = AutoModelForCausalLM.from_pretrained(
@@ -1342,17 +705,6 @@ class AtomLoRAModel(nn.Module):
         self.page_radius = math.sqrt(self.page_size)  # 8.0
         self.num_atoms = num_atoms
 
-        # --- Compressor (strategy output ignored in this arch) ---
-        self.compressor = Compressor(
-            num_transformer_layers=self.num_layers,
-            d_transformer=self.d_model,
-            d_perceiver=1024,
-            num_queries=4,
-            num_perceiver_layers=7,
-            state_size=self.page_size,
-            strategy_size=64,  # still outputs strategy, we just discard it
-        )
-
         # --- LoRA Atoms ---
         self.atoms = LoRAAtoms(
             d_model=self.d_model,
@@ -1362,56 +714,24 @@ class AtomLoRAModel(nn.Module):
             num_layers=self.num_layers,
         )
 
-        # --- Atom Hypernetwork ---
-        self.hypernet = AtomHypernetwork(
-            page_size=self.page_size,
-            num_atoms=num_atoms,
-            attn_dim=512,
-            num_query_heads=4,
-            num_attn_heads=8,
-            pass_embed_dim=512,
-            pass_embed_scale=pass_embed_scale,
-            skip_pass_embed=skip_pass_embed,
-        )
-
-        # --- Answer head (digit extraction from last page) ---
-        self.answer_head = AnswerHead(
-            page_size=self.page_size, max_digits=6,
-        )
-
         # --- Confidence head (pages only, no blend) ---
         self.confidence_head = AtomConfidenceHead(
             page_size=self.page_size, hidden=128, num_heads=4,
         )
 
-        # --- Cycle message generator (direct last-layer signal, bypasses perceiver) ---
-        self.message_generator = CycleMessageGenerator(d_model=2048, message_dim=32)
-
-        # --- Ordinal attention head (teaches atoms WHERE to look per cycle) ---
-        self.ordinal_head = OrdinalAttentionHead(page_size=self.page_size, max_sentences=8)
-
-        # --- Pi-harmonic page encoding (DCT-like orthogonal basis, zero learnable params) ---
-        self.fourier_page = PiHarmonicPageEncoding(page_size=self.page_size)
-
-        # --- Isotropic regularizer (pushes raw pages toward isotropic Gaussian) ---
-        self.isotropic_reg = IsotropicRegularizer()
-
-        # --- Probe head (intermediate value supervision) ---
-        self.probe_head = nn.Linear(self.page_size, 1)
-
-        # --- Residual page gate (v24.8 — per-dimension blending of new and old page) ---
-        # Shifts eigenvalues by ~0.5, converting contracting dynamics to stable.
-        # gate approx 1: keep new_page (overwrite), gate approx 0: keep old_page (preserve)
-        self.residual_gate = ResidualPageGate(page_size=self.page_size)
-
-        # --- SymPy result encoder (v24.6 — encodes SymPy results into page vectors) ---
-        self.sympy_encoder = SymPyResultEncoder(page_size=self.page_size, max_variables=8)
-
         # --- Möbius transform (conformal warp for page diversity, cycle 2+) ---
         self.mobius = MobiusTransform(dim=self.page_size, max_focus_norm=0.5)
 
-        # --- Differentiable bypass (v26.3: rich signal bypassing compressor) ---
-        self.bypass = DifferentiableBypass(hidden_dim=self.d_model, bypass_dim=512)
+        # --- Breathing controller (v27: unified perceiver + hypernetwork) ---
+        self.controller = BreathingController(
+            num_layers=self.num_layers,
+            hidden_dim=self.d_model,
+            internal_dim=1536,
+            num_heads=8,
+            page_dim=self.page_size,
+            num_atoms=num_atoms,
+            num_history_layers=6,
+        )
 
     def thinking_pass(
         self,
@@ -1424,15 +744,88 @@ class AtomLoRAModel(nn.Module):
         messages: Optional[List[torch.Tensor]] = None,
         text_context: Optional[torch.Tensor] = None,
         bypass_vectors: Optional[List[torch.Tensor]] = None,
+        history_hiddens: Optional[List[torch.Tensor]] = None,
+        prev_scales: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        One thinking pass with atom LoRA.
+        One thinking pass with unified BreathingController (v27).
+
+        The controller reads ALL Llama hidden layers + history and produces
+        BOTH page and next_scales in one forward pass. No separate perceiver
+        or hypernetwork call.
+
+        Cycle 0: run Llama WITHOUT atoms (no prev_scales), then controller
+        Cycle 1+: run Llama WITH atoms from PREVIOUS cycle's scales, then controller
 
         Args:
-            input_ids:       (B, seq_len)
-            attention_mask:  (B, seq_len)
-            state_pages:     list of (B, page_size) accumulated pages
-            pass_num:        int (0-indexed)
+            input_ids:        (B, seq_len)
+            attention_mask:   (B, seq_len)
+            state_pages:      list of (B, page_size) accumulated pages
+            pass_num:         int (0-indexed)
+            max_passes:       int, total passes (for gradient scaling)
+            prev_mid_states:  Unused (kept for API compat with legacy)
+            messages:         Unused (kept for API compat with legacy)
+            text_context:     Unused (kept for API compat with legacy)
+            bypass_vectors:   Unused (kept for API compat with legacy)
+            history_hiddens:  list of (B, 2048) mean-pooled hidden states from prev cycles
+            prev_scales:      (B, num_atoms) scales from PREVIOUS cycle's controller
+
+        Returns:
+            page:               (B, page_size) normalized on hypersphere
+            atom_scales:        (B, num_atoms) the NEXT cycle's scales (from controller)
+            current_mid_states: None (no perceiver mid states)
+            message:            None (no message generator)
+            page_delta:         (B, page_size) same as page (no separate raw)
+            hidden_pool:        (B, d_model) mean-pooled last hidden layer
+            focus:              (B, 64) Möbius focus point from controller
+            bypass_vec:         None (no bypass)
+        """
+        batch_size = input_ids.size(0)
+
+        # Apply atoms with scales from PREVIOUS cycle (or no atoms for cycle 0)
+        if prev_scales is None:
+            # Cycle 0: no atom modification
+            outputs = self.transformer(
+                input_ids=input_ids, attention_mask=attention_mask,
+                output_hidden_states=True,
+            )
+        else:
+            manager = AtomAdditiveLoRAManager(self.transformer)
+            manager.apply(self.atoms, prev_scales)
+            try:
+                outputs = self.transformer(
+                    input_ids=input_ids, attention_mask=attention_mask,
+                    output_hidden_states=True,
+                )
+            finally:
+                manager.remove()
+
+        hidden_states = list(outputs.hidden_states[1:])  # skip embedding layer, gives 16
+
+        # Controller reads ALL hidden layers + history → page + next_scales + focus
+        if history_hiddens is None:
+            history_hiddens = []
+
+        page, next_scales, focus = self.controller(
+            hidden_states, state_pages, history_hiddens,
+        )
+
+        # Möbius warp for cycle 2+
+        if pass_num > 0:
+            page = self.mobius(page, focus)
+
+        # Hidden pool for history (cast to float32 for stability)
+        hidden_pool = hidden_states[-1].mean(dim=1).float()  # (B, d_model)
+
+        # Return 8 values for compatibility:
+        # page, atom_scales (next), mid_states (None), message (None),
+        # page_delta (=page), hidden_pool, focus, bypass_vec (None)
+        return page, next_scales, None, None, page, hidden_pool, focus, None
+
+    # NOTE: thinking_pass_legacy, thinking_pass_with_sympy, solve_with_memory,
+    # and after_solve have been removed. Use thinking_pass() with the unified
+    # BreathingController.
+    _DEAD_METHODS_REMOVED = True  # sentinel for grep
             max_passes:      int, total passes (for gradient scaling)
             prev_mid_states: Optional list of (B, num_queries, d_perceiver) tensors
                 from previous passes' perceiver mid-layer states.

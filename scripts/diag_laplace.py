@@ -24,10 +24,12 @@ def load_model(ckpt_path, device):
     model.message_generator = model.message_generator.to(device)
     model.ordinal_head = model.ordinal_head.to(device)
     model.mobius = model.mobius.to(device)
+    if hasattr(model, 'bypass'):
+        model.bypass = model.bypass.to(device)
 
     ckpt = torch.load(ckpt_path, map_location='cpu')
     for name in ['compressor', 'atoms', 'hypernet', 'confidence_head',
-                 'residual_gate', 'message_generator', 'ordinal_head']:
+                 'residual_gate', 'message_generator', 'ordinal_head', 'bypass']:
         if name in ckpt:
             obj = getattr(model, name)
             own = obj.state_dict()
@@ -136,19 +138,22 @@ def run_diagnostic(model, samples, device, num_passes=3, num_problems=20):
         state_pages = []
         mid_states_history = []
         messages = []
+        bypass_vectors = []
         all_scales = []
         all_raw_pages = []
 
         with torch.no_grad():
             for pass_num in range(num_passes):
-                page, scales, mid_states, message, raw_page, _hidden, _focus = model.thinking_pass(
+                page, scales, mid_states, message, raw_page, _hidden, _focus, bypass_vec = model.thinking_pass(
                     input_ids, attention_mask, state_pages, pass_num,
                     prev_mid_states=mid_states_history if mid_states_history else None,
                     messages=messages if messages else None,
+                    bypass_vectors=bypass_vectors if bypass_vectors else None,
                 )
                 state_pages.append(page)
                 mid_states_history.append(mid_states)
                 messages.append(message)
+                bypass_vectors.append(bypass_vec)
                 all_scales.append(scales.squeeze(0))
                 all_raw_pages.append(raw_page.squeeze(0))
 
