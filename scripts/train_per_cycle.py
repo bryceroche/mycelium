@@ -138,10 +138,21 @@ def per_cycle_collate_fn(batch):
 # Forward with per-cycle answer head loss
 # ---------------------------------------------------------------------------
 
+def per_cycle_target_weight(final_accuracy, cycle, total_cycles):
+    """Smoothly fade intermediate targets as accuracy climbs.
+    Final cycle: always 1.0. Intermediate cycles: sigmoid fade centered at 80%.
+    Dormant below 70%. Fully faded above 90%."""
+    if cycle == total_cycles - 1:
+        return 1.0  # final cycle always fully supervised
+    fade = torch.sigmoid(torch.tensor((final_accuracy - 0.80) * 15.0))
+    return float(1.0 - fade)
+
+
 def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_mask,
                             finals_t, cycle_gen_targets=None,
                             num_passes=5, max_length=192,
-                            lam_gen=1.0, lam_ah=0.5):
+                            lam_gen=1.0, lam_ah=0.5,
+                            final_accuracy=0.0):
     """Forward pass with hybrid per-cycle loss: generation + answer head.
 
     Each cycle:
@@ -189,6 +200,8 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
     state_pages = []
     messages = []
     prev_predictions = []  # list of (B,) tensors — accumulated answer head predictions
+    # Track which targets have been consumed (per-sample, prevents repeating)
+    consumed = cycle_mask.clone()  # (B, max_steps) — 1.0 = available, will zero when claimed
     atom_scales_history = []
     mid_states_history = []
     pre_tanh_history = []
@@ -342,29 +355,51 @@ def forward_train_per_cycle(model, answer_head, problems, cycle_targets, cycle_m
                 # Apply cycle mask
                 gen_loss_this = (gen_loss_per_sample * mask_val).sum() / mask_val.sum()
 
-                # === ANSWER HEAD LOSS ===
-                # Read the raw page for this cycle
+                # === ANSWER HEAD LOSS (flexible + consumption) ===
+                # Match ANY remaining intermediate OR final. Each intermediate
+                # can only be claimed ONCE — prevents repeating the easiest answer.
                 current_page = page.float()
-                ah_loss_this = answer_head_loss(answer_head, current_page, cycle_target)
+                all_ah_losses = []
+                all_ah_indices = []  # track which target each loss corresponds to
+                # Check against REMAINING (unconsumed) intermediate targets
+                for t_idx in range(cycle_targets.size(1)):
+                    if consumed[:, t_idx].sum() > 0:  # at least one sample has this available
+                        all_ah_losses.append(
+                            answer_head_loss(answer_head, current_page, cycle_targets[:, t_idx])
+                        )
+                        all_ah_indices.append(t_idx)
+                # Always check against final answer (never consumed)
+                all_ah_losses.append(answer_head_loss(answer_head, current_page, finals_t))
+                all_ah_indices.append(-1)  # -1 = final answer
+                # Take the best match
+                stacked = torch.stack(all_ah_losses)
+                best_idx = stacked.argmin().item()
+                ah_loss_this = stacked[best_idx]
+                # Consume the matched target (if not final answer)
+                matched_target_idx = all_ah_indices[best_idx]
+                if matched_target_idx >= 0:
+                    consumed[:, matched_target_idx] = 0.0  # consumed for ALL samples in batch
                 mask_frac = mask_val.mean()
 
-                # === ORDINAL ATTENTION LOSS (WHERE to look) ===
-                # Target: cycle 0 → sentence 0, cycle 1 → sentence 1, etc.
-                ordinal_logits = model.ordinal_head(page)  # (B, max_sentences)
-                ordinal_target = torch.full((batch_size,), pass_num,
-                                            dtype=torch.long, device=device)
-                ordinal_loss_this = F.cross_entropy(ordinal_logits, ordinal_target)
+                # Ordinal loss disabled — with flexible ordering, the model
+                # attends to whatever step it's computing, not prescribed order
+                ordinal_loss_this = torch.tensor(0.0, device=device)
                 per_cycle_ordinal_loss = per_cycle_ordinal_loss + ordinal_loss_this * mask_frac
+
+                # Smooth fading: intermediate cycle targets fade as accuracy climbs
+                # Dormant below 70%, fully faded above 90%. Final cycle always 1.0.
+                total_supervised = cycle_targets.size(1)
+                fade_w = per_cycle_target_weight(final_accuracy, pass_num, total_supervised)
 
                 # Per-cycle weight flip:
                 # Cycle 1 (parsing): gen loss drives, answer head supplements
                 # Cycle 2+ (computation): answer head DOMINATES, gen is background
                 if pass_num == 0:
-                    per_cycle_gen_loss = per_cycle_gen_loss + gen_loss_this * 1.0
-                    per_cycle_ah_loss = per_cycle_ah_loss + ah_loss_this * mask_frac * 0.5
+                    per_cycle_gen_loss = per_cycle_gen_loss + gen_loss_this * 1.0 * fade_w
+                    per_cycle_ah_loss = per_cycle_ah_loss + ah_loss_this * mask_frac * 0.5 * fade_w
                 else:
-                    per_cycle_gen_loss = per_cycle_gen_loss + gen_loss_this * 0.1
-                    per_cycle_ah_loss = per_cycle_ah_loss + ah_loss_this * mask_frac * 5.0
+                    per_cycle_gen_loss = per_cycle_gen_loss + gen_loss_this * 0.1 * fade_w
+                    per_cycle_ah_loss = per_cycle_ah_loss + ah_loss_this * mask_frac * 5.0 * fade_w
                 valid_cycles += 1
 
             # Record predictions for diagnostics
@@ -946,6 +981,7 @@ def train(args):
                 model, answer_head, problems, cycle_targets, cycle_mask,
                 finals_t, cycle_gen_targets=cycle_gen_targets,
                 num_passes=args.num_passes, max_length=max_length,
+                final_accuracy=best_final / 100.0,  # smooth fading uses 0-1 scale
             )
 
             total_loss = (args.lam_gen * gen_loss
@@ -1074,7 +1110,7 @@ if __name__ == '__main__':
     )
     p.add_argument(
         '--level', type=str, required=True,
-        choices=['L3', 'L4', 'L4.5', 'L4.7', 'L4.9', 'L5'],
+        choices=['L3', 'L4', 'L4.5', 'L4.7', 'L4.9', 'L5', 'gsm8k'],
         help='Curriculum level to train',
     )
     p.add_argument('--data_dir', type=str, default='data/per_cycle/',

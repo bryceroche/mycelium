@@ -351,9 +351,10 @@ class AtomHypernetwork(nn.Module):
         self,
         page_size: int = 64,
         num_atoms: int = 64,
-        attn_dim: int = 512,
-        num_query_heads: int = 4,
-        num_attn_heads: int = 8,
+        attn_dim: int = 1024,
+        num_query_heads: int = 8,
+        num_attn_heads: int = 16,
+        num_attn_layers: int = 6,
         pass_embed_dim: int = 512,  # kept for backward compat, ignored if skip_pass_embed
         pass_embed_scale: float = 1.0,  # kept for backward compat
         skip_pass_embed: bool = False,
@@ -370,53 +371,44 @@ class AtomHypernetwork(nn.Module):
         self.message_dim = message_dim
         self.max_messages = max_messages
 
-        # ===== DIRECT PATH (v24.7 — clean gradient highway) =====
-        # Reads last page only, bypasses cross-attention softmax
+        # ===== DIRECT PATH (gradient highway — reads last page only) =====
         self.direct_path = nn.Sequential(
-            nn.Linear(page_size, 256),
+            nn.Linear(page_size, 512),
             nn.GELU(),
             nn.Dropout(0.1),
-            nn.Linear(256, num_atoms),
+            nn.Linear(512, num_atoms),
         )
 
         # ===== BLEND (learnable mixing of direct + contextual) =====
-        # Initialize to 0.5 (balanced). Model can shift during training.
-        # sigmoid(0.0) = 0.5
         self.blend_logit = nn.Parameter(torch.tensor(0.0))
 
-        # --- Page reading: 2-layer cross-attention (CONTEXTUAL PATH) ---
+        # --- Page reading: 6-layer cross-attention (CONTEXTUAL PATH, ~100M) ---
         self.page_project = nn.Linear(page_size, attn_dim)
-
         self.page_query = nn.Parameter(torch.randn(num_query_heads, attn_dim) * 0.02)
 
-        # Layer 1
-        self.page_attn_1 = nn.MultiheadAttention(
-            attn_dim, num_heads=num_attn_heads, batch_first=True,
-        )
-        self.page_norm_1 = nn.LayerNorm(attn_dim)
-        self.page_ffn_1 = nn.Sequential(
-            nn.Linear(attn_dim, attn_dim * 2), nn.GELU(), nn.Linear(attn_dim * 2, attn_dim),
-        )
-        self.page_ffn_norm_1 = nn.LayerNorm(attn_dim)
+        # Build N attention layers dynamically
+        self.attn_layers = nn.ModuleList()
+        self.attn_norms = nn.ModuleList()
+        self.ffn_layers = nn.ModuleList()
+        self.ffn_norms = nn.ModuleList()
+        for _ in range(num_attn_layers):
+            self.attn_layers.append(
+                nn.MultiheadAttention(attn_dim, num_heads=num_attn_heads, batch_first=True)
+            )
+            self.attn_norms.append(nn.LayerNorm(attn_dim))
+            self.ffn_layers.append(nn.Sequential(
+                nn.Linear(attn_dim, attn_dim * 4), nn.GELU(), nn.Linear(attn_dim * 4, attn_dim),
+            ))
+            self.ffn_norms.append(nn.LayerNorm(attn_dim))
 
-        # Layer 2
-        self.page_attn_2 = nn.MultiheadAttention(
-            attn_dim, num_heads=num_attn_heads, batch_first=True,
-        )
-        self.page_norm_2 = nn.LayerNorm(attn_dim)
-        self.page_ffn_2 = nn.Sequential(
-            nn.Linear(attn_dim, attn_dim * 2), nn.GELU(), nn.Linear(attn_dim * 2, attn_dim),
-        )
-        self.page_ffn_norm_2 = nn.LayerNorm(attn_dim)
-
-        # Flatten 4 queries x 512 dim = 2048 -> summary 1024
-        self.summary_project = nn.Linear(num_query_heads * attn_dim, 1024)
+        # Flatten queries -> summary
+        self.summary_project = nn.Linear(num_query_heads * attn_dim, 2048)
 
         # --- Message projection (read inter-cycle messages) ---
         self.message_project = nn.Sequential(
-            nn.Linear(message_dim * max_messages, 256),
+            nn.Linear(message_dim * max_messages, 512),
             nn.GELU(),
-            nn.Linear(256, 256),
+            nn.Linear(512, 512),
         )
 
         # --- Fourier pass encoding (conditional, skipped in v24.6) ---
@@ -426,19 +418,17 @@ class AtomHypernetwork(nn.Module):
                 torch.exp(torch.arange(0, pass_embed_dim, 2) * -(math.log(10000.0) / pass_embed_dim))
             )
             self.pass_project = nn.Linear(pass_embed_dim, pass_embed_dim)
-            mlp_input_dim = 1024 + pass_embed_dim + 256  # page_summary + pass_embed + msg_summary = 1792
+            mlp_input_dim = 2048 + pass_embed_dim + 512
         else:
-            # No pass embedding — pages + messages are the inputs to the hypernetwork
-            mlp_input_dim = 1024 + 256  # page_summary + msg_summary = 1280
+            mlp_input_dim = 2048 + 512  # summary + msg_summary = 2560
 
-        # --- Deep MLP: mlp_input_dim -> 1024 -> 512 -> 64 ---
-        # Split into pre-tanh and tanh for regularization access
+        # --- Deep MLP: 2560 -> 2048 -> 1024 -> 512 -> 64 ---
         self.scale_mlp = nn.Sequential(
-            nn.Linear(mlp_input_dim, 1024),
+            nn.Linear(mlp_input_dim, 2048),
             nn.GELU(),
             nn.Dropout(0.1),
-            nn.LayerNorm(1024),
-            nn.Linear(1024, 1024),
+            nn.LayerNorm(2048),
+            nn.Linear(2048, 1024),
             nn.GELU(),
             nn.Dropout(0.1),
             nn.LayerNorm(1024),
@@ -446,11 +436,9 @@ class AtomHypernetwork(nn.Module):
             nn.GELU(),
             nn.Linear(512, num_atoms),
         )
-        self.scale_activation = nn.Tanh()  # bounded [-1, 1], independent
-        # Gentle bias: tanh(0.05)≈0.05 → atoms barely active but gradient flows
+        self.scale_activation = nn.Tanh()
         self.scale_mlp[-1].bias.data.fill_(0.05)
 
-        # For backward compat: scale_net wraps the full pipeline
         self.scale_net = nn.Sequential(self.scale_mlp, self.scale_activation)
 
     def fourier_encode(self, pass_num: int, device: torch.device) -> torch.Tensor:
@@ -496,46 +484,41 @@ class AtomHypernetwork(nn.Module):
         # Bypasses cross-attention softmax, clean gradient to last_page
         direct_logits = self.direct_path(last_page)     # (B, num_atoms)
 
-        # ===== CONTEXTUAL PATH (existing — attention over all pages) =====
+        # ===== CONTEXTUAL PATH (6-layer cross-attention, ~100M) =====
         pages_proj = self.page_project(pages)            # (B, P, attn_dim)
         queries = self.page_query.unsqueeze(0).expand(batch_size, -1, -1)  # (B, Q, attn_dim)
 
-        # Layer 1: cross-attention + FFN
-        att1, _ = self.page_attn_1(query=queries, key=pages_proj, value=pages_proj)
-        queries = self.page_norm_1(queries + att1)
-        queries = self.page_ffn_norm_1(queries + self.page_ffn_1(queries))
-
-        # Layer 2: cross-attention + FFN
-        att2, _ = self.page_attn_2(query=queries, key=pages_proj, value=pages_proj)
-        queries = self.page_norm_2(queries + att2)
-        queries = self.page_ffn_norm_2(queries + self.page_ffn_2(queries))
+        # N-layer cross-attention + FFN with residual connections
+        for attn, norm, ffn, ffn_norm in zip(
+            self.attn_layers, self.attn_norms, self.ffn_layers, self.ffn_norms
+        ):
+            att_out, _ = attn(query=queries, key=pages_proj, value=pages_proj)
+            queries = norm(queries + att_out)
+            queries = ffn_norm(queries + ffn(queries))
 
         # Flatten queries -> summary
-        page_summary = self.summary_project(queries.flatten(1))  # (B, 1024)
+        page_summary = self.summary_project(queries.flatten(1))  # (B, 2048)
 
         # Read messages
         if messages and len(messages) > 0:
             msg_list = list(messages)
-            # Pad to max_messages
             if len(msg_list) < self.max_messages:
                 pad = [torch.zeros_like(msg_list[0])] * (self.max_messages - len(msg_list))
                 msg_list = msg_list + pad
-            msg_cat = torch.cat(msg_list[:self.max_messages], dim=-1)  # (B, message_dim * max_messages)
-            msg_summary = self.message_project(msg_cat.to(dtype=page_summary.dtype))  # (B, 256)
+            msg_cat = torch.cat(msg_list[:self.max_messages], dim=-1)
+            msg_summary = self.message_project(msg_cat.to(dtype=page_summary.dtype))  # (B, 512)
         else:
-            msg_summary = torch.zeros(batch_size, 256, device=device, dtype=page_summary.dtype)
+            msg_summary = torch.zeros(batch_size, 512, device=device, dtype=page_summary.dtype)
 
-        # Generate contextual logits (with or without pass embedding)
+        # Generate contextual logits
         if self.skip_pass_embed:
-            # v24.6: Pages + messages are the inputs — no pass embedding shortcut
-            combined = torch.cat([page_summary, msg_summary], dim=-1)  # (B, 1280)
-            context_logits = self.scale_mlp(combined)  # (B, num_atoms)
+            combined = torch.cat([page_summary, msg_summary], dim=-1)  # (B, 2560)
+            context_logits = self.scale_mlp(combined)
         else:
-            # Legacy: include Fourier pass encoding
-            pass_emb = self.fourier_encode(pass_num, device).unsqueeze(0).expand(batch_size, -1)  # (B, 512)
+            pass_emb = self.fourier_encode(pass_num, device).unsqueeze(0).expand(batch_size, -1)
             pass_emb = pass_emb * self.pass_embed_scale
-            combined = torch.cat([page_summary, pass_emb, msg_summary], dim=-1)  # (B, 1792)
-            context_logits = self.scale_mlp(combined)  # (B, num_atoms)
+            combined = torch.cat([page_summary, pass_emb, msg_summary], dim=-1)
+            context_logits = self.scale_mlp(combined)
 
         # ===== BLEND direct + contextual =====
         blend = torch.sigmoid(self.blend_logit)  # scalar in (0, 1)
@@ -565,15 +548,23 @@ class AnswerHead(nn.Module):
     - digit_heads: max_digits x Linear(page_size, 10) -> 0-9 per position
     """
 
-    def __init__(self, page_size: int = 64, max_digits: int = 6, hidden: int = 256):
+    def __init__(self, page_size: int = 64, max_digits: int = 8,
+                 hidden: int = 512, max_cycles: int = 12):
         super().__init__()
         self.page_size = page_size
         self.max_digits = max_digits
 
-        # Shared encoder: page -> richer representation
+        # Per-cycle embedding so the head knows which reasoning pass it's on
+        self.cycle_embed = nn.Embedding(max_cycles, hidden)
+
+        # Shared encoder: page + cycle embedding -> richer representation (~5M params)
         self.encoder = nn.Sequential(
-            nn.Linear(page_size, hidden),
+            nn.Linear(page_size + hidden, hidden),
             nn.GELU(),
+            nn.LayerNorm(hidden),
+            nn.Linear(hidden, hidden),
+            nn.GELU(),
+            nn.LayerNorm(hidden),
             nn.Linear(hidden, hidden),
             nn.GELU(),
         )
@@ -584,11 +575,12 @@ class AnswerHead(nn.Module):
         ])
 
     def forward(
-        self, last_page: torch.Tensor,
+        self, last_page: torch.Tensor, cycle_num: int = 0,
     ) -> Tuple[torch.Tensor, torch.Tensor, List[torch.Tensor]]:
         """
         Args:
-            last_page: (B, page_size) — raw page
+            last_page:  (B, page_size) — raw page
+            cycle_num:  int — which reasoning cycle (0-indexed)
 
         Returns:
             sign_logits:   (B, 2)
@@ -596,24 +588,29 @@ class AnswerHead(nn.Module):
             digit_logits:  list of max_digits x (B, 10)
         """
         page = last_page.float()
-        h = self.encoder(page)
+        cycle_idx = torch.tensor(cycle_num, device=page.device)
+        cycle_emb = self.cycle_embed(cycle_idx)              # (hidden,)
+        cycle_emb = cycle_emb.unsqueeze(0).expand(page.size(0), -1)  # (B, hidden)
+        combined = torch.cat([page, cycle_emb], dim=-1)      # (B, page_size + hidden)
+        h = self.encoder(combined)
         sign_logits = self.sign_head(h)
         length_logits = self.length_head(h)
         digit_logits = [head(h) for head in self.digit_heads]
         return sign_logits, length_logits, digit_logits
 
     @torch.no_grad()
-    def decode(self, last_page: torch.Tensor) -> torch.Tensor:
+    def decode(self, last_page: torch.Tensor, cycle_num: int = 0) -> torch.Tensor:
         """
         Decode predicted answer as integer tensor (B,).
 
         Args:
             last_page: (B, page_size)
+            cycle_num: int — which reasoning cycle (0-indexed)
 
         Returns:
             answers: (B,) integer tensor
         """
-        sign_logits, length_logits, digit_logits = self.forward(last_page)
+        sign_logits, length_logits, digit_logits = self.forward(last_page, cycle_num=cycle_num)
         batch_size = last_page.size(0)
 
         num_digits = length_logits.argmax(dim=-1) + 1  # (B,) 1-indexed
@@ -638,6 +635,7 @@ def answer_head_loss(
     answer_head: AnswerHead,
     last_page: torch.Tensor,
     gold_answers: torch.Tensor,
+    cycle_num: int = 0,
 ) -> torch.Tensor:
     """
     Compute answer head loss from gold integer answers.
@@ -646,11 +644,12 @@ def answer_head_loss(
         answer_head: AnswerHead module
         last_page:   (B, page_size)
         gold_answers: (B,) integer tensor
+        cycle_num:   int — which reasoning cycle (0-indexed)
 
     Returns:
         loss: scalar tensor
     """
-    sign_logits, length_logits, digit_logits = answer_head(last_page)
+    sign_logits, length_logits, digit_logits = answer_head(last_page, cycle_num=cycle_num)
     device = last_page.device
     batch_size = last_page.size(0)
 
@@ -707,17 +706,27 @@ class AtomConfidenceHead(nn.Module):
     def __init__(
         self,
         page_size: int = 64,
-        hidden: int = 128,
-        num_heads: int = 4,
+        hidden: int = 512,
+        num_heads: int = 8,
     ):
         super().__init__()
         self.page_project = nn.Linear(page_size, hidden)
-        self.attn = nn.MultiheadAttention(hidden, num_heads=num_heads, batch_first=True)
         self.query = nn.Parameter(torch.randn(1, hidden) * 0.02)
+
+        # 2-layer cross-attention
+        self.attn1 = nn.MultiheadAttention(hidden, num_heads=num_heads, batch_first=True)
+        self.norm1 = nn.LayerNorm(hidden)
+        self.attn2 = nn.MultiheadAttention(hidden, num_heads=num_heads, batch_first=True)
+        self.norm2 = nn.LayerNorm(hidden)
+
+        # Deep output MLP
         self.output = nn.Sequential(
-            nn.Linear(hidden, 32),
-            nn.ReLU(),
-            nn.Linear(32, 1),
+            nn.Linear(hidden, hidden),
+            nn.GELU(),
+            nn.LayerNorm(hidden),
+            nn.Linear(hidden, 128),
+            nn.GELU(),
+            nn.Linear(128, 1),
             nn.Sigmoid(),
         )
 
@@ -732,13 +741,21 @@ class AtomConfidenceHead(nn.Module):
         Returns:
             confidence: (B, 1) in [0, 1]
         """
+        if not state_pages or len(state_pages) == 0:
+            return torch.tensor([[0.5]], device=state_pages[0].device if state_pages else 'cpu')
+
         pages = torch.stack(state_pages, dim=1).float()  # (B, P, page_size)
         pages_proj = self.page_project(pages)             # (B, P, hidden)
 
         batch_size = pages.size(0)
         q = self.query.unsqueeze(0).expand(batch_size, -1, -1)  # (B, 1, hidden)
-        attended, _ = self.attn(query=q, key=pages_proj, value=pages_proj)
-        return self.output(attended.squeeze(1))  # (B, 1)
+
+        att1, _ = self.attn1(query=q, key=pages_proj, value=pages_proj)
+        q = self.norm1(q + att1)
+        att2, _ = self.attn2(query=q, key=pages_proj, value=pages_proj)
+        q = self.norm2(q + att2)
+
+        return self.output(q.squeeze(1))  # (B, 1)
 
 
 # ---------------------------------------------------------------------------
@@ -980,11 +997,9 @@ class AtomLoRAModel(nn.Module):
             state_pages=state_pages,
         )
 
-        # Normalize on hypersphere
+        # Normalize to hypersphere. No encoding — let the atoms/perceiver
+        # produce natural diversity. Encoding was masking the true signal.
         page = F.normalize(page_delta, dim=-1) * self.page_radius
-
-        # Add Fourier structural identity (after normalization)
-        page = self.fourier_page.apply(page, pass_num)
 
         # Gradient scaling for earlier cycles (amplify earlier passes)
         grad_scale = min(float(max_passes - pass_num), 4.0)
@@ -1114,11 +1129,8 @@ class AtomLoRAModel(nn.Module):
                 # This allows SymPy results to influence the page content
                 page_delta = page_delta + sympy_encoding.unsqueeze(0).expand(batch_size, -1)
 
-        # --- Step 4: Normalize on hypersphere (after SymPy encoding added) ---
+        # --- Step 4: Normalize to hypersphere (no encoding) ---
         page = F.normalize(page_delta, dim=-1) * self.page_radius
-
-        # Add Fourier structural identity (after normalization)
-        page = self.fourier_page.apply(page, pass_num)
 
         # Gradient scaling for earlier cycles
         grad_scale = min(float(max_passes - pass_num), 4.0)
