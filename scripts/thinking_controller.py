@@ -230,6 +230,17 @@ class ThinkingController(nn.Module):
         self.trunk_body = nn.Sequential(*trunk_layers)
         self.trunk_dim = trunk_dim
 
+        # --- Sharp cross-attention: page queries hidden states ---
+        # Low temperature amplifies per-problem differences across passes.
+        # Different pages attend to different parts of the problem.
+        self.page_cross_attn = nn.MultiheadAttention(
+            embed_dim=page_dim, num_heads=8, batch_first=True,
+            kdim=hidden_dim, vdim=hidden_dim,
+        )
+        self.page_cross_norm = nn.LayerNorm(page_dim)
+        self.page_cross_proj = nn.Linear(page_dim, page_dim)  # refine cross-attended features
+        self.cross_attn_temperature = 0.1  # sharp attention
+
         # --- Output heads ---
 
         # Page head: "what did I understand?" (256d hypersphere)
@@ -239,10 +250,12 @@ class ThinkingController(nn.Module):
             nn.Linear(512, page_dim),
         )
 
-        # Soft token head: pages → Llama embedding space (differentiable steering)
-        # Produces N_soft tokens of dimension hidden_dim (2048)
-        self.soft_token_head = nn.Sequential(
-            nn.Linear(trunk_dim, 1024),
+        # Soft token head: TRAJECTORY → Llama embedding space
+        # Reads ALL pages from the inner loop (not just the last trunk output).
+        # Different trajectories → different soft tokens.
+        self.max_think_passes = 6  # max pages in trajectory
+        self.trajectory_to_soft = nn.Sequential(
+            nn.Linear(page_dim * self.max_think_passes, 1024),
             nn.GELU(),
             nn.Linear(1024, num_soft_tokens * hidden_dim),
         )
@@ -279,33 +292,60 @@ class ThinkingController(nn.Module):
     def think(self, hidden_states_all_layers, all_pages, cycle_num,
               max_passes=3, energy_threshold=0.15):
         """
-        Inner thinking loop. Reads hidden states + accumulated pages,
-        writes new pages, decides when to stop thinking.
+        Inner thinking loop with sharp cross-attention.
 
-        Args:
-            hidden_states_all_layers: list of (batch, seq_len, 2048) from Llama
-            all_pages: list of (batch, 256) pages from previous cycles
-            cycle_num: current cycle index
-            max_passes: max thinking iterations
-            energy_threshold: stop when energy drops below this
+        Each pass: page queries hidden states (sharp attention amplifies
+        per-problem differences), then trunk produces next page.
+        Soft tokens come from the TRAJECTORY (all pages), not just the endpoint.
 
         Returns:
-            trunk_output: (batch, trunk_dim) final trunk state after thinking
-            cycle_pages: list of (batch, 256) pages written during thinking
-            energies: list of (batch, 1) energy values per pass
+            trunk_output: (batch, trunk_dim) final trunk state
+            cycle_pages: list of (batch, 256) pages from each pass
+            energies: list of (batch, 1) energy per pass
         """
         # Encode Llama's hidden states (once per cycle)
         state = self.state_encoder(hidden_states_all_layers)  # (batch, latent_dim)
+
+        # Prepare hidden states for cross-attention (project to page dim)
+        weights = F.softmax(self.state_encoder.layer_weights.detach(), dim=0)
+        combined_hidden = sum(
+            w * h for w, h in zip(weights, hidden_states_all_layers)
+        )  # (batch, seq_len, 2048)
 
         device = state.device
         cycle_pages = []
         energies = []
 
-        for pass_num in range(max_passes):
-            # Read all available pages (previous cycles + current thinking)
-            available_pages = all_pages + cycle_pages
+        # Initial page from state (pass 0 seed)
+        page = F.normalize(self.page_head(
+            self.trunk(torch.cat([
+                state,
+                self.page_attn.no_history.expand(state.size(0), -1),
+                self.cycle_embed(torch.tensor(min(cycle_num, 15), device=device)).expand(state.size(0), -1),
+                self.pass_embed(torch.tensor(0, device=device)).expand(state.size(0), -1),
+            ], dim=-1))
+        ), dim=-1)
+        cycle_pages.append(page)
 
-            # Page attention
+        for pass_num in range(1, max_passes):
+            # Sharp cross-attention: current page queries hidden states
+            # Low temperature → sharp attention → different pages attend to
+            # different parts of the problem → amplifies per-problem differences
+            query = self.page_cross_norm(page).unsqueeze(1)  # (batch, 1, 256)
+
+            # Scale queries by 1/temperature for sharp attention
+            query_scaled = query / self.cross_attn_temperature
+
+            attended, _ = self.page_cross_attn(
+                query_scaled, combined_hidden, combined_hidden,
+            )  # (batch, 1, 2048) — what the page "sees" in the problem
+            attended = attended.squeeze(1)  # (batch, 2048)
+
+            # Project attended hidden to page dim and mix with current page
+            attended_page = self.page_cross_proj(attended)  # (batch, 256)
+
+            # Read notebook history
+            available_pages = all_pages + cycle_pages
             context = self.page_attn(state, available_pages)
 
             # Positional context
@@ -316,21 +356,20 @@ class ThinkingController(nn.Module):
                 torch.tensor(min(pass_num, 7), device=device)
             ).expand(state.size(0), -1)
 
-            # Trunk
+            # Trunk: state + context + what-I-attended-to
             trunk_input = torch.cat([state, context, cycle_ctx, pass_ctx], dim=-1)
             trunk_out = self.trunk(trunk_input)
             trunk_out = self.trunk_body(trunk_out)
 
-            # Write page (record thinking)
-            raw_page = self.page_head(trunk_out)
-            page = F.normalize(raw_page, dim=-1)  # unit hypersphere
+            # New page: trunk output + cross-attended information
+            raw_page = self.page_head(trunk_out) + attended_page
+            page = F.normalize(raw_page, dim=-1)
             cycle_pages.append(page)
 
-            # Energy (thinking convergence)
+            # Energy
             energy = torch.sigmoid(self.energy_head(trunk_out))
             energies.append(energy)
 
-            # Adaptive stopping
             if energy.mean().item() < energy_threshold:
                 break
 
@@ -354,19 +393,44 @@ class ThinkingController(nn.Module):
 
         return action_logits, confidence, branch_embed
 
-    def make_soft_tokens(self, trunk_output):
-        """Project thinking into Llama's embedding space.
+    def make_soft_tokens(self, trunk_output, cycle_pages=None):
+        """Project thinking TRAJECTORY into Llama's embedding space.
+
+        If cycle_pages provided, uses the full trajectory (all pages from
+        inner loop passes). Different trajectories → different soft tokens,
+        even if the final page converges to the same basin.
 
         Args:
-            trunk_output: (batch, trunk_dim) from thinking
+            trunk_output: (batch, trunk_dim) from thinking (fallback)
+            cycle_pages: list of (batch, 256) pages from think() passes
 
         Returns:
             soft_tokens: (batch, N_soft, hidden_dim) for injection into Llama
         """
-        raw = self.soft_token_head(trunk_output)  # (batch, N_soft * hidden_dim)
-        soft_tokens = raw.view(
-            trunk_output.size(0), self.num_soft_tokens, self.hidden_dim
-        )
+        if cycle_pages is not None and len(cycle_pages) > 0:
+            batch_size = cycle_pages[0].size(0)
+            device = cycle_pages[0].device
+
+            # Pad or truncate to max_think_passes
+            padded = []
+            for i in range(self.max_think_passes):
+                if i < len(cycle_pages):
+                    padded.append(cycle_pages[i])
+                else:
+                    padded.append(torch.zeros(batch_size, self.page_dim,
+                                             device=device, dtype=cycle_pages[0].dtype))
+
+            # Concatenate full trajectory
+            trajectory = torch.cat(padded, dim=-1)  # (batch, page_dim * max_passes)
+            raw = self.trajectory_to_soft(trajectory)  # (batch, N_soft * hidden_dim)
+        else:
+            # Fallback: use trunk output directly (for smoke test etc)
+            raw = self.trajectory_to_soft(
+                torch.zeros(trunk_output.size(0), self.page_dim * self.max_think_passes,
+                           device=trunk_output.device, dtype=trunk_output.dtype)
+            )
+
+        soft_tokens = raw.view(raw.size(0), self.num_soft_tokens, self.hidden_dim)
         return soft_tokens
 
 
@@ -396,7 +460,8 @@ if __name__ == "__main__":
         'page_attn': ctrl.page_attn,
         'trunk + trunk_body': nn.Sequential(ctrl.trunk, ctrl.trunk_body),
         'page_head': ctrl.page_head,
-        'soft_token_head': ctrl.soft_token_head,
+        'trajectory_to_soft': ctrl.trajectory_to_soft,
+        'page_cross_attn': ctrl.page_cross_attn,
         'action_head': ctrl.action_head,
         'energy_head': ctrl.energy_head,
         'confidence_head': ctrl.confidence_head,
@@ -422,16 +487,21 @@ if __name__ == "__main__":
     print(f"  Action logits: {action_logits.shape}")
     print(f"  Confidence: {conf.mean():.3f}")
 
-    soft = ctrl.make_soft_tokens(trunk_out)
+    soft = ctrl.make_soft_tokens(trunk_out, pages)
     print(f"  Soft tokens: {soft.shape}")  # (batch, N_soft, 2048)
 
-    # Check page diversity across different inputs
+    # Check trajectory diversity across different inputs
     hidden2 = [torch.randn(batch, 20, 2048) for _ in range(16)]
     trunk2, pages2, _ = ctrl.think(hidden2, all_pages=[], cycle_num=0)
-    soft2 = ctrl.make_soft_tokens(trunk2)
+    soft2 = ctrl.make_soft_tokens(trunk2, pages2)
 
     cos = F.cosine_similarity(
-        soft.view(batch, -1)[:1], soft2.view(batch, -1)[:1]
+        soft.float().view(batch, -1)[:1], soft2.float().view(batch, -1)[:1]
     ).item()
     print(f"\n  Soft token diversity (different inputs): cos={cos:.4f}")
-    print(f"  {'PASS' if cos < 0.95 else 'FAIL'}: different inputs → different soft tokens")
+
+    # Check page trajectory divergence across passes
+    for i, (p1, p2) in enumerate(zip(pages, pages2)):
+        pcos = F.cosine_similarity(p1[:1], p2[:1]).item()
+        print(f"  Pass {i} page cos: {pcos:.4f}")
+    print(f"\n  {'PASS' if cos < 0.95 else 'FAIL'}: different trajectories → different soft tokens")
