@@ -80,7 +80,7 @@ def run_cycle(llama, controller, hidden_states_all, all_pages, notebook,
     action_logits, confidence, branch_embed = controller.decide(trunk_out)
 
     # 3. Soft tokens — controller's thinking projected into Llama's space
-    soft_tokens = controller.make_soft_tokens(trunk_out)  # (batch, N_soft, 2048)
+    soft_tokens = controller.make_soft_tokens(trunk_out, cycle_pages)  # trajectory → soft tokens
 
     # 4. Llama generates with soft tokens
     if teacher_force:
