@@ -438,8 +438,15 @@ def train(args):
             l2 = LoRAAtoms()
             l2 = l2.to(device=device, dtype=torch.bfloat16)
             l2.load_state_dict(ckpt['atoms2'])
-            llama.bake_lora(l2, scale=0.46)
-            print(f"  L2 atoms: baked (universal blend, scale=0.46)")
+            # Use actual v1 per-atom scales if available (28 at +0.46, 36 at -0.46)
+            v1_scales_path = os.path.join(os.path.dirname(args.warm_from), 'v1_universal_scales.pt')
+            if os.path.exists(v1_scales_path):
+                v1_scales = torch.load(v1_scales_path, map_location=device)
+                llama.bake_lora(l2, per_atom_scales=v1_scales)
+                print(f"  L2 atoms: baked (v1 universal pattern, {(v1_scales>0).sum()}/{(v1_scales<0).sum()} +/-)")
+            else:
+                llama.bake_lora(l2, scale=0.46)
+                print(f"  L2 atoms: baked (uniform scale=0.46 — WARNING: may not match v1 pattern)")
             del l2
     else:
         print("WARNING: No --warm_from specified. Llama has no baked math mode.")

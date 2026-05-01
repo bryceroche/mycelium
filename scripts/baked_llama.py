@@ -36,12 +36,15 @@ class BakedLlama(nn.Module):
         self._cached_kv = None
         self._cached_seq_len = 0
 
-    def bake_lora(self, atoms, scale=0.46):
+    def bake_lora(self, atoms, scale=0.46, per_atom_scales=None):
         """Permanently bake LoRA atoms into Llama's weights.
 
         Args:
             atoms: LoRAAtoms module with A/B parameter dicts
-            scale: fixed scale for all atoms (0.46 = universal blend)
+            scale: fixed scale for all atoms (0.46 = uniform blend)
+            per_atom_scales: (64,) tensor of per-atom scales. If provided,
+                overrides the uniform scale. Use this for L2 baking with the
+                actual v1 universal blend pattern (28 at +0.46, 36 at -0.46).
         """
         with torch.no_grad():
             for layer_idx in range(self.num_layers):
@@ -52,7 +55,11 @@ class BakedLlama(nn.Module):
                     )
                     A = atoms.A[proj_name][:, layer_idx]  # (64, d_model, rank)
                     B = atoms.B[proj_name][:, layer_idx]  # (64, rank, proj_dim)
-                    delta = sum(scale * (A[i] @ B[i]) for i in range(A.shape[0]))
+                    if per_atom_scales is not None:
+                        s = per_atom_scales.to(dtype=A.dtype, device=A.device)
+                        delta = sum(s[i] * (A[i] @ B[i]) for i in range(A.shape[0]))
+                    else:
+                        delta = sum(scale * (A[i] @ B[i]) for i in range(A.shape[0]))
                     proj.weight.data += delta.T.to(dtype=proj.weight.dtype)
 
     def encode_problem(self, input_ids, attention_mask=None):
