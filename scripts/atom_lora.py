@@ -15,6 +15,7 @@ Key design choices:
 import math
 import os
 import sys
+from dataclasses import dataclass, field
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, '/home/ubuntu/mycelium')
@@ -517,6 +518,73 @@ class IsotropicRegularizer(nn.Module):
 
 
 # ---------------------------------------------------------------------------
+# TreeNode + TreeNotebook — tree-structured notebook for hierarchical breathing
+# ---------------------------------------------------------------------------
+@dataclass
+class TreeNode:
+    """One node in the tree-structured notebook."""
+    page: torch.Tensor           # (B, page_dim) controller's recorded understanding
+    branch_embed: torch.Tensor   # (B, 64) position in tree
+    hidden_pool: torch.Tensor    # (B, 2048) mean-pooled Llama hidden states
+    action: str                  # 'decompose', 'solve', 'merge'
+    parent_idx: int              # index of parent (-1 for root)
+    children_idx: list = field(default_factory=list)
+    claimed_target: Optional[int] = None
+
+
+class TreeNotebook:
+    """Tree-structured notebook with hierarchical access."""
+
+    def __init__(self):
+        self.nodes: List[TreeNode] = []
+
+    def append(self, node: TreeNode):
+        self.nodes.append(node)
+        return len(self.nodes) - 1  # return index
+
+    @property
+    def pages(self) -> List[torch.Tensor]:
+        return [n.page for n in self.nodes]
+
+    @property
+    def hiddens(self) -> List[torch.Tensor]:
+        return [n.hidden_pool for n in self.nodes]
+
+    @property
+    def branch_embeds(self) -> List[torch.Tensor]:
+        return [n.branch_embed for n in self.nodes]
+
+    def get_ancestors(self, idx: int) -> List[int]:
+        """Get indices of all ancestors (path to root)."""
+        ancestors = []
+        current = idx
+        while current >= 0 and current < len(self.nodes):
+            parent = self.nodes[current].parent_idx
+            if parent >= 0:
+                ancestors.append(parent)
+            current = parent
+        return ancestors
+
+    def get_siblings(self, idx: int) -> List[int]:
+        """Get indices of sibling nodes (same parent)."""
+        if idx < 0 or idx >= len(self.nodes):
+            return []
+        parent_idx = self.nodes[idx].parent_idx
+        if parent_idx < 0:
+            return []
+        return [i for i in self.nodes[parent_idx].children_idx if i != idx]
+
+    def get_children(self, idx: int) -> List[int]:
+        """Get indices of child nodes."""
+        if idx < 0 or idx >= len(self.nodes):
+            return []
+        return self.nodes[idx].children_idx
+
+    def size(self) -> int:
+        return len(self.nodes)
+
+
+# ---------------------------------------------------------------------------
 # BreathingController — unified perceiver + hypernetwork replacement
 # ---------------------------------------------------------------------------
 class BreathingController(nn.Module):
@@ -526,9 +594,9 @@ class BreathingController(nn.Module):
     One network, one understanding, two outputs (record + plan).
     """
     def __init__(self, num_layers=16, hidden_dim=2048,
-                 internal_dim=1536, num_heads=8,
+                 internal_dim=2048, num_heads=8,
                  page_dim=64, num_atoms=64, max_cycles=12,
-                 num_history_layers=6):
+                 num_history_layers=8):
         super().__init__()
         self.internal_dim = internal_dim
         self.page_dim = page_dim
@@ -563,9 +631,14 @@ class BreathingController(nn.Module):
                 'norm2': nn.LayerNorm(internal_dim),
             }))
 
-        # Shared trunk: integrate current + history
+        # Pass/cycle awareness (context, not constraints)
+        self.cycle_embed = nn.Embedding(12, 64)  # max 12 cycles
+        self.pass_embed = nn.Embedding(4, 64)    # max 4 passes per cycle
+        self.prev_scale_project = nn.Linear(64, 64)  # project prev scales (64 atoms → 64 dim)
+
+        # Shared trunk: integrate current + history + awareness context
         self.trunk = nn.Sequential(
-            nn.Linear(internal_dim * 2, internal_dim),
+            nn.Linear(internal_dim * 2 + 192, internal_dim),
             nn.LayerNorm(internal_dim),
             nn.GELU(),
             nn.Linear(internal_dim, internal_dim),
@@ -604,16 +677,39 @@ class BreathingController(nn.Module):
             nn.Linear(256, page_dim),
         )
 
+        # Tree structure outputs
+        self.branch_embed_head = nn.Sequential(
+            nn.Linear(internal_dim, 256),
+            nn.GELU(),
+            nn.Linear(256, 64),  # 64-dim branch embedding
+        )
+
+        self.branch_action_head = nn.Sequential(
+            nn.Linear(internal_dim, 128),
+            nn.GELU(),
+            nn.Linear(128, 3),  # 3 actions: decompose, solve, merge
+        )
+
     def forward(self, hidden_states_all_layers, history_pages, history_hiddens,
-                return_pre_tanh=False):
+                return_pre_tanh=False,
+                cycle_num: int = 0, pass_num: int = 0,
+                prev_scales: Optional[torch.Tensor] = None,
+                history_branch_embeds: Optional[List[torch.Tensor]] = None,
+                current_branch_embed: Optional[torch.Tensor] = None):
         """
         Args:
             hidden_states_all_layers: list of 16 tensors, each (batch, seq, 2048)
             history_pages: list of previous cycle pages [(batch, 64), ...]
             history_hiddens: list of previous cycle hidden pools [(batch, 2048), ...]
             return_pre_tanh: if True, also return pre-tanh scale values
+            cycle_num: which breathing cycle (0-indexed), default 0
+            pass_num: which atom pass within this cycle (0-indexed), default 0
+            prev_scales: (batch, num_atoms) scales from previous pass, or None
+            history_branch_embeds: list of (B, 64) branch embeds from history (Phase 2)
+            current_branch_embed: (B, 64) current node's branch embed (Phase 2)
         Returns:
-            page, scales, focus (and optionally pre_tanh)
+            page, scales, focus, branch_embed, branch_action_logits
+            (and optionally pre_tanh between scales and focus)
         """
         # Weighted combination of all Llama layers
         weights = F.softmax(self.layer_weights, dim=0)
@@ -644,22 +740,39 @@ class BreathingController(nn.Module):
         else:
             history_ctx = torch.zeros_like(current)
 
+        # Awareness context
+        cycle_ctx = self.cycle_embed(
+            torch.tensor(min(cycle_num, 11), device=current.device)
+        ).expand(current.size(0), -1)
+
+        pass_ctx = self.pass_embed(
+            torch.tensor(min(pass_num, 3), device=current.device)
+        ).expand(current.size(0), -1)
+
+        if prev_scales is not None:
+            prev_ctx = self.prev_scale_project(prev_scales.to(current.dtype))
+        else:
+            prev_ctx = torch.zeros(current.size(0), 64, device=current.device, dtype=current.dtype)
+
         # Shared trunk
-        shared = self.trunk(torch.cat([current, history_ctx], dim=-1))
+        shared = self.trunk(torch.cat([current, history_ctx, cycle_ctx, pass_ctx, prev_ctx], dim=-1))
 
         # Two heads
         page = self.page_head(shared)
         page = F.normalize(page, dim=-1) * math.sqrt(self.page_dim)
 
         pre_tanh = self.scale_head(shared)
-        pre_tanh = torch.clamp(pre_tanh, -0.5, 0.5)
-        scales = torch.tanh(pre_tanh)  # output range ~[-0.46, 0.46], optimal for GSM8K
+        scales = 0.46 * torch.tanh(pre_tanh)  # output range [-0.46, 0.46], smooth gradient
 
         focus = self.focus_head(shared)
 
+        # Tree structure
+        branch_embed = self.branch_embed_head(shared)
+        branch_action_logits = self.branch_action_head(shared)
+
         if return_pre_tanh:
-            return page, scales, pre_tanh, focus
-        return page, scales, focus
+            return page, scales, pre_tanh, focus, branch_embed, branch_action_logits
+        return page, scales, focus, branch_embed, branch_action_logits
 
 
 # ---------------------------------------------------------------------------
@@ -711,6 +824,15 @@ class AtomLoRAModel(nn.Module):
             num_layers=self.num_layers,
         )
 
+        # Second atom set for multi-pass (trainable, different random init)
+        self.atoms2 = LoRAAtoms(
+            d_model=self.d_model,
+            d_kv=self.d_kv,
+            rank=atom_rank,
+            num_atoms=num_atoms,
+            num_layers=self.num_layers,
+        )
+
         # --- Confidence head (pages only, no blend) ---
         self.confidence_head = AtomConfidenceHead(
             page_size=self.page_size, hidden=128, num_heads=4,
@@ -722,16 +844,55 @@ class AtomLoRAModel(nn.Module):
         # --- Isotropic regularizer (per-dim variance → 1, correlation → 0) ---
         self.isotropic_reg = IsotropicRegularizer()
 
-        # --- Breathing controller (v27: unified perceiver + hypernetwork) ---
+        # --- Breathing controller (v28: unified perceiver + hypernetwork, scaled to ~350M) ---
         self.controller = BreathingController(
             num_layers=self.num_layers,
             hidden_dim=self.d_model,
-            internal_dim=1536,
+            internal_dim=2048,
             num_heads=8,
             page_dim=self.page_size,
             num_atoms=num_atoms,
-            num_history_layers=6,
+            num_history_layers=8,
         )
+
+        # Flag: set True after bake_l1_atoms() is called
+        self._l1_baked = False
+
+    def bake_l1_atoms(self):
+        """Permanently bake frozen L1 atoms into Llama's projection weights.
+
+        Since L1 is frozen at scale 0.46, we can precompute the LoRA delta
+        and add it to Llama's Q,K,V,O weight matrices. After this, every
+        Llama forward automatically includes L1 — no monkey-patching needed.
+
+        Call once at training start, after loading L1 from checkpoint.
+        """
+        l1_scale = 0.46
+        num_layers = len(self.transformer.model.layers)
+
+        with torch.no_grad():
+            for layer_idx in range(num_layers):
+                for proj_name in ['q_proj', 'k_proj', 'v_proj', 'o_proj']:
+                    proj = getattr(self.transformer.model.layers[layer_idx].self_attn, proj_name)
+
+                    # Get L1 atom matrices for this layer/projection
+                    A = self.atoms.A[proj_name][:, layer_idx]  # (64, d_model, rank)
+                    B = self.atoms.B[proj_name][:, layer_idx]  # (64, rank, proj_dim)
+
+                    # Compute blended delta: sum over atoms of scale * A @ B
+                    # A: (64, d_model, rank), B: (64, rank, proj_dim)
+                    # Per-atom delta: A[i] @ B[i] -> (d_model, proj_dim)
+                    # Blended: sum of l1_scale * A[i] @ B[i] for all atoms
+                    delta = torch.zeros_like(proj.weight.data.T)  # (d_model, proj_dim)
+                    for atom_idx in range(self.atoms.num_atoms):
+                        delta += l1_scale * (A[atom_idx] @ B[atom_idx])
+
+                    # Add to projection weight: W_new = W_base + delta.T
+                    # proj.weight is (proj_dim, d_model), delta is (d_model, proj_dim)
+                    proj.weight.data += delta.T.to(dtype=proj.weight.dtype)
+
+        self._l1_baked = True
+        print(f"Baked L1 atoms into Llama weights (scale={l1_scale}, frozen)")
 
     def thinking_pass(
         self,
@@ -746,13 +907,14 @@ class AtomLoRAModel(nn.Module):
         bypass_vectors: Optional[List[torch.Tensor]] = None,
         history_hiddens: Optional[List[torch.Tensor]] = None,
         prev_scales: Optional[torch.Tensor] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        tree_notebook: Optional['TreeNotebook'] = None,
+    ) -> Tuple:
         """
-        One thinking pass with unified BreathingController (v27).
+        One thinking pass with unified BreathingController.
 
         The controller reads ALL Llama hidden layers + history and produces
-        BOTH page and next_scales in one forward pass. No separate perceiver
-        or hypernetwork call.
+        page, next_scales, focus, branch_embed, and branch_action_logits
+        in one forward pass.
 
         Cycle 0: run Llama WITHOUT atoms (no prev_scales), then controller
         Cycle 1+: run Llama WITH atoms from PREVIOUS cycle's scales, then controller
@@ -769,29 +931,34 @@ class AtomLoRAModel(nn.Module):
             bypass_vectors:   Unused (kept for API compat with legacy)
             history_hiddens:  list of (B, 2048) mean-pooled hidden states from prev cycles
             prev_scales:      (B, num_atoms) scales from PREVIOUS cycle's controller
+            tree_notebook:    Optional TreeNotebook for tree-structured breathing
 
-        Returns:
-            page:               (B, page_size) normalized on hypersphere
-            atom_scales:        (B, num_atoms) the NEXT cycle's scales (from controller)
-            current_mid_states: None (no perceiver mid states)
-            message:            None (no message generator)
-            page_delta:         (B, page_size) same as page (no separate raw)
-            hidden_pool:        (B, d_model) mean-pooled last hidden layer
-            focus:              (B, 64) Möbius focus point from controller
-            bypass_vec:         None (no bypass)
+        Returns 10-tuple:
+            page:                  (B, page_size) normalized on hypersphere
+            atom_scales:           (B, num_atoms) the NEXT cycle's scales (from controller)
+            current_mid_states:    None (no perceiver mid states)
+            message:               None (no message generator)
+            page_delta:            (B, page_size) same as page (no separate raw)
+            hidden_pool:           (B, d_model) mean-pooled last hidden layer
+            focus:                 (B, 64) Möbius focus point from controller
+            bypass_vec:            None (no bypass)
+            branch_embed:          (B, 64) branch embedding for tree structure
+            branch_action_logits:  (B, 3) action logits (decompose, solve, merge)
         """
         batch_size = input_ids.size(0)
 
-        # Apply atoms with scales from PREVIOUS cycle (or no atoms for cycle 0)
+        # Apply L2 atoms with scales from PREVIOUS cycle (or plain L1 for cycle 0)
+        # L1 is baked into Llama's weights — no monkey-patching needed
         if prev_scales is None:
-            # Cycle 0: no atom modification
+            # Cycle 0: just L1 (already baked in), no L2
             outputs = self.transformer(
                 input_ids=input_ids, attention_mask=attention_mask,
                 output_hidden_states=True,
             )
         else:
+            # L2: trainable atoms2 with controller-decided scales
             manager = AtomAdditiveLoRAManager(self.transformer)
-            manager.apply(self.atoms, prev_scales)
+            manager.apply(self.atoms2, prev_scales)
             try:
                 outputs = self.transformer(
                     input_ids=input_ids, attention_mask=attention_mask,
@@ -802,12 +969,20 @@ class AtomLoRAModel(nn.Module):
 
         hidden_states = list(outputs.hidden_states[1:])  # skip embedding layer, gives 16
 
-        # Controller reads ALL hidden layers + history → page + next_scales + focus
+        # Controller reads ALL hidden layers + history → page + next_scales + focus + tree outputs
         if history_hiddens is None:
             history_hiddens = []
 
-        page, next_scales, focus = self.controller(
+        # Pass branch embeds from tree notebook if available
+        history_branch_embeds = None
+        current_branch_embed = None
+        if tree_notebook is not None and tree_notebook.size() > 0:
+            history_branch_embeds = tree_notebook.branch_embeds
+
+        page, next_scales, focus, branch_embed, branch_action_logits = self.controller(
             hidden_states, state_pages, history_hiddens,
+            history_branch_embeds=history_branch_embeds,
+            current_branch_embed=current_branch_embed,
         )
 
         # Möbius warp for cycle 2+
@@ -817,10 +992,75 @@ class AtomLoRAModel(nn.Module):
         # Hidden pool for history (cast to float32 for stability)
         hidden_pool = hidden_states[-1].mean(dim=1).float()  # (B, d_model)
 
-        # Return 8 values for compatibility:
-        # page, atom_scales (next), mid_states (None), message (None),
-        # page_delta (=page), hidden_pool, focus, bypass_vec (None)
-        return page, next_scales, None, None, page, hidden_pool, focus, None
+        # Return 10 values (extended from 8 for tree support):
+        return page, next_scales, None, None, page, hidden_pool, focus, None, branch_embed, branch_action_logits
+
+    def thinking_pass_multipass(
+        self,
+        input_ids, attention_mask,
+        state_pages, history_hiddens,
+        cycle_num=0, num_inner_passes=2,
+        prev_cycle_scales=None,
+        tree_notebook=None,
+    ):
+        """Single Llama forward per cycle. L1 baked into weights.
+
+        1. Run Llama with L2 (prev_scales) -> hidden states + output
+        2. Controller iterates K times for NEXT cycle's L2 scales
+
+        Only 1 Llama forward per cycle. Controller iterations are cheap.
+
+        Returns same 10-tuple as thinking_pass.
+        """
+        batch_size = input_ids.size(0)
+
+        # ONE Llama forward with L2 applied (L1 already baked into weights)
+        if prev_cycle_scales is not None:
+            manager = AtomAdditiveLoRAManager(self.transformer)
+            manager.apply(self.atoms2, prev_cycle_scales)
+            try:
+                outputs = self.transformer(
+                    input_ids=input_ids, attention_mask=attention_mask,
+                    output_hidden_states=True,
+                )
+            finally:
+                manager.remove()
+        else:
+            # Cycle 0: just L1 (already baked in), no L2
+            outputs = self.transformer(
+                input_ids=input_ids, attention_mask=attention_mask,
+                output_hidden_states=True,
+            )
+
+        hidden_states = list(outputs.hidden_states[1:])
+
+        # Pass branch embeds from tree notebook if available
+        history_branch_embeds = None
+        if tree_notebook is not None and tree_notebook.size() > 0:
+            history_branch_embeds = tree_notebook.branch_embeds
+
+        # Controller iterates K times on these hidden states (cheap)
+        prev_scales = prev_cycle_scales
+        branch_embed = None
+        branch_action_logits = None
+        for pass_idx in range(num_inner_passes):
+            page, scales, focus, branch_embed, branch_action_logits = self.controller(
+                hidden_states, state_pages, history_hiddens,
+                cycle_num=cycle_num, pass_num=pass_idx,
+                prev_scales=prev_scales,
+                history_branch_embeds=history_branch_embeds,
+            )
+            scales = scales.clamp(-0.5, 0.5)
+            prev_scales = scales
+
+        # Mobius warp
+        if len(state_pages) > 0:
+            page = self.mobius(page, focus)
+
+        hidden_pool = hidden_states[-1].mean(dim=1).float()
+
+        # next_scales = the LAST controller iteration's output
+        return page, prev_scales, None, None, page, hidden_pool, focus, None, branch_embed, branch_action_logits
 
     def two_pass_cycle1(self, input_ids, attention_mask):
         """Two-pass cycle 1: vanilla comprehension -> informed initial scales.
@@ -828,15 +1068,17 @@ class AtomLoRAModel(nn.Module):
         Pass 1: Llama WITHOUT LoRA -> controller reads comprehension -> initial scales
         Pass 2: Llama WITH LoRA -> controller reads modified comprehension -> scales for cycle 2
 
-        Returns:
-            page_0:         (B, 64) page from vanilla pass (observation)
-            hidden_pool_0:  (B, 2048) hidden pool from vanilla pass
-            page_1:         (B, 64) page from LoRA pass (actual cycle 1)
-            hidden_pool_1:  (B, 2048) hidden pool from LoRA pass
-            initial_scales: (B, 64) scales produced from vanilla comprehension
-            next_scales:    (B, 64) scales for cycle 2
-            focus_1:        (B, 64) Mobius focus for page_1
-            outputs_lora:   CausalLMOutputWithPast from LoRA pass (for generation)
+        Returns 10-tuple:
+            page_0:                (B, 64) page from vanilla pass (observation)
+            hidden_pool_0:         (B, 2048) hidden pool from vanilla pass
+            page_1:                (B, 64) page from LoRA pass (actual cycle 1)
+            hidden_pool_1:         (B, 2048) hidden pool from LoRA pass
+            initial_scales:        (B, 64) scales produced from vanilla comprehension
+            next_scales:           (B, 64) scales for cycle 2
+            focus_1:               (B, 64) Mobius focus for page_1
+            outputs_lora:          CausalLMOutputWithPast from LoRA pass (for generation)
+            branch_embed_1:        (B, 64) branch embedding from pass 2
+            branch_action_logits_1:(B, 3) action logits from pass 2
         """
         # Pass 1: vanilla Llama (no LoRA)
         outputs_vanilla = self.transformer(
@@ -847,13 +1089,13 @@ class AtomLoRAModel(nn.Module):
         hidden_pool_0 = hidden_states_vanilla[-1].mean(dim=1).float()
 
         # Controller reads vanilla comprehension -> initial scales
-        page_0, initial_scales, focus_0 = self.controller(
+        page_0, initial_scales, focus_0, branch_embed_0, branch_action_0 = self.controller(
             hidden_states_vanilla, [], [],
         )
 
-        # Pass 2: Llama WITH LoRA (atom-modified attention)
+        # Pass 2: Llama WITH L2 atoms (L1 already baked into weights)
         manager = AtomAdditiveLoRAManager(self.transformer)
-        manager.apply(self.atoms, initial_scales)
+        manager.apply(self.atoms2, initial_scales)
         try:
             outputs_lora = self.transformer(
                 input_ids=input_ids, attention_mask=attention_mask,
@@ -866,7 +1108,7 @@ class AtomLoRAModel(nn.Module):
         hidden_pool_1 = hidden_states_lora[-1].mean(dim=1).float()
 
         # Controller reads LoRA-modified comprehension -> page + next scales
-        page_1, next_scales, focus_1 = self.controller(
+        page_1, next_scales, focus_1, branch_embed_1, branch_action_logits_1 = self.controller(
             hidden_states_lora, [page_0], [hidden_pool_0.detach()],
         )
 
@@ -874,7 +1116,8 @@ class AtomLoRAModel(nn.Module):
         page_1 = self.mobius(page_1, focus_1)
 
         return (page_0, hidden_pool_0.detach(), page_1, hidden_pool_1,
-                initial_scales, next_scales, focus_1, outputs_lora)
+                initial_scales, next_scales, focus_1, outputs_lora,
+                branch_embed_1, branch_action_logits_1)
 
 
 
@@ -925,6 +1168,19 @@ def warm_start_atom_from_checkpoint(
         print(f"  atoms: loaded {loaded}/{len(own)}")
     else:
         print("  atoms: fresh init (64 rank-6 atoms, 0.01 scale)")
+
+    # --- Atoms2 ---
+    if 'atoms2' in ckpt:
+        own = atom_model.atoms2.state_dict()
+        loaded = 0
+        for k, v in ckpt['atoms2'].items():
+            if k in own and own[k].shape == v.shape:
+                own[k] = v
+                loaded += 1
+        atom_model.atoms2.load_state_dict(own, strict=False)
+        print(f"  atoms2: loaded {loaded}/{len(own)}")
+    else:
+        print("  atoms2: fresh init (64 rank-6 atoms, 0.01 scale)")
 
     # --- Everything else is fresh ---
     print("  confidence_head: fresh init")
@@ -1036,23 +1292,61 @@ if __name__ == '__main__':
     # 4. Test BreathingController
     # ---------------------------------------------------------------
     print("\n--- BreathingController ---")
-    ctrl = BreathingController(num_layers=16, hidden_dim=2048, internal_dim=1536,
-                               num_heads=8, page_dim=64, num_atoms=64)
+    ctrl = BreathingController(num_layers=16, hidden_dim=2048, internal_dim=2048,
+                               num_heads=8, page_dim=64, num_atoms=64,
+                               num_history_layers=8)
 
     # Simulate hidden states from 16 Llama layers
     fake_hidden = [torch.randn(batch, 10, 2048) for _ in range(16)]
     history_pages = [torch.randn(batch, 64) for _ in range(2)]
     history_hiddens = [torch.randn(batch, 2048) for _ in range(2)]
 
-    page, scales, focus = ctrl(fake_hidden, history_pages, history_hiddens)
+    page, scales, focus, branch_embed, branch_action = ctrl(fake_hidden, history_pages, history_hiddens)
     print(f"  page: {page.shape}, scales: {scales.shape}, focus: {focus.shape}")
+    print(f"  branch_embed: {branch_embed.shape}, branch_action: {branch_action.shape}")
     print(f"  scales range: [{scales.min().item():.3f}, {scales.max().item():.3f}]")
 
     ctrl_params = sum(p.numel() for p in ctrl.parameters())
     print(f"  Params: {ctrl_params / 1e6:.2f}M")
 
     # ---------------------------------------------------------------
-    # 5. Parameter count summary
+    # 5. Test TreeNotebook
+    # ---------------------------------------------------------------
+    print("\n--- TreeNotebook ---")
+    tree = TreeNotebook()
+    root_node = TreeNode(
+        page=torch.randn(batch, 64),
+        branch_embed=torch.randn(batch, 64),
+        hidden_pool=torch.randn(batch, 2048),
+        action='decompose',
+        parent_idx=-1,
+        children_idx=[1, 2],
+    )
+    child1 = TreeNode(
+        page=torch.randn(batch, 64),
+        branch_embed=torch.randn(batch, 64),
+        hidden_pool=torch.randn(batch, 2048),
+        action='solve',
+        parent_idx=0,
+    )
+    child2 = TreeNode(
+        page=torch.randn(batch, 64),
+        branch_embed=torch.randn(batch, 64),
+        hidden_pool=torch.randn(batch, 2048),
+        action='solve',
+        parent_idx=0,
+    )
+    tree.append(root_node)
+    tree.append(child1)
+    tree.append(child2)
+    print(f"  size: {tree.size()}")
+    print(f"  pages: {len(tree.pages)}, hiddens: {len(tree.hiddens)}, embeds: {len(tree.branch_embeds)}")
+    print(f"  ancestors of 1: {tree.get_ancestors(1)}")
+    print(f"  siblings of 1: {tree.get_siblings(1)}")
+    print(f"  children of 0: {tree.get_children(0)}")
+
+    # ---------------------------------------------------------------
+    # 6. Parameter count summary
     # ---------------------------------------------------------------
     print("\n--- Parameter Count Summary ---")
     components = {
