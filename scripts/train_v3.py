@@ -392,19 +392,18 @@ def evaluate(llama, controller, eval_dataset, device, num_passes=3, max_length=1
 
     final_acc = 100.0 * final_correct / total if total > 0 else 0.0
 
-    # Soft token diversity
+    # Soft token diversity — use float64 for precision
     st_xproblem_cos = 1.0
     if all_soft_tokens:
-        st_stack = torch.cat(all_soft_tokens, dim=0)  # (N, N_soft, 2048)
+        st_stack = torch.cat(all_soft_tokens, dim=0).double()  # (N, N_soft, 2048)
         st_flat = st_stack.view(st_stack.size(0), -1)  # (N, N_soft*2048)
-        n = st_flat.size(0)
+        # Normalize for stable cosine
+        st_normed = st_flat / st_flat.norm(dim=-1, keepdim=True).clamp(min=1e-12)
+        n = st_normed.size(0)
         if n > 1:
-            cos_sims = []
-            for di in range(min(n, 16)):
-                for dj in range(di + 1, min(n, 16)):
-                    cos_sims.append(F.cosine_similarity(
-                        st_flat[di:di+1], st_flat[dj:dj+1]).item())
-            st_xproblem_cos = sum(cos_sims) / len(cos_sims) if cos_sims else 1.0
+            cos_matrix = st_normed @ st_normed.T  # (N, N)
+            mask = ~torch.eye(n, dtype=torch.bool)
+            st_xproblem_cos = cos_matrix[mask].mean().item()
 
     return per_cycle_acc, final_acc, st_xproblem_cos
 
