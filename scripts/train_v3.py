@@ -562,7 +562,7 @@ def train(args):
             if metrics['gen_loss'].requires_grad:
                 total_loss = total_loss + metrics['gen_loss']
             if metrics['structure_loss'].requires_grad:
-                total_loss = total_loss + 0.5 * metrics['structure_loss']
+                total_loss = total_loss + args.struct_weight * metrics['structure_loss']
             if metrics['reinforce_loss'].requires_grad:
                 total_loss = total_loss + 0.1 * metrics['reinforce_loss']
             if metrics['energy_loss'].requires_grad:
@@ -638,6 +638,7 @@ if __name__ == '__main__':
     p.add_argument('--num_passes', type=int, default=3)
     p.add_argument('--lr', type=float, default=1e-4)
     p.add_argument('--patience', type=int, default=15)
+    p.add_argument('--struct_weight', type=float, default=0.5)
     p.add_argument('--warm_from', type=str, default=None)
     p.add_argument('--augment', action='store_true')
     args = p.parse_args()
