@@ -59,7 +59,7 @@ def extract_answer(text):
 
 def run_cycle(llama, controller, hidden_states_all, all_pages, notebook,
               cycle_num, gen_target_strs, available_targets, consumed_targets,
-              device, base_tokens=None, teacher_force=True):
+              device, teacher_force=True):
     """
     One breathing cycle:
     1. Controller thinks (inner loop, writes pages)
@@ -79,9 +79,9 @@ def run_cycle(llama, controller, hidden_states_all, all_pages, notebook,
     # 2. Decisions
     action_logits, confidence, branch_embed = controller.decide(trunk_out)
 
-    # 3. Soft tokens: base (universal prefix) + delta (per-problem from controller)
-    delta_tokens = controller.make_soft_tokens(trunk_out, cycle_pages)  # trajectory → delta
-    final_soft_tokens = base_tokens + delta_tokens  # base is passed in from model
+    # 3. Soft tokens from controller's thinking trajectory
+    soft_tokens = controller.make_soft_tokens(trunk_out, cycle_pages)
+    final_soft_tokens = soft_tokens
 
     # 4. Llama generates with combined soft tokens
     if teacher_force:
@@ -158,7 +158,6 @@ def run_cycle(llama, controller, hidden_states_all, all_pages, notebook,
         'cycle_pages': cycle_pages,
         'branch_embed': branch_embed,
         'pred_vals': pred_vals,
-        'delta_tokens': delta_tokens,
         'final_soft_tokens': final_soft_tokens,
     }
 
@@ -167,48 +166,12 @@ def run_cycle(llama, controller, hidden_states_all, all_pages, notebook,
 # Full forward: comprehend → N cycles
 # ---------------------------------------------------------------------------
 
-def compute_mean_subtracted_gradient(gen_loss_per_sample, final_soft_tokens):
-    """Compute per-sample gradients, subtract dominant mode, return residual.
+def forward_pass(llama, controller, batch, device, num_passes=3):
+    """Full breathing loop: gen_loss + structure preservation.
 
-    The residual sums to zero across the batch — no constant output can satisfy it.
-    The controller MUST produce different outputs to reduce residual loss.
-    """
-    batch_size = gen_loss_per_sample.shape[0]
-    per_problem_grads = []
-
-    for i in range(batch_size):
-        grad_i = torch.autograd.grad(
-            gen_loss_per_sample[i],
-            final_soft_tokens,
-            retain_graph=True,
-            create_graph=False,
-        )[0][i]  # gradient for problem i only
-        per_problem_grads.append(grad_i)
-
-    grads = torch.stack(per_problem_grads)  # (batch, num_soft, embed_dim)
-
-    # Dominant mode = batch mean ("activate math mode" — same for all problems)
-    dominant_mode = grads.mean(dim=0, keepdim=True)  # (1, num_soft, embed_dim)
-
-    # Residual = per-problem signal only
-    residual = grads - dominant_mode  # (batch, num_soft, embed_dim)
-
-    # Normalize per sample for consistent magnitude
-    residual_flat = residual.view(batch_size, -1)
-    residual_normalized = residual_flat / (residual_flat.norm(dim=-1, keepdim=True) + 1e-8)
-    residual_normalized = residual_normalized.view_as(residual)
-
-    return dominant_mode.squeeze(0), residual_normalized
-
-
-def forward_pass(llama, controller, batch, device, base_tokens, num_passes=3):
-    """Full breathing loop with mean-subtracted gradient decomposition.
-
-    Returns:
-        base_loss: for training base_tokens (dominant mode)
-        ctrl_loss: for training controller (residual)
-        reinforce_loss: for discrete decisions
-        metrics: dict of logged values
+    Two losses, orthogonal roles:
+      gen_loss: "produce useful soft tokens" (finds good universal mode)
+      structure_loss: "preserve hidden state geometry" (prevents collapse)
     """
     problems = batch['problem']
     cycle_targets = batch['cycle_targets'].to(device)
@@ -227,6 +190,14 @@ def forward_pass(llama, controller, batch, device, base_tokens, num_passes=3):
     llama.reset_cache()
     hidden_states_all = llama.encode_problem(input_ids, attention_mask)
 
+    # Compute hidden state similarity structure (target for structure preservation)
+    with torch.no_grad():
+        enc_weights = F.softmax(controller.state_encoder.layer_weights, dim=0)
+        hidden_pooled = sum(w * h.mean(dim=1) for w, h in zip(enc_weights, hidden_states_all))
+        hidden_flat = hidden_pooled.float()  # (batch, 2048)
+        hidden_normed = hidden_flat / hidden_flat.norm(dim=-1, keepdim=True).clamp(min=1e-8)
+        hidden_cos = hidden_normed @ hidden_normed.T  # (batch, batch) target structure
+
     available_targets = []
     consumed_targets = []
     for b in range(batch_size):
@@ -237,14 +208,14 @@ def forward_pass(llama, controller, batch, device, base_tokens, num_passes=3):
 
     notebook = TreeNotebook()
     all_pages = []
-    total_base_loss = torch.tensor(0.0, device=device)
-    total_ctrl_loss = torch.tensor(0.0, device=device)
+    total_gen_loss = torch.tensor(0.0, device=device)
+    total_structure_loss = torch.tensor(0.0, device=device)
     total_reinforce_loss = torch.tensor(0.0, device=device)
     total_energy_loss = torch.tensor(0.0, device=device)
     all_rewards = []
+    all_soft_tokens_for_structure = []
     valid_cycles = 0
     per_cycle_preds = []
-    residual_ratio = 0.0
 
     num_cycles = min(num_passes, max_steps)
 
@@ -263,36 +234,18 @@ def forward_pass(llama, controller, batch, device, base_tokens, num_passes=3):
             cycle_num=cycle, gen_target_strs=gen_strs,
             available_targets=available_targets,
             consumed_targets=consumed_targets,
-            device=device, base_tokens=base_tokens,
-            teacher_force=True,
+            device=device, teacher_force=True,
         )
 
-        # ============================================================
-        # MEAN-SUBTRACTED GRADIENT DECOMPOSITION
-        # ============================================================
+        # Gen loss (differentiable through soft tokens)
         if result['gen_loss_per_sample'] is not None:
-            gen_loss_ps = result['gen_loss_per_sample']  # (batch,)
-            final_st = result['final_soft_tokens']       # (batch, N_soft, 2048)
-            delta_t = result['delta_tokens']             # (batch, N_soft, 2048)
+            reward_weights = result['rewards'].clamp(min=0.3)
+            weighted_gen = (result['gen_loss_per_sample'] * reward_weights * mask_val).sum()
+            weighted_gen = weighted_gen / mask_val.sum().clamp(min=1)
+            total_gen_loss = total_gen_loss + weighted_gen
 
-            # Compute dominant mode and residual
-            dominant_mode, residual_grad = compute_mean_subtracted_gradient(
-                gen_loss_ps, final_st,
-            )
-
-            # Base loss: train base_tokens with dominant mode
-            base_loss = (base_tokens * dominant_mode.detach()).sum()
-            total_base_loss = total_base_loss + base_loss
-
-            # Controller loss: train delta_tokens with RESIDUAL only
-            ctrl_loss = (delta_t * residual_grad.detach()).sum()
-            total_ctrl_loss = total_ctrl_loss + ctrl_loss
-
-            # Diagnostic: how much per-problem signal exists?
-            with torch.no_grad():
-                dom_mag = dominant_mode.norm().item()
-                res_mag = residual_grad.norm(dim=-1).mean().item()
-                residual_ratio = res_mag / (dom_mag + 1e-8)
+        # Collect soft tokens for structure preservation
+        all_soft_tokens_for_structure.append(result['final_soft_tokens'])
 
         # REINFORCE on action decisions
         with torch.no_grad():
@@ -300,7 +253,7 @@ def forward_pass(llama, controller, batch, device, base_tokens, num_passes=3):
             advantage = result['rewards'] - batch_reward
 
         action_log_probs = F.log_softmax(result['action_logits'], dim=-1)
-        selected_action = 1  # SOLVE for now
+        selected_action = 1
         reinforce_loss = -(advantage * action_log_probs[:, selected_action] * mask_val).mean()
         total_reinforce_loss = total_reinforce_loss + reinforce_loss
 
@@ -329,22 +282,39 @@ def forward_pass(llama, controller, batch, device, base_tokens, num_passes=3):
             )
             notebook.append(node)
 
+    # Structure preservation loss: soft token similarity should match hidden state similarity
+    if all_soft_tokens_for_structure and batch_size > 1:
+        # Use first cycle's soft tokens (most directly related to problem encoding)
+        st = all_soft_tokens_for_structure[0]  # (batch, N_soft, 2048)
+        st_flat = st.float().view(batch_size, -1)  # (batch, N_soft*2048)
+        st_normed = st_flat / st_flat.norm(dim=-1, keepdim=True).clamp(min=1e-8)
+        st_cos = st_normed @ st_normed.T  # (batch, batch)
+
+        # MSE between similarity matrices
+        total_structure_loss = F.mse_loss(st_cos, hidden_cos)
+
+    # Average losses
     if valid_cycles > 0:
-        total_base_loss = total_base_loss / valid_cycles
-        total_ctrl_loss = total_ctrl_loss / valid_cycles
+        total_gen_loss = total_gen_loss / valid_cycles
         total_reinforce_loss = total_reinforce_loss / valid_cycles
         total_energy_loss = total_energy_loss / valid_cycles
 
     avg_reward = torch.cat(all_rewards).mean().item() if all_rewards else 0.0
 
+    # Hidden state diversity stats (for diagnostics)
+    with torch.no_grad():
+        mask = ~torch.eye(batch_size, dtype=torch.bool, device=device)
+        hidden_cos_mean = hidden_cos[mask].mean().item() if batch_size > 1 else 1.0
+        hidden_cos_std = hidden_cos[mask].std().item() if batch_size > 1 else 0.0
+
     metrics = {
-        'base_loss': total_base_loss,
-        'ctrl_loss': total_ctrl_loss,
-        'gen_loss': (total_base_loss + total_ctrl_loss).item(),
+        'gen_loss': total_gen_loss,
+        'structure_loss': total_structure_loss,
         'reinforce_loss': total_reinforce_loss,
         'energy_loss': total_energy_loss,
         'avg_reward': avg_reward,
-        'residual_ratio': residual_ratio,
+        'hidden_cos_mean': hidden_cos_mean,
+        'hidden_cos_std': hidden_cos_std,
         'per_cycle_preds': per_cycle_preds,
     }
 
@@ -515,17 +485,9 @@ def train(args):
     else:
         print(f"  controller: FRESH INIT (322M)")
 
-    # Base tokens: learned universal prefix (trained by dominant mode)
-    num_soft = controller.num_soft_tokens
-    base_tokens = nn.Parameter(
-        torch.zeros(1, num_soft, llama.d_model, device=device, dtype=torch.bfloat16)
-    )
-
     ctrl_params = list(controller.parameters())
-    trainable = sum(p.numel() for p in ctrl_params) + base_tokens.numel()
-    print(f"\nTrainable params: {trainable:,} (controller + base_tokens)")
-    print(f"  controller: {sum(p.numel() for p in ctrl_params):,}")
-    print(f"  base_tokens: {base_tokens.numel():,}")
+    trainable = sum(p.numel() for p in ctrl_params)
+    print(f"\nTrainable params: {trainable:,} (controller only)")
     print(f"GPU mem: {torch.cuda.memory_allocated()/1e9:.2f} GB")
 
     # Data
@@ -553,9 +515,8 @@ def train(args):
         shuffle=True, collate_fn=per_cycle_collate_fn,
     )
 
-    # Separate optimizers: base tokens (fast, dominant mode) vs controller (careful, residual)
-    base_optimizer = torch.optim.AdamW([base_tokens], lr=1e-3, weight_decay=0.0)
-    ctrl_optimizer = torch.optim.AdamW(ctrl_params, lr=args.lr, weight_decay=0.01)
+    # Single optimizer — gen_loss + structure_loss, no fighting
+    optimizer = torch.optim.AdamW(ctrl_params, lr=args.lr, weight_decay=0.01)
 
     # Baseline eval
     best_final = 0.0
@@ -581,44 +542,42 @@ def train(args):
         ep_reward = 0.0
         nb = 0
 
-        ep_resid = 0.0
+        ep_struct = 0.0
+        ep_hcos = 0.0
+        ep_hcos_std = 0.0
 
         for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}", leave=False):
-            base_optimizer.zero_grad()
-            ctrl_optimizer.zero_grad()
+            optimizer.zero_grad()
 
             metrics = forward_pass(
                 llama, controller, batch, device,
-                base_tokens=base_tokens,
                 num_passes=args.num_passes,
             )
 
-            # Step 1: Base tokens ← dominant mode
-            if 'base_loss' in metrics and metrics['base_loss'].requires_grad:
-                metrics['base_loss'].backward(retain_graph=True)
-                base_optimizer.step()
-                base_optimizer.zero_grad()
+            # Combined loss: gen_loss (useful) + structure_loss (diverse)
+            total_loss = torch.tensor(0.0, device=device)
+            if metrics['gen_loss'].requires_grad:
+                total_loss = total_loss + metrics['gen_loss']
+            if metrics['structure_loss'].requires_grad:
+                total_loss = total_loss + 0.5 * metrics['structure_loss']
+            if metrics['reinforce_loss'].requires_grad:
+                total_loss = total_loss + 0.1 * metrics['reinforce_loss']
+            if metrics['energy_loss'].requires_grad:
+                total_loss = total_loss + 0.5 * metrics['energy_loss']
 
-            # Step 2: Controller ← residual (mean-subtracted) + REINFORCE + energy
-            ctrl_loss = torch.tensor(0.0, device=device)
-            if 'ctrl_loss' in metrics and metrics['ctrl_loss'].requires_grad:
-                ctrl_loss = ctrl_loss + metrics['ctrl_loss']
-            if 'reinforce_loss' in metrics:
-                ctrl_loss = ctrl_loss + 0.1 * metrics['reinforce_loss']
-            if 'energy_loss' in metrics:
-                ctrl_loss = ctrl_loss + 0.5 * metrics['energy_loss']
-
-            if ctrl_loss.requires_grad:
-                ctrl_loss.backward()
+            if total_loss.requires_grad:
+                total_loss.backward()
 
             torch.nn.utils.clip_grad_norm_(ctrl_params, 1.0)
-            ctrl_optimizer.step()
+            optimizer.step()
 
-            ep_gen += metrics.get('gen_loss', 0.0) if isinstance(metrics.get('gen_loss'), float) else metrics.get('gen_loss', torch.tensor(0.0)).item()
-            ep_rl += metrics.get('reinforce_loss', 0.0) if isinstance(metrics.get('reinforce_loss'), float) else 0.0
-            ep_energy += metrics.get('energy_loss', 0.0) if isinstance(metrics.get('energy_loss'), float) else 0.0
+            ep_gen += metrics['gen_loss'].item()
+            ep_struct += metrics['structure_loss'].item() if hasattr(metrics['structure_loss'], 'item') else 0.0
+            ep_rl += metrics['reinforce_loss'].item() if hasattr(metrics['reinforce_loss'], 'item') else 0.0
+            ep_energy += metrics['energy_loss'].item() if hasattr(metrics['energy_loss'], 'item') else 0.0
             ep_reward += metrics.get('avg_reward', 0.0)
-            ep_resid += metrics.get('residual_ratio', 0.0)
+            ep_hcos += metrics.get('hidden_cos_mean', 0.0)
+            ep_hcos_std += metrics.get('hidden_cos_std', 0.0)
             nb += 1
 
         elapsed = time.time() - t0
@@ -642,7 +601,6 @@ def train(args):
                 torch.save({
                     'epoch': epoch + 1,
                     'thinking_controller': controller.state_dict(),
-                    'base_tokens': base_tokens.data,
                     'accuracy': final_acc,
                     'level': level,
                 }, ckpt_name)
@@ -651,13 +609,13 @@ def train(args):
                 patience_counter += 1
 
             print(
-                f"Epoch {epoch+1}: gen={ep_gen/nb:.4f} rl={ep_rl/nb:.4f} "
-                f"energy={ep_energy/nb:.4f} reward={ep_reward/nb:.3f} "
-                f"resid_ratio={ep_resid/nb:.4f} | "
+                f"Epoch {epoch+1}: gen={ep_gen/nb:.4f} struct={ep_struct/nb:.4f} "
+                f"reward={ep_reward/nb:.3f} "
+                f"hidden_cos={ep_hcos/nb:.4f}±{ep_hcos_std/nb:.4f} | "
                 f"Final={final_acc:.1f}% best={best_final:.1f}% [{elapsed:.0f}s]"
             )
             print(f"  per_cycle_acc: {[f'{a:.1f}%' for a in per_cycle_acc]}")
-            print(f"  ctrl_grad={ctrl_grad_avg:.4f} delta_cos={st_cos:.4f}")
+            print(f"  ctrl_grad={ctrl_grad_avg:.4f} soft_token_cos={st_cos:.4f}")
 
         if patience_counter >= args.patience:
             print(f"\nEarly stopping: no improvement for {args.patience} epochs")
