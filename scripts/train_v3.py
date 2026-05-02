@@ -191,10 +191,13 @@ def forward_pass(llama, controller, batch, device, num_passes=3):
     hidden_states_all = llama.encode_problem(input_ids, attention_mask)
 
     # Compute hidden state similarity structure (target for structure preservation)
+    # Use EARLY layer (layer 1) — richest per-problem diversity
+    # Layer 0: cos=0.76±0.36 (raw tokens, very noisy)
+    # Layer 1: cos=0.93±0.14 (rich diversity, less noise)
+    # Layer 16: cos=0.93±0.09 (compressed, less structure)
     with torch.no_grad():
-        enc_weights = F.softmax(controller.state_encoder.layer_weights, dim=0)
-        hidden_pooled = sum(w * h.mean(dim=1) for w, h in zip(enc_weights, hidden_states_all))
-        hidden_flat = hidden_pooled.float()  # (batch, 2048)
+        target_layer = hidden_states_all[1]  # layer 1: best balance of diversity + signal
+        hidden_flat = target_layer.float().mean(dim=1)  # (batch, 2048)
         hidden_normed = hidden_flat / hidden_flat.norm(dim=-1, keepdim=True).clamp(min=1e-8)
         hidden_cos = hidden_normed @ hidden_normed.T  # (batch, batch) target structure
 
