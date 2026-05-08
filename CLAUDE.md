@@ -1,39 +1,43 @@
-# CLAUDE.md — Mycelium v2
+# CLAUDE.md — Mycelium v4
 
 ## Project Overview
 
-Mycelium builds differentiable recurrent reasoning for small language models. A frozen Llama 3.2 1B learns to decompose math problems through a tree-structured breathing loop — each node rewires attention via LoRA atoms, observes the result, and plans the next step. The core thesis: **decomposition is everything.**
+Mycelium builds differentiable recurrent reasoning for small language models. A 140M breathing transformer loops 4 layers from Pythia-160M with π-cycled attention, reasoning in representation space and generating tokens only once at the end. The core thesis: **decomposition is everything.**
 
 **Lead:** Bryce (Manhattan Beach, CA) · **Target:** MATH-500 · **Deadline:** September 1, 2026
-**Infrastructure:** AWS EC2 g5.xlarge (A10G 24GB)
+**Infrastructure:** Shadow Glass (AMD 7900 XTX 24GB, tinygrad + AM driver) · AWS EC2 g5.xlarge (A10G 24GB) for validation
 
 ---
 
-## Architecture (v2 — Tree-Structured Breathing)
+## Architecture (v4 — The Breathing Transformer)
 
 ```
-BREATHING LOOP (tree-structured):
+BREATHING LOOP:
 
-  STEP 1: COMPREHEND
-    Llama (with baked L1 math-mode) reads problem
-    Controller reads hidden states → initial tree plan
+  BREATHE (representation space, no token generation):
+    4 layers (Pythia-160M L0-3) × N loops
+    π-cycled attention: 12 heads at 12 phase offsets, rotated each loop
+    Sine-wave temperature: RISE → PEAK → FALL → TROUGH
+    Integration: gated running integral across breaths
+    Controller reads hidden states → pages, temperature, phase, stop decision
 
-  STEP 2: BUILD TREE (recursive)
-    DECOMPOSE: split into child subproblems
-    SOLVE: inner loop refines L2 scales → Llama generates "equation #### answer"
-    MERGE: combine child results into final answer
+  SPEAK (once, at the end):
+    Generate tokens from final integrated representation
+    One copy from a refined original — NOT copies of copies
 
-  STOP when: all targets claimed OR confidence high
+  STOP when: integral stabilizes (Lyapunov criterion)
 ```
 
 **Components:**
-- **Llama 3.2 1B (frozen + baked L1):** Base model with L4.5 math-mode permanently absorbed into weights. Template-invariant, 99.5% on 3-step procedural.
-- **BreathingController (~166M, scaling to ~400M):** Reads Llama hidden states → produces scales + page + branch embedding + branch action + energy + confidence. Gets DIRECT gradient via straight-through estimator (never through Llama).
-- **64 L2 LoRA Atoms (~82M):** Per-node attention steering at [-0.46, 0.46] volume via `0.46 * tanh(x)`. V,O do the heavy lifting.
-- **Tree Notebook:** Hierarchical memory with parent/child/sibling attention. Pages on unit hypersphere (256d), branch embeddings in Euclidean with L2 clipping (64d).
-- **Energy Head:** Learned stopping for adaptive inner loop. Contrastive training (low energy = correct, high = wrong). Lyapunov regularization (energy must decrease across passes).
+- **Pythia-160M L0-3 (fine-tuned for looping):** 4 layers with partial weight sharing. Unique Q, K, FFN gate per phase; shared V, FFN basis, norms. ~20M phase-specific + ~6M shared + ~39M embeddings.
+- **Controller (~80M):** Reads 768d transformer hidden states in 512d thinking space. Produces pages, temperature modulation, phase angle, integration gate, stop signal. Gets gradient via REINFORCE — never through transformer.
+- **Differentiable Lookup Table:** 8-12 prime entries at 768d. Spectral factorization of problem structure. Coupling matrix determines tree shape.
+- **No chain-of-thought tokens.** All reasoning in representation space. The Copy Machine Principle prohibits mid-breath generation.
 
-**Cardinal rule:** Controller gradient NEVER flows through Llama. Separate backward passes always.
+**Cardinal rules:**
+1. Controller gradient NEVER flows through transformer
+2. No token generation between breaths (Copy Machine Principle)
+3. Diversity is structural (π cycling), not learned
 
 ---
 
@@ -44,21 +48,36 @@ BREATHING LOOP (tree-structured):
 L3 (1-step):   100.0%   ✓ (from scratch)
 L4 (2-step):    99.5%   ✓ (genuine 2-step decomposition)
 L4.5 (3-step):  99.5%   ✓ (genuine 3-step decomposition)
-GSM8K:          ~14%     ✗ (controller was constant function — atoms2 only)
+GSM8K:           22%     ✓ (multi-step, beats 17.8% CoT ceiling)
 ```
 
-### v2 (in progress)
+### v4 Validation (completed — May 6-7, 2026)
 ```
-Phase 0: Controller smoke test  ✓ PASSED
-  scale_xproblem_cos = -0.02 (orthogonal — different outputs per input)
-  scale_mid_frac = 0.96 (scales in linear tanh regime)
-  dead_dims = 0/64 (all dimensions active)
-  Gradient flows to all components
+Looping enriches representations:     ✓ PROVEN
+  Signal grows 7x across 8 loops (L0-3)
+  Effective rank holds: 16.0 → 16.6
+  SNR actually INCREASES: 0.114 → 0.127
 
-Phase 1: Linear breathing on curriculum — NEXT
-Phase 2: Tree structure on curriculum
-Phase 3: GSM8K with trees (>25%)
-Phase 4: MATH-500 (>15%)
+Generation requires fine-tuning:       ✓ UNDERSTOOD
+  DC component grows linearly → overwhelms generation head
+  Fine-tuning target: teach gen head to extract signal from looped repr
+
+Copy Machine Principle:                ✓ PROVEN
+  Autoregressive mid-loop generation destroys signal
+  Representation-space reasoning preserves it
+
+L0-3 best layer selection:             ✓ PROVEN
+  Better SNR stability than full 12-layer model
+  L11 is toxic for looping (8x norm explosion)
+```
+
+### v4 Training (in progress)
+```
+Phase 0: Loop consistency training     ← NEXT (Shadow Glass Day 1)
+Phase 1: Learn to breathe (L3-L4.5 curriculum)
+Phase 2: Controller + lookup table
+Phase 3: GSM8K push (>22%)
+Phase 4: MATH-500
 ```
 
 ---
@@ -66,16 +85,11 @@ Phase 4: MATH-500 (>15%)
 ## Key Design Decisions
 
 - **Equal-reward (1/N per target):** The ONLY way to maximize reward is to decompose. Proven on L4/L4.5.
-- **Baked L1 atoms:** L4.5 math-mode LoRA permanently added to Llama weights. No runtime cost.
-- **0.46 * tanh(x) scales:** Smooth gradient everywhere. No clamp — v1's clamp+tanh killed gradients at boundaries, causing controller collapse.
-- **Normalized ST gradient:** Per-sample unit-length direction signal. Bypasses 500x Llama attenuation.
-- **Separate backward passes:** gen_loss→atoms2, ST loss→controller. Never combined.
-- **Fresh controller init:** Never load collapsed controller weights. The v1 controller was a constant function its entire life.
-- **Tree structure from day one:** Linear chains are degenerate trees. DECOMPOSE/SOLVE/MERGE via Gumbel-softmax.
-- **Energy-based adaptive stopping:** Replaces fixed K inner passes. Contrastive + Lyapunov regularization.
-- **Generation-only:** No answer head. Each cycle generates "equation #### number". Extraction via regex.
-- **Number augmentation (0.8-1.2x):** Gentle range lets number patterns settle. Was 0.5-2.0x, too aggressive.
-- **3x weight on number tokens:** Language tokens dominate gen_loss otherwise.
+- **Copy Machine Principle:** No token generation between breaths. Reasoning in representation space is not just efficient — it's necessary. Empirically proven: hidden states survive looping, autoregressive generation doesn't.
+- **π-cycled attention:** Per-head phase offsets provide structural diversity that gradient descent cannot erase. Solves the v1-v3 diversity collapse problem.
+- **L0-3 from Pythia-160M:** Best loop stability of any layer selection. SNR increases with loops. L11 is toxic (norm explosion).
+- **Separate backward passes:** Controller gradient via REINFORCE, never through transformer. The gen_loss landscape has one dominant basin for any controller path through the LLM.
+- **DC component management:** The shared direction in hidden state space grows linearly with loops. The generation head must learn to extract per-problem signal from this. This is THE fine-tuning objective.
 
 ---
 
@@ -83,29 +97,43 @@ Phase 4: MATH-500 (>15%)
 
 ```
 scripts/
-  controller.py              # v2 BreathingController (166M, clean impl)
-  smoke_test_controller.py   # Phase 0: verify controller differentiates
-  atom_lora.py               # v1 model (AtomLoRAModel, LoRAAtoms, baking)
-  train_per_cycle.py          # v1 training loop (equal-reward, augmentation)
-  generate_per_cycle_data.py  # Data gen: L3-L4.9 procedural
-  parse_gsm8k.py              # Parse GSM8K step annotations
-  annotate_gsm8k_cycles.py    # Claude API: decompose problems
-  diag_*.py                   # Diagnostics (8 scripts)
+  # v4 validation
+  validate_looping.py                    # Day 1-2: looping experiments
+  smoke_test_breathe_then_speak.py       # Copy Machine Principle validation
+  diag_loop_collapse.py                  # Root cause diagnostics (norms, cosine, entropy, rank)
+
+  # v2/v1 (reference)
+  controller.py                          # v2 BreathingController (reference)
+  atom_lora.py                           # v1 model (AtomLoRAModel, LoRAAtoms, baking)
+  train_per_cycle.py                     # v1 training loop
+  generate_per_cycle_data.py             # Data gen: L3-L4.9 procedural
+  smoke_test_controller.py               # v2 Phase 0 smoke test
+  diag_*.py                              # v1/v2 diagnostics
+
 plan/
-  mycelium_v2_master_rebuild_handoff.md  # v2 architecture + phases
-  energy_based_inner_loop_design.md      # Energy head design
-  + 10 more design documents
-src/
-  contrastive_page_loss.py    # Cross-problem page diversity
+  pre_shadow_glass_summary.md            # v4 complete summary + Day 1 plan
+  mycelium_v2_master_rebuild_handoff.md  # v2 architecture (superseded by v4)
+  v4_validation_handoff.md               # Validation experiment plan
+  + design documents
+
 data/
-  per_cycle/                  # L3-L4.9 + GSM8K JSONL
+  per_cycle/                             # L3-L4.9 + GSM8K JSONL
+  looping_validation_results.json        # Validation experiment results
 ```
 
 ---
 
-## AWS Setup
+## Infrastructure
 
-```bash
+### Shadow Glass (primary — arriving May 8, 2026)
+```
+AMD 7900 XTX (24GB GDDR6, 960 GB/s, ~120 TFLOPS FP16)
+tinygrad + AM driver (no ROCm, no PyTorch)
+~4GB VRAM for 140M model, ~20GB headroom
+```
+
+### AWS (validation, backup)
+```
 aws ec2 start-instances --instance-ids i-08c1c295a4113a908
 ssh -i ~/.ssh/mycelium-key.pem ubuntu@<IP>
 cd ~/mycelium && tmux new -s train
@@ -115,38 +143,37 @@ cd ~/mycelium && tmux new -s train
 
 ## Diagnostics
 
-| Diagnostic | What it reveals |
-|-----------|----------------|
-| `smoke_test_controller.py` | Phase 0: controller alive? Different outputs per input? |
-| `diag_debug_cycles.py` | Full chain per problem: scales, pages, generation |
-| `diag_deep_single_step.py` | Failure categories: wrong_arithmetic, copying, format |
-| `diag_laplace.py` | Page trajectory: convergence, oscillation, DC ratio |
-| `diag_atom_inspect.py` | What each atom does to attention |
-
-**v2 health metrics (run every epoch):**
-| Metric | Healthy | Meaning |
-|--------|---------|---------|
-| `scale_xproblem_cos` | < 0.9 | Controller differentiates between problems |
-| `scale_mid_frac` | > 0.3 | Scales not saturated |
-| `dead_dims` | < 10/64 | Dimensions active |
-| `controller_grad_norm` | 0.01-1.0 | Controller is learning |
+| Diagnostic | What It Reveals | Key Lesson |
+|-----------|----------------|------------|
+| Centered cross-problem cosine | Per-problem diversity | Raw cosine is MISLEADING (99.8% DC) — always center first |
+| Effective rank (SVD) | Dimensionality of repr | Must hold across loops (target: 16+) |
+| DC norm | Shared component magnitude | Grows linearly with loops — gen head's enemy |
+| Signal norm | Per-problem component | GROWS 7x over 8 loops — looping works |
+| SNR (signal/DC) | Can gen head distinguish problems? | L0-3 SNR increases — best layer selection |
+| Attention entropy | Degenerate attention patterns | Increases with loops (uniform = homogeneity) |
+| Per-head contribution Gini | Inbreeding detection | Low = healthy diversity; high = heads collapsed |
 
 ---
 
 ## Failed Experiments (Don't Repeat)
 
+### v1-v3 (Llama-based)
 | What | Result | Lesson |
 |------|--------|--------|
 | Answer head (5 versions) | 4% peak | Generation IS the output |
-| Separate perceiver+hypernetwork | Constant function | Unified controller reads hidden states |
 | Atoms at [-3,3] | 14.6% | Too loud, corrupts arithmetic. Use [-0.5,0.5] |
 | Q,K-only atoms | 0.4% | WORSE than vanilla. V,O does the work |
-| Per-layer dance (loud early, quiet late) | 10.7% | Uniform 0.4 beats any per-layer scheme |
-| Cycle multiplier (2x correct, 0.2x wrong) | 11.5% drop | Too aggressive at low accuracy |
-| Split generation (atoms off for arithmetic) | 15.3% drop | Disrupts generation flow |
 | No decomposition incentive | Cycle 2=6%, final=0% | Without 1/N reward, model one-shots |
-| Full LR on controller | Destabilizes | Controller needs conservative LR |
-| Routing gradient through Llama | 500x attenuation | Use straight-through estimator |
-| clamp + tanh on scales | Dead gradient | Use 0.46 * tanh(x) only |
-| Loading collapsed controller weights | Still saturated | Always fresh init or reinit scale head |
-| Aggressive augmentation (0.5-2.0x) | Prevents settling | Use gentle 0.8-1.2x |
+| Routing gradient through Llama | 500x attenuation | Use REINFORCE/ST estimator |
+| clamp + tanh on scales | Dead gradient | Use smooth activation only |
+| Loading collapsed controller weights | Still saturated | Always fresh init |
+
+### v4 Validation (Pythia looping)
+| What | Result | Lesson |
+|------|--------|--------|
+| Frozen-weight looping + generation | "had had had" | Generation head needs fine-tuning for looped repr |
+| RMSNorm between loops | No help | Preserves DC component — use LayerNorm |
+| Mean subtraction between loops | Changes attractor only | DC is a direction, not a bias |
+| Layer selections with L11 | Worse SNR | L11's norm explosion is toxic for iteration |
+| Autoregressive generation between loops | Signal destroyed | Copy Machine Principle — breathe in repr space |
+| DC subtraction before gen head | No change | DC is cross-problem direction, not per-token bias |

@@ -63,70 +63,61 @@ def generate_l3_problems(num_problems, seed=42):
 
 class LoopingPythia(nn.Module):
     """
-    Takes Pythia-160M layers 0-3 and loops them N times.
+    Takes Pythia layers and loops them N times.
 
-    Between loops, adds a learned loop embedding so the model knows
-    which iteration it's on. This is minimal — no π cycling yet,
-    no temperature modulation. Just: can the layers be reused?
+    Supports:
+    - Layer selection (start_layer, num_layers)
+    - Optional RMSNorm between loops to stabilize representations
+    - Loop embeddings so the model knows which iteration it's on
     """
 
-    def __init__(self, model, num_loops=1, use_loop_embed=True):
+    def __init__(self, model, num_loops=1, use_loop_embed=True,
+                 start_layer=0, num_layers=4, use_inter_loop_norm=False):
         super().__init__()
-        self.model = model  # Full Pythia model (we'll only use layers 0-3)
+        self.model = model
         self.num_loops = num_loops
         self.use_loop_embed = use_loop_embed
+        self.use_inter_loop_norm = use_inter_loop_norm
+        self.start_layer = start_layer
 
-        hidden_size = model.config.hidden_size  # 768
+        hidden_size = model.config.hidden_size
 
-        # Simple learnable loop embeddings (one per loop iteration)
-        # Small scale so they don't disrupt frozen representations
         if use_loop_embed:
             self.loop_embeds = nn.Parameter(
-                torch.randn(8, hidden_size) * 0.01  # max 8 loops
+                torch.randn(8, hidden_size) * 0.01
             )
 
-        # We'll use layers 0-3 only
-        self.num_layers = min(4, len(model.gpt_neox.layers))
+        self.num_layers = min(num_layers, len(model.gpt_neox.layers) - start_layer)
+
+        # RMSNorm between loops to force representation back into stable range
+        if use_inter_loop_norm:
+            self.inter_loop_norm = nn.RMSNorm(hidden_size)
 
     def forward(self, input_ids, attention_mask=None):
-        """
-        Forward pass with looping.
-
-        Instead of using model.forward() which runs ALL layers,
-        we manually:
-          1. Embed tokens
-          2. Loop layers 0-3 N times
-          3. Apply final layer norm + lm_head
-        """
         device = input_ids.device
 
-        # Token + position embedding
         hidden_states = self.model.gpt_neox.embed_in(input_ids)
-
-        # Build causal attention mask
         seq_len = input_ids.shape[1]
 
-        # Compute rotary position embeddings (needed by GPT-NeoX layers)
         position_ids = torch.arange(seq_len, device=device).unsqueeze(0)
         position_embeddings = self.model.gpt_neox.rotary_emb(hidden_states, position_ids)
 
         for loop_idx in range(self.num_loops):
-            # Add loop embedding (broadcast across sequence)
             if self.use_loop_embed:
                 loop_emb = self.loop_embeds[loop_idx].to(hidden_states.dtype).unsqueeze(0).unsqueeze(0)
                 hidden_states = hidden_states + loop_emb
 
-            # Run through layers 0-3
             for layer_idx in range(self.num_layers):
-                layer = self.model.gpt_neox.layers[layer_idx]
+                layer = self.model.gpt_neox.layers[self.start_layer + layer_idx]
                 outputs = layer(hidden_states, attention_mask=attention_mask,
                                 position_embeddings=position_embeddings)
                 hidden_states = outputs[0] if isinstance(outputs, tuple) else outputs
 
-        # Final layer norm
-        hidden_states = self.model.gpt_neox.final_layer_norm(hidden_states)
+            # Normalize between loops to prevent representation explosion/collapse
+            if self.use_inter_loop_norm and loop_idx < self.num_loops - 1:
+                hidden_states = self.inter_loop_norm(hidden_states.float()).to(hidden_states.dtype)
 
-        # LM head
+        hidden_states = self.model.gpt_neox.final_layer_norm(hidden_states)
         logits = self.model.embed_out(hidden_states)
 
         return logits
@@ -274,6 +265,14 @@ def main():
                         help='Skip full-model baseline')
     parser.add_argument('--few_shot', action='store_true',
                         help='Use few-shot prompting')
+    parser.add_argument('--with_norm', action='store_true',
+                        help='Also test RMSNorm between loops')
+    parser.add_argument('--with_70m', action='store_true',
+                        help='Also test Pythia-70M full-model looping')
+    parser.add_argument('--start_layer', type=int, default=0,
+                        help='First layer to include in loop (default: 0)')
+    parser.add_argument('--num_layers', type=int, default=4,
+                        help='Number of layers per loop (default: 4)')
     args = parser.parse_args()
 
     # Device
@@ -325,13 +324,15 @@ def main():
         print(f"  Time: {elapsed:.1f}s ({elapsed/len(problems)*1000:.0f}ms/problem)")
 
     # Looping experiments
+    sl = args.start_layer
+    nl = args.num_layers
     for num_loops in args.loops:
         print(f"\n{'='*60}")
-        print(f"LOOPING: 4 layers × {num_loops} loops = {4*num_loops} effective layer passes")
+        print(f"LOOPING: layers {sl}-{sl+nl-1} × {num_loops} loops = {nl*num_loops} effective layer passes")
         print(f"{'='*60}")
 
-        # Create looping wrapper
-        looping_model = LoopingPythia(model, num_loops=num_loops, use_loop_embed=True)
+        looping_model = LoopingPythia(model, num_loops=num_loops, use_loop_embed=True,
+                                       start_layer=sl, num_layers=nl)
         looping_model = looping_model.to(device).eval()
 
         t0 = time.time()
@@ -345,19 +346,83 @@ def main():
         print(f"  Format (has ####): {format_rate:.1%}")
         print(f"  Time: {elapsed:.1f}s ({elapsed/len(problems)*1000:.0f}ms/problem)")
 
+    # RMSNorm between loops experiment
+    if args.with_norm:
+        for num_loops in args.loops:
+            if num_loops < 2:
+                continue  # Norm only matters with 2+ loops
+            print(f"\n{'='*60}")
+            print(f"LOOPING + RMSNORM: layers {sl}-{sl+nl-1} × {num_loops} loops")
+            print(f"{'='*60}")
+
+            looping_model = LoopingPythia(model, num_loops=num_loops, use_loop_embed=True,
+                                           start_layer=sl, num_layers=nl, use_inter_loop_norm=True)
+            looping_model = looping_model.to(device).eval()
+
+            t0 = time.time()
+            accuracy, format_rate = evaluate_looping(
+                looping_model, tokenizer, problems, device, args.verbose
+            )
+            elapsed = time.time() - t0
+
+            results[f'norm_loop_{num_loops}x'] = accuracy
+            print(f"  Accuracy: {accuracy:.1%}")
+            print(f"  Format (has ####): {format_rate:.1%}")
+            print(f"  Time: {elapsed:.1f}s ({elapsed/len(problems)*1000:.0f}ms/problem)")
+
+    # Pythia-70M full-model looping experiment
+    if args.with_70m:
+        print(f"\n{'='*60}")
+        print(f"LOADING Pythia-70M (6 layers — full model looping)")
+        print(f"{'='*60}")
+        model_70m = GPTNeoXForCausalLM.from_pretrained("EleutherAI/pythia-70m")
+        model_70m = model_70m.to(device).eval()
+        tok_70m = AutoTokenizer.from_pretrained("EleutherAI/pythia-70m")
+        if tok_70m.pad_token is None:
+            tok_70m.pad_token = tok_70m.eos_token
+        n_layers_70m = len(model_70m.gpt_neox.layers)
+        print(f"  Layers: {n_layers_70m}, Hidden: {model_70m.config.hidden_size}")
+
+        # Baseline: full 70M single pass
+        print(f"\n{'='*60}")
+        print(f"BASELINE: Full Pythia-70M ({n_layers_70m} layers, 1 pass)")
+        print(f"{'='*60}")
+        t0 = time.time()
+        baseline_70m = evaluate_baseline(model_70m, tok_70m, problems, device, args.verbose)
+        elapsed = time.time() - t0
+        results['baseline_70m'] = baseline_70m
+        print(f"  Accuracy: {baseline_70m:.1%}")
+        print(f"  Time: {elapsed:.1f}s ({elapsed/len(problems)*1000:.0f}ms/problem)")
+
+        for num_loops in [1, 2, 4]:
+            print(f"\n{'='*60}")
+            print(f"70M FULL MODEL × {num_loops} loops = {n_layers_70m*num_loops} effective layer passes")
+            print(f"{'='*60}")
+
+            looping_70m = LoopingPythia(model_70m, num_loops=num_loops, use_loop_embed=True,
+                                         start_layer=0, num_layers=n_layers_70m,
+                                         use_inter_loop_norm=True)
+            looping_70m = looping_70m.to(device).eval()
+
+            t0 = time.time()
+            accuracy, format_rate = evaluate_looping(
+                looping_70m, tok_70m, problems, device, args.verbose
+            )
+            elapsed = time.time() - t0
+
+            results[f'70m_loop_{num_loops}x'] = accuracy
+            print(f"  Accuracy: {accuracy:.1%}")
+            print(f"  Format (has ####): {format_rate:.1%}")
+            print(f"  Time: {elapsed:.1f}s ({elapsed/len(problems)*1000:.0f}ms/problem)")
+
     # Summary
     print(f"\n{'='*60}")
     print("SUMMARY")
     print(f"{'='*60}")
-    print(f"{'Configuration':<30} {'Accuracy':>10} {'Eff. Layers':>12}")
-    print(f"{'-'*52}")
+    print(f"{'Configuration':<40} {'Accuracy':>10}")
+    print(f"{'-'*50}")
     for name, acc in results.items():
-        if name == 'baseline_12L':
-            eff = 12
-        else:
-            loops = int(name.split('_')[1].replace('x', ''))
-            eff = 4 * loops
-        print(f"{name:<30} {acc:>10.1%} {eff:>12}")
+        print(f"{name:<40} {acc:>10.1%}")
 
     # Key diagnostic: is more loops helping?
     loop_accs = [(k, v) for k, v in results.items() if k.startswith('loop_')]
