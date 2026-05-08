@@ -13,7 +13,7 @@
 
 A small transformer that loops its own layers, breathing through each problem until it finds the resonant decomposition. Not a frozen LLM with external scaffolding — a model that breathes natively. Trained from scratch.
 
-Each loop is one expand-collapse cycle shaped as a sine wave across 4 specialized layers. Twelve attention heads, each tuned to a different phase angle, scan the problem's spectral content in parallel — identifying which mathematical operations are present simultaneously, like BirdNET identifying multiple overlapping bird species from a single audio clip.
+Each loop is one expand-collapse cycle shaped as a sine wave across 4 specialized layers. Sixteen attention heads, each tuned to a different phase angle, scan the problem's spectral content in parallel — identifying which mathematical operations are present simultaneously, like BirdNET identifying multiple overlapping bird species from a single audio clip.
 
 A controller between breaths reads the accumulated understanding, matches it against a library of prime operations, and decides when the analysis is complete. The tree structure of the solution emerges directly from the prime factorization — no separate decomposition classifier needed.
 
@@ -21,7 +21,7 @@ A controller between breaths reads the accumulated understanding, matches it aga
 
 **Oscillation** — sine-wave breath within each loop. Four layers cycle between expansion (broad attention, open to new information) and compression (sharp focus, distilling the essential signal). Temperature modulates the expand-collapse rhythm continuously.
 
-**Alternation** — π-cycled attention across loops. Each loop rotates the viewing angle so the model sees the problem from a different geometric perspective. Twelve heads per breath scan different frequency bands in parallel. Structural diversity that gradient descent cannot erase.
+**Alternation** — π-cycled attention across loops. Each loop rotates the viewing angle so the model sees the problem from a different geometric perspective. Sixteen heads per breath scan different frequency bands in parallel. Structural diversity that gradient descent cannot erase.
 
 **Integration** — accumulated signal across breaths. A running integral combines the observations from all previous breaths, weighted by novelty. The integral converges when all significant modes have been captured. Lyapunov stopping criterion: breathe until the integral stabilizes.
 
@@ -67,13 +67,13 @@ At phase 0, certain token pairs have high attention. At phase π/2, a maximally 
 
 ### Per-Head Spectral Decomposition
 
-Inspired by BirdNET (Cornell Lab of Ornithology), which identifies multiple overlapping bird species from a single audio spectrogram by scanning different frequency bands simultaneously, our 12 attention heads each operate at a different phase offset.
+Inspired by BirdNET (Cornell Lab of Ornithology), which identifies multiple overlapping bird species from a single audio spectrogram by scanning different frequency bands simultaneously, our 16 attention heads each operate at a different phase offset.
 
-Head 0 at phase 0. Head 1 at phase π/12. Head 2 at 2π/12. Through head 11 at 11π/12. Each head is tuned to a different frequency band of the problem's spectral content. In a single breath, all 12 heads scan the full range in parallel.
+Head 0 at phase 0. Head 1 at phase π/16. Head 2 at 2π/16. Through head 15 at 15π/16. Each head is tuned to a different frequency band of the problem's spectral content. In a single breath, all 16 heads scan the full range in parallel.
 
 BirdNET doesn't separate overlapping bird songs into individual streams. It classifies them simultaneously with independent confidence scores — robin AND cardinal AND wren, all detected from one clip. Our heads work the same way: head 3 responds strongly to subtraction patterns while head 7 responds to entity structure, all in one breath. The combined multi-head response IS the spectral decomposition.
 
-Each loop, all heads rotate together by π/max_loops while maintaining their relative offsets. The bank of heads shifts as a unit, scanning new regions with each breath. Twelve heads × 8 loops = 96 distinct phase angles sampled.
+Each loop, all heads rotate together by π/max_loops while maintaining their relative offsets. The bank of heads shifts as a unit, scanning new regions with each breath. Sixteen heads × 8 loops = 128 distinct phase angles sampled.
 
 ### Why This Can't Collapse
 
@@ -143,7 +143,7 @@ The controller's gradient NEVER flows through the transformer. Three days of evi
 
 The first breath shouldn't try to identify all primes precisely. It should produce a coarse estimate. Each subsequent breath refines. This is how spectral analysis works — a short observation window gives coarse frequency resolution, a longer observation gives finer resolution. Each breath adds samples, increasing the spectral precision.
 
-**Breath 1 (coarse).** "What kind of problem is this?" The controller sets warm temperature — broad attention. The 12 heads scan across phase angles. The lookup table returns a rough factorization — maybe 3 entries active with moderate confidence. Low resolution, high recall.
+**Breath 1 (coarse).** "What kind of problem is this?" The controller sets warm temperature — broad attention. The 16 heads scan across phase angles. The lookup table returns a rough factorization — maybe 3 entries active with moderate confidence. Low resolution, high recall.
 
 **Breath 2 (medium).** "How many of each operation?" Same layers, rotated phase, slightly cooler. Higher spectral resolution from integrating two independent observations. The factorization sharpens — "two subtractions, not one."
 
@@ -169,13 +169,13 @@ The triple helix spirals inward across breaths. Alternation rotates the viewing 
 
 ### Primes, Multiplicities, and Couplings
 
-The lookup table stores the fundamental operations of mathematics as orthogonal vectors — a prime basis. For elementary math: addition, subtraction, multiplication, division, fraction-of, comparison, combination, sequential dependency. Start with 8-12 entries. Grow as the model encounters harder math.
+The lookup table stores the fundamental operations of mathematics as orthogonal vectors — a prime basis. For elementary math: addition, subtraction, multiplication, division, fraction-of, comparison, combination, sequential dependency. Start with 16 entries (one per head). Grow as the model encounters harder math.
 
 When the controller matches its current page against the table, the match weights decompose the problem into its prime factors. But operations can appear multiple times — "subtract 27, then add 83, then subtract 218" contains subtraction twice. The factorization must capture multiplicities, like 12 = 2² × 3.
 
 ### Parallel Detection, Iterative Refinement
 
-Breath 1 leverages all 12 per-head phase angles to detect ALL candidate primes simultaneously — multi-label detection, not single-label classification. Like BirdNET identifying three bird species from one clip, all operations are identified in parallel with independent confidence scores.
+Breath 1 leverages all 16 per-head phase angles to detect ALL candidate primes simultaneously — multi-label detection, not single-label classification. Like BirdNET identifying three bird species from one clip, all operations are identified in parallel with independent confidence scores.
 
 Subsequent breaths confirm individual primes and count multiplicities through iterative spectral subtraction: confirm a prime, subtract its contribution from the signal, examine the residual. If the same prime still matches the residual, it appears again — ring and subtract until that prime is exhausted. Repeat for remaining primes until the residual is noise.
 
@@ -269,7 +269,43 @@ Gauss's Fundamental Theorem of Arithmetic: unique prime factorization. The looku
 
 ---
 
-## 10. Honest Unknowns
+## 10. The Diffusion Connection
+
+### Breathing as Iterative Denoising
+
+The coarse-to-fine resolution progression of the breathing loop mirrors diffusion models with striking precision. Diffusion models start with noise and iteratively refine toward a clear output. Each step reduces entropy — early steps establish coarse structure, late steps add fine detail. The breathing transformer does the same: early breaths establish coarse factorization ("this involves subtraction and entities"), late breaths refine to precise operations and multiplicities.
+
+### The Parallels
+
+The noise-to-signal progression in diffusion corresponds to the coarse-to-fine understanding in breathing — both are iterative refinement from disorder to order, from uncertainty to precision.
+
+The score function in diffusion (the learned denoiser that says "move in this direction") corresponds to the controller. Both are learned guides that steer an iterative refinement process — "this region should become an eye" maps to "this part of the representation should become a subtraction operation."
+
+The noise schedule in diffusion (large denoising steps early, small steps late) corresponds to the temperature schedule. Both are annealing from exploration (broad, coarse) to exploitation (sharp, fine).
+
+The adaptive step count in diffusion (complex images need more steps) corresponds to adaptive loop depth. Both systems benefit from spending more compute on harder inputs.
+
+### The Critical Shared Principle
+
+Both diffusion models and the breathing transformer work in continuous representation space, never producing intermediate discrete outputs. Diffusion models refine continuous pixel values — they never quantize to a discrete image between steps. The breathing transformer refines continuous hidden states — it never generates discrete tokens between breaths. Both avoid the copy machine degradation by staying in continuous space throughout the iterative process. The discrete output (final image, generated tokens) is produced once at the end.
+
+### Classifier-Free Guidance as DC Subtraction
+
+In diffusion, classifier-free guidance runs the denoiser twice — once conditioned on the prompt and once unconditionally — then amplifies the difference. The "guided" signal is the conditional minus unconditional response. This is mathematically identical to our DC subtraction concept: the DC component is the unconditional response (what every problem produces), and the residual is the guided response (what this specific problem uniquely produces). Two domains, same mathematical operation.
+
+### Optimal Temperature from SNR Theory
+
+Diffusion models have well-studied theory for the optimal noise schedule — how much to denoise at each step, derived from the signal-to-noise ratio at that step. We have measured SNR at each breath (0.114 → 0.127 for L0-3 across 8 loops). The same variational framework could derive the optimal temperature progression: breathe broadly when SNR is low (early breaths, high uncertainty), breathe sharply when SNR is high (later breaths, high confidence). This makes the temperature schedule principled rather than heuristic — a theoretically optimal default with small learned adjustments from the controller on top.
+
+### What This Reframes
+
+The breathing transformer may be understood as a diffusion model over mathematical reasoning. The representation space is the "image" being denoised. The prime factorization from the lookup table is the "prompt" guiding the denoising. Each breath is a denoising step. The controller is the score function. The temperature schedule is the noise schedule. The integration is the accumulated denoising trajectory.
+
+This connection to a well-established theoretical framework (score matching, DDPM, variational inference) provides a rich foundation for understanding why the breathing architecture works, how to optimize it, and what its theoretical limits are.
+
+---
+
+## 11. Honest Unknowns
 
 ### Will the Looping Layers Work?
 
@@ -281,9 +317,9 @@ This is the biggest open question. Cycling the same 4 transformer layers multipl
 
 **The mitigation:** Start with forced loop counts on simple problems (L3). Measure whether accuracy increases with loops (more thinking helps) or decreases (representation degrades). If degradation, the looping architecture needs revision — possibly more layers per breath, or different normalization between loops.
 
-### Will 12 Heads at Different Phases Provide Meaningful Spectral Coverage?
+### Will 16 Heads at Different Phases Provide Meaningful Spectral Coverage?
 
-Twelve phase angles spanning [0, π) is 12 samples of the spectral space. This might be sufficient for elementary math (8-12 primes) or might be too sparse for complex problems with many overlapping operations. The BirdNET analogy is encouraging (they handle 2000+ species with CNN filters) but the domains are different enough that the analogy might not transfer.
+Sixteen phase angles spanning [0, π) is 16 samples of the spectral space. With 16 entries in the lookup table and 16 heads, there's a natural one-to-one correspondence available: each head could specialize for detecting one prime operation. Whether the model discovers this alignment or uses the heads more fluidly is an empirical question.
 
 ### Will the Prime Factorization Remain Unique Under Training?
 
@@ -291,74 +327,90 @@ The orthogonal initialization guarantees initial uniqueness. But training pushes
 
 ### Can a Small Model Learn Math?
 
-Addressed by initializing from Pythia-160M. The pretrained layers already understand English — entity tracking, sentence structure, counterfactuals. The breathing fine-tuning adds mathematical reasoning on top of existing language competence. This eliminates the risk of spending weeks learning basic English parsing before math training can begin.
+Addressed by initializing from Pythia-410M. The pretrained layers already understand English — entity tracking, sentence structure, counterfactuals. At h=1024 with 16 heads, the layers have substantially more processing capacity than the previous h=768 design. The breathing fine-tuning adds mathematical reasoning on top of existing language competence.
 
 The remaining risk: Pythia's layers were trained for single-pass processing. They might resist being looped. But the phase-specific weights (Q, K, gate) are reinitialized for the breathing phases — only the shared weights (V, FFN, norms) carry pretrained assumptions, and those components are genuinely phase-independent.
 
+### Will the Gradient Landscape Have Multiple Basins?
+
+The v1-v3 one-basin collapse was through Llama — a model pretrained on trillions of tokens where "math mode" was deeply baked in. Our custom setup, fine-tuned from Pythia with π cycling from the start, might develop a DIFFERENT landscape. The model has never known a world without phase-shifted attention — it might naturally develop multiple basins corresponding to different operation types and phase angles.
+
+Even if the transformer develops one basin, the controller is protected by complete gradient separation. Its learning signal comes from REINFORCE and auxiliary losses, never through the transformer. The architecture is designed to work either way.
+
 ---
 
-## 11. Specifications
+## 12. Specifications
 
-### Initialization: Pythia-160M
+### Initialization: Pythia-410M
 
-The breathing transformer initializes from the first 4 layers of EleutherAI's Pythia-160M — a 12-layer, 768-dim model trained on 300B tokens of diverse English text (the Pile). Taking 4 of 12 layers captures a substantial fraction of a complete model, not just the shallow preprocessing stages of a deep narrow network.
+The breathing transformer initializes from the first 4 layers of EleutherAI's Pythia-410M — a 24-layer, 1024-dim model trained on 300B tokens of diverse English text (the Pile). Taking 4 of 24 layers captures the model's early processing stages, which provide strong language understanding without deep single-pass specialization.
 
-Pythia-160M was chosen over alternatives for several reasons. Its 12 standard multi-head attention heads (not grouped query attention) give each head full independence for per-head π-cycling phase offsets — essential for the spectral decomposition. Its hidden dimension of 768 with 12 heads yields head_dim=64, which is standard and well-studied. It uses RoPE which our π cycling extends naturally. It's designed for research, well-documented, and Apache 2.0 licensed.
+Pythia-410M was chosen for its balance of capacity and efficiency. Its 16 standard multi-head attention heads (not grouped query attention) give each head full independence for per-head π-cycling phase offsets — 16 heads at 16 phase angles provides dense spectral coverage with a natural correspondence to the 16-entry lookup table. Its hidden dimension of 1024 with head_dim=64 gives substantially more processing capacity than the h=768 alternative. It uses RoPE which our π cycling extends naturally. Apache 2.0 licensed.
 
-What we take from Pythia: layers 0-3 (attention + FFN weights), token embeddings (768 × 50304), and the output head. What we modify: Q, K, and FFN gate projections become phase-specific (4 unique copies, initialized from Pythia's layers 0-3 respectively). V, O, FFN up/down, and norms remain shared (initialized from Pythia, averaged or from layer 0).
+What we take from Pythia: layers 0-3 (attention + FFN weights), token embeddings (1024 × 50304), and the output head. What we modify: Q, K, and FFN gate projections become phase-specific (4 unique copies, initialized from Pythia's layers 0-3). V, O, FFN up/down, and norms remain shared.
 
 ### Model Dimensions
 
-Hidden dimension 768 (matching Pythia). Twelve attention heads, head dimension 64. FFN intermediate 3072. Vocabulary 50304 (Pythia's tokenizer). Max sequence length 512. Four specialized layers per breath, partially weight-shared. Maximum 8 loops.
+Hidden dimension 1024 (matching Pythia-410M). Sixteen attention heads, head dimension 64. FFN intermediate 4096. Vocabulary 50304 (Pythia's tokenizer). Max sequence length 512. Four specialized layers per breath, partially weight-shared. Maximum 8 loops.
 
-### Parameters
+### Parameters (Rebalanced)
 
-Transformer phase-specific (per layer): Q 590K + K 590K + FFN gate 2.36M = ~3.5M. Four layers: ~14M. Shared (one copy): V 590K + O 590K + FFN up 2.36M + FFN down 2.36M + norms = ~5.9M. Embeddings: ~38.6M (tied with output). Transformer total: ~58.5M.
+The parameter budget is balanced between thinking (transformer) and conducting (controller), with neither dominating:
 
-Controller: ~80M (512d thinking space reading 768d transformer space). Lookup table: 8-12 entries × 768d + coupling matrix. Total system: ~140M.
+Transformer phase-specific (per layer): Q 1.05M + K 1.05M + FFN gate 4.19M = ~6.3M. Four layers: ~25.2M. Shared (one copy): V 1.05M + O 1.05M + FFN up 4.19M + FFN down 4.19M + norms = ~10.5M. Embeddings: ~51.5M (tied with output). Transformer total: ~87.2M (35.7M processing + 51.5M embeddings).
+
+Controller: ~40M (20M state reader with 2 Perceiver layers reading 1024d into 512d, 12M notebook attention with 3 layers, 8M decision heads). Slim and decisive — the controller reads the integral, matches against primes, and decides temperature/phase/stop. It doesn't need to be larger than the orchestra it conducts.
+
+Lookup table: 16 entries × 1024d pattern + 1024d subtraction mask + resonant angle + confidence threshold = ~33K. Plus 16×16 coupling matrix = 256 parameters. Living in the transformer's native 1024d space — no projection needed for matching.
+
+Total system: ~127M. Effective processing with 8 loops: 35.7M × 8 = 286M effective transformer capacity + 40M controller = 326M effective.
 
 ### Memory (7900 XTX, 24GB)
 
-~4GB total in mixed precision. ~20GB headroom. Batch size 64-128 at sequence length 512. The smaller model means faster iteration — more experiments per day.
+~5GB total in mixed precision. ~19GB headroom. Batch size 64-128 at sequence length 512. Fast iteration.
 
 ### Estimated Training
 
-Week 1: Learn to breathe — L3-L4 with forced then adaptive loops. Validate that pretrained layers improve with looping. Week 2: Multi-step — L4.5 with outer cycles. Week 3: GSM8K. Week 4: Push toward MATH-500. Estimated 3-5 minutes per epoch on GSM8K with the smaller model.
+Phase 0 (loop consistency): Days 1-3. Phase 1 (breathing curriculum L3-L4.5): Days 4-7. Phase 2 (controller + lookup table): Week 2. Phase 3 (GSM8K): Weeks 3-4. Phase 4 (MATH-500): Months 3-4. Estimated 3-5 minutes per epoch on GSM8K.
 
 ### Platform
 
-AMD Radeon RX 7900 XTX (24GB GDDR6, 960 GB/s bandwidth, ~120 TFLOPS FP16). Tinygrad framework with AM custom userspace driver. No ROCm, no AMD GPU drivers, no PyTorch, no CUDA. Tinygrad and Python standard library only.
+AMD Radeon RX 7900 XTX (24GB GDDR6, 960 GB/s bandwidth, ~120 TFLOPS FP16). Tinygrad framework with AM custom userspace driver. No ROCm, no AMD GPU drivers, no PyTorch, no CUDA. Tinygrad and Python standard library only. Requires Linux (Ubuntu 24.04 recommended) — tinygrad's AM driver is Linux-only.
 
 ---
 
-## 12. What We Carry Forward
+## 13. What We Carry Forward
 
 The expand-collapse breathing pattern, discovered in attention analysis and confirmed in Llama's per-layer diversity spectrum. π cycling of attention, proven to create structural diversity. Equal-reward decomposition for genuine multi-step reasoning. Number augmentation and number-token weighting for training stability.
 
-The controller's gradient must never flow through the transformer — three days of empirical proof. The generation loss landscape has one dominant basin for any controller output. Structural diversity is necessary; learned diversity always collapses. Differentiable lookup tables from the project's origins return as the prime factorization mechanism.
+The controller's gradient must never flow through the transformer — three days of empirical proof. The generation loss landscape has one dominant basin for any controller output (though our custom setup may develop multiple basins — to be tested). Structural diversity is necessary; learned diversity always collapses in pretrained models. Differentiable lookup tables from the project's origins return as the prime factorization mechanism.
 
-We leave behind: training from scratch (Pythia provides the language foundation), LoRA atoms and continuous scales, the straight-through gradient estimator, soft token diversity mechanisms, and the PyTorch/ROCm software stack.
+The looping validation proved: signal survives (7x growth), diversity holds (effective rank 16+), SNR improves (0.114 → 0.127 for L0-3). The generation head needs fine-tuning to extract signal from looped representations — the DC component grows linearly. The copy machine principle: reasoning in representation space is necessary. Generate once at the end, never between breaths.
+
+We leave behind: Llama 1B (replaced by Pythia-410M L0-3), LoRA atoms and continuous scales, the straight-through gradient estimator, soft token diversity mechanisms, the PyTorch/ROCm software stack, and Windows (wipe Shadow Glass, install Ubuntu 24.04).
 
 ---
 
 ## Summary
 
-**The breath.** Four specialized layers from Pythia-160M, tracing a sine wave from expansion to compression. Phase-specific Q, K, gate weights specialize each layer for its role. Shared V, FFN, norms carry pretrained English understanding. Temperature modulates the rhythm. The sine wave is periodic — smooth, continuous looping with no discontinuity between breaths.
+### "The Shape of Thought"
 
-**The triple helix.** Oscillation provides expand-collapse within each breath. Alternation provides complementary viewing angles across breaths via π-cycled attention with per-head phase offsets — 12 heads scanning 12 frequency bands in parallel, inspired by BirdNET's simultaneous multi-species identification. Integration accumulates evidence across all breaths via gated running integral. Stop when the integral stabilizes.
+**The breath.** Four specialized layers from Pythia-410M (h=1024, 16 heads), tracing a sine wave from expansion to compression. Phase-specific Q, K, gate weights specialize each layer for its role. Shared V, FFN, norms carry pretrained English understanding. Temperature modulates the rhythm. The sine wave is periodic — smooth, continuous looping with no discontinuity between breaths.
 
-**The controller.** ~80M conductor thinking in 512 dimensions. Reads the normalized integral from the 768d transformer space. Writes 512d pages. Governs temperature, phase angle, loop count, and integration gate. Factorizes subproblems via the lookup table — the tree emerges from the prime spectrum. No separate decomposition classifier.
+**The triple helix spiraling inward.** Oscillation provides expand-collapse within each breath. Alternation provides complementary viewing angles across breaths via π-cycled attention with 16 per-head phase offsets scanning 16 frequency bands in parallel, inspired by BirdNET's simultaneous multi-species identification. Integration accumulates evidence across all breaths via gated running integral. Each breath simultaneously rotates the viewing angle AND increases resolution — coarse to fine, broad to sharp, hypothesis to confirmation. Stop when the integral stabilizes.
 
-**The coarse-to-fine spiral.** Early breaths scan broadly at warm temperature. Later breaths probe precisely at cool temperature. Resolution increases with each breath. The triple helix spirals inward — alternation rotates, oscillation breathes, integration accumulates, temperature cools. Convergence on the precise factorization.
+**The controller.** ~40M conductor thinking in 512 dimensions. Slim and decisive. Reads the normalized integral from the 1024d transformer space. Writes 512d pages. Governs temperature, phase angle, loop count, and integration gate. Rotation guided by the lookup table — the 16 prime entries tell the controller which phase angles to probe for each candidate operation. The tree structure emerges directly from the prime factorization. No separate decomposition classifier.
 
-**The lookup table.** 8-12 prime entries at 768d (matching hidden dim). Parallel multi-label detection across 12 heads in one breath. Iterative spectral subtraction confirms primes, counts multiplicities, identifies couplings. The complete factorization specifies the solution tree.
+**The lookup table.** 16 prime entries at 1024d (matching hidden dim), each with a pattern, resonant angle, subtraction mask, and confidence threshold. Plus a 16×16 coupling matrix encoding operation dependencies. Parallel multi-label detection across 16 heads in one breath — all operations identified simultaneously. Iterative spectral subtraction confirms primes, counts multiplicities, identifies couplings. The complete factorization specifies the solution tree.
 
-**The efficiency.** No chain-of-thought tokens. All reasoning in representation space. 140M total parameters initialized from a pretrained foundation. Parallel spectral detection in one breath. Compute scales with difficulty, not verbosity.
+**The copy machine principle.** All reasoning in representation space. The signal grows 7x across 8 loops while diversity holds perfectly. Generate tokens ONCE after breathing converges — never between breaths. Autoregressive mid-breath generation is a copy machine that degrades exponentially. The hidden states are the original painting. Breathe with the original. Print only the final version.
 
-**The honesty.** Looping pretrained layers is unproven. The core bet — that layers trained for single-pass processing can be productive when cycled with π-shifted attention and sine-wave temperature — must be validated in Week 1.
+**The parameter balance.** 35.7M transformer processing + 40M controller + 51.5M embeddings = 127M total. With 8 loops: 286M effective processing from 35.7M parameters. The conductor (40M) is appropriately smaller than the effective orchestra (286M). Massive parameter efficiency through weight reuse.
 
-**The guarantee.** Diversity is structural: π cycling, per-head phase offsets, sine-wave temperature. Gradient descent cannot erase them. The one-basin collapse of v1-v3 is architecturally impossible.
+**The honesty.** Looping pretrained layers requires fine-tuning — frozen weights don't loop for generation (validated empirically). The core bet: fine-tuning can close the generation gap by teaching the output head to extract the rich signal that provably survives looping. The gradient landscape may develop multiple basins in our custom setup — the architecture works either way through complete gradient separation.
 
-**The platform.** AMD 7900 XTX + tinygrad + AM driver. No proprietary software. Local, open-source, hackable.
+**The guarantee.** Diversity is structural: π cycling, 16 per-head phase offsets, sine-wave temperature. Gradient descent cannot erase them. Every breath sees the problem from a different angle at a different resolution. The one-basin collapse of v1-v3 is architecturally impossible.
 
-A 140M model that breathes, alternates, integrates, and factorizes. Four months to September 1.
+**The platform.** AMD 7900 XTX + tinygrad + AM driver. Ubuntu 24.04. No proprietary software. Local, open-source, hackable.
+
+A 127M model that breathes, alternates, integrates, and factorizes. Four months to September 1.

@@ -1,6 +1,6 @@
 # Mycelium — The Breathing Transformer
 
-A 140M transformer that loops its own layers, breathing through each problem until it finds the resonant decomposition. Not a frozen LLM with external scaffolding — a model that breathes natively. Reasoning happens in representation space, not token space.
+A 127M transformer that loops its own layers, breathing through each problem until it finds the resonant decomposition. Not a frozen LLM with external scaffolding — a model that breathes natively. Reasoning happens in representation space, not token space.
 
 **The thesis:** decomposition is everything. The model doesn't become smarter — it learns to break hard problems into pieces it can already solve.
 
@@ -38,8 +38,8 @@ A 140M transformer that loops its own layers, breathing through each problem unt
 
 ```
 BREATHE in representation space (no tokens generated):
-  4 Pythia layers × N loops
-  π-cycled attention (12 heads, 12 phase angles)
+  4 Pythia-410M layers × N loops (h=1024)
+  π-cycled attention (16 heads, 16 phase angles)
   Sine-wave temperature (expand → compress → expand → ...)
   Controller reads hidden states between breaths
 
@@ -53,11 +53,11 @@ SPEAK once (tokens generated only at the end):
 ```
 Component                        Params      Role
 ──────────────────────────────────────────────────────────────
-Pythia-160M L0-3 (fine-tuned)     ~58M       Breathe (4 layers × N loops)
-Controller                        ~80M       Observe + plan + stop
-Differentiable Lookup Table         ~1M       Prime factorization of structure
+Pythia-410M L0-3 (fine-tuned)     ~87M       Breathe (4 layers × N loops, h=1024, 16 heads)
+Controller                        ~40M       Observe + plan + stop (slim & decisive)
+Differentiable Lookup Table        ~33K       16 prime entries + coupling matrix
 ──────────────────────────────────────────────────────────────
-Total:                            ~140M
+Total:                            ~127M
 ```
 
 ### Key Discoveries
@@ -82,8 +82,8 @@ Phase 3:        GSM8K push (>22%)
 Phase 4:        MATH-500
 ```
 
-**Platform:** Shadow Glass (AMD 7900 XTX 24GB, tinygrad + AM driver)
+**Platform:** Shadow Glass (AMD 7900 XTX 24GB, tinygrad + AM driver, Ubuntu 24.04)
 
 ---
 
-See `CLAUDE.md` for full technical context, `plan/pre_shadow_glass_summary.md` for the complete validation results and Day 1 plan, and `plan/mycelium_v4_final_architecture.md` (in Downloads) for the full architecture spec.
+See `CLAUDE.md` for full technical context, `plan/pre_shadow_glass_summary.md` for the complete validation results and Day 1 plan, and `plan/mycelium_v4_final_architecture.md` for the full architecture spec including the diffusion connection.

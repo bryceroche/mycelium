@@ -2,10 +2,10 @@
 
 ## Project Overview
 
-Mycelium builds differentiable recurrent reasoning for small language models. A 140M breathing transformer loops 4 layers from Pythia-160M with π-cycled attention, reasoning in representation space and generating tokens only once at the end. The core thesis: **decomposition is everything.**
+Mycelium builds differentiable recurrent reasoning for small language models. A 127M breathing transformer loops 4 layers from Pythia-410M (h=1024, 16 heads) with π-cycled attention, reasoning in representation space and generating tokens only once at the end. The core thesis: **decomposition is everything.**
 
 **Lead:** Bryce (Manhattan Beach, CA) · **Target:** MATH-500 · **Deadline:** September 1, 2026
-**Infrastructure:** Shadow Glass (AMD 7900 XTX 24GB, tinygrad + AM driver) · AWS EC2 g5.xlarge (A10G 24GB) for validation
+**Infrastructure:** Shadow Glass (AMD 7900 XTX 24GB, tinygrad + AM driver, Ubuntu 24.04) · AWS EC2 g5.xlarge (A10G 24GB) for validation
 
 ---
 
@@ -15,8 +15,8 @@ Mycelium builds differentiable recurrent reasoning for small language models. A 
 BREATHING LOOP:
 
   BREATHE (representation space, no token generation):
-    4 layers (Pythia-160M L0-3) × N loops
-    π-cycled attention: 12 heads at 12 phase offsets, rotated each loop
+    4 layers (Pythia-410M L0-3, h=1024) × N loops
+    π-cycled attention: 16 heads at 16 phase offsets, rotated each loop
     Sine-wave temperature: RISE → PEAK → FALL → TROUGH
     Integration: gated running integral across breaths
     Controller reads hidden states → pages, temperature, phase, stop decision
@@ -29,9 +29,9 @@ BREATHING LOOP:
 ```
 
 **Components:**
-- **Pythia-160M L0-3 (fine-tuned for looping):** 4 layers with partial weight sharing. Unique Q, K, FFN gate per phase; shared V, FFN basis, norms. ~20M phase-specific + ~6M shared + ~39M embeddings.
-- **Controller (~80M):** Reads 768d transformer hidden states in 512d thinking space. Produces pages, temperature modulation, phase angle, integration gate, stop signal. Gets gradient via REINFORCE — never through transformer.
-- **Differentiable Lookup Table:** 8-12 prime entries at 768d. Spectral factorization of problem structure. Coupling matrix determines tree shape.
+- **Pythia-410M L0-3 (fine-tuned for looping):** 4 layers at h=1024, 16 heads. Partial weight sharing — unique Q, K, FFN gate per phase; shared V, FFN basis, norms. ~25M phase-specific + ~10.5M shared + ~51.5M embeddings.
+- **Controller (~40M):** Slim and decisive. 2 Perceiver layers read 1024d transformer space into 512d thinking space. 3-layer notebook attention. Decision heads for temperature, phase, integration gate, stop. Gets gradient via REINFORCE — never through transformer.
+- **Differentiable Lookup Table:** 16 prime entries at 1024d + 16×16 coupling matrix. One-to-one head-to-prime correspondence. Spectral factorization of problem structure.
 - **No chain-of-thought tokens.** All reasoning in representation space. The Copy Machine Principle prohibits mid-breath generation.
 
 **Cardinal rules:**
@@ -87,7 +87,7 @@ Phase 4: MATH-500
 - **Equal-reward (1/N per target):** The ONLY way to maximize reward is to decompose. Proven on L4/L4.5.
 - **Copy Machine Principle:** No token generation between breaths. Reasoning in representation space is not just efficient — it's necessary. Empirically proven: hidden states survive looping, autoregressive generation doesn't.
 - **π-cycled attention:** Per-head phase offsets provide structural diversity that gradient descent cannot erase. Solves the v1-v3 diversity collapse problem.
-- **L0-3 from Pythia-160M:** Best loop stability of any layer selection. SNR increases with loops. L11 is toxic (norm explosion).
+- **L0-3 from Pythia:** Best loop stability of any layer selection (validated on 160M, to re-validate on 410M). SNR increases with loops. Final layers are toxic (norm explosion).
 - **Separate backward passes:** Controller gradient via REINFORCE, never through transformer. The gen_loss landscape has one dominant basin for any controller path through the LLM.
 - **DC component management:** The shared direction in hidden state space grows linearly with loops. The generation head must learn to extract per-problem signal from this. This is THE fine-tuning objective.
 
@@ -125,11 +125,11 @@ data/
 
 ## Infrastructure
 
-### Shadow Glass (primary — arriving May 8, 2026)
+### Shadow Glass (primary)
 ```
 AMD 7900 XTX (24GB GDDR6, 960 GB/s, ~120 TFLOPS FP16)
-tinygrad + AM driver (no ROCm, no PyTorch)
-~4GB VRAM for 140M model, ~20GB headroom
+Ubuntu 24.04 · tinygrad + AM driver (no ROCm, no PyTorch)
+~5GB VRAM for 127M model, ~19GB headroom
 ```
 
 ### AWS (validation, backup)

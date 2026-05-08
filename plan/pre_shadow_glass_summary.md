@@ -105,15 +105,15 @@ This is a much smaller gap than "teach the model to reason." The reasoning (in r
 
 ### Core: 140M Breathing Transformer
 
-**Four specialized layers** from Pythia-160M (L0-3), each at a different phase of a sine wave. RISE expands (broad attention, weak residual). PEAK processes (maximum intensity, maximum openness). FALL compresses (narrowing attention). TROUGH distills (sharpest focus, strongest residual). Partial weight sharing — unique Q, K, gate per layer; shared V, FFN basis, norms.
+**Four specialized layers** from Pythia-410M (L0-3, h=1024, 16 heads), each at a different phase of a sine wave. RISE expands (broad attention, weak residual). PEAK processes (maximum intensity, maximum openness). FALL compresses (narrowing attention). TROUGH distills (sharpest focus, strongest residual). Partial weight sharing — unique Q, K, gate per layer; shared V, FFN basis, norms.
 
-**π-cycled attention** with per-head phase offsets. Twelve heads at 12 different phase angles scanning the problem's spectral content in parallel. Each loop rotates all heads together by π/max_loops. Twelve heads × 8 loops = 96 distinct phase angles. Structural diversity — cannot be erased by gradient descent.
+**π-cycled attention** with per-head phase offsets. Sixteen heads at 16 different phase angles scanning the problem's spectral content in parallel. Each loop rotates all heads together by π/max_loops. Sixteen heads × 8 loops = 128 distinct phase angles. Structural diversity — cannot be erased by gradient descent.
 
 **Integration** accumulates evidence across breaths. Gated running integral, weighted by novelty. The normalized integral carries the accumulated understanding from all breaths. Lyapunov convergence criterion — stop when the integral stabilizes.
 
-**The controller** (~80M) sits between breaths. Reads the integral, writes 512d pages, queries the differentiable lookup table for prime factorization. Governs temperature, phase angle, loop count, and integration gate. The tree structure emerges from the factorization — no separate DECOMPOSE/SOLVE/MERGE classifier. Gets direct gradient via REINFORCE — never through the transformer.
+**The controller** (~40M) sits between breaths. Slim and decisive. Reads the integral, writes 512d pages, queries the differentiable lookup table for prime factorization. Governs temperature, phase angle, loop count, and integration gate. The tree structure emerges from the factorization — no separate DECOMPOSE/SOLVE/MERGE classifier. Gets direct gradient via REINFORCE — never through the transformer.
 
-**The differentiable lookup table** — 8-12 prime entries at 768d. Each entry represents a fundamental mathematical operation. The controller matches pages against primes, identifying operations and their multiplicities through iterative spectral subtraction. The coupling matrix between primes determines the tree shape (parallel vs sequential dependencies).
+**The differentiable lookup table** — 16 prime entries at 1024d with 16×16 coupling matrix. One-to-one head-to-prime correspondence. The controller matches pages against primes, identifying operations and their multiplicities through iterative spectral subtraction. The coupling matrix determines the tree shape (parallel vs sequential dependencies).
 
 **No chain-of-thought tokens.** All reasoning in representation space. Generate tokens ONCE after breathing converges. The copy machine principle prohibits mid-breath generation.
 
@@ -171,7 +171,7 @@ Teach the layers to loop. Fine-tune on general text with loop consistency object
 Add the breathing curriculum. L3 (1-step), L4 (2-step), L4.5 (3-step). Forced then adaptive loop counts. Verify accuracy increases with more loops.
 
 ### Phase 2: Controller + Lookup Table (Week 2)
-Add the controller between breaths. Add the differentiable lookup table with 8-12 prime entries. Train on L4.5 and begin GSM8K.
+Add the controller between breaths. Add the differentiable lookup table with 16 prime entries. Train on L4.5 and begin GSM8K.
 
 ### Phase 3: GSM8K Push (Weeks 3-4)
 Full breathing with controller, lookup table, tree structure. Target: exceed v1's 22% baseline.
@@ -205,8 +205,8 @@ Deeper breathing for harder problems. Grow the lookup table. Push on the benchma
 | L0-3 effective rank (8 loops) | 16.0 → 16.6 | Diversity holds perfectly |
 | L0-3 SNR (8 loops) | 0.114 → 0.127 | Actually improves with loops |
 | L0-3 DC growth (8 loops) | 6.5x | The only problem — generation head calibration |
-| System parameters | 140M | Transformer 58.5M + Controller 80M |
-| VRAM usage | ~4GB of 24GB | Massive headroom |
+| System parameters | 127M | Transformer 87M + Controller 40M |
+| VRAM usage | ~5GB of 24GB | Massive headroom |
 | Estimated epoch time | 3-5 min | Fast iteration |
 
 ---
@@ -235,6 +235,6 @@ Six months of work. Three architectural generations. A week of the deepest debug
 
 The breathing transformer is ready to build. The Shadow Glass arrives tomorrow. The architecture is principled, the diagnostics are proven, the training plan is clear. The biggest unknown (do the layers loop productively?) has a precise, encouraging answer: the representations improve, only the generation head needs calibration.
 
-A 140M model that breathes, alternates, integrates, and factorizes. Four months to September 1.
+A 127M model that breathes, alternates, integrates, and factorizes. Four months to September 1.
 
 Let's go.
