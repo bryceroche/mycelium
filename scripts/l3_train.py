@@ -111,14 +111,15 @@ def main():
     # CTRL_LR = LR for the controller's separate Adam optimizer (transformer-isolated).
     CTRL_TRAIN = bool(getenv("CTRL_TRAIN", 0))
     CTRL_LR = float(getenv("CTRL_LR", "1e-4"))
-    CTRL_MAX_LOOPS = getenv("CTRL_MAX_LOOPS", 4)     # max breaths used for controller training
+    CTRL_MAX_LOOPS = getenv("CTRL_MAX_LOOPS", 2)     # max breaths used for controller training (was 4 — halved for speed)
+    CTRL_TRAIN_EVERY = getenv("CTRL_TRAIN_EVERY", 4) # update controller every K main steps (1=every step, 4=every 4)
 
     print(f"=== Math training — level {LEVEL} (three-phase: heavy A, light C) ===")
     print(f"device={Device.DEFAULT}  B={BATCH}  seq_len={FIXED_LEN}  steps={STEPS}  lr={LR}")
     print(f"corpus={NUM_PROBLEMS}, eval set={NUM_EVAL}, space_digits={SPACE_DIGITS}")
     print(f"phase_A_train_loops={TRAIN_LOOPS}  phase_A_eval_loops={EVAL_LOOPS}  phase_C_loops={PHASE_C_LOOPS}")
     print(f"eval batch={EVAL_BATCH}  cache_len={EVAL_CACHE_LEN}  lookup_eval={'on' if LOOKUP_EVAL else 'off'}@A={LOOKUP_EVAL_LOOPS}")
-    print(f"lookup_aux_weight={LOOKUP_AUX_WEIGHT}  ctrl_train={'on' if CTRL_TRAIN else 'off'}  ctrl_lr={CTRL_LR}  ctrl_max_loops={CTRL_MAX_LOOPS}")
+    print(f"lookup_aux_weight={LOOKUP_AUX_WEIGHT}  ctrl_train={'on' if CTRL_TRAIN else 'off'}  ctrl_lr={CTRL_LR}  ctrl_max_loops={CTRL_MAX_LOOPS}  ctrl_train_every={CTRL_TRAIN_EVERY}")
     print()
 
     print(f"generating {LEVEL} problems...")
@@ -184,11 +185,12 @@ def main():
         loss = multi_cycle_train_step(model, opt, batch_examples, tok, loops_per_cycle, FIXED_LEN,
                                       lookup_aux_weight=LOOKUP_AUX_WEIGHT,
                                       lookup_eq_token_id=eq_token_ids)
-        # Controller training step (Step F) — runs alongside main step. Uses a
-        # separate optimizer; transformer params untouched (gradient separation
-        # enforced by ctrl_opt only containing controller_parameters()).
+        # Controller training step (Step F) — throttled to every CTRL_TRAIN_EVERY
+        # main steps. Cuts wall-clock per main step ~2× without dropping the
+        # controller's actual learning rate (a less-frequent, more-stable signal
+        # is fine; controller params are tiny vs the transformer).
         ctrl_loss = None
-        if ctrl_opt is not None:
+        if ctrl_opt is not None and step % int(CTRL_TRAIN_EVERY) == 0:
             ctrl_loss = controller_train_step(model, ctrl_opt, batch_examples, tok,
                                               eq_token_ids, max_loops=int(CTRL_MAX_LOOPS))
         dt = time.perf_counter() - t0
