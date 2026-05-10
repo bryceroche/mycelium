@@ -173,11 +173,28 @@ The loop terminates when two conditions are met: the integral has stabilized (Ly
 
 **Step size (rotation rate)** determines spectral coverage efficiency. Without adaptive step size, closely-spaced modes might be missed (step too large) or the search takes too many breaths (step too small). The Nyquist theorem applies: to resolve two primes separated by Δθ in phase angle, the rotation step must be at most Δθ/2.
 
-### Current State: Partial System
+### Current State: Full 7/7 Closed Loop Implemented
 
-The L3 and L4 results — 65% on L3, multi-step decomposition on L4, the digit-spacing breakthrough — were achieved with only rotation and integration active. The controller is a stub (random/fixed loop counts). The lookup table doesn't exist. The notebook doesn't exist. Temperature is fixed. Step size is uniform. **Two of seven components.**
+As of 2026-05-10, all seven components are implemented and wired together:
 
-The full closed loop should be substantially more capable because each component amplifies the others. The lookup table is the highest-priority *diagnostic* (cheap, no training, answers whether rotation produces distinguishable spectral signals at all). The controller is the highest-priority *build* (one component unlocks four capabilities: adaptive rotation, notebook memory, learned temperature, and principled stopping). Lookup table first — diagnose the foundation; controller second — build the intelligence on top.
+| # | Component | Status | File |
+|---|---|---|---|
+| 1 | Rotation (π-cycled RoPE, per-head phase offsets) | ✓ | `breathing.py: RoPE` |
+| 2 | Integration (gated running integral across breaths) | ✓ | `breathing.py: BreathingBlock.breathe` |
+| 3 | Notebook (512d pages, persisting across cycles) | ✓ | `controller.py: Notebook` |
+| 4 | Lookup table (16×1024 cosine matcher, joint-trained) | ✓ | `lookup_table.py: LookupTable` |
+| 5 | Controller (state reader + decision heads + notebook attn) | ✓ | `controller.py: Controller` |
+| 6 | Temperature modulation (controller scalar × sine baseline) | ✓ | `breathing.py: BreathingLayer (temp_mult)` |
+| 7 | Step size / rotation rate (controller emits step_mult) | ✓ | `breathing.py: breathe_controlled` |
+
+The closed loop is invoked via `model.breathe_controlled(tokens, max_loops, notebook)`. Per breath: controller reads the running integrated rep → writes a 512d page into the notebook → notebook attention refines the page over all prior pages → decision heads emit `{temperature, gate, stop_logit, step_mult}` for the next breath → the breath runs at the controller's chosen temperature with the integral weighted by the controller's gate, and RoPE indexed by the controller's adaptive phase.
+
+Gradient separation is enforced by construction:
+- The transformer is trained on the main CE loss + a small joint lookup-table aux CE. `model.parameters()` returns just transformer + lookup_table params.
+- The controller is trained by `controller_train_step` on a separate optimizer over `model.controller_parameters()`. Its loss is per-breath lookup-CE + stop calibration. The loss reaches transformer params too but those grads are simply discarded on the next `main_opt.zero_grad()`.
+- Verified on a 5-step joint smoke: 0/39 transformer params changed in controller training; 61/62 controller params changed.
+
+**The 7/7 implementation is the architecture's first complete realization.** The L3-spaced 65% and L4 10% results in earlier runs were obtained with only rotation + integration active. The full system is now ready for empirical validation: does adding the lookup table, notebook, controller, and adaptive rotation produce gains on L3-spaced, and (critically) on L4-spaced where the controller has the most to contribute (deciding *which step's operation comes next*)?
 
 ---
 
