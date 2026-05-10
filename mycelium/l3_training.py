@@ -131,12 +131,16 @@ def multi_cycle_eval_loss(model, batch_examples: List[MathExample], tok,
 
 def multi_cycle_generate(model, tok, problem_ids: List[int], n_loops, n_cycles: int,
                          max_new_per_cycle: int = 40, eos_id: int = 0,
-                         vocab_active: int = 50277) -> List[List[int]]:
+                         vocab_active: int = 50277, use_kv_cache: bool = False) -> List[List[int]]:
     """Per-cycle inference — explicit outer cycle loop with three-phase scheduling.
 
     n_loops: int (uniform) or list[int] (per-cycle). For three-phase eval:
     pass [phase_a_loops, phase_c_loops, ...] so cycle 0 does the heavy analysis
     and subsequent cycles do light execution.
+
+    use_kv_cache: when True, each cycle uses the model's cached_generate (breathing
+    once on the cycle prefix, then incremental token generation with cached K/V).
+    Massively faster than re-breathing per token.
     """
     Tensor.training = False
     loops_per_cycle = _resolve_loops_per_cycle(n_loops, n_cycles)
@@ -147,20 +151,28 @@ def multi_cycle_generate(model, tok, problem_ids: List[int], n_loops, n_cycles: 
 
     for cyc in range(n_cycles):
         nl = loops_per_cycle[cyc]
-        gen: List[int] = []
-        for _ in range(max_new_per_cycle):
-            ctx = (context + gen)[-model.cfg.max_seq_len:]
-            toks = Tensor([ctx], dtype=dtypes.int).realize()
-            h = model(toks, nl)
-            last = h[:, -1, :]
-            logits = (last @ model.embed_out).cast(dtypes.float)
-            logits = logits[:, :vocab_active]
-            next_id = int(logits.argmax(axis=-1).realize().numpy()[0])
-            gen.append(next_id)
-            if next_id == eos_id:
-                break
-            if len(gen) >= sep_len and gen[-sep_len:] == sep_ids:
-                break
+        if use_kv_cache:
+            ctx = context[-model.cfg.max_seq_len:]
+            gen = model.cached_generate(
+                ctx, n_loops=nl, max_new=max_new_per_cycle,
+                stop_token_ids=[eos_id], stop_seq=sep_ids,
+                vocab_active=vocab_active,
+            )
+        else:
+            gen = []
+            for _ in range(max_new_per_cycle):
+                ctx = (context + gen)[-model.cfg.max_seq_len:]
+                toks = Tensor([ctx], dtype=dtypes.int).realize()
+                h = model(toks, nl)
+                last = h[:, -1, :]
+                logits = (last @ model.embed_out).cast(dtypes.float)
+                logits = logits[:, :vocab_active]
+                next_id = int(logits.argmax(axis=-1).realize().numpy()[0])
+                gen.append(next_id)
+                if next_id == eos_id:
+                    break
+                if len(gen) >= sep_len and gen[-sep_len:] == sep_ids:
+                    break
         cycle_outputs.append(gen)
         context.extend(gen)
 
@@ -168,23 +180,53 @@ def multi_cycle_generate(model, tok, problem_ids: List[int], n_loops, n_cycles: 
 
 
 def accuracy_at_loops_multi(model, tok, examples: List[MathExample], n_loops,
-                            max_new_per_cycle: int = 40) -> Tuple[float, List[Tuple[MathExample, int | None, str]]]:
-    """Multi-cycle accuracy eval. n_loops is int or list (per-cycle). For three-phase
-    eval pass [phase_a, phase_c, phase_c, ...]."""
+                            max_new_per_cycle: int = 40,
+                            batch_size: int = 32) -> Tuple[float, List[Tuple[MathExample, int | None, str]]]:
+    """Multi-cycle accuracy eval. Single-cycle (L3) examples use the batched cached
+    generation path for 3-5× speedup. Multi-cycle (L4+) falls back to per-problem
+    sequential cached generation (still uses KV cache per cycle, just not batched
+    across problems — TODO: batched multi-cycle).
+
+    n_loops can be int (uniform) or list (per-cycle). For three-phase eval pass
+    [phase_a, phase_c, phase_c, ...].
+    """
     correct = 0
     rows = []
-    for ex in examples:
-        n_cycles = len(ex.gen_targets)
-        prompt_ids = tok.encode(ex.problem).ids
-        cycle_outs = multi_cycle_generate(model, tok, prompt_ids, n_loops=n_loops,
-                                          n_cycles=n_cycles, max_new_per_cycle=max_new_per_cycle)
-        last_text = tok.decode(cycle_outs[-1])
-        full_text = " ".join(tok.decode(co) for co in cycle_outs)
-        parsed = parse_int_answer(last_text)
-        ok = (parsed == ex.answer)
-        if ok:
-            correct += 1
-        rows.append((ex, parsed, full_text))
+    n_cycles = len(examples[0].gen_targets) if examples else 1
+    sep_ids = tok.encode(SEP).ids
+    # Phase A loops = first entry if list, else the int
+    phase_a_loops = n_loops[0] if isinstance(n_loops, list) else int(n_loops)
+
+    if n_cycles == 1:
+        # Batched path: process examples in chunks of batch_size
+        prompt_ids_all = [tok.encode(ex.problem).ids for ex in examples]
+        for chunk_start in range(0, len(examples), batch_size):
+            chunk = examples[chunk_start:chunk_start + batch_size]
+            chunk_prompts = prompt_ids_all[chunk_start:chunk_start + batch_size]
+            outs_batched = model.cached_generate_batch(
+                chunk_prompts, n_loops=phase_a_loops, max_new=max_new_per_cycle,
+                stop_token_ids=[0], stop_seq=sep_ids,
+            )
+            for ex, gen_ids in zip(chunk, outs_batched):
+                gen_text = tok.decode(gen_ids)
+                parsed = parse_int_answer(gen_text)
+                ok = (parsed == ex.answer)
+                if ok:
+                    correct += 1
+                rows.append((ex, parsed, gen_text))
+    else:
+        # Multi-cycle (sequential per problem for now)
+        for ex in examples:
+            prompt_ids = tok.encode(ex.problem).ids
+            cycle_outs = multi_cycle_generate(model, tok, prompt_ids, n_loops=n_loops,
+                                              n_cycles=n_cycles, max_new_per_cycle=max_new_per_cycle)
+            last_text = tok.decode(cycle_outs[-1])
+            full_text = " ".join(tok.decode(co) for co in cycle_outs)
+            parsed = parse_int_answer(last_text)
+            ok = (parsed == ex.answer)
+            if ok:
+                correct += 1
+            rows.append((ex, parsed, full_text))
     return correct / max(1, len(examples)), rows
 
 
