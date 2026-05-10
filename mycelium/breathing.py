@@ -22,6 +22,7 @@ from tinygrad.engine.jit import TinyJit
 
 from mycelium.config import Config
 from mycelium.lookup_table import LookupTable
+from mycelium.controller import Controller
 
 
 # ---------- partial RoPE with π cycling ----------
@@ -481,11 +482,24 @@ class BreathingTransformer:
         self.lookup_table = LookupTable(n_entries=cfg.n_lookup_entries,
                                         hidden=cfg.hidden,
                                         seed=cfg.seed_lookup)
+        # Closed-loop component #5: the controller. State reader + decision heads.
+        # Step B scaffold; notebook (Step C) and adaptive wiring (Step D) follow.
+        self.controller = Controller(cfg)
 
     def parameters(self):
+        """Parameters trained on the main loss (transformer + lookup table).
+        The controller has gradient separation per the spec — its parameters
+        are returned by controller_parameters() and trained by a separate
+        optimizer (Step F) via REINFORCE on outcomes + auxiliary signals."""
         return ([self.embed.weight, self.ln_f_g, self.ln_f_b, self.embed_out]
                 + self.block.parameters()
                 + self.lookup_table.parameters())
+
+    def controller_parameters(self):
+        """Controller-only parameters. Trained via a separate optimizer with a
+        non-overlapping signal (gradient separation enforced by construction —
+        the main loss never reaches these params)."""
+        return self.controller.parameters()
 
     def state_dict(self) -> dict:
         """Single source of truth for ckpt save/load. New components register here."""
@@ -503,6 +517,7 @@ class BreathingTransformer:
         for i, layer in enumerate(self.block.layers):
             for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
                 sd[f"phase{i}.{a}"] = getattr(layer, a)
+        sd.update(self.controller.state_dict())
         return sd
 
     def load_state_dict(self, sd_ck: dict, strict: bool = False) -> dict:
