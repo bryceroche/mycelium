@@ -1,6 +1,5 @@
-"""Quick sneak-peek: load an ARITH checkpoint and generate on a few held-out problems."""
-import sys
-import os
+"""Smoke test for KV-cached generation: correctness + speedup vs the uncached path."""
+import sys, os, time
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tinygrad import Tensor, Device, dtypes
@@ -10,7 +9,7 @@ from tinygrad.nn.state import safe_load
 from mycelium import Config
 from mycelium.loader import _load_state, load_breathing
 from mycelium.data import load_tokenizer
-from mycelium.l3_data import generate_math, parse_int_answer
+from mycelium.l3_data import generate_math, parse_int_answer, SEP
 from mycelium.l3_training import multi_cycle_generate
 
 
@@ -50,10 +49,9 @@ def load_ckpt(model, path):
 
 
 def main():
-    ckpt = getenv("CKPT", "/home/bryce/mycelium/.cache/arith_ckpts/arith_step1000.safetensors")
+    ckpt = getenv("CKPT", "/home/bryce/mycelium/.cache/arith_ckpts/arith_step1500.safetensors")
     n_loops = getenv("LOOPS", 4)
     n_problems = getenv("N", 8)
-    space_digits = bool(getenv("SPACE_DIGITS", 1))
 
     cfg = Config()
     sd = _load_state()
@@ -61,10 +59,31 @@ def main():
     load_ckpt(model, ckpt)
 
     tok = load_tokenizer()
-    problems = generate_math("ARITH", n_problems, seed=999, digit_spacing=space_digits)
+    problems = generate_math("ARITH", n_problems, seed=999, digit_spacing=True)
 
-    print(f"=== ARITH peek: {ckpt} @ A={n_loops} ===\n")
-    correct = 0
+    print(f"=== KV cache smoke: {ckpt} @ A={n_loops}, N={n_problems} ===\n")
+
+    print("--- Uncached (re-breathe per token) ---")
+    t0 = time.perf_counter()
+    correct_uncached = 0
+    uncached_outs = []
+    for ex in problems:
+        prompt_ids = tok.encode(ex.problem).ids
+        outs = multi_cycle_generate(model, tok, prompt_ids, n_loops=[n_loops, 1],
+                                    n_cycles=1, max_new_per_cycle=12, use_kv_cache=False)
+        gen_text = tok.decode(outs[0])
+        parsed = parse_int_answer(gen_text)
+        ok = parsed == ex.answer
+        if ok: correct_uncached += 1
+        uncached_outs.append((gen_text, parsed))
+        print(f"  {ex.problem!r} -> {gen_text.strip()!r} parsed={parsed} gold={ex.answer} {'OK' if ok else 'WRONG'}")
+    t_uncached = time.perf_counter() - t0
+    print(f"  uncached: {correct_uncached}/{n_problems} in {t_uncached:.1f}s\n")
+
+    print("--- Cached (single-pass per token after Phase A) ---")
+    t0 = time.perf_counter()
+    correct_cached = 0
+    cached_outs = []
     for ex in problems:
         prompt_ids = tok.encode(ex.problem).ids
         outs = multi_cycle_generate(model, tok, prompt_ids, n_loops=[n_loops, 1],
@@ -72,10 +91,18 @@ def main():
         gen_text = tok.decode(outs[0])
         parsed = parse_int_answer(gen_text)
         ok = parsed == ex.answer
-        if ok: correct += 1
-        flag = "OK" if ok else "WRONG"
-        print(f"  {ex.problem!r} -> {gen_text.strip()!r}  parsed={parsed}, gold={ex.answer}  [{flag}]")
-    print(f"\n{correct}/{n_problems} correct")
+        if ok: correct_cached += 1
+        cached_outs.append((gen_text, parsed))
+        print(f"  {ex.problem!r} -> {gen_text.strip()!r} parsed={parsed} gold={ex.answer} {'OK' if ok else 'WRONG'}")
+    t_cached = time.perf_counter() - t0
+    print(f"  cached: {correct_cached}/{n_problems} in {t_cached:.1f}s\n")
+
+    print(f"=== Summary ===")
+    print(f"  uncached: {correct_uncached}/{n_problems} ({t_uncached:.1f}s)")
+    print(f"  cached:   {correct_cached}/{n_problems} ({t_cached:.1f}s)")
+    print(f"  speedup:  {t_uncached/t_cached:.1f}x")
+    matches = sum(1 for (gu, _), (gc, _) in zip(uncached_outs, cached_outs) if gu == gc)
+    print(f"  exact text match: {matches}/{n_problems}")
 
 
 if __name__ == "__main__":

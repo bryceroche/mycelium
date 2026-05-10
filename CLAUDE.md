@@ -135,6 +135,67 @@ The controller is learning to be a good scientist: design the experiment (choose
 
 The controller's gradient NEVER flows through the transformer. Three days of evidence in v1-v3 proved that any such path collapses to one basin. The controller learns through REINFORCE on outcomes, supervised energy calibration, contrastive page diversity, and structure preservation targeting early-breath hidden states. Complete separation.
 
+### The Notebook
+
+The notebook is the controller's memory — 512d pages written after each breath, persisting across both inner breathing loops and outer execution cycles. Without it, the controller makes decisions based only on the current breath's observation. With it, the controller compares "what I see now" against "what I saw three breaths ago" — detecting convergence, tracking new primes, monitoring confidence trends.
+
+The notebook also bridges outer cycles. When cycle 2 executes, the controller reads notebook pages from cycle 1 — carrying representation-level understanding that is richer than the generated text tokens alone. The context carries "Step 1: 263" as text. The notebook carries the full 512d page encoding the controller's understanding of WHY 263 was produced, which operation generated it, and what operation comes next.
+
+Tree-structured attention over notebook pages lets the controller read ancestors (what was the original problem?), siblings (what other operations were identified?), and children (what results have been produced?).
+
+---
+
+## 5b. The Closed Feedback Loop
+
+### Why All Components Are Necessary
+
+The breathing transformer's core components — rotation, integration, notebook, lookup table, controller, temperature modulation, and step size — form an irreducible closed feedback loop. Each component amplifies the others. Remove any one and the system degrades.
+
+### The Loop
+
+Rotation provides a new viewing angle. The transformer expands, processes, compresses, and integrates at that angle. Integration accumulates this observation into the running integral alongside all previous observations. The controller writes a notebook page recording what this breath understood. The lookup table matches the page against its library of known prime operations, returning match weights and confidence. The controller reads the match confidence, compares with previous notebook pages, and decides: is the factorization converging? Is confidence sufficient? If not, the controller adjusts the rotation angle (target the weakest-matched prime), the temperature (broader if uncertain, sharper if nearly confirmed), and the step size (smaller if modes are closely spaced). The next breath rotates to the adjusted angle and the loop continues.
+
+The loop terminates when two conditions are met: the integral has stabilized (Lyapunov criterion — new breaths add negligible information) and the spectral residual is noise (all significant primes have been identified and subtracted).
+
+### What Each Component Contributes
+
+**Rotation** provides independent observations. Without it, every breath sees the same view and integration accumulates redundant information.
+
+**Integration** makes observations cumulative. Without it, each breath's insight is forgotten when the next begins. Rotation without integration is amnesia.
+
+**The notebook** provides memory across breaths and cycles. Without it, the controller has no basis for comparing current observations against previous ones. It cannot detect convergence or track the factorization's evolution.
+
+**The lookup table** provides the reference library and target map. Without it, the controller adapts rotation based on energy signals alone — "something is changing" — without knowing WHAT it's looking for. The lookup table transforms blind search into guided search.
+
+**The controller** provides adaptive feedback. Without it, rotation is uniform (fixed step size), temperature is fixed (no adaptation to problem difficulty), and stopping is arbitrary (fixed loop count). The controller is the intelligence of the loop.
+
+**Temperature modulation** controls resolution at each angle. Without it, every breath has the same precision — wasting early breaths on unnecessary precision and starving late breaths of the precision they need.
+
+**Step size (rotation rate)** determines spectral coverage efficiency. Without adaptive step size, closely-spaced modes might be missed (step too large) or the search takes too many breaths (step too small). The Nyquist theorem applies: to resolve two primes separated by Δθ in phase angle, the rotation step must be at most Δθ/2.
+
+### Current State: Full 7/7 Closed Loop Implemented
+
+As of 2026-05-10, all seven components are implemented and wired together:
+
+| # | Component | Status | File |
+|---|---|---|---|
+| 1 | Rotation (π-cycled RoPE, per-head phase offsets) | ✓ | `breathing.py: RoPE` |
+| 2 | Integration (gated running integral across breaths) | ✓ | `breathing.py: BreathingBlock.breathe` |
+| 3 | Notebook (512d pages, persisting across cycles) | ✓ | `controller.py: Notebook` |
+| 4 | Lookup table (16×1024 cosine matcher, joint-trained) | ✓ | `lookup_table.py: LookupTable` |
+| 5 | Controller (state reader + decision heads + notebook attn) | ✓ | `controller.py: Controller` |
+| 6 | Temperature modulation (controller scalar × sine baseline) | ✓ | `breathing.py: BreathingLayer (temp_mult)` |
+| 7 | Step size / rotation rate (controller emits step_mult) | ✓ | `breathing.py: breathe_controlled` |
+
+The closed loop is invoked via `model.breathe_controlled(tokens, max_loops, notebook)`. Per breath: controller reads the running integrated rep → writes a 512d page into the notebook → notebook attention refines the page over all prior pages → decision heads emit `{temperature, gate, stop_logit, step_mult}` for the next breath → the breath runs at the controller's chosen temperature with the integral weighted by the controller's gate, and RoPE indexed by the controller's adaptive phase.
+
+Gradient separation is enforced by construction:
+- The transformer is trained on the main CE loss + a small joint lookup-table aux CE. `model.parameters()` returns just transformer + lookup_table params.
+- The controller is trained by `controller_train_step` on a separate optimizer over `model.controller_parameters()`. Its loss is per-breath lookup-CE + stop calibration. The loss reaches transformer params too but those grads are simply discarded on the next `main_opt.zero_grad()`.
+- Verified on a 5-step joint smoke: 0/39 transformer params changed in controller training; 61/62 controller params changed.
+
+**The 7/7 implementation is the architecture's first complete realization.** The L3-spaced 65% and L4 10% results in earlier runs were obtained with only rotation + integration active. The full system is now ready for empirical validation: does adding the lookup table, notebook, controller, and adaptive rotation produce gains on L3-spaced, and (critically) on L4-spaced where the controller has the most to contribute (deciding *which step's operation comes next*)?
+
 ---
 
 ## 6. The Unified Framework: Detect, Refine, Execute
@@ -373,6 +434,25 @@ Total system: ~127M. Effective processing with 8 loops: 35.7M × 8 = 286M effect
 
 ~5GB total in mixed precision. ~19GB headroom. Batch size 64-128 at sequence length 512. Fast iteration.
 
+For cached inference: K/V buffers are sized to the actual sequence length, not the model's max. For arithmetic at L3-spaced (~30 tokens) with cache_max_len=32, the cache footprint at B=100 is ~2GB instead of ~33GB at the full 512 RoPE table size. The model's compute budget — not its memory — is the binding constraint at inference batch sizes that matter.
+
+### Inference Engine
+
+The breathing transformer's inference path is a JIT-fused KV cache: per-loop, per-layer K/V buffers shared across the batch, with per-batch position tracking so variable-length prompts coexist in one compiled graph. Phase A breathes the prompt once and writes 32 K/V tensors (4 layers × 8 loops). Phase C iterates token-by-token, replaying a single TinyJit graph that fuses the embedding lookup, all 32 layer-loop passes, the integration, the output norm, and the argmax into one launch per generation step.
+
+Compiled graphs live in a per-model dict keyed on (batch_size, n_loops, vocab_active). The first eval cycle compiles each unique configuration once (~45s per graph; for a typical sweep over EVAL_LOOPS=[1,2,4,8] that is ~3 minutes total, paid once). Every subsequent eval cycle is pure replay — zero compile cost, however many times we evaluate. Eval calls are padded up to a fixed batch_size so chunk size never drifts and the same compiled graphs match every run. The pattern is **compile once at the start of training (during the first eval), reuse the compiled kernels for every subsequent eval for the rest of the run**.
+
+Measured against the original uncached B=1 sequential path on the L3-spaced step-600 checkpoint (N=100, LOOPS=8):
+
+| Path | Time | Speedup |
+|---|---:|---:|
+| Uncached B=1 sequential | 268s | 1× |
+| Cached B=1 sequential | 27s | 10× |
+| Cached batched, warm-up (one-time JIT compile) | 49s | 5.5× |
+| **Cached batched, steady-state (B=100, cache_max_len=32)** | **6.3s** | **42.8×** |
+
+100/100 exact text match against the uncached path — bit-for-bit identical reasoning, just dramatically faster. The accuracy eval that dominated training wall-clock (10+ minutes per checkpoint at B=1 sequential) now runs in ~12 seconds steady-state.
+
 ### Estimated Training
 
 Phase 0 (loop consistency): Days 1-3. Phase 1 (breathing curriculum L3-L4.5): Days 4-7. Phase 2 (controller + lookup table): Week 2. Phase 3 (GSM8K): Weeks 3-4. Phase 4 (MATH-500): Months 3-4. Estimated 3-5 minutes per epoch on GSM8K.
@@ -390,6 +470,8 @@ The expand-collapse breathing pattern, discovered in attention analysis and conf
 The controller's gradient must never flow through the transformer — three days of empirical proof. The generation loss landscape has one dominant basin for any controller output (though our custom setup may develop multiple basins — to be tested). Structural diversity is necessary; learned diversity always collapses in pretrained models. Differentiable lookup tables from the project's origins return as the prime factorization mechanism.
 
 The looping validation proved: signal survives (7x growth), diversity holds (effective rank 16+), SNR improves (0.114 → 0.127 for L0-3). The generation head needs fine-tuning to extract signal from looped representations — the DC component grows linearly. The copy machine principle: reasoning in representation space is necessary. Generate once at the end, never between breaths.
+
+The inference engine works: a JIT-fused KV cache with per-batch position tracking, K/V buffers sized to actual sequence length (not the model's max), and a fixed-batch eval path that compiles once and reuses across every checkpoint. 42.8× over the original uncached path on the L3 eval set, bit-for-bit identical outputs. Eval went from dominating training wall-clock to a rounding error. Faster eval means we can evaluate more often, on more held-out examples, with longer breathing budgets — every architectural question gets answered in seconds instead of minutes.
 
 We leave behind: Llama 1B (replaced by Pythia-410M L0-3), LoRA atoms and continuous scales, the straight-through gradient estimator, soft token diversity mechanisms, the PyTorch/ROCm software stack, and Windows (wipe Shadow Glass, install Ubuntu 24.04).
 
@@ -416,6 +498,8 @@ We leave behind: Llama 1B (replaced by Pythia-410M L0-3), LoRA atoms and continu
 **The parameter balance.** 35.7M transformer processing + 40M controller + 51.5M embeddings = 127M total. With 8 loops: 286M effective processing from 35.7M parameters. The conductor (40M) is appropriately smaller than the effective orchestra (286M). Massive parameter efficiency through weight reuse.
 
 **The empirical foundation.** L3 training (2000 steps): 8-loop accuracy beat 1-loop (70% vs 65%). Loss gap closed 73% (0.77 → 0.20 nats). All depths converge. More thinking produces better answers. The 65% ceiling is arithmetic precision (4-layer model limit), not a breathing limitation. Causal mask verified — all training is honest.
+
+**The inference engine.** JIT-fused KV cache with per-batch position tracking, K/V buffers sized to actual sequence length, fixed-batch eval that compiles once and reuses across checkpoints. 42.8× faster than the original uncached path on the L3 eval set (268s → 6.3s for 100 problems at LOOPS=8). 100/100 exact text match — bit-for-bit identical reasoning, just faster. Eval is no longer a bottleneck.
 
 **The honesty.** Looping pretrained layers requires fine-tuning — frozen weights don't loop for generation (validated empirically). The core bet: fine-tuning can close the generation gap by teaching the output head to extract the rich signal that provably survives looping. The gradient landscape may develop multiple basins in our custom setup — the architecture works either way through complete gradient separation.
 
