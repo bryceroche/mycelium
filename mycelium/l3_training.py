@@ -10,6 +10,7 @@ import numpy as np
 from tinygrad import Tensor, Device, dtypes
 
 from mycelium.l3_data import MathExample, encode_example, encode_cycles, parse_int_answer, collate, SEP
+from mycelium.lookup_table import op_label_from_text, find_eq_position
 
 
 def masked_forward_loss(model, tokens: Tensor, labels: Tensor, n_loops: int) -> Tensor:
@@ -53,14 +54,59 @@ def _resolve_loops_per_cycle(n_loops, n_cycles: int) -> List[int]:
     return out[:n_cycles]
 
 
+def _lookup_aux_loss(model, tokens: Tensor, tokens_np: np.ndarray,
+                     batch_examples: List[MathExample], n_loops: int,
+                     eq_token_id: int, n_classes: int = 4) -> Tensor | None:
+    """Auxiliary CE loss on the model's lookup table at the "=" token position.
+
+    Returns a 0-D loss tensor (mean CE over examples where eq position + op label
+    are both valid), or None if no example in the batch has a usable eq+op pair.
+
+    Uses breathe_with_lookup so the gradient flows through the same forward as
+    the caller's main loss when chained together.
+    """
+    B, T = tokens_np.shape
+    eq_positions = np.array([find_eq_position(tokens_np[b].tolist(), eq_token_id)
+                             for b in range(B)], dtype=np.int32)
+    op_labels = np.array([op_label_from_text(ex.problem + " " + " ".join(ex.gen_targets))
+                          for ex in batch_examples], dtype=np.int32)
+    valid = (eq_positions >= 0) & (op_labels >= 0)
+    if int(valid.sum()) == 0:
+        return None
+
+    _, match_weights, _ = model.breathe_with_lookup(tokens, n_loops)
+    last_mw = match_weights[-1]                                    # (B, T, n_entries)
+
+    # Gather match_weights[b, eq_positions[b], :] via mask + sum
+    eq_safe = np.where(valid, eq_positions, 0).astype(np.int32)    # avoid -1 indexing
+    eq_mask_np = np.zeros((B, T), dtype=np.float32)
+    for b in range(B):
+        if valid[b]:
+            eq_mask_np[b, eq_safe[b]] = 1.0
+    eq_mask = Tensor(eq_mask_np, dtype=dtypes.float).reshape(B, T, 1).realize()
+    gathered = (last_mw.cast(dtypes.float) * eq_mask).sum(axis=1)  # (B, n_entries)
+
+    # CE on first n_classes entries, ignore_index=-100 masks invalid examples
+    logits = gathered[:, :n_classes] * 10.0                        # temperature scaling matches diagnostic
+    op_labels_masked = np.where(valid, op_labels, -100).astype(np.int32)
+    y = Tensor(op_labels_masked, dtype=dtypes.int).realize()
+    return logits.sparse_categorical_crossentropy(y, ignore_index=-100, reduction="mean")
+
+
 def multi_cycle_train_step(model, opt, batch_examples: List[MathExample], tok,
-                           n_loops, fixed_len: int) -> float:
+                           n_loops, fixed_len: int,
+                           lookup_aux_weight: float = 0.0,
+                           lookup_eq_token_id: int | None = None) -> float:
     """Per-cycle forward+backward. Each outer cycle gets its own breathing pass.
     Losses are summed across cycles and normalized by num_cycles (equal-weight
     decomposition).
 
     n_loops: int (uniform) or list[int] of length >= n_cycles (per-cycle scheduling).
     For three-phase: pass [phase_a_loops, phase_c_loops, phase_c_loops, ...].
+
+    lookup_aux_weight: if > 0, adds a cross-entropy loss on the model's lookup
+    table at the "=" token position (cycle 0 only). Drives the table entries
+    toward the model's actual operation directions during joint training.
     """
     Tensor.training = True
     opt.zero_grad()
@@ -70,17 +116,38 @@ def multi_cycle_train_step(model, opt, batch_examples: List[MathExample], tok,
     loops_per_cycle = _resolve_loops_per_cycle(n_loops, n_cycles)
 
     cycle_losses = []
+    aux_loss = None
+    cycle0_tokens = cycle0_tokens_np = None
     for c in range(n_cycles):
         encoded = [ex_cycles[c] for ex_cycles in cycles_per_ex]
         tokens_np, labels_np = collate(encoded, fixed_len=fixed_len)
         tokens = Tensor(tokens_np, dtype=dtypes.int).realize()
         labels = Tensor(labels_np, dtype=dtypes.int).realize()
         cycle_losses.append(masked_forward_loss(model, tokens, labels, loops_per_cycle[c]))
+        if c == 0:
+            cycle0_tokens, cycle0_tokens_np = tokens, tokens_np
+
+    # Aux CE loss only on cycle 0 (where the equation lives)
+    if lookup_aux_weight > 0 and lookup_eq_token_id is not None and cycle0_tokens is not None:
+        aux_loss = _lookup_aux_loss(model, cycle0_tokens, cycle0_tokens_np, batch_examples,
+                                    loops_per_cycle[0], lookup_eq_token_id)
 
     total = cycle_losses[0]
     for l in cycle_losses[1:]:
         total = total + l
     avg_loss = total / float(n_cycles)
+
+    # Always include lookup_table in the graph via a tiny L2 reg. Two purposes:
+    #   1. opt.step() requires every parameter to have a defined gradient, even if
+    #      this batch had no valid eq+op pair (or aux is off). The L2 reg gives
+    #      lookup_table a small, always-defined gradient.
+    #   2. Spec calls for a regularizer keeping the prime entries from drifting
+    #      toward each other; the L2 norm is a mild form of that.
+    # Coefficient is tiny (1e-6) so behavior impact is negligible.
+    avg_loss = avg_loss + model.lookup_table.weight.square().mean() * 1e-6
+    if aux_loss is not None:
+        avg_loss = avg_loss + lookup_aux_weight * aux_loss
+
     avg_loss.backward()
     opt.step()
     Device[Device.DEFAULT].synchronize()

@@ -102,6 +102,9 @@ def main():
     EVAL_CACHE_LEN = getenv("EVAL_CACHE_LEN", 0) or (FIXED_LEN + 40)
     LOOKUP_EVAL = getenv("LOOKUP_EVAL", 1)           # 1 = run per-checkpoint lookup-table classification eval
     LOOKUP_EVAL_LOOPS = getenv("LOOKUP_EVAL_LOOPS", 8)  # n_loops for the lookup eval (single value)
+    # Joint training of the model's internal LookupTable via aux op-classification CE.
+    # 0 = off (table stays at random orthogonal init), 0.1 = light supervision, 1.0 = strong.
+    LOOKUP_AUX_WEIGHT = float(getenv("LOOKUP_AUX_WEIGHT", "0.1"))
 
     print(f"=== Math training — level {LEVEL} (three-phase: heavy A, light C) ===")
     print(f"device={Device.DEFAULT}  B={BATCH}  seq_len={FIXED_LEN}  steps={STEPS}  lr={LR}")
@@ -120,6 +123,8 @@ def main():
         print(f"  sample (digit-spaced): {ex0.problem!r} -> {ex0.gen!r}")
 
     tok = load_tokenizer()
+    from mycelium.lookup_table import eq_token_ids_for
+    eq_token_ids = eq_token_ids_for(tok)  # both " =" and "=" — BPE may produce either
 
     print("\nloading Pythia-410M -> breathing transformer...")
     sd = _load_state()
@@ -164,7 +169,9 @@ def main():
         batch_examples = [train_examples[i] for i in idx]
 
         t0 = time.perf_counter()
-        loss = multi_cycle_train_step(model, opt, batch_examples, tok, loops_per_cycle, FIXED_LEN)
+        loss = multi_cycle_train_step(model, opt, batch_examples, tok, loops_per_cycle, FIXED_LEN,
+                                      lookup_aux_weight=LOOKUP_AUX_WEIGHT,
+                                      lookup_eq_token_id=eq_token_ids)
         dt = time.perf_counter() - t0
         elapsed = time.perf_counter() - t_start
 
