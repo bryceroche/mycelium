@@ -7,10 +7,21 @@ held-out set.
 Select the curriculum level with the LEVEL env var (default L3). FIXED_LEN
 defaults to a level-appropriate value (L3=64, L4=96, L4.5=160). Checkpoints
 land in .cache/{level_lower}_ckpts/.
+
+Perf knobs (env vars worth setting at launch):
+  BEAM=2            tinygrad kernel autotuner — slower first compile, faster
+                    steady-state. Effect biggest on long runs.
+  CTRL_TRAIN_EVERY  controller train every K main steps (default 4).
+  CTRL_MAX_LOOPS    breaths in controller-train forward (default 2).
+  EVAL_LOOPS        list of n_loops for accuracy eval. Fewer = faster evals.
+  PROFILE=1         per-phase timing breakdown (encode/forward/backward+step)
+                    averaged every PROFILE_EVERY steps. Forces sync at phase
+                    boundaries so timings are accurate but slightly slower.
 """
 import sys
 import os
 import time
+import gc
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -26,7 +37,10 @@ from mycelium.data import load_tokenizer
 from mycelium.l3_data import generate_math, split_train_eval
 from mycelium.l3_training import (
     multi_cycle_train_step, multi_cycle_eval_loss, accuracy_at_loops_multi,
+    controller_train_step,
 )
+from mycelium.l3_training import _JIT_TRAIN_CACHE
+from mycelium.lookup_eval import lookup_eval
 
 
 def cast_model_fp32(model):
@@ -55,43 +69,20 @@ def collect_params(model):
 
 
 def load_checkpoint(model, path: str):
-    """Load a safetensors checkpoint produced by named_state(). Tensor identity is
-    preserved via .assign() so the optimizer + autograd wiring on `model` stays
-    valid (we keep the same parameter Tensors, just overwrite their values).
+    """Load a safetensors checkpoint via the model's state_dict interface.
+    Tolerates missing keys (e.g., resuming an old ckpt that predates lookup_table).
     """
     sd = safe_load(path)
-    targets = named_state(model)
-    missing = set(targets) - set(sd)
-    extra = set(sd) - set(targets)
-    if missing:
-        raise RuntimeError(f"checkpoint missing keys: {sorted(missing)[:5]}")
-    if extra:
-        print(f"  (ignoring extra ckpt keys: {sorted(extra)[:5]})")
-    for name, dst in targets.items():
-        src = sd[name].to(dst.device).realize()
-        if src.shape != dst.shape:
-            src = src.reshape(dst.shape)
-        if src.dtype != dst.dtype:
-            src = src.cast(dst.dtype)
-        dst.assign(src).realize()
-    Device[Device.DEFAULT].synchronize()
+    info = model.load_state_dict(sd, strict=False)
+    if info["missing"]:
+        print(f"  (ckpt missing {len(info['missing'])} keys, kept default init: {info['missing'][:3]}...)")
+    if info["unexpected"]:
+        print(f"  (ignoring {len(info['unexpected'])} extra ckpt keys: {info['unexpected'][:3]}...)")
 
 
 def named_state(model):
-    sd = {
-        "embed.weight": model.embed.weight,
-        "embed_out": model.embed_out,
-        "ln_f.g": model.ln_f_g,
-        "ln_f.b": model.ln_f_b,
-    }
-    sw = model.block.shared
-    for a in ("wv", "bv", "wo", "bo", "w_out", "b_out",
-              "in_ln_g", "in_ln_b", "post_ln_g", "post_ln_b"):
-        sd[f"shared.{a}"] = getattr(sw, a)
-    for i, layer in enumerate(model.block.layers):
-        for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
-            sd[f"phase{i}.{a}"] = getattr(layer, a)
-    return sd
+    """Backwards-compat shim — model.state_dict() is the source of truth now."""
+    return model.state_dict()
 
 
 DEFAULT_FIXED_LEN = {"ARITH": 32, "L3": 64, "L4": 96, "L4.5": 160}
@@ -116,11 +107,36 @@ def main():
     SEED = getenv("SEED", 42)
     RESUME_FROM = getenv("RESUME_FROM", "")
     SPACE_DIGITS = bool(getenv("SPACE_DIGITS", 0))   # digit-by-digit tokenization for arithmetic
+    EVAL_BATCH = getenv("EVAL_BATCH", 64)            # batched accuracy eval (kept fixed → JIT reuse)
+    # K/V cache length for eval. Default = FIXED_LEN + 40 (room for max_prompt up to
+    # FIXED_LEN plus max_new=40 generated tokens at eval). Always fits and stays much
+    # smaller than cfg.max_seq_len=512 (so ~4-7× memory savings on K/V buffers vs the
+    # default cap). Override explicitly only when you know prompts + max_new are smaller.
+    EVAL_CACHE_LEN = getenv("EVAL_CACHE_LEN", 0) or (FIXED_LEN + 40)
+    LOOKUP_EVAL = getenv("LOOKUP_EVAL", 1)           # 1 = run per-checkpoint lookup-table classification eval
+    LOOKUP_EVAL_LOOPS = getenv("LOOKUP_EVAL_LOOPS", 8)  # n_loops for the lookup eval (single value)
+    # Joint training of the model's internal LookupTable via aux op-classification CE.
+    # 0 = off (table stays at random orthogonal init), 0.1 = light supervision, 1.0 = strong.
+    LOOKUP_AUX_WEIGHT = float(getenv("LOOKUP_AUX_WEIGHT", "0.1"))
+    # Controller training (Step F). 0 = off (controller stays at random init).
+    # When > 0, runs a separate controller_train_step alongside the main step.
+    # CTRL_LR = LR for the controller's separate Adam optimizer (transformer-isolated).
+    CTRL_TRAIN = bool(getenv("CTRL_TRAIN", 0))
+    CTRL_LR = float(getenv("CTRL_LR", "1e-4"))
+    CTRL_MAX_LOOPS = getenv("CTRL_MAX_LOOPS", 2)     # max breaths used for controller training (was 4 — halved for speed)
+    CTRL_TRAIN_EVERY = getenv("CTRL_TRAIN_EVERY", 4) # update controller every K main steps (1=every step, 4=every 4)
+    PROFILE = bool(getenv("PROFILE", 0))             # 1 = print per-phase timing summary every PROFILE_EVERY steps
+    PROFILE_EVERY = getenv("PROFILE_EVERY", 50)
+    GC_EVERY = getenv("GC_EVERY", 50)                # gc.collect() every K steps to flush Python refs holding lazy buffers
+    USE_JIT = bool(getenv("USE_JIT", 0))             # 1 = JIT the whole train step (forward+backward+opt.step)
 
     print(f"=== Math training — level {LEVEL} (three-phase: heavy A, light C) ===")
     print(f"device={Device.DEFAULT}  B={BATCH}  seq_len={FIXED_LEN}  steps={STEPS}  lr={LR}")
     print(f"corpus={NUM_PROBLEMS}, eval set={NUM_EVAL}, space_digits={SPACE_DIGITS}")
     print(f"phase_A_train_loops={TRAIN_LOOPS}  phase_A_eval_loops={EVAL_LOOPS}  phase_C_loops={PHASE_C_LOOPS}")
+    print(f"eval batch={EVAL_BATCH}  cache_len={EVAL_CACHE_LEN}  lookup_eval={'on' if LOOKUP_EVAL else 'off'}@A={LOOKUP_EVAL_LOOPS}")
+    print(f"lookup_aux_weight={LOOKUP_AUX_WEIGHT}  ctrl_train={'on' if CTRL_TRAIN else 'off'}  ctrl_lr={CTRL_LR}  ctrl_max_loops={CTRL_MAX_LOOPS}  ctrl_train_every={CTRL_TRAIN_EVERY}")
+    print(f"use_jit={USE_JIT}  gc_every={GC_EVERY}")
     print()
 
     print(f"generating {LEVEL} problems...")
@@ -133,6 +149,8 @@ def main():
         print(f"  sample (digit-spaced): {ex0.problem!r} -> {ex0.gen!r}")
 
     tok = load_tokenizer()
+    from mycelium.lookup_table import eq_token_ids_for
+    eq_token_ids = eq_token_ids_for(tok)  # both " =" and "=" — BPE may produce either
 
     print("\nloading Pythia-410M -> breathing transformer...")
     sd = _load_state()
@@ -150,14 +168,20 @@ def main():
 
     params = collect_params(model)
     opt = AdamW(params, lr=LR)
+    # Separate controller optimizer — closed-loop component #5 trains independently
+    # via the lookup-CE signal flowing back through decisions. Created regardless
+    # of CTRL_TRAIN so the ckpt round-trip is symmetric; only stepped when CTRL_TRAIN=1.
+    ctrl_opt = AdamW(model.controller_parameters(), lr=CTRL_LR) if CTRL_TRAIN else None
     Tensor.training = True
 
     rng = np.random.default_rng(SEED)
     py_rng = np.random.default_rng(SEED + 1)
 
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ckpt_label = LEVEL.lower().replace(".", "_")  # L3 -> l3, L4.5 -> l4_5
-    ckpt_dir = os.path.join(project_root, ".cache", f"{ckpt_label}_ckpts")
+    ckpt_label_default = LEVEL.lower().replace(".", "_") + ("_spaced" if SPACE_DIGITS else "_abs")
+    ckpt_label = getenv("CKPT_LABEL", ckpt_label_default)
+    # ckpt_dir uses just the level prefix so spaced + abs share a directory
+    ckpt_dir = os.path.join(project_root, ".cache", f"{LEVEL.lower().replace('.', '_')}_ckpts")
     os.makedirs(ckpt_dir, exist_ok=True)
 
     # We don't pre-tokenize for multi-cycle — the encoder is called per-batch.
@@ -175,15 +199,87 @@ def main():
         batch_examples = [train_examples[i] for i in idx]
 
         t0 = time.perf_counter()
-        loss = multi_cycle_train_step(model, opt, batch_examples, tok, loops_per_cycle, FIXED_LEN)
+        if PROFILE:
+            loss, main_t = multi_cycle_train_step(model, opt, batch_examples, tok, loops_per_cycle, FIXED_LEN,
+                                                  lookup_aux_weight=LOOKUP_AUX_WEIGHT,
+                                                  lookup_eq_token_id=eq_token_ids,
+                                                  profile=True, use_jit=USE_JIT)
+        else:
+            loss = multi_cycle_train_step(model, opt, batch_examples, tok, loops_per_cycle, FIXED_LEN,
+                                          lookup_aux_weight=LOOKUP_AUX_WEIGHT,
+                                          lookup_eq_token_id=eq_token_ids,
+                                          use_jit=USE_JIT)
+        # Controller training step (Step F) — throttled to every CTRL_TRAIN_EVERY
+        # main steps. Cuts wall-clock per main step ~2× without dropping the
+        # controller's actual learning rate (a less-frequent, more-stable signal
+        # is fine; controller params are tiny vs the transformer).
+        ctrl_loss = None
+        ctrl_t = None
+        if ctrl_opt is not None and step % int(CTRL_TRAIN_EVERY) == 0:
+            if PROFILE:
+                ctrl_loss, ctrl_t = controller_train_step(model, ctrl_opt, batch_examples, tok,
+                                                          eq_token_ids, max_loops=int(CTRL_MAX_LOOPS),
+                                                          profile=True)
+            else:
+                ctrl_loss = controller_train_step(model, ctrl_opt, batch_examples, tok,
+                                                  eq_token_ids, max_loops=int(CTRL_MAX_LOOPS))
         dt = time.perf_counter() - t0
         elapsed = time.perf_counter() - t_start
 
+        # Accumulate per-phase profiles for periodic summary
+        if PROFILE:
+            if "_prof" not in dir():
+                _prof = {"main_encode": [], "main_py": [], "main_gpu": [],
+                         "ctrl_encode": [], "ctrl_py": [], "ctrl_gpu": [],
+                         "wall": []}
+            _prof["main_encode"].append(main_t["encode"])
+            _prof["main_py"].append(main_t["py_overhead"])
+            _prof["main_gpu"].append(main_t["gpu_compute"])
+            if ctrl_t is not None:
+                _prof["ctrl_encode"].append(ctrl_t["encode"])
+                _prof["ctrl_py"].append(ctrl_t["py_overhead"])
+                _prof["ctrl_gpu"].append(ctrl_t["gpu_compute"])
+            _prof["wall"].append(dt)
+
         if step % 10 == 0 or step + 1 == STEPS:
-            print(f"step {step:4d}  A={phase_a_loops} C={PHASE_C_LOOPS}  loss={loss:.4f}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)
+            ctrl_str = f"  ctrl_loss={ctrl_loss:.4f}" if ctrl_loss is not None else ""
+            print(f"step {step:4d}  A={phase_a_loops} C={PHASE_C_LOOPS}  loss={loss:.4f}{ctrl_str}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)
+
+        # Periodic gc.collect() to keep tinygrad's lazy-graph Python refs from
+        # accumulating. Empirically we saw py_overhead grow 870ms → 2274ms over
+        # 100 steps without this — the L3 trainer's "per-step time creeps up"
+        # symptom. gc.collect() at K=50 keeps things bounded with negligible
+        # cost (~10ms per collect on a 134M-param model).
+        if (step + 1) % int(GC_EVERY) == 0:
+            gc.collect()
+
+        # Per-phase profile summary every PROFILE_EVERY steps
+        if PROFILE and (step + 1) % int(PROFILE_EVERY) == 0:
+            def _avg(xs): return sum(xs)/len(xs) if xs else 0.0
+            print(f"  --- profile (last {len(_prof['wall'])} steps avg) ---")
+            print(f"    main:  encode={_avg(_prof['main_encode'])*1000:.0f}ms  "
+                  f"py_overhead={_avg(_prof['main_py'])*1000:.0f}ms  "
+                  f"gpu={_avg(_prof['main_gpu'])*1000:.0f}ms")
+            if _prof["ctrl_gpu"]:
+                print(f"    ctrl:  encode={_avg(_prof['ctrl_encode'])*1000:.0f}ms  "
+                      f"py_overhead={_avg(_prof['ctrl_py'])*1000:.0f}ms  "
+                      f"gpu={_avg(_prof['ctrl_gpu'])*1000:.0f}ms  "
+                      f"({len(_prof['ctrl_gpu'])}/{len(_prof['wall'])} steps)")
+            print(f"    wall:  avg={_avg(_prof['wall'])*1000:.0f}ms/step", flush=True)
+            for k in _prof: _prof[k].clear()
 
         # Cheap loss eval — Phase A loops vary, Phase C fixed
         if (step + 1) % LOSS_EVAL_EVERY == 0 or step + 1 == STEPS:
+            Tensor.training = False
+            # Clear training-side JITs so their resident graphs/buffers don't
+            # contend with the eval JIT compile. Empirically: training JITs in
+            # memory made the eval block's cached_generate_batch compile take
+            # 20+ min instead of the expected ~10s warm replay. Clearing here
+            # forces a one-time ~40s recompile of training graphs after each
+            # eval block (acceptable trade for un-blocked eval).
+            if USE_JIT:
+                _JIT_TRAIN_CACHE.clear()
+            gc.collect()
             print(f"  --- loss eval at step {step+1} ---")
             for nl in EVAL_LOOPS:
                 losses = []
@@ -197,11 +293,17 @@ def main():
 
         # Expensive accuracy eval — same scheduling: Phase A varies, Phase C fixed
         if (step + 1) % ACC_EVAL_EVERY == 0 or step + 1 == STEPS:
+            Tensor.training = False
+            if USE_JIT:
+                _JIT_TRAIN_CACHE.clear()
+            gc.collect()
             print(f"  --- accuracy at step {step+1} (multi-cycle, {NUM_EVAL} held-out) ---")
             for nl in EVAL_LOOPS:
                 t0 = time.perf_counter()
                 acc, rows = accuracy_at_loops_multi(model, tok, eval_examples,
-                                                    n_loops=[nl, PHASE_C_LOOPS])
+                                                    n_loops=[nl, PHASE_C_LOOPS],
+                                                    batch_size=EVAL_BATCH,
+                                                    cache_max_len=EVAL_CACHE_LEN)
                 gt = time.perf_counter() - t0
                 print(f"    acc @ A={nl} C={PHASE_C_LOOPS}: {acc*100:.1f}%  ({gt:.1f}s)")
                 if step + 1 == STEPS:
@@ -209,6 +311,16 @@ def main():
                         print(f"      Q: {ex.problem}")
                         print(f"      gen: {gen.strip()!r}")
                         print(f"      parsed: {parsed}, gold: {ex.answer}, {'OK' if parsed == ex.answer else 'WRONG'}")
+            # Per-checkpoint lookup-table eval — second axis of training signal.
+            # Trains a fresh 16x1024 cosine-similarity table on op classification
+            # from the integrated rep at "=" position. Reports held-out classification
+            # accuracy + on-target count (out of 4) + per-op purity.
+            if LOOKUP_EVAL:
+                m = lookup_eval(model, tok, n_loops=int(LOOKUP_EVAL_LOOPS), verbose=False)
+                pur = " ".join(f"{o}={m['purity_per_op'].get(o, 0):.2f}" for o in ["+","-","*","/"])
+                print(f"    lookup-eval @ A={m['n_loops']}: trained={m['trained_acc']*100:.1f}%  "
+                      f"ncm={m['ncm_acc']*100:.1f}%  on-target={m['on_target_count']}/4  "
+                      f"purity[{pur}]  ({m['elapsed_s']:.1f}s)")
             Tensor.training = True
 
         # Periodic checkpoint

@@ -27,6 +27,15 @@ class Config:
     # Temperature: T = exp(temp_amp * sin(phase)) — broadens at PEAK (sin=1), sharpens at TROUGH (sin=-1)
     temp_amp: float = 0.5
 
+    # Lookup table — closed-loop component #4
+    n_lookup_entries: int = 16        # capacity = 16 prime operations (matches 16 heads)
+    seed_lookup: int = 11             # random orthogonal init seed
+
+    # Controller — closed-loop components #3, #5, #6, #7
+    page_dim: int = 512               # controller's thinking dimension (notebook page)
+    controller_n_layers: int = 3      # notebook attention depth
+    controller_n_heads: int = 8       # multi-head attention inside controller
+
     @property
     def rotary_dim(self) -> int:
         return int(self.head_dim * self.rotary_pct)
