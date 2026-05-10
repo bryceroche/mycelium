@@ -7,6 +7,13 @@ held-out set.
 Select the curriculum level with the LEVEL env var (default L3). FIXED_LEN
 defaults to a level-appropriate value (L3=64, L4=96, L4.5=160). Checkpoints
 land in .cache/{level_lower}_ckpts/.
+
+Perf knobs (env vars worth setting at launch):
+  BEAM=2            tinygrad kernel autotuner — slower first compile, faster
+                    steady-state. Effect biggest on long runs.
+  CTRL_TRAIN_EVERY  controller train every K main steps (default 4).
+  CTRL_MAX_LOOPS    breaths in controller-train forward (default 2).
+  EVAL_LOOPS        list of n_loops for accuracy eval. Fewer = faster evals.
 """
 import sys
 import os
