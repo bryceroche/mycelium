@@ -56,43 +56,20 @@ def collect_params(model):
 
 
 def load_checkpoint(model, path: str):
-    """Load a safetensors checkpoint produced by named_state(). Tensor identity is
-    preserved via .assign() so the optimizer + autograd wiring on `model` stays
-    valid (we keep the same parameter Tensors, just overwrite their values).
+    """Load a safetensors checkpoint via the model's state_dict interface.
+    Tolerates missing keys (e.g., resuming an old ckpt that predates lookup_table).
     """
     sd = safe_load(path)
-    targets = named_state(model)
-    missing = set(targets) - set(sd)
-    extra = set(sd) - set(targets)
-    if missing:
-        raise RuntimeError(f"checkpoint missing keys: {sorted(missing)[:5]}")
-    if extra:
-        print(f"  (ignoring extra ckpt keys: {sorted(extra)[:5]})")
-    for name, dst in targets.items():
-        src = sd[name].to(dst.device).realize()
-        if src.shape != dst.shape:
-            src = src.reshape(dst.shape)
-        if src.dtype != dst.dtype:
-            src = src.cast(dst.dtype)
-        dst.assign(src).realize()
-    Device[Device.DEFAULT].synchronize()
+    info = model.load_state_dict(sd, strict=False)
+    if info["missing"]:
+        print(f"  (ckpt missing {len(info['missing'])} keys, kept default init: {info['missing'][:3]}...)")
+    if info["unexpected"]:
+        print(f"  (ignoring {len(info['unexpected'])} extra ckpt keys: {info['unexpected'][:3]}...)")
 
 
 def named_state(model):
-    sd = {
-        "embed.weight": model.embed.weight,
-        "embed_out": model.embed_out,
-        "ln_f.g": model.ln_f_g,
-        "ln_f.b": model.ln_f_b,
-    }
-    sw = model.block.shared
-    for a in ("wv", "bv", "wo", "bo", "w_out", "b_out",
-              "in_ln_g", "in_ln_b", "post_ln_g", "post_ln_b"):
-        sd[f"shared.{a}"] = getattr(sw, a)
-    for i, layer in enumerate(model.block.layers):
-        for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
-            sd[f"phase{i}.{a}"] = getattr(layer, a)
-    return sd
+    """Backwards-compat shim — model.state_dict() is the source of truth now."""
+    return model.state_dict()
 
 
 DEFAULT_FIXED_LEN = {"ARITH": 32, "L3": 64, "L4": 96, "L4.5": 160}

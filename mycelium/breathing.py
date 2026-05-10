@@ -21,6 +21,7 @@ from tinygrad.nn import Embedding
 from tinygrad.engine.jit import TinyJit
 
 from mycelium.config import Config
+from mycelium.lookup_table import LookupTable
 
 
 # ---------- partial RoPE with π cycling ----------
@@ -474,9 +475,61 @@ class BreathingTransformer:
         self.ln_f_b = Tensor.zeros(cfg.hidden, dtype=dtypes.float).contiguous()
         # Output head (untied — Pythia has separate embed_out weight, no bias).
         self.embed_out = _linear_w(cfg.hidden, cfg.vocab_size)
+        # Closed-loop component #4: prime-operation lookup table. 16 entries × 1024d.
+        # Random orthogonal init; joint-trained via aux op-classification CE so the
+        # entries align with the model's actual operation directions.
+        self.lookup_table = LookupTable(n_entries=cfg.n_lookup_entries,
+                                        hidden=cfg.hidden,
+                                        seed=cfg.seed_lookup)
 
     def parameters(self):
-        return [self.embed.weight, self.ln_f_g, self.ln_f_b, self.embed_out] + self.block.parameters()
+        return ([self.embed.weight, self.ln_f_g, self.ln_f_b, self.embed_out]
+                + self.block.parameters()
+                + self.lookup_table.parameters())
+
+    def state_dict(self) -> dict:
+        """Single source of truth for ckpt save/load. New components register here."""
+        sd = {
+            "embed.weight": self.embed.weight,
+            "embed_out": self.embed_out,
+            "ln_f.g": self.ln_f_g,
+            "ln_f.b": self.ln_f_b,
+            "lookup_table.weight": self.lookup_table.weight,
+        }
+        sw = self.block.shared
+        for a in ("wv", "bv", "wo", "bo", "w_out", "b_out",
+                 "in_ln_g", "in_ln_b", "post_ln_g", "post_ln_b"):
+            sd[f"shared.{a}"] = getattr(sw, a)
+        for i, layer in enumerate(self.block.layers):
+            for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
+                sd[f"phase{i}.{a}"] = getattr(layer, a)
+        return sd
+
+    def load_state_dict(self, sd_ck: dict, strict: bool = False) -> dict:
+        """Load tensors from sd_ck into the model. With strict=False, missing keys
+        in sd_ck are skipped (current weights kept) — important for resuming from
+        ckpts saved before new components (e.g., lookup_table) existed.
+
+        Returns a dict {missing: [...], unexpected: [...]} for visibility.
+        """
+        from tinygrad import Device
+        targets = self.state_dict()
+        missing, unexpected = [], []
+        for name, dst in targets.items():
+            if name not in sd_ck:
+                missing.append(name)
+                if strict:
+                    raise KeyError(f"missing key in checkpoint: {name}")
+                continue
+            src = sd_ck[name].to(dst.device).realize()
+            if src.shape != dst.shape: src = src.reshape(dst.shape)
+            if src.dtype != dst.dtype: src = src.cast(dst.dtype)
+            dst.assign(src).realize()
+        for name in sd_ck:
+            if name not in targets:
+                unexpected.append(name)
+        Device[Device.DEFAULT].synchronize()
+        return {"missing": missing, "unexpected": unexpected}
 
     def hidden_states(self, tokens: Tensor, n_loops: int, return_per_loop: bool = False):
         """Forward pass returning hidden states. If return_per_loop, returns a list of
@@ -501,6 +554,34 @@ class BreathingTransformer:
 
     def __call__(self, tokens: Tensor, n_loops: int) -> Tensor:
         return self.hidden_states(tokens, n_loops, return_per_loop=False)
+
+    def breathe_with_lookup(self, tokens: Tensor, n_loops: int):
+        """Forward pass returning (final_hidden, per_breath_match_weights, integrated_per_breath).
+
+        Queries the model's lookup table once per breath against the running integral
+        normalized to date. Returned shapes:
+          final_hidden:                (B, T, hidden)         — same as __call__
+          per_breath_match_weights:    list of n_loops × (B, T, n_entries)
+          integrated_per_breath:       list of n_loops × (B, T, hidden) post-LN
+
+        Used by the controller to read per-breath operation matches and by training
+        to apply auxiliary lookup-CE loss against ground-truth op labels.
+        """
+        x = self.embed(tokens).cast(dtypes.half)
+        integral = Tensor.zeros_like(x)
+        match_weights = []
+        integrated_per_breath = []
+        for l in range(n_loops):
+            x = self.block.breathe_once(x, l)
+            integral = integral + x
+            running = integral / float(l + 1)
+            running_normed = _layernorm(running, self.ln_f_g, self.ln_f_b, self.cfg.layer_norm_eps)
+            integrated_per_breath.append(running_normed)
+            match_weights.append(self.lookup_table(running_normed))
+        # Final hidden — bit-for-bit equal to __call__'s output
+        final = _layernorm(integral / float(n_loops),
+                           self.ln_f_g, self.ln_f_b, self.cfg.layer_norm_eps)
+        return final, match_weights, integrated_per_breath
 
     def cached_generate_batch(self, batch_prompt_ids: list, n_loops: int, max_new: int,
                                stop_token_ids=None, stop_seq=None,
