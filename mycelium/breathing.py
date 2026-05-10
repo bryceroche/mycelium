@@ -626,16 +626,31 @@ class BreathingTransformer:
         decisions = self.controller(rep, notebook=notebook)
         decisions_per_breath.append(decisions)
 
+        # Adaptive phase index — accumulated as a float across breaths. RoPE table
+        # is integer-indexed, so we round and clamp into [0, max_loops-1] when
+        # querying. Uniform default (step_mult=1.0) reproduces the existing
+        # 0,1,2,...,max_loops-1 sequence exactly.
+        phase_idx_float = 0.0
+
         for l in range(max_loops):
             temp_mult = decisions["temperature"]                      # (B,)
             gate = decisions["gate"]                                  # (B,)
+            step_mult = decisions["step_mult"]                        # (B,)
             if detach_decisions_into_transformer:
                 temp_mult = temp_mult.detach()
                 gate = gate.detach()
+                step_mult = step_mult.detach()
 
-            # Run the 4-layer breath at this breath's temperature
+            # Per-batch step_mult is averaged across the batch for the (shared)
+            # RoPE phase index. Per-batch fractional indexing would require
+            # interpolating cos/sin tables; this is the simpler v1.
+            step_avg = float(step_mult.mean().realize().numpy())
+            current_loop_idx = max(0, min(int(round(phase_idx_float)), cfg.max_loops - 1))
+
+            # Run the 4-layer breath at this breath's temperature + adaptive phase
             for layer in self.block.layers:
-                x = layer(x, l, temp_mult=temp_mult)
+                x = layer(x, current_loop_idx, temp_mult=temp_mult)
+            phase_idx_float += step_avg
 
             # Add to integral with gate weighting
             integral = integral + x.cast(dtypes.float) * gate.cast(dtypes.float).reshape(B, 1, 1)

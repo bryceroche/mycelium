@@ -155,6 +155,11 @@ class Controller:
         self.gate_b = _zeros(1)
         self.stop_w = _linear_w(p, 1)
         self.stop_b = _zeros(1)
+        # Step E: adaptive phase angle / step size — multiplier on the rotation
+        # increment between breaths. step_mult=1.0 = uniform π/max_loops step.
+        # step_mult<1 = denser sampling near current angle; >1 = jump further.
+        self.step_w = _linear_w(p, 1)
+        self.step_b = _zeros(1)
 
     def parameters(self):
         ps = [self.reader_w1, self.reader_b1,
@@ -162,7 +167,8 @@ class Controller:
               self.page_ln_g, self.page_ln_b,
               self.temp_w, self.temp_b,
               self.gate_w, self.gate_b,
-              self.stop_w, self.stop_b]
+              self.stop_w, self.stop_b,
+              self.step_w, self.step_b]
         for layer in self.notebook_layers:
             ps.extend(layer.parameters())
         return ps
@@ -175,6 +181,7 @@ class Controller:
             "controller.temp_w": self.temp_w, "controller.temp_b": self.temp_b,
             "controller.gate_w": self.gate_w, "controller.gate_b": self.gate_b,
             "controller.stop_w": self.stop_w, "controller.stop_b": self.stop_b,
+            "controller.step_w": self.step_w, "controller.step_b": self.step_b,
         }
         for i, layer in enumerate(self.notebook_layers):
             sd.update(layer.state_dict_with_prefix(f"controller.notebook.{i}"))
@@ -192,9 +199,17 @@ class Controller:
         temp_logit = (page @ self.temp_w + self.temp_b).reshape(-1)
         gate_logit = (page @ self.gate_w + self.gate_b).reshape(-1)
         stop_logit = (page @ self.stop_w + self.stop_b).reshape(-1)
-        temperature = temp_logit.sigmoid() * 1.5 + 0.5
-        gate = gate_logit.sigmoid()
-        return {"page": page, "temperature": temperature, "gate": gate, "stop_logit": stop_logit}
+        step_logit = (page @ self.step_w + self.step_b).reshape(-1)
+        temperature = temp_logit.sigmoid() * 1.5 + 0.5         # (0.5, 2.0)
+        gate = gate_logit.sigmoid()                            # (0, 1)
+        step_mult = step_logit.sigmoid() * 1.5 + 0.5           # (0.5, 2.0)
+        return {
+            "page": page,
+            "temperature": temperature,
+            "gate": gate,
+            "stop_logit": stop_logit,
+            "step_mult": step_mult,
+        }
 
     def __call__(self, rep: Tensor, notebook: Notebook | None = None) -> dict:
         """rep: (B, hidden) — integrated representation at a single position.
