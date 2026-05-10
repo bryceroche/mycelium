@@ -8,9 +8,111 @@ decomposition for teacher-forced training).
 from typing import List, Tuple
 import numpy as np
 from tinygrad import Tensor, Device, dtypes
+from tinygrad.engine.jit import TinyJit
 
 from mycelium.l3_data import MathExample, encode_example, encode_cycles, parse_int_answer, collate, SEP
 from mycelium.lookup_table import op_label_from_text, find_eq_position
+
+
+# JIT-train cache: (id(model), id(opt), n_loops_tuple, fixed_len, B) → compiled fn
+# The canonical tinygrad pattern wraps the WHOLE step (forward + backward + opt.step)
+# in one TinyJit. Outputs are scalar Tensor losses; .numpy() returns the value.
+_JIT_TRAIN_CACHE: dict = {}
+
+
+def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
+                            fixed_len: int, B: int, lookup_aux_weight: float):
+    """Compile and cache a JIT'd train step for the given (n_loops_per_cycle, B,
+    fixed_len, aux_weight) tuple.
+
+    Inputs to the returned function (all Tensors with stable shapes):
+      n_cycles == 1: (tokens0, labels0, eq_mask, op_labels)
+      n_cycles == 2: (tokens0, labels0, tokens1, labels1, eq_mask, op_labels)
+    Returns: scalar loss Tensor (already .realize()'d).
+    """
+    key = (id(model), id(opt), tuple(n_loops_per_cycle), fixed_len, B, float(lookup_aux_weight))
+    if key in _JIT_TRAIN_CACHE:
+        return _JIT_TRAIN_CACHE[key]
+
+    n_cycles = len(n_loops_per_cycle)
+    aw = float(lookup_aux_weight)
+
+    if n_cycles == 1:
+        nl0 = int(n_loops_per_cycle[0])
+
+        @TinyJit
+        def _step(tokens0, labels0, eq_mask, op_labels):
+            opt.zero_grad()
+            final_h, match_weights, _ = model.breathe_with_lookup(tokens0, nl0)
+            logits = (final_h @ model.embed_out).cast(dtypes.float)
+            pred = logits[:, :-1, :]
+            main_ce = pred.sparse_categorical_crossentropy(labels0, ignore_index=-100, reduction="mean")
+            last_mw = match_weights[-1]
+            gathered = (last_mw.cast(dtypes.float) * eq_mask).sum(axis=1)
+            logits_aux = gathered[:, :4] * 10.0
+            aux_ce = logits_aux.sparse_categorical_crossentropy(op_labels, ignore_index=-100, reduction="mean")
+            l2_reg = model.lookup_table.weight.square().mean() * 1e-6
+            total = main_ce + aw * aux_ce + l2_reg
+            total.backward()
+            opt.step()
+            return total.realize()
+
+    elif n_cycles == 2:
+        nl0 = int(n_loops_per_cycle[0])
+        nl1 = int(n_loops_per_cycle[1])
+
+        @TinyJit
+        def _step(tokens0, labels0, tokens1, labels1, eq_mask, op_labels):
+            opt.zero_grad()
+            # Cycle 0 — breathe_with_lookup (heavy, provides match weights for aux)
+            final0, mw, _ = model.breathe_with_lookup(tokens0, nl0)
+            logits0 = (final0 @ model.embed_out).cast(dtypes.float)
+            pred0 = logits0[:, :-1, :]
+            main_ce0 = pred0.sparse_categorical_crossentropy(labels0, ignore_index=-100, reduction="mean")
+            # Cycle 1 — plain forward (light, just CE on the execution gen)
+            final1 = model(tokens1, nl1)
+            logits1 = (final1 @ model.embed_out).cast(dtypes.float)
+            pred1 = logits1[:, :-1, :]
+            main_ce1 = pred1.sparse_categorical_crossentropy(labels1, ignore_index=-100, reduction="mean")
+            # Aux CE from cycle 0's last-breath match weights
+            last_mw = mw[-1]
+            gathered = (last_mw.cast(dtypes.float) * eq_mask).sum(axis=1)
+            logits_aux = gathered[:, :4] * 10.0
+            aux_ce = logits_aux.sparse_categorical_crossentropy(op_labels, ignore_index=-100, reduction="mean")
+            l2_reg = model.lookup_table.weight.square().mean() * 1e-6
+            avg_main = (main_ce0 + main_ce1) / 2.0
+            total = avg_main + aw * aux_ce + l2_reg
+            total.backward()
+            opt.step()
+            return total.realize()
+
+    else:
+        raise NotImplementedError(f"JIT-train n_cycles={n_cycles} not implemented (only 1 and 2)")
+
+    _JIT_TRAIN_CACHE[key] = _step
+    return _step
+
+
+def _build_aux_tensors(batch_examples, tokens_np: np.ndarray, eq_token_ids):
+    """Build (eq_mask, op_labels) tensors for the aux CE loss.
+    eq_mask: (B, T, 1) float — 1.0 at the "=" position for valid examples, 0 elsewhere
+    op_labels: (B,) int — op index 0/1/2/3, or -100 to mark "ignore in CE"
+    """
+    B, T = tokens_np.shape
+    eq_positions = np.array([find_eq_position(tokens_np[b].tolist(), eq_token_ids)
+                             for b in range(B)], dtype=np.int32)
+    op_labels = np.array([op_label_from_text(ex.problem + " " + " ".join(ex.gen_targets))
+                          for ex in batch_examples], dtype=np.int32)
+    valid = (eq_positions >= 0) & (op_labels >= 0)
+    eq_safe = np.where(valid, eq_positions, 0).astype(np.int32)
+    eq_mask_np = np.zeros((B, T), dtype=np.float32)
+    for b in range(B):
+        if valid[b]:
+            eq_mask_np[b, eq_safe[b]] = 1.0
+    op_labels_masked = np.where(valid, op_labels, -100).astype(np.int32)
+    eq_mask = Tensor(eq_mask_np, dtype=dtypes.float).reshape(B, T, 1).realize()
+    y = Tensor(op_labels_masked, dtype=dtypes.int).realize()
+    return eq_mask, y
 
 
 def masked_forward_loss(model, tokens: Tensor, labels: Tensor, n_loops: int,
@@ -268,7 +370,8 @@ def multi_cycle_train_step(model, opt, batch_examples: List[MathExample], tok,
                            n_loops, fixed_len: int,
                            lookup_aux_weight: float = 0.0,
                            lookup_eq_token_id: int | None = None,
-                           profile: bool = False):
+                           profile: bool = False,
+                           use_jit: bool = False):
     """Per-cycle forward+backward. Each outer cycle gets its own breathing pass.
     Losses are summed across cycles and normalized by num_cycles (equal-weight
     decomposition).
@@ -280,13 +383,59 @@ def multi_cycle_train_step(model, opt, batch_examples: List[MathExample], tok,
     table at the "=" token position (cycle 0 only). Drives the table entries
     toward the model's actual operation directions during joint training.
 
+    use_jit: when True, dispatches to a JIT-compiled train step (forward +
+    backward + opt.step in one TinyJit, cached per loops_per_cycle tuple).
+    First call per unique config compiles (~10s); subsequent calls replay as a
+    single fused graph at ~2-3× the eager speed. Requires lookup_aux_weight > 0
+    and lookup_eq_token_id set (the JIT path always includes the aux loss).
+
     profile: when True, returns (loss, timings_dict) with keys
-      {encode, forward, backward_step}. The phases are forced to sync at their
-      boundaries (so timings are accurate but the lazy graph is partially
-      materialized in slices instead of one big realize). Off by default.
+      {encode, py_overhead, gpu_compute}. Off by default.
     """
     import time as _time
     Tensor.training = True
+
+    # JIT fast path — compiles the whole step (forward + backward + opt.step) into
+    # one fused graph per unique loops_per_cycle tuple. Requires aux to be on.
+    if use_jit and lookup_aux_weight > 0 and lookup_eq_token_id is not None:
+        if profile: _t = _time.perf_counter()
+        cycles_per_ex = [encode_cycles(tok, ex) for ex in batch_examples]
+        n_cycles = len(cycles_per_ex[0])
+        loops_per_cycle = _resolve_loops_per_cycle(n_loops, n_cycles)
+        encode_time = (_time.perf_counter() - _t) if profile else 0.0
+
+        if profile: _t = _time.perf_counter()
+        tokens_per_cycle = []
+        labels_per_cycle = []
+        for c in range(n_cycles):
+            encoded = [ex_cycles[c] for ex_cycles in cycles_per_ex]
+            tokens_np, labels_np = collate(encoded, fixed_len=fixed_len)
+            tokens_per_cycle.append(Tensor(tokens_np, dtype=dtypes.int).realize())
+            labels_per_cycle.append(Tensor(labels_np, dtype=dtypes.int).realize())
+            if c == 0:
+                eq_mask, op_labels_t = _build_aux_tensors(batch_examples, tokens_np,
+                                                          lookup_eq_token_id)
+        B = int(tokens_per_cycle[0].shape[0])
+        jit_step = _compile_jit_train_step(model, opt, tuple(loops_per_cycle),
+                                           fixed_len, B, lookup_aux_weight)
+        if n_cycles == 1:
+            loss_t = jit_step(tokens_per_cycle[0], labels_per_cycle[0],
+                              eq_mask, op_labels_t)
+        elif n_cycles == 2:
+            loss_t = jit_step(tokens_per_cycle[0], labels_per_cycle[0],
+                              tokens_per_cycle[1], labels_per_cycle[1],
+                              eq_mask, op_labels_t)
+        else:
+            raise NotImplementedError(f"use_jit doesn't support n_cycles={n_cycles}")
+        if profile:
+            Device[Device.DEFAULT].synchronize()
+            gpu_compute = _time.perf_counter() - _t
+        loss_val = float(loss_t.numpy())
+        if profile:
+            return loss_val, {"encode": encode_time, "py_overhead": 0.0, "gpu_compute": gpu_compute}
+        return loss_val
+
+    # Eager path (original)
     opt.zero_grad()
 
     if profile: _t = _time.perf_counter()

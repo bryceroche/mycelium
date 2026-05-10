@@ -127,6 +127,7 @@ def main():
     PROFILE = bool(getenv("PROFILE", 0))             # 1 = print per-phase timing summary every PROFILE_EVERY steps
     PROFILE_EVERY = getenv("PROFILE_EVERY", 50)
     GC_EVERY = getenv("GC_EVERY", 50)                # gc.collect() every K steps to flush Python refs holding lazy buffers
+    USE_JIT = bool(getenv("USE_JIT", 0))             # 1 = JIT the whole train step (forward+backward+opt.step)
 
     print(f"=== Math training — level {LEVEL} (three-phase: heavy A, light C) ===")
     print(f"device={Device.DEFAULT}  B={BATCH}  seq_len={FIXED_LEN}  steps={STEPS}  lr={LR}")
@@ -134,6 +135,7 @@ def main():
     print(f"phase_A_train_loops={TRAIN_LOOPS}  phase_A_eval_loops={EVAL_LOOPS}  phase_C_loops={PHASE_C_LOOPS}")
     print(f"eval batch={EVAL_BATCH}  cache_len={EVAL_CACHE_LEN}  lookup_eval={'on' if LOOKUP_EVAL else 'off'}@A={LOOKUP_EVAL_LOOPS}")
     print(f"lookup_aux_weight={LOOKUP_AUX_WEIGHT}  ctrl_train={'on' if CTRL_TRAIN else 'off'}  ctrl_lr={CTRL_LR}  ctrl_max_loops={CTRL_MAX_LOOPS}  ctrl_train_every={CTRL_TRAIN_EVERY}")
+    print(f"use_jit={USE_JIT}  gc_every={GC_EVERY}")
     print()
 
     print(f"generating {LEVEL} problems...")
@@ -200,11 +202,12 @@ def main():
             loss, main_t = multi_cycle_train_step(model, opt, batch_examples, tok, loops_per_cycle, FIXED_LEN,
                                                   lookup_aux_weight=LOOKUP_AUX_WEIGHT,
                                                   lookup_eq_token_id=eq_token_ids,
-                                                  profile=True)
+                                                  profile=True, use_jit=USE_JIT)
         else:
             loss = multi_cycle_train_step(model, opt, batch_examples, tok, loops_per_cycle, FIXED_LEN,
                                           lookup_aux_weight=LOOKUP_AUX_WEIGHT,
-                                          lookup_eq_token_id=eq_token_ids)
+                                          lookup_eq_token_id=eq_token_ids,
+                                          use_jit=USE_JIT)
         # Controller training step (Step F) — throttled to every CTRL_TRAIN_EVERY
         # main steps. Cuts wall-clock per main step ~2× without dropping the
         # controller's actual learning rate (a less-frequent, more-stable signal
