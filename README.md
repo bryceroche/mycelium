@@ -379,7 +379,7 @@ For cached inference: K/V buffers are sized to the actual sequence length, not t
 
 The breathing transformer's inference path is a JIT-fused KV cache: per-loop, per-layer K/V buffers shared across the batch, with per-batch position tracking so variable-length prompts coexist in one compiled graph. Phase A breathes the prompt once and writes 32 K/V tensors (4 layers × 8 loops). Phase C iterates token-by-token, replaying a single TinyJit graph that fuses the embedding lookup, all 32 layer-loop passes, the integration, the output norm, and the argmax into one launch per generation step.
 
-The compiled graph is keyed on (batch_size, n_loops, vocab_active). Eval calls are padded to a fixed batch_size so the graph compiles once (~45s) and is reused for every subsequent eval — the per-step Python overhead amortizes over the full batch.
+Compiled graphs live in a per-model dict keyed on (batch_size, n_loops, vocab_active). The first eval cycle compiles each unique configuration once (~45s per graph; for a typical sweep over EVAL_LOOPS=[1,2,4,8] that is ~3 minutes total, paid once). Every subsequent eval cycle is pure replay — zero compile cost, however many times we evaluate. Eval calls are padded up to a fixed batch_size so chunk size never drifts and the same compiled graphs match every run. The pattern is **compile once at the start of training (during the first eval), reuse the compiled kernels for every subsequent eval for the rest of the run**.
 
 Measured against the original uncached B=1 sequential path on the L3-spaced step-600 checkpoint (N=100, LOOPS=8):
 
