@@ -135,6 +135,50 @@ The controller is learning to be a good scientist: design the experiment (choose
 
 The controller's gradient NEVER flows through the transformer. Three days of evidence in v1-v3 proved that any such path collapses to one basin. The controller learns through REINFORCE on outcomes, supervised energy calibration, contrastive page diversity, and structure preservation targeting early-breath hidden states. Complete separation.
 
+### The Notebook
+
+The notebook is the controller's memory — 512d pages written after each breath, persisting across both inner breathing loops and outer execution cycles. Without it, the controller makes decisions based only on the current breath's observation. With it, the controller compares "what I see now" against "what I saw three breaths ago" — detecting convergence, tracking new primes, monitoring confidence trends.
+
+The notebook also bridges outer cycles. When cycle 2 executes, the controller reads notebook pages from cycle 1 — carrying representation-level understanding that is richer than the generated text tokens alone. The context carries "Step 1: 263" as text. The notebook carries the full 512d page encoding the controller's understanding of WHY 263 was produced, which operation generated it, and what operation comes next.
+
+Tree-structured attention over notebook pages lets the controller read ancestors (what was the original problem?), siblings (what other operations were identified?), and children (what results have been produced?).
+
+---
+
+## 5b. The Closed Feedback Loop
+
+### Why All Components Are Necessary
+
+The breathing transformer's core components — rotation, integration, notebook, lookup table, controller, temperature modulation, and step size — form an irreducible closed feedback loop. Each component amplifies the others. Remove any one and the system degrades.
+
+### The Loop
+
+Rotation provides a new viewing angle. The transformer expands, processes, compresses, and integrates at that angle. Integration accumulates this observation into the running integral alongside all previous observations. The controller writes a notebook page recording what this breath understood. The lookup table matches the page against its library of known prime operations, returning match weights and confidence. The controller reads the match confidence, compares with previous notebook pages, and decides: is the factorization converging? Is confidence sufficient? If not, the controller adjusts the rotation angle (target the weakest-matched prime), the temperature (broader if uncertain, sharper if nearly confirmed), and the step size (smaller if modes are closely spaced). The next breath rotates to the adjusted angle and the loop continues.
+
+The loop terminates when two conditions are met: the integral has stabilized (Lyapunov criterion — new breaths add negligible information) and the spectral residual is noise (all significant primes have been identified and subtracted).
+
+### What Each Component Contributes
+
+**Rotation** provides independent observations. Without it, every breath sees the same view and integration accumulates redundant information.
+
+**Integration** makes observations cumulative. Without it, each breath's insight is forgotten when the next begins. Rotation without integration is amnesia.
+
+**The notebook** provides memory across breaths and cycles. Without it, the controller has no basis for comparing current observations against previous ones. It cannot detect convergence or track the factorization's evolution.
+
+**The lookup table** provides the reference library and target map. Without it, the controller adapts rotation based on energy signals alone — "something is changing" — without knowing WHAT it's looking for. The lookup table transforms blind search into guided search.
+
+**The controller** provides adaptive feedback. Without it, rotation is uniform (fixed step size), temperature is fixed (no adaptation to problem difficulty), and stopping is arbitrary (fixed loop count). The controller is the intelligence of the loop.
+
+**Temperature modulation** controls resolution at each angle. Without it, every breath has the same precision — wasting early breaths on unnecessary precision and starving late breaths of the precision they need.
+
+**Step size (rotation rate)** determines spectral coverage efficiency. Without adaptive step size, closely-spaced modes might be missed (step too large) or the search takes too many breaths (step too small). The Nyquist theorem applies: to resolve two primes separated by Δθ in phase angle, the rotation step must be at most Δθ/2.
+
+### Current State: Partial System
+
+The L3 and L4 results — 65% on L3, multi-step decomposition on L4, the digit-spacing breakthrough — were achieved with only rotation and integration active. The controller is a stub (random/fixed loop counts). The lookup table doesn't exist. The notebook doesn't exist. Temperature is fixed. Step size is uniform. **Two of seven components.**
+
+The full closed loop should be substantially more capable because each component amplifies the others. The lookup table is the highest-priority *diagnostic* (cheap, no training, answers whether rotation produces distinguishable spectral signals at all). The controller is the highest-priority *build* (one component unlocks four capabilities: adaptive rotation, notebook memory, learned temperature, and principled stopping). Lookup table first — diagnose the foundation; controller second — build the intelligence on top.
+
 ---
 
 ## 6. The Unified Framework: Detect, Refine, Execute
