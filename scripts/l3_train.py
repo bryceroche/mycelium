@@ -118,7 +118,9 @@ def main():
     RESUME_FROM = getenv("RESUME_FROM", "")
     SPACE_DIGITS = bool(getenv("SPACE_DIGITS", 0))   # digit-by-digit tokenization for arithmetic
     EVAL_BATCH = getenv("EVAL_BATCH", 64)            # batched accuracy eval (kept fixed → JIT reuse)
-    EVAL_CACHE_LEN = getenv("EVAL_CACHE_LEN", 0) or None  # K/V cache length for eval; 0 → cfg.max_seq_len
+    # K/V cache length for eval. Defaults to FIXED_LEN (matches the level's training sequence length).
+    # Override only if you know your prompts + max_new are smaller (e.g., 32 for pure ARITH).
+    EVAL_CACHE_LEN = getenv("EVAL_CACHE_LEN", 0) or FIXED_LEN
     LOOKUP_EVAL = getenv("LOOKUP_EVAL", 1)           # 1 = run per-checkpoint lookup-table classification eval
     LOOKUP_EVAL_LOOPS = getenv("LOOKUP_EVAL_LOOPS", 8)  # n_loops for the lookup eval (single value)
 
