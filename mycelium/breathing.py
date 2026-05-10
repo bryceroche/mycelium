@@ -595,7 +595,15 @@ class BreathingTransformer:
         # argmax inside JIT cuts ~2 kernel launches per step and lets the compiler
         # fuse the embedding lookup with the first matmul + the final logit projection
         # with the argmax reduction.
-        if not hasattr(self, "_cached_batch_jit") or getattr(self, "_cached_batch_jit_state", None) != (B, n_loops, vocab_active):
+        #
+        # JITs are cached in a dict keyed on (B, n_loops, vocab_active) so a typical
+        # eval that sweeps multiple loop counts (EVAL_LOOPS=[1,2,4,8]) compiles each
+        # graph once at the first eval and replays them at zero compile cost on every
+        # subsequent eval cycle.
+        if not hasattr(self, "_cached_batch_jits"):
+            self._cached_batch_jits = {}
+        jit_key = (B, n_loops, vocab_active)
+        if jit_key not in self._cached_batch_jits:
             ln_g = self.ln_f_g
             ln_b_t = self.ln_f_b
             embed_out = self.embed_out
@@ -633,8 +641,9 @@ class BreathingTransformer:
                 next_id_t = logits_active.argmax(axis=-1).cast(dtypes.int).realize()  # (B, 1)
                 return (next_id_t, *new_ck, *new_cv)
 
-            self._cached_batch_jit = _step
-            self._cached_batch_jit_state = (B, n_loops, vocab_active)
+            self._cached_batch_jits[jit_key] = _step
+
+        jit_step = self._cached_batch_jits[jit_key]
 
         # Per-batch t_pos: each batch item starts at its real prompt's last position + 1.
         # All advance by 1 each step, so t_pos[b] = real_lens[b] + step.
@@ -654,7 +663,7 @@ class BreathingTransformer:
             if max(t_pos_per) >= max_len:
                 break
 
-            outputs = self._cached_batch_jit(prev_id_t, t_pos_t, *packed_kv)
+            outputs = jit_step(prev_id_t, t_pos_t, *packed_kv)
             next_id_t = outputs[0]
             new_kv = outputs[1:]
             for li in range(n_layers):
