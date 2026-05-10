@@ -52,6 +52,7 @@ def main():
     ckpt = getenv("CKPT", "/home/bryce/mycelium/.cache/l3_ckpts/l3_spaced_step600.safetensors")
     n_loops = getenv("LOOPS", 4)
     n_problems = getenv("N", 8)
+    cache_max_len = getenv("CACHE_MAX_LEN", 0) or None  # 0 means use cfg.max_seq_len
 
     cfg = Config()
     sd = _load_state()
@@ -81,14 +82,27 @@ def main():
     t_un = time.perf_counter() - t0
     print(f"  {correct_un}/{n_problems} in {t_un:.1f}s\n")
 
-    # --- 2) Batched cached ---
-    print("--- Batched cached (all problems in parallel) ---")
-    t0 = time.perf_counter()
+    # --- 2) Batched cached: warm-up then timed ---
     prompt_id_lists = [tok.encode(ex.problem).ids for ex in problems]
+    print("--- Batched cached: warm-up (JIT compile) ---")
+    t0 = time.perf_counter()
     outs_batched = model.cached_generate_batch(
         prompt_id_lists, n_loops=n_loops, max_new=12,
         stop_token_ids=[0], stop_seq=sep_ids,
+        cache_max_len=cache_max_len,
     )
+    Device[Device.DEFAULT].synchronize()
+    t_warm = time.perf_counter() - t0
+    print(f"  warm-up: {t_warm:.1f}s\n")
+
+    print("--- Batched cached: steady-state (JIT cached) ---")
+    t0 = time.perf_counter()
+    outs_batched = model.cached_generate_batch(
+        prompt_id_lists, n_loops=n_loops, max_new=12,
+        stop_token_ids=[0], stop_seq=sep_ids,
+        cache_max_len=cache_max_len,
+    )
+    Device[Device.DEFAULT].synchronize()
     t_b = time.perf_counter() - t0
     correct_b = 0
     batched_outs = []
@@ -103,9 +117,11 @@ def main():
     print(f"  batched: {correct_b}/{n_problems} in {t_b:.1f}s\n")
 
     print(f"=== Summary ===")
-    print(f"  uncached: {correct_un}/{n_problems} ({t_un:.1f}s)")
-    print(f"  batched:  {correct_b}/{n_problems} ({t_b:.1f}s)")
-    print(f"  speedup:  {t_un/max(t_b, 0.001):.1f}x")
+    print(f"  uncached:        {correct_un}/{n_problems} ({t_un:.1f}s)")
+    print(f"  batched warm-up: {t_warm:.1f}s")
+    print(f"  batched steady:  {correct_b}/{n_problems} ({t_b:.1f}s)")
+    print(f"  speedup vs uncached (steady): {t_un/max(t_b, 0.001):.1f}x")
+    print(f"  speedup vs uncached (warm):   {t_un/max(t_warm, 0.001):.1f}x")
     matches = sum(1 for u, b in zip(uncached_outs, batched_outs) if u == b)
     print(f"  exact text match: {matches}/{n_problems}")
 

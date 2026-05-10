@@ -116,6 +116,8 @@ def main():
     SEED = getenv("SEED", 42)
     RESUME_FROM = getenv("RESUME_FROM", "")
     SPACE_DIGITS = bool(getenv("SPACE_DIGITS", 0))   # digit-by-digit tokenization for arithmetic
+    EVAL_BATCH = getenv("EVAL_BATCH", 64)            # batched accuracy eval (kept fixed → JIT reuse)
+    EVAL_CACHE_LEN = getenv("EVAL_CACHE_LEN", 0) or None  # K/V cache length for eval; 0 → cfg.max_seq_len
 
     print(f"=== Math training — level {LEVEL} (three-phase: heavy A, light C) ===")
     print(f"device={Device.DEFAULT}  B={BATCH}  seq_len={FIXED_LEN}  steps={STEPS}  lr={LR}")
@@ -201,7 +203,9 @@ def main():
             for nl in EVAL_LOOPS:
                 t0 = time.perf_counter()
                 acc, rows = accuracy_at_loops_multi(model, tok, eval_examples,
-                                                    n_loops=[nl, PHASE_C_LOOPS])
+                                                    n_loops=[nl, PHASE_C_LOOPS],
+                                                    batch_size=EVAL_BATCH,
+                                                    cache_max_len=EVAL_CACHE_LEN)
                 gt = time.perf_counter() - t0
                 print(f"    acc @ A={nl} C={PHASE_C_LOOPS}: {acc*100:.1f}%  ({gt:.1f}s)")
                 if step + 1 == STEPS:

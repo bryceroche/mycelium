@@ -504,17 +504,19 @@ class BreathingTransformer:
 
     def cached_generate_batch(self, batch_prompt_ids: list, n_loops: int, max_new: int,
                                stop_token_ids=None, stop_seq=None,
-                               vocab_active: int = 50277) -> list:
+                               vocab_active: int = 50277,
+                               cache_max_len: int | None = None) -> list:
         """Batched cached generation. Processes B prompts in parallel with shared
-        K/V cache buffers. Phase A is run on right-padded prompts with attention
-        masking so padding tokens don't pollute attention. Per-token forward is
-        ONE JIT-batched dispatch over B problems instead of B separate dispatches.
+        K/V cache buffers.
 
-        Returns: list of B token-id lists (gen tokens only, no prompt).
+        cache_max_len: dimension of the K/V buffers (defaults to cfg.max_seq_len).
+        For short generations (e.g. L3-spaced arithmetic with ~30-token sequences),
+        passing a smaller value (e.g. 32) reduces cache size 16× and unlocks much
+        larger batch sizes within the GPU's memory budget. Must be >= max_prompt
+        + max_new.
         """
         from tinygrad import Tensor as _T
         cfg = self.cfg
-        max_len = cfg.max_seq_len
         n_layers = cfg.n_phases
         B = len(batch_prompt_ids)
         stop_set = set(stop_token_ids or [])
@@ -523,7 +525,14 @@ class BreathingTransformer:
 
         real_lens = [len(p) for p in batch_prompt_ids]
         max_prompt = max(real_lens)
-        assert max_prompt <= max_len
+        # cache_max_len defaults to model max but can be much smaller for short gens
+        if cache_max_len is None:
+            cache_max_len = cfg.max_seq_len
+        assert max_prompt + max_new <= cache_max_len, (
+            f"cache_max_len={cache_max_len} too small for prompt={max_prompt} + new={max_new}"
+        )
+        assert cache_max_len <= cfg.max_seq_len, "cache_max_len cannot exceed RoPE table size"
+        max_len = cache_max_len
 
         # Right-pad prompts to max_prompt with PAD=0
         padded = [p + [0] * (max_prompt - len(p)) for p in batch_prompt_ids]
@@ -535,14 +544,8 @@ class BreathingTransformer:
             prompt_attn_mask_phase_a_np[b, :rl] = 1
         attn_mask_phase_a = _T(prompt_attn_mask_phase_a_np, dtype=dtypes.int).realize()
 
-        # Generation-phase mask: same valid prompt positions, plus future positions
-        # are activated by the causal `pos <= t_pos` check, so we just need
-        # "prompt-real" positions and "all positions >= max_prompt" valid (they'll
-        # be gated by causal anyway).
-        gen_mask_np = np.zeros((B, max_len), dtype=np.int32)
-        for b, rl in enumerate(real_lens):
-            gen_mask_np[b, :rl] = 1
-        gen_mask_np[:, max_prompt:] = 1  # newly-generated slots always treated as valid
+        # gen_mask is unused now (per-batch t_pos handles correctness) but kept for compat
+        gen_mask_np = np.ones((B, max_len), dtype=np.int32)
         gen_attn_mask = _T(gen_mask_np, dtype=dtypes.int).contiguous().realize()
 
         # ---- Stage 1: Phase A breathing on padded prompts ----
@@ -588,25 +591,32 @@ class BreathingTransformer:
             return outs
 
         # ---- Stage 2: batched per-token generation, JIT-fused ----
-        if not hasattr(self, "_cached_batch_jit") or getattr(self, "_cached_batch_jit_state", None) != (B, n_loops):
+        # JIT body: embed(prev_id) → breathing → argmax → next_id. Both embed and
+        # argmax inside JIT cuts ~2 kernel launches per step and lets the compiler
+        # fuse the embedding lookup with the first matmul + the final logit projection
+        # with the argmax reduction.
+        if not hasattr(self, "_cached_batch_jit") or getattr(self, "_cached_batch_jit_state", None) != (B, n_loops, vocab_active):
             ln_g = self.ln_f_g
             ln_b_t = self.ln_f_b
             embed_out = self.embed_out
+            embed_w = self.embed.weight
             layers = self.block.layers
             layer_norm_eps = cfg.layer_norm_eps
             n_loops_local = n_loops
             n_layers_local = n_layers
             B_local = B
+            vocab_active_local = vocab_active
 
             @TinyJit
-            def _step(x_new, t_pos_t, *kv_flat):
+            def _step(prev_id_t, t_pos_t, *kv_flat):
                 total = n_layers_local * n_loops_local
                 ck = list(kv_flat[:total])
                 cv = list(kv_flat[total:])
+                # In-graph embedding lookup
+                x = embed_w[prev_id_t].cast(dtypes.half)
                 integral = Tensor.zeros(B_local, 1, cfg.hidden, dtype=dtypes.half).contiguous()
                 new_ck = [None] * total
                 new_cv = [None] * total
-                x = x_new
                 for loop in range(n_loops_local):
                     for li in range(n_layers_local):
                         idx = li * n_loops_local + loop
@@ -618,17 +628,21 @@ class BreathingTransformer:
                     integral = integral + x
                 integrated = integral / float(n_loops_local)
                 x_normed = _layernorm(integrated, ln_g, ln_b_t, layer_norm_eps)
-                logits = (x_normed @ embed_out).cast(dtypes.float).realize()
-                return (logits, *new_ck, *new_cv)
+                logits = x_normed @ embed_out  # (B, 1, vocab) — half is fine for argmax
+                logits_active = logits[:, :, :vocab_active_local]
+                next_id_t = logits_active.argmax(axis=-1).cast(dtypes.int).realize()  # (B, 1)
+                return (next_id_t, *new_ck, *new_cv)
 
             self._cached_batch_jit = _step
-            self._cached_batch_jit_state = (B, n_loops)
+            self._cached_batch_jit_state = (B, n_loops, vocab_active)
 
         # Per-batch t_pos: each batch item starts at its real prompt's last position + 1.
         # All advance by 1 each step, so t_pos[b] = real_lens[b] + step.
         step = 0
         t_pos_per = [real_lens[b] for b in range(B)]
         t_pos_t = _T(t_pos_per, dtype=dtypes.int).contiguous().realize()
+        # Persistent prev_id_t buffer (B, 1) seeded with first generated tokens
+        prev_id_t = _T([[outs[b][0]] for b in range(B)], dtype=dtypes.int).contiguous().realize()
         packed_kv = (
             [cache_k[li][lp] for li in range(n_layers) for lp in range(n_loops)]
             + [cache_v[li][lp] for li in range(n_layers) for lp in range(n_loops)]
@@ -639,12 +653,9 @@ class BreathingTransformer:
             # Stop if any batch item has run out of cache slots
             if max(t_pos_per) >= max_len:
                 break
-            cur_tokens = [outs[b][-1] for b in range(B)]
-            tok_t = _T([[c] for c in cur_tokens], dtype=dtypes.int).realize()
-            new_emb = self.embed(tok_t).cast(dtypes.half).contiguous().realize()
 
-            outputs = self._cached_batch_jit(new_emb, t_pos_t, *packed_kv)
-            logits = outputs[0]
+            outputs = self._cached_batch_jit(prev_id_t, t_pos_t, *packed_kv)
+            next_id_t = outputs[0]
             new_kv = outputs[1:]
             for li in range(n_layers):
                 for lp in range(n_loops):
@@ -660,8 +671,10 @@ class BreathingTransformer:
             t_pos_per = [real_lens[b] + step for b in range(B)]
             t_pos_t.assign(_T(t_pos_per, dtype=dtypes.int)).realize()
 
-            logits_active = logits[:, :, :vocab_active]
-            next_ids = logits_active.argmax(axis=-1).realize().numpy().reshape(B)
+            # Single sync per step: pull next_ids to CPU for stop check
+            next_ids = next_id_t.numpy().reshape(B)
+            # Feed back into next step via persistent buffer
+            prev_id_t.assign(next_id_t).realize()
 
             for b in range(B):
                 if is_done[b]:

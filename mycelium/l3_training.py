@@ -181,11 +181,17 @@ def multi_cycle_generate(model, tok, problem_ids: List[int], n_loops, n_cycles: 
 
 def accuracy_at_loops_multi(model, tok, examples: List[MathExample], n_loops,
                             max_new_per_cycle: int = 40,
-                            batch_size: int = 32) -> Tuple[float, List[Tuple[MathExample, int | None, str]]]:
+                            batch_size: int = 64,
+                            cache_max_len: int | None = None) -> Tuple[float, List[Tuple[MathExample, int | None, str]]]:
     """Multi-cycle accuracy eval. Single-cycle (L3) examples use the batched cached
-    generation path for 3-5× speedup. Multi-cycle (L4+) falls back to per-problem
-    sequential cached generation (still uses KV cache per cycle, just not batched
-    across problems — TODO: batched multi-cycle).
+    generation path. The JIT compile is keyed on (B, n_loops, vocab_active), so we pad
+    the last chunk up to batch_size to keep B uniform — that way the JIT compiles
+    on the first eval call and is reused on every subsequent call (40s compile
+    amortized to one-time cost).
+
+    cache_max_len: override the K/V buffer length for short sequences (e.g., 32 for
+    L3-spaced arithmetic). Defaults to cfg.max_seq_len. Smaller values cut cache
+    memory linearly, allowing larger batch_size within the GPU memory budget.
 
     n_loops can be int (uniform) or list (per-cycle). For three-phase eval pass
     [phase_a, phase_c, phase_c, ...].
@@ -198,16 +204,28 @@ def accuracy_at_loops_multi(model, tok, examples: List[MathExample], n_loops,
     phase_a_loops = n_loops[0] if isinstance(n_loops, list) else int(n_loops)
 
     if n_cycles == 1:
-        # Batched path: process examples in chunks of batch_size
+        # Batched path: process in fixed-size chunks of batch_size.
+        # Pad the last (potentially short) chunk up to batch_size so all JIT calls
+        # share the same B (== same compiled graph). Padding uses a benign repeat
+        # of an existing prompt — its outputs are discarded.
         prompt_ids_all = [tok.encode(ex.problem).ids for ex in examples]
-        for chunk_start in range(0, len(examples), batch_size):
-            chunk = examples[chunk_start:chunk_start + batch_size]
-            chunk_prompts = prompt_ids_all[chunk_start:chunk_start + batch_size]
+        n_total = len(examples)
+        for chunk_start in range(0, n_total, batch_size):
+            chunk_end = min(chunk_start + batch_size, n_total)
+            real_n = chunk_end - chunk_start
+            chunk = examples[chunk_start:chunk_end]
+            chunk_prompts = prompt_ids_all[chunk_start:chunk_end]
+            # Pad up to batch_size if last chunk is short (keeps B uniform → JIT reuse)
+            if real_n < batch_size and prompt_ids_all:
+                pad_n = batch_size - real_n
+                chunk_prompts = chunk_prompts + [prompt_ids_all[0]] * pad_n
             outs_batched = model.cached_generate_batch(
                 chunk_prompts, n_loops=phase_a_loops, max_new=max_new_per_cycle,
                 stop_token_ids=[0], stop_seq=sep_ids,
+                cache_max_len=cache_max_len,
             )
-            for ex, gen_ids in zip(chunk, outs_batched):
+            # Only score the real (non-padded) outputs
+            for ex, gen_ids in zip(chunk, outs_batched[:real_n]):
                 gen_text = tok.decode(gen_ids)
                 parsed = parse_int_answer(gen_text)
                 ok = (parsed == ex.answer)
