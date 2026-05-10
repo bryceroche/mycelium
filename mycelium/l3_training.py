@@ -379,6 +379,9 @@ def accuracy_at_loops_multi(model, tok, examples: List[MathExample], n_loops,
     on the first eval call and is reused on every subsequent call (40s compile
     amortized to one-time cost).
 
+    Sets Tensor.training = False so tinygrad doesn't track autograd state during
+    the eval forward — matters because main training leaves it at True.
+
     cache_max_len: override the K/V buffer length for short sequences (e.g., 32 for
     L3-spaced arithmetic). Defaults to cfg.max_seq_len. Smaller values cut cache
     memory linearly, allowing larger batch_size within the GPU memory budget.
@@ -386,6 +389,7 @@ def accuracy_at_loops_multi(model, tok, examples: List[MathExample], n_loops,
     n_loops can be int (uniform) or list (per-cycle). For three-phase eval pass
     [phase_a, phase_c, phase_c, ...].
     """
+    Tensor.training = False
     correct = 0
     rows = []
     n_cycles = len(examples[0].gen_targets) if examples else 1

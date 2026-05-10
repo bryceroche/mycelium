@@ -11,6 +11,7 @@ land in .cache/{level_lower}_ckpts/.
 import sys
 import os
 import time
+import gc
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -202,6 +203,8 @@ def main():
 
         # Cheap loss eval — Phase A loops vary, Phase C fixed
         if (step + 1) % LOSS_EVAL_EVERY == 0 or step + 1 == STEPS:
+            Tensor.training = False
+            gc.collect()
             print(f"  --- loss eval at step {step+1} ---")
             for nl in EVAL_LOOPS:
                 losses = []
@@ -215,6 +218,8 @@ def main():
 
         # Expensive accuracy eval — same scheduling: Phase A varies, Phase C fixed
         if (step + 1) % ACC_EVAL_EVERY == 0 or step + 1 == STEPS:
+            Tensor.training = False
+            gc.collect()
             print(f"  --- accuracy at step {step+1} (multi-cycle, {NUM_EVAL} held-out) ---")
             for nl in EVAL_LOOPS:
                 t0 = time.perf_counter()
