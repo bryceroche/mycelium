@@ -73,7 +73,7 @@ def _resolve_loops_per_cycle(n_loops, n_cycles: int) -> List[int]:
 
 def controller_train_step(model, ctrl_opt, batch_examples: List[MathExample], tok,
                           eq_token_ids, max_loops: int = 8,
-                          n_classes: int = 4) -> float:
+                          n_classes: int = 4, profile: bool = False):
     """Train ONLY the controller via lookup-CE loss on op classification.
 
     Forwards through breathe_controlled with decisions NOT detached, so the
@@ -90,13 +90,16 @@ def controller_train_step(model, ctrl_opt, batch_examples: List[MathExample], to
     Returns the scalar loss value.
     """
     from mycelium.controller import Notebook
+    import time as _time
     Tensor.training = True
 
+    if profile: _t = _time.perf_counter()
     cycles_per_ex = [encode_cycles(tok, ex) for ex in batch_examples]
     encoded = [ex_cycles[0] for ex_cycles in cycles_per_ex]      # cycle 0 only
     tokens_np, _ = collate(encoded, fixed_len=64 + 40)             # FIXED_LEN+max_new for safety
     B, T = tokens_np.shape
     tokens = Tensor(tokens_np, dtype=dtypes.int).realize()
+    encode_time = (_time.perf_counter() - _t) if profile else 0.0
 
     eq_positions = np.array([find_eq_position(tokens_np[b].tolist(), eq_token_ids)
                              for b in range(B)], dtype=np.int32)
@@ -104,8 +107,9 @@ def controller_train_step(model, ctrl_opt, batch_examples: List[MathExample], to
                           for ex in batch_examples], dtype=np.int32)
     valid = (eq_positions >= 0) & (op_labels >= 0)
     if int(valid.sum()) == 0:
-        return 0.0
+        return (0.0, {"encode": encode_time, "forward": 0.0, "backward_step": 0.0}) if profile else 0.0
 
+    if profile: _t = _time.perf_counter()
     # Forward through the closed loop. Decisions NOT detached so gradient flows back.
     notebook = Notebook()
     _, decisions, n_breaths, match_weights = model.breathe_controlled(
@@ -158,11 +162,22 @@ def controller_train_step(model, ctrl_opt, batch_examples: List[MathExample], to
     avg_ctrl_loss = avg_ctrl_loss + (model.controller.step_w.square().mean()
                                      + model.controller.step_b.square().mean()) * 1e-6
 
+    if profile: py_overhead = _time.perf_counter() - _t
+    if profile: _t2 = _time.perf_counter()
     ctrl_opt.zero_grad()
     avg_ctrl_loss.backward()
     ctrl_opt.step()
     Device[Device.DEFAULT].synchronize()
-    return float(avg_ctrl_loss.numpy())
+    if profile: gpu_compute = _time.perf_counter() - _t2
+
+    loss_val = float(avg_ctrl_loss.numpy())
+    if profile:
+        return loss_val, {
+            "encode": encode_time,
+            "py_overhead": py_overhead,
+            "gpu_compute": gpu_compute,
+        }
+    return loss_val
 
 
 def _aux_loss_from_match_weights(match_weights, tokens_np: np.ndarray,
@@ -235,7 +250,8 @@ def _lookup_aux_loss(model, tokens: Tensor, tokens_np: np.ndarray,
 def multi_cycle_train_step(model, opt, batch_examples: List[MathExample], tok,
                            n_loops, fixed_len: int,
                            lookup_aux_weight: float = 0.0,
-                           lookup_eq_token_id: int | None = None) -> float:
+                           lookup_eq_token_id: int | None = None,
+                           profile: bool = False):
     """Per-cycle forward+backward. Each outer cycle gets its own breathing pass.
     Losses are summed across cycles and normalized by num_cycles (equal-weight
     decomposition).
@@ -246,17 +262,27 @@ def multi_cycle_train_step(model, opt, batch_examples: List[MathExample], tok,
     lookup_aux_weight: if > 0, adds a cross-entropy loss on the model's lookup
     table at the "=" token position (cycle 0 only). Drives the table entries
     toward the model's actual operation directions during joint training.
+
+    profile: when True, returns (loss, timings_dict) with keys
+      {encode, forward, backward_step}. The phases are forced to sync at their
+      boundaries (so timings are accurate but the lazy graph is partially
+      materialized in slices instead of one big realize). Off by default.
     """
+    import time as _time
     Tensor.training = True
     opt.zero_grad()
 
+    if profile: _t = _time.perf_counter()
     cycles_per_ex = [encode_cycles(tok, ex) for ex in batch_examples]
     n_cycles = len(cycles_per_ex[0])
     loops_per_cycle = _resolve_loops_per_cycle(n_loops, n_cycles)
+    encode_time = (_time.perf_counter() - _t) if profile else 0.0
 
     cycle_losses = []
     aux_loss = None
     use_shared_forward = (lookup_aux_weight > 0 and lookup_eq_token_id is not None)
+
+    if profile: _t = _time.perf_counter()
     for c in range(n_cycles):
         encoded = [ex_cycles[c] for ex_cycles in cycles_per_ex]
         tokens_np, labels_np = collate(encoded, fixed_len=fixed_len)
@@ -292,10 +318,30 @@ def multi_cycle_train_step(model, opt, batch_examples: List[MathExample], tok,
     if aux_loss is not None:
         avg_loss = avg_loss + lookup_aux_weight * aux_loss
 
+    # Time breakdown:
+    #   encode_time: Python tokenization (already captured above)
+    #   py_overhead: Python time spent building the forward graph (no GPU work
+    #                — tinygrad is lazy, so the whole forward block above is
+    #                graph construction, not compute)
+    #   gpu_compute: actual GPU work (forward + backward + opt.step), bounded
+    #                by the Device.synchronize at the end
+    # We don't try to split forward-vs-backward GPU time because realize()-ing
+    # mid-step breaks autograd (produces grad=None on some params).
+    if profile: py_overhead = _time.perf_counter() - _t
+    if profile: _t2 = _time.perf_counter()
     avg_loss.backward()
     opt.step()
     Device[Device.DEFAULT].synchronize()
-    return float(avg_loss.numpy())
+    if profile: gpu_compute = _time.perf_counter() - _t2
+
+    loss_val = float(avg_loss.numpy())
+    if profile:
+        return loss_val, {
+            "encode": encode_time,
+            "py_overhead": py_overhead,
+            "gpu_compute": gpu_compute,
+        }
+    return loss_val
 
 
 def multi_cycle_eval_loss(model, batch_examples: List[MathExample], tok,

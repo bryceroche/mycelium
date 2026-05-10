@@ -14,6 +14,9 @@ Perf knobs (env vars worth setting at launch):
   CTRL_TRAIN_EVERY  controller train every K main steps (default 4).
   CTRL_MAX_LOOPS    breaths in controller-train forward (default 2).
   EVAL_LOOPS        list of n_loops for accuracy eval. Fewer = faster evals.
+  PROFILE=1         per-phase timing breakdown (encode/forward/backward+step)
+                    averaged every PROFILE_EVERY steps. Forces sync at phase
+                    boundaries so timings are accurate but slightly slower.
 """
 import sys
 import os
@@ -121,6 +124,8 @@ def main():
     CTRL_LR = float(getenv("CTRL_LR", "1e-4"))
     CTRL_MAX_LOOPS = getenv("CTRL_MAX_LOOPS", 2)     # max breaths used for controller training (was 4 — halved for speed)
     CTRL_TRAIN_EVERY = getenv("CTRL_TRAIN_EVERY", 4) # update controller every K main steps (1=every step, 4=every 4)
+    PROFILE = bool(getenv("PROFILE", 0))             # 1 = print per-phase timing summary every PROFILE_EVERY steps
+    PROFILE_EVERY = getenv("PROFILE_EVERY", 50)
 
     print(f"=== Math training — level {LEVEL} (three-phase: heavy A, light C) ===")
     print(f"device={Device.DEFAULT}  B={BATCH}  seq_len={FIXED_LEN}  steps={STEPS}  lr={LR}")
@@ -190,23 +195,65 @@ def main():
         batch_examples = [train_examples[i] for i in idx]
 
         t0 = time.perf_counter()
-        loss = multi_cycle_train_step(model, opt, batch_examples, tok, loops_per_cycle, FIXED_LEN,
-                                      lookup_aux_weight=LOOKUP_AUX_WEIGHT,
-                                      lookup_eq_token_id=eq_token_ids)
+        if PROFILE:
+            loss, main_t = multi_cycle_train_step(model, opt, batch_examples, tok, loops_per_cycle, FIXED_LEN,
+                                                  lookup_aux_weight=LOOKUP_AUX_WEIGHT,
+                                                  lookup_eq_token_id=eq_token_ids,
+                                                  profile=True)
+        else:
+            loss = multi_cycle_train_step(model, opt, batch_examples, tok, loops_per_cycle, FIXED_LEN,
+                                          lookup_aux_weight=LOOKUP_AUX_WEIGHT,
+                                          lookup_eq_token_id=eq_token_ids)
         # Controller training step (Step F) — throttled to every CTRL_TRAIN_EVERY
         # main steps. Cuts wall-clock per main step ~2× without dropping the
         # controller's actual learning rate (a less-frequent, more-stable signal
         # is fine; controller params are tiny vs the transformer).
         ctrl_loss = None
+        ctrl_t = None
         if ctrl_opt is not None and step % int(CTRL_TRAIN_EVERY) == 0:
-            ctrl_loss = controller_train_step(model, ctrl_opt, batch_examples, tok,
-                                              eq_token_ids, max_loops=int(CTRL_MAX_LOOPS))
+            if PROFILE:
+                ctrl_loss, ctrl_t = controller_train_step(model, ctrl_opt, batch_examples, tok,
+                                                          eq_token_ids, max_loops=int(CTRL_MAX_LOOPS),
+                                                          profile=True)
+            else:
+                ctrl_loss = controller_train_step(model, ctrl_opt, batch_examples, tok,
+                                                  eq_token_ids, max_loops=int(CTRL_MAX_LOOPS))
         dt = time.perf_counter() - t0
         elapsed = time.perf_counter() - t_start
+
+        # Accumulate per-phase profiles for periodic summary
+        if PROFILE:
+            if "_prof" not in dir():
+                _prof = {"main_encode": [], "main_py": [], "main_gpu": [],
+                         "ctrl_encode": [], "ctrl_py": [], "ctrl_gpu": [],
+                         "wall": []}
+            _prof["main_encode"].append(main_t["encode"])
+            _prof["main_py"].append(main_t["py_overhead"])
+            _prof["main_gpu"].append(main_t["gpu_compute"])
+            if ctrl_t is not None:
+                _prof["ctrl_encode"].append(ctrl_t["encode"])
+                _prof["ctrl_py"].append(ctrl_t["py_overhead"])
+                _prof["ctrl_gpu"].append(ctrl_t["gpu_compute"])
+            _prof["wall"].append(dt)
 
         if step % 10 == 0 or step + 1 == STEPS:
             ctrl_str = f"  ctrl_loss={ctrl_loss:.4f}" if ctrl_loss is not None else ""
             print(f"step {step:4d}  A={phase_a_loops} C={PHASE_C_LOOPS}  loss={loss:.4f}{ctrl_str}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)
+
+        # Per-phase profile summary every PROFILE_EVERY steps
+        if PROFILE and (step + 1) % int(PROFILE_EVERY) == 0:
+            def _avg(xs): return sum(xs)/len(xs) if xs else 0.0
+            print(f"  --- profile (last {len(_prof['wall'])} steps avg) ---")
+            print(f"    main:  encode={_avg(_prof['main_encode'])*1000:.0f}ms  "
+                  f"py_overhead={_avg(_prof['main_py'])*1000:.0f}ms  "
+                  f"gpu={_avg(_prof['main_gpu'])*1000:.0f}ms")
+            if _prof["ctrl_gpu"]:
+                print(f"    ctrl:  encode={_avg(_prof['ctrl_encode'])*1000:.0f}ms  "
+                      f"py_overhead={_avg(_prof['ctrl_py'])*1000:.0f}ms  "
+                      f"gpu={_avg(_prof['ctrl_gpu'])*1000:.0f}ms  "
+                      f"({len(_prof['ctrl_gpu'])}/{len(_prof['wall'])} steps)")
+            print(f"    wall:  avg={_avg(_prof['wall'])*1000:.0f}ms/step", flush=True)
+            for k in _prof: _prof[k].clear()
 
         # Cheap loss eval — Phase A loops vary, Phase C fixed
         if (step + 1) % LOSS_EVAL_EVERY == 0 or step + 1 == STEPS:
