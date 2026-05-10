@@ -68,7 +68,7 @@ def main():
     for ex in problems:
         prompt_ids = tok.encode(ex.problem).ids
         outs = multi_cycle_generate(model, tok, prompt_ids, n_loops=[n_loops, 1],
-                                    n_cycles=1, max_new_per_cycle=12)
+                                    n_cycles=1, max_new_per_cycle=12, use_kv_cache=True)
         gen_text = tok.decode(outs[0])
         parsed = parse_int_answer(gen_text)
         ok = parsed == ex.answer

@@ -40,27 +40,6 @@ def eval_loss(model, tokens: Tensor, labels: Tensor, n_loops: int) -> float:
     return float(loss.realize().numpy())
 
 
-def generate_answer(model, prompt_ids: List[int], n_loops: int, max_new: int = 32,
-                    eos_id: int = 0, vocab_active: int = 50277) -> List[int]:
-    """Greedy generation from a problem-tokenized prompt. Stops on EOS or after
-    max_new tokens. Returns the generated tokens (without the prompt).
-    """
-    Tensor.training = False
-    out = list(prompt_ids)
-    for _ in range(max_new):
-        ctx = out[-model.cfg.max_seq_len:]
-        toks = Tensor([ctx], dtype=dtypes.int).realize()
-        h = model(toks, n_loops)                              # (1, S, hidden)
-        last = h[:, -1, :]                                    # (1, hidden)
-        logits = (last @ model.embed_out).cast(dtypes.float)
-        logits = logits[:, :vocab_active]
-        next_id = int(logits.argmax(axis=-1).realize().numpy()[0])
-        out.append(next_id)
-        if next_id == eos_id:
-            break
-    return out[len(prompt_ids):]
-
-
 def _resolve_loops_per_cycle(n_loops, n_cycles: int) -> List[int]:
     """Accept either a single int (same loops per cycle) or a list (one per cycle).
     Pads/truncates a list to length n_cycles. Used to support three-phase scheduling
@@ -245,25 +224,4 @@ def accuracy_at_loops_multi(model, tok, examples: List[MathExample], n_loops,
             if ok:
                 correct += 1
             rows.append((ex, parsed, full_text))
-    return correct / max(1, len(examples)), rows
-
-
-def accuracy_at_loops(model, tok, examples: List[MathExample], n_loops: int,
-                      max_new: int = 48) -> Tuple[float, List[Tuple[MathExample, int | None, str]]]:
-    """Greedy-generate an answer for each example at n_loops; compare parsed
-    integer to ground truth. Returns (accuracy, list of (example, parsed, gen_text)).
-    """
-    correct = 0
-    rows = []
-    for ex in examples:
-        # Prompt the model with the problem text + a leading space (matches training format).
-        # The model has been trained: after the problem text, emit the gen text starting with " ".
-        prompt_ids = tok.encode(ex.problem).ids
-        gen_ids = generate_answer(model, prompt_ids, n_loops=n_loops, max_new=max_new)
-        gen_text = tok.decode(gen_ids)
-        parsed = parse_int_answer(gen_text)
-        ok = (parsed == ex.answer)
-        if ok:
-            correct += 1
-        rows.append((ex, parsed, gen_text))
     return correct / max(1, len(examples)), rows

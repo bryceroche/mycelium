@@ -373,6 +373,25 @@ Total system: ~127M. Effective processing with 8 loops: 35.7M × 8 = 286M effect
 
 ~5GB total in mixed precision. ~19GB headroom. Batch size 64-128 at sequence length 512. Fast iteration.
 
+For cached inference: K/V buffers are sized to the actual sequence length, not the model's max. For arithmetic at L3-spaced (~30 tokens) with cache_max_len=32, the cache footprint at B=100 is ~2GB instead of ~33GB at the full 512 RoPE table size. The model's compute budget — not its memory — is the binding constraint at inference batch sizes that matter.
+
+### Inference Engine
+
+The breathing transformer's inference path is a JIT-fused KV cache: per-loop, per-layer K/V buffers shared across the batch, with per-batch position tracking so variable-length prompts coexist in one compiled graph. Phase A breathes the prompt once and writes 32 K/V tensors (4 layers × 8 loops). Phase C iterates token-by-token, replaying a single TinyJit graph that fuses the embedding lookup, all 32 layer-loop passes, the integration, the output norm, and the argmax into one launch per generation step.
+
+The compiled graph is keyed on (batch_size, n_loops, vocab_active). Eval calls are padded to a fixed batch_size so the graph compiles once (~45s) and is reused for every subsequent eval — the per-step Python overhead amortizes over the full batch.
+
+Measured against the original uncached B=1 sequential path on the L3-spaced step-600 checkpoint (N=100, LOOPS=8):
+
+| Path | Time | Speedup |
+|---|---:|---:|
+| Uncached B=1 sequential | 268s | 1× |
+| Cached B=1 sequential | 27s | 10× |
+| Cached batched, warm-up (one-time JIT compile) | 49s | 5.5× |
+| **Cached batched, steady-state (B=100, cache_max_len=32)** | **6.3s** | **42.8×** |
+
+100/100 exact text match against the uncached path — bit-for-bit identical reasoning, just dramatically faster. The accuracy eval that dominated training wall-clock (10+ minutes per checkpoint at B=1 sequential) now runs in ~12 seconds steady-state.
+
 ### Estimated Training
 
 Phase 0 (loop consistency): Days 1-3. Phase 1 (breathing curriculum L3-L4.5): Days 4-7. Phase 2 (controller + lookup table): Week 2. Phase 3 (GSM8K): Weeks 3-4. Phase 4 (MATH-500): Months 3-4. Estimated 3-5 minutes per epoch on GSM8K.
@@ -390,6 +409,8 @@ The expand-collapse breathing pattern, discovered in attention analysis and conf
 The controller's gradient must never flow through the transformer — three days of empirical proof. The generation loss landscape has one dominant basin for any controller output (though our custom setup may develop multiple basins — to be tested). Structural diversity is necessary; learned diversity always collapses in pretrained models. Differentiable lookup tables from the project's origins return as the prime factorization mechanism.
 
 The looping validation proved: signal survives (7x growth), diversity holds (effective rank 16+), SNR improves (0.114 → 0.127 for L0-3). The generation head needs fine-tuning to extract signal from looped representations — the DC component grows linearly. The copy machine principle: reasoning in representation space is necessary. Generate once at the end, never between breaths.
+
+The inference engine works: a JIT-fused KV cache with per-batch position tracking, K/V buffers sized to actual sequence length (not the model's max), and a fixed-batch eval path that compiles once and reuses across every checkpoint. 42.8× over the original uncached path on the L3 eval set, bit-for-bit identical outputs. Eval went from dominating training wall-clock to a rounding error. Faster eval means we can evaluate more often, on more held-out examples, with longer breathing budgets — every architectural question gets answered in seconds instead of minutes.
 
 We leave behind: Llama 1B (replaced by Pythia-410M L0-3), LoRA atoms and continuous scales, the straight-through gradient estimator, soft token diversity mechanisms, the PyTorch/ROCm software stack, and Windows (wipe Shadow Glass, install Ubuntu 24.04).
 
@@ -416,6 +437,8 @@ We leave behind: Llama 1B (replaced by Pythia-410M L0-3), LoRA atoms and continu
 **The parameter balance.** 35.7M transformer processing + 40M controller + 51.5M embeddings = 127M total. With 8 loops: 286M effective processing from 35.7M parameters. The conductor (40M) is appropriately smaller than the effective orchestra (286M). Massive parameter efficiency through weight reuse.
 
 **The empirical foundation.** L3 training (2000 steps): 8-loop accuracy beat 1-loop (70% vs 65%). Loss gap closed 73% (0.77 → 0.20 nats). All depths converge. More thinking produces better answers. The 65% ceiling is arithmetic precision (4-layer model limit), not a breathing limitation. Causal mask verified — all training is honest.
+
+**The inference engine.** JIT-fused KV cache with per-batch position tracking, K/V buffers sized to actual sequence length, fixed-batch eval that compiles once and reuses across checkpoints. 42.8× faster than the original uncached path on the L3 eval set (268s → 6.3s for 100 problems at LOOPS=8). 100/100 exact text match — bit-for-bit identical reasoning, just faster. Eval is no longer a bottleneck.
 
 **The honesty.** Looping pretrained layers requires fine-tuning — frozen weights don't loop for generation (validated empirically). The core bet: fine-tuning can close the generation gap by teaching the output head to extract the rich signal that provably survives looping. The gradient landscape may develop multiple basins in our custom setup — the architecture works either way through complete gradient separation.
 
