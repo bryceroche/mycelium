@@ -13,29 +13,46 @@ from mycelium.l3_data import MathExample, encode_example, encode_cycles, parse_i
 from mycelium.lookup_table import op_label_from_text, find_eq_position
 
 
-def masked_forward_loss(model, tokens: Tensor, labels: Tensor, n_loops: int) -> Tensor:
+def masked_forward_loss(model, tokens: Tensor, labels: Tensor, n_loops: int,
+                        use_jit: bool = False) -> Tensor:
     """Next-token CE loss, ignoring positions where label == -100.
 
     tokens: (B, T) int — full input
     labels: (B, T-1) int — targets for tokens[:, 1:], with -100 in masked positions
+
+    use_jit=False by default (eager path). The JIT-forward path (call_jit) is
+    8.8× faster on n_loops=8 BUT breaks backward — TinyJit captures the forward
+    compute into a fused op whose output tensors are leaves in the autograd
+    graph, so backward stops at the JIT boundary and transformer params end up
+    with grad=None. Use the JIT methods (model.call_jit, model.breathe_with_lookup_jit)
+    only in inference / diagnostic paths where no backward is needed. Full
+    JIT'd training (forward + backward + opt.step in one TinyJit) is the right
+    fix and is tracked as a follow-up.
     """
-    h = model(tokens, n_loops)                                 # (B, T, hidden)
+    h = model.call_jit(tokens, n_loops) if use_jit else model(tokens, n_loops)
     logits = (h @ model.embed_out).cast(dtypes.float)          # (B, T, vocab)
     pred = logits[:, :-1, :]                                   # (B, T-1, vocab)
     return pred.sparse_categorical_crossentropy(labels, ignore_index=-100, reduction="mean")
 
 
 def masked_forward_loss_with_lookup(model, tokens: Tensor, labels: Tensor,
-                                    n_loops: int):
+                                    n_loops: int, use_jit: bool = False):
     """Combined main-CE forward that also returns per-breath lookup match weights.
     One forward pass instead of two — used when joint lookup-aux training is on,
     halving the main-step compute relative to running plain forward + a separate
     breathe_with_lookup for the aux loss.
 
+    use_jit=False by default — see masked_forward_loss's docstring for the
+    backward-through-JIT issue. The JIT method is available for inference paths.
+
     Returns (main_ce_loss, match_weights) where match_weights is a list of
-    (B, T, n_entries) tensors, one per breath.
+    per-breath (B, T, n_entries) tensors.
     """
-    final_h, match_weights, _ = model.breathe_with_lookup(tokens, n_loops)
+    if use_jit:
+        final_h, last_mw = model.breathe_with_lookup_jit(tokens, n_loops)
+        match_weights = [last_mw]
+    else:
+        final_h, match_weights, _ = model.breathe_with_lookup(tokens, n_loops)
     logits = (final_h @ model.embed_out).cast(dtypes.float)
     pred = logits[:, :-1, :]
     main_ce = pred.sparse_categorical_crossentropy(labels, ignore_index=-100, reduction="mean")

@@ -579,6 +579,50 @@ class BreathingTransformer:
     def __call__(self, tokens: Tensor, n_loops: int) -> Tensor:
         return self.hidden_states(tokens, n_loops, return_per_loop=False)
 
+    def breathe_with_lookup_jit(self, tokens: Tensor, n_loops: int):
+        """JIT-cached version of breathe_with_lookup, returning only (final_hidden,
+        last_breath_match_weights). The per-breath lists aren't returned because
+        TinyJit doesn't return Python lists; we keep only what the training step
+        actually consumes (the LAST breath's match weights, used by the aux CE).
+
+        Cached per n_loops in self._jit_breathe_forwards. First call at each
+        n_loops compiles (~30-60s); subsequent calls replay as a single graph.
+
+        Bypasses the per-step py_overhead growth we observed (870ms → 2274ms in
+        100 steps without JIT). The JIT replays a fixed-shape compiled graph,
+        so no lazy Python state accumulates between calls.
+        """
+        n_loops = int(n_loops)
+        if not hasattr(self, "_jit_breathe_forwards"):
+            self._jit_breathe_forwards = {}
+        if n_loops not in self._jit_breathe_forwards:
+            n_loops_captured = n_loops
+
+            @TinyJit
+            def _fwd(toks: Tensor):
+                final, match_weights, _ = self.breathe_with_lookup(toks, n_loops_captured)
+                return final, match_weights[-1]
+
+            self._jit_breathe_forwards[n_loops] = _fwd
+        return self._jit_breathe_forwards[n_loops](tokens)
+
+    def call_jit(self, tokens: Tensor, n_loops: int) -> Tensor:
+        """JIT-cached version of __call__ (the plain forward without lookup table
+        per-breath queries). Used for cycles that don't need the aux loss.
+        Cached per n_loops in self._jit_forwards."""
+        n_loops = int(n_loops)
+        if not hasattr(self, "_jit_forwards"):
+            self._jit_forwards = {}
+        if n_loops not in self._jit_forwards:
+            n_loops_captured = n_loops
+
+            @TinyJit
+            def _fwd(toks: Tensor):
+                return self(toks, n_loops_captured)
+
+            self._jit_forwards[n_loops] = _fwd
+        return self._jit_forwards[n_loops](tokens)
+
     def breathe_controlled(self, tokens: Tensor, max_loops: int, notebook,
                            rep_position: int = -1, detach_rep_for_ctrl: bool = True,
                            detach_decisions_into_transformer: bool = False):
