@@ -54,6 +54,100 @@ def _resolve_loops_per_cycle(n_loops, n_cycles: int) -> List[int]:
     return out[:n_cycles]
 
 
+def controller_train_step(model, ctrl_opt, batch_examples: List[MathExample], tok,
+                          eq_token_ids, max_loops: int = 8,
+                          n_classes: int = 4) -> float:
+    """Train ONLY the controller via lookup-CE loss on op classification.
+
+    Forwards through breathe_controlled with decisions NOT detached, so the
+    gradient from the auxiliary CE loss flows back through every breath's
+    decisions into controller params. transformer params receive gradient too
+    (the loss reaches them via the breathing path) but are NOT updated because
+    ctrl_opt only contains controller_parameters() — those grads are simply
+    discarded on the next main_opt.zero_grad().
+
+    Loss: cross-entropy on op label using match_weights at the eq position
+    averaged over all breaths (encourages every breath, not just the final
+    one, to produce op-discriminable representations).
+
+    Returns the scalar loss value.
+    """
+    from mycelium.controller import Notebook
+    Tensor.training = True
+
+    cycles_per_ex = [encode_cycles(tok, ex) for ex in batch_examples]
+    encoded = [ex_cycles[0] for ex_cycles in cycles_per_ex]      # cycle 0 only
+    tokens_np, _ = collate(encoded, fixed_len=64 + 40)             # FIXED_LEN+max_new for safety
+    B, T = tokens_np.shape
+    tokens = Tensor(tokens_np, dtype=dtypes.int).realize()
+
+    eq_positions = np.array([find_eq_position(tokens_np[b].tolist(), eq_token_ids)
+                             for b in range(B)], dtype=np.int32)
+    op_labels = np.array([op_label_from_text(ex.problem + " " + " ".join(ex.gen_targets))
+                          for ex in batch_examples], dtype=np.int32)
+    valid = (eq_positions >= 0) & (op_labels >= 0)
+    if int(valid.sum()) == 0:
+        return 0.0
+
+    # Forward through the closed loop. Decisions NOT detached so gradient flows back.
+    notebook = Notebook()
+    _, decisions, n_breaths, match_weights = model.breathe_controlled(
+        tokens, max_loops=max_loops, notebook=notebook,
+        detach_rep_for_ctrl=False, detach_decisions_into_transformer=False,
+    )
+
+    # Gather match weights at eq positions for every breath, mean across breaths.
+    eq_safe = np.where(valid, eq_positions, 0).astype(np.int32)
+    eq_mask_np = np.zeros((B, T), dtype=np.float32)
+    for b in range(B):
+        if valid[b]:
+            eq_mask_np[b, eq_safe[b]] = 1.0
+    eq_mask = Tensor(eq_mask_np, dtype=dtypes.float).reshape(B, T, 1).realize()
+
+    op_labels_masked = np.where(valid, op_labels, -100).astype(np.int32)
+    y = Tensor(op_labels_masked, dtype=dtypes.int).realize()
+
+    per_breath_losses = []
+    for mw in match_weights:
+        gathered = (mw.cast(dtypes.float) * eq_mask).sum(axis=1)        # (B, n_entries)
+        logits = gathered[:, :n_classes] * 10.0
+        per_breath_losses.append(logits.sparse_categorical_crossentropy(y, ignore_index=-100, reduction="mean"))
+
+    total = per_breath_losses[0]
+    for l in per_breath_losses[1:]:
+        total = total + l
+    avg_ctrl_loss = total / float(len(per_breath_losses))
+
+    # Auxiliary: stop calibration. The stop_logit at breath l should be HIGH when
+    # the per-breath lookup-CE has plateaued (no further improvement from breathing).
+    # Crude target: target_stop = sigmoid_inverse(1 - normalized_per_breath_loss),
+    # i.e., when per-breath loss is low, target is high (model thinks "we're done").
+    # Use squared-error on stop_logit (unbounded, before sigmoid).
+    stop_calib = None
+    for i, (d, pb_loss) in enumerate(zip(decisions[1:], per_breath_losses)):  # skip init decision
+        # Per-batch per-breath loss is a scalar (mean reduction); broadcast to (B,).
+        # Use the loss MAGNITUDE as the inverse-stop signal: high loss → don't stop.
+        # Target: stop_logit large when loss is low. Use -loss as the supervised target.
+        target = (pb_loss * -1.0).expand(d["stop_logit"].shape[0])
+        diff = (d["stop_logit"] - target.detach())
+        term = diff.square().mean()
+        stop_calib = term if stop_calib is None else stop_calib + term
+    if stop_calib is not None:
+        avg_ctrl_loss = avg_ctrl_loss + stop_calib * 0.01
+
+    # Tiny L2 reg on the step_w/b params so they get a defined gradient. step_mult
+    # is consumed via float(...) inside the loop (non-differentiable rounding into
+    # the integer-indexed RoPE table), so no other path reaches it.
+    avg_ctrl_loss = avg_ctrl_loss + (model.controller.step_w.square().mean()
+                                     + model.controller.step_b.square().mean()) * 1e-6
+
+    ctrl_opt.zero_grad()
+    avg_ctrl_loss.backward()
+    ctrl_opt.step()
+    Device[Device.DEFAULT].synchronize()
+    return float(avg_ctrl_loss.numpy())
+
+
 def _lookup_aux_loss(model, tokens: Tensor, tokens_np: np.ndarray,
                      batch_examples: List[MathExample], n_loops: int,
                      eq_token_id: int, n_classes: int = 4) -> Tensor | None:

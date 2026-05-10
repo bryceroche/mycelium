@@ -26,6 +26,7 @@ from mycelium.data import load_tokenizer
 from mycelium.l3_data import generate_math, split_train_eval
 from mycelium.l3_training import (
     multi_cycle_train_step, multi_cycle_eval_loss, accuracy_at_loops_multi,
+    controller_train_step,
 )
 from mycelium.lookup_eval import lookup_eval
 
@@ -105,12 +106,19 @@ def main():
     # Joint training of the model's internal LookupTable via aux op-classification CE.
     # 0 = off (table stays at random orthogonal init), 0.1 = light supervision, 1.0 = strong.
     LOOKUP_AUX_WEIGHT = float(getenv("LOOKUP_AUX_WEIGHT", "0.1"))
+    # Controller training (Step F). 0 = off (controller stays at random init).
+    # When > 0, runs a separate controller_train_step alongside the main step.
+    # CTRL_LR = LR for the controller's separate Adam optimizer (transformer-isolated).
+    CTRL_TRAIN = bool(getenv("CTRL_TRAIN", 0))
+    CTRL_LR = float(getenv("CTRL_LR", "1e-4"))
+    CTRL_MAX_LOOPS = getenv("CTRL_MAX_LOOPS", 4)     # max breaths used for controller training
 
     print(f"=== Math training — level {LEVEL} (three-phase: heavy A, light C) ===")
     print(f"device={Device.DEFAULT}  B={BATCH}  seq_len={FIXED_LEN}  steps={STEPS}  lr={LR}")
     print(f"corpus={NUM_PROBLEMS}, eval set={NUM_EVAL}, space_digits={SPACE_DIGITS}")
     print(f"phase_A_train_loops={TRAIN_LOOPS}  phase_A_eval_loops={EVAL_LOOPS}  phase_C_loops={PHASE_C_LOOPS}")
     print(f"eval batch={EVAL_BATCH}  cache_len={EVAL_CACHE_LEN}  lookup_eval={'on' if LOOKUP_EVAL else 'off'}@A={LOOKUP_EVAL_LOOPS}")
+    print(f"lookup_aux_weight={LOOKUP_AUX_WEIGHT}  ctrl_train={'on' if CTRL_TRAIN else 'off'}  ctrl_lr={CTRL_LR}  ctrl_max_loops={CTRL_MAX_LOOPS}")
     print()
 
     print(f"generating {LEVEL} problems...")
@@ -142,6 +150,10 @@ def main():
 
     params = collect_params(model)
     opt = AdamW(params, lr=LR)
+    # Separate controller optimizer — closed-loop component #5 trains independently
+    # via the lookup-CE signal flowing back through decisions. Created regardless
+    # of CTRL_TRAIN so the ckpt round-trip is symmetric; only stepped when CTRL_TRAIN=1.
+    ctrl_opt = AdamW(model.controller_parameters(), lr=CTRL_LR) if CTRL_TRAIN else None
     Tensor.training = True
 
     rng = np.random.default_rng(SEED)
@@ -172,11 +184,19 @@ def main():
         loss = multi_cycle_train_step(model, opt, batch_examples, tok, loops_per_cycle, FIXED_LEN,
                                       lookup_aux_weight=LOOKUP_AUX_WEIGHT,
                                       lookup_eq_token_id=eq_token_ids)
+        # Controller training step (Step F) — runs alongside main step. Uses a
+        # separate optimizer; transformer params untouched (gradient separation
+        # enforced by ctrl_opt only containing controller_parameters()).
+        ctrl_loss = None
+        if ctrl_opt is not None:
+            ctrl_loss = controller_train_step(model, ctrl_opt, batch_examples, tok,
+                                              eq_token_ids, max_loops=int(CTRL_MAX_LOOPS))
         dt = time.perf_counter() - t0
         elapsed = time.perf_counter() - t_start
 
         if step % 10 == 0 or step + 1 == STEPS:
-            print(f"step {step:4d}  A={phase_a_loops} C={PHASE_C_LOOPS}  loss={loss:.4f}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)
+            ctrl_str = f"  ctrl_loss={ctrl_loss:.4f}" if ctrl_loss is not None else ""
+            print(f"step {step:4d}  A={phase_a_loops} C={PHASE_C_LOOPS}  loss={loss:.4f}{ctrl_str}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)
 
         # Cheap loss eval — Phase A loops vary, Phase C fixed
         if (step + 1) % LOSS_EVAL_EVERY == 0 or step + 1 == STEPS:
