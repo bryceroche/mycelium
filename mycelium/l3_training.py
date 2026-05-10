@@ -25,6 +25,23 @@ def masked_forward_loss(model, tokens: Tensor, labels: Tensor, n_loops: int) -> 
     return pred.sparse_categorical_crossentropy(labels, ignore_index=-100, reduction="mean")
 
 
+def masked_forward_loss_with_lookup(model, tokens: Tensor, labels: Tensor,
+                                    n_loops: int):
+    """Combined main-CE forward that also returns per-breath lookup match weights.
+    One forward pass instead of two — used when joint lookup-aux training is on,
+    halving the main-step compute relative to running plain forward + a separate
+    breathe_with_lookup for the aux loss.
+
+    Returns (main_ce_loss, match_weights) where match_weights is a list of
+    (B, T, n_entries) tensors, one per breath.
+    """
+    final_h, match_weights, _ = model.breathe_with_lookup(tokens, n_loops)
+    logits = (final_h @ model.embed_out).cast(dtypes.float)
+    pred = logits[:, :-1, :]
+    main_ce = pred.sparse_categorical_crossentropy(labels, ignore_index=-100, reduction="mean")
+    return main_ce, match_weights
+
+
 def train_step(model, opt, tokens: Tensor, labels: Tensor, n_loops: int) -> float:
     Tensor.training = True
     opt.zero_grad()
@@ -148,6 +165,34 @@ def controller_train_step(model, ctrl_opt, batch_examples: List[MathExample], to
     return float(avg_ctrl_loss.numpy())
 
 
+def _aux_loss_from_match_weights(match_weights, tokens_np: np.ndarray,
+                                  batch_examples: List[MathExample],
+                                  eq_token_id, n_classes: int = 4) -> Tensor | None:
+    """Compute lookup-CE aux loss from already-available per-breath match_weights
+    (no extra forward). Used by the shared-forward fast path."""
+    B, T = tokens_np.shape
+    eq_positions = np.array([find_eq_position(tokens_np[b].tolist(), eq_token_id)
+                             for b in range(B)], dtype=np.int32)
+    op_labels = np.array([op_label_from_text(ex.problem + " " + " ".join(ex.gen_targets))
+                          for ex in batch_examples], dtype=np.int32)
+    valid = (eq_positions >= 0) & (op_labels >= 0)
+    if int(valid.sum()) == 0:
+        return None
+
+    last_mw = match_weights[-1]
+    eq_safe = np.where(valid, eq_positions, 0).astype(np.int32)
+    eq_mask_np = np.zeros((B, T), dtype=np.float32)
+    for b in range(B):
+        if valid[b]:
+            eq_mask_np[b, eq_safe[b]] = 1.0
+    eq_mask = Tensor(eq_mask_np, dtype=dtypes.float).reshape(B, T, 1).realize()
+    gathered = (last_mw.cast(dtypes.float) * eq_mask).sum(axis=1)
+    logits = gathered[:, :n_classes] * 10.0
+    op_labels_masked = np.where(valid, op_labels, -100).astype(np.int32)
+    y = Tensor(op_labels_masked, dtype=dtypes.int).realize()
+    return logits.sparse_categorical_crossentropy(y, ignore_index=-100, reduction="mean")
+
+
 def _lookup_aux_loss(model, tokens: Tensor, tokens_np: np.ndarray,
                      batch_examples: List[MathExample], n_loops: int,
                      eq_token_id: int, n_classes: int = 4) -> Tensor | None:
@@ -211,20 +256,25 @@ def multi_cycle_train_step(model, opt, batch_examples: List[MathExample], tok,
 
     cycle_losses = []
     aux_loss = None
-    cycle0_tokens = cycle0_tokens_np = None
+    use_shared_forward = (lookup_aux_weight > 0 and lookup_eq_token_id is not None)
     for c in range(n_cycles):
         encoded = [ex_cycles[c] for ex_cycles in cycles_per_ex]
         tokens_np, labels_np = collate(encoded, fixed_len=fixed_len)
         tokens = Tensor(tokens_np, dtype=dtypes.int).realize()
         labels = Tensor(labels_np, dtype=dtypes.int).realize()
-        cycle_losses.append(masked_forward_loss(model, tokens, labels, loops_per_cycle[c]))
-        if c == 0:
-            cycle0_tokens, cycle0_tokens_np = tokens, tokens_np
-
-    # Aux CE loss only on cycle 0 (where the equation lives)
-    if lookup_aux_weight > 0 and lookup_eq_token_id is not None and cycle0_tokens is not None:
-        aux_loss = _lookup_aux_loss(model, cycle0_tokens, cycle0_tokens_np, batch_examples,
-                                    loops_per_cycle[0], lookup_eq_token_id)
+        if c == 0 and use_shared_forward:
+            # Shared forward: one breathe_with_lookup pass returns both the
+            # per-token hidden states (for main CE) and per-breath match weights
+            # (for aux CE) — no second forward through the transformer.
+            main_ce, match_weights = masked_forward_loss_with_lookup(
+                model, tokens, labels, loops_per_cycle[c]
+            )
+            cycle_losses.append(main_ce)
+            aux_loss = _aux_loss_from_match_weights(
+                match_weights, tokens_np, batch_examples, lookup_eq_token_id
+            )
+        else:
+            cycle_losses.append(masked_forward_loss(model, tokens, labels, loops_per_cycle[c]))
 
     total = cycle_losses[0]
     for l in cycle_losses[1:]:
