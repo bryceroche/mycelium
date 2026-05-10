@@ -126,6 +126,7 @@ def main():
     CTRL_TRAIN_EVERY = getenv("CTRL_TRAIN_EVERY", 4) # update controller every K main steps (1=every step, 4=every 4)
     PROFILE = bool(getenv("PROFILE", 0))             # 1 = print per-phase timing summary every PROFILE_EVERY steps
     PROFILE_EVERY = getenv("PROFILE_EVERY", 50)
+    GC_EVERY = getenv("GC_EVERY", 50)                # gc.collect() every K steps to flush Python refs holding lazy buffers
 
     print(f"=== Math training — level {LEVEL} (three-phase: heavy A, light C) ===")
     print(f"device={Device.DEFAULT}  B={BATCH}  seq_len={FIXED_LEN}  steps={STEPS}  lr={LR}")
@@ -239,6 +240,14 @@ def main():
         if step % 10 == 0 or step + 1 == STEPS:
             ctrl_str = f"  ctrl_loss={ctrl_loss:.4f}" if ctrl_loss is not None else ""
             print(f"step {step:4d}  A={phase_a_loops} C={PHASE_C_LOOPS}  loss={loss:.4f}{ctrl_str}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)
+
+        # Periodic gc.collect() to keep tinygrad's lazy-graph Python refs from
+        # accumulating. Empirically we saw py_overhead grow 870ms → 2274ms over
+        # 100 steps without this — the L3 trainer's "per-step time creeps up"
+        # symptom. gc.collect() at K=50 keeps things bounded with negligible
+        # cost (~10ms per collect on a 134M-param model).
+        if (step + 1) % int(GC_EVERY) == 0:
+            gc.collect()
 
         # Per-phase profile summary every PROFILE_EVERY steps
         if PROFILE and (step + 1) % int(PROFILE_EVERY) == 0:
