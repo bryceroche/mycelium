@@ -213,8 +213,10 @@ class BreathingLayer:
     def parameters(self):
         return [self.wq, self.bq, self.wk, self.bk, self.w_in, self.b_in]
 
-    def __call__(self, x: Tensor, loop_idx: int, attn_mask: Tensor | None = None) -> Tensor:
-        return self._forward(x, loop_idx, kv_cache=None, return_kv=False, attn_mask=attn_mask)[0]
+    def __call__(self, x: Tensor, loop_idx: int, attn_mask: Tensor | None = None,
+                 temp_mult: Tensor | float = 1.0) -> Tensor:
+        return self._forward(x, loop_idx, kv_cache=None, return_kv=False,
+                             attn_mask=attn_mask, temp_mult=temp_mult)[0]
 
     def forward_with_kv(self, x: Tensor, loop_idx: int, attn_mask: Tensor | None = None):
         """Full-sequence forward that also returns the post-RoPE K, V tensors.
@@ -380,7 +382,7 @@ class BreathingLayer:
         return out, k_buf_new, v_buf_new
 
     def _forward(self, x: Tensor, loop_idx: int, kv_cache, return_kv: bool,
-                 attn_mask: Tensor | None = None):
+                 attn_mask: Tensor | None = None, temp_mult: Tensor | float = 1.0):
         cfg = self.cfg
         B, S, H = x.shape
 
@@ -393,9 +395,16 @@ class BreathingLayer:
         k = (attn_in_dt @ self.wk + self.bk).reshape(B, S, cfg.n_heads, cfg.head_dim).transpose(1, 2)
         v = (attn_in_dt @ self.shared.wv + self.shared.bv).reshape(B, S, cfg.n_heads, cfg.head_dim).transpose(1, 2)
 
+        # Adaptive temperature: built-in sine schedule × 1/temp_mult (higher mult → softer attention).
+        # When temp_mult=1.0 (default), behavior is identical to the original fixed sine schedule.
+        if isinstance(temp_mult, Tensor):
+            scale = self.attn_scale * (1.0 / temp_mult).cast(q.dtype).reshape(B, 1, 1, 1)
+        else:
+            scale = self.attn_scale / float(temp_mult)
+
         if kv_cache is None:
             q, k = self.rope.apply(q, k, loop_idx, start_pos=0)
-            scores = q @ k.transpose(-2, -1) * self.attn_scale
+            scores = q @ k.transpose(-2, -1) * scale
             mask = Tensor.ones(S, S, dtype=scores.dtype).tril().reshape(1, 1, S, S)
             scores = scores.masked_fill(mask == 0, float("-inf"))
             if attn_mask is not None:
@@ -417,7 +426,7 @@ class BreathingLayer:
         k_full = Tensor.cat(k_past, k, dim=2)        # (B, n_heads, T_past+1, head_dim)
         v_full = Tensor.cat(v_past, v, dim=2)
         # No causal mask: new token can attend to all past + itself.
-        scores = q @ k_full.transpose(-2, -1) * self.attn_scale
+        scores = q @ k_full.transpose(-2, -1) * scale
         attn = scores.softmax(-1).cast(v_full.dtype)
         ctx = (attn @ v_full).transpose(1, 2).reshape(B, S, H)
         attn_out = ctx @ self.shared.wo + self.shared.bo
@@ -569,6 +578,85 @@ class BreathingTransformer:
 
     def __call__(self, tokens: Tensor, n_loops: int) -> Tensor:
         return self.hidden_states(tokens, n_loops, return_per_loop=False)
+
+    def breathe_controlled(self, tokens: Tensor, max_loops: int, notebook,
+                           rep_position: int = -1, detach_rep_for_ctrl: bool = True,
+                           detach_decisions_into_transformer: bool = False):
+        """Closed-loop adaptive breathing — the full 7/7 system in action.
+
+        Per breath:
+          1. Run the 4 layer-passes at the current temperature (multiplier from controller).
+          2. Add this breath's contribution to the running integral, weighted by gate.
+          3. Read the integrated rep at rep_position (the 'controller's eyes').
+          4. Run the controller(rep, notebook) → page is appended to notebook,
+             attention reads tree of prior pages, decision heads emit
+             {temperature, gate, stop_logit} for the NEXT breath.
+          5. Optionally short-circuit if mean stop_logit > 0 (only at inference).
+
+        Gradient separation:
+          - detach_rep_for_ctrl=True: the rep fed into the controller is detached,
+            so the controller's loss can't update transformer params.
+          - detach_decisions_into_transformer=False: the controller's outputs
+            (temperature, gate) flow into the transformer's computation WITH
+            gradient. This is correct for controller training (controller learns
+            from how its decisions affected the transformer's behavior). For
+            main-loss training of the transformer, set True so transformer
+            gradient doesn't update controller params.
+
+        Returns:
+          final_hidden: (B, T, hidden) post final LN — the same surface as __call__
+          decisions:    list of dicts (one per breath taken)
+          n_breaths:    int — actual number of breaths run (≤ max_loops)
+          match_weights: list of (B, T, n_entries) per-breath lookup table queries
+        """
+        cfg = self.cfg
+        x = self.embed(tokens).cast(dtypes.half)
+        B = int(x.shape[0])
+        notebook.clear()
+
+        integral = Tensor.zeros_like(x)
+        gate_total = Tensor.zeros((B,), dtype=dtypes.float).realize()
+        decisions_per_breath = []
+        match_weights = []
+
+        # Initial decisions (from raw input) — controller's "first look" before any breathing
+        rep = x[:, rep_position, :].cast(dtypes.float)
+        if detach_rep_for_ctrl:
+            rep = rep.detach()
+        decisions = self.controller(rep, notebook=notebook)
+        decisions_per_breath.append(decisions)
+
+        for l in range(max_loops):
+            temp_mult = decisions["temperature"]                      # (B,)
+            gate = decisions["gate"]                                  # (B,)
+            if detach_decisions_into_transformer:
+                temp_mult = temp_mult.detach()
+                gate = gate.detach()
+
+            # Run the 4-layer breath at this breath's temperature
+            for layer in self.block.layers:
+                x = layer(x, l, temp_mult=temp_mult)
+
+            # Add to integral with gate weighting
+            integral = integral + x.cast(dtypes.float) * gate.cast(dtypes.float).reshape(B, 1, 1)
+            gate_total = gate_total + gate.cast(dtypes.float)
+
+            # Per-breath lookup-table query against the running integral, normalized
+            running = integral / (gate_total + 1e-6).reshape(B, 1, 1)
+            running_normed = _layernorm(running, self.ln_f_g, self.ln_f_b, cfg.layer_norm_eps)
+            match_weights.append(self.lookup_table(running_normed))
+
+            # Controller reads the running integral and emits decisions for next breath
+            rep = running_normed[:, rep_position, :].cast(dtypes.float)
+            if detach_rep_for_ctrl:
+                rep = rep.detach()
+            decisions = self.controller(rep, notebook=notebook)
+            decisions_per_breath.append(decisions)
+
+        # Final integrated rep: gate-weighted mean
+        final = integral / (gate_total + 1e-6).reshape(B, 1, 1)
+        final = _layernorm(final, self.ln_f_g, self.ln_f_b, cfg.layer_norm_eps)
+        return final, decisions_per_breath, max_loops, match_weights
 
     def breathe_with_lookup(self, tokens: Tensor, n_loops: int):
         """Forward pass returning (final_hidden, per_breath_match_weights, integrated_per_breath).
