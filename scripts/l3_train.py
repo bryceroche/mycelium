@@ -27,6 +27,7 @@ from mycelium.l3_data import generate_math, split_train_eval
 from mycelium.l3_training import (
     multi_cycle_train_step, multi_cycle_eval_loss, accuracy_at_loops_multi,
 )
+from mycelium.lookup_eval import lookup_eval
 
 
 def cast_model_fp32(model):
@@ -118,11 +119,14 @@ def main():
     SPACE_DIGITS = bool(getenv("SPACE_DIGITS", 0))   # digit-by-digit tokenization for arithmetic
     EVAL_BATCH = getenv("EVAL_BATCH", 64)            # batched accuracy eval (kept fixed → JIT reuse)
     EVAL_CACHE_LEN = getenv("EVAL_CACHE_LEN", 0) or None  # K/V cache length for eval; 0 → cfg.max_seq_len
+    LOOKUP_EVAL = getenv("LOOKUP_EVAL", 1)           # 1 = run per-checkpoint lookup-table classification eval
+    LOOKUP_EVAL_LOOPS = getenv("LOOKUP_EVAL_LOOPS", 8)  # n_loops for the lookup eval (single value)
 
     print(f"=== Math training — level {LEVEL} (three-phase: heavy A, light C) ===")
     print(f"device={Device.DEFAULT}  B={BATCH}  seq_len={FIXED_LEN}  steps={STEPS}  lr={LR}")
     print(f"corpus={NUM_PROBLEMS}, eval set={NUM_EVAL}, space_digits={SPACE_DIGITS}")
     print(f"phase_A_train_loops={TRAIN_LOOPS}  phase_A_eval_loops={EVAL_LOOPS}  phase_C_loops={PHASE_C_LOOPS}")
+    print(f"eval batch={EVAL_BATCH}  cache_len={EVAL_CACHE_LEN}  lookup_eval={'on' if LOOKUP_EVAL else 'off'}@A={LOOKUP_EVAL_LOOPS}")
     print()
 
     print(f"generating {LEVEL} problems...")
@@ -158,8 +162,10 @@ def main():
     py_rng = np.random.default_rng(SEED + 1)
 
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ckpt_label = LEVEL.lower().replace(".", "_")  # L3 -> l3, L4.5 -> l4_5
-    ckpt_dir = os.path.join(project_root, ".cache", f"{ckpt_label}_ckpts")
+    ckpt_label_default = LEVEL.lower().replace(".", "_") + ("_spaced" if SPACE_DIGITS else "_abs")
+    ckpt_label = getenv("CKPT_LABEL", ckpt_label_default)
+    # ckpt_dir uses just the level prefix so spaced + abs share a directory
+    ckpt_dir = os.path.join(project_root, ".cache", f"{LEVEL.lower().replace('.', '_')}_ckpts")
     os.makedirs(ckpt_dir, exist_ok=True)
 
     # We don't pre-tokenize for multi-cycle — the encoder is called per-batch.
@@ -213,6 +219,16 @@ def main():
                         print(f"      Q: {ex.problem}")
                         print(f"      gen: {gen.strip()!r}")
                         print(f"      parsed: {parsed}, gold: {ex.answer}, {'OK' if parsed == ex.answer else 'WRONG'}")
+            # Per-checkpoint lookup-table eval — second axis of training signal.
+            # Trains a fresh 16x1024 cosine-similarity table on op classification
+            # from the integrated rep at "=" position. Reports held-out classification
+            # accuracy + on-target count (out of 4) + per-op purity.
+            if LOOKUP_EVAL:
+                m = lookup_eval(model, tok, n_loops=int(LOOKUP_EVAL_LOOPS), verbose=False)
+                pur = " ".join(f"{o}={m['purity_per_op'].get(o, 0):.2f}" for o in ["+","-","*","/"])
+                print(f"    lookup-eval @ A={m['n_loops']}: trained={m['trained_acc']*100:.1f}%  "
+                      f"ncm={m['ncm_acc']*100:.1f}%  on-target={m['on_target_count']}/4  "
+                      f"purity[{pur}]  ({m['elapsed_s']:.1f}s)")
             Tensor.training = True
 
         # Periodic checkpoint
