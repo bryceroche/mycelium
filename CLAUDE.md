@@ -65,11 +65,11 @@ The loop **terminates** when both: (a) the integral has stabilized (Lyapunov cri
 
 ## 4. Specifications (Tight)
 
-- **Init:** Pythia-410M L0-3. Take attn+FFN weights + embeddings (50304×1024, tied with output). Phase-specific copies of Q, K, FFN gate (one per breath phase). Shared V, O, FFN up/down, norms.
+- **Init:** Pythia-410M L0-3. Take attn+FFN weights + token embeddings (50304×1024) + untied output head. Phase-specific copies of Q, K, FFN gate (one per breath phase). Shared V, O, FFN up/down, norms.
 - **Dimensions:** h=1024, 16 heads × head_dim 64, FFN 4096, vocab 50304, max seq 512, 4 layers/breath, max 8 loops.
-- **Parameters:** 35.7M transformer processing + 40M controller + 51.5M embeddings = ~127M total. With 8 loops → ~286M effective processing capacity.
+- **Parameters:** ~35.7M transformer processing + 51.5M token embeddings + 51.5M untied output head = ~139M (training log reports 134.5M `trainable params` from `collect_params()`; minor delta from vocab_active=50277 used in output). Separate ~6.6M controller (Step C; spec target ~40M at Step E) trained on its own optimizer. With 8 loops → ~286M effective processing capacity.
 - **Memory:** ~5GB mixed precision, ~19GB headroom. KV cache sized to actual seq length (not model max): cache_max_len=32 for L3-spaced → ~2GB at B=100.
-- **Platform:** AMD 7900 XTX, tinygrad, AM driver (in progress — see §6), Ubuntu 24.04. No ROCm, no CUDA, no PyTorch.
+- **Platform:** AMD 7900 XTX, tinygrad, AM driver (working as of 2026-05-11 — see §6), Ubuntu 24.04. No ROCm, no CUDA, no PyTorch.
 
 ---
 
