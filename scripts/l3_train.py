@@ -39,6 +39,7 @@ from mycelium.l3_training import (
     multi_cycle_train_step, multi_cycle_eval_loss, accuracy_at_loops_multi,
     controller_train_step,
 )
+from mycelium.l3_training import _JIT_TRAIN_CACHE
 from mycelium.lookup_eval import lookup_eval
 
 
@@ -270,6 +271,14 @@ def main():
         # Cheap loss eval — Phase A loops vary, Phase C fixed
         if (step + 1) % LOSS_EVAL_EVERY == 0 or step + 1 == STEPS:
             Tensor.training = False
+            # Clear training-side JITs so their resident graphs/buffers don't
+            # contend with the eval JIT compile. Empirically: training JITs in
+            # memory made the eval block's cached_generate_batch compile take
+            # 20+ min instead of the expected ~10s warm replay. Clearing here
+            # forces a one-time ~40s recompile of training graphs after each
+            # eval block (acceptable trade for un-blocked eval).
+            if USE_JIT:
+                _JIT_TRAIN_CACHE.clear()
             gc.collect()
             print(f"  --- loss eval at step {step+1} ---")
             for nl in EVAL_LOOPS:
@@ -285,6 +294,8 @@ def main():
         # Expensive accuracy eval — same scheduling: Phase A varies, Phase C fixed
         if (step + 1) % ACC_EVAL_EVERY == 0 or step + 1 == STEPS:
             Tensor.training = False
+            if USE_JIT:
+                _JIT_TRAIN_CACHE.clear()
             gc.collect()
             print(f"  --- accuracy at step {step+1} (multi-cycle, {NUM_EVAL} held-out) ---")
             for nl in EVAL_LOOPS:
