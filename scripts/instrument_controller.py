@@ -62,13 +62,14 @@ def main():
     MAX_LOOPS = getenv("MAX_LOOPS", 8)
     SEED = getenv("SEED", 42)
     FIXED_LEN = getenv("FIXED_LEN", 32)
+    LEVEL = getenv("LEVEL", "ARITH_HARD")
 
     cfg = Config()
     print(f"=== instrument controller on {os.path.basename(ckpt)} ===")
-    print(f"B={B}  max_loops={MAX_LOOPS}  fixed_len={FIXED_LEN}\n")
+    print(f"B={B}  max_loops={MAX_LOOPS}  fixed_len={FIXED_LEN}  level={LEVEL}\n")
 
-    print("generating ARITH_HARD problems...")
-    examples = generate_math("ARITH_HARD", B + 50, seed=SEED, digit_spacing=True)[:B]
+    print(f"generating {LEVEL} problems...")
+    examples = generate_math(LEVEL, B + 50, seed=SEED, digit_spacing=True)[:B]
     for i in range(3):
         print(f"  [{i}] {examples[i].problem!r} -> {examples[i].answer}")
     print()

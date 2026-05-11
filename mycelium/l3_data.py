@@ -174,23 +174,38 @@ _LEVEL_GENERATORS["ARITH_HARD"] = ARITH_HARD_GENERATORS
 # orchestrate compute. The ARITH_HARD trained controller emits open-loop
 # schedules (f(breath_idx) only); this dataset gives a clear gradient on
 # observation-conditional stopping.
-def _arith_trivial_add(rng):
-    """1-digit + 1-digit, no carry guaranteed. Single-digit result."""
-    a = rng.randint(0, 4)
-    b = rng.randint(0, 4)
-    r = a + b
+def _arith_easy_add_no_carry(rng):
+    """2-digit + 2-digit, NO carry guaranteed. Same format as the hard add_carry
+    generator but the per-digit sums all stay < 10 — model can do this in 1 breath
+    because there's no cross-digit dependency to track."""
+    a_tens = rng.randint(1, 4)
+    b_tens = rng.randint(1, 4)
+    a_ones = rng.randint(0, 4)
+    b_ones = rng.randint(0, 4)
+    a = 10 * a_tens + a_ones
+    b = 10 * b_tens + b_ones
+    r = a + b                                     # all column sums < 10
     return f"{a} + {b} =", [r], r, [f"{r}."]
 
 
-def _arith_trivial_sub(rng):
-    """1-digit - 1-digit, no borrow guaranteed. Non-negative result."""
-    a = rng.randint(1, 9)
-    b = rng.randint(0, a)
+def _arith_easy_sub_no_borrow(rng):
+    """2-digit - 2-digit, NO borrow guaranteed. Same format as hard sub_borrow
+    but each digit of a >= each digit of b — model can subtract digit-by-digit
+    with no carry tracking, doable in 1 breath."""
+    a_tens = rng.randint(2, 9)
+    b_tens = rng.randint(1, a_tens)               # b_tens <= a_tens
+    a_ones = rng.randint(0, 9)
+    b_ones = rng.randint(0, a_ones)               # b_ones <= a_ones
+    a = 10 * a_tens + a_ones
+    b = 10 * b_tens + b_ones
+    if a == b:                                    # avoid trivial 0
+        b_ones = max(0, b_ones - 1)
+        b = 10 * b_tens + b_ones
     r = a - b
     return f"{a} - {b} =", [r], r, [f"{r}."]
 
 
-ARITH_MIXED_GENERATORS = [_arith_trivial_add, _arith_trivial_sub,
+ARITH_MIXED_GENERATORS = [_arith_easy_add_no_carry, _arith_easy_sub_no_borrow,
                           _arith_sub_borrow_3d, _arith_add_carry]
 _LEVEL_GENERATORS["ARITH_MIXED"] = ARITH_MIXED_GENERATORS
 
