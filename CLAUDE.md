@@ -86,7 +86,7 @@ The loop **terminates** when both: (a) the integral has stabilized (Lyapunov cri
 
 ## 6. Current Work In Progress
 
-- **AM driver bringup (80% done):** persistent unbind + udev + setcap installed via `scripts/setup_am_driver.sh` (commit `104f9c3`). EPERM on PCI BAR mmap remains — suspect AppArmor profile on `/usr/bin/python3.12`. We've been running on KFD/ROCm all along; AM is the spec's stated stack (no-ROCm clean). See `memory/project_am_driver_state.md`.
+- **AM driver bringup (working as of 2026-05-11):** `DEV='PCI+AMD'` smoke test passes after disabling Secure Boot (lockdown was the EPERM root cause) and adding `vm.compact_unevictable_allowed=0`. `scripts/setup_am_driver.sh` now installs both fixes plus a corrected unbind-service ordering (polls for the driver symlink instead of racing against udev). Re-run the script once to activate the updated unit + sysctl. We were on KFD/ROCm before this; AM is the spec's stated stack. See `memory/project_am_driver_state.md`.
 - **Full 7/7 closed loop ready for empirical validation on L4-spaced** — first run with all components active.
 
 ---

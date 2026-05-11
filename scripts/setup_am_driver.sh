@@ -4,7 +4,12 @@
 #
 # After this runs:
 #   - udev rule grants user 666 mode on 7900 XTX PCI sysfs files (every boot)
-#   - systemd service unbinds amdgpu from the 7900 XTX at boot (every boot)
+#   - systemd service unbinds amdgpu from the 7900 XTX at boot (every boot,
+#     after the kernel has actually bound amdgpu to the device — earlier
+#     versions ran too early and silently no-op'd)
+#   - sysctl drop-in disables migration of locked pages (tinygrad pins
+#     sysmem for AQL queues; the kernel would otherwise migrate them out
+#     from under it -> "Failed to disable migration of locked pages")
 #   - python binary gets the capabilities needed for PCI BAR access
 #     (CAP_DAC_OVERRIDE, CAP_SYS_RAWIO, CAP_SYS_ADMIN, CAP_IPC_LOCK)
 #   - all also applied NOW so we don't need to reboot
@@ -33,16 +38,22 @@ SUBSYSTEM=="pci", ATTR{vendor}=="$VENDOR", ATTR{device}=="$DEVICE", MODE="0666"
 EOF
 
 echo "2. Writing systemd unit for persistent amdgpu unbind..."
+# Ordering note: amdgpu is autoloaded by udev when it coldplugs the GPU,
+# which happens after systemd-modules-load.service. The earlier version of
+# this unit ran with After=systemd-modules-load and so the unbind fired
+# before any driver was bound — silently no-op'd, leaving amdgpu owning
+# the device after boot. Fix: wait for the driver symlink to appear (with
+# a 30s timeout) before unbinding.
 cat > /etc/systemd/system/tinygrad-unbind.service <<EOF
 [Unit]
 Description=Unbind amdgpu from 7900 XTX so tinygrad AM driver can claim it
-DefaultDependencies=no
-After=systemd-modules-load.service
-Before=multi-user.target
+After=systemd-udev-settle.service
+Wants=systemd-udev-settle.service
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c "echo $PCI_ID > /sys/bus/pci/devices/$PCI_ID/driver/unbind || true"
+# Poll up to 30s for amdgpu to actually bind, then unbind.
+ExecStart=/bin/sh -c 'for i in \$(seq 1 30); do [ -L /sys/bus/pci/devices/$PCI_ID/driver ] && break; sleep 1; done; if [ -L /sys/bus/pci/devices/$PCI_ID/driver ]; then echo $PCI_ID > /sys/bus/pci/devices/$PCI_ID/driver/unbind; fi'
 ExecStart=/bin/sh -c "chmod 666 /sys/bus/pci/devices/$PCI_ID/enable /sys/bus/pci/devices/$PCI_ID/resource* /sys/bus/pci/devices/$PCI_ID/config"
 RemainAfterExit=yes
 
@@ -50,22 +61,34 @@ RemainAfterExit=yes
 WantedBy=multi-user.target
 EOF
 
-echo "3. Enabling + starting the systemd unit now..."
+echo "3. Writing sysctl drop-in for vm.compact_unevictable_allowed=0..."
+# tinygrad's AM driver pins sysmem pages for AQL queue rings. If the
+# kernel migrates an evictable-but-locked page, the AM driver's mapping
+# silently points at the wrong physical page. tinygrad refuses to start
+# unless this is 0. Ubuntu defaults it to 1.
+cat > /etc/sysctl.d/99-tinygrad-amd.conf <<EOF
+# Required for tinygrad AM driver: don't migrate pinned pages.
+vm.compact_unevictable_allowed = 0
+EOF
+sysctl --system > /dev/null
+echo "   current value: \$(cat /proc/sys/vm/compact_unevictable_allowed)"
+
+echo "4. Enabling + starting the systemd unit now..."
 systemctl daemon-reload
 systemctl enable tinygrad-unbind.service
 systemctl start tinygrad-unbind.service
 
-echo "4. Reloading + triggering udev rules..."
+echo "5. Reloading + triggering udev rules..."
 udevadm control --reload-rules
 udevadm trigger
 
-echo "5. Granting Linux capabilities to python (for PCI BAR access)..."
+echo "6. Granting Linux capabilities to python (for PCI BAR access)..."
 echo "   Target: $REAL_PYTHON"
 setcap 'cap_dac_override,cap_sys_rawio,cap_sys_admin,cap_ipc_lock=ep' "$REAL_PYTHON"
 echo "   Caps now:"
 getcap "$REAL_PYTHON"
 
-echo "6. Ensuring iomem=relaxed on the kernel command line..."
+echo "7. Ensuring iomem=relaxed on the kernel command line..."
 # With CONFIG_STRICT_DEVMEM=y, the kernel refuses mmap of PCI BAR sysfs
 # resource files (even for root) unless iomem=relaxed is on cmdline.
 # Idempotent: add it only if not already present.
