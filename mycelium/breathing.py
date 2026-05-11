@@ -13,6 +13,7 @@ Mycelium v4 modifications:
   - Gated running integral across loops (controller stub: gate=1)
 """
 import math
+import os
 from typing import List
 
 import numpy as np
@@ -23,6 +24,24 @@ from tinygrad.engine.jit import TinyJit
 from mycelium.config import Config
 from mycelium.lookup_table import LookupTable
 from mycelium.controller import Controller
+
+
+# Ablation flags — read once at module import. Each disables one closed-loop
+# component for Phase 2/3 directional screening. Default off: behavior matches
+# the un-ablated architecture exactly when none are set.
+ABLATE_TEMP        = int(os.environ.get("ABLATE_TEMP", "0")) > 0          # pin temperature multiplier to 1.0
+ABLATE_STEP_MULT   = int(os.environ.get("ABLATE_STEP_MULT", "0")) > 0     # pin RoPE step_mult to 1.0
+ABLATE_GATE        = int(os.environ.get("ABLATE_GATE", "0")) > 0          # pin integration gate to 1.0 (uniform breath weighting)
+ABLATE_INTEGRATION = int(os.environ.get("ABLATE_INTEGRATION", "0")) > 0   # no cross-breath integral; last-breath-only
+ABLATE_NOTEBOOK    = int(os.environ.get("ABLATE_NOTEBOOK", "0")) > 0      # clear notebook before every controller call
+ABLATE_ROTATION    = int(os.environ.get("ABLATE_ROTATION", "0")) > 0      # uniform RoPE phase (no per-head / per-loop offset)
+
+_active_ablations = [n for n, v in [
+    ("TEMP", ABLATE_TEMP), ("STEP_MULT", ABLATE_STEP_MULT), ("GATE", ABLATE_GATE),
+    ("INTEGRATION", ABLATE_INTEGRATION), ("NOTEBOOK", ABLATE_NOTEBOOK),
+    ("ROTATION", ABLATE_ROTATION)] if v]
+if _active_ablations:
+    print(f"[ABLATE] active: {_active_ablations}", flush=True)
 
 
 # ---------- partial RoPE with π cycling ----------
@@ -71,10 +90,12 @@ class RoPE:
         self.sin = sin.reshape(1, 1, cfg.max_seq_len, rd).contiguous().realize()
 
         head_phase = [h * math.pi / cfg.n_heads for h in range(cfg.n_heads)]
+        if ABLATE_ROTATION:
+            head_phase = [0.0] * cfg.n_heads  # no per-head phase diversity
         self.alpha_cos: List[Tensor] = []
         self.alpha_sin: List[Tensor] = []
         for l in range(cfg.max_loops):
-            loop_phase = l * math.pi / cfg.max_loops
+            loop_phase = 0.0 if ABLATE_ROTATION else l * math.pi / cfg.max_loops
             alphas = [hp + loop_phase for hp in head_phase]
             ac = Tensor(alphas, dtype=dtypes.float).cos().reshape(1, cfg.n_heads, 1, 1).contiguous().realize()
             asn = Tensor(alphas, dtype=dtypes.float).sin().reshape(1, cfg.n_heads, 1, 1).contiguous().realize()
@@ -625,7 +646,9 @@ class BreathingTransformer:
 
     def breathe_controlled(self, tokens: Tensor, max_loops: int, notebook,
                            rep_position: int = -1, detach_rep_for_ctrl: bool = True,
-                           detach_decisions_into_transformer: bool = False):
+                           detach_decisions_into_transformer: bool = False,
+                           adaptive: bool = False, min_loops: int = 1,
+                           return_per_breath_reps: bool = False):
         """Closed-loop adaptive breathing — the full 7/7 system in action.
 
         Per breath:
@@ -635,7 +658,16 @@ class BreathingTransformer:
           4. Run the controller(rep, notebook) → page is appended to notebook,
              attention reads tree of prior pages, decision heads emit
              {temperature, gate, stop_logit} for the NEXT breath.
-          5. Optionally short-circuit if mean stop_logit > 0 (only at inference).
+          5. If adaptive=True and l+1 >= min_loops and mean(stop_logit) > 0, break.
+
+        Adaptive stopping (inference-only by default — training keeps adaptive=False
+        so loss computation is straightforward over a fixed unrolled loop):
+          - adaptive=True: after each breath's controller call, halt if the batch-mean
+            stop_logit crosses zero. Adds one .numpy() sync per breath; cheap at
+            inference. Each breath has access to the stop_logit it emitted, so the
+            controller can learn (via compute-penalty) to halt early on easy problems.
+          - min_loops: guarantees at least this many breaths run before early-stop is
+            considered. Default 1 — the controller can't bail at breath 0.
 
         Gradient separation:
           - detach_rep_for_ctrl=True: the rep fed into the controller is detached,
@@ -662,6 +694,7 @@ class BreathingTransformer:
         gate_total = Tensor.zeros((B,), dtype=dtypes.float).realize()
         decisions_per_breath = []
         match_weights = []
+        integrated_per_breath = []   # only populated if return_per_breath_reps
 
         # Initial decisions (from raw input) — controller's "first look" before any breathing
         rep = x[:, rep_position, :].cast(dtypes.float)
@@ -675,11 +708,21 @@ class BreathingTransformer:
         # querying. Uniform default (step_mult=1.0) reproduces the existing
         # 0,1,2,...,max_loops-1 sequence exactly.
         phase_idx_float = 0.0
+        actual_n_breaths = max_loops
 
         for l in range(max_loops):
             temp_mult = decisions["temperature"]                      # (B,)
             gate = decisions["gate"]                                  # (B,)
             step_mult = decisions["step_mult"]                        # (B,)
+            if ABLATE_TEMP:
+                # Pin to 1.0 but keep gradient graph connected (zero grad flows
+                # back through the controller's temperature head). Replacing with
+                # Tensor.ones_like severs the path and breaks ctrl_opt.step.
+                temp_mult = temp_mult * 0.0 + 1.0
+            if ABLATE_STEP_MULT:
+                step_mult = step_mult * 0.0 + 1.0
+            if ABLATE_GATE:
+                gate = gate * 0.0 + 1.0
             if detach_decisions_into_transformer:
                 temp_mult = temp_mult.detach()
                 gate = gate.detach()
@@ -696,26 +739,49 @@ class BreathingTransformer:
                 x = layer(x, current_loop_idx, temp_mult=temp_mult)
             phase_idx_float += step_avg
 
-            # Add to integral with gate weighting
-            integral = integral + x.cast(dtypes.float) * gate.cast(dtypes.float).reshape(B, 1, 1)
-            gate_total = gate_total + gate.cast(dtypes.float)
+            # Add to integral with gate weighting.
+            # Ablation: when ABLATE_INTEGRATION, overwrite instead of accumulate
+            # (last-breath-only — no cross-breath memory in the integral path).
+            if ABLATE_INTEGRATION:
+                integral = x.cast(dtypes.float) * gate.cast(dtypes.float).reshape(B, 1, 1)
+                gate_total = gate.cast(dtypes.float)
+            else:
+                integral = integral + x.cast(dtypes.float) * gate.cast(dtypes.float).reshape(B, 1, 1)
+                gate_total = gate_total + gate.cast(dtypes.float)
 
             # Per-breath lookup-table query against the running integral, normalized
             running = integral / (gate_total + 1e-6).reshape(B, 1, 1)
             running_normed = _layernorm(running, self.ln_f_g, self.ln_f_b, cfg.layer_norm_eps)
             match_weights.append(self.lookup_table(running_normed))
+            if return_per_breath_reps:
+                integrated_per_breath.append(running_normed)
 
-            # Controller reads the running integral and emits decisions for next breath
+            # Controller reads the running integral and emits decisions for next breath.
+            # Ablation: when ABLATE_NOTEBOOK, clear notebook before each call so the
+            # controller never sees prior-breath pages (no cross-breath memory).
             rep = running_normed[:, rep_position, :].cast(dtypes.float)
             if detach_rep_for_ctrl:
                 rep = rep.detach()
+            if ABLATE_NOTEBOOK:
+                notebook.clear()
             decisions = self.controller(rep, notebook=notebook)
             decisions_per_breath.append(decisions)
+
+            # Adaptive early-stop: after we've run at least min_loops breaths, halt
+            # when the controller's batch-mean stop_logit crosses zero. One sync per
+            # breath; only enabled at inference.
+            if adaptive and (l + 1) >= min_loops:
+                stop_mean = float(decisions["stop_logit"].mean().realize().numpy())
+                if stop_mean > 0.0:
+                    actual_n_breaths = l + 1
+                    break
 
         # Final integrated rep: gate-weighted mean
         final = integral / (gate_total + 1e-6).reshape(B, 1, 1)
         final = _layernorm(final, self.ln_f_g, self.ln_f_b, cfg.layer_norm_eps)
-        return final, decisions_per_breath, max_loops, match_weights
+        if return_per_breath_reps:
+            return final, decisions_per_breath, actual_n_breaths, match_weights, integrated_per_breath
+        return final, decisions_per_breath, actual_n_breaths, match_weights
 
     def breathe_with_lookup(self, tokens: Tensor, n_loops: int):
         """Forward pass returning (final_hidden, per_breath_match_weights, integrated_per_breath).

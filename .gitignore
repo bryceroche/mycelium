@@ -66,6 +66,10 @@ notes/
 !package.json
 !pyproject.json
 !.beads/*.json
+# Beads local tooling state — these directories/files are runtime artifacts
+.beads/backup/
+.beads/embeddeddolt/
+.beads/export-state.json
 logs/
 *.log
 *.backup.*
