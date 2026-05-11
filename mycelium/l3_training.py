@@ -197,7 +197,9 @@ def _resolve_loops_per_cycle(n_loops, n_cycles: int) -> List[int]:
 
 def controller_train_step(model, ctrl_opt, batch_examples: List[MathExample], tok,
                           eq_token_ids, max_loops: int = 8,
-                          n_classes: int = 4, profile: bool = False):
+                          n_classes: int = 4, profile: bool = False,
+                          compute_penalty: float = 0.0,
+                          stop_calib_weight: float = 0.01):
     """Train ONLY the controller via lookup-CE loss on op classification.
 
     Forwards through breathe_controlled with decisions NOT detached, so the
@@ -220,9 +222,11 @@ def controller_train_step(model, ctrl_opt, batch_examples: List[MathExample], to
     if profile: _t = _time.perf_counter()
     cycles_per_ex = [encode_cycles(tok, ex) for ex in batch_examples]
     encoded = [ex_cycles[0] for ex_cycles in cycles_per_ex]      # cycle 0 only
-    tokens_np, _ = collate(encoded, fixed_len=64 + 40)             # FIXED_LEN+max_new for safety
+    tokens_np, labels_np = collate(encoded, fixed_len=64 + 40)     # capture labels for answer-CE
     B, T = tokens_np.shape
     tokens = Tensor(tokens_np, dtype=dtypes.int).realize()
+    labels = Tensor(labels_np, dtype=dtypes.int).realize()         # (B, T-1) next-token targets, -100 mask
+    answer_mask = Tensor((labels_np != -100).astype(np.float32), dtype=dtypes.float).realize()  # (B, T-1)
     encode_time = (_time.perf_counter() - _t) if profile else 0.0
 
     eq_positions = np.array([find_eq_position(tokens_np[b].tolist(), eq_token_ids)
@@ -235,10 +239,15 @@ def controller_train_step(model, ctrl_opt, batch_examples: List[MathExample], to
 
     if profile: _t = _time.perf_counter()
     # Forward through the closed loop. Decisions NOT detached so gradient flows back.
+    # return_per_breath_reps=True so we can compute per-breath answer-prediction CE
+    # (the signal that actually differentiates problem difficulty, vs the previous
+    # op-classification CE which is trivially solved by the operator symbol in the
+    # prompt). See project_arith_mixed_v3_result.md.
     notebook = Notebook()
-    _, decisions, n_breaths, match_weights = model.breathe_controlled(
+    _, decisions, n_breaths, match_weights, integrated_per_breath = model.breathe_controlled(
         tokens, max_loops=max_loops, notebook=notebook,
         detach_rep_for_ctrl=False, detach_decisions_into_transformer=False,
+        return_per_breath_reps=True,
     )
 
     # Gather match weights at eq positions for every breath, mean across breaths.
@@ -252,33 +261,64 @@ def controller_train_step(model, ctrl_opt, batch_examples: List[MathExample], to
     op_labels_masked = np.where(valid, op_labels, -100).astype(np.int32)
     y = Tensor(op_labels_masked, dtype=dtypes.int).realize()
 
-    per_breath_losses = []
+    # Per-breath OP-classification CE (the existing main signal — still useful for
+    # training the lookup table). reduction="none" gives (B,) per breath.
+    per_breath_per_ex_op_losses = []
     for mw in match_weights:
         gathered = (mw.cast(dtypes.float) * eq_mask).sum(axis=1)        # (B, n_entries)
-        logits = gathered[:, :n_classes] * 10.0
-        per_breath_losses.append(logits.sparse_categorical_crossentropy(y, ignore_index=-100, reduction="mean"))
+        op_logits = gathered[:, :n_classes] * 10.0
+        per_ex_op = op_logits.sparse_categorical_crossentropy(y, ignore_index=-100, reduction="none")  # (B,)
+        per_breath_per_ex_op_losses.append(per_ex_op)
 
-    total = per_breath_losses[0]
-    for l in per_breath_losses[1:]:
-        total = total + l
-    avg_ctrl_loss = total / float(len(per_breath_losses))
+    # Per-breath PER-EXAMPLE ANSWER-prediction CE (the new stop_calib target).
+    # The prior implementation used op-classification CE — trivially solved in
+    # single-cycle arithmetic because the operator symbol is in the prompt. This
+    # meant per-example targets were uniformly small across the batch and the stop
+    # head couldn't learn per-problem differentiation (v3 instrumentation showed
+    # within-batch std going DOWN with more training: 0.47 → 0.27). Answer-prediction
+    # CE actually varies by problem difficulty: easy = low CE early, hard = high CE
+    # until late breaths.
+    per_breath_per_ex_answer_losses = []
+    for rep in integrated_per_breath:
+        full_logits = (rep @ model.embed_out).cast(dtypes.float)           # (B, T, vocab)
+        pred = full_logits[:, :-1, :]                                       # next-token prediction
+        per_tok_ce = pred.sparse_categorical_crossentropy(labels, ignore_index=-100, reduction="none")  # (B, T-1)
+        per_ex_ans = (per_tok_ce * answer_mask).sum(axis=1) / answer_mask.sum(axis=1).maximum(1.0)      # (B,) mean over answer positions
+        per_breath_per_ex_answer_losses.append(per_ex_ans)
 
-    # Auxiliary: stop calibration. The stop_logit at breath l should be HIGH when
-    # the per-breath lookup-CE has plateaued (no further improvement from breathing).
-    # Crude target: target_stop = sigmoid_inverse(1 - normalized_per_breath_loss),
-    # i.e., when per-breath loss is low, target is high (model thinks "we're done").
-    # Use squared-error on stop_logit (unbounded, before sigmoid).
+    # Main ctrl loss: average over breaths (op-CE signal — keeps lookup table sharp).
+    total = per_breath_per_ex_op_losses[0].mean()
+    for l in per_breath_per_ex_op_losses[1:]:
+        total = total + l.mean()
+    avg_ctrl_loss = total / float(len(per_breath_per_ex_op_losses))
+
+    # Stop calibration: supervise stop_logit against -answer_loss (per example).
+    # Easy problems: answer_loss low → target ~0 → stop_logit pulled up → "stop OK."
+    # Hard problems: answer_loss high → target very negative → stop_logit pulled down → "keep going."
+    # This is the signal that actually differentiates problems — the v1-v3 plan's
+    # op-CE target couldn't.
     stop_calib = None
-    for i, (d, pb_loss) in enumerate(zip(decisions[1:], per_breath_losses)):  # skip init decision
-        # Per-batch per-breath loss is a scalar (mean reduction); broadcast to (B,).
-        # Use the loss MAGNITUDE as the inverse-stop signal: high loss → don't stop.
-        # Target: stop_logit large when loss is low. Use -loss as the supervised target.
-        target = (pb_loss * -1.0).expand(d["stop_logit"].shape[0])
-        diff = (d["stop_logit"] - target.detach())
+    for i, (d, pb_loss) in enumerate(zip(decisions[1:], per_breath_per_ex_answer_losses)):
+        target = pb_loss * -1.0                          # (B,) — per example
+        diff = d["stop_logit"] - target.detach()         # (B,)
         term = diff.square().mean()
         stop_calib = term if stop_calib is None else stop_calib + term
     if stop_calib is not None:
-        avg_ctrl_loss = avg_ctrl_loss + stop_calib * 0.01
+        avg_ctrl_loss = avg_ctrl_loss + stop_calib * stop_calib_weight
+
+    # Compute penalty (optional). ReLU(-stop_logit) per breath: when stop_logit is
+    # negative ("keep going"), penalty is |stop_logit|; when positive ("stop"), zero.
+    # Combined with per-example calibration this AMPLIFIES easy/hard differentiation:
+    # easy problems get both forces pushing stop_logit up; hard problems have
+    # calibration pulling down vs. penalty pushing up, net stays modestly negative.
+    if compute_penalty > 0.0:
+        cp_total = None
+        for d in decisions[1:]:
+            sl = d["stop_logit"]                          # (B,)
+            term = (-sl).maximum(0.0).mean()              # ReLU(-stop_logit) — push positive
+            cp_total = term if cp_total is None else cp_total + term
+        if cp_total is not None:
+            avg_ctrl_loss = avg_ctrl_loss + cp_total * compute_penalty
 
     # Tiny L2 reg on the step_w/b params so they get a defined gradient. step_mult
     # is consumed via float(...) inside the loop (non-differentiable rounding into
@@ -644,20 +684,51 @@ def accuracy_at_loops_multi(model, tok, examples: List[MathExample], n_loops,
                     correct += 1
                 rows.append((ex, parsed, gen_text))
     else:
-        # Multi-cycle (sequential per problem for now). use_kv_cache=True dispatches
-        # each cycle through model.cached_generate (B=1 cached path) — 10× faster
-        # than re-breathing per token, ~10× slower than the batched cached path used
-        # in the n_cycles==1 branch above (a batched multi-cycle path is a TODO).
-        for ex in examples:
-            prompt_ids = tok.encode(ex.problem).ids
-            cycle_outs = multi_cycle_generate(model, tok, prompt_ids, n_loops=n_loops,
-                                              n_cycles=n_cycles, max_new_per_cycle=max_new_per_cycle,
-                                              use_kv_cache=True)
-            last_text = tok.decode(cycle_outs[-1])
-            full_text = " ".join(tok.decode(co) for co in cycle_outs)
-            parsed = parse_int_answer(last_text)
-            ok = (parsed == ex.answer)
-            if ok:
-                correct += 1
-            rows.append((ex, parsed, full_text))
+        # Batched multi-cycle path. One cached_generate_batch call per cycle: each call
+        # processes all B prompts in parallel with cached K/V, then we splice the prior
+        # cycle's generated tokens onto each running prompt for the next cycle. Internal
+        # right-padding of cached_generate_batch already handles per-example variable
+        # prompt lengths, so the assembled cycle-N prompts can have different lengths
+        # across the batch.
+        #
+        # cache_max_len is sized for the last cycle (longest prompt: problem + all prior
+        # cycle outputs + this cycle's own max_new). One JIT compile per (B, n_loops),
+        # reused across all subsequent eval calls.
+        prompt_ids_all = [tok.encode(ex.problem).ids for ex in examples]
+        n_total = len(examples)
+        loops_per_cycle = _resolve_loops_per_cycle(n_loops, n_cycles)
+        max_prompt = max((len(p) for p in prompt_ids_all), default=0)
+        eff_cache_max_len = max(cache_max_len or 0,
+                                max_prompt + n_cycles * max_new_per_cycle)
+        for chunk_start in range(0, n_total, batch_size):
+            chunk_end = min(chunk_start + batch_size, n_total)
+            real_n = chunk_end - chunk_start
+            chunk = examples[chunk_start:chunk_end]
+            chunk_prompts = prompt_ids_all[chunk_start:chunk_end]
+            # Pad up to batch_size if last chunk is short (keeps B uniform → JIT reuse)
+            if real_n < batch_size and prompt_ids_all:
+                pad_n = batch_size - real_n
+                chunk_prompts = chunk_prompts + [prompt_ids_all[0]] * pad_n
+            B_eff = len(chunk_prompts)
+            cycle_outs_per_ex: List[List[List[int]]] = [[] for _ in range(B_eff)]
+            running_prompts = list(chunk_prompts)
+            for cyc in range(n_cycles):
+                nl = loops_per_cycle[cyc]
+                outs = model.cached_generate_batch(
+                    running_prompts, n_loops=nl, max_new=max_new_per_cycle,
+                    stop_token_ids=[0], stop_seq=sep_ids,
+                    cache_max_len=eff_cache_max_len,
+                )
+                for b in range(B_eff):
+                    cycle_outs_per_ex[b].append(outs[b])
+                running_prompts = [running_prompts[b] + outs[b] for b in range(B_eff)]
+            # Only score the real (non-padded) outputs
+            for ex, all_cycles in zip(chunk, cycle_outs_per_ex[:real_n]):
+                last_text = tok.decode(all_cycles[-1])
+                full_text = " ".join(tok.decode(co) for co in all_cycles)
+                parsed = parse_int_answer(last_text)
+                ok = (parsed == ex.answer)
+                if ok:
+                    correct += 1
+                rows.append((ex, parsed, full_text))
     return correct / max(1, len(examples)), rows

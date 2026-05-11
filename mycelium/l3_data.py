@@ -113,6 +113,103 @@ ARITH_GENERATORS = [_arith_add, _arith_sub, _arith_mul, _arith_double, _arith_tr
 _LEVEL_GENERATORS["ARITH"] = ARITH_GENERATORS
 
 
+# ARITH_HARD: targeted at the specific failure modes from the L4 7/7 v2 run —
+# 3-digit subtraction with borrows (170 - 132 = 38) and 2-digit addition with
+# carries that cross 100 (68 + 63 = 131). The pure-random ARITH distribution
+# only forces these ~50% of the time; ARITH_HARD adds three generators that
+# *always* require carry/borrow so the model is forced to learn the cross-digit
+# mechanics, not just digit-local lookup.
+def _arith_add_carry(rng):
+    """2-digit + 2-digit, ones-digit carry guaranteed."""
+    a_ones = rng.randint(2, 9)
+    b_ones = rng.randint(10 - a_ones, 9)
+    a_tens = rng.randint(2, 9)
+    b_tens = rng.randint(2, 9)
+    a = 10 * a_tens + a_ones
+    b = 10 * b_tens + b_ones
+    r = a + b
+    return f"{a} + {b} =", [r], r, [f"{r}."]
+
+
+def _arith_sub_borrow_2d(rng):
+    """2-digit - 2-digit, ones-digit borrow guaranteed."""
+    while True:
+        a_tens = rng.randint(2, 9)
+        b_tens = rng.randint(1, a_tens)
+        a_ones = rng.randint(0, 8)
+        b_ones = rng.randint(a_ones + 1, 9)
+        a = 10 * a_tens + a_ones
+        b = 10 * b_tens + b_ones
+        if a > b:
+            break
+    r = a - b
+    return f"{a} - {b} =", [r], r, [f"{r}."]
+
+
+def _arith_sub_borrow_3d(rng):
+    """3-digit minuend in [100, 300] - 2-digit subtrahend, borrow guaranteed.
+    Mimics the exact operation L4 intermediates produce (e.g., 170 - 132 = 38)."""
+    while True:
+        a = rng.randint(100, 300)
+        b = rng.randint(20, min(a - 1, 199))
+        a_ones, a_tens = a % 10, (a // 10) % 10
+        b_ones, b_tens = b % 10, (b // 10) % 10
+        if a_ones < b_ones or a_tens < b_tens:
+            break
+    r = a - b
+    return f"{a} - {b} =", [r], r, [f"{r}."]
+
+
+ARITH_HARD_GENERATORS = ARITH_GENERATORS + [_arith_add_carry, _arith_sub_borrow_2d, _arith_sub_borrow_3d]
+_LEVEL_GENERATORS["ARITH_HARD"] = ARITH_HARD_GENERATORS
+
+
+# ARITH_MIXED: bimodal difficulty. Half the problems are trivially easy
+# (1-digit add/sub with no carries/borrows — the model should solve in 1 breath).
+# Half are hard (3-digit subtraction with borrows or 2-digit addition with
+# guaranteed carry). Designed for the option-1 experiment: the controller
+# needs a reason to differentiate problems. With bimodal difficulty, an
+# intelligent controller would output stop_logit > 0 early on easy problems
+# and stop_logit < 0 on hard ones — i.e., LEARN to use observation to
+# orchestrate compute. The ARITH_HARD trained controller emits open-loop
+# schedules (f(breath_idx) only); this dataset gives a clear gradient on
+# observation-conditional stopping.
+def _arith_easy_add_no_carry(rng):
+    """2-digit + 2-digit, NO carry guaranteed. Same format as the hard add_carry
+    generator but the per-digit sums all stay < 10 — model can do this in 1 breath
+    because there's no cross-digit dependency to track."""
+    a_tens = rng.randint(1, 4)
+    b_tens = rng.randint(1, 4)
+    a_ones = rng.randint(0, 4)
+    b_ones = rng.randint(0, 4)
+    a = 10 * a_tens + a_ones
+    b = 10 * b_tens + b_ones
+    r = a + b                                     # all column sums < 10
+    return f"{a} + {b} =", [r], r, [f"{r}."]
+
+
+def _arith_easy_sub_no_borrow(rng):
+    """2-digit - 2-digit, NO borrow guaranteed. Same format as hard sub_borrow
+    but each digit of a >= each digit of b — model can subtract digit-by-digit
+    with no carry tracking, doable in 1 breath."""
+    a_tens = rng.randint(2, 9)
+    b_tens = rng.randint(1, a_tens)               # b_tens <= a_tens
+    a_ones = rng.randint(0, 9)
+    b_ones = rng.randint(0, a_ones)               # b_ones <= a_ones
+    a = 10 * a_tens + a_ones
+    b = 10 * b_tens + b_ones
+    if a == b:                                    # avoid trivial 0
+        b_ones = max(0, b_ones - 1)
+        b = 10 * b_tens + b_ones
+    r = a - b
+    return f"{a} - {b} =", [r], r, [f"{r}."]
+
+
+ARITH_MIXED_GENERATORS = [_arith_easy_add_no_carry, _arith_easy_sub_no_borrow,
+                          _arith_sub_borrow_3d, _arith_add_carry]
+_LEVEL_GENERATORS["ARITH_MIXED"] = ARITH_MIXED_GENERATORS
+
+
 SEP = " ####"  # marker between outer cycles; tokenizes consistently
 
 

@@ -11,7 +11,7 @@
 
 ## 1. Vision
 
-A small transformer that loops its own layers, breathing through each problem until it finds the resonant decomposition. Not a frozen LLM with external scaffolding — a model that breathes natively. Trained from scratch.
+A small transformer that loops its own layers, breathing through each problem until it finds the resonant decomposition. Not a frozen LLM with external scaffolding — a model that breathes natively. Initialized from Pythia-410M layers 0-3 and fine-tuned end-to-end.
 
 Each loop is one expand-collapse cycle shaped as a sine wave across 4 specialized layers. Sixteen attention heads, each tuned to a different phase angle, scan the problem's spectral content in parallel — identifying which mathematical operations are present simultaneously, like BirdNET identifying multiple overlapping bird species from a single audio clip.
 
@@ -422,7 +422,7 @@ Hidden dimension 1024 (matching Pythia-410M). Sixteen attention heads, head dime
 
 The parameter budget is balanced between thinking (transformer) and conducting (controller), with neither dominating:
 
-Transformer phase-specific (per layer): Q 1.05M + K 1.05M + FFN gate 4.19M = ~6.3M. Four layers: ~25.2M. Shared (one copy): V 1.05M + O 1.05M + FFN up 4.19M + FFN down 4.19M + norms = ~10.5M. Embeddings: ~51.5M (tied with output). Transformer total: ~87.2M (35.7M processing + 51.5M embeddings).
+Transformer phase-specific (per layer): Q 1.05M + K 1.05M + FFN gate 4.19M = ~6.3M. Four layers: ~25.2M. Shared (one copy): V 1.05M + O 1.05M + FFN up 4.19M + FFN down 4.19M + norms = ~10.5M. Embeddings: ~51.5M token + ~51.5M untied output head = ~103M. Transformer total: ~139M (35.7M processing + 103M embeddings); training log reports 134.5M trainable params.
 
 Controller: ~40M (20M state reader with 2 Perceiver layers reading 1024d into 512d, 12M notebook attention with 3 layers, 8M decision heads). Slim and decisive — the controller reads the integral, matches against primes, and decides temperature/phase/stop. It doesn't need to be larger than the orchestra it conducts.
 
@@ -469,7 +469,7 @@ The expand-collapse breathing pattern, discovered in attention analysis and conf
 
 The controller's gradient must never flow through the transformer — three days of empirical proof. The generation loss landscape has one dominant basin for any controller output (though our custom setup may develop multiple basins — to be tested). Structural diversity is necessary; learned diversity always collapses in pretrained models. Differentiable lookup tables from the project's origins return as the prime factorization mechanism.
 
-The looping validation proved: signal survives (7x growth), diversity holds (effective rank 16+), SNR improves (0.114 → 0.127 for L0-3). The generation head needs fine-tuning to extract signal from looped representations — the DC component grows linearly. The copy machine principle: reasoning in representation space is necessary. Generate once at the end, never between breaths.
+The looping validation proved: signal survives (norm grows 3.9 → 6.4 across 8 loops, ~1.6×), diversity holds (effective rank 16+), SNR improves (0.114 → 0.127 for L0-3). The generation head needs fine-tuning to extract signal from looped representations — the DC component grows linearly. The copy machine principle: reasoning in representation space is necessary. Generate once at the end, never between breaths.
 
 The inference engine works: a JIT-fused KV cache with per-batch position tracking, K/V buffers sized to actual sequence length (not the model's max), and a fixed-batch eval path that compiles once and reuses across every checkpoint. 42.8× over the original uncached path on the L3 eval set, bit-for-bit identical outputs. Eval went from dominating training wall-clock to a rounding error. Faster eval means we can evaluate more often, on more held-out examples, with longer breathing budgets — every architectural question gets answered in seconds instead of minutes.
 
@@ -493,9 +493,9 @@ We leave behind: Llama 1B (replaced by Pythia-410M L0-3), LoRA atoms and continu
 
 **The lookup table.** 16 prime entries at 1024d (matching hidden dim), each with a pattern, resonant angle, subtraction mask, and confidence threshold. Plus a 16×16 coupling matrix encoding operation dependencies. Parallel multi-label detection across 16 heads in one breath — all operations identified simultaneously. Iterative spectral subtraction confirms primes, counts multiplicities, identifies couplings. The complete factorization specifies the solution tree.
 
-**The copy machine principle.** All reasoning in representation space. The signal grows 787x across 8 loops while diversity holds perfectly. Generate tokens ONCE after breathing converges — never between breaths. Autoregressive mid-breath generation is a copy machine that degrades exponentially. The hidden states are the original painting. Breathe with the original. Print only the final version.
+**The copy machine principle.** All reasoning in representation space. The signal norm grows 3.9 → 6.4 across 8 loops (~1.6×) while diversity holds perfectly (effective rank 15-16, centered cross-problem cosine -0.05). Generate tokens ONCE after breathing converges — never between breaths. Autoregressive mid-breath generation is a copy machine that degrades exponentially. The hidden states are the original painting. Breathe with the original. Print only the final version.
 
-**The parameter balance.** 35.7M transformer processing + 40M controller + 51.5M embeddings = 127M total. With 8 loops: 286M effective processing from 35.7M parameters. The conductor (40M) is appropriately smaller than the effective orchestra (286M). Massive parameter efficiency through weight reuse.
+**The parameter balance.** ~35.7M transformer processing + ~103M embeddings (token + untied output) + ~6.6M controller (Step C; spec target ~40M at Step E) = ~145M total. With 8 loops: 286M effective processing from 35.7M reusable parameters. The conductor is appropriately smaller than the effective orchestra (286M). Massive parameter efficiency through weight reuse.
 
 **The empirical foundation.** L3 training (2000 steps): 8-loop accuracy beat 1-loop (70% vs 65%). Loss gap closed 73% (0.77 → 0.20 nats). All depths converge. More thinking produces better answers. The 65% ceiling is arithmetic precision (4-layer model limit), not a breathing limitation. Causal mask verified — all training is honest.
 
