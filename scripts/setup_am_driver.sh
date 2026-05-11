@@ -71,7 +71,7 @@ cat > /etc/sysctl.d/99-tinygrad-amd.conf <<EOF
 vm.compact_unevictable_allowed = 0
 EOF
 sysctl --system > /dev/null
-echo "   current value: \$(cat /proc/sys/vm/compact_unevictable_allowed)"
+echo "   current value: $(cat /proc/sys/vm/compact_unevictable_allowed)"
 
 echo "4. Enabling + starting the systemd unit now..."
 systemctl daemon-reload
