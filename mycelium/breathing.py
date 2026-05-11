@@ -847,6 +847,9 @@ class BreathingTransformer:
             self._cached_batch_jits = {}
         jit_key = (B, n_loops, vocab_active)
         if jit_key not in self._cached_batch_jits:
+            import time as _t_jit
+            _jit_compile_start = _t_jit.perf_counter()
+            print(f"[JIT] compile cached_generate_batch: B={B} n_loops={n_loops} vocab={vocab_active}...", flush=True)
             ln_g = self.ln_f_g
             ln_b_t = self.ln_f_b
             embed_out = self.embed_out
@@ -885,6 +888,8 @@ class BreathingTransformer:
                 return (next_id_t, *new_ck, *new_cv)
 
             self._cached_batch_jits[jit_key] = _step
+            print(f"[JIT] cached_generate_batch graph registered for replay "
+                  f"(cache size={len(self._cached_batch_jits)}) — first call will compile lazily.", flush=True)
 
         jit_step = self._cached_batch_jits[jit_key]
 

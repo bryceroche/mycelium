@@ -36,6 +36,9 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
 
     n_cycles = len(n_loops_per_cycle)
     aw = float(lookup_aux_weight)
+    import time as _t_jit
+    _jit_compile_start = _t_jit.perf_counter()
+    print(f"[JIT] compile train step: n_loops={n_loops_per_cycle} B={B} fixed_len={fixed_len}...", flush=True)
 
     if n_cycles == 1:
         nl0 = int(n_loops_per_cycle[0])
@@ -90,6 +93,8 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
         raise NotImplementedError(f"JIT-train n_cycles={n_cycles} not implemented (only 1 and 2)")
 
     _JIT_TRAIN_CACHE[key] = _step
+    print(f"[JIT] compiled in {_t_jit.perf_counter() - _jit_compile_start:.1f}s "
+          f"(cache size={len(_JIT_TRAIN_CACHE)})", flush=True)
     return _step
 
 
