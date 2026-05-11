@@ -85,7 +85,7 @@ def named_state(model):
     return model.state_dict()
 
 
-DEFAULT_FIXED_LEN = {"ARITH": 32, "L3": 64, "L4": 96, "L4.5": 160}
+DEFAULT_FIXED_LEN = {"ARITH": 32, "ARITH_HARD": 32, "L3": 64, "L4": 96, "L4.5": 160}
 
 
 def main():

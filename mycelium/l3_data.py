@@ -113,6 +113,57 @@ ARITH_GENERATORS = [_arith_add, _arith_sub, _arith_mul, _arith_double, _arith_tr
 _LEVEL_GENERATORS["ARITH"] = ARITH_GENERATORS
 
 
+# ARITH_HARD: targeted at the specific failure modes from the L4 7/7 v2 run —
+# 3-digit subtraction with borrows (170 - 132 = 38) and 2-digit addition with
+# carries that cross 100 (68 + 63 = 131). The pure-random ARITH distribution
+# only forces these ~50% of the time; ARITH_HARD adds three generators that
+# *always* require carry/borrow so the model is forced to learn the cross-digit
+# mechanics, not just digit-local lookup.
+def _arith_add_carry(rng):
+    """2-digit + 2-digit, ones-digit carry guaranteed."""
+    a_ones = rng.randint(2, 9)
+    b_ones = rng.randint(10 - a_ones, 9)
+    a_tens = rng.randint(2, 9)
+    b_tens = rng.randint(2, 9)
+    a = 10 * a_tens + a_ones
+    b = 10 * b_tens + b_ones
+    r = a + b
+    return f"{a} + {b} =", [r], r, [f"{r}."]
+
+
+def _arith_sub_borrow_2d(rng):
+    """2-digit - 2-digit, ones-digit borrow guaranteed."""
+    while True:
+        a_tens = rng.randint(2, 9)
+        b_tens = rng.randint(1, a_tens)
+        a_ones = rng.randint(0, 8)
+        b_ones = rng.randint(a_ones + 1, 9)
+        a = 10 * a_tens + a_ones
+        b = 10 * b_tens + b_ones
+        if a > b:
+            break
+    r = a - b
+    return f"{a} - {b} =", [r], r, [f"{r}."]
+
+
+def _arith_sub_borrow_3d(rng):
+    """3-digit minuend in [100, 300] - 2-digit subtrahend, borrow guaranteed.
+    Mimics the exact operation L4 intermediates produce (e.g., 170 - 132 = 38)."""
+    while True:
+        a = rng.randint(100, 300)
+        b = rng.randint(20, min(a - 1, 199))
+        a_ones, a_tens = a % 10, (a // 10) % 10
+        b_ones, b_tens = b % 10, (b // 10) % 10
+        if a_ones < b_ones or a_tens < b_tens:
+            break
+    r = a - b
+    return f"{a} - {b} =", [r], r, [f"{r}."]
+
+
+ARITH_HARD_GENERATORS = ARITH_GENERATORS + [_arith_add_carry, _arith_sub_borrow_2d, _arith_sub_borrow_3d]
+_LEVEL_GENERATORS["ARITH_HARD"] = ARITH_HARD_GENERATORS
+
+
 SEP = " ####"  # marker between outer cycles; tokenizes consistently
 
 
