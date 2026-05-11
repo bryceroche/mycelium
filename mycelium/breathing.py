@@ -646,7 +646,8 @@ class BreathingTransformer:
 
     def breathe_controlled(self, tokens: Tensor, max_loops: int, notebook,
                            rep_position: int = -1, detach_rep_for_ctrl: bool = True,
-                           detach_decisions_into_transformer: bool = False):
+                           detach_decisions_into_transformer: bool = False,
+                           adaptive: bool = False, min_loops: int = 1):
         """Closed-loop adaptive breathing — the full 7/7 system in action.
 
         Per breath:
@@ -656,7 +657,16 @@ class BreathingTransformer:
           4. Run the controller(rep, notebook) → page is appended to notebook,
              attention reads tree of prior pages, decision heads emit
              {temperature, gate, stop_logit} for the NEXT breath.
-          5. Optionally short-circuit if mean stop_logit > 0 (only at inference).
+          5. If adaptive=True and l+1 >= min_loops and mean(stop_logit) > 0, break.
+
+        Adaptive stopping (inference-only by default — training keeps adaptive=False
+        so loss computation is straightforward over a fixed unrolled loop):
+          - adaptive=True: after each breath's controller call, halt if the batch-mean
+            stop_logit crosses zero. Adds one .numpy() sync per breath; cheap at
+            inference. Each breath has access to the stop_logit it emitted, so the
+            controller can learn (via compute-penalty) to halt early on easy problems.
+          - min_loops: guarantees at least this many breaths run before early-stop is
+            considered. Default 1 — the controller can't bail at breath 0.
 
         Gradient separation:
           - detach_rep_for_ctrl=True: the rep fed into the controller is detached,
@@ -696,6 +706,7 @@ class BreathingTransformer:
         # querying. Uniform default (step_mult=1.0) reproduces the existing
         # 0,1,2,...,max_loops-1 sequence exactly.
         phase_idx_float = 0.0
+        actual_n_breaths = max_loops
 
         for l in range(max_loops):
             temp_mult = decisions["temperature"]                      # (B,)
@@ -752,10 +763,19 @@ class BreathingTransformer:
             decisions = self.controller(rep, notebook=notebook)
             decisions_per_breath.append(decisions)
 
+            # Adaptive early-stop: after we've run at least min_loops breaths, halt
+            # when the controller's batch-mean stop_logit crosses zero. One sync per
+            # breath; only enabled at inference.
+            if adaptive and (l + 1) >= min_loops:
+                stop_mean = float(decisions["stop_logit"].mean().realize().numpy())
+                if stop_mean > 0.0:
+                    actual_n_breaths = l + 1
+                    break
+
         # Final integrated rep: gate-weighted mean
         final = integral / (gate_total + 1e-6).reshape(B, 1, 1)
         final = _layernorm(final, self.ln_f_g, self.ln_f_b, cfg.layer_norm_eps)
-        return final, decisions_per_breath, max_loops, match_weights
+        return final, decisions_per_breath, actual_n_breaths, match_weights
 
     def breathe_with_lookup(self, tokens: Tensor, n_loops: int):
         """Forward pass returning (final_hidden, per_breath_match_weights, integrated_per_breath).

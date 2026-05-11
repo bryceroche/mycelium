@@ -197,7 +197,8 @@ def _resolve_loops_per_cycle(n_loops, n_cycles: int) -> List[int]:
 
 def controller_train_step(model, ctrl_opt, batch_examples: List[MathExample], tok,
                           eq_token_ids, max_loops: int = 8,
-                          n_classes: int = 4, profile: bool = False):
+                          n_classes: int = 4, profile: bool = False,
+                          compute_penalty: float = 0.0):
     """Train ONLY the controller via lookup-CE loss on op classification.
 
     Forwards through breathe_controlled with decisions NOT detached, so the
@@ -252,33 +253,52 @@ def controller_train_step(model, ctrl_opt, batch_examples: List[MathExample], to
     op_labels_masked = np.where(valid, op_labels, -100).astype(np.int32)
     y = Tensor(op_labels_masked, dtype=dtypes.int).realize()
 
-    per_breath_losses = []
+    # Per-breath, PER-EXAMPLE op-CE losses (shape (B,) each). The prior implementation
+    # used reduction="mean" → scalar, which made the stop-calibration target identical
+    # across examples and prevented the stop head from learning per-problem
+    # differentiation. With reduction="none" each example gets its own loss value,
+    # so the stop calibration can supervise "easy problems → stop high, hard → stop low."
+    per_breath_per_ex_losses = []
     for mw in match_weights:
         gathered = (mw.cast(dtypes.float) * eq_mask).sum(axis=1)        # (B, n_entries)
         logits = gathered[:, :n_classes] * 10.0
-        per_breath_losses.append(logits.sparse_categorical_crossentropy(y, ignore_index=-100, reduction="mean"))
+        per_ex = logits.sparse_categorical_crossentropy(y, ignore_index=-100, reduction="none")  # (B,)
+        per_breath_per_ex_losses.append(per_ex)
 
-    total = per_breath_losses[0]
-    for l in per_breath_losses[1:]:
-        total = total + l
-    avg_ctrl_loss = total / float(len(per_breath_losses))
+    # Main ctrl loss: average over breaths and examples (matches prior scalar behavior).
+    total = per_breath_per_ex_losses[0].mean()
+    for l in per_breath_per_ex_losses[1:]:
+        total = total + l.mean()
+    avg_ctrl_loss = total / float(len(per_breath_per_ex_losses))
 
-    # Auxiliary: stop calibration. The stop_logit at breath l should be HIGH when
-    # the per-breath lookup-CE has plateaued (no further improvement from breathing).
-    # Crude target: target_stop = sigmoid_inverse(1 - normalized_per_breath_loss),
-    # i.e., when per-breath loss is low, target is high (model thinks "we're done").
-    # Use squared-error on stop_logit (unbounded, before sigmoid).
+    # Auxiliary: PER-EXAMPLE stop calibration. The stop_logit at breath l should be
+    # HIGH when this example's per-breath lookup-CE is low (model says "I've got this
+    # one") and LOW when it's still high. Squared-error pull toward -loss as target.
+    # Per-example targets are the key: with scalar batch-mean targets (prior code),
+    # the stop head couldn't learn per-problem differentiation, which we verified
+    # empirically (std on stop_logit was ~0.27 across 32 diverse problems).
     stop_calib = None
-    for i, (d, pb_loss) in enumerate(zip(decisions[1:], per_breath_losses)):  # skip init decision
-        # Per-batch per-breath loss is a scalar (mean reduction); broadcast to (B,).
-        # Use the loss MAGNITUDE as the inverse-stop signal: high loss → don't stop.
-        # Target: stop_logit large when loss is low. Use -loss as the supervised target.
-        target = (pb_loss * -1.0).expand(d["stop_logit"].shape[0])
-        diff = (d["stop_logit"] - target.detach())
+    for i, (d, pb_loss) in enumerate(zip(decisions[1:], per_breath_per_ex_losses)):
+        target = pb_loss * -1.0                          # (B,) — per example
+        diff = d["stop_logit"] - target.detach()         # (B,)
         term = diff.square().mean()
         stop_calib = term if stop_calib is None else stop_calib + term
     if stop_calib is not None:
         avg_ctrl_loss = avg_ctrl_loss + stop_calib * 0.01
+
+    # Compute penalty (optional). ReLU(-stop_logit) per breath: when stop_logit is
+    # negative ("keep going"), penalty is |stop_logit|; when positive ("stop"), zero.
+    # Combined with per-example calibration this AMPLIFIES easy/hard differentiation:
+    # easy problems get both forces pushing stop_logit up; hard problems have
+    # calibration pulling down vs. penalty pushing up, net stays modestly negative.
+    if compute_penalty > 0.0:
+        cp_total = None
+        for d in decisions[1:]:
+            sl = d["stop_logit"]                          # (B,)
+            term = (-sl).maximum(0.0).mean()              # ReLU(-stop_logit) — push positive
+            cp_total = term if cp_total is None else cp_total + term
+        if cp_total is not None:
+            avg_ctrl_loss = avg_ctrl_loss + cp_total * compute_penalty
 
     # Tiny L2 reg on the step_w/b params so they get a defined gradient. step_mult
     # is consumed via float(...) inside the loop (non-differentiable rounding into

@@ -164,6 +164,37 @@ ARITH_HARD_GENERATORS = ARITH_GENERATORS + [_arith_add_carry, _arith_sub_borrow_
 _LEVEL_GENERATORS["ARITH_HARD"] = ARITH_HARD_GENERATORS
 
 
+# ARITH_MIXED: bimodal difficulty. Half the problems are trivially easy
+# (1-digit add/sub with no carries/borrows — the model should solve in 1 breath).
+# Half are hard (3-digit subtraction with borrows or 2-digit addition with
+# guaranteed carry). Designed for the option-1 experiment: the controller
+# needs a reason to differentiate problems. With bimodal difficulty, an
+# intelligent controller would output stop_logit > 0 early on easy problems
+# and stop_logit < 0 on hard ones — i.e., LEARN to use observation to
+# orchestrate compute. The ARITH_HARD trained controller emits open-loop
+# schedules (f(breath_idx) only); this dataset gives a clear gradient on
+# observation-conditional stopping.
+def _arith_trivial_add(rng):
+    """1-digit + 1-digit, no carry guaranteed. Single-digit result."""
+    a = rng.randint(0, 4)
+    b = rng.randint(0, 4)
+    r = a + b
+    return f"{a} + {b} =", [r], r, [f"{r}."]
+
+
+def _arith_trivial_sub(rng):
+    """1-digit - 1-digit, no borrow guaranteed. Non-negative result."""
+    a = rng.randint(1, 9)
+    b = rng.randint(0, a)
+    r = a - b
+    return f"{a} - {b} =", [r], r, [f"{r}."]
+
+
+ARITH_MIXED_GENERATORS = [_arith_trivial_add, _arith_trivial_sub,
+                          _arith_sub_borrow_3d, _arith_add_carry]
+_LEVEL_GENERATORS["ARITH_MIXED"] = ARITH_MIXED_GENERATORS
+
+
 SEP = " ####"  # marker between outer cycles; tokenizes consistently
 
 
