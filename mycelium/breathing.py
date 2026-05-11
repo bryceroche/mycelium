@@ -31,12 +31,13 @@ from mycelium.controller import Controller
 # the un-ablated architecture exactly when none are set.
 ABLATE_TEMP        = int(os.environ.get("ABLATE_TEMP", "0")) > 0          # pin temperature multiplier to 1.0
 ABLATE_STEP_MULT   = int(os.environ.get("ABLATE_STEP_MULT", "0")) > 0     # pin RoPE step_mult to 1.0
+ABLATE_GATE        = int(os.environ.get("ABLATE_GATE", "0")) > 0          # pin integration gate to 1.0 (uniform breath weighting)
 ABLATE_INTEGRATION = int(os.environ.get("ABLATE_INTEGRATION", "0")) > 0   # no cross-breath integral; last-breath-only
 ABLATE_NOTEBOOK    = int(os.environ.get("ABLATE_NOTEBOOK", "0")) > 0      # clear notebook before every controller call
 ABLATE_ROTATION    = int(os.environ.get("ABLATE_ROTATION", "0")) > 0      # uniform RoPE phase (no per-head / per-loop offset)
 
 _active_ablations = [n for n, v in [
-    ("TEMP", ABLATE_TEMP), ("STEP_MULT", ABLATE_STEP_MULT),
+    ("TEMP", ABLATE_TEMP), ("STEP_MULT", ABLATE_STEP_MULT), ("GATE", ABLATE_GATE),
     ("INTEGRATION", ABLATE_INTEGRATION), ("NOTEBOOK", ABLATE_NOTEBOOK),
     ("ROTATION", ABLATE_ROTATION)] if v]
 if _active_ablations:
@@ -707,6 +708,8 @@ class BreathingTransformer:
                 temp_mult = temp_mult * 0.0 + 1.0
             if ABLATE_STEP_MULT:
                 step_mult = step_mult * 0.0 + 1.0
+            if ABLATE_GATE:
+                gate = gate * 0.0 + 1.0
             if detach_decisions_into_transformer:
                 temp_mult = temp_mult.detach()
                 gate = gate.detach()
