@@ -305,7 +305,7 @@ def main():
                                                     batch_size=EVAL_BATCH,
                                                     cache_max_len=EVAL_CACHE_LEN)
                 gt = time.perf_counter() - t0
-                print(f"    acc @ A={nl} C={PHASE_C_LOOPS}: {acc*100:.1f}%  ({gt:.1f}s)")
+                print(f"    acc @ A={nl} C={PHASE_C_LOOPS}: {acc*100:.1f}%  ({gt:.1f}s)", flush=True)
                 if step + 1 == STEPS:
                     for ex, parsed, gen in rows[:2]:
                         print(f"      Q: {ex.problem}")
