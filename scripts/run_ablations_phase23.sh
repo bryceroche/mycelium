@@ -38,7 +38,9 @@ run_ablation() {
   echo "==================================================================="
   date
 
-  DEV='PCI+AMD' \
+  env \
+    "$ablate_var=1" \
+    DEV='PCI+AMD' \
     LEVEL=ARITH_HARD \
     BATCH=32 \
     STEPS=150 \
@@ -56,7 +58,6 @@ run_ablation() {
     LOSS_EVAL_EVERY=150 \
     CKPT_EVERY=150 \
     CKPT_LABEL="$label" \
-    "$ablate_var"=1 \
     .venv/bin/python scripts/l3_train.py > "$log" 2>&1
   local rc=$?
 
