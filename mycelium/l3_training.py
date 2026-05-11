@@ -644,11 +644,15 @@ def accuracy_at_loops_multi(model, tok, examples: List[MathExample], n_loops,
                     correct += 1
                 rows.append((ex, parsed, gen_text))
     else:
-        # Multi-cycle (sequential per problem for now)
+        # Multi-cycle (sequential per problem for now). use_kv_cache=True dispatches
+        # each cycle through model.cached_generate (B=1 cached path) — 10× faster
+        # than re-breathing per token, ~10× slower than the batched cached path used
+        # in the n_cycles==1 branch above (a batched multi-cycle path is a TODO).
         for ex in examples:
             prompt_ids = tok.encode(ex.problem).ids
             cycle_outs = multi_cycle_generate(model, tok, prompt_ids, n_loops=n_loops,
-                                              n_cycles=n_cycles, max_new_per_cycle=max_new_per_cycle)
+                                              n_cycles=n_cycles, max_new_per_cycle=max_new_per_cycle,
+                                              use_kv_cache=True)
             last_text = tok.decode(cycle_outs[-1])
             full_text = " ".join(tok.decode(co) for co in cycle_outs)
             parsed = parse_int_answer(last_text)
