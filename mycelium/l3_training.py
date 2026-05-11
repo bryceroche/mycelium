@@ -644,20 +644,51 @@ def accuracy_at_loops_multi(model, tok, examples: List[MathExample], n_loops,
                     correct += 1
                 rows.append((ex, parsed, gen_text))
     else:
-        # Multi-cycle (sequential per problem for now). use_kv_cache=True dispatches
-        # each cycle through model.cached_generate (B=1 cached path) — 10× faster
-        # than re-breathing per token, ~10× slower than the batched cached path used
-        # in the n_cycles==1 branch above (a batched multi-cycle path is a TODO).
-        for ex in examples:
-            prompt_ids = tok.encode(ex.problem).ids
-            cycle_outs = multi_cycle_generate(model, tok, prompt_ids, n_loops=n_loops,
-                                              n_cycles=n_cycles, max_new_per_cycle=max_new_per_cycle,
-                                              use_kv_cache=True)
-            last_text = tok.decode(cycle_outs[-1])
-            full_text = " ".join(tok.decode(co) for co in cycle_outs)
-            parsed = parse_int_answer(last_text)
-            ok = (parsed == ex.answer)
-            if ok:
-                correct += 1
-            rows.append((ex, parsed, full_text))
+        # Batched multi-cycle path. One cached_generate_batch call per cycle: each call
+        # processes all B prompts in parallel with cached K/V, then we splice the prior
+        # cycle's generated tokens onto each running prompt for the next cycle. Internal
+        # right-padding of cached_generate_batch already handles per-example variable
+        # prompt lengths, so the assembled cycle-N prompts can have different lengths
+        # across the batch.
+        #
+        # cache_max_len is sized for the last cycle (longest prompt: problem + all prior
+        # cycle outputs + this cycle's own max_new). One JIT compile per (B, n_loops),
+        # reused across all subsequent eval calls.
+        prompt_ids_all = [tok.encode(ex.problem).ids for ex in examples]
+        n_total = len(examples)
+        loops_per_cycle = _resolve_loops_per_cycle(n_loops, n_cycles)
+        max_prompt = max((len(p) for p in prompt_ids_all), default=0)
+        eff_cache_max_len = max(cache_max_len or 0,
+                                max_prompt + n_cycles * max_new_per_cycle)
+        for chunk_start in range(0, n_total, batch_size):
+            chunk_end = min(chunk_start + batch_size, n_total)
+            real_n = chunk_end - chunk_start
+            chunk = examples[chunk_start:chunk_end]
+            chunk_prompts = prompt_ids_all[chunk_start:chunk_end]
+            # Pad up to batch_size if last chunk is short (keeps B uniform → JIT reuse)
+            if real_n < batch_size and prompt_ids_all:
+                pad_n = batch_size - real_n
+                chunk_prompts = chunk_prompts + [prompt_ids_all[0]] * pad_n
+            B_eff = len(chunk_prompts)
+            cycle_outs_per_ex: List[List[List[int]]] = [[] for _ in range(B_eff)]
+            running_prompts = list(chunk_prompts)
+            for cyc in range(n_cycles):
+                nl = loops_per_cycle[cyc]
+                outs = model.cached_generate_batch(
+                    running_prompts, n_loops=nl, max_new=max_new_per_cycle,
+                    stop_token_ids=[0], stop_seq=sep_ids,
+                    cache_max_len=eff_cache_max_len,
+                )
+                for b in range(B_eff):
+                    cycle_outs_per_ex[b].append(outs[b])
+                running_prompts = [running_prompts[b] + outs[b] for b in range(B_eff)]
+            # Only score the real (non-padded) outputs
+            for ex, all_cycles in zip(chunk, cycle_outs_per_ex[:real_n]):
+                last_text = tok.decode(all_cycles[-1])
+                full_text = " ".join(tok.decode(co) for co in all_cycles)
+                parsed = parse_int_answer(last_text)
+                ok = (parsed == ex.answer)
+                if ok:
+                    correct += 1
+                rows.append((ex, parsed, full_text))
     return correct / max(1, len(examples)), rows
