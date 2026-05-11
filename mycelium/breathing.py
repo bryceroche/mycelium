@@ -701,9 +701,12 @@ class BreathingTransformer:
             gate = decisions["gate"]                                  # (B,)
             step_mult = decisions["step_mult"]                        # (B,)
             if ABLATE_TEMP:
-                temp_mult = Tensor.ones_like(temp_mult)               # ablation: pin to 1.0
+                # Pin to 1.0 but keep gradient graph connected (zero grad flows
+                # back through the controller's temperature head). Replacing with
+                # Tensor.ones_like severs the path and breaks ctrl_opt.step.
+                temp_mult = temp_mult * 0.0 + 1.0
             if ABLATE_STEP_MULT:
-                step_mult = Tensor.ones_like(step_mult)               # ablation: pin to 1.0
+                step_mult = step_mult * 0.0 + 1.0
             if detach_decisions_into_transformer:
                 temp_mult = temp_mult.detach()
                 gate = gate.detach()
