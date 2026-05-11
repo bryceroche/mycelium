@@ -92,8 +92,9 @@ docs/
 lambda/*/lambda.zip
 lambda/*/package/
 
-# Shell scripts
+# Shell scripts (but keep ones in scripts/ — those are project setup utilities)
 *.sh
+!scripts/*.sh
 checkpoints/
 *.pt
 __pycache__/
