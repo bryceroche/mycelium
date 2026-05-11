@@ -65,7 +65,31 @@ setcap 'cap_dac_override,cap_sys_rawio,cap_sys_admin,cap_ipc_lock=ep' "$REAL_PYT
 echo "   Caps now:"
 getcap "$REAL_PYTHON"
 
+echo "6. Ensuring iomem=relaxed on the kernel command line..."
+# With CONFIG_STRICT_DEVMEM=y, the kernel refuses mmap of PCI BAR sysfs
+# resource files (even for root) unless iomem=relaxed is on cmdline.
+# Idempotent: add it only if not already present.
+GRUB_FILE="/etc/default/grub"
+REBOOT_REQUIRED=0
+if ! grep -E '^GRUB_CMDLINE_LINUX_DEFAULT=.*iomem=relaxed' "$GRUB_FILE" > /dev/null; then
+  # add iomem=relaxed inside the GRUB_CMDLINE_LINUX_DEFAULT="..." value
+  sed -i 's|^\(GRUB_CMDLINE_LINUX_DEFAULT="[^"]*\)"|\1 iomem=relaxed"|' "$GRUB_FILE"
+  echo "   added iomem=relaxed to $GRUB_FILE"
+  update-grub
+  REBOOT_REQUIRED=1
+else
+  echo "   iomem=relaxed already present, skipping"
+fi
+echo "   current cmdline line:"
+grep '^GRUB_CMDLINE_LINUX_DEFAULT' "$GRUB_FILE" | head -1
+
 echo
-echo "=== Done. AM driver should now be available. ==="
+echo "=== Done. AM driver setup complete. ==="
 echo "Verify with: ls -la /sys/bus/pci/devices/$PCI_ID/enable"
-echo "Run tinygrad with: DEV='PCI+AMD' python ..."
+if [ "$REBOOT_REQUIRED" -eq 1 ]; then
+  echo
+  echo "*** REBOOT REQUIRED *** to pick up iomem=relaxed."
+  echo "After reboot, run: DEV='PCI+AMD' python -c '...'"
+else
+  echo "Run tinygrad with: DEV='PCI+AMD' python ..."
+fi
