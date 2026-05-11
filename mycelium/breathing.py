@@ -13,6 +13,7 @@ Mycelium v4 modifications:
   - Gated running integral across loops (controller stub: gate=1)
 """
 import math
+import os
 from typing import List
 
 import numpy as np
@@ -23,6 +24,23 @@ from tinygrad.engine.jit import TinyJit
 from mycelium.config import Config
 from mycelium.lookup_table import LookupTable
 from mycelium.controller import Controller
+
+
+# Ablation flags — read once at module import. Each disables one closed-loop
+# component for Phase 2/3 directional screening. Default off: behavior matches
+# the un-ablated architecture exactly when none are set.
+ABLATE_TEMP        = int(os.environ.get("ABLATE_TEMP", "0")) > 0          # pin temperature multiplier to 1.0
+ABLATE_STEP_MULT   = int(os.environ.get("ABLATE_STEP_MULT", "0")) > 0     # pin RoPE step_mult to 1.0
+ABLATE_INTEGRATION = int(os.environ.get("ABLATE_INTEGRATION", "0")) > 0   # no cross-breath integral; last-breath-only
+ABLATE_NOTEBOOK    = int(os.environ.get("ABLATE_NOTEBOOK", "0")) > 0      # clear notebook before every controller call
+ABLATE_ROTATION    = int(os.environ.get("ABLATE_ROTATION", "0")) > 0      # uniform RoPE phase (no per-head / per-loop offset)
+
+_active_ablations = [n for n, v in [
+    ("TEMP", ABLATE_TEMP), ("STEP_MULT", ABLATE_STEP_MULT),
+    ("INTEGRATION", ABLATE_INTEGRATION), ("NOTEBOOK", ABLATE_NOTEBOOK),
+    ("ROTATION", ABLATE_ROTATION)] if v]
+if _active_ablations:
+    print(f"[ABLATE] active: {_active_ablations}", flush=True)
 
 
 # ---------- partial RoPE with π cycling ----------
@@ -71,10 +89,12 @@ class RoPE:
         self.sin = sin.reshape(1, 1, cfg.max_seq_len, rd).contiguous().realize()
 
         head_phase = [h * math.pi / cfg.n_heads for h in range(cfg.n_heads)]
+        if ABLATE_ROTATION:
+            head_phase = [0.0] * cfg.n_heads  # no per-head phase diversity
         self.alpha_cos: List[Tensor] = []
         self.alpha_sin: List[Tensor] = []
         for l in range(cfg.max_loops):
-            loop_phase = l * math.pi / cfg.max_loops
+            loop_phase = 0.0 if ABLATE_ROTATION else l * math.pi / cfg.max_loops
             alphas = [hp + loop_phase for hp in head_phase]
             ac = Tensor(alphas, dtype=dtypes.float).cos().reshape(1, cfg.n_heads, 1, 1).contiguous().realize()
             asn = Tensor(alphas, dtype=dtypes.float).sin().reshape(1, cfg.n_heads, 1, 1).contiguous().realize()
@@ -680,6 +700,10 @@ class BreathingTransformer:
             temp_mult = decisions["temperature"]                      # (B,)
             gate = decisions["gate"]                                  # (B,)
             step_mult = decisions["step_mult"]                        # (B,)
+            if ABLATE_TEMP:
+                temp_mult = Tensor.ones_like(temp_mult)               # ablation: pin to 1.0
+            if ABLATE_STEP_MULT:
+                step_mult = Tensor.ones_like(step_mult)               # ablation: pin to 1.0
             if detach_decisions_into_transformer:
                 temp_mult = temp_mult.detach()
                 gate = gate.detach()
@@ -696,19 +720,29 @@ class BreathingTransformer:
                 x = layer(x, current_loop_idx, temp_mult=temp_mult)
             phase_idx_float += step_avg
 
-            # Add to integral with gate weighting
-            integral = integral + x.cast(dtypes.float) * gate.cast(dtypes.float).reshape(B, 1, 1)
-            gate_total = gate_total + gate.cast(dtypes.float)
+            # Add to integral with gate weighting.
+            # Ablation: when ABLATE_INTEGRATION, overwrite instead of accumulate
+            # (last-breath-only — no cross-breath memory in the integral path).
+            if ABLATE_INTEGRATION:
+                integral = x.cast(dtypes.float) * gate.cast(dtypes.float).reshape(B, 1, 1)
+                gate_total = gate.cast(dtypes.float)
+            else:
+                integral = integral + x.cast(dtypes.float) * gate.cast(dtypes.float).reshape(B, 1, 1)
+                gate_total = gate_total + gate.cast(dtypes.float)
 
             # Per-breath lookup-table query against the running integral, normalized
             running = integral / (gate_total + 1e-6).reshape(B, 1, 1)
             running_normed = _layernorm(running, self.ln_f_g, self.ln_f_b, cfg.layer_norm_eps)
             match_weights.append(self.lookup_table(running_normed))
 
-            # Controller reads the running integral and emits decisions for next breath
+            # Controller reads the running integral and emits decisions for next breath.
+            # Ablation: when ABLATE_NOTEBOOK, clear notebook before each call so the
+            # controller never sees prior-breath pages (no cross-breath memory).
             rep = running_normed[:, rep_position, :].cast(dtypes.float)
             if detach_rep_for_ctrl:
                 rep = rep.detach()
+            if ABLATE_NOTEBOOK:
+                notebook.clear()
             decisions = self.controller(rep, notebook=notebook)
             decisions_per_breath.append(decisions)
 
