@@ -18,7 +18,7 @@ import numpy as np
 # Make scripts/ importable so we can pull in the math generators
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(_PROJECT_ROOT, "scripts"))
-from generate_per_cycle_data import L3_GENERATORS, L4_GENERATORS  # type: ignore
+from generate_per_cycle_data import L3_GENERATORS, L4_GENERATORS, L4_BORROW_GENERATORS  # type: ignore
 try:
     from generate_per_cycle_data import L45_GENERATORS  # type: ignore
 except ImportError:
@@ -55,12 +55,14 @@ def _collapse_spaced(s: str) -> str:
     return sign + s.replace(" ", "")
 
 
+_L4_BORROW_REGISTERED = True
 _LEVEL_GENERATORS = {
     "L3": L3_GENERATORS,
     "L4": L4_GENERATORS,
 }
 if L45_GENERATORS is not None:
     _LEVEL_GENERATORS["L4.5"] = L45_GENERATORS
+_LEVEL_GENERATORS["L4_BORROW"] = L4_BORROW_GENERATORS
 
 
 # ---------------------------------------------------------------------------
@@ -208,6 +210,51 @@ def _arith_easy_sub_no_borrow(rng):
 ARITH_MIXED_GENERATORS = [_arith_easy_add_no_carry, _arith_easy_sub_no_borrow,
                           _arith_sub_borrow_3d, _arith_add_carry]
 _LEVEL_GENERATORS["ARITH_MIXED"] = ARITH_MIXED_GENERATORS
+
+
+# ARITH_BORROW: targeted at the cascading-borrow failure mode revealed by
+# L4 v4 error classification (58% of L4 errors are off-by-10, caused by
+# multi-level borrows that cascade from ones → tens → hundreds).
+# The cascade generator forces (a_ones < b_ones) AND (a_tens <= b_tens):
+# the ones-borrow decrements tens, which then ALSO needs to borrow from
+# hundreds. This is the specific pattern that ARITH_HARD's borrow generator
+# under-sampled.
+def _arith_sub_borrow_cascade(rng):
+    """3-digit subtraction with forced CASCADING borrow.
+
+    Conditions: a_ones < b_ones (forces ones-borrow) AND a_tens <= b_tens
+    (after ones-borrow, the tens position has a_tens - 1 < b_tens which
+    forces a second borrow from hundreds). The cascade is the specific
+    pattern that produces off-by-10 errors in L4 v4."""
+    while True:
+        a_hundreds = rng.randint(1, 9)
+        a_tens = rng.randint(0, 8)            # leave room for b_tens >= a_tens
+        a_ones = rng.randint(0, 8)            # leave room for b_ones > a_ones
+        a = 100 * a_hundreds + 10 * a_tens + a_ones
+        b_ones = rng.randint(a_ones + 1, 9)
+        b_tens = rng.randint(a_tens, 9)       # CASCADE: tens forced into borrow
+        # 50/50 split: 2-digit vs 3-digit subtrahend
+        if rng.random() < 0.5:
+            b = 10 * b_tens + b_ones
+        else:
+            b_hundreds = rng.randint(0, a_hundreds - 1)
+            b = 100 * b_hundreds + 10 * b_tens + b_ones
+        if a > b:
+            break
+    r = a - b
+    return f"{a} - {b} =", [r], r, [f"{r}."]
+
+
+# ARITH_BORROW level: ~50% cascading borrow (the targeted hard case),
+# 50% mix of other arithmetic to keep other operations from regressing.
+ARITH_BORROW_GENERATORS = (
+    [_arith_sub_borrow_cascade] * 4            # 4× weight on the targeted case
+    + [_arith_easy_add_no_carry,
+       _arith_easy_sub_no_borrow,
+       _arith_add_carry,
+       _arith_sub_borrow_3d]                   # maintenance: keep other ops trained
+)
+_LEVEL_GENERATORS["ARITH_BORROW"] = ARITH_BORROW_GENERATORS
 
 
 SEP = " ####"  # marker between outer cycles; tokenizes consistently

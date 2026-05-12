@@ -36,12 +36,40 @@ ABLATE_INTEGRATION = int(os.environ.get("ABLATE_INTEGRATION", "0")) > 0   # no c
 ABLATE_NOTEBOOK    = int(os.environ.get("ABLATE_NOTEBOOK", "0")) > 0      # clear notebook before every controller call
 ABLATE_ROTATION    = int(os.environ.get("ABLATE_ROTATION", "0")) > 0      # uniform RoPE phase (no per-head / per-loop offset)
 
+# Sine-baseline temperature schedule (diffusion noise-schedule analog).
+# Default OFF for backward compat. When SINE_TEMP=1, each breath gets a structural
+# baseline temperature interpolated from SINE_TEMP_MAX (warm, breath 0) to
+# SINE_TEMP_MIN (cool, breath max_loops-1) via cosine half-period. The controller's
+# learned temp_mult MULTIPLIES the baseline as a problem-specific perturbation.
+# This is the forcing function the architecture was missing — without it, every
+# breath operates at the same temperature and there's no structural reason for
+# per-breath outputs to differ (the v4 diagnostic confirmed: per-example loss is
+# flat after breath 2).
+SINE_TEMP          = int(os.environ.get("SINE_TEMP", "0")) > 0
+SINE_TEMP_MAX      = float(os.environ.get("SINE_TEMP_MAX", "4.0"))
+SINE_TEMP_MIN      = float(os.environ.get("SINE_TEMP_MIN", "0.5"))
+
+
+def _sine_temp_baseline(loop_idx: int, n_loops: int) -> float:
+    """Cosine half-period temperature baseline. SINE_TEMP_MAX (warm) at loop_idx=0,
+    SINE_TEMP_MIN (cool) at loop_idx=n_loops-1. Returns 1.0 if SINE_TEMP disabled
+    (preserves original behavior)."""
+    if not SINE_TEMP:
+        return 1.0
+    if n_loops <= 1:
+        return (SINE_TEMP_MAX + SINE_TEMP_MIN) / 2.0
+    cosine_phase = loop_idx * math.pi / (n_loops - 1)
+    return ((SINE_TEMP_MAX + SINE_TEMP_MIN) / 2.0 +
+            (SINE_TEMP_MAX - SINE_TEMP_MIN) / 2.0 * math.cos(cosine_phase))
+
 _active_ablations = [n for n, v in [
     ("TEMP", ABLATE_TEMP), ("STEP_MULT", ABLATE_STEP_MULT), ("GATE", ABLATE_GATE),
     ("INTEGRATION", ABLATE_INTEGRATION), ("NOTEBOOK", ABLATE_NOTEBOOK),
     ("ROTATION", ABLATE_ROTATION)] if v]
 if _active_ablations:
     print(f"[ABLATE] active: {_active_ablations}", flush=True)
+if SINE_TEMP:
+    print(f"[SINE_TEMP] schedule: {SINE_TEMP_MAX} → {SINE_TEMP_MIN} (cosine half-period)", flush=True)
 
 
 # ---------- partial RoPE with π cycling ----------
@@ -239,14 +267,16 @@ class BreathingLayer:
         return self._forward(x, loop_idx, kv_cache=None, return_kv=False,
                              attn_mask=attn_mask, temp_mult=temp_mult)[0]
 
-    def forward_with_kv(self, x: Tensor, loop_idx: int, attn_mask: Tensor | None = None):
+    def forward_with_kv(self, x: Tensor, loop_idx: int, attn_mask: Tensor | None = None,
+                        temp_mult: float = 1.0):
         """Full-sequence forward that also returns the post-RoPE K, V tensors.
 
         attn_mask: optional (B, S) bool/{0,1} tensor — 1 for valid, 0 for padding.
         When provided, padding positions don't influence attention (added as -inf to
         scores) and don't get gradient signal.
         """
-        return self._forward(x, loop_idx, kv_cache=None, return_kv=True, attn_mask=attn_mask)
+        return self._forward(x, loop_idx, kv_cache=None, return_kv=True, attn_mask=attn_mask,
+                             temp_mult=temp_mult)
 
     def forward_cached_step(self, x_new: Tensor, loop_idx: int, kv_cache):
         """Single-token (S=1) forward with cached past K/V. Returns (out, (k_full, v_full))."""
@@ -474,21 +504,24 @@ class BreathingBlock:
             ps.extend(layer.parameters())
         return ps
 
-    def breathe_once(self, x: Tensor, loop_idx: int) -> Tensor:
+    def breathe_once(self, x: Tensor, loop_idx: int, temp_mult: float = 1.0) -> Tensor:
+        """One breath: 4 layers sequentially. temp_mult scales attention softness
+        per breath (used by the sine-baseline schedule when SINE_TEMP=1)."""
         for layer in self.layers:
-            x = layer(x, loop_idx)
+            x = layer(x, loop_idx, temp_mult=temp_mult)
         return x
 
     def breathe(self, x: Tensor, n_loops: int) -> Tensor:
         """Loop the 4-layer breath n_loops times with gated running integral.
 
         Stub controller: gate=1 every breath, always continue. Returns the normalized
-        integral (running mean) of all breath outputs.
+        integral (running mean) of all breath outputs. When SINE_TEMP=1 each breath
+        operates at its scheduled temperature.
         """
         integral = Tensor.zeros_like(x)
         gate_sum = 0.0
         for l in range(n_loops):
-            x = self.breathe_once(x, l)
+            x = self.breathe_once(x, l, temp_mult=_sine_temp_baseline(l, n_loops))
             integral = integral + x
             gate_sum += 1.0
         return integral / gate_sum
@@ -590,7 +623,7 @@ class BreathingTransformer:
         integral = Tensor.zeros_like(x)
         gate_sum = 0.0
         for l in range(n_loops):
-            x = self.block.breathe_once(x, l)
+            x = self.block.breathe_once(x, l, temp_mult=_sine_temp_baseline(l, n_loops))
             states.append(x)
             integral = integral + x
             gate_sum += 1.0
@@ -723,6 +756,20 @@ class BreathingTransformer:
                 step_mult = step_mult * 0.0 + 1.0
             if ABLATE_GATE:
                 gate = gate * 0.0 + 1.0
+
+            # Sine-baseline temperature schedule (diffusion noise-schedule analog).
+            # cosine half-period from SINE_TEMP_MAX at l=0 to SINE_TEMP_MIN at
+            # l=max_loops-1. Controller's temp_mult multiplies as a perturbation.
+            if SINE_TEMP:
+                if max_loops > 1:
+                    cosine_phase = l * math.pi / (max_loops - 1)
+                    sine_baseline = (
+                        (SINE_TEMP_MAX + SINE_TEMP_MIN) / 2.0
+                        + (SINE_TEMP_MAX - SINE_TEMP_MIN) / 2.0 * math.cos(cosine_phase)
+                    )
+                else:
+                    sine_baseline = (SINE_TEMP_MAX + SINE_TEMP_MIN) / 2.0
+                temp_mult = temp_mult * sine_baseline
             if detach_decisions_into_transformer:
                 temp_mult = temp_mult.detach()
                 gate = gate.detach()
@@ -800,7 +847,7 @@ class BreathingTransformer:
         match_weights = []
         integrated_per_breath = []
         for l in range(n_loops):
-            x = self.block.breathe_once(x, l)
+            x = self.block.breathe_once(x, l, temp_mult=_sine_temp_baseline(l, n_loops))
             integral = integral + x
             running = integral / float(l + 1)
             running_normed = _layernorm(running, self.ln_f_g, self.ln_f_b, self.cfg.layer_norm_eps)
@@ -869,8 +916,11 @@ class BreathingTransformer:
         cache_k = [[None] * n_loops for _ in range(n_layers)]
         cache_v = [[None] * n_loops for _ in range(n_layers)]
         for loop in range(n_loops):
+            tm = _sine_temp_baseline(loop, n_loops)
             for li, layer in enumerate(self.block.layers):
-                x, (k_part, v_part) = layer.forward_with_kv(x, loop_idx=loop, attn_mask=attn_mask_arg)
+                x, (k_part, v_part) = layer.forward_with_kv(x, loop_idx=loop,
+                                                             attn_mask=attn_mask_arg,
+                                                             temp_mult=tm)
                 pad_n = max_len - max_prompt
                 k_full = k_part.pad(((0, 0), (0, 0), (0, pad_n), (0, 0))).contiguous().realize()
                 v_full = v_part.pad(((0, 0), (0, 0), (0, pad_n), (0, 0))).contiguous().realize()
