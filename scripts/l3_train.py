@@ -126,6 +126,7 @@ def main():
     CTRL_MAX_LOOPS = getenv("CTRL_MAX_LOOPS", 2)     # max breaths used for controller training (was 4 — halved for speed)
     CTRL_TRAIN_EVERY = getenv("CTRL_TRAIN_EVERY", 4) # update controller every K main steps (1=every step, 4=every 4)
     COMPUTE_PENALTY = float(getenv("COMPUTE_PENALTY", "0.0"))  # reward stop_logit > 0 in ctrl loss (0.0 = off)
+    STOP_CALIB_WEIGHT = float(getenv("STOP_CALIB_WEIGHT", "0.01"))  # weight on per-example stop calibration (existing default 0.01)
     PROFILE = bool(getenv("PROFILE", 0))             # 1 = print per-phase timing summary every PROFILE_EVERY steps
     PROFILE_EVERY = getenv("PROFILE_EVERY", 50)
     GC_EVERY = getenv("GC_EVERY", 50)                # gc.collect() every K steps to flush Python refs holding lazy buffers
@@ -220,11 +221,13 @@ def main():
             if PROFILE:
                 ctrl_loss, ctrl_t = controller_train_step(model, ctrl_opt, batch_examples, tok,
                                                           eq_token_ids, max_loops=int(CTRL_MAX_LOOPS),
-                                                          profile=True, compute_penalty=COMPUTE_PENALTY)
+                                                          profile=True, compute_penalty=COMPUTE_PENALTY,
+                                                          stop_calib_weight=STOP_CALIB_WEIGHT)
             else:
                 ctrl_loss = controller_train_step(model, ctrl_opt, batch_examples, tok,
                                                   eq_token_ids, max_loops=int(CTRL_MAX_LOOPS),
-                                                  compute_penalty=COMPUTE_PENALTY)
+                                                  compute_penalty=COMPUTE_PENALTY,
+                                                  stop_calib_weight=STOP_CALIB_WEIGHT)
         dt = time.perf_counter() - t0
         elapsed = time.perf_counter() - t_start
 

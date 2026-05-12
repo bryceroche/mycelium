@@ -198,7 +198,8 @@ def _resolve_loops_per_cycle(n_loops, n_cycles: int) -> List[int]:
 def controller_train_step(model, ctrl_opt, batch_examples: List[MathExample], tok,
                           eq_token_ids, max_loops: int = 8,
                           n_classes: int = 4, profile: bool = False,
-                          compute_penalty: float = 0.0):
+                          compute_penalty: float = 0.0,
+                          stop_calib_weight: float = 0.01):
     """Train ONLY the controller via lookup-CE loss on op classification.
 
     Forwards through breathe_controlled with decisions NOT detached, so the
@@ -284,7 +285,7 @@ def controller_train_step(model, ctrl_opt, batch_examples: List[MathExample], to
         term = diff.square().mean()
         stop_calib = term if stop_calib is None else stop_calib + term
     if stop_calib is not None:
-        avg_ctrl_loss = avg_ctrl_loss + stop_calib * 0.01
+        avg_ctrl_loss = avg_ctrl_loss + stop_calib * stop_calib_weight
 
     # Compute penalty (optional). ReLU(-stop_logit) per breath: when stop_logit is
     # negative ("keep going"), penalty is |stop_logit|; when positive ("stop"), zero.
