@@ -26,10 +26,33 @@ import gc
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
-from tinygrad import Tensor, Device, dtypes
+from tinygrad import Tensor, Device, dtypes, GlobalCounters
 from tinygrad.helpers import getenv
 from tinygrad.nn.optim import AdamW
 from tinygrad.nn.state import safe_save, safe_load
+
+
+def mem_log(label: str, force: bool = False):
+    """Print current per-device VRAM via tinygrad's GlobalCounters. Cache info
+    (allocator's buffer pool) is included separately — cached buffers still
+    hold GPU memory but aren't in mem_used. Gated on MEM_LOG env var unless
+    force=True."""
+    if not (force or bool(getenv("MEM_LOG", 0))):
+        return
+    per_dev = dict(GlobalCounters.mem_used_per_device)
+    parts = [f"{d}={v/1e9:.2f}GB" for d, v in per_dev.items()]
+    cache_info = ""
+    try:
+        alloc = Device[Device.DEFAULT].allocator
+        if hasattr(alloc, "cache"):
+            cache_size = len(alloc.cache)
+            cached_bytes = sum(opt.nbytes for opt in alloc.cache.keys() if hasattr(opt, 'nbytes')) if cache_size else 0
+            cache_info = f"  cache_entries={cache_size}"
+            if cached_bytes:
+                cache_info += f"  cached={cached_bytes/1e9:.2f}GB"
+    except Exception:
+        pass
+    print(f"[MEM] {label}: " + " ".join(parts) + cache_info, flush=True)
 
 from mycelium import Config
 from mycelium.loader import _load_state, load_breathing
@@ -162,11 +185,13 @@ def main():
     n_params = sum(int(np.prod(t.shape)) for t in collect_params(model))
     print(f"  trainable params: {n_params/1e6:.1f}M")
     del sd
+    mem_log("after model load + fp32 cast")
 
     if RESUME_FROM:
         print(f"\nresuming from checkpoint: {RESUME_FROM}")
         load_checkpoint(model, RESUME_FROM)
         print("  loaded.")
+        mem_log("after ckpt resume")
 
     params = collect_params(model)
     opt = AdamW(params, lr=LR)
@@ -175,6 +200,7 @@ def main():
     # of CTRL_TRAIN so the ckpt round-trip is symmetric; only stepped when CTRL_TRAIN=1.
     ctrl_opt = AdamW(model.controller_parameters(), lr=CTRL_LR) if CTRL_TRAIN else None
     Tensor.training = True
+    mem_log("after optimizer setup")
 
     rng = np.random.default_rng(SEED)
     py_rng = np.random.default_rng(SEED + 1)
@@ -249,6 +275,9 @@ def main():
         if step % 10 == 0 or step + 1 == STEPS:
             ctrl_str = f"  ctrl_loss={ctrl_loss:.4f}" if ctrl_loss is not None else ""
             print(f"step {step:4d}  A={phase_a_loops} C={PHASE_C_LOOPS}  loss={loss:.4f}{ctrl_str}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)
+            # Log mem usage at step 0 (post first JIT compile) and every 50 steps after
+            if step == 0 or (step % 50 == 0 and step > 0):
+                mem_log(f"step {step:4d}")
 
         # Periodic gc.collect() to keep tinygrad's lazy-graph Python refs from
         # accumulating. Empirically we saw py_overhead grow 870ms → 2274ms over
@@ -276,6 +305,7 @@ def main():
         # Cheap loss eval — Phase A loops vary, Phase C fixed
         if (step + 1) % LOSS_EVAL_EVERY == 0 or step + 1 == STEPS:
             Tensor.training = False
+            mem_log(f"step {step+1:4d}  before loss-eval (train JITs still resident)")
             # Clear training-side JITs so their resident graphs/buffers don't
             # contend with the eval JIT compile. Empirically: training JITs in
             # memory made the eval block's cached_generate_batch compile take
@@ -285,6 +315,7 @@ def main():
             if USE_JIT:
                 _JIT_TRAIN_CACHE.clear()
             gc.collect()
+            mem_log(f"step {step+1:4d}  after JIT clear + gc")
             print(f"  --- loss eval at step {step+1} ---")
             for nl in EVAL_LOOPS:
                 losses = []
@@ -294,14 +325,17 @@ def main():
                     losses.append(multi_cycle_eval_loss(model, eb, tok,
                                                        [nl, PHASE_C_LOOPS], FIXED_LEN))
                 print(f"    val loss @ A={nl} C={PHASE_C_LOOPS}: {np.mean(losses):.4f}  (+-{np.std(losses):.3f})")
+            mem_log(f"step {step+1:4d}  after loss-eval")
             Tensor.training = True
 
         # Expensive accuracy eval — same scheduling: Phase A varies, Phase C fixed
         if (step + 1) % ACC_EVAL_EVERY == 0 or step + 1 == STEPS:
             Tensor.training = False
+            mem_log(f"step {step+1:4d}  before acc-eval (train JITs still resident)")
             if USE_JIT:
                 _JIT_TRAIN_CACHE.clear()
             gc.collect()
+            mem_log(f"step {step+1:4d}  after JIT clear + gc")
             print(f"  --- accuracy at step {step+1} (multi-cycle, {NUM_EVAL} held-out) ---")
             for nl in EVAL_LOOPS:
                 t0 = time.perf_counter()
@@ -326,6 +360,7 @@ def main():
                 print(f"    lookup-eval @ A={m['n_loops']}: trained={m['trained_acc']*100:.1f}%  "
                       f"ncm={m['ncm_acc']*100:.1f}%  on-target={m['on_target_count']}/4  "
                       f"purity[{pur}]  ({m['elapsed_s']:.1f}s)")
+            mem_log(f"step {step+1:4d}  after acc-eval (eval JITs now resident)")
             Tensor.training = True
 
         # Periodic checkpoint
