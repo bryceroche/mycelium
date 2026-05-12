@@ -222,9 +222,11 @@ def controller_train_step(model, ctrl_opt, batch_examples: List[MathExample], to
     if profile: _t = _time.perf_counter()
     cycles_per_ex = [encode_cycles(tok, ex) for ex in batch_examples]
     encoded = [ex_cycles[0] for ex_cycles in cycles_per_ex]      # cycle 0 only
-    tokens_np, _ = collate(encoded, fixed_len=64 + 40)             # FIXED_LEN+max_new for safety
+    tokens_np, labels_np = collate(encoded, fixed_len=64 + 40)     # capture labels for answer-CE
     B, T = tokens_np.shape
     tokens = Tensor(tokens_np, dtype=dtypes.int).realize()
+    labels = Tensor(labels_np, dtype=dtypes.int).realize()         # (B, T-1) next-token targets, -100 mask
+    answer_mask = Tensor((labels_np != -100).astype(np.float32), dtype=dtypes.float).realize()  # (B, T-1)
     encode_time = (_time.perf_counter() - _t) if profile else 0.0
 
     eq_positions = np.array([find_eq_position(tokens_np[b].tolist(), eq_token_ids)
@@ -237,10 +239,15 @@ def controller_train_step(model, ctrl_opt, batch_examples: List[MathExample], to
 
     if profile: _t = _time.perf_counter()
     # Forward through the closed loop. Decisions NOT detached so gradient flows back.
+    # return_per_breath_reps=True so we can compute per-breath answer-prediction CE
+    # (the signal that actually differentiates problem difficulty, vs the previous
+    # op-classification CE which is trivially solved by the operator symbol in the
+    # prompt). See project_arith_mixed_v3_result.md.
     notebook = Notebook()
-    _, decisions, n_breaths, match_weights = model.breathe_controlled(
+    _, decisions, n_breaths, match_weights, integrated_per_breath = model.breathe_controlled(
         tokens, max_loops=max_loops, notebook=notebook,
         detach_rep_for_ctrl=False, detach_decisions_into_transformer=False,
+        return_per_breath_reps=True,
     )
 
     # Gather match weights at eq positions for every breath, mean across breaths.
@@ -254,32 +261,44 @@ def controller_train_step(model, ctrl_opt, batch_examples: List[MathExample], to
     op_labels_masked = np.where(valid, op_labels, -100).astype(np.int32)
     y = Tensor(op_labels_masked, dtype=dtypes.int).realize()
 
-    # Per-breath, PER-EXAMPLE op-CE losses (shape (B,) each). The prior implementation
-    # used reduction="mean" → scalar, which made the stop-calibration target identical
-    # across examples and prevented the stop head from learning per-problem
-    # differentiation. With reduction="none" each example gets its own loss value,
-    # so the stop calibration can supervise "easy problems → stop high, hard → stop low."
-    per_breath_per_ex_losses = []
+    # Per-breath OP-classification CE (the existing main signal — still useful for
+    # training the lookup table). reduction="none" gives (B,) per breath.
+    per_breath_per_ex_op_losses = []
     for mw in match_weights:
         gathered = (mw.cast(dtypes.float) * eq_mask).sum(axis=1)        # (B, n_entries)
-        logits = gathered[:, :n_classes] * 10.0
-        per_ex = logits.sparse_categorical_crossentropy(y, ignore_index=-100, reduction="none")  # (B,)
-        per_breath_per_ex_losses.append(per_ex)
+        op_logits = gathered[:, :n_classes] * 10.0
+        per_ex_op = op_logits.sparse_categorical_crossentropy(y, ignore_index=-100, reduction="none")  # (B,)
+        per_breath_per_ex_op_losses.append(per_ex_op)
 
-    # Main ctrl loss: average over breaths and examples (matches prior scalar behavior).
-    total = per_breath_per_ex_losses[0].mean()
-    for l in per_breath_per_ex_losses[1:]:
+    # Per-breath PER-EXAMPLE ANSWER-prediction CE (the new stop_calib target).
+    # The prior implementation used op-classification CE — trivially solved in
+    # single-cycle arithmetic because the operator symbol is in the prompt. This
+    # meant per-example targets were uniformly small across the batch and the stop
+    # head couldn't learn per-problem differentiation (v3 instrumentation showed
+    # within-batch std going DOWN with more training: 0.47 → 0.27). Answer-prediction
+    # CE actually varies by problem difficulty: easy = low CE early, hard = high CE
+    # until late breaths.
+    per_breath_per_ex_answer_losses = []
+    for rep in integrated_per_breath:
+        full_logits = (rep @ model.embed_out).cast(dtypes.float)           # (B, T, vocab)
+        pred = full_logits[:, :-1, :]                                       # next-token prediction
+        per_tok_ce = pred.sparse_categorical_crossentropy(labels, ignore_index=-100, reduction="none")  # (B, T-1)
+        per_ex_ans = (per_tok_ce * answer_mask).sum(axis=1) / answer_mask.sum(axis=1).maximum(1.0)      # (B,) mean over answer positions
+        per_breath_per_ex_answer_losses.append(per_ex_ans)
+
+    # Main ctrl loss: average over breaths (op-CE signal — keeps lookup table sharp).
+    total = per_breath_per_ex_op_losses[0].mean()
+    for l in per_breath_per_ex_op_losses[1:]:
         total = total + l.mean()
-    avg_ctrl_loss = total / float(len(per_breath_per_ex_losses))
+    avg_ctrl_loss = total / float(len(per_breath_per_ex_op_losses))
 
-    # Auxiliary: PER-EXAMPLE stop calibration. The stop_logit at breath l should be
-    # HIGH when this example's per-breath lookup-CE is low (model says "I've got this
-    # one") and LOW when it's still high. Squared-error pull toward -loss as target.
-    # Per-example targets are the key: with scalar batch-mean targets (prior code),
-    # the stop head couldn't learn per-problem differentiation, which we verified
-    # empirically (std on stop_logit was ~0.27 across 32 diverse problems).
+    # Stop calibration: supervise stop_logit against -answer_loss (per example).
+    # Easy problems: answer_loss low → target ~0 → stop_logit pulled up → "stop OK."
+    # Hard problems: answer_loss high → target very negative → stop_logit pulled down → "keep going."
+    # This is the signal that actually differentiates problems — the v1-v3 plan's
+    # op-CE target couldn't.
     stop_calib = None
-    for i, (d, pb_loss) in enumerate(zip(decisions[1:], per_breath_per_ex_losses)):
+    for i, (d, pb_loss) in enumerate(zip(decisions[1:], per_breath_per_ex_answer_losses)):
         target = pb_loss * -1.0                          # (B,) — per example
         diff = d["stop_logit"] - target.detach()         # (B,)
         term = diff.square().mean()

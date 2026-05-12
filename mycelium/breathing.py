@@ -647,7 +647,8 @@ class BreathingTransformer:
     def breathe_controlled(self, tokens: Tensor, max_loops: int, notebook,
                            rep_position: int = -1, detach_rep_for_ctrl: bool = True,
                            detach_decisions_into_transformer: bool = False,
-                           adaptive: bool = False, min_loops: int = 1):
+                           adaptive: bool = False, min_loops: int = 1,
+                           return_per_breath_reps: bool = False):
         """Closed-loop adaptive breathing — the full 7/7 system in action.
 
         Per breath:
@@ -693,6 +694,7 @@ class BreathingTransformer:
         gate_total = Tensor.zeros((B,), dtype=dtypes.float).realize()
         decisions_per_breath = []
         match_weights = []
+        integrated_per_breath = []   # only populated if return_per_breath_reps
 
         # Initial decisions (from raw input) — controller's "first look" before any breathing
         rep = x[:, rep_position, :].cast(dtypes.float)
@@ -751,6 +753,8 @@ class BreathingTransformer:
             running = integral / (gate_total + 1e-6).reshape(B, 1, 1)
             running_normed = _layernorm(running, self.ln_f_g, self.ln_f_b, cfg.layer_norm_eps)
             match_weights.append(self.lookup_table(running_normed))
+            if return_per_breath_reps:
+                integrated_per_breath.append(running_normed)
 
             # Controller reads the running integral and emits decisions for next breath.
             # Ablation: when ABLATE_NOTEBOOK, clear notebook before each call so the
@@ -775,6 +779,8 @@ class BreathingTransformer:
         # Final integrated rep: gate-weighted mean
         final = integral / (gate_total + 1e-6).reshape(B, 1, 1)
         final = _layernorm(final, self.ln_f_g, self.ln_f_b, cfg.layer_norm_eps)
+        if return_per_breath_reps:
+            return final, decisions_per_breath, actual_n_breaths, match_weights, integrated_per_breath
         return final, decisions_per_breath, actual_n_breaths, match_weights
 
     def breathe_with_lookup(self, tokens: Tensor, n_loops: int):
