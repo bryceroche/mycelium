@@ -343,6 +343,121 @@ L4_GENERATORS = [_l4_sub_sub, _l4_add_add, _l4_sub_add, _l4_add_sub,
 
 
 # =====================================================================
+# L4_BORROW — L4 problems with cascading-borrow subtraction in the
+# second cycle. Targets the 58%-of-errors failure mode revealed by the
+# L4 v4 error classifier. Keeps the L4 multi-cycle format intact so
+# the model learns the skill IN CONTEXT (no catastrophic forgetting
+# of L4 template, unlike pure single-cycle ARITH_BORROW training).
+# =====================================================================
+
+def _pick_cascade_borrow(rng, min_minuend=100, max_minuend=500):
+    """(a, b) where a - b requires a CASCADING borrow.
+
+    Conditions: a_ones < b_ones AND a_tens <= b_tens, a >= 100, a > b.
+    The ones-place borrow decrements tens; tens then ALSO needs to borrow
+    from hundreds. Specifically targets the off-by-10 failure mode."""
+    for _ in range(1000):
+        a_hundreds = rng.randint(1, max(1, max_minuend // 100))
+        a_tens = rng.randint(0, 8)            # leave room for b_tens >= a_tens
+        a_ones = rng.randint(0, 8)            # leave room for b_ones > a_ones
+        a = 100 * a_hundreds + 10 * a_tens + a_ones
+        if a < min_minuend or a > max_minuend:
+            continue
+        b_ones = rng.randint(a_ones + 1, 9)
+        b_tens = rng.randint(a_tens, 9)
+        if rng.random() < 0.5:
+            b = 10 * b_tens + b_ones                                   # 2-digit subtrahend
+        else:
+            max_bh = max(0, a_hundreds - 1)
+            b_hundreds = rng.randint(0, max_bh) if max_bh > 0 else 0
+            b = 100 * b_hundreds + 10 * b_tens + b_ones                # 3-digit subtrahend
+        if a > b:
+            return a, b
+    # Fallback: ensure we always return something
+    return 170, 132   # the canonical example
+
+
+def _l4_double_sub_cascade(rng):
+    """Sam-cookies template: doubled then gave-away. Cascade in step 2."""
+    name = rng.choice(NAMES)
+    obj = rng.choice(OBJECTS)
+    # Pick a cascading (mid, b) pair where mid is even (so mid = 2*start works)
+    while True:
+        mid, b = _pick_cascade_borrow(rng, min_minuend=100, max_minuend=300)
+        if mid % 2 == 0:
+            break
+    start = mid // 2
+    result = mid - b
+    problem = (
+        f"{name} had {start} {obj}. {name} doubled the collection, "
+        f"then gave {b} away. How many {obj} does {name} have now?"
+    )
+    gen_targets = [
+        f"{name} had {start} {obj} and doubled them. {start} * 2 = {mid} {obj} now.",
+        f"Then {name} gave {b} away. {mid} - {b} = {result} {obj} remaining.",
+    ]
+    return problem, [mid, result], result, gen_targets
+
+
+def _l4_add_sub_cascade(rng):
+    """Cycle 1 addition (with possible carry), cycle 2 cascading-borrow subtraction."""
+    name = rng.choice(NAMES)
+    obj = rng.choice(OBJECTS)
+    t1, t2 = rng.choice(TIME_PAIRS)
+    v_gain, s_gain = rng.choice(GAIN_VERBS)
+    v_lose, _ = rng.choice(LOSE_VERBS)
+    # Pick mid, b for cascading borrow in cycle 2
+    mid, b = _pick_cascade_borrow(rng, min_minuend=100, max_minuend=400)
+    # Decompose mid = start + a (split arbitrarily)
+    start = rng.randint(10, mid - 5)
+    a = mid - start
+    result = mid - b
+    problem = (
+        f"{name} had {start} {obj}. "
+        f"{name} {v_gain} {a} {s_gain} {t1}, then {v_lose} {b} {t2}. "
+        f"How many {obj} does {name} have now?"
+    )
+    gen_targets = [
+        f"{name} had {start} {obj} and {v_gain} {a} more. {start} + {a} = {mid} {obj} now.",
+        f"Then {name} {v_lose} {b}. {mid} - {b} = {result} {obj} remaining.",
+    ]
+    return problem, [mid, result], result, gen_targets
+
+
+def _l4_sub_sub_cascade(rng):
+    """Two subtractions; the SECOND is forced cascading-borrow."""
+    place = rng.choice(PLACES)
+    obj = rng.choice(OBJECTS)
+    t1, t2 = rng.choice(TIME_PAIRS)
+    v1, _ = rng.choice(LOSE_VERBS)
+    v2, _ = rng.choice(LOSE_VERBS)
+    # Pick mid, b such that mid - b is cascading-borrow
+    mid, b = _pick_cascade_borrow(rng, min_minuend=100, max_minuend=400)
+    # Decompose: start - a = mid
+    a = rng.randint(5, 80)
+    start = mid + a
+    result = mid - b
+    problem = (
+        f"{place.capitalize()} had {start} {obj}. "
+        f"They {v1} {a} {t1} and {v2} {b} {t2}. "
+        f"How many {obj} are left?"
+    )
+    gen_targets = [
+        f"They started with {start} {obj} and {v1} {a}. {start} - {a} = {mid} {obj} remaining.",
+        f"Then they {v2} {b} more. {mid} - {b} = {result} {obj} left.",
+    ]
+    return problem, [mid, result], result, gen_targets
+
+
+L4_BORROW_GENERATORS = (
+    [_l4_double_sub_cascade] * 2          # ~25% — Sam-cookies pattern
+    + [_l4_add_sub_cascade] * 2           # ~25% — add then cascading-borrow sub
+    + [_l4_sub_sub_cascade] * 2           # ~25% — two subs, second cascading
+    + [_l4_add_add, _l4_sub_add]          # ~25% — maintenance: addition and add-then-sub
+)
+
+
+# =====================================================================
 # L4.5 generators — 3 steps (first cycle can be extraction)
 # =====================================================================
 
