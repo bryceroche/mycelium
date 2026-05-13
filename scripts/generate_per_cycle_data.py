@@ -457,6 +457,20 @@ L4_BORROW_GENERATORS = (
 )
 
 
+# L4_MIXED: the lesson learned from L4_BORROW v1.
+# Pure L4_BORROW training (cascade-biased) lifted L4_BORROW eval to 80% BUT
+# regressed pure L4 from 43% to 28-32%. Narrow training subset → narrow
+# generalization. Fix: TRAIN ON WHAT YOU EVALUATE ON. Broadest L4 distribution
+# (all 6 standard L4 generators) PLUS the 3 cascade variants for extra
+# exposure to the specific failure mode. ~33% cascade-biased, ~67% standard L4
+# (which already includes random cascade occurrences naturally).
+L4_MIXED_GENERATORS = L4_GENERATORS + [
+    _l4_double_sub_cascade,
+    _l4_add_sub_cascade,
+    _l4_sub_sub_cascade,
+]
+
+
 # =====================================================================
 # L4.5 generators — 3 steps (first cycle can be extraction)
 # =====================================================================

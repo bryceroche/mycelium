@@ -18,7 +18,7 @@ import numpy as np
 # Make scripts/ importable so we can pull in the math generators
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(_PROJECT_ROOT, "scripts"))
-from generate_per_cycle_data import L3_GENERATORS, L4_GENERATORS, L4_BORROW_GENERATORS  # type: ignore
+from generate_per_cycle_data import L3_GENERATORS, L4_GENERATORS, L4_BORROW_GENERATORS, L4_MIXED_GENERATORS  # type: ignore
 try:
     from generate_per_cycle_data import L45_GENERATORS  # type: ignore
 except ImportError:
@@ -63,6 +63,7 @@ _LEVEL_GENERATORS = {
 if L45_GENERATORS is not None:
     _LEVEL_GENERATORS["L4.5"] = L45_GENERATORS
 _LEVEL_GENERATORS["L4_BORROW"] = L4_BORROW_GENERATORS
+_LEVEL_GENERATORS["L4_MIXED"] = L4_MIXED_GENERATORS
 
 
 # ---------------------------------------------------------------------------
