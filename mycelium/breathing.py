@@ -24,6 +24,7 @@ from tinygrad.engine.jit import TinyJit
 from mycelium.config import Config
 from mycelium.lookup_table import LookupTable
 from mycelium.controller import Controller
+from mycelium.calibration import ConfidenceHead
 
 
 # Ablation flags — read once at module import. Each disables one closed-loop
@@ -49,6 +50,14 @@ SINE_TEMP          = int(os.environ.get("SINE_TEMP", "0")) > 0
 SINE_TEMP_MAX      = float(os.environ.get("SINE_TEMP_MAX", "4.0"))
 SINE_TEMP_MIN      = float(os.environ.get("SINE_TEMP_MIN", "0.5"))
 
+# RoPE inter-breath rotation period. Default 0 = preserve existing behavior
+# (loop_phase = l * π / max_loops, half-cycle over max_loops breaths, no wrap).
+# When > 0: loop_phase = l * 2π / ROTATION_PERIOD, geometry returns to start
+# every ROTATION_PERIOD breaths. ROTATION_PERIOD=4 with max_loops=8 gives two
+# revolutions per pass (discovery → verification structure) and 50% per-breath
+# head-phase overlap (vs current 87.5%).
+ROTATION_PERIOD    = int(os.environ.get("ROTATION_PERIOD", "0"))
+
 
 def _sine_temp_baseline(loop_idx: int, n_loops: int) -> float:
     """Cosine half-period temperature baseline. SINE_TEMP_MAX (warm) at loop_idx=0,
@@ -70,6 +79,8 @@ if _active_ablations:
     print(f"[ABLATE] active: {_active_ablations}", flush=True)
 if SINE_TEMP:
     print(f"[SINE_TEMP] schedule: {SINE_TEMP_MAX} → {SINE_TEMP_MIN} (cosine half-period)", flush=True)
+if ROTATION_PERIOD > 0:
+    print(f"[ROTATION_PERIOD] {ROTATION_PERIOD}-breath cycle (loop_phase = l * 2π/{ROTATION_PERIOD})", flush=True)
 
 
 # ---------- partial RoPE with π cycling ----------
@@ -123,7 +134,12 @@ class RoPE:
         self.alpha_cos: List[Tensor] = []
         self.alpha_sin: List[Tensor] = []
         for l in range(cfg.max_loops):
-            loop_phase = 0.0 if ABLATE_ROTATION else l * math.pi / cfg.max_loops
+            if ABLATE_ROTATION:
+                loop_phase = 0.0
+            elif ROTATION_PERIOD > 0:
+                loop_phase = l * 2 * math.pi / ROTATION_PERIOD
+            else:
+                loop_phase = l * math.pi / cfg.max_loops
             alphas = [hp + loop_phase for hp in head_phase]
             ac = Tensor(alphas, dtype=dtypes.float).cos().reshape(1, cfg.n_heads, 1, 1).contiguous().realize()
             asn = Tensor(alphas, dtype=dtypes.float).sin().reshape(1, cfg.n_heads, 1, 1).contiguous().realize()
@@ -548,15 +564,20 @@ class BreathingTransformer:
         # Closed-loop component #5: the controller. State reader + decision heads.
         # Step B scaffold; notebook (Step C) and adaptive wiring (Step D) follow.
         self.controller = Controller(cfg)
+        # Per-step optimal-stopping calibration head. Reads the rep at a step's
+        # "=" position and emits scalar confidence in (0,1). Trained jointly with
+        # the transformer on the REINFORCE optimal-stopping objective.
+        self.confidence_head = ConfidenceHead(cfg.hidden)
 
     def parameters(self):
-        """Parameters trained on the main loss (transformer + lookup table).
-        The controller has gradient separation per the spec — its parameters
-        are returned by controller_parameters() and trained by a separate
-        optimizer (Step F) via REINFORCE on outcomes + auxiliary signals."""
+        """Parameters trained on the main loss (transformer + lookup table +
+        confidence head). The controller has gradient separation per the spec —
+        its parameters are returned by controller_parameters() and trained by a
+        separate optimizer (Step F) via REINFORCE on outcomes + auxiliary signals."""
         return ([self.embed.weight, self.ln_f_g, self.ln_f_b, self.embed_out]
                 + self.block.parameters()
-                + self.lookup_table.parameters())
+                + self.lookup_table.parameters()
+                + self.confidence_head.parameters())
 
     def controller_parameters(self):
         """Controller-only parameters. Trained via a separate optimizer with a
@@ -581,6 +602,7 @@ class BreathingTransformer:
             for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
                 sd[f"phase{i}.{a}"] = getattr(layer, a)
         sd.update(self.controller.state_dict())
+        sd.update(self.confidence_head.state_dict())
         return sd
 
     def load_state_dict(self, sd_ck: dict, strict: bool = False) -> dict:

@@ -60,9 +60,10 @@ from mycelium.data import load_tokenizer
 from mycelium.l3_data import generate_math, split_train_eval
 from mycelium.l3_training import (
     multi_cycle_train_step, multi_cycle_eval_loss, accuracy_at_loops_multi,
-    controller_train_step,
+    controller_train_step, calibration_train_step,
 )
 from mycelium.l3_training import _JIT_TRAIN_CACHE
+from mycelium.calibration import digit_token_ids_for
 from mycelium.lookup_eval import lookup_eval
 
 
@@ -88,6 +89,10 @@ def collect_params(model):
             sw.in_ln_g, sw.in_ln_b, sw.post_ln_g, sw.post_ln_b]
     for layer in model.block.layers:
         nps += [layer.wq, layer.bq, layer.wk, layer.bk, layer.w_in, layer.b_in]
+    # Calibration head — trained on the main loss via REINFORCE in calibration_train_step.
+    # Always included so opt.step() has a defined gradient for these params even when
+    # CALIBRATION_MODE=0 (gradient is zero in that path, weights don't move).
+    nps += model.confidence_head.parameters()
     return nps
 
 
@@ -150,6 +155,14 @@ def main():
     CTRL_TRAIN_EVERY = getenv("CTRL_TRAIN_EVERY", 4) # update controller every K main steps (1=every step, 4=every 4)
     COMPUTE_PENALTY = float(getenv("COMPUTE_PENALTY", "0.0"))  # reward stop_logit > 0 in ctrl loss (0.0 = off)
     STOP_CALIB_WEIGHT = float(getenv("STOP_CALIB_WEIGHT", "0.01"))  # weight on per-example stop calibration (existing default 0.01)
+    # Per-step optimal-stopping calibration training. When CALIBRATION_MODE=1, the main
+    # train step switches from multi_cycle_train_step to calibration_train_step:
+    # single-cycle encoding, per-step answer-CE at EVERY breath, plus BCE(confidence,
+    # argmax_correct) to train calibration. Different steps can be claimed at different
+    # breaths via the learned confidence_head at inference.
+    CALIBRATION_MODE = bool(getenv("CALIBRATION_MODE", 0))
+    CALIBRATION_WEIGHT = float(getenv("CALIBRATION_WEIGHT", "0.1"))  # λ on the BCE term
+    CALIBRATION_LOOPS = getenv("CALIBRATION_LOOPS", 8)  # n_loops for the calibration forward pass
     PROFILE = bool(getenv("PROFILE", 0))             # 1 = print per-phase timing summary every PROFILE_EVERY steps
     PROFILE_EVERY = getenv("PROFILE_EVERY", 50)
     GC_EVERY = getenv("GC_EVERY", 50)                # gc.collect() every K steps to flush Python refs holding lazy buffers
@@ -216,6 +229,13 @@ def main():
     # For a small corpus (L3 ~20K examples) this is fine.
     print()
 
+    # Lazy state holder for calibration helpers (avoids re-computing digit_token_ids each step)
+    class _CalibState: pass
+    _calib_state = _CalibState()
+
+    if CALIBRATION_MODE:
+        print(f"[CALIBRATION] mode=ON  weight={CALIBRATION_WEIGHT}  loops={CALIBRATION_LOOPS}", flush=True)
+
     t_start = time.perf_counter()
     for step in range(STEPS):
         # Three-phase scheduling: cycle 0 (Phase A) gets heavy breathing,
@@ -227,7 +247,20 @@ def main():
         batch_examples = [train_examples[i] for i in idx]
 
         t0 = time.perf_counter()
-        if PROFILE:
+        calib_info = None
+        if CALIBRATION_MODE:
+            digit_ids_set = getattr(_calib_state, "digit_ids", None)
+            if digit_ids_set is None:
+                digit_ids_set = digit_token_ids_for(tok)
+                _calib_state.digit_ids = digit_ids_set
+            calib_info = calibration_train_step(model, opt, batch_examples, tok,
+                                                digit_token_ids=digit_ids_set,
+                                                eq_token_ids=eq_token_ids,
+                                                n_loops=int(CALIBRATION_LOOPS),
+                                                fixed_len=FIXED_LEN,
+                                                calibration_weight=CALIBRATION_WEIGHT)
+            loss = calib_info["loss"]
+        elif PROFILE:
             loss, main_t = multi_cycle_train_step(model, opt, batch_examples, tok, loops_per_cycle, FIXED_LEN,
                                                   lookup_aux_weight=LOOKUP_AUX_WEIGHT,
                                                   lookup_eq_token_id=eq_token_ids,
@@ -243,7 +276,7 @@ def main():
         # is fine; controller params are tiny vs the transformer).
         ctrl_loss = None
         ctrl_t = None
-        if ctrl_opt is not None and step % int(CTRL_TRAIN_EVERY) == 0:
+        if not CALIBRATION_MODE and ctrl_opt is not None and step % int(CTRL_TRAIN_EVERY) == 0:
             if PROFILE:
                 ctrl_loss, ctrl_t = controller_train_step(model, ctrl_opt, batch_examples, tok,
                                                           eq_token_ids, max_loops=int(CTRL_MAX_LOOPS),
@@ -274,7 +307,17 @@ def main():
 
         if step % 10 == 0 or step + 1 == STEPS:
             ctrl_str = f"  ctrl_loss={ctrl_loss:.4f}" if ctrl_loss is not None else ""
-            print(f"step {step:4d}  A={phase_a_loops} C={PHASE_C_LOOPS}  loss={loss:.4f}{ctrl_str}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)
+            if CALIBRATION_MODE and calib_info is not None:
+                cpb = [int(x) for x in calib_info['correct_per_breath']]
+                calib_str = (f"  ans_ce={calib_info['answer_ce']:.4f}  "
+                             f"calib_bce={calib_info['calib_bce']:.4f}  "
+                             f"cpb={cpb}  "
+                             f"conf[+]={calib_info['mean_conf_correct']:.3f}  "
+                             f"conf[-]={calib_info['mean_conf_wrong']:.3f}  "
+                             f"(n+={calib_info['n_correct']} n-={calib_info['n_wrong']})")
+                print(f"step {step:4d}  loops={CALIBRATION_LOOPS}  loss={calib_info['loss']:.4f}{calib_str}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)
+            else:
+                print(f"step {step:4d}  A={phase_a_loops} C={PHASE_C_LOOPS}  loss={loss:.4f}{ctrl_str}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)
             # Log mem usage at step 0 (post first JIT compile) and every 50 steps after
             if step == 0 or (step % 50 == 0 and step > 0):
                 mem_log(f"step {step:4d}")

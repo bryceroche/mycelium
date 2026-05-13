@@ -11,7 +11,10 @@ from tinygrad import Tensor, Device, dtypes
 from tinygrad.engine.jit import TinyJit
 
 from mycelium.l3_data import MathExample, encode_example, encode_cycles, parse_int_answer, collate, SEP
-from mycelium.lookup_table import op_label_from_text, find_eq_position
+from mycelium.lookup_table import op_label_from_text, find_eq_position, eq_token_ids_for
+from mycelium.calibration import (
+    find_all_eq_positions, extract_digit_runs_after_eq, digit_token_ids_for,
+)
 
 
 # JIT-train cache: (id(model), id(opt), n_loops_tuple, fixed_len, B) → compiled fn
@@ -55,7 +58,9 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
             logits_aux = gathered[:, :4] * 10.0
             aux_ce = logits_aux.sparse_categorical_crossentropy(op_labels, ignore_index=-100, reduction="mean")
             l2_reg = model.lookup_table.weight.square().mean() * 1e-6
-            total = main_ce + aw * aux_ce + l2_reg
+            ch_reg = sum((p.square().mean() for p in model.confidence_head.parameters()),
+                         Tensor.zeros((), dtype=dtypes.float).contiguous()) * 1e-7
+            total = main_ce + aw * aux_ce + l2_reg + ch_reg
             total.backward()
             opt.step()
             return total.realize()
@@ -83,8 +88,10 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
             logits_aux = gathered[:, :4] * 10.0
             aux_ce = logits_aux.sparse_categorical_crossentropy(op_labels, ignore_index=-100, reduction="mean")
             l2_reg = model.lookup_table.weight.square().mean() * 1e-6
+            ch_reg = sum((p.square().mean() for p in model.confidence_head.parameters()),
+                         Tensor.zeros((), dtype=dtypes.float).contiguous()) * 1e-7
             avg_main = (main_ce0 + main_ce1) / 2.0
-            total = avg_main + aw * aux_ce + l2_reg
+            total = avg_main + aw * aux_ce + l2_reg + ch_reg
             total.backward()
             opt.step()
             return total.realize()
@@ -344,6 +351,248 @@ def controller_train_step(model, ctrl_opt, batch_examples: List[MathExample], to
     return loss_val
 
 
+def calibration_train_step(model, opt, batch_examples: List[MathExample], tok,
+                           digit_token_ids: set, eq_token_ids: list,
+                           n_loops: int = 8, fixed_len: int = 128,
+                           calibration_weight: float = 0.1,
+                           profile: bool = False):
+    """Per-cycle optimal-stopping calibration training.
+
+    Multi-cycle aware (mirrors multi_cycle_train_step's encoding). For each
+    outer cycle:
+      - One forward pass via breathe_controlled (return_per_breath_reps=True)
+      - The cycle's target contains exactly one "=" (a single step)
+      - Per breath: answer-CE on the answer-digit positions in the target;
+        BCE(conf, argmax-correct) at the eq position
+    Losses are summed across cycles (equal-reward decomposition).
+
+    Why multi-cycle, not single-cycle: training distribution must match the
+    eval distribution. Single-cycle encoding causes catastrophic forgetting of
+    multi-cycle generation. See project_calibration_v3_failed.md.
+
+    Args:
+      digit_token_ids: from calibration.digit_token_ids_for(tok)
+      eq_token_ids: from lookup_table.eq_token_ids_for(tok)
+      n_loops: max breaths per cycle forward pass
+      fixed_len: padded sequence length
+      calibration_weight: λ for the BCE-calibration term (0 = pure answer-CE)
+
+    Returns dict with diagnostics aggregated across cycles:
+      loss, answer_ce, calib_bce, correct_per_breath, mean_conf_correct,
+      mean_conf_wrong, n_correct, n_wrong, n_valid_steps.
+    """
+    from mycelium.controller import Notebook
+    Tensor.training = True
+    opt.zero_grad()
+
+    eq_set = set(eq_token_ids)
+    cycles_per_ex = [encode_cycles(tok, ex) for ex in batch_examples]
+    n_cycles = len(cycles_per_ex[0])
+    B = len(batch_examples)
+
+    cycle_answer_losses = []
+    cycle_calib_losses = []
+    cpb_aggregate = None
+    n_correct_total = 0
+    n_wrong_total = 0
+    correct_conf_sum = 0.0
+    wrong_conf_sum = 0.0
+    n_valid_steps_total = 0
+
+    for cycle_idx in range(n_cycles):
+        encoded = [ex_cycles[cycle_idx] for ex_cycles in cycles_per_ex]
+        tokens_np, labels_np = collate(encoded, fixed_len=fixed_len)
+        T = tokens_np.shape[1]
+
+        # Per-example: find the eq position in the TARGET (i.e., at idx >= prefix_len)
+        # and the digit run that follows. One step per cycle (each cycle target has
+        # exactly one "=").
+        per_ex_info = []   # list of (eq_pos, digit_positions, true_digit_ids) or None
+        for b in range(B):
+            _, prefix_len, total_len = cycles_per_ex[b][cycle_idx]
+            target_eq = -1
+            scan_end = min(T, total_len)
+            for i in range(prefix_len, scan_end):
+                if int(tokens_np[b, i]) in eq_set:
+                    target_eq = i
+                    break
+            if target_eq < 0:
+                per_ex_info.append(None)
+                continue
+            digit_positions = []
+            true_digit_ids = []
+            i = target_eq + 1
+            while i < scan_end and len(digit_positions) < 4 and int(tokens_np[b, i]) in digit_token_ids:
+                digit_positions.append(i)
+                true_digit_ids.append(int(tokens_np[b, i]))
+                i += 1
+            if digit_positions:
+                per_ex_info.append((target_eq, digit_positions, true_digit_ids))
+            else:
+                per_ex_info.append(None)
+
+        # Validity vector & eq mask
+        step_valid_np = np.array(
+            [1.0 if info is not None else 0.0 for info in per_ex_info],
+            dtype=np.float32,
+        )
+        n_valid_this_cycle = int(step_valid_np.sum())
+        n_valid_steps_total += n_valid_this_cycle
+        if n_valid_this_cycle == 0:
+            continue   # skip cycle if no valid eqs (shouldn't happen for L4)
+
+        eq_mask_np = np.zeros((B, T), dtype=np.float32)
+        for b in range(B):
+            if per_ex_info[b] is not None:
+                eq_mask_np[b, per_ex_info[b][0]] = 1.0
+
+        # Answer-mask: positions where the next-token target is a labeled digit
+        # (limit to digit positions inside the labeled target — that's the answer)
+        answer_mask_np = np.zeros((B, T - 1), dtype=np.float32)
+        for b in range(B):
+            if per_ex_info[b] is None:
+                continue
+            _, digit_positions, _ = per_ex_info[b]
+            for dp in digit_positions:
+                pp = dp - 1
+                if 0 <= pp < T - 1:
+                    answer_mask_np[b, pp] = 1.0
+
+        tokens = Tensor(tokens_np, dtype=dtypes.int).realize()
+        labels = Tensor(labels_np, dtype=dtypes.int).realize()
+        eq_mask = Tensor(eq_mask_np, dtype=dtypes.float).reshape(B, T, 1).realize()
+        answer_mask = Tensor(answer_mask_np, dtype=dtypes.float).realize()
+        step_valid_t = Tensor(step_valid_np, dtype=dtypes.float).realize()
+        n_valid_t = step_valid_t.sum().maximum(1.0)
+
+        # Forward — per-breath integrated reps. Decisions detached so controller
+        # path doesn't contaminate main-grad updates.
+        notebook = Notebook()
+        _, _decisions, _n_breaths_actual, _match_weights, integrated_per_breath = model.breathe_controlled(
+            tokens, max_loops=n_loops, notebook=notebook,
+            detach_rep_for_ctrl=True,
+            detach_decisions_into_transformer=True,
+            adaptive=False,
+            return_per_breath_reps=True,
+        )
+        n_breaths = len(integrated_per_breath)
+
+        cycle_ans_sum = None
+        conf_per_breath: list = []
+        argmax_per_breath_tensors: list = []
+
+        for rep in integrated_per_breath:
+            logits = (rep @ model.embed_out).cast(dtypes.float)
+            pred = logits[:, :-1, :]
+            per_tok_ce = pred.sparse_categorical_crossentropy(
+                labels, ignore_index=-100, reduction="none"
+            )
+            per_ex_ans = (per_tok_ce * answer_mask).sum(axis=1) / answer_mask.sum(axis=1).maximum(1.0)
+            if cycle_ans_sum is None:
+                cycle_ans_sum = per_ex_ans.mean()
+            else:
+                cycle_ans_sum = cycle_ans_sum + per_ex_ans.mean()
+            argmax_per_breath_tensors.append(pred.argmax(axis=-1))
+            rep_f = rep.cast(dtypes.float)
+            gathered = (rep_f * eq_mask).sum(axis=1)   # (B, hidden)
+            conf_per_breath.append(model.confidence_head(gathered))   # (B,)
+
+        cycle_ans = cycle_ans_sum / float(n_breaths)
+        cycle_answer_losses.append(cycle_ans)
+
+        # Sync argmaxes once for correctness
+        all_argmax = Tensor.stack(*argmax_per_breath_tensors, dim=0).numpy()  # (n_breaths, B, T-1)
+        correctness_np = np.zeros((n_breaths, B), dtype=np.float32)
+        for breath_idx in range(n_breaths):
+            for b in range(B):
+                info = per_ex_info[b]
+                if info is None:
+                    continue
+                _, digit_positions, true_digit_ids = info
+                all_correct = True
+                for j, dp in enumerate(digit_positions):
+                    pp = dp - 1
+                    if pp < 0 or pp >= all_argmax.shape[2]:
+                        all_correct = False
+                        break
+                    if int(all_argmax[breath_idx, b, pp]) != int(true_digit_ids[j]):
+                        all_correct = False
+                        break
+                correctness_np[breath_idx, b] = 1.0 if all_correct else 0.0
+
+        # BCE per breath
+        correctness_t = Tensor(correctness_np, dtype=dtypes.float).realize()
+        eps_bce = 1e-7
+        cycle_bce_sum = None
+        for breath_idx, conf in enumerate(conf_per_breath):
+            target = correctness_t[breath_idx]   # (B,)
+            c = conf.clamp(eps_bce, 1.0 - eps_bce)
+            bce = -(target * c.log() + (1.0 - target) * (1.0 - c).log())   # (B,)
+            bce_masked = bce * step_valid_t
+            breath_loss = bce_masked.sum() / n_valid_t
+            cycle_bce_sum = breath_loss if cycle_bce_sum is None else cycle_bce_sum + breath_loss
+        cycle_bce = cycle_bce_sum / float(n_breaths)
+        cycle_calib_losses.append(cycle_bce)
+
+        # Per-cycle diagnostics → aggregate
+        cycle_cpb = correctness_np.sum(axis=1)   # (n_breaths,)
+        if cpb_aggregate is None:
+            cpb_aggregate = cycle_cpb.copy()
+        elif len(cpb_aggregate) == len(cycle_cpb):
+            cpb_aggregate = cpb_aggregate + cycle_cpb
+
+        conf_stack_np = Tensor.stack(*conf_per_breath, dim=0).numpy()   # (n_breaths, B)
+        valid_bcast = np.broadcast_to(step_valid_np[None, :] > 0, conf_stack_np.shape)
+        correct_mask = (correctness_np > 0) & valid_bcast
+        wrong_mask = (correctness_np == 0) & valid_bcast
+        n_correct_total += int(correct_mask.sum())
+        n_wrong_total += int(wrong_mask.sum())
+        if int(correct_mask.sum()) > 0:
+            correct_conf_sum += float(conf_stack_np[correct_mask].sum())
+        if int(wrong_mask.sum()) > 0:
+            wrong_conf_sum += float(conf_stack_np[wrong_mask].sum())
+
+    if not cycle_answer_losses:
+        return {"loss": 0.0, "answer_ce": 0.0, "calib_bce": 0.0,
+                "correct_per_breath": [], "n_valid_steps": 0,
+                "mean_conf_correct": float("nan"), "mean_conf_wrong": float("nan"),
+                "n_correct": 0, "n_wrong": 0}
+
+    avg_answer_ce = cycle_answer_losses[0]
+    for ce in cycle_answer_losses[1:]:
+        avg_answer_ce = avg_answer_ce + ce
+    avg_answer_ce = avg_answer_ce / float(len(cycle_answer_losses))
+
+    avg_calib_bce = cycle_calib_losses[0]
+    for bce in cycle_calib_losses[1:]:
+        avg_calib_bce = avg_calib_bce + bce
+    avg_calib_bce = avg_calib_bce / float(len(cycle_calib_losses))
+
+    total_loss = avg_answer_ce + calibration_weight * avg_calib_bce
+    # Lookup-table L2 reg (mirrors multi_cycle_train_step)
+    total_loss = total_loss + model.lookup_table.weight.square().mean() * 1e-6
+
+    total_loss.backward()
+    opt.step()
+    Device[Device.DEFAULT].synchronize()
+
+    correct_per_breath = cpb_aggregate.tolist() if cpb_aggregate is not None else []
+    mean_conf_correct = (correct_conf_sum / n_correct_total) if n_correct_total > 0 else float("nan")
+    mean_conf_wrong = (wrong_conf_sum / n_wrong_total) if n_wrong_total > 0 else float("nan")
+
+    return {
+        "loss": float(total_loss.numpy()),
+        "answer_ce": float(avg_answer_ce.numpy()),
+        "calib_bce": float(avg_calib_bce.numpy()),
+        "correct_per_breath": correct_per_breath,
+        "n_valid_steps": n_valid_steps_total,
+        "mean_conf_correct": mean_conf_correct,
+        "mean_conf_wrong": mean_conf_wrong,
+        "n_correct": n_correct_total,
+        "n_wrong": n_wrong_total,
+    }
+
+
 def _aux_loss_from_match_weights(match_weights, tokens_np: np.ndarray,
                                   batch_examples: List[MathExample],
                                   eq_token_id, n_classes: int = 4) -> Tensor | None:
@@ -526,6 +775,11 @@ def multi_cycle_train_step(model, opt, batch_examples: List[MathExample], tok,
     #      toward each other; the L2 norm is a mild form of that.
     # Coefficient is tiny (1e-6) so behavior impact is negligible.
     avg_loss = avg_loss + model.lookup_table.weight.square().mean() * 1e-6
+    # Confidence head: tiny L2 reg so its grad is defined when CALIBRATION_MODE=0
+    # (the path that doesn't otherwise touch the head). Behavior impact negligible;
+    # the head doesn't move in this regime because the gradient is microscopic.
+    for p in model.confidence_head.parameters():
+        avg_loss = avg_loss + p.square().mean() * 1e-7
     if aux_loss is not None:
         avg_loss = avg_loss + lookup_aux_weight * aux_loss
 
