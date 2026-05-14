@@ -246,6 +246,10 @@ def main():
     if CALIBRATION_MODE:
         print(f"[CALIBRATION] mode=ON  weight={CALIBRATION_WEIGHT}  loops={CALIBRATION_LOOPS}", flush=True)
 
+    # Layer-pitch ramp env vars (re-read from os.environ to avoid coupling to breathing.py import order)
+    LAYER_PITCH_TARGET = float(os.environ.get("LAYER_PITCH_TARGET", "0.0"))
+    LAYER_PITCH_RAMP_STEPS = int(os.environ.get("LAYER_PITCH_RAMP_STEPS", "500"))
+
     t_start = time.perf_counter()
     for step in range(STEPS):
         # Three-phase scheduling: cycle 0 (Phase A) gets heavy breathing,
@@ -255,6 +259,15 @@ def main():
         loops_per_cycle = [phase_a_loops, PHASE_C_LOOPS]
         idx = rng.integers(0, len(train_examples), size=BATCH)
         batch_examples = [train_examples[i] for i in idx]
+
+        # Update layer_pitch_scale on the ramp schedule (no-op if TARGET=0).
+        # Assign in place so JIT graph identity is preserved.
+        if LAYER_PITCH_TARGET > 0.0:
+            ramp_progress = min(step / max(LAYER_PITCH_RAMP_STEPS, 1), 1.0)
+            new_scale = ramp_progress * LAYER_PITCH_TARGET
+            model.block.layer_pitch_scale.assign(
+                Tensor([new_scale], dtype=dtypes.float).contiguous()
+            )
 
         t0 = time.perf_counter()
         calib_info = None

@@ -114,6 +114,15 @@ LEARN_PITCH              = int(os.environ.get("LEARN_PITCH", "0")) > 0
 # Zero-init mix_alpha means initial forward is identical to no-projection.
 CONSTANT_RADIUS          = int(os.environ.get("CONSTANT_RADIUS", "0")) > 0
 
+# Per-layer angular pitch (within-breath rotation).
+# Each of the 4 phase layers gets a different RoPE rotation: layer_idx * scale.
+# The "helix completes one full rotation per breath via 4 quarter-turns" hypothesis.
+# With TARGET=π/2, scale ramps from 0 → π/2 over RAMP_STEPS, then holds.
+# Ramp gives smooth onset (no warm-start shock) while forcing exploration of the
+# target value (unlike learnable scalar which might stay at zero).
+LAYER_PITCH_TARGET       = float(os.environ.get("LAYER_PITCH_TARGET", "0.0"))   # π/2 ≈ 1.5708
+LAYER_PITCH_RAMP_STEPS   = int(os.environ.get("LAYER_PITCH_RAMP_STEPS", "500"))
+
 
 def _sine_temp_baseline(loop_idx: int, n_loops: int) -> float:
     """Cosine half-period temperature baseline. SINE_TEMP_MAX (warm) at loop_idx=0,
@@ -148,6 +157,8 @@ if LEARN_PITCH:
     print(f"[LEARN_PITCH] helix pitch as learned scalar (zero-init; gradient discovers rotation rate)", flush=True)
 if CONSTANT_RADIUS:
     print(f"[CONSTANT_RADIUS] cylinder projection at breath end (zero-init mix; gradient discovers if helix wants it)", flush=True)
+if LAYER_PITCH_TARGET > 0.0:
+    print(f"[LAYER_PITCH] per-layer rotation ramp 0 → {LAYER_PITCH_TARGET:.4f} rad over {LAYER_PITCH_RAMP_STEPS} steps", flush=True)
 
 
 # ---------- partial RoPE with π cycling ----------
@@ -651,6 +662,11 @@ class BreathingBlock:
         self.crp_mix_alpha = Tensor.zeros((1,), dtype=dtypes.float).contiguous()
         self.crp_target_norm = (Tensor.ones((1,), dtype=dtypes.float) * 30.0).contiguous()
 
+        # Per-layer pitch scale — NOT learnable. Ramped from 0 → LAYER_PITCH_TARGET
+        # over LAYER_PITCH_RAMP_STEPS by the training script (via .assign()).
+        # Buffer Tensor — included in state_dict for ckpt symmetry, NOT in parameters.
+        self.layer_pitch_scale = Tensor.zeros((1,), dtype=dtypes.float).contiguous()
+
     def parameters(self):
         ps = list(self.shared.parameters())
         for layer in self.layers:
@@ -687,8 +703,23 @@ class BreathingBlock:
         alpha = self.rope._alpha_at(loop_idx, x.dtype)
         if BREATH_TIME_EMBED:
             x = x + self.breath_embed[loop_idx].reshape(1, 1, -1).cast(x.dtype)
-        for layer in self.layers:
-            x = layer(x, loop_idx, temp_mult=temp_mult, alpha=alpha)
+        # Per-layer pitch: each layer adds (layer_idx * layer_pitch_scale) to alpha angle.
+        # Rotation of (cos, sin) pair by angle θ:
+        #   new_cos = cos*cos(θ) - sin*sin(θ)
+        #   new_sin = cos*sin(θ) + sin*cos(θ)
+        # When layer_pitch_scale=0 (default / pre-ramp), cos(0)=1, sin(0)=0 → identity rotation.
+        ac_base, asn_base = alpha
+        for layer_idx, layer in enumerate(self.layers):
+            if LAYER_PITCH_TARGET > 0.0 and layer_idx > 0:
+                offset_angle = (self.layer_pitch_scale * float(layer_idx)).cast(dtypes.float)
+                cos_o = offset_angle.cos().reshape(1, 1, 1, 1).cast(x.dtype)
+                sin_o = offset_angle.sin().reshape(1, 1, 1, 1).cast(x.dtype)
+                ac_layer = ac_base * cos_o - asn_base * sin_o
+                asn_layer = ac_base * sin_o + asn_base * cos_o
+                layer_alpha = (ac_layer, asn_layer)
+            else:
+                layer_alpha = alpha
+            x = layer(x, loop_idx, temp_mult=temp_mult, alpha=layer_alpha)
         if CONSTANT_RADIUS:
             # Project onto cylinder of learned radius. Zero-init mix → no-op initially.
             # Manual L2 norm (tinygrad doesn't have .norm()).
@@ -787,6 +818,7 @@ class BreathingTransformer:
         sd["block.rope.pitch"] = self.block.rope.pitch
         sd["block.crp_mix_alpha"] = self.block.crp_mix_alpha
         sd["block.crp_target_norm"] = self.block.crp_target_norm
+        sd["block.layer_pitch_scale"] = self.block.layer_pitch_scale
         sd.update(self.controller.state_dict())
         sd.update(self.confidence_head.state_dict())
         return sd
