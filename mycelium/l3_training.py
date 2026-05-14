@@ -21,6 +21,8 @@ from mycelium.calibration import (
 # The canonical tinygrad pattern wraps the WHOLE step (forward + backward + opt.step)
 # in one TinyJit. Outputs are scalar Tensor losses; .numpy() returns the value.
 _JIT_TRAIN_CACHE: dict = {}
+# Separate cache for the calibration JIT (different signature & key).
+_JIT_CALIB_CACHE: dict = {}
 
 
 def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
@@ -125,6 +127,158 @@ def _build_aux_tensors(batch_examples, tokens_np: np.ndarray, eq_token_ids):
     eq_mask = Tensor(eq_mask_np, dtype=dtypes.float).reshape(B, T, 1).realize()
     y = Tensor(op_labels_masked, dtype=dtypes.int).realize()
     return eq_mask, y
+
+
+def _compile_jit_calibration_step(model, opt, n_loops: int, n_cycles: int,
+                                   fixed_len: int, B: int, max_digits: int,
+                                   calibration_weight: float):
+    """JIT-compile a single calibration training step.
+
+    Inputs (all fixed-shape Tensors, prepared per cycle outside the JIT):
+      For each cycle c in [0, n_cycles): tokens_c, labels_c, eq_mask_c,
+        digit_select_mask_c (B, max_digits, T-1), true_digits_c (B, max_digits int),
+        digit_valid_mask_c (B, max_digits float).
+
+    Inside the JIT (unrolled over n_cycles × n_loops):
+      - breathe_with_lookup forward (already JIT-friendly; uses sine-temp baseline)
+      - per-breath answer-CE (mean over labels != -100 positions, computed from labels)
+      - per-breath argmax → gather at digit positions via digit_select_mask
+      - per-step correctness = (#matched valid digits == #valid digits)
+      - per-breath confidence at eq via eq_mask
+      - BCE(conf, correctness)
+      - sum cycles + lookup L2 reg, backward, opt.step
+
+    Returns:
+      _step(...): the JIT'd callable. Outputs are (total_loss, cpb_acc, answer_ce_acc,
+        calib_bce_acc, conf_correct_sum, conf_wrong_sum, n_correct_total, n_wrong_total).
+    """
+    key = (id(model), id(opt), n_loops, n_cycles, fixed_len, B, max_digits, float(calibration_weight))
+    if key in _JIT_CALIB_CACHE:
+        return _JIT_CALIB_CACHE[key]
+
+    import time as _t_jit
+    _jit_compile_start = _t_jit.perf_counter()
+    print(f"[JIT] compile calibration step: n_loops={n_loops} n_cycles={n_cycles} "
+          f"B={B} fixed_len={fixed_len} max_digits={max_digits}...", flush=True)
+
+    T = fixed_len
+    cw = float(calibration_weight)
+    if n_cycles != 2:
+        raise NotImplementedError(f"calibration JIT supports n_cycles=2 only (got {n_cycles})")
+
+    @TinyJit
+    def _step(
+        tokens0, labels0, eq_mask0, digit_select_mask0, true_digits0, digit_valid_mask0,
+        tokens1, labels1, eq_mask1, digit_select_mask1, true_digits1, digit_valid_mask1,
+    ):
+        opt.zero_grad()
+        total_ans = Tensor.zeros((), dtype=dtypes.float).contiguous()
+        total_bce = Tensor.zeros((), dtype=dtypes.float).contiguous()
+        cpb_acc = Tensor.zeros((n_loops,), dtype=dtypes.float).contiguous()
+        conf_correct_sum = Tensor.zeros((), dtype=dtypes.float).contiguous()
+        conf_wrong_sum = Tensor.zeros((), dtype=dtypes.float).contiguous()
+        n_correct_total = Tensor.zeros((), dtype=dtypes.float).contiguous()
+        n_wrong_total = Tensor.zeros((), dtype=dtypes.float).contiguous()
+
+        for cycle_idx in range(2):
+            if cycle_idx == 0:
+                tokens, labels = tokens0, labels0
+                eq_mask, dsm = eq_mask0, digit_select_mask0
+                td, dvm = true_digits0, digit_valid_mask0
+            else:
+                tokens, labels = tokens1, labels1
+                eq_mask, dsm = eq_mask1, digit_select_mask1
+                td, dvm = true_digits1, digit_valid_mask1
+
+            answer_mask = (labels != -100).cast(dtypes.float)   # (B, T-1)
+            answer_count = answer_mask.sum(axis=1).maximum(1.0)  # (B,)
+
+            # Per-example step validity (at least one valid digit)
+            n_valid_digits = dvm.sum(axis=1)                       # (B,) float
+            step_valid = (n_valid_digits > 0).cast(dtypes.float)   # (B,)
+            n_step_valid = step_valid.sum().maximum(1.0)
+            td_f = td.cast(dtypes.float)
+
+            _, _, integrated_per_breath = model.breathe_with_lookup(tokens, n_loops)
+
+            cycle_ans_sum = Tensor.zeros((), dtype=dtypes.float).contiguous()
+            cycle_bce_sum = Tensor.zeros((), dtype=dtypes.float).contiguous()
+
+            for breath_idx in range(n_loops):
+                rep = integrated_per_breath[breath_idx]
+                logits = (rep @ model.embed_out).cast(dtypes.float)   # (B, T, vocab)
+                pred = logits[:, :-1, :]                               # (B, T-1, vocab)
+
+                per_tok_ce = pred.sparse_categorical_crossentropy(
+                    labels, ignore_index=-100, reduction="none"
+                )                                                       # (B, T-1)
+                per_ex_ans = (per_tok_ce * answer_mask).sum(axis=1) / answer_count
+                cycle_ans_sum = cycle_ans_sum + per_ex_ans.mean()
+
+                # Per-step correctness via tensor gather
+                argmax = pred.argmax(axis=-1).cast(dtypes.float)        # (B, T-1)
+                argmax_b = argmax.reshape(B, 1, T - 1)                  # (B, 1, T-1)
+                argmax_at_digits = (argmax_b * dsm).sum(axis=2)         # (B, max_digits)
+                match = (argmax_at_digits == td_f).cast(dtypes.float)
+                matched_valid = (match * dvm).sum(axis=1)               # (B,) — #valid digits matched
+                # all-correct iff matched_valid == n_valid_digits (and n_valid_digits > 0)
+                all_correct = (matched_valid >= n_valid_digits).cast(dtypes.float)
+                correctness = all_correct * step_valid                  # (B,)
+
+                # Confidence at eq position
+                rep_f = rep.cast(dtypes.float)
+                gathered = (rep_f * eq_mask).sum(axis=1)                # (B, hidden)
+                conf = model.confidence_head(gathered)                  # (B,)
+
+                # BCE
+                c = conf.clamp(1e-7, 1.0 - 1e-7)
+                bce = -(correctness * c.log() + (1.0 - correctness) * (1.0 - c).log())
+                bce_step = (bce * step_valid).sum() / n_step_valid
+                cycle_bce_sum = cycle_bce_sum + bce_step
+
+                # Diagnostics
+                # cpb: count correct steps per breath (across cycles, accumulator)
+                n_cor_this = (correctness * step_valid).sum()           # scalar
+                cpb_one_hot = Tensor.zeros((n_loops,), dtype=dtypes.float).contiguous()
+                # One-hot trick: build a (n_loops,) tensor with 1 at position breath_idx
+                # tinygrad doesn't have nice indexed-assignment; use arange trick
+                idx_t = Tensor.arange(n_loops, dtype=dtypes.float)
+                mask_breath = (idx_t == float(breath_idx)).cast(dtypes.float)
+                cpb_acc = cpb_acc + mask_breath * n_cor_this
+
+                # Confidence sums
+                conf_correct_sum = conf_correct_sum + (conf * correctness).sum()
+                conf_wrong_sum = conf_wrong_sum + (conf * (1.0 - correctness) * step_valid).sum()
+                n_correct_total = n_correct_total + (correctness).sum()
+                n_wrong_total = n_wrong_total + ((1.0 - correctness) * step_valid).sum()
+
+            cycle_ans = cycle_ans_sum / float(n_loops)
+            cycle_bce = cycle_bce_sum / float(n_loops)
+            total_ans = total_ans + cycle_ans
+            total_bce = total_bce + cycle_bce
+
+        avg_ans = total_ans / float(n_cycles)
+        avg_bce = total_bce / float(n_cycles)
+        l2_reg = model.lookup_table.weight.square().mean() * 1e-6
+        total_loss = avg_ans + cw * avg_bce + l2_reg
+
+        total_loss.backward()
+        opt.step()
+        return (
+            total_loss.realize(),
+            cpb_acc.realize(),
+            avg_ans.realize(),
+            avg_bce.realize(),
+            conf_correct_sum.realize(),
+            conf_wrong_sum.realize(),
+            n_correct_total.realize(),
+            n_wrong_total.realize(),
+        )
+
+    _JIT_CALIB_CACHE[key] = _step
+    print(f"[JIT] calibration step compiled in {_t_jit.perf_counter() - _jit_compile_start:.1f}s "
+          f"(cache size={len(_JIT_CALIB_CACHE)})", flush=True)
+    return _step
 
 
 def masked_forward_loss(model, tokens: Tensor, labels: Tensor, n_loops: int,
@@ -355,7 +509,8 @@ def calibration_train_step(model, opt, batch_examples: List[MathExample], tok,
                            digit_token_ids: set, eq_token_ids: list,
                            n_loops: int = 8, fixed_len: int = 128,
                            calibration_weight: float = 0.1,
-                           profile: bool = False):
+                           profile: bool = False, use_jit: bool = False,
+                           max_digits: int = 4):
     """Per-cycle optimal-stopping calibration training.
 
     Multi-cycle aware (mirrors multi_cycle_train_step's encoding). For each
@@ -383,12 +538,77 @@ def calibration_train_step(model, opt, batch_examples: List[MathExample], tok,
     """
     from mycelium.controller import Notebook
     Tensor.training = True
-    opt.zero_grad()
 
     eq_set = set(eq_token_ids)
     cycles_per_ex = [encode_cycles(tok, ex) for ex in batch_examples]
     n_cycles = len(cycles_per_ex[0])
     B = len(batch_examples)
+
+    # JIT fast path — prepare fixed-shape per-cycle tensors and call the compiled step.
+    if use_jit and n_cycles == 2:
+        T = fixed_len
+        cycle_tensors = []
+        for cycle_idx in range(n_cycles):
+            encoded = [ex_cycles[cycle_idx] for ex_cycles in cycles_per_ex]
+            tokens_np, labels_np = collate(encoded, fixed_len=T)
+            eq_mask_np = np.zeros((B, T), dtype=np.float32)
+            dsm_np = np.zeros((B, max_digits, T - 1), dtype=np.float32)
+            td_np = np.zeros((B, max_digits), dtype=np.int32)
+            dvm_np = np.zeros((B, max_digits), dtype=np.float32)
+            for b in range(B):
+                _, prefix_len, total_len = cycles_per_ex[b][cycle_idx]
+                scan_end = min(T, total_len)
+                target_eq = -1
+                for i in range(prefix_len, scan_end):
+                    if int(tokens_np[b, i]) in eq_set:
+                        target_eq = i
+                        break
+                if target_eq < 0:
+                    continue
+                eq_mask_np[b, target_eq] = 1.0
+                i = target_eq + 1
+                d = 0
+                while i < scan_end and d < max_digits and int(tokens_np[b, i]) in digit_token_ids:
+                    pp = i - 1
+                    if 0 <= pp < T - 1:
+                        dsm_np[b, d, pp] = 1.0
+                        td_np[b, d] = int(tokens_np[b, i])
+                        dvm_np[b, d] = 1.0
+                    i += 1
+                    d += 1
+            cycle_tensors.append((
+                Tensor(tokens_np, dtype=dtypes.int).realize(),
+                Tensor(labels_np, dtype=dtypes.int).realize(),
+                Tensor(eq_mask_np, dtype=dtypes.float).reshape(B, T, 1).realize(),
+                Tensor(dsm_np, dtype=dtypes.float).realize(),
+                Tensor(td_np, dtype=dtypes.int).realize(),
+                Tensor(dvm_np, dtype=dtypes.float).realize(),
+            ))
+
+        jit_step = _compile_jit_calibration_step(model, opt, n_loops, n_cycles,
+                                                  fixed_len, B, max_digits, calibration_weight)
+        (total_loss_t, cpb_t, ans_t, bce_t,
+         conf_corr_t, conf_wr_t, n_cor_t, n_wr_t) = jit_step(
+            *cycle_tensors[0], *cycle_tensors[1]
+        )
+        n_correct = float(n_cor_t.numpy())
+        n_wrong = float(n_wr_t.numpy())
+        mean_conf_correct = (float(conf_corr_t.numpy()) / n_correct) if n_correct > 0 else float("nan")
+        mean_conf_wrong = (float(conf_wr_t.numpy()) / n_wrong) if n_wrong > 0 else float("nan")
+        return {
+            "loss": float(total_loss_t.numpy()),
+            "answer_ce": float(ans_t.numpy()),
+            "calib_bce": float(bce_t.numpy()),
+            "correct_per_breath": cpb_t.numpy().tolist(),
+            "n_valid_steps": int(n_correct + n_wrong),
+            "mean_conf_correct": mean_conf_correct,
+            "mean_conf_wrong": mean_conf_wrong,
+            "n_correct": int(n_correct),
+            "n_wrong": int(n_wrong),
+        }
+
+    # Eager path
+    opt.zero_grad()
 
     cycle_answer_losses = []
     cycle_calib_losses = []

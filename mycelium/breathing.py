@@ -58,6 +58,12 @@ SINE_TEMP_MIN      = float(os.environ.get("SINE_TEMP_MIN", "0.5"))
 # head-phase overlap (vs current 87.5%).
 ROTATION_PERIOD    = int(os.environ.get("ROTATION_PERIOD", "0"))
 
+# Zero ONLY the per-breath rotation, keeping per-head spread intact. Tests the
+# "depth from integration alone" hypothesis — does the architecture work as
+# stacked disks (every breath sees the same 16 angular positions) instead of
+# a helix? Distinct from ABLATE_ROTATION which kills BOTH per-head + per-breath.
+ABLATE_BREATH_ROTATION = int(os.environ.get("ABLATE_BREATH_ROTATION", "0")) > 0
+
 
 def _sine_temp_baseline(loop_idx: int, n_loops: int) -> float:
     """Cosine half-period temperature baseline. SINE_TEMP_MAX (warm) at loop_idx=0,
@@ -81,6 +87,8 @@ if SINE_TEMP:
     print(f"[SINE_TEMP] schedule: {SINE_TEMP_MAX} → {SINE_TEMP_MIN} (cosine half-period)", flush=True)
 if ROTATION_PERIOD > 0:
     print(f"[ROTATION_PERIOD] {ROTATION_PERIOD}-breath cycle (loop_phase = l * 2π/{ROTATION_PERIOD})", flush=True)
+if ABLATE_BREATH_ROTATION:
+    print(f"[ABLATE_BREATH_ROTATION] per-breath rotation disabled (per-head spread preserved)", flush=True)
 
 
 # ---------- partial RoPE with π cycling ----------
@@ -136,6 +144,8 @@ class RoPE:
         for l in range(cfg.max_loops):
             if ABLATE_ROTATION:
                 loop_phase = 0.0
+            elif ABLATE_BREATH_ROTATION:
+                loop_phase = 0.0  # per-head spread preserved; only inter-breath drift zeroed
             elif ROTATION_PERIOD > 0:
                 loop_phase = l * 2 * math.pi / ROTATION_PERIOD
             else:

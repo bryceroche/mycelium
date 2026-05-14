@@ -258,7 +258,8 @@ def main():
                                                 eq_token_ids=eq_token_ids,
                                                 n_loops=int(CALIBRATION_LOOPS),
                                                 fixed_len=FIXED_LEN,
-                                                calibration_weight=CALIBRATION_WEIGHT)
+                                                calibration_weight=CALIBRATION_WEIGHT,
+                                                use_jit=USE_JIT)
             loss = calib_info["loss"]
         elif PROFILE:
             loss, main_t = multi_cycle_train_step(model, opt, batch_examples, tok, loops_per_cycle, FIXED_LEN,
