@@ -92,6 +92,9 @@ def collect_params(model):
     # Breath-time embedding (axial conditioning) — always included for ckpt symmetry.
     # When BREATH_TIME_EMBED=0 the L2 reg keeps the gradient defined; the param doesn't move.
     nps += [model.block.breath_embed]
+    # Cross-breath handoff projection — always included for ckpt symmetry.
+    # When CROSS_BREATH_HANDOFF=0 the L2 reg keeps gradient defined; weights don't move.
+    nps += [model.block.handoff_w, model.block.handoff_b]
     # Calibration head — trained on the main loss via REINFORCE in calibration_train_step.
     # Always included so opt.step() has a defined gradient for these params even when
     # CALIBRATION_MODE=0 (gradient is zero in that path, weights don't move).

@@ -62,7 +62,9 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
             l2_reg = model.lookup_table.weight.square().mean() * 1e-6
             ch_reg = sum((p.square().mean() for p in model.confidence_head.parameters()),
                          Tensor.zeros((), dtype=dtypes.float).contiguous()) * 1e-7
-            be_reg = model.block.breath_embed.square().mean() * 1e-7
+            be_reg = (model.block.breath_embed.square().mean()
+                      + model.block.handoff_w.square().mean()
+                      + model.block.handoff_b.square().mean()) * 1e-7
             total = main_ce + aw * aux_ce + l2_reg + ch_reg + be_reg
             total.backward()
             opt.step()
@@ -93,7 +95,9 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
             l2_reg = model.lookup_table.weight.square().mean() * 1e-6
             ch_reg = sum((p.square().mean() for p in model.confidence_head.parameters()),
                          Tensor.zeros((), dtype=dtypes.float).contiguous()) * 1e-7
-            be_reg = model.block.breath_embed.square().mean() * 1e-7
+            be_reg = (model.block.breath_embed.square().mean()
+                      + model.block.handoff_w.square().mean()
+                      + model.block.handoff_b.square().mean()) * 1e-7
             avg_main = (main_ce0 + main_ce1) / 2.0
             total = avg_main + aw * aux_ce + l2_reg + ch_reg + be_reg
             total.backward()
@@ -1000,6 +1004,9 @@ def multi_cycle_train_step(model, opt, batch_examples: List[MathExample], tok,
         avg_loss = avg_loss + p.square().mean() * 1e-7
     # Breath-time embedding: same idea — keep gradient defined when BREATH_TIME_EMBED=0.
     avg_loss = avg_loss + model.block.breath_embed.square().mean() * 1e-7
+    # Cross-breath handoff weights: same idea — keep gradient defined when CROSS_BREATH_HANDOFF=0.
+    avg_loss = avg_loss + model.block.handoff_w.square().mean() * 1e-7
+    avg_loss = avg_loss + model.block.handoff_b.square().mean() * 1e-7
     if aux_loss is not None:
         avg_loss = avg_loss + lookup_aux_weight * aux_loss
 

@@ -81,6 +81,15 @@ ABLATE_BREATH_ROTATION = int(os.environ.get("ABLATE_BREATH_ROTATION", "0")) > 0
 BREATH_TIME_EMBED        = int(os.environ.get("BREATH_TIME_EMBED", "0")) > 0
 BREATH_TIME_INIT_SCALE   = float(os.environ.get("BREATH_TIME_INIT_SCALE", "0.02"))
 
+# Cross-breath handoff — relay-race baton between consecutive breaths. At the end
+# of each breath, a learned linear projection produces a "handoff vector" from
+# the breath's output. That vector is added to the next breath's input. Distinct
+# from integration (which is a long running sum) and breath_embed (which is an
+# unconditional positional signal): handoff is CONDITIONAL on the previous
+# breath's content and fast-decay (just one breath of memory). Zero-init so
+# initial behavior matches v11; gradient builds up the projection gradually.
+CROSS_BREATH_HANDOFF     = int(os.environ.get("CROSS_BREATH_HANDOFF", "0")) > 0
+
 
 def _sine_temp_baseline(loop_idx: int, n_loops: int) -> float:
     """Cosine half-period temperature baseline. SINE_TEMP_MAX (warm) at loop_idx=0,
@@ -109,6 +118,8 @@ if ABLATE_BREATH_ROTATION:
 if BREATH_TIME_EMBED:
     init_str = f"init_scale={BREATH_TIME_INIT_SCALE}" + (" (zero-init)" if BREATH_TIME_INIT_SCALE == 0.0 else "")
     print(f"[BREATH_TIME_EMBED] active axial conditioning ({init_str})", flush=True)
+if CROSS_BREATH_HANDOFF:
+    print(f"[CROSS_BREATH_HANDOFF] zero-init handoff projection between breaths (relay-race baton)", flush=True)
 
 
 # ---------- partial RoPE with π cycling ----------
@@ -557,12 +568,27 @@ class BreathingBlock:
         else:
             self.breath_embed = Tensor.zeros((cfg.max_loops, cfg.hidden), dtype=dtypes.float).contiguous()
 
+        # Cross-breath handoff projection (relay-race baton). Zero-init means initial
+        # handoff = 0 → forward behavior identical to no-handoff. Gradient builds it up.
+        # Always present in state_dict for ckpt symmetry; only threaded into the breath
+        # loop when CROSS_BREATH_HANDOFF=1.
+        self.handoff_w = Tensor.zeros((cfg.hidden, cfg.hidden), dtype=dtypes.float).contiguous()
+        self.handoff_b = Tensor.zeros((cfg.hidden,), dtype=dtypes.float).contiguous()
+
     def parameters(self):
         ps = list(self.shared.parameters())
         for layer in self.layers:
             ps.extend(layer.parameters())
         ps.append(self.breath_embed)
+        ps.append(self.handoff_w)
+        ps.append(self.handoff_b)
         return ps
+
+    def compute_handoff(self, x: Tensor) -> Tensor:
+        """Linear projection of a breath output to its handoff vector for the next
+        breath. Zero-init means this returns ~0 initially; gradient learns useful values."""
+        x_f = x.cast(dtypes.float)
+        return (x_f @ self.handoff_w + self.handoff_b).cast(x.dtype)
 
     def breathe_once(self, x: Tensor, loop_idx: int, temp_mult: float = 1.0) -> Tensor:
         """One breath: 4 layers sequentially. temp_mult scales attention softness
@@ -583,12 +609,19 @@ class BreathingBlock:
 
         Stub controller: gate=1 every breath, always continue. Returns the normalized
         integral (running mean) of all breath outputs. When SINE_TEMP=1 each breath
-        operates at its scheduled temperature.
+        operates at its scheduled temperature. When CROSS_BREATH_HANDOFF=1, the
+        previous breath's output is projected and added to the next breath's input
+        (relay-race baton).
         """
         integral = Tensor.zeros_like(x)
         gate_sum = 0.0
+        handoff = None
         for l in range(n_loops):
+            if CROSS_BREATH_HANDOFF and handoff is not None:
+                x = x + handoff
             x = self.breathe_once(x, l, temp_mult=_sine_temp_baseline(l, n_loops))
+            if CROSS_BREATH_HANDOFF:
+                handoff = self.compute_handoff(x)
             integral = integral + x
             gate_sum += 1.0
         return integral / gate_sum
@@ -653,6 +686,8 @@ class BreathingTransformer:
             for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
                 sd[f"phase{i}.{a}"] = getattr(layer, a)
         sd["block.breath_embed"] = self.block.breath_embed
+        sd["block.handoff_w"] = self.block.handoff_w
+        sd["block.handoff_b"] = self.block.handoff_b
         sd.update(self.controller.state_dict())
         sd.update(self.confidence_head.state_dict())
         return sd
@@ -696,8 +731,13 @@ class BreathingTransformer:
         states = [x]
         integral = Tensor.zeros_like(x)
         gate_sum = 0.0
+        handoff = None
         for l in range(n_loops):
+            if CROSS_BREATH_HANDOFF and handoff is not None:
+                x = x + handoff
             x = self.block.breathe_once(x, l, temp_mult=_sine_temp_baseline(l, n_loops))
+            if CROSS_BREATH_HANDOFF:
+                handoff = self.block.compute_handoff(x)
             states.append(x)
             integral = integral + x
             gate_sum += 1.0
@@ -920,8 +960,13 @@ class BreathingTransformer:
         integral = Tensor.zeros_like(x)
         match_weights = []
         integrated_per_breath = []
+        handoff = None
         for l in range(n_loops):
+            if CROSS_BREATH_HANDOFF and handoff is not None:
+                x = x + handoff
             x = self.block.breathe_once(x, l, temp_mult=_sine_temp_baseline(l, n_loops))
+            if CROSS_BREATH_HANDOFF:
+                handoff = self.block.compute_handoff(x)
             integral = integral + x
             running = integral / float(l + 1)
             running_normed = _layernorm(running, self.ln_f_g, self.ln_f_b, self.cfg.layer_norm_eps)
