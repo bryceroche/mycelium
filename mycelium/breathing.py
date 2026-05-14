@@ -691,11 +691,13 @@ class BreathingBlock:
             x = layer(x, loop_idx, temp_mult=temp_mult, alpha=alpha)
         if CONSTANT_RADIUS:
             # Project onto cylinder of learned radius. Zero-init mix → no-op initially.
-            x_norm = x.norm(axis=-1, keepdim=True) + 1e-6
-            target = self.crp_target_norm.cast(x.dtype)
-            mix = self.crp_mix_alpha.cast(x.dtype)
-            x_proj = x * (target / x_norm)
-            x = x * (1.0 - mix) + x_proj * mix
+            # Manual L2 norm (tinygrad doesn't have .norm()).
+            x_f = x.cast(dtypes.float)
+            x_norm = (x_f.square().sum(axis=-1, keepdim=True) + 1e-6).sqrt()
+            target = self.crp_target_norm
+            mix = self.crp_mix_alpha
+            x_proj = x_f * (target / x_norm)
+            x = (x_f * (1.0 - mix) + x_proj * mix).cast(x.dtype)
         return x
 
     def breathe(self, x: Tensor, n_loops: int) -> Tensor:
