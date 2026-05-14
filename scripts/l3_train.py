@@ -92,6 +92,13 @@ def collect_params(model):
     # Breath-time embedding (axial conditioning) — always included for ckpt symmetry.
     # When BREATH_TIME_EMBED=0 the L2 reg keeps the gradient defined; the param doesn't move.
     nps += [model.block.breath_embed]
+    # Cross-breath handoff projection — always included for ckpt symmetry.
+    # When CROSS_BREATH_HANDOFF=0 the L2 reg keeps gradient defined; weights don't move.
+    nps += [model.block.handoff_w, model.block.handoff_b]
+    # Helix pitch (single scalar) — learned when LEARN_PITCH=1.
+    nps += [model.block.rope.pitch]
+    # Constant-radius projection scalars — learned when CONSTANT_RADIUS=1.
+    nps += [model.block.crp_mix_alpha, model.block.crp_target_norm]
     # Calibration head — trained on the main loss via REINFORCE in calibration_train_step.
     # Always included so opt.step() has a defined gradient for these params even when
     # CALIBRATION_MODE=0 (gradient is zero in that path, weights don't move).
@@ -239,6 +246,10 @@ def main():
     if CALIBRATION_MODE:
         print(f"[CALIBRATION] mode=ON  weight={CALIBRATION_WEIGHT}  loops={CALIBRATION_LOOPS}", flush=True)
 
+    # Layer-pitch ramp env vars (re-read from os.environ to avoid coupling to breathing.py import order)
+    LAYER_PITCH_TARGET = float(os.environ.get("LAYER_PITCH_TARGET", "0.0"))
+    LAYER_PITCH_RAMP_STEPS = int(os.environ.get("LAYER_PITCH_RAMP_STEPS", "500"))
+
     t_start = time.perf_counter()
     for step in range(STEPS):
         # Three-phase scheduling: cycle 0 (Phase A) gets heavy breathing,
@@ -248,6 +259,33 @@ def main():
         loops_per_cycle = [phase_a_loops, PHASE_C_LOOPS]
         idx = rng.integers(0, len(train_examples), size=BATCH)
         batch_examples = [train_examples[i] for i in idx]
+
+        # Update layer_pitch_scale on the ramp schedule (no-op if TARGET=0).
+        # Assign in place so JIT graph identity is preserved.
+        #
+        # Ramp shape (env var LAYER_PITCH_RAMP_SHAPE):
+        #   "cos" (default): 0.5*(1-cos(πt/T)). Slope 0→peak (middle)→0. v17/v18/v19
+        #          used this; collapse zone correlated with mid-ramp peak slope.
+        #   "exp": (1-exp(-k*t/T))/(1-exp(-k)). Slope decreases monotonically from
+        #          start (peak at t=0 when model has most slack) to end (near 0).
+        #          Tests hypothesis: collapse is from slope rate during mid-ramp,
+        #          not absolute pitch. Bryce's "100% slope rate" intuition.
+        if LAYER_PITCH_TARGET > 0.0:
+            import math as _m
+            shape = os.environ.get("LAYER_PITCH_RAMP_SHAPE", "cos")
+            if step < LAYER_PITCH_RAMP_STEPS:
+                t_norm = step / LAYER_PITCH_RAMP_STEPS
+                if shape == "exp":
+                    k = float(os.environ.get("LAYER_PITCH_RAMP_K", "3.0"))
+                    ramp_progress = (1.0 - _m.exp(-k * t_norm)) / (1.0 - _m.exp(-k))
+                else:  # "cos" default
+                    ramp_progress = 0.5 * (1.0 - _m.cos(_m.pi * t_norm))
+            else:
+                ramp_progress = 1.0
+            new_scale = ramp_progress * LAYER_PITCH_TARGET
+            model.block.layer_pitch_scale.assign(
+                Tensor([new_scale], dtype=dtypes.float).contiguous()
+            )
 
         t0 = time.perf_counter()
         calib_info = None

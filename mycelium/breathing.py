@@ -70,7 +70,58 @@ ABLATE_BREATH_ROTATION = int(os.environ.get("ABLATE_BREATH_ROTATION", "0")) > 0
 # angular gap (we have per-head angular conditioning via RoPE, but no axial
 # conditioning across breaths). Always present in state_dict for ckpt symmetry;
 # only added to forward when env var is set.
-BREATH_TIME_EMBED  = int(os.environ.get("BREATH_TIME_EMBED", "0")) > 0
+#
+# BREATH_TIME_INIT_SCALE controls the init magnitude. v9 used 0.02 (Pythia-style)
+# which proved too disruptive to warm-starts — the random vectors added noise at
+# every breath, the model couldn't both adapt to the new signal AND undo the
+# representation damage. Setting to 0.0 (zero-init) means initial behavior is
+# identical to the no-embed model; the gradient builds up breath_embed gradually
+# as the loss rewards using it. Small positive values (e.g. 0.001) are an
+# intermediate option.
+BREATH_TIME_EMBED        = int(os.environ.get("BREATH_TIME_EMBED", "0")) > 0
+BREATH_TIME_INIT_SCALE   = float(os.environ.get("BREATH_TIME_INIT_SCALE", "0.02"))
+
+# Cross-breath handoff — relay-race baton between consecutive breaths. At the end
+# of each breath, a learned linear projection produces a "handoff vector" from
+# the breath's output. That vector is added to the next breath's input. Distinct
+# from integration (which is a long running sum) and breath_embed (which is an
+# unconditional positional signal): handoff is CONDITIONAL on the previous
+# breath's content and fast-decay (just one breath of memory). Zero-init so
+# initial behavior matches v11; gradient builds up the projection gradually.
+CROSS_BREATH_HANDOFF     = int(os.environ.get("CROSS_BREATH_HANDOFF", "0")) > 0
+
+# Learned helix pitch. Replaces the fixed per-breath rotation rate
+# (loop_phase = l * π/max_loops or = 0) with a single learnable scalar.
+# alpha(h, l) = head_phase[h] + l * pitch  where pitch is a model parameter.
+# Zero-init: initial behavior matches ABLATE_BREATH_ROTATION=1 exactly (no per-breath
+# rotation). Gradient discovers if/how much pitch the helix wants.
+# Single scalar Tensor; trained jointly with the transformer.
+LEARN_PITCH              = int(os.environ.get("LEARN_PITCH", "0")) > 0
+
+# Constant-radius projection (kill DC growth, force rep onto cylinder).
+# Direct test of the helix metaphor: a helix lives at constant distance R
+# from its central axis. Currently the rep's L2 norm grows 3.9 → 6.4 across
+# 8 breaths — model spirals outward, not orbiting on a cylinder.
+#
+# Mechanism: after each breath, blend the rep with a magnitude-normalized
+# version using a learnable mix scalar (zero-init: no projection initially).
+# If mix learns toward 1, the model WANTS to be on the cylinder (helix
+# confirmed). If mix stays near 0, radial growth was useful (helix wrong).
+#
+#   x_normalized = x * (target_norm / x.norm(axis=-1))
+#   x = (1 - mix_alpha) * x + mix_alpha * x_normalized
+#
+# Zero-init mix_alpha means initial forward is identical to no-projection.
+CONSTANT_RADIUS          = int(os.environ.get("CONSTANT_RADIUS", "0")) > 0
+
+# Per-layer angular pitch (within-breath rotation).
+# Each of the 4 phase layers gets a different RoPE rotation: layer_idx * scale.
+# The "helix completes one full rotation per breath via 4 quarter-turns" hypothesis.
+# With TARGET=π/2, scale ramps from 0 → π/2 over RAMP_STEPS, then holds.
+# Ramp gives smooth onset (no warm-start shock) while forcing exploration of the
+# target value (unlike learnable scalar which might stay at zero).
+LAYER_PITCH_TARGET       = float(os.environ.get("LAYER_PITCH_TARGET", "0.0"))   # π/2 ≈ 1.5708
+LAYER_PITCH_RAMP_STEPS   = int(os.environ.get("LAYER_PITCH_RAMP_STEPS", "500"))
 
 
 def _sine_temp_baseline(loop_idx: int, n_loops: int) -> float:
@@ -98,7 +149,16 @@ if ROTATION_PERIOD > 0:
 if ABLATE_BREATH_ROTATION:
     print(f"[ABLATE_BREATH_ROTATION] per-breath rotation disabled (per-head spread preserved)", flush=True)
 if BREATH_TIME_EMBED:
-    print(f"[BREATH_TIME_EMBED] active axial conditioning (per-breath embedding added at breath start)", flush=True)
+    init_str = f"init_scale={BREATH_TIME_INIT_SCALE}" + (" (zero-init)" if BREATH_TIME_INIT_SCALE == 0.0 else "")
+    print(f"[BREATH_TIME_EMBED] active axial conditioning ({init_str})", flush=True)
+if CROSS_BREATH_HANDOFF:
+    print(f"[CROSS_BREATH_HANDOFF] zero-init handoff projection between breaths (relay-race baton)", flush=True)
+if LEARN_PITCH:
+    print(f"[LEARN_PITCH] helix pitch as learned scalar (zero-init; gradient discovers rotation rate)", flush=True)
+if CONSTANT_RADIUS:
+    print(f"[CONSTANT_RADIUS] cylinder projection at breath end (zero-init mix; gradient discovers if helix wants it)", flush=True)
+if LAYER_PITCH_TARGET > 0.0:
+    print(f"[LAYER_PITCH] per-layer rotation ramp 0 → {LAYER_PITCH_TARGET:.4f} rad over {LAYER_PITCH_RAMP_STEPS} steps", flush=True)
 
 
 # ---------- partial RoPE with π cycling ----------
@@ -149,6 +209,20 @@ class RoPE:
         head_phase = [h * math.pi / cfg.n_heads for h in range(cfg.n_heads)]
         if ABLATE_ROTATION:
             head_phase = [0.0] * cfg.n_heads  # no per-head phase diversity
+        # Fixed head-phase tensor (the "R" of the helix — angular structure).
+        # Used by the learned-pitch path to compute alpha on the fly.
+        self.head_phase_t = Tensor(head_phase, dtype=dtypes.float).contiguous().realize()
+
+        # Learned pitch — per-head rotation rate. Multi-scale helical analysis:
+        # each head can learn its own pitch, giving 16 different helical scales.
+        # v13b used (1,) shared scalar — neutral result. v14 = (n_heads,) for per-head.
+        # Zero-init: initially no per-breath rotation, matching v8/v11/v12 setup.
+        # Always present in state_dict for ckpt symmetry; only flows through forward
+        # when LEARN_PITCH=1. When 0, the precomputed alpha tables are used (existing
+        # behavior is preserved exactly).
+        self.pitch = Tensor.zeros((cfg.n_heads,), dtype=dtypes.float).contiguous()
+
+        # Precomputed alpha tables — used in the fast path when LEARN_PITCH=0.
         self.alpha_cos: List[Tensor] = []
         self.alpha_sin: List[Tensor] = []
         for l in range(cfg.max_loops):
@@ -166,7 +240,25 @@ class RoPE:
             self.alpha_cos.append(ac)
             self.alpha_sin.append(asn)
 
-    def apply_at_tensor_pos(self, q: Tensor, k: Tensor, loop_idx: int, t_pos_t: Tensor):
+    def _alpha_at(self, loop_idx: int, target_dtype):
+        """Compute alpha_cos and alpha_sin for the given breath.
+
+        When LEARN_PITCH=1: alpha = head_phase + loop_idx * pitch (Tensor scalar).
+        Gradient flows back to self.pitch via this path.
+
+        When LEARN_PITCH=0: use precomputed alpha_cos[loop_idx] (no gradient).
+        Matches v12 behavior exactly.
+        """
+        if LEARN_PITCH and not ABLATE_ROTATION:
+            alpha = self.head_phase_t + float(loop_idx) * self.pitch       # (n_heads,)
+            ac = alpha.cos().reshape(1, self.cfg.n_heads, 1, 1).cast(target_dtype)
+            asn = alpha.sin().reshape(1, self.cfg.n_heads, 1, 1).cast(target_dtype)
+            return ac, asn
+        return (self.alpha_cos[loop_idx].cast(target_dtype),
+                self.alpha_sin[loop_idx].cast(target_dtype))
+
+    def apply_at_tensor_pos(self, q: Tensor, k: Tensor, loop_idx: int, t_pos_t: Tensor,
+                             alpha: tuple | None = None):
         """Cached generation: S=1, t_pos as Tensor (shape () or (1,) for shared
         position across batch, or (B,) for per-batch positions). Builds the position-
         specific cos/sin via mask + sum over the full table.
@@ -192,13 +284,16 @@ class RoPE:
         q_rot = _rotate(q_rot, cos_at, sin_at)
         k_rot = _rotate(k_rot, cos_at, sin_at)
 
-        ac = self.alpha_cos[loop_idx].cast(q.dtype)
-        asn = self.alpha_sin[loop_idx].cast(q.dtype)
+        if alpha is not None:
+            ac, asn = alpha
+        else:
+            ac, asn = self._alpha_at(loop_idx, q.dtype)
         q_rot = _rotate(q_rot, ac, asn)
 
         return Tensor.cat(q_rot, q_pass, dim=-1), Tensor.cat(k_rot, k_pass, dim=-1)
 
-    def apply(self, q: Tensor, k: Tensor, loop_idx: int, start_pos: int = 0):
+    def apply(self, q: Tensor, k: Tensor, loop_idx: int, start_pos: int = 0,
+              alpha: tuple | None = None):
         """q, k: (B, n_heads, seq, head_dim). Rotate first rotary_dim slots, leave rest.
 
         start_pos: offset into the position table (for KV-cached generation, when
@@ -215,9 +310,13 @@ class RoPE:
         q_rot = _rotate(q_rot, cos, sin)
         k_rot = _rotate(k_rot, cos, sin)
 
-        # π-cycled phase offset on Q only (rotated portion)
-        ac = self.alpha_cos[loop_idx].cast(q.dtype)
-        asn = self.alpha_sin[loop_idx].cast(q.dtype)
+        # π-cycled phase offset on Q only (rotated portion).
+        # When alpha is provided (hoisted from breathe_once), use it directly — saves
+        # 4× redundant computation across the 4 phase layers in a breath.
+        if alpha is not None:
+            ac, asn = alpha
+        else:
+            ac, asn = self._alpha_at(loop_idx, q.dtype)
         q_rot = _rotate(q_rot, ac, asn)
 
         q = Tensor.cat(q_rot, q_pass, dim=-1)
@@ -299,20 +398,22 @@ class BreathingLayer:
         return [self.wq, self.bq, self.wk, self.bk, self.w_in, self.b_in]
 
     def __call__(self, x: Tensor, loop_idx: int, attn_mask: Tensor | None = None,
-                 temp_mult: Tensor | float = 1.0) -> Tensor:
+                 temp_mult: Tensor | float = 1.0, alpha: tuple | None = None) -> Tensor:
         return self._forward(x, loop_idx, kv_cache=None, return_kv=False,
-                             attn_mask=attn_mask, temp_mult=temp_mult)[0]
+                             attn_mask=attn_mask, temp_mult=temp_mult, alpha=alpha)[0]
 
     def forward_with_kv(self, x: Tensor, loop_idx: int, attn_mask: Tensor | None = None,
-                        temp_mult: float = 1.0):
+                        temp_mult: float = 1.0, alpha: tuple | None = None):
         """Full-sequence forward that also returns the post-RoPE K, V tensors.
 
         attn_mask: optional (B, S) bool/{0,1} tensor — 1 for valid, 0 for padding.
         When provided, padding positions don't influence attention (added as -inf to
         scores) and don't get gradient signal.
+        alpha: optional precomputed (ac, asn) tuple; hoisted from the breath loop
+        so all 4 layers in a breath share one alpha computation.
         """
         return self._forward(x, loop_idx, kv_cache=None, return_kv=True, attn_mask=attn_mask,
-                             temp_mult=temp_mult)
+                             temp_mult=temp_mult, alpha=alpha)
 
     def forward_cached_step(self, x_new: Tensor, loop_idx: int, kv_cache):
         """Single-token (S=1) forward with cached past K/V. Returns (out, (k_full, v_full))."""
@@ -469,7 +570,8 @@ class BreathingLayer:
         return out, k_buf_new, v_buf_new
 
     def _forward(self, x: Tensor, loop_idx: int, kv_cache, return_kv: bool,
-                 attn_mask: Tensor | None = None, temp_mult: Tensor | float = 1.0):
+                 attn_mask: Tensor | None = None, temp_mult: Tensor | float = 1.0,
+                 alpha: tuple | None = None):
         cfg = self.cfg
         B, S, H = x.shape
 
@@ -490,7 +592,7 @@ class BreathingLayer:
             scale = self.attn_scale / float(temp_mult)
 
         if kv_cache is None:
-            q, k = self.rope.apply(q, k, loop_idx, start_pos=0)
+            q, k = self.rope.apply(q, k, loop_idx, start_pos=0, alpha=alpha)
             scores = q @ k.transpose(-2, -1) * scale
             mask = Tensor.ones(S, S, dtype=scores.dtype).tril().reshape(1, 1, S, S)
             scores = scores.masked_fill(mask == 0, float("-inf"))
@@ -509,7 +611,7 @@ class BreathingLayer:
         # Cached path — single new token (S==1) attending over (cached past + itself).
         k_past, v_past = kv_cache
         t_past = int(k_past.shape[2])
-        q, k = self.rope.apply(q, k, loop_idx, start_pos=t_past)
+        q, k = self.rope.apply(q, k, loop_idx, start_pos=t_past, alpha=alpha)
         k_full = Tensor.cat(k_past, k, dim=2)        # (B, n_heads, T_past+1, head_dim)
         v_full = Tensor.cat(v_past, v, dim=2)
         # No causal mask: new token can attend to all past + itself.
@@ -535,16 +637,53 @@ class BreathingBlock:
         self.layers = [BreathingLayer(cfg, ph, self.shared, self.rope) for ph in phases]
         # Diffusion-style breath-time embedding (axial conditioning). Always created
         # so the parameter list is stable across env-var toggles; only added to the
-        # residual stream when BREATH_TIME_EMBED=1. Init: small normal so the
-        # warm-start trajectory isn't disrupted on the first step.
-        self.breath_embed = (Tensor.randn(cfg.max_loops, cfg.hidden, dtype=dtypes.float) * 0.02).contiguous()
+        # residual stream when BREATH_TIME_EMBED=1.
+        #
+        # Init magnitude controlled by BREATH_TIME_INIT_SCALE (env var, default 0.02).
+        # Zero-init (=0.0) preserves warm-start behavior; gradient builds the embed
+        # gradually as loss rewards using it. Small positive values introduce a
+        # weak prior signal from the start.
+        if BREATH_TIME_INIT_SCALE > 0.0:
+            self.breath_embed = (Tensor.randn(cfg.max_loops, cfg.hidden, dtype=dtypes.float)
+                                  * BREATH_TIME_INIT_SCALE).contiguous()
+        else:
+            self.breath_embed = Tensor.zeros((cfg.max_loops, cfg.hidden), dtype=dtypes.float).contiguous()
+
+        # Cross-breath handoff projection (relay-race baton). Zero-init means initial
+        # handoff = 0 → forward behavior identical to no-handoff. Gradient builds it up.
+        # Always present in state_dict for ckpt symmetry; only threaded into the breath
+        # loop when CROSS_BREATH_HANDOFF=1.
+        self.handoff_w = Tensor.zeros((cfg.hidden, cfg.hidden), dtype=dtypes.float).contiguous()
+        self.handoff_b = Tensor.zeros((cfg.hidden,), dtype=dtypes.float).contiguous()
+
+        # Constant-radius projection scalars. zero-init mix → no projection initially.
+        # Target norm starts at ~30 (typical activation L2 norm for 1024-d fp16 reps).
+        # Both shape (1,) for AdamW compatibility.
+        self.crp_mix_alpha = Tensor.zeros((1,), dtype=dtypes.float).contiguous()
+        self.crp_target_norm = (Tensor.ones((1,), dtype=dtypes.float) * 30.0).contiguous()
+
+        # Per-layer pitch scale — NOT learnable. Ramped from 0 → LAYER_PITCH_TARGET
+        # over LAYER_PITCH_RAMP_STEPS by the training script (via .assign()).
+        # Buffer Tensor — included in state_dict for ckpt symmetry, NOT in parameters.
+        self.layer_pitch_scale = Tensor.zeros((1,), dtype=dtypes.float).contiguous()
 
     def parameters(self):
         ps = list(self.shared.parameters())
         for layer in self.layers:
             ps.extend(layer.parameters())
         ps.append(self.breath_embed)
+        ps.append(self.handoff_w)
+        ps.append(self.handoff_b)
+        ps.append(self.rope.pitch)
+        ps.append(self.crp_mix_alpha)
+        ps.append(self.crp_target_norm)
         return ps
+
+    def compute_handoff(self, x: Tensor) -> Tensor:
+        """Linear projection of a breath output to its handoff vector for the next
+        breath. Zero-init means this returns ~0 initially; gradient learns useful values."""
+        x_f = x.cast(dtypes.float)
+        return (x_f @ self.handoff_w + self.handoff_b).cast(x.dtype)
 
     def breathe_once(self, x: Tensor, loop_idx: int, temp_mult: float = 1.0) -> Tensor:
         """One breath: 4 layers sequentially. temp_mult scales attention softness
@@ -553,11 +692,43 @@ class BreathingBlock:
         When BREATH_TIME_EMBED=1, adds the learned per-breath axial embedding to
         the residual stream at the start of the breath — the model explicitly
         knows "I'm at breath loop_idx" (analogous to diffusion timestep conditioning).
+
+        Perf: alpha is computed ONCE per breath here and shared across the 4 layers
+        (vs 4× redundantly inside each layer's rope.apply call). 4× reduction in
+        per-breath alpha overhead.
         """
+        # Compute alpha (cos/sin tensors for the per-head + per-breath phase offset)
+        # once per breath, share across all 4 layers. With LEARN_PITCH=1 this is the
+        # gradient path back to the pitch scalar.
+        alpha = self.rope._alpha_at(loop_idx, x.dtype)
         if BREATH_TIME_EMBED:
             x = x + self.breath_embed[loop_idx].reshape(1, 1, -1).cast(x.dtype)
-        for layer in self.layers:
-            x = layer(x, loop_idx, temp_mult=temp_mult)
+        # Per-layer pitch: each layer adds (layer_idx * layer_pitch_scale) to alpha angle.
+        # Rotation of (cos, sin) pair by angle θ:
+        #   new_cos = cos*cos(θ) - sin*sin(θ)
+        #   new_sin = cos*sin(θ) + sin*cos(θ)
+        # When layer_pitch_scale=0 (default / pre-ramp), cos(0)=1, sin(0)=0 → identity rotation.
+        ac_base, asn_base = alpha
+        for layer_idx, layer in enumerate(self.layers):
+            if LAYER_PITCH_TARGET > 0.0 and layer_idx > 0:
+                offset_angle = (self.layer_pitch_scale * float(layer_idx)).cast(dtypes.float)
+                cos_o = offset_angle.cos().reshape(1, 1, 1, 1).cast(x.dtype)
+                sin_o = offset_angle.sin().reshape(1, 1, 1, 1).cast(x.dtype)
+                ac_layer = ac_base * cos_o - asn_base * sin_o
+                asn_layer = ac_base * sin_o + asn_base * cos_o
+                layer_alpha = (ac_layer, asn_layer)
+            else:
+                layer_alpha = alpha
+            x = layer(x, loop_idx, temp_mult=temp_mult, alpha=layer_alpha)
+        if CONSTANT_RADIUS:
+            # Project onto cylinder of learned radius. Zero-init mix → no-op initially.
+            # Manual L2 norm (tinygrad doesn't have .norm()).
+            x_f = x.cast(dtypes.float)
+            x_norm = (x_f.square().sum(axis=-1, keepdim=True) + 1e-6).sqrt()
+            target = self.crp_target_norm
+            mix = self.crp_mix_alpha
+            x_proj = x_f * (target / x_norm)
+            x = (x_f * (1.0 - mix) + x_proj * mix).cast(x.dtype)
         return x
 
     def breathe(self, x: Tensor, n_loops: int) -> Tensor:
@@ -565,12 +736,19 @@ class BreathingBlock:
 
         Stub controller: gate=1 every breath, always continue. Returns the normalized
         integral (running mean) of all breath outputs. When SINE_TEMP=1 each breath
-        operates at its scheduled temperature.
+        operates at its scheduled temperature. When CROSS_BREATH_HANDOFF=1, the
+        previous breath's output is projected and added to the next breath's input
+        (relay-race baton).
         """
         integral = Tensor.zeros_like(x)
         gate_sum = 0.0
+        handoff = None
         for l in range(n_loops):
+            if CROSS_BREATH_HANDOFF and handoff is not None:
+                x = x + handoff
             x = self.breathe_once(x, l, temp_mult=_sine_temp_baseline(l, n_loops))
+            if CROSS_BREATH_HANDOFF:
+                handoff = self.compute_handoff(x)
             integral = integral + x
             gate_sum += 1.0
         return integral / gate_sum
@@ -635,6 +813,12 @@ class BreathingTransformer:
             for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
                 sd[f"phase{i}.{a}"] = getattr(layer, a)
         sd["block.breath_embed"] = self.block.breath_embed
+        sd["block.handoff_w"] = self.block.handoff_w
+        sd["block.handoff_b"] = self.block.handoff_b
+        sd["block.rope.pitch"] = self.block.rope.pitch
+        sd["block.crp_mix_alpha"] = self.block.crp_mix_alpha
+        sd["block.crp_target_norm"] = self.block.crp_target_norm
+        sd["block.layer_pitch_scale"] = self.block.layer_pitch_scale
         sd.update(self.controller.state_dict())
         sd.update(self.confidence_head.state_dict())
         return sd
@@ -678,8 +862,13 @@ class BreathingTransformer:
         states = [x]
         integral = Tensor.zeros_like(x)
         gate_sum = 0.0
+        handoff = None
         for l in range(n_loops):
+            if CROSS_BREATH_HANDOFF and handoff is not None:
+                x = x + handoff
             x = self.block.breathe_once(x, l, temp_mult=_sine_temp_baseline(l, n_loops))
+            if CROSS_BREATH_HANDOFF:
+                handoff = self.block.compute_handoff(x)
             states.append(x)
             integral = integral + x
             gate_sum += 1.0
@@ -902,8 +1091,13 @@ class BreathingTransformer:
         integral = Tensor.zeros_like(x)
         match_weights = []
         integrated_per_breath = []
+        handoff = None
         for l in range(n_loops):
+            if CROSS_BREATH_HANDOFF and handoff is not None:
+                x = x + handoff
             x = self.block.breathe_once(x, l, temp_mult=_sine_temp_baseline(l, n_loops))
+            if CROSS_BREATH_HANDOFF:
+                handoff = self.block.compute_handoff(x)
             integral = integral + x
             running = integral / float(l + 1)
             running_normed = _layernorm(running, self.ln_f_g, self.ln_f_b, self.cfg.layer_norm_eps)
