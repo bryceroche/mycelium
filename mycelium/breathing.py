@@ -70,7 +70,16 @@ ABLATE_BREATH_ROTATION = int(os.environ.get("ABLATE_BREATH_ROTATION", "0")) > 0
 # angular gap (we have per-head angular conditioning via RoPE, but no axial
 # conditioning across breaths). Always present in state_dict for ckpt symmetry;
 # only added to forward when env var is set.
-BREATH_TIME_EMBED  = int(os.environ.get("BREATH_TIME_EMBED", "0")) > 0
+#
+# BREATH_TIME_INIT_SCALE controls the init magnitude. v9 used 0.02 (Pythia-style)
+# which proved too disruptive to warm-starts — the random vectors added noise at
+# every breath, the model couldn't both adapt to the new signal AND undo the
+# representation damage. Setting to 0.0 (zero-init) means initial behavior is
+# identical to the no-embed model; the gradient builds up breath_embed gradually
+# as the loss rewards using it. Small positive values (e.g. 0.001) are an
+# intermediate option.
+BREATH_TIME_EMBED        = int(os.environ.get("BREATH_TIME_EMBED", "0")) > 0
+BREATH_TIME_INIT_SCALE   = float(os.environ.get("BREATH_TIME_INIT_SCALE", "0.02"))
 
 
 def _sine_temp_baseline(loop_idx: int, n_loops: int) -> float:
@@ -98,7 +107,8 @@ if ROTATION_PERIOD > 0:
 if ABLATE_BREATH_ROTATION:
     print(f"[ABLATE_BREATH_ROTATION] per-breath rotation disabled (per-head spread preserved)", flush=True)
 if BREATH_TIME_EMBED:
-    print(f"[BREATH_TIME_EMBED] active axial conditioning (per-breath embedding added at breath start)", flush=True)
+    init_str = f"init_scale={BREATH_TIME_INIT_SCALE}" + (" (zero-init)" if BREATH_TIME_INIT_SCALE == 0.0 else "")
+    print(f"[BREATH_TIME_EMBED] active axial conditioning ({init_str})", flush=True)
 
 
 # ---------- partial RoPE with π cycling ----------
@@ -535,9 +545,17 @@ class BreathingBlock:
         self.layers = [BreathingLayer(cfg, ph, self.shared, self.rope) for ph in phases]
         # Diffusion-style breath-time embedding (axial conditioning). Always created
         # so the parameter list is stable across env-var toggles; only added to the
-        # residual stream when BREATH_TIME_EMBED=1. Init: small normal so the
-        # warm-start trajectory isn't disrupted on the first step.
-        self.breath_embed = (Tensor.randn(cfg.max_loops, cfg.hidden, dtype=dtypes.float) * 0.02).contiguous()
+        # residual stream when BREATH_TIME_EMBED=1.
+        #
+        # Init magnitude controlled by BREATH_TIME_INIT_SCALE (env var, default 0.02).
+        # Zero-init (=0.0) preserves warm-start behavior; gradient builds the embed
+        # gradually as loss rewards using it. Small positive values introduce a
+        # weak prior signal from the start.
+        if BREATH_TIME_INIT_SCALE > 0.0:
+            self.breath_embed = (Tensor.randn(cfg.max_loops, cfg.hidden, dtype=dtypes.float)
+                                  * BREATH_TIME_INIT_SCALE).contiguous()
+        else:
+            self.breath_embed = Tensor.zeros((cfg.max_loops, cfg.hidden), dtype=dtypes.float).contiguous()
 
     def parameters(self):
         ps = list(self.shared.parameters())
