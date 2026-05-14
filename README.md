@@ -2,7 +2,7 @@
 ## Conceptual Architecture
 
 **Author:** Bryce + Claude
-**Date:** May 1, 2026
+**Date:** May 13, 2026 (vision: May 1 · empirical status: see §14)
 **Deadline:** September 1, 2026
 **Platform:** Shadow Glass (AMD 7900 XTX, 24GB) · tinygrad + AM driver · no AMD/ROCm software
 **Target:** MATH-500
@@ -506,5 +506,30 @@ We leave behind: Llama 1B (replaced by Pythia-410M L0-3), LoRA atoms and continu
 **The guarantee.** Diversity is structural: π cycling, 16 per-head phase offsets, sine-wave temperature. Gradient descent cannot erase them. Every breath sees the problem from a different angle at a different resolution. The one-basin collapse of v1-v3 is architecturally impossible.
 
 **The platform.** AMD 7900 XTX + tinygrad + AM driver. Ubuntu 24.04. No proprietary software. Local, open-source, hackable. 75 TFLOPS fp16 matmul. 2.3 min/epoch on GSM8K — 2.5× faster than the best v3 configuration on AWS.
+
+---
+
+## 14. Empirical Status (May 13, 2026)
+
+The architecture above is the design. The empirical evolution has surfaced what's load-bearing and what's scaffolding. This section is the honest current-state record.
+
+**Best ckpt for multi-step:** L4_MIXED v1 step 1500 = **66 / 67 / 65** on L4_MIXED eval (A=1 / A=4 / A=8). Trained from L4 v4 step 1500 warm-start with broadest L4 distribution (six standard L4 generators + three cascade-biased variants).
+
+**What ablations established:**
+- π-cycled RoPE (per-head phase offset) is the only clearly load-bearing closed-loop component: −73 points if ablated, vs −0 to −6 for everything else at 150 steps.
+- Sine-baseline temperature (2.0 → 0.7 cosine half-period) is load-bearing for warm-start stability.
+- Integration, notebook, controller decisions (temperature/gate/step_mult), step-size adaptivity — all measure as decorative on converged ARITH_HARD. The controller specifically learned `f(breath_idx)`, not `f(rep)`: an open-loop schedule, problem-blind.
+
+**Verification probe — definitive negative:** MLP probes on trained reps (up to 17M params, 1000 steps) cannot distinguish correct from wrong answers (AUC 0.29, anti-correlated). Verification information is not present in the reps as trained. The "7/7 closed feedback loop" is correctly wired but most of it doesn't yet have a job that benefits the loss.
+
+**The current research direction is the verification objective itself.** The `calibration_train_step` (in `l3_training.py`) attaches a `ConfidenceHead` to the model and supervises per-breath BCE(conf, argmax-correct) — training the model to *know what it knows*. If this lands, calibration becomes the per-breath training signal that gives the deeper components (controller, notebook, integration) a job. The first run from L4_MIXED v1 step 1500 warm-start is in flight as of this writing; the decision point is step 250 acc eval.
+
+**Two failed-and-instructive experiments preceded the current calibration line:**
+- `ROTATION_PERIOD=4` (period-4 RoPE cycle, closure-based "discovery + verification" structure): 68/64/60 at step 1500 — *depth got worse*. Closure alone isn't enough without per-breath training pressure.
+- Single-cycle calibration v3: 1/1/1 catastrophic — training distribution must match eval distribution (multi-cycle). v4 with multi-cycle but digit-only mask: 0/1/0 — same failure via a different surface. v5 with multi-cycle + full target mask is the principled version.
+
+**The lesson the empirical curriculum keeps re-establishing:** "train on what you evaluate on." Narrow training distributions (ARITH_BORROW, single-cycle encoding, digit-only masks) cause catastrophic forgetting of the broader eval distribution every time. L4_MIXED was the first broad-distribution training that worked; everything since has been refining what the model learns *within* that distribution, not narrowing it.
+
+**The conceptual architecture above remains the design target.** The empirical record clarifies which pieces are working today versus which are wired-but-waiting for the right loss signal to activate.
 
 A 127M model that breathes, alternates, integrates, and factorizes. Four months to September 1.

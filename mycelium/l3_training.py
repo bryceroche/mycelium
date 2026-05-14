@@ -446,17 +446,13 @@ def calibration_train_step(model, opt, batch_examples: List[MathExample], tok,
             if per_ex_info[b] is not None:
                 eq_mask_np[b, per_ex_info[b][0]] = 1.0
 
-        # Answer-mask: positions where the next-token target is a labeled digit
-        # (limit to digit positions inside the labeled target — that's the answer)
-        answer_mask_np = np.zeros((B, T - 1), dtype=np.float32)
-        for b in range(B):
-            if per_ex_info[b] is None:
-                continue
-            _, digit_positions, _ = per_ex_info[b]
-            for dp in digit_positions:
-                pp = dp - 1
-                if 0 <= pp < T - 1:
-                    answer_mask_np[b, pp] = 1.0
+        # Answer-mask: supervise EVERY target token (matches multi_cycle_train_step).
+        # Earlier v4 limited supervision to digit positions only — caught the bug
+        # that non-digit positions (operators, separators, spaces) got no training
+        # signal and the model produced garbage there at autoregressive eval. With
+        # the full labels mask, the standard generation distribution is preserved.
+        # See project_calibration_v3_failed.md and v4 = 0/1/0 result.
+        answer_mask_np = (labels_np != -100).astype(np.float32)
 
         tokens = Tensor(tokens_np, dtype=dtypes.int).realize()
         labels = Tensor(labels_np, dtype=dtypes.int).realize()

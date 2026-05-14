@@ -52,14 +52,35 @@ The loop **terminates** when both: (a) the integral has stabilized (Lyapunov cri
 
 ---
 
-## 3. Empirical Status (as of 2026-05-11)
+## 3. Empirical Status (as of 2026-05-13)
 
-- **L3-spaced training:** 8-loop accuracy 70% vs 1-loop 65% (more thinking helps). Loss gap closed 73% (0.77 → 0.20 nats). The 65% ceiling is arithmetic precision (4-layer model limit), not a breathing limitation.
-- **L4-spaced:** 10% with rotation + integration only. The full 7/7 loop is now ready for L4 — this is where the controller has the most to contribute (deciding *which step's operation comes next*).
-- **Looping signal survives:** centered cross-problem cosine -0.05 (orthogonal) through 4 loops, effective rank 15-16, signal norm grows 3.9 → 6.4 across 8 loops.
-- **Lookup table validated:** trained 16×1024 cosine table hits 100% op classification on standalone test.
-- **Digit-by-digit generation:** "1 7 0 - 1 3 2 = 3 8" jumped 71% → 87.5% on peek samples (BPE single-token "170" forces memorization; per-digit forces computation).
-- **Inference engine:** JIT-fused KV cache, 42.8× speedup (268s → 6.3s for N=100, LOOPS=8), bit-for-bit identical outputs. Compile once, replay forever. Eval is no longer a bottleneck.
+**Best ckpt for pure L4: L4_MIXED v1 step 1500 = 66 / 67 / 65 (A=1 / A=4 / A=8).**
+
+Trajectory:
+- **L3-spaced:** 70% at A=8 vs 65% at A=1 (depth helps). 65% is the 4-layer arithmetic ceiling.
+- **L4 v4 (May 12):** 43% pure L4 from arith_mixed_v6 warm-start. Step 1500 was the headline.
+- **L4_BORROW v1 overnight (May 13):** 80% on L4_BORROW eval (cascade-heavy), but only 32% on pure L4 — narrow-curriculum trade-off. Catastrophic forgetting between L4_BORROW and standard L4.
+- **L4_MIXED v1 (May 13):** broadest distribution (6 standard + 3 cascade variants). Step 1500 = **66/67/65** on L4_MIXED eval. +20 vs v4 baseline. Best ckpt to date.
+- **L4_MIXED v2 / `ROTATION_PERIOD=4` (May 13):** closed-cycle RoPE (period 4, 50% per-breath overlap). 68/64/60 at step 1500 — partial LOSE. Depth got *worse* (A=8 −5 vs v1). Closure alone isn't sufficient without per-breath training pressure for verification.
+- **L4_MIXED v3/v4 calibration (May 13):** added `ConfidenceHead` + BCE(conf, argmax-correct) per breath. v3 (single-cycle encoding): 1/1/1 at step 250 — catastrophic forgetting from encoding mismatch. v4 (multi-cycle encoding, digit-only mask): 0/1/0 — same catastrophic forgetting because non-digit positions got no training signal. v5 (multi-cycle + full target mask): in progress.
+
+### What the ablations established
+
+| Component | Status | Load-bearing? |
+|---|---|---|
+| Rotation (per-head π-cycled) | Validated | YES (−73 pts if ablated; only clearly load-bearing piece) |
+| Integration (gated running integral) | Validated | Decorative at converged ARITH_HARD; untested in multi-step |
+| Notebook | Validated | Decorative on single-cycle data |
+| Lookup table | 100% op classification | Useful as supervised target, decorative as live signal |
+| Controller (temperature/gate/step_mult/stop) | Validated | Learned `f(breath_idx)` not `f(rep)` — open-loop schedule, problem-blind |
+| Temperature modulation (sine baseline 2.0→0.7) | Validated | Load-bearing for warm-start stability |
+| Step size (controller-emitted) | Validated | Decorative (no problem-dependent signal) |
+
+The "7/7 closed feedback loop" framing is the canonical vision. Empirically only **rotation + sine temperature** are clearly load-bearing. The controller and downstream components remain as scaffolding — they're correctly wired, they just haven't yet found a job that benefits the loss.
+
+### Verification probe — definitive negative
+
+MLP probes on v6 reps (shallow 1024→512→1; deep 8192-concat→2048→512→1, 17M params, 1000 steps) BOTH failed. Test acc 34%, AUC 0.29 — anti-correlated. Verification info is NOT in the trained reps. The "deeper fix" — training calibration as a transformer objective rather than a frozen probe — is the current direction (`calibration_train_step`).
 
 ---
 
@@ -86,8 +107,9 @@ The loop **terminates** when both: (a) the integral has stabilized (Lyapunov cri
 
 ## 6. Current Work In Progress
 
-- **AM driver bringup (working and persistent as of 2026-05-11):** `DEV='PCI+AMD'` smoke test passes after disabling Secure Boot (lockdown was the EPERM root cause) and adding `vm.compact_unevictable_allowed=0`. `scripts/setup_am_driver.sh` installs both fixes plus a corrected unbind-service ordering (polls for the driver symlink instead of racing against udev) — verified across a clean reboot. We were on KFD/ROCm before this; AM is the spec's stated stack. See `memory/project_am_driver_state.md`.
-- **Full 7/7 closed loop ready for empirical validation on L4-spaced** — first run with all components active.
+- **Calibration training (L4_MIXED v5):** `calibration_train_step` adds a `ConfidenceHead` (1024→256→1 MLP, sigmoid) at each step's "=" position. Per-breath BCE(conf, argmax-correct) supervises the head to predict its own correctness — the verification objective the probe found was missing from frozen reps. Multi-cycle encoding (matches eval distribution), full target mask (every target token supervised, fixing v4's digit-only failure). `CALIBRATION_MODE=1` env var routes the training step. Currently running from L4_MIXED v1 step 1500 warm-start. Decision point at step 250 eval.
+- **`ROTATION_PERIOD` env var:** closed-cycle RoPE rotation. Default 0 preserves existing behavior (`loop_phase = l * π/max_loops`); `=N` switches to `l * 2π/N` (period N breaths, full cycle returns to start). v2 with `=4` showed depth hurt — closure alone isn't sufficient. Available for future experiments once calibration baseline lands.
+- **AM driver (working since 2026-05-11):** `DEV='PCI+AMD'` works after Secure Boot off + `vm.compact_unevictable_allowed=0`. `scripts/setup_am_driver.sh` installs both. See `memory/project_am_driver_state.md`.
 
 ---
 
