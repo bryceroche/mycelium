@@ -90,6 +90,14 @@ BREATH_TIME_INIT_SCALE   = float(os.environ.get("BREATH_TIME_INIT_SCALE", "0.02"
 # initial behavior matches v11; gradient builds up the projection gradually.
 CROSS_BREATH_HANDOFF     = int(os.environ.get("CROSS_BREATH_HANDOFF", "0")) > 0
 
+# Learned helix pitch. Replaces the fixed per-breath rotation rate
+# (loop_phase = l * π/max_loops or = 0) with a single learnable scalar.
+# alpha(h, l) = head_phase[h] + l * pitch  where pitch is a model parameter.
+# Zero-init: initial behavior matches ABLATE_BREATH_ROTATION=1 exactly (no per-breath
+# rotation). Gradient discovers if/how much pitch the helix wants.
+# Single scalar Tensor; trained jointly with the transformer.
+LEARN_PITCH              = int(os.environ.get("LEARN_PITCH", "0")) > 0
+
 
 def _sine_temp_baseline(loop_idx: int, n_loops: int) -> float:
     """Cosine half-period temperature baseline. SINE_TEMP_MAX (warm) at loop_idx=0,
@@ -120,6 +128,8 @@ if BREATH_TIME_EMBED:
     print(f"[BREATH_TIME_EMBED] active axial conditioning ({init_str})", flush=True)
 if CROSS_BREATH_HANDOFF:
     print(f"[CROSS_BREATH_HANDOFF] zero-init handoff projection between breaths (relay-race baton)", flush=True)
+if LEARN_PITCH:
+    print(f"[LEARN_PITCH] helix pitch as learned scalar (zero-init; gradient discovers rotation rate)", flush=True)
 
 
 # ---------- partial RoPE with π cycling ----------
@@ -170,6 +180,19 @@ class RoPE:
         head_phase = [h * math.pi / cfg.n_heads for h in range(cfg.n_heads)]
         if ABLATE_ROTATION:
             head_phase = [0.0] * cfg.n_heads  # no per-head phase diversity
+        # Fixed head-phase tensor (the "R" of the helix — angular structure).
+        # Used by the learned-pitch path to compute alpha on the fly.
+        self.head_phase_t = Tensor(head_phase, dtype=dtypes.float).contiguous().realize()
+
+        # Learned pitch scalar (the "P" of the helix — axial rotation rate).
+        # Zero-init: initially no per-breath rotation, matching the v8/v11/v12 setup.
+        # Always present in state_dict for ckpt symmetry; only flows through forward
+        # when LEARN_PITCH=1. When 0, the precomputed alpha tables are used (existing
+        # behavior is preserved exactly).
+        # Shape (1,) not () — tinygrad AdamW's broadcast rules don't shrink to ().
+        self.pitch = Tensor.zeros((1,), dtype=dtypes.float).contiguous()
+
+        # Precomputed alpha tables — used in the fast path when LEARN_PITCH=0.
         self.alpha_cos: List[Tensor] = []
         self.alpha_sin: List[Tensor] = []
         for l in range(cfg.max_loops):
@@ -186,6 +209,23 @@ class RoPE:
             asn = Tensor(alphas, dtype=dtypes.float).sin().reshape(1, cfg.n_heads, 1, 1).contiguous().realize()
             self.alpha_cos.append(ac)
             self.alpha_sin.append(asn)
+
+    def _alpha_at(self, loop_idx: int, target_dtype):
+        """Compute alpha_cos and alpha_sin for the given breath.
+
+        When LEARN_PITCH=1: alpha = head_phase + loop_idx * pitch (Tensor scalar).
+        Gradient flows back to self.pitch via this path.
+
+        When LEARN_PITCH=0: use precomputed alpha_cos[loop_idx] (no gradient).
+        Matches v12 behavior exactly.
+        """
+        if LEARN_PITCH and not ABLATE_ROTATION:
+            alpha = self.head_phase_t + float(loop_idx) * self.pitch       # (n_heads,)
+            ac = alpha.cos().reshape(1, self.cfg.n_heads, 1, 1).cast(target_dtype)
+            asn = alpha.sin().reshape(1, self.cfg.n_heads, 1, 1).cast(target_dtype)
+            return ac, asn
+        return (self.alpha_cos[loop_idx].cast(target_dtype),
+                self.alpha_sin[loop_idx].cast(target_dtype))
 
     def apply_at_tensor_pos(self, q: Tensor, k: Tensor, loop_idx: int, t_pos_t: Tensor):
         """Cached generation: S=1, t_pos as Tensor (shape () or (1,) for shared
@@ -213,8 +253,7 @@ class RoPE:
         q_rot = _rotate(q_rot, cos_at, sin_at)
         k_rot = _rotate(k_rot, cos_at, sin_at)
 
-        ac = self.alpha_cos[loop_idx].cast(q.dtype)
-        asn = self.alpha_sin[loop_idx].cast(q.dtype)
+        ac, asn = self._alpha_at(loop_idx, q.dtype)
         q_rot = _rotate(q_rot, ac, asn)
 
         return Tensor.cat(q_rot, q_pass, dim=-1), Tensor.cat(k_rot, k_pass, dim=-1)
@@ -236,9 +275,9 @@ class RoPE:
         q_rot = _rotate(q_rot, cos, sin)
         k_rot = _rotate(k_rot, cos, sin)
 
-        # π-cycled phase offset on Q only (rotated portion)
-        ac = self.alpha_cos[loop_idx].cast(q.dtype)
-        asn = self.alpha_sin[loop_idx].cast(q.dtype)
+        # π-cycled phase offset on Q only (rotated portion).
+        # When LEARN_PITCH=1, alpha is computed on-the-fly with the learned pitch scalar.
+        ac, asn = self._alpha_at(loop_idx, q.dtype)
         q_rot = _rotate(q_rot, ac, asn)
 
         q = Tensor.cat(q_rot, q_pass, dim=-1)
@@ -582,6 +621,7 @@ class BreathingBlock:
         ps.append(self.breath_embed)
         ps.append(self.handoff_w)
         ps.append(self.handoff_b)
+        ps.append(self.rope.pitch)
         return ps
 
     def compute_handoff(self, x: Tensor) -> Tensor:
@@ -688,6 +728,7 @@ class BreathingTransformer:
         sd["block.breath_embed"] = self.block.breath_embed
         sd["block.handoff_w"] = self.block.handoff_w
         sd["block.handoff_b"] = self.block.handoff_b
+        sd["block.rope.pitch"] = self.block.rope.pitch
         sd.update(self.controller.state_dict())
         sd.update(self.confidence_head.state_dict())
         return sd
