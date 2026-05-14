@@ -227,7 +227,8 @@ class RoPE:
         return (self.alpha_cos[loop_idx].cast(target_dtype),
                 self.alpha_sin[loop_idx].cast(target_dtype))
 
-    def apply_at_tensor_pos(self, q: Tensor, k: Tensor, loop_idx: int, t_pos_t: Tensor):
+    def apply_at_tensor_pos(self, q: Tensor, k: Tensor, loop_idx: int, t_pos_t: Tensor,
+                             alpha: tuple | None = None):
         """Cached generation: S=1, t_pos as Tensor (shape () or (1,) for shared
         position across batch, or (B,) for per-batch positions). Builds the position-
         specific cos/sin via mask + sum over the full table.
@@ -253,12 +254,16 @@ class RoPE:
         q_rot = _rotate(q_rot, cos_at, sin_at)
         k_rot = _rotate(k_rot, cos_at, sin_at)
 
-        ac, asn = self._alpha_at(loop_idx, q.dtype)
+        if alpha is not None:
+            ac, asn = alpha
+        else:
+            ac, asn = self._alpha_at(loop_idx, q.dtype)
         q_rot = _rotate(q_rot, ac, asn)
 
         return Tensor.cat(q_rot, q_pass, dim=-1), Tensor.cat(k_rot, k_pass, dim=-1)
 
-    def apply(self, q: Tensor, k: Tensor, loop_idx: int, start_pos: int = 0):
+    def apply(self, q: Tensor, k: Tensor, loop_idx: int, start_pos: int = 0,
+              alpha: tuple | None = None):
         """q, k: (B, n_heads, seq, head_dim). Rotate first rotary_dim slots, leave rest.
 
         start_pos: offset into the position table (for KV-cached generation, when
@@ -276,8 +281,12 @@ class RoPE:
         k_rot = _rotate(k_rot, cos, sin)
 
         # π-cycled phase offset on Q only (rotated portion).
-        # When LEARN_PITCH=1, alpha is computed on-the-fly with the learned pitch scalar.
-        ac, asn = self._alpha_at(loop_idx, q.dtype)
+        # When alpha is provided (hoisted from breathe_once), use it directly — saves
+        # 4× redundant computation across the 4 phase layers in a breath.
+        if alpha is not None:
+            ac, asn = alpha
+        else:
+            ac, asn = self._alpha_at(loop_idx, q.dtype)
         q_rot = _rotate(q_rot, ac, asn)
 
         q = Tensor.cat(q_rot, q_pass, dim=-1)
@@ -359,20 +368,22 @@ class BreathingLayer:
         return [self.wq, self.bq, self.wk, self.bk, self.w_in, self.b_in]
 
     def __call__(self, x: Tensor, loop_idx: int, attn_mask: Tensor | None = None,
-                 temp_mult: Tensor | float = 1.0) -> Tensor:
+                 temp_mult: Tensor | float = 1.0, alpha: tuple | None = None) -> Tensor:
         return self._forward(x, loop_idx, kv_cache=None, return_kv=False,
-                             attn_mask=attn_mask, temp_mult=temp_mult)[0]
+                             attn_mask=attn_mask, temp_mult=temp_mult, alpha=alpha)[0]
 
     def forward_with_kv(self, x: Tensor, loop_idx: int, attn_mask: Tensor | None = None,
-                        temp_mult: float = 1.0):
+                        temp_mult: float = 1.0, alpha: tuple | None = None):
         """Full-sequence forward that also returns the post-RoPE K, V tensors.
 
         attn_mask: optional (B, S) bool/{0,1} tensor — 1 for valid, 0 for padding.
         When provided, padding positions don't influence attention (added as -inf to
         scores) and don't get gradient signal.
+        alpha: optional precomputed (ac, asn) tuple; hoisted from the breath loop
+        so all 4 layers in a breath share one alpha computation.
         """
         return self._forward(x, loop_idx, kv_cache=None, return_kv=True, attn_mask=attn_mask,
-                             temp_mult=temp_mult)
+                             temp_mult=temp_mult, alpha=alpha)
 
     def forward_cached_step(self, x_new: Tensor, loop_idx: int, kv_cache):
         """Single-token (S=1) forward with cached past K/V. Returns (out, (k_full, v_full))."""
@@ -529,7 +540,8 @@ class BreathingLayer:
         return out, k_buf_new, v_buf_new
 
     def _forward(self, x: Tensor, loop_idx: int, kv_cache, return_kv: bool,
-                 attn_mask: Tensor | None = None, temp_mult: Tensor | float = 1.0):
+                 attn_mask: Tensor | None = None, temp_mult: Tensor | float = 1.0,
+                 alpha: tuple | None = None):
         cfg = self.cfg
         B, S, H = x.shape
 
@@ -550,7 +562,7 @@ class BreathingLayer:
             scale = self.attn_scale / float(temp_mult)
 
         if kv_cache is None:
-            q, k = self.rope.apply(q, k, loop_idx, start_pos=0)
+            q, k = self.rope.apply(q, k, loop_idx, start_pos=0, alpha=alpha)
             scores = q @ k.transpose(-2, -1) * scale
             mask = Tensor.ones(S, S, dtype=scores.dtype).tril().reshape(1, 1, S, S)
             scores = scores.masked_fill(mask == 0, float("-inf"))
@@ -569,7 +581,7 @@ class BreathingLayer:
         # Cached path — single new token (S==1) attending over (cached past + itself).
         k_past, v_past = kv_cache
         t_past = int(k_past.shape[2])
-        q, k = self.rope.apply(q, k, loop_idx, start_pos=t_past)
+        q, k = self.rope.apply(q, k, loop_idx, start_pos=t_past, alpha=alpha)
         k_full = Tensor.cat(k_past, k, dim=2)        # (B, n_heads, T_past+1, head_dim)
         v_full = Tensor.cat(v_past, v, dim=2)
         # No causal mask: new token can attend to all past + itself.
@@ -637,11 +649,19 @@ class BreathingBlock:
         When BREATH_TIME_EMBED=1, adds the learned per-breath axial embedding to
         the residual stream at the start of the breath — the model explicitly
         knows "I'm at breath loop_idx" (analogous to diffusion timestep conditioning).
+
+        Perf: alpha is computed ONCE per breath here and shared across the 4 layers
+        (vs 4× redundantly inside each layer's rope.apply call). 4× reduction in
+        per-breath alpha overhead.
         """
+        # Compute alpha (cos/sin tensors for the per-head + per-breath phase offset)
+        # once per breath, share across all 4 layers. With LEARN_PITCH=1 this is the
+        # gradient path back to the pitch scalar.
+        alpha = self.rope._alpha_at(loop_idx, x.dtype)
         if BREATH_TIME_EMBED:
             x = x + self.breath_embed[loop_idx].reshape(1, 1, -1).cast(x.dtype)
         for layer in self.layers:
-            x = layer(x, loop_idx, temp_mult=temp_mult)
+            x = layer(x, loop_idx, temp_mult=temp_mult, alpha=alpha)
         return x
 
     def breathe(self, x: Tensor, n_loops: int) -> Tensor:
