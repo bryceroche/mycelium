@@ -184,13 +184,14 @@ class RoPE:
         # Used by the learned-pitch path to compute alpha on the fly.
         self.head_phase_t = Tensor(head_phase, dtype=dtypes.float).contiguous().realize()
 
-        # Learned pitch scalar (the "P" of the helix — axial rotation rate).
-        # Zero-init: initially no per-breath rotation, matching the v8/v11/v12 setup.
+        # Learned pitch — per-head rotation rate. Multi-scale helical analysis:
+        # each head can learn its own pitch, giving 16 different helical scales.
+        # v13b used (1,) shared scalar — neutral result. v14 = (n_heads,) for per-head.
+        # Zero-init: initially no per-breath rotation, matching v8/v11/v12 setup.
         # Always present in state_dict for ckpt symmetry; only flows through forward
         # when LEARN_PITCH=1. When 0, the precomputed alpha tables are used (existing
         # behavior is preserved exactly).
-        # Shape (1,) not () — tinygrad AdamW's broadcast rules don't shrink to ().
-        self.pitch = Tensor.zeros((1,), dtype=dtypes.float).contiguous()
+        self.pitch = Tensor.zeros((cfg.n_heads,), dtype=dtypes.float).contiguous()
 
         # Precomputed alpha tables — used in the fast path when LEARN_PITCH=0.
         self.alpha_cos: List[Tensor] = []
