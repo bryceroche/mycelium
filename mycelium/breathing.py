@@ -64,6 +64,14 @@ ROTATION_PERIOD    = int(os.environ.get("ROTATION_PERIOD", "0"))
 # a helix? Distinct from ABLATE_ROTATION which kills BOTH per-head + per-breath.
 ABLATE_BREATH_ROTATION = int(os.environ.get("ABLATE_BREATH_ROTATION", "0")) > 0
 
+# Active axial conditioning — diffusion-style breath-time embedding. When enabled,
+# adds a learned per-breath vector to the residual stream at the start of each
+# breath, so the model explicitly knows "I'm at breath b". Closes the axial-vs-
+# angular gap (we have per-head angular conditioning via RoPE, but no axial
+# conditioning across breaths). Always present in state_dict for ckpt symmetry;
+# only added to forward when env var is set.
+BREATH_TIME_EMBED  = int(os.environ.get("BREATH_TIME_EMBED", "0")) > 0
+
 
 def _sine_temp_baseline(loop_idx: int, n_loops: int) -> float:
     """Cosine half-period temperature baseline. SINE_TEMP_MAX (warm) at loop_idx=0,
@@ -89,6 +97,8 @@ if ROTATION_PERIOD > 0:
     print(f"[ROTATION_PERIOD] {ROTATION_PERIOD}-breath cycle (loop_phase = l * 2π/{ROTATION_PERIOD})", flush=True)
 if ABLATE_BREATH_ROTATION:
     print(f"[ABLATE_BREATH_ROTATION] per-breath rotation disabled (per-head spread preserved)", flush=True)
+if BREATH_TIME_EMBED:
+    print(f"[BREATH_TIME_EMBED] active axial conditioning (per-breath embedding added at breath start)", flush=True)
 
 
 # ---------- partial RoPE with π cycling ----------
@@ -523,16 +533,29 @@ class BreathingBlock:
         # Phases trace one full sine wave: 0, π/2, π, 3π/2.
         phases = [i * 2 * math.pi / cfg.n_phases for i in range(cfg.n_phases)]
         self.layers = [BreathingLayer(cfg, ph, self.shared, self.rope) for ph in phases]
+        # Diffusion-style breath-time embedding (axial conditioning). Always created
+        # so the parameter list is stable across env-var toggles; only added to the
+        # residual stream when BREATH_TIME_EMBED=1. Init: small normal so the
+        # warm-start trajectory isn't disrupted on the first step.
+        self.breath_embed = (Tensor.randn(cfg.max_loops, cfg.hidden, dtype=dtypes.float) * 0.02).contiguous()
 
     def parameters(self):
         ps = list(self.shared.parameters())
         for layer in self.layers:
             ps.extend(layer.parameters())
+        ps.append(self.breath_embed)
         return ps
 
     def breathe_once(self, x: Tensor, loop_idx: int, temp_mult: float = 1.0) -> Tensor:
         """One breath: 4 layers sequentially. temp_mult scales attention softness
-        per breath (used by the sine-baseline schedule when SINE_TEMP=1)."""
+        per breath (used by the sine-baseline schedule when SINE_TEMP=1).
+
+        When BREATH_TIME_EMBED=1, adds the learned per-breath axial embedding to
+        the residual stream at the start of the breath — the model explicitly
+        knows "I'm at breath loop_idx" (analogous to diffusion timestep conditioning).
+        """
+        if BREATH_TIME_EMBED:
+            x = x + self.breath_embed[loop_idx].reshape(1, 1, -1).cast(x.dtype)
         for layer in self.layers:
             x = layer(x, loop_idx, temp_mult=temp_mult)
         return x
@@ -611,6 +634,7 @@ class BreathingTransformer:
         for i, layer in enumerate(self.block.layers):
             for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
                 sd[f"phase{i}.{a}"] = getattr(layer, a)
+        sd["block.breath_embed"] = self.block.breath_embed
         sd.update(self.controller.state_dict())
         sd.update(self.confidence_head.state_dict())
         return sd
