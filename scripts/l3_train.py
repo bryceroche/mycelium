@@ -262,8 +262,18 @@ def main():
 
         # Update layer_pitch_scale on the ramp schedule (no-op if TARGET=0).
         # Assign in place so JIT graph identity is preserved.
+        #
+        # COSINE ramp (v17+): slope=0 at both endpoints, smooth landing. v16 used
+        # LINEAR ramp which had a sharp corner at RAMP_STEPS — model was adapting
+        # to changing pitch through step 500, then optimizer dynamics collapsed
+        # between step 500-1000 once the target froze. Cosine has zero slope at
+        # endpoint = smooth transition from "ramping" to "held."
         if LAYER_PITCH_TARGET > 0.0:
-            ramp_progress = min(step / max(LAYER_PITCH_RAMP_STEPS, 1), 1.0)
+            import math as _m
+            if step < LAYER_PITCH_RAMP_STEPS:
+                ramp_progress = 0.5 * (1.0 - _m.cos(_m.pi * step / LAYER_PITCH_RAMP_STEPS))
+            else:
+                ramp_progress = 1.0
             new_scale = ramp_progress * LAYER_PITCH_TARGET
             model.block.layer_pitch_scale.assign(
                 Tensor([new_scale], dtype=dtypes.float).contiguous()
