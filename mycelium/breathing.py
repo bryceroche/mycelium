@@ -98,6 +98,22 @@ CROSS_BREATH_HANDOFF     = int(os.environ.get("CROSS_BREATH_HANDOFF", "0")) > 0
 # Single scalar Tensor; trained jointly with the transformer.
 LEARN_PITCH              = int(os.environ.get("LEARN_PITCH", "0")) > 0
 
+# Constant-radius projection (kill DC growth, force rep onto cylinder).
+# Direct test of the helix metaphor: a helix lives at constant distance R
+# from its central axis. Currently the rep's L2 norm grows 3.9 → 6.4 across
+# 8 breaths — model spirals outward, not orbiting on a cylinder.
+#
+# Mechanism: after each breath, blend the rep with a magnitude-normalized
+# version using a learnable mix scalar (zero-init: no projection initially).
+# If mix learns toward 1, the model WANTS to be on the cylinder (helix
+# confirmed). If mix stays near 0, radial growth was useful (helix wrong).
+#
+#   x_normalized = x * (target_norm / x.norm(axis=-1))
+#   x = (1 - mix_alpha) * x + mix_alpha * x_normalized
+#
+# Zero-init mix_alpha means initial forward is identical to no-projection.
+CONSTANT_RADIUS          = int(os.environ.get("CONSTANT_RADIUS", "0")) > 0
+
 
 def _sine_temp_baseline(loop_idx: int, n_loops: int) -> float:
     """Cosine half-period temperature baseline. SINE_TEMP_MAX (warm) at loop_idx=0,
@@ -130,6 +146,8 @@ if CROSS_BREATH_HANDOFF:
     print(f"[CROSS_BREATH_HANDOFF] zero-init handoff projection between breaths (relay-race baton)", flush=True)
 if LEARN_PITCH:
     print(f"[LEARN_PITCH] helix pitch as learned scalar (zero-init; gradient discovers rotation rate)", flush=True)
+if CONSTANT_RADIUS:
+    print(f"[CONSTANT_RADIUS] cylinder projection at breath end (zero-init mix; gradient discovers if helix wants it)", flush=True)
 
 
 # ---------- partial RoPE with π cycling ----------
@@ -627,6 +645,12 @@ class BreathingBlock:
         self.handoff_w = Tensor.zeros((cfg.hidden, cfg.hidden), dtype=dtypes.float).contiguous()
         self.handoff_b = Tensor.zeros((cfg.hidden,), dtype=dtypes.float).contiguous()
 
+        # Constant-radius projection scalars. zero-init mix → no projection initially.
+        # Target norm starts at ~30 (typical activation L2 norm for 1024-d fp16 reps).
+        # Both shape (1,) for AdamW compatibility.
+        self.crp_mix_alpha = Tensor.zeros((1,), dtype=dtypes.float).contiguous()
+        self.crp_target_norm = (Tensor.ones((1,), dtype=dtypes.float) * 30.0).contiguous()
+
     def parameters(self):
         ps = list(self.shared.parameters())
         for layer in self.layers:
@@ -635,6 +659,8 @@ class BreathingBlock:
         ps.append(self.handoff_w)
         ps.append(self.handoff_b)
         ps.append(self.rope.pitch)
+        ps.append(self.crp_mix_alpha)
+        ps.append(self.crp_target_norm)
         return ps
 
     def compute_handoff(self, x: Tensor) -> Tensor:
@@ -663,6 +689,13 @@ class BreathingBlock:
             x = x + self.breath_embed[loop_idx].reshape(1, 1, -1).cast(x.dtype)
         for layer in self.layers:
             x = layer(x, loop_idx, temp_mult=temp_mult, alpha=alpha)
+        if CONSTANT_RADIUS:
+            # Project onto cylinder of learned radius. Zero-init mix → no-op initially.
+            x_norm = x.norm(axis=-1, keepdim=True) + 1e-6
+            target = self.crp_target_norm.cast(x.dtype)
+            mix = self.crp_mix_alpha.cast(x.dtype)
+            x_proj = x * (target / x_norm)
+            x = x * (1.0 - mix) + x_proj * mix
         return x
 
     def breathe(self, x: Tensor, n_loops: int) -> Tensor:
@@ -750,6 +783,8 @@ class BreathingTransformer:
         sd["block.handoff_w"] = self.block.handoff_w
         sd["block.handoff_b"] = self.block.handoff_b
         sd["block.rope.pitch"] = self.block.rope.pitch
+        sd["block.crp_mix_alpha"] = self.block.crp_mix_alpha
+        sd["block.crp_target_norm"] = self.block.crp_target_norm
         sd.update(self.controller.state_dict())
         sd.update(self.confidence_head.state_dict())
         return sd

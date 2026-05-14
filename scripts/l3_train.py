@@ -97,6 +97,8 @@ def collect_params(model):
     nps += [model.block.handoff_w, model.block.handoff_b]
     # Helix pitch (single scalar) — learned when LEARN_PITCH=1.
     nps += [model.block.rope.pitch]
+    # Constant-radius projection scalars — learned when CONSTANT_RADIUS=1.
+    nps += [model.block.crp_mix_alpha, model.block.crp_target_norm]
     # Calibration head — trained on the main loss via REINFORCE in calibration_train_step.
     # Always included so opt.step() has a defined gradient for these params even when
     # CALIBRATION_MODE=0 (gradient is zero in that path, weights don't move).
