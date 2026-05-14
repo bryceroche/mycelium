@@ -263,15 +263,23 @@ def main():
         # Update layer_pitch_scale on the ramp schedule (no-op if TARGET=0).
         # Assign in place so JIT graph identity is preserved.
         #
-        # COSINE ramp (v17+): slope=0 at both endpoints, smooth landing. v16 used
-        # LINEAR ramp which had a sharp corner at RAMP_STEPS — model was adapting
-        # to changing pitch through step 500, then optimizer dynamics collapsed
-        # between step 500-1000 once the target froze. Cosine has zero slope at
-        # endpoint = smooth transition from "ramping" to "held."
+        # Ramp shape (env var LAYER_PITCH_RAMP_SHAPE):
+        #   "cos" (default): 0.5*(1-cos(πt/T)). Slope 0→peak (middle)→0. v17/v18/v19
+        #          used this; collapse zone correlated with mid-ramp peak slope.
+        #   "exp": (1-exp(-k*t/T))/(1-exp(-k)). Slope decreases monotonically from
+        #          start (peak at t=0 when model has most slack) to end (near 0).
+        #          Tests hypothesis: collapse is from slope rate during mid-ramp,
+        #          not absolute pitch. Bryce's "100% slope rate" intuition.
         if LAYER_PITCH_TARGET > 0.0:
             import math as _m
+            shape = os.environ.get("LAYER_PITCH_RAMP_SHAPE", "cos")
             if step < LAYER_PITCH_RAMP_STEPS:
-                ramp_progress = 0.5 * (1.0 - _m.cos(_m.pi * step / LAYER_PITCH_RAMP_STEPS))
+                t_norm = step / LAYER_PITCH_RAMP_STEPS
+                if shape == "exp":
+                    k = float(os.environ.get("LAYER_PITCH_RAMP_K", "3.0"))
+                    ramp_progress = (1.0 - _m.exp(-k * t_norm)) / (1.0 - _m.exp(-k))
+                else:  # "cos" default
+                    ramp_progress = 0.5 * (1.0 - _m.cos(_m.pi * t_norm))
             else:
                 ramp_progress = 1.0
             new_scale = ramp_progress * LAYER_PITCH_TARGET
