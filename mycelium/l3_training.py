@@ -47,11 +47,29 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
 
     if n_cycles == 1:
         nl0 = int(n_loops_per_cycle[0])
+        # v39 waist aux supervision: capture compressed at end-of-breath waist,
+        # classify op from it via waist_head. Only active when BFIELD_AUX_WEIGHT > 0
+        # and the end-of-breath waist is enabled.
+        from mycelium.breathing import BFIELD_AUX_WEIGHT as _BAW, BFIELD_END_OF_BREATH as _BEOB, BFIELD_WAIST as _BFW
+        use_waist_aux = (_BAW > 0.0) and _BEOB and (_BFW > 0)
+        waw_local = float(_BAW)
 
         @TinyJit
         def _step(tokens0, labels0, eq_mask, op_labels):
             opt.zero_grad()
-            final_h, match_weights, _ = model.breathe_with_lookup(tokens0, nl0)
+            if use_waist_aux:
+                final_h, match_weights, _, waist_compressed_per_breath = model.breathe_with_lookup(
+                    tokens0, nl0, return_waist_compressed=True)
+                # Last breath's 512d compressed tensor at "=" position
+                last_compressed = waist_compressed_per_breath[-1].cast(dtypes.float)  # (B, T, 512)
+                waist_logits_all = last_compressed @ model.waist_head_w + model.waist_head_b   # (B, T, 4)
+                waist_gathered = (waist_logits_all * eq_mask).sum(axis=1)                     # (B, 4)
+                waist_aux_logits = waist_gathered * 10.0
+                waist_aux_ce = waist_aux_logits.sparse_categorical_crossentropy(
+                    op_labels, ignore_index=-100, reduction="mean")
+            else:
+                final_h, match_weights, _ = model.breathe_with_lookup(tokens0, nl0)
+                waist_aux_ce = Tensor.zeros((), dtype=dtypes.float).contiguous()
             logits = (final_h @ model.embed_out).cast(dtypes.float)
             pred = logits[:, :-1, :]
             main_ce = pred.sparse_categorical_crossentropy(labels0, ignore_index=-100, reduction="mean")
@@ -59,7 +77,9 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
             gathered = (last_mw.cast(dtypes.float) * eq_mask).sum(axis=1)
             logits_aux = gathered[:, :4] * 10.0
             aux_ce = logits_aux.sparse_categorical_crossentropy(op_labels, ignore_index=-100, reduction="mean")
-            l2_reg = model.lookup_table.weight.square().mean() * 1e-6
+            l2_reg = (model.lookup_table.weight.square().mean()
+                      + model.lookup_table.values.square().mean()
+                      + model.lookup_table.value_proj_up.square().mean()) * 1e-6
             ch_reg = sum((p.square().mean() for p in model.confidence_head.parameters()),
                          Tensor.zeros((), dtype=dtypes.float).contiguous()) * 1e-7
             be_reg = (model.block.breath_embed.square().mean()
@@ -67,8 +87,23 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
                       + model.block.handoff_b.square().mean()
                       + model.block.rope.pitch.square().mean()
                       + model.block.crp_mix_alpha.square().mean()
-                      + model.block.crp_target_norm.square().mean()) * 1e-7
-            total = main_ce + aw * aux_ce + l2_reg + ch_reg + be_reg
+                      + model.block.crp_target_norm.square().mean()
+                      + model.block.notebook_write_w.square().mean()
+                      + model.block.notebook_write_b.square().mean()
+                      + model.block.notebook_read_w.square().mean()
+                      + model.block.notebook_read_b.square().mean()
+                      + model.block.notebook_write_query.square().mean()
+                      + model.block.notebook_rep_write_w.square().mean()
+                      + model.block.notebook_rep_write_b.square().mean()
+                      + model.block.notebook_rep_read_w.square().mean()
+                      + model.block.notebook_rep_read_b.square().mean()
+                      + model.block.notebook_rep_query.square().mean()
+                      + model.block.bfield_proj_down.square().mean()
+                      + model.block.bfield_proj_up.square().mean()
+                      + model.block.bfield_bias.square().mean()
+                      + model.waist_head_w.square().mean()
+                      + model.waist_head_b.square().mean()) * 1e-7
+            total = main_ce + aw * aux_ce + waw_local * waist_aux_ce + l2_reg + ch_reg + be_reg
             total.backward()
             opt.step()
             return total.realize()
@@ -76,17 +111,34 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
     elif n_cycles == 2:
         nl0 = int(n_loops_per_cycle[0])
         nl1 = int(n_loops_per_cycle[1])
+        # v26: thread notebook across cycles when CROSS_CYCLE_NOTEBOOK=1
+        from mycelium.breathing import CROSS_CYCLE_NOTEBOOK as _CCN_2
 
         @TinyJit
         def _step(tokens0, labels0, tokens1, labels1, eq_mask, op_labels):
             opt.zero_grad()
             # Cycle 0 — breathe_with_lookup (heavy, provides match weights for aux)
-            final0, mw, _ = model.breathe_with_lookup(tokens0, nl0)
+            if _CCN_2:
+                final0, mw, _, nb_c0, nb_r_c0 = model.breathe_with_lookup(tokens0, nl0, return_notebook=True)
+            else:
+                final0, mw, _ = model.breathe_with_lookup(tokens0, nl0)
+                nb_c0, nb_r_c0 = None, None
             logits0 = (final0 @ model.embed_out).cast(dtypes.float)
             pred0 = logits0[:, :-1, :]
             main_ce0 = pred0.sparse_categorical_crossentropy(labels0, ignore_index=-100, reduction="mean")
-            # Cycle 1 — plain forward (light, just CE on the execution gen)
-            final1 = model(tokens1, nl1)
+            # Cycle 1 — plain forward (light, just CE on the execution gen).
+            # v26c: seed notebook from cycle 0's final state when CROSS_CYCLE_NOTEBOOK=1.
+            # Gradient flows through (no detach). v26-first-attempt collapsed with this
+            # path when warm-starting from v24c (notebook trained on fresh-zero inputs,
+            # OOD on cross-cycle non-zero). v26c warm-starts from v23a (no trained
+            # notebook) + NOTEBOOK_STATE_INIT_SCALE>0 (random init regularizes the
+            # model to handle any notebook state from the start).
+            if _CCN_2:
+                final1, _, _ = model.forward_with_notebook(tokens1, nl1,
+                                                            initial_notebook=nb_c0,
+                                                            initial_notebook_r=nb_r_c0)
+            else:
+                final1 = model(tokens1, nl1)
             logits1 = (final1 @ model.embed_out).cast(dtypes.float)
             pred1 = logits1[:, :-1, :]
             main_ce1 = pred1.sparse_categorical_crossentropy(labels1, ignore_index=-100, reduction="mean")
@@ -95,7 +147,9 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
             gathered = (last_mw.cast(dtypes.float) * eq_mask).sum(axis=1)
             logits_aux = gathered[:, :4] * 10.0
             aux_ce = logits_aux.sparse_categorical_crossentropy(op_labels, ignore_index=-100, reduction="mean")
-            l2_reg = model.lookup_table.weight.square().mean() * 1e-6
+            l2_reg = (model.lookup_table.weight.square().mean()
+                      + model.lookup_table.values.square().mean()
+                      + model.lookup_table.value_proj_up.square().mean()) * 1e-6
             ch_reg = sum((p.square().mean() for p in model.confidence_head.parameters()),
                          Tensor.zeros((), dtype=dtypes.float).contiguous()) * 1e-7
             be_reg = (model.block.breath_embed.square().mean()
@@ -103,15 +157,107 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
                       + model.block.handoff_b.square().mean()
                       + model.block.rope.pitch.square().mean()
                       + model.block.crp_mix_alpha.square().mean()
-                      + model.block.crp_target_norm.square().mean()) * 1e-7
+                      + model.block.crp_target_norm.square().mean()
+                      + model.block.notebook_write_w.square().mean()
+                      + model.block.notebook_write_b.square().mean()
+                      + model.block.notebook_read_w.square().mean()
+                      + model.block.notebook_read_b.square().mean()
+                      + model.block.notebook_write_query.square().mean()
+                      + model.block.notebook_rep_write_w.square().mean()
+                      + model.block.notebook_rep_write_b.square().mean()
+                      + model.block.notebook_rep_read_w.square().mean()
+                      + model.block.notebook_rep_read_b.square().mean()
+                      + model.block.notebook_rep_query.square().mean()
+                      + model.block.bfield_proj_down.square().mean()
+                      + model.block.bfield_proj_up.square().mean()
+                      + model.block.bfield_bias.square().mean()
+                      + model.waist_head_w.square().mean()
+                      + model.waist_head_b.square().mean()) * 1e-7
             avg_main = (main_ce0 + main_ce1) / 2.0
             total = avg_main + aw * aux_ce + l2_reg + ch_reg + be_reg
             total.backward()
             opt.step()
             return total.realize()
 
+    elif n_cycles == 3:
+        nl0 = int(n_loops_per_cycle[0])
+        nl1 = int(n_loops_per_cycle[1])
+        nl2 = int(n_loops_per_cycle[2])
+        # v26: thread notebook across cycles when CROSS_CYCLE_NOTEBOOK=1
+        from mycelium.breathing import CROSS_CYCLE_NOTEBOOK as _CCN_3
+
+        @TinyJit
+        def _step(tokens0, labels0, tokens1, labels1, tokens2, labels2, eq_mask, op_labels):
+            opt.zero_grad()
+            # Cycle 0 — breathe_with_lookup (heavy, provides match weights for aux)
+            if _CCN_3:
+                final0, mw, _, nb_c0, nb_r_c0 = model.breathe_with_lookup(tokens0, nl0, return_notebook=True)
+            else:
+                final0, mw, _ = model.breathe_with_lookup(tokens0, nl0)
+                nb_c0, nb_r_c0 = None, None
+            logits0 = (final0 @ model.embed_out).cast(dtypes.float)
+            pred0 = logits0[:, :-1, :]
+            main_ce0 = pred0.sparse_categorical_crossentropy(labels0, ignore_index=-100, reduction="mean")
+            # Cycles 1 and 2 — plain forwards (light, just CE on the execution gen).
+            # v26c: thread notebook from cycle N to cycle N+1, gradient through.
+            if _CCN_3:
+                final1, nb_c1, nb_r_c1 = model.forward_with_notebook(tokens1, nl1,
+                                                                       initial_notebook=nb_c0,
+                                                                       initial_notebook_r=nb_r_c0)
+            else:
+                final1 = model(tokens1, nl1)
+                nb_c1, nb_r_c1 = None, None
+            logits1 = (final1 @ model.embed_out).cast(dtypes.float)
+            pred1 = logits1[:, :-1, :]
+            main_ce1 = pred1.sparse_categorical_crossentropy(labels1, ignore_index=-100, reduction="mean")
+            if _CCN_3:
+                final2, _, _ = model.forward_with_notebook(tokens2, nl2,
+                                                            initial_notebook=nb_c1,
+                                                            initial_notebook_r=nb_r_c1)
+            else:
+                final2 = model(tokens2, nl2)
+            logits2 = (final2 @ model.embed_out).cast(dtypes.float)
+            pred2 = logits2[:, :-1, :]
+            main_ce2 = pred2.sparse_categorical_crossentropy(labels2, ignore_index=-100, reduction="mean")
+            # Aux CE from cycle 0's last-breath match weights
+            last_mw = mw[-1]
+            gathered = (last_mw.cast(dtypes.float) * eq_mask).sum(axis=1)
+            logits_aux = gathered[:, :4] * 10.0
+            aux_ce = logits_aux.sparse_categorical_crossentropy(op_labels, ignore_index=-100, reduction="mean")
+            l2_reg = (model.lookup_table.weight.square().mean()
+                      + model.lookup_table.values.square().mean()
+                      + model.lookup_table.value_proj_up.square().mean()) * 1e-6
+            ch_reg = sum((p.square().mean() for p in model.confidence_head.parameters()),
+                         Tensor.zeros((), dtype=dtypes.float).contiguous()) * 1e-7
+            be_reg = (model.block.breath_embed.square().mean()
+                      + model.block.handoff_w.square().mean()
+                      + model.block.handoff_b.square().mean()
+                      + model.block.rope.pitch.square().mean()
+                      + model.block.crp_mix_alpha.square().mean()
+                      + model.block.crp_target_norm.square().mean()
+                      + model.block.notebook_write_w.square().mean()
+                      + model.block.notebook_write_b.square().mean()
+                      + model.block.notebook_read_w.square().mean()
+                      + model.block.notebook_read_b.square().mean()
+                      + model.block.notebook_write_query.square().mean()
+                      + model.block.notebook_rep_write_w.square().mean()
+                      + model.block.notebook_rep_write_b.square().mean()
+                      + model.block.notebook_rep_read_w.square().mean()
+                      + model.block.notebook_rep_read_b.square().mean()
+                      + model.block.notebook_rep_query.square().mean()
+                      + model.block.bfield_proj_down.square().mean()
+                      + model.block.bfield_proj_up.square().mean()
+                      + model.block.bfield_bias.square().mean()
+                      + model.waist_head_w.square().mean()
+                      + model.waist_head_b.square().mean()) * 1e-7
+            avg_main = (main_ce0 + main_ce1 + main_ce2) / 3.0
+            total = avg_main + aw * aux_ce + l2_reg + ch_reg + be_reg
+            total.backward()
+            opt.step()
+            return total.realize()
+
     else:
-        raise NotImplementedError(f"JIT-train n_cycles={n_cycles} not implemented (only 1 and 2)")
+        raise NotImplementedError(f"JIT-train n_cycles={n_cycles} not implemented (only 1, 2, 3)")
 
     _JIT_TRAIN_CACHE[key] = _step
     print(f"[JIT] compiled in {_t_jit.perf_counter() - _jit_compile_start:.1f}s "
@@ -947,6 +1093,11 @@ def multi_cycle_train_step(model, opt, batch_examples: List[MathExample], tok,
             loss_t = jit_step(tokens_per_cycle[0], labels_per_cycle[0],
                               tokens_per_cycle[1], labels_per_cycle[1],
                               eq_mask, op_labels_t)
+        elif n_cycles == 3:
+            loss_t = jit_step(tokens_per_cycle[0], labels_per_cycle[0],
+                              tokens_per_cycle[1], labels_per_cycle[1],
+                              tokens_per_cycle[2], labels_per_cycle[2],
+                              eq_mask, op_labels_t)
         else:
             raise NotImplementedError(f"use_jit doesn't support n_cycles={n_cycles}")
         if profile:
@@ -1002,7 +1153,10 @@ def multi_cycle_train_step(model, opt, batch_examples: List[MathExample], tok,
     #   2. Spec calls for a regularizer keeping the prime entries from drifting
     #      toward each other; the L2 norm is a mild form of that.
     # Coefficient is tiny (1e-6) so behavior impact is negligible.
-    avg_loss = avg_loss + model.lookup_table.weight.square().mean() * 1e-6
+    avg_loss = (avg_loss
+                + model.lookup_table.weight.square().mean() * 1e-6
+                + model.lookup_table.values.square().mean() * 1e-6
+                + model.lookup_table.value_proj_up.square().mean() * 1e-6)
     # Confidence head: tiny L2 reg so its grad is defined when CALIBRATION_MODE=0
     # (the path that doesn't otherwise touch the head). Behavior impact negligible;
     # the head doesn't move in this regime because the gradient is microscopic.
@@ -1018,6 +1172,24 @@ def multi_cycle_train_step(model, opt, batch_examples: List[MathExample], tok,
     # Constant-radius projection scalars: same idea — gradient defined when CONSTANT_RADIUS=0.
     avg_loss = avg_loss + model.block.crp_mix_alpha.square().mean() * 1e-7
     avg_loss = avg_loss + model.block.crp_target_norm.square().mean() * 1e-7
+    # v24 notebook projections: gradient defined when NOTEBOOK_V24=0 (or for 1-breath
+    # cycles where notebook never propagates). Tiny L2 keeps opt.step() happy.
+    avg_loss = avg_loss + model.block.notebook_write_w.square().mean() * 1e-7
+    avg_loss = avg_loss + model.block.notebook_write_b.square().mean() * 1e-7
+    avg_loss = avg_loss + model.block.notebook_read_w.square().mean() * 1e-7
+    avg_loss = avg_loss + model.block.notebook_read_b.square().mean() * 1e-7
+    avg_loss = avg_loss + model.block.notebook_write_query.square().mean() * 1e-7
+    avg_loss = avg_loss + model.block.notebook_rep_write_w.square().mean() * 1e-7
+    avg_loss = avg_loss + model.block.notebook_rep_write_b.square().mean() * 1e-7
+    avg_loss = avg_loss + model.block.notebook_rep_read_w.square().mean() * 1e-7
+    avg_loss = avg_loss + model.block.notebook_rep_read_b.square().mean() * 1e-7
+    avg_loss = avg_loss + model.block.notebook_rep_query.square().mean() * 1e-7
+    # v38 B-field IB bottleneck: same idea — gradient defined when BFIELD_WAIST=0.
+    avg_loss = avg_loss + model.block.bfield_proj_down.square().mean() * 1e-7
+    avg_loss = avg_loss + model.block.bfield_proj_up.square().mean() * 1e-7
+    avg_loss = avg_loss + model.block.bfield_bias.square().mean() * 1e-7
+    avg_loss = avg_loss + model.waist_head_w.square().mean() * 1e-7
+    avg_loss = avg_loss + model.waist_head_b.square().mean() * 1e-7
     if aux_loss is not None:
         avg_loss = avg_loss + lookup_aux_weight * aux_loss
 
