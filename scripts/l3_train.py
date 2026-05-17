@@ -99,6 +99,27 @@ def collect_params(model):
     nps += [model.block.rope.pitch]
     # Constant-radius projection scalars — learned when CONSTANT_RADIUS=1.
     nps += [model.block.crp_mix_alpha, model.block.crp_target_norm]
+    # v24 notebook projections — zero-init, learned when NOTEBOOK_V24=1.
+    # Always included for ckpt symmetry; gradient is zero when notebook is off.
+    nps += [model.block.notebook_write_w, model.block.notebook_write_b,
+            model.block.notebook_read_w, model.block.notebook_read_b,
+            model.block.notebook_write_query]
+    # v24c dual notebook (REPLACE-semantics partner). Always included for ckpt
+    # symmetry; gradient inert when NOTEBOOK_DUAL=0.
+    nps += [model.block.notebook_rep_write_w, model.block.notebook_rep_write_b,
+            model.block.notebook_rep_read_w, model.block.notebook_rep_read_b,
+            model.block.notebook_rep_query]
+    # v28 lookup table values — learned prototype reps per entry. Keys (lookup_table.weight)
+    # stay frozen at random-orthogonal init (preserves op classification stability).
+    # Values trained end-to-end via main CE loss when LOOKUP_VALUE_INJECT=1.
+    # value_proj_up: identity when LOOKUP_IB_DIM=0, learnable (IB_DIM, hidden) when >0.
+    nps += [model.lookup_table.values, model.lookup_table.value_proj_up]
+    # v38 B-field IB bottleneck — learned when BFIELD_WAIST > 0. Always included
+    # for ckpt symmetry; L2 reg in l3_training keeps gradient defined when off.
+    nps += [model.block.bfield_proj_down, model.block.bfield_proj_up, model.block.bfield_bias]
+    # v39 waist head (512 → 4 op classifier) — trained when BFIELD_AUX_WEIGHT > 0
+    # and BFIELD_END_OF_BREATH=1. L2 reg covers the off case.
+    nps += [model.waist_head_w, model.waist_head_b]
     # Calibration head — trained on the main loss via REINFORCE in calibration_train_step.
     # Always included so opt.step() has a defined gradient for these params even when
     # CALIBRATION_MODE=0 (gradient is zero in that path, weights don't move).
@@ -127,7 +148,12 @@ DEFAULT_FIXED_LEN = {"ARITH": 32, "ARITH_HARD": 32, "ARITH_MIXED": 32, "ARITH_BO
 
 
 def main():
-    cfg = Config()
+    n_lookup_entries = getenv("N_LOOKUP_ENTRIES", 0)
+    if n_lookup_entries and int(n_lookup_entries) != 16:
+        cfg = Config(n_lookup_entries=int(n_lookup_entries))
+        print(f"[N_LOOKUP_ENTRIES] override: {cfg.n_lookup_entries}")
+    else:
+        cfg = Config()
     LEVEL = getenv("LEVEL", "L3")
     BATCH = getenv("BATCH", 16)
     FIXED_LEN = getenv("FIXED_LEN", DEFAULT_FIXED_LEN.get(LEVEL, 96))
@@ -217,7 +243,8 @@ def main():
         mem_log("after ckpt resume")
 
     params = collect_params(model)
-    opt = AdamW(params, lr=LR)
+    WEIGHT_DECAY = float(getenv("WEIGHT_DECAY", "0.01"))   # AdamW default; anti-overfit knob
+    opt = AdamW(params, lr=LR, weight_decay=WEIGHT_DECAY)
     # Separate controller optimizer — closed-loop component #5 trains independently
     # via the lookup-CE signal flowing back through decisions. Created regardless
     # of CTRL_TRAIN so the ckpt round-trip is symmetric; only stepped when CTRL_TRAIN=1.
@@ -247,8 +274,18 @@ def main():
         print(f"[CALIBRATION] mode=ON  weight={CALIBRATION_WEIGHT}  loops={CALIBRATION_LOOPS}", flush=True)
 
     # Layer-pitch ramp env vars (re-read from os.environ to avoid coupling to breathing.py import order)
+    # LAYER_PITCH_SLOPE: treadmill mode — angle = SLOPE * step, perpetual linear growth,
+    #   no cap, no target. Adam's momentum aligns with a constant gradient direction
+    #   ("adapt to slightly more rotation than last step"). No discontinuity when the
+    #   ramp "ends" because it never ends. Takes precedence over LAYER_PITCH_TARGET.
+    # LAYER_PITCH_TARGET (legacy): cosine/exp ramp to a fixed target, then hold.
+    LAYER_PITCH_SLOPE = float(os.environ.get("LAYER_PITCH_SLOPE", "0.0"))
     LAYER_PITCH_TARGET = float(os.environ.get("LAYER_PITCH_TARGET", "0.0"))
     LAYER_PITCH_RAMP_STEPS = int(os.environ.get("LAYER_PITCH_RAMP_STEPS", "500"))
+    if LAYER_PITCH_SLOPE > 0.0:
+        print(f"[LAYER_PITCH] treadmill mode: slope={LAYER_PITCH_SLOPE:.2e} rad/step, no cap")
+    elif LAYER_PITCH_TARGET > 0.0:
+        print(f"[LAYER_PITCH] ramp mode: target={LAYER_PITCH_TARGET:.4f} rad, ramp_steps={LAYER_PITCH_RAMP_STEPS}, shape={os.environ.get('LAYER_PITCH_RAMP_SHAPE', 'cos')}")
 
     t_start = time.perf_counter()
     for step in range(STEPS):
@@ -260,17 +297,24 @@ def main():
         idx = rng.integers(0, len(train_examples), size=BATCH)
         batch_examples = [train_examples[i] for i in idx]
 
-        # Update layer_pitch_scale on the ramp schedule (no-op if TARGET=0).
-        # Assign in place so JIT graph identity is preserved.
+        # Update layer_pitch_scale every step. Assign in place so JIT graph identity is
+        # preserved.
         #
-        # Ramp shape (env var LAYER_PITCH_RAMP_SHAPE):
-        #   "cos" (default): 0.5*(1-cos(πt/T)). Slope 0→peak (middle)→0. v17/v18/v19
-        #          used this; collapse zone correlated with mid-ramp peak slope.
-        #   "exp": (1-exp(-k*t/T))/(1-exp(-k)). Slope decreases monotonically from
-        #          start (peak at t=0 when model has most slack) to end (near 0).
-        #          Tests hypothesis: collapse is from slope rate during mid-ramp,
-        #          not absolute pitch. Bryce's "100% slope rate" intuition.
-        if LAYER_PITCH_TARGET > 0.0:
+        # Two modes (SLOPE takes precedence):
+        #   LAYER_PITCH_SLOPE > 0  (treadmill): angle = SLOPE * step. Linear forever,
+        #     no cap, no plateau. The gradient direction ("adapt to slightly more
+        #     rotation") is constant in character — Adam's momentum can lock onto it.
+        #     No discontinuity at any step. Tests the hypothesis that v16-v21
+        #     collapses came from Adam momentum lagging a changing-then-frozen ramp.
+        #   LAYER_PITCH_TARGET > 0 (legacy): cosine/exp ramp to fixed target, then
+        #     hold. The "hold" point is where momentum mismatches stop being
+        #     replenished — this is the suspected drift trigger.
+        if LAYER_PITCH_SLOPE > 0.0:
+            new_scale = LAYER_PITCH_SLOPE * step
+            model.block.layer_pitch_scale.assign(
+                Tensor([new_scale], dtype=dtypes.float).contiguous()
+            )
+        elif LAYER_PITCH_TARGET > 0.0:
             import math as _m
             shape = os.environ.get("LAYER_PITCH_RAMP_SHAPE", "cos")
             if step < LAYER_PITCH_RAMP_STEPS:

@@ -120,3 +120,55 @@ MLP probes on v6 reps (shallow 1024→512→1; deep 8192-concat→2048→512→1
 **Left behind:** Llama 1B (replaced by Pythia-410M L0-3), LoRA atoms and continuous scales, the straight-through gradient estimator, soft token diversity mechanisms, PyTorch/ROCm, Windows.
 
 A 127M model that breathes, alternates, integrates, and factorizes. Four months to September 1.
+
+---
+
+## 8. Open Research Threads (Laundry List, as of 2026-05-17)
+
+Active design ideas across the project. Each tagged with status: ✅ validated, 🟡 partial/stuck, 🆕 new/unstarted, 🔴 known broken.
+
+1. **🟡 Merge CFG + LoRA + centroid injection** — Unified mechanism with all three as facets at the compression waist. Design captured in `memory/project_unified_waist_harness.md`. CFG α sweep on v38 gave +0.7pt only (decorative). Awaiting working B-field foundation to re-attempt blend.
+
+2. **🟡 E & B waves perpendicular** (π-cycled RoPE + expand-collapse) — E field works brilliantly (rotation + per-head pitch). B field tried in v38 (decorative), v39 (A=8 collapsed via info chain through repeated bottlenecks), v40 (failed in combination). Not phase-locked yet — see item 15.
+
+3. **🟡 Per-(layer, op, head) 256-entry lookup** — Infrastructure ready: `N_LOOKUP_ENTRIES` env var, `extract_per_op_layer_head_centroids.py` captures per-head 64d via W_O column blocks. Blocked by centroid quality — see item below on +/- blindspot.
+
+4. **🟡 Compression-waist harness for centroid injection** — Designed: supervised init from pre-extracted centroids, aux op-CE supervision, conditional dropout for CFG. v38/v39 had pieces; no full working integration yet.
+
+5. **🟡 Overfitting / memorization control** — Weight decay live (AdamW WEIGHT_DECAY=0.01). Dropout blocked by tinygrad JIT incompatibility (`Tensor.rand_like`). Decomposition-into-memorizable-pieces is the underlying concern.
+
+6. **🆕 All thinking in rep space, autoregressive decode only at the end** — Identified 2026-05-17 as a fix for v40-era failures. Current eval does 8 breaths × max_new tokens = 300+ breaths per problem (copy-machine violation). Should be 8 breaths ONCE in Stage 1, then 1 forward per new token in Stage 2 using a UNIFIED K/V cache (e.g., last-breath cache from Stage 1). Not yet implemented.
+
+7. **🟡 BirdNET parallelism — classification + computation across 16 heads in parallel** — Per-head pitch (v23a) gives 64 distinct (layer, head) angular positions. Conceptual framework partially supported; per-head computation specialization not yet validated as load-bearing.
+
+8. **🟡 REPLACE notebook (not accumulate)** — v40 failed in combination (with fresh-input + 256 lookup). Never tested in isolation. v24c's DUAL notebook (REPLACE + ACCUMULATE) achieved 96/94/91 on L4_MIXED — REPLACE-style memory IS viable, just not in v40 config. Next: test REPLACE-only on v24c-style warm-start.
+
+9. **🆕 Recursive hierarchical IB → tree-structured lookup → MCTS traversal** — New direction. Builds on existing IB plateau analysis. Currently flat 256-entry lookup; tree-structured would enable coarse-to-fine MCTS at inference. Substantial design + implementation work.
+
+10. **🆕 Photon (not helix) — E and B zero-crossings TOGETHER** — Reframing item 2. Requires sinusoidal amplitude co-modulation of both rotation magnitude and compression magnitude, phase-locked. See item 15 for mechanism brainstorm.
+
+11. **🆕 Diffusion analogy — coarse-to-fine denoising in parallel with SNR awareness** — Partially aligned (SINE_TEMP IS a noise schedule, breath_time_embed IS diffusion-step conditioning). Not formally integrated. Could reframe: high temp = noisy, low temp = denoised, integral over breaths = denoising steps.
+
+12. **✅ Curriculum learning works** — Validated: ARITH → L3 → L4 → L4_MIXED → L4.5 chain. v24c warm-started from v24b chain reached 96%. Recent cold-start ARITH iterations are REGRESSION from curriculum. Lesson: always warm-start from a working checkpoint.
+
+13. **✅ π-cycled RoPE works brilliantly** — Validated as load-bearing. PER_HEAD_PITCH=1 (frozen per-(layer, head) offsets at l·π/64) gives 64 unique angular positions. Head-collision resonance discovery (v22 → v23a) refined this.
+
+14. **🟡 Compression on the last layer** — Tried in v39 (end-of-breath waist after L3, enforced 512d, sin mod). A=8 collapsed (-51pt vs v38) from info-chain leakage through repeated bottlenecks. The Stage 2 decode fix (item 6) might rescue this — eval-time 8 breaths × decode cycles compounds the bottleneck, but ONCE-then-decode wouldn't.
+
+15. **🆕 Mechanism for E&B zero-crossing co-oscillation** — Open brainstorm. Currently: E (rotation angle) accumulates monotonically across breaths (period = `max_loops` breaths); B (compression) fires every breath identically. They're at different frequencies and not phase-locked. To phase-lock with zero crossings: both need to follow `sin(l · π / max_loops)`-style amplitude envelopes that peak in mid-breath sequence and go to zero at endpoints. But "E magnitude" needs definition — rotation accumulates phase, not amplitude. Candidate: modulate temperature × rotation EFFECT via sine envelope, so the "energy" of rotation oscillates (high at peak, low at zero-crossings) while the angle still advances monotonically.
+
+---
+
+### Cross-cutting issue surfaced 2026-05-17:
+
+**+/- blindspot in cold-start ARITH.** Both v36 (50/51/49 final) and v38 (61/59/58 final) — independent architectures, independent training runs — converged to × ÷ specialists with NEAR-ZERO accuracy on + and -.
+
+- v38 per-op extraction: {+ : 0, − : 1, × : 175, ÷ : 139} of ~200 each
+- v36 per-op extraction: {+ : 2, − : 4, × : 175, ÷ : 118} of ~200 each
+- Mean accuracy 50-60% on uniform ARITH masks total failure on half the ops.
+
+**Root cause hypothesis:** multi-digit + and − require carry propagation (sequential dependency between digit predictions). The model finds a local minimum that handles × and ÷ patterns (less carry-dependent) and fails to learn carry chains.
+
+**v24c does NOT have this blindspot** because L4_MIXED training had + and − embedded in multi-cycle word problems with explicit intermediate-result supervision — the model couldn't take the × ÷ shortcut.
+
+**Strategic implication:** stop cold-starting from Pythia on bare ARITH. Build forward from v24c on richer distributions (L4.5, GSM8K).
