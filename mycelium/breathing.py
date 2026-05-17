@@ -123,6 +123,162 @@ CONSTANT_RADIUS          = int(os.environ.get("CONSTANT_RADIUS", "0")) > 0
 LAYER_PITCH_TARGET       = float(os.environ.get("LAYER_PITCH_TARGET", "0.0"))   # π/2 ≈ 1.5708
 LAYER_PITCH_RAMP_STEPS   = int(os.environ.get("LAYER_PITCH_RAMP_STEPS", "500"))
 
+# Per-(layer, head) fixed pitch (v23a). When enabled, each layer gets a per-layer
+# angular offset designed to maximally decorrelate the 4 layers × 16 heads = 64
+# (layer, head) positions on the unit circle. Each layer is shifted by l * π/64
+# relative to the previous, putting the layers at 4 distinct angular "lanes" with
+# the base π-cycled head spacing of π/16 preserved within each lane.
+#
+# Designed to break the head-collision resonance discovered in v22: at LAYER_PITCH
+# multiples of π/8 ≈ 2× head_phase_spacing, all heads in a non-zero layer landed
+# on positions occupied by another layer's heads (causing dips at step 500, 1000).
+#
+# v23a init is FIXED (no learnable component); buffer not in parameters() so frozen.
+# Tests whether *just having decorrelated head positions* recovers depth-helps.
+PER_HEAD_PITCH           = int(os.environ.get("PER_HEAD_PITCH", "0")) > 0
+
+# v24 "photon" components — each breath = one full wave cycle. Three coupled
+# pieces, each independently togglable for ablation:
+#   PER_BREATH_TEMP: temperature oscillates within each breath (warm at layer 0,
+#     cool at layer n_phases//2, warming at layer n_phases-1). Each breath does
+#     one full explore→commit→re-explore cycle.
+#   BREATH_NORM_OSC: rep L2 norm follows the same wave via time-varying CRP
+#     target (CONSTANT_RADIUS must also be on). Coupled "B field" perpendicular
+#     to the angular "E field" (per-head pitch).
+#   NOTEBOOK_V24: 512d notebook persisting across breaths within one forward
+#     pass. Writes at the cool/sharp layer (the "measurement"), reads at the
+#     warm/broad layer (the "next inhale"). Zero-init projections.
+PER_BREATH_TEMP          = int(os.environ.get("PER_BREATH_TEMP", "0")) > 0
+BREATH_NORM_OSC          = int(os.environ.get("BREATH_NORM_OSC", "0")) > 0
+NOTEBOOK_V24             = int(os.environ.get("NOTEBOOK_V24", "0")) > 0
+
+# v38 B-field: photon-analogy perpendicular axis to rotation. A single Information
+# Bottleneck (1024 → BFIELD_WAIST → 1024) inserted between layers L1 and L2 of
+# each breath. The rep is forced through a narrow waist once per breath cycle —
+# one compression per rotation step, phase-locked to the angular E field.
+#
+# Forward: residual + GELU bottleneck.
+#   compressed   = (x @ proj_down)          # (B, T, waist)
+#   activated    = compressed.gelu()
+#   decompressed = activated @ proj_up + bias
+#   out          = x + decompressed
+#
+# Init: proj_down random Pythia-scale (0.02), proj_up + bias zero. With proj_up=0
+# the initial decompressed=0 and forward output equals input — preserves any
+# warm-start exactly. Gradient still flows to proj_up via the non-zero proj_down,
+# then propagates to proj_down once proj_up moves (LoRA-style asymmetric init).
+#
+# 0 = disabled (params still allocated minimally for state_dict symmetry).
+BFIELD_WAIST             = int(os.environ.get("BFIELD_WAIST", "0"))
+
+# v38a CFG-style residual scale for the B-field. Multiplies the bottleneck's
+# decompressed contribution before adding to the residual. At training time
+# default 1.0 (standard residual). At inference time can be swept up — directly
+# implements CFG extrapolation:
+#   final = x + α · decompressed
+#         = (1-α)·uncond + α·cond     [uncond=x, cond=x+decompressed]
+# Stored as a Tensor scalar on BreathingBlock so it can be reassigned at runtime
+# without JIT recompile (the Tensor is a graph input, not a baked constant).
+BFIELD_ALPHA             = float(os.environ.get("BFIELD_ALPHA", "1.0"))
+
+# v39 B-field placement and enforcement.
+#
+# BFIELD_END_OF_BREATH: when 1, the waist fires AFTER L3 (not between L1 and L2).
+#   Each breath: L0 → L1 → L2 → L3 → waist → next breath input.
+#   The breath's "thinking" is complete in 1024d before being committed via the
+#   bottleneck. Maps to the inhale-exhale rhythm.
+# BFIELD_ENFORCED: when 1, the waist REPLACES x (no residual skip). The
+#   bottleneck output IS the breath's output. Forces all info through the
+#   compressed scale — makes B-field load-bearing instead of an additive aux.
+# BFIELD_SIN_MOD: when 1, the integral accumulates breath outputs weighted by
+#   sin((l + 0.5) · π / n_loops) — a symmetric bell that peaks in the middle
+#   of the breath sequence and never goes to zero at the endpoints (l=0 gives
+#   ~0.195, l=n/2 gives ~0.98). The "slow cycle" envelope across breaths,
+#   running over the per-breath fast cycle of explore (E in layers) → commit
+#   (B at waist).
+# BFIELD_AUX_WEIGHT: when > 0, applies op-classification CE on the 512d
+#   compressed tensor at the "=" position. Mirrors LOOKUP_AUX_WEIGHT but at
+#   the waist scale. Forces the bottleneck to encode op-discriminative info,
+#   so the rep can't be informationally hollow under enforced mode.
+BFIELD_END_OF_BREATH     = int(os.environ.get("BFIELD_END_OF_BREATH", "0")) > 0
+BFIELD_ENFORCED          = int(os.environ.get("BFIELD_ENFORCED", "0")) > 0
+BFIELD_SIN_MOD           = int(os.environ.get("BFIELD_SIN_MOD", "0")) > 0
+BFIELD_AUX_WEIGHT        = float(os.environ.get("BFIELD_AUX_WEIGHT", "0.0"))
+
+# v40 fresh-embedding-each-breath. When 1, each breath's INPUT is the original
+# token embedding plus notebook context (read at breath start), NOT the previous
+# breath's output. Breaks the rep-flow chain that caused v39's A=8 collapse:
+# under enforced mode the previous breath's output went through the bottleneck,
+# and chaining 8 such compressions degraded information catastrophically.
+# With BREATHE_FRESH_INPUT=1, each breath sees a fresh embedding + REPLACE
+# notebook context (RNN-style memory). The bottleneck still applies but only
+# affects ONE breath's output at a time — no chain.
+# Decouples computation (rep flow, fresh per breath) from memory (notebook).
+BREATHE_FRESH_INPUT      = int(os.environ.get("BREATHE_FRESH_INPUT", "0")) > 0
+
+# v24b notebook tuning. Default 0.0 = zero-init (v24a behavior). Small positive
+# random init breaks the "stuck at zero" trap: with zero-init projections, the
+# notebook output is exactly 0 and gradient signal through it is exactly 0 too
+# — model never learns to use it. Pythia-style scale 0.02 gives a meaningful
+# initial contribution (~1% of rep magnitude) so gradient can refine.
+NOTEBOOK_INIT_SCALE      = float(os.environ.get("NOTEBOOK_INIT_SCALE", "0.0"))
+# Write source: "mean" (default, mean-pool over seq) or "attn" (attention-weighted
+# pool with a learnable query vector — model picks which positions to commit).
+NOTEBOOK_POOL_MODE       = os.environ.get("NOTEBOOK_POOL_MODE", "mean")
+# Dual notebook (v24c): when ON, adds a second 512d notebook with REPLACE semantics
+# alongside the existing ACCUMULATE notebook. Replace notebook: nb_r = new_write
+# (RNN-style hidden state, bounded magnitude, recent-only memory). Accumulate
+# notebook: nb_a = nb_a + new_write (running sum, long-term memory, magnitude
+# grows). Both read at breath start, both written at breath end. Model learns
+# which is useful via separate read projections; an end-of-run ablation reveals
+# load-bearing role.
+NOTEBOOK_DUAL            = int(os.environ.get("NOTEBOOK_DUAL", "0")) > 0
+# Ablation toggle (default ON for back-compat): when 0, the ACCUMULATE notebook's
+# read/write contributions are skipped at runtime. Used to isolate the role of
+# replace vs accumulate without retraining. Both notebooks still present in
+# state_dict/parameters so ckpts round-trip; just the forward contribution is
+# gated. Combined with NOTEBOOK_DUAL=1 this enables "replace only" eval.
+NOTEBOOK_ACCUMULATE_ENABLED = int(os.environ.get("NOTEBOOK_ACCUMULATE_ENABLED", "1")) > 0
+# v26: thread the notebook state across cycles in multi_cycle_train_step. When ON
+# and n_cycles >= 2, cycle N's forward pass is seeded with cycle N-1's final
+# notebook(s) instead of zeros. The notebook becomes a true cross-cycle "scratch
+# pad" the model writes as it completes each reasoning step. Tests the train/
+# inference alignment hypothesis from the v24c notebook ablation.
+CROSS_CYCLE_NOTEBOOK     = int(os.environ.get("CROSS_CYCLE_NOTEBOOK", "0")) > 0
+# Notebook initial STATE scale. 0.0 (default) = zero-init each forward (current).
+# >0 = random N(0, scale²) init each forward — regularization so the model can't
+# memorize "the initial state is zero." Crucial for cross-cycle notebook to work:
+# without this, cross-cycle states (non-zero from prior cycle) are OOD vs the
+# zero-init training distribution. Scale 0.5 roughly matches expected end-of-cycle
+# notebook magnitude (writes have std ~0.4 with 0.02 projection init × prompt norm ~30).
+NOTEBOOK_STATE_INIT_SCALE = float(os.environ.get("NOTEBOOK_STATE_INIT_SCALE", "0.0"))
+# v28: prototype retrieval. The lookup table is extended with a values matrix
+# (n_entries, hidden) — each "prime operation" entry now has both a KEY (where
+# the basin sits in rep-space) and a VALUE (the ideal rep at the basin floor).
+# At the end of the breath loop, query the lookup, compute weighted-sum of
+# values via softmax(match_scores), and add to the final rep. Continuous
+# Hopfield network over a learned prototype library — the model's energy
+# landscape made explicit. Active when LOOKUP_VALUE_INJECT=1.
+LOOKUP_VALUE_INJECT      = int(os.environ.get("LOOKUP_VALUE_INJECT", "0")) > 0
+# Mix coefficient on the retrieved value contribution. 1.0 = full addition,
+# 0.1 = gentle injection. Start at 1.0 since values are random-init small.
+LOOKUP_VALUE_SCALE       = float(os.environ.get("LOOKUP_VALUE_SCALE", "1.0"))
+# v30: Full 2π RoPE range (default π). When ROPE_FULL_CIRCLE=1, head phases span
+# the full circle (2π/n_heads spacing instead of π/n_heads) — gives heads 2x more
+# angular separation. Per-head pitch increment doubles correspondingly (π/32
+# instead of π/64). Requires retraining from Pythia (weights are tuned to π range).
+ROPE_FULL_CIRCLE         = int(os.environ.get("ROPE_FULL_CIRCLE", "0")) > 0
+# Dropout rate applied after attn_out and ffn_out in each BreathingLayer. Default
+# 0.0 (no dropout — preserves prior behavior). 0.1 is a standard transformer
+# value; useful as anti-overfit regularization especially for our cycle-
+# decomposed training where each piece is memorizable.
+DROPOUT_RATE             = float(os.environ.get("DROPOUT_RATE", "0.0"))
+# Lookup table information bottleneck. When >0, values are stored as (n_entries,
+# IB_DIM) instead of (n_entries, hidden), with a learned (IB_DIM, hidden) projection
+# expanding to hidden dim. Forces a compressed representation that can't encode
+# example-specific details — only "procedure shape" survives the bottleneck.
+LOOKUP_IB_DIM            = int(os.environ.get("LOOKUP_IB_DIM", "0"))
+
 
 def _sine_temp_baseline(loop_idx: int, n_loops: int) -> float:
     """Cosine half-period temperature baseline. SINE_TEMP_MAX (warm) at loop_idx=0,
@@ -135,6 +291,45 @@ def _sine_temp_baseline(loop_idx: int, n_loops: int) -> float:
     cosine_phase = loop_idx * math.pi / (n_loops - 1)
     return ((SINE_TEMP_MAX + SINE_TEMP_MIN) / 2.0 +
             (SINE_TEMP_MAX - SINE_TEMP_MIN) / 2.0 * math.cos(cosine_phase))
+
+
+def _per_layer_temp_within_breath(layer_idx: int, n_phases: int) -> float:
+    """v24 photon-mode: full cosine wave per breath. One breath = one wavelength.
+    Layer 0 = peak (warm), layer n_phases//2 = trough (cool), layer n_phases-1 =
+    mid (warming for next breath). Continuous across breath boundaries.
+
+    temp(k) = temp_mid + temp_amp * cos(2π * k / n_phases)
+    """
+    if n_phases <= 1:
+        return (SINE_TEMP_MAX + SINE_TEMP_MIN) / 2.0
+    temp_mid = (SINE_TEMP_MAX + SINE_TEMP_MIN) / 2.0
+    temp_amp = (SINE_TEMP_MAX - SINE_TEMP_MIN) / 2.0
+    return temp_mid + temp_amp * math.cos(2 * math.pi * layer_idx / n_phases)
+
+
+def _initial_notebook_state(B: int, nb_dim: int) -> Tensor:
+    """Return the initial notebook state tensor for a fresh forward pass.
+    Zeros (default) when NOTEBOOK_STATE_INIT_SCALE=0.0, otherwise random Gaussian
+    at the configured scale. Per-forward randomness regularizes the model to
+    handle ANY notebook state — required for cross-cycle threading where state
+    from prior cycle is non-zero.
+    """
+    if NOTEBOOK_STATE_INIT_SCALE > 0.0:
+        return (Tensor.randn(B, nb_dim, dtype=dtypes.float) * NOTEBOOK_STATE_INIT_SCALE).contiguous()
+    return Tensor.zeros((B, nb_dim), dtype=dtypes.float)
+
+
+def _per_layer_norm_scale_within_breath(layer_idx: int, n_phases: int) -> float:
+    """v24 photon-mode: rep norm follows the same wave as temperature. Layer 0 =
+    peak amplitude (1.0×), layer n_phases//2 = collapse (NORM_MIN×), layer
+    n_phases-1 = mid (recovering). Multiplies the CRP target_norm.
+    """
+    if n_phases <= 1:
+        return 1.0
+    NORM_MIN, NORM_MAX = 0.4, 1.0
+    norm_mid = (NORM_MAX + NORM_MIN) / 2.0
+    norm_amp = (NORM_MAX - NORM_MIN) / 2.0
+    return norm_mid + norm_amp * math.cos(2 * math.pi * layer_idx / n_phases)
 
 _active_ablations = [n for n, v in [
     ("TEMP", ABLATE_TEMP), ("STEP_MULT", ABLATE_STEP_MULT), ("GATE", ABLATE_GATE),
@@ -159,6 +354,30 @@ if CONSTANT_RADIUS:
     print(f"[CONSTANT_RADIUS] cylinder projection at breath end (zero-init mix; gradient discovers if helix wants it)", flush=True)
 if LAYER_PITCH_TARGET > 0.0:
     print(f"[LAYER_PITCH] per-layer rotation ramp 0 → {LAYER_PITCH_TARGET:.4f} rad over {LAYER_PITCH_RAMP_STEPS} steps", flush=True)
+if PER_HEAD_PITCH:
+    print(f"[PER_HEAD_PITCH] frozen per-(layer, head) offsets (max-decorrelation: layer l = l * π/64)", flush=True)
+if PER_BREATH_TEMP:
+    print(f"[PER_BREATH_TEMP] photon-mode temp wave per breath (layer 0 warm → layer n//2 cool → layer n-1 warming)", flush=True)
+if BREATH_NORM_OSC:
+    print(f"[BREATH_NORM_OSC] photon-mode rep norm oscillates per breath (CRP target scales 0.4× → 1.0× per wave)", flush=True)
+if LOOKUP_VALUE_INJECT:
+    print(f"[LOOKUP_VALUE_INJECT] prototype retrieval active, scale={LOOKUP_VALUE_SCALE}", flush=True)
+if ROPE_FULL_CIRCLE:
+    print(f"[ROPE_FULL_CIRCLE] head_phase uses full 2π range (vs default π)", flush=True)
+if DROPOUT_RATE > 0:
+    print(f"[DROPOUT] rate={DROPOUT_RATE} applied after attn + ffn (training only)", flush=True)
+if LOOKUP_IB_DIM > 0:
+    print(f"[LOOKUP_IB_DIM] information bottleneck at K={LOOKUP_IB_DIM} (lookup values projected through low-dim)", flush=True)
+if NOTEBOOK_V24:
+    init_str = f"init_scale={NOTEBOOK_INIT_SCALE}" + (" (zero-init)" if NOTEBOOK_INIT_SCALE == 0.0 else " (random)")
+    nb_str = "DUAL (accumulate + replace)" if NOTEBOOK_DUAL else "single (accumulate)"
+    if not NOTEBOOK_ACCUMULATE_ENABLED:
+        nb_str += " [accumulate DISABLED — replace-only mode]"
+    if CROSS_CYCLE_NOTEBOOK:
+        nb_str += " + CROSS-CYCLE threading (v26)"
+    if NOTEBOOK_STATE_INIT_SCALE > 0.0:
+        nb_str += f" + state_init=N(0,{NOTEBOOK_STATE_INIT_SCALE}²)"
+    print(f"[NOTEBOOK_V24] 512d notebook: {nb_str}, pool_mode={NOTEBOOK_POOL_MODE}, {init_str}", flush=True)
 
 
 # ---------- partial RoPE with π cycling ----------
@@ -206,7 +425,9 @@ class RoPE:
         self.cos = cos.reshape(1, 1, cfg.max_seq_len, rd).contiguous().realize()
         self.sin = sin.reshape(1, 1, cfg.max_seq_len, rd).contiguous().realize()
 
-        head_phase = [h * math.pi / cfg.n_heads for h in range(cfg.n_heads)]
+        # v30: when ROPE_FULL_CIRCLE=1, use full 2π circle (2x spacing). Default π.
+        head_phase_range = 2 * math.pi if ROPE_FULL_CIRCLE else math.pi
+        head_phase = [h * head_phase_range / cfg.n_heads for h in range(cfg.n_heads)]
         if ABLATE_ROTATION:
             head_phase = [0.0] * cfg.n_heads  # no per-head phase diversity
         # Fixed head-phase tensor (the "R" of the helix — angular structure).
@@ -605,6 +826,10 @@ class BreathingLayer:
             attn_out = ctx @ self.shared.wo + self.shared.bo
             ff = (mlp_in_dt @ self.w_in + self.b_in).gelu()
             ffn_out = ff @ self.shared.w_out + self.shared.b_out
+            # Dropout (training only — Tensor.dropout respects Tensor.training)
+            if DROPOUT_RATE > 0:
+                attn_out = attn_out.dropout(DROPOUT_RATE)
+                ffn_out = ffn_out.dropout(DROPOUT_RATE)
             out = x + attn_out + ffn_out
             return (out, (k, v)) if return_kv else (out, None)
 
@@ -667,6 +892,122 @@ class BreathingBlock:
         # Buffer Tensor — included in state_dict for ckpt symmetry, NOT in parameters.
         self.layer_pitch_scale = Tensor.zeros((1,), dtype=dtypes.float).contiguous()
 
+        # Per-(layer, head) fixed pitch (v23a). Buffer shape (n_layers, n_heads) so
+        # later versions can vary per-head (v23b: learnable bounded). v23a init:
+        # uniform per-layer offset l * π/64 for layer l (all heads in layer get
+        # the same offset). Each layer at its own angular "lane" — 4 lanes spaced
+        # π/64 apart, each lane keeping the base π-cycled head structure.
+        #
+        # 4 layers × 16 heads = 64 unique (layer, head) angular positions in [0, π + 3π/64).
+        # Adjacent positions spaced π/64 ≈ 2.8° apart — finer than v22's collision-
+        # prone uniform layer rotation.
+        #
+        # NOT in parameters() — frozen. Always in state_dict for ckpt symmetry.
+        # v30: when ROPE_FULL_CIRCLE=1, head_phase spacing doubles (2π/n_heads vs
+        # π/n_heads), so layer increment doubles too (π/32 vs π/64) to maintain
+        # quarter-spacing within the new head range.
+        pitch_range = 2 * math.pi if ROPE_FULL_CIRCLE else math.pi
+        ph_init = [[l * pitch_range / (cfg.n_phases * cfg.n_heads) for _ in range(cfg.n_heads)]
+                   for l in range(cfg.n_phases)]
+        self.per_head_pitch = Tensor(ph_init, dtype=dtypes.float).contiguous()
+        # Precomputed cos/sin tables — eliminates per-breath cos/sin compute.
+        # Shape (n_layers, 1, n_heads, 1, 1) to match alpha broadcast shape on indexing.
+        # Realize so JIT sees these as constant buffers, not lazy ops (lazy ops
+        # under per-breath JIT recomputation triggered MEMVIOL on first v23 attempt).
+        ph_t = Tensor(ph_init, dtype=dtypes.float)
+        self.per_head_pitch_cos = ph_t.cos().reshape(cfg.n_phases, 1, cfg.n_heads, 1, 1).contiguous().realize()
+        self.per_head_pitch_sin = ph_t.sin().reshape(cfg.n_phases, 1, cfg.n_heads, 1, 1).contiguous().realize()
+
+        # v24 notebook (the "measurement record"). 512d state, written after each
+        # breath, read before each breath. Always in parameters for ckpt symmetry.
+        #
+        # Init:
+        #   NOTEBOOK_INIT_SCALE=0 (default): zero-init projections (v24a behavior).
+        #     With zero output and zero gradient, model can get stuck never using
+        #     the notebook — observed empirically in v24 step 1500 ablation.
+        #   NOTEBOOK_INIT_SCALE>0: small random init (Pythia-style 0.02). Initial
+        #     read contribution is ~1% of rep magnitude — gradient gets signal.
+        # Write source (NOTEBOOK_POOL_MODE):
+        #   "mean": mean-pool over sequence (v24a behavior; loses position info)
+        #   "attn": attention-weighted pool with learnable query vector — model
+        #     picks which token positions to commit to the notebook.
+        NB_DIM = 512
+        self.nb_dim = NB_DIM
+        if NOTEBOOK_INIT_SCALE > 0.0:
+            s = NOTEBOOK_INIT_SCALE
+            self.notebook_write_w = (Tensor.randn(cfg.hidden, NB_DIM, dtype=dtypes.float) * s).contiguous()
+            self.notebook_read_w  = (Tensor.randn(NB_DIM, cfg.hidden, dtype=dtypes.float) * s).contiguous()
+        else:
+            self.notebook_write_w = Tensor.zeros((cfg.hidden, NB_DIM), dtype=dtypes.float).contiguous()
+            self.notebook_read_w  = Tensor.zeros((NB_DIM, cfg.hidden), dtype=dtypes.float).contiguous()
+        self.notebook_write_b = Tensor.zeros((NB_DIM,), dtype=dtypes.float).contiguous()
+        self.notebook_read_b  = Tensor.zeros((cfg.hidden,), dtype=dtypes.float).contiguous()
+        # Attention-pool query vector for write source "attn". Zero-init means
+        # initial attention scores are uniform → falls back to mean-pool. Gradient
+        # learns which positions matter (e.g., "=", end-of-answer, etc.).
+        self.notebook_write_query = Tensor.zeros((cfg.hidden,), dtype=dtypes.float).contiguous()
+        # v24c dual notebook — REPLACE-semantics partner to the accumulate notebook
+        # above. Same shape, same init pattern. Active only when NOTEBOOK_DUAL=1;
+        # otherwise present in state_dict for ckpt symmetry but gradient is inert.
+        # Distinct update rule: nb_r = new_write (full overwrite each breath).
+        # Bounded magnitude, RNN-style hidden state, complement to accumulator's
+        # long-term memory.
+        if NOTEBOOK_INIT_SCALE > 0.0:
+            s = NOTEBOOK_INIT_SCALE
+            self.notebook_rep_write_w = (Tensor.randn(cfg.hidden, NB_DIM, dtype=dtypes.float) * s).contiguous()
+            self.notebook_rep_read_w  = (Tensor.randn(NB_DIM, cfg.hidden, dtype=dtypes.float) * s).contiguous()
+        else:
+            self.notebook_rep_write_w = Tensor.zeros((cfg.hidden, NB_DIM), dtype=dtypes.float).contiguous()
+            self.notebook_rep_read_w  = Tensor.zeros((NB_DIM, cfg.hidden), dtype=dtypes.float).contiguous()
+        self.notebook_rep_write_b = Tensor.zeros((NB_DIM,), dtype=dtypes.float).contiguous()
+        self.notebook_rep_read_b  = Tensor.zeros((cfg.hidden,), dtype=dtypes.float).contiguous()
+        self.notebook_rep_query = Tensor.zeros((cfg.hidden,), dtype=dtypes.float).contiguous()
+
+        # v38 B-field IB bottleneck — single waist between L1 and L2 per breath.
+        # Allocate at max(1, BFIELD_WAIST) so state_dict shapes are consistent
+        # across runs even when disabled; gradient is inert when BFIELD_WAIST=0.
+        bf_w = max(1, BFIELD_WAIST)
+        self.bfield_waist_dim = bf_w
+        # proj_down always random Pythia-scale.
+        self.bfield_proj_down = (Tensor.randn(cfg.hidden, bf_w, dtype=dtypes.float) * 0.02).contiguous()
+        # proj_up: zero-init in residual mode (preserves warm-start, gradient activates
+        # via the non-zero proj_down — LoRA pattern). Random init in enforced mode
+        # because output = decompressed; zero proj_up would zero the breath's output.
+        if BFIELD_ENFORCED:
+            # 1/sqrt(bf_w) keeps the projected magnitudes similar to x — preserves
+            # rough rep magnitude through the bottleneck on the first forward.
+            up_scale = (1.0 / max(bf_w, 1)) ** 0.5
+            self.bfield_proj_up = (Tensor.randn(bf_w, cfg.hidden, dtype=dtypes.float) * up_scale).contiguous()
+        else:
+            self.bfield_proj_up = Tensor.zeros((bf_w, cfg.hidden), dtype=dtypes.float).contiguous()
+        self.bfield_bias      = Tensor.zeros((cfg.hidden,), dtype=dtypes.float).contiguous()
+        # v38a CFG-style residual scale. Tensor (1,) so it's a JIT graph input
+        # and can be reassigned via .assign() at inference without recompile.
+        self.bfield_alpha     = (Tensor.ones((1,), dtype=dtypes.float) * BFIELD_ALPHA).contiguous()
+
+    def apply_bfield_waist(self, x: Tensor, return_compressed: bool = False) -> Tensor:
+        """B-field IB bottleneck with optional CFG-alpha residual scale.
+
+        Residual mode (BFIELD_ENFORCED=0):
+            out = x + α · decompressed     (zero-init proj_up → identity at step 0)
+        Enforced mode (BFIELD_ENFORCED=1):
+            out = decompressed             (no skip — rep must flow through waist)
+
+        When return_compressed=True, returns (out, compressed) for aux supervision
+        on the 512d intermediate.
+        """
+        x_f = x.cast(dtypes.float)
+        compressed = x_f @ self.bfield_proj_down
+        activated = compressed.gelu()
+        decompressed = activated @ self.bfield_proj_up + self.bfield_bias
+        if BFIELD_ENFORCED:
+            out = decompressed.cast(x.dtype)
+        else:
+            out = (x_f + self.bfield_alpha * decompressed).cast(x.dtype)
+        if return_compressed:
+            return out, compressed.cast(x.dtype)
+        return out
+
     def parameters(self):
         ps = list(self.shared.parameters())
         for layer in self.layers:
@@ -677,6 +1018,19 @@ class BreathingBlock:
         ps.append(self.rope.pitch)
         ps.append(self.crp_mix_alpha)
         ps.append(self.crp_target_norm)
+        ps.append(self.notebook_write_w)
+        ps.append(self.notebook_write_b)
+        ps.append(self.notebook_read_w)
+        ps.append(self.notebook_read_b)
+        ps.append(self.notebook_write_query)
+        ps.append(self.notebook_rep_write_w)
+        ps.append(self.notebook_rep_write_b)
+        ps.append(self.notebook_rep_read_w)
+        ps.append(self.notebook_rep_read_b)
+        ps.append(self.notebook_rep_query)
+        ps.append(self.bfield_proj_down)
+        ps.append(self.bfield_proj_up)
+        ps.append(self.bfield_bias)
         return ps
 
     def compute_handoff(self, x: Tensor) -> Tensor:
@@ -685,7 +1039,8 @@ class BreathingBlock:
         x_f = x.cast(dtypes.float)
         return (x_f @ self.handoff_w + self.handoff_b).cast(x.dtype)
 
-    def breathe_once(self, x: Tensor, loop_idx: int, temp_mult: float = 1.0) -> Tensor:
+    def breathe_once(self, x: Tensor, loop_idx: int, temp_mult: float = 1.0,
+                     return_waist_compressed: bool = False):
         """One breath: 4 layers sequentially. temp_mult scales attention softness
         per breath (used by the sine-baseline schedule when SINE_TEMP=1).
 
@@ -696,21 +1051,26 @@ class BreathingBlock:
         Perf: alpha is computed ONCE per breath here and shared across the 4 layers
         (vs 4× redundantly inside each layer's rope.apply call). 4× reduction in
         per-breath alpha overhead.
+
+        v24 photon mode (PER_BREATH_TEMP=1, BREATH_NORM_OSC=1): each breath is one
+        full wave. Temperature warm (layer 0) → cool (layer n//2) → warming. Rep norm
+        follows the same wave via time-varying CRP target. Across-breath SINE_TEMP
+        baseline is OVERRIDDEN by the per-layer wave when PER_BREATH_TEMP=1.
         """
-        # Compute alpha (cos/sin tensors for the per-head + per-breath phase offset)
-        # once per breath, share across all 4 layers. With LEARN_PITCH=1 this is the
-        # gradient path back to the pitch scalar.
         alpha = self.rope._alpha_at(loop_idx, x.dtype)
         if BREATH_TIME_EMBED:
             x = x + self.breath_embed[loop_idx].reshape(1, 1, -1).cast(x.dtype)
-        # Per-layer pitch: each layer adds (layer_idx * layer_pitch_scale) to alpha angle.
-        # Rotation of (cos, sin) pair by angle θ:
-        #   new_cos = cos*cos(θ) - sin*sin(θ)
-        #   new_sin = cos*sin(θ) + sin*cos(θ)
-        # When layer_pitch_scale=0 (default / pre-ramp), cos(0)=1, sin(0)=0 → identity rotation.
         ac_base, asn_base = alpha
+        n_phases = self.cfg.n_phases
         for layer_idx, layer in enumerate(self.layers):
-            if LAYER_PITCH_TARGET > 0.0 and layer_idx > 0:
+            # --- pitch (v23a / legacy) ---
+            if PER_HEAD_PITCH and layer_idx > 0:
+                cos_o = self.per_head_pitch_cos[layer_idx].cast(x.dtype)
+                sin_o = self.per_head_pitch_sin[layer_idx].cast(x.dtype)
+                ac_layer = ac_base * cos_o - asn_base * sin_o
+                asn_layer = ac_base * sin_o + asn_base * cos_o
+                layer_alpha = (ac_layer, asn_layer)
+            elif LAYER_PITCH_TARGET > 0.0 and layer_idx > 0:
                 offset_angle = (self.layer_pitch_scale * float(layer_idx)).cast(dtypes.float)
                 cos_o = offset_angle.cos().reshape(1, 1, 1, 1).cast(x.dtype)
                 sin_o = offset_angle.sin().reshape(1, 1, 1, 1).cast(x.dtype)
@@ -719,38 +1079,124 @@ class BreathingBlock:
                 layer_alpha = (ac_layer, asn_layer)
             else:
                 layer_alpha = alpha
-            x = layer(x, loop_idx, temp_mult=temp_mult, alpha=layer_alpha)
-        if CONSTANT_RADIUS:
-            # Project onto cylinder of learned radius. Zero-init mix → no-op initially.
-            # Manual L2 norm (tinygrad doesn't have .norm()).
+            # --- per-layer temperature (v24) — overrides across-breath baseline ---
+            if PER_BREATH_TEMP:
+                layer_temp = _per_layer_temp_within_breath(layer_idx, n_phases)
+            else:
+                layer_temp = temp_mult
+            x = layer(x, loop_idx, temp_mult=layer_temp, alpha=layer_alpha)
+            # --- per-layer norm oscillation (v24) — applied between layers ---
+            if BREATH_NORM_OSC and CONSTANT_RADIUS:
+                scale = _per_layer_norm_scale_within_breath(layer_idx, n_phases)
+                x_f = x.cast(dtypes.float)
+                x_norm = (x_f.square().sum(axis=-1, keepdim=True) + 1e-6).sqrt()
+                target = self.crp_target_norm * scale
+                mix = self.crp_mix_alpha
+                x_proj = x_f * (target / x_norm)
+                x = (x_f * (1.0 - mix) + x_proj * mix).cast(x.dtype)
+            # --- v38 B-field IB bottleneck: mid-breath waist (after L1) ---
+            # v39: when BFIELD_END_OF_BREATH=1, this fires AFTER L3 instead (below).
+            if BFIELD_WAIST > 0 and layer_idx == 1 and not BFIELD_END_OF_BREATH:
+                x = self.apply_bfield_waist(x)
+        # --- v39 B-field end-of-breath waist (after all 4 layers complete) ---
+        waist_compressed = None
+        if BFIELD_WAIST > 0 and BFIELD_END_OF_BREATH:
+            if return_waist_compressed:
+                x, waist_compressed = self.apply_bfield_waist(x, return_compressed=True)
+            else:
+                x = self.apply_bfield_waist(x)
+        # End-of-breath CRP — only when per-layer oscillation is OFF (otherwise the
+        # last layer's per-layer CRP already did this).
+        if CONSTANT_RADIUS and not BREATH_NORM_OSC:
             x_f = x.cast(dtypes.float)
             x_norm = (x_f.square().sum(axis=-1, keepdim=True) + 1e-6).sqrt()
             target = self.crp_target_norm
             mix = self.crp_mix_alpha
             x_proj = x_f * (target / x_norm)
             x = (x_f * (1.0 - mix) + x_proj * mix).cast(x.dtype)
+        if return_waist_compressed:
+            return x, waist_compressed
         return x
 
-    def breathe(self, x: Tensor, n_loops: int) -> Tensor:
+    def breathe(self, x: Tensor, n_loops: int,
+                initial_notebook: Tensor | None = None,
+                initial_notebook_r: Tensor | None = None,
+                return_notebook: bool = False):
         """Loop the 4-layer breath n_loops times with gated running integral.
 
         Stub controller: gate=1 every breath, always continue. Returns the normalized
         integral (running mean) of all breath outputs. When SINE_TEMP=1 each breath
         operates at its scheduled temperature. When CROSS_BREATH_HANDOFF=1, the
         previous breath's output is projected and added to the next breath's input
-        (relay-race baton).
+        (relay-race baton). When NOTEBOOK_V24=1, a 512d notebook accumulates across
+        breaths: read at breath start (the "inhale" with prior measurements), write
+        at breath end (the post-collapse committed state).
+
+        v26 cross-cycle notebook: pass initial_notebook (and initial_notebook_r when
+        dual) to seed from a prior cycle's final state. Set return_notebook=True to
+        get the post-run notebook(s) for threading into the next cycle.
         """
+        x_emb = x  # v40: frozen embedding, reused each breath in fresh mode
         integral = Tensor.zeros_like(x)
         gate_sum = 0.0
         handoff = None
+        notebook = None        # accumulate notebook (always when NOTEBOOK_V24)
+        notebook_r = None      # replace notebook (only when NOTEBOOK_DUAL)
+        if NOTEBOOK_V24:
+            B = x.shape[0]
+            notebook = initial_notebook if initial_notebook is not None else _initial_notebook_state(B, self.nb_dim)
+            if NOTEBOOK_DUAL:
+                notebook_r = initial_notebook_r if initial_notebook_r is not None else _initial_notebook_state(B, self.nb_dim)
         for l in range(n_loops):
-            if CROSS_BREATH_HANDOFF and handoff is not None:
-                x = x + handoff
-            x = self.breathe_once(x, l, temp_mult=_sine_temp_baseline(l, n_loops))
+            # v40 fresh-input: each breath starts from the original embedding
+            if BREATHE_FRESH_INPUT:
+                x_in = x_emb
+            else:
+                x_in = x
+                if CROSS_BREATH_HANDOFF and handoff is not None:
+                    x_in = x_in + handoff
+            # Read notebook before breath
+            if NOTEBOOK_V24:
+                B = x_in.shape[0]
+                if NOTEBOOK_ACCUMULATE_ENABLED:
+                    read_vec = (notebook @ self.notebook_read_w + self.notebook_read_b)
+                    x_in = x_in + read_vec.reshape(B, 1, -1).cast(x_in.dtype)
+                if NOTEBOOK_DUAL:
+                    read_vec_r = (notebook_r @ self.notebook_rep_read_w + self.notebook_rep_read_b)
+                    x_in = x_in + read_vec_r.reshape(B, 1, -1).cast(x_in.dtype)
+            x = self.breathe_once(x_in, l, temp_mult=_sine_temp_baseline(l, n_loops))
+            # Write notebook after breath. Pool source determined by NOTEBOOK_POOL_MODE.
+            if NOTEBOOK_V24:
+                x_f = x.cast(dtypes.float)
+                if NOTEBOOK_POOL_MODE == "attn":
+                    scores = (x_f * self.notebook_write_query.reshape(1, 1, -1)).sum(axis=-1)
+                    weights = scores.softmax(axis=-1).reshape(B, -1, 1)
+                    x_pool = (x_f * weights).sum(axis=1)
+                else:
+                    x_pool = x_f.mean(axis=1)
+                if NOTEBOOK_ACCUMULATE_ENABLED:
+                    notebook = notebook + (x_pool @ self.notebook_write_w + self.notebook_write_b)
+                if NOTEBOOK_DUAL:
+                    # Replace notebook uses its own attn query (potentially picking different positions)
+                    if NOTEBOOK_POOL_MODE == "attn":
+                        scores_r = (x_f * self.notebook_rep_query.reshape(1, 1, -1)).sum(axis=-1)
+                        weights_r = scores_r.softmax(axis=-1).reshape(B, -1, 1)
+                        x_pool_r = (x_f * weights_r).sum(axis=1)
+                    else:
+                        x_pool_r = x_pool  # share the mean-pooled source
+                    # REPLACE semantics: overwrite the entire notebook each breath
+                    notebook_r = x_pool_r @ self.notebook_rep_write_w + self.notebook_rep_write_b
             if CROSS_BREATH_HANDOFF:
                 handoff = self.compute_handoff(x)
-            integral = integral + x
-            gate_sum += 1.0
+            # v39 sin-modulated integral envelope across breaths (heartbeat)
+            if BFIELD_SIN_MOD:
+                beta_l = math.sin((l + 0.5) * math.pi / float(n_loops))
+            else:
+                beta_l = 1.0
+            integral = integral + beta_l * x
+            gate_sum += beta_l
+        if return_notebook:
+            return integral / gate_sum, notebook, notebook_r
         return integral / gate_sum
 
 
@@ -779,6 +1225,13 @@ class BreathingTransformer:
         # "=" position and emits scalar confidence in (0,1). Trained jointly with
         # the transformer on the REINFORCE optimal-stopping objective.
         self.confidence_head = ConfidenceHead(cfg.hidden)
+        # v39 waist head: classifies op label from the 512d compressed tensor at
+        # the "=" position. Trained jointly via BFIELD_AUX_WEIGHT — forces the
+        # B-field bottleneck to encode op-discriminative information in enforced
+        # mode. Pythia-scale init; bias zero.
+        bf_w = max(1, BFIELD_WAIST)
+        self.waist_head_w = (Tensor.randn(bf_w, 4, dtype=dtypes.float) * 0.02).contiguous()
+        self.waist_head_b = Tensor.zeros((4,), dtype=dtypes.float).contiguous()
 
     def parameters(self):
         """Parameters trained on the main loss (transformer + lookup table +
@@ -788,7 +1241,8 @@ class BreathingTransformer:
         return ([self.embed.weight, self.ln_f_g, self.ln_f_b, self.embed_out]
                 + self.block.parameters()
                 + self.lookup_table.parameters()
-                + self.confidence_head.parameters())
+                + self.confidence_head.parameters()
+                + [self.waist_head_w, self.waist_head_b])
 
     def controller_parameters(self):
         """Controller-only parameters. Trained via a separate optimizer with a
@@ -804,6 +1258,8 @@ class BreathingTransformer:
             "ln_f.g": self.ln_f_g,
             "ln_f.b": self.ln_f_b,
             "lookup_table.weight": self.lookup_table.weight,
+            "lookup_table.values": self.lookup_table.values,
+            "lookup_table.value_proj_up": self.lookup_table.value_proj_up,
         }
         sw = self.block.shared
         for a in ("wv", "bv", "wo", "bo", "w_out", "b_out",
@@ -819,6 +1275,23 @@ class BreathingTransformer:
         sd["block.crp_mix_alpha"] = self.block.crp_mix_alpha
         sd["block.crp_target_norm"] = self.block.crp_target_norm
         sd["block.layer_pitch_scale"] = self.block.layer_pitch_scale
+        sd["block.per_head_pitch"] = self.block.per_head_pitch
+        sd["block.notebook_write_w"] = self.block.notebook_write_w
+        sd["block.notebook_write_b"] = self.block.notebook_write_b
+        sd["block.notebook_read_w"] = self.block.notebook_read_w
+        sd["block.notebook_read_b"] = self.block.notebook_read_b
+        sd["block.notebook_write_query"] = self.block.notebook_write_query
+        sd["block.notebook_rep_write_w"] = self.block.notebook_rep_write_w
+        sd["block.notebook_rep_write_b"] = self.block.notebook_rep_write_b
+        sd["block.notebook_rep_read_w"] = self.block.notebook_rep_read_w
+        sd["block.notebook_rep_read_b"] = self.block.notebook_rep_read_b
+        sd["block.notebook_rep_query"] = self.block.notebook_rep_query
+        sd["block.bfield_proj_down"] = self.block.bfield_proj_down
+        sd["block.bfield_proj_up"] = self.block.bfield_proj_up
+        sd["block.bfield_bias"] = self.block.bfield_bias
+        sd["block.bfield_alpha"] = self.block.bfield_alpha
+        sd["waist_head_w"] = self.waist_head_w
+        sd["waist_head_b"] = self.waist_head_b
         sd.update(self.controller.state_dict())
         sd.update(self.confidence_head.state_dict())
         return sd
@@ -840,6 +1313,15 @@ class BreathingTransformer:
                     raise KeyError(f"missing key in checkpoint: {name}")
                 continue
             src = sd_ck[name].to(dst.device).realize()
+            # If reshape would fail (different total element count), skip and keep init.
+            # Used for resuming when component dims change (e.g., LOOKUP_IB_DIM change).
+            src_elems = 1
+            for d in src.shape: src_elems *= int(d)
+            dst_elems = 1
+            for d in dst.shape: dst_elems *= int(d)
+            if src_elems != dst_elems:
+                missing.append(f"{name} (shape mismatch: ckpt {tuple(src.shape)} vs model {tuple(dst.shape)})")
+                continue
             if src.shape != dst.shape: src = src.reshape(dst.shape)
             if src.dtype != dst.dtype: src = src.cast(dst.dtype)
             dst.assign(src).realize()
@@ -857,7 +1339,13 @@ class BreathingTransformer:
         x = self.embed(tokens).cast(dtypes.half)
         if not return_per_loop:
             x = self.block.breathe(x, n_loops)
-            return _layernorm(x, self.ln_f_g, self.ln_f_b, self.cfg.layer_norm_eps)
+            final = _layernorm(x, self.ln_f_g, self.ln_f_b, self.cfg.layer_norm_eps)
+            # v28: same prototype retrieval as breathe_with_lookup
+            if LOOKUP_VALUE_INJECT:
+                scores = self.lookup_table(final).cast(dtypes.float)
+                retrieved = self.lookup_table.retrieve(scores).cast(final.dtype)
+                final = final + LOOKUP_VALUE_SCALE * retrieved
+            return final
         # explicit loop for diagnostics
         states = [x]
         integral = Tensor.zeros_like(x)
@@ -870,13 +1358,35 @@ class BreathingTransformer:
             if CROSS_BREATH_HANDOFF:
                 handoff = self.block.compute_handoff(x)
             states.append(x)
-            integral = integral + x
-            gate_sum += 1.0
+            # v39 sin-modulated integral envelope
+            if BFIELD_SIN_MOD:
+                beta_l = math.sin((l + 0.5) * math.pi / float(n_loops))
+            else:
+                beta_l = 1.0
+            integral = integral + beta_l * x
+            gate_sum += beta_l
         final = _layernorm(integral / gate_sum, self.ln_f_g, self.ln_f_b, self.cfg.layer_norm_eps)
         return states, final
 
     def __call__(self, tokens: Tensor, n_loops: int) -> Tensor:
         return self.hidden_states(tokens, n_loops, return_per_loop=False)
+
+    def forward_with_notebook(self, tokens: Tensor, n_loops: int,
+                               initial_notebook: Tensor | None = None,
+                               initial_notebook_r: Tensor | None = None):
+        """v26 cross-cycle forward: like __call__ but accepts an initial notebook
+        state and returns (final_hidden, notebook, notebook_r). Used in
+        multi_cycle_train_step to thread the notebook from cycle N to cycle N+1.
+        Without notebook threading (when initial_notebook=None), behavior is
+        identical to __call__ (notebook starts at zeros).
+        """
+        x = self.embed(tokens).cast(dtypes.half)
+        rep, nb, nb_r = self.block.breathe(x, n_loops,
+                                            initial_notebook=initial_notebook,
+                                            initial_notebook_r=initial_notebook_r,
+                                            return_notebook=True)
+        final = _layernorm(rep, self.ln_f_g, self.ln_f_b, self.cfg.layer_norm_eps)
+        return final, nb, nb_r
 
     def breathe_with_lookup_jit(self, tokens: Tensor, n_loops: int):
         """JIT-cached version of breathe_with_lookup, returning only (final_hidden,
@@ -1075,7 +1585,11 @@ class BreathingTransformer:
             return final, decisions_per_breath, actual_n_breaths, match_weights, integrated_per_breath
         return final, decisions_per_breath, actual_n_breaths, match_weights
 
-    def breathe_with_lookup(self, tokens: Tensor, n_loops: int):
+    def breathe_with_lookup(self, tokens: Tensor, n_loops: int,
+                             initial_notebook: Tensor | None = None,
+                             initial_notebook_r: Tensor | None = None,
+                             return_notebook: bool = False,
+                             return_waist_compressed: bool = False):
         """Forward pass returning (final_hidden, per_breath_match_weights, integrated_per_breath).
 
         Queries the model's lookup table once per breath against the running integral
@@ -1086,26 +1600,97 @@ class BreathingTransformer:
 
         Used by the controller to read per-breath operation matches and by training
         to apply auxiliary lookup-CE loss against ground-truth op labels.
+
+        v26 cross-cycle notebook: pass initial_notebook(/_r) to seed from a prior
+        cycle's final state. Set return_notebook=True to return the final notebook
+        state(s) for threading into the next cycle.
         """
-        x = self.embed(tokens).cast(dtypes.half)
+        x_emb = self.embed(tokens).cast(dtypes.half)  # v40: frozen embedding, reused each breath in fresh mode
+        x = x_emb
         integral = Tensor.zeros_like(x)
         match_weights = []
         integrated_per_breath = []
+        waist_compressed_per_breath = []  # v39: 512d compressed at end-of-breath waist
         handoff = None
+        notebook = None
+        notebook_r = None
+        weight_sum = 0.0  # v39 sin-modulation: accumulated weights for the integral
+        if NOTEBOOK_V24:
+            B = x.shape[0]
+            notebook = initial_notebook if initial_notebook is not None else _initial_notebook_state(B, self.block.nb_dim)
+            if NOTEBOOK_DUAL:
+                notebook_r = initial_notebook_r if initial_notebook_r is not None else _initial_notebook_state(B, self.block.nb_dim)
         for l in range(n_loops):
-            if CROSS_BREATH_HANDOFF and handoff is not None:
-                x = x + handoff
-            x = self.block.breathe_once(x, l, temp_mult=_sine_temp_baseline(l, n_loops))
+            # v40 fresh-input mode: each breath starts from the original embedding
+            # plus notebook context. Breaks the rep-flow chain that caused v39's
+            # A=8 collapse under enforced bottleneck.
+            if BREATHE_FRESH_INPUT:
+                x_in = x_emb
+            else:
+                x_in = x
+                if CROSS_BREATH_HANDOFF and handoff is not None:
+                    x_in = x_in + handoff
+            if NOTEBOOK_V24:
+                if NOTEBOOK_ACCUMULATE_ENABLED:
+                    read_vec = (notebook @ self.block.notebook_read_w + self.block.notebook_read_b)
+                    x_in = x_in + read_vec.reshape(x_in.shape[0], 1, -1).cast(x_in.dtype)
+                if NOTEBOOK_DUAL:
+                    read_vec_r = (notebook_r @ self.block.notebook_rep_read_w + self.block.notebook_rep_read_b)
+                    x_in = x_in + read_vec_r.reshape(x_in.shape[0], 1, -1).cast(x_in.dtype)
+            if return_waist_compressed:
+                x, waist_compressed = self.block.breathe_once(x_in, l, temp_mult=_sine_temp_baseline(l, n_loops),
+                                                                return_waist_compressed=True)
+                waist_compressed_per_breath.append(waist_compressed)
+            else:
+                x = self.block.breathe_once(x_in, l, temp_mult=_sine_temp_baseline(l, n_loops))
+            if NOTEBOOK_V24:
+                x_f = x.cast(dtypes.float)
+                if NOTEBOOK_POOL_MODE == "attn":
+                    scores = (x_f * self.block.notebook_write_query.reshape(1, 1, -1)).sum(axis=-1)
+                    weights = scores.softmax(axis=-1).reshape(x.shape[0], -1, 1)
+                    x_pool = (x_f * weights).sum(axis=1)
+                else:
+                    x_pool = x_f.mean(axis=1)
+                if NOTEBOOK_ACCUMULATE_ENABLED:
+                    notebook = notebook + (x_pool @ self.block.notebook_write_w + self.block.notebook_write_b)
+                if NOTEBOOK_DUAL:
+                    if NOTEBOOK_POOL_MODE == "attn":
+                        scores_r = (x_f * self.block.notebook_rep_query.reshape(1, 1, -1)).sum(axis=-1)
+                        weights_r = scores_r.softmax(axis=-1).reshape(x.shape[0], -1, 1)
+                        x_pool_r = (x_f * weights_r).sum(axis=1)
+                    else:
+                        x_pool_r = x_pool
+                    notebook_r = x_pool_r @ self.block.notebook_rep_write_w + self.block.notebook_rep_write_b
             if CROSS_BREATH_HANDOFF:
                 handoff = self.block.compute_handoff(x)
-            integral = integral + x
-            running = integral / float(l + 1)
+            # v39 sin-modulated integral: bell-shaped weighting that never hits
+            # zero at the endpoints (l=0 gives sin(π/(2·n_loops)), peaks at the
+            # middle breath). Heartbeat-across-breaths envelope.
+            if BFIELD_SIN_MOD:
+                beta_l = math.sin((l + 0.5) * math.pi / float(n_loops))
+            else:
+                beta_l = 1.0
+            integral = integral + beta_l * x
+            weight_sum = weight_sum + beta_l
+            running = integral / weight_sum
             running_normed = _layernorm(running, self.ln_f_g, self.ln_f_b, self.cfg.layer_norm_eps)
             integrated_per_breath.append(running_normed)
             match_weights.append(self.lookup_table(running_normed))
-        # Final hidden — bit-for-bit equal to __call__'s output
-        final = _layernorm(integral / float(n_loops),
+        # Final hidden — bit-for-bit equal to __call__'s output when no sin mod
+        final = _layernorm(integral / weight_sum,
                            self.ln_f_g, self.ln_f_b, self.cfg.layer_norm_eps)
+        # v28: prototype retrieval. Query lookup at every position, weighted-sum of
+        # values, add to final. The model picks up "ideal-rep-for-this-class" guidance.
+        if LOOKUP_VALUE_INJECT:
+            scores = self.lookup_table(final).cast(dtypes.float)      # (B, T, n_entries)
+            retrieved = self.lookup_table.retrieve(scores).cast(final.dtype)  # (B, T, hidden)
+            final = final + LOOKUP_VALUE_SCALE * retrieved
+        if return_notebook and return_waist_compressed:
+            return final, match_weights, integrated_per_breath, notebook, notebook_r, waist_compressed_per_breath
+        if return_notebook:
+            return final, match_weights, integrated_per_breath, notebook, notebook_r
+        if return_waist_compressed:
+            return final, match_weights, integrated_per_breath, waist_compressed_per_breath
         return final, match_weights, integrated_per_breath
 
     def cached_generate_batch(self, batch_prompt_ids: list, n_loops: int, max_new: int,
@@ -1161,23 +1746,115 @@ class BreathingTransformer:
         same_len = all(rl == real_lens[0] for rl in real_lens)
         attn_mask_arg = None if same_len else attn_mask_phase_a
 
-        x = self.embed(prompts_t).cast(dtypes.half)
+        x_emb = self.embed(prompts_t).cast(dtypes.half)  # v40: frozen embedding for fresh-input mode
+        x = x_emb
         integral = Tensor.zeros_like(x)
         cache_k = [[None] * n_loops for _ in range(n_layers)]
         cache_v = [[None] * n_loops for _ in range(n_layers)]
+        n_phases = cfg.n_phases
+        # v23a/v24 eval-time alignment: mirror breathe_once's per-(layer, head) pitch,
+        # per-layer temp, per-layer norm, and notebook read/write so eval geometry
+        # matches train geometry exactly. Without this, the model trained with these
+        # mechanisms would be evaluated under v15-baseline geometry — train/eval mismatch.
+        notebook = None
+        notebook_r = None
+        if NOTEBOOK_V24:
+            notebook = _initial_notebook_state(B, self.block.nb_dim)
+            if NOTEBOOK_DUAL:
+                notebook_r = _initial_notebook_state(B, self.block.nb_dim)
         for loop in range(n_loops):
-            tm = _sine_temp_baseline(loop, n_loops)
+            # v40 fresh-input: reset to embedding each breath, then add notebook context
+            if BREATHE_FRESH_INPUT:
+                x = x_emb
+            # Notebook read at breath start
+            if NOTEBOOK_V24:
+                if NOTEBOOK_ACCUMULATE_ENABLED:
+                    read_vec = (notebook @ self.block.notebook_read_w + self.block.notebook_read_b)
+                    x = x + read_vec.reshape(B, 1, -1).cast(x.dtype)
+                if NOTEBOOK_DUAL:
+                    read_vec_r = (notebook_r @ self.block.notebook_rep_read_w + self.block.notebook_rep_read_b)
+                    x = x + read_vec_r.reshape(B, 1, -1).cast(x.dtype)
+            if BREATH_TIME_EMBED:
+                x = x + self.block.breath_embed[loop].reshape(1, 1, -1).cast(x.dtype)
+            # Base alpha for this breath (same for all layers, mutated by per-head pitch below)
+            base_alpha = self.block.rope._alpha_at(loop, x.dtype)
+            ac_base, asn_base = base_alpha
+            tm_breath = _sine_temp_baseline(loop, n_loops)
             for li, layer in enumerate(self.block.layers):
+                # Per-(layer, head) pitch (v23a) — same as breathe_once
+                if PER_HEAD_PITCH and li > 0:
+                    cos_o = self.block.per_head_pitch_cos[li].cast(x.dtype)
+                    sin_o = self.block.per_head_pitch_sin[li].cast(x.dtype)
+                    ac_layer = ac_base * cos_o - asn_base * sin_o
+                    asn_layer = ac_base * sin_o + asn_base * cos_o
+                    layer_alpha = (ac_layer, asn_layer)
+                else:
+                    layer_alpha = base_alpha
+                # Per-layer temp (v24)
+                layer_temp = _per_layer_temp_within_breath(li, n_phases) if PER_BREATH_TEMP else tm_breath
                 x, (k_part, v_part) = layer.forward_with_kv(x, loop_idx=loop,
                                                              attn_mask=attn_mask_arg,
-                                                             temp_mult=tm)
+                                                             temp_mult=layer_temp,
+                                                             alpha=layer_alpha)
                 pad_n = max_len - max_prompt
                 k_full = k_part.pad(((0, 0), (0, 0), (0, pad_n), (0, 0))).contiguous().realize()
                 v_full = v_part.pad(((0, 0), (0, 0), (0, pad_n), (0, 0))).contiguous().realize()
                 cache_k[li][loop] = k_full
                 cache_v[li][loop] = v_full
-            integral = integral + x
-        integrated_rep = (integral / float(n_loops)).realize()
+                # Per-layer norm oscillation (v24)
+                if BREATH_NORM_OSC and CONSTANT_RADIUS:
+                    scale = _per_layer_norm_scale_within_breath(li, n_phases)
+                    x_f = x.cast(dtypes.float)
+                    x_norm = (x_f.square().sum(axis=-1, keepdim=True) + 1e-6).sqrt()
+                    target = self.block.crp_target_norm * scale
+                    mix = self.block.crp_mix_alpha
+                    x_proj = x_f * (target / x_norm)
+                    x = (x_f * (1.0 - mix) + x_proj * mix).cast(x.dtype)
+                # v38 B-field — mid-breath waist after L1 (when not end-of-breath)
+                if BFIELD_WAIST > 0 and li == 1 and not BFIELD_END_OF_BREATH:
+                    x = self.block.apply_bfield_waist(x)
+            # v39 end-of-breath waist
+            if BFIELD_WAIST > 0 and BFIELD_END_OF_BREATH:
+                x = self.block.apply_bfield_waist(x)
+            # End-of-breath CRP — only when per-layer oscillation is OFF
+            if CONSTANT_RADIUS and not BREATH_NORM_OSC:
+                x_f = x.cast(dtypes.float)
+                x_norm = (x_f.square().sum(axis=-1, keepdim=True) + 1e-6).sqrt()
+                target = self.block.crp_target_norm
+                mix = self.block.crp_mix_alpha
+                x_proj = x_f * (target / x_norm)
+                x = (x_f * (1.0 - mix) + x_proj * mix).cast(x.dtype)
+            # Notebook write at breath end
+            if NOTEBOOK_V24:
+                x_f = x.cast(dtypes.float)
+                if NOTEBOOK_POOL_MODE == "attn":
+                    scores = (x_f * self.block.notebook_write_query.reshape(1, 1, -1)).sum(axis=-1)
+                    weights = scores.softmax(axis=-1).reshape(B, -1, 1)
+                    x_pool = (x_f * weights).sum(axis=1)
+                else:
+                    x_pool = x_f.mean(axis=1)
+                if NOTEBOOK_ACCUMULATE_ENABLED:
+                    notebook = notebook + (x_pool @ self.block.notebook_write_w + self.block.notebook_write_b)
+                if NOTEBOOK_DUAL:
+                    if NOTEBOOK_POOL_MODE == "attn":
+                        scores_r = (x_f * self.block.notebook_rep_query.reshape(1, 1, -1)).sum(axis=-1)
+                        weights_r = scores_r.softmax(axis=-1).reshape(B, -1, 1)
+                        x_pool_r = (x_f * weights_r).sum(axis=1)
+                    else:
+                        x_pool_r = x_pool
+                    notebook_r = x_pool_r @ self.block.notebook_rep_write_w + self.block.notebook_rep_write_b
+            # v39 sin-modulated integral envelope (mirrors breathe_with_lookup)
+            if BFIELD_SIN_MOD:
+                beta_l = math.sin((loop + 0.5) * math.pi / float(n_loops))
+            else:
+                beta_l = 1.0
+            integral = integral + beta_l * x
+        if BFIELD_SIN_MOD:
+            # Closed-form sum of sin((l+0.5)·π/n) for l=0..n-1; precompute as Python scalar
+            _wsum_stage1 = sum(math.sin((l + 0.5) * math.pi / float(n_loops)) for l in range(n_loops))
+            integrated_rep = (integral / _wsum_stage1).realize()
+        else:
+            integrated_rep = (integral / float(n_loops)).realize()
 
         # First token: per-batch gather at real_lens[i] - 1.
         # Build per-batch index: pos == (real_len - 1)
@@ -1186,6 +1863,12 @@ class BreathingTransformer:
         last_mask = (pos_arange == last_idx).cast(dtypes.half)  # (B, max_prompt, 1)
         h_at_last = (integrated_rep * last_mask).sum(axis=1, keepdim=True)  # (B, 1, H)
         h_normed = _layernorm(h_at_last, self.ln_f_g, self.ln_f_b, cfg.layer_norm_eps)
+        # v28: prototype retrieval — match h_normed (1, hidden) against lookup keys,
+        # weighted sum of values, add to h_normed. Mirrors breathe_with_lookup behavior.
+        if LOOKUP_VALUE_INJECT:
+            scores = self.lookup_table(h_normed).cast(dtypes.float)  # (B, 1, n_entries)
+            retrieved = self.lookup_table.retrieve(scores).cast(h_normed.dtype)  # (B, 1, hidden)
+            h_normed = h_normed + LOOKUP_VALUE_SCALE * retrieved
         logits = (h_normed @ self.embed_out).cast(dtypes.float)
         logits = logits[:, :, :vocab_active]
         first_ids = logits.argmax(axis=-1).realize().numpy().reshape(B)
@@ -1221,6 +1904,7 @@ class BreathingTransformer:
             embed_out = self.embed_out
             embed_w = self.embed.weight
             layers = self.block.layers
+            block_local = self.block
             layer_norm_eps = cfg.layer_norm_eps
             n_loops_local = n_loops
             n_layers_local = n_layers
@@ -1228,16 +1912,35 @@ class BreathingTransformer:
             vocab_active_local = vocab_active
 
             @TinyJit
-            def _step(prev_id_t, t_pos_t, *kv_flat):
+            def _step(prev_id_t, t_pos_t, notebook_in, notebook_r_in, *kv_flat):
                 total = n_layers_local * n_loops_local
                 ck = list(kv_flat[:total])
                 cv = list(kv_flat[total:])
                 # In-graph embedding lookup
-                x = embed_w[prev_id_t].cast(dtypes.half)
+                x_new = embed_w[prev_id_t].cast(dtypes.half)
+                x = x_new
                 integral = Tensor.zeros(B_local, 1, cfg.hidden, dtype=dtypes.half).contiguous()
                 new_ck = [None] * total
                 new_cv = [None] * total
+                notebook = notebook_in
+                notebook_r = notebook_r_in
+                # v39 sin envelope normalization (closed-form) — Python scalar baked into JIT graph
+                if BFIELD_SIN_MOD:
+                    _w_sum_local = sum(math.sin((l + 0.5) * math.pi / float(n_loops_local)) for l in range(n_loops_local))
+                else:
+                    _w_sum_local = float(n_loops_local)
                 for loop in range(n_loops_local):
+                    # v40 fresh-input: each breath starts from the new token's embedding
+                    if BREATHE_FRESH_INPUT:
+                        x = x_new
+                    # v40 Notebook reads at breath start (mirror Stage 1 / training)
+                    if NOTEBOOK_V24:
+                        if NOTEBOOK_ACCUMULATE_ENABLED:
+                            read_vec = (notebook @ block_local.notebook_read_w + block_local.notebook_read_b)
+                            x = x + read_vec.reshape(B_local, 1, -1).cast(x.dtype)
+                        if NOTEBOOK_DUAL:
+                            read_vec_r = (notebook_r @ block_local.notebook_rep_read_w + block_local.notebook_rep_read_b)
+                            x = x + read_vec_r.reshape(B_local, 1, -1).cast(x.dtype)
                     for li in range(n_layers_local):
                         idx = li * n_loops_local + loop
                         x, k_new, v_new = layers[li].forward_cached_step_batched(
@@ -1245,13 +1948,40 @@ class BreathingTransformer:
                         )
                         new_ck[idx] = k_new
                         new_cv[idx] = v_new
-                    integral = integral + x
-                integrated = integral / float(n_loops_local)
+                    # v39 end-of-breath waist
+                    if BFIELD_WAIST > 0 and BFIELD_END_OF_BREATH:
+                        x = block_local.apply_bfield_waist(x)
+                    # v40 Notebook writes at breath end
+                    if NOTEBOOK_V24:
+                        x_f = x.cast(dtypes.float)
+                        if NOTEBOOK_POOL_MODE == "attn":
+                            scores = (x_f * block_local.notebook_write_query.reshape(1, 1, -1)).sum(axis=-1)
+                            weights = scores.softmax(axis=-1).reshape(B_local, -1, 1)
+                            x_pool = (x_f * weights).sum(axis=1)
+                        else:
+                            x_pool = x_f.mean(axis=1)
+                        if NOTEBOOK_ACCUMULATE_ENABLED:
+                            notebook = notebook + (x_pool @ block_local.notebook_write_w + block_local.notebook_write_b)
+                        if NOTEBOOK_DUAL:
+                            if NOTEBOOK_POOL_MODE == "attn":
+                                scores_r = (x_f * block_local.notebook_rep_query.reshape(1, 1, -1)).sum(axis=-1)
+                                weights_r = scores_r.softmax(axis=-1).reshape(B_local, -1, 1)
+                                x_pool_r = (x_f * weights_r).sum(axis=1)
+                            else:
+                                x_pool_r = x_pool
+                            notebook_r = x_pool_r @ block_local.notebook_rep_write_w + block_local.notebook_rep_write_b
+                    # Sin-modulated accumulation
+                    if BFIELD_SIN_MOD:
+                        beta_l = math.sin((loop + 0.5) * math.pi / float(n_loops_local))
+                    else:
+                        beta_l = 1.0
+                    integral = integral + beta_l * x
+                integrated = integral / _w_sum_local
                 x_normed = _layernorm(integrated, ln_g, ln_b_t, layer_norm_eps)
                 logits = x_normed @ embed_out  # (B, 1, vocab) — half is fine for argmax
                 logits_active = logits[:, :, :vocab_active_local]
                 next_id_t = logits_active.argmax(axis=-1).cast(dtypes.int).realize()  # (B, 1)
-                return (next_id_t, *new_ck, *new_cv)
+                return (next_id_t, notebook, notebook_r, *new_ck, *new_cv)
 
             self._cached_batch_jits[jit_key] = _step
             print(f"[JIT] cached_generate_batch graph registered for replay "
@@ -1266,6 +1996,16 @@ class BreathingTransformer:
         t_pos_t = _T(t_pos_per, dtype=dtypes.int).contiguous().realize()
         # Persistent prev_id_t buffer (B, 1) seeded with first generated tokens
         prev_id_t = _T([[outs[b][0]] for b in range(B)], dtype=dtypes.int).contiguous().realize()
+        # v40: thread Stage 1's final notebook state into Stage 2.
+        # If notebook isn't active, use zero placeholders (JIT graph still expects them).
+        if NOTEBOOK_V24 and notebook is not None:
+            notebook_state = notebook.contiguous().realize()
+        else:
+            notebook_state = _initial_notebook_state(B, self.block.nb_dim).contiguous().realize()
+        if NOTEBOOK_V24 and NOTEBOOK_DUAL and notebook_r is not None:
+            notebook_r_state = notebook_r.contiguous().realize()
+        else:
+            notebook_r_state = _initial_notebook_state(B, self.block.nb_dim).contiguous().realize()
         packed_kv = (
             [cache_k[li][lp] for li in range(n_layers) for lp in range(n_loops)]
             + [cache_v[li][lp] for li in range(n_layers) for lp in range(n_loops)]
@@ -1277,9 +2017,11 @@ class BreathingTransformer:
             if max(t_pos_per) >= max_len:
                 break
 
-            outputs = jit_step(prev_id_t, t_pos_t, *packed_kv)
+            outputs = jit_step(prev_id_t, t_pos_t, notebook_state, notebook_r_state, *packed_kv)
             next_id_t = outputs[0]
-            new_kv = outputs[1:]
+            notebook_state = outputs[1].contiguous().realize()
+            notebook_r_state = outputs[2].contiguous().realize()
+            new_kv = outputs[3:]
             for li in range(n_layers):
                 for lp in range(n_loops):
                     idx = li * n_loops + lp
@@ -1336,11 +2078,15 @@ class BreathingTransformer:
 
         # ---- Stage 1: full breathing on prompt, save K/V at every (layer, loop) ----
         # cache[layer_idx][loop_idx] = (K_buf, V_buf) padded to max_len
-        x = self.embed(_T([prompt_ids], dtype=dtypes.int).realize()).cast(dtypes.half)
+        x_emb = self.embed(_T([prompt_ids], dtype=dtypes.int).realize()).cast(dtypes.half)
+        x = x_emb
         integral = Tensor.zeros_like(x)
         cache_k = [[None] * n_loops for _ in range(n_layers)]
         cache_v = [[None] * n_loops for _ in range(n_layers)]
         for loop in range(n_loops):
+            # v40 fresh-input: each breath starts from the original embedding
+            if BREATHE_FRESH_INPUT:
+                x = x_emb
             for li, layer in enumerate(self.block.layers):
                 x, (k_part, v_part) = layer.forward_with_kv(x, loop_idx=loop)
                 pad_n = max_len - int(k_part.shape[2])
@@ -1348,8 +2094,20 @@ class BreathingTransformer:
                 v_full = v_part.pad(((0, 0), (0, 0), (0, pad_n), (0, 0))).contiguous().realize()
                 cache_k[li][loop] = k_full
                 cache_v[li][loop] = v_full
-            integral = integral + x
-        integrated_rep = (integral / float(n_loops)).realize()
+            # v39 end-of-breath waist
+            if BFIELD_WAIST > 0 and BFIELD_END_OF_BREATH:
+                x = self.block.apply_bfield_waist(x)
+            # v39 sin-modulated integral
+            if BFIELD_SIN_MOD:
+                beta_l = math.sin((loop + 0.5) * math.pi / float(n_loops))
+            else:
+                beta_l = 1.0
+            integral = integral + beta_l * x
+        if BFIELD_SIN_MOD:
+            _wsum = sum(math.sin((l + 0.5) * math.pi / float(n_loops)) for l in range(n_loops))
+            integrated_rep = (integral / _wsum).realize()
+        else:
+            integrated_rep = (integral / float(n_loops)).realize()
 
         # First token: project integrated_rep[:, -1, :] (matches training exactly).
         h_normed = _layernorm(integrated_rep, self.ln_f_g, self.ln_f_b, cfg.layer_norm_eps)
@@ -1376,6 +2134,7 @@ class BreathingTransformer:
             n_loops_local = n_loops
             n_layers_local = n_layers
 
+            block_local = self.block
             @TinyJit
             def _token_step(x_new, t_pos_t, *kv_flat):
                 total = n_layers_local * n_loops_local
@@ -1385,7 +2144,15 @@ class BreathingTransformer:
                 new_ck = [None] * total
                 new_cv = [None] * total
                 x = x_new
+                # v39 sin envelope normalization
+                if BFIELD_SIN_MOD:
+                    _w_sum_tok = sum(math.sin((l + 0.5) * math.pi / float(n_loops_local)) for l in range(n_loops_local))
+                else:
+                    _w_sum_tok = float(n_loops_local)
                 for loop in range(n_loops_local):
+                    # v40 fresh-input: each breath starts from the new token's embedding
+                    if BREATHE_FRESH_INPUT:
+                        x = x_new
                     for li in range(n_layers_local):
                         idx = li * n_loops_local + loop
                         x, k_new, v_new = layers[li].forward_cached_step_jit(
@@ -1393,8 +2160,19 @@ class BreathingTransformer:
                         )
                         new_ck[idx] = k_new
                         new_cv[idx] = v_new
-                    integral = integral + x
-                integrated = integral / float(n_loops_local)
+                        # v38 B-field — mid-breath waist after L1 (when not end-of-breath)
+                        if BFIELD_WAIST > 0 and li == 1 and not BFIELD_END_OF_BREATH:
+                            x = block_local.apply_bfield_waist(x)
+                    # v39 end-of-breath waist
+                    if BFIELD_WAIST > 0 and BFIELD_END_OF_BREATH:
+                        x = block_local.apply_bfield_waist(x)
+                    # v39 sin-modulated accumulation
+                    if BFIELD_SIN_MOD:
+                        beta_l = math.sin((loop + 0.5) * math.pi / float(n_loops_local))
+                    else:
+                        beta_l = 1.0
+                    integral = integral + beta_l * x
+                integrated = integral / _w_sum_tok
                 x_normed = _layernorm(integrated, ln_g, ln_b, layer_norm_eps)
                 logits = (x_normed @ embed_out).cast(dtypes.float).realize()
                 return (logits, *new_ck, *new_cv)
