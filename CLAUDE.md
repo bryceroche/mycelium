@@ -1,6 +1,6 @@
 # Mycelium v4: The Breathing Transformer — Agent Brief
 
-**Author:** Bryce + Claude · **Deadline:** Sep 1, 2026 · **Target:** MATH-500
+**Author:** Bryce + Claude · **Deadline:** Dec 25, 2026 · **Target:** MATH-500
 **Platform:** Shadow Glass (AMD 7900 XTX, 24GB) · tinygrad + AM driver · no ROCm
 
 For the full conceptual writeup, see `README.md`. This file is the agent-facing brief: the architecture compressed around the seven components that form the closed feedback loop, plus the rules that govern editing this codebase.
@@ -52,17 +52,19 @@ The loop **terminates** when both: (a) the integral has stabilized (Lyapunov cri
 
 ---
 
-## 3. Empirical Status (as of 2026-05-13)
+## 3. Empirical Status (as of 2026-05-18)
 
-**Best ckpt for pure L4: L4_MIXED v1 step 1500 = 66 / 67 / 65 (A=1 / A=4 / A=8).**
+**Best ckpt: v45 reg take 3 step 1000 = 96 / 94 / 93 on L4_MIXED (A=1 / A=4 / A=8).**
+File: `.cache/l4_mixed_ckpts/v45_reg_take3_step1000.safetensors`. Depth-spread compressed from v24c's 5pt → v45's 3pt — reg made deep loops MORE useful, not less.
 
 Trajectory:
 - **L3-spaced:** 70% at A=8 vs 65% at A=1 (depth helps). 65% is the 4-layer arithmetic ceiling.
 - **L4 v4 (May 12):** 43% pure L4 from arith_mixed_v6 warm-start. Step 1500 was the headline.
 - **L4_BORROW v1 overnight (May 13):** 80% on L4_BORROW eval (cascade-heavy), but only 32% on pure L4 — narrow-curriculum trade-off. Catastrophic forgetting between L4_BORROW and standard L4.
 - **L4_MIXED v1 (May 13):** broadest distribution (6 standard + 3 cascade variants). Step 1500 = **66/67/65** on L4_MIXED eval. +20 vs v4 baseline. Best ckpt to date.
-- **L4_MIXED v2 / `ROTATION_PERIOD=4` (May 13):** closed-cycle RoPE (period 4, 50% per-breath overlap). 68/64/60 at step 1500 — partial LOSE. Depth got *worse* (A=8 −5 vs v1). Closure alone isn't sufficient without per-breath training pressure for verification.
-- **L4_MIXED v3/v4 calibration (May 13):** added `ConfidenceHead` + BCE(conf, argmax-correct) per breath. v3 (single-cycle encoding): 1/1/1 at step 250 — catastrophic forgetting from encoding mismatch. v4 (multi-cycle encoding, digit-only mask): 0/1/0 — same catastrophic forgetting because non-digit positions got no training signal. v5 (multi-cycle + full target mask): in progress.
+- **v24c dual notebook (May 15):** DUAL notebook (REPLACE + ACCUMULATE 512d, random 0.02 init, attn-pool write source). Step 500 = **96/94/91** on L4_MIXED — first time all loop counts in 90s. Overfits past step 1000.
+- **v45 reg take 3 (May 18):** warm-start from v24c step 500 + reg stack (`STOCH_DEPTH_P=0.10`, `LABEL_SMOOTHING=0.1`, `WEIGHT_DECAY=0.05`). Step 1000 = **96/94/93** — ties v24c at A=1/4, **+2 at A=8**. Champion ckpt. 200-step continuation showed step 1000 is at/near local peak (drifts down, not up).
+- **STAGE2_NOTEBOOK inference-path fix (May 18):** v45 takes 1+2 collapsed (~0% gen acc, val loss fine) because `cached_generate_batch` Stage 2 was updating notebook per generated token — train/eval mismatch from the v40 work. Gated behind `STAGE2_NOTEBOOK` env var (default 0). v24c step 500 ckpt eval'd on current code recovered to its training-time 96/94/91.
 
 ### What the ablations established
 
@@ -107,8 +109,9 @@ MLP probes on v6 reps (shallow 1024→512→1; deep 8192-concat→2048→512→1
 
 ## 6. Current Work In Progress
 
-- **Calibration training (L4_MIXED v5):** `calibration_train_step` adds a `ConfidenceHead` (1024→256→1 MLP, sigmoid) at each step's "=" position. Per-breath BCE(conf, argmax-correct) supervises the head to predict its own correctness — the verification objective the probe found was missing from frozen reps. Multi-cycle encoding (matches eval distribution), full target mask (every target token supervised, fixing v4's digit-only failure). `CALIBRATION_MODE=1` env var routes the training step. Currently running from L4_MIXED v1 step 1500 warm-start. Decision point at step 250 eval.
-- **`ROTATION_PERIOD` env var:** closed-cycle RoPE rotation. Default 0 preserves existing behavior (`loop_phase = l * π/max_loops`); `=N` switches to `l * 2π/N` (period N breaths, full cycle returns to start). v2 with `=4` showed depth hurt — closure alone isn't sufficient. Available for future experiments once calibration baseline lands.
+- **v46 hybrid-heads quadrature (next experiment):** split the 16 heads, 8 keep PER_HEAD_PITCH pitch `l·π/64`, 8 add `π/2`. Cheapest possible test of the photon/quadrature idea (item #10, #15) — zero added params/compute. Warm-start from `v45_reg_take3_step1000`. Decision point at step 250 eval.
+- **Regularization stack validated (v45, May 18):** `STOCH_DEPTH_P=0.10` + `LABEL_SMOOTHING=0.1` + `WEIGHT_DECAY=0.05`. l3_train.py mask-gen ensures ≥1 active breath kept per step (skip SD when n_loops<2). Gates the integral-contribution scaling in `BreathingBlock.breathe()` and `BreathingTransformer.breathe_with_lookup()` only when `Tensor.training`. Now standard.
+- **STAGE2_NOTEBOOK env var (May 18):** gates per-token notebook updates in `cached_generate_batch`'s Stage 2 decode JIT. Default 0 matches v24c-era training. Set to 1 only for models explicitly trained with this mode. Bug found by direct ckpt-eval diagnostic (`scripts/diag_v24c_eval.py`).
 - **AM driver (working since 2026-05-11):** `DEV='PCI+AMD'` works after Secure Boot off + `vm.compact_unevictable_allowed=0`. `scripts/setup_am_driver.sh` installs both. See `memory/project_am_driver_state.md`.
 
 ---
@@ -119,11 +122,11 @@ MLP probes on v6 reps (shallow 1024→512→1; deep 8192-concat→2048→512→1
 
 **Left behind:** Llama 1B (replaced by Pythia-410M L0-3), LoRA atoms and continuous scales, the straight-through gradient estimator, soft token diversity mechanisms, PyTorch/ROCm, Windows.
 
-A 127M model that breathes, alternates, integrates, and factorizes. Four months to September 1.
+A 127M model that breathes, alternates, integrates, and factorizes. ~7 months to December 25.
 
 ---
 
-## 8. Open Research Threads (Laundry List, as of 2026-05-17)
+## 8. Open Research Threads (Laundry List, as of 2026-05-18)
 
 Active design ideas across the project. Each tagged with status: ✅ validated, 🟡 partial/stuck, 🆕 new/unstarted, 🔴 known broken.
 
@@ -135,7 +138,7 @@ Active design ideas across the project. Each tagged with status: ✅ validated, 
 
 4. **🟡 Compression-waist harness for centroid injection** — Designed: supervised init from pre-extracted centroids, aux op-CE supervision, conditional dropout for CFG. v38/v39 had pieces; no full working integration yet.
 
-5. **🟡 Overfitting / memorization control** — Weight decay live (AdamW WEIGHT_DECAY=0.01). Dropout blocked by tinygrad JIT incompatibility (`Tensor.rand_like`). Decomposition-into-memorizable-pieces is the underlying concern.
+5. **✅ Overfitting / memorization control** — Validated 2026-05-18 by v45. Stack: `STOCH_DEPTH_P=0.10` (per-breath Bernoulli drop with ResNet-style 1/(1-p) scaling, skip at n=1, ≥1 kept safeguard at n≥2) + `LABEL_SMOOTHING=0.1` (training-only, eval CE gated on `Tensor.training`) + `WEIGHT_DECAY=0.05`. From v24c step 500 (96/94/91), v45 step 1000 = 96/94/**93** — ties at shallow, **+2 at A=8**, depth-spread compressed 5pt → 3pt. Reg makes deep loops MORE useful, not less. Dropout still blocked by tinygrad JIT (`Tensor.rand_like`) but stoch depth subsumes it for this architecture.
 
 6. **🆕 All thinking in rep space, autoregressive decode only at the end** — Identified 2026-05-17 as a fix for v40-era failures. Current eval does 8 breaths × max_new tokens = 300+ breaths per problem (copy-machine violation). Should be 8 breaths ONCE in Stage 1, then 1 forward per new token in Stage 2 using a UNIFIED K/V cache (e.g., last-breath cache from Stage 1). Not yet implemented.
 

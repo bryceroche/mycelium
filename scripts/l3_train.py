@@ -89,6 +89,12 @@ def collect_params(model):
             sw.in_ln_g, sw.in_ln_b, sw.post_ln_g, sw.post_ln_b]
     for layer in model.block.layers:
         nps += [layer.wq, layer.bq, layer.wk, layer.bk, layer.w_in, layer.b_in]
+    # v44 doubled-layers Set B — only included in optimizer when actually in use
+    # (would have undefined gradient otherwise since not touched in forward).
+    from mycelium.breathing import DOUBLED_LAYERS as _DL_FLAG
+    if _DL_FLAG:
+        for layer in model.block.layers_b:
+            nps += [layer.wq, layer.bq, layer.wk, layer.bk, layer.w_in, layer.b_in]
     # Breath-time embedding (axial conditioning) — always included for ckpt symmetry.
     # When BREATH_TIME_EMBED=0 the L2 reg keeps the gradient defined; the param doesn't move.
     nps += [model.block.breath_embed]
@@ -117,6 +123,10 @@ def collect_params(model):
     # v38 B-field IB bottleneck — learned when BFIELD_WAIST > 0. Always included
     # for ckpt symmetry; L2 reg in l3_training keeps gradient defined when off.
     nps += [model.block.bfield_proj_down, model.block.bfield_proj_up, model.block.bfield_bias]
+    # v50 IB-waist codebook — learnable keys + values for op-discriminative compression.
+    # Always included for ckpt symmetry; gradient inert when WAIST_CODEBOOK_N=0
+    # (values are zero-init → contribution is zero → gradient through retrieved is zero).
+    nps += [model.block.waist_codebook_keys, model.block.waist_codebook_values]
     # v39 waist head (512 → 4 op classifier) — trained when BFIELD_AUX_WEIGHT > 0
     # and BFIELD_END_OF_BREATH=1. L2 reg covers the off case.
     nps += [model.waist_head_w, model.waist_head_b]
@@ -144,7 +154,7 @@ def named_state(model):
     return model.state_dict()
 
 
-DEFAULT_FIXED_LEN = {"ARITH": 32, "ARITH_HARD": 32, "ARITH_MIXED": 32, "ARITH_BORROW": 32, "L3": 64, "L4": 96, "L4_BORROW": 96, "L4_MIXED": 96, "L4.5": 160}
+DEFAULT_FIXED_LEN = {"ARITH": 32, "ARITH_HARD": 32, "ARITH_MIXED": 32, "ARITH_BORROW": 32, "L3": 64, "L4": 96, "L4_BORROW": 96, "L4_MIXED": 96, "L4.5": 160, "L4.7": 200, "GSM8K_SPACED": 320}
 
 
 def main():
@@ -210,17 +220,64 @@ def main():
     print(f"phase_A_train_loops={TRAIN_LOOPS}  phase_A_eval_loops={EVAL_LOOPS}  phase_C_loops={PHASE_C_LOOPS}")
     print(f"eval batch={EVAL_BATCH}  cache_len={EVAL_CACHE_LEN}  lookup_eval={'on' if LOOKUP_EVAL else 'off'}@A={LOOKUP_EVAL_LOOPS}")
     print(f"lookup_aux_weight={LOOKUP_AUX_WEIGHT}  ctrl_train={'on' if CTRL_TRAIN else 'off'}  ctrl_lr={CTRL_LR}  ctrl_max_loops={CTRL_MAX_LOOPS}  ctrl_train_every={CTRL_TRAIN_EVERY}")
+    print(f"weight_decay={float(getenv('WEIGHT_DECAY', '0.05'))}  label_smoothing={float(getenv('LABEL_SMOOTHING', '0.0'))}  stoch_depth_p={float(getenv('STOCH_DEPTH_P', '0.0'))}")
     print(f"use_jit={USE_JIT}  gc_every={GC_EVERY}")
     print()
 
-    print(f"generating {LEVEL} problems...")
-    t0 = time.perf_counter()
-    all_examples = generate_math(LEVEL, NUM_PROBLEMS, seed=SEED, digit_spacing=SPACE_DIGITS)
-    train_examples, eval_examples = split_train_eval(all_examples, n_eval=NUM_EVAL, seed=SEED)
-    print(f"  train={len(train_examples)}  eval={len(eval_examples)}  ({time.perf_counter()-t0:.1f}s)")
-    if SPACE_DIGITS:
+    # v44 MIXED_LEVELS: comma-separated list of curriculum levels. When set,
+    # each training step samples a random level and uses its corpus + fixed_len.
+    # Eval still runs against the primary LEVEL. JIT cache compiles per (level,
+    # n_loops, fixed_len) combination; reuses across the run.
+    MIXED_LEVELS = getenv("MIXED_LEVELS", "")
+    mixed_pool = []  # list of (level_name, train_examples, fixed_len) tuples
+    if MIXED_LEVELS:
+        levels_list = [s.strip() for s in MIXED_LEVELS.split(",") if s.strip()]
+        print(f"=== MIXED-level training over {levels_list} ===")
+        t0 = time.perf_counter()
+        for lev in levels_list:
+            ex_all = generate_math(lev, NUM_PROBLEMS, seed=SEED, digit_spacing=SPACE_DIGITS)
+            ex_train, ex_eval = split_train_eval(ex_all, n_eval=NUM_EVAL, seed=SEED)
+            fl_lev = DEFAULT_FIXED_LEN.get(lev, 96)
+            mixed_pool.append((lev, ex_train, fl_lev))
+            print(f"  {lev}: train={len(ex_train)} eval={len(ex_eval)} fixed_len={fl_lev}")
+        # Primary level's eval set for accuracy tracking (LEVEL chosen separately).
+        # Special-case GSM8K_SPACED: use GSM8K test set as the real benchmark eval,
+        # not a held-out from train (train is already in the mixed pool).
+        if LEVEL == "GSM8K_SPACED":
+            from mycelium.l3_data import load_gsm8k_spaced
+            train_examples = mixed_pool[0][1]   # placeholder; the mixed pool is used for training
+            eval_examples = load_gsm8k_spaced("test")[:NUM_EVAL]
+            print(f"  primary eval level {LEVEL} (GSM8K test): eval={len(eval_examples)}  ({time.perf_counter()-t0:.1f}s)")
+        else:
+            all_examples = generate_math(LEVEL, NUM_PROBLEMS, seed=SEED, digit_spacing=SPACE_DIGITS)
+            train_examples, eval_examples = split_train_eval(all_examples, n_eval=NUM_EVAL, seed=SEED)
+            print(f"  primary eval level {LEVEL}: eval={len(eval_examples)}  ({time.perf_counter()-t0:.1f}s)")
+    elif LEVEL == "GSM8K_SPACED":
+        # GSM8K curriculum extension: load 7.5k train + 1.3k test from the cached
+        # parquet. Test set is the eval set (the real benchmark). Always digit-
+        # spaced (the loader applies space_digits internally — SPACE_DIGITS env
+        # var is ignored for this level).
+        from mycelium.l3_data import load_gsm8k_spaced
+        print(f"loading GSM8K-spaced (train + test)...")
+        t0 = time.perf_counter()
+        train_examples = load_gsm8k_spaced("train")
+        eval_examples_all = load_gsm8k_spaced("test")
+        # Cap eval at NUM_EVAL for speed during training (full test set is run
+        # via scripts/eval_ckpt_on_gsm8k.py against the final ckpt).
+        eval_examples = eval_examples_all[:NUM_EVAL]
+        print(f"  train={len(train_examples)}  eval={len(eval_examples)} (cap {NUM_EVAL} of {len(eval_examples_all)})  ({time.perf_counter()-t0:.1f}s)")
         ex0 = train_examples[0]
-        print(f"  sample (digit-spaced): {ex0.problem!r} -> {ex0.gen!r}")
+        print(f"  sample: {ex0.problem!r}")
+        print(f"  target: {ex0.gen_targets[0][:150]!r}...")
+    else:
+        print(f"generating {LEVEL} problems...")
+        t0 = time.perf_counter()
+        all_examples = generate_math(LEVEL, NUM_PROBLEMS, seed=SEED, digit_spacing=SPACE_DIGITS)
+        train_examples, eval_examples = split_train_eval(all_examples, n_eval=NUM_EVAL, seed=SEED)
+        print(f"  train={len(train_examples)}  eval={len(eval_examples)}  ({time.perf_counter()-t0:.1f}s)")
+        if SPACE_DIGITS:
+            ex0 = train_examples[0]
+            print(f"  sample (digit-spaced): {ex0.problem!r} -> {ex0.gen!r}")
 
     tok = load_tokenizer()
     from mycelium.lookup_table import eq_token_ids_for
@@ -243,7 +300,11 @@ def main():
         mem_log("after ckpt resume")
 
     params = collect_params(model)
-    WEIGHT_DECAY = float(getenv("WEIGHT_DECAY", "0.01"))   # AdamW default; anti-overfit knob
+    # Bumped default 0.01 → 0.05 (2026-05-17) as part of the regularization pass
+    # alongside stochastic depth + label smoothing. AdamW typical range for this scale.
+    WEIGHT_DECAY = float(getenv("WEIGHT_DECAY", "0.05"))
+    LABEL_SMOOTHING = float(getenv("LABEL_SMOOTHING", "0.0"))  # for log only — read by l3_training at import
+    STOCH_DEPTH_P = float(getenv("STOCH_DEPTH_P", "0.0"))      # for log only — read by breathing at import
     opt = AdamW(params, lr=LR, weight_decay=WEIGHT_DECAY)
     # Separate controller optimizer — closed-loop component #5 trains independently
     # via the lookup-CE signal flowing back through decisions. Created regardless
@@ -287,6 +348,25 @@ def main():
     elif LAYER_PITCH_TARGET > 0.0:
         print(f"[LAYER_PITCH] ramp mode: target={LAYER_PITCH_TARGET:.4f} rad, ramp_steps={LAYER_PITCH_RAMP_STEPS}, shape={os.environ.get('LAYER_PITCH_RAMP_SHAPE', 'cos')}")
 
+    # v46b quadrature ramp — slowly grow the second-half-of-heads offset from 0 to π/2
+    # over QUADRATURE_RAMP_STEPS so the model's W_O adapts to the diverging geometry.
+    # See mycelium/breathing.py QUADRATURE_HEADS / QUADRATURE_RAMP_STEPS comments.
+    from mycelium.breathing import (
+        QUADRATURE_HEADS as _QH, QUADRATURE_RAMP_STEPS as _QRS,
+        ACROSS_LAYER_PITCH_TARGET as _ALPT, ACROSS_LAYER_PITCH_RAMP_STEPS as _ALPRS,
+    )
+    if _QH and _QRS > 0:
+        print(f"[QUADRATURE] ramp mode: second-half offset 0 → π/2 over {_QRS} steps, then hold")
+    elif _QH:
+        print(f"[QUADRATURE] full mode: second-half offset = π/2 from step 0 (no ramp)")
+    if _ALPT > 0.0:
+        import math as _alpt_math
+        _base_step = (2 * _alpt_math.pi if bool(getenv("ROPE_FULL_CIRCLE", 0)) else _alpt_math.pi) / (cfg.n_phases * cfg.n_heads)
+        if _ALPRS > 0:
+            print(f"[ACROSS_LAYER_PITCH] ramp mode: per-layer step {_base_step:.4f} → {_ALPT:.4f} rad over {_ALPRS} steps")
+        else:
+            print(f"[ACROSS_LAYER_PITCH] fixed mode: per-layer step = {_ALPT:.4f} rad from step 0 (no ramp)")
+
     t_start = time.perf_counter()
     for step in range(STEPS):
         # Three-phase scheduling: cycle 0 (Phase A) gets heavy breathing,
@@ -294,8 +374,17 @@ def main():
         # inside multi_cycle_train_step.
         phase_a_loops = int(py_rng.choice(TRAIN_LOOPS))
         loops_per_cycle = [phase_a_loops, PHASE_C_LOOPS]
-        idx = rng.integers(0, len(train_examples), size=BATCH)
-        batch_examples = [train_examples[i] for i in idx]
+        # v44 MIXED_LEVELS: per-step level sampling. Different levels have different
+        # fixed_len (and n_cycles), so JIT compiles separately for each combination.
+        if mixed_pool:
+            chosen_level, lev_train, lev_fixed_len = mixed_pool[int(py_rng.integers(0, len(mixed_pool)))]
+            cur_train = lev_train
+            cur_fixed_len = lev_fixed_len
+        else:
+            cur_train = train_examples
+            cur_fixed_len = FIXED_LEN
+        idx = rng.integers(0, len(cur_train), size=BATCH)
+        batch_examples = [cur_train[i] for i in idx]
 
         # Update layer_pitch_scale every step. Assign in place so JIT graph identity is
         # preserved.
@@ -313,6 +402,79 @@ def main():
             new_scale = LAYER_PITCH_SLOPE * step
             model.block.layer_pitch_scale.assign(
                 Tensor([new_scale], dtype=dtypes.float).contiguous()
+            )
+
+        # v46b Quadrature ramp: per training step, recompute the per-head pitch
+        # cos/sin tables at the current ramp scale and assign to buffers. JIT
+        # graph captures the buffer reference and picks up new values on replay
+        # (same pattern as layer_pitch_scale above and stoch_keep_mask below).
+        if _QH and _QRS > 0:
+            ramp_scale = min(step / float(_QRS), 1.0)
+            import math as _qm
+            half = cfg.n_heads // 2
+            pitch_range_q = 2 * _qm.pi if bool(getenv("ROPE_FULL_CIRCLE", 0)) else _qm.pi
+            ph_np = np.zeros((cfg.n_phases, cfg.n_heads), dtype=np.float32)
+            for l in range(cfg.n_phases):
+                base = l * pitch_range_q / (cfg.n_phases * cfg.n_heads)
+                for h in range(cfg.n_heads):
+                    extra = (_qm.pi / 2) * ramp_scale if h >= half else 0.0
+                    ph_np[l, h] = base + extra
+            cos_np = np.cos(ph_np).reshape(cfg.n_phases, 1, cfg.n_heads, 1, 1)
+            sin_np = np.sin(ph_np).reshape(cfg.n_phases, 1, cfg.n_heads, 1, 1)
+            model.block.per_head_pitch_cos.assign(Tensor(cos_np, dtype=dtypes.float).contiguous())
+            model.block.per_head_pitch_sin.assign(Tensor(sin_np, dtype=dtypes.float).contiguous())
+
+        # v47 Across-layer quadrature ramp: per-layer step grows from base
+        # (π/64 default) to ACROSS_LAYER_PITCH_TARGET (π/2 for full quadrature)
+        # over ACROSS_LAYER_PITCH_RAMP_STEPS. All heads within a layer keep the
+        # same offset — only the layer-to-layer phase difference changes.
+        # Mutually exclusive with QUADRATURE_HEADS for clarity.
+        if _ALPT > 0.0 and _ALPRS > 0 and not _QH:
+            import math as _alm
+            pitch_range_a = 2 * _alm.pi if bool(getenv("ROPE_FULL_CIRCLE", 0)) else _alm.pi
+            base_step = pitch_range_a / (cfg.n_phases * cfg.n_heads)
+            ramp_scale = min(step / float(_ALPRS), 1.0)
+            current_step = base_step + ramp_scale * (_ALPT - base_step)
+            ph_np = np.zeros((cfg.n_phases, cfg.n_heads), dtype=np.float32)
+            for l in range(cfg.n_phases):
+                for h in range(cfg.n_heads):
+                    ph_np[l, h] = l * current_step
+            cos_np = np.cos(ph_np).reshape(cfg.n_phases, 1, cfg.n_heads, 1, 1)
+            sin_np = np.sin(ph_np).reshape(cfg.n_phases, 1, cfg.n_heads, 1, 1)
+            model.block.per_head_pitch_cos.assign(Tensor(cos_np, dtype=dtypes.float).contiguous())
+            model.block.per_head_pitch_sin.assign(Tensor(sin_np, dtype=dtypes.float).contiguous())
+
+        # Stochastic depth: resample per-breath keep mask each training step.
+        # Mask values are 1/keep_prob when kept (Bernoulli) and 0 when dropped, so
+        # E[breath contribution] is unchanged — output is an unbiased estimator of
+        # the no-drop mean. Buffer is read inside the JIT'd graph; assign updates
+        # data in place while preserving graph identity (same pattern as
+        # layer_pitch_scale above).
+        #
+        # SAFEGUARDS (added 2026-05-18 after v45 take 1 collapsed):
+        #   1. Skip stoch depth entirely at phase_a_loops < 2 — at n=1 dropping the
+        #      sole breath zeros the integral, giving garbage output and an enormous
+        #      gradient that damages the model. SD at n=1 has no regularization
+        #      meaning anyway (can't regularize depth=1).
+        #   2. At n>=2, ensure ≥1 of the first phase_a_loops slots is kept. With
+        #      Bernoulli sampling at p, prob of all-dropped at n=2 is p² ≈ 1% (p=0.1).
+        #      The safeguard forces a single random slot to "kept" in that case,
+        #      preserving E[integral] unbiasedness only approximately but eliminating
+        #      the catastrophic all-zero-integral event.
+        if STOCH_DEPTH_P > 0.0 and phase_a_loops >= 2:
+            keep_prob = 1.0 - STOCH_DEPTH_P
+            mask_np = (py_rng.random(cfg.max_loops) < keep_prob).astype(np.float32) / keep_prob
+            if mask_np[:phase_a_loops].sum() == 0:
+                # All active breaths dropped — force one back on
+                mask_np[int(py_rng.integers(0, phase_a_loops))] = 1.0 / keep_prob
+            model.block.stoch_keep_mask.assign(
+                Tensor(mask_np, dtype=dtypes.float).contiguous()
+            )
+        elif STOCH_DEPTH_P > 0.0:
+            # phase_a_loops == 1 — reset mask to all-ones so the breath isn't dropped
+            # (and isn't over-scaled by 1/keep_prob either).
+            model.block.stoch_keep_mask.assign(
+                Tensor.ones(cfg.max_loops, dtype=dtypes.float).contiguous()
             )
         elif LAYER_PITCH_TARGET > 0.0:
             import math as _m
@@ -333,7 +495,18 @@ def main():
 
         t0 = time.perf_counter()
         calib_info = None
-        if CALIBRATION_MODE:
+        per_breath_info = None
+        # v52 Stage 1: per-breath supervision path (mutually exclusive with calibration)
+        from mycelium.l3_training import per_breath_train_step
+        from mycelium.breathing import PER_BREATH_DECODE as _PBD
+        if _PBD and not CALIBRATION_MODE:
+            from mycelium.l3_training import per_breath_train_step
+            loss, per_breath_ce = per_breath_train_step(model, opt, batch_examples, tok,
+                                                        fixed_len=cur_fixed_len,
+                                                        lookup_aux_weight=LOOKUP_AUX_WEIGHT,
+                                                        lookup_eq_token_id=eq_token_ids)
+            per_breath_info = per_breath_ce
+        elif CALIBRATION_MODE:
             digit_ids_set = getattr(_calib_state, "digit_ids", None)
             if digit_ids_set is None:
                 digit_ids_set = digit_token_ids_for(tok)
@@ -342,17 +515,17 @@ def main():
                                                 digit_token_ids=digit_ids_set,
                                                 eq_token_ids=eq_token_ids,
                                                 n_loops=int(CALIBRATION_LOOPS),
-                                                fixed_len=FIXED_LEN,
+                                                fixed_len=cur_fixed_len,
                                                 calibration_weight=CALIBRATION_WEIGHT,
                                                 use_jit=USE_JIT)
             loss = calib_info["loss"]
         elif PROFILE:
-            loss, main_t = multi_cycle_train_step(model, opt, batch_examples, tok, loops_per_cycle, FIXED_LEN,
+            loss, main_t = multi_cycle_train_step(model, opt, batch_examples, tok, loops_per_cycle, cur_fixed_len,
                                                   lookup_aux_weight=LOOKUP_AUX_WEIGHT,
                                                   lookup_eq_token_id=eq_token_ids,
                                                   profile=True, use_jit=USE_JIT)
         else:
-            loss = multi_cycle_train_step(model, opt, batch_examples, tok, loops_per_cycle, FIXED_LEN,
+            loss = multi_cycle_train_step(model, opt, batch_examples, tok, loops_per_cycle, cur_fixed_len,
                                           lookup_aux_weight=LOOKUP_AUX_WEIGHT,
                                           lookup_eq_token_id=eq_token_ids,
                                           use_jit=USE_JIT)
@@ -402,6 +575,10 @@ def main():
                              f"conf[-]={calib_info['mean_conf_wrong']:.3f}  "
                              f"(n+={calib_info['n_correct']} n-={calib_info['n_wrong']})")
                 print(f"step {step:4d}  loops={CALIBRATION_LOOPS}  loss={calib_info['loss']:.4f}{calib_str}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)
+            elif per_breath_info is not None:
+                # v52 Stage 1 per-breath logging: show CE for each breath
+                pb_str = "  pb_ce=[" + " ".join(f"{c:.3f}" for c in per_breath_info) + "]"
+                print(f"step {step:4d}  K={len(per_breath_info)}  loss={loss:.4f}{pb_str}{ctrl_str}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)
             else:
                 print(f"step {step:4d}  A={phase_a_loops} C={PHASE_C_LOOPS}  loss={loss:.4f}{ctrl_str}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)
             # Log mem usage at step 0 (post first JIT compile) and every 50 steps after
