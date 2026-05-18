@@ -142,7 +142,9 @@ def load_breathing(cfg: Config, sd: Dict[str, Tensor] | None = None) -> Breathin
     _assign(sw.post_ln_g, _gpu(sd[f"{p0}.post_attention_layernorm.weight"]))
     _assign(sw.post_ln_b, _gpu(sd[f"{p0}.post_attention_layernorm.bias"]))
 
-    # Phase-specific (Q, K, FFN-in from layers 0..3 respectively)
+    # Phase-specific (Q, K, FFN-in from layers 0..3 respectively).
+    # v44 doubled-layers: copy SAME Pythia weights to BOTH Set A (layers) and
+    # Set B (layers_b). Identical init at step 0; gradient differentiates them.
     for i, layer in enumerate(model.block.layers):
         p = f"gpt_neox.layers.{i}"
         q_w, k_w, _, q_b, k_b, _ = _split_qkv(
@@ -150,12 +152,22 @@ def load_breathing(cfg: Config, sd: Dict[str, Tensor] | None = None) -> Breathin
             _gpu(sd[f"{p}.attention.query_key_value.bias"]),
             cfg,
         )
+        w_in_gpu = _gpu(sd[f"{p}.mlp.dense_h_to_4h.weight"]).T
+        b_in_gpu = _gpu(sd[f"{p}.mlp.dense_h_to_4h.bias"])
         _assign(layer.wq, q_w)
         _assign(layer.wk, k_w)
         _assign(layer.bq, q_b)
         _assign(layer.bk, k_b)
-        _assign(layer.w_in, _gpu(sd[f"{p}.mlp.dense_h_to_4h.weight"]).T)
-        _assign(layer.b_in, _gpu(sd[f"{p}.mlp.dense_h_to_4h.bias"]))
+        _assign(layer.w_in, w_in_gpu)
+        _assign(layer.b_in, b_in_gpu)
+        # v44 Set B — identical Pythia init
+        layer_b = model.block.layers_b[i]
+        _assign(layer_b.wq, q_w)
+        _assign(layer_b.wk, k_w)
+        _assign(layer_b.bq, q_b)
+        _assign(layer_b.bk, k_b)
+        _assign(layer_b.w_in, w_in_gpu)
+        _assign(layer_b.b_in, b_in_gpu)
 
     _assign(model.ln_f_g, _gpu(sd["gpt_neox.final_layer_norm.weight"]))
     _assign(model.ln_f_b, _gpu(sd["gpt_neox.final_layer_norm.bias"]))

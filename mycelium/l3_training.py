@@ -5,6 +5,7 @@ Multi-cycle path (L4+): per-cycle forward passes — each outer cycle is its own
 breathe-then-speak event. Equal-weighted loss across cycles (equal-reward
 decomposition for teacher-forced training).
 """
+import os
 from typing import List, Tuple
 import numpy as np
 from tinygrad import Tensor, Device, dtypes
@@ -16,6 +17,11 @@ from mycelium.calibration import (
     find_all_eq_positions, extract_digit_runs_after_eq, digit_token_ids_for,
 )
 
+
+# Label smoothing on the main answer-CE. Applied to training-time CE paths;
+# eval CE (multi_cycle_eval_loss) gates on Tensor.training so reported eval
+# loss stays comparable across LABEL_SMOOTHING values.
+LABEL_SMOOTHING = float(os.environ.get("LABEL_SMOOTHING", "0.0"))
 
 # JIT-train cache: (id(model), id(opt), n_loops_tuple, fixed_len, B) → compiled fn
 # The canonical tinygrad pattern wraps the WHOLE step (forward + backward + opt.step)
@@ -72,7 +78,7 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
                 waist_aux_ce = Tensor.zeros((), dtype=dtypes.float).contiguous()
             logits = (final_h @ model.embed_out).cast(dtypes.float)
             pred = logits[:, :-1, :]
-            main_ce = pred.sparse_categorical_crossentropy(labels0, ignore_index=-100, reduction="mean")
+            main_ce = pred.sparse_categorical_crossentropy(labels0, ignore_index=-100, label_smoothing=LABEL_SMOOTHING, reduction="mean")
             last_mw = match_weights[-1]
             gathered = (last_mw.cast(dtypes.float) * eq_mask).sum(axis=1)
             logits_aux = gathered[:, :4] * 10.0
@@ -101,8 +107,13 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
                       + model.block.bfield_proj_down.square().mean()
                       + model.block.bfield_proj_up.square().mean()
                       + model.block.bfield_bias.square().mean()
+                      + model.block.waist_codebook_keys.square().mean()
+                      + model.block.waist_codebook_values.square().mean()
                       + model.waist_head_w.square().mean()
-                      + model.waist_head_b.square().mean()) * 1e-7
+                      + model.waist_head_b.square().mean()
+                      + sum((p.square().mean() for lb in model.block.layers_b
+                                                for p in [lb.wq, lb.bq, lb.wk, lb.bk, lb.w_in, lb.b_in]),
+                            Tensor.zeros((), dtype=dtypes.float).contiguous())) * 1e-7
             total = main_ce + aw * aux_ce + waw_local * waist_aux_ce + l2_reg + ch_reg + be_reg
             total.backward()
             opt.step()
@@ -125,7 +136,7 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
                 nb_c0, nb_r_c0 = None, None
             logits0 = (final0 @ model.embed_out).cast(dtypes.float)
             pred0 = logits0[:, :-1, :]
-            main_ce0 = pred0.sparse_categorical_crossentropy(labels0, ignore_index=-100, reduction="mean")
+            main_ce0 = pred0.sparse_categorical_crossentropy(labels0, ignore_index=-100, label_smoothing=LABEL_SMOOTHING, reduction="mean")
             # Cycle 1 — plain forward (light, just CE on the execution gen).
             # v26c: seed notebook from cycle 0's final state when CROSS_CYCLE_NOTEBOOK=1.
             # Gradient flows through (no detach). v26-first-attempt collapsed with this
@@ -141,7 +152,7 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
                 final1 = model(tokens1, nl1)
             logits1 = (final1 @ model.embed_out).cast(dtypes.float)
             pred1 = logits1[:, :-1, :]
-            main_ce1 = pred1.sparse_categorical_crossentropy(labels1, ignore_index=-100, reduction="mean")
+            main_ce1 = pred1.sparse_categorical_crossentropy(labels1, ignore_index=-100, label_smoothing=LABEL_SMOOTHING, reduction="mean")
             # Aux CE from cycle 0's last-breath match weights
             last_mw = mw[-1]
             gathered = (last_mw.cast(dtypes.float) * eq_mask).sum(axis=1)
@@ -171,8 +182,13 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
                       + model.block.bfield_proj_down.square().mean()
                       + model.block.bfield_proj_up.square().mean()
                       + model.block.bfield_bias.square().mean()
+                      + model.block.waist_codebook_keys.square().mean()
+                      + model.block.waist_codebook_values.square().mean()
                       + model.waist_head_w.square().mean()
-                      + model.waist_head_b.square().mean()) * 1e-7
+                      + model.waist_head_b.square().mean()
+                      + sum((p.square().mean() for lb in model.block.layers_b
+                                                for p in [lb.wq, lb.bq, lb.wk, lb.bk, lb.w_in, lb.b_in]),
+                            Tensor.zeros((), dtype=dtypes.float).contiguous())) * 1e-7
             avg_main = (main_ce0 + main_ce1) / 2.0
             total = avg_main + aw * aux_ce + l2_reg + ch_reg + be_reg
             total.backward()
@@ -197,7 +213,7 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
                 nb_c0, nb_r_c0 = None, None
             logits0 = (final0 @ model.embed_out).cast(dtypes.float)
             pred0 = logits0[:, :-1, :]
-            main_ce0 = pred0.sparse_categorical_crossentropy(labels0, ignore_index=-100, reduction="mean")
+            main_ce0 = pred0.sparse_categorical_crossentropy(labels0, ignore_index=-100, label_smoothing=LABEL_SMOOTHING, reduction="mean")
             # Cycles 1 and 2 — plain forwards (light, just CE on the execution gen).
             # v26c: thread notebook from cycle N to cycle N+1, gradient through.
             if _CCN_3:
@@ -209,7 +225,7 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
                 nb_c1, nb_r_c1 = None, None
             logits1 = (final1 @ model.embed_out).cast(dtypes.float)
             pred1 = logits1[:, :-1, :]
-            main_ce1 = pred1.sparse_categorical_crossentropy(labels1, ignore_index=-100, reduction="mean")
+            main_ce1 = pred1.sparse_categorical_crossentropy(labels1, ignore_index=-100, label_smoothing=LABEL_SMOOTHING, reduction="mean")
             if _CCN_3:
                 final2, _, _ = model.forward_with_notebook(tokens2, nl2,
                                                             initial_notebook=nb_c1,
@@ -218,7 +234,7 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
                 final2 = model(tokens2, nl2)
             logits2 = (final2 @ model.embed_out).cast(dtypes.float)
             pred2 = logits2[:, :-1, :]
-            main_ce2 = pred2.sparse_categorical_crossentropy(labels2, ignore_index=-100, reduction="mean")
+            main_ce2 = pred2.sparse_categorical_crossentropy(labels2, ignore_index=-100, label_smoothing=LABEL_SMOOTHING, reduction="mean")
             # Aux CE from cycle 0's last-breath match weights
             last_mw = mw[-1]
             gathered = (last_mw.cast(dtypes.float) * eq_mask).sum(axis=1)
@@ -248,16 +264,113 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
                       + model.block.bfield_proj_down.square().mean()
                       + model.block.bfield_proj_up.square().mean()
                       + model.block.bfield_bias.square().mean()
+                      + model.block.waist_codebook_keys.square().mean()
+                      + model.block.waist_codebook_values.square().mean()
                       + model.waist_head_w.square().mean()
-                      + model.waist_head_b.square().mean()) * 1e-7
+                      + model.waist_head_b.square().mean()
+                      + sum((p.square().mean() for lb in model.block.layers_b
+                                                for p in [lb.wq, lb.bq, lb.wk, lb.bk, lb.w_in, lb.b_in]),
+                            Tensor.zeros((), dtype=dtypes.float).contiguous())) * 1e-7
             avg_main = (main_ce0 + main_ce1 + main_ce2) / 3.0
             total = avg_main + aw * aux_ce + l2_reg + ch_reg + be_reg
             total.backward()
             opt.step()
             return total.realize()
 
+    elif n_cycles == 4:
+        nl0 = int(n_loops_per_cycle[0])
+        nl1 = int(n_loops_per_cycle[1])
+        nl2 = int(n_loops_per_cycle[2])
+        nl3 = int(n_loops_per_cycle[3])
+        from mycelium.breathing import CROSS_CYCLE_NOTEBOOK as _CCN_4
+
+        @TinyJit
+        def _step(tokens0, labels0, tokens1, labels1, tokens2, labels2,
+                  tokens3, labels3, eq_mask, op_labels):
+            opt.zero_grad()
+            # Cycle 0 — breathe_with_lookup (heavy, provides match weights for aux)
+            if _CCN_4:
+                final0, mw, _, nb_c0, nb_r_c0 = model.breathe_with_lookup(tokens0, nl0, return_notebook=True)
+            else:
+                final0, mw, _ = model.breathe_with_lookup(tokens0, nl0)
+                nb_c0, nb_r_c0 = None, None
+            logits0 = (final0 @ model.embed_out).cast(dtypes.float)
+            pred0 = logits0[:, :-1, :]
+            main_ce0 = pred0.sparse_categorical_crossentropy(labels0, ignore_index=-100, label_smoothing=LABEL_SMOOTHING, reduction="mean")
+            # Cycles 1, 2, 3 — plain forwards, optionally with cross-cycle notebook threading
+            if _CCN_4:
+                final1, nb_c1, nb_r_c1 = model.forward_with_notebook(tokens1, nl1,
+                                                                       initial_notebook=nb_c0,
+                                                                       initial_notebook_r=nb_r_c0)
+            else:
+                final1 = model(tokens1, nl1)
+                nb_c1, nb_r_c1 = None, None
+            logits1 = (final1 @ model.embed_out).cast(dtypes.float)
+            pred1 = logits1[:, :-1, :]
+            main_ce1 = pred1.sparse_categorical_crossentropy(labels1, ignore_index=-100, label_smoothing=LABEL_SMOOTHING, reduction="mean")
+            if _CCN_4:
+                final2, nb_c2, nb_r_c2 = model.forward_with_notebook(tokens2, nl2,
+                                                                       initial_notebook=nb_c1,
+                                                                       initial_notebook_r=nb_r_c1)
+            else:
+                final2 = model(tokens2, nl2)
+                nb_c2, nb_r_c2 = None, None
+            logits2 = (final2 @ model.embed_out).cast(dtypes.float)
+            pred2 = logits2[:, :-1, :]
+            main_ce2 = pred2.sparse_categorical_crossentropy(labels2, ignore_index=-100, label_smoothing=LABEL_SMOOTHING, reduction="mean")
+            if _CCN_4:
+                final3, _, _ = model.forward_with_notebook(tokens3, nl3,
+                                                            initial_notebook=nb_c2,
+                                                            initial_notebook_r=nb_r_c2)
+            else:
+                final3 = model(tokens3, nl3)
+            logits3 = (final3 @ model.embed_out).cast(dtypes.float)
+            pred3 = logits3[:, :-1, :]
+            main_ce3 = pred3.sparse_categorical_crossentropy(labels3, ignore_index=-100, label_smoothing=LABEL_SMOOTHING, reduction="mean")
+            # Aux CE from cycle 0's last-breath match weights
+            last_mw = mw[-1]
+            gathered = (last_mw.cast(dtypes.float) * eq_mask).sum(axis=1)
+            logits_aux = gathered[:, :4] * 10.0
+            aux_ce = logits_aux.sparse_categorical_crossentropy(op_labels, ignore_index=-100, reduction="mean")
+            l2_reg = (model.lookup_table.weight.square().mean()
+                      + model.lookup_table.values.square().mean()
+                      + model.lookup_table.value_proj_up.square().mean()) * 1e-6
+            ch_reg = sum((p.square().mean() for p in model.confidence_head.parameters()),
+                         Tensor.zeros((), dtype=dtypes.float).contiguous()) * 1e-7
+            be_reg = (model.block.breath_embed.square().mean()
+                      + model.block.handoff_w.square().mean()
+                      + model.block.handoff_b.square().mean()
+                      + model.block.rope.pitch.square().mean()
+                      + model.block.crp_mix_alpha.square().mean()
+                      + model.block.crp_target_norm.square().mean()
+                      + model.block.notebook_write_w.square().mean()
+                      + model.block.notebook_write_b.square().mean()
+                      + model.block.notebook_read_w.square().mean()
+                      + model.block.notebook_read_b.square().mean()
+                      + model.block.notebook_write_query.square().mean()
+                      + model.block.notebook_rep_write_w.square().mean()
+                      + model.block.notebook_rep_write_b.square().mean()
+                      + model.block.notebook_rep_read_w.square().mean()
+                      + model.block.notebook_rep_read_b.square().mean()
+                      + model.block.notebook_rep_query.square().mean()
+                      + model.block.bfield_proj_down.square().mean()
+                      + model.block.bfield_proj_up.square().mean()
+                      + model.block.bfield_bias.square().mean()
+                      + model.block.waist_codebook_keys.square().mean()
+                      + model.block.waist_codebook_values.square().mean()
+                      + model.waist_head_w.square().mean()
+                      + model.waist_head_b.square().mean()
+                      + sum((p.square().mean() for lb in model.block.layers_b
+                                                for p in [lb.wq, lb.bq, lb.wk, lb.bk, lb.w_in, lb.b_in]),
+                            Tensor.zeros((), dtype=dtypes.float).contiguous())) * 1e-7
+            avg_main = (main_ce0 + main_ce1 + main_ce2 + main_ce3) / 4.0
+            total = avg_main + aw * aux_ce + l2_reg + ch_reg + be_reg
+            total.backward()
+            opt.step()
+            return total.realize()
+
     else:
-        raise NotImplementedError(f"JIT-train n_cycles={n_cycles} not implemented (only 1, 2, 3)")
+        raise NotImplementedError(f"JIT-train n_cycles={n_cycles} not implemented (only 1, 2, 3, 4)")
 
     _JIT_TRAIN_CACHE[key] = _step
     print(f"[JIT] compiled in {_t_jit.perf_counter() - _jit_compile_start:.1f}s "
@@ -368,7 +481,7 @@ def _compile_jit_calibration_step(model, opt, n_loops: int, n_cycles: int,
                 pred = logits[:, :-1, :]                               # (B, T-1, vocab)
 
                 per_tok_ce = pred.sparse_categorical_crossentropy(
-                    labels, ignore_index=-100, reduction="none"
+                    labels, ignore_index=-100, label_smoothing=LABEL_SMOOTHING, reduction="none"
                 )                                                       # (B, T-1)
                 per_ex_ans = (per_tok_ce * answer_mask).sum(axis=1) / answer_count
                 cycle_ans_sum = cycle_ans_sum + per_ex_ans.mean()
@@ -458,7 +571,8 @@ def masked_forward_loss(model, tokens: Tensor, labels: Tensor, n_loops: int,
     h = model.call_jit(tokens, n_loops) if use_jit else model(tokens, n_loops)
     logits = (h @ model.embed_out).cast(dtypes.float)          # (B, T, vocab)
     pred = logits[:, :-1, :]                                   # (B, T-1, vocab)
-    return pred.sparse_categorical_crossentropy(labels, ignore_index=-100, reduction="mean")
+    ls = LABEL_SMOOTHING if Tensor.training else 0.0
+    return pred.sparse_categorical_crossentropy(labels, ignore_index=-100, label_smoothing=ls, reduction="mean")
 
 
 def masked_forward_loss_with_lookup(model, tokens: Tensor, labels: Tensor,
@@ -481,7 +595,8 @@ def masked_forward_loss_with_lookup(model, tokens: Tensor, labels: Tensor,
         final_h, match_weights, _ = model.breathe_with_lookup(tokens, n_loops)
     logits = (final_h @ model.embed_out).cast(dtypes.float)
     pred = logits[:, :-1, :]
-    main_ce = pred.sparse_categorical_crossentropy(labels, ignore_index=-100, reduction="mean")
+    ls = LABEL_SMOOTHING if Tensor.training else 0.0
+    main_ce = pred.sparse_categorical_crossentropy(labels, ignore_index=-100, label_smoothing=ls, reduction="mean")
     return main_ce, match_weights
 
 
@@ -858,8 +973,9 @@ def calibration_train_step(model, opt, batch_examples: List[MathExample], tok,
         for rep in integrated_per_breath:
             logits = (rep @ model.embed_out).cast(dtypes.float)
             pred = logits[:, :-1, :]
+            ls = LABEL_SMOOTHING if Tensor.training else 0.0
             per_tok_ce = pred.sparse_categorical_crossentropy(
-                labels, ignore_index=-100, reduction="none"
+                labels, ignore_index=-100, label_smoothing=ls, reduction="none"
             )
             per_ex_ans = (per_tok_ce * answer_mask).sum(axis=1) / answer_mask.sum(axis=1).maximum(1.0)
             if cycle_ans_sum is None:
@@ -1034,6 +1150,138 @@ def _lookup_aux_loss(model, tokens: Tensor, tokens_np: np.ndarray,
     return logits.sparse_categorical_crossentropy(y, ignore_index=-100, reduction="mean")
 
 
+def per_breath_train_step(model, opt, batch_examples: List[MathExample], tok,
+                          fixed_len: int,
+                          lookup_aux_weight: float = 0.0,
+                          lookup_eq_token_id=None):
+    """v52 Stage 1: per-breath supervision.
+
+    Drops the outer cycle structure entirely. For a K-step problem, runs ONE
+    forward pass with n_loops=K breaths. Each breath's end-of-breath output
+    is decoded via ln_f + embed_out and supervised against THAT step's tokens.
+
+    Result: A=1 (single breath) can only solve step 1; K-step problems need
+    exactly K breaths. Depth-helps signal becomes architecturally required.
+
+    Assumes uniform K across the batch (use single-level training for Stage 1).
+    """
+    from mycelium.breathing import _layernorm
+
+    Tensor.training = True
+    # Determine K from the first example. K must be uniform across batch (sample
+    # from a single level for Stage 1).
+    cycles_per_ex = [encode_cycles(tok, ex) for ex in batch_examples]
+    K = len(cycles_per_ex[0])
+    assert all(len(c) == K for c in cycles_per_ex), "per_breath_train_step needs uniform K across batch"
+
+    # Use the LAST cycle's ids (= cumulative full sequence with EOS).
+    # Build per-step token ranges relative to the full sequence.
+    full_ids_per_ex = []
+    step_ranges_per_ex = []
+    for ex_cycles in cycles_per_ex:
+        full = ex_cycles[-1][0]
+        ranges = []
+        for k in range(K):
+            start_pos_k = ex_cycles[k][1] - 1  # position whose label is step k's first token
+            if k + 1 < K:
+                end_pos_k = ex_cycles[k + 1][1] - 2
+            else:
+                end_pos_k = ex_cycles[k][2] - 2  # last position before EOS
+            ranges.append((start_pos_k, end_pos_k))
+        full_ids_per_ex.append(full)
+        step_ranges_per_ex.append(ranges)
+
+    # Pad to fixed_len
+    B = len(batch_examples)
+    tokens_np = np.zeros((B, fixed_len), dtype=np.int32)
+    for b in range(B):
+        ids = full_ids_per_ex[b][:fixed_len]
+        tokens_np[b, :len(ids)] = ids
+
+    # Per-step labels: shape (K, B, fixed_len - 1) with -100 outside step k's positions.
+    per_step_labels_np = np.full((K, B, fixed_len - 1), -100, dtype=np.int32)
+    for b in range(B):
+        ids = full_ids_per_ex[b]
+        ranges = step_ranges_per_ex[b]
+        for k in range(K):
+            start, end = ranges[k]
+            for p in range(max(0, start), min(end + 1, fixed_len - 1)):
+                if p + 1 < len(ids):
+                    per_step_labels_np[k, b, p] = ids[p + 1]
+
+    tokens = Tensor(tokens_np, dtype=dtypes.int).realize()
+    per_step_labels_t = [Tensor(per_step_labels_np[k], dtype=dtypes.int).realize() for k in range(K)]
+
+    # Forward
+    opt.zero_grad()
+    _final, match_weights, per_breath_x = model.breathe_with_lookup(
+        tokens, n_loops=K, return_per_breath_x=True)
+
+    # Per-breath CE (equal-weighted)
+    losses_per_breath = []
+    cfg_eps = model.cfg.layer_norm_eps
+    for k in range(K):
+        x_k = per_breath_x[k]
+        x_normed = _layernorm(x_k, model.ln_f_g, model.ln_f_b, cfg_eps)
+        logits = (x_normed @ model.embed_out).cast(dtypes.float)
+        pred = logits[:, :-1, :]
+        ls = LABEL_SMOOTHING
+        ce_k = pred.sparse_categorical_crossentropy(
+            per_step_labels_t[k], ignore_index=-100, label_smoothing=ls, reduction="mean")
+        losses_per_breath.append(ce_k)
+
+    avg_main = sum(losses_per_breath[1:], losses_per_breath[0]) / float(K)
+
+    # Lookup aux (op classification on last breath's match weights)
+    if lookup_aux_weight > 0 and lookup_eq_token_id is not None:
+        eq_mask, op_labels_t = _build_aux_tensors(batch_examples, tokens_np, lookup_eq_token_id)
+        last_mw = match_weights[-1]
+        gathered = (last_mw.cast(dtypes.float) * eq_mask).sum(axis=1)
+        logits_aux = gathered[:, :4] * 10.0
+        aux_ce = logits_aux.sparse_categorical_crossentropy(
+            op_labels_t, ignore_index=-100, reduction="mean")
+    else:
+        aux_ce = Tensor.zeros((), dtype=dtypes.float).contiguous()
+
+    # L2 regs (mirror multi_cycle_train_step's regs)
+    l2_reg = (model.lookup_table.weight.square().mean()
+              + model.lookup_table.values.square().mean()
+              + model.lookup_table.value_proj_up.square().mean()) * 1e-6
+    ch_reg = sum((p.square().mean() for p in model.confidence_head.parameters()),
+                 Tensor.zeros((), dtype=dtypes.float).contiguous()) * 1e-7
+    be_reg = (model.block.breath_embed.square().mean()
+              + model.block.handoff_w.square().mean()
+              + model.block.handoff_b.square().mean()
+              + model.block.rope.pitch.square().mean()
+              + model.block.crp_mix_alpha.square().mean()
+              + model.block.crp_target_norm.square().mean()
+              + model.block.notebook_write_w.square().mean()
+              + model.block.notebook_write_b.square().mean()
+              + model.block.notebook_read_w.square().mean()
+              + model.block.notebook_read_b.square().mean()
+              + model.block.notebook_write_query.square().mean()
+              + model.block.notebook_rep_write_w.square().mean()
+              + model.block.notebook_rep_write_b.square().mean()
+              + model.block.notebook_rep_read_w.square().mean()
+              + model.block.notebook_rep_read_b.square().mean()
+              + model.block.notebook_rep_query.square().mean()
+              + model.block.bfield_proj_down.square().mean()
+              + model.block.bfield_proj_up.square().mean()
+              + model.block.bfield_bias.square().mean()
+              + model.block.waist_codebook_keys.square().mean()
+              + model.block.waist_codebook_values.square().mean()
+              + model.waist_head_w.square().mean()
+              + model.waist_head_b.square().mean()
+              + sum((p.square().mean() for lb in model.block.layers_b
+                                          for p in [lb.wq, lb.bq, lb.wk, lb.bk, lb.w_in, lb.b_in]),
+                    Tensor.zeros((), dtype=dtypes.float).contiguous())) * 1e-7
+
+    total = avg_main + lookup_aux_weight * aux_ce + l2_reg + ch_reg + be_reg
+    total.backward()
+    opt.step()
+    return float(total.realize().numpy()), [float(c.realize().numpy()) for c in losses_per_breath]
+
+
 def multi_cycle_train_step(model, opt, batch_examples: List[MathExample], tok,
                            n_loops, fixed_len: int,
                            lookup_aux_weight: float = 0.0,
@@ -1097,6 +1345,12 @@ def multi_cycle_train_step(model, opt, batch_examples: List[MathExample], tok,
             loss_t = jit_step(tokens_per_cycle[0], labels_per_cycle[0],
                               tokens_per_cycle[1], labels_per_cycle[1],
                               tokens_per_cycle[2], labels_per_cycle[2],
+                              eq_mask, op_labels_t)
+        elif n_cycles == 4:
+            loss_t = jit_step(tokens_per_cycle[0], labels_per_cycle[0],
+                              tokens_per_cycle[1], labels_per_cycle[1],
+                              tokens_per_cycle[2], labels_per_cycle[2],
+                              tokens_per_cycle[3], labels_per_cycle[3],
                               eq_mask, op_labels_t)
         else:
             raise NotImplementedError(f"use_jit doesn't support n_cycles={n_cycles}")

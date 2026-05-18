@@ -2,8 +2,8 @@
 ## Conceptual Architecture
 
 **Author:** Bryce + Claude
-**Date:** May 13, 2026 (vision: May 1 · empirical status: see §14)
-**Deadline:** September 1, 2026
+**Date:** May 18, 2026 (vision: May 1 · empirical status: see §14)
+**Deadline:** December 25, 2026
 **Platform:** Shadow Glass (AMD 7900 XTX, 24GB) · tinygrad + AM driver · no AMD/ROCm software
 **Target:** MATH-500
 
@@ -509,27 +509,31 @@ We leave behind: Llama 1B (replaced by Pythia-410M L0-3), LoRA atoms and continu
 
 ---
 
-## 14. Empirical Status (May 13, 2026)
+## 14. Empirical Status (May 18, 2026)
 
 The architecture above is the design. The empirical evolution has surfaced what's load-bearing and what's scaffolding. This section is the honest current-state record.
 
-**Best ckpt for multi-step:** L4_MIXED v1 step 1500 = **66 / 67 / 65** on L4_MIXED eval (A=1 / A=4 / A=8). Trained from L4 v4 step 1500 warm-start with broadest L4 distribution (six standard L4 generators + three cascade-biased variants).
+**Project champion ckpt:** **v45 reg take 3 step 1000** = **96 / 94 / 93** on L4_MIXED eval (A=1 / A=4 / A=8). File: `.cache/l4_mixed_ckpts/v45_reg_take3_step1000.safetensors`. Warm-started from v24c step 500 (96/94/91) with the regularization stack below. Beats v24c at A=8 by **+2**, ties at shallow loops. Depth-spread compressed from v24c's 5pt → v45's 3pt — reg makes deep loops MORE useful, not less.
+
+**Regularization stack (validated 2026-05-18):**
+- `STOCH_DEPTH_P=0.10` — per-breath Bernoulli drop with ResNet-style 1/(1-p) scaling. Mask-gen guarantees ≥1 active-breath kept per step (no all-dropped catastrophe); skipped entirely at n_loops=1 where SD has no meaning.
+- `LABEL_SMOOTHING=0.1` — applied to main answer-CE only. Training-only (eval CE gated on `Tensor.training` so reported val loss stays comparable across runs).
+- `WEIGHT_DECAY=0.05` — bumped from the 0.01 default. AdamW typical range for this scale.
+
+**STAGE2_NOTEBOOK bug (caught 2026-05-18):** The v40-era inference code added per-token notebook reads/writes inside `cached_generate_batch`'s Stage 2 decode JIT, intending to "mirror training." But training has no autoregressive decode — adding ~240 OOD notebook updates per problem produced low teacher-forced val loss + 0% generation acc + garbage output ("M 1 1lezIntrIntr..."). Fixed by gating the Stage 2 notebook ops behind `STAGE2_NOTEBOOK` env var (default 0 → restores v24c-compatible behavior). v45 takes 1 and 2 collapsed because of this; take 3 succeeded once the gate was in.
 
 **What ablations established:**
-- π-cycled RoPE (per-head phase offset) is the only clearly load-bearing closed-loop component: −73 points if ablated, vs −0 to −6 for everything else at 150 steps.
+- π-cycled RoPE (per-head phase offset) is the clearly load-bearing closed-loop component: −73 points if ablated, vs −0 to −6 for the others at 150 steps.
 - Sine-baseline temperature (2.0 → 0.7 cosine half-period) is load-bearing for warm-start stability.
-- Integration, notebook, controller decisions (temperature/gate/step_mult), step-size adaptivity — all measure as decorative on converged ARITH_HARD. The controller specifically learned `f(breath_idx)`, not `f(rep)`: an open-loop schedule, problem-blind.
+- Regularization stack (v45, above) — load-bearing for breaking past v24c's overfitting wall and compressing the depth-gradient.
+- Integration, notebook, controller decisions (temperature/gate/step_mult), step-size adaptivity — measured as decorative on converged ARITH_HARD. The controller specifically learned `f(breath_idx)`, not `f(rep)`: an open-loop schedule, problem-blind.
 
 **Verification probe — definitive negative:** MLP probes on trained reps (up to 17M params, 1000 steps) cannot distinguish correct from wrong answers (AUC 0.29, anti-correlated). Verification information is not present in the reps as trained. The "7/7 closed feedback loop" is correctly wired but most of it doesn't yet have a job that benefits the loss.
 
-**The current research direction is the verification objective itself.** The `calibration_train_step` (in `l3_training.py`) attaches a `ConfidenceHead` to the model and supervises per-breath BCE(conf, argmax-correct) — training the model to *know what it knows*. If this lands, calibration becomes the per-breath training signal that gives the deeper components (controller, notebook, integration) a job. The first run from L4_MIXED v1 step 1500 warm-start is in flight as of this writing; the decision point is step 250 acc eval.
+**Current research direction is hybrid-heads quadrature (v46).** Split the 16 heads in each layer: 8 keep PER_HEAD_PITCH offset `l·π/64`, 8 add `π/2`. Cheapest possible test of the photon analogy (items 2, 10, 15 in `CLAUDE.md` §8) — zero added params and zero added compute. If quadrature is load-bearing, this should show it before committing to dual-stack architectures. Warm-start from `v45_reg_take3_step1000`.
 
-**Two failed-and-instructive experiments preceded the current calibration line:**
-- `ROTATION_PERIOD=4` (period-4 RoPE cycle, closure-based "discovery + verification" structure): 68/64/60 at step 1500 — *depth got worse*. Closure alone isn't enough without per-breath training pressure.
-- Single-cycle calibration v3: 1/1/1 catastrophic — training distribution must match eval distribution (multi-cycle). v4 with multi-cycle but digit-only mask: 0/1/0 — same failure via a different surface. v5 with multi-cycle + full target mask is the principled version.
-
-**The lesson the empirical curriculum keeps re-establishing:** "train on what you evaluate on." Narrow training distributions (ARITH_BORROW, single-cycle encoding, digit-only masks) cause catastrophic forgetting of the broader eval distribution every time. L4_MIXED was the first broad-distribution training that worked; everything since has been refining what the model learns *within* that distribution, not narrowing it.
+**The lesson the empirical curriculum keeps re-establishing:** "train on what you evaluate on." Narrow training distributions (ARITH_BORROW, single-cycle encoding, digit-only masks) cause catastrophic forgetting of the broader eval distribution every time. L4_MIXED was the first broad-distribution training that worked; v45 confirmed that adding regularization on top of a working multi-distribution warm-start LIFTS the model rather than destabilizing it.
 
 **The conceptual architecture above remains the design target.** The empirical record clarifies which pieces are working today versus which are wired-but-waiting for the right loss signal to activate.
 
-A 127M model that breathes, alternates, integrates, and factorizes. Four months to September 1.
+A 127M model that breathes, alternates, integrates, factorizes — and now regularizes. ~7 months to December 25.

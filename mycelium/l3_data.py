@@ -23,6 +23,13 @@ try:
     from generate_per_cycle_data import L45_GENERATORS  # type: ignore
 except ImportError:
     L45_GENERATORS = None
+# v51 (2026-05-18): L4.7 GSM8K-style 4-step word problems (buy/sell/profit,
+# rate/distance, multi-person tracking). Wired in to support MIXED_LEVELS
+# curricula that include GSM8K-shape problems beyond the templated L4_MIXED.
+try:
+    from generate_per_cycle_data import L47_GENERATORS  # type: ignore
+except ImportError:
+    L47_GENERATORS = None
 
 
 _INT_RE = re.compile(r"-?\d+")
@@ -64,6 +71,8 @@ if L45_GENERATORS is not None:
     _LEVEL_GENERATORS["L4.5"] = L45_GENERATORS
 _LEVEL_GENERATORS["L4_BORROW"] = L4_BORROW_GENERATORS
 _LEVEL_GENERATORS["L4_MIXED"] = L4_MIXED_GENERATORS
+if L47_GENERATORS is not None:
+    _LEVEL_GENERATORS["L4.7"] = L47_GENERATORS
 
 
 # ---------------------------------------------------------------------------
@@ -286,9 +295,18 @@ def generate_math(level: str, num_problems: int, seed: int = 42,
     decimal digit becomes its own token. Required for proper iterative arithmetic
     via breathing — without it Pythia BPE merges multi-digit numbers into single
     tokens and answer prediction becomes a one-shot 50K-way classification.
+
+    Special level GSM8K_SPACED dispatches to load_gsm8k_spaced (loads from cached
+    parquet, applies digit-spacing internally) — supports MIXED_LEVELS curricula
+    that include real-data GSM8K alongside synthetic generators.
     """
+    if level == "GSM8K_SPACED":
+        # GSM8K is loaded from parquet and always digit-spaced (digit_spacing arg ignored).
+        # num_problems caps the train slice; seed is unused (parquet order is deterministic).
+        all_train = load_gsm8k_spaced("train")
+        return all_train[:num_problems]
     if level not in _LEVEL_GENERATORS:
-        raise ValueError(f"unknown level {level!r}; available: {sorted(_LEVEL_GENERATORS)}")
+        raise ValueError(f"unknown level {level!r}; available: {sorted(_LEVEL_GENERATORS) + ['GSM8K_SPACED']}")
     generators = _LEVEL_GENERATORS[level]
     rng = random.Random(seed)
     out: List[MathExample] = []
@@ -325,6 +343,53 @@ def parse_int_answer(text: str) -> int | None:
         return int(_collapse_spaced(matches[-1]))
     except ValueError:
         return None
+
+
+# ---- GSM8K-spaced loader (curriculum extension, 2026-05-18) ----
+
+_GSM8K_SNAPSHOT = (".cache/gsm8k/datasets--openai--gsm8k/snapshots/"
+                   "740312add88f781978c0658806c59bc2815b9866/main")
+_GSM8K_CALC_RE = re.compile(r"<<[^>]*>>")
+_GSM8K_FINAL_RE = re.compile(r"####\s*(-?\d[\d,]*)\s*$")
+
+
+def load_gsm8k_spaced(split: str, max_prompt_words: int = 130) -> List[MathExample]:
+    """Load the GSM8K {train, test} parquet, apply digit-spacing, return MathExamples.
+
+    Preprocessing:
+    - Strip <<...>> calculator annotations from the answer text.
+    - Apply space_digits() to both question and answer.
+    - Parse the '#### N' final-answer line for the gold integer.
+    - Filter out problems whose digit-spaced question exceeds max_prompt_words
+      (~130 maps to ~250 tokens, fits FIXED_LEN=320 with room for generation).
+    """
+    import pyarrow.parquet as pq
+    path = os.path.join(_PROJECT_ROOT, _GSM8K_SNAPSHOT, f"{split}-00000-of-00001.parquet")
+    table = pq.read_table(path)
+    data = table.to_pydict()
+    out: List[MathExample] = []
+    for q, a in zip(data["question"], data["answer"]):
+        q_spaced = space_digits(q)
+        if len(q_spaced.split()) > max_prompt_words:
+            continue
+        # Strip calculator annotations <<expr=N>>
+        a_clean = _GSM8K_CALC_RE.sub("", a)
+        # Parse final answer
+        m = _GSM8K_FINAL_RE.search(a_clean)
+        if not m:
+            continue
+        try:
+            gold = int(m.group(1).replace(",", ""))
+        except ValueError:
+            continue
+        a_spaced = space_digits(a_clean)
+        out.append(MathExample(
+            problem=q_spaced,
+            gen_targets=[a_spaced],
+            answer=gold,
+            level="GSM8K_SPACED",
+        ))
+    return out
 
 
 def encode_example(tok, ex: MathExample, eos_id: int = 0) -> Tuple[List[int], int, int]:

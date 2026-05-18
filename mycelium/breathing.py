@@ -216,6 +216,16 @@ BFIELD_AUX_WEIGHT        = float(os.environ.get("BFIELD_AUX_WEIGHT", "0.0"))
 # Decouples computation (rep flow, fresh per breath) from memory (notebook).
 BREATHE_FRESH_INPUT      = int(os.environ.get("BREATHE_FRESH_INPUT", "0")) > 0
 
+# v44 doubled-layers architecture. When 1, instantiates TWO sets of 4 phase-layers
+# (layers_a and layers_b). Breaths in [0, max_loops/2) use Set A; breaths in
+# [max_loops/2, max_loops) use Set B. With ROPE_FULL_CIRCLE=1 (rotation 0→2π over
+# max_loops breaths), this makes Set A active during sin>0 half and Set B during
+# sin<0 half — phase-locked E (rotation) ⊥ B (set switch) with zero crossings at
+# breaths 0 and max_loops/2. Both sets init from Pythia L0-L3 (identical at step 0,
+# gradient differentiates them). Doubles params (~127M → ~254M) but forward compute
+# is unchanged (each breath still uses 4 layers, just from a different set).
+DOUBLED_LAYERS           = int(os.environ.get("DOUBLED_LAYERS", "0")) > 0
+
 # v24b notebook tuning. Default 0.0 = zero-init (v24a behavior). Small positive
 # random init breaks the "stuck at zero" trap: with zero-init projections, the
 # notebook output is exactly 0 and gradient signal through it is exactly 0 too
@@ -252,6 +262,81 @@ CROSS_CYCLE_NOTEBOOK     = int(os.environ.get("CROSS_CYCLE_NOTEBOOK", "0")) > 0
 # zero-init training distribution. Scale 0.5 roughly matches expected end-of-cycle
 # notebook magnitude (writes have std ~0.4 with 0.02 projection init × prompt norm ~30).
 NOTEBOOK_STATE_INIT_SCALE = float(os.environ.get("NOTEBOOK_STATE_INIT_SCALE", "0.0"))
+# Stochastic depth on breath integral contributions. Per-breath Bernoulli keep:
+# integral_contribution = beta_l * keep_l * x where keep_l is 1/(1-p) when kept,
+# 0 when dropped. Preserves E[integral] (ResNet-style scaling), so output has the
+# right expectation. l3_train.py writes a new (max_loops,) keep-mask each training
+# step via assign() on BreathingBlock.stoch_keep_mask (preserves JIT graph identity).
+# Inference (Tensor.training=False) path skips the mask read entirely.
+STOCH_DEPTH_P            = float(os.environ.get("STOCH_DEPTH_P", "0.0"))
+# Whether to read/write the notebook inside cached_generate_batch's Stage 2 (the
+# per-token autoregressive decode JIT'd _step). Training has no autoregressive
+# decode — training updates notebook only during the breath loop on the prompt
+# (Stage 1 equivalent). v40+ added notebook reads/writes to Stage 2 to "mirror
+# training," but for any model trained where Stage 2 was decode-only (v24c and
+# earlier), this is severe train/eval mismatch: ~30 generated tokens × 8 breaths
+# = 240 extra notebook updates the model has never seen. Manifests as low
+# teacher-forced val loss + 0% generation accuracy + garbage output.
+# Default 0 (Stage 2 decode does NOT touch the notebook) restores v24c-compatible
+# behavior. Set to 1 only for models explicitly trained with this mode.
+STAGE2_NOTEBOOK          = int(os.environ.get("STAGE2_NOTEBOOK", "0")) > 0
+# Hybrid-heads quadrature (v46). When 1, the second half of heads in each layer
+# (heads n_heads/2 .. n_heads-1) get an additional π/2 phase offset on top of
+# the standard PER_HEAD_PITCH offset. Provides quadrature pairs: when "phase 0
+# heads" are at rotation angle θ, "phase 1 heads" are at θ + π/2. Combined view
+# has constant-magnitude rotating field (circular polarization analogy) instead
+# of linear oscillation that goes through zero-crossings. Cheapest test of the
+# photon analogy — zero added params and zero added compute. Default 0 preserves
+# v23a behavior (all heads in a layer share the same offset).
+QUADRATURE_HEADS         = int(os.environ.get("QUADRATURE_HEADS", "0")) > 0
+# Quadrature ramp — gradually increase the second-half head offset from 0 to π/2
+# over the first QUADRATURE_RAMP_STEPS training steps so the model's W_O can adapt
+# as the geometry diverges. v46 take 1 confirmed that applying full π/2 to a v45
+# warm-start causes -35 to -41 point collapse (model's learned head combination
+# weights expect all-same-offset heads). 0 = no ramp (full π/2 from step 0).
+QUADRATURE_RAMP_STEPS    = int(os.environ.get("QUADRATURE_RAMP_STEPS", "0"))
+# Across-layer quadrature (v47): when > 0, the per-layer offset step changes
+# from the v23a default (pitch_range/(n_phases*n_heads) ≈ π/64) to the given
+# target. With target=π/2 and n_phases=4, layers sit at {0, π/2, π, 3π/2} —
+# four-corner quadrature spread across the 4 breath layers, all heads within
+# a layer keeping the SAME offset. Distinct from within-layer (per-head) split
+# in QUADRATURE_HEADS which collapsed v46 take 1 because W_O wasn't trained to
+# handle mismatched heads. The phase-shift sweep on v46b step 750 showed
+# uniform offsets up to π/4 cost <3 points — across-layer keeps that property
+# per-layer-locally while varying the *layer-to-layer* phase difference.
+ACROSS_LAYER_PITCH_TARGET = float(os.environ.get("ACROSS_LAYER_PITCH_TARGET", "0.0"))
+# Ramp from the v23a base step to ACROSS_LAYER_PITCH_TARGET over this many
+# steps, so warm-start models can adapt as layer-to-layer phase difference
+# grows. 0 = no ramp (init directly at target — cold-start mode).
+ACROSS_LAYER_PITCH_RAMP_STEPS = int(os.environ.get("ACROSS_LAYER_PITCH_RAMP_STEPS", "0"))
+# Per-layer offset override: comma-separated list of n_phases radian values.
+# When set (non-empty), overrides BOTH the v23a default and any ACROSS_LAYER_PITCH
+# config — these specific offsets are used for the layers (all heads in a layer
+# share the same offset). Validated 2026-05-18 by per-layer offset sweep that
+# alternating/triangle/symmetric patterns within tolerance preserve accuracy.
+# Example: "0,0.1963,0.3927,0.1963" = triangle-small (0, π/16, π/8, π/16).
+PER_LAYER_OFFSETS_RADIANS = os.environ.get("PER_LAYER_OFFSETS_RADIANS", "")
+# v50 learnable codebook at the IB waist (item #1/#4 from laundry list).
+# When WAIST_CODEBOOK_N > 0, allocates N learnable keys + values at the
+# B-field waist (dim = max(1, BFIELD_WAIST)). After compression to bf_w, the
+# compressed state queries the codebook via dot-product attention, retrieves
+# a weighted-sum of values, adds (scaled by WAIST_CODEBOOK_INJECT_WEIGHT)
+# to the compressed state before GELU. Values init at zero so the
+# contribution is identity at step 0 (graceful warm-start); gradient + the
+# main CE shape both keys and values during training. This gives the model
+# a "discrete operation library" at the bottleneck — instead of compressing
+# to a continuous 256d, it commits toward one of N attractor entries.
+WAIST_CODEBOOK_N             = int(os.environ.get("WAIST_CODEBOOK_N", "0"))
+WAIST_CODEBOOK_INJECT_WEIGHT = float(os.environ.get("WAIST_CODEBOOK_INJECT_WEIGHT", "1.0"))
+# v52 Stage 1 — per-breath decode supervision. When PER_BREATH_DECODE=1, the
+# training step reads each breath's end-of-breath output, decodes via ln_f +
+# embed_out, and supervises against the gen_target tokens for THAT step. This
+# enforces "the waist commits to a partial-answer state decodable at each
+# breath" — the depth-helps signal becomes architecturally required.
+# Companion to BFIELD_WAIST > 0 (waist active) and BFIELD_END_OF_BREATH=1
+# (waist runs at the END of each breath, just before the per-breath output
+# is captured for supervision).
+PER_BREATH_DECODE = int(os.environ.get("PER_BREATH_DECODE", "0")) > 0
 # v28: prototype retrieval. The lookup table is extended with a values matrix
 # (n_entries, hidden) — each "prime operation" entry now has both a KEY (where
 # the basin sits in rep-space) and a VALUE (the ideal rep at the basin floor).
@@ -860,6 +945,11 @@ class BreathingBlock:
         # Phases trace one full sine wave: 0, π/2, π, 3π/2.
         phases = [i * 2 * math.pi / cfg.n_phases for i in range(cfg.n_phases)]
         self.layers = [BreathingLayer(cfg, ph, self.shared, self.rope) for ph in phases]
+        # v44 doubled-layers: second set of 4 phase-layers for the sin<0 half of
+        # the rotation cycle. Pythia-init copied to both sets at load time; both
+        # always present in state_dict for ckpt symmetry (gradient inert when
+        # DOUBLED_LAYERS=0 — never used in forward).
+        self.layers_b = [BreathingLayer(cfg, ph, self.shared, self.rope) for ph in phases]
         # Diffusion-style breath-time embedding (axial conditioning). Always created
         # so the parameter list is stable across env-var toggles; only added to the
         # residual stream when BREATH_TIME_EMBED=1.
@@ -892,6 +982,13 @@ class BreathingBlock:
         # Buffer Tensor — included in state_dict for ckpt symmetry, NOT in parameters.
         self.layer_pitch_scale = Tensor.zeros((1,), dtype=dtypes.float).contiguous()
 
+        # Stochastic depth keep-mask buffer (one float per breath slot). Default
+        # all-ones (no-op). l3_train.py rewrites this each training step when
+        # STOCH_DEPTH_P > 0; the JIT'd graph captures the buffer reference and
+        # picks up the new values on replay (same pattern as layer_pitch_scale).
+        # Not learnable; included in state_dict for ckpt symmetry.
+        self.stoch_keep_mask = Tensor.ones((cfg.max_loops,), dtype=dtypes.float).contiguous()
+
         # Per-(layer, head) fixed pitch (v23a). Buffer shape (n_layers, n_heads) so
         # later versions can vary per-head (v23b: learnable bounded). v23a init:
         # uniform per-layer offset l * π/64 for layer l (all heads in layer get
@@ -907,13 +1004,47 @@ class BreathingBlock:
         # π/n_heads), so layer increment doubles too (π/32 vs π/64) to maintain
         # quarter-spacing within the new head range.
         pitch_range = 2 * math.pi if ROPE_FULL_CIRCLE else math.pi
-        ph_init = [[l * pitch_range / (cfg.n_phases * cfg.n_heads) for _ in range(cfg.n_heads)]
+        # Three mutually-exclusive per-layer offset modes (PER_LAYER_OFFSETS_RADIANS
+        # has highest precedence, then ACROSS_LAYER_PITCH_TARGET, then v23a default):
+        # 1. PER_LAYER_OFFSETS_RADIANS: arbitrary 4 values (e.g., triangle-small).
+        # 2. ACROSS_LAYER_PITCH_TARGET: monotonic l * target (with optional ramp).
+        # 3. v23a default: monotonic l * (pitch_range / (n_phases * n_heads)).
+        # All preserve "all heads within a layer share offset" — the lesson from
+        # v46 within-layer split where heterogeneous heads broke W_O.
+        base_layer_step = pitch_range / (cfg.n_phases * cfg.n_heads)
+        explicit_offsets = None
+        if PER_LAYER_OFFSETS_RADIANS:
+            parts = [float(x) for x in PER_LAYER_OFFSETS_RADIANS.split(",")]
+            if len(parts) != cfg.n_phases:
+                raise ValueError(f"PER_LAYER_OFFSETS_RADIANS needs {cfg.n_phases} values, got {len(parts)}")
+            explicit_offsets = parts
+        if ACROSS_LAYER_PITCH_TARGET > 0.0:
+            init_layer_step = base_layer_step if ACROSS_LAYER_PITCH_RAMP_STEPS > 0 else ACROSS_LAYER_PITCH_TARGET
+        else:
+            init_layer_step = base_layer_step
+        half_heads = cfg.n_heads // 2
+        init_scale = 0.0 if (QUADRATURE_HEADS and QUADRATURE_RAMP_STEPS > 0) else (1.0 if QUADRATURE_HEADS else 0.0)
+        self._quadrature_half_heads = half_heads
+        self._quadrature_pitch_range = pitch_range
+        self._base_layer_step = base_layer_step  # for ramp logic in trainer
+        def _head_offset(layer_idx, head_idx, scale, layer_step):
+            if explicit_offsets is not None:
+                base = explicit_offsets[layer_idx]
+            else:
+                base = layer_idx * layer_step
+            if QUADRATURE_HEADS and head_idx >= half_heads:
+                return base + (math.pi / 2) * scale
+            return base
+        ph_init = [[_head_offset(l, h, init_scale, init_layer_step) for h in range(cfg.n_heads)]
                    for l in range(cfg.n_phases)]
         self.per_head_pitch = Tensor(ph_init, dtype=dtypes.float).contiguous()
         # Precomputed cos/sin tables — eliminates per-breath cos/sin compute.
         # Shape (n_layers, 1, n_heads, 1, 1) to match alpha broadcast shape on indexing.
         # Realize so JIT sees these as constant buffers, not lazy ops (lazy ops
         # under per-breath JIT recomputation triggered MEMVIOL on first v23 attempt).
+        # When QUADRATURE_RAMP_STEPS > 0, l3_train.py updates these per step via
+        # .assign() to ramp the quadrature offset; JIT graph captures the buffer
+        # reference and picks up new values on replay (same pattern as layer_pitch_scale).
         ph_t = Tensor(ph_init, dtype=dtypes.float)
         self.per_head_pitch_cos = ph_t.cos().reshape(cfg.n_phases, 1, cfg.n_heads, 1, 1).contiguous().realize()
         self.per_head_pitch_sin = ph_t.sin().reshape(cfg.n_phases, 1, cfg.n_heads, 1, 1).contiguous().realize()
@@ -985,6 +1116,18 @@ class BreathingBlock:
         # and can be reassigned via .assign() at inference without recompile.
         self.bfield_alpha     = (Tensor.ones((1,), dtype=dtypes.float) * BFIELD_ALPHA).contiguous()
 
+        # v50 learnable codebook at the IB waist. Allocate at max(1, ...) for
+        # state_dict shape stability even when WAIST_CODEBOOK_N=0; gradient
+        # inert in that case. Both keys and values init random-small (0.02
+        # scale, matching other learnable params in this file). v50 first try
+        # used zero-init values — the gradient bootstrap was too slow (per-step
+        # value update ~3e-7), codebook never differentiated from zero. Random
+        # init gives gradient a meaningful starting point. Matches v28's prior
+        # result that random-init learnable values train fine at the FINAL rep.
+        cb_n = max(1, WAIST_CODEBOOK_N)
+        self.waist_codebook_keys = (Tensor.randn(cb_n, bf_w, dtype=dtypes.float) * 0.02).contiguous()
+        self.waist_codebook_values = (Tensor.randn(cb_n, bf_w, dtype=dtypes.float) * 0.02).contiguous()
+
     def apply_bfield_waist(self, x: Tensor, return_compressed: bool = False) -> Tensor:
         """B-field IB bottleneck with optional CFG-alpha residual scale.
 
@@ -998,6 +1141,15 @@ class BreathingBlock:
         """
         x_f = x.cast(dtypes.float)
         compressed = x_f @ self.bfield_proj_down
+        # v50 codebook injection — query learnable keys, retrieve weighted values,
+        # add to compressed state before GELU. Values are zero-init so contribution
+        # is identity at step 0 (warm-start compatible).
+        if WAIST_CODEBOOK_N > 0 and WAIST_CODEBOOK_INJECT_WEIGHT > 0.0:
+            # compressed: (B, T, bf_w)  keys: (N, bf_w)  values: (N, bf_w)
+            scores = compressed @ self.waist_codebook_keys.T
+            weights = scores.softmax(axis=-1)
+            retrieved = weights @ self.waist_codebook_values
+            compressed = compressed + WAIST_CODEBOOK_INJECT_WEIGHT * retrieved
         activated = compressed.gelu()
         decompressed = activated @ self.bfield_proj_up + self.bfield_bias
         if BFIELD_ENFORCED:
@@ -1011,6 +1163,9 @@ class BreathingBlock:
     def parameters(self):
         ps = list(self.shared.parameters())
         for layer in self.layers:
+            ps.extend(layer.parameters())
+        # v44 doubled-layers: include set B params (always — for ckpt symmetry)
+        for layer in self.layers_b:
             ps.extend(layer.parameters())
         ps.append(self.breath_embed)
         ps.append(self.handoff_w)
@@ -1031,6 +1186,8 @@ class BreathingBlock:
         ps.append(self.bfield_proj_down)
         ps.append(self.bfield_proj_up)
         ps.append(self.bfield_bias)
+        ps.append(self.waist_codebook_keys)
+        ps.append(self.waist_codebook_values)
         return ps
 
     def compute_handoff(self, x: Tensor) -> Tensor:
@@ -1062,7 +1219,14 @@ class BreathingBlock:
             x = x + self.breath_embed[loop_idx].reshape(1, 1, -1).cast(x.dtype)
         ac_base, asn_base = alpha
         n_phases = self.cfg.n_phases
-        for layer_idx, layer in enumerate(self.layers):
+        # v44 doubled-layers: pick Set A or Set B based on breath index
+        # (first half-cycle → A, second half-cycle → B). Maps to E/B alternation
+        # when ROPE_FULL_CIRCLE=1 (rotation 0→2π over max_loops breaths).
+        if DOUBLED_LAYERS and loop_idx >= (self.cfg.max_loops // 2):
+            active_layers = self.layers_b
+        else:
+            active_layers = self.layers
+        for layer_idx, layer in enumerate(active_layers):
             # --- pitch (v23a / legacy) ---
             if PER_HEAD_PITCH and layer_idx > 0:
                 cos_o = self.per_head_pitch_cos[layer_idx].cast(x.dtype)
@@ -1193,7 +1357,14 @@ class BreathingBlock:
                 beta_l = math.sin((l + 0.5) * math.pi / float(n_loops))
             else:
                 beta_l = 1.0
-            integral = integral + beta_l * x
+            # Stochastic depth: per-breath keep-mask scaling. Mask is 0 when dropped
+            # and 1/(1-p) when kept, so E[contribution] is unchanged (ResNet-style).
+            # gate_sum unchanged → output is an unbiased estimator of the no-drop mean.
+            if STOCH_DEPTH_P > 0.0 and Tensor.training:
+                keep_l = self.stoch_keep_mask[l].cast(x.dtype)
+                integral = integral + beta_l * keep_l * x
+            else:
+                integral = integral + beta_l * x
             gate_sum += beta_l
         if return_notebook:
             return integral / gate_sum, notebook, notebook_r
@@ -1268,6 +1439,10 @@ class BreathingTransformer:
         for i, layer in enumerate(self.block.layers):
             for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
                 sd[f"phase{i}.{a}"] = getattr(layer, a)
+        # v44 doubled-layers: Set B params under phase{i}_b.* keys
+        for i, layer in enumerate(self.block.layers_b):
+            for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
+                sd[f"phase{i}_b.{a}"] = getattr(layer, a)
         sd["block.breath_embed"] = self.block.breath_embed
         sd["block.handoff_w"] = self.block.handoff_w
         sd["block.handoff_b"] = self.block.handoff_b
@@ -1289,6 +1464,8 @@ class BreathingTransformer:
         sd["block.bfield_proj_down"] = self.block.bfield_proj_down
         sd["block.bfield_proj_up"] = self.block.bfield_proj_up
         sd["block.bfield_bias"] = self.block.bfield_bias
+        sd["block.waist_codebook_keys"] = self.block.waist_codebook_keys
+        sd["block.waist_codebook_values"] = self.block.waist_codebook_values
         sd["block.bfield_alpha"] = self.block.bfield_alpha
         sd["waist_head_w"] = self.waist_head_w
         sd["waist_head_b"] = self.waist_head_b
@@ -1589,7 +1766,8 @@ class BreathingTransformer:
                              initial_notebook: Tensor | None = None,
                              initial_notebook_r: Tensor | None = None,
                              return_notebook: bool = False,
-                             return_waist_compressed: bool = False):
+                             return_waist_compressed: bool = False,
+                             return_per_breath_x: bool = False):
         """Forward pass returning (final_hidden, per_breath_match_weights, integrated_per_breath).
 
         Queries the model's lookup table once per breath against the running integral
@@ -1611,6 +1789,7 @@ class BreathingTransformer:
         match_weights = []
         integrated_per_breath = []
         waist_compressed_per_breath = []  # v39: 512d compressed at end-of-breath waist
+        per_breath_x = []  # v52 Stage 1: end-of-breath outputs for per-breath supervision
         handoff = None
         notebook = None
         notebook_r = None
@@ -1663,6 +1842,9 @@ class BreathingTransformer:
                     notebook_r = x_pool_r @ self.block.notebook_rep_write_w + self.block.notebook_rep_write_b
             if CROSS_BREATH_HANDOFF:
                 handoff = self.block.compute_handoff(x)
+            # v52 Stage 1: capture end-of-breath state for per-breath supervision.
+            if return_per_breath_x:
+                per_breath_x.append(x)
             # v39 sin-modulated integral: bell-shaped weighting that never hits
             # zero at the endpoints (l=0 gives sin(π/(2·n_loops)), peaks at the
             # middle breath). Heartbeat-across-breaths envelope.
@@ -1670,7 +1852,12 @@ class BreathingTransformer:
                 beta_l = math.sin((l + 0.5) * math.pi / float(n_loops))
             else:
                 beta_l = 1.0
-            integral = integral + beta_l * x
+            # Stochastic depth — see BreathingBlock.breathe() for the rationale.
+            if STOCH_DEPTH_P > 0.0 and Tensor.training:
+                keep_l = self.block.stoch_keep_mask[l].cast(x.dtype)
+                integral = integral + beta_l * keep_l * x
+            else:
+                integral = integral + beta_l * x
             weight_sum = weight_sum + beta_l
             running = integral / weight_sum
             running_normed = _layernorm(running, self.ln_f_g, self.ln_f_b, self.cfg.layer_norm_eps)
@@ -1685,6 +1872,10 @@ class BreathingTransformer:
             scores = self.lookup_table(final).cast(dtypes.float)      # (B, T, n_entries)
             retrieved = self.lookup_table.retrieve(scores).cast(final.dtype)  # (B, T, hidden)
             final = final + LOOKUP_VALUE_SCALE * retrieved
+        if return_per_breath_x:
+            # v52 Stage 1: simplified return when per-breath supervision is the consumer.
+            # Caller gets per-breath end-of-breath outputs + match weights for op-aux.
+            return final, match_weights, per_breath_x
         if return_notebook and return_waist_compressed:
             return final, match_weights, integrated_per_breath, notebook, notebook_r, waist_compressed_per_breath
         if return_notebook:
@@ -1780,7 +1971,12 @@ class BreathingTransformer:
             base_alpha = self.block.rope._alpha_at(loop, x.dtype)
             ac_base, asn_base = base_alpha
             tm_breath = _sine_temp_baseline(loop, n_loops)
-            for li, layer in enumerate(self.block.layers):
+            # v44 doubled-layers: pick Set A or Set B based on breath index
+            if DOUBLED_LAYERS and loop >= (cfg.max_loops // 2):
+                active_layers = self.block.layers_b
+            else:
+                active_layers = self.block.layers
+            for li, layer in enumerate(active_layers):
                 # Per-(layer, head) pitch (v23a) — same as breathe_once
                 if PER_HEAD_PITCH and li > 0:
                     cos_o = self.block.per_head_pitch_cos[li].cast(x.dtype)
@@ -1904,10 +2100,12 @@ class BreathingTransformer:
             embed_out = self.embed_out
             embed_w = self.embed.weight
             layers = self.block.layers
+            layers_b = self.block.layers_b  # v44 doubled-layers
             block_local = self.block
             layer_norm_eps = cfg.layer_norm_eps
             n_loops_local = n_loops
             n_layers_local = n_layers
+            max_loops_local = cfg.max_loops  # for doubled-layers split point
             B_local = B
             vocab_active_local = vocab_active
 
@@ -1933,17 +2131,24 @@ class BreathingTransformer:
                     # v40 fresh-input: each breath starts from the new token's embedding
                     if BREATHE_FRESH_INPUT:
                         x = x_new
-                    # v40 Notebook reads at breath start (mirror Stage 1 / training)
-                    if NOTEBOOK_V24:
+                    # Notebook reads — gated on STAGE2_NOTEBOOK (default off).
+                    # Training does NOT have autoregressive decode, so updating
+                    # notebook per generated token is OOD for any pre-v40 model.
+                    if NOTEBOOK_V24 and STAGE2_NOTEBOOK:
                         if NOTEBOOK_ACCUMULATE_ENABLED:
                             read_vec = (notebook @ block_local.notebook_read_w + block_local.notebook_read_b)
                             x = x + read_vec.reshape(B_local, 1, -1).cast(x.dtype)
                         if NOTEBOOK_DUAL:
                             read_vec_r = (notebook_r @ block_local.notebook_rep_read_w + block_local.notebook_rep_read_b)
                             x = x + read_vec_r.reshape(B_local, 1, -1).cast(x.dtype)
+                    # v44 doubled-layers: pick Set A or Set B based on breath index
+                    if DOUBLED_LAYERS and loop >= (max_loops_local // 2):
+                        active_layers_local = layers_b
+                    else:
+                        active_layers_local = layers
                     for li in range(n_layers_local):
                         idx = li * n_loops_local + loop
-                        x, k_new, v_new = layers[li].forward_cached_step_batched(
+                        x, k_new, v_new = active_layers_local[li].forward_cached_step_batched(
                             x, loop, ck[idx], cv[idx], t_pos_t, None  # per-batch t_pos handles masking
                         )
                         new_ck[idx] = k_new
@@ -1951,8 +2156,8 @@ class BreathingTransformer:
                     # v39 end-of-breath waist
                     if BFIELD_WAIST > 0 and BFIELD_END_OF_BREATH:
                         x = block_local.apply_bfield_waist(x)
-                    # v40 Notebook writes at breath end
-                    if NOTEBOOK_V24:
+                    # Notebook writes — gated on STAGE2_NOTEBOOK (default off, same reasoning as reads).
+                    if NOTEBOOK_V24 and STAGE2_NOTEBOOK:
                         x_f = x.cast(dtypes.float)
                         if NOTEBOOK_POOL_MODE == "attn":
                             scores = (x_f * block_local.notebook_write_query.reshape(1, 1, -1)).sum(axis=-1)
@@ -2087,7 +2292,12 @@ class BreathingTransformer:
             # v40 fresh-input: each breath starts from the original embedding
             if BREATHE_FRESH_INPUT:
                 x = x_emb
-            for li, layer in enumerate(self.block.layers):
+            # v44 doubled-layers: pick Set A or Set B based on breath index
+            if DOUBLED_LAYERS and loop >= (cfg.max_loops // 2):
+                active_layers = self.block.layers_b
+            else:
+                active_layers = self.block.layers
+            for li, layer in enumerate(active_layers):
                 x, (k_part, v_part) = layer.forward_with_kv(x, loop_idx=loop)
                 pad_n = max_len - int(k_part.shape[2])
                 k_full = k_part.pad(((0, 0), (0, 0), (0, pad_n), (0, 0))).contiguous().realize()
@@ -2130,6 +2340,8 @@ class BreathingTransformer:
             ln_b = self.ln_f_b
             embed_out = self.embed_out
             layers = self.block.layers
+            layers_b = self.block.layers_b  # v44 doubled-layers
+            max_loops_local = cfg.max_loops
             layer_norm_eps = cfg.layer_norm_eps
             n_loops_local = n_loops
             n_layers_local = n_layers
@@ -2153,9 +2365,14 @@ class BreathingTransformer:
                     # v40 fresh-input: each breath starts from the new token's embedding
                     if BREATHE_FRESH_INPUT:
                         x = x_new
+                    # v44 doubled-layers: pick Set A or Set B based on breath index
+                    if DOUBLED_LAYERS and loop >= (max_loops_local // 2):
+                        active_layers_local = layers_b
+                    else:
+                        active_layers_local = layers
                     for li in range(n_layers_local):
                         idx = li * n_loops_local + loop
-                        x, k_new, v_new = layers[li].forward_cached_step_jit(
+                        x, k_new, v_new = active_layers_local[li].forward_cached_step_jit(
                             x, loop, ck[idx], cv[idx], t_pos_t
                         )
                         new_ck[idx] = k_new
