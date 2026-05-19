@@ -134,6 +134,12 @@ def collect_params(model):
     # Always included so opt.step() has a defined gradient for these params even when
     # CALIBRATION_MODE=0 (gradient is zero in that path, weights don't move).
     nps += model.confidence_head.parameters()
+    # v54 WaistController — cross-attention text decoder over (waist, prompt).
+    # Only added to params (and therefore optimizer-trained) when CONTROLLER_DECODE=1,
+    # because the other train paths don't touch it and AdamW would assert on missing grads.
+    from mycelium.breathing import CONTROLLER_DECODE as _CD
+    if _CD:
+        nps += model.waist_controller.parameters()
     return nps
 
 
@@ -504,7 +510,8 @@ def main():
             loss, per_breath_ce = per_breath_train_step(model, opt, batch_examples, tok,
                                                         fixed_len=cur_fixed_len,
                                                         lookup_aux_weight=LOOKUP_AUX_WEIGHT,
-                                                        lookup_eq_token_id=eq_token_ids)
+                                                        lookup_eq_token_id=eq_token_ids,
+                                                        use_jit=USE_JIT)
             per_breath_info = per_breath_ce
         elif CALIBRATION_MODE:
             digit_ids_set = getattr(_calib_state, "digit_ids", None)
@@ -635,7 +642,10 @@ def main():
             Tensor.training = True
 
         # Expensive accuracy eval — same scheduling: Phase A varies, Phase C fixed
-        if (step + 1) % ACC_EVAL_EVERY == 0 or step + 1 == STEPS:
+        _SKIP_FINAL_ACC = bool(int(os.environ.get("SKIP_FINAL_ACC", "0")))
+        _is_final = (step + 1 == STEPS)
+        _should_acc_eval = ((step + 1) % ACC_EVAL_EVERY == 0) or (_is_final and not _SKIP_FINAL_ACC)
+        if _should_acc_eval:
             Tensor.training = False
             mem_log(f"step {step+1:4d}  before acc-eval (train JITs still resident)")
             if USE_JIT:
