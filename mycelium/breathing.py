@@ -337,6 +337,21 @@ WAIST_CODEBOOK_INJECT_WEIGHT = float(os.environ.get("WAIST_CODEBOOK_INJECT_WEIGH
 # (waist runs at the END of each breath, just before the per-breath output
 # is captured for supervision).
 PER_BREATH_DECODE = int(os.environ.get("PER_BREATH_DECODE", "0")) > 0
+# v54 (2026-05-19) Phase 1 — Controller as supervision conduit. When 1, the
+# WaistController fires once per breath, reading the compressed waist (512d)
+# and cross-attending over the prompt embeddings, outputting partial-answer
+# logits via the SAME embed_out as the main model (tied). Per-breath CE
+# supervises the controller's predictions on step k's gen_target. Gradient
+# flows back through the controller → into the waist → shapes the main
+# model's rep space to encode info the controller can use.
+#
+# Why a controller: forces the waist to be USEFUL. The controller can't
+# predict the partial answer without informative waist content. The "thinking
+# in rep space, decode only at end" objective gets implicit supervision via
+# the controller's text predictions.
+CONTROLLER_DECODE = int(os.environ.get("CONTROLLER_DECODE", "0")) > 0
+# Controller depth (number of cross-attn layers). 1-2 typical.
+CONTROLLER_N_LAYERS = int(os.environ.get("CONTROLLER_N_LAYERS", "1"))
 # v28: prototype retrieval. The lookup table is extended with a values matrix
 # (n_entries, hidden) — each "prime operation" entry now has both a KEY (where
 # the basin sits in rep-space) and a VALUE (the ideal rep at the basin floor).
@@ -1116,17 +1131,23 @@ class BreathingBlock:
         # and can be reassigned via .assign() at inference without recompile.
         self.bfield_alpha     = (Tensor.ones((1,), dtype=dtypes.float) * BFIELD_ALPHA).contiguous()
 
-        # v50 learnable codebook at the IB waist. Allocate at max(1, ...) for
-        # state_dict shape stability even when WAIST_CODEBOOK_N=0; gradient
-        # inert in that case. Both keys and values init random-small (0.02
-        # scale, matching other learnable params in this file). v50 first try
-        # used zero-init values — the gradient bootstrap was too slow (per-step
-        # value update ~3e-7), codebook never differentiated from zero. Random
-        # init gives gradient a meaningful starting point. Matches v28's prior
-        # result that random-init learnable values train fine at the FINAL rep.
+        # v53 (2026-05-19) learnable codebook at the IB waist.
+        #
+        # Init regime:
+        #   keys:   randn × 0.02   — small random for entry diversity, so attention
+        #                            scores aren't all identical at step 0.
+        #   values: ZERO           — guarantees zero contribution at step 0 (the codebook
+        #                            adds nothing to compressed → bit-identical to no-
+        #                            codebook warm-start). Same logic as bfield_proj_up
+        #                            zero-init (proven to bootstrap successfully in v38).
+        #
+        # Gradient bootstrap: at step 0, scores from random keys give non-uniform softmax
+        # weights. Gradient flows to VALUES via weights^T × grad_retrieved (non-zero).
+        # Once values are non-zero, gradient flows to keys. Clean cold-start of the
+        # codebook on top of any warm-started model.
         cb_n = max(1, WAIST_CODEBOOK_N)
         self.waist_codebook_keys = (Tensor.randn(cb_n, bf_w, dtype=dtypes.float) * 0.02).contiguous()
-        self.waist_codebook_values = (Tensor.randn(cb_n, bf_w, dtype=dtypes.float) * 0.02).contiguous()
+        self.waist_codebook_values = Tensor.zeros((cb_n, bf_w), dtype=dtypes.float).contiguous()
 
     def apply_bfield_waist(self, x: Tensor, return_compressed: bool = False) -> Tensor:
         """B-field IB bottleneck with optional CFG-alpha residual scale.
@@ -1371,6 +1392,92 @@ class BreathingBlock:
         return integral / gate_sum
 
 
+# ---------- v54 WaistController (Phase 1) ----------
+
+class WaistController:
+    """Small cross-attention text decoder that reads (compressed waist, prompt
+    embeddings) → outputs vocab logits per position. Fires once per breath
+    when CONTROLLER_DECODE=1.
+
+    Architecture:
+        waist_proj_up:  bf_w → hidden (e.g., 512 → 1024)
+        for layer in cross_attn_layers (default 1):
+            pre-LN, then cross-attn(Q=waist_proj, K/V=prompt_emb), residual
+            pre-LN, then FFN (4× hidden), residual
+        decode via TIED model.embed_out → vocab logits
+
+    Trainable params (1 layer, hidden=1024, n_heads=16): ~13M (4×1024² for QKVO +
+    2×1024×4096 for FFN + small projs). Tied embed_out → no extra decoder params.
+    """
+    def __init__(self, cfg, waist_dim: int, n_layers: int = 1):
+        h = cfg.hidden
+        self.n_heads = cfg.n_heads
+        self.head_dim = h // cfg.n_heads
+        self.cfg = cfg
+        self.waist_dim = waist_dim
+        self.n_layers = n_layers
+        # Project compressed waist (bf_w) up to hidden for cross-attn in 1024d.
+        self.waist_up_w = (Tensor.randn(waist_dim, h, dtype=dtypes.float) * 0.02).contiguous()
+        self.waist_up_b = Tensor.zeros((h,), dtype=dtypes.float).contiguous()
+        # n_layers cross-attn blocks. Each: Q (from waist), K/V (from prompt), O, FFN.
+        self.layers = []
+        for _ in range(n_layers):
+            self.layers.append({
+                "wq":  (Tensor.randn(h, h, dtype=dtypes.float) * 0.02).contiguous(),
+                "wk":  (Tensor.randn(h, h, dtype=dtypes.float) * 0.02).contiguous(),
+                "wv":  (Tensor.randn(h, h, dtype=dtypes.float) * 0.02).contiguous(),
+                "wo":  Tensor.zeros((h, h), dtype=dtypes.float).contiguous(),
+                "wf1": (Tensor.randn(h, h * 4, dtype=dtypes.float) * 0.02).contiguous(),
+                "wf2": Tensor.zeros((h * 4, h), dtype=dtypes.float).contiguous(),
+                "ln1_g": Tensor.ones((h,), dtype=dtypes.float).contiguous(),
+                "ln1_b": Tensor.zeros((h,), dtype=dtypes.float).contiguous(),
+                "ln2_g": Tensor.ones((h,), dtype=dtypes.float).contiguous(),
+                "ln2_b": Tensor.zeros((h,), dtype=dtypes.float).contiguous(),
+            })
+
+    def forward(self, waist_compressed: Tensor, prompt_emb: Tensor, embed_out: Tensor) -> Tensor:
+        """waist_compressed: (B, T, waist_dim)
+           prompt_emb:        (B, T, hidden) — main model's embedding of the prompt
+           embed_out:         (hidden, vocab) — main model's TIED output projection
+        Returns: (B, T, vocab)
+        """
+        B, T = waist_compressed.shape[0], waist_compressed.shape[1]
+        H = self.cfg.hidden
+        # Project waist up to hidden dim
+        x = (waist_compressed @ self.waist_up_w + self.waist_up_b).cast(dtypes.float)
+        prompt_f = prompt_emb.cast(dtypes.float)
+        for layer in self.layers:
+            # Pre-LN cross-attn (Q from x, K/V from prompt)
+            x_n = _layernorm(x, layer["ln1_g"], layer["ln1_b"], self.cfg.layer_norm_eps)
+            kv = prompt_f  # prompt isn't pre-normed; keep simple
+            q = x_n @ layer["wq"]
+            k = kv  @ layer["wk"]
+            v = kv  @ layer["wv"]
+            # Multi-head reshape
+            q = q.reshape(B, T, self.n_heads, self.head_dim).transpose(1, 2)  # (B, nh, T, hd)
+            k = k.reshape(B, T, self.n_heads, self.head_dim).transpose(1, 2)
+            v = v.reshape(B, T, self.n_heads, self.head_dim).transpose(1, 2)
+            scale = self.head_dim ** -0.5
+            scores = (q @ k.transpose(-2, -1)) * scale
+            attn = scores.softmax(axis=-1) @ v                                # (B, nh, T, hd)
+            attn = attn.transpose(1, 2).reshape(B, T, H)
+            x = x + attn @ layer["wo"]                                        # zero-init wo → identity at step 0
+            # Pre-LN FFN
+            x_n2 = _layernorm(x, layer["ln2_g"], layer["ln2_b"], self.cfg.layer_norm_eps)
+            ffn = (x_n2 @ layer["wf1"]).gelu() @ layer["wf2"]                 # zero-init wf2 → identity at step 0
+            x = x + ffn
+        # Tied decode head — use main model's embed_out for vocab projection
+        logits = x @ embed_out.cast(dtypes.float)
+        return logits
+
+    def parameters(self):
+        ps = [self.waist_up_w, self.waist_up_b]
+        for layer in self.layers:
+            for v in layer.values():
+                ps.append(v)
+        return ps
+
+
 # ---------- top-level model ----------
 
 class BreathingTransformer:
@@ -1392,6 +1499,11 @@ class BreathingTransformer:
         # Closed-loop component #5: the controller. State reader + decision heads.
         # Step B scaffold; notebook (Step C) and adaptive wiring (Step D) follow.
         self.controller = Controller(cfg)
+        # v54 WaistController — small cross-attention decoder over (waist, prompt).
+        # Allocated always (state_dict symmetry); only USED when CONTROLLER_DECODE=1.
+        # bf_w = waist dim (max 1 for symmetry if BFIELD_WAIST=0).
+        _bf_w_for_wc = max(1, BFIELD_WAIST)
+        self.waist_controller = WaistController(cfg, waist_dim=_bf_w_for_wc, n_layers=CONTROLLER_N_LAYERS)
         # Per-step optimal-stopping calibration head. Reads the rep at a step's
         # "=" position and emits scalar confidence in (0,1). Trained jointly with
         # the transformer on the REINFORCE optimal-stopping objective.
@@ -1413,7 +1525,8 @@ class BreathingTransformer:
                 + self.block.parameters()
                 + self.lookup_table.parameters()
                 + self.confidence_head.parameters()
-                + [self.waist_head_w, self.waist_head_b])
+                + [self.waist_head_w, self.waist_head_b]
+                + self.waist_controller.parameters())
 
     def controller_parameters(self):
         """Controller-only parameters. Trained via a separate optimizer with a
@@ -1466,6 +1579,12 @@ class BreathingTransformer:
         sd["block.bfield_bias"] = self.block.bfield_bias
         sd["block.waist_codebook_keys"] = self.block.waist_codebook_keys
         sd["block.waist_codebook_values"] = self.block.waist_codebook_values
+        # v54 waist controller
+        sd["wc.waist_up_w"] = self.waist_controller.waist_up_w
+        sd["wc.waist_up_b"] = self.waist_controller.waist_up_b
+        for i, layer in enumerate(self.waist_controller.layers):
+            for k, v in layer.items():
+                sd[f"wc.layer{i}.{k}"] = v
         sd["block.bfield_alpha"] = self.block.bfield_alpha
         sd["waist_head_w"] = self.waist_head_w
         sd["waist_head_b"] = self.waist_head_b
@@ -1875,6 +1994,9 @@ class BreathingTransformer:
         if return_per_breath_x:
             # v52 Stage 1: simplified return when per-breath supervision is the consumer.
             # Caller gets per-breath end-of-breath outputs + match weights for op-aux.
+            # v54: optionally also returns per-breath waist_compressed for controller decode.
+            if return_waist_compressed:
+                return final, match_weights, per_breath_x, waist_compressed_per_breath
             return final, match_weights, per_breath_x
         if return_notebook and return_waist_compressed:
             return final, match_weights, integrated_per_breath, notebook, notebook_r, waist_compressed_per_breath

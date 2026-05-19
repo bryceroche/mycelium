@@ -52,10 +52,15 @@ The loop **terminates** when both: (a) the integral has stabilized (Lyapunov cri
 
 ---
 
-## 3. Empirical Status (as of 2026-05-18)
+## 3. Empirical Status (as of 2026-05-19)
 
-**Best ckpt: v45 reg take 3 step 1000 = 96 / 94 / 93 on L4_MIXED (A=1 / A=4 / A=8).**
-File: `.cache/l4_mixed_ckpts/v45_reg_take3_step1000.safetensors`. Depth-spread compressed from v24c's 5pt → v45's 3pt — reg made deep loops MORE useful, not less.
+**Two champions in two paradigms.**
+
+- **Misaligned-decode paradigm (multi-cycle eval via ln_f + embed_out):** v45 reg take 3 step 1000 = **96 / 94 / 93 on L4_MIXED (A=1 / A=4 / A=8)**. File: `.cache/l4_mixed_ckpts/v45_reg_take3_step1000.safetensors`.
+- **Rep-space-thinking paradigm (K breaths once, decode via WaistController):**
+  - v55 step 500 = **89.0% aligned on L4 (K=2)**. File: `.cache/l4_ckpts/v55_controller_codebook_step500.safetensors`.
+  - v56 step 500 = **89.0% segmented on L4.5 (K=3)**, aligned only 75%. File: `.cache/l4_5_ckpts/v56_controller_codebook_l4_5_step500.safetensors`.
+  - The K=3 segmented–aligned gap (+14 pt) is the proof that **per-breath waist specialization is real**: at K=3 breath-1 decodes division and breath-2 decodes subtraction on the same problem, and the last-breath-only "aligned" eval reads the wrong op when generating step-1 tokens. At K=2 breaths converge and aligned ≈ segmented (89/90).
 
 Trajectory:
 - **L3-spaced:** 70% at A=8 vs 65% at A=1 (depth helps). 65% is the 4-layer arithmetic ceiling.
@@ -63,8 +68,11 @@ Trajectory:
 - **L4_BORROW v1 overnight (May 13):** 80% on L4_BORROW eval (cascade-heavy), but only 32% on pure L4 — narrow-curriculum trade-off. Catastrophic forgetting between L4_BORROW and standard L4.
 - **L4_MIXED v1 (May 13):** broadest distribution (6 standard + 3 cascade variants). Step 1500 = **66/67/65** on L4_MIXED eval. +20 vs v4 baseline. Best ckpt to date.
 - **v24c dual notebook (May 15):** DUAL notebook (REPLACE + ACCUMULATE 512d, random 0.02 init, attn-pool write source). Step 500 = **96/94/91** on L4_MIXED — first time all loop counts in 90s. Overfits past step 1000.
-- **v45 reg take 3 (May 18):** warm-start from v24c step 500 + reg stack (`STOCH_DEPTH_P=0.10`, `LABEL_SMOOTHING=0.1`, `WEIGHT_DECAY=0.05`). Step 1000 = **96/94/93** — ties v24c at A=1/4, **+2 at A=8**. Champion ckpt. 200-step continuation showed step 1000 is at/near local peak (drifts down, not up).
+- **v45 reg take 3 (May 18):** warm-start from v24c step 500 + reg stack (`STOCH_DEPTH_P=0.10`, `LABEL_SMOOTHING=0.1`, `WEIGHT_DECAY=0.05`). Step 1000 = **96/94/93** — ties v24c at A=1/4, **+2 at A=8**. Misaligned-decode champion. 200-step continuation showed step 1000 is at/near local peak.
 - **STAGE2_NOTEBOOK inference-path fix (May 18):** v45 takes 1+2 collapsed (~0% gen acc, val loss fine) because `cached_generate_batch` Stage 2 was updating notebook per generated token — train/eval mismatch from the v40 work. Gated behind `STAGE2_NOTEBOOK` env var (default 0). v24c step 500 ckpt eval'd on current code recovered to its training-time 96/94/91.
+- **v54 controller paradigm (May 19):** K=2 inner breaths, REPLACE notebook, BFIELD_WAIST=512, WaistController (1 cross-attn block) as the sole text-supervision conduit. v46b L4.5 step 750 warm-start, 500 steps L4. Aligned eval = **85%**. Demonstrates that all reasoning can happen in 512d rep space with token decode only via the controller.
+- **v55 controller + codebook (May 19):** v54 + WAIST_CODEBOOK_N=64 (16 heads × 4 ops, values zero-init). Aligned eval = **89%**, val_loss 0.013/0.009 (vs v54 0.021/0.019).
+- **v56 K=3 on L4.5 (May 19):** v55 architecture extended to K=3 from v55 step 500. Aligned 75%, segmented **89%**. The +14 pt segmented–aligned gap (vs v55 K=2's +1 pt) proves the K-axis is doing real work — breaths specialize at K=3 in a way they didn't at K=2. Eval script: `scripts/eval_ckpt_controller_segmented.py`. JIT'd per-breath training path added the same day (flat 0.95s/step vs eager's linear growth).
 
 ### What the ablations established
 
@@ -109,7 +117,9 @@ MLP probes on v6 reps (shallow 1024→512→1; deep 8192-concat→2048→512→1
 
 ## 6. Current Work In Progress
 
-- **v46 hybrid-heads quadrature (next experiment):** split the 16 heads, 8 keep PER_HEAD_PITCH pitch `l·π/64`, 8 add `π/2`. Cheapest possible test of the photon/quadrature idea (item #10, #15) — zero added params/compute. Warm-start from `v45_reg_take3_step1000`. Decision point at step 250 eval.
+- **v56 K=3 segmented on L4.5 = 89% (May 19):** v55 architecture extended to K=3 inner breaths from v55 step 500. Aligned (last-breath) eval 75%, **segmented (breath-k decodes step-k) 89%**. The +14 pt gap is hard evidence the K-axis carries real specialization: on the same problem, breath-1 decodes division (`2 8 2 / 2 = 1 4 1`) and breath-2 decodes subtraction — and the aligned eval reads the wrong op when generating step-1 tokens. At K=2 (v55) breaths converged (+1 gap); at K=3 they specialized (+14 gap). Eval script: `scripts/eval_ckpt_controller_segmented.py`. JIT'd per-breath training path: `mycelium/l3_training.py:_compile_jit_per_breath_step` (flat 0.95s/step vs eager's linear growth from 1.8 → 8.2s).
+- **v55 controller + waist codebook = 89% aligned on L4 (May 19):** First rep-space-thinking result. K=2 inner breaths, REPLACE-only notebook, BFIELD_WAIST=512 end-of-breath. A 1-block cross-attn `WaistController` reads the compressed 512d waist, cross-attends to the prompt embedding, and decodes via tied `embed_out` → vocab logits — that is the only text-supervision conduit. Per-breath supervision: breath k decodes step-k's gen_target. v55 adds a 64-entry codebook at the waist (keys randn × 0.02, values zero-init). vs v54 (codebook OFF): **+4 pt aligned (85 → 89)**, val_loss 0.021/0.019 → 0.013/0.009. Ckpt: `.cache/l4_ckpts/v55_controller_codebook_step500.safetensors`.
+- **v46 hybrid-heads quadrature (May 18, decorative):** split the 16 heads, 8 keep PER_HEAD_PITCH pitch `l·π/64`, 8 add `π/2`. Cheapest test of the photon/quadrature idea (item #10, #15). Validated as decorative in v46/v47/v47b warm-start collapses (see `memory/project_2026_05_18_session_synthesis.md`). v46b step 750 (92/92/88 on L4.5) remains a strong intermediate ckpt — used as the warm-start for v54/v55.
 - **Regularization stack validated (v45, May 18):** `STOCH_DEPTH_P=0.10` + `LABEL_SMOOTHING=0.1` + `WEIGHT_DECAY=0.05`. l3_train.py mask-gen ensures ≥1 active breath kept per step (skip SD when n_loops<2). Gates the integral-contribution scaling in `BreathingBlock.breathe()` and `BreathingTransformer.breathe_with_lookup()` only when `Tensor.training`. Now standard.
 - **STAGE2_NOTEBOOK env var (May 18):** gates per-token notebook updates in `cached_generate_batch`'s Stage 2 decode JIT. Default 0 matches v24c-era training. Set to 1 only for models explicitly trained with this mode. Bug found by direct ckpt-eval diagnostic (`scripts/diag_v24c_eval.py`).
 - **AM driver (working since 2026-05-11):** `DEV='PCI+AMD'` works after Secure Boot off + `vm.compact_unevictable_allowed=0`. `scripts/setup_am_driver.sh` installs both. See `memory/project_am_driver_state.md`.
@@ -130,7 +140,7 @@ A 127M model that breathes, alternates, integrates, and factorizes. ~7 months to
 
 Active design ideas across the project. Each tagged with status: ✅ validated, 🟡 partial/stuck, 🆕 new/unstarted, 🔴 known broken.
 
-1. **🟡 Merge CFG + LoRA + centroid injection** — Unified mechanism with all three as facets at the compression waist. Design captured in `memory/project_unified_waist_harness.md`. CFG α sweep on v38 gave +0.7pt only (decorative). Awaiting working B-field foundation to re-attempt blend.
+1. **✅ Centroid injection at the waist (partial)** — Validated in v55 via `WAIST_CODEBOOK_N=64` (zero-init values) + WaistController decode. +4 pt aligned over v54. CFG α and LoRA facets of the unified design are still unrealized; only the centroid-injection facet has earned a clean win so far. Design captured in `memory/project_unified_waist_harness.md`.
 
 2. **🟡 E & B waves perpendicular** (π-cycled RoPE + expand-collapse) — E field works brilliantly (rotation + per-head pitch). B field tried in v38 (decorative), v39 (A=8 collapsed via info chain through repeated bottlenecks), v40 (failed in combination). Not phase-locked yet — see item 15.
 
@@ -140,11 +150,11 @@ Active design ideas across the project. Each tagged with status: ✅ validated, 
 
 5. **✅ Overfitting / memorization control** — Validated 2026-05-18 by v45. Stack: `STOCH_DEPTH_P=0.10` (per-breath Bernoulli drop with ResNet-style 1/(1-p) scaling, skip at n=1, ≥1 kept safeguard at n≥2) + `LABEL_SMOOTHING=0.1` (training-only, eval CE gated on `Tensor.training`) + `WEIGHT_DECAY=0.05`. From v24c step 500 (96/94/91), v45 step 1000 = 96/94/**93** — ties at shallow, **+2 at A=8**, depth-spread compressed 5pt → 3pt. Reg makes deep loops MORE useful, not less. Dropout still blocked by tinygrad JIT (`Tensor.rand_like`) but stoch depth subsumes it for this architecture.
 
-6. **🆕 All thinking in rep space, autoregressive decode only at the end** — Identified 2026-05-17 as a fix for v40-era failures. Current eval does 8 breaths × max_new tokens = 300+ breaths per problem (copy-machine violation). Should be 8 breaths ONCE in Stage 1, then 1 forward per new token in Stage 2 using a UNIFIED K/V cache (e.g., last-breath cache from Stage 1). Not yet implemented.
+6. **✅ All thinking in rep space, autoregressive decode only at the end** — Realized via the WaistController paradigm (v54: 85% aligned, v55: 89% aligned). K inner breaths run once on the prompt + currently-emitted tokens; a 1-block cross-attn `WaistController` reads the compressed 512d waist and decodes via tied `embed_out` for one token at a time. No mid-breath token generation. Per-breath supervision via per-step gen_target. Eval script: `scripts/eval_ckpt_controller_l4.py`. Standing extension: stage-2 KV cache reuse for inference speedup, K=3/K=4 for L4.5/L4.7.
 
 7. **🟡 BirdNET parallelism — classification + computation across 16 heads in parallel** — Per-head pitch (v23a) gives 64 distinct (layer, head) angular positions. Conceptual framework partially supported; per-head computation specialization not yet validated as load-bearing.
 
-8. **🟡 REPLACE notebook (not accumulate)** — v40 failed in combination (with fresh-input + 256 lookup). Never tested in isolation. v24c's DUAL notebook (REPLACE + ACCUMULATE) achieved 96/94/91 on L4_MIXED — REPLACE-style memory IS viable, just not in v40 config. Next: test REPLACE-only on v24c-style warm-start.
+8. **✅ REPLACE notebook (not accumulate)** — Validated in v54/v55 (NOTEBOOK_V24=1, NOTEBOOK_ACCUMULATE_ENABLED=0, NOTEBOOK_DUAL=1). REPLACE-only works in the K-breath WaistController paradigm. The breath-N output replaces the page each step, so the controller reads the most-recent compressed waist rather than the running integral.
 
 9. **🆕 Recursive hierarchical IB → tree-structured lookup → MCTS traversal** — New direction. Builds on existing IB plateau analysis. Currently flat 256-entry lookup; tree-structured would enable coarse-to-fine MCTS at inference. Substantial design + implementation work.
 

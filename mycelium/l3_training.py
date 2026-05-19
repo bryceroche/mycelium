@@ -29,6 +29,8 @@ LABEL_SMOOTHING = float(os.environ.get("LABEL_SMOOTHING", "0.0"))
 _JIT_TRAIN_CACHE: dict = {}
 # Separate cache for the calibration JIT (different signature & key).
 _JIT_CALIB_CACHE: dict = {}
+# Separate cache for the per-breath JIT (K-breath supervision path).
+_JIT_PER_BREATH_CACHE: dict = {}
 
 
 def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
@@ -375,6 +377,116 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
     _JIT_TRAIN_CACHE[key] = _step
     print(f"[JIT] compiled in {_t_jit.perf_counter() - _jit_compile_start:.1f}s "
           f"(cache size={len(_JIT_TRAIN_CACHE)})", flush=True)
+    return _step
+
+
+def _compile_jit_per_breath_step(model, opt, K: int, fixed_len: int, B: int,
+                                  lookup_aux_weight: float):
+    """JIT'd per-breath supervision step (v54/v55/v56 paradigm).
+
+    Forward: K-breath breathe_with_lookup with return_per_breath_x and
+    return_waist_compressed. Per-breath CE: each breath k decoded via the
+    WaistController (if CONTROLLER_DECODE) or ln_f + embed_out (otherwise),
+    supervised against step-k labels.
+
+    Inputs (stable shapes):
+      tokens      (B, fixed_len)
+      labels_stk  (K, B, fixed_len - 1)   — per-step labels, -100 outside step k
+      eq_mask     (B, fixed_len, 1)       — 1.0 at "=" position
+      op_labels   (B,)                    — op index 0..3 or -100
+
+    Returns: (total_loss, ce_0, ce_1, ..., ce_{K-1}) — all scalar Tensors,
+    each .realize()'d. Total = avg_main + lookup_aux_weight * aux_ce + regs.
+    """
+    key = (id(model), id(opt), int(K), int(fixed_len), int(B), float(lookup_aux_weight))
+    if key in _JIT_PER_BREATH_CACHE:
+        return _JIT_PER_BREATH_CACHE[key]
+
+    aw = float(lookup_aux_weight)
+    import time as _t_jit
+    _jit_compile_start = _t_jit.perf_counter()
+    print(f"[JIT] compile per_breath step: K={K} B={B} fixed_len={fixed_len} aw={aw}...", flush=True)
+
+    from mycelium.breathing import CONTROLLER_DECODE as _CD
+    from mycelium.breathing import _layernorm as _ln
+    cfg_eps = model.cfg.layer_norm_eps
+
+    @TinyJit
+    def _step(tokens, labels_stk, eq_mask, op_labels):
+        opt.zero_grad()
+        if _CD:
+            _final, match_weights, _pbx, waist_compressed_per_breath = model.breathe_with_lookup(
+                tokens, K, return_per_breath_x=True, return_waist_compressed=True)
+            prompt_emb = model.embed(tokens).cast(dtypes.float)
+        else:
+            _final, match_weights, per_breath_x = model.breathe_with_lookup(
+                tokens, K, return_per_breath_x=True)
+
+        losses_per_breath = []
+        for k in range(K):
+            if _CD:
+                waist_k = waist_compressed_per_breath[k].cast(dtypes.float)
+                logits = model.waist_controller.forward(waist_k, prompt_emb, model.embed_out)
+            else:
+                x_k = per_breath_x[k]
+                x_normed = _ln(x_k, model.ln_f_g, model.ln_f_b, cfg_eps)
+                logits = (x_normed @ model.embed_out).cast(dtypes.float)
+            pred = logits[:, :-1, :]
+            ce_k = pred.sparse_categorical_crossentropy(
+                labels_stk[k], ignore_index=-100,
+                label_smoothing=LABEL_SMOOTHING, reduction="mean")
+            losses_per_breath.append(ce_k)
+        avg_main = sum(losses_per_breath[1:], losses_per_breath[0]) / float(K)
+
+        if aw > 0.0:
+            last_mw = match_weights[-1]
+            gathered = (last_mw.cast(dtypes.float) * eq_mask).sum(axis=1)
+            logits_aux = gathered[:, :4] * 10.0
+            aux_ce = logits_aux.sparse_categorical_crossentropy(
+                op_labels, ignore_index=-100, reduction="mean")
+        else:
+            aux_ce = Tensor.zeros((), dtype=dtypes.float).contiguous()
+
+        l2_reg = (model.lookup_table.weight.square().mean()
+                  + model.lookup_table.values.square().mean()
+                  + model.lookup_table.value_proj_up.square().mean()) * 1e-6
+        ch_reg = sum((p.square().mean() for p in model.confidence_head.parameters()),
+                     Tensor.zeros((), dtype=dtypes.float).contiguous()) * 1e-7
+        be_reg = (model.block.breath_embed.square().mean()
+                  + model.block.handoff_w.square().mean()
+                  + model.block.handoff_b.square().mean()
+                  + model.block.rope.pitch.square().mean()
+                  + model.block.crp_mix_alpha.square().mean()
+                  + model.block.crp_target_norm.square().mean()
+                  + model.block.notebook_write_w.square().mean()
+                  + model.block.notebook_write_b.square().mean()
+                  + model.block.notebook_read_w.square().mean()
+                  + model.block.notebook_read_b.square().mean()
+                  + model.block.notebook_write_query.square().mean()
+                  + model.block.notebook_rep_write_w.square().mean()
+                  + model.block.notebook_rep_write_b.square().mean()
+                  + model.block.notebook_rep_read_w.square().mean()
+                  + model.block.notebook_rep_read_b.square().mean()
+                  + model.block.notebook_rep_query.square().mean()
+                  + model.block.bfield_proj_down.square().mean()
+                  + model.block.bfield_proj_up.square().mean()
+                  + model.block.bfield_bias.square().mean()
+                  + model.block.waist_codebook_keys.square().mean()
+                  + model.block.waist_codebook_values.square().mean()
+                  + model.waist_head_w.square().mean()
+                  + model.waist_head_b.square().mean()
+                  + sum((p.square().mean() for lb in model.block.layers_b
+                                            for p in [lb.wq, lb.bq, lb.wk, lb.bk, lb.w_in, lb.b_in]),
+                        Tensor.zeros((), dtype=dtypes.float).contiguous())) * 1e-7
+
+        total = avg_main + aw * aux_ce + l2_reg + ch_reg + be_reg
+        total.backward()
+        opt.step()
+        return (total.realize(), *(ce.realize() for ce in losses_per_breath))
+
+    _JIT_PER_BREATH_CACHE[key] = _step
+    print(f"[JIT] compiled per_breath in {_t_jit.perf_counter() - _jit_compile_start:.1f}s "
+          f"(cache size={len(_JIT_PER_BREATH_CACHE)})", flush=True)
     return _step
 
 
@@ -1153,15 +1265,20 @@ def _lookup_aux_loss(model, tokens: Tensor, tokens_np: np.ndarray,
 def per_breath_train_step(model, opt, batch_examples: List[MathExample], tok,
                           fixed_len: int,
                           lookup_aux_weight: float = 0.0,
-                          lookup_eq_token_id=None):
+                          lookup_eq_token_id=None,
+                          use_jit: bool = False):
     """v52 Stage 1: per-breath supervision.
 
     Drops the outer cycle structure entirely. For a K-step problem, runs ONE
     forward pass with n_loops=K breaths. Each breath's end-of-breath output
-    is decoded via ln_f + embed_out and supervised against THAT step's tokens.
+    is decoded via ln_f + embed_out (or WaistController if CONTROLLER_DECODE)
+    and supervised against THAT step's tokens.
 
     Result: A=1 (single breath) can only solve step 1; K-step problems need
     exactly K breaths. Depth-helps signal becomes architecturally required.
+
+    use_jit=True dispatches to a JIT'd version (forward + backward + opt.step
+    fused). Eliminates the linear per-step time growth of the eager path.
 
     Assumes uniform K across the batch (use single-level training for Stage 1).
     """
@@ -1212,18 +1329,50 @@ def per_breath_train_step(model, opt, batch_examples: List[MathExample], tok,
     tokens = Tensor(tokens_np, dtype=dtypes.int).realize()
     per_step_labels_t = [Tensor(per_step_labels_np[k], dtype=dtypes.int).realize() for k in range(K)]
 
-    # Forward
-    opt.zero_grad()
-    _final, match_weights, per_breath_x = model.breathe_with_lookup(
-        tokens, n_loops=K, return_per_breath_x=True)
+    # JIT fast path — fused forward+backward+opt.step, flat per-step time.
+    if use_jit:
+        # Build aux tensors regardless of weight so the JIT signature is stable;
+        # the compiled function gates aux_ce on lookup_aux_weight at compile time.
+        if lookup_eq_token_id is not None:
+            eq_mask_jit, op_labels_jit = _build_aux_tensors(batch_examples, tokens_np, lookup_eq_token_id)
+        else:
+            eq_mask_jit = Tensor(np.zeros((B, fixed_len, 1), dtype=np.float32),
+                                  dtype=dtypes.float).realize()
+            op_labels_jit = Tensor(np.full((B,), -100, dtype=np.int32),
+                                    dtype=dtypes.int).realize()
+        labels_stk = Tensor(per_step_labels_np, dtype=dtypes.int).realize()
+        step_fn = _compile_jit_per_breath_step(model, opt, K, fixed_len, B, lookup_aux_weight)
+        outs = step_fn(tokens, labels_stk, eq_mask_jit, op_labels_jit)
+        total_t = outs[0]
+        ce_ts = outs[1:]
+        return float(total_t.numpy()), [float(c.numpy()) for c in ce_ts]
 
-    # Per-breath CE (equal-weighted)
+    # Forward — fetch per-breath x AND per-breath waist_compressed if controller is active
+    from mycelium.breathing import CONTROLLER_DECODE
+    opt.zero_grad()
+    if CONTROLLER_DECODE:
+        _final, match_weights, per_breath_x, waist_compressed_per_breath = model.breathe_with_lookup(
+            tokens, n_loops=K, return_per_breath_x=True, return_waist_compressed=True)
+        # Prompt embeddings (used as cross-attn keys/values by the controller)
+        prompt_emb = model.embed(tokens).cast(dtypes.float)
+    else:
+        _final, match_weights, per_breath_x = model.breathe_with_lookup(
+            tokens, n_loops=K, return_per_breath_x=True)
+        waist_compressed_per_breath = None
+        prompt_emb = None
+
+    # Per-breath CE (equal-weighted). Decode path depends on CONTROLLER_DECODE.
     losses_per_breath = []
     cfg_eps = model.cfg.layer_norm_eps
     for k in range(K):
-        x_k = per_breath_x[k]
-        x_normed = _layernorm(x_k, model.ln_f_g, model.ln_f_b, cfg_eps)
-        logits = (x_normed @ model.embed_out).cast(dtypes.float)
+        if CONTROLLER_DECODE:
+            # v54 Phase 1: route through WaistController (cross-attention to prompt).
+            waist_k = waist_compressed_per_breath[k].cast(dtypes.float)
+            logits = model.waist_controller.forward(waist_k, prompt_emb, model.embed_out)
+        else:
+            x_k = per_breath_x[k]
+            x_normed = _layernorm(x_k, model.ln_f_g, model.ln_f_b, cfg_eps)
+            logits = (x_normed @ model.embed_out).cast(dtypes.float)
         pred = logits[:, :-1, :]
         ls = LABEL_SMOOTHING
         ce_k = pred.sparse_categorical_crossentropy(
