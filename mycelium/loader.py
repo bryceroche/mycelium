@@ -20,11 +20,19 @@ from mycelium.breathing import BreathingTransformer, BreathingLayer, SharedWeigh
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PYTHIA_CACHE = os.path.join(_PROJECT_ROOT, ".cache", "pythia-410m", "model.safetensors")
+PYTHIA_1B_CACHE = os.path.join(_PROJECT_ROOT, ".cache", "pythia-1b", "model.safetensors")
 
 
-def _load_state(path: str = PYTHIA_CACHE) -> Dict[str, Tensor]:
+def _load_state(path: str | None = None) -> Dict[str, Tensor]:
+    """Load Pythia weights. Path resolves in this order:
+       1. Function arg if provided.
+       2. PYTHIA_WEIGHTS env var if set.
+       3. PYTHIA_CACHE (Pythia-410M default).
+    """
+    if path is None:
+        path = os.environ.get("PYTHIA_WEIGHTS", PYTHIA_CACHE)
     if not os.path.exists(path):
-        raise FileNotFoundError(f"Pythia weights not found at {path}. Download with curl first.")
+        raise FileNotFoundError(f"Pythia weights not found at {path}. Download via huggingface-cli or curl first.")
     return safe_load(path)
 
 

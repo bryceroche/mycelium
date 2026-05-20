@@ -36,6 +36,18 @@ class Config:
     controller_n_layers: int = 3      # notebook attention depth
     controller_n_heads: int = 8       # multi-head attention inside controller
 
+    # WaistController hidden width (DECOUPLED from cfg.hidden so the base model
+    # can scale up (e.g. Pythia-1B at H=2048) without ballooning the controller
+    # params. At H=2048 with controller_hidden=1024: cross-attn K/V become
+    # rectangular (2048 → 1024); a final up-projection 1024 → cfg.hidden lets
+    # the tied embed_out work. Default 1024 matches Pythia-410M's H (no change
+    # for existing models).
+    controller_hidden: int = 1024
+
     @property
     def rotary_dim(self) -> int:
         return int(self.head_dim * self.rotary_pct)
+
+    @property
+    def controller_head_dim(self) -> int:
+        return self.controller_hidden // self.n_heads

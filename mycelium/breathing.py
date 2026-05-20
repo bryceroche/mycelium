@@ -742,7 +742,9 @@ class BreathingLayer:
 
     def forward_cached_step_batched(self, x_new: Tensor, loop_idx: int,
                                     k_buf: Tensor, v_buf: Tensor, t_pos_t: Tensor,
-                                    prompt_mask: Tensor | None = None):
+                                    prompt_mask: Tensor | None = None,
+                                    alpha: tuple | None = None,
+                                    temp_mult: float = 1.0):
         """Batched single-token cached forward.
 
         x_new:        (B, 1, H)
@@ -753,6 +755,11 @@ class BreathingLayer:
                       via the causal `pos <= t_pos_t` comparison (no need to update the
                       prompt_mask between calls because future slots are zero by default
                       and t_pos_t monotonically advances).
+        alpha:        optional (ac, asn) Q-rotation tuple. When None, uses the breath's
+                      default alpha for loop_idx. Pass the per-(layer, head) pitch alpha
+                      here for parity with Stage 1's forward_with_kv when PER_HEAD_PITCH=1.
+        temp_mult:    attention temperature multiplier. Matches the per-breath SINE_TEMP
+                      schedule applied in Stage 1's forward_with_kv. Default 1.0 (legacy).
         """
         cfg = self.cfg
         max_len = int(k_buf.shape[2])
@@ -767,7 +774,7 @@ class BreathingLayer:
         k_new = (attn_in_dt @ self.wk + self.bk).reshape(B, 1, cfg.n_heads, cfg.head_dim).transpose(1, 2)
         v_new = (attn_in_dt @ self.shared.wv + self.shared.bv).reshape(B, 1, cfg.n_heads, cfg.head_dim).transpose(1, 2)
 
-        q_new, k_new = self.rope.apply_at_tensor_pos(q_new, k_new, loop_idx, t_pos_t)
+        q_new, k_new = self.rope.apply_at_tensor_pos(q_new, k_new, loop_idx, t_pos_t, alpha=alpha)
 
         pos = Tensor.arange(max_len)
         per_batch = (t_pos_t.ndim == 1 and int(t_pos_t.shape[0]) > 1)
@@ -782,17 +789,14 @@ class BreathingLayer:
         k_buf_new = write_at.where(k_new_b, k_buf)
         v_buf_new = write_at.where(v_new_b, v_buf)
 
-        # Per-batch t_pos already excludes Phase-A padding via causal mask (we only
-        # attend to positions < t_pos_t[b], and shorter prompts have their first
-        # generated token overwrite the Phase-A padding before any later token tries
-        # to attend to it). prompt_mask kept as optional knob for caller-provided masking.
         if prompt_mask is not None:
             pmask = prompt_mask.reshape(B, 1, 1, max_len).cast(dtypes.bool)
             valid = causal & pmask
         else:
             valid = causal
 
-        scores = q_new @ k_buf_new.transpose(-2, -1) * self.attn_scale
+        scale = self.attn_scale / float(temp_mult)
+        scores = q_new @ k_buf_new.transpose(-2, -1) * scale
         scores = valid.where(scores, Tensor(-float("inf"), dtype=scores.dtype))
         attn = scores.softmax(-1).cast(v_buf_new.dtype)
         ctx = (attn @ v_buf_new).transpose(1, 2).reshape(B, 1, cfg.hidden)
@@ -1410,63 +1414,86 @@ class WaistController:
     2×1024×4096 for FFN + small projs). Tied embed_out → no extra decoder params.
     """
     def __init__(self, cfg, waist_dim: int, n_layers: int = 1):
-        h = cfg.hidden
+        # Decoupled controller width: cfg.controller_hidden may differ from cfg.hidden.
+        # At Pythia-410M (cfg.hidden=1024, default controller_hidden=1024), behavior is
+        # identical to before. At Pythia-1B (cfg.hidden=2048, controller_hidden=1024),
+        # cross-attn K/V are rectangular (2048→1024) and a final up-projection
+        # (1024→2048) ensures embed_out compatibility (embed_out is cfg.hidden × vocab).
+        H_base = cfg.hidden                           # input prompt dim (full base width)
+        H_ctrl = getattr(cfg, "controller_hidden", H_base)  # internal controller width
         self.n_heads = cfg.n_heads
-        self.head_dim = h // cfg.n_heads
+        self.head_dim = H_ctrl // cfg.n_heads          # head_dim from controller width
         self.cfg = cfg
         self.waist_dim = waist_dim
         self.n_layers = n_layers
-        # Project compressed waist (bf_w) up to hidden for cross-attn in 1024d.
-        self.waist_up_w = (Tensor.randn(waist_dim, h, dtype=dtypes.float) * 0.02).contiguous()
-        self.waist_up_b = Tensor.zeros((h,), dtype=dtypes.float).contiguous()
-        # n_layers cross-attn blocks. Each: Q (from waist), K/V (from prompt), O, FFN.
+        self.H_base = H_base
+        self.H_ctrl = H_ctrl
+        # Project waist up to controller_hidden (not base hidden).
+        self.waist_up_w = (Tensor.randn(waist_dim, H_ctrl, dtype=dtypes.float) * 0.02).contiguous()
+        self.waist_up_b = Tensor.zeros((H_ctrl,), dtype=dtypes.float).contiguous()
+        # n_layers cross-attn blocks. Q in H_ctrl; K/V projected from H_base → H_ctrl.
         self.layers = []
         for _ in range(n_layers):
             self.layers.append({
-                "wq":  (Tensor.randn(h, h, dtype=dtypes.float) * 0.02).contiguous(),
-                "wk":  (Tensor.randn(h, h, dtype=dtypes.float) * 0.02).contiguous(),
-                "wv":  (Tensor.randn(h, h, dtype=dtypes.float) * 0.02).contiguous(),
-                "wo":  Tensor.zeros((h, h), dtype=dtypes.float).contiguous(),
-                "wf1": (Tensor.randn(h, h * 4, dtype=dtypes.float) * 0.02).contiguous(),
-                "wf2": Tensor.zeros((h * 4, h), dtype=dtypes.float).contiguous(),
-                "ln1_g": Tensor.ones((h,), dtype=dtypes.float).contiguous(),
-                "ln1_b": Tensor.zeros((h,), dtype=dtypes.float).contiguous(),
-                "ln2_g": Tensor.ones((h,), dtype=dtypes.float).contiguous(),
-                "ln2_b": Tensor.zeros((h,), dtype=dtypes.float).contiguous(),
+                "wq":  (Tensor.randn(H_ctrl, H_ctrl, dtype=dtypes.float) * 0.02).contiguous(),
+                "wk":  (Tensor.randn(H_base, H_ctrl, dtype=dtypes.float) * 0.02).contiguous(),  # rectangular
+                "wv":  (Tensor.randn(H_base, H_ctrl, dtype=dtypes.float) * 0.02).contiguous(),  # rectangular
+                "wo":  Tensor.zeros((H_ctrl, H_ctrl), dtype=dtypes.float).contiguous(),
+                "wf1": (Tensor.randn(H_ctrl, H_ctrl * 4, dtype=dtypes.float) * 0.02).contiguous(),
+                "wf2": Tensor.zeros((H_ctrl * 4, H_ctrl), dtype=dtypes.float).contiguous(),
+                "ln1_g": Tensor.ones((H_ctrl,), dtype=dtypes.float).contiguous(),
+                "ln1_b": Tensor.zeros((H_ctrl,), dtype=dtypes.float).contiguous(),
+                "ln2_g": Tensor.ones((H_ctrl,), dtype=dtypes.float).contiguous(),
+                "ln2_b": Tensor.zeros((H_ctrl,), dtype=dtypes.float).contiguous(),
             })
+        # Final up-projection from controller_hidden → base_hidden so embed_out
+        # (cfg.hidden × vocab) can be applied. When H_ctrl == H_base this is just
+        # identity-shape; we still allocate the matrix so the state_dict has stable
+        # keys across configs (zero-init so it starts as a learned identity-ish op).
+        if H_ctrl != H_base:
+            self.final_up_w = (Tensor.randn(H_ctrl, H_base, dtype=dtypes.float) * 0.02).contiguous()
+            self.final_up_b = Tensor.zeros((H_base,), dtype=dtypes.float).contiguous()
+        else:
+            self.final_up_w = None  # not needed; saves params for 410M
+            self.final_up_b = None
 
     def forward(self, waist_compressed: Tensor, prompt_emb: Tensor, embed_out: Tensor) -> Tensor:
-        """waist_compressed: (B, T, waist_dim)
-           prompt_emb:        (B, T, hidden) — main model's embedding of the prompt
-           embed_out:         (hidden, vocab) — main model's TIED output projection
-        Returns: (B, T, vocab)
+        """waist_compressed: (B, T_q, waist_dim) — Q sequence length T_q can be 1 or full T
+           prompt_emb:        (B, T_kv, H_base) — main model's embedding of the prompt
+           embed_out:         (H_base, vocab) — main model's TIED output projection
+        Returns: (B, T_q, vocab). T_q matches the Q input length (1 at inference per-position).
         """
-        B, T = waist_compressed.shape[0], waist_compressed.shape[1]
-        H = self.cfg.hidden
-        # Project waist up to hidden dim
+        B = waist_compressed.shape[0]
+        T_q = waist_compressed.shape[1]
+        T_kv = prompt_emb.shape[1]
+        H_ctrl = self.H_ctrl
+        # Project waist up to controller_hidden.
         x = (waist_compressed @ self.waist_up_w + self.waist_up_b).cast(dtypes.float)
         prompt_f = prompt_emb.cast(dtypes.float)
         for layer in self.layers:
-            # Pre-LN cross-attn (Q from x, K/V from prompt)
+            # Pre-LN cross-attn (Q from x at H_ctrl, K/V from prompt at H_base → H_ctrl).
             x_n = _layernorm(x, layer["ln1_g"], layer["ln1_b"], self.cfg.layer_norm_eps)
-            kv = prompt_f  # prompt isn't pre-normed; keep simple
+            kv = prompt_f
             q = x_n @ layer["wq"]
-            k = kv  @ layer["wk"]
+            k = kv  @ layer["wk"]  # (B, T_kv, H_base) → (B, T_kv, H_ctrl)
             v = kv  @ layer["wv"]
-            # Multi-head reshape
-            q = q.reshape(B, T, self.n_heads, self.head_dim).transpose(1, 2)  # (B, nh, T, hd)
-            k = k.reshape(B, T, self.n_heads, self.head_dim).transpose(1, 2)
-            v = v.reshape(B, T, self.n_heads, self.head_dim).transpose(1, 2)
+            # Multi-head reshape — all internal heads work in controller_hidden.
+            q = q.reshape(B, T_q,  self.n_heads, self.head_dim).transpose(1, 2)
+            k = k.reshape(B, T_kv, self.n_heads, self.head_dim).transpose(1, 2)
+            v = v.reshape(B, T_kv, self.n_heads, self.head_dim).transpose(1, 2)
             scale = self.head_dim ** -0.5
             scores = (q @ k.transpose(-2, -1)) * scale
-            attn = scores.softmax(axis=-1) @ v                                # (B, nh, T, hd)
-            attn = attn.transpose(1, 2).reshape(B, T, H)
-            x = x + attn @ layer["wo"]                                        # zero-init wo → identity at step 0
+            attn = scores.softmax(axis=-1) @ v
+            attn = attn.transpose(1, 2).reshape(B, T_q, H_ctrl)
+            x = x + attn @ layer["wo"]
             # Pre-LN FFN
             x_n2 = _layernorm(x, layer["ln2_g"], layer["ln2_b"], self.cfg.layer_norm_eps)
-            ffn = (x_n2 @ layer["wf1"]).gelu() @ layer["wf2"]                 # zero-init wf2 → identity at step 0
+            ffn = (x_n2 @ layer["wf1"]).gelu() @ layer["wf2"]
             x = x + ffn
-        # Tied decode head — use main model's embed_out for vocab projection
+        # Up-project from controller_hidden → base_hidden before tied vocab head.
+        if self.final_up_w is not None:
+            x = x @ self.final_up_w + self.final_up_b
+        # Tied decode head — use main model's embed_out (H_base × vocab) for vocab projection.
         logits = x @ embed_out.cast(dtypes.float)
         return logits
 
@@ -1475,6 +1502,8 @@ class WaistController:
         for layer in self.layers:
             for v in layer.values():
                 ps.append(v)
+        if self.final_up_w is not None:
+            ps.extend([self.final_up_w, self.final_up_b])
         return ps
 
 
@@ -1585,6 +1614,10 @@ class BreathingTransformer:
         for i, layer in enumerate(self.waist_controller.layers):
             for k, v in layer.items():
                 sd[f"wc.layer{i}.{k}"] = v
+        # v62 decoupled-controller final up-projection (present only when H_ctrl != H_base)
+        if self.waist_controller.final_up_w is not None:
+            sd["wc.final_up_w"] = self.waist_controller.final_up_w
+            sd["wc.final_up_b"] = self.waist_controller.final_up_b
         sd["block.bfield_alpha"] = self.block.bfield_alpha
         sd["waist_head_w"] = self.waist_head_w
         sd["waist_head_b"] = self.waist_head_b
@@ -2373,6 +2406,530 @@ class BreathingTransformer:
                     continue
                 outs[b].append(int(next_ids[b]))
                 if int(next_ids[b]) in stop_set:
+                    is_done[b] = True
+                elif seq_len > 0 and outs[b][-seq_len:] == seq:
+                    is_done[b] = True
+            if all(is_done):
+                break
+
+        return outs
+
+    def _get_seg_buffers(self, B: int, K: int, max_len: int, waist_dim: int, nb_dim: int):
+        """Allocate (or retrieve memoized) persistent buffers for closure-based JIT.
+
+        Memoized by (B, K, max_len, waist_dim) — one allocation per distinct shape combo,
+        reused across calls with the same shapes (same batch size and cache budget).
+
+        Returns a dict of named Tensors. All are realized contiguous buffers so they can
+        be closed over by a @TinyJit function and written via .assign().
+        """
+        key = (B, K, max_len, waist_dim)
+        if not hasattr(self, "_seg_buf_cache"):
+            self._seg_buf_cache = {}
+        if key in self._seg_buf_cache:
+            return self._seg_buf_cache[key]
+
+        H = self.cfg.hidden
+        n_layers = self.cfg.n_phases
+        # KV cache: [n_layers][K] each (B, n_heads, max_len, head_dim)
+        n_heads = self.cfg.n_heads
+        head_dim = self.cfg.head_dim
+        cache_k = [[Tensor.zeros((B, n_heads, max_len, head_dim), dtype=dtypes.float).contiguous().realize()
+                    for _ in range(K)] for _ in range(n_layers)]
+        cache_v = [[Tensor.zeros((B, n_heads, max_len, head_dim), dtype=dtypes.float).contiguous().realize()
+                    for _ in range(K)] for _ in range(n_layers)]
+        # Per-breath waist buffers: K × (B, max_len, waist_dim)
+        waist_per_breath = [Tensor.zeros((B, max_len, waist_dim), dtype=dtypes.float).contiguous().realize()
+                            for _ in range(K)]
+        # Prompt embedding buffer: (B, max_len, H)
+        prompt_emb_buf = Tensor.zeros((B, max_len, H), dtype=dtypes.float).contiguous().realize()
+        # Notebook state buffers
+        notebook_state = _initial_notebook_state(B, nb_dim).contiguous().realize()
+        notebook_r_state = _initial_notebook_state(B, nb_dim).contiguous().realize()
+        # Per-token decode inputs: prev token id (B, 1) and current position (B,)
+        prev_id_t = Tensor.zeros((B, 1), dtype=dtypes.int).contiguous().realize()
+        t_pos_t = Tensor.zeros((B,), dtype=dtypes.int).contiguous().realize()
+        # Argmax output buffer: (K, B) — JIT writes here and caller reads
+        argmax_buf = Tensor.zeros((K, B), dtype=dtypes.int).contiguous().realize()
+        # Per-example step counter tracking #### boundaries (updated inside JIT)
+        step_counter_t = Tensor.zeros((B,), dtype=dtypes.int).contiguous().realize()
+
+        bufs = {
+            "cache_k": cache_k,   # list[list[Tensor]]
+            "cache_v": cache_v,
+            "waist_per_breath": waist_per_breath,
+            "prompt_emb_buf": prompt_emb_buf,
+            "notebook_state": notebook_state,
+            "notebook_r_state": notebook_r_state,
+            "prev_id_t": prev_id_t,
+            "t_pos_t": t_pos_t,
+            "argmax_buf": argmax_buf,
+            "step_counter_t": step_counter_t,
+        }
+        self._seg_buf_cache[key] = bufs
+        return bufs
+
+    def cached_generate_segmented(self, batch_prompt_ids: list, n_loops: int, max_new: int,
+                                     decode_fn,
+                                     stop_token_ids=None, stop_seq=None,
+                                     cache_max_len: int | None = None,
+                                     waist_dim: int | None = None) -> list:
+        """KV-cached inference for the per-breath supervision paradigm (v54+).
+
+        Closure-based fused JIT design (v2): all per-token work happens inside a
+        zero-arg @TinyJit that closes over persistent state buffers. No Python work
+        per token after the first two JIT calls (cnt=0 eager, cnt=1 capture+exec,
+        cnt>=2 pure replay). Mirrors the optimizer JIT pattern.
+
+        decode_fn signature (UPDATED from v1):
+            next_ids = decode_fn(
+                argmax_buf,    # Tensor (K, B) int — argmax token IDs per breath per example
+                t_pos_per,     # list[int], length B — current position per example
+                decoded_so_far,# list[list[int]] — tokens decoded per example
+            )
+            # Returns: numpy array shape (B,) int32 — next token id per example.
+
+        The caller picks the right breath per example via #### count in decode_fn.
+
+        Required model config: BFIELD_WAIST > 0, BFIELD_END_OF_BREATH=1,
+        CONTROLLER_DECODE=1.
+        """
+        from tinygrad import Tensor as _T
+        cfg = self.cfg
+        n_layers = cfg.n_phases
+        B = len(batch_prompt_ids)
+        stop_set = set(stop_token_ids or [])
+        seq = list(stop_seq or [])
+        seq_len = len(seq)
+
+        assert BFIELD_WAIST > 0 and BFIELD_END_OF_BREATH, (
+            "cached_generate_segmented requires BFIELD_WAIST>0 and BFIELD_END_OF_BREATH=1"
+        )
+        if waist_dim is None:
+            waist_dim = BFIELD_WAIST
+
+        real_lens = [len(p) for p in batch_prompt_ids]
+        max_prompt = max(real_lens)
+        if cache_max_len is None:
+            cache_max_len = cfg.max_seq_len
+        assert max_prompt + max_new <= cache_max_len
+        assert cache_max_len <= cfg.max_seq_len
+        max_len = cache_max_len
+
+        # Get or allocate persistent buffers for this (B, K, max_len, waist_dim) combo
+        bufs = self._get_seg_buffers(B, n_loops, max_len, waist_dim, self.block.nb_dim)
+        cache_k = bufs["cache_k"]
+        cache_v = bufs["cache_v"]
+        waist_per_breath_buf = bufs["waist_per_breath"]
+        prompt_emb_buf_t = bufs["prompt_emb_buf"]
+        notebook_state_t = bufs["notebook_state"]
+        notebook_r_state_t = bufs["notebook_r_state"]
+        prev_id_t = bufs["prev_id_t"]
+        t_pos_t = bufs["t_pos_t"]
+        argmax_buf = bufs["argmax_buf"]
+        step_counter_t = bufs["step_counter_t"]
+
+        # Pad ALL prompts to max_len (not just max_prompt) so Stage 1 JIT has FIXED shapes.
+        # This allows Stage 1 to compile once and replay fast across all batches.
+        padded_full = np.zeros((B, max_len), dtype=np.int32)
+        for b, p in enumerate(batch_prompt_ids):
+            padded_full[b, :len(p)] = p
+        prompts_t = _T(padded_full, dtype=dtypes.int).realize()
+
+        # Attention mask: 1 for real prompt positions, 0 for padding.
+        # Shape: (B, max_len) — needed to avoid padding positions corrupting attention.
+        prompt_attn_mask_np = np.zeros((B, max_len), dtype=np.int32)
+        for b, rl in enumerate(real_lens):
+            prompt_attn_mask_np[b, :rl] = 1
+        attn_mask_full = _T(prompt_attn_mask_np, dtype=dtypes.int).realize()
+        # Use mask only when there's actual padding (same_len batches + max_len pads)
+        # Always pass mask since max_len > max_prompt in general
+        attn_mask_arg = attn_mask_full
+
+        n_phases = cfg.n_phases
+
+        # === Stage 1: JIT-compiled prefill over fixed-shape (B, max_len) prompts ===
+        # Build or retrieve the Stage 1 JIT. Key: (B, K, max_len, waist_dim).
+        # The JIT takes (prompts_t, attn_mask_t) as inputs and writes K/V, waist, notebook
+        # into the CLOSURE-captured persistent buffers. All shapes are fixed → one compile.
+        if not hasattr(self, "_seg_stage1_jits"):
+            self._seg_stage1_jits = {}
+        s1_key = (B, n_loops, max_len, waist_dim)
+        if s1_key not in self._seg_stage1_jits:
+            print(f"[JIT] registering Stage 1 prefill JIT: B={B} K={n_loops} max_len={max_len}", flush=True)
+            embed_w_s1 = self.embed.weight
+            block_s1 = self.block
+            n_loops_s1 = n_loops
+            n_layers_s1 = n_layers
+            n_phases_s1 = n_phases
+            max_loops_s1 = cfg.max_loops
+            B_s1 = B
+            waist_dim_s1 = waist_dim
+            max_len_s1 = max_len
+            _ck_s1 = cache_k
+            _cv_s1 = cache_v
+            _waist_s1 = waist_per_breath_buf
+            _nb_s1 = notebook_state_t
+            _nbr_s1 = notebook_r_state_t
+
+            @TinyJit
+            def _stage1_jit(prompts_in, attn_mask_in):
+                x_emb_s1 = embed_w_s1[prompts_in].cast(dtypes.half)
+                x_s1 = x_emb_s1
+                notebook_s1 = _initial_notebook_state(B_s1, block_s1.nb_dim)
+                notebook_r_s1 = _initial_notebook_state(B_s1, block_s1.nb_dim)
+                handoff_s1 = None
+                for loop in range(n_loops_s1):
+                    if BREATHE_FRESH_INPUT:
+                        x_in_s1 = x_emb_s1
+                    else:
+                        x_in_s1 = x_s1
+                        if CROSS_BREATH_HANDOFF and handoff_s1 is not None:
+                            x_in_s1 = x_in_s1 + handoff_s1
+                    if NOTEBOOK_V24:
+                        if NOTEBOOK_ACCUMULATE_ENABLED:
+                            rv = (notebook_s1 @ block_s1.notebook_read_w + block_s1.notebook_read_b)
+                            x_in_s1 = x_in_s1 + rv.reshape(B_s1, 1, -1).cast(x_in_s1.dtype)
+                        if NOTEBOOK_DUAL:
+                            rv_r = (notebook_r_s1 @ block_s1.notebook_rep_read_w + block_s1.notebook_rep_read_b)
+                            x_in_s1 = x_in_s1 + rv_r.reshape(B_s1, 1, -1).cast(x_in_s1.dtype)
+                    if BREATH_TIME_EMBED:
+                        x_in_s1 = x_in_s1 + block_s1.breath_embed[loop].reshape(1, 1, -1).cast(x_in_s1.dtype)
+                    base_alpha_s1 = block_s1.rope._alpha_at(loop, x_in_s1.dtype)
+                    ac_base_s1, asn_base_s1 = base_alpha_s1
+                    tm_s1 = _sine_temp_baseline(loop, n_loops_s1)
+                    if DOUBLED_LAYERS and loop >= (max_loops_s1 // 2):
+                        active_s1 = block_s1.layers_b
+                    else:
+                        active_s1 = block_s1.layers
+                    x_s1 = x_in_s1
+                    for li in range(n_layers_s1):
+                        if PER_HEAD_PITCH and li > 0:
+                            cos_o = block_s1.per_head_pitch_cos[li].cast(x_s1.dtype)
+                            sin_o = block_s1.per_head_pitch_sin[li].cast(x_s1.dtype)
+                            la_s1 = (ac_base_s1 * cos_o - asn_base_s1 * sin_o,
+                                     ac_base_s1 * sin_o + asn_base_s1 * cos_o)
+                        else:
+                            la_s1 = base_alpha_s1
+                        lt_s1 = _per_layer_temp_within_breath(li, n_phases_s1) if PER_BREATH_TEMP else tm_s1
+                        x_s1, (k_part_s1, v_part_s1) = active_s1[li].forward_with_kv(
+                            x_s1, loop_idx=loop, attn_mask=attn_mask_in,
+                            temp_mult=lt_s1, alpha=la_s1)
+                        # Write K/V directly (no padding needed — already at max_len shape)
+                        _ck_s1[li][loop].assign(k_part_s1)
+                        _cv_s1[li][loop].assign(v_part_s1)
+                        if BREATH_NORM_OSC and CONSTANT_RADIUS:
+                            scale_s1 = _per_layer_norm_scale_within_breath(li, n_phases_s1)
+                            x_f_s1 = x_s1.cast(dtypes.float)
+                            x_norm_s1 = (x_f_s1.square().sum(axis=-1, keepdim=True) + 1e-6).sqrt()
+                            target_s1 = block_s1.crp_target_norm * scale_s1
+                            x_s1 = (x_f_s1 * (1.0 - block_s1.crp_mix_alpha) +
+                                    x_f_s1 * (target_s1 / x_norm_s1) * block_s1.crp_mix_alpha).cast(x_s1.dtype)
+                        if BFIELD_WAIST > 0 and li == 1 and not BFIELD_END_OF_BREATH:
+                            x_s1 = block_s1.apply_bfield_waist(x_s1)
+                    # End-of-breath waist with compressed capture
+                    x_s1, compressed_s1 = block_s1.apply_bfield_waist(x_s1, return_compressed=True)
+                    _waist_s1[loop].assign(compressed_s1.cast(dtypes.float))
+                    # End-of-breath CRP
+                    if CONSTANT_RADIUS and not BREATH_NORM_OSC:
+                        x_f_s1 = x_s1.cast(dtypes.float)
+                        x_norm_s1 = (x_f_s1.square().sum(axis=-1, keepdim=True) + 1e-6).sqrt()
+                        x_s1 = (x_f_s1 * (1.0 - block_s1.crp_mix_alpha) +
+                                x_f_s1 * (block_s1.crp_target_norm / x_norm_s1) * block_s1.crp_mix_alpha).cast(x_s1.dtype)
+                    # Notebook write
+                    if NOTEBOOK_V24:
+                        x_f_s1 = x_s1.cast(dtypes.float)
+                        if NOTEBOOK_POOL_MODE == "attn":
+                            sc = (x_f_s1 * block_s1.notebook_write_query.reshape(1, 1, -1)).sum(axis=-1)
+                            wt = sc.softmax(axis=-1).reshape(B_s1, -1, 1)
+                            xp = (x_f_s1 * wt).sum(axis=1)
+                        else:
+                            xp = x_f_s1.mean(axis=1)
+                        if NOTEBOOK_ACCUMULATE_ENABLED:
+                            notebook_s1 = notebook_s1 + (xp @ block_s1.notebook_write_w + block_s1.notebook_write_b)
+                        if NOTEBOOK_DUAL:
+                            if NOTEBOOK_POOL_MODE == "attn":
+                                sc_r = (x_f_s1 * block_s1.notebook_rep_query.reshape(1, 1, -1)).sum(axis=-1)
+                                wt_r = sc_r.softmax(axis=-1).reshape(B_s1, -1, 1)
+                                xp_r = (x_f_s1 * wt_r).sum(axis=1)
+                            else:
+                                xp_r = xp
+                            notebook_r_s1 = xp_r @ block_s1.notebook_rep_write_w + block_s1.notebook_rep_write_b
+                    if CROSS_BREATH_HANDOFF:
+                        handoff_s1 = block_s1.compute_handoff(x_s1)
+                # Write notebook states to persistent buffers
+                _nb_s1.assign(notebook_s1.cast(dtypes.float) if NOTEBOOK_V24 else notebook_s1)
+                _nbr_s1.assign(notebook_r_s1.cast(dtypes.float) if (NOTEBOOK_V24 and NOTEBOOK_DUAL) else notebook_r_s1)
+                return (
+                    *_ck_s1[0],  # K[layer0][all loops]
+                    *_cv_s1[0],
+                    *_ck_s1[1],
+                    *_cv_s1[1],
+                    *_ck_s1[2],
+                    *_cv_s1[2],
+                    *_ck_s1[3],
+                    *_cv_s1[3],
+                    *_waist_s1,
+                    _nb_s1,
+                    _nbr_s1,
+                )
+
+            self._seg_stage1_jits[s1_key] = _stage1_jit
+
+        stage1_jit = self._seg_stage1_jits[s1_key]
+        # Run Stage 1 JIT — fills cache_k, cache_v, waist_per_breath, notebook state
+        stage1_jit(prompts_t, attn_mask_full)
+
+        # Initialize prompt_emb_buf from the same padded_full tokens used in Stage 1.
+        # Use the SAME padded_full array (already has prompt tokens + token-0 padding).
+        # This ensures prompt_emb_buf[b, :real_lens[b]] = embed(prompt_tokens) and
+        # prompt_emb_buf[b, real_lens[b]:] = embed(token_0), matching the eager path.
+        tokens_buf_init = _T(padded_full, dtype=dtypes.int).contiguous().realize()
+        prompt_emb_init = self.embed(tokens_buf_init).cast(dtypes.float)
+        prompt_emb_buf_t.assign(prompt_emb_init).realize()
+
+        # === Build the closure-based Stage 2 JIT (once per shape key) ===
+        if not hasattr(self, "_seg_closure_jits"):
+            self._seg_closure_jits = {}
+        jit_key = (B, n_loops, max_len, waist_dim)
+        if jit_key not in self._seg_closure_jits:
+            print(f"[JIT] registering closure-based cached_generate_segmented: "
+                  f"B={B} K={n_loops} max_len={max_len} waist_dim={waist_dim}", flush=True)
+            embed_w = self.embed.weight
+            embed_out_local = self.embed_out
+            waist_ctrl = self.waist_controller
+            layers = self.block.layers
+            layers_b = self.block.layers_b
+            block_local = self.block
+            n_loops_local = n_loops
+            n_layers_local = n_layers
+            max_loops_local = cfg.max_loops
+            B_local = B
+            waist_dim_local = waist_dim
+            max_len_local = max_len
+            vocab_active_local = 50277
+            # Capture persistent buffer references in the closure
+            _cache_k = cache_k
+            _cache_v = cache_v
+            _waist_per_breath = waist_per_breath_buf
+            _prompt_emb_buf = prompt_emb_buf_t
+            _notebook_state = notebook_state_t
+            _notebook_r_state = notebook_r_state_t
+            _prev_id_t = prev_id_t
+            _t_pos_t = t_pos_t
+            _argmax_buf = argmax_buf
+            _step_counter = step_counter_t
+            _hash_tok_id = 1835  # token ID for '####'
+
+            @TinyJit
+            def _step_closure():
+                # Embed previous token
+                x_new = embed_w[_prev_id_t].cast(dtypes.half)  # (B, 1, H)
+                x = x_new
+                notebook = _notebook_state
+                notebook_r = _notebook_r_state
+                handoff_inner = None
+                waists_inner = []
+                for loop in range(n_loops_local):
+                    if BREATHE_FRESH_INPUT:
+                        x_in = x_new
+                    else:
+                        x_in = x
+                        if CROSS_BREATH_HANDOFF and handoff_inner is not None:
+                            x_in = x_in + handoff_inner
+                    if NOTEBOOK_V24 and STAGE2_NOTEBOOK:
+                        if NOTEBOOK_ACCUMULATE_ENABLED:
+                            read_vec = (notebook @ block_local.notebook_read_w + block_local.notebook_read_b)
+                            x_in = x_in + read_vec.reshape(B_local, 1, -1).cast(x_in.dtype)
+                        if NOTEBOOK_DUAL:
+                            read_vec_r = (notebook_r @ block_local.notebook_rep_read_w + block_local.notebook_rep_read_b)
+                            x_in = x_in + read_vec_r.reshape(B_local, 1, -1).cast(x_in.dtype)
+                    if BREATH_TIME_EMBED:
+                        x_in = x_in + block_local.breath_embed[loop].reshape(1, 1, -1).cast(x_in.dtype)
+                    if DOUBLED_LAYERS and loop >= (max_loops_local // 2):
+                        active_layers_local = layers_b
+                    else:
+                        active_layers_local = layers
+                    # Per-breath alpha and temperature
+                    base_alpha = block_local.rope._alpha_at(loop, x_in.dtype)
+                    ac_base, asn_base = base_alpha
+                    tm_breath = _sine_temp_baseline(loop, n_loops_local)
+                    x = x_in
+                    for li in range(n_layers_local):
+                        if PER_HEAD_PITCH and li > 0:
+                            cos_o = block_local.per_head_pitch_cos[li].cast(x.dtype)
+                            sin_o = block_local.per_head_pitch_sin[li].cast(x.dtype)
+                            ac_layer = ac_base * cos_o - asn_base * sin_o
+                            asn_layer = ac_base * sin_o + asn_base * cos_o
+                            layer_alpha = (ac_layer, asn_layer)
+                        else:
+                            layer_alpha = base_alpha
+                        layer_temp = _per_layer_temp_within_breath(li, n_layers_local) if PER_BREATH_TEMP else tm_breath
+                        x, k_new, v_new = active_layers_local[li].forward_cached_step_batched(
+                            x, loop, _cache_k[li][loop], _cache_v[li][loop], _t_pos_t, None,
+                            alpha=layer_alpha, temp_mult=layer_temp,
+                        )
+                        # Write updated K/V into persistent cache buffers
+                        _cache_k[li][loop].assign(k_new)
+                        _cache_v[li][loop].assign(v_new)
+                    # End-of-breath waist with compressed capture
+                    x, compressed = block_local.apply_bfield_waist(x, return_compressed=True)
+                    waists_inner.append(compressed.cast(dtypes.float))  # (B, 1, waist_dim)
+                    # Notebook writes (gated — default STAGE2_NOTEBOOK=0)
+                    if NOTEBOOK_V24 and STAGE2_NOTEBOOK:
+                        x_f = x.cast(dtypes.float)
+                        if NOTEBOOK_POOL_MODE == "attn":
+                            scores = (x_f * block_local.notebook_write_query.reshape(1, 1, -1)).sum(axis=-1)
+                            weights = scores.softmax(axis=-1).reshape(B_local, -1, 1)
+                            x_pool = (x_f * weights).sum(axis=1)
+                        else:
+                            x_pool = x_f.mean(axis=1)
+                        if NOTEBOOK_ACCUMULATE_ENABLED:
+                            notebook = notebook + (x_pool @ block_local.notebook_write_w + block_local.notebook_write_b)
+                        if NOTEBOOK_DUAL:
+                            if NOTEBOOK_POOL_MODE == "attn":
+                                scores_r = (x_f * block_local.notebook_rep_query.reshape(1, 1, -1)).sum(axis=-1)
+                                weights_r = scores_r.softmax(axis=-1).reshape(B_local, -1, 1)
+                                x_pool_r = (x_f * weights_r).sum(axis=1)
+                            else:
+                                x_pool_r = x_pool
+                            notebook_r = x_pool_r @ block_local.notebook_rep_write_w + block_local.notebook_rep_write_b
+                    if CROSS_BREATH_HANDOFF:
+                        handoff_inner = block_local.compute_handoff(x)
+                # Build scatter mask once (reused for waist, emb, and gather)
+                positions = Tensor.arange(max_len_local).reshape(1, max_len_local, 1)
+                t_pos_resh = _t_pos_t.reshape(B_local, 1, 1)
+                scatter_mask = (positions == t_pos_resh).cast(dtypes.float)  # (B, max_len, 1)
+                inv_mask = (1.0 - scatter_mask)
+                # Scatter new token embedding into prompt_emb_buf FIRST so the controller
+                # sees embed(prev_id_t) at t_pos — matching the original code's semantics.
+                x_emb_new = embed_w[_prev_id_t].cast(dtypes.float)  # (B, 1, H)
+                x_emb_broadcast = x_emb_new.expand(B_local, max_len_local, x_emb_new.shape[-1])
+                _prompt_emb_buf.assign(
+                    scatter_mask * x_emb_broadcast + inv_mask * _prompt_emb_buf
+                )
+                # Scatter new waist values into persistent buffers
+                for k in range(n_loops_local):
+                    new_w = waists_inner[k].expand(B_local, max_len_local, waist_dim_local)
+                    _waist_per_breath[k].assign(
+                        scatter_mask * new_w + inv_mask * _waist_per_breath[k]
+                    )
+                # Update notebook state buffers
+                _notebook_state.assign(notebook)
+                _notebook_r_state.assign(notebook_r)
+                # Controller decode: use fresh waists (no scatter-gather round-trip).
+                tokens_per_breath = []
+                for k in range(n_loops_local):
+                    wk_at_pos = waists_inner[k]  # (B, 1, waist_dim) — fresh from this step
+                    lk = waist_ctrl.forward(wk_at_pos, _prompt_emb_buf, embed_out_local)
+                    tk = lk[:, :, :vocab_active_local].argmax(axis=-1).reshape(B_local)
+                    tokens_per_breath.append(tk)
+                result = Tensor.stack(*tokens_per_breath, dim=0)  # (K, B) int
+                _argmax_buf.assign(result)
+                # Update step counter: check if _prev_id_t contained #### and bump counter.
+                # This is done AFTER computing argmax for this step (the current prev_id is
+                # the token that was just placed at t_pos, not yet the one we're predicting).
+                # So we check _prev_id_t (the token we just processed) for #### and update
+                # the counter for the NEXT step.
+                is_hash = (_prev_id_t.reshape(B_local) == _hash_tok_id).cast(dtypes.int)  # (B,)
+                new_counter = (_step_counter + is_hash).clip(0, n_loops_local - 1)
+                _step_counter.assign(new_counter)
+                # Select token for this step using the CURRENT (pre-update) step counter.
+                # Build one-hot for step counter selection: (B, K)
+                k_arange = Tensor.arange(n_loops_local).reshape(1, n_loops_local)
+                step_onehot = (k_arange == _step_counter.reshape(B_local, 1)).cast(dtypes.int)  # (B, K)
+                # result is (K, B). Transpose to (B, K), pick per-example: sum(result.T * onehot, dim=-1)
+                result_t = result.transpose(0, 1)  # (B, K)
+                selected = (result_t * step_onehot).sum(axis=-1).cast(dtypes.int)  # (B,)
+                # Update prev_id_t with selected token and increment t_pos_t
+                _prev_id_t.assign(selected.reshape(B_local, 1))
+                _t_pos_t.assign(_t_pos_t + 1)
+                # Return ALL assigned tensors so Tensor.realize() executes ALL stores.
+                return (
+                    _argmax_buf,
+                    *_waist_per_breath,
+                    _prompt_emb_buf,
+                    _notebook_state,
+                    _notebook_r_state,
+                    _step_counter,
+                    _prev_id_t,
+                    _t_pos_t,
+                )
+
+            self._seg_closure_jits[jit_key] = _step_closure
+
+        jit_step_closure = self._seg_closure_jits[jit_key]
+
+        # === First token decode using prompt-side waist (no Stage 2 JIT yet) ===
+        # Use a simple eager decode for the first token (matches previous behavior).
+        decoded_so_far = [list(p) for p in batch_prompt_ids]
+        t_pos_first_per = [real_lens[b] - 1 for b in range(B)]
+        # Eager first-token decode: gather waist at t_pos_first_per, run controller
+        positions_np = np.array(t_pos_first_per, dtype=np.int32)
+        t_pos_first_t = _T(positions_np, dtype=dtypes.int).realize()
+        pos_arange = Tensor.arange(max_len).reshape(1, max_len, 1)
+        gather_mask_first = (pos_arange == t_pos_first_t.reshape(B, 1, 1)).cast(dtypes.float)
+        tokens_first = []
+        for k in range(n_loops):
+            wk_at = (waist_per_breath_buf[k] * gather_mask_first).sum(axis=1, keepdim=True)
+            lk = self.waist_controller.forward(wk_at, prompt_emb_buf_t, self.embed_out)
+            tk = lk[:, :, :50277].argmax(axis=-1).reshape(B)
+            tokens_first.append(tk)
+        argmax_first = Tensor.stack(*tokens_first, dim=0).realize().numpy()  # (K, B)
+
+        # First token: always use breath 0 (step_counter starts at 0, no #### seen yet)
+        first_ids = np.array([argmax_first[0, b] for b in range(B)], dtype=np.int32)
+        argmax_buf.assign(_T(argmax_first, dtype=dtypes.int)).realize()
+        outs = [[int(first_ids[b])] for b in range(B)]
+        for b in range(B):
+            decoded_so_far[b].append(int(first_ids[b]))
+        is_done = [False] * B
+        for b in range(B):
+            if outs[b][0] in stop_set:
+                is_done[b] = True
+            elif seq_len > 0 and outs[b][-seq_len:] == seq:
+                is_done[b] = True
+        if all(is_done):
+            return outs
+
+        # Initialize Stage 2 persistent state:
+        # - prev_id_t = first generated token (to be written at real_lens[b])
+        # - t_pos_t = real_lens[b] (first write position)
+        # - step_counter_t = 0 for all examples (no #### seen yet)
+        prev_id_t.assign(_T(first_ids.reshape(B, 1), dtype=dtypes.int)).realize()
+        t_pos_per = [real_lens[b] for b in range(B)]
+        t_pos_t.assign(_T(np.array(t_pos_per, dtype=np.int32), dtype=dtypes.int)).realize()
+        step_counter_t.assign(_T(np.zeros(B, dtype=np.int32), dtype=dtypes.int)).realize()
+
+        # === Stage 2: closure-based fused JIT decode loop ===
+        # The JIT body:
+        #   1. Embeds _prev_id_t, runs K-breath forward at _t_pos_t
+        #   2. Scatters waist/emb into persistent buffers
+        #   3. Controller decode → (K, B) argmax per breath
+        #   4. Checks _prev_id_t for #### → updates _step_counter for next step
+        #      BUT selects token using the CURRENT (pre-update) step counter
+        #   5. Assigns selected token to _prev_id_t (for next step)
+        #   6. Increments _t_pos_t
+        # After the JIT call, _prev_id_t holds the selected token for this step.
+        # One numpy() read per step for EOS/stop detection.
+        for _step_idx in range(max_new - 1):
+            if min(t_pos_per) >= max_len:  # use min to stop when ALL are at capacity
+                break
+
+            jit_step_closure()
+
+            # Read selected tokens — ONE numpy() call per step (vs 2 in the unfused path)
+            next_ids = prev_id_t.numpy().reshape(B)
+            # t_pos has been incremented inside JIT; track Python-side via +1
+            t_pos_per = [tp + 1 for tp in t_pos_per]
+
+            for b in range(B):
+                if is_done[b]:
+                    continue
+                tok_b = int(next_ids[b])
+                outs[b].append(tok_b)
+                decoded_so_far[b].append(tok_b)
+                if tok_b in stop_set:
                     is_done[b] = True
                 elif seq_len > 0 and outs[b][-seq_len:] == seq:
                     is_done[b] = True

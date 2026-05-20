@@ -392,6 +392,50 @@ def load_gsm8k_spaced(split: str, max_prompt_words: int = 130) -> List[MathExamp
     return out
 
 
+def load_gsm8k_steps(jsonl_path: str, min_k: int | None = None, max_k: int | None = None,
+                      bucket_by_k: bool = False):
+    """Load Haiku-generated per-step GSM8K targets (produced by
+    scripts/generate_gsm8k_step_targets.py).
+
+    Each line in the JSONL is:
+        {"problem": <digit-spaced text>, "gen_targets": [<step1>, <step2>, ...],
+         "answer": <int>, "n_steps": <int>}
+
+    Returns a list of MathExample (or, if bucket_by_k=True, a dict
+    {K: list[MathExample]} for uniform-K training in per_breath_train_step).
+
+    Args:
+        jsonl_path: path to the JSONL produced by Haiku.
+        min_k / max_k: optional filters on step count.
+        bucket_by_k: if True, return a dict keyed by step count instead of a flat list.
+    """
+    import json
+    examples: List[MathExample] = []
+    with open(jsonl_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            rec = json.loads(line)
+            k = rec["n_steps"]
+            if min_k is not None and k < min_k:
+                continue
+            if max_k is not None and k > max_k:
+                continue
+            examples.append(MathExample(
+                problem=rec["problem"],
+                gen_targets=rec["gen_targets"],
+                answer=int(rec["answer"]),
+                level=f"GSM8K_STEPS_K{k}",
+            ))
+    if bucket_by_k:
+        buckets: dict[int, List[MathExample]] = {}
+        for ex in examples:
+            buckets.setdefault(len(ex.gen_targets), []).append(ex)
+        return buckets
+    return examples
+
+
 def encode_example(tok, ex: MathExample, eos_id: int = 0) -> Tuple[List[int], int, int]:
     """Tokenize problem + ' ' + gen + EOS. Returns (ids, problem_len, total_len).
 
