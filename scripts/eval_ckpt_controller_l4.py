@@ -37,23 +37,26 @@ _EVAL_JIT_CACHE: dict = {}
 
 
 def _compile_jit_aligned_forward(model, K: int, fixed_len: int, B: int):
-    """JIT'd forward: tokens → (B, T) argmax token IDs (last breath only).
+    """JIT'd forward: (tokens, t_pos_t) → (B,) argmax token IDs at t_pos (last breath).
 
-    Argmax happens INSIDE the JIT — returns int token IDs not logits. Tiny
-    host transfer regardless of K.
+    Phase 1 optimization: gather waist at t_pos[b] before controller cross-attn.
+    Controller Q has 1 position instead of T, saving T× compute per step.
     """
     key = (id(model), int(K), int(fixed_len), int(B))
     if key in _EVAL_JIT_CACHE:
         return _EVAL_JIT_CACHE[key]
 
     @TinyJit
-    def _fwd(tokens):
+    def _fwd(tokens, t_pos_t):
         _final, _mw, _pbx, waist_per_breath = model.breathe_with_lookup(
             tokens, n_loops=K, return_per_breath_x=True, return_waist_compressed=True)
         last_waist = waist_per_breath[-1].cast(dtypes.float)
         prompt_emb = model.embed(tokens).cast(dtypes.float)
-        logits = model.waist_controller.forward(last_waist, prompt_emb, model.embed_out)
-        return logits[:, :, :50277].argmax(axis=-1).realize()  # (B, T) int
+        positions = Tensor.arange(fixed_len)
+        gather_mask = (positions.reshape(1, fixed_len) == t_pos_t.reshape(B, 1)).reshape(B, fixed_len, 1).cast(dtypes.float)
+        last_at_pos = (last_waist * gather_mask).sum(axis=1, keepdim=True)
+        logits = model.waist_controller.forward(last_at_pos, prompt_emb, model.embed_out)
+        return logits[:, :, :50277].argmax(axis=-1).reshape(B).realize()  # (B,) int
 
     _EVAL_JIT_CACHE[key] = _fwd
     return _fwd
@@ -95,18 +98,22 @@ def aligned_generate_batch(model, prompt_ids_list: list, K: int, fixed_len: int,
     active = [True] * B
 
     fwd = _compile_jit_aligned_forward(model, K, fixed_len, B)
+    t_pos_np = np.zeros((B,), dtype=np.int32)
+    t_pos_t = Tensor(t_pos_np, dtype=dtypes.int).contiguous().realize()
 
     for _step in range(max_new):
         if not any(active):
             break
+        for b in range(B):
+            t_pos_np[b] = current_lens[b] - 1
+        t_pos_t.assign(Tensor(t_pos_np, dtype=dtypes.int)).realize()
         tokens = Tensor(tokens_np, dtype=dtypes.int).realize()
-        next_toks = fwd(tokens)  # (B, T) int — argmax inside JIT
+        next_toks = fwd(tokens, t_pos_t)  # (B,) int
         next_toks_np = next_toks.numpy()
         for b in range(B):
             if not active[b]:
                 continue
-            pos = current_lens[b] - 1
-            next_tok = int(next_toks_np[b, pos])
+            next_tok = int(next_toks_np[b])
             generated_per_ex[b].append(next_tok)
             current_lens[b] += 1
             if current_lens[b] < fixed_len:
