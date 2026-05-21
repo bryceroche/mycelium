@@ -58,7 +58,9 @@ def _compile_jit_controller_decode_from_waist(model, K: int, max_len: int, B: in
         tokens_per_breath = []
         for k in range(K):
             wk_at_pos = (waist_per_breath[k] * gather_mask).sum(axis=1, keepdim=True)  # (B, 1, waist_dim)
-            lk = model.waist_controller.forward(wk_at_pos, prompt_emb_buf, model.embed_out)
+            # v63: pass (k_idx, K_total) for K-pos embed lookup.
+            lk = model.waist_controller.forward(wk_at_pos, prompt_emb_buf, model.embed_out,
+                                                  k_idx=k, K_total=K)
             tk = lk[:, :, :50277].argmax(axis=-1).reshape(B)
             tokens_per_breath.append(tk)
         return Tensor.stack(*tokens_per_breath, dim=0).realize()  # (K, B) int
@@ -100,7 +102,9 @@ def _compile_jit_segmented_forward(model, K: int, fixed_len: int, B: int):
             # Gather waist at t_pos[b]: zero out non-current positions, sum over T → (B, 1, waist_dim)
             wk_at_pos = (wk * gather_mask).sum(axis=1, keepdim=True)
             # Controller runs cross-attn with Q=1 position (vs T positions): T× cheaper.
-            lk_at_pos = model.waist_controller.forward(wk_at_pos, prompt_emb, model.embed_out)
+            # v63: pass (k_idx, K_total) for K-position embedding lookup (no-op for v60-take-2 ckpt which has zero-init k_pos_embed).
+            lk_at_pos = model.waist_controller.forward(wk_at_pos, prompt_emb, model.embed_out,
+                                                         k_idx=k, K_total=K)
             # (B, 1, vocab) → argmax over active vocab → (B, 1) int
             tk = lk_at_pos[:, :, :50277].argmax(axis=-1).reshape(B)
             tokens_per_breath.append(tk)

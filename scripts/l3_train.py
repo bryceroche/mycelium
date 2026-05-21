@@ -356,6 +356,7 @@ def main():
     WEIGHT_DECAY = float(getenv("WEIGHT_DECAY", "0.05"))
     LABEL_SMOOTHING = float(getenv("LABEL_SMOOTHING", "0.0"))  # for log only — read by l3_training at import
     STOCH_DEPTH_P = float(getenv("STOCH_DEPTH_P", "0.0"))      # for log only — read by breathing at import
+    GRAD_CLIP = float(getenv("GRAD_CLIP", "0.0"))              # global-norm gradient clip; 0 = off, 1.0 = standard
     opt = AdamW(params, lr=LR, weight_decay=WEIGHT_DECAY)
     # Separate controller optimizer — closed-loop component #5 trains independently
     # via the lookup-CE signal flowing back through decisions. Created regardless
@@ -558,13 +559,18 @@ def main():
         # v52 Stage 1: per-breath supervision path (mutually exclusive with calibration)
         from mycelium.l3_training import per_breath_train_step
         from mycelium.breathing import PER_BREATH_DECODE as _PBD
+        _per_breath_waist_norm = None
         if _PBD and not CALIBRATION_MODE:
             from mycelium.l3_training import per_breath_train_step
-            loss, per_breath_ce = per_breath_train_step(model, opt, batch_examples, tok,
-                                                        fixed_len=cur_fixed_len,
-                                                        lookup_aux_weight=LOOKUP_AUX_WEIGHT,
-                                                        lookup_eq_token_id=eq_token_ids,
-                                                        use_jit=USE_JIT)
+            _pbs_result = per_breath_train_step(model, opt, batch_examples, tok,
+                                                fixed_len=cur_fixed_len,
+                                                lookup_aux_weight=LOOKUP_AUX_WEIGHT,
+                                                lookup_eq_token_id=eq_token_ids,
+                                                use_jit=USE_JIT,
+                                                grad_clip=GRAD_CLIP,
+                                                step_idx=step)
+            # v66: per_breath_train_step always returns (loss, per_breath_ce, waist_norm)
+            loss, per_breath_ce, _per_breath_waist_norm = _pbs_result
             per_breath_info = per_breath_ce
         elif CALIBRATION_MODE:
             digit_ids_set = getattr(_calib_state, "digit_ids", None)
@@ -638,7 +644,9 @@ def main():
             elif per_breath_info is not None:
                 # v52 Stage 1 per-breath logging: show CE for each breath
                 pb_str = "  pb_ce=[" + " ".join(f"{c:.3f}" for c in per_breath_info) + "]"
-                print(f"step {step:4d}  K={len(per_breath_info)}  loss={loss:.4f}{pb_str}{ctrl_str}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)
+                # v66 waist norm (computed every step inside JIT; logged every 10 steps)
+                wn_str = f"  waist_norm={_per_breath_waist_norm:.4f}" if _per_breath_waist_norm is not None else ""
+                print(f"step {step:4d}  K={len(per_breath_info)}  loss={loss:.4f}{pb_str}{wn_str}{ctrl_str}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)
             else:
                 print(f"step {step:4d}  A={phase_a_loops} C={PHASE_C_LOOPS}  loss={loss:.4f}{ctrl_str}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)
             # Log mem usage at step 0 (post first JIT compile) and every 50 steps after
