@@ -280,6 +280,21 @@ STOCH_DEPTH_P            = float(os.environ.get("STOCH_DEPTH_P", "0.0"))
 # Default 0 (Stage 2 decode does NOT touch the notebook) restores v24c-compatible
 # behavior. Set to 1 only for models explicitly trained with this mode.
 STAGE2_NOTEBOOK          = int(os.environ.get("STAGE2_NOTEBOOK", "0")) > 0
+# v61 DAG notebook env vars
+NOTEBOOK_DAG             = int(os.environ.get("NOTEBOOK_DAG", "0")) > 0
+NOTEBOOK_DAG_N_HEADS     = int(os.environ.get("NOTEBOOK_DAG_N_HEADS", "4"))
+NOTEBOOK_DAG_POS_EMBED   = int(os.environ.get("NOTEBOOK_DAG_POS_EMBED", "1")) > 0
+# v65 per-breath prompt refresh: x_in = prev_breath_output + α × original_prompt_emb.
+# Skip connection from raw embeddings to every breath. Diagnosed root cause: the
+# 512d waist compression destroys entity identity (rename diagnostic 0/20 grounded).
+# The refresh carries identity through the lossy bottleneck while waist carries reasoning.
+# α=0.0 disables. α=0.1 is the principled starting point per the design rationale.
+PROMPT_REFRESH_ALPHA     = float(os.environ.get("PROMPT_REFRESH_ALPHA", "0.0"))
+# v65 boundary auxiliary loss: at each step-k position, predict "is next token ####?"
+# via a small head on the breath's hidden state. Supervised by gold positions.
+# Forces the model to learn segment timing explicitly. Diagnosed root cause: model
+# emits ~2 segments regardless of K=2..6 (76% segment-shortfall).
+BOUNDARY_AUX_WEIGHT      = float(os.environ.get("BOUNDARY_AUX_WEIGHT", "0.0"))
 # Hybrid-heads quadrature (v46). When 1, the second half of heads in each layer
 # (heads n_heads/2 .. n_heads-1) get an additional π/2 phase offset on top of
 # the standard PER_HEAD_PITCH offset. Provides quadrature pairs: when "phase 0
@@ -478,6 +493,13 @@ if NOTEBOOK_V24:
     if NOTEBOOK_STATE_INIT_SCALE > 0.0:
         nb_str += f" + state_init=N(0,{NOTEBOOK_STATE_INIT_SCALE}²)"
     print(f"[NOTEBOOK_V24] 512d notebook: {nb_str}, pool_mode={NOTEBOOK_POOL_MODE}, {init_str}", flush=True)
+if NOTEBOOK_DAG:
+    pe_str = " + slot_pos_embed" if NOTEBOOK_DAG_POS_EMBED else ""
+    print(f"[NOTEBOOK_DAG] active: D_nb=512, n_heads={NOTEBOOK_DAG_N_HEADS}, causal cross-attn{pe_str}", flush=True)
+if PROMPT_REFRESH_ALPHA > 0.0:
+    print(f"[PROMPT_REFRESH] α={PROMPT_REFRESH_ALPHA} — skip-connection from raw prompt_emb into every breath's input", flush=True)
+if BOUNDARY_AUX_WEIGHT > 0.0:
+    print(f"[BOUNDARY_AUX] weight={BOUNDARY_AUX_WEIGHT} — BCE on per-breath boundary head (predict next-token=####)", flush=True)
 
 
 # ---------- partial RoPE with π cycling ----------
@@ -798,7 +820,10 @@ class BreathingLayer:
         scale = self.attn_scale / float(temp_mult)
         scores = q_new @ k_buf_new.transpose(-2, -1) * scale
         scores = valid.where(scores, Tensor(-float("inf"), dtype=scores.dtype))
-        attn = scores.softmax(-1).cast(v_buf_new.dtype)
+        # Clamp pre-softmax scores to prevent inf/NaN at head_dim=256 (H=2048).
+        # Model is fp32; clip(-1e4,1e4) keeps scores well below overflow while
+        # preserving relative attention — exp(10000) would overflow fp32, exp(1e4)→inf.
+        attn = scores.clip(-1e4, 1e4).softmax(-1)
         ctx = (attn @ v_buf_new).transpose(1, 2).reshape(B, 1, cfg.hidden)
         attn_out = ctx @ self.shared.wo + self.shared.bo
 
@@ -838,7 +863,10 @@ class BreathingLayer:
         valid = (pos <= t_pos_t).reshape(1, 1, 1, max_len)
         scores = q_new @ k_buf_new.transpose(-2, -1) * self.attn_scale
         scores = valid.where(scores, Tensor(-float("inf"), dtype=scores.dtype))
-        attn = scores.softmax(-1).cast(v_buf_new.dtype)
+        # Clamp pre-softmax scores to prevent inf/NaN at head_dim=256 (H=2048).
+        # Model is fp32; clip(-1e4,1e4) keeps scores well below overflow while
+        # preserving relative attention — exp(10000) would overflow fp32, exp(1e4)→inf.
+        attn = scores.clip(-1e4, 1e4).softmax(-1)
         ctx = (attn @ v_buf_new).transpose(1, 2).reshape(1, 1, cfg.hidden)
         attn_out = ctx @ self.shared.wo + self.shared.bo
 
@@ -884,7 +912,10 @@ class BreathingLayer:
         valid = (pos <= t_pos).reshape(1, 1, 1, max_len)
         scores = q_new @ k_buf_new.transpose(-2, -1) * self.attn_scale
         scores = valid.where(scores, Tensor(-float("inf"), dtype=scores.dtype))
-        attn = scores.softmax(-1).cast(v_buf_new.dtype)
+        # Clamp pre-softmax scores to prevent inf/NaN at head_dim=256 (H=2048).
+        # Model is fp32; clip(-1e4,1e4) keeps scores well below overflow while
+        # preserving relative attention — exp(10000) would overflow fp32, exp(1e4)→inf.
+        attn = scores.clip(-1e4, 1e4).softmax(-1)
         ctx = (attn @ v_buf_new).transpose(1, 2).reshape(1, 1, cfg.hidden)
         attn_out = ctx @ self.shared.wo + self.shared.bo
 
@@ -925,7 +956,8 @@ class BreathingLayer:
                 # attn_mask shape: (B, S) — 1 valid, 0 padding. Broadcast to (B, 1, 1, S).
                 key_mask = attn_mask.reshape(B, 1, 1, S).cast(dtypes.bool)
                 scores = key_mask.where(scores, Tensor(-float("inf"), dtype=scores.dtype))
-            attn = scores.softmax(-1).cast(v.dtype)
+            # Clamp pre-softmax scores to prevent inf/NaN at head_dim=256 (H=2048).
+            attn = scores.clip(-1e4, 1e4).softmax(-1)
             ctx = (attn @ v).transpose(1, 2).reshape(B, S, H)
             attn_out = ctx @ self.shared.wo + self.shared.bo
             ff = (mlp_in_dt @ self.w_in + self.b_in).gelu()
@@ -945,7 +977,8 @@ class BreathingLayer:
         v_full = Tensor.cat(v_past, v, dim=2)
         # No causal mask: new token can attend to all past + itself.
         scores = q @ k_full.transpose(-2, -1) * scale
-        attn = scores.softmax(-1).cast(v_full.dtype)
+        # Clamp pre-softmax scores to prevent inf/NaN at head_dim=256 (H=2048).
+        attn = scores.clip(-1e4, 1e4).softmax(-1)
         ctx = (attn @ v_full).transpose(1, 2).reshape(B, S, H)
         attn_out = ctx @ self.shared.wo + self.shared.bo
         ff = (mlp_in_dt @ self.w_in + self.b_in).gelu()
@@ -1113,6 +1146,25 @@ class BreathingBlock:
         self.notebook_rep_read_b  = Tensor.zeros((cfg.hidden,), dtype=dtypes.float).contiguous()
         self.notebook_rep_query = Tensor.zeros((cfg.hidden,), dtype=dtypes.float).contiguous()
 
+        # v61 (2026-05-21) DAG notebook params. Storage allocated per-forward.
+        # nb_dag_o_w ZERO-INIT → DAG read = 0 at step 0 (warm-start safe).
+        nb_h = max(1, NOTEBOOK_DAG_N_HEADS)
+        assert NB_DIM % nb_h == 0, f"NB_DIM={NB_DIM} must be divisible by NOTEBOOK_DAG_N_HEADS={nb_h}"
+        self.nb_dag_n_heads = nb_h
+        self.nb_dag_head_dim = NB_DIM // nb_h
+        self.nb_dag_q_w     = (Tensor.randn(cfg.hidden, NB_DIM, dtype=dtypes.float) * 0.02).contiguous()
+        self.nb_dag_q_b     = Tensor.zeros((NB_DIM,), dtype=dtypes.float).contiguous()
+        self.nb_dag_k_w     = (Tensor.randn(NB_DIM, NB_DIM, dtype=dtypes.float) * 0.02).contiguous()
+        self.nb_dag_k_b     = Tensor.zeros((NB_DIM,), dtype=dtypes.float).contiguous()
+        self.nb_dag_v_w     = (Tensor.randn(NB_DIM, NB_DIM, dtype=dtypes.float) * 0.02).contiguous()
+        self.nb_dag_v_b     = Tensor.zeros((NB_DIM,), dtype=dtypes.float).contiguous()
+        self.nb_dag_o_w     = Tensor.zeros((NB_DIM, cfg.hidden), dtype=dtypes.float).contiguous()
+        self.nb_dag_o_b     = Tensor.zeros((cfg.hidden,), dtype=dtypes.float).contiguous()
+        self.nb_dag_write_w = (Tensor.randn(cfg.hidden, NB_DIM, dtype=dtypes.float) * 0.02).contiguous()
+        self.nb_dag_write_b = Tensor.zeros((NB_DIM,), dtype=dtypes.float).contiguous()
+        self.nb_dag_write_query = Tensor.zeros((cfg.hidden,), dtype=dtypes.float).contiguous()
+        self.nb_dag_pos_embed = (Tensor.randn(cfg.max_loops, NB_DIM, dtype=dtypes.float) * 0.02).contiguous()
+
         # v38 B-field IB bottleneck — single waist between L1 and L2 per breath.
         # Allocate at max(1, BFIELD_WAIST) so state_dict shapes are consistent
         # across runs even when disabled; gradient is inert when BFIELD_WAIST=0.
@@ -1185,6 +1237,62 @@ class BreathingBlock:
             return out, compressed.cast(x.dtype)
         return out
 
+    def dag_notebook_init_storage(self, B: int) -> Tensor:
+        """v61 DAG: allocate per-forward storage. Shape (B, max_loops, NB_DIM)."""
+        return Tensor.zeros((B, self.cfg.max_loops, self.nb_dim), dtype=dtypes.float).contiguous()
+
+    def dag_notebook_read(self, x_in: Tensor, storage: Tensor, breath_idx: int) -> Tensor:
+        """v61 DAG: multi-head cross-attention from x_in to storage with causal mask."""
+        B = x_in.shape[0]
+        T = x_in.shape[1]
+        D = self.nb_dim
+        h = self.nb_dag_n_heads
+        hd = self.nb_dag_head_dim
+        max_loops = self.cfg.max_loops
+
+        x_f = x_in.cast(dtypes.float)
+        storage_kv = storage
+        if NOTEBOOK_DAG_POS_EMBED:
+            storage_kv = storage_kv + self.nb_dag_pos_embed.reshape(1, max_loops, D)
+
+        q = x_f @ self.nb_dag_q_w + self.nb_dag_q_b           # (B, T, D)
+        k = storage_kv @ self.nb_dag_k_w + self.nb_dag_k_b    # (B, max_loops, D)
+        v = storage_kv @ self.nb_dag_v_w + self.nb_dag_v_b    # (B, max_loops, D)
+
+        q = q.reshape(B, T, h, hd).permute(0, 2, 1, 3)
+        k = k.reshape(B, max_loops, h, hd).permute(0, 2, 1, 3)
+        v = v.reshape(B, max_loops, h, hd).permute(0, 2, 1, 3)
+
+        scores = (q @ k.transpose(-2, -1)) * (hd ** -0.5)
+
+        slot_idx = Tensor.arange(max_loops, dtype=dtypes.float)
+        mask = (slot_idx < float(breath_idx)).reshape(1, 1, 1, max_loops).cast(dtypes.float)
+        scores = scores + (1.0 - mask) * (-1e9)
+
+        weights = scores.softmax(axis=-1)
+        attended = weights @ v
+        attended = attended.permute(0, 2, 1, 3).reshape(B, T, D)
+
+        read_vec = attended @ self.nb_dag_o_w + self.nb_dag_o_b
+        return read_vec.cast(x_in.dtype)
+
+    def dag_notebook_write(self, x: Tensor, storage: Tensor, breath_idx: int) -> Tensor:
+        """v61 DAG: attn-pool x, project to NB_DIM, write to slot via one-hot mask."""
+        B = x.shape[0]
+        D = self.nb_dim
+        max_loops = self.cfg.max_loops
+
+        x_f = x.cast(dtypes.float)
+        scores = (x_f * self.nb_dag_write_query.reshape(1, 1, -1)).sum(axis=-1)
+        weights = scores.softmax(axis=-1).reshape(B, -1, 1)
+        x_pool = (x_f * weights).sum(axis=1)
+        write_vec = x_pool @ self.nb_dag_write_w + self.nb_dag_write_b
+
+        slot_idx = Tensor.arange(max_loops, dtype=dtypes.float)
+        slot_hot = (slot_idx == float(breath_idx)).reshape(1, max_loops, 1).cast(dtypes.float)
+        new_storage = storage * (1.0 - slot_hot) + slot_hot * write_vec.reshape(B, 1, D)
+        return new_storage
+
     def parameters(self):
         ps = list(self.shared.parameters())
         for layer in self.layers:
@@ -1208,6 +1316,19 @@ class BreathingBlock:
         ps.append(self.notebook_rep_read_w)
         ps.append(self.notebook_rep_read_b)
         ps.append(self.notebook_rep_query)
+        # v61 DAG notebook
+        ps.append(self.nb_dag_q_w)
+        ps.append(self.nb_dag_q_b)
+        ps.append(self.nb_dag_k_w)
+        ps.append(self.nb_dag_k_b)
+        ps.append(self.nb_dag_v_w)
+        ps.append(self.nb_dag_v_b)
+        ps.append(self.nb_dag_o_w)
+        ps.append(self.nb_dag_o_b)
+        ps.append(self.nb_dag_write_w)
+        ps.append(self.nb_dag_write_b)
+        ps.append(self.nb_dag_write_query)
+        ps.append(self.nb_dag_pos_embed)
         ps.append(self.bfield_proj_down)
         ps.append(self.bfield_proj_up)
         ps.append(self.bfield_bias)
@@ -1456,8 +1577,21 @@ class WaistController:
         else:
             self.final_up_w = None  # not needed; saves params for 410M
             self.final_up_b = None
+        # v64 K-position embedding: (max_loops, max_loops, waist_dim) tensor indexed
+        # by (K_total - 1, k_idx). NON-ZERO init (randn × 0.02) so the embed has
+        # immediate contribution → gradient signal can propagate. v63 had zero-init
+        # which created a dead-bootstrap problem (no contribution → no gradient).
+        # Slightly perturbs warm-start at step 0 but k_pos_embed magnitude is small
+        # (0.02 vs waist values typically 0.1-1.0).
+        K_POS_INIT = float(os.environ.get("K_POS_INIT_SCALE", "0.02"))
+        if K_POS_INIT > 0.0:
+            self.k_pos_embed = (Tensor.randn(cfg.max_loops, cfg.max_loops, waist_dim, dtype=dtypes.float) * K_POS_INIT).contiguous()
+        else:
+            self.k_pos_embed = Tensor.zeros((cfg.max_loops, cfg.max_loops, waist_dim), dtype=dtypes.float).contiguous()
 
-    def forward(self, waist_compressed: Tensor, prompt_emb: Tensor, embed_out: Tensor) -> Tensor:
+    def forward(self, waist_compressed: Tensor, prompt_emb: Tensor, embed_out: Tensor,
+                 k_idx: int | None = None, K_total: int | None = None,
+                 prompt_dropout_mask: Tensor | None = None) -> Tensor:
         """waist_compressed: (B, T_q, waist_dim) — Q sequence length T_q can be 1 or full T
            prompt_emb:        (B, T_kv, H_base) — main model's embedding of the prompt
            embed_out:         (H_base, vocab) — main model's TIED output projection
@@ -1467,9 +1601,19 @@ class WaistController:
         T_q = waist_compressed.shape[1]
         T_kv = prompt_emb.shape[1]
         H_ctrl = self.H_ctrl
+        # v63 K-position embedding: add (K_total-1, k_idx) embedding to waist before
+        # projecting up. Zero-init means initial behavior matches v60-take-2.
+        if k_idx is not None and K_total is not None:
+            kpos = self.k_pos_embed[K_total - 1, k_idx].reshape(1, 1, -1)  # (1, 1, waist_dim)
+            waist_compressed = waist_compressed + kpos.cast(waist_compressed.dtype)
         # Project waist up to controller_hidden.
         x = (waist_compressed @ self.waist_up_w + self.waist_up_b).cast(dtypes.float)
         prompt_f = prompt_emb.cast(dtypes.float)
+        # v63 prompt-dropout: zero the prompt embeddings when mask is 0 (training-time
+        # randomized). Forces the controller to learn from waist alone occasionally,
+        # enabling proper CFG at inference later. mask shape: scalar Tensor (1,).
+        if prompt_dropout_mask is not None:
+            prompt_f = prompt_f * prompt_dropout_mask.cast(prompt_f.dtype).reshape(1, 1, 1)
         for layer in self.layers:
             # Pre-LN cross-attn (Q from x at H_ctrl, K/V from prompt at H_base → H_ctrl).
             x_n = _layernorm(x, layer["ln1_g"], layer["ln1_b"], self.cfg.layer_norm_eps)
@@ -1483,7 +1627,8 @@ class WaistController:
             v = v.reshape(B, T_kv, self.n_heads, self.head_dim).transpose(1, 2)
             scale = self.head_dim ** -0.5
             scores = (q @ k.transpose(-2, -1)) * scale
-            attn = scores.softmax(axis=-1) @ v
+            # Clamp pre-softmax scores to prevent inf/NaN at larger head_dim.
+            attn = scores.clip(-1e4, 1e4).softmax(axis=-1) @ v
             attn = attn.transpose(1, 2).reshape(B, T_q, H_ctrl)
             x = x + attn @ layer["wo"]
             # Pre-LN FFN
@@ -1504,6 +1649,7 @@ class WaistController:
                 ps.append(v)
         if self.final_up_w is not None:
             ps.extend([self.final_up_w, self.final_up_b])
+        ps.append(self.k_pos_embed)  # v63
         return ps
 
 
@@ -1544,6 +1690,11 @@ class BreathingTransformer:
         bf_w = max(1, BFIELD_WAIST)
         self.waist_head_w = (Tensor.randn(bf_w, 4, dtype=dtypes.float) * 0.02).contiguous()
         self.waist_head_b = Tensor.zeros((4,), dtype=dtypes.float).contiguous()
+        # v65 boundary head: per-position scalar predicting "is the next token ####?".
+        # Applied to per_breath_x[k] (1024d hidden state at end of breath k). Always
+        # allocated for state-dict symmetry; gradient is inert when BOUNDARY_AUX_WEIGHT=0.
+        self.boundary_head_w = (Tensor.randn(cfg.hidden, 1, dtype=dtypes.float) * 0.02).contiguous()
+        self.boundary_head_b = Tensor.zeros((1,), dtype=dtypes.float).contiguous()
 
     def parameters(self):
         """Parameters trained on the main loss (transformer + lookup table +
@@ -1554,7 +1705,8 @@ class BreathingTransformer:
                 + self.block.parameters()
                 + self.lookup_table.parameters()
                 + self.confidence_head.parameters()
-                + [self.waist_head_w, self.waist_head_b]
+                + [self.waist_head_w, self.waist_head_b,
+                   self.boundary_head_w, self.boundary_head_b]  # v65 boundary head
                 + self.waist_controller.parameters())
 
     def controller_parameters(self):
@@ -1603,6 +1755,19 @@ class BreathingTransformer:
         sd["block.notebook_rep_read_w"] = self.block.notebook_rep_read_w
         sd["block.notebook_rep_read_b"] = self.block.notebook_rep_read_b
         sd["block.notebook_rep_query"] = self.block.notebook_rep_query
+        # v61 DAG notebook
+        sd["block.nb_dag_q_w"]         = self.block.nb_dag_q_w
+        sd["block.nb_dag_q_b"]         = self.block.nb_dag_q_b
+        sd["block.nb_dag_k_w"]         = self.block.nb_dag_k_w
+        sd["block.nb_dag_k_b"]         = self.block.nb_dag_k_b
+        sd["block.nb_dag_v_w"]         = self.block.nb_dag_v_w
+        sd["block.nb_dag_v_b"]         = self.block.nb_dag_v_b
+        sd["block.nb_dag_o_w"]         = self.block.nb_dag_o_w
+        sd["block.nb_dag_o_b"]         = self.block.nb_dag_o_b
+        sd["block.nb_dag_write_w"]     = self.block.nb_dag_write_w
+        sd["block.nb_dag_write_b"]     = self.block.nb_dag_write_b
+        sd["block.nb_dag_write_query"] = self.block.nb_dag_write_query
+        sd["block.nb_dag_pos_embed"]   = self.block.nb_dag_pos_embed
         sd["block.bfield_proj_down"] = self.block.bfield_proj_down
         sd["block.bfield_proj_up"] = self.block.bfield_proj_up
         sd["block.bfield_bias"] = self.block.bfield_bias
@@ -1618,9 +1783,12 @@ class BreathingTransformer:
         if self.waist_controller.final_up_w is not None:
             sd["wc.final_up_w"] = self.waist_controller.final_up_w
             sd["wc.final_up_b"] = self.waist_controller.final_up_b
+        sd["wc.k_pos_embed"] = self.waist_controller.k_pos_embed  # v63
         sd["block.bfield_alpha"] = self.block.bfield_alpha
         sd["waist_head_w"] = self.waist_head_w
         sd["waist_head_b"] = self.waist_head_b
+        sd["boundary_head_w"] = self.boundary_head_w  # v65
+        sd["boundary_head_b"] = self.boundary_head_b  # v65
         sd.update(self.controller.state_dict())
         sd.update(self.confidence_head.state_dict())
         return sd
@@ -1951,6 +2119,10 @@ class BreathingTransformer:
             notebook = initial_notebook if initial_notebook is not None else _initial_notebook_state(B, self.block.nb_dim)
             if NOTEBOOK_DUAL:
                 notebook_r = initial_notebook_r if initial_notebook_r is not None else _initial_notebook_state(B, self.block.nb_dim)
+        dag_storage = None
+        if NOTEBOOK_DAG:
+            B = x.shape[0]
+            dag_storage = self.block.dag_notebook_init_storage(B)
         for l in range(n_loops):
             # v40 fresh-input mode: each breath starts from the original embedding
             # plus notebook context. Breaks the rep-flow chain that caused v39's
@@ -1961,6 +2133,10 @@ class BreathingTransformer:
                 x_in = x
                 if CROSS_BREATH_HANDOFF and handoff is not None:
                     x_in = x_in + handoff
+            # v65 per-breath prompt refresh: skip connection from raw prompt_emb.
+            # Refreshes entity identity at every breath through the lossy waist.
+            if PROMPT_REFRESH_ALPHA > 0.0:
+                x_in = x_in + (PROMPT_REFRESH_ALPHA * x_emb).cast(x_in.dtype)
             if NOTEBOOK_V24:
                 if NOTEBOOK_ACCUMULATE_ENABLED:
                     read_vec = (notebook @ self.block.notebook_read_w + self.block.notebook_read_b)
@@ -1968,6 +2144,11 @@ class BreathingTransformer:
                 if NOTEBOOK_DUAL:
                     read_vec_r = (notebook_r @ self.block.notebook_rep_read_w + self.block.notebook_rep_read_b)
                     x_in = x_in + read_vec_r.reshape(x_in.shape[0], 1, -1).cast(x_in.dtype)
+            if NOTEBOOK_DAG and dag_storage is not None:
+                # v61: causal cross-attention over prior breaths' summaries.
+                # Read is 0 at l=0 (no priors) and at step 0 (W_o zero-init).
+                dag_read = self.block.dag_notebook_read(x_in, dag_storage, l)
+                x_in = x_in + dag_read
             if return_waist_compressed:
                 x, waist_compressed = self.block.breathe_once(x_in, l, temp_mult=_sine_temp_baseline(l, n_loops),
                                                                 return_waist_compressed=True)
@@ -1992,6 +2173,9 @@ class BreathingTransformer:
                     else:
                         x_pool_r = x_pool
                     notebook_r = x_pool_r @ self.block.notebook_rep_write_w + self.block.notebook_rep_write_b
+            if NOTEBOOK_DAG and dag_storage is not None:
+                # v61: write attn-pooled end-of-breath rep to slot l (one-hot mask).
+                dag_storage = self.block.dag_notebook_write(x, dag_storage, l)
             if CROSS_BREATH_HANDOFF:
                 handoff = self.block.compute_handoff(x)
             # v52 Stage 1: capture end-of-breath state for per-breath supervision.
@@ -2586,6 +2770,9 @@ class BreathingTransformer:
                         x_in_s1 = x_s1
                         if CROSS_BREATH_HANDOFF and handoff_s1 is not None:
                             x_in_s1 = x_in_s1 + handoff_s1
+                    # v65 per-breath prompt refresh (eval-side parity with breathe_with_lookup).
+                    if PROMPT_REFRESH_ALPHA > 0.0:
+                        x_in_s1 = x_in_s1 + (PROMPT_REFRESH_ALPHA * x_emb_s1).cast(x_in_s1.dtype)
                     if NOTEBOOK_V24:
                         if NOTEBOOK_ACCUMULATE_ENABLED:
                             rv = (notebook_s1 @ block_s1.notebook_read_w + block_s1.notebook_read_b)
@@ -2872,7 +3059,9 @@ class BreathingTransformer:
         tokens_first = []
         for k in range(n_loops):
             wk_at = (waist_per_breath_buf[k] * gather_mask_first).sum(axis=1, keepdim=True)
-            lk = self.waist_controller.forward(wk_at, prompt_emb_buf_t, self.embed_out)
+            # v63: pass (k_idx, K_total) for K-pos embed lookup.
+            lk = self.waist_controller.forward(wk_at, prompt_emb_buf_t, self.embed_out,
+                                                 k_idx=k, K_total=n_loops)
             tk = lk[:, :, :50277].argmax(axis=-1).reshape(B)
             tokens_first.append(tk)
         argmax_first = Tensor.stack(*tokens_first, dim=0).realize().numpy()  # (K, B)

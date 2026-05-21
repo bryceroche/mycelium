@@ -381,7 +381,7 @@ def _compile_jit_train_step(model, opt, n_loops_per_cycle: Tuple[int, ...],
 
 
 def _compile_jit_per_breath_step(model, opt, K: int, fixed_len: int, B: int,
-                                  lookup_aux_weight: float):
+                                  lookup_aux_weight: float, grad_clip: float = 0.0):
     """JIT'd per-breath supervision step (v54/v55/v56 paradigm).
 
     Forward: K-breath breathe_with_lookup with return_per_breath_x and
@@ -398,24 +398,29 @@ def _compile_jit_per_breath_step(model, opt, K: int, fixed_len: int, B: int,
     Returns: (total_loss, ce_0, ce_1, ..., ce_{K-1}) — all scalar Tensors,
     each .realize()'d. Total = avg_main + lookup_aux_weight * aux_ce + regs.
     """
-    key = (id(model), id(opt), int(K), int(fixed_len), int(B), float(lookup_aux_weight))
+    key = (id(model), id(opt), int(K), int(fixed_len), int(B), float(lookup_aux_weight), float(grad_clip))
     if key in _JIT_PER_BREATH_CACHE:
         return _JIT_PER_BREATH_CACHE[key]
 
     aw = float(lookup_aux_weight)
+    gc_val = float(grad_clip)
+    params = opt.params  # used for grad-norm computation if gc_val > 0
     import time as _t_jit
     _jit_compile_start = _t_jit.perf_counter()
-    print(f"[JIT] compile per_breath step: K={K} B={B} fixed_len={fixed_len} aw={aw}...", flush=True)
+    print(f"[JIT] compile per_breath step: K={K} B={B} fixed_len={fixed_len} aw={aw} clip={gc_val}...", flush=True)
 
     from mycelium.breathing import CONTROLLER_DECODE as _CD
     from mycelium.breathing import _layernorm as _ln
+    from mycelium.breathing import BOUNDARY_AUX_WEIGHT
+    HASH_TOKEN_ID = 1835  # `####` token in our tokenizer
     cfg_eps = model.cfg.layer_norm_eps
+    bpw = BOUNDARY_POS_WEIGHT  # captured at compile time (default 5.0)
 
     @TinyJit
-    def _step(tokens, labels_stk, eq_mask, op_labels):
+    def _step(tokens, labels_stk, eq_mask, op_labels, prompt_dropout_mask_t):
         opt.zero_grad()
         if _CD:
-            _final, match_weights, _pbx, waist_compressed_per_breath = model.breathe_with_lookup(
+            _final, match_weights, per_breath_x, waist_compressed_per_breath = model.breathe_with_lookup(
                 tokens, K, return_per_breath_x=True, return_waist_compressed=True)
             prompt_emb = model.embed(tokens).cast(dtypes.float)
         else:
@@ -423,10 +428,16 @@ def _compile_jit_per_breath_step(model, opt, K: int, fixed_len: int, B: int,
                 tokens, K, return_per_breath_x=True)
 
         losses_per_breath = []
+        boundary_losses = []
         for k in range(K):
             if _CD:
                 waist_k = waist_compressed_per_breath[k].cast(dtypes.float)
-                logits = model.waist_controller.forward(waist_k, prompt_emb, model.embed_out)
+                # v63: pass (k_idx, K_total) for K-position embedding lookup; pass
+                # prompt_dropout_mask (1.0 = use prompt, 0.0 = zero prompt).
+                logits = model.waist_controller.forward(
+                    waist_k, prompt_emb, model.embed_out,
+                    k_idx=k, K_total=K,
+                    prompt_dropout_mask=prompt_dropout_mask_t)
             else:
                 x_k = per_breath_x[k]
                 x_normed = _ln(x_k, model.ln_f_g, model.ln_f_b, cfg_eps)
@@ -436,7 +447,28 @@ def _compile_jit_per_breath_step(model, opt, K: int, fixed_len: int, B: int,
                 labels_stk[k], ignore_index=-100,
                 label_smoothing=LABEL_SMOOTHING, reduction="mean")
             losses_per_breath.append(ce_k)
+            # v65 boundary aux: per-position binary head predicting "is next token ####?".
+            # Applied to per_breath_x[k] (1024d post-breath hidden state).
+            # Stable BCE from logits: max(z,0) - z*y + log(1 + exp(-|z|)).
+            if BOUNDARY_AUX_WEIGHT > 0.0:
+                x_k_b = per_breath_x[k].cast(dtypes.float)  # (B, T, hidden)
+                B_b = x_k_b.shape[0]; T_b = x_k_b.shape[1]
+                blogits = (x_k_b @ model.boundary_head_w + model.boundary_head_b).reshape(B_b, T_b)
+                blogits_pred = blogits[:, :-1]
+                labels_k_b = labels_stk[k]  # (B, T-1)
+                btarget = (labels_k_b == HASH_TOKEN_ID).cast(dtypes.float)
+                valid = (labels_k_b != -100).cast(dtypes.float)
+                bce_per = blogits_pred.maximum(0.0) - blogits_pred * btarget + (1.0 + (-blogits_pred.abs()).exp()).log()
+                # v66: up-weight positive class (#### is rare ~1 per 10-30 negatives)
+                weight_per_pos = 1.0 + (bpw - 1.0) * btarget  # 1.0 for negatives, bpw for positives
+                bce_per = bce_per * weight_per_pos
+                bce_k = (bce_per * valid).sum() / (valid.sum() + 1.0)
+                boundary_losses.append(bce_k)
         avg_main = sum(losses_per_breath[1:], losses_per_breath[0]) / float(K)
+        if BOUNDARY_AUX_WEIGHT > 0.0 and len(boundary_losses) > 0:
+            avg_boundary = sum(boundary_losses[1:], boundary_losses[0]) / float(len(boundary_losses))
+        else:
+            avg_boundary = Tensor.zeros((), dtype=dtypes.float).contiguous()
 
         if aw > 0.0:
             last_mw = match_weights[-1]
@@ -479,15 +511,361 @@ def _compile_jit_per_breath_step(model, opt, K: int, fixed_len: int, B: int,
                                             for p in [lb.wq, lb.bq, lb.wk, lb.bk, lb.w_in, lb.b_in]),
                         Tensor.zeros((), dtype=dtypes.float).contiguous())) * 1e-7
 
-        total = avg_main + aw * aux_ce + l2_reg + ch_reg + be_reg
+        total = avg_main + aw * aux_ce + l2_reg + ch_reg + be_reg + BOUNDARY_AUX_WEIGHT * avg_boundary
         total.backward()
+        # NaN-skip: if loss is NaN (forward overflow), zero all gradients so
+        # opt.step is a no-op. Checked via total.isfinite() — single kernel,
+        # avoids the per-param isnan() loop that crashes the AMD driver in JIT.
+        healthy = total.isfinite().cast(dtypes.float)
+        for p in params:
+            if p.grad is not None:
+                p.grad = p.grad * healthy.cast(p.grad.dtype)
+        # Global-norm gradient clipping — guards against NaN spikes at bigger model
+        # sizes. Pythia-1B (H=2048) hit gradient explosion around step 2000-2500
+        # without it. GRAD_CLIP env var (default 0 = off for 410M; 1.0 for 1B).
+        if gc_val > 0:
+            sq_sum = Tensor.zeros((), dtype=dtypes.float).contiguous()
+            for p in params:
+                if p.grad is not None:
+                    sq_sum = sq_sum + p.grad.cast(dtypes.float).square().sum()
+            grad_norm = (sq_sum + 1e-12).sqrt()
+            clip_coef = (Tensor(gc_val, dtype=dtypes.float) / (grad_norm + 1e-6))
+            clip_coef = clip_coef.minimum(Tensor(1.0, dtype=dtypes.float))
+            for p in params:
+                if p.grad is not None:
+                    p.grad = p.grad * clip_coef.cast(p.grad.dtype)
         opt.step()
-        return (total.realize(), *(ce.realize() for ce in losses_per_breath))
+        # v66 waist norm: mean L2 norm of last breath's compressed waist.
+        # Monitored for skip-connection leakage (if model ignores waist, norm → 0).
+        # Computed here (inside JIT) so it's part of the same fused graph with no extra sync.
+        if _CD and waist_compressed_per_breath:
+            waist_last = waist_compressed_per_breath[-1].cast(dtypes.float)
+            waist_norm = waist_last.square().mean(axis=-1).sqrt().mean()
+        else:
+            waist_norm = Tensor.zeros((), dtype=dtypes.float).contiguous()
+        return (total.realize(), healthy.realize(), waist_norm.realize(),
+                *(ce.realize() for ce in losses_per_breath))
 
     _JIT_PER_BREATH_CACHE[key] = _step
     print(f"[JIT] compiled per_breath in {_t_jit.perf_counter() - _jit_compile_start:.1f}s "
           f"(cache size={len(_JIT_PER_BREATH_CACHE)})", flush=True)
     return _step
+
+
+# Separate cache for scheduled-sampling JIT (different input signature).
+_JIT_PER_BREATH_SS_CACHE: dict = {}
+
+SCHED_SAMPLE_RATE = float(os.environ.get("SCHED_SAMPLE_RATE", "0.0"))
+BOUNDARY_POS_WEIGHT = float(os.environ.get("BOUNDARY_POS_WEIGHT", "5.0"))
+
+if SCHED_SAMPLE_RATE > 0.0:
+    print(f"[SCHED_SAMPLE] rate={SCHED_SAMPLE_RATE} — scheduled sampling enabled "
+          f"(warmup=500 steps, ramp to {SCHED_SAMPLE_RATE} at step 1500)", flush=True)
+if BOUNDARY_POS_WEIGHT != 1.0:
+    print(f"[BOUNDARY_POS_WEIGHT] pos_weight={BOUNDARY_POS_WEIGHT}", flush=True)
+
+# Waist norm tracking state (module-level so it persists across calls).
+_waist_norm_low_streak: int = 0
+_WAIST_NORM_WARN_THRESHOLD = 0.01
+_WAIST_NORM_WARN_STREAK = 100
+
+
+def _compile_jit_per_breath_step_ss(model, opt, K: int, fixed_len: int, B: int,
+                                     lookup_aux_weight: float, grad_clip: float = 0.0):
+    """JIT'd per-breath supervision with scheduled sampling (v66).
+
+    Same as _compile_jit_per_breath_step but unrolls K breaths manually so that
+    after breath k, argmax predictions can replace some gold tokens before breath
+    k+1 (scheduled sampling). Forces the model to handle its own prediction errors.
+
+    Additional inputs vs the base version:
+      sched_sample_rate_t  (1,) float — current scheduled-sample rate (0.0 = off).
+                           Passed as Tensor so the JIT graph doesn't recompile per step.
+      bernoulli_mask_t     (B, fixed_len - 1) float — 1.0 at positions to be replaced
+                           by argmax predictions. Precomputed in Python each step using
+                           np.random.binomial(..., p=rate). Zeros when rate=0.
+
+    Scheduled sampling mechanism:
+      After breath k (k < K-1):
+        1. Compute WaistController logits for breath k.
+        2. Take argmax → predicted tokens (B, T-1).
+        3. Replace gold tokens at Bernoulli-selected positions in the token sequence.
+        4. Re-embed the modified sequence → x_emb for breath k+1 (BREATHE_FRESH_INPUT=0
+           path: x flows as hidden states; we inject modified embeddings at the START
+           of the next breath via x_in perturbation).
+
+    The argmax is computed with stop_gradient (detached from the training graph) — we
+    want the model to SEE its own errors, not backprop through the argmax decision.
+
+    AMD JIT constraints respected:
+      - No .cast(dtypes.float32) on new large tensors inside JIT (only dtypes.half).
+      - Bernoulli mask is precomputed outside JIT and passed as float Tensor input.
+      - Scheduled rate is a scalar Tensor input (no Python branch per rate value).
+    """
+    key = (id(model), id(opt), int(K), int(fixed_len), int(B), float(lookup_aux_weight), float(grad_clip))
+    if key in _JIT_PER_BREATH_SS_CACHE:
+        return _JIT_PER_BREATH_SS_CACHE[key]
+
+    aw = float(lookup_aux_weight)
+    gc_val = float(grad_clip)
+    params = opt.params
+    import time as _t_jit
+    _jit_compile_start = _t_jit.perf_counter()
+    print(f"[JIT-SS] compile per_breath_ss step: K={K} B={B} fixed_len={fixed_len} aw={aw} clip={gc_val}...", flush=True)
+
+    from mycelium.breathing import CONTROLLER_DECODE as _CD
+    from mycelium.breathing import _layernorm as _ln
+    from mycelium.breathing import BOUNDARY_AUX_WEIGHT
+    from mycelium.breathing import (
+        NOTEBOOK_V24, NOTEBOOK_ACCUMULATE_ENABLED, NOTEBOOK_DUAL, NOTEBOOK_POOL_MODE,
+        CROSS_BREATH_HANDOFF, BREATHE_FRESH_INPUT, PROMPT_REFRESH_ALPHA,
+        NOTEBOOK_DAG, BFIELD_SIN_MOD, STOCH_DEPTH_P, BFIELD_WAIST, BFIELD_END_OF_BREATH,
+        LOOKUP_VALUE_INJECT, LOOKUP_VALUE_SCALE, _initial_notebook_state, _sine_temp_baseline,
+    )
+    import math as _math
+    HASH_TOKEN_ID = 1835  # `####` token
+    cfg_eps = model.cfg.layer_norm_eps
+    T = fixed_len
+    bpw = BOUNDARY_POS_WEIGHT  # captured at compile time
+
+    @TinyJit
+    def _step_ss(tokens, labels_stk, eq_mask, op_labels, prompt_dropout_mask_t,
+                 sched_sample_rate_t, bernoulli_mask_t):
+        opt.zero_grad()
+
+        # --- Manually unrolled K-breath forward pass (mirrors breathe_with_lookup) ---
+        x_emb = model.embed(tokens).cast(model.block.bfield_proj_down.dtype)  # (B, T, H), half precision
+        x = x_emb
+        integral = Tensor.zeros_like(x)
+        handoff = None
+        notebook = None
+        notebook_r = None
+        weight_sum = 0.0
+
+        if NOTEBOOK_V24:
+            B_nb = x.shape[0]
+            notebook = _initial_notebook_state(B_nb, model.block.nb_dim)
+            if NOTEBOOK_DUAL:
+                notebook_r = _initial_notebook_state(B_nb, model.block.nb_dim)
+
+        per_breath_x = []
+        waist_compressed_per_breath = []
+        match_weights_list = []
+        prompt_emb = None
+        if _CD:
+            prompt_emb = model.embed(tokens).cast(dtypes.float)
+
+        for l in range(K):
+            # --- x_in setup (mirrors breathe_with_lookup) ---
+            if BREATHE_FRESH_INPUT:
+                x_in = x_emb
+            else:
+                x_in = x
+                if CROSS_BREATH_HANDOFF and handoff is not None:
+                    x_in = x_in + handoff
+            if PROMPT_REFRESH_ALPHA > 0.0:
+                x_in = x_in + (PROMPT_REFRESH_ALPHA * x_emb).cast(x_in.dtype)
+            if NOTEBOOK_V24:
+                if NOTEBOOK_ACCUMULATE_ENABLED:
+                    read_vec = (notebook @ model.block.notebook_read_w + model.block.notebook_read_b)
+                    x_in = x_in + read_vec.reshape(x_in.shape[0], 1, -1).cast(x_in.dtype)
+                if NOTEBOOK_DUAL:
+                    read_vec_r = (notebook_r @ model.block.notebook_rep_read_w + model.block.notebook_rep_read_b)
+                    x_in = x_in + read_vec_r.reshape(x_in.shape[0], 1, -1).cast(x_in.dtype)
+
+            # --- Breath forward ---
+            temp_mult = _sine_temp_baseline(l, K)
+            if _CD and BFIELD_WAIST > 0 and BFIELD_END_OF_BREATH:
+                x, waist_compressed = model.block.breathe_once(x_in, l, temp_mult=temp_mult, return_waist_compressed=True)
+                waist_compressed_per_breath.append(waist_compressed)
+            else:
+                x = model.block.breathe_once(x_in, l, temp_mult=temp_mult)
+
+            # --- Notebook write ---
+            if NOTEBOOK_V24:
+                x_f = x.cast(dtypes.float)
+                if NOTEBOOK_POOL_MODE == "attn":
+                    scores = (x_f * model.block.notebook_write_query.reshape(1, 1, -1)).sum(axis=-1)
+                    weights = scores.softmax(axis=-1).reshape(x.shape[0], -1, 1)
+                    x_pool = (x_f * weights).sum(axis=1)
+                else:
+                    x_pool = x_f.mean(axis=1)
+                if NOTEBOOK_ACCUMULATE_ENABLED:
+                    notebook = notebook + (x_pool @ model.block.notebook_write_w + model.block.notebook_write_b)
+                if NOTEBOOK_DUAL:
+                    if NOTEBOOK_POOL_MODE == "attn":
+                        scores_r = (x_f * model.block.notebook_rep_query.reshape(1, 1, -1)).sum(axis=-1)
+                        weights_r = scores_r.softmax(axis=-1).reshape(x.shape[0], -1, 1)
+                        x_pool_r = (x_f * weights_r).sum(axis=1)
+                    else:
+                        x_pool_r = x_pool
+                    notebook_r = x_pool_r @ model.block.notebook_rep_write_w + model.block.notebook_rep_write_b
+
+            # --- Handoff ---
+            if CROSS_BREATH_HANDOFF:
+                handoff = model.block.compute_handoff(x)
+
+            per_breath_x.append(x)
+
+            # --- Integral accumulation ---
+            if BFIELD_SIN_MOD:
+                beta_l = _math.sin((l + 0.5) * _math.pi / float(K))
+            else:
+                beta_l = 1.0
+            if STOCH_DEPTH_P > 0.0 and Tensor.training:
+                keep_l = model.block.stoch_keep_mask[l].cast(x.dtype)
+                integral = integral + beta_l * keep_l * x
+            else:
+                integral = integral + beta_l * x
+            weight_sum = weight_sum + beta_l
+            running = integral / weight_sum
+            running_normed = _ln(running, model.ln_f_g, model.ln_f_b, cfg_eps)
+            match_weights_list.append(model.lookup_table(running_normed))
+
+            # --- v66 Scheduled sampling: after breath l, mix some gold tokens with argmax ---
+            # Only applies for l < K-1 (no need to modify input after the last breath).
+            # The argmax is computed with stop_gradient (detached from the graph).
+            if _CD and l < K - 1:
+                # Compute logits for breath l
+                waist_l = waist_compressed_per_breath[l].cast(dtypes.float)
+                logits_l = model.waist_controller.forward(
+                    waist_l, prompt_emb, model.embed_out,
+                    k_idx=l, K_total=K,
+                    prompt_dropout_mask=prompt_dropout_mask_t)
+                # Argmax predictions: (B, T-1) integer tokens — no gradient
+                argmax_tokens_l = logits_l[:, :-1, :].detach().argmax(axis=-1)  # (B, T-1) int
+                # Gold tokens for positions 1..T-1 (align with argmax labels)
+                gold_tail = tokens[:, 1:]  # (B, T-1) int
+                # Bernoulli mask (float 0.0/1.0) selects which positions use argmax.
+                # Use float arithmetic to avoid int-cast issues; round-trip via int at end.
+                mask_l_f = bernoulli_mask_t  # (B, T-1) float, 0.0 or 1.0
+                gold_tail_f = gold_tail.cast(dtypes.float)   # (B, T-1) float
+                argmax_f = argmax_tokens_l.cast(dtypes.float)  # (B, T-1) float
+                mixed_tail_f = gold_tail_f * (1.0 - mask_l_f) + argmax_f * mask_l_f
+                mixed_tail = mixed_tail_f.cast(dtypes.int)  # (B, T-1) int
+                # Reconstruct full token sequence (position 0 always gold)
+                gold_head = tokens[:, :1]  # (B, 1) int
+                mixed_tokens = gold_head.cat(mixed_tail, dim=1)  # (B, T) int
+                # Re-embed mixed token sequence for next breath's x_emb
+                mixed_emb = model.embed(mixed_tokens).cast(x_emb.dtype)  # (B, T, H)
+                # Scale the embedding delta by sched_sample_rate_t (0.0 = no change).
+                # delta=0 when mask=all-zeros (rate=0 case), so this is exact.
+                rate_scalar = sched_sample_rate_t.cast(x_emb.dtype).reshape(1, 1, 1)
+                x_emb = x_emb + rate_scalar * (mixed_emb - x_emb)
+
+        # --- Per-breath CE losses ---
+        losses_per_breath = []
+        boundary_losses = []
+        for k in range(K):
+            if _CD:
+                waist_k = waist_compressed_per_breath[k].cast(dtypes.float)
+                logits = model.waist_controller.forward(
+                    waist_k, prompt_emb, model.embed_out,
+                    k_idx=k, K_total=K,
+                    prompt_dropout_mask=prompt_dropout_mask_t)
+            else:
+                x_k = per_breath_x[k]
+                x_normed = _ln(x_k, model.ln_f_g, model.ln_f_b, cfg_eps)
+                logits = (x_normed @ model.embed_out).cast(dtypes.float)
+            pred = logits[:, :-1, :]
+            ce_k = pred.sparse_categorical_crossentropy(
+                labels_stk[k], ignore_index=-100,
+                label_smoothing=LABEL_SMOOTHING, reduction="mean")
+            losses_per_breath.append(ce_k)
+            # v65 boundary aux with v66 pos_weight
+            if BOUNDARY_AUX_WEIGHT > 0.0:
+                x_k_b = per_breath_x[k].cast(dtypes.float)
+                B_b = x_k_b.shape[0]; T_b = x_k_b.shape[1]
+                blogits = (x_k_b @ model.boundary_head_w + model.boundary_head_b).reshape(B_b, T_b)
+                blogits_pred = blogits[:, :-1]
+                labels_k_b = labels_stk[k]
+                btarget = (labels_k_b == HASH_TOKEN_ID).cast(dtypes.float)
+                valid = (labels_k_b != -100).cast(dtypes.float)
+                bce_per = blogits_pred.maximum(0.0) - blogits_pred * btarget + (1.0 + (-blogits_pred.abs()).exp()).log()
+                # v66: up-weight positive class to counter class imbalance
+                weight_per_pos = 1.0 + (bpw - 1.0) * btarget  # 1.0 for negatives, bpw for positives
+                bce_per = bce_per * weight_per_pos
+                bce_k = (bce_per * valid).sum() / (valid.sum() + 1.0)
+                boundary_losses.append(bce_k)
+
+        avg_main = sum(losses_per_breath[1:], losses_per_breath[0]) / float(K)
+        if BOUNDARY_AUX_WEIGHT > 0.0 and len(boundary_losses) > 0:
+            avg_boundary = sum(boundary_losses[1:], boundary_losses[0]) / float(len(boundary_losses))
+        else:
+            avg_boundary = Tensor.zeros((), dtype=dtypes.float).contiguous()
+
+        if aw > 0.0:
+            last_mw = match_weights_list[-1]
+            gathered = (last_mw.cast(dtypes.float) * eq_mask).sum(axis=1)
+            logits_aux = gathered[:, :4] * 10.0
+            aux_ce = logits_aux.sparse_categorical_crossentropy(
+                op_labels, ignore_index=-100, reduction="mean")
+        else:
+            aux_ce = Tensor.zeros((), dtype=dtypes.float).contiguous()
+
+        l2_reg = (model.lookup_table.weight.square().mean()
+                  + model.lookup_table.values.square().mean()
+                  + model.lookup_table.value_proj_up.square().mean()) * 1e-6
+        ch_reg = sum((p.square().mean() for p in model.confidence_head.parameters()),
+                     Tensor.zeros((), dtype=dtypes.float).contiguous()) * 1e-7
+        be_reg = (model.block.breath_embed.square().mean()
+                  + model.block.handoff_w.square().mean()
+                  + model.block.handoff_b.square().mean()
+                  + model.block.rope.pitch.square().mean()
+                  + model.block.crp_mix_alpha.square().mean()
+                  + model.block.crp_target_norm.square().mean()
+                  + model.block.notebook_write_w.square().mean()
+                  + model.block.notebook_write_b.square().mean()
+                  + model.block.notebook_read_w.square().mean()
+                  + model.block.notebook_read_b.square().mean()
+                  + model.block.notebook_write_query.square().mean()
+                  + model.block.notebook_rep_write_w.square().mean()
+                  + model.block.notebook_rep_write_b.square().mean()
+                  + model.block.notebook_rep_read_w.square().mean()
+                  + model.block.notebook_rep_read_b.square().mean()
+                  + model.block.notebook_rep_query.square().mean()
+                  + model.block.bfield_proj_down.square().mean()
+                  + model.block.bfield_proj_up.square().mean()
+                  + model.block.bfield_bias.square().mean()
+                  + model.block.waist_codebook_keys.square().mean()
+                  + model.block.waist_codebook_values.square().mean()
+                  + model.waist_head_w.square().mean()
+                  + model.waist_head_b.square().mean()
+                  + sum((p.square().mean() for lb in model.block.layers_b
+                                            for p in [lb.wq, lb.bq, lb.wk, lb.bk, lb.w_in, lb.b_in]),
+                        Tensor.zeros((), dtype=dtypes.float).contiguous())) * 1e-7
+
+        total = avg_main + aw * aux_ce + l2_reg + ch_reg + be_reg + BOUNDARY_AUX_WEIGHT * avg_boundary
+        total.backward()
+        healthy = total.isfinite().cast(dtypes.float)
+        for p in params:
+            if p.grad is not None:
+                p.grad = p.grad * healthy.cast(p.grad.dtype)
+        if gc_val > 0:
+            sq_sum = Tensor.zeros((), dtype=dtypes.float).contiguous()
+            for p in params:
+                if p.grad is not None:
+                    sq_sum = sq_sum + p.grad.cast(dtypes.float).square().sum()
+            grad_norm = (sq_sum + 1e-12).sqrt()
+            clip_coef = (Tensor(gc_val, dtype=dtypes.float) / (grad_norm + 1e-6))
+            clip_coef = clip_coef.minimum(Tensor(1.0, dtype=dtypes.float))
+            for p in params:
+                if p.grad is not None:
+                    p.grad = p.grad * clip_coef.cast(p.grad.dtype)
+        opt.step()
+        # v66 waist norm monitoring (same pattern as base JIT)
+        if _CD and waist_compressed_per_breath:
+            waist_last = waist_compressed_per_breath[-1].cast(dtypes.float)
+            waist_norm = waist_last.square().mean(axis=-1).sqrt().mean()
+        else:
+            waist_norm = Tensor.zeros((), dtype=dtypes.float).contiguous()
+        return (total.realize(), healthy.realize(), waist_norm.realize(),
+                *(ce.realize() for ce in losses_per_breath))
+
+    _JIT_PER_BREATH_SS_CACHE[key] = _step_ss
+    print(f"[JIT-SS] compiled per_breath_ss in {_t_jit.perf_counter() - _jit_compile_start:.1f}s "
+          f"(cache size={len(_JIT_PER_BREATH_SS_CACHE)})", flush=True)
+    return _step_ss
 
 
 def _build_aux_tensors(batch_examples, tokens_np: np.ndarray, eq_token_ids):
@@ -1266,7 +1644,9 @@ def per_breath_train_step(model, opt, batch_examples: List[MathExample], tok,
                           fixed_len: int,
                           lookup_aux_weight: float = 0.0,
                           lookup_eq_token_id=None,
-                          use_jit: bool = False):
+                          use_jit: bool = False,
+                          grad_clip: float = 0.0,
+                          step_idx: int = 0):
     """v52 Stage 1: per-breath supervision.
 
     Drops the outer cycle structure entirely. For a K-step problem, runs ONE
@@ -1281,7 +1661,10 @@ def per_breath_train_step(model, opt, batch_examples: List[MathExample], tok,
     fused). Eliminates the linear per-step time growth of the eager path.
 
     Assumes uniform K across the batch (use single-level training for Stage 1).
+
+    step_idx: used to compute the linear scheduled-sampling ramp (v66).
     """
+    global _waist_norm_low_streak
     from mycelium.breathing import _layernorm
 
     Tensor.training = True
@@ -1341,11 +1724,62 @@ def per_breath_train_step(model, opt, batch_examples: List[MathExample], tok,
             op_labels_jit = Tensor(np.full((B,), -100, dtype=np.int32),
                                     dtype=dtypes.int).realize()
         labels_stk = Tensor(per_step_labels_np, dtype=dtypes.int).realize()
-        step_fn = _compile_jit_per_breath_step(model, opt, K, fixed_len, B, lookup_aux_weight)
-        outs = step_fn(tokens, labels_stk, eq_mask_jit, op_labels_jit)
+        # v63 prompt dropout: per-step Bernoulli mask (1.0 = use prompt, 0.0 = zero prompt).
+        # Drop fraction = CONTROLLER_PROMPT_DROPOUT env var; 0 disables.
+        import os as _os, random as _random
+        _pdrop = float(_os.environ.get("CONTROLLER_PROMPT_DROPOUT", "0.0"))
+        _pd_val = 0.0 if (_pdrop > 0.0 and _random.random() < _pdrop) else 1.0
+        prompt_dropout_mask_t = Tensor(np.array([_pd_val], dtype=np.float32), dtype=dtypes.float).realize()
+
+        if SCHED_SAMPLE_RATE > 0.0:
+            # v66 Scheduled sampling path: unrolled breath loop in the JIT.
+            # Linear ramp: 0.0 for steps 0-500, ramping to SCHED_SAMPLE_RATE at step 1500+.
+            _ss_warmup = 500
+            _ss_full_ramp = 1500
+            _ss_target = SCHED_SAMPLE_RATE
+            _current_rate = max(0.0, min(_ss_target,
+                (_ss_target * (step_idx - _ss_warmup) / float(_ss_full_ramp - _ss_warmup))
+                if step_idx > _ss_warmup else 0.0))
+            # Bernoulli mask: 1.0 where we replace gold with argmax predictions.
+            # Shape (B, fixed_len - 1) — positions 1..T in the token sequence.
+            if _current_rate > 0.0:
+                _bern_np = np.random.binomial(1, _current_rate, size=(B, fixed_len - 1)).astype(np.float32)
+            else:
+                _bern_np = np.zeros((B, fixed_len - 1), dtype=np.float32)
+            sched_sample_rate_t = Tensor(np.array([_current_rate], dtype=np.float32), dtype=dtypes.float).realize()
+            bernoulli_mask_t = Tensor(_bern_np, dtype=dtypes.float).realize()
+            step_fn_ss = _compile_jit_per_breath_step_ss(model, opt, K, fixed_len, B, lookup_aux_weight, grad_clip)
+            outs = step_fn_ss(tokens, labels_stk, eq_mask_jit, op_labels_jit, prompt_dropout_mask_t,
+                              sched_sample_rate_t, bernoulli_mask_t)
+        else:
+            step_fn = _compile_jit_per_breath_step(model, opt, K, fixed_len, B, lookup_aux_weight, grad_clip)
+            outs = step_fn(tokens, labels_stk, eq_mask_jit, op_labels_jit, prompt_dropout_mask_t)
+
         total_t = outs[0]
-        ce_ts = outs[1:]
-        return float(total_t.numpy()), [float(c.numpy()) for c in ce_ts]
+        healthy_t = outs[1]
+        waist_norm_t = outs[2]
+        ce_ts = outs[3:]
+        if float(healthy_t.numpy()) < 0.5:
+            print("[NaN-skip] NaN grad detected — step skipped", flush=True)
+
+        # v66 waist norm logging + collapse guardrail.
+        waist_norm_val = float(waist_norm_t.numpy())
+        if step_idx % 10 == 0:
+            # Reported alongside the per-breath CE in l3_train.py's log line.
+            # Store as return extra so caller can include it.
+            pass  # caller reads waist_norm_val from the returned extras tuple below
+        if waist_norm_val < _WAIST_NORM_WARN_THRESHOLD:
+            _waist_norm_low_streak += 1
+            if _waist_norm_low_streak >= _WAIST_NORM_WARN_STREAK:
+                print(f"\n[WARNING] waist_norm < {_WAIST_NORM_WARN_THRESHOLD} for "
+                      f"{_waist_norm_low_streak} consecutive steps "
+                      f"(current: {waist_norm_val:.4f}) — possible skip-connection leakage "
+                      f"(model may be ignoring waist, relying entirely on prompt refresh).\n",
+                      flush=True)
+        else:
+            _waist_norm_low_streak = 0
+
+        return float(total_t.numpy()), [float(c.numpy()) for c in ce_ts], waist_norm_val
 
     # Forward — fetch per-breath x AND per-breath waist_compressed if controller is active
     from mycelium.breathing import CONTROLLER_DECODE
@@ -1428,7 +1862,14 @@ def per_breath_train_step(model, opt, batch_examples: List[MathExample], tok,
     total = avg_main + lookup_aux_weight * aux_ce + l2_reg + ch_reg + be_reg
     total.backward()
     opt.step()
-    return float(total.realize().numpy()), [float(c.realize().numpy()) for c in losses_per_breath]
+    # Eager path: compute waist norm too (for parity with JIT return signature)
+    from mycelium.breathing import CONTROLLER_DECODE as _CD_eager
+    if _CD_eager and waist_compressed_per_breath:
+        waist_last = waist_compressed_per_breath[-1].cast(dtypes.float)
+        waist_norm_val = float(waist_last.square().mean(axis=-1).sqrt().mean().realize().numpy())
+    else:
+        waist_norm_val = None
+    return float(total.realize().numpy()), [float(c.realize().numpy()) for c in losses_per_breath], waist_norm_val
 
 
 def multi_cycle_train_step(model, opt, batch_examples: List[MathExample], tok,

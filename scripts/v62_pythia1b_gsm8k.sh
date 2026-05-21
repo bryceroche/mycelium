@@ -87,8 +87,14 @@ export GSM8K_STEPS_MAX_K=6
 export SPACE_DIGITS=1
 export BATCH=1                             # 4× per-token cost at H=2048; drop to B=1 for K=6 safety
 export FIXED_LEN=320
-export STEPS=4000                          # resuming from step 2000 → 6000 effective
-export LR=1e-5                             # 3× lower than original 3e-5; first take diverged to NaN at step 2420
+export STEPS=3000                          # resume from step1000 (=effective step 3000) → 6000 effective
+export LR=1e-5                             # gentle for the bigger model
+export SEED=43                             # different from default (no effect on NaN though — issue was structural)
+export GRAD_CLIP=1.0                       # NEW — global-norm gradient clip, prevents NaN spikes at H=2048
+                                           # take-1 NaN'd at step 2420 with LR=3e-5
+                                           # take-2 NaN'd at step 2420 with LR=1e-5 (seed=42)
+                                           # take-3 NaN'd at step 1760 with LR=1e-5 (seed=43)
+                                           # → not seed-specific. Need structural fix: gradient clipping.
 export TRAIN_LOOPS=4
 export EVAL_LOOPS=1,2,3,4
 export ACC_EVAL_EVERY=10000
@@ -104,6 +110,9 @@ export USE_KV_CACHE=1
 export CKPT_LABEL=v62_pythia1b_gsm8k
 # Resume from step 2000 (the last healthy ckpt before NaN divergence at step 2420
 # of the first take with LR=3e-5). With LR=1e-5 we should stay stable.
-export RESUME_FROM=.cache/gsm8k_steps_ckpts/v62_pythia1b_gsm8k_step2000.safetensors
+export RESUME_FROM=.cache/gsm8k_steps_ckpts/v62_pythia1b_gsm8k_step1000.safetensors
+# This is the LATEST healthy ckpt (take-3's step 1000 = effective total step 3000:
+# trained on Pythia-1B base for 2000 steps in take-1, then 1000 more in take-3
+# with LR=1e-5 before take-3 NaN'd at step 1760).
 
 /home/bryce/mycelium/.venv/bin/python scripts/l3_train.py 2>&1 | tee .cache/v62_pythia1b_gsm8k.log
