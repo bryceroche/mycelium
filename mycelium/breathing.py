@@ -284,6 +284,16 @@ STAGE2_NOTEBOOK          = int(os.environ.get("STAGE2_NOTEBOOK", "0")) > 0
 NOTEBOOK_DAG             = int(os.environ.get("NOTEBOOK_DAG", "0")) > 0
 NOTEBOOK_DAG_N_HEADS     = int(os.environ.get("NOTEBOOK_DAG_N_HEADS", "4"))
 NOTEBOOK_DAG_POS_EMBED   = int(os.environ.get("NOTEBOOK_DAG_POS_EMBED", "1")) > 0
+# v68 (2026-05-22) TWO_PHASE breath: replace symmetric 4-layer breath with asymmetric
+# EXPAND (4 layers, warm) + COMPRESS (2 layers, cool) structure. Embodies inhale-exhale
+# rhythm architecturally. Each phase has its own SharedWeights (V/O/FFN-out/LNs).
+# Temperature is structural (not scheduled): EXPAND=2.0, COMPRESS=0.7.
+TWO_PHASE                = int(os.environ.get("TWO_PHASE", "0")) > 0
+EXPAND_LAYERS            = int(os.environ.get("EXPAND_LAYERS", "4"))
+COMPRESS_LAYERS          = int(os.environ.get("COMPRESS_LAYERS", "2"))
+EXPAND_TEMP              = float(os.environ.get("EXPAND_TEMP", "2.0"))
+COMPRESS_TEMP            = float(os.environ.get("COMPRESS_TEMP", "0.7"))
+
 # v65 per-breath prompt refresh: x_in = prev_breath_output + α × original_prompt_emb.
 # Skip connection from raw embeddings to every breath. Diagnosed root cause: the
 # 512d waist compression destroys entity identity (rename diagnostic 0/20 grounded).
@@ -498,6 +508,8 @@ if NOTEBOOK_DAG:
     print(f"[NOTEBOOK_DAG] active: D_nb=512, n_heads={NOTEBOOK_DAG_N_HEADS}, causal cross-attn{pe_str}", flush=True)
 if PROMPT_REFRESH_ALPHA > 0.0:
     print(f"[PROMPT_REFRESH] α={PROMPT_REFRESH_ALPHA} — skip-connection from raw prompt_emb into every breath's input", flush=True)
+if TWO_PHASE:
+    print(f"[TWO_PHASE] EXPAND={EXPAND_LAYERS} layers @ temp={EXPAND_TEMP} | COMPRESS={COMPRESS_LAYERS} layers @ temp={COMPRESS_TEMP} — structural inhale-exhale", flush=True)
 if BOUNDARY_AUX_WEIGHT > 0.0:
     print(f"[BOUNDARY_AUX] weight={BOUNDARY_AUX_WEIGHT} — BCE on per-breath boundary head (predict next-token=####)", flush=True)
 
@@ -1002,6 +1014,23 @@ class BreathingBlock:
         # always present in state_dict for ckpt symmetry (gradient inert when
         # DOUBLED_LAYERS=0 — never used in forward).
         self.layers_b = [BreathingLayer(cfg, ph, self.shared, self.rope) for ph in phases]
+        # v68 TWO_PHASE: explicit EXPAND (4 warm layers) + COMPRESS (2 cool layers)
+        # with INDEPENDENT SharedWeights per phase. Each set has its own V/O/FFN-out/LNs.
+        # When TWO_PHASE=0, these allocate but never activate — state_dict stable.
+        if TWO_PHASE:
+            self.expand_shared = SharedWeights(cfg)
+            self.compress_shared = SharedWeights(cfg)
+            # phase angles for expand layers (continue the sine wave) and compress layers
+            expand_phases = [i * 2 * math.pi / cfg.n_phases for i in range(EXPAND_LAYERS)]
+            compress_phases = [(EXPAND_LAYERS + i) * 2 * math.pi / cfg.n_phases for i in range(COMPRESS_LAYERS)]
+            self.expand_layers = [BreathingLayer(cfg, ph, self.expand_shared, self.rope) for ph in expand_phases]
+            self.compress_layers = [BreathingLayer(cfg, ph, self.compress_shared, self.rope) for ph in compress_phases]
+        else:
+            # Minimal placeholders so state_dict signatures stay stable across configs.
+            self.expand_shared = SharedWeights(cfg)
+            self.compress_shared = SharedWeights(cfg)
+            self.expand_layers = []
+            self.compress_layers = []
         # Diffusion-style breath-time embedding (axial conditioning). Always created
         # so the parameter list is stable across env-var toggles; only added to the
         # residual stream when BREATH_TIME_EMBED=1.
@@ -1087,8 +1116,11 @@ class BreathingBlock:
             if QUADRATURE_HEADS and head_idx >= half_heads:
                 return base + (math.pi / 2) * scale
             return base
+        # v68 TWO_PHASE: total layers per breath is EXPAND_LAYERS + COMPRESS_LAYERS (default 6).
+        # Otherwise stays at cfg.n_phases (4). Per-(layer, head) pitch buffer sized accordingly.
+        n_positions = (EXPAND_LAYERS + COMPRESS_LAYERS) if TWO_PHASE else cfg.n_phases
         ph_init = [[_head_offset(l, h, init_scale, init_layer_step) for h in range(cfg.n_heads)]
-                   for l in range(cfg.n_phases)]
+                   for l in range(n_positions)]
         self.per_head_pitch = Tensor(ph_init, dtype=dtypes.float).contiguous()
         # Precomputed cos/sin tables — eliminates per-breath cos/sin compute.
         # Shape (n_layers, 1, n_heads, 1, 1) to match alpha broadcast shape on indexing.
@@ -1098,8 +1130,8 @@ class BreathingBlock:
         # .assign() to ramp the quadrature offset; JIT graph captures the buffer
         # reference and picks up new values on replay (same pattern as layer_pitch_scale).
         ph_t = Tensor(ph_init, dtype=dtypes.float)
-        self.per_head_pitch_cos = ph_t.cos().reshape(cfg.n_phases, 1, cfg.n_heads, 1, 1).contiguous().realize()
-        self.per_head_pitch_sin = ph_t.sin().reshape(cfg.n_phases, 1, cfg.n_heads, 1, 1).contiguous().realize()
+        self.per_head_pitch_cos = ph_t.cos().reshape(n_positions, 1, cfg.n_heads, 1, 1).contiguous().realize()
+        self.per_head_pitch_sin = ph_t.sin().reshape(n_positions, 1, cfg.n_heads, 1, 1).contiguous().realize()
 
         # v24 notebook (the "measurement record"). 512d state, written after each
         # breath, read before each breath. Always in parameters for ckpt symmetry.
@@ -1294,12 +1326,24 @@ class BreathingBlock:
         return new_storage
 
     def parameters(self):
-        ps = list(self.shared.parameters())
-        for layer in self.layers:
-            ps.extend(layer.parameters())
-        # v44 doubled-layers: include set B params (always — for ckpt symmetry)
-        for layer in self.layers_b:
-            ps.extend(layer.parameters())
+        # v68 TWO_PHASE: include ONLY active layer sets in optimizer params.
+        # State_dict still includes all (for ckpt symmetry); but unused params
+        # would have None grads → opt.step() unwrap assertion fails. Exclude them here.
+        ps = []
+        if TWO_PHASE:
+            ps.extend(self.expand_shared.parameters())
+            ps.extend(self.compress_shared.parameters())
+            for layer in self.expand_layers:
+                ps.extend(layer.parameters())
+            for layer in self.compress_layers:
+                ps.extend(layer.parameters())
+        else:
+            ps.extend(self.shared.parameters())
+            for layer in self.layers:
+                ps.extend(layer.parameters())
+            # v44 doubled-layers: include set B params for ckpt symmetry
+            for layer in self.layers_b:
+                ps.extend(layer.parameters())
         ps.append(self.breath_embed)
         ps.append(self.handoff_w)
         ps.append(self.handoff_b)
@@ -1365,13 +1409,23 @@ class BreathingBlock:
             x = x + self.breath_embed[loop_idx].reshape(1, 1, -1).cast(x.dtype)
         ac_base, asn_base = alpha
         n_phases = self.cfg.n_phases
+        # v68 TWO_PHASE: explicit EXPAND (warm, broad) + COMPRESS (cool, sharp) phases.
+        # When TWO_PHASE=1, iterate expand_layers at EXPAND_TEMP then compress_layers
+        # at COMPRESS_TEMP. Layer indices flow 0..EXPAND_LAYERS-1 for pitch lookup,
+        # then EXPAND_LAYERS..EXPAND_LAYERS+COMPRESS_LAYERS-1.
+        if TWO_PHASE:
+            active_layers = list(self.expand_layers) + list(self.compress_layers)
+            per_layer_temp_override = ([EXPAND_TEMP] * EXPAND_LAYERS
+                                       + [COMPRESS_TEMP] * COMPRESS_LAYERS)
         # v44 doubled-layers: pick Set A or Set B based on breath index
         # (first half-cycle → A, second half-cycle → B). Maps to E/B alternation
         # when ROPE_FULL_CIRCLE=1 (rotation 0→2π over max_loops breaths).
-        if DOUBLED_LAYERS and loop_idx >= (self.cfg.max_loops // 2):
+        elif DOUBLED_LAYERS and loop_idx >= (self.cfg.max_loops // 2):
             active_layers = self.layers_b
+            per_layer_temp_override = None
         else:
             active_layers = self.layers
+            per_layer_temp_override = None
         for layer_idx, layer in enumerate(active_layers):
             # --- pitch (v23a / legacy) ---
             if PER_HEAD_PITCH and layer_idx > 0:
@@ -1389,8 +1443,12 @@ class BreathingBlock:
                 layer_alpha = (ac_layer, asn_layer)
             else:
                 layer_alpha = alpha
-            # --- per-layer temperature (v24) — overrides across-breath baseline ---
-            if PER_BREATH_TEMP:
+            # --- per-layer temperature ---
+            # v68 TWO_PHASE: structural temps (EXPAND_TEMP for first 4, COMPRESS_TEMP for last 2)
+            # v24 PER_BREATH_TEMP: within-breath wave (different from TWO_PHASE; mutually exclusive)
+            if per_layer_temp_override is not None:
+                layer_temp = per_layer_temp_override[layer_idx]
+            elif PER_BREATH_TEMP:
                 layer_temp = _per_layer_temp_within_breath(layer_idx, n_phases)
             else:
                 layer_temp = temp_mult
@@ -1737,6 +1795,20 @@ class BreathingTransformer:
         for i, layer in enumerate(self.block.layers_b):
             for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
                 sd[f"phase{i}_b.{a}"] = getattr(layer, a)
+        # v68 TWO_PHASE: expand_shared, compress_shared, and per-set phase layers.
+        # Empty lists when TWO_PHASE=0 → no extra keys.
+        sw_exp = self.block.expand_shared
+        sw_cmp = self.block.compress_shared
+        for a in ("wv", "bv", "wo", "bo", "w_out", "b_out",
+                  "in_ln_g", "in_ln_b", "post_ln_g", "post_ln_b"):
+            sd[f"expand_shared.{a}"] = getattr(sw_exp, a)
+            sd[f"compress_shared.{a}"] = getattr(sw_cmp, a)
+        for i, layer in enumerate(self.block.expand_layers):
+            for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
+                sd[f"expand_phase{i}.{a}"] = getattr(layer, a)
+        for i, layer in enumerate(self.block.compress_layers):
+            for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
+                sd[f"compress_phase{i}.{a}"] = getattr(layer, a)
         sd["block.breath_embed"] = self.block.breath_embed
         sd["block.handoff_w"] = self.block.handoff_w
         sd["block.handoff_b"] = self.block.handoff_b

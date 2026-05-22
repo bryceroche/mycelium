@@ -74,27 +74,47 @@ def cast_model_fp32(model):
             setattr(obj, attr, t.cast(dtypes.float).contiguous().realize())
     _cast(model.embed, "weight")
     _cast(model, "embed_out")
-    sw = model.block.shared
-    for a in ("wv", "bv", "wo", "bo", "w_out", "b_out"):
-        _cast(sw, a)
-    for layer in model.block.layers:
-        for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
-            _cast(layer, a)
+    from mycelium.breathing import TWO_PHASE as _TP
+    if _TP:
+        # v68 TWO_PHASE: cast expand_shared and compress_shared (the active shared weights).
+        # The legacy model.block.shared is an unused placeholder — skip it.
+        for sw in (model.block.expand_shared, model.block.compress_shared):
+            for a in ("wv", "bv", "wo", "bo", "w_out", "b_out"):
+                _cast(sw, a)
+        for layer in list(model.block.expand_layers) + list(model.block.compress_layers):
+            for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
+                _cast(layer, a)
+    else:
+        sw = model.block.shared
+        for a in ("wv", "bv", "wo", "bo", "w_out", "b_out"):
+            _cast(sw, a)
+        for layer in model.block.layers:
+            for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
+                _cast(layer, a)
 
 
 def collect_params(model):
     nps = [model.embed.weight, model.embed_out, model.ln_f_g, model.ln_f_b]
-    sw = model.block.shared
-    nps += [sw.wv, sw.bv, sw.wo, sw.bo, sw.w_out, sw.b_out,
-            sw.in_ln_g, sw.in_ln_b, sw.post_ln_g, sw.post_ln_b]
-    for layer in model.block.layers:
-        nps += [layer.wq, layer.bq, layer.wk, layer.bk, layer.w_in, layer.b_in]
-    # v44 doubled-layers Set B — only included in optimizer when actually in use
-    # (would have undefined gradient otherwise since not touched in forward).
-    from mycelium.breathing import DOUBLED_LAYERS as _DL_FLAG
-    if _DL_FLAG:
-        for layer in model.block.layers_b:
+    from mycelium.breathing import DOUBLED_LAYERS as _DL_FLAG, TWO_PHASE as _TWO_PHASE
+    if _TWO_PHASE:
+        # v68 TWO_PHASE: include expand+compress sets; EXCLUDE old shared/layers/layers_b
+        # which aren't touched in forward (would have None grad → optimizer assertion).
+        for sw in (model.block.expand_shared, model.block.compress_shared):
+            nps += [sw.wv, sw.bv, sw.wo, sw.bo, sw.w_out, sw.b_out,
+                    sw.in_ln_g, sw.in_ln_b, sw.post_ln_g, sw.post_ln_b]
+        for layer in list(model.block.expand_layers) + list(model.block.compress_layers):
             nps += [layer.wq, layer.bq, layer.wk, layer.bk, layer.w_in, layer.b_in]
+    else:
+        sw = model.block.shared
+        nps += [sw.wv, sw.bv, sw.wo, sw.bo, sw.w_out, sw.b_out,
+                sw.in_ln_g, sw.in_ln_b, sw.post_ln_g, sw.post_ln_b]
+        for layer in model.block.layers:
+            nps += [layer.wq, layer.bq, layer.wk, layer.bk, layer.w_in, layer.b_in]
+        # v44 doubled-layers Set B — only included in optimizer when actually in use
+        # (would have undefined gradient otherwise since not touched in forward).
+        if _DL_FLAG:
+            for layer in model.block.layers_b:
+                nps += [layer.wq, layer.bq, layer.wk, layer.bk, layer.w_in, layer.b_in]
     # Breath-time embedding (axial conditioning) — always included for ckpt symmetry.
     # When BREATH_TIME_EMBED=0 the L2 reg keeps the gradient defined; the param doesn't move.
     nps += [model.block.breath_embed]

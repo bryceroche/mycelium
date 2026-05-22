@@ -94,7 +94,8 @@ class PythiaLayer:
         scores = q @ k.transpose(-2, -1) * self.attn_scale
         mask = Tensor.ones(S, S, dtype=scores.dtype).tril().reshape(1, 1, S, S)
         scores = scores.masked_fill(mask == 0, float("-inf"))
-        attn = scores.softmax(-1).cast(v.dtype)
+        # Clamp pre-softmax scores to prevent inf/NaN at head_dim=256 (H=2048).
+        attn = scores.clip(-1e4, 1e4).softmax(-1).cast(v.dtype)
         ctx = (attn @ v).transpose(1, 2).reshape(B, S, H)
         attn_out = ctx @ self.wo + self.bo
 
