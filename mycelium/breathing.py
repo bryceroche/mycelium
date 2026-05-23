@@ -294,6 +294,22 @@ COMPRESS_LAYERS          = int(os.environ.get("COMPRESS_LAYERS", "2"))
 EXPAND_TEMP              = float(os.environ.get("EXPAND_TEMP", "2.0"))
 COMPRESS_TEMP            = float(os.environ.get("COMPRESS_TEMP", "0.7"))
 
+# v69 (2026-05-23) COLLAPSE — JPEG/MP3-inspired lossy compression at the waist.
+# Replaces v66's B-field MLP waist with: codebook match (transform) → gate (quantize)
+# → 128d projection (encode) → residual block. Each step decoded by the WaistController
+# provides dense per-breath gradient back through the whole compression pipeline.
+#
+# Diagnostic 2026-05-22 night: math problems in Pythia's embedding space live on a
+# ~128d submanifold (96.2% energy in K=128 at the layer-0 INPUT). Waist=128 matches
+# the actual signal dimensionality. Independent SharedWeights don't help (refuted by
+# per-layer rank diagnostic). Single SharedWeights, single residual block.
+COLLAPSE_V69             = int(os.environ.get("COLLAPSE_V69", "0")) > 0
+COLLAPSE_WAIST_DIM       = int(os.environ.get("COLLAPSE_WAIST_DIM", "128"))
+COLLAPSE_CODEBOOK_N      = int(os.environ.get("COLLAPSE_CODEBOOK_N", "256"))
+COLLAPSE_TAU             = float(os.environ.get("COLLAPSE_TAU", "1.0"))
+COLLAPSE_GATE_BIAS       = float(os.environ.get("COLLAPSE_GATE_BIAS", "2.0"))
+COLLAPSE_ENTROPY_REG     = float(os.environ.get("COLLAPSE_ENTROPY_REG", "0.01"))
+
 # v65 per-breath prompt refresh: x_in = prev_breath_output + α × original_prompt_emb.
 # Skip connection from raw embeddings to every breath. Diagnosed root cause: the
 # 512d waist compression destroys entity identity (rename diagnostic 0/20 grounded).
@@ -510,6 +526,8 @@ if PROMPT_REFRESH_ALPHA > 0.0:
     print(f"[PROMPT_REFRESH] α={PROMPT_REFRESH_ALPHA} — skip-connection from raw prompt_emb into every breath's input", flush=True)
 if TWO_PHASE:
     print(f"[TWO_PHASE] EXPAND={EXPAND_LAYERS} layers @ temp={EXPAND_TEMP} | COMPRESS={COMPRESS_LAYERS} layers @ temp={COMPRESS_TEMP} — structural inhale-exhale", flush=True)
+if COLLAPSE_V69:
+    print(f"[COLLAPSE_V69] waist={COLLAPSE_WAIST_DIM}d, codebook={COLLAPSE_CODEBOOK_N} entries, τ={COLLAPSE_TAU}, gate_bias={COLLAPSE_GATE_BIAS}, entropy_reg={COLLAPSE_ENTROPY_REG}", flush=True)
 if BOUNDARY_AUX_WEIGHT > 0.0:
     print(f"[BOUNDARY_AUX] weight={BOUNDARY_AUX_WEIGHT} — BCE on per-breath boundary head (predict next-token=####)", flush=True)
 
@@ -1197,6 +1215,27 @@ class BreathingBlock:
         self.nb_dag_write_query = Tensor.zeros((cfg.hidden,), dtype=dtypes.float).contiguous()
         self.nb_dag_pos_embed = (Tensor.randn(cfg.max_loops, NB_DIM, dtype=dtypes.float) * 0.02).contiguous()
 
+        # v69 COLLAPSE — JPEG-inspired lossy compression. Always allocated for state-dict
+        # symmetry; gradient inert when COLLAPSE_V69=0 (α=0 init makes them no-ops anyway).
+        #   codebook_keys/values: (N, hidden) — transform stage (match against prototypes)
+        #   gate_w/b: (hidden, hidden) / (hidden,) — quantize stage (importance per dim,
+        #     conditioned on prototype). Bias init COLLAPSE_GATE_BIAS=+2 → sigmoid≈0.88
+        #     at init → keep most dims initially, sharpen via gradient.
+        #   proj_down/up: (hidden, waist_dim) / (waist_dim, hidden) — encode stage
+        #   alpha: (1,) — residual scale, zero-init (LoRA-style, gradient builds it)
+        cb_n = max(1, COLLAPSE_CODEBOOK_N)
+        cb_d = COLLAPSE_WAIST_DIM
+        self.collapse_codebook_keys   = (Tensor.randn(cb_n, cfg.hidden, dtype=dtypes.float) * 0.02).contiguous()
+        self.collapse_codebook_values = (Tensor.randn(cb_n, cfg.hidden, dtype=dtypes.float) * 0.02).contiguous()
+        self.collapse_gate_w          = (Tensor.randn(cfg.hidden, cfg.hidden, dtype=dtypes.float) * 0.02).contiguous()
+        self.collapse_gate_b          = (Tensor.ones((cfg.hidden,), dtype=dtypes.float) * COLLAPSE_GATE_BIAS).contiguous()
+        self.collapse_proj_down       = (Tensor.randn(cfg.hidden, cb_d, dtype=dtypes.float) * 0.02).contiguous()
+        self.collapse_proj_up         = (Tensor.randn(cb_d, cfg.hidden, dtype=dtypes.float) * 0.02).contiguous()
+        self.collapse_alpha           = Tensor.zeros((1,), dtype=dtypes.float).contiguous()
+        # Last-call cache (for entropy logging) — written by apply_collapse_v69, read by trainer.
+        # Not a learnable param.
+        self._collapse_last_match_entropy = None
+
         # v38 B-field IB bottleneck — single waist between L1 and L2 per breath.
         # Allocate at max(1, BFIELD_WAIST) so state_dict shapes are consistent
         # across runs even when disabled; gradient is inert when BFIELD_WAIST=0.
@@ -1267,6 +1306,57 @@ class BreathingBlock:
             out = (x_f + self.bfield_alpha * decompressed).cast(x.dtype)
         if return_compressed:
             return out, compressed.cast(x.dtype)
+        return out
+
+    def apply_collapse_v69(self, x: Tensor, return_compressed: bool = False) -> Tensor:
+        """v69 collapse: JPEG-inspired lossy compression at the waist.
+
+        Pipeline:
+          1. TRANSFORM   — codebook matching: softmax((x @ keys) / τ) @ values = prototype
+          2. RESIDUAL    — residual = x − prototype  (what doesn't fit any prototype)
+          3. QUANTIZE    — importance = sigmoid(prototype @ gate_w + gate_b)
+                          residual_gated = residual × importance
+          4. ENCODE      — waist_compressed = residual_gated @ proj_down  (1024 → 128)
+          5. RECONSTRUCT — correction = prototype + (waist_compressed @ proj_up)
+                          out = x + α × correction   (α=0 init → step 0 ≈ identity)
+
+        Per-breath supervision: WaistController reads waist_compressed and decodes step-k
+        tokens. Gradient flows back through the entire pipeline. The gate learns
+        "what dimensions matter" from the consequences of dropping them.
+
+        Confidence (free): residual.norm() — how much the prototype DOESN'T explain.
+        Match entropy (logged): −Σ p log p of match_weights — how peaked the matching is.
+        """
+        x_f = x.cast(dtypes.float)
+        # 1. TRANSFORM — codebook match
+        # scores: (B, T, N), match_weights: (B, T, N), prototype: (B, T, hidden)
+        scores = (x_f @ self.collapse_codebook_keys.T) / (float(self.collapse_codebook_keys.shape[-1]) ** 0.5)
+        match_weights = (scores / COLLAPSE_TAU).softmax(axis=-1)
+        prototype = match_weights @ self.collapse_codebook_values
+
+        # 2. RESIDUAL
+        residual = x_f - prototype
+
+        # 3. QUANTIZE — operation-conditioned gate
+        # importance: (B, T, hidden) — values in (0, 1) via sigmoid
+        importance = (prototype @ self.collapse_gate_w + self.collapse_gate_b).sigmoid()
+        residual_gated = residual * importance
+
+        # 4. ENCODE — compress to waist_dim
+        waist_compressed = residual_gated @ self.collapse_proj_down  # (B, T, waist_dim)
+
+        # 5. RECONSTRUCT
+        residual_decompressed = waist_compressed @ self.collapse_proj_up  # (B, T, hidden)
+        correction = prototype + residual_decompressed
+        out = (x_f + self.collapse_alpha * correction).cast(x.dtype)
+
+        # Cache last-call match_weights entropy for logging (one scalar, cheap)
+        # entropy = -Σ p log p, averaged across (B, T)
+        ent = -(match_weights * (match_weights + 1e-12).log()).sum(axis=-1).mean()
+        self._collapse_last_match_entropy = ent
+
+        if return_compressed:
+            return out, waist_compressed.cast(x.dtype)
         return out
 
     def dag_notebook_init_storage(self, B: int) -> Tensor:
@@ -1373,6 +1463,14 @@ class BreathingBlock:
         ps.append(self.nb_dag_write_b)
         ps.append(self.nb_dag_write_query)
         ps.append(self.nb_dag_pos_embed)
+        # v69 collapse mechanism — always in optimizer when allocated (inert at α=0 init).
+        ps.append(self.collapse_codebook_keys)
+        ps.append(self.collapse_codebook_values)
+        ps.append(self.collapse_gate_w)
+        ps.append(self.collapse_gate_b)
+        ps.append(self.collapse_proj_down)
+        ps.append(self.collapse_proj_up)
+        ps.append(self.collapse_alpha)
         ps.append(self.bfield_proj_down)
         ps.append(self.bfield_proj_up)
         ps.append(self.bfield_bias)
@@ -1466,9 +1564,16 @@ class BreathingBlock:
             # v39: when BFIELD_END_OF_BREATH=1, this fires AFTER L3 instead (below).
             if BFIELD_WAIST > 0 and layer_idx == 1 and not BFIELD_END_OF_BREATH:
                 x = self.apply_bfield_waist(x)
-        # --- v39 B-field end-of-breath waist (after all 4 layers complete) ---
+        # --- v69 COLLAPSE: JPEG-inspired lossy compression replaces B-field waist ---
+        # When COLLAPSE_V69=1, the end-of-breath waist is the new pipeline: codebook
+        # match → gate → 128d encode → residual block. Otherwise v66's B-field MLP.
         waist_compressed = None
-        if BFIELD_WAIST > 0 and BFIELD_END_OF_BREATH:
+        if COLLAPSE_V69:
+            if return_waist_compressed:
+                x, waist_compressed = self.apply_collapse_v69(x, return_compressed=True)
+            else:
+                x = self.apply_collapse_v69(x)
+        elif BFIELD_WAIST > 0 and BFIELD_END_OF_BREATH:
             if return_waist_compressed:
                 x, waist_compressed = self.apply_bfield_waist(x, return_compressed=True)
             else:
@@ -1735,7 +1840,8 @@ class BreathingTransformer:
         # v54 WaistController — small cross-attention decoder over (waist, prompt).
         # Allocated always (state_dict symmetry); only USED when CONTROLLER_DECODE=1.
         # bf_w = waist dim (max 1 for symmetry if BFIELD_WAIST=0).
-        _bf_w_for_wc = max(1, BFIELD_WAIST)
+        # v69: waist dim for the controller depends on which collapse mechanism is active.
+        _bf_w_for_wc = COLLAPSE_WAIST_DIM if COLLAPSE_V69 else max(1, BFIELD_WAIST)
         self.waist_controller = WaistController(cfg, waist_dim=_bf_w_for_wc, n_layers=CONTROLLER_N_LAYERS)
         # Per-step optimal-stopping calibration head. Reads the rep at a step's
         # "=" position and emits scalar confidence in (0,1). Trained jointly with
@@ -1840,6 +1946,14 @@ class BreathingTransformer:
         sd["block.nb_dag_write_b"]     = self.block.nb_dag_write_b
         sd["block.nb_dag_write_query"] = self.block.nb_dag_write_query
         sd["block.nb_dag_pos_embed"]   = self.block.nb_dag_pos_embed
+        # v69 collapse
+        sd["block.collapse_codebook_keys"]   = self.block.collapse_codebook_keys
+        sd["block.collapse_codebook_values"] = self.block.collapse_codebook_values
+        sd["block.collapse_gate_w"]          = self.block.collapse_gate_w
+        sd["block.collapse_gate_b"]          = self.block.collapse_gate_b
+        sd["block.collapse_proj_down"]       = self.block.collapse_proj_down
+        sd["block.collapse_proj_up"]         = self.block.collapse_proj_up
+        sd["block.collapse_alpha"]           = self.block.collapse_alpha
         sd["block.bfield_proj_down"] = self.block.bfield_proj_down
         sd["block.bfield_proj_up"] = self.block.bfield_proj_up
         sd["block.bfield_bias"] = self.block.bfield_bias
