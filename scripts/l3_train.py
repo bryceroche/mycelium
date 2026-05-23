@@ -147,6 +147,14 @@ def collect_params(model):
     # Always included for ckpt symmetry; gradient inert when WAIST_CODEBOOK_N=0
     # (values are zero-init → contribution is zero → gradient through retrieved is zero).
     nps += [model.block.waist_codebook_keys, model.block.waist_codebook_values]
+    # v69 collapse — JPEG-style lossy compression. Only included when COLLAPSE_V69=1
+    # (forward path uses these only then; otherwise they'd have None grad → opt.step fails).
+    from mycelium.breathing import COLLAPSE_V69 as _COLLAPSE_V69
+    if _COLLAPSE_V69:
+        nps += [model.block.collapse_codebook_keys, model.block.collapse_codebook_values,
+                model.block.collapse_gate_w, model.block.collapse_gate_b,
+                model.block.collapse_proj_down, model.block.collapse_proj_up,
+                model.block.collapse_alpha]
     # v39 waist head (512 → 4 op classifier) — trained when BFIELD_AUX_WEIGHT > 0
     # and BFIELD_END_OF_BREATH=1. L2 reg covers the off case.
     nps += [model.waist_head_w, model.waist_head_b]
@@ -666,7 +674,21 @@ def main():
                 pb_str = "  pb_ce=[" + " ".join(f"{c:.3f}" for c in per_breath_info) + "]"
                 # v66 waist norm (computed every step inside JIT; logged every 10 steps)
                 wn_str = f"  waist_norm={_per_breath_waist_norm:.4f}" if _per_breath_waist_norm is not None else ""
-                print(f"step {step:4d}  K={len(per_breath_info)}  loss={loss:.4f}{pb_str}{wn_str}{ctrl_str}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)
+                # v69 codebook match-weights entropy (every 100 steps; diagnostic for soft-VQ health)
+                ent_str = ""
+                try:
+                    from mycelium.breathing import COLLAPSE_V69 as _CV69
+                    if _CV69 and step % 100 == 0:
+                        ent_tensor = getattr(model.block, "_collapse_last_match_entropy", None)
+                        if ent_tensor is not None:
+                            ent_val = float(ent_tensor.numpy())
+                            import math
+                            # max possible entropy for uniform softmax over N entries
+                            max_ent = math.log(model.block.collapse_codebook_keys.shape[0])
+                            ent_str = f"  cb_ent={ent_val:.3f}/{max_ent:.3f}"
+                except Exception:
+                    pass
+                print(f"step {step:4d}  K={len(per_breath_info)}  loss={loss:.4f}{pb_str}{wn_str}{ent_str}{ctrl_str}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)
             else:
                 print(f"step {step:4d}  A={phase_a_loops} C={PHASE_C_LOOPS}  loss={loss:.4f}{ctrl_str}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)
             # Log mem usage at step 0 (post first JIT compile) and every 50 steps after
