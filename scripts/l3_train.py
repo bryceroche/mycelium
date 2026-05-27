@@ -155,6 +155,25 @@ def collect_params(model):
                 model.block.collapse_gate_w, model.block.collapse_gate_b,
                 model.block.collapse_proj_down, model.block.collapse_proj_up,
                 model.block.collapse_alpha]
+    # v70 collapse — waist-dim codebook + split gate (proto/breath) + budget sparsity.
+    from mycelium.breathing import COLLAPSE_V70 as _COLLAPSE_V70
+    if _COLLAPSE_V70:
+        nps += [model.block.collapse_v70_codebook_keys, model.block.collapse_v70_codebook_values,
+                model.block.collapse_v70_proj_down, model.block.collapse_v70_proj_up,
+                model.block.collapse_v70_bias,
+                model.block.collapse_v70_gate_w_proto, model.block.collapse_v70_gate_w_breath,
+                model.block.collapse_v70_gate_b,
+                model.block.collapse_v70_breath_embed, model.block.collapse_v70_alpha]
+    # v71 collapse — refined v70 (10× sparsity weight, lower gate bias, k-means codebook,
+    # cleaner controller signal). Only in optimizer when COLLAPSE_V71=1.
+    from mycelium.breathing import COLLAPSE_V71 as _COLLAPSE_V71
+    if _COLLAPSE_V71:
+        nps += [model.block.collapse_v71_codebook_keys, model.block.collapse_v71_codebook_values,
+                model.block.collapse_v71_proj_down, model.block.collapse_v71_proj_up,
+                model.block.collapse_v71_bias,
+                model.block.collapse_v71_gate_w_proto, model.block.collapse_v71_gate_w_breath,
+                model.block.collapse_v71_gate_b,
+                model.block.collapse_v71_breath_embed, model.block.collapse_v71_alpha]
     # v39 waist head (512 → 4 op classifier) — trained when BFIELD_AUX_WEIGHT > 0
     # and BFIELD_END_OF_BREATH=1. L2 reg covers the off case.
     nps += [model.waist_head_w, model.waist_head_b]
@@ -162,12 +181,48 @@ def collect_params(model):
     # Always included so opt.step() has a defined gradient for these params even when
     # CALIBRATION_MODE=0 (gradient is zero in that path, weights don't move).
     nps += model.confidence_head.parameters()
+    # v78 per-head model codebook — only added to optimizer when V78_HEAD_CODEBOOK=1
+    # (forward path skips it otherwise → grad would be None → AdamW assertion).
+    # State_dict registration is separate (always present for ckpt symmetry).
+    from mycelium.breathing import V78_HEAD_CODEBOOK as _V78_HC, TWO_PHASE as _TP_V78
+    if _V78_HC:
+        if _TP_V78:
+            for layer in list(model.block.expand_layers) + list(model.block.compress_layers):
+                nps += [layer.v78_head_codebook]
+        else:
+            for layer in model.block.layers:
+                nps += [layer.v78_head_codebook]
+            # v44 layers_b participate only when DOUBLED_LAYERS=1 (forward path uses Set B).
+            from mycelium.breathing import DOUBLED_LAYERS as _DL_V78
+            if _DL_V78:
+                for layer in model.block.layers_b:
+                    nps += [layer.v78_head_codebook]
     # v54 WaistController — cross-attention text decoder over (waist, prompt).
     # Only added to params (and therefore optimizer-trained) when CONTROLLER_DECODE=1,
     # because the other train paths don't touch it and AdamW would assert on missing grads.
-    from mycelium.breathing import CONTROLLER_DECODE as _CD
+    from mycelium.breathing import CONTROLLER_DECODE as _CD, WAIST_COPY as _WC, MULTI_HEAD_WAIST as _MHW
     if _CD:
-        nps += model.waist_controller.parameters()
+        # Get the base params, but EXCLUDE the v72 copy params from the default list:
+        # they're tail-appended by WaistController.parameters() so we can include them
+        # only when WAIST_COPY=1 (forward path skips them otherwise, AdamW would assert
+        # on None grad). Match by identity to stay robust if list order changes.
+        all_wc = model.waist_controller.parameters()
+        copy_ids = {id(model.waist_controller.copy_q_w),
+                    id(model.waist_controller.copy_k_w),
+                    id(model.waist_controller.copy_gate_w),
+                    id(model.waist_controller.copy_gate_b)}
+        base_wc = [p for p in all_wc if id(p) not in copy_ids]
+        nps += base_wc
+        if _WC:
+            nps += [model.waist_controller.copy_q_w,
+                    model.waist_controller.copy_k_w,
+                    model.waist_controller.copy_gate_w,
+                    model.waist_controller.copy_gate_b]
+        # v81 multi-head MLPs — only optimizer-trained when MULTI_HEAD_WAIST=1
+        # (otherwise the forward path is the single-head legacy and the MLPs see
+        # no gradient → AdamW would assert).
+        if _MHW:
+            nps += model.waist_controller.multi_head_parameters()
     return nps
 
 
@@ -318,15 +373,32 @@ def main():
         # which asserts uniform K across a batch — so we bucket by K and each batch
         # is drawn from a single K bucket. JIT compiles a separate kernel per K
         # (the JIT cache key includes K).
-        from mycelium.l3_data import load_gsm8k_steps
+        #
+        # v77 path (V77_DAG_TRAINING=1): swap the loader to load_gsm8k_v77. Each
+        # example carries per_layer_target (length=6) instead of gen_targets; we
+        # still bucket by n_steps for the batch-size assertion to hold within
+        # per_breath_train_step (uniform-K assertion is satisfied since N_BREATHS
+        # is fixed at 6 in the V77 path; the K bucketing serves a different purpose:
+        # keeping problems of similar complexity together for stable training).
+        V77_DAG_TRAINING = int(getenv("V77_DAG_TRAINING", "0")) > 0
         GSM8K_STEPS_PATH = getenv("GSM8K_STEPS_PATH", ".cache/gsm8k_steps_v1_train.jsonl")
         GSM8K_STEPS_MIN_K = int(getenv("GSM8K_STEPS_MIN_K", 2))
         GSM8K_STEPS_MAX_K = int(getenv("GSM8K_STEPS_MAX_K", 6))  # K=7+ pushes FIXED_LEN; cap by default
-        print(f"loading GSM8K-steps from {GSM8K_STEPS_PATH} (min_k={GSM8K_STEPS_MIN_K}, max_k={GSM8K_STEPS_MAX_K})...")
-        t0 = time.perf_counter()
-        gsm8k_step_buckets = load_gsm8k_steps(GSM8K_STEPS_PATH,
-                                                min_k=GSM8K_STEPS_MIN_K, max_k=GSM8K_STEPS_MAX_K,
-                                                bucket_by_k=True)
+        if V77_DAG_TRAINING:
+            from mycelium.l3_data import load_gsm8k_v77 as _v77_loader
+            print(f"loading v77 DAG-layered GSM8K from {GSM8K_STEPS_PATH} (min_k={GSM8K_STEPS_MIN_K}, max_k={GSM8K_STEPS_MAX_K})...")
+            t0 = time.perf_counter()
+            gsm8k_step_buckets = _v77_loader(GSM8K_STEPS_PATH,
+                                              min_k=GSM8K_STEPS_MIN_K, max_k=GSM8K_STEPS_MAX_K,
+                                              require_sympy_match=True,
+                                              bucket_by_k=True)
+        else:
+            from mycelium.l3_data import load_gsm8k_steps
+            print(f"loading GSM8K-steps from {GSM8K_STEPS_PATH} (min_k={GSM8K_STEPS_MIN_K}, max_k={GSM8K_STEPS_MAX_K})...")
+            t0 = time.perf_counter()
+            gsm8k_step_buckets = load_gsm8k_steps(GSM8K_STEPS_PATH,
+                                                    min_k=GSM8K_STEPS_MIN_K, max_k=GSM8K_STEPS_MAX_K,
+                                                    bucket_by_k=True)
         # Hold out a small slice per bucket as eval — proportional to bucket size, capped at NUM_EVAL total.
         # The full GSM8K test set lives under GSM8K_SPACED; this slice is just for in-training acc tracking.
         eval_examples = []
@@ -339,15 +411,24 @@ def main():
             eval_examples.extend(bucket[:n_eval_k])
             train_buckets[k] = bucket[n_eval_k:]
         train_examples = [ex for k in sorted(train_buckets) for ex in train_buckets[k]]  # flat fallback
+
+        def _ex_k(e):
+            return getattr(e, "n_steps", None) if V77_DAG_TRAINING else len(e.gen_targets)
+
         print(f"  loaded {total_keep} examples across K={sorted(gsm8k_step_buckets)} buckets:")
         for k in sorted(train_buckets):
-            print(f"    K={k}: train={len(train_buckets[k])} eval={len([e for e in eval_examples if len(e.gen_targets) == k])}")
+            print(f"    K={k}: train={len(train_buckets[k])} eval={sum(1 for e in eval_examples if _ex_k(e) == k)}")
         print(f"  total: train={sum(len(v) for v in train_buckets.values())} eval={len(eval_examples)} ({time.perf_counter()-t0:.1f}s)")
         ex0 = train_examples[0] if train_examples else None
         if ex0:
-            print(f"  sample (K={len(ex0.gen_targets)}): {ex0.problem[:100]}")
-            for i, g in enumerate(ex0.gen_targets):
-                print(f"    step {i+1}: {g[:120]}")
+            if V77_DAG_TRAINING:
+                print(f"  sample v77 (n_steps={ex0.n_steps}, n_layers={ex0.n_layers}): {ex0.problem[:100]}")
+                for ell in range(ex0.n_layers):
+                    print(f"    L{ell}: {ex0.per_layer_target[ell][:120]}")
+            else:
+                print(f"  sample (K={len(ex0.gen_targets)}): {ex0.problem[:100]}")
+                for i, g in enumerate(ex0.gen_targets):
+                    print(f"    step {i+1}: {g[:120]}")
     else:
         print(f"generating {LEVEL} problems...")
         t0 = time.perf_counter()
@@ -377,6 +458,19 @@ def main():
         load_checkpoint(model, RESUME_FROM)
         print("  loaded.")
         mem_log("after ckpt resume")
+
+    # v77b orthogonal breath_embed override. Applied AFTER load_checkpoint so
+    # the warm-start ckpt's tiny trained breath_embed values don't overwrite
+    # the orthogonal init. The override targets model.block.breath_embed
+    # in-place via .assign() to preserve tensor identity for the optimizer.
+    BREATH_EMBED_ORTHO_INIT = float(getenv("BREATH_EMBED_ORTHO_INIT", "0.0"))
+    if BREATH_EMBED_ORTHO_INIT > 0.0:
+        from mycelium.breathing import _make_orthogonal_breath_embed
+        ortho_np = _make_orthogonal_breath_embed(cfg.max_loops, cfg.hidden, BREATH_EMBED_ORTHO_INIT, seed=42)
+        ortho_t = Tensor(ortho_np, dtype=model.block.breath_embed.dtype).to(model.block.breath_embed.device).contiguous()
+        model.block.breath_embed.assign(ortho_t).realize()
+        norms = np.linalg.norm(ortho_np, axis=1)
+        print(f"  breath_embed ortho-init applied: L2 norms = [{', '.join(f'{n:.3f}' for n in norms)}]")
 
     params = collect_params(model)
     # Bumped default 0.01 → 0.05 (2026-05-17) as part of the regularization pass
@@ -686,6 +780,38 @@ def main():
                             # max possible entropy for uniform softmax over N entries
                             max_ent = math.log(model.block.collapse_codebook_keys.shape[0])
                             ent_str = f"  cb_ent={ent_val:.3f}/{max_ent:.3f}"
+                except Exception:
+                    pass
+                # v70 codebook entropy + gate importance mean
+                try:
+                    from mycelium.breathing import COLLAPSE_V70 as _CV70
+                    if _CV70 and step % 100 == 0:
+                        ent_tensor70 = getattr(model.block, "_collapse_v70_last_match_entropy", None)
+                        imp_tensor70 = getattr(model.block, "_collapse_v70_last_importance_mean", None)
+                        if ent_tensor70 is not None:
+                            ent_val70 = float(ent_tensor70.numpy())
+                            import math
+                            max_ent70 = math.log(model.block.collapse_v70_codebook_keys.shape[0])
+                            ent_str += f"  cb70={ent_val70:.3f}/{max_ent70:.3f}"
+                        if imp_tensor70 is not None:
+                            imp_val70 = float(imp_tensor70.numpy())
+                            ent_str += f"  gate={imp_val70:.3f}"
+                except Exception:
+                    pass
+                # v71 codebook entropy + gate importance mean (parallel to v70 logging)
+                try:
+                    from mycelium.breathing import COLLAPSE_V71 as _CV71
+                    if _CV71 and step % 100 == 0:
+                        ent_tensor71 = getattr(model.block, "_collapse_v71_last_match_entropy", None)
+                        imp_tensor71 = getattr(model.block, "_collapse_v71_last_importance_mean", None)
+                        if ent_tensor71 is not None:
+                            ent_val71 = float(ent_tensor71.numpy())
+                            import math
+                            max_ent71 = math.log(model.block.collapse_v71_codebook_keys.shape[0])
+                            ent_str += f"  cb71={ent_val71:.3f}/{max_ent71:.3f}"
+                        if imp_tensor71 is not None:
+                            imp_val71 = float(imp_tensor71.numpy())
+                            ent_str += f"  gate71={imp_val71:.3f}"
                 except Exception:
                     pass
                 print(f"step {step:4d}  K={len(per_breath_info)}  loss={loss:.4f}{pb_str}{wn_str}{ent_str}{ctrl_str}  ({dt:.2f}s, total {elapsed:.0f}s)", flush=True)

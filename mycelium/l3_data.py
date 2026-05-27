@@ -436,6 +436,154 @@ def load_gsm8k_steps(jsonl_path: str, min_k: int | None = None, max_k: int | Non
     return examples
 
 
+@dataclass
+class V77Example:
+    """v77 DAG-layered example.
+
+    The model is supervised per-breath: breath b decodes the b-th layer of
+    progressively-refined supervision (paraphrase -> ... -> pure DAG). The
+    final layer (Layer N-1, typically L5) is a SymPy-executable DAG string.
+
+    Fields:
+        problem:          digit-spaced problem text (same as GSM8K_STEPS).
+        gold_answer:      numeric answer (matches gold).
+        per_layer_target: list of strings, one per layer. per_layer_target[b]
+                          is the supervision target for breath b. Layer N-1
+                          should be the pure DAG (SymPy-executable).
+        n_steps:          number of original reasoning steps in the gold solution
+                          (informational; kept for compatibility with K-bucketing).
+        sympy_value:      what SymPy actually returned for the final DAG (used
+                          as a soft validation gate at filter-time).
+        layers_raw:       the raw layers dict {L0: ..., L5: ...} (for inspection).
+
+    Note: Bryce's task brief described `per_step_layers: list[list[str]]` of
+    shape (n_steps, n_layers). In practice Haiku produces ONE layer-b text per
+    PROBLEM (already covering all reasoning steps), so the natural representation
+    is flat: `per_layer_target` of length n_layers. The (n_steps, n_layers)
+    matrix would be redundant — each row would be identical. Documenting the
+    choice explicitly here.
+    """
+    problem: str
+    gold_answer: float
+    per_layer_target: List[str]
+    n_steps: int
+    sympy_value: float | None
+    layers_raw: dict
+    level: str = "GSM8K_V77"
+
+    @property
+    def n_layers(self) -> int:
+        return len(self.per_layer_target)
+
+
+def load_gsm8k_v77(jsonl_path: str,
+                   min_k: int | None = None,
+                   max_k: int | None = None,
+                   require_sympy_match: bool = True,
+                   bucket_by_k: bool = False):
+    """Load v77 layered targets produced by scripts/v77_haiku_generate_layers.py.
+
+    Each line in the JSONL is:
+        {"problem": ..., "gen_targets": [...], "answer": <int>, "n_steps": <int>,
+         "layers": {"L0": ..., "L1": ..., ..., "L5": "x0 = 50 + 15 ; answer = x0"},
+         "sympy_value": <float|null>, "sympy_executable": <bool>,
+         "sympy_matches_gold": <bool>, "usage": {...}}
+
+    Args:
+        jsonl_path: path to the JSONL.
+        min_k / max_k: optional filters on n_steps.
+        require_sympy_match: if True (default), drop records whose final DAG
+            doesn't execute via SymPy to match the gold answer.
+        bucket_by_k: if True, return a dict {n_steps: [examples]}; else a flat list.
+    """
+    import json
+    examples: List[V77Example] = []
+    n_records = 0
+    n_dropped_sympy = 0
+    n_dropped_k = 0
+    n_failed_api = 0
+    with open(jsonl_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            rec = json.loads(line)
+            if rec.get("__failed_api__"):
+                n_failed_api += 1
+                continue
+            n_records += 1
+            k = rec.get("n_steps", len(rec.get("gen_targets", [])))
+            if min_k is not None and k < min_k:
+                n_dropped_k += 1
+                continue
+            if max_k is not None and k > max_k:
+                n_dropped_k += 1
+                continue
+            if require_sympy_match and not rec.get("sympy_matches_gold", False):
+                n_dropped_sympy += 1
+                continue
+            # Extract layers in order: L0, L1, ..., L<n_layers-1>.
+            layers_raw = rec["layers"]
+            # Determine n_layers from keys (skip __raw__).
+            layer_keys = sorted([k for k in layers_raw if k.startswith("L") and k != "__raw__"],
+                                key=lambda s: int(s[1:]))
+            per_layer_target = [layers_raw[k] for k in layer_keys]
+            examples.append(V77Example(
+                problem=rec["problem"],
+                gold_answer=float(rec["answer"]),
+                per_layer_target=per_layer_target,
+                n_steps=k,
+                sympy_value=rec.get("sympy_value"),
+                layers_raw={k: layers_raw[k] for k in layer_keys},
+                level=f"GSM8K_V77_K{k}",
+            ))
+    print(f"[v77 loader] {jsonl_path}: kept {len(examples)}/{n_records} "
+          f"(dropped: sympy_mismatch={n_dropped_sympy}, k_filter={n_dropped_k}, api_fail={n_failed_api})")
+    if bucket_by_k:
+        buckets: dict[int, List[V77Example]] = {}
+        for ex in examples:
+            buckets.setdefault(ex.n_steps, []).append(ex)
+        return buckets
+    return examples
+
+
+def encode_v77(tok, ex: V77Example, eos_id: int = 0,
+               include_eos: bool = True) -> Tuple[List[int], List[Tuple[int, int]], List[List[int]]]:
+    """Encode a V77Example for per-breath supervision.
+
+    Returns:
+      tokens:           full input id sequence = problem + " " + L0 + EOS
+                        (we use L0 as the BASE sequence for token positions; the
+                         per-breath labels then target L0..L5 at the same span).
+                        BUT — the layers vary in length, so we use the LONGEST
+                        layer as the canonical token sequence and labels are
+                        per-layer targets at matching positions.
+      per_layer_ranges: list of (start_pos, end_pos) per layer in the token sequence.
+                        Currently every layer occupies the SAME start..end range
+                        (the per-breath labels just substitute different tokens
+                        in that range).
+      per_layer_label_ids: list of (length B per problem) of label-id lists for each
+                        layer's target tokens at the matching positions.
+
+    Strategy: build per-layer token sequences (prompt + layer_b_text + EOS),
+    pad each to the max length, and supervise breath b against layer-b's
+    label positions only. Outside the layer span -> -100 (ignored).
+
+    Returns:
+      problem_ids:          (T_p,) int — tokenized problem prefix
+      per_layer_label_ids:  list[L] of (T_b,) int — tokenized layer-b target text
+                            (NOT including EOS — that's added at the end of the longest layer).
+    """
+    p_ids = tok.encode(ex.problem).ids
+    per_layer_target_ids: List[List[int]] = []
+    for b, layer_text in enumerate(ex.per_layer_target):
+        # Lead with " " on the first layer; each layer text is its own continuation.
+        target_text = " " + layer_text
+        target_ids = tok.encode(target_text).ids
+        per_layer_target_ids.append(list(target_ids))
+    return p_ids, per_layer_target_ids
+
+
 def encode_example(tok, ex: MathExample, eos_id: int = 0) -> Tuple[List[int], int, int]:
     """Tokenize problem + ' ' + gen + EOS. Returns (ids, problem_len, total_len).
 

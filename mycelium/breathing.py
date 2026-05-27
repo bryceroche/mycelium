@@ -81,6 +81,20 @@ ABLATE_BREATH_ROTATION = int(os.environ.get("ABLATE_BREATH_ROTATION", "0")) > 0
 BREATH_TIME_EMBED        = int(os.environ.get("BREATH_TIME_EMBED", "0")) > 0
 BREATH_TIME_INIT_SCALE   = float(os.environ.get("BREATH_TIME_INIT_SCALE", "0.02"))
 
+# v77b: orthogonal breath_embed initialization. Zero-init (v9 / v77) leaves the
+# breaths nearly indistinguishable after 1500 training steps (typical L2 norms
+# 0.08-0.17). At v77 we observed that gradient from breath 0 (Layer 0 verbal
+# target) and breath 5 (Layer 5 DAG target) effectively cancel each other —
+# different supervision targets pulling on the SAME (near-zero) embedding.
+#
+# When BREATH_EMBED_ORTHO_INIT > 0.0, init breath_embed as orthogonal vectors
+# (one row per breath) at the configured L2 norm. Each breath gets a unique,
+# linearly-independent signal at meaningful magnitude — separating the gradients.
+#
+# Override happens POST-LOAD in scripts/l3_train.py so warm-start ckpts don't
+# overwrite the orthogonal init with their tiny trained values.
+BREATH_EMBED_ORTHO_INIT  = float(os.environ.get("BREATH_EMBED_ORTHO_INIT", "0.0"))
+
 # Cross-breath handoff — relay-race baton between consecutive breaths. At the end
 # of each breath, a learned linear projection produces a "handoff vector" from
 # the breath's output. That vector is added to the next breath's input. Distinct
@@ -310,6 +324,64 @@ COLLAPSE_TAU             = float(os.environ.get("COLLAPSE_TAU", "1.0"))
 COLLAPSE_GATE_BIAS       = float(os.environ.get("COLLAPSE_GATE_BIAS", "2.0"))
 COLLAPSE_ENTROPY_REG     = float(os.environ.get("COLLAPSE_ENTROPY_REG", "0.01"))
 
+# v70 (2026-05-23) COLLAPSE refined — fixes v69's K≥4 regression.
+# Diagnostic 2026-05-23: v66 waist-position rank_95 trajectory is 263→192→157→135→118→103
+# across K=6 breaths. v69's 128d was below natural rank → 65% K=6 retention → catastrophic.
+# v70 design:
+#   - Fixed 512d waist (matches v66, JIT-safe)
+#   - Codebook 256 entries, conditioned gate emits importance (B, T, 512) per dim
+#   - Gate input: (prototype || breath_embed[breath_idx])  → learns breath-dependent compression
+#   - Budget-violation sparsity penalty: target_frac = 0.8 − 0.1·breath_idx
+#     (lagging-safe: only penalizes if importance.mean() > target; never punishes under-budget)
+#   - α=0 init, copy v66's bfield_proj_down/up/bias for byte-identical warm-start
+COLLAPSE_V70             = int(os.environ.get("COLLAPSE_V70", "0")) > 0
+COLLAPSE_V70_WAIST_DIM   = int(os.environ.get("COLLAPSE_V70_WAIST_DIM", "512"))
+COLLAPSE_V70_CODEBOOK_N  = int(os.environ.get("COLLAPSE_V70_CODEBOOK_N", "256"))
+COLLAPSE_V70_TAU         = float(os.environ.get("COLLAPSE_V70_TAU", "0.5"))
+COLLAPSE_V70_BREATH_DIM  = int(os.environ.get("COLLAPSE_V70_BREATH_DIM", "64"))
+COLLAPSE_V70_BUDGET_START = float(os.environ.get("COLLAPSE_V70_BUDGET_START", "0.80"))
+COLLAPSE_V70_BUDGET_DECAY = float(os.environ.get("COLLAPSE_V70_BUDGET_DECAY", "0.10"))
+COLLAPSE_V70_BUDGET_MIN  = float(os.environ.get("COLLAPSE_V70_BUDGET_MIN", "0.10"))
+COLLAPSE_V70_SPARSITY_WEIGHT = float(os.environ.get("COLLAPSE_V70_SPARSITY_WEIGHT", "0.1"))
+COLLAPSE_V70_GATE_BIAS   = float(os.environ.get("COLLAPSE_V70_GATE_BIAS", "4.6"))  # sigmoid(4.6)≈0.99
+
+# v71 (2026-05-23) COLLAPSE — fixes v70's three failure modes:
+#   1. SPARSITY_WEIGHT 0.1 → 1.0 (10× stronger; gate now feels pressure to close).
+#      At v70's W=0.1: sparsity loss was (0.19²)·0.1 ≈ 0.0036/breath ≈ 0.01 total
+#      vs CE ≈ 1.75 (0.6% of loss). At W=1.0: ~10% of CE (comparable; gradient real).
+#   2. GATE_BIAS 4.6 → 1.0 (sigmoid(1)=0.73 vs sigmoid(4.6)=0.99). Gate starts
+#      closer to budget target (0.80 at breath 0); needs less travel; avoids sigmoid
+#      saturation at init (gradient near-zero in the 0.99 regime).
+#   3. K-means codebook init (vs v70's randn × 0.02). Random codebook with τ=0.5
+#      still produces near-uniform softmax for 512d random vectors → no symmetry
+#      breaking at init. K-means centers from real v66 waist data → differentiated
+#      entries from step 0.
+#
+# Controller-input shift fix (architectural):
+#   v70's waist_compressed = (residual × importance) + prototype  → controller sees
+#   compressed_x · importance · 1 + prototype · (1 − importance)
+#   At init importance≈0.99 → ≈ compressed_x + 0.01·prototype (small but non-zero;
+#   as codebook drifts the controller's input shifts away from v66's known-good shape).
+#
+#   v71's waist_compressed = compressed_x × importance (NO prototype add-back to
+#   controller's read). At init this is exactly importance(=0.73 with GATE_BIAS=1.0)
+#   × compressed_x — a uniform scaling of v66's signal, no codebook-dependent shift.
+#   The codebook contribution still flows into the decompression path:
+#       decompressed = (waist_compressed + prototype) @ proj_up + bias
+#   so values learn additive content; importance learns where to keep signal vs
+#   where to drop it. The two pathways are decoupled at the controller's read.
+COLLAPSE_V71             = int(os.environ.get("COLLAPSE_V71", "0")) > 0
+COLLAPSE_V71_WAIST_DIM   = int(os.environ.get("COLLAPSE_V71_WAIST_DIM", "512"))
+COLLAPSE_V71_CODEBOOK_N  = int(os.environ.get("COLLAPSE_V71_CODEBOOK_N", "256"))
+COLLAPSE_V71_TAU         = float(os.environ.get("COLLAPSE_V71_TAU", "0.5"))
+COLLAPSE_V71_BREATH_DIM  = int(os.environ.get("COLLAPSE_V71_BREATH_DIM", "64"))
+COLLAPSE_V71_BUDGET_START = float(os.environ.get("COLLAPSE_V71_BUDGET_START", "0.80"))
+COLLAPSE_V71_BUDGET_DECAY = float(os.environ.get("COLLAPSE_V71_BUDGET_DECAY", "0.10"))
+COLLAPSE_V71_BUDGET_MIN  = float(os.environ.get("COLLAPSE_V71_BUDGET_MIN", "0.10"))
+COLLAPSE_V71_SPARSITY_WEIGHT = float(os.environ.get("COLLAPSE_V71_SPARSITY_WEIGHT", "1.0"))  # 10× v70
+COLLAPSE_V71_GATE_BIAS   = float(os.environ.get("COLLAPSE_V71_GATE_BIAS", "1.0"))  # sigmoid(1)≈0.73
+COLLAPSE_V71_KMEANS_INIT_PATH = os.environ.get("COLLAPSE_V71_KMEANS_INIT_PATH", "")
+
 # v65 per-breath prompt refresh: x_in = prev_breath_output + α × original_prompt_emb.
 # Skip connection from raw embeddings to every breath. Diagnosed root cause: the
 # 512d waist compression destroys entity identity (rename diagnostic 0/20 grounded).
@@ -391,8 +463,37 @@ PER_BREATH_DECODE = int(os.environ.get("PER_BREATH_DECODE", "0")) > 0
 # in rep space, decode only at end" objective gets implicit supervision via
 # the controller's text predictions.
 CONTROLLER_DECODE = int(os.environ.get("CONTROLLER_DECODE", "0")) > 0
-# Controller depth (number of cross-attn layers). 1-2 typical.
+# Controller depth (number of cross-attn layers). 1-2 typical; v78b uses 4 for
+# extra operand-binding capacity.
 CONTROLLER_N_LAYERS = int(os.environ.get("CONTROLLER_N_LAYERS", "1"))
+if CONTROLLER_N_LAYERS != 1:
+    print(f"[CONTROLLER_N_LAYERS] {CONTROLLER_N_LAYERS}", flush=True)
+# v72 Pointer-network copy mechanism at the WaistController. Addresses the
+# entity-tracking bottleneck (rename diagnostic: 0/20 grounded on v66 because
+# waist compression destroys entity identity). When WAIST_COPY=1, the
+# controller produces an additional "copy distribution" over prompt positions,
+# combined with the vocab softmax via a sigmoid gate. The model can POINT to a
+# prompt position and copy that token directly. State-dict-stable: params are
+# always allocated; gradient is inert when WAIST_COPY=0 (forward path skips).
+WAIST_COPY        = int(os.environ.get("WAIST_COPY", "0")) > 0
+# Bias for gate at init. sigmoid(-2.0) = 0.12 — copy starts SUPPRESSED, not 50/50.
+# Rationale: with random-init copy attention, p_copy is noise. At gate=0.5, noise
+# corrupts 50% of every prediction and CE pushes gate NEGATIVE (kills copy before
+# it can learn). At gate=0.12, only 12% noise contamination — model mostly generates
+# (matching v66 behavior), copy attention learns quietly in the background, gate
+# pulls UP on entity tokens once copy attention has learned where to point.
+WAIST_COPY_GATE_BIAS_INIT = float(os.environ.get("WAIST_COPY_GATE_BIAS_INIT", "-2.0"))
+# Aux loss directly supervising copy attention. When y_target appears in the prompt at
+# position i, copy_attn[t, i] should be high. Without this, the copy mechanism never
+# bootstraps — copy_attn stays random, p_copy stays low, gate stays closed (the
+# v69/v70 dead-codebook pattern). The aux loss is self-limiting: once copy_attn learns
+# where to point, CE makes p_copy[y] high → gate naturally opens → aux contribution
+# fades to near-zero. Default 1.0 — comparable to main CE, dominant during warm-up.
+WAIST_COPY_AUX_WEIGHT = float(os.environ.get("WAIST_COPY_AUX_WEIGHT", "1.0"))
+# Hidden dim for the copy Q/K projections. Small (128) — cheap, low-rank
+# attention space dedicated to "does this prompt token match what I want to
+# emit next?". Independent of the controller's H_ctrl.
+WAIST_COPY_HIDDEN = int(os.environ.get("WAIST_COPY_HIDDEN", "128"))
 # v28: prototype retrieval. The lookup table is extended with a values matrix
 # (n_entries, hidden) — each "prime operation" entry now has both a KEY (where
 # the basin sits in rep-space) and a VALUE (the ideal rep at the basin floor).
@@ -419,6 +520,94 @@ DROPOUT_RATE             = float(os.environ.get("DROPOUT_RATE", "0.0"))
 # expanding to hidden dim. Forces a compressed representation that can't encode
 # example-specific details — only "procedure shape" survives the bottleneck.
 LOOKUP_IB_DIM            = int(os.environ.get("LOOKUP_IB_DIM", "0"))
+# v75 (2026-05-23) Diffusion paradigm — bounded per-breath rep delta.
+# When MAX_STEP_SIZE > 0, the per-token L2 norm of (breathe_once output - input)
+# is capped at MAX_STEP_SIZE. Forces each breath to be a gradual refinement
+# rather than a giant leap; total transformation = integral of K small steps
+# (analogous to diffusion's β_t schedule). 0.0 = disabled (v66 behavior).
+# Companion to PER_BREATH_FULL_ANSWER and NOTEBOOK_NO_DETACH (both in l3_training.py).
+MAX_STEP_SIZE            = float(os.environ.get("MAX_STEP_SIZE", "0.0"))
+# v75 (2026-05-24) Half-cosine step-size schedule across K breaths.
+# When MAX_STEP_BASE > 0 (priority over MAX_STEP_SIZE), per-breath bound is:
+#   max_step_k = MAX_STEP_MIN + (MAX_STEP_BASE - MAX_STEP_MIN) * cos(π/2 * k / (K-1))
+# breath 0 = MAX_STEP_BASE (wide exploration, basin landing);
+# breath K-1 = MAX_STEP_MIN (tight commit, refinement). Matches diffusion's β_t
+# coarse-to-fine schedule. K=1 edge case: returns MAX_STEP_BASE.
+MAX_STEP_BASE            = float(os.environ.get("MAX_STEP_BASE", "0.0"))
+MAX_STEP_MIN             = float(os.environ.get("MAX_STEP_MIN",  "0.1"))
+# v75 Gradient flow through the notebook. The standard NOTEBOOK_V24 path does
+# NOT detach the notebook write — gradient already flows breath-to-breath via
+# `notebook = notebook + (x_pool @ W + b)`. This env var is a no-op for current
+# v66 architecture (kept for v75-aggressive variants that might re-introduce a
+# detach to remove). Default 0 preserves current behavior.
+NOTEBOOK_NO_DETACH       = int(os.environ.get("NOTEBOOK_NO_DETACH", "0")) > 0
+
+# v78 (2026-05-24) Per-head model codebook. Each of the n_heads attention heads
+# gets its own copy of an N-cell codebook (N_HEAD_CELLS, head_dim). When
+# V78_HEAD_CODEBOOK=1, each head's K and V are extended with the head's codebook
+# entries (concat along the sequence axis), so the head attends to BOTH sequence
+# positions and codebook cells. Init: ONE base codebook (randn × 0.02) replicated
+# across heads — shared init, independent training (each head's slice evolves
+# independently). Storage is always allocated for state-dict symmetry; gradient
+# inert when V78_HEAD_CODEBOOK=0. Default N_HEAD_CELLS=12 (4 ops × 3 dag step
+# types) — conceptual basis; cells learn their own meaning end-to-end.
+V78_HEAD_CODEBOOK        = int(os.environ.get("V78_HEAD_CODEBOOK", "0")) > 0
+V78_HEAD_CODEBOOK_N      = int(os.environ.get("V78_HEAD_CODEBOOK_N", "12"))
+
+# v78b (2026-05-25) Attention supervision. When WAIST_ATTN_SUPERVISION=1, the
+# WaistController stashes the post-softmax attention weights of its LAST
+# cross-attn layer (mean over heads). The trainer reads these via
+# `model.waist_controller._last_cross_attn` and supervises them to peak at
+# matching digit positions in the prompt via the WAIST_ATTN_AUX_WEIGHT-scaled
+# aux loss. v77 diagnosed wrong operands ("x0 = 2 + 2" vs "x0 = 2 + 1") — the
+# cross-attention was available but not directed; this gives it a direction.
+# Default 0 preserves v66-v78 behavior; the stash slot is None when off.
+WAIST_ATTN_SUPERVISION   = int(os.environ.get("WAIST_ATTN_SUPERVISION", "0")) > 0
+if WAIST_ATTN_SUPERVISION:
+    _WAIST_ATTN_AUX_WEIGHT_LOG = float(os.environ.get("WAIST_ATTN_AUX_WEIGHT", "0.5"))
+    print(f"[WAIST_ATTN_SUPERVISION] active, weight={_WAIST_ATTN_AUX_WEIGHT_LOG}", flush=True)
+
+# v79 (2026-05-25) Causal masks during TRAINING to plug lookahead leaks.
+# Two leaks fixed by these masks:
+#   1. WaistController cross-attn KV is `embed(tokens)`, which during training
+#      contains the gold answer tokens at positions >= prompt_len. With no mask,
+#      cross-attn at any decode position can see them — the model learns to
+#      "cheat" by attending to the gold span. At eval those positions are zero
+#      → degenerate output.
+#   2. notebook_write_query attention-pools over the WHOLE sequence; post-breath
+#      x at gold-answer positions carries gradient information about the gold.
+#      Notebook reads that → leaks gold across breaths.
+#
+# When V79_CAUSAL_MASKS=1, the trainer builds a per-example kv_mask that is 1.0
+# at positions [0, prompt_len) and 0.0 elsewhere, then passes it to both:
+#   - WaistController.forward(..., kv_mask=kv_mask)
+#   - breathe_with_lookup(..., notebook_pool_mask=kv_mask)  (added in v79)
+# Eval-time kv_mask use (eval_v77_dag.py) was added in v78c; v79 extends the
+# same idea to training so train and eval geometries match.
+V79_CAUSAL_MASKS         = int(os.environ.get("V79_CAUSAL_MASKS", "0")) > 0
+if V79_CAUSAL_MASKS:
+    print(f"[CAUSAL_MASK] cross-attn + notebook masked to prompt range during training", flush=True)
+
+
+# v81 (2026-05-26) Multi-head WaistController + main-attn answer-span masking.
+#
+# Two coupled changes:
+#   1. MULTI_HEAD_WAIST=1: WaistController emits FOUR parallel logit heads
+#      (ops / types / args1 / args2), one per list in v81's "4-list separated by |"
+#      training targets. All heads share the cross-attn backbone; each has its own
+#      pre-projection MLP before the shared embed_out vocab projection.
+#   2. V81_MAIN_ATTN_MASK=1: thread kv_mask as `main_attn_mask` into
+#      `breathe_with_lookup`. The mask blocks main-self-attention keys at
+#      answer-span positions AND zeros the input embeddings there. Combined with
+#      V79's notebook + cross-attn masks, this makes per-position predictions
+#      strictly prompt-conditional (no teacher-forcing leak). Audited via
+#      scripts/diag_v81_masking_audit.py — MUST pass before training.
+MULTI_HEAD_WAIST         = int(os.environ.get("MULTI_HEAD_WAIST", "0")) > 0
+V81_MAIN_ATTN_MASK       = int(os.environ.get("V81_MAIN_ATTN_MASK", "0")) > 0
+if MULTI_HEAD_WAIST:
+    print(f"[MULTI_HEAD_WAIST] WaistController emits 4 parallel heads (ops/types/args1/args2)", flush=True)
+if V81_MAIN_ATTN_MASK:
+    print(f"[V81_MAIN_ATTN_MASK] main-attn answer-span masking active", flush=True)
 
 
 def _sine_temp_baseline(loop_idx: int, n_loops: int) -> float:
@@ -460,6 +649,24 @@ def _initial_notebook_state(B: int, nb_dim: int) -> Tensor:
     return Tensor.zeros((B, nb_dim), dtype=dtypes.float)
 
 
+def _make_orthogonal_breath_embed(max_loops: int, hidden: int, norm: float, seed: int = 42) -> np.ndarray:
+    """v77b orthogonal breath_embed init. Returns shape (max_loops, hidden) where
+    each row has L2 = norm and rows are mutually orthogonal (when max_loops <= hidden).
+    Uses QR decomposition on a Gaussian random matrix; deterministic with seed.
+
+    Diagnosed from v77 step 1500: breath_embed rows had L2 0.08-0.17 after 1500
+    steps from zero-init — the breaths can't differentiate, so gradients from
+    Layer-0 supervision (breath 0) and Layer-5 supervision (breath 5) fight on
+    the same near-zero embedding. Orthogonal init at meaningful norm gives each
+    breath a unique, linearly-independent signal from step 0.
+    """
+    rng = np.random.RandomState(seed)
+    random_matrix = rng.randn(hidden, max_loops).astype(np.float32)
+    Q, _ = np.linalg.qr(random_matrix)            # (hidden, max_loops) orthonormal columns
+    ortho_embed = (Q.T * norm).astype(np.float32) # (max_loops, hidden), each row L2 = norm
+    return ortho_embed
+
+
 def _per_layer_norm_scale_within_breath(layer_idx: int, n_phases: int) -> float:
     """v24 photon-mode: rep norm follows the same wave as temperature. Layer 0 =
     peak amplitude (1.0×), layer n_phases//2 = collapse (NORM_MIN×), layer
@@ -487,6 +694,8 @@ if ABLATE_BREATH_ROTATION:
 if BREATH_TIME_EMBED:
     init_str = f"init_scale={BREATH_TIME_INIT_SCALE}" + (" (zero-init)" if BREATH_TIME_INIT_SCALE == 0.0 else "")
     print(f"[BREATH_TIME_EMBED] active axial conditioning ({init_str})", flush=True)
+if BREATH_EMBED_ORTHO_INIT > 0.0:
+    print(f"[BREATH_EMBED_ORTHO_INIT] ortho L2={BREATH_EMBED_ORTHO_INIT} per breath (post-load override)", flush=True)
 if CROSS_BREATH_HANDOFF:
     print(f"[CROSS_BREATH_HANDOFF] zero-init handoff projection between breaths (relay-race baton)", flush=True)
 if LEARN_PITCH:
@@ -528,8 +737,25 @@ if TWO_PHASE:
     print(f"[TWO_PHASE] EXPAND={EXPAND_LAYERS} layers @ temp={EXPAND_TEMP} | COMPRESS={COMPRESS_LAYERS} layers @ temp={COMPRESS_TEMP} — structural inhale-exhale", flush=True)
 if COLLAPSE_V69:
     print(f"[COLLAPSE_V69] waist={COLLAPSE_WAIST_DIM}d, codebook={COLLAPSE_CODEBOOK_N} entries, τ={COLLAPSE_TAU}, gate_bias={COLLAPSE_GATE_BIAS}, entropy_reg={COLLAPSE_ENTROPY_REG}", flush=True)
+if COLLAPSE_V70:
+    print(f"[COLLAPSE_V70] waist={COLLAPSE_V70_WAIST_DIM}d, codebook={COLLAPSE_V70_CODEBOOK_N} entries, τ={COLLAPSE_V70_TAU}, "
+          f"breath_dim={COLLAPSE_V70_BREATH_DIM}, budget={COLLAPSE_V70_BUDGET_START}-{COLLAPSE_V70_BUDGET_DECAY}·k≥{COLLAPSE_V70_BUDGET_MIN}, "
+          f"sparsity_w={COLLAPSE_V70_SPARSITY_WEIGHT}, gate_bias={COLLAPSE_V70_GATE_BIAS}", flush=True)
+if COLLAPSE_V71:
+    print(f"[COLLAPSE_V71] waist={COLLAPSE_V71_WAIST_DIM}d, codebook={COLLAPSE_V71_CODEBOOK_N} entries, τ={COLLAPSE_V71_TAU}, "
+          f"breath_dim={COLLAPSE_V71_BREATH_DIM}, budget={COLLAPSE_V71_BUDGET_START}-{COLLAPSE_V71_BUDGET_DECAY}·k≥{COLLAPSE_V71_BUDGET_MIN}, "
+          f"sparsity_w={COLLAPSE_V71_SPARSITY_WEIGHT} (10×v70), gate_bias={COLLAPSE_V71_GATE_BIAS} (sigmoid={1/(1+math.exp(-COLLAPSE_V71_GATE_BIAS)):.3f}), "
+          f"controller_reads=compressed_x·importance (no prototype add-back)", flush=True)
 if BOUNDARY_AUX_WEIGHT > 0.0:
     print(f"[BOUNDARY_AUX] weight={BOUNDARY_AUX_WEIGHT} — BCE on per-breath boundary head (predict next-token=####)", flush=True)
+if MAX_STEP_BASE > 0.0:
+    print(f"[STEP_SCHEDULE] cosine: base={MAX_STEP_BASE} -> min={MAX_STEP_MIN} across K breaths (half-cosine: k=0 wide, k=K-1 tight)", flush=True)
+elif MAX_STEP_SIZE > 0.0:
+    print(f"[MAX_STEP_SIZE] v75 bounded per-breath delta: per-token L2 norm of (breath_out - breath_in) capped at {MAX_STEP_SIZE}", flush=True)
+if NOTEBOOK_NO_DETACH:
+    print(f"[NOTEBOOK_NO_DETACH] gradient through notebook write path enabled (no-op in standard NOTEBOOK_V24 — write already non-detached)", flush=True)
+if V78_HEAD_CODEBOOK:
+    print(f"[V78_HEAD_CODEBOOK] per-head model codebook active: {V78_HEAD_CODEBOOK_N} cells × n_heads heads (each head extends K/V with its own codebook)", flush=True)
 
 
 # ---------- partial RoPE with π cycling ----------
@@ -763,11 +989,36 @@ class BreathingLayer:
         self.w_in = _linear_w(cfg.hidden, cfg.ffn)              # FFN dense_h_to_4h
         self.b_in = _bias(cfg.ffn)
 
+        # v78 (2026-05-24) Per-head model codebook. Shape (n_heads, N, head_dim).
+        # Each head gets its own copy of an N-cell codebook (init: ONE base codebook
+        # randn × 0.02 replicated across heads). Always allocated for state-dict
+        # symmetry; only used in attention when V78_HEAD_CODEBOOK=1.
+        #
+        # When active, the codebook entries are concatenated to K and V along the
+        # sequence-position axis: each head attends to (T + N) positions instead
+        # of T. The codebook acts as 'always-on memory cells' the head can route
+        # information through, distinct from the prompt/answer-text positions.
+        n_head_cells = max(1, V78_HEAD_CODEBOOK_N)
+        # Deterministic seed combining the layer's phase and a global salt so
+        # different (phase, codebook) instances start at different random tensors,
+        # but the same phase-layer always starts at the same place.
+        _phase_int = int(round(phase * 1e6))
+        _rng = np.random.RandomState(2078 + (_phase_int & 0x7fffffff))
+        _base_cb = (_rng.randn(n_head_cells, cfg.head_dim).astype(np.float32) * 0.02)
+        # Tile across n_heads — shared init, independent training (each head's
+        # slice evolves independently under gradient descent).
+        _tiled = np.broadcast_to(_base_cb[None, :, :], (cfg.n_heads, n_head_cells, cfg.head_dim)).copy()
+        self.v78_head_codebook = Tensor(_tiled, dtype=dtypes.float).contiguous()
+
         # Sine-wave temperature: T = exp(amp * sin(phase))
         self.temperature = math.exp(cfg.temp_amp * math.sin(phase))
         self.attn_scale = 1.0 / (math.sqrt(cfg.head_dim) * self.temperature)
 
     def parameters(self):
+        # v78 head_codebook NOT included here — it's gated via collect_params() in
+        # l3_train.py (only added to the optimizer when V78_HEAD_CODEBOOK=1, since
+        # otherwise its gradient is None and AdamW asserts on missing grads).
+        # State_dict registration is separate (always present for ckpt symmetry).
         return [self.wq, self.bq, self.wk, self.bk, self.w_in, self.b_in]
 
     def __call__(self, x: Tensor, loop_idx: int, attn_mask: Tensor | None = None,
@@ -979,16 +1230,43 @@ class BreathingLayer:
 
         if kv_cache is None:
             q, k = self.rope.apply(q, k, loop_idx, start_pos=0, alpha=alpha)
-            scores = q @ k.transpose(-2, -1) * scale
-            mask = Tensor.ones(S, S, dtype=scores.dtype).tril().reshape(1, 1, S, S)
+            # v78 head codebook: each head attends to T sequence positions + N codebook cells.
+            # Codebook entries are NOT causal-masked (always visible) and NOT padding-masked.
+            # K/V get extended along the sequence axis with the codebook (per-head, broadcast over batch).
+            if V78_HEAD_CODEBOOK:
+                N_cb = int(self.v78_head_codebook.shape[1])
+                # cb shape: (n_heads, N_cb, head_dim). Cast to attention dtype, broadcast to batch.
+                cb = self.v78_head_codebook.cast(k.dtype).reshape(1, cfg.n_heads, N_cb, cfg.head_dim)
+                cb_b = cb.expand(B, cfg.n_heads, N_cb, cfg.head_dim)
+                # Cat then force contiguous (AMD quirk: cat(view, expand) can slow down matmul).
+                k_ext = Tensor.cat(k, cb_b, dim=2).contiguous()
+                v_ext = Tensor.cat(v, cb_b, dim=2).contiguous()
+            else:
+                k_ext, v_ext = k, v
+                N_cb = 0
+            scores = q @ k_ext.transpose(-2, -1) * scale
+            # Causal mask only over the sequence positions (first S keys). Codebook
+            # cells (keys S..S+N_cb-1) are always visible → mask 1.0 there.
+            if N_cb > 0:
+                seq_mask = Tensor.ones(S, S, dtype=scores.dtype).tril()                 # (S, S)
+                cb_mask = Tensor.ones(S, N_cb, dtype=scores.dtype)                       # (S, N_cb) all visible
+                mask = Tensor.cat(seq_mask, cb_mask, dim=1).reshape(1, 1, S, S + N_cb)
+            else:
+                mask = Tensor.ones(S, S, dtype=scores.dtype).tril().reshape(1, 1, S, S)
             scores = scores.masked_fill(mask == 0, float("-inf"))
             if attn_mask is not None:
                 # attn_mask shape: (B, S) — 1 valid, 0 padding. Broadcast to (B, 1, 1, S).
-                key_mask = attn_mask.reshape(B, 1, 1, S).cast(dtypes.bool)
+                # When codebook is on, extend with all-1s over the N_cb codebook positions.
+                if N_cb > 0:
+                    ones_cb = Tensor.ones(B, N_cb, dtype=attn_mask.dtype)
+                    attn_mask_ext = Tensor.cat(attn_mask, ones_cb, dim=1)
+                else:
+                    attn_mask_ext = attn_mask
+                key_mask = attn_mask_ext.reshape(B, 1, 1, S + N_cb).cast(dtypes.bool)
                 scores = key_mask.where(scores, Tensor(-float("inf"), dtype=scores.dtype))
             # Clamp pre-softmax scores to prevent inf/NaN at head_dim=256 (H=2048).
             attn = scores.clip(-1e4, 1e4).softmax(-1)
-            ctx = (attn @ v).transpose(1, 2).reshape(B, S, H)
+            ctx = (attn @ v_ext).transpose(1, 2).reshape(B, S, H)
             attn_out = ctx @ self.shared.wo + self.shared.bo
             ff = (mlp_in_dt @ self.w_in + self.b_in).gelu()
             ffn_out = ff @ self.shared.w_out + self.shared.b_out
@@ -1236,6 +1514,85 @@ class BreathingBlock:
         # Not a learnable param.
         self._collapse_last_match_entropy = None
 
+        # --- v70 COLLAPSE: refined collapse with breath-conditioned gate + budget sparsity ---
+        # Allocated regardless of COLLAPSE_V70 flag for state-dict symmetry. Gradient inert
+        # when COLLAPSE_V70=0 (params not in forward path; opt skips them via collect_params).
+        # PERF (2026-05-23): codebook + gate moved from INPUT dim (1024) to WAIST dim (512).
+        # Cuts 3 of the 5 new v70 matmuls in half. The codebook now matches against the
+        # compressed rep (after proj_down) — same pattern as v66's waist_codebook.
+        cb_n70 = max(1, COLLAPSE_V70_CODEBOOK_N)
+        cb_d70 = COLLAPSE_V70_WAIST_DIM
+        be_d70 = COLLAPSE_V70_BREATH_DIM
+        # proj_down/up at v66's B-field dims (1024 ↔ 512). When warm-starting from v66,
+        # the trainer copies bfield_proj_down/up/bias into these slots.
+        self.collapse_v70_proj_down = (Tensor.randn(cfg.hidden, cb_d70, dtype=dtypes.float) * 0.02).contiguous()
+        self.collapse_v70_proj_up   = (Tensor.randn(cb_d70, cfg.hidden, dtype=dtypes.float) * 0.02).contiguous()
+        self.collapse_v70_bias      = Tensor.zeros((cfg.hidden,), dtype=dtypes.float).contiguous()
+        # Codebook at WAIST dim (cb_d70=512). Keys are random small, values zero so prototype=0
+        # at init → residual=compressed_x → gate sees zero → output unchanged at α=0.
+        self.collapse_v70_codebook_keys   = (Tensor.randn(cb_n70, cb_d70, dtype=dtypes.float) * 0.02).contiguous()
+        self.collapse_v70_codebook_values = Tensor.zeros((cb_n70, cb_d70), dtype=dtypes.float).contiguous()
+        # Gate: SPLIT into two params (avoid slice-view backward scatter-add on AMD).
+        #   gate_w_proto: (waist, waist) — gates on the codebook prototype (at waist dim)
+        #   gate_w_breath: (be_d, waist) — gates on the breath embedding
+        # Sum + bias → sigmoid → per-dim importance over waist dim.
+        self.collapse_v70_gate_w_proto  = (Tensor.randn(cb_d70, cb_d70, dtype=dtypes.float) * 0.02).contiguous()
+        self.collapse_v70_gate_w_breath = (Tensor.randn(be_d70, cb_d70, dtype=dtypes.float) * 0.02).contiguous()
+        self.collapse_v70_gate_b        = (Tensor.ones((cb_d70,), dtype=dtypes.float) * COLLAPSE_V70_GATE_BIAS).contiguous()
+        # Legacy unified gate_w kept for ckpt-load symmetry; ignored when COLLAPSE_V70 active.
+        # Sized to never be in the forward path under v70.
+        self.collapse_v70_gate_w        = (Tensor.zeros((1, 1), dtype=dtypes.float)).contiguous()
+        # Per-breath embedding (zero-init → no breath-conditioning at step 0)
+        self.collapse_v70_breath_embed = Tensor.zeros((cfg.max_loops, be_d70), dtype=dtypes.float).contiguous()
+        # Residual scale α — zero-init means correction has no effect at step 0
+        # (model output is byte-identical to no-collapse forward).
+        self.collapse_v70_alpha     = Tensor.zeros((1,), dtype=dtypes.float).contiguous()
+        # Diagnostics (written by apply_collapse_v70 at breath 0; read by trainer).
+        self._collapse_v70_last_match_entropy = None
+        self._collapse_v70_last_importance_mean = None
+        # v70 per-breath sparsity LIST (reset on breath 0). Trainer sums after K-loop.
+        # Python list — append at breath k, sum once outside the K-loop. Avoids the
+        # K-deep self.X = self.X + s chain that fragments AMD's kernel scheduling.
+        self._collapse_v70_sparsity_list = None
+
+        # --- v71 COLLAPSE: same pipeline as v70, but three fixes + cleaner controller signal.
+        # Allocated regardless of COLLAPSE_V71 flag for state-dict symmetry. Gradient inert
+        # when COLLAPSE_V71=0 (params not in forward path; opt skips them via collect_params).
+        # FIXES vs v70:
+        #   1. SPARSITY_WEIGHT 0.1 → 1.0 (10× stronger) → gate feels pressure to close.
+        #   2. GATE_BIAS 4.6 → 1.0 → sigmoid(1)=0.73, closer to budget target.
+        #   3. K-means codebook init (via COLLAPSE_V71_KMEANS_INIT_PATH) → break symmetry.
+        # ARCHITECTURAL: controller reads (compressed_x × importance) — NO prototype add-back.
+        # This keeps the controller's input shape stable at init (no codebook-dependent drift).
+        # The codebook participates via the decompression path (decompressed has prototype add).
+        cb_n71 = max(1, COLLAPSE_V71_CODEBOOK_N)
+        cb_d71 = COLLAPSE_V71_WAIST_DIM
+        be_d71 = COLLAPSE_V71_BREATH_DIM
+        # proj_down/up at v66's B-field dims (1024 ↔ 512). When warm-starting from v66,
+        # the trainer copies bfield_proj_down/up/bias into these slots.
+        self.collapse_v71_proj_down = (Tensor.randn(cfg.hidden, cb_d71, dtype=dtypes.float) * 0.02).contiguous()
+        self.collapse_v71_proj_up   = (Tensor.randn(cb_d71, cfg.hidden, dtype=dtypes.float) * 0.02).contiguous()
+        self.collapse_v71_bias      = Tensor.zeros((cfg.hidden,), dtype=dtypes.float).contiguous()
+        # Codebook at WAIST dim. Keys default-init random small; warm-start replaces with k-means
+        # centers. Values zero-init so prototype=0 at start (decompression's prototype-add is
+        # a no-op at init; gradient builds it).
+        self.collapse_v71_codebook_keys   = (Tensor.randn(cb_n71, cb_d71, dtype=dtypes.float) * 0.02).contiguous()
+        self.collapse_v71_codebook_values = Tensor.zeros((cb_n71, cb_d71), dtype=dtypes.float).contiguous()
+        # Gate: SPLIT into two params (same AMD-safe pattern as v70).
+        self.collapse_v71_gate_w_proto  = (Tensor.randn(cb_d71, cb_d71, dtype=dtypes.float) * 0.02).contiguous()
+        self.collapse_v71_gate_w_breath = (Tensor.randn(be_d71, cb_d71, dtype=dtypes.float) * 0.02).contiguous()
+        self.collapse_v71_gate_b        = (Tensor.ones((cb_d71,), dtype=dtypes.float) * COLLAPSE_V71_GATE_BIAS).contiguous()
+        # Per-breath embedding (zero-init → no breath-conditioning at step 0)
+        self.collapse_v71_breath_embed = Tensor.zeros((cfg.max_loops, be_d71), dtype=dtypes.float).contiguous()
+        # Residual scale α — zero-init means correction has no effect at step 0
+        # (model output is byte-identical to no-collapse forward).
+        self.collapse_v71_alpha     = Tensor.zeros((1,), dtype=dtypes.float).contiguous()
+        # Diagnostics (written by apply_collapse_v71 at breath 0; read by trainer).
+        self._collapse_v71_last_match_entropy = None
+        self._collapse_v71_last_importance_mean = None
+        # v71 per-breath sparsity LIST (same pattern as v70).
+        self._collapse_v71_sparsity_list = None
+
         # v38 B-field IB bottleneck — single waist between L1 and L2 per breath.
         # Allocate at max(1, BFIELD_WAIST) so state_dict shapes are consistent
         # across runs even when disabled; gradient is inert when BFIELD_WAIST=0.
@@ -1359,6 +1716,161 @@ class BreathingBlock:
             return out, waist_compressed.cast(x.dtype)
         return out
 
+    def apply_collapse_v70(self, x: Tensor, breath_idx: int, return_compressed: bool = False) -> Tensor:
+        """v70 collapse: lagging-safe lossy compression at WAIST dim (perf-tuned).
+
+        Pipeline (codebook + gate operate at WAIST dim, not input):
+          1. COMPRESS    — compressed_x = x @ proj_down                           (B, T, 512)
+          2. TRANSFORM   — prototype = softmax(compressed_x @ keys.T / τ) @ values (B, T, 512)
+          3. RESIDUAL    — residual = compressed_x − prototype                     (B, T, 512)
+          4. GATE        — importance = sigmoid(prototype @ Wp + be @ Wb + b)      (B, T, 512)
+          5. WAIST       — waist_compressed = (residual × importance) + prototype  (B, T, 512)
+          6. DECOMPRESS  — decompressed = waist_compressed @ proj_up + bias        (B, T, 1024)
+          7. RESIDUAL    — out = x + α × decompressed   (α=0 init → identity)
+
+        Sparsity loss (stored in self._collapse_v70_sparsity_list, summed by trainer):
+          target_frac = max(BUDGET_MIN, BUDGET_START − BUDGET_DECAY · breath_idx)
+          violation = relu(importance.mean() − target_frac)
+          loss = SPARSITY_WEIGHT · violation²
+
+        PERF changes vs v70-orig:
+          - codebook/gate moved to waist dim (3 matmuls cut in half)
+          - gate_w split into two separate params (no slice-view backward scatter-add)
+          - sparsity collected in Python list, summed by trainer outside the per-breath chain
+        """
+        x_f = x.cast(dtypes.float)
+        # 1. COMPRESS — project x to waist dim
+        compressed_x = x_f @ self.collapse_v70_proj_down  # (B, T, 512)
+
+        # 2. TRANSFORM — codebook match against compressed rep
+        cb_d = float(self.collapse_v70_codebook_keys.shape[-1])
+        scores = (compressed_x @ self.collapse_v70_codebook_keys.T) / (cb_d ** 0.5)  # (B, T, N)
+        match_weights = (scores / COLLAPSE_V70_TAU).softmax(axis=-1)  # (B, T, N)
+        prototype = match_weights @ self.collapse_v70_codebook_values  # (B, T, waist)
+
+        # 3. RESIDUAL — what's not explained by any codebook prototype
+        residual = compressed_x - prototype  # (B, T, waist)
+
+        # 4. GATE — breath-conditioned per-dim importance over the waist dim.
+        # Two separate matmuls (no Tensor.cat with expanded view); no slice-view backward.
+        be_idx = max(0, min(breath_idx, self.collapse_v70_breath_embed.shape[0] - 1))
+        be_vec = self.collapse_v70_breath_embed[be_idx]  # (be_d,)
+        gate_proto = prototype @ self.collapse_v70_gate_w_proto                       # (B, T, waist)
+        gate_breath = (be_vec.reshape(1, -1) @ self.collapse_v70_gate_w_breath).reshape(1, 1, -1)  # (1, 1, waist)
+        importance = (gate_proto + gate_breath + self.collapse_v70_gate_b).sigmoid()  # (B, T, waist)
+
+        # 5. WAIST — gate the residual, then add prototype back (codebook contribution kept).
+        # Empirically: gating the WHOLE rep collapses information at high sparsity pressure.
+        # Gating only the residual lets the codebook's structured contribution survive.
+        waist_compressed = (residual * importance) + prototype  # (B, T, waist)
+
+        # 6. DECOMPRESS
+        decompressed = waist_compressed @ self.collapse_v70_proj_up + self.collapse_v70_bias  # (B, T, hidden)
+
+        # 7. RESIDUAL block
+        out = (x_f + self.collapse_v70_alpha * decompressed).cast(x.dtype)
+
+        # --- diagnostics (computed only at breath 0; cheap reductions) ---
+        if breath_idx == 0:
+            ent = -(match_weights * (match_weights + 1e-12).log()).sum(axis=-1).mean()
+            self._collapse_v70_last_match_entropy = ent
+            self._collapse_v70_last_importance_mean = importance.mean()
+
+        # --- sparsity loss: per-breath, collected in a Python list ---
+        # Budget tightens with breath_idx. relu makes under-budget free (lagging-safe).
+        imp_mean = importance.mean()
+        target_frac = max(COLLAPSE_V70_BUDGET_MIN,
+                          COLLAPSE_V70_BUDGET_START - COLLAPSE_V70_BUDGET_DECAY * breath_idx)
+        violation = (imp_mean - target_frac).relu()
+        sparsity_this = (violation * violation) * COLLAPSE_V70_SPARSITY_WEIGHT
+        if breath_idx == 0:
+            self._collapse_v70_sparsity_list = [sparsity_this]
+        else:
+            # In the JIT trace, each call appends a fresh graph node to a fresh list.
+            # The trainer reads the list and sums it once after the K-loop.
+            self._collapse_v70_sparsity_list.append(sparsity_this)
+
+        if return_compressed:
+            return out, waist_compressed.cast(x.dtype)
+        return out
+
+    def apply_collapse_v71(self, x: Tensor, breath_idx: int, return_compressed: bool = False) -> Tensor:
+        """v71 collapse: v70 refined with stronger sparsity, lower gate bias, k-means codebook,
+        and a cleaner controller signal at init.
+
+        Pipeline:
+          1. COMPRESS    — compressed_x = x @ proj_down                              (B, T, 512)
+          2. TRANSFORM   — prototype = softmax(compressed_x @ keys.T / τ) @ values   (B, T, 512)
+          3. GATE        — importance = sigmoid(prototype @ Wp + be @ Wb + b)        (B, T, 512)
+          4. WAIST       — waist_compressed = compressed_x × importance               (B, T, 512)
+                          ← controller reads this; NO prototype add-back. At init
+                            (zero-init values → prototype=0; GATE_BIAS=1 → sigmoid=0.73)
+                            this is a uniform scale of v66's compressed signal, no
+                            codebook-dependent shift in the controller's input.
+          5. DECOMPRESS  — decompressed = (waist_compressed + prototype) @ proj_up + bias
+                          ← codebook participates here, additive to the gated rep.
+                            With α=0 at init the whole correction is masked out → v66-identical.
+          6. RESIDUAL    — out = x + α × decompressed   (α=0 init → identity)
+
+        Sparsity loss (stored in self._collapse_v71_sparsity_list, summed by trainer):
+          target_frac = max(BUDGET_MIN, BUDGET_START − BUDGET_DECAY · breath_idx)
+          violation = relu(importance.mean() − target_frac)
+          loss = SPARSITY_WEIGHT · violation²
+        """
+        x_f = x.cast(dtypes.float)
+        # 1. COMPRESS — project x to waist dim
+        compressed_x = x_f @ self.collapse_v71_proj_down  # (B, T, 512)
+
+        # 2. TRANSFORM — codebook match against compressed rep
+        cb_d = float(self.collapse_v71_codebook_keys.shape[-1])
+        scores = (compressed_x @ self.collapse_v71_codebook_keys.T) / (cb_d ** 0.5)  # (B, T, N)
+        match_weights = (scores / COLLAPSE_V71_TAU).softmax(axis=-1)  # (B, T, N)
+        prototype = match_weights @ self.collapse_v71_codebook_values  # (B, T, waist)
+
+        # 3. GATE — breath-conditioned per-dim importance over the waist dim.
+        # Two separate matmuls (no Tensor.cat with expanded view); no slice-view backward.
+        be_idx = max(0, min(breath_idx, self.collapse_v71_breath_embed.shape[0] - 1))
+        be_vec = self.collapse_v71_breath_embed[be_idx]  # (be_d,)
+        gate_proto = prototype @ self.collapse_v71_gate_w_proto                         # (B, T, waist)
+        gate_breath = (be_vec.reshape(1, -1) @ self.collapse_v71_gate_w_breath).reshape(1, 1, -1)  # (1, 1, waist)
+        importance = (gate_proto + gate_breath + self.collapse_v71_gate_b).sigmoid()    # (B, T, waist)
+
+        # 4. WAIST — pure multiplicative gating of the compressed rep.
+        # No prototype add-back here: the controller reads exactly importance × compressed_x.
+        # At init (importance≈0.73 uniform), this is a uniform scaling of v66's signal —
+        # identical signal SHAPE to v66, just attenuated. As importance learns, dims drop
+        # asymmetrically. The codebook contributes through decompression below, not here.
+        waist_compressed = compressed_x * importance  # (B, T, waist)
+
+        # 5. DECOMPRESS — codebook contributes via additive prototype before projection up.
+        # At init (values=0 → prototype=0), this is identical to waist_compressed @ proj_up + bias.
+        decompressed = (waist_compressed + prototype) @ self.collapse_v71_proj_up + self.collapse_v71_bias  # (B, T, hidden)
+
+        # 6. RESIDUAL block
+        out = (x_f + self.collapse_v71_alpha * decompressed).cast(x.dtype)
+
+        # --- diagnostics (computed only at breath 0; cheap reductions) ---
+        if breath_idx == 0:
+            ent = -(match_weights * (match_weights + 1e-12).log()).sum(axis=-1).mean()
+            self._collapse_v71_last_match_entropy = ent
+            self._collapse_v71_last_importance_mean = importance.mean()
+
+        # --- sparsity loss: per-breath, collected in a Python list ---
+        # Budget tightens with breath_idx. relu makes under-budget free (lagging-safe).
+        imp_mean = importance.mean()
+        target_frac = max(COLLAPSE_V71_BUDGET_MIN,
+                          COLLAPSE_V71_BUDGET_START - COLLAPSE_V71_BUDGET_DECAY * breath_idx)
+        violation = (imp_mean - target_frac).relu()
+        sparsity_this = (violation * violation) * COLLAPSE_V71_SPARSITY_WEIGHT
+        if breath_idx == 0:
+            self._collapse_v71_sparsity_list = [sparsity_this]
+        else:
+            self._collapse_v71_sparsity_list.append(sparsity_this)
+
+        if return_compressed:
+            return out, waist_compressed.cast(x.dtype)
+        return out
+
     def dag_notebook_init_storage(self, B: int) -> Tensor:
         """v61 DAG: allocate per-forward storage. Shape (B, max_loops, NB_DIM)."""
         return Tensor.zeros((B, self.cfg.max_loops, self.nb_dim), dtype=dtypes.float).contiguous()
@@ -1471,6 +1983,30 @@ class BreathingBlock:
         ps.append(self.collapse_proj_down)
         ps.append(self.collapse_proj_up)
         ps.append(self.collapse_alpha)
+        # v70 collapse — codebook + gate at waist dim. Gate split into proto/breath weights.
+        ps.append(self.collapse_v70_codebook_keys)
+        ps.append(self.collapse_v70_codebook_values)
+        ps.append(self.collapse_v70_proj_down)
+        ps.append(self.collapse_v70_proj_up)
+        ps.append(self.collapse_v70_bias)
+        ps.append(self.collapse_v70_gate_w_proto)
+        ps.append(self.collapse_v70_gate_w_breath)
+        ps.append(self.collapse_v70_gate_b)
+        ps.append(self.collapse_v70_breath_embed)
+        ps.append(self.collapse_v70_alpha)
+        # legacy unified gate_w — kept for state-dict symmetry, never in forward path.
+        # Excluded from parameters() so the optimizer doesn't touch it.
+        # v71 collapse — same structural shape as v70; refined fixes per the v71 design.
+        ps.append(self.collapse_v71_codebook_keys)
+        ps.append(self.collapse_v71_codebook_values)
+        ps.append(self.collapse_v71_proj_down)
+        ps.append(self.collapse_v71_proj_up)
+        ps.append(self.collapse_v71_bias)
+        ps.append(self.collapse_v71_gate_w_proto)
+        ps.append(self.collapse_v71_gate_w_breath)
+        ps.append(self.collapse_v71_gate_b)
+        ps.append(self.collapse_v71_breath_embed)
+        ps.append(self.collapse_v71_alpha)
         ps.append(self.bfield_proj_down)
         ps.append(self.bfield_proj_up)
         ps.append(self.bfield_bias)
@@ -1485,7 +2021,8 @@ class BreathingBlock:
         return (x_f @ self.handoff_w + self.handoff_b).cast(x.dtype)
 
     def breathe_once(self, x: Tensor, loop_idx: int, temp_mult: float = 1.0,
-                     return_waist_compressed: bool = False):
+                     return_waist_compressed: bool = False, n_loops: int | None = None,
+                     attn_mask: Tensor | None = None):
         """One breath: 4 layers sequentially. temp_mult scales attention softness
         per breath (used by the sine-baseline schedule when SINE_TEMP=1).
 
@@ -1501,7 +2038,39 @@ class BreathingBlock:
         full wave. Temperature warm (layer 0) → cool (layer n//2) → warming. Rep norm
         follows the same wave via time-varying CRP target. Across-breath SINE_TEMP
         baseline is OVERRIDDEN by the per-layer wave when PER_BREATH_TEMP=1.
+
+        v75 MAX_STEP_SIZE > 0 / MAX_STEP_BASE > 0: capture the breath input here,
+        then at the end of the function clip the per-token L2 norm of (output - input)
+        to a per-breath bound. Bounded refinement: forces gradual evolution across K
+        breaths. When MAX_STEP_BASE > 0, the bound follows a half-cosine schedule
+        (k=0 base, k=K-1 min); else MAX_STEP_SIZE is used as a constant bound.
+        n_loops is the K for this forward pass (used by the cosine schedule); falls
+        back to cfg.max_loops if not supplied.
+
+        v81 (2026-05-26) attn_mask: optional (B, S) float, 1.0 at valid (prompt)
+        positions, 0.0 at answer-span positions. When provided, ALL self-attention
+        layers within the breath restrict keys to mask=1 positions only. This blocks
+        the teacher-forcing leak where main-attn at answer-span positions can read
+        previously-emitted gold tokens via the standard causal triangular mask.
+        Combined with V79's kv_mask on the cross-attn and notebook_pool_mask, this
+        is what makes the v81 multi-head WaistController paradigm independent of the
+        gold tokens in the input sequence (verified via diag_v81_masking_audit.py).
         """
+        # v75: capture the breath input BEFORE any transformation (incl. breath_embed)
+        # so the delta = (final output) - (breath input) over the FULL breath.
+        _step_bound_active = MAX_STEP_BASE > 0.0 or MAX_STEP_SIZE > 0.0
+        breath_in = x if _step_bound_active else None
+        # Per-breath bound: half-cosine schedule when MAX_STEP_BASE > 0, else constant.
+        if MAX_STEP_BASE > 0.0:
+            _K = int(n_loops) if n_loops is not None else int(self.cfg.max_loops)
+            if _K > 1:
+                _max_step_k = MAX_STEP_MIN + (MAX_STEP_BASE - MAX_STEP_MIN) * math.cos(
+                    math.pi / 2.0 * float(loop_idx) / float(_K - 1)
+                )
+            else:
+                _max_step_k = MAX_STEP_BASE
+        else:
+            _max_step_k = MAX_STEP_SIZE
         alpha = self.rope._alpha_at(loop_idx, x.dtype)
         if BREATH_TIME_EMBED:
             x = x + self.breath_embed[loop_idx].reshape(1, 1, -1).cast(x.dtype)
@@ -1550,7 +2119,7 @@ class BreathingBlock:
                 layer_temp = _per_layer_temp_within_breath(layer_idx, n_phases)
             else:
                 layer_temp = temp_mult
-            x = layer(x, loop_idx, temp_mult=layer_temp, alpha=layer_alpha)
+            x = layer(x, loop_idx, attn_mask=attn_mask, temp_mult=layer_temp, alpha=layer_alpha)
             # --- per-layer norm oscillation (v24) — applied between layers ---
             if BREATH_NORM_OSC and CONSTANT_RADIUS:
                 scale = _per_layer_norm_scale_within_breath(layer_idx, n_phases)
@@ -1564,11 +2133,24 @@ class BreathingBlock:
             # v39: when BFIELD_END_OF_BREATH=1, this fires AFTER L3 instead (below).
             if BFIELD_WAIST > 0 and layer_idx == 1 and not BFIELD_END_OF_BREATH:
                 x = self.apply_bfield_waist(x)
-        # --- v69 COLLAPSE: JPEG-inspired lossy compression replaces B-field waist ---
-        # When COLLAPSE_V69=1, the end-of-breath waist is the new pipeline: codebook
-        # match → gate → 128d encode → residual block. Otherwise v66's B-field MLP.
+        # --- v71/v70/v69 COLLAPSE: lossy compression replaces B-field waist ---
+        # v71 (current): v70 refined — stronger sparsity, lower gate bias, k-means codebook,
+        #                cleaner controller signal (no prototype add-back to controller's read).
+        # v70: fixed 512d waist + breath-conditioned gate + budget-violation sparsity.
+        # v69 (legacy):  128d waist + uniform gate. All replace v66's B-field MLP.
+        # v71 takes precedence if both flags are set.
         waist_compressed = None
-        if COLLAPSE_V69:
+        if COLLAPSE_V71:
+            if return_waist_compressed:
+                x, waist_compressed = self.apply_collapse_v71(x, loop_idx, return_compressed=True)
+            else:
+                x = self.apply_collapse_v71(x, loop_idx)
+        elif COLLAPSE_V70:
+            if return_waist_compressed:
+                x, waist_compressed = self.apply_collapse_v70(x, loop_idx, return_compressed=True)
+            else:
+                x = self.apply_collapse_v70(x, loop_idx)
+        elif COLLAPSE_V69:
             if return_waist_compressed:
                 x, waist_compressed = self.apply_collapse_v69(x, return_compressed=True)
             else:
@@ -1587,6 +2169,23 @@ class BreathingBlock:
             mix = self.crp_mix_alpha
             x_proj = x_f * (target / x_norm)
             x = (x_f * (1.0 - mix) + x_proj * mix).cast(x.dtype)
+        # v75 (2026-05-23, schedule 2026-05-24) Bounded per-breath delta. After
+        # the full breath (layers + waist + CRP), clip the per-token L2 norm of
+        # the residual delta. This is the diffusion-style "small step" constraint:
+        # rep_K = rep_0 + Σ small_step_k. When MAX_STEP_BASE > 0, _max_step_k follows
+        # a half-cosine schedule across K breaths (basin landing → refinement); else
+        # _max_step_k == MAX_STEP_SIZE (legacy constant). When both are 0,
+        # _step_bound_active is False, breath_in is None, and this block is skipped
+        # (default v66 behavior, no extra ops). Use dtypes.float for the L2 reduction
+        # (no .cast(dtypes.float32) — AM driver quirk). The clip().minimum() keeps
+        # the scale ≤ 1, so the delta is shrunk only when |delta_l2| > _max_step_k.
+        if _step_bound_active and breath_in is not None:
+            out_dtype = x.dtype
+            delta = (x - breath_in).cast(dtypes.float)
+            delta_l2 = (delta.square().sum(axis=-1, keepdim=True) + 1e-12).sqrt()
+            scale = (_max_step_k / (delta_l2 + 1e-6)).minimum(1.0)
+            delta_clipped = delta * scale
+            x = (breath_in.cast(dtypes.float) + delta_clipped).cast(out_dtype)
         if return_waist_compressed:
             return x, waist_compressed
         return x
@@ -1637,7 +2236,7 @@ class BreathingBlock:
                 if NOTEBOOK_DUAL:
                     read_vec_r = (notebook_r @ self.notebook_rep_read_w + self.notebook_rep_read_b)
                     x_in = x_in + read_vec_r.reshape(B, 1, -1).cast(x_in.dtype)
-            x = self.breathe_once(x_in, l, temp_mult=_sine_temp_baseline(l, n_loops))
+            x = self.breathe_once(x_in, l, temp_mult=_sine_temp_baseline(l, n_loops), n_loops=n_loops)
             # Write notebook after breath. Pool source determined by NOTEBOOK_POOL_MODE.
             if NOTEBOOK_V24:
                 x_f = x.cast(dtypes.float)
@@ -1751,14 +2350,80 @@ class WaistController:
             self.k_pos_embed = (Tensor.randn(cfg.max_loops, cfg.max_loops, waist_dim, dtype=dtypes.float) * K_POS_INIT).contiguous()
         else:
             self.k_pos_embed = Tensor.zeros((cfg.max_loops, cfg.max_loops, waist_dim), dtype=dtypes.float).contiguous()
+        # v72 Copy (pointer-network) params — ALWAYS allocated for state_dict symmetry.
+        # Gradient is inert unless WAIST_COPY=1 (the forward path skips the copy graph
+        # when the env var is off; the L2 reg in the trainer keeps these defined).
+        # copy_q_w: project decoder hidden → small copy-attn space (H_ctrl → H_c)
+        # copy_k_w: project prompt embeddings → same space (H_base → H_c)
+        # copy_gate_w: linear → 1; sigmoid gives mixing weight (0 = vocab only, 1 = copy only)
+        H_c = WAIST_COPY_HIDDEN
+        self.copy_h = H_c
+        self.copy_q_w    = (Tensor.randn(H_ctrl, H_c, dtype=dtypes.float) * 0.02).contiguous()
+        self.copy_k_w    = (Tensor.randn(H_base, H_c, dtype=dtypes.float) * 0.02).contiguous()
+        # Gate weight: zero-init (no input-dependence at start). Gate BIAS is initialized
+        # NEGATIVE so sigmoid(bias) ≈ 0.12, suppressing copy by default. Copy attention
+        # learns quietly under low gate; once it has signal, gate pulls up per-token.
+        # Without the negative bias, random-init p_copy noise drives gate to 0 before
+        # copy attention can learn (dead-bootstrap, same failure as v69/v70 codebooks).
+        self.copy_gate_w = Tensor.zeros((H_ctrl, 1), dtype=dtypes.float).contiguous()
+        self.copy_gate_b = (Tensor.ones((1,), dtype=dtypes.float) * WAIST_COPY_GATE_BIAS_INIT).contiguous()
+        # v81 (2026-05-26) Multi-head WaistController.
+        # Four parallel heads (ops / types / args1 / args2). Each adds its own learned
+        # additive offset to the shared post-cross-attn hidden (H_ctrl) then shares the
+        # tied embed_out projection (H_base × vocab).
+        # SIMPLIFIED vs the original MLP design (2 matmuls per head per breath = too
+        # many graph nodes for the AMD JIT capture phase, which hung post-step-0):
+        # each head just learns a single per-head additive vector (size H_ctrl).
+        # zero-init so heads start with identical logits at step 0; CE gradient through
+        # different per-head label arrays drives the per-head specialization.
+        # ALWAYS allocated for state_dict symmetry; forward path uses them only when
+        # MULTI_HEAD_WAIST=1.
+        self.head_names = ["ops", "types", "args1", "args2"]
+        self.head_mlps = []
+        for _hi in range(4):
+            self.head_mlps.append({
+                "w1": Tensor.zeros((H_ctrl, H_ctrl), dtype=dtypes.float).contiguous(),  # unused, kept for ckpt symmetry
+                "b1": Tensor.zeros((H_ctrl,), dtype=dtypes.float).contiguous(),         # additive offset (size H_ctrl)
+                "w2": Tensor.zeros((H_ctrl, H_ctrl), dtype=dtypes.float).contiguous(),  # unused, kept for ckpt symmetry
+                "b2": Tensor.zeros((H_ctrl,), dtype=dtypes.float).contiguous(),         # additive offset (size H_ctrl)
+            })
+        # Stashed outputs (set in forward when WAIST_COPY=1). Used by the trainer
+        # to compute the mixed CE loss without changing the return signature.
+        self._last_copy_attn = None
+        self._last_copy_gate = None
+        self._last_copy_scores = None  # pre-softmax scores for stable log_softmax in aux loss
+        # v78b: stash post-softmax cross-attn weights of the LAST cross-attn layer
+        # (head-mean) when WAIST_ATTN_SUPERVISION=1. Shape (B, T_q, T_kv). Used by
+        # the trainer's attention-supervision aux loss to direct the cross-attention
+        # toward matching digit positions in the prompt.
+        self._last_cross_attn = None
 
     def forward(self, waist_compressed: Tensor, prompt_emb: Tensor, embed_out: Tensor,
                  k_idx: int | None = None, K_total: int | None = None,
-                 prompt_dropout_mask: Tensor | None = None) -> Tensor:
+                 prompt_dropout_mask: Tensor | None = None,
+                 prompt_tokens: Tensor | None = None,
+                 kv_mask: Tensor | None = None,
+                 force_single_head: bool = False) -> Tensor:
         """waist_compressed: (B, T_q, waist_dim) — Q sequence length T_q can be 1 or full T
            prompt_emb:        (B, T_kv, H_base) — main model's embedding of the prompt
            embed_out:         (H_base, vocab) — main model's TIED output projection
+           prompt_tokens:     (B, T_kv) int — required when WAIST_COPY=1 so callers
+                              (trainer / eval) can scatter copy-attn back to vocab IDs.
+                              When omitted, copy components are not stashed and behavior
+                              matches v66/v71 exactly.
+           kv_mask:           (B, T_kv) float — 1.0 at valid KV positions, 0.0 at invalid
+                              (positions past `current_len` in autoregressive eval). When
+                              provided, applies additive -1e4 to cross-attn scores at
+                              invalid positions, eliminating "ghost" attention to zero-pad
+                              positions that contain stale EOS/zero embeddings.
+                              **This fixes the train-eval mismatch where training has gold
+                              answer tokens in the answer-span positions of `prompt_emb`
+                              but eval has zeros — see v78b inference bug 2026-05-25.**
+                              When omitted, behavior matches all pre-v78c callers exactly.
         Returns: (B, T_q, vocab). T_q matches the Q input length (1 at inference per-position).
+        Side effect when WAIST_COPY=1 AND prompt_tokens is not None:
+           self._last_copy_attn = (B, T_q, T_kv) float — attention over prompt positions
+           self._last_copy_gate = (B, T_q, 1)    float — mixing gate in (0, 1)
         """
         B = waist_compressed.shape[0]
         T_q = waist_compressed.shape[1]
@@ -1777,7 +2442,11 @@ class WaistController:
         # enabling proper CFG at inference later. mask shape: scalar Tensor (1,).
         if prompt_dropout_mask is not None:
             prompt_f = prompt_f * prompt_dropout_mask.cast(prompt_f.dtype).reshape(1, 1, 1)
-        for layer in self.layers:
+        # v78b: reset the cross-attn stash slot every forward. The loop writes it
+        # for the last layer when WAIST_ATTN_SUPERVISION=1; otherwise it stays None.
+        self._last_cross_attn = None
+        n_attn_layers = len(self.layers)
+        for layer_idx, layer in enumerate(self.layers):
             # Pre-LN cross-attn (Q from x at H_ctrl, K/V from prompt at H_base → H_ctrl).
             x_n = _layernorm(x, layer["ln1_g"], layer["ln1_b"], self.cfg.layer_norm_eps)
             kv = prompt_f
@@ -1790,15 +2459,92 @@ class WaistController:
             v = v.reshape(B, T_kv, self.n_heads, self.head_dim).transpose(1, 2)
             scale = self.head_dim ** -0.5
             scores = (q @ k.transpose(-2, -1)) * scale
+            # v78c (2026-05-25) Apply optional kv_mask: at invalid KV positions, subtract
+            # 1e4 from the score so the post-softmax attention there is ~0. Reshape mask
+            # to broadcast over (B, n_heads, T_q, T_kv). Mask shape: (B, T_kv).
+            if kv_mask is not None:
+                # mask=1 valid, mask=0 invalid → additive penalty for invalid positions
+                penalty = (1.0 - kv_mask.cast(scores.dtype)).reshape(B, 1, 1, T_kv) * (-1e4)
+                scores = scores + penalty
             # Clamp pre-softmax scores to prevent inf/NaN at larger head_dim.
-            attn = scores.clip(-1e4, 1e4).softmax(axis=-1) @ v
+            attn_weights = scores.clip(-1e4, 1e4).softmax(axis=-1)   # (B, n_heads, T_q, T_kv)
+            # v78b: stash head-mean attention of the LAST cross-attn layer for the
+            # attention-supervision aux loss. Only when WAIST_ATTN_SUPERVISION=1, only on
+            # the last layer (the layer immediately before the tied vocab head fires).
+            if WAIST_ATTN_SUPERVISION and (layer_idx == n_attn_layers - 1):
+                # Mean over heads → (B, T_q, T_kv). Gradient flows back through this stash
+                # because we are inside the same forward graph the trainer wraps in JIT.
+                self._last_cross_attn = attn_weights.mean(axis=1)
+            attn = attn_weights @ v
             attn = attn.transpose(1, 2).reshape(B, T_q, H_ctrl)
             x = x + attn @ layer["wo"]
             # Pre-LN FFN
             x_n2 = _layernorm(x, layer["ln2_g"], layer["ln2_b"], self.cfg.layer_norm_eps)
             ffn = (x_n2 @ layer["wf1"]).gelu() @ layer["wf2"]
             x = x + ffn
-        # Up-project from controller_hidden → base_hidden before tied vocab head.
+        # --- v72 Copy attention (computed BEFORE the up-projection, on x at H_ctrl). ---
+        # When WAIST_COPY=1 AND prompt_tokens passed, compute pointer attention over the
+        # prompt positions and the sigmoid gate. Stashed on the instance so the trainer /
+        # eval can mix into the final distribution without changing this method's signature.
+        # When OFF, params still exist but are not touched in the forward graph (the L2 reg
+        # in the trainer covers the gradient).
+        if WAIST_COPY and prompt_tokens is not None:
+            # x: (B, T_q, H_ctrl); prompt_f: (B, T_kv, H_base)
+            copy_q = x @ self.copy_q_w                                  # (B, T_q, H_c)
+            copy_k = prompt_f @ self.copy_k_w                           # (B, T_kv, H_c)
+            copy_scale = float(self.copy_h) ** -0.5
+            copy_scores = (copy_q @ copy_k.transpose(-1, -2)) * copy_scale   # (B, T_q, T_kv)
+            # Mask out padding positions in the prompt. We use prompt_tokens == 0 as the
+            # padding indicator (matches encoder's pad token, see scripts/l3_train.py).
+            # Subtract a large additive mask BEFORE softmax to drive masked-position attn → 0.
+            pad_mask = (prompt_tokens == 0).cast(dtypes.float)          # (B, T_kv) — 1.0 at pads
+            additive = (pad_mask * -1e4).reshape(B, 1, T_kv)            # (B, 1, T_kv) → broadcasts to (B, T_q, T_kv)
+            copy_scores = (copy_scores + additive).clip(-1e4, 1e4)
+            copy_attn = copy_scores.softmax(axis=-1)                    # (B, T_q, T_kv)
+            copy_gate = (x @ self.copy_gate_w + self.copy_gate_b).sigmoid()  # (B, T_q, 1)
+            self._last_copy_attn = copy_attn
+            self._last_copy_gate = copy_gate
+            # Stash pre-softmax scores for numerically-stable log_softmax in the trainer's aux loss.
+            self._last_copy_scores = copy_scores
+        else:
+            self._last_copy_attn = None
+            self._last_copy_gate = None
+            self._last_copy_scores = None
+        # v81 (2026-05-26) Multi-head path: 4 parallel heads (ops/types/args1/args2)
+        # each producing its own vocab logits through the shared tied embed_out.
+        # The shared cross-attn backbone (x at H_ctrl) feeds all heads; each head adds
+        # its own per-head learned BIAS VECTOR (b1 + b2) — no per-head matmul (the
+        # MLP design hung the AMD JIT capture phase post-step-0). Heads start with
+        # identical zero-bias logits and diverge through per-head CE supervision.
+        # final_up_w handles the H_ctrl → H_base projection (shared across heads).
+        # force_single_head=True allows callers (e.g. earlier-breath supervision) to skip
+        # multi-head decode to reduce graph complexity. The K-1 breath always uses
+        # multi-head (when MULTI_HEAD_WAIST=1) — that's the breath whose output assembles
+        # the v81 B6 text.
+        if MULTI_HEAD_WAIST and not force_single_head:
+            head_logits = {}
+            # Project once (shared); then add per-head bias before embed_out.
+            if self.final_up_w is not None:
+                x_proj_shared = x @ self.final_up_w + self.final_up_b   # (B, T_q, H_base)
+                # Per-head additive bias must be in H_base. Use a thin map from H_ctrl
+                # to H_base — but to keep AMD JIT happy, just use the b2 vector in H_ctrl
+                # and broadcast-add to x_proj_shared via final_up_w (still 1 matmul/head).
+                # Simpler: just add b1 vector directly to x (H_ctrl) and re-project.
+                for hi, name in enumerate(self.head_names):
+                    mlp = self.head_mlps[hi]
+                    bias = (mlp["b1"] + mlp["b2"]).reshape(1, 1, -1)  # (1, 1, H_ctrl)
+                    x_h = x + bias
+                    x_h_proj = x_h @ self.final_up_w + self.final_up_b
+                    head_logits[name] = x_h_proj @ embed_out.cast(dtypes.float)
+            else:
+                # H_ctrl == H_base; embed_out (H_base × vocab) applies directly.
+                for hi, name in enumerate(self.head_names):
+                    mlp = self.head_mlps[hi]
+                    bias = (mlp["b1"] + mlp["b2"]).reshape(1, 1, -1)  # (1, 1, H_ctrl)
+                    x_h = x + bias
+                    head_logits[name] = x_h @ embed_out.cast(dtypes.float)
+            return head_logits
+        # Single-head legacy path.
         if self.final_up_w is not None:
             x = x @ self.final_up_w + self.final_up_b
         # Tied decode head — use main model's embed_out (H_base × vocab) for vocab projection.
@@ -1813,6 +2559,19 @@ class WaistController:
         if self.final_up_w is not None:
             ps.extend([self.final_up_w, self.final_up_b])
         ps.append(self.k_pos_embed)  # v63
+        # v72 copy params — always listed for state-dict symmetry. Caller
+        # (collect_params in scripts/l3_train.py) gates optimizer inclusion on
+        # WAIST_COPY=1 so AdamW doesn't assert on None grad when the copy path is off.
+        ps.extend([self.copy_q_w, self.copy_k_w, self.copy_gate_w, self.copy_gate_b])
+        return ps
+
+    def multi_head_parameters(self):
+        """v81 multi-head MLP params. Separately listed so collect_params() can
+        gate inclusion on MULTI_HEAD_WAIST=1 (AdamW would assert on None grad
+        if these were always in the optimizer but the forward path skipped them)."""
+        ps = []
+        for mlp in self.head_mlps:
+            ps.extend([mlp["w1"], mlp["b1"], mlp["w2"], mlp["b2"]])
         return ps
 
 
@@ -1840,8 +2599,15 @@ class BreathingTransformer:
         # v54 WaistController — small cross-attention decoder over (waist, prompt).
         # Allocated always (state_dict symmetry); only USED when CONTROLLER_DECODE=1.
         # bf_w = waist dim (max 1 for symmetry if BFIELD_WAIST=0).
-        # v69: waist dim for the controller depends on which collapse mechanism is active.
-        _bf_w_for_wc = COLLAPSE_WAIST_DIM if COLLAPSE_V69 else max(1, BFIELD_WAIST)
+        # v69/v70/v71: waist dim for the controller depends on which collapse mechanism is active.
+        if COLLAPSE_V71:
+            _bf_w_for_wc = COLLAPSE_V71_WAIST_DIM
+        elif COLLAPSE_V70:
+            _bf_w_for_wc = COLLAPSE_V70_WAIST_DIM
+        elif COLLAPSE_V69:
+            _bf_w_for_wc = COLLAPSE_WAIST_DIM
+        else:
+            _bf_w_for_wc = max(1, BFIELD_WAIST)
         self.waist_controller = WaistController(cfg, waist_dim=_bf_w_for_wc, n_layers=CONTROLLER_N_LAYERS)
         # Per-step optimal-stopping calibration head. Reads the rep at a step's
         # "=" position and emits scalar confidence in (0,1). Trained jointly with
@@ -1897,10 +2663,13 @@ class BreathingTransformer:
         for i, layer in enumerate(self.block.layers):
             for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
                 sd[f"phase{i}.{a}"] = getattr(layer, a)
+            # v78 per-head model codebook — always saved for ckpt symmetry
+            sd[f"phase{i}.v78_head_codebook"] = layer.v78_head_codebook
         # v44 doubled-layers: Set B params under phase{i}_b.* keys
         for i, layer in enumerate(self.block.layers_b):
             for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
                 sd[f"phase{i}_b.{a}"] = getattr(layer, a)
+            sd[f"phase{i}_b.v78_head_codebook"] = layer.v78_head_codebook
         # v68 TWO_PHASE: expand_shared, compress_shared, and per-set phase layers.
         # Empty lists when TWO_PHASE=0 → no extra keys.
         sw_exp = self.block.expand_shared
@@ -1912,9 +2681,11 @@ class BreathingTransformer:
         for i, layer in enumerate(self.block.expand_layers):
             for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
                 sd[f"expand_phase{i}.{a}"] = getattr(layer, a)
+            sd[f"expand_phase{i}.v78_head_codebook"] = layer.v78_head_codebook
         for i, layer in enumerate(self.block.compress_layers):
             for a in ("wq", "bq", "wk", "bk", "w_in", "b_in"):
                 sd[f"compress_phase{i}.{a}"] = getattr(layer, a)
+            sd[f"compress_phase{i}.v78_head_codebook"] = layer.v78_head_codebook
         sd["block.breath_embed"] = self.block.breath_embed
         sd["block.handoff_w"] = self.block.handoff_w
         sd["block.handoff_b"] = self.block.handoff_b
@@ -1954,6 +2725,30 @@ class BreathingTransformer:
         sd["block.collapse_proj_down"]       = self.block.collapse_proj_down
         sd["block.collapse_proj_up"]         = self.block.collapse_proj_up
         sd["block.collapse_alpha"]           = self.block.collapse_alpha
+        # v70 collapse — waist-dim codebook + split gate. Registered for ckpt save/load.
+        sd["block.collapse_v70_codebook_keys"]   = self.block.collapse_v70_codebook_keys
+        sd["block.collapse_v70_codebook_values"] = self.block.collapse_v70_codebook_values
+        sd["block.collapse_v70_proj_down"]       = self.block.collapse_v70_proj_down
+        sd["block.collapse_v70_proj_up"]         = self.block.collapse_v70_proj_up
+        sd["block.collapse_v70_bias"]            = self.block.collapse_v70_bias
+        sd["block.collapse_v70_gate_w_proto"]    = self.block.collapse_v70_gate_w_proto
+        sd["block.collapse_v70_gate_w_breath"]   = self.block.collapse_v70_gate_w_breath
+        sd["block.collapse_v70_gate_b"]          = self.block.collapse_v70_gate_b
+        sd["block.collapse_v70_gate_w"]          = self.block.collapse_v70_gate_w  # legacy, kept for symmetry
+        sd["block.collapse_v70_breath_embed"]    = self.block.collapse_v70_breath_embed
+        sd["block.collapse_v70_alpha"]           = self.block.collapse_v70_alpha
+        # v71 collapse — refined v70 (stronger sparsity, lower gate bias, k-means init,
+        # cleaner controller signal). Registered for ckpt save/load.
+        sd["block.collapse_v71_codebook_keys"]   = self.block.collapse_v71_codebook_keys
+        sd["block.collapse_v71_codebook_values"] = self.block.collapse_v71_codebook_values
+        sd["block.collapse_v71_proj_down"]       = self.block.collapse_v71_proj_down
+        sd["block.collapse_v71_proj_up"]         = self.block.collapse_v71_proj_up
+        sd["block.collapse_v71_bias"]            = self.block.collapse_v71_bias
+        sd["block.collapse_v71_gate_w_proto"]    = self.block.collapse_v71_gate_w_proto
+        sd["block.collapse_v71_gate_w_breath"]   = self.block.collapse_v71_gate_w_breath
+        sd["block.collapse_v71_gate_b"]          = self.block.collapse_v71_gate_b
+        sd["block.collapse_v71_breath_embed"]    = self.block.collapse_v71_breath_embed
+        sd["block.collapse_v71_alpha"]           = self.block.collapse_v71_alpha
         sd["block.bfield_proj_down"] = self.block.bfield_proj_down
         sd["block.bfield_proj_up"] = self.block.bfield_proj_up
         sd["block.bfield_bias"] = self.block.bfield_bias
@@ -1970,6 +2765,21 @@ class BreathingTransformer:
             sd["wc.final_up_w"] = self.waist_controller.final_up_w
             sd["wc.final_up_b"] = self.waist_controller.final_up_b
         sd["wc.k_pos_embed"] = self.waist_controller.k_pos_embed  # v63
+        # v72 copy mechanism — always saved (state-dict symmetry). Loaded weights
+        # are zero-init / small random when ckpt predates v72.
+        sd["wc.copy_q_w"]    = self.waist_controller.copy_q_w
+        sd["wc.copy_k_w"]    = self.waist_controller.copy_k_w
+        sd["wc.copy_gate_w"] = self.waist_controller.copy_gate_w
+        sd["wc.copy_gate_b"] = self.waist_controller.copy_gate_b
+        # v81 (2026-05-26) Multi-head WaistController params — ALWAYS saved (state-dict symmetry).
+        # Ckpts predating v81 will load_state_dict with these as missing keys → kept at
+        # zero-residual init (forward behavior matches single-head exactly when MLP=0).
+        for hi, name in enumerate(self.waist_controller.head_names):
+            mlp = self.waist_controller.head_mlps[hi]
+            sd[f"wc.head_{name}.w1"] = mlp["w1"]
+            sd[f"wc.head_{name}.b1"] = mlp["b1"]
+            sd[f"wc.head_{name}.w2"] = mlp["w2"]
+            sd[f"wc.head_{name}.b2"] = mlp["b2"]
         sd["block.bfield_alpha"] = self.block.bfield_alpha
         sd["waist_head_w"] = self.waist_head_w
         sd["waist_head_b"] = self.waist_head_b
@@ -2037,7 +2847,7 @@ class BreathingTransformer:
         for l in range(n_loops):
             if CROSS_BREATH_HANDOFF and handoff is not None:
                 x = x + handoff
-            x = self.block.breathe_once(x, l, temp_mult=_sine_temp_baseline(l, n_loops))
+            x = self.block.breathe_once(x, l, temp_mult=_sine_temp_baseline(l, n_loops), n_loops=n_loops)
             if CROSS_BREATH_HANDOFF:
                 handoff = self.block.compute_handoff(x)
             states.append(x)
@@ -2273,7 +3083,9 @@ class BreathingTransformer:
                              initial_notebook_r: Tensor | None = None,
                              return_notebook: bool = False,
                              return_waist_compressed: bool = False,
-                             return_per_breath_x: bool = False):
+                             return_per_breath_x: bool = False,
+                             notebook_pool_mask: Tensor | None = None,
+                             main_attn_mask: Tensor | None = None):
         """Forward pass returning (final_hidden, per_breath_match_weights, integrated_per_breath).
 
         Queries the model's lookup table once per breath against the running integral
@@ -2288,8 +3100,24 @@ class BreathingTransformer:
         v26 cross-cycle notebook: pass initial_notebook(/_r) to seed from a prior
         cycle's final state. Set return_notebook=True to return the final notebook
         state(s) for threading into the next cycle.
+
+        v79 (2026-05-25) notebook_pool_mask: shape (B, T) float, 1.0 at valid
+        positions (typically [0, prompt_len)) and 0.0 elsewhere. When provided
+        AND NOTEBOOK_POOL_MODE == "attn", applies an additive -1e4 penalty to the
+        notebook write attention scores at masked positions, so the notebook only
+        ever reads from prompt positions. Plugs the v78b training-time leak where
+        post-breath x at gold-answer positions carries gradient information about
+        the gold span — the notebook would otherwise read it.
         """
         x_emb = self.embed(tokens).cast(dtypes.half)  # v40: frozen embedding, reused each breath in fresh mode
+        # v81 (2026-05-26) main_attn_mask doubles as an embedding mask: at answer-span
+        # positions (mask=0), zero the input embedding so the residual stream carries
+        # NO information about the gold/garbage token sitting there. Combined with the
+        # main-attn key mask and the cross-attn / notebook mask, this makes the v81
+        # paradigm fully prompt-conditional — each position's prediction is independent
+        # of the teacher-forced tokens in the answer span. Verified by audit pos=N≥prompt_len.
+        if main_attn_mask is not None:
+            x_emb = x_emb * main_attn_mask.cast(x_emb.dtype).reshape(x_emb.shape[0], -1, 1)
         x = x_emb
         integral = Tensor.zeros_like(x)
         match_weights = []
@@ -2300,6 +3128,9 @@ class BreathingTransformer:
         notebook = None
         notebook_r = None
         weight_sum = 0.0  # v39 sin-modulation: accumulated weights for the integral
+        # v70: apply_collapse_v70 resets self.block._collapse_v70_accum_sparsity on
+        # breath_idx==0 and accumulates over the K-loop. The trainer reads the sum
+        # after forward (it's a graph node belonging to this forward's trace).
         if NOTEBOOK_V24:
             B = x.shape[0]
             notebook = initial_notebook if initial_notebook is not None else _initial_notebook_state(B, self.block.nb_dim)
@@ -2337,14 +3168,21 @@ class BreathingTransformer:
                 x_in = x_in + dag_read
             if return_waist_compressed:
                 x, waist_compressed = self.block.breathe_once(x_in, l, temp_mult=_sine_temp_baseline(l, n_loops),
-                                                                return_waist_compressed=True)
+                                                                return_waist_compressed=True, n_loops=n_loops,
+                                                                attn_mask=main_attn_mask)
                 waist_compressed_per_breath.append(waist_compressed)
             else:
-                x = self.block.breathe_once(x_in, l, temp_mult=_sine_temp_baseline(l, n_loops))
+                x = self.block.breathe_once(x_in, l, temp_mult=_sine_temp_baseline(l, n_loops), n_loops=n_loops,
+                                              attn_mask=main_attn_mask)
             if NOTEBOOK_V24:
                 x_f = x.cast(dtypes.float)
+                # v79 notebook causal mask: when notebook_pool_mask provided, mask
+                # out non-prompt positions in attention-pool BEFORE softmax. mask=1
+                # at valid (prompt) positions, mask=0 elsewhere. Mean-pool unaffected.
                 if NOTEBOOK_POOL_MODE == "attn":
                     scores = (x_f * self.block.notebook_write_query.reshape(1, 1, -1)).sum(axis=-1)
+                    if notebook_pool_mask is not None:
+                        scores = scores + (1.0 - notebook_pool_mask.cast(scores.dtype)) * (-1e4)
                     weights = scores.softmax(axis=-1).reshape(x.shape[0], -1, 1)
                     x_pool = (x_f * weights).sum(axis=1)
                 else:
@@ -2354,6 +3192,8 @@ class BreathingTransformer:
                 if NOTEBOOK_DUAL:
                     if NOTEBOOK_POOL_MODE == "attn":
                         scores_r = (x_f * self.block.notebook_rep_query.reshape(1, 1, -1)).sum(axis=-1)
+                        if notebook_pool_mask is not None:
+                            scores_r = scores_r + (1.0 - notebook_pool_mask.cast(scores_r.dtype)) * (-1e4)
                         weights_r = scores_r.softmax(axis=-1).reshape(x.shape[0], -1, 1)
                         x_pool_r = (x_f * weights_r).sum(axis=1)
                     else:
