@@ -77,13 +77,16 @@ def main():
     ap.add_argument("ckpt", help="Path to a .safetensors v98 sudoku ckpt.")
     ap.add_argument("--test", default=".cache/sudoku_test.jsonl")
     ap.add_argument("--K", type=int, default=int(os.environ.get("SUDOKU_K_MAX", SUDOKU_K_MAX)))
+    ap.add_argument("--k_alloc", type=int, default=None,
+                    help="K_max used for model allocation (must match ckpt). Defaults to --K.")
     ap.add_argument("--n", type=int, default=500, help="Number of test puzzles per difficulty (cap).")
     ap.add_argument("--batch", type=int, default=8)
     ap.add_argument("--show", type=int, default=2, help="Show N sample puzzles (in,gold,pred).")
     args = ap.parse_args()
 
+    k_alloc = args.k_alloc if args.k_alloc is not None else args.K
     print(f"=== v98 sudoku eval ===")
-    print(f"ckpt={args.ckpt}  test={args.test}  K={args.K}  n_per_diff={args.n}  batch={args.batch}")
+    print(f"ckpt={args.ckpt}  test={args.test}  K={args.K}  k_alloc={k_alloc}  n_per_diff={args.n}  batch={args.batch}")
 
     cfg = Config()
     sd = _load_state()
@@ -91,7 +94,7 @@ def main():
     model = load_breathing(cfg, sd=sd)
     del sd
     cast_layers_fp32(model)
-    attach_sudoku_params(model, hidden=cfg.hidden, n_heads=cfg.n_heads, k_max=args.K)
+    attach_sudoku_params(model, hidden=cfg.hidden, n_heads=cfg.n_heads, k_max=k_alloc)
     Device[Device.DEFAULT].synchronize()
     print(f"loading ckpt {args.ckpt}...")
     load_ckpt(model, args.ckpt)
