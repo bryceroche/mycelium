@@ -219,6 +219,42 @@ BFIELD_ENFORCED          = int(os.environ.get("BFIELD_ENFORCED", "0")) > 0
 BFIELD_SIN_MOD           = int(os.environ.get("BFIELD_SIN_MOD", "0")) > 0
 BFIELD_AUX_WEIGHT        = float(os.environ.get("BFIELD_AUX_WEIGHT", "0.0"))
 
+# v83 (2026-05-27) Per-breath VARIED WAIST WIDTH — the B field becomes a precision
+# ladder phase-locked to the E field rotation. The fixed BFIELD_WAIST=512 channel
+# bandwidth is replaced with a per-breath schedule: at breath b, only the first
+# k_b channels of the 512d waist are kept (the rest are zeroed by mask BEFORE
+# GELU + codebook injection). The waist masks the wide proj_down/proj_up matrices
+# (no new params); shape (K, BFIELD_WAIST). When unset, behavior is byte-identical
+# to v82 (mask is all-ones).
+#
+# Example schedule: "64,256,384,512,512" with K=5 breaths.
+#   B0: 64 channels  — narrow bottleneck for skeleton / OPs / op-magnitude only
+#   B1: 256 channels — coarse content (types depth-1, args magnitude)
+#   B2: 384 channels — refinement (types depth-2)
+#   B3-B4: 512 channels — full precision
+#
+# Combined with V83_ANYTIME_SUPERVISION below, this lets capable students "read
+# ahead" — emit full precision early — bounded by the physical channel limit.
+BFIELD_WAIST_SCHEDULE    = os.environ.get("BFIELD_WAIST_SCHEDULE", "")
+
+
+def _parse_bfield_waist_schedule(spec: str, max_value: int) -> list[int] | None:
+    """Parse "64,256,384,512,512" into [64, 256, 384, 512, 512]. Returns None when
+    spec is empty. Clamps each entry to [1, max_value]."""
+    spec = (spec or "").strip()
+    if not spec:
+        return None
+    parts = [p.strip() for p in spec.split(",") if p.strip()]
+    out: list[int] = []
+    for p in parts:
+        v = int(p)
+        if v < 1:
+            v = 1
+        if v > max_value:
+            v = max_value
+        out.append(v)
+    return out
+
 # v40 fresh-embedding-each-breath. When 1, each breath's INPUT is the original
 # token embedding plus notebook context (read at breath start), NOT the previous
 # breath's output. Breaks the rep-flow chain that caused v39's A=8 collapse:
@@ -608,6 +644,214 @@ if MULTI_HEAD_WAIST:
     print(f"[MULTI_HEAD_WAIST] WaistController emits 4 parallel heads (ops/types/args1/args2)", flush=True)
 if V81_MAIN_ATTN_MASK:
     print(f"[V81_MAIN_ATTN_MASK] main-attn answer-span masking active", flush=True)
+
+
+# v85 (2026-05-27) Differentiable queryable structures.
+#
+# Replaces v82-v84's text-based DAG supervision with STRUCTURED slot supervision.
+# Numbers/verbs are queryable differentiable tensors. The model binds DAG args to
+# actual prompt-number positions via pointer attention.
+#
+# Architecture per breath:
+#   - K_max=10 DAG slots, each with: ops (4), types (32), 2 args, is_active (1)
+#   - Each slot is a query (slot_pos_embed[k] + waist_compressed_pooled)
+#   - Per-slot heads: ops_logits, types_logits, args_logits[2] over (N_max + K_max),
+#     is_active_logits (sigmoid)
+#   - All breaths emit SAME structure (no per-breath specialization)
+#   - Slots fill in PARALLEL per breath (no AR)
+#
+# Codebooks (learnable):
+#   - ops_codebook (4, h)        — small random init
+#   - types_codebook (32, h)     — init from .cache/ib_centroids.npz when available
+#
+# When V85_QUERYABLE=1, the slot decoder fires at EVERY breath. Each breath gets
+# per-slot CE supervision on (ops, types, args1, args2, is_active). This replaces
+# the v82/v84 per-breath full-sequence CE.
+V85_QUERYABLE        = int(os.environ.get("V85_QUERYABLE", "0")) > 0
+V85_K_MAX            = int(os.environ.get("V85_K_MAX", "10"))
+V85_N_MAX            = int(os.environ.get("V85_N_MAX", "20"))   # max prompt numbers
+V85_TYPES_N          = int(os.environ.get("V85_TYPES_N", "32"))
+V85_OPS_N            = 4
+if V85_QUERYABLE:
+    print(f"[V85_QUERYABLE] differentiable queryable structures — K_max={V85_K_MAX} N_max={V85_N_MAX} types_N={V85_TYPES_N}", flush=True)
+
+# v86 (2026-05-27) Targeted fixes to v85's args-binding bottleneck.
+#
+# v85 args heads read a mean-pooled waist → broadcast same context to all slots
+# → loses positional info. v86 makes each slot cross-attend over the FULL waist
+# sequence to compute its own positional context, then uses that context for
+# the pointer logits. The per-slot signal comes from `slot_pos_embed` which
+# already differentiates the slot queries (existing v85 piece).
+#
+# v86 also adds a positive-class weight to the active head BCE so slots are
+# predicted active more often (v85 was too conservative — most problems
+# decoded to empty DAGs).
+V86_ARGS_CROSS_ATTN  = int(os.environ.get("V86_ARGS_CROSS_ATTN", "0")) > 0
+V86_ACTIVE_POS_WEIGHT = float(os.environ.get("V86_ACTIVE_POS_WEIGHT", "5.0"))
+if V86_ARGS_CROSS_ATTN:
+    print(f"[V86_ARGS_CROSS_ATTN] per-slot cross-attn over full waist sequence for args binding", flush=True)
+if V85_QUERYABLE:
+    print(f"[V86_ACTIVE_POS_WEIGHT] active-head BCE pos_weight={V86_ACTIVE_POS_WEIGHT}", flush=True)
+
+# v95 (2026-05-28) Operand-position attention supervision for the AR v80 paradigm.
+#
+# v80_prod_step400 ceiling: 78% DAG parse / 1.7% accuracy. Two failure modes
+# diagnosed:
+#   (a) wrong-operand binding (model emits SOME prompt number but the wrong one)
+#   (b) undefined variable references (emits x3 when only x0 defined)
+#
+# v95 attacks (a): for each AR-output position that emits a number-token in the
+# gold L6 (e.g. `Ġ50`, `Ġ12`, `Ġ60`), force the WaistController's cross-attention
+# at THAT output position to peak at the prompt position where that number was
+# originally mentioned (as a digit-spaced sequence: `Ġ5 Ġ0`).
+#
+# This is a complement to (not replacement for) the existing WAIST_ATTN_SUPERVISION
+# which supervises single-digit-token positions. v95 covers WHOLE-NUMBER tokens —
+# the dominant content tokens in the L6 DAG. Targets are MERGED into the same
+# attn_target_t / attn_mask_t tensors (no new JIT inputs needed; same stash).
+#
+# Default 0 preserves v80 behavior. When V95_OPERAND_AUX=1 AND v80 data is
+# loaded, the data-annotation step extends attn_target/attn_mask to cover
+# whole-number-token output positions.
+V95_OPERAND_AUX        = int(os.environ.get("V95_OPERAND_AUX", "0")) > 0
+V95_OPERAND_AUX_WEIGHT = float(os.environ.get("V95_OPERAND_AUX_WEIGHT", "0.5"))
+if V95_OPERAND_AUX:
+    print(f"[V95_OPERAND_AUX] operand-position attention supervision weight={V95_OPERAND_AUX_WEIGHT}", flush=True)
+
+# v87 (2026-05-27) Slot-symmetry fix.
+#
+# v86 hit 100% parse but 0% accuracy because ALL slots attend to the same prompt
+# position (JSD 0.001 across slots vs ceiling 0.69). Root cause: per-slot
+# positional embeddings exist but are too weak (slot_pos_embed at 0.02 scale,
+# v86_args_slot_pos zero-init) to break the GELU-pooled slot_query symmetry.
+#
+# v87 fix: init the per-slot positional embeddings at a meaningful scale so
+# slots START differentiated. Both `slot_pos_embed` and `v86_args_slot_pos` use
+# this scale. Uniform(-scale, scale) — same family as the original 0.02 init.
+#
+# When warm-starting from a v86 ckpt whose saved slot_pos_embed has the small
+# v85/v86 values, the trainer can reinitialize the params AFTER load_state_dict
+# by setting V87_REINIT_SLOT_POS=1.
+V87_SLOT_POS_INIT_SCALE = float(os.environ.get("V87_SLOT_POS_INIT_SCALE", "0.0"))
+if V87_SLOT_POS_INIT_SCALE > 0.0:
+    print(f"[V87_SLOT_POS_INIT_SCALE] slot_pos_embed + v86_args_slot_pos init scale {V87_SLOT_POS_INIT_SCALE}", flush=True)
+
+# v89 (2026-05-27) Supervised attention for args binding.
+#
+# v88 fixed the K/V projection collapse (slots now produce diverse attention,
+# pairwise JSD lifted 8×) but accuracy stayed at 0% because the args POINTER
+# projections collapsed to a degenerate "slot k picks index 20+k" pattern (the
+# dag-ref region of the unified pointer space). Even though cross-attn found
+# different positions per slot, those positions didn't translate to NUMBER
+# positions in the prompt.
+#
+# v89 fix: add an auxiliary loss that directly supervises the cross-attn
+# distribution to peak at the GOLD number position from Haiku data. For each
+# DAG slot k whose gold args[i].source == "numbers", the slot's args[i]
+# cross-attn distribution should peak at the token-position spanning that
+# number. CE on softmax(slot_q @ prompt_k.T) against one-hot at the gold
+# position. This is supervision on the CROSS-ATTN DIST itself, not on the
+# downstream pointer logits — directly training the attention pattern, which
+# the pointer projection then reads through.
+#
+# To enable per-arg supervision (args1 and args2 have different gold target
+# positions per slot), v89 splits the v86 single shared cross-attn into TWO
+# parallel cross-attns: one for args1, one for args2. Each gets its own K and
+# V projection. The Q projection is shared (slot_query is the same). Output:
+# slot_args_ctx_args1 feeds args1_q_w; slot_args_ctx_args2 feeds args2_q_w.
+#
+# When V89_SUPERVISED_ATTN=0: the v86 single-shared cross-attn path is
+# preserved unchanged (warm-start safe).
+# When V89_SUPERVISED_ATTN=1: split into two cross-attns. The new K/V projs
+# are initialized at scale V89_PROJ_INIT_SCALE (default 0.02). For warm-start,
+# the trainer can OPTIONALLY copy the v86 K/V proj values into both args1 and
+# args2 projections (V89_INHERIT_V86=1) so we start where v88 left off and
+# the supervised loss reshapes them.
+V89_SUPERVISED_ATTN = int(os.environ.get("V89_SUPERVISED_ATTN", "0")) > 0
+V89_PROJ_INIT_SCALE = float(os.environ.get("V89_PROJ_INIT_SCALE", "0.02"))
+if V89_SUPERVISED_ATTN:
+    print(f"[V89_SUPERVISED_ATTN] split args1/args2 cross-attn + supervised attn loss "
+          f"(proj init scale={V89_PROJ_INIT_SCALE})", flush=True)
+
+# v91 (2026-05-27) Simplified args pathway — collapse the 5-matmul args chain
+# into 1 matmul that mirrors the ops_codebook mechanism. Audit on v90 step 100
+# showed 10-20x gradient attenuation through args projections (ops_codebook
+# grad_L2 ≈ 8.6, args projections ≈ 0.4-0.9). Root cause: 5 trainable matmul
+# transforms + 2 softmaxes downstream of waist for args vs 1 + 1 for ops.
+#
+# v91 replaces the cross-attn + pointer chain with a single einsum:
+#   args_codebook = concat(numbers_emb, slot_query)            # (B, N_max+K_max, H)
+#   arg_query = slot_query + arg_pos_emb[i]                    # (B, K_max, 2, H)
+#   args_logits = einsum("bkih,bjh->bkij", arg_query, args_codebook)
+# arg_pos_emb is a learnable (2, H) tensor distinguishing args1 vs args2.
+#
+# When V91_SIMPLIFIED_ARGS=1:
+#   - forward() uses the simplified path (no cross-attn, no pointer projections)
+#   - deprecated tensors (args1_q_w, args2_q_w, args_k_w, v86_args_q_proj,
+#     v86_args_k_proj, v86_args_v_proj, v86_args_slot_pos, v89_args1_*, v89_args2_*)
+#     stay ALLOCATED for state-dict compat but are NOT in parameters().
+#   - args_attn / args1_attn / args2_attn / args1_attn_scores / args2_attn_scores
+#     are NOT emitted (no cross-attn to read).
+#   - v89 supervised attention aux loss is no-op (gated in trainer).
+V91_SIMPLIFIED_ARGS = int(os.environ.get("V91_SIMPLIFIED_ARGS", "0")) > 0
+if V91_SIMPLIFIED_ARGS:
+    print(f"[V91_SIMPLIFIED_ARGS] simplified args pathway: single-matmul codebook lookup "
+          f"(deprecated: args*_q_w, args_k_w, v86_args_*, v89_args*)", flush=True)
+
+# v96 (2026-05-28) CONSOLIDATION TABLE — compress the DELTA, not the state.
+#
+# Per breath:
+#   delta = x_out - x_in
+#   importance = sigmoid(delta @ gate_w + gate_b)            # per-dim gate
+#   delta_q = delta * importance                              # quantized delta
+#   pool = softmax(delta_q · breath_embed[k])                 # attention pool over T
+#   delta_pooled = (pool * delta_q).sum(T)                    # (B, hidden)
+#   artifact = pack(ops_logits, types_logits, conf, summary)  # (B, 165)
+#   table[:, k, :] = artifact
+#
+# The WaistController at the FINAL breath reads the table as additional KV.
+# Per-breath supervision on (ops_logits, types_logits, confidence) breaks the
+# v85 template attractor by giving EVERY breath its own credit signal.
+#
+# Implementation lives in mycelium/v96.py + hooks here + l3_training.py for
+# the per-row CE loss. ALWAYS allocated for state_dict symmetry; gradient
+# inert (zero-init paths) when V96_CONSOLIDATION=0.
+V96_CONSOLIDATION = int(os.environ.get("V96_CONSOLIDATION", "0")) > 0
+if V96_CONSOLIDATION:
+    print(f"[V96_CONSOLIDATION] consolidation-table architecture ON: per-breath delta → "
+          f"gated quantization → attention pool → packed artifact (165d) → "
+          f"WaistController reads table KV at final breath.", flush=True)
+
+# v96.2 (2026-05-28) Per-breath TEMPERATURE DECAY on ops/types logits — broad early,
+# sharp late. Bombe-inspired: early breaths keep many candidate selections alive,
+# late breaths commit. Default OFF for v96.1 byte-compat; gate-on with
+# V96_TEMPERATURE_DECAY=1 in v96.2.
+V96_TEMPERATURE_DECAY = int(os.environ.get("V96_TEMPERATURE_DECAY", "0")) > 0
+V96_T_START = float(os.environ.get("V96_T_START", "2.0"))
+V96_T_END   = float(os.environ.get("V96_T_END", "0.3"))
+if V96_TEMPERATURE_DECAY:
+    print(f"[V96_TEMPERATURE_DECAY] per-breath sharpening ON: T_start={V96_T_START}, "
+          f"T_end={V96_T_END}, linear (floor at T_end).", flush=True)
+
+# v97 (2026-05-28) CALIBRATION HEAD — pure auxiliary loss on a read-only head.
+# Bombe-inspired self-assessment WITHOUT the v96 consolidation table feedback loop.
+#
+# Architecture: small Linear(1024 -> 1) head that predicts P(model's final answer
+# correct) from each breath's pooled hidden state. Per-breath target is a linear
+# progression: B0 = 0.5 (uncertain), B_{K-1} = sigmoid-of-(-final_pb_ce) proxy.
+# The model learns to self-assess. The calibration head READS the breath's hidden
+# state but DOES NOT WRITE back to any state subsequent breaths read — pure
+# forward-then-loss; no architectural feedback. This is the key distinction from
+# v96 (which had table reads flowing through the residual stream into next breath's
+# writes — structural positive feedback that drove waist_norm 1.4 → 710).
+#
+# Pure auxiliary loss; never modifies the residual stream. AR-correct masking
+# preserved (V81_MAIN_ATTN_MASK=0 for AR generation).
+V97_CALIBRATION = int(os.environ.get("V97_CALIBRATION", "0")) > 0
+if V97_CALIBRATION:
+    print(f"[V97_CALIBRATION] calibration head ON: per-breath self-assessment via "
+          f"Linear(1024 -> 1) read-only head. Aux loss only — no feedback into "
+          f"residual stream.", flush=True)
 
 
 def _sine_temp_baseline(loop_idx: int, n_loops: int) -> float:
@@ -1614,6 +1858,30 @@ class BreathingBlock:
         # v38a CFG-style residual scale. Tensor (1,) so it's a JIT graph input
         # and can be reassigned via .assign() at inference without recompile.
         self.bfield_alpha     = (Tensor.ones((1,), dtype=dtypes.float) * BFIELD_ALPHA).contiguous()
+        # v83 (2026-05-27) per-breath waist width mask. Shape (max_loops, bf_w).
+        # When BFIELD_WAIST_SCHEDULE is set, the mask zeros out (bf_w - k_b)
+        # channels per breath BEFORE GELU + codebook injection. When unset, the
+        # mask is all-ones (byte-identical to v82). Non-learnable (not in
+        # parameters()), constructed from the env var at module load.
+        sched = _parse_bfield_waist_schedule(BFIELD_WAIST_SCHEDULE, bf_w)
+        mask_np = np.ones((cfg.max_loops, bf_w), dtype=np.float32)
+        if sched is not None:
+            # Pad/truncate the schedule to max_loops. If schedule shorter than
+            # max_loops, hold the LAST value (typical: last breaths run at full
+            # precision); if longer, truncate. Both keep mask shape (max_loops, bf_w).
+            for b in range(cfg.max_loops):
+                if b < len(sched):
+                    k_b = sched[b]
+                else:
+                    k_b = sched[-1] if sched else bf_w
+                if k_b < bf_w:
+                    mask_np[b, k_b:] = 0.0
+        self.bfield_waist_mask = Tensor(mask_np, dtype=dtypes.float).contiguous()
+        # Diagnostic / logging convenience
+        self._bfield_waist_schedule = sched
+        if sched is not None:
+            print(f"[v83 BFIELD_WAIST_SCHEDULE] per-breath waist widths: {sched} "
+                  f"(max waist={bf_w}, max_loops={cfg.max_loops})", flush=True)
 
         # v53 (2026-05-19) learnable codebook at the IB waist.
         #
@@ -1633,7 +1901,8 @@ class BreathingBlock:
         self.waist_codebook_keys = (Tensor.randn(cb_n, bf_w, dtype=dtypes.float) * 0.02).contiguous()
         self.waist_codebook_values = Tensor.zeros((cb_n, bf_w), dtype=dtypes.float).contiguous()
 
-    def apply_bfield_waist(self, x: Tensor, return_compressed: bool = False) -> Tensor:
+    def apply_bfield_waist(self, x: Tensor, return_compressed: bool = False,
+                             loop_idx: int | None = None) -> Tensor:
         """B-field IB bottleneck with optional CFG-alpha residual scale.
 
         Residual mode (BFIELD_ENFORCED=0):
@@ -1643,9 +1912,22 @@ class BreathingBlock:
 
         When return_compressed=True, returns (out, compressed) for aux supervision
         on the 512d intermediate.
+
+        v83 (2026-05-27): when BFIELD_WAIST_SCHEDULE is set and loop_idx is provided,
+        applies the per-breath waist-width mask BEFORE the codebook injection +
+        GELU. Channels above the per-breath threshold are zeroed → narrow waist
+        in early breaths, full waist in later breaths. Mask is non-learnable, so
+        the projection params still receive gradient on the kept channels.
         """
         x_f = x.cast(dtypes.float)
         compressed = x_f @ self.bfield_proj_down
+        # v83: per-breath waist-width mask. When the schedule is unset, mask is
+        # all-ones (no-op). When set + loop_idx provided, mask zeros channels
+        # above k_b. Multiplying before the codebook injection AND GELU ensures
+        # both downstream paths see a narrower effective waist.
+        if self._bfield_waist_schedule is not None and loop_idx is not None:
+            mask_row = self.bfield_waist_mask[loop_idx].reshape(1, 1, -1).cast(dtypes.float)
+            compressed = compressed * mask_row
         # v50 codebook injection — query learnable keys, retrieve weighted values,
         # add to compressed state before GELU. Values are zero-init so contribution
         # is identity at step 0 (warm-start compatible).
@@ -1655,6 +1937,11 @@ class BreathingBlock:
             weights = scores.softmax(axis=-1)
             retrieved = weights @ self.waist_codebook_values
             compressed = compressed + WAIST_CODEBOOK_INJECT_WEIGHT * retrieved
+            # v83: re-mask after codebook injection so retrieved values can't
+            # "leak" through the closed channels (values are zero-init initially
+            # but become non-zero with training).
+            if self._bfield_waist_schedule is not None and loop_idx is not None:
+                compressed = compressed * mask_row
         activated = compressed.gelu()
         decompressed = activated @ self.bfield_proj_up + self.bfield_bias
         if BFIELD_ENFORCED:
@@ -2132,7 +2419,7 @@ class BreathingBlock:
             # --- v38 B-field IB bottleneck: mid-breath waist (after L1) ---
             # v39: when BFIELD_END_OF_BREATH=1, this fires AFTER L3 instead (below).
             if BFIELD_WAIST > 0 and layer_idx == 1 and not BFIELD_END_OF_BREATH:
-                x = self.apply_bfield_waist(x)
+                x = self.apply_bfield_waist(x, loop_idx=loop_idx)
         # --- v71/v70/v69 COLLAPSE: lossy compression replaces B-field waist ---
         # v71 (current): v70 refined — stronger sparsity, lower gate bias, k-means codebook,
         #                cleaner controller signal (no prototype add-back to controller's read).
@@ -2157,9 +2444,9 @@ class BreathingBlock:
                 x = self.apply_collapse_v69(x)
         elif BFIELD_WAIST > 0 and BFIELD_END_OF_BREATH:
             if return_waist_compressed:
-                x, waist_compressed = self.apply_bfield_waist(x, return_compressed=True)
+                x, waist_compressed = self.apply_bfield_waist(x, return_compressed=True, loop_idx=loop_idx)
             else:
-                x = self.apply_bfield_waist(x)
+                x = self.apply_bfield_waist(x, loop_idx=loop_idx)
         # End-of-breath CRP — only when per-layer oscillation is OFF (otherwise the
         # last layer's per-layer CRP already did this).
         if CONSTANT_RADIUS and not BREATH_NORM_OSC:
@@ -2403,7 +2690,8 @@ class WaistController:
                  prompt_dropout_mask: Tensor | None = None,
                  prompt_tokens: Tensor | None = None,
                  kv_mask: Tensor | None = None,
-                 force_single_head: bool = False) -> Tensor:
+                 force_single_head: bool = False,
+                 v96_table_kv: Tensor | None = None) -> Tensor:
         """waist_compressed: (B, T_q, waist_dim) — Q sequence length T_q can be 1 or full T
            prompt_emb:        (B, T_kv, H_base) — main model's embedding of the prompt
            embed_out:         (H_base, vocab) — main model's TIED output projection
@@ -2437,6 +2725,20 @@ class WaistController:
         # Project waist up to controller_hidden.
         x = (waist_compressed @ self.waist_up_w + self.waist_up_b).cast(dtypes.float)
         prompt_f = prompt_emb.cast(dtypes.float)
+        # v96 (2026-05-28) optionally CONCATENATE the consolidation table KV stream
+        # along the sequence axis BEFORE the cross-attn layer loop.
+        # v96_table_kv: (B, K_table, H_base) — already projected by the caller.
+        # kv_mask is extended to cover the table positions (all 1.0 = valid).
+        if v96_table_kv is not None:
+            T_table = v96_table_kv.shape[1]
+            # Cast to match prompt_f dtype and concat along seq axis.
+            v96_table_kv_f = v96_table_kv.cast(prompt_f.dtype)
+            prompt_f = Tensor.cat(prompt_f, v96_table_kv_f, dim=1)
+            T_kv = T_kv + T_table
+            if kv_mask is not None:
+                # Extend the kv_mask with all-1.0 for the table positions.
+                table_mask = Tensor.ones((B, T_table), dtype=kv_mask.dtype)
+                kv_mask = Tensor.cat(kv_mask, table_mask, dim=1)
         # v63 prompt-dropout: zero the prompt embeddings when mask is 0 (training-time
         # randomized). Forces the controller to learn from waist alone occasionally,
         # enabling proper CFG at inference later. mask shape: scalar Tensor (1,).
@@ -2575,6 +2877,477 @@ class WaistController:
         return ps
 
 
+# ---------- v85 Queryable Slot Decoder (2026-05-27) ----------
+
+class V85SlotDecoder:
+    """Differentiable queryable structures: K_max DAG slots × per-slot heads.
+
+    For each breath, reads `waist_compressed` (B, T, waist_dim) and a per-example
+    pool of "queryable structures" (numbers_emb, ops_codebook, types_codebook),
+    and emits per-slot logits for:
+      - ops_logits (B, K_max, 4)
+      - types_logits (B, K_max, 32)
+      - args_logits[2] (B, K_max, N_max + K_max) — two heads, one per arg position
+      - is_active_logits (B, K_max, 1) — sigmoid for soft insert/delete
+
+    Slots fill in PARALLEL per breath. No AR. All breaths emit the same target
+    structure. Soft commit: no argmax inside the breath loop.
+
+    Architecture (parameter-frugal for AMD JIT):
+      - slot_pos_embed (K_max, h) — learnable, identifies each slot k
+      - slot_q_proj (waist_dim → h) — projects waist_compressed (mean-pooled
+        over T at prompt positions) into slot query space
+      - h_combine: slot_query[k] = (slot_pos_embed[k] + waist_pooled @ slot_q_proj).LN.gelu
+      - ops_head_w (h → 4)
+      - types_head_w (h → 32)
+      - args_pointer_q_w (h → h_p)
+      - args_pointer_k_w (h → h_p) shared across "numbers" / "dag_slots" keys
+      - active_head_w (h → 1)
+
+      Args pointer attention:
+        slot_q_p = slot_query @ args_pointer_q_w        # (B, K_max, h_p)
+        numbers_k = numbers_emb @ args_pointer_k_w      # (B, N_max, h_p)
+        slot_k = slot_query @ args_pointer_k_w          # (B, K_max, h_p) — for dag args
+        all_keys = concat(numbers_k, slot_k)            # (B, N_max + K_max, h_p)
+        args_scores = (slot_q_p @ all_keys.T) * scale   # (B, K_max, N_max + K_max)
+        causal mask for dag refs: slot k can only ref dag[k'] for k' < k.
+
+    Two arg positions per slot. We have TWO pointer heads (args1_q_w, args2_q_w)
+    that share the keys.
+
+    `numbers_emb` is built outside this module from token-span pooling at the
+    encoder side (see scripts/build_v85_data.py and l3_training.py for the pipe).
+    """
+
+    def __init__(self, cfg, waist_dim: int, K_max: int, N_max: int,
+                 types_N: int = 32, h_pointer: int = 64):
+        H = cfg.hidden
+        self.cfg = cfg
+        self.waist_dim = waist_dim
+        self.K_max = K_max
+        self.N_max = N_max
+        self.types_N = types_N
+        self.ops_N = 4
+        self.h_pointer = h_pointer
+
+        # Slot position embedding (per slot index). Small random init so slots
+        # start distinguishable. Each row is a 1024d vector.
+        #
+        # v87 (2026-05-27): when V87_SLOT_POS_INIT_SCALE>0, use a meaningful
+        # uniform init scale so slots START strongly differentiated. v86's
+        # 0.02-scale randn was too weak — the GELU-pooled slot_query collapsed
+        # symmetric across slots (cross-slot JSD ~0.001 at training). Bigger
+        # init breaks symmetry before the args-binding gradient gets a chance
+        # to fight it. Uniform family preserves the same scale-by-scale ablation.
+        if V87_SLOT_POS_INIT_SCALE > 0.0:
+            self.slot_pos_embed = Tensor.uniform(
+                K_max, H, low=-V87_SLOT_POS_INIT_SCALE, high=V87_SLOT_POS_INIT_SCALE,
+                dtype=dtypes.float).contiguous()
+        else:
+            self.slot_pos_embed = (Tensor.randn(K_max, H, dtype=dtypes.float) * 0.02).contiguous()
+
+        # Waist pool projection. Reads the waist_compressed at a SINGLE pooled
+        # position (controller reads in 1024d space the same way the controller
+        # already does). 1024 -> 1024 zero-init so the slot_query starts equal
+        # to slot_pos_embed alone (warm-start safe).
+        # NOTE: waist_dim is e.g. 512 here.
+        self.waist_pool_proj_w = Tensor.zeros((waist_dim, H), dtype=dtypes.float).contiguous()
+        self.waist_pool_proj_b = Tensor.zeros((H,), dtype=dtypes.float).contiguous()
+
+        # Per-slot pre-output LN (gain + bias). Stabilizes the per-slot vector
+        # before the four output heads.
+        self.slot_ln_g = Tensor.ones((H,), dtype=dtypes.float).contiguous()
+        self.slot_ln_b = Tensor.zeros((H,), dtype=dtypes.float).contiguous()
+
+        # Codebooks (queryable structures). Learnable.
+        # ops_codebook: 4 × H, small random init.
+        self.ops_codebook = (Tensor.randn(self.ops_N, H, dtype=dtypes.float) * 0.02).contiguous()
+        # types_codebook: 32 × H. Init from IB centroids when available (in
+        # trainer post-init), else random.
+        self.types_codebook = (Tensor.randn(self.types_N, H, dtype=dtypes.float) * 0.02).contiguous()
+        # Per-codebook scale for logit calibration.
+        # Apply via @codebook.T direct projection: slot_q @ codebook.T → (B, K_max, N).
+
+        # Output heads.
+        # ops/types are matmuls against the codebooks; no separate weight matrix.
+        self.ops_head_b = Tensor.zeros((self.ops_N,), dtype=dtypes.float).contiguous()
+        self.types_head_b = Tensor.zeros((self.types_N,), dtype=dtypes.float).contiguous()
+
+        # Args pointer pieces (two arg positions per slot).
+        self.args1_q_w = (Tensor.randn(H, h_pointer, dtype=dtypes.float) * 0.02).contiguous()
+        self.args2_q_w = (Tensor.randn(H, h_pointer, dtype=dtypes.float) * 0.02).contiguous()
+        self.args_k_w  = (Tensor.randn(H, h_pointer, dtype=dtypes.float) * 0.02).contiguous()
+
+        # v86 (2026-05-27) Per-slot cross-attn over full waist sequence for args.
+        # When V86_ARGS_CROSS_ATTN=1, args1/args2 first build a per-slot context
+        # via cross-attn(slot_query, waist_full), then use THAT context for the
+        # pointer logits. The cross-attn keys/values project waist_dim → H so
+        # the result is a per-slot 1024d vector in the same space as slot_query,
+        # which can then go through args1_q_w / args2_q_w for the pointer dot
+        # products with numbers/dag keys.
+        #
+        # Init scheme:
+        #   - v86_args_q_proj: small random (slot_query -> h_pointer-d query).
+        #   - v86_args_k_proj: zero-init -> attn is uniform initially -> waist_ctx
+        #     starts equal to mean(waist_full @ v86_args_v_proj). This is benign
+        #     for warm-start (v86_args_v_proj is also zero-init, so waist_ctx=0
+        #     and the args path falls back to the original v85 behavior).
+        #   - v86_args_v_proj: zero-init -> waist_ctx = 0 at start.
+        # With v_proj zero, args path uses slot_query (unchanged from v85). The
+        # gradient lifts both q and v together as the model learns to bind.
+        h_p_attn = h_pointer  # use same width for cross-attn q/k dim
+        self.v86_args_q_proj = (Tensor.randn(H, h_p_attn, dtype=dtypes.float) * 0.02).contiguous()
+        self.v86_args_k_proj = Tensor.zeros((waist_dim, h_p_attn), dtype=dtypes.float).contiguous()
+        self.v86_args_v_proj = Tensor.zeros((waist_dim, H), dtype=dtypes.float).contiguous()
+        # v89 (2026-05-27): split args1/args2 cross-attn for supervised attention.
+        # Two parallel cross-attentions (separate K/V projections) so args1 and
+        # args2 can peak at DIFFERENT positions. When V89_SUPERVISED_ATTN=0 these
+        # are inert (the v86 single-shared attn path is used instead) but are
+        # always allocated so the parameter list / state_dict are stable. The
+        # trainer can optionally inherit values from v86 K/V projections via
+        # V89_INHERIT_V86=1 after load_state_dict.
+        if V89_SUPERVISED_ATTN:
+            self.v89_args1_k_proj = (Tensor.randn(waist_dim, h_p_attn, dtype=dtypes.float) * V89_PROJ_INIT_SCALE).contiguous()
+            self.v89_args1_v_proj = (Tensor.randn(waist_dim, H, dtype=dtypes.float) * V89_PROJ_INIT_SCALE).contiguous()
+            self.v89_args2_k_proj = (Tensor.randn(waist_dim, h_p_attn, dtype=dtypes.float) * V89_PROJ_INIT_SCALE).contiguous()
+            self.v89_args2_v_proj = (Tensor.randn(waist_dim, H, dtype=dtypes.float) * V89_PROJ_INIT_SCALE).contiguous()
+        else:
+            self.v89_args1_k_proj = Tensor.zeros((waist_dim, h_p_attn), dtype=dtypes.float).contiguous()
+            self.v89_args1_v_proj = Tensor.zeros((waist_dim, H), dtype=dtypes.float).contiguous()
+            self.v89_args2_k_proj = Tensor.zeros((waist_dim, h_p_attn), dtype=dtypes.float).contiguous()
+            self.v89_args2_v_proj = Tensor.zeros((waist_dim, H), dtype=dtypes.float).contiguous()
+        # Per-slot positional embedding ADDED to slot_query before the args
+        # cross-attn (zero-init so warm-start is byte-identical; the existing
+        # slot_pos_embed in slot_query already differentiates slots so this is
+        # a redundant safeguard if slot_pos_embed degenerates).
+        #
+        # v87 (2026-05-27): when V87_SLOT_POS_INIT_SCALE>0, init at meaningful
+        # uniform scale matching slot_pos_embed. Provides a second, additive
+        # source of slot differentiation directly INSIDE the args cross-attn
+        # query — independent of the slot_pos_embed→LN→GELU pathway which may
+        # have collapsed the per-slot signal.
+        if V87_SLOT_POS_INIT_SCALE > 0.0:
+            self.v86_args_slot_pos = Tensor.uniform(
+                K_max, H, low=-V87_SLOT_POS_INIT_SCALE, high=V87_SLOT_POS_INIT_SCALE,
+                dtype=dtypes.float).contiguous()
+        else:
+            self.v86_args_slot_pos = Tensor.zeros((K_max, H), dtype=dtypes.float).contiguous()
+
+        # v91 (2026-05-27) Args position embedding — (2, H) zero-init. Distinguishes
+        # args1 (index 0) from args2 (index 1) when building the per-arg query in
+        # the simplified pathway. Zero-init means args1 == args2 query at step 0,
+        # so the args1/args2 supervised CE gradients will pull these in different
+        # directions immediately.
+        self.arg_pos_emb = Tensor.zeros((2, H), dtype=dtypes.float).contiguous()
+
+        # Active head (binary). Initialized at zero-bias → sigmoid(0) = 0.5 (neutral).
+        self.active_head_w = Tensor.zeros((H, 1), dtype=dtypes.float).contiguous()
+        self.active_head_b = Tensor.zeros((1,), dtype=dtypes.float).contiguous()
+
+    def forward(self, waist_compressed: Tensor, numbers_emb: Tensor,
+                numbers_mask: Tensor, waist_full: Tensor = None,
+                waist_full_mask: Tensor = None):
+        """Compute per-slot logits for one breath.
+
+        Args:
+          waist_compressed: (B, T, waist_dim) — current breath's compressed waist.
+            Usually the caller passes (B, 1, waist_dim) mean-pooled over prompt
+            positions; the forward internally mean-pools again (no-op if T=1).
+          numbers_emb: (B, N_max, H) — per-number embedding (zero-padded for
+            non-existent numbers). Constructed outside (token-span pool).
+          numbers_mask: (B, N_max) float — 1.0 at valid number positions, 0.0 at pads.
+          waist_full: (B, T_full, waist_dim) — full waist sequence used by v86
+            args cross-attn. Only consulted when V86_ARGS_CROSS_ATTN is on AND
+            this is not None.
+          waist_full_mask: (B, T_full) — 1.0 at valid (prompt) positions, 0.0
+            at pads. Used to mask the args cross-attn.
+
+        Returns dict:
+          ops_logits:    (B, K_max, 4)
+          types_logits:  (B, K_max, 32)
+          args1_logits:  (B, K_max, N_max + K_max)
+          args2_logits:  (B, K_max, N_max + K_max)
+          active_logits: (B, K_max)   — raw logits, sigmoid at loss time
+          slot_state:    (B, K_max, H) — used for diagnostics
+          args_attn:     (B, K_max, T_full) — per-slot cross-attn weights (v86
+            only, else absent). For diagnostics. v89: returns the args1+args2
+            average for backward-compat with existing diag scripts.
+          args1_attn:    (B, K_max, T_full) — per-arg cross-attn (v89 only;
+            supervised by gold args1 token position).
+          args2_attn:    (B, K_max, T_full) — same for args2.
+
+        Soft commit: no argmax. All outputs are mixtures. At eval, the decoder
+        argmaxes after the final breath.
+        """
+        B = waist_compressed.shape[0]
+        T = waist_compressed.shape[1]
+        H = self.cfg.hidden
+        K_max = self.K_max
+        N_max = self.N_max
+
+        # Pool the waist over T positions (mean across the whole sequence). For
+        # prompt-only conditioning, the caller should pre-mask the waist by the
+        # prompt_mask before passing in. Cheaper than per-slot cross-attn.
+        # mean-pool: (B, waist_dim)
+        waist_f = waist_compressed.cast(dtypes.float)
+        waist_pooled = waist_f.mean(axis=1)  # (B, waist_dim)
+        # Project to H.
+        waist_proj = waist_pooled @ self.waist_pool_proj_w + self.waist_pool_proj_b  # (B, H)
+        # Broadcast-add to slot_pos_embed.
+        # slot_query[k] = slot_pos_embed[k] + waist_proj
+        slot_query = self.slot_pos_embed.reshape(1, K_max, H) + waist_proj.reshape(B, 1, H)
+        # LN then GELU.
+        slot_query = _layernorm(slot_query, self.slot_ln_g, self.slot_ln_b,
+                                 self.cfg.layer_norm_eps).gelu()  # (B, K_max, H)
+
+        # Ops logits (matmul against ops_codebook).
+        ops_logits = slot_query @ self.ops_codebook.T + self.ops_head_b.reshape(1, 1, -1)
+        # Types logits (matmul against types_codebook).
+        types_logits = slot_query @ self.types_codebook.T + self.types_head_b.reshape(1, 1, -1)
+
+        # v91 (2026-05-27): SIMPLIFIED args pathway — single einsum mirroring
+        # ops_codebook. See module-level V91_SIMPLIFIED_ARGS doc. Early-return
+        # before the v86/v89 cross-attn and pointer projections.
+        if V91_SIMPLIFIED_ARGS:
+            # args_codebook = concat(numbers_emb, slot_query) — per-problem dynamic.
+            # numbers_emb: (B, N_max, H), slot_query: (B, K_max, H)
+            numbers_f = numbers_emb.cast(dtypes.float)
+            args_codebook = numbers_f.cat(slot_query, dim=1)   # (B, N_max + K_max, H)
+            # arg_query = slot_query + arg_pos_emb broadcast over slot dim.
+            # slot_query: (B, K_max, H) -> (B, K_max, 1, H)
+            # arg_pos_emb: (2, H) -> (1, 1, 2, H)
+            arg_query = (slot_query.reshape(B, K_max, 1, H)
+                         + self.arg_pos_emb.reshape(1, 1, 2, H))   # (B, K_max, 2, H)
+            # Args logits: one einsum, no intermediate projection.
+            # arg_query (B, K_max, 2, H) · args_codebook (B, N_max+K_max, H)
+            args_logits_both = Tensor.einsum(
+                "bkih,bjh->bkij", arg_query, args_codebook)        # (B, K_max, 2, N_max+K_max)
+
+            # Mask construction (same logic as legacy path).
+            ones_k = Tensor.ones((K_max, K_max), dtype=dtypes.float)
+            ltri = ones_k.tril()
+            eye = Tensor.eye(K_max, dtype=dtypes.float)
+            strict_ltri = ltri - eye   # (K_max, K_max), 1.0 below-diagonal
+            strict_ltri_b = strict_ltri.reshape(1, K_max, K_max)
+            num_valid = numbers_mask.cast(dtypes.float).reshape(B, 1, N_max)
+            num_valid_bk = num_valid.expand(B, K_max, N_max)
+            slot_valid_bk = strict_ltri_b.expand(B, K_max, K_max)
+            all_valid = num_valid_bk.cat(slot_valid_bk, dim=2)   # (B, K_max, N_max+K_max)
+            args_penalty = (1.0 - all_valid) * (-1e4)              # (B, K_max, N_max+K_max)
+
+            # Same penalty applied to BOTH arg positions.
+            args1_scores = (args_logits_both[:, :, 0, :] + args_penalty).clip(-1e4, 1e4)
+            args2_scores = (args_logits_both[:, :, 1, :] + args_penalty).clip(-1e4, 1e4)
+
+            # Active logits (unchanged from legacy path).
+            active_logits = (slot_query @ self.active_head_w + self.active_head_b).reshape(B, K_max)
+
+            return {
+                "ops_logits":    ops_logits,
+                "types_logits":  types_logits,
+                "args1_logits":  args1_scores,
+                "args2_logits":  args2_scores,
+                "active_logits": active_logits,
+                "slot_state":    slot_query,
+            }
+
+        # v86: per-slot cross-attn over full waist sequence to compute per-slot
+        # positional context. Falls back to slot_query when v86 is off OR when
+        # the caller didn't pass waist_full.
+        #
+        # v89 (2026-05-27): when V89_SUPERVISED_ATTN=1 AND we have waist_full,
+        # SPLIT the cross-attn into two parallel attentions — one for args1 and
+        # one for args2 — each with its OWN K/V projection. This lets the
+        # supervised loss train args1 attn to peak at the gold args1 number
+        # position AND args2 attn to peak at the gold args2 number position
+        # (different positions per slot). Q-projection is shared (slot_query
+        # the same for both arg positions). Output: TWO ctx tensors fed into
+        # args1_q_w and args2_q_w respectively. Diagnostic: args1_attn,
+        # args2_attn returned in the output dict for inspection and aux loss.
+        args_attn_diag = None
+        args1_attn_w = None
+        args2_attn_w = None
+        slot_query_for_args1 = slot_query
+        slot_query_for_args2 = slot_query
+        if V86_ARGS_CROSS_ATTN and (waist_full is not None):
+            waist_full_f = waist_full.cast(dtypes.float)
+            T_full = waist_full.shape[1]
+            scale_attn = float(self.h_pointer) ** -0.5
+            # Per-slot query: slot_query + per-slot pos emb (init scale set by V87
+            # when v87 active, zero-init otherwise — see slot_pos init paths).
+            q_in = slot_query + self.v86_args_slot_pos.reshape(1, K_max, H)
+            q_attn = q_in @ self.v86_args_q_proj                 # (B, K_max, h_p_attn)
+            # Mask construction shared across all cross-attn variants below.
+            if waist_full_mask is not None:
+                mask_kt = waist_full_mask.cast(dtypes.float).reshape(B, 1, T_full)
+                attn_penalty = (1.0 - mask_kt) * (-1e4)
+            else:
+                attn_penalty = None
+
+            if V89_SUPERVISED_ATTN:
+                # Two parallel cross-attns: separate K/V for args1 and args2.
+                # args1 path:
+                k_attn1 = waist_full_f @ self.v89_args1_k_proj   # (B, T_full, h_p_attn)
+                v_attn1 = waist_full_f @ self.v89_args1_v_proj   # (B, T_full, H)
+                a1_scores = (q_attn @ k_attn1.transpose(-2, -1)) * scale_attn
+                if attn_penalty is not None:
+                    a1_scores_masked = (a1_scores + attn_penalty).clip(-1e4, 1e4)
+                else:
+                    a1_scores_masked = a1_scores
+                attn_w1 = a1_scores_masked.softmax(axis=-1)      # (B, K_max, T_full)
+                slot_args1_ctx = attn_w1 @ v_attn1               # (B, K_max, H)
+                # args2 path:
+                k_attn2 = waist_full_f @ self.v89_args2_k_proj
+                v_attn2 = waist_full_f @ self.v89_args2_v_proj
+                a2_scores = (q_attn @ k_attn2.transpose(-2, -1)) * scale_attn
+                if attn_penalty is not None:
+                    a2_scores_masked = (a2_scores + attn_penalty).clip(-1e4, 1e4)
+                else:
+                    a2_scores_masked = a2_scores
+                attn_w2 = a2_scores_masked.softmax(axis=-1)
+                slot_args2_ctx = attn_w2 @ v_attn2
+                args1_attn_w = attn_w1
+                args2_attn_w = attn_w2
+                # Also stash masked pre-softmax scores so trainer can compute
+                # supervised CE via sparse_categorical_crossentropy directly.
+                args1_attn_scores_v89 = a1_scores_masked
+                args2_attn_scores_v89 = a2_scores_masked
+                # diag: average for backward compat (eval/diag scripts read 'args_attn')
+                args_attn_diag = (attn_w1 + attn_w2) * 0.5
+                slot_query_for_args1 = slot_query + slot_args1_ctx
+                slot_query_for_args2 = slot_query + slot_args2_ctx
+            else:
+                # v86 single shared cross-attn (warm-start-safe legacy path).
+                k_attn = waist_full_f @ self.v86_args_k_proj         # (B, T_full, h_p_attn)
+                v_attn = waist_full_f @ self.v86_args_v_proj         # (B, T_full, H)
+                attn_scores = (q_attn @ k_attn.transpose(-2, -1)) * scale_attn
+                if attn_penalty is not None:
+                    attn_scores = (attn_scores + attn_penalty).clip(-1e4, 1e4)
+                attn_w = attn_scores.softmax(axis=-1)
+                slot_args_ctx = attn_w @ v_attn
+                args_attn_diag = attn_w
+                # The pointer "query" for args1/args2 is now the per-slot context
+                # (v86_args_v_proj zero-init means this starts at 0 — neutral).
+                # Use a residual: slot_query + slot_args_ctx so that the args still
+                # have a usable per-slot signal even at warm-start (slot_query has
+                # the per-slot info via slot_pos_embed).
+                slot_query_for_args1 = slot_query + slot_args_ctx
+                slot_query_for_args2 = slot_query + slot_args_ctx
+
+        # Args pointer attention.
+        # numbers_emb: (B, N_max, H). Pad numbers (mask=0) get a large negative
+        # contribution via additive penalty after softmax score computation.
+        numbers_f = numbers_emb.cast(dtypes.float)
+        # All keys = concat(numbers_emb, slot_query) → (B, N_max + K_max, H)
+        # Use pointer projections.
+        slot_k = slot_query @ self.args_k_w        # (B, K_max, h_p)
+        num_k  = numbers_f @ self.args_k_w         # (B, N_max, h_p)
+        all_k  = num_k.cat(slot_k, dim=1)          # (B, N_max + K_max, h_p)
+
+        scale = float(self.h_pointer) ** -0.5
+
+        # args1 pointer — uses args1-specific slot_query (v89) or shared (v86 path).
+        slot_q1 = slot_query_for_args1 @ self.args1_q_w      # (B, K_max, h_p)
+        args1_scores = (slot_q1 @ all_k.transpose(-2, -1)) * scale   # (B, K_max, N_max + K_max)
+
+        # args2 pointer — uses args2-specific slot_query (v89) or shared (v86 path).
+        slot_q2 = slot_query_for_args2 @ self.args2_q_w
+        args2_scores = (slot_q2 @ all_k.transpose(-2, -1)) * scale
+
+        # Build the mask over (N_max + K_max) keys.
+        # Numbers section: valid where numbers_mask == 1.
+        # Slot section: valid where target_slot_idx < query_slot_idx (causal — can
+        # reference earlier slots only). To realize this without per-row Python
+        # loops, build a (K_max, K_max) lower-triangular STRICT mask:
+        #   ltri_strict[q_idx, k_idx] = 1 if k_idx < q_idx else 0
+        # Broadcast: numbers part is (B, K_max, N_max) — same mask per q,
+        # slot part is (B, K_max, K_max) — causal mask.
+        # We construct this mask numerically inside this forward (single small
+        # tensor op — Tensor.tril produces a triangular).
+        ones_k = Tensor.ones((K_max, K_max), dtype=dtypes.float)
+        # Strict lower triangle (k_idx < q_idx): off-diagonal lower triangle.
+        # tril includes diagonal; we want STRICT lower → tril - eye.
+        ltri = ones_k.tril()
+        eye = Tensor.eye(K_max, dtype=dtypes.float)
+        strict_ltri = ltri - eye   # (K_max, K_max), 1.0 below-diagonal
+        # Reshape for broadcasting in the (B, K_max, N_max + K_max) score tensor.
+        strict_ltri_b = strict_ltri.reshape(1, K_max, K_max)
+
+        # Numbers mask: (B, 1, N_max). 1 valid, 0 pad.
+        num_valid = numbers_mask.cast(dtypes.float).reshape(B, 1, N_max)
+
+        # Build combined validity: (B, K_max, N_max + K_max).
+        # Numbers segment is the SAME for every query slot k → broadcast over K_max.
+        # Slot segment is per-query (causal).
+        num_valid_bk = num_valid.expand(B, K_max, N_max)
+        slot_valid_bk = strict_ltri_b.expand(B, K_max, K_max)
+        all_valid = num_valid_bk.cat(slot_valid_bk, dim=2)  # (B, K_max, N_max + K_max)
+
+        # Apply additive -1e4 at invalid positions.
+        # NOTE: at q_idx=0, ALL slot keys are invalid (strict_ltri row 0 is all
+        # zero). That's fine — slot 0 should only refer to numbers.
+        args_penalty = (1.0 - all_valid) * (-1e4)
+        args1_scores = (args1_scores + args_penalty).clip(-1e4, 1e4)
+        args2_scores = (args2_scores + args_penalty).clip(-1e4, 1e4)
+
+        # Active logits.
+        active_logits = (slot_query @ self.active_head_w + self.active_head_b).reshape(B, K_max)
+
+        out = {
+            "ops_logits":    ops_logits,
+            "types_logits":  types_logits,
+            "args1_logits":  args1_scores,
+            "args2_logits":  args2_scores,
+            "active_logits": active_logits,
+            "slot_state":    slot_query,
+        }
+        if args_attn_diag is not None:
+            out["args_attn"] = args_attn_diag
+        # v89 (2026-05-27): emit per-arg cross-attn distributions for aux
+        # supervision. Only present when V89_SUPERVISED_ATTN=1 (else None).
+        if args1_attn_w is not None:
+            out["args1_attn"] = args1_attn_w
+            out["args2_attn"] = args2_attn_w
+            # Pre-softmax masked scores — used by the trainer to compute
+            # sparse_categorical_crossentropy against the gold token positions.
+            out["args1_attn_scores"] = args1_attn_scores_v89
+            out["args2_attn_scores"] = args2_attn_scores_v89
+        return out
+
+    def parameters(self):
+        # v91 (2026-05-27): when V91_SIMPLIFIED_ARGS=1, only arg_pos_emb participates
+        # in the args pathway; the legacy projections (args*_q_w, args_k_w,
+        # v86_args_*, v89_args*) stay allocated for state-dict compat but are NOT
+        # in parameters() so AdamW doesn't track them and their grads stay None.
+        if V91_SIMPLIFIED_ARGS:
+            return [
+                self.slot_pos_embed,
+                self.waist_pool_proj_w, self.waist_pool_proj_b,
+                self.slot_ln_g, self.slot_ln_b,
+                self.ops_codebook, self.ops_head_b,
+                self.types_codebook, self.types_head_b,
+                self.arg_pos_emb,
+                self.active_head_w, self.active_head_b,
+            ]
+        return [
+            self.slot_pos_embed,
+            self.waist_pool_proj_w, self.waist_pool_proj_b,
+            self.slot_ln_g, self.slot_ln_b,
+            self.ops_codebook, self.ops_head_b,
+            self.types_codebook, self.types_head_b,
+            self.args1_q_w, self.args2_q_w, self.args_k_w,
+            # v86 per-slot cross-attn for args binding (always in opt list when
+            # V85_QUERYABLE so AdamW has gradients; inert when V86_ARGS_CROSS_ATTN=0).
+            self.v86_args_q_proj, self.v86_args_k_proj, self.v86_args_v_proj,
+            self.v86_args_slot_pos,
+            # v89 split args1/args2 cross-attn K/V (always allocated for state-dict
+            # symmetry; inert when V89_SUPERVISED_ATTN=0 since they're zero-init).
+            self.v89_args1_k_proj, self.v89_args1_v_proj,
+            self.v89_args2_k_proj, self.v89_args2_v_proj,
+            self.active_head_w, self.active_head_b,
+        ]
+
+
 # ---------- top-level model ----------
 
 class BreathingTransformer:
@@ -2626,18 +3399,83 @@ class BreathingTransformer:
         self.boundary_head_w = (Tensor.randn(cfg.hidden, 1, dtype=dtypes.float) * 0.02).contiguous()
         self.boundary_head_b = Tensor.zeros((1,), dtype=dtypes.float).contiguous()
 
+        # v85 (2026-05-27) Queryable slot decoder. Always allocated for state-dict
+        # symmetry; only USED when V85_QUERYABLE=1 (the trainer/eval gates the
+        # forward path on the env var). When OFF, gradient is inert.
+        self.v85_slot_decoder = V85SlotDecoder(
+            cfg, waist_dim=_bf_w_for_wc, K_max=V85_K_MAX, N_max=V85_N_MAX,
+            types_N=V85_TYPES_N)
+        # v85 numbers/verbs span encoder is just a token-span pool — no learnable
+        # weights needed beyond what the model already has (we pool embed_in
+        # rows over character-aligned token spans, externally in the trainer).
+
+        # v96 (2026-05-28) CONSOLIDATION TABLE params — ALWAYS allocated for
+        # state_dict symmetry; gradient is inert when V96_CONSOLIDATION=0
+        # (the forward path skips them; the L2 reg in the trainer keeps
+        # gradients defined so AdamW doesn't assert).
+        from mycelium.v96 import make_v96_params as _v96_make
+        v96p = _v96_make(cfg.hidden)
+        self.v96_gate_w         = v96p["v96_gate_w"]
+        self.v96_gate_b         = v96p["v96_gate_b"]
+        self.v96_ops_codebook   = v96p["v96_ops_codebook"]
+        self.v96_types_codebook = v96p["v96_types_codebook"]
+        self.v96_summary_proj   = v96p["v96_summary_proj"]
+        self.v96_table_kv_proj  = v96p["v96_table_kv_proj"]
+        # v96.1: scale gate on table contribution (zero-init scalar)
+        self.v96_table_alpha    = v96p["v96_table_alpha"]
+        # v96.2 (2026-05-28) constraint check heads. Bombe-inspired elimination:
+        # the model self-supervises on whether its own row's raw_summary respects
+        # (a) causal reference validity and (b) non-commutative arg ordering.
+        # Trained via constraint losses in the trainer.
+        self.v96_ref_validity_head_w = v96p["v96_ref_validity_head_w"]
+        self.v96_ref_validity_head_b = v96p["v96_ref_validity_head_b"]
+        self.v96_arg_order_head_w    = v96p["v96_arg_order_head_w"]
+        self.v96_arg_order_head_b    = v96p["v96_arg_order_head_b"]
+
+        # v97 (2026-05-28) CALIBRATION HEAD — Bombe-inspired self-assessment.
+        # Small Linear(1024 -> 1) head; reads each breath's attention-pooled
+        # hidden state (post-final-LN, prompt-range pool via breath_embed[k] as
+        # query) and predicts P(final answer correct). Pure aux loss — output
+        # is NEVER fed back into the residual stream. Compatible with v96 OFF
+        # paradigm. Always allocated for state_dict symmetry; participates in
+        # opt list only when V97_CALIBRATION=1.
+        h = cfg.hidden
+        # Standard randn 0.02 init, bias zero — predict logit 0 → sigmoid=0.5 at start.
+        self.v97_calib_head_w = (Tensor.randn(h, 1, dtype=dtypes.float) * 0.02).contiguous()
+        self.v97_calib_head_b = Tensor.zeros((1,), dtype=dtypes.float).contiguous()
+
     def parameters(self):
         """Parameters trained on the main loss (transformer + lookup table +
         confidence head). The controller has gradient separation per the spec —
         its parameters are returned by controller_parameters() and trained by a
         separate optimizer (Step F) via REINFORCE on outcomes + auxiliary signals."""
-        return ([self.embed.weight, self.ln_f_g, self.ln_f_b, self.embed_out]
+        ps = ([self.embed.weight, self.ln_f_g, self.ln_f_b, self.embed_out]
                 + self.block.parameters()
                 + self.lookup_table.parameters()
                 + self.confidence_head.parameters()
                 + [self.waist_head_w, self.waist_head_b,
                    self.boundary_head_w, self.boundary_head_b]  # v65 boundary head
                 + self.waist_controller.parameters())
+        # v85 slot decoder params — listed here when V85_QUERYABLE is on so AdamW
+        # actually trains them. When off they're idle (no gradient signal).
+        if V85_QUERYABLE:
+            ps = ps + self.v85_slot_decoder.parameters()
+        # v96 consolidation-table params — listed here when V96_CONSOLIDATION is on
+        # so AdamW trains them. State-dict registration is separate (always present
+        # for ckpt symmetry — see state_dict()).
+        if V96_CONSOLIDATION:
+            ps = ps + [self.v96_gate_w, self.v96_gate_b,
+                        self.v96_ops_codebook, self.v96_types_codebook,
+                        self.v96_summary_proj, self.v96_table_kv_proj,
+                        self.v96_table_alpha,    # v96.1
+                        # v96.2 constraint check heads.
+                        self.v96_ref_validity_head_w, self.v96_ref_validity_head_b,
+                        self.v96_arg_order_head_w,    self.v96_arg_order_head_b]
+        # v97 calibration head — listed when V97_CALIBRATION is on so AdamW trains it.
+        # State-dict registration is always-on (see state_dict()).
+        if V97_CALIBRATION:
+            ps = ps + [self.v97_calib_head_w, self.v97_calib_head_b]
+        return ps
 
     def controller_parameters(self):
         """Controller-only parameters. Trained via a separate optimizer with a
@@ -2785,6 +3623,57 @@ class BreathingTransformer:
         sd["waist_head_b"] = self.waist_head_b
         sd["boundary_head_w"] = self.boundary_head_w  # v65
         sd["boundary_head_b"] = self.boundary_head_b  # v65
+        # v85 (2026-05-27) Queryable slot decoder — ALWAYS saved (state-dict
+        # symmetry). Ckpts predating v85 load with these as missing keys → kept
+        # at init (zero-init waist proj + small random codebooks + zero-init
+        # active head, so initial behavior is benign).
+        sd["v85.slot_pos_embed"]      = self.v85_slot_decoder.slot_pos_embed
+        sd["v85.waist_pool_proj_w"]   = self.v85_slot_decoder.waist_pool_proj_w
+        sd["v85.waist_pool_proj_b"]   = self.v85_slot_decoder.waist_pool_proj_b
+        sd["v85.slot_ln_g"]           = self.v85_slot_decoder.slot_ln_g
+        sd["v85.slot_ln_b"]           = self.v85_slot_decoder.slot_ln_b
+        sd["v85.ops_codebook"]        = self.v85_slot_decoder.ops_codebook
+        sd["v85.ops_head_b"]          = self.v85_slot_decoder.ops_head_b
+        sd["v85.types_codebook"]      = self.v85_slot_decoder.types_codebook
+        sd["v85.types_head_b"]        = self.v85_slot_decoder.types_head_b
+        sd["v85.args1_q_w"]           = self.v85_slot_decoder.args1_q_w
+        sd["v85.args2_q_w"]           = self.v85_slot_decoder.args2_q_w
+        sd["v85.args_k_w"]            = self.v85_slot_decoder.args_k_w
+        sd["v85.active_head_w"]       = self.v85_slot_decoder.active_head_w
+        sd["v85.active_head_b"]       = self.v85_slot_decoder.active_head_b
+        # v86 (2026-05-27) Per-slot cross-attn for args binding — ALWAYS saved
+        # (state-dict symmetry). Ckpts predating v86 load with these as missing
+        # keys → kept at init (small random q + zero-init k/v + zero-init slot_pos
+        # → cross-attn contribution is 0 at warm-start, so behavior matches v85).
+        sd["v85.v86_args_q_proj"]     = self.v85_slot_decoder.v86_args_q_proj
+        sd["v85.v86_args_k_proj"]     = self.v85_slot_decoder.v86_args_k_proj
+        sd["v85.v86_args_v_proj"]     = self.v85_slot_decoder.v86_args_v_proj
+        sd["v85.v86_args_slot_pos"]   = self.v85_slot_decoder.v86_args_slot_pos
+        # v91 (2026-05-27) arg_pos_emb — always saved; zero-init when missing from
+        # legacy ckpts so warm-start preserves v90 behavior at step 0.
+        sd["v85.arg_pos_emb"]         = self.v85_slot_decoder.arg_pos_emb
+        # v96 (2026-05-28) consolidation-table params — ALWAYS saved (state-dict
+        # symmetry). Ckpts predating v96 load with these as missing keys → kept
+        # at init (zero-init gate_w + small-random codebooks + zero-init paths,
+        # so V96 forward path is benign warm-start when needed).
+        sd["v96.gate_w"]              = self.v96_gate_w
+        sd["v96.gate_b"]              = self.v96_gate_b
+        sd["v96.ops_codebook"]        = self.v96_ops_codebook
+        sd["v96.types_codebook"]      = self.v96_types_codebook
+        sd["v96.summary_proj"]        = self.v96_summary_proj
+        sd["v96.table_kv_proj"]       = self.v96_table_kv_proj
+        sd["v96.table_alpha"]         = self.v96_table_alpha    # v96.1
+        # v96.2 constraint check heads (state_dict symmetry).
+        sd["v96.ref_validity_head_w"] = self.v96_ref_validity_head_w
+        sd["v96.ref_validity_head_b"] = self.v96_ref_validity_head_b
+        sd["v96.arg_order_head_w"]    = self.v96_arg_order_head_w
+        sd["v96.arg_order_head_b"]    = self.v96_arg_order_head_b
+        # v97 (2026-05-28) calibration head — ALWAYS saved (state_dict symmetry).
+        # Ckpts predating v97 load with these as missing keys → kept at init
+        # (randn 0.02 weights + zero bias → sigmoid output ≈ 0.5 at warm-start,
+        # benign with the V97_CALIB_WEIGHT scaling at default 0.1).
+        sd["v97.calib_head_w"]        = self.v97_calib_head_w
+        sd["v97.calib_head_b"]        = self.v97_calib_head_b
         sd.update(self.controller.state_dict())
         sd.update(self.confidence_head.state_dict())
         return sd
@@ -3085,7 +3974,9 @@ class BreathingTransformer:
                              return_waist_compressed: bool = False,
                              return_per_breath_x: bool = False,
                              notebook_pool_mask: Tensor | None = None,
-                             main_attn_mask: Tensor | None = None):
+                             main_attn_mask: Tensor | None = None,
+                             return_v96_artifacts: bool = False,
+                             return_v97_calib: bool = False):
         """Forward pass returning (final_hidden, per_breath_match_weights, integrated_per_breath).
 
         Queries the model's lookup table once per breath against the running integral
@@ -3108,6 +3999,23 @@ class BreathingTransformer:
         ever reads from prompt positions. Plugs the v78b training-time leak where
         post-breath x at gold-answer positions carries gradient information about
         the gold span — the notebook would otherwise read it.
+
+        v96 (2026-05-28) return_v96_artifacts: when True AND V96_CONSOLIDATION=1,
+        also returns:
+          - v96_artifacts_per_breath: list of n_loops × V96Artifact (unpacked view)
+          - v96_table_packed:         (B, n_loops, 165) — the consolidation table
+
+        Per breath the v96 artifact is computed from the (input, output) pair of
+        that breath via the gated-quantize → attention-pool → codebook pipeline.
+
+        v97 (2026-05-28) return_v97_calib: when True AND V97_CALIBRATION=1, also
+        returns:
+          - v97_calib_logits_per_breath: list of n_loops × (B,) calibration logits.
+        Each breath: attention-pool the breath-output state x over T using
+        breath_embed[l] as the query (prompt-range only via notebook_pool_mask if
+        provided), project pooled state through v97_calib_head_w/b → (B,) logit.
+        The trainer applies sigmoid + MSE against per-breath progression targets.
+        Pure forward signal — NEVER feeds back into any subsequent breath's input.
         """
         x_emb = self.embed(tokens).cast(dtypes.half)  # v40: frozen embedding, reused each breath in fresh mode
         # v81 (2026-05-26) main_attn_mask doubles as an embedding mask: at answer-span
@@ -3124,6 +4032,9 @@ class BreathingTransformer:
         integrated_per_breath = []
         waist_compressed_per_breath = []  # v39: 512d compressed at end-of-breath waist
         per_breath_x = []  # v52 Stage 1: end-of-breath outputs for per-breath supervision
+        v96_artifacts_per_breath = []  # v96: per-breath unpacked artifacts
+        v96_packed_rows = []  # v96: per-breath packed rows (B, 165)
+        v97_calib_logits_per_breath = []  # v97: per-breath calibration logits (B,)
         handoff = None
         notebook = None
         notebook_r = None
@@ -3166,6 +4077,12 @@ class BreathingTransformer:
                 # Read is 0 at l=0 (no priors) and at step 0 (W_o zero-init).
                 dag_read = self.block.dag_notebook_read(x_in, dag_storage, l)
                 x_in = x_in + dag_read
+            # v96 (2026-05-28) capture x_in BEFORE breathe_once for delta computation.
+            # Note: x_in already incorporates breath_embed via breathe_once internally,
+            # but for v96 we want the PRE-breath_embed input so the delta captures
+            # everything the breath added (including embed offset). The cleanest
+            # delta = (x AFTER breath) - (x_in BEFORE breath).
+            v96_x_in_capture = x_in if V96_CONSOLIDATION else None
             if return_waist_compressed:
                 x, waist_compressed = self.block.breathe_once(x_in, l, temp_mult=_sine_temp_baseline(l, n_loops),
                                                                 return_waist_compressed=True, n_loops=n_loops,
@@ -3174,6 +4091,52 @@ class BreathingTransformer:
             else:
                 x = self.block.breathe_once(x_in, l, temp_mult=_sine_temp_baseline(l, n_loops), n_loops=n_loops,
                                               attn_mask=main_attn_mask)
+            # v96 (2026-05-28) compute artifact from (x_in, x) → packed row → append.
+            if V96_CONSOLIDATION and v96_x_in_capture is not None:
+                from mycelium.v96 import compute_v96_artifact as _v96_compute, pack_artifact as _v96_pack
+                # Use notebook_pool_mask as the v96 attention-pool mask (same
+                # prompt-range restriction — prevents pooling over answer-span
+                # positions during training).
+                _v96_mask = notebook_pool_mask
+                # v96.2: per-breath temperature for ops/types logits sharpening.
+                # Linear from V96_T_START at B0 down to V96_T_END at B_{K-1}.
+                if V96_TEMPERATURE_DECAY:
+                    if n_loops <= 1:
+                        _T_k = V96_T_END
+                    else:
+                        _T_k = V96_T_START * (1.0 - float(l) / float(n_loops - 1))
+                        if _T_k < V96_T_END:
+                            _T_k = V96_T_END
+                else:
+                    _T_k = None
+                v96_art = _v96_compute(
+                    v96_x_in_capture, x,
+                    self.block.breath_embed[l],
+                    self.v96_gate_w, self.v96_gate_b,
+                    self.v96_ops_codebook, self.v96_types_codebook,
+                    self.v96_summary_proj,
+                    pool_mask=_v96_mask,
+                    temperature=_T_k,
+                )
+                v96_artifacts_per_breath.append(v96_art)
+                v96_packed_rows.append(_v96_pack(v96_art))  # (B, 165)
+            # v97 (2026-05-28) calibration head — read-only pool over breath output.
+            # Attention-pool x using breath_embed[l] as query, project to scalar logit.
+            # No feedback into the residual stream: the result is appended to a
+            # standalone list returned to the trainer for an aux loss.
+            if V97_CALIBRATION and return_v97_calib:
+                # Cast pool computation to float32 for numerical stability of softmax
+                # (consistent with v96 — already-float in our paths).
+                x_f_v97 = x.cast(dtypes.float)
+                pool_q_v97 = self.block.breath_embed[l].cast(dtypes.float).reshape(1, 1, -1)
+                scores_v97 = (x_f_v97 * pool_q_v97).sum(axis=-1)               # (B, T)
+                if notebook_pool_mask is not None:
+                    scores_v97 = scores_v97 + (1.0 - notebook_pool_mask.cast(scores_v97.dtype)) * (-1e4)
+                w_v97 = scores_v97.softmax(axis=-1).reshape(scores_v97.shape[0], -1, 1)  # (B, T, 1)
+                pooled_v97 = (x_f_v97 * w_v97).sum(axis=1)                      # (B, H)
+                calib_logit = (pooled_v97 @ self.v97_calib_head_w
+                                + self.v97_calib_head_b.reshape(1, -1)).reshape(pooled_v97.shape[0])  # (B,)
+                v97_calib_logits_per_breath.append(calib_logit)
             if NOTEBOOK_V24:
                 x_f = x.cast(dtypes.float)
                 # v79 notebook causal mask: when notebook_pool_mask provided, mask
@@ -3234,13 +4197,30 @@ class BreathingTransformer:
             scores = self.lookup_table(final).cast(dtypes.float)      # (B, T, n_entries)
             retrieved = self.lookup_table.retrieve(scores).cast(final.dtype)  # (B, T, hidden)
             final = final + LOOKUP_VALUE_SCALE * retrieved
+        # v96: assemble the consolidation table as a single (B, n_loops, 165) tensor.
+        # Stacking the list of (B, 165) rows along a new axis 1 — done OUTSIDE the
+        # JIT body once per forward (no per-breath syncs).
+        v96_table_packed = None
+        if V96_CONSOLIDATION and v96_packed_rows:
+            # Tensor.stack along a new axis 1 (between batch and packed-dim).
+            # Each row is (B, 165); stack → (B, K, 165).
+            v96_table_packed = Tensor.stack(*v96_packed_rows, dim=1)
         if return_per_breath_x:
             # v52 Stage 1: simplified return when per-breath supervision is the consumer.
             # Caller gets per-breath end-of-breath outputs + match weights for op-aux.
             # v54: optionally also returns per-breath waist_compressed for controller decode.
+            # v96 (2026-05-28): when return_v96_artifacts=True, append the per-breath
+            # artifact list + packed table at the END of the tuple. Backward-compatible.
+            # v97 (2026-05-28): when return_v97_calib=True, append v97 calib logits list
+            # at the very end.
+            base_tuple = (final, match_weights, per_breath_x)
             if return_waist_compressed:
-                return final, match_weights, per_breath_x, waist_compressed_per_breath
-            return final, match_weights, per_breath_x
+                base_tuple = base_tuple + (waist_compressed_per_breath,)
+            if return_v96_artifacts:
+                base_tuple = base_tuple + (v96_artifacts_per_breath, v96_table_packed)
+            if return_v97_calib:
+                base_tuple = base_tuple + (v97_calib_logits_per_breath,)
+            return base_tuple
         if return_notebook and return_waist_compressed:
             return final, match_weights, integrated_per_breath, notebook, notebook_r, waist_compressed_per_breath
         if return_notebook:
@@ -3373,10 +4353,10 @@ class BreathingTransformer:
                     x = (x_f * (1.0 - mix) + x_proj * mix).cast(x.dtype)
                 # v38 B-field — mid-breath waist after L1 (when not end-of-breath)
                 if BFIELD_WAIST > 0 and li == 1 and not BFIELD_END_OF_BREATH:
-                    x = self.block.apply_bfield_waist(x)
+                    x = self.block.apply_bfield_waist(x, loop_idx=loop)
             # v39 end-of-breath waist
             if BFIELD_WAIST > 0 and BFIELD_END_OF_BREATH:
-                x = self.block.apply_bfield_waist(x)
+                x = self.block.apply_bfield_waist(x, loop_idx=loop)
             # End-of-breath CRP — only when per-layer oscillation is OFF
             if CONSTANT_RADIUS and not BREATH_NORM_OSC:
                 x_f = x.cast(dtypes.float)
@@ -3520,7 +4500,7 @@ class BreathingTransformer:
                         new_cv[idx] = v_new
                     # v39 end-of-breath waist
                     if BFIELD_WAIST > 0 and BFIELD_END_OF_BREATH:
-                        x = block_local.apply_bfield_waist(x)
+                        x = block_local.apply_bfield_waist(x, loop_idx=loop)
                     # Notebook writes — gated on STAGE2_NOTEBOOK (default off, same reasoning as reads).
                     if NOTEBOOK_V24 and STAGE2_NOTEBOOK:
                         x_f = x.cast(dtypes.float)
@@ -3839,9 +4819,9 @@ class BreathingTransformer:
                             x_s1 = (x_f_s1 * (1.0 - block_s1.crp_mix_alpha) +
                                     x_f_s1 * (target_s1 / x_norm_s1) * block_s1.crp_mix_alpha).cast(x_s1.dtype)
                         if BFIELD_WAIST > 0 and li == 1 and not BFIELD_END_OF_BREATH:
-                            x_s1 = block_s1.apply_bfield_waist(x_s1)
+                            x_s1 = block_s1.apply_bfield_waist(x_s1, loop_idx=loop)
                     # End-of-breath waist with compressed capture
-                    x_s1, compressed_s1 = block_s1.apply_bfield_waist(x_s1, return_compressed=True)
+                    x_s1, compressed_s1 = block_s1.apply_bfield_waist(x_s1, return_compressed=True, loop_idx=loop)
                     _waist_s1[loop].assign(compressed_s1.cast(dtypes.float))
                     # End-of-breath CRP
                     if CONSTANT_RADIUS and not BREATH_NORM_OSC:
@@ -3986,7 +4966,7 @@ class BreathingTransformer:
                         _cache_k[li][loop].assign(k_new)
                         _cache_v[li][loop].assign(v_new)
                     # End-of-breath waist with compressed capture
-                    x, compressed = block_local.apply_bfield_waist(x, return_compressed=True)
+                    x, compressed = block_local.apply_bfield_waist(x, return_compressed=True, loop_idx=loop)
                     waists_inner.append(compressed.cast(dtypes.float))  # (B, 1, waist_dim)
                     # Notebook writes (gated — default STAGE2_NOTEBOOK=0)
                     if NOTEBOOK_V24 and STAGE2_NOTEBOOK:
@@ -4200,7 +5180,7 @@ class BreathingTransformer:
                 cache_v[li][loop] = v_full
             # v39 end-of-breath waist
             if BFIELD_WAIST > 0 and BFIELD_END_OF_BREATH:
-                x = self.block.apply_bfield_waist(x)
+                x = self.block.apply_bfield_waist(x, loop_idx=loop)
             # v39 sin-modulated integral
             if BFIELD_SIN_MOD:
                 beta_l = math.sin((loop + 0.5) * math.pi / float(n_loops))
@@ -4273,10 +5253,10 @@ class BreathingTransformer:
                         new_cv[idx] = v_new
                         # v38 B-field — mid-breath waist after L1 (when not end-of-breath)
                         if BFIELD_WAIST > 0 and li == 1 and not BFIELD_END_OF_BREATH:
-                            x = block_local.apply_bfield_waist(x)
+                            x = block_local.apply_bfield_waist(x, loop_idx=loop)
                     # v39 end-of-breath waist
                     if BFIELD_WAIST > 0 and BFIELD_END_OF_BREATH:
-                        x = block_local.apply_bfield_waist(x)
+                        x = block_local.apply_bfield_waist(x, loop_idx=loop)
                     # v39 sin-modulated accumulation
                     if BFIELD_SIN_MOD:
                         beta_l = math.sin((loop + 0.5) * math.pi / float(n_loops_local))

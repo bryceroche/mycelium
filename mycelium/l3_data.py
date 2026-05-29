@@ -476,6 +476,94 @@ class V77Example:
         return len(self.per_layer_target)
 
 
+@dataclass
+class V85Example:
+    """v85 differentiable queryable structures example.
+
+    Each record carries the FULL structured annotation from Haiku:
+      numbers (list of {value, span_start_char, span_end_char})
+      verbs   (list of {verb})
+      entities (list of {text})
+      dag_slots (list of {op, type_path, args, is_active})
+      n_steps
+
+    Used by v85 training to build per-slot gold labels for the V85SlotDecoder.
+    """
+    problem: str
+    gold_answer: float
+    numbers: List[dict]
+    implicit_numbers: List[dict]
+    verbs: List[dict]
+    entities: List[dict]
+    dag_slots: List[dict]
+    n_steps: int
+    # Keep the layers_raw for compatibility with v77/v82 codepaths.
+    layers_raw: dict
+    level: str = "GSM8K_V85"
+
+
+def load_gsm8k_v85(jsonl_path: str,
+                    min_k: int | None = None,
+                    max_k: int | None = None,
+                    require_sympy_match: bool = True,
+                    bucket_by_k: bool = False):
+    """Load v85 records (built by scripts/build_v85_data.py).
+
+    Each line in the JSONL is:
+        {"problem": ..., "answer": <int>, "n_steps": <int>,
+         "v85": {numbers, implicit_numbers, verbs, entities, dag_slots, n_steps},
+         "layers": {...},  # v80-style layers (for legacy compat)
+         "sympy_value": <float|null>, "sympy_matches_gold": <bool>}
+    """
+    import json
+    examples: List[V85Example] = []
+    n_records = 0
+    n_dropped_sympy = 0
+    n_dropped_k = 0
+    n_dropped_missing_v85 = 0
+    with open(jsonl_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            rec = json.loads(line)
+            n_records += 1
+            if "v85" not in rec:
+                n_dropped_missing_v85 += 1
+                continue
+            v = rec["v85"]
+            k = rec.get("n_steps", v.get("n_steps", 0))
+            if min_k is not None and k < min_k:
+                n_dropped_k += 1
+                continue
+            if max_k is not None and k > max_k:
+                n_dropped_k += 1
+                continue
+            if require_sympy_match and not rec.get("sympy_matches_gold", True):
+                n_dropped_sympy += 1
+                continue
+            examples.append(V85Example(
+                problem=rec["problem"],
+                gold_answer=float(rec["answer"]),
+                numbers=v.get("numbers", []),
+                implicit_numbers=v.get("implicit_numbers", []),
+                verbs=v.get("verbs", []),
+                entities=v.get("entities", []),
+                dag_slots=v.get("dag_slots", []),
+                n_steps=k,
+                layers_raw=rec.get("layers", {}),
+                level=f"GSM8K_V85_K{k}",
+            ))
+    print(f"[v85 loader] {jsonl_path}: kept {len(examples)}/{n_records} "
+          f"(dropped: sympy_mismatch={n_dropped_sympy}, k_filter={n_dropped_k}, missing_v85={n_dropped_missing_v85})")
+    if bucket_by_k:
+        buckets: dict[int, List[V85Example]] = {}
+        for ex in examples:
+            buckets.setdefault(ex.n_steps, []).append(ex)
+        return buckets
+    return examples
+
+
 def load_gsm8k_v77(jsonl_path: str,
                    min_k: int | None = None,
                    max_k: int | None = None,
@@ -528,6 +616,11 @@ def load_gsm8k_v77(jsonl_path: str,
             layer_keys = sorted([k for k in layers_raw if k.startswith("L") and k != "__raw__"],
                                 key=lambda s: int(s[1:]))
             per_layer_target = [layers_raw[k] for k in layer_keys]
+            # Truncate to V77_N_LAYERS (default 6/7 from training; v82 K=5 drops B5/B6
+            # since they are refinement-pass repeats in the parallel-diffusion schedule).
+            _n_layers_env = int(os.environ.get("V77_N_LAYERS", "0"))
+            if _n_layers_env > 0 and len(per_layer_target) > _n_layers_env:
+                per_layer_target = per_layer_target[:_n_layers_env]
             examples.append(V77Example(
                 problem=rec["problem"],
                 gold_answer=float(rec["answer"]),
