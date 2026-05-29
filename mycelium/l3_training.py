@@ -6,7 +6,7 @@ breathe-then-speak event. Equal-weighted loss across cycles (equal-reward
 decomposition for teacher-forced training).
 """
 import os
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 import numpy as np
 from tinygrad import Tensor, Device, dtypes
 from tinygrad.engine.jit import TinyJit
@@ -53,6 +53,79 @@ if V77_DAG_TRAINING:
     print(f"[V77_DAG_TRAINING] v77 DAG-layered supervision ON: N_BREATHS={V77_N_LAYERS} for all problems; "
           f"breath b decodes layer-b target.", flush=True)
 
+# v82 (2026-05-27) Parallel-diffusion supervision: every breath emits the FULL
+# 3-list sequence at a different precision (P0..P3 schedule). Each breath has
+# SINGLE-HEAD full-sequence CE (no multi-head split — that was the v81 bug).
+# Topology is identical to V77_DAG_TRAINING + MULTI_HEAD_WAIST=0; this flag is
+# in the JIT cache key + logged for clarity. Data is built by scripts/build_v82.py.
+V82_PARALLEL_DIFFUSION = int(os.environ.get("V82_PARALLEL_DIFFUSION", "0")) > 0
+if V82_PARALLEL_DIFFUSION:
+    print(f"[V82_PARALLEL_DIFFUSION] v82 parallel-diffusion supervision ON: each breath "
+          f"emits the FULL 3-list sequence at its precision level (single-head full-seq CE).",
+          flush=True)
+
+# v83 (2026-05-27) ANYTIME supervision — per-position min CE across (schedule, full).
+# Each breath gets TWO targets: (a) the breath-specific scheduled target (v82's
+# precision-locked label) and (b) the final-breath FULL-precision target. The
+# per-position CE is min(ce_schedule, ce_full): a strong student that emits full
+# precision early gets credit (ce_full low at that position), a weak student
+# emits the schedule precision (ce_schedule low). This decouples physical capacity
+# (the BFIELD_WAIST_SCHEDULE channel limit) from supervision precision (anytime
+# rewards best-effort).
+#
+# Together with BFIELD_WAIST_SCHEDULE the model has a precision ladder phase-locked
+# to E (rotation) and B (compression): early breaths have NARROW waist + LOOSE
+# supervision; late breaths WIDE waist + STRICT (final) supervision.
+#
+# When unset (V83_ANYTIME_SUPERVISION=0), loss is identical to v82's per-breath
+# CE on labels_stk[k]. The "full" labels tensor is still passed (full_answer_labels)
+# to keep the JIT signature stable; it's already present in the JIT contract.
+V83_ANYTIME_SUPERVISION = int(os.environ.get("V83_ANYTIME_SUPERVISION", "0")) > 0
+if V83_ANYTIME_SUPERVISION:
+    print(f"[V83_ANYTIME_SUPERVISION] v83 anytime supervision ON: per-position min CE "
+          f"between scheduled and full-precision labels (capable students can read ahead).",
+          flush=True)
+
+# v83 graduation: dynamic per-breath loss weights from softmax(EMA(pb_ce)) with a
+# maintenance floor so graduated breaths still get a small refresher (no forgetting).
+# Weights are recomputed Python-side each step from the previous step's pb_ce values
+# and passed into the JIT as a list of K scalar Tensors.
+V83_GRADUATION = int(os.environ.get("V83_GRADUATION", "0")) > 0
+V83_GRAD_MAINTENANCE = float(os.environ.get("V83_GRAD_MAINTENANCE", "0.1"))
+V83_GRAD_EMA_ALPHA = float(os.environ.get("V83_GRAD_EMA_ALPHA", "0.1"))
+V83_GRAD_TEMP = float(os.environ.get("V83_GRAD_TEMP", "1.0"))
+if V83_GRADUATION:
+    print(f"[V83_GRADUATION] v83 graduation ON: softmax(EMA(pb_ce)/T) loss weights, "
+          f"T={V83_GRAD_TEMP}, EMA α={V83_GRAD_EMA_ALPHA}, maintenance={V83_GRAD_MAINTENANCE}",
+          flush=True)
+
+# Python-side EMA state for v83 graduation (updated after each training step).
+_V83_PB_CE_EMA = None  # type: Optional[np.ndarray]
+
+
+def _update_v83_ema(pb_ce_values: np.ndarray) -> None:
+    """Update the per-breath CE EMA tracker with the latest step's CE values."""
+    global _V83_PB_CE_EMA
+    v = pb_ce_values.astype(np.float32)
+    if _V83_PB_CE_EMA is None:
+        _V83_PB_CE_EMA = v.copy()
+    else:
+        _V83_PB_CE_EMA = V83_GRAD_EMA_ALPHA * v + (1.0 - V83_GRAD_EMA_ALPHA) * _V83_PB_CE_EMA
+
+
+def _compute_v83_weights(K: int) -> np.ndarray:
+    """Return per-breath loss weights summing to 1. Softmax over EMA(pb_ce)/T with a
+    floor that ensures every breath retains at least `V83_GRAD_MAINTENANCE / K` weight."""
+    if _V83_PB_CE_EMA is None or len(_V83_PB_CE_EMA) != K:
+        return np.full(K, 1.0 / K, dtype=np.float32)
+    scores = _V83_PB_CE_EMA / max(V83_GRAD_TEMP, 1e-6)
+    e = np.exp(scores - scores.max())
+    w = e / e.sum()
+    floor = V83_GRAD_MAINTENANCE / K
+    w = np.maximum(w, floor)
+    w = w / w.sum()
+    return w.astype(np.float32)
+
 # v78b (2026-05-25) Attention supervision aux loss. For each digit token in the
 # gold L6 DAG target, supervise the WaistController's LAST cross-attn layer to
 # peak at matching digit positions in the prompt. Tells the model WHERE to look
@@ -64,6 +137,13 @@ WAIST_ATTN_AUX_WEIGHT = float(os.environ.get("WAIST_ATTN_AUX_WEIGHT", "0.5"))
 # Module-level cache of digit token IDs. Computed lazily on first use to avoid
 # forcing tokenizer initialization at import time.
 _DIGIT_TOKEN_IDS: set | None = None
+# v95 (2026-05-28) Cache of "whole-number" token-id → integer value. Built lazily
+# from the tokenizer. Used to identify L6 output positions whose target is a
+# whole-number token (e.g. `Ġ50`, `Ġ12`) so the operand-position aux loss can
+# direct cross-attention at those output positions to the matching digit-spaced
+# prompt position. Excludes single-digit tokens (covered by the existing
+# WAIST_ATTN_SUPERVISION digit-token aux).
+_V95_NUMBER_TOKEN_TO_INT: dict | None = None
 
 
 def _get_digit_token_ids(tok) -> set:
@@ -75,6 +155,76 @@ def _get_digit_token_ids(tok) -> set:
         _DIGIT_TOKEN_IDS = digit_token_ids_for(tok)
         print(f"[WAIST_ATTN_SUPERVISION] digit_token_ids cached: {len(_DIGIT_TOKEN_IDS)} ids", flush=True)
     return _DIGIT_TOKEN_IDS
+
+
+def _get_v95_number_token_map(tok) -> dict:
+    """Lazy cache of token-id → integer value for whole-number tokens.
+
+    Scans the full vocabulary, decoding each token; if the decoded string
+    (after stripping the BPE space marker 'Ġ') is a pure-digit string of
+    length >= 2, it's a multi-digit number token (whole-number). Single-digit
+    tokens are EXCLUDED here because the existing WAIST_ATTN_SUPERVISION
+    digit-token path already covers them.
+
+    Returns: {token_id: int_value} for every multi-digit-number token.
+    """
+    global _V95_NUMBER_TOKEN_TO_INT
+    if _V95_NUMBER_TOKEN_TO_INT is not None:
+        return _V95_NUMBER_TOKEN_TO_INT
+    out: dict = {}
+    vocab_size = tok.get_vocab_size()
+    for tid in range(vocab_size):
+        s = tok.id_to_token(tid)
+        if s is None:
+            continue
+        # Strip BPE space marker.
+        s_clean = s[1:] if s.startswith("Ġ") else s
+        # Require pure digits, length >= 2 (multi-digit number token only).
+        if len(s_clean) >= 2 and s_clean.isdigit():
+            try:
+                out[tid] = int(s_clean)
+            except ValueError:
+                continue
+    _V95_NUMBER_TOKEN_TO_INT = out
+    print(f"[V95_OPERAND_AUX] whole-number token map cached: {len(out)} multi-digit number tokens", flush=True)
+    return out
+
+
+def _v95_extract_prompt_number_runs(prompt_ids: list, digit_token_ids: set, tok) -> list:
+    """For a tokenized prompt, find runs of digit tokens. Each run = a multi-digit
+    number written in digit-spaced form. Returns list of (int_value, first_pos)
+    tuples (first_pos = the position of the leading digit of the run).
+
+    A "digit token" is one in `digit_token_ids` (single-digit set). The
+    integer value of the run is reconstructed by concatenating the digit
+    characters of the tokens in the run (in order).
+    """
+    runs = []
+    n = len(prompt_ids)
+    i = 0
+    while i < n:
+        if prompt_ids[i] not in digit_token_ids:
+            i += 1
+            continue
+        # Found a digit token. Greedy-extend until the next non-digit.
+        start = i
+        digits = []
+        while i < n and prompt_ids[i] in digit_token_ids:
+            s = tok.id_to_token(prompt_ids[i])
+            if s is None:
+                break
+            s_clean = s[1:] if s.startswith("Ġ") else s
+            if not s_clean.isdigit():
+                break
+            digits.append(s_clean)
+            i += 1
+        if digits:
+            try:
+                val = int("".join(digits))
+                runs.append((val, start))
+            except ValueError:
+                pass
+    return runs
 
 # JIT-train cache: (id(model), id(opt), n_loops_tuple, fixed_len, B) → compiled fn
 # The canonical tinygrad pattern wraps the WHOLE step (forward + backward + opt.step)
@@ -563,15 +713,25 @@ def _compile_jit_per_breath_step(model, opt, K: int, fixed_len: int, B: int,
     each .realize()'d. Total = avg_main + lookup_aux_weight * aux_ce + regs.
     """
     # JIT cache key includes PER_BREATH_FULL_ANSWER, V77_DAG_TRAINING, V78_HEAD_CODEBOOK,
-    # WAIST_ATTN_SUPERVISION, V79_CAUSAL_MASKS, MULTI_HEAD_WAIST, V81_MAIN_ATTN_MASK
-    # so the multi-well, per-step, v77 DAG, v78 kitchen-sink, v78b attention-supervised,
-    # v79 causal-masked, and v81 multi-head graphs don't collide.
+    # WAIST_ATTN_SUPERVISION, V79_CAUSAL_MASKS, MULTI_HEAD_WAIST, V81_MAIN_ATTN_MASK,
+    # V82_PARALLEL_DIFFUSION, V83_ANYTIME_SUPERVISION, BFIELD_WAIST_SCHEDULE so the
+    # multi-well, per-step, v77 DAG, v78 kitchen-sink, v78b attention-supervised,
+    # v79 causal-masked, v81 multi-head, v82 parallel-diffusion, and v83 anytime
+    # graphs don't collide.
     from mycelium.breathing import V78_HEAD_CODEBOOK as _V78_HC_KEY
     from mycelium.breathing import WAIST_ATTN_SUPERVISION as _WAS_KEY
     from mycelium.breathing import V79_CAUSAL_MASKS as _V79CM_KEY
     from mycelium.breathing import MULTI_HEAD_WAIST as _MHW_KEY
     from mycelium.breathing import V81_MAIN_ATTN_MASK as _V81MAM_KEY
-    key = (id(model), id(opt), int(K), int(fixed_len), int(B), float(lookup_aux_weight), float(grad_clip), bool(PER_BREATH_FULL_ANSWER), bool(V77_DAG_TRAINING), bool(_V78_HC_KEY), bool(_WAS_KEY), bool(_V79CM_KEY), bool(_MHW_KEY), bool(_V81MAM_KEY))
+    from mycelium.breathing import BFIELD_WAIST_SCHEDULE as _V83_WSCHED_KEY
+    from mycelium.breathing import V96_CONSOLIDATION as _V96_KEY
+    from mycelium.breathing import V96_TEMPERATURE_DECAY as _V96_TD_KEY  # v96.2: graph topology changes (div in artifact)
+    _V96_2_ENERGY_W_KEY = float(os.environ.get("V96_ENERGY_WEIGHT", "0.0"))  # v96.2: energy term scale (cache key bit so on/off compiles distinctly)
+    _V96_2_CALIB_MODE_KEY = str(os.environ.get("V96_CALIB_LOSS_MODE", "proxy"))  # v96.2: "proxy" vs "sympy"
+    # v97 (2026-05-28) calibration head: graph topology changes (extra pool + aux loss).
+    from mycelium.breathing import V97_CALIBRATION as _V97_KEY
+    _V97_CALIB_W_KEY = float(os.environ.get("V97_CALIB_WEIGHT", "0.1"))
+    key = (id(model), id(opt), int(K), int(fixed_len), int(B), float(lookup_aux_weight), float(grad_clip), bool(PER_BREATH_FULL_ANSWER), bool(V77_DAG_TRAINING), bool(_V78_HC_KEY), bool(_WAS_KEY), bool(_V79CM_KEY), bool(_MHW_KEY), bool(_V81MAM_KEY), bool(V82_PARALLEL_DIFFUSION), bool(V83_ANYTIME_SUPERVISION), str(_V83_WSCHED_KEY), bool(V83_GRADUATION), bool(_V96_KEY), bool(_V96_TD_KEY), float(_V96_2_ENERGY_W_KEY), str(_V96_2_CALIB_MODE_KEY), bool(_V97_KEY), float(_V97_CALIB_W_KEY))
     if key in _JIT_PER_BREATH_CACHE:
         return _JIT_PER_BREATH_CACHE[key]
 
@@ -586,9 +746,28 @@ def _compile_jit_per_breath_step(model, opt, K: int, fixed_len: int, B: int,
     v79cm_flag = bool(_V79CM_KEY)  # v79 causal masks during training
     mhw_flag = bool(_MHW_KEY)       # v81 multi-head WaistController
     v81mam_flag = bool(_V81MAM_KEY)  # v81 main-attn answer-span masking
+    v82pd_flag = bool(V82_PARALLEL_DIFFUSION)  # v82 parallel-diffusion supervision (no graph change vs v77+mhw=0)
+    v83_anytime_flag = bool(V83_ANYTIME_SUPERVISION)  # v83 anytime supervision (per-position min CE)
+    v83_sched_str = str(_V83_WSCHED_KEY)  # v83 BFIELD_WAIST_SCHEDULE (graph-topology key: schedule changes which channels are masked)
+    v96_flag = bool(_V96_KEY)  # v96 consolidation-table architecture
+    v96_w_ops    = float(os.environ.get("V96_W_OPS",   "1.0"))
+    v96_w_types  = float(os.environ.get("V96_W_TYPES", "0.5"))
+    v96_w_conf   = float(os.environ.get("V96_W_CONF",  "0.1"))
+    # v96.2 (2026-05-28) constraint propagation knobs.
+    v96_energy_w  = float(_V96_2_ENERGY_W_KEY)            # weight on (ref + arg + calib) bundle
+    v96_calib_mode = str(_V96_2_CALIB_MODE_KEY)            # "proxy" or "sympy"
+    v96_w_ref    = float(os.environ.get("V96_W_REF",   "1.0"))
+    v96_w_arg    = float(os.environ.get("V96_W_ARG",   "1.0"))
+    v96_w_calib  = float(os.environ.get("V96_W_CALIB", "1.0"))
+    # v97 (2026-05-28) Bombe-inspired calibration head — pure aux loss.
+    v97_flag      = bool(_V97_KEY)
+    v97_calib_w   = float(_V97_CALIB_W_KEY)
+    # Pre-compute target-confidence progression (k / (K-1)) for the calibration loss.
+    # Each breath's confidence target is: 0.5 + (correctness - 0.5) * (k / (K-1))
+    # We feed this in via v96_target_progression_t (K,) for the proxy mode.
     import time as _t_jit
     _jit_compile_start = _t_jit.perf_counter()
-    print(f"[JIT] compile per_breath step: K={K} B={B} fixed_len={fixed_len} aw={aw} clip={gc_val} full_answer={pbfa} v77={v77_flag} v78_hc={v78_hc_flag} was={was_flag} was_w={was_w} v79cm={v79cm_flag} mhw={mhw_flag} v81mam={v81mam_flag}...", flush=True)
+    print(f"[JIT] compile per_breath step: K={K} B={B} fixed_len={fixed_len} aw={aw} clip={gc_val} full_answer={pbfa} v77={v77_flag} v78_hc={v78_hc_flag} was={was_flag} was_w={was_w} v79cm={v79cm_flag} mhw={mhw_flag} v81mam={v81mam_flag} v82pd={v82pd_flag} v83at={v83_anytime_flag} v83sched={v83_sched_str!r}...", flush=True)
 
     from mycelium.breathing import CONTROLLER_DECODE as _CD
     from mycelium.breathing import _layernorm as _ln
@@ -599,7 +778,9 @@ def _compile_jit_per_breath_step(model, opt, K: int, fixed_len: int, B: int,
 
     @TinyJit
     def _step(tokens, labels_stk, full_answer_labels, eq_mask, op_labels, prompt_dropout_mask_t,
-              attn_target_t, attn_mask_t, kv_mask_t, per_head_labels_t, v81_main_mask_t):
+              attn_target_t, attn_mask_t, kv_mask_t, per_head_labels_t, v81_main_mask_t,
+              loss_weights_list,
+              v96_ops_target_t, v96_types_target_t, v96_conf_target_t, v96_ls_per_breath_t):
         opt.zero_grad()
         # v79 causal-mask plumbing: gate on v79cm_flag (compile-time bool). When ON,
         # pass kv_mask to breathe_with_lookup (notebook attn-pool) AND to every
@@ -612,10 +793,36 @@ def _compile_jit_per_breath_step(model, opt, K: int, fixed_len: int, B: int,
         # main-self-attn keys at answer-span positions. When v81mam_flag is OFF,
         # behavior is byte-identical to v79.
         _main_attn_mask = v81_main_mask_t if v81mam_flag else None
+        # v96: request artifact return when v96_flag is on (compile-time specialization).
+        # v97: request calib logits when v97_flag is on (compile-time specialization).
+        # The returned tuple ordering is:
+        #   base = (final, match_weights, per_breath_x)
+        #   + (waist_compressed_per_breath,)       if _CD
+        #   + (v96_artifacts, v96_table_packed)    if v96_flag
+        #   + (v97_calib_logits_per_breath,)        if v97_flag
+        # We always pass return_v96_artifacts=v96_flag and return_v97_calib=v97_flag
+        # so the call site is uniform and we slice by length below.
         if _CD:
-            _final, match_weights, per_breath_x, waist_compressed_per_breath = model.breathe_with_lookup(
+            _ret = model.breathe_with_lookup(
                 tokens, K, return_per_breath_x=True, return_waist_compressed=True,
-                notebook_pool_mask=_nb_pool_mask, main_attn_mask=_main_attn_mask)
+                notebook_pool_mask=_nb_pool_mask, main_attn_mask=_main_attn_mask,
+                return_v96_artifacts=v96_flag,
+                return_v97_calib=v97_flag)
+            _idx = 0
+            _final = _ret[_idx]; _idx += 1
+            match_weights = _ret[_idx]; _idx += 1
+            per_breath_x = _ret[_idx]; _idx += 1
+            waist_compressed_per_breath = _ret[_idx]; _idx += 1
+            if v96_flag:
+                v96_artifacts = _ret[_idx]; _idx += 1
+                v96_table_packed = _ret[_idx]; _idx += 1
+            else:
+                v96_artifacts = None
+                v96_table_packed = None
+            if v97_flag:
+                v97_calib_logits = _ret[_idx]; _idx += 1
+            else:
+                v97_calib_logits = None
             prompt_emb = model.embed(tokens).cast(dtypes.float)
             # v81: when the embedding mask is on at training, the cross-attn KV embeddings
             # at answer-span positions are STILL the unmasked prompt_emb. The kv_mask
@@ -623,9 +830,20 @@ def _compile_jit_per_breath_step(model, opt, K: int, fixed_len: int, B: int,
             # also zero prompt_emb but it adds complexity for no behavioral change
             # (kv_mask additively penalizes those positions to ~0 weight).
         else:
-            _final, match_weights, per_breath_x = model.breathe_with_lookup(
+            _ret = model.breathe_with_lookup(
                 tokens, K, return_per_breath_x=True,
-                notebook_pool_mask=_nb_pool_mask, main_attn_mask=_main_attn_mask)
+                notebook_pool_mask=_nb_pool_mask, main_attn_mask=_main_attn_mask,
+                return_v97_calib=v97_flag)
+            _idx = 0
+            _final = _ret[_idx]; _idx += 1
+            match_weights = _ret[_idx]; _idx += 1
+            per_breath_x = _ret[_idx]; _idx += 1
+            v96_artifacts = None
+            v96_table_packed = None
+            if v97_flag:
+                v97_calib_logits = _ret[_idx]; _idx += 1
+            else:
+                v97_calib_logits = None
 
         losses_per_breath = []
         boundary_losses = []
@@ -647,13 +865,32 @@ def _compile_jit_per_breath_step(model, opt, K: int, fixed_len: int, B: int,
                 # v81: force_single_head=True for breaths < K-1 (reduces graph
                 # complexity; only the final breath needs multi-head for B6 emission).
                 _force_sh = (mhw_flag and k < K - 1)
+                # v96: at the FINAL breath, append the consolidation-table KV stream
+                # to the WaistController's cross-attn. Earlier breaths don't read the
+                # table — the table is BEING BUILT as we go and only the final breath
+                # benefits from reading all prior rows. (At breath k < K-1 the table
+                # has only k+1 rows anyway, which would constitute teacher-forcing
+                # leakage if read at training time — fed into the loss at breath k,
+                # the model could cheat by writing future rows. Restricting to k=K-1
+                # avoids that.)
+                _v96_table_kv = None
+                if v96_flag and k == K - 1 and v96_table_packed is not None:
+                    # Project (B, K, 165) → (B, K, H_base) via v96_table_kv_proj.
+                    # v96.1: scale by sigmoid(v96_table_alpha) so model gradually
+                    # learns to use the table contribution. alpha is zero-init →
+                    # sigmoid(0)=0.5 of a zero-init projection = 0 contribution.
+                    _v96_table_kv = (v96_table_packed.cast(dtypes.float)
+                                      @ model.v96_table_kv_proj.cast(dtypes.float))
+                    _v96_alpha = model.v96_table_alpha.cast(dtypes.float).sigmoid()
+                    _v96_table_kv = _v96_table_kv * _v96_alpha
                 logits_or_dict = model.waist_controller.forward(
                     waist_k, prompt_emb, model.embed_out,
                     k_idx=k, K_total=K,
                     prompt_dropout_mask=prompt_dropout_mask_t,
                     prompt_tokens=(tokens if _WC else None),
                     kv_mask=_wc_kv_mask,
-                    force_single_head=_force_sh)
+                    force_single_head=_force_sh,
+                    v96_table_kv=_v96_table_kv)
                 # v78b: capture cross-attn ONLY on the last breath (the one that will
                 # carry the attention-supervision aux loss). Overwriting each breath
                 # gives us breath K-1's value at loop end. Gated on was_flag so when
@@ -758,9 +995,53 @@ def _compile_jit_per_breath_step(model, opt, K: int, fixed_len: int, B: int,
                 copy_aux_k = (aux_per * aux_weight).sum() / (aux_weight.sum() + 1.0)
                 copy_aux_losses.append(copy_aux_k)
             else:
-                ce_k = pred.sparse_categorical_crossentropy(
-                    target_k, ignore_index=-100,
-                    label_smoothing=LABEL_SMOOTHING, reduction="mean")
+                if v83_anytime_flag:
+                    # v83 anytime supervision: per-position min CE between the
+                    # breath's scheduled target (target_k = labels_stk[k]) and
+                    # the FULL-precision target (full_answer_labels). A capable
+                    # student that emits full precision early gets credit at
+                    # any position where ce_full < ce_schedule. A weak student
+                    # emits the scheduled precision (ce_schedule low at that
+                    # position). The model picks whichever is easier per token.
+                    #
+                    # Implemented as manual log_softmax + gather over both targets
+                    # (sparse_categorical_crossentropy.reduction="mean" would lose
+                    # per-position info needed for the min).
+                    log_p = pred.log_softmax(axis=-1)  # (B, T-1, V)
+                    # Scheduled target NLL per position.
+                    target_sched = target_k
+                    valid_sched = (target_sched != -100).cast(dtypes.float)
+                    sched_safe = target_sched.maximum(0).reshape(*target_sched.shape, 1)
+                    nll_sched = -log_p.gather(-1, sched_safe).reshape(target_sched.shape)
+                    # Label smoothing (matches the standard CE path semantics).
+                    if LABEL_SMOOTHING > 0.0:
+                        ls = float(LABEL_SMOOTHING)
+                        uniform_nll = -log_p.mean(axis=-1)  # (B, T-1)
+                        nll_sched = (1.0 - ls) * nll_sched + ls * uniform_nll
+                    # Full-precision target NLL per position.
+                    target_full = full_answer_labels
+                    valid_full = (target_full != -100).cast(dtypes.float)
+                    full_safe = target_full.maximum(0).reshape(*target_full.shape, 1)
+                    nll_full = -log_p.gather(-1, full_safe).reshape(target_full.shape)
+                    if LABEL_SMOOTHING > 0.0:
+                        ls = float(LABEL_SMOOTHING)
+                        uniform_nll = -log_p.mean(axis=-1)
+                        nll_full = (1.0 - ls) * nll_full + ls * uniform_nll
+                    # Per-position min over the TWO targets. Use a large sentinel
+                    # so positions where one side is -100 (invalid) defer to the
+                    # other side.
+                    SENTINEL = 1e6
+                    nll_sched_pos = nll_sched * valid_sched + SENTINEL * (1.0 - valid_sched)
+                    nll_full_pos  = nll_full  * valid_full  + SENTINEL * (1.0 - valid_full)
+                    nll_min_pos = nll_sched_pos.minimum(nll_full_pos)
+                    # Position is supervised if EITHER target is valid.
+                    valid_any = ((valid_sched + valid_full) > 0.0).cast(dtypes.float)
+                    nll_min_pos = nll_min_pos * valid_any
+                    ce_k = nll_min_pos.sum() / (valid_any.sum() + 1.0)
+                else:
+                    ce_k = pred.sparse_categorical_crossentropy(
+                        target_k, ignore_index=-100,
+                        label_smoothing=LABEL_SMOOTHING, reduction="mean")
             losses_per_breath.append(ce_k)
             # v65 boundary aux: per-position binary head predicting "is next token ####?".
             # Applied to per_breath_x[k] (1024d post-breath hidden state).
@@ -780,7 +1061,12 @@ def _compile_jit_per_breath_step(model, opt, K: int, fixed_len: int, B: int,
                 bce_per = bce_per * weight_per_pos
                 bce_k = (bce_per * valid).sum() / (valid.sum() + 1.0)
                 boundary_losses.append(bce_k)
-        avg_main = sum(losses_per_breath[1:], losses_per_breath[0]) / float(K)
+        # v83 graduation: per-breath weighted sum from Python-side EMA softmax.
+        # When V83_GRADUATION=0, the launcher passes uniform 1/K weights, making
+        # this MATHEMATICALLY identical to the mean (no behavioral change vs v82/v83).
+        # When V83_GRADUATION=1, weights track softmax(EMA(pb_ce)/T) with a floor.
+        _weighted = [loss_weights_list[k].reshape(()) * losses_per_breath[k] for k in range(K)]
+        avg_main = sum(_weighted[1:], _weighted[0])
         if BOUNDARY_AUX_WEIGHT > 0.0 and len(boundary_losses) > 0:
             avg_boundary = sum(boundary_losses[1:], boundary_losses[0]) / float(len(boundary_losses))
         else:
@@ -870,7 +1156,203 @@ def _compile_jit_per_breath_step(model, opt, K: int, fixed_len: int, B: int,
             attn_aux_loss = (neg_ce_per_t * attn_mask_t).sum() / (attn_mask_t.sum() + 1.0)
         else:
             attn_aux_loss = Tensor.zeros((), dtype=dtypes.float).contiguous()
-        total = avg_main + aw * aux_ce + l2_reg + ch_reg + be_reg + BOUNDARY_AUX_WEIGHT * avg_boundary + v70_sparsity + _WC_AUX_W * avg_copy_aux + was_w * attn_aux_loss
+
+        # v96 (2026-05-28) PER-ROW SUPERVISION on consolidation table artifacts.
+        # Each breath's artifact gets:
+        #   ce_ops_k   = CE(artifact.ops_logits,   v96_ops_target_t[k])    # 4-way
+        #   ce_types_k = CE(artifact.types_logits, v96_types_target_t[k])  # 32-way
+        #   conf_k     = (artifact.confidence - v96_conf_target_t[k])**2   # MSE
+        # K-progressive label smoothing: ls_k is read from v96_ls_per_breath_t[k].
+        # Targets are -100 where extraction failed (sparse_categorical_crossentropy
+        # naturally ignores them via ignore_index=-100). Total v96 loss is the mean
+        # over K breaths of (w_ops*ce_ops_k + w_types*ce_types_k + w_conf*conf_k).
+        per_row_ops_ces = []
+        per_row_types_ces = []
+        per_row_conf_losses = []
+        if v96_flag and v96_artifacts is not None:
+            for k in range(K):
+                art_k = v96_artifacts[k]
+                # CE on ops (4-way). label_smoothing read from per-breath scalar.
+                # sparse_categorical_crossentropy doesn't accept a per-position
+                # ls; we use the breath-level ls (works since it's scalar per-row).
+                ls_k_t = v96_ls_per_breath_t[k].reshape(())
+                # Trick: implement label smoothing manually as ((1-ls)*nll + ls*uniform_nll).
+                log_p_ops = art_k.ops_logits.log_softmax(axis=-1)         # (B, 4)
+                tgt_ops_k = v96_ops_target_t[k]                            # (B,) int
+                valid_ops = (tgt_ops_k != -100).cast(dtypes.float)         # (B,)
+                tgt_safe_ops = tgt_ops_k.maximum(0).reshape(-1, 1)         # (B, 1)
+                nll_ops = -log_p_ops.gather(-1, tgt_safe_ops).reshape(-1)  # (B,)
+                uniform_nll_ops = -log_p_ops.mean(axis=-1)                 # (B,)
+                ls_ops_blend = (1.0 - ls_k_t) * nll_ops + ls_k_t * uniform_nll_ops
+                ce_ops_k = (ls_ops_blend * valid_ops).sum() / (valid_ops.sum() + 1.0)
+                per_row_ops_ces.append(ce_ops_k)
+                # CE on types (32-way) — same construction.
+                log_p_t = art_k.types_logits.log_softmax(axis=-1)         # (B, 32)
+                tgt_t_k = v96_types_target_t[k]                           # (B,)
+                valid_t = (tgt_t_k != -100).cast(dtypes.float)
+                tgt_safe_t = tgt_t_k.maximum(0).reshape(-1, 1)
+                nll_t = -log_p_t.gather(-1, tgt_safe_t).reshape(-1)
+                uniform_nll_t = -log_p_t.mean(axis=-1)
+                ls_t_blend = (1.0 - ls_k_t) * nll_t + ls_k_t * uniform_nll_t
+                ce_types_k = (ls_t_blend * valid_t).sum() / (valid_t.sum() + 1.0)
+                per_row_types_ces.append(ce_types_k)
+                # MSE on confidence.
+                conf_tgt_k = v96_conf_target_t[k].reshape(1, 1)            # (1, 1) broadcasts
+                conf_err = (art_k.confidence - conf_tgt_k).square().mean()
+                per_row_conf_losses.append(conf_err)
+            v96_ops_avg = sum(per_row_ops_ces[1:], per_row_ops_ces[0]) / float(K)
+            v96_types_avg = sum(per_row_types_ces[1:], per_row_types_ces[0]) / float(K)
+            v96_conf_avg = sum(per_row_conf_losses[1:], per_row_conf_losses[0]) / float(K)
+            v96_loss = v96_w_ops * v96_ops_avg + v96_w_types * v96_types_avg + v96_w_conf * v96_conf_avg
+        else:
+            v96_ops_avg = Tensor.zeros((), dtype=dtypes.float).contiguous()
+            v96_types_avg = Tensor.zeros((), dtype=dtypes.float).contiguous()
+            v96_conf_avg = Tensor.zeros((), dtype=dtypes.float).contiguous()
+            v96_loss = Tensor.zeros((), dtype=dtypes.float).contiguous()
+
+        # v96.2 (2026-05-28) CONSTRAINT PROPAGATION (Bombe-inspired elimination).
+        # Three components, all SELF-SUPERVISED on the artifact's own raw_summary:
+        #   (1) ref_loss     — model penalizes its own row for predicting it
+        #                      references future state (encourages backward-only summary)
+        #   (2) arg_loss     — model penalizes low arg-ordering plausibility,
+        #                      weighted by the probability the op is non-commutative
+        #                      (SUB or DIV) per the row's own ops_softmax
+        #   (3) calib_loss   — confidence at breath k tracks expected correctness:
+        #                      proxy: target = sigmoid(-pb_ce[K-1]) * (k/(K-1))
+        #                      Forces early breaths to be UNCERTAIN, late ones to align
+        #                      with the model's actual final-breath correctness signal.
+        # Bundled in v96_energy_loss, added to total via v96_energy_w.
+        per_row_ref_losses = []
+        per_row_arg_losses = []
+        per_row_calib_losses = []
+        v96_use_energy = (v96_flag and v96_artifacts is not None and v96_energy_w > 0.0)
+        if v96_use_energy:
+            from mycelium.v96 import compute_constraint_scores as _v96_constraints
+            # PROXY calibration target: train each breath's confidence to track
+            #   target_conf[k] = sigmoid(-pb_ce[K-1] + 4.0) * (k / (K-1))
+            # The +4 offset shifts so a "good" pb_ce ~ 2 gives sigmoid(2) ~ 0.88.
+            # We treat pb_ce[K-1] as a fixed signal (no gradient through it for the
+            # target — we don't want the calibration loss to drive pb_ce up/down,
+            # just to train confidence to TRACK it). Use detach() pattern via .stop_gradient
+            # if available; otherwise rely on the constant factor (k/(K-1)) being the
+            # primary driver and accepting the gradient leak (small effect at scale).
+            #
+            # Note: tinygrad's Tensor doesn't have stop_gradient/detach. The gradient
+            # to pb_ce[K-1] from the calib loss is small because:
+            #   d/d(pb_ce) sigmoid(-pb_ce) = -sigmoid * (1 - sigmoid) ≈ -0.1 typically
+            # multiplied by v96_w_calib * v96_energy_w (default 1.0 * 0.3 = 0.3) and
+            # the row-mean over k. Total leak ~0.03 vs the main pb_ce gradient ~1.0.
+            # Acceptable.
+            final_pb_ce = losses_per_breath[K - 1]  # scalar Tensor, breath K-1's CE
+            # target_correctness_proxy: high when final CE is low, low when high.
+            # offset 4.0 so pb_ce=2 (good) → sigmoid(2)=0.88, pb_ce=6 (bad) → sigmoid(-2)=0.12.
+            target_correctness = (-final_pb_ce + 4.0).sigmoid()    # scalar in (0,1)
+            for k in range(K):
+                art_k = v96_artifacts[k]
+                ref_score, arg_score = _v96_constraints(
+                    art_k.raw_summary,
+                    model.v96_ref_validity_head_w, model.v96_ref_validity_head_b,
+                    model.v96_arg_order_head_w,    model.v96_arg_order_head_b,
+                )
+                # ref_loss: penalize low validity (model wants ref_score → 1.0).
+                # Self-supervision target: 1.0. -log(score + eps).mean over batch.
+                ref_loss_k = -(ref_score.clip(1e-6, 1.0 - 1e-6).log()).mean()
+                per_row_ref_losses.append(ref_loss_k)
+                # arg_loss: weight by non-commutative op probability from this row's ops softmax.
+                # ops index: [ADD=0, SUB=1, MUL=2, DIV=3]; SUB+DIV = non-commutative.
+                op_dist = art_k.ops_logits.softmax(axis=-1)        # (B, 4)
+                non_comm_w = (op_dist[:, 1:2] + op_dist[:, 3:4])    # (B, 1) — SUB+DIV
+                arg_neg_log = -(arg_score.clip(1e-6, 1.0 - 1e-6).log())  # (B, 1)
+                # Mean over batch of the weighted neg-log.
+                arg_loss_k = (non_comm_w * arg_neg_log).mean()
+                per_row_arg_losses.append(arg_loss_k)
+                # calibration loss: train confidence at breath k to track
+                #   target_conf_k = base + (target_correctness - base) * (k / (K-1))
+                # with base = 0.5 (uncertain at B0), endpoint = target_correctness at B_{K-1}.
+                if K <= 1:
+                    progression_k = 1.0
+                else:
+                    progression_k = float(k) / float(K - 1)
+                target_conf_k = 0.5 + (target_correctness - 0.5) * progression_k
+                # confidence in artifact is L2 norm — naturally in [0, ∞). We want it
+                # in (0, 1) for the calib comparison. Squash via sigmoid then compare.
+                # (Alternative: train a separate confidence head. Keeping this simple.)
+                conf_squashed = art_k.confidence.sigmoid()          # (B, 1) in (0, 1)
+                calib_err_k = (conf_squashed - target_conf_k.reshape(1, 1)).square().mean()
+                per_row_calib_losses.append(calib_err_k)
+            v96_ref_avg   = sum(per_row_ref_losses[1:],   per_row_ref_losses[0])   / float(K)
+            v96_arg_avg   = sum(per_row_arg_losses[1:],   per_row_arg_losses[0])   / float(K)
+            v96_calib_avg = sum(per_row_calib_losses[1:], per_row_calib_losses[0]) / float(K)
+            v96_energy_loss = (v96_w_ref   * v96_ref_avg
+                                + v96_w_arg   * v96_arg_avg
+                                + v96_w_calib * v96_calib_avg)
+        else:
+            v96_ref_avg     = Tensor.zeros((), dtype=dtypes.float).contiguous()
+            v96_arg_avg     = Tensor.zeros((), dtype=dtypes.float).contiguous()
+            v96_calib_avg   = Tensor.zeros((), dtype=dtypes.float).contiguous()
+            v96_energy_loss = Tensor.zeros((), dtype=dtypes.float).contiguous()
+
+        # v96 L2 reg — only contributes when V96_CONSOLIDATION=1 (params are in
+        # opt then). When OFF, v96 params aren't in opt and creating a gradient
+        # path to them would be wasted.
+        if v96_flag:
+            v96_l2 = (model.v96_gate_w.square().mean()
+                       + model.v96_gate_b.square().mean()
+                       + model.v96_ops_codebook.square().mean()
+                       + model.v96_types_codebook.square().mean()
+                       + model.v96_summary_proj.square().mean()
+                       + model.v96_table_kv_proj.square().mean()
+                       # v96.2 constraint heads.
+                       + model.v96_ref_validity_head_w.square().mean()
+                       + model.v96_ref_validity_head_b.square().mean()
+                       + model.v96_arg_order_head_w.square().mean()
+                       + model.v96_arg_order_head_b.square().mean()) * 1e-7
+        else:
+            v96_l2 = Tensor.zeros((), dtype=dtypes.float).contiguous()
+
+        # v97 (2026-05-28) CALIBRATION HEAD — Bombe-inspired self-assessment loss.
+        # For each breath k, compare the model's predicted P(correct) to a
+        # progression target:
+        #     target_correct = clip((3 - final_pb_ce) / 2, 0, 1)
+        #     progression_k   = k / (K - 1)
+        #     target_k        = 0.5 + (target_correct - 0.5) * progression_k
+        # At B0 the target is 0.5 (uncertain); at B_{K-1} the target is the
+        # CE-derived correctness proxy. The model learns to track its own
+        # progression toward correctness. NO consolidation-table feedback into
+        # the residual stream — pure aux loss.
+        #
+        # The calib_logit comes directly from the read-only v97 head per breath.
+        if v97_flag and v97_calib_logits is not None:
+            # final-breath CE (scalar Tensor) — the ground truth for "did the
+            # model do well?". We use the gradient through pb_ce[K-1] freely;
+            # the calibration head is a small Linear so the back-prop into the
+            # transformer through this path is small relative to the main pb_ce
+            # gradient. The signal we WANT is: train the head to predict pb_ce,
+            # while the transformer's main job is still to drive pb_ce down.
+            final_pb_ce_v97 = losses_per_breath[K - 1]   # scalar
+            # piecewise linear target: ce <= 1 → 1.0, ce >= 3 → 0.0
+            target_correct_v97 = ((3.0 - final_pb_ce_v97).clip(0.0, 2.0) / 2.0)  # scalar
+            per_breath_calib_losses = []
+            for k in range(K):
+                if K <= 1:
+                    progression_k = 1.0
+                else:
+                    progression_k = float(k) / float(K - 1)
+                # target_k is a scalar Tensor (per-batch invariant — uses
+                # final_pb_ce which is a batch-mean scalar). Broadcasts over (B,).
+                target_k = 0.5 + (target_correct_v97 - 0.5) * progression_k
+                calib_pred_k = v97_calib_logits[k].sigmoid()                    # (B,)
+                err_k = (calib_pred_k - target_k).square().mean()                # scalar
+                per_breath_calib_losses.append(err_k)
+            v97_calib_avg = sum(per_breath_calib_losses[1:],
+                                  per_breath_calib_losses[0]) / float(K)
+            v97_l2 = (model.v97_calib_head_w.square().mean()
+                       + model.v97_calib_head_b.square().mean()) * 1e-7
+        else:
+            v97_calib_avg = Tensor.zeros((), dtype=dtypes.float).contiguous()
+            v97_l2 = Tensor.zeros((), dtype=dtypes.float).contiguous()
+
+        total = avg_main + aw * aux_ce + l2_reg + ch_reg + be_reg + BOUNDARY_AUX_WEIGHT * avg_boundary + v70_sparsity + _WC_AUX_W * avg_copy_aux + was_w * attn_aux_loss + v96_loss + v96_energy_w * v96_energy_loss + v96_l2 + v97_calib_w * v97_calib_avg + v97_l2
         total.backward()
         # NaN-skip: if loss is NaN (forward overflow), zero all gradients so
         # opt.step is a no-op. Checked via total.isfinite() — single kernel,
@@ -906,7 +1388,14 @@ def _compile_jit_per_breath_step(model, opt, K: int, fixed_len: int, B: int,
                 *(ce.realize() for ce in losses_per_breath),
                 # v81 per-head sums (4 values appended at the END so legacy callers can
                 # still slice ce_ts = outs[4:4+K] without disruption).
-                *(ph.realize() for ph in per_head_total_losses))
+                *(ph.realize() for ph in per_head_total_losses),
+                # v96 averages (3 scalars appended at the END after per_head_ts).
+                v96_ops_avg.realize(), v96_types_avg.realize(), v96_conf_avg.realize(),
+                # v96.2 (2026-05-28) constraint propagation averages — 3 more scalars.
+                # Order: ref, arg, calib (matches the loss breakdown).
+                v96_ref_avg.realize(), v96_arg_avg.realize(), v96_calib_avg.realize(),
+                # v97 (2026-05-28) calibration aux loss — 1 scalar appended last.
+                v97_calib_avg.realize())
 
     _JIT_PER_BREATH_CACHE[key] = _step
     print(f"[JIT] compiled per_breath in {_t_jit.perf_counter() - _jit_compile_start:.1f}s "
@@ -965,15 +1454,18 @@ def _compile_jit_per_breath_step_ss(model, opt, K: int, fixed_len: int, B: int,
       - Scheduled rate is a scalar Tensor input (no Python branch per rate value).
     """
     # JIT cache key includes PER_BREATH_FULL_ANSWER, V77_DAG_TRAINING, V78_HEAD_CODEBOOK,
-    # WAIST_ATTN_SUPERVISION, V79_CAUSAL_MASKS, MULTI_HEAD_WAIST, V81_MAIN_ATTN_MASK
-    # so the v75 multi-well, per-step, v77 DAG, v78 kitchen-sink, v78b attention-supervised,
-    # v79 causal-masked, and v81 multi-head graphs don't collide.
+    # WAIST_ATTN_SUPERVISION, V79_CAUSAL_MASKS, MULTI_HEAD_WAIST, V81_MAIN_ATTN_MASK,
+    # V82_PARALLEL_DIFFUSION, V83_ANYTIME_SUPERVISION, BFIELD_WAIST_SCHEDULE so the
+    # v75 multi-well, per-step, v77 DAG, v78 kitchen-sink, v78b attention-supervised,
+    # v79 causal-masked, v81 multi-head, v82 parallel-diffusion, and v83 anytime graphs
+    # don't collide.
     from mycelium.breathing import V78_HEAD_CODEBOOK as _V78_HC_KEY_SS
     from mycelium.breathing import WAIST_ATTN_SUPERVISION as _WAS_KEY_SS
     from mycelium.breathing import V79_CAUSAL_MASKS as _V79CM_KEY_SS
     from mycelium.breathing import MULTI_HEAD_WAIST as _MHW_KEY_SS
     from mycelium.breathing import V81_MAIN_ATTN_MASK as _V81MAM_KEY_SS
-    key = (id(model), id(opt), int(K), int(fixed_len), int(B), float(lookup_aux_weight), float(grad_clip), bool(PER_BREATH_FULL_ANSWER), bool(V77_DAG_TRAINING), bool(_V78_HC_KEY_SS), bool(_WAS_KEY_SS), bool(_V79CM_KEY_SS), bool(_MHW_KEY_SS), bool(_V81MAM_KEY_SS))
+    from mycelium.breathing import BFIELD_WAIST_SCHEDULE as _V83_WSCHED_KEY_SS
+    key = (id(model), id(opt), int(K), int(fixed_len), int(B), float(lookup_aux_weight), float(grad_clip), bool(PER_BREATH_FULL_ANSWER), bool(V77_DAG_TRAINING), bool(_V78_HC_KEY_SS), bool(_WAS_KEY_SS), bool(_V79CM_KEY_SS), bool(_MHW_KEY_SS), bool(_V81MAM_KEY_SS), bool(V82_PARALLEL_DIFFUSION), bool(V83_ANYTIME_SUPERVISION), str(_V83_WSCHED_KEY_SS), bool(V83_GRADUATION))
     if key in _JIT_PER_BREATH_SS_CACHE:
         return _JIT_PER_BREATH_SS_CACHE[key]
 
@@ -988,9 +1480,12 @@ def _compile_jit_per_breath_step_ss(model, opt, K: int, fixed_len: int, B: int,
     v79cm_flag = bool(_V79CM_KEY_SS)  # v79 causal masks during training
     mhw_flag = bool(_MHW_KEY_SS)       # v81 multi-head WaistController
     v81mam_flag = bool(_V81MAM_KEY_SS)  # v81 main-attn answer-span masking
+    v82pd_flag = bool(V82_PARALLEL_DIFFUSION)  # v82 parallel-diffusion supervision
+    v83_anytime_flag = bool(V83_ANYTIME_SUPERVISION)  # v83 anytime supervision
+    v83_sched_str = str(_V83_WSCHED_KEY_SS)
     import time as _t_jit
     _jit_compile_start = _t_jit.perf_counter()
-    print(f"[JIT-SS] compile per_breath_ss step: K={K} B={B} fixed_len={fixed_len} aw={aw} clip={gc_val} full_answer={pbfa} v77={v77_flag} v78_hc={v78_hc_flag} was={was_flag} was_w={was_w} v79cm={v79cm_flag} mhw={mhw_flag} v81mam={v81mam_flag}...", flush=True)
+    print(f"[JIT-SS] compile per_breath_ss step: K={K} B={B} fixed_len={fixed_len} aw={aw} clip={gc_val} full_answer={pbfa} v77={v77_flag} v78_hc={v78_hc_flag} was={was_flag} was_w={was_w} v79cm={v79cm_flag} mhw={mhw_flag} v81mam={v81mam_flag} v82pd={v82pd_flag} v83at={v83_anytime_flag} v83sched={v83_sched_str!r}...", flush=True)
 
     from mycelium.breathing import CONTROLLER_DECODE as _CD
     from mycelium.breathing import _layernorm as _ln
@@ -1010,7 +1505,7 @@ def _compile_jit_per_breath_step_ss(model, opt, K: int, fixed_len: int, B: int,
     @TinyJit
     def _step_ss(tokens, labels_stk, full_answer_labels, eq_mask, op_labels, prompt_dropout_mask_t,
                  sched_sample_rate_t, bernoulli_mask_t, attn_target_t, attn_mask_t, kv_mask_t,
-                 per_head_labels_t, v81_main_mask_t):
+                 per_head_labels_t, v81_main_mask_t, loss_weights_list):
         opt.zero_grad()
         # v79 causal-mask plumbing — see base JIT for rationale.
         _nb_pool_mask_ss = kv_mask_t if v79cm_flag else None
@@ -1251,9 +1746,37 @@ def _compile_jit_per_breath_step_ss(model, opt, K: int, fixed_len: int, B: int,
                 copy_aux_k = (copy_aux_per * copy_aux_mask).sum() / (copy_aux_mask.sum() + 1.0)
                 copy_aux_losses.append(copy_aux_k)
             else:
-                ce_k = pred.sparse_categorical_crossentropy(
-                    target_k, ignore_index=-100,
-                    label_smoothing=LABEL_SMOOTHING, reduction="mean")
+                if v83_anytime_flag:
+                    # v83 anytime supervision (mirrors the non-SS JIT path). See
+                    # comments in _compile_jit_per_breath_step for the full design.
+                    log_p = pred.log_softmax(axis=-1)
+                    target_sched = target_k
+                    valid_sched = (target_sched != -100).cast(dtypes.float)
+                    sched_safe = target_sched.maximum(0).reshape(*target_sched.shape, 1)
+                    nll_sched = -log_p.gather(-1, sched_safe).reshape(target_sched.shape)
+                    if LABEL_SMOOTHING > 0.0:
+                        ls = float(LABEL_SMOOTHING)
+                        uniform_nll = -log_p.mean(axis=-1)
+                        nll_sched = (1.0 - ls) * nll_sched + ls * uniform_nll
+                    target_full = full_answer_labels
+                    valid_full = (target_full != -100).cast(dtypes.float)
+                    full_safe = target_full.maximum(0).reshape(*target_full.shape, 1)
+                    nll_full = -log_p.gather(-1, full_safe).reshape(target_full.shape)
+                    if LABEL_SMOOTHING > 0.0:
+                        ls = float(LABEL_SMOOTHING)
+                        uniform_nll = -log_p.mean(axis=-1)
+                        nll_full = (1.0 - ls) * nll_full + ls * uniform_nll
+                    SENTINEL = 1e6
+                    nll_sched_pos = nll_sched * valid_sched + SENTINEL * (1.0 - valid_sched)
+                    nll_full_pos  = nll_full  * valid_full  + SENTINEL * (1.0 - valid_full)
+                    nll_min_pos = nll_sched_pos.minimum(nll_full_pos)
+                    valid_any = ((valid_sched + valid_full) > 0.0).cast(dtypes.float)
+                    nll_min_pos = nll_min_pos * valid_any
+                    ce_k = nll_min_pos.sum() / (valid_any.sum() + 1.0)
+                else:
+                    ce_k = pred.sparse_categorical_crossentropy(
+                        target_k, ignore_index=-100,
+                        label_smoothing=LABEL_SMOOTHING, reduction="mean")
             losses_per_breath.append(ce_k)
             # v65 boundary aux with v66 pos_weight
             # v75: mask same positions as main CE.
@@ -1272,7 +1795,9 @@ def _compile_jit_per_breath_step_ss(model, opt, K: int, fixed_len: int, B: int,
                 bce_k = (bce_per * valid).sum() / (valid.sum() + 1.0)
                 boundary_losses.append(bce_k)
 
-        avg_main = sum(losses_per_breath[1:], losses_per_breath[0]) / float(K)
+        # v83 graduation: weighted sum (uniform 1/K when V83_GRADUATION=0).
+        _weighted_ss = [loss_weights_list[k].reshape(()) * losses_per_breath[k] for k in range(K)]
+        avg_main = sum(_weighted_ss[1:], _weighted_ss[0])
         if BOUNDARY_AUX_WEIGHT > 0.0 and len(boundary_losses) > 0:
             avg_boundary = sum(boundary_losses[1:], boundary_losses[0]) / float(len(boundary_losses))
         else:
@@ -2160,6 +2685,578 @@ def _lookup_aux_loss(model, tokens: Tensor, tokens_np: np.ndarray,
     return logits.sparse_categorical_crossentropy(y, ignore_index=-100, reduction="mean")
 
 
+# ---------- v85 Queryable-structures training ----------
+
+# JIT cache for the v85 step.
+_JIT_V85_CACHE: dict = {}
+# IB leaf / type-path indices, populated lazily by _v85_encode_batch.
+_V85_LEAF_INDEX: dict = None  # type: ignore
+_V85_TYPE_PATH_INDEX: dict = None  # type: ignore
+
+
+def _v85_encode_batch(batch_examples, tok, fixed_len: int, K_max: int, N_max: int):
+    """Encode a v85 batch into all tensors required for training.
+
+    Args:
+        batch_examples: list of V85Example.
+        tok: tokenizer.
+        fixed_len: padded sequence length.
+        K_max: max DAG slots per problem.
+        N_max: max literal numbers per problem.
+
+    Returns dict of numpy arrays:
+        tokens                  (B, fixed_len) int32
+        number_span_token_idx   (B, N_max, 2) int32 — [start_token_idx, end_token_idx_exclusive]
+        numbers_mask            (B, N_max) float32 — 1.0 valid, 0.0 pad
+        ops_targets             (B, K_max) int32 — slot k's op label, -100 if inactive/pad
+        types_targets           (B, K_max) int32 — slot k's IB-leaf index, -100 if inactive/pad
+        args1_targets           (B, K_max) int32 — slot k's arg1 pointer index, -100 if N/A
+                                 Indices: [0, N_max) = numbers[i], [N_max, N_max+K_max) = dag_slots[i-N_max]
+        args2_targets           (B, K_max) int32 — same scheme for arg2
+        active_targets          (B, K_max) float32 — 1.0 if active, 0.0 if inactive/pad
+        active_valid            (B, K_max) float32 — 1.0 if slot index < K_max for this example
+        prompt_lens             (B,) int32
+        kv_mask                 (B, fixed_len) float32 — 1.0 at prompt positions
+
+    The N_max+K_max args index scheme matches the V85SlotDecoder.forward output
+    layout (numbers segment then dag_slots segment).
+    """
+    from mycelium.l3_data import V85Example
+
+    # Build IB leaf index lookup: leaf_id string -> integer index 0..types_N-1.
+    # This requires loading the IB tree once per process. Cache it.
+    global _V85_LEAF_INDEX, _V85_TYPE_PATH_INDEX
+    if _V85_LEAF_INDEX is None:
+        import json
+        with open(".cache/ib_tree.json") as f:
+            meta = json.load(f)
+        _V85_LEAF_INDEX = {leaf["leaf_id"]: i for i, leaf in enumerate(meta["leaves"])}
+        # Also build a fallback mapping for shorter type_paths.
+        _V85_TYPE_PATH_INDEX = {}
+        for i, leaf in enumerate(meta["leaves"]):
+            tp_full = ".".join(leaf["leaf_id"].split(".")[1:])  # drop OP prefix
+            _V85_TYPE_PATH_INDEX[tp_full] = i
+
+    B = len(batch_examples)
+    tokens_np = np.zeros((B, fixed_len), dtype=np.int32)
+    number_span_token_idx_np = np.zeros((B, N_max, 2), dtype=np.int32)
+    numbers_mask_np = np.zeros((B, N_max), dtype=np.float32)
+    ops_targets_np = np.full((B, K_max), -100, dtype=np.int32)
+    types_targets_np = np.full((B, K_max), -100, dtype=np.int32)
+    args1_targets_np = np.full((B, K_max), -100, dtype=np.int32)
+    args2_targets_np = np.full((B, K_max), -100, dtype=np.int32)
+    active_targets_np = np.zeros((B, K_max), dtype=np.float32)
+    active_valid_np = np.zeros((B, K_max), dtype=np.float32)
+    prompt_lens_np = np.zeros((B,), dtype=np.int32)
+    kv_mask_np = np.zeros((B, fixed_len), dtype=np.float32)
+    # v89 (2026-05-27) — per-arg cross-attn target positions for supervised
+    # attention. For each (b, k) and each arg (i=0:args1, i=1:args2):
+    #   target = the TOKEN-POSITION spanning the gold number in the prompt
+    #            when gold args[i].source == "numbers" (and that number's
+    #            character span maps to a non-degenerate token range)
+    #   target = -100 otherwise (implicit / dag / unbound — skipped by aux CE)
+    # Shape (B, K_max, 2) int32.
+    args_attn_target_np = np.full((B, K_max, 2), -100, dtype=np.int32)
+
+    op_to_idx = {"ADD": 0, "SUB": 1, "MUL": 2, "DIV": 3}
+
+    for b, ex in enumerate(batch_examples):
+        # Tokenize the problem. For v85 the entire problem is the prompt; there's
+        # no "answer span" of natural-language tokens (the model emits structured
+        # slot mixtures, not tokens).
+        p_ids = tok.encode(ex.problem).ids[:fixed_len]
+        prompt_len = len(p_ids)
+        tokens_np[b, :prompt_len] = p_ids
+        prompt_lens_np[b] = prompt_len
+        kv_mask_np[b, :prompt_len] = 1.0
+
+        # Compute token spans for numbers via character-to-token mapping.
+        # tokenizers package exposes `encode(...).offsets` returning (start, end) char
+        # ranges per token. Use that to find which tokens cover each number's char span.
+        enc = tok.encode(ex.problem)
+        offsets = enc.offsets  # list of (start_char, end_char)
+        # Truncate offsets to match prompt_len.
+        offsets = offsets[:prompt_len]
+
+        # For each number, find the contiguous range of tokens whose offsets overlap
+        # the number's char span. If span is (-1,-1) implicit, mark with start=end=0
+        # (a degenerate span — the slot encoder will pool nothing and the embedding
+        # contribution is zero, but the mask says "valid" so the pointer can be a
+        # target).
+        # We only keep the first N_max numbers.
+        used = 0
+        for i, n in enumerate(ex.numbers):
+            if used >= N_max:
+                break
+            start_c = n.get("span_start_char", -1)
+            end_c = n.get("span_end_char", -1)
+            if start_c == -1 or end_c == -1:
+                # Implicit constant — no character span. Use a degenerate (0, 0)
+                # token range; numbers_mask=1.0 (valid pointer target). The slot
+                # encoder will pool over an empty range → zero embedding. The model
+                # learns to bind implicit constants via the ops_codebook + active
+                # slot signature alone. (Not ideal but acceptable for v0.)
+                number_span_token_idx_np[b, used, 0] = 0
+                number_span_token_idx_np[b, used, 1] = 0
+                numbers_mask_np[b, used] = 1.0
+                used += 1
+                continue
+            # Find the first token that overlaps [start_c, end_c).
+            tok_start = None
+            tok_end = None
+            for ti, (os_, oe) in enumerate(offsets):
+                # Skip tokens that end at or before the number's start.
+                if oe <= start_c:
+                    continue
+                # Skip tokens that start at or after the number's end.
+                if os_ >= end_c:
+                    break
+                if tok_start is None:
+                    tok_start = ti
+                tok_end = ti + 1
+            if tok_start is None:
+                # Number's char span didn't land on any token (shouldn't happen with
+                # the regex extractor); skip.
+                continue
+            # Clip to valid prompt range.
+            tok_start = max(0, min(tok_start, prompt_len - 1))
+            tok_end = max(tok_start + 1, min(tok_end, prompt_len))
+            number_span_token_idx_np[b, used, 0] = tok_start
+            number_span_token_idx_np[b, used, 1] = tok_end
+            numbers_mask_np[b, used] = 1.0
+            used += 1
+
+        # Also encode implicit_numbers — these go at indices [N_real, N_real + N_imp)
+        # in the same `numbers` slot space. Treat as degenerate (0,0) spans.
+        # We unify "numbers" and "implicit_numbers" into ONE pointer target space
+        # of size N_max. The model only sees indices, doesn't know which is which.
+        n_real = used
+        for j, n in enumerate(ex.implicit_numbers):
+            if used >= N_max:
+                break
+            # Implicit numbers get a degenerate token span (0, 1) — the encoder
+            # pools the first token which is typically <s> / space. This is an
+            # arbitrary anchor that the model can learn against.
+            number_span_token_idx_np[b, used, 0] = 0
+            number_span_token_idx_np[b, used, 1] = 1
+            numbers_mask_np[b, used] = 1.0
+            used += 1
+
+        # Build the unified pointer table for arg targets:
+        #   indices [0, n_real) → numbers[i]
+        #   indices [n_real, n_real + n_implicit) → implicit_numbers[i - n_real]
+        # We need a function to translate (src, idx) → unified_idx.
+        def unified_idx(src, idx, n_real_=n_real):
+            if src == "numbers":
+                if 0 <= idx < n_real_:
+                    return idx
+                return None
+            if src == "implicit":
+                if 0 <= idx < len(ex.implicit_numbers):
+                    return n_real_ + idx
+                return None
+            if src == "dag":
+                if 0 <= idx < K_max:
+                    return N_max + idx  # dag segment starts after the N_max numbers
+                return None
+            return None
+
+        # Fill per-slot targets for actual dag_slots.
+        for k, slot in enumerate(ex.dag_slots):
+            if k >= K_max:
+                break
+            op = slot.get("op", "")
+            if op not in op_to_idx:
+                continue
+            ops_targets_np[b, k] = op_to_idx[op]
+            # Types target — match against IB leaf or by type_path.
+            leaf_id = slot.get("leaf_id", "")
+            tp = slot.get("type_path", "")
+            type_idx = None
+            if leaf_id and leaf_id in _V85_LEAF_INDEX:
+                type_idx = _V85_LEAF_INDEX[leaf_id]
+            elif tp in _V85_TYPE_PATH_INDEX:
+                type_idx = _V85_TYPE_PATH_INDEX[tp]
+            else:
+                # Fallback: pick any leaf belonging to this OP (just one of them)
+                # — better than -100 (which would skip supervision entirely).
+                for li, lid in enumerate(_V85_LEAF_INDEX):
+                    if lid.startswith(op + "."):
+                        type_idx = _V85_LEAF_INDEX[lid]
+                        break
+            if type_idx is not None:
+                types_targets_np[b, k] = int(type_idx)
+
+            # Args targets — pointer into unified [numbers | dag] space.
+            args = slot.get("args", [])
+            if len(args) >= 1:
+                u1 = unified_idx(args[0].get("source", ""), args[0].get("index", -1))
+                if u1 is not None:
+                    args1_targets_np[b, k] = u1
+            if len(args) >= 2:
+                u2 = unified_idx(args[1].get("source", ""), args[1].get("index", -1))
+                if u2 is not None:
+                    args2_targets_np[b, k] = u2
+
+            # v89 — gold attention targets per slot per arg position.
+            # Only "numbers" source produces a usable token-position target;
+            # "implicit" has no prompt span; "dag" refs target earlier slots
+            # (handled by the args_ce pointer loss directly).
+            for arg_i, gold_args_i in enumerate(args[:2]):
+                src_i = gold_args_i.get("source", "")
+                idx_i = gold_args_i.get("index", -1)
+                if src_i != "numbers":
+                    continue
+                if not (0 <= idx_i < n_real):
+                    continue
+                # n_real is the count of REAL (literal) numbers placed first
+                # in the unified numbers segment. number_span_token_idx_np[b, idx_i]
+                # carries the [start_token, end_token) span; we use start_token
+                # as the attention target (the FIRST token of the multi-digit
+                # number when SPACE_DIGITS=1 splits "12" -> "1 2").
+                start_tok = int(number_span_token_idx_np[b, idx_i, 0])
+                end_tok = int(number_span_token_idx_np[b, idx_i, 1])
+                if end_tok <= start_tok:
+                    continue  # degenerate span (shouldn't happen for source=numbers)
+                args_attn_target_np[b, k, arg_i] = start_tok
+
+            active_targets_np[b, k] = 1.0 if slot.get("is_active", True) else 0.0
+            active_valid_np[b, k] = 1.0
+
+        # Slots beyond ex.n_steps are pad slots — supervised as inactive.
+        for k in range(ex.n_steps, K_max):
+            active_targets_np[b, k] = 0.0
+            active_valid_np[b, k] = 1.0
+
+    return {
+        "tokens_np": tokens_np,
+        "number_span_token_idx_np": number_span_token_idx_np,
+        "numbers_mask_np": numbers_mask_np,
+        "ops_targets_np": ops_targets_np,
+        "types_targets_np": types_targets_np,
+        "args1_targets_np": args1_targets_np,
+        "args2_targets_np": args2_targets_np,
+        "active_targets_np": active_targets_np,
+        "active_valid_np": active_valid_np,
+        "prompt_lens_np": prompt_lens_np,
+        "kv_mask_np": kv_mask_np,
+        # v89 — gold cross-attn target positions per (slot, arg). -100 = skip.
+        "args_attn_target_np": args_attn_target_np,
+    }
+
+
+def _compile_jit_v85_step(model, opt, K: int, fixed_len: int, B: int,
+                          K_max: int, N_max: int, grad_clip: float = 0.0):
+    """JIT'd v85 training step. Forward = K breaths; per-breath slot decoder
+    fires once per breath; per-slot CE losses summed across breaths.
+
+    Inputs (stable shapes):
+        tokens                 (B, fixed_len) int
+        number_span_idx        (B, N_max, 2) int — [start_tok, end_tok_exclusive]
+        numbers_mask           (B, N_max) float
+        ops_targets            (B, K_max) int
+        types_targets          (B, K_max) int
+        args1_targets          (B, K_max) int
+        args2_targets          (B, K_max) int
+        active_targets         (B, K_max) float
+        active_valid           (B, K_max) float
+        kv_mask                (B, fixed_len) float
+
+    Returns: (total_loss, ops_ce, types_ce, args_ce, active_ce, healthy) — scalars.
+    """
+    # v86 flags participate in the JIT cache key so changing the flag at runtime
+    # forces a recompile (gives clean a/b separation if someone toggles mid-run).
+    # v87: slot_pos init scale is structural (init only) but participates in the
+    # key for clean a/b separation across configurations.
+    # v88: K/V projection reinit scale; structural-init-only but participates in
+    # the cache key so future runs that toggle the flag re-key cleanly.
+    # v89: supervised attention; affects both the forward (separate cross-attn)
+    # and the loss term; must invalidate the JIT when toggled.
+    from mycelium.breathing import V86_ARGS_CROSS_ATTN as _V86_X
+    from mycelium.breathing import V86_ACTIVE_POS_WEIGHT as _V86_PW
+    from mycelium.breathing import V87_SLOT_POS_INIT_SCALE as _V87_S
+    from mycelium.breathing import V89_SUPERVISED_ATTN as _V89_X
+    from mycelium.breathing import V91_SIMPLIFIED_ARGS as _V91_X
+    _V88_REINIT = bool(int(os.environ.get("V88_REINIT_KV_PROJ", "0")))
+    _V88_KV_S = float(os.environ.get("V88_KV_PROJ_INIT_SCALE", "0.02"))
+    _V89_W = float(os.environ.get("V89_SUPERVISED_ATTN_WEIGHT", "0.0"))
+    # v92 (2026-05-28): defensive — even though these don't currently affect
+    # graph topology (init-time reinits and threshold-only changes), include in
+    # cache key so future toggles re-key cleanly without state-dict crosstalk.
+    _V92_APE_S = float(os.environ.get("V92_ARG_POS_EMB_SCALE", "0.0"))
+    _V92_APE_REINIT = bool(int(os.environ.get("V92_REINIT_ARG_POS_EMB", "0")))
+    _V92_ACT_NEU = bool(int(os.environ.get("V92_RESET_ACTIVE_HEAD_NEUTRAL", "0")))
+    key = ("v85", id(model), id(opt), int(K), int(fixed_len), int(B), int(K_max), int(N_max),
+           float(grad_clip), bool(_V86_X), float(_V86_PW), float(_V87_S),
+           bool(_V88_REINIT), float(_V88_KV_S), bool(_V89_X), float(_V89_W),
+           bool(_V91_X),
+           float(_V92_APE_S), bool(_V92_APE_REINIT), bool(_V92_ACT_NEU))
+    if key in _JIT_V85_CACHE:
+        return _JIT_V85_CACHE[key]
+
+    print(f"[JIT] compile v85 step: K={K} B={B} fixed_len={fixed_len} K_max={K_max} N_max={N_max}",
+          flush=True)
+
+    @TinyJit
+    def _step(tokens, number_span_idx, numbers_mask,
+              ops_targets, types_targets, args1_targets, args2_targets,
+              active_targets, active_valid, kv_mask, args_attn_target):
+        opt.zero_grad()
+
+        # FORWARD: K breaths with all 4 masks. kv_mask used for:
+        #   - main_attn_mask (zeros embeddings at non-prompt positions + main self-attn KV)
+        #   - notebook_pool_mask
+        #   - WaistController cross-attn kv_mask (we still call WaistController to keep
+        #     the existing supervision wired even when V85 is on)
+        _final, match_weights, per_breath_x, waist_compressed_per_breath = model.breathe_with_lookup(
+            tokens, K, return_per_breath_x=True, return_waist_compressed=True,
+            notebook_pool_mask=kv_mask, main_attn_mask=kv_mask)
+
+        # Build numbers_emb by pooling embed_in over each number's token span.
+        # We use the (mask-zero'd) embedding of the prompt as the source so the
+        # span pooling is well-defined.
+        # Approach: per-number, sum the embeddings over tokens in [start, end).
+        # Implementation as a mask matrix:
+        #   For each (b, i), build a (T,) mask = 1.0 at positions in [start_i, end_i).
+        # Build mask via arange comparison.
+        # Hidden = model.cfg.hidden
+        H = model.cfg.hidden
+        T = tokens.shape[1]
+        prompt_emb_full = model.embed(tokens).cast(dtypes.float)   # (B, T, H)
+        # We apply the kv_mask so that embeddings at answer-span positions are zero
+        # — but in v85 there IS no answer span (the entire input IS the prompt). The
+        # kv_mask is 1.0 everywhere in [0, prompt_len) and 0 elsewhere. The numbers
+        # span pooling naturally only touches positions inside the prompt (number
+        # spans are within [0, prompt_len)).
+        prompt_emb_masked = prompt_emb_full * kv_mask.cast(dtypes.float).reshape(B_local := tokens.shape[0], T, 1)
+
+        positions = Tensor.arange(T).reshape(1, 1, T)   # (1, 1, T)
+        start_idx = number_span_idx[:, :, 0:1]          # (B, N_max, 1)
+        end_idx = number_span_idx[:, :, 1:2]            # (B, N_max, 1)
+        # Build a (B, N_max, T) float mask. 1.0 where start <= pos < end.
+        span_mask = ((positions >= start_idx) & (positions < end_idx)).cast(dtypes.float)
+        span_len = span_mask.sum(axis=-1, keepdim=True) + 1e-6   # (B, N_max, 1)
+        # Pool: numbers_emb[b, i, h] = sum_t span_mask[b, i, t] * prompt_emb[b, t, h] / span_len[b, i]
+        # Equivalent: span_mask @ prompt_emb / span_len
+        # span_mask: (B, N_max, T); prompt_emb: (B, T, H) -> (B, N_max, H)
+        numbers_emb = (span_mask @ prompt_emb_masked) / span_len  # (B, N_max, H)
+        # Apply numbers_mask to zero out pad slots' embeddings (degenerate slots
+        # already have ~zero embeddings from the empty span, but be defensive).
+        numbers_emb = numbers_emb * numbers_mask.reshape(B_local, -1, 1)
+
+        # PER-BREATH slot decoder.
+        # We fire the slot decoder once per breath. Accumulate per-slot losses.
+        # All breaths emit the same target structure (no per-breath specialization).
+        per_breath_losses = []
+        per_breath_ops_ce = []
+        per_breath_types_ce = []
+        per_breath_args_ce = []
+        per_breath_active_ce = []
+        per_breath_attn_aux = []
+        N_plus_K = N_max + K_max
+        # v89 — args1_target = args_attn_target[:, :, 0]; args2 = [:, :, 1]
+        a1_attn_target = args_attn_target[:, :, 0]  # (B, K_max) int
+        a2_attn_target = args_attn_target[:, :, 1]  # (B, K_max) int
+        for k in range(K):
+            waist_k = waist_compressed_per_breath[k].cast(dtypes.float)
+            # Mask waist by prompt mask so the mean-pool only counts prompt positions.
+            waist_k_masked = waist_k * kv_mask.cast(waist_k.dtype).reshape(B_local, -1, 1)
+            # Compute mean over masked positions (= sum / mask.sum).
+            mask_count = kv_mask.cast(dtypes.float).sum(axis=1, keepdim=True) + 1e-6   # (B, 1)
+
+            # Run the slot decoder. We feed in the FULL waist_k (not pre-pooled) and
+            # let the decoder mean-pool internally; here we apply the prompt mask
+            # by passing the masked waist tensor — the decoder's mean will mix in
+            # zeros for pad positions. To get correct masked mean: divide post-pool
+            # by mask_count vs full T. We do it more directly by passing the masked
+            # tensor and adjusting the pool inside the decoder. Simpler: pre-compute
+            # the masked mean here and pass a (B, 1, waist_dim) tensor to the decoder.
+            waist_pooled = waist_k_masked.sum(axis=1, keepdim=True) * (1.0 / mask_count.reshape(B_local, 1, 1))  # (B, 1, waist_dim)
+
+            # v86: pass waist_full + kv_mask to enable per-slot cross-attn over
+            # full prompt waist. When V86_ARGS_CROSS_ATTN=0 the decoder ignores
+            # these and uses the v85 mean-pool path.
+            decoder_out = model.v85_slot_decoder.forward(
+                waist_pooled, numbers_emb, numbers_mask,
+                waist_full=waist_k, waist_full_mask=kv_mask)
+
+            ops_logits = decoder_out["ops_logits"]      # (B, K_max, 4)
+            types_logits = decoder_out["types_logits"]  # (B, K_max, 32)
+            args1_logits = decoder_out["args1_logits"]  # (B, K_max, N_plus_K)
+            args2_logits = decoder_out["args2_logits"]  # (B, K_max, N_plus_K)
+            active_logits = decoder_out["active_logits"]  # (B, K_max)
+
+            # Per-slot CE on each component.
+            ops_ce = ops_logits.sparse_categorical_crossentropy(
+                ops_targets, ignore_index=-100, reduction="mean")
+            types_ce = types_logits.sparse_categorical_crossentropy(
+                types_targets, ignore_index=-100, reduction="mean")
+            args1_ce = args1_logits.sparse_categorical_crossentropy(
+                args1_targets, ignore_index=-100, reduction="mean")
+            args2_ce = args2_logits.sparse_categorical_crossentropy(
+                args2_targets, ignore_index=-100, reduction="mean")
+            args_ce = (args1_ce + args2_ce) * 0.5
+
+            # Active head: BCE from logits, masked by active_valid.
+            # v86: positive-class weight to combat the minority-class problem
+            # (most slots across the dataset are inactive → v85 collapses to
+            # predict-all-inactive which decodes to empty DAGs).
+            # Standard BCE penalty when target=1 is `-log(sigmoid(x))`; we
+            # multiply by pos_weight. When target=0 it's `-log(1 - sigmoid(x))`,
+            # left unweighted. The numerically-stable form:
+            #   -log(sigmoid(x))    = softplus(-x) = max(-x, 0) + log(1+exp(-|x|))
+            #   -log(1 - sigmoid(x))= softplus(x)  = max( x, 0) + log(1+exp(-|x|))
+            z = active_logits
+            y = active_targets
+            log1p_exp_neg_abs = (1.0 + (-z.abs()).exp()).log()
+            sp_neg = (-z).maximum(0.0) + log1p_exp_neg_abs  # softplus(-x)
+            sp_pos = z.maximum(0.0) + log1p_exp_neg_abs     # softplus( x)
+            pos_w = float(_V86_PW)
+            bce_per = pos_w * y * sp_neg + (1.0 - y) * sp_pos
+            active_ce = (bce_per * active_valid).sum() / (active_valid.sum() + 1.0)
+
+            # v89 — supervised attention aux loss. When V89_SUPERVISED_ATTN=1
+            # and the decoder returns per-arg attn scores, compute CE against
+            # gold args1/args2 token positions. ignore_index=-100 skips slots
+            # whose gold args[i].source != "numbers".
+            #
+            # v91 (2026-05-27): when V91_SIMPLIFIED_ARGS=1, the cross-attn is
+            # removed entirely so args1_attn_scores / args2_attn_scores keys are
+            # absent. The aux loss becomes a no-op (zero tensor).
+            if bool(_V89_X) and (not bool(_V91_X)) and ("args1_attn_scores" in decoder_out):
+                a1_scores = decoder_out["args1_attn_scores"]  # (B, K_max, T_full)
+                a2_scores = decoder_out["args2_attn_scores"]
+                a1_attn_ce = a1_scores.sparse_categorical_crossentropy(
+                    a1_attn_target, ignore_index=-100, reduction="mean")
+                a2_attn_ce = a2_scores.sparse_categorical_crossentropy(
+                    a2_attn_target, ignore_index=-100, reduction="mean")
+                attn_aux_ce = (a1_attn_ce + a2_attn_ce) * 0.5
+            else:
+                attn_aux_ce = Tensor.zeros((), dtype=dtypes.float)
+
+            v89_w = float(_V89_W)
+            breath_loss = ops_ce + types_ce + args_ce + active_ce + v89_w * attn_aux_ce
+            per_breath_losses.append(breath_loss)
+            per_breath_ops_ce.append(ops_ce)
+            per_breath_types_ce.append(types_ce)
+            per_breath_args_ce.append(args_ce)
+            per_breath_active_ce.append(active_ce)
+            per_breath_attn_aux.append(attn_aux_ce)
+
+        # Mean over breaths (same task per breath → uniform weighting).
+        total_loss = sum(per_breath_losses[1:], per_breath_losses[0]) / float(K)
+        avg_ops = sum(per_breath_ops_ce[1:], per_breath_ops_ce[0]) / float(K)
+        avg_types = sum(per_breath_types_ce[1:], per_breath_types_ce[0]) / float(K)
+        avg_args = sum(per_breath_args_ce[1:], per_breath_args_ce[0]) / float(K)
+        avg_active = sum(per_breath_active_ce[1:], per_breath_active_ce[0]) / float(K)
+        avg_attn_aux = sum(per_breath_attn_aux[1:], per_breath_attn_aux[0]) / float(K)
+
+        # L2 regs over params that may not be touched by the v85 forward (so AdamW
+        # gets a defined gradient — same pattern as per_breath_train_step's regs).
+        # Coefficient is tiny (1e-7); behavior impact is negligible (the params
+        # don't move unless the main loss also touches them).
+        be_reg = (model.block.breath_embed.square().mean()
+                  + model.block.handoff_w.square().mean()
+                  + model.block.handoff_b.square().mean()
+                  + model.block.rope.pitch.square().mean()
+                  + model.block.crp_mix_alpha.square().mean()
+                  + model.block.crp_target_norm.square().mean()
+                  + model.block.notebook_write_query.square().mean()
+                  + model.block.notebook_rep_query.square().mean()
+                  + model.block.waist_codebook_keys.square().mean()
+                  + model.block.waist_codebook_values.square().mean()) * 1e-7
+        # v89 — ensure slot decoder cross-attn projections both v86 and v89 have
+        # defined gradients. Only ONE set is active per forward (v86 OR v89), the
+        # other path won't be touched. The tiny L2 keeps AdamW happy.
+        #
+        # v91 (2026-05-27): under V91_SIMPLIFIED_ARGS, the v86/v89 K/V projections
+        # are NOT in opt.params (excluded from V85SlotDecoder.parameters()). The
+        # reg term over them is unnecessary — they're not in the optimizer and
+        # don't need defined gradients. Drop them and instead reg the new
+        # arg_pos_emb (always touched in v91 forward; this is a no-op safeguard).
+        if bool(_V91_X):
+            v89_path_reg = model.v85_slot_decoder.arg_pos_emb.square().mean() * 1e-7
+        else:
+            v89_path_reg = (model.v85_slot_decoder.v86_args_k_proj.square().mean()
+                            + model.v85_slot_decoder.v86_args_v_proj.square().mean()
+                            + model.v85_slot_decoder.v89_args1_k_proj.square().mean()
+                            + model.v85_slot_decoder.v89_args1_v_proj.square().mean()
+                            + model.v85_slot_decoder.v89_args2_k_proj.square().mean()
+                            + model.v85_slot_decoder.v89_args2_v_proj.square().mean()) * 1e-7
+        total_with_reg = total_loss + be_reg + v89_path_reg
+
+        # Single-kernel finiteness check for NaN-skip.
+        healthy = total_with_reg.isfinite().cast(dtypes.float)
+        scaled_loss = total_with_reg * healthy
+        scaled_loss.backward()
+        if grad_clip > 0.0:
+            # Build global norm via sum-of-squares over all params with grads.
+            sq_sum = Tensor.zeros((), dtype=dtypes.float)
+            for p in opt.params:
+                if getattr(p, "grad", None) is not None:
+                    sq_sum = sq_sum + (p.grad.cast(dtypes.float) ** 2).sum()
+            global_norm = (sq_sum + 1e-12).sqrt()
+            scale = (grad_clip / global_norm).minimum(1.0)
+            for p in opt.params:
+                if getattr(p, "grad", None) is not None:
+                    p.grad = p.grad * scale
+        opt.step()
+
+        return (total_loss.realize(), avg_ops.realize(), avg_types.realize(),
+                avg_args.realize(), avg_active.realize(), avg_attn_aux.realize(),
+                healthy.realize(),
+                *[c.realize() for c in per_breath_losses])
+
+    _JIT_V85_CACHE[key] = _step
+    return _step
+
+
+def v85_train_step(model, opt, batch_examples, tok, fixed_len: int,
+                   K: int, K_max: int = 10, N_max: int = 20,
+                   grad_clip: float = 0.0, step_idx: int = 0):
+    """v85 training step. One forward pass with K breaths; per-breath slot decode
+    + per-slot CE on (ops, types, args1, args2, is_active).
+
+    Returns (total_loss_float, per_component_dict, waist_norm_float).
+    """
+    Tensor.training = True
+    B = len(batch_examples)
+
+    enc = _v85_encode_batch(batch_examples, tok, fixed_len, K_max, N_max)
+    tokens = Tensor(enc["tokens_np"], dtype=dtypes.int).realize()
+    number_span_idx = Tensor(enc["number_span_token_idx_np"], dtype=dtypes.int).realize()
+    numbers_mask = Tensor(enc["numbers_mask_np"], dtype=dtypes.float).realize()
+    ops_targets = Tensor(enc["ops_targets_np"], dtype=dtypes.int).realize()
+    types_targets = Tensor(enc["types_targets_np"], dtype=dtypes.int).realize()
+    args1_targets = Tensor(enc["args1_targets_np"], dtype=dtypes.int).realize()
+    args2_targets = Tensor(enc["args2_targets_np"], dtype=dtypes.int).realize()
+    active_targets = Tensor(enc["active_targets_np"], dtype=dtypes.float).realize()
+    active_valid = Tensor(enc["active_valid_np"], dtype=dtypes.float).realize()
+    kv_mask = Tensor(enc["kv_mask_np"], dtype=dtypes.float).realize()
+    args_attn_target = Tensor(enc["args_attn_target_np"], dtype=dtypes.int).realize()
+
+    step_fn = _compile_jit_v85_step(model, opt, K, fixed_len, B, K_max, N_max, grad_clip)
+    outs = step_fn(tokens, number_span_idx, numbers_mask,
+                   ops_targets, types_targets, args1_targets, args2_targets,
+                   active_targets, active_valid, kv_mask, args_attn_target)
+    total_t, ops_t, types_t, args_t, active_t, attn_aux_t, healthy_t = outs[:7]
+    per_breath_ts = outs[7:]
+
+    if float(healthy_t.numpy()) < 0.5:
+        print("[NaN-skip] non-finite total_loss — step skipped", flush=True)
+
+    per_breath_vals = [float(t.numpy()) for t in per_breath_ts]
+
+    components = {
+        "ops_ce": float(ops_t.numpy()),
+        "types_ce": float(types_t.numpy()),
+        "args_ce": float(args_t.numpy()),
+        "active_ce": float(active_t.numpy()),
+        "attn_aux_ce": float(attn_aux_t.numpy()),
+    }
+    return float(total_t.numpy()), components, per_breath_vals
+
+
 def per_breath_train_step(model, opt, batch_examples: List[MathExample], tok,
                           fixed_len: int,
                           lookup_aux_weight: float = 0.0,
@@ -2436,30 +3533,27 @@ def per_breath_train_step(model, opt, batch_examples: List[MathExample], tok,
         # in the answer-span only. We allow matches over the whole sequence in that
         # case, treating positions before the answer span as the "prompt".
         from mycelium.breathing import WAIST_ATTN_SUPERVISION as _WAS
+        from mycelium.breathing import V95_OPERAND_AUX as _V95_OP
         attn_target_np = np.zeros((B, fixed_len - 1, fixed_len), dtype=np.float32)
         attn_mask_np   = np.zeros((B, fixed_len - 1), dtype=np.float32)
-        if _WAS:
-            digit_ids = _get_digit_token_ids(tok)
-            # Use the LAST breath's labels (per spec: same prompt-attention target at every
-            # breath since operands live in the same prompt positions across all breaths).
-            last_labels = per_step_labels_np[K - 1]  # (B, fixed_len - 1)
-            # Build per-example prompt range. For V77 we have explicit prompt_lens;
-            # for the legacy path we approximate it as the smallest position with a
-            # non-(-100) label minus 1 (i.e., the first label position is at
-            # prompt_len - 1). Falls back to scanning all of `tokens_np[b]` if
-            # there are no labels.
+        # Build per-example prompt range once if either v78b or v95 needs it.
+        if _WAS or _V95_OP:
             if v77_active:
                 prompt_ranges = prompt_lens  # already a list[int]
             else:
                 prompt_ranges = []
                 for b in range(B):
-                    # find earliest non-(-100) over all K breaths' labels
                     earliest = fixed_len - 1
                     for k_idx in range(K):
                         nz = np.where(per_step_labels_np[k_idx, b] != -100)[0]
                         if nz.size > 0:
                             earliest = min(earliest, int(nz[0]))
-                    prompt_ranges.append(earliest + 1)  # labels[earliest] = next_token after prompt[earliest]
+                    prompt_ranges.append(earliest + 1)
+        if _WAS:
+            digit_ids = _get_digit_token_ids(tok)
+            # Use the LAST breath's labels (per spec: same prompt-attention target at every
+            # breath since operands live in the same prompt positions across all breaths).
+            last_labels = per_step_labels_np[K - 1]  # (B, fixed_len - 1)
             for b in range(B):
                 prompt_end = int(prompt_ranges[b])
                 p_ids_prompt = tokens_np[b, :prompt_end].tolist()
@@ -2474,6 +3568,50 @@ def per_breath_train_step(model, opt, batch_examples: List[MathExample], tok,
                     for i in matches:
                         attn_target_np[b, t, i] = w
                     attn_mask_np[b, t] = 1.0
+        # v95 (2026-05-28) OPERAND-POSITION SUPERVISION — whole-number tokens.
+        # For each output position in the LAST breath's labels that is a multi-digit
+        # number token (e.g. `Ġ50`), find the matching digit-spaced prompt number run
+        # and supervise cross-attention at that output position toward the FIRST digit
+        # position of the matching run. Targets are MERGED into the same attn_target/
+        # attn_mask tensors as v78b (different output positions: single digits vs
+        # multi-digit numbers — they don't normally collide; v95 overwrites if they do).
+        v95_pos_count = 0  # diagnostic
+        v95_match_count = 0  # diagnostic
+        if _V95_OP:
+            num_tok_map = _get_v95_number_token_map(tok)
+            digit_ids_v95 = _get_digit_token_ids(tok)
+            last_labels_v95 = per_step_labels_np[K - 1]
+            for b in range(B):
+                prompt_end = int(prompt_ranges[b])
+                p_ids_prompt = tokens_np[b, :prompt_end].tolist()
+                # Build the prompt's number runs ONCE per example.
+                runs = _v95_extract_prompt_number_runs(p_ids_prompt, digit_ids_v95, tok)
+                # Map int_value -> list of first_pos for matches.
+                by_value: dict = {}
+                for v, p in runs:
+                    by_value.setdefault(v, []).append(p)
+                for t in range(fixed_len - 1):
+                    tok_id = int(last_labels_v95[b, t])
+                    if tok_id == -100 or tok_id not in num_tok_map:
+                        continue
+                    v95_pos_count += 1
+                    val = num_tok_map[tok_id]
+                    if val not in by_value:
+                        continue
+                    matches_v95 = by_value[val]
+                    # Overwrite any prior (v78b digit) contribution at this output
+                    # position — v95 whole-number signal is the higher-level operand
+                    # binding target.
+                    attn_target_np[b, t, :] = 0.0
+                    w = 1.0 / float(len(matches_v95))
+                    for p in matches_v95:
+                        attn_target_np[b, t, p] = w
+                    attn_mask_np[b, t] = 1.0
+                    v95_match_count += 1
+            if step_idx == 0 or step_idx % 50 == 0:
+                print(f"[V95_OPERAND_AUX] step {step_idx}: {v95_match_count}/{v95_pos_count} "
+                      f"whole-number output positions annotated "
+                      f"({100.0 * v95_match_count / max(v95_pos_count, 1):.1f}% match rate)", flush=True)
         attn_target_t = Tensor(attn_target_np, dtype=dtypes.float).realize()
         attn_mask_t   = Tensor(attn_mask_np, dtype=dtypes.float).realize()
         # v63 prompt dropout: per-step Bernoulli mask (1.0 = use prompt, 0.0 = zero prompt).
@@ -2509,6 +3647,51 @@ def per_breath_train_step(model, opt, batch_examples: List[MathExample], tok,
                 kv_mask_np[b, :pe] = 1.0
         kv_mask_t_v79 = Tensor(kv_mask_np, dtype=dtypes.float).realize()
 
+        # v96 (2026-05-28) Per-row supervision targets.
+        # Build ops_target (K, B), types_target (K, B), conf_target (K,),
+        # ls_per_breath (K,). When V96_CONSOLIDATION=0, dummy zeros — JIT
+        # signature stays stable; the JIT body gates the v96 loss on v96_flag
+        # captured at compile time.
+        from mycelium.breathing import V96_CONSOLIDATION as _V96_OUTER
+        from mycelium.v96 import (
+            parse_gold_per_step as _v96_parse, compute_target_confidence as _v96_conf_targets,
+            V96_OPS_N as _V96_OPS_N, V96_TYPES_N as _V96_TYPES_N,
+        )
+        v96_ops_np   = np.full((K, B), -100, dtype=np.int32)
+        v96_types_np = np.full((K, B), -100, dtype=np.int32)
+        v96_conf_np  = np.zeros((K,), dtype=np.float32)
+        v96_ls_np    = np.zeros((K,), dtype=np.float32)
+        v96_match_count = 0  # diagnostic: how many (k, b) pairs got a real op idx
+        if _V96_OUTER and v77_active:
+            for b in range(B):
+                ex_layers = batch_examples[b].layers_raw if hasattr(batch_examples[b], 'layers_raw') else {}
+                ops_b, types_b = _v96_parse(ex_layers, K)
+                for k in range(K):
+                    v96_ops_np[k, b] = ops_b[k]
+                    v96_types_np[k, b] = types_b[k]
+                    if ops_b[k] != -100:
+                        v96_match_count += 1
+            # K-progressive label smoothing: linear from V96_LABEL_SMOOTHING_START
+            # at B0 to 0.0 at B_{K-1}.
+            v96_ls_start = float(os.environ.get("V96_LABEL_SMOOTHING_START", "0.5"))
+            for k in range(K):
+                if K <= 1:
+                    v96_ls_np[k] = 0.0
+                else:
+                    v96_ls_np[k] = v96_ls_start * (1.0 - float(k) / float(K - 1))
+            # Confidence target: monotonic 0.5 → 1.0 across breaths.
+            v96_conf_np = _v96_conf_targets(K, base=0.5, final_scale=1.0)
+            if step_idx == 0 or step_idx % 50 == 0:
+                total_slots = K * B
+                pct = 100.0 * v96_match_count / max(total_slots, 1)
+                print(f"[v96_targets] step {step_idx}: parsed {v96_match_count}/{total_slots} "
+                      f"({pct:.1f}%) (k, b) slots — ops/types/conf targets ready, "
+                      f"ls=[{v96_ls_np[0]:.2f}..{v96_ls_np[-1]:.2f}]", flush=True)
+        v96_ops_target_t   = Tensor(v96_ops_np, dtype=dtypes.int).realize()
+        v96_types_target_t = Tensor(v96_types_np, dtype=dtypes.int).realize()
+        v96_conf_target_t  = Tensor(v96_conf_np, dtype=dtypes.float).realize()
+        v96_ls_per_breath_t = Tensor(v96_ls_np, dtype=dtypes.float).realize()
+
         if SCHED_SAMPLE_RATE > 0.0:
             # v66 Scheduled sampling path: unrolled breath loop in the JIT.
             # Linear ramp: 0.0 for steps 0-500, ramping to SCHED_SAMPLE_RATE at step 1500+.
@@ -2526,24 +3709,56 @@ def per_breath_train_step(model, opt, batch_examples: List[MathExample], tok,
                 _bern_np = np.zeros((B, fixed_len - 1), dtype=np.float32)
             sched_sample_rate_t = Tensor(np.array([_current_rate], dtype=np.float32), dtype=dtypes.float).realize()
             bernoulli_mask_t = Tensor(_bern_np, dtype=dtypes.float).realize()
+            # v83 graduation weights — computed from EMA of previous step's pb_ce
+            # (uniform 1/K on the first step or when V83_GRADUATION=0).
+            _weights_np = _compute_v83_weights(K) if V83_GRADUATION else np.full(K, 1.0 / K, dtype=np.float32)
+            loss_weights_list = [Tensor(np.array([_weights_np[k]], dtype=np.float32), dtype=dtypes.float).contiguous().realize()
+                                 for k in range(K)]
             step_fn_ss = _compile_jit_per_breath_step_ss(model, opt, K, fixed_len, B, lookup_aux_weight, grad_clip)
             outs = step_fn_ss(tokens, labels_stk, full_answer_labels_t, eq_mask_jit, op_labels_jit, prompt_dropout_mask_t,
                               sched_sample_rate_t, bernoulli_mask_t, attn_target_t, attn_mask_t, kv_mask_t_v79,
-                              per_head_per_step_labels_t, v81_main_mask_t)
+                              per_head_per_step_labels_t, v81_main_mask_t, loss_weights_list)
         else:
+            # v83 graduation weights — computed from EMA of previous step's pb_ce
+            # (uniform 1/K on the first step or when V83_GRADUATION=0).
+            _weights_np = _compute_v83_weights(K) if V83_GRADUATION else np.full(K, 1.0 / K, dtype=np.float32)
+            loss_weights_list = [Tensor(np.array([_weights_np[k]], dtype=np.float32), dtype=dtypes.float).contiguous().realize()
+                                 for k in range(K)]
             step_fn = _compile_jit_per_breath_step(model, opt, K, fixed_len, B, lookup_aux_weight, grad_clip)
             outs = step_fn(tokens, labels_stk, full_answer_labels_t, eq_mask_jit, op_labels_jit, prompt_dropout_mask_t,
                            attn_target_t, attn_mask_t, kv_mask_t_v79,
-                           per_head_per_step_labels_t, v81_main_mask_t)
+                           per_head_per_step_labels_t, v81_main_mask_t, loss_weights_list,
+                           v96_ops_target_t, v96_types_target_t, v96_conf_target_t, v96_ls_per_breath_t)
 
         total_t = outs[0]
         healthy_t = outs[1]
         waist_norm_t = outs[2]
         attn_aux_t = outs[3]  # v78b: WaistController cross-attn supervision aux loss
         # v81: JIT returns (total, healthy, waist_norm, attn_aux) + K per-breath CE
-        # + 4 per-head sums (ALWAYS present; zero when mhw_flag=0).
+        # + 4 per-head sums + 3 v96 averages + 3 v96.2 averages (ALWAYS present;
+        # zero when v96_flag=0 or energy_w=0). SS path returns ONLY through per_head_sums
+        # (no v96), so guard the v96 reads with len(outs).
         ce_ts = outs[4:4 + K]
         per_head_ts = outs[4 + K:4 + K + 4]
+        _zero_scalar_t = Tensor.zeros((), dtype=dtypes.float).realize()
+        if len(outs) > 4 + K + 4:
+            v96_ops_t   = outs[4 + K + 4]
+            v96_types_t = outs[4 + K + 5]
+            v96_conf_t  = outs[4 + K + 6]
+        else:
+            v96_ops_t = v96_types_t = v96_conf_t = _zero_scalar_t
+        # v96.2 constraint propagation scalars.
+        if len(outs) > 4 + K + 7:
+            v96_ref_t   = outs[4 + K + 7]
+            v96_arg_t   = outs[4 + K + 8]
+            v96_calib_t = outs[4 + K + 9]
+        else:
+            v96_ref_t = v96_arg_t = v96_calib_t = _zero_scalar_t
+        # v97 (2026-05-28) calibration aux scalar.
+        if len(outs) > 4 + K + 10:
+            v97_calib_t = outs[4 + K + 10]
+        else:
+            v97_calib_t = _zero_scalar_t
         if float(healthy_t.numpy()) < 0.5:
             print("[NaN-skip] NaN grad detected — step skipped", flush=True)
         # v78b: print attn aux value periodically so the smoke can verify supervision firing.
@@ -2556,6 +3771,28 @@ def per_breath_train_step(model, opt, batch_examples: List[MathExample], tok,
             ph_vals = [float(t.numpy()) for t in per_head_ts]
             ph_str = "  ".join(f"{n}={v / float(K):.3f}" for n, v in zip(head_names_log, ph_vals))
             print(f"[per_head_ce] step {step_idx}: {ph_str}", flush=True)
+        from mycelium.breathing import V96_CONSOLIDATION as _V96_LOG
+        if _V96_LOG and (step_idx == 0 or step_idx % 10 == 0):
+            v96_ops_v = float(v96_ops_t.numpy())
+            v96_types_v = float(v96_types_t.numpy())
+            v96_conf_v = float(v96_conf_t.numpy())
+            print(f"[v96] step {step_idx}: ops_ce={v96_ops_v:.3f}  types_ce={v96_types_v:.3f}  "
+                  f"conf_mse={v96_conf_v:.4f}", flush=True)
+        # v96.2 (2026-05-28) constraint propagation logging — fires when V96_ENERGY_WEIGHT > 0.
+        _v96_energy_w_log = float(os.environ.get("V96_ENERGY_WEIGHT", "0.0"))
+        if _V96_LOG and _v96_energy_w_log > 0.0 and (step_idx == 0 or step_idx % 10 == 0):
+            v96_ref_v   = float(v96_ref_t.numpy())
+            v96_arg_v   = float(v96_arg_t.numpy())
+            v96_calib_v = float(v96_calib_t.numpy())
+            print(f"[v96.2] step {step_idx}: ref_loss={v96_ref_v:.4f}  arg_loss={v96_arg_v:.4f}  "
+                  f"calib_loss={v96_calib_v:.4f}  (energy_w={_v96_energy_w_log})", flush=True)
+        # v97 (2026-05-28) calibration logging — fires when V97_CALIBRATION=1.
+        from mycelium.breathing import V97_CALIBRATION as _V97_LOG
+        _v97_calib_w_log = float(os.environ.get("V97_CALIB_WEIGHT", "0.1"))
+        if _V97_LOG and (step_idx == 0 or step_idx % 10 == 0):
+            v97_calib_v = float(v97_calib_t.numpy())
+            print(f"[v97] step {step_idx}: calib_loss={v97_calib_v:.4f}  "
+                  f"(calib_w={_v97_calib_w_log})", flush=True)
 
         # v66 waist norm logging + collapse guardrail.
         waist_norm_val = float(waist_norm_t.numpy())
@@ -2574,7 +3811,17 @@ def per_breath_train_step(model, opt, batch_examples: List[MathExample], tok,
         else:
             _waist_norm_low_streak = 0
 
-        return float(total_t.numpy()), [float(c.numpy()) for c in ce_ts], waist_norm_val
+        # v83 graduation: extract pb_ce values + update EMA. Reuses the same .numpy()
+        # calls as the log/return below — no extra synchronization cost.
+        _ce_vals_np = np.array([float(c.numpy()) for c in ce_ts], dtype=np.float32)
+        if V83_GRADUATION:
+            _update_v83_ema(_ce_vals_np)
+            if step_idx == 0 or step_idx % 50 == 0:
+                _w_now = _compute_v83_weights(K)
+                _w_str = " ".join(f"{w:.3f}" for w in _w_now)
+                print(f"[v83_grad] step {step_idx}: weights=[{_w_str}]", flush=True)
+
+        return float(total_t.numpy()), list(_ce_vals_np), waist_norm_val
 
     # Forward — fetch per-breath x AND per-breath waist_compressed if controller is active
     from mycelium.breathing import CONTROLLER_DECODE

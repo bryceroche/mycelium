@@ -104,7 +104,8 @@ def _compile_jit_final_breath_decode(model, K: int, fixed_len: int, B: int):
     Returns:
       (B,) int — argmax of breath-(K-1)'s logits at t_pos per example.
     """
-    key = (id(model), int(K), int(fixed_len), int(B))
+    from mycelium.breathing import V96_CONSOLIDATION as _V96_KEY_EVAL
+    key = (id(model), int(K), int(fixed_len), int(B), bool(_V96_KEY_EVAL))
     if key in _EVAL_JIT_CACHE:
         return _EVAL_JIT_CACHE[key]
 
@@ -118,27 +119,50 @@ def _compile_jit_final_breath_decode(model, K: int, fixed_len: int, B: int):
         # at answer-span positions AND blocks main-self-attn keys there. Required for the
         # v81 paradigm to match its training-time masking (verified via diag_v81_masking_audit).
         from mycelium.breathing import V81_MAIN_ATTN_MASK as _V81MAM_EVAL, MULTI_HEAD_WAIST as _MHW_EVAL
+        from mycelium.breathing import V96_CONSOLIDATION as _V96_EVAL
         _main_attn = kv_mask if _V81MAM_EVAL else None
-        _final, _mw, _pbx, waist_per_breath = model.breathe_with_lookup(
-            tokens, n_loops=K, return_per_breath_x=True, return_waist_compressed=True,
-            notebook_pool_mask=kv_mask, main_attn_mask=_main_attn)
+        # v96 (2026-05-28): request artifacts so the final breath can read the
+        # consolidation table KV during AR decode.
+        if _V96_EVAL:
+            _final, _mw, _pbx, waist_per_breath, _v96_arts, v96_table_packed = model.breathe_with_lookup(
+                tokens, n_loops=K, return_per_breath_x=True, return_waist_compressed=True,
+                notebook_pool_mask=kv_mask, main_attn_mask=_main_attn,
+                return_v96_artifacts=True)
+        else:
+            _final, _mw, _pbx, waist_per_breath = model.breathe_with_lookup(
+                tokens, n_loops=K, return_per_breath_x=True, return_waist_compressed=True,
+                notebook_pool_mask=kv_mask, main_attn_mask=_main_attn)
+            v96_table_packed = None
         prompt_emb = model.embed(tokens).cast(dtypes.float)
         positions = Tensor.arange(fixed_len)
         gather_mask = (positions.reshape(1, fixed_len) == t_pos_t.reshape(B, 1)).reshape(B, fixed_len, 1).cast(dtypes.float)
         # FINAL breath only.
         wk = waist_per_breath[K - 1].cast(dtypes.float)
         wk_at_pos = (wk * gather_mask).sum(axis=1, keepdim=True)
-        lk = model.waist_controller.forward(wk_at_pos, prompt_emb, model.embed_out,
-                                              k_idx=K - 1, K_total=K,
-                                              kv_mask=kv_mask)
-        # v81: multi-head returns a dict; for DAG eval we want the OPS head as the
-        # canonical decode head (the model's "main vocab" emission). The DAG parser
-        # then handles the multi-head output structure if needed. For v81 inference,
-        # ALL 4 heads need to be sampled to reconstruct the 4-list B6 text; this JIT
-        # only returns ops head, so v81-aware eval uses a separate path (see scripts/
-        # eval_v77_dag.py's multi-head branch below; this JIT is the legacy path).
+        # v96: project the packed table and pass to WaistController for final breath.
+        # v96.1: scale by sigmoid(v96_table_alpha) — same gate used at training.
+        _v96_kv = None
+        if _V96_EVAL and v96_table_packed is not None:
+            _v96_kv = (v96_table_packed.cast(dtypes.float)
+                        @ model.v96_table_kv_proj.cast(dtypes.float))
+            _v96_kv = _v96_kv * model.v96_table_alpha.cast(dtypes.float).sigmoid()
+        # v81 (2026-05-27): when MULTI_HEAD_WAIST=1, use force_single_head=True to
+        # bypass the per-head bias. The legacy `lk["ops"]` path applies the ops-head
+        # bias to ALL positions — but ops was only supervised on its own short range,
+        # so its bias is wrong for the rest of the answer span. The single-head path
+        # uses the shared cross-attn backbone, which DID learn the full B6 structure.
+        # See scripts/diag_v81_per_breath_decode.py for the diagnostic.
         if _MHW_EVAL:
-            lk = lk["ops"]
+            lk = model.waist_controller.forward(wk_at_pos, prompt_emb, model.embed_out,
+                                                  k_idx=K - 1, K_total=K,
+                                                  kv_mask=kv_mask,
+                                                  force_single_head=True,
+                                                  v96_table_kv=_v96_kv)
+        else:
+            lk = model.waist_controller.forward(wk_at_pos, prompt_emb, model.embed_out,
+                                                  k_idx=K - 1, K_total=K,
+                                                  kv_mask=kv_mask,
+                                                  v96_table_kv=_v96_kv)
         return lk[:, :, :50277].argmax(axis=-1).reshape(B).realize()
 
     _EVAL_JIT_CACHE[key] = _fwd
@@ -436,6 +460,22 @@ def main():
                 print(f"  extracted DAG: {dag!r}")
                 print(f"  sympy: {sympy_val}  gold: {ex.gold_answer}  {'OK' if ok else 'WRONG'}")
                 samples_to_show -= 1
+            # v95 diagnostic: optionally dump EVERY problem's decode to a JSONL for
+            # per-problem analysis (parse vs accuracy diagnostic).
+            _dump_path = os.environ.get("DUMP_ALL_DECODES", "")
+            if _dump_path:
+                import json as _json
+                _rec = {
+                    "idx": batch_start + i,
+                    "problem": ex.problem,
+                    "gold": float(ex.gold_answer),
+                    "gen": gen_text.strip(),
+                    "dag": dag,
+                    "sympy_val": float(sympy_val) if sympy_val is not None else None,
+                    "correct": bool(ok),
+                }
+                with open(_dump_path, "a") as _f:
+                    _f.write(_json.dumps(_rec) + "\n")
 
     total = len(examples)
     dt = time.perf_counter() - t0

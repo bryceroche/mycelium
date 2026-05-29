@@ -94,7 +94,13 @@ def cast_model_fp32(model):
 
 
 def collect_params(model):
-    nps = [model.embed.weight, model.embed_out, model.ln_f_g, model.ln_f_b]
+    # v85 (2026-05-27): v85 path doesn't use final ln_f / embed_out. Skip them
+    # when V85_QUERYABLE=1 so AdamW doesn't assert on None grad.
+    from mycelium.breathing import V85_QUERYABLE as _V85_Q_BASE
+    if _V85_Q_BASE:
+        nps = [model.embed.weight]  # used via embed_in for number-span pooling
+    else:
+        nps = [model.embed.weight, model.embed_out, model.ln_f_g, model.ln_f_b]
     from mycelium.breathing import DOUBLED_LAYERS as _DL_FLAG, TWO_PHASE as _TWO_PHASE
     if _TWO_PHASE:
         # v68 TWO_PHASE: include expand+compress sets; EXCLUDE old shared/layers/layers_b
@@ -139,7 +145,11 @@ def collect_params(model):
     # stay frozen at random-orthogonal init (preserves op classification stability).
     # Values trained end-to-end via main CE loss when LOOKUP_VALUE_INJECT=1.
     # value_proj_up: identity when LOOKUP_IB_DIM=0, learnable (IB_DIM, hidden) when >0.
-    nps += [model.lookup_table.values, model.lookup_table.value_proj_up]
+    # v85: lookup_table.values is touched via match_weights computation inside
+    # breathe_with_lookup (running_normed → lookup_table); skip if v85.
+    from mycelium.breathing import V85_QUERYABLE as _V85_Q_LT
+    if not _V85_Q_LT:
+        nps += [model.lookup_table.values, model.lookup_table.value_proj_up]
     # v38 B-field IB bottleneck — learned when BFIELD_WAIST > 0. Always included
     # for ckpt symmetry; L2 reg in l3_training keeps gradient defined when off.
     nps += [model.block.bfield_proj_down, model.block.bfield_proj_up, model.block.bfield_bias]
@@ -176,11 +186,14 @@ def collect_params(model):
                 model.block.collapse_v71_breath_embed, model.block.collapse_v71_alpha]
     # v39 waist head (512 → 4 op classifier) — trained when BFIELD_AUX_WEIGHT > 0
     # and BFIELD_END_OF_BREATH=1. L2 reg covers the off case.
-    nps += [model.waist_head_w, model.waist_head_b]
-    # Calibration head — trained on the main loss via REINFORCE in calibration_train_step.
-    # Always included so opt.step() has a defined gradient for these params even when
-    # CALIBRATION_MODE=0 (gradient is zero in that path, weights don't move).
-    nps += model.confidence_head.parameters()
+    # v85 (2026-05-27): v85 path doesn't touch this head; skip when V85_QUERYABLE.
+    from mycelium.breathing import V85_QUERYABLE as _V85_Q_CP2
+    if not _V85_Q_CP2:
+        nps += [model.waist_head_w, model.waist_head_b]
+        # Calibration head — trained on the main loss via REINFORCE in calibration_train_step.
+        # Always included so opt.step() has a defined gradient for these params even when
+        # CALIBRATION_MODE=0 (gradient is zero in that path, weights don't move).
+        nps += model.confidence_head.parameters()
     # v78 per-head model codebook — only added to optimizer when V78_HEAD_CODEBOOK=1
     # (forward path skips it otherwise → grad would be None → AdamW assertion).
     # State_dict registration is separate (always present for ckpt symmetry).
@@ -201,7 +214,11 @@ def collect_params(model):
     # Only added to params (and therefore optimizer-trained) when CONTROLLER_DECODE=1,
     # because the other train paths don't touch it and AdamW would assert on missing grads.
     from mycelium.breathing import CONTROLLER_DECODE as _CD, WAIST_COPY as _WC, MULTI_HEAD_WAIST as _MHW
-    if _CD:
+    from mycelium.breathing import V85_QUERYABLE as _V85_Q_CP
+    # v85 (2026-05-27): v85 path doesn't fire the WaistController (it uses the
+    # v85 slot decoder instead). Skip the WaistController params when V85_QUERYABLE
+    # is on — they'd have None grad and AdamW would assert.
+    if _CD and not _V85_Q_CP:
         # Get the base params, but EXCLUDE the v72 copy params from the default list:
         # they're tail-appended by WaistController.parameters() so we can include them
         # only when WAIST_COPY=1 (forward path skips them otherwise, AdamW would assert
@@ -223,6 +240,31 @@ def collect_params(model):
         # no gradient → AdamW would assert).
         if _MHW:
             nps += model.waist_controller.multi_head_parameters()
+    # v85 (2026-05-27) Queryable slot decoder — only optimizer-trained when
+    # V85_QUERYABLE=1. When OFF, the forward path skips the slot decoder so its
+    # params would have None grad → AdamW would assert.
+    from mycelium.breathing import V85_QUERYABLE as _V85_Q
+    if _V85_Q:
+        nps += model.v85_slot_decoder.parameters()
+    # v96 (2026-05-28) Consolidation-table params — optimizer-trained when
+    # V96_CONSOLIDATION=1. State-dict registration is separate (always there).
+    from mycelium.breathing import V96_CONSOLIDATION as _V96
+    if _V96:
+        nps += [model.v96_gate_w, model.v96_gate_b,
+                 model.v96_ops_codebook, model.v96_types_codebook,
+                 model.v96_summary_proj, model.v96_table_kv_proj,
+                 model.v96_table_alpha,    # v96.1
+                 # v96.2 constraint-check heads (Bombe-inspired elimination).
+                 # Active gradient via the v96 energy loss when V96_ENERGY_WEIGHT > 0;
+                 # L2 reg keeps grad defined otherwise.
+                 model.v96_ref_validity_head_w, model.v96_ref_validity_head_b,
+                 model.v96_arg_order_head_w,    model.v96_arg_order_head_b]
+    # v97 (2026-05-28) Calibration head — optimizer-trained when V97_CALIBRATION=1.
+    # State-dict registration is always-on; AdamW would assert None grad otherwise
+    # (forward path skips when V97=0). Pure aux loss — no residual-stream feedback.
+    from mycelium.breathing import V97_CALIBRATION as _V97
+    if _V97:
+        nps += [model.v97_calib_head_w, model.v97_calib_head_b]
     return nps
 
 
@@ -381,10 +423,20 @@ def main():
         # is fixed at 6 in the V77 path; the K bucketing serves a different purpose:
         # keeping problems of similar complexity together for stable training).
         V77_DAG_TRAINING = int(getenv("V77_DAG_TRAINING", "0")) > 0
+        V85_QUERYABLE = int(getenv("V85_QUERYABLE", "0")) > 0
         GSM8K_STEPS_PATH = getenv("GSM8K_STEPS_PATH", ".cache/gsm8k_steps_v1_train.jsonl")
         GSM8K_STEPS_MIN_K = int(getenv("GSM8K_STEPS_MIN_K", 2))
         GSM8K_STEPS_MAX_K = int(getenv("GSM8K_STEPS_MAX_K", 6))  # K=7+ pushes FIXED_LEN; cap by default
-        if V77_DAG_TRAINING:
+        if V85_QUERYABLE:
+            from mycelium.l3_data import load_gsm8k_v85 as _v85_loader
+            print(f"loading v85 queryable-structures GSM8K from {GSM8K_STEPS_PATH} "
+                  f"(min_k={GSM8K_STEPS_MIN_K}, max_k={GSM8K_STEPS_MAX_K})...")
+            t0 = time.perf_counter()
+            gsm8k_step_buckets = _v85_loader(GSM8K_STEPS_PATH,
+                                              min_k=GSM8K_STEPS_MIN_K, max_k=GSM8K_STEPS_MAX_K,
+                                              require_sympy_match=True,
+                                              bucket_by_k=True)
+        elif V77_DAG_TRAINING:
             from mycelium.l3_data import load_gsm8k_v77 as _v77_loader
             print(f"loading v77 DAG-layered GSM8K from {GSM8K_STEPS_PATH} (min_k={GSM8K_STEPS_MIN_K}, max_k={GSM8K_STEPS_MAX_K})...")
             t0 = time.perf_counter()
@@ -413,7 +465,9 @@ def main():
         train_examples = [ex for k in sorted(train_buckets) for ex in train_buckets[k]]  # flat fallback
 
         def _ex_k(e):
-            return getattr(e, "n_steps", None) if V77_DAG_TRAINING else len(e.gen_targets)
+            if V85_QUERYABLE or V77_DAG_TRAINING:
+                return getattr(e, "n_steps", None)
+            return len(e.gen_targets)
 
         print(f"  loaded {total_keep} examples across K={sorted(gsm8k_step_buckets)} buckets:")
         for k in sorted(train_buckets):
@@ -421,7 +475,15 @@ def main():
         print(f"  total: train={sum(len(v) for v in train_buckets.values())} eval={len(eval_examples)} ({time.perf_counter()-t0:.1f}s)")
         ex0 = train_examples[0] if train_examples else None
         if ex0:
-            if V77_DAG_TRAINING:
+            if V85_QUERYABLE:
+                print(f"  sample v85 (n_steps={ex0.n_steps}, n_numbers={len(ex0.numbers)}, "
+                      f"n_implicit={len(ex0.implicit_numbers)}, n_verbs={len(ex0.verbs)}): "
+                      f"{ex0.problem[:100]}")
+                for k, s in enumerate(ex0.dag_slots):
+                    a1, a2 = s["args"]
+                    print(f"    slot {k}: op={s['op']}  type={s['type_path']}  "
+                          f"a1={a1['source']}[{a1['index']}]  a2={a2['source']}[{a2['index']}]")
+            elif V77_DAG_TRAINING:
                 print(f"  sample v77 (n_steps={ex0.n_steps}, n_layers={ex0.n_layers}): {ex0.problem[:100]}")
                 for ell in range(ex0.n_layers):
                     print(f"    L{ell}: {ex0.per_layer_target[ell][:120]}")
@@ -459,6 +521,21 @@ def main():
         print("  loaded.")
         mem_log("after ckpt resume")
 
+    # v96 (2026-05-28) Optionally initialize the types codebook from IB centroids.
+    # The IB centroids are 1024d (Pythia embedding space), normalized to scale 0.02,
+    # so they form an op-discriminative starting basis. Only runs when v96 is on AND
+    # the ckpt didn't have a saved v96_types_codebook (or to override).
+    from mycelium.breathing import V96_CONSOLIDATION as _V96_INIT
+    V96_INIT_FROM_IB = int(os.environ.get("V96_INIT_FROM_IB", "1")) > 0
+    if _V96_INIT and V96_INIT_FROM_IB:
+        from mycelium.v96 import load_ib_codebooks_into_v96 as _v96_ib_init
+        ok = _v96_ib_init(model, hidden=cfg.hidden)
+        if ok:
+            print(f"[v96] types_codebook initialized from .cache/ib_centroids.npz "
+                  f"(32 IB leaves × {cfg.hidden}d, normalized to scale 0.02)")
+        else:
+            print(f"[v96] IB centroid init skipped (file missing or shape mismatch)")
+
     # v77b orthogonal breath_embed override. Applied AFTER load_checkpoint so
     # the warm-start ckpt's tiny trained breath_embed values don't overwrite
     # the orthogonal init. The override targets model.block.breath_embed
@@ -472,6 +549,211 @@ def main():
         norms = np.linalg.norm(ortho_np, axis=1)
         print(f"  breath_embed ortho-init applied: L2 norms = [{', '.join(f'{n:.3f}' for n in norms)}]")
 
+    # v87 (2026-05-27) Slot-symmetry fix.
+    # Reinitialize slot_pos_embed and v86_args_slot_pos AFTER ckpt load when
+    # warm-starting from a v86 ckpt whose saved values are at the small v85/v86
+    # scale. The in-place .assign() preserves tensor identity for AdamW.
+    V87_SLOT_POS_INIT_SCALE_LOCAL = float(getenv("V87_SLOT_POS_INIT_SCALE", "0.0"))
+    V87_REINIT_SLOT_POS = int(getenv("V87_REINIT_SLOT_POS", "0")) > 0
+    if V87_REINIT_SLOT_POS and V87_SLOT_POS_INIT_SCALE_LOCAL > 0.0:
+        from mycelium.breathing import V85_QUERYABLE as _V85_Q_V87
+        if _V85_Q_V87:
+            dec = model.v85_slot_decoder
+            K_max_v, H_v = dec.slot_pos_embed.shape
+            # Independent uniform draws for the two params (same scale).
+            new_pos = Tensor.uniform(
+                K_max_v, H_v,
+                low=-V87_SLOT_POS_INIT_SCALE_LOCAL, high=V87_SLOT_POS_INIT_SCALE_LOCAL,
+                dtype=dec.slot_pos_embed.dtype).to(dec.slot_pos_embed.device).contiguous()
+            dec.slot_pos_embed.assign(new_pos).realize()
+            new_args_pos = Tensor.uniform(
+                K_max_v, H_v,
+                low=-V87_SLOT_POS_INIT_SCALE_LOCAL, high=V87_SLOT_POS_INIT_SCALE_LOCAL,
+                dtype=dec.v86_args_slot_pos.dtype).to(dec.v86_args_slot_pos.device).contiguous()
+            dec.v86_args_slot_pos.assign(new_args_pos).realize()
+            print(f"[v87] reinitialized slot_pos_embed + v86_args_slot_pos at scale "
+                  f"{V87_SLOT_POS_INIT_SCALE_LOCAL} (K_max={K_max_v}, H={H_v})")
+        else:
+            print("[v87] V87_REINIT_SLOT_POS=1 but V85_QUERYABLE=0 — skipping reinit")
+
+    # v88 (2026-05-27) — args cross-attn K/V projection reinit.
+    # The v87 diagnostic confirmed that even after fixing slot_pos diversity (Q
+    # side), the K/V projections of the args cross-attn remained near-zero
+    # (`v86_args_k_proj` L2 = 0.10 after v86 + v87 300 steps, `v86_args_v_proj`
+    # L2 = 0.39). Because attn_scores = q @ k.T, K-near-zero collapses softmax
+    # to uniform regardless of Q diversity — chicken-and-egg vanishing gradient.
+    # v88 reinitializes K and V at scale V88_KV_PROJ_INIT_SCALE (default 0.02,
+    # matching the Pythia randn-scale used for other slot decoder params) so the
+    # attention pattern starts with meaningful score variation, breaking the
+    # gradient deadlock. Same in-place assign pattern as v87.
+    V88_KV_PROJ_INIT_SCALE_LOCAL = float(getenv("V88_KV_PROJ_INIT_SCALE", "0.02"))
+    V88_REINIT_KV_PROJ = int(getenv("V88_REINIT_KV_PROJ", "0")) > 0
+    if V88_REINIT_KV_PROJ and V88_KV_PROJ_INIT_SCALE_LOCAL > 0.0:
+        from mycelium.breathing import V85_QUERYABLE as _V85_Q_V88
+        if _V85_Q_V88:
+            dec = model.v85_slot_decoder
+            scale = V88_KV_PROJ_INIT_SCALE_LOCAL
+            K_shape = dec.v86_args_k_proj.shape
+            V_shape = dec.v86_args_v_proj.shape
+            new_k = (Tensor.randn(*K_shape) * scale).cast(
+                dec.v86_args_k_proj.dtype).to(dec.v86_args_k_proj.device).contiguous()
+            dec.v86_args_k_proj.assign(new_k).realize()
+            new_v = (Tensor.randn(*V_shape) * scale).cast(
+                dec.v86_args_v_proj.dtype).to(dec.v86_args_v_proj.device).contiguous()
+            dec.v86_args_v_proj.assign(new_v).realize()
+            # Report post-reinit L2s for the smoke log.
+            k_l2 = float((dec.v86_args_k_proj.cast(dtypes.float) ** 2).sum().sqrt().numpy())
+            v_l2 = float((dec.v86_args_v_proj.cast(dtypes.float) ** 2).sum().sqrt().numpy())
+            print(f"[v88] reinitialized v86_args_k_proj (shape {tuple(K_shape)}) and "
+                  f"v86_args_v_proj (shape {tuple(V_shape)}) at randn-scale {scale}")
+            print(f"[v88] post-reinit L2: k_proj={k_l2:.4f}  v_proj={v_l2:.4f}")
+        else:
+            print("[v88] V88_REINIT_KV_PROJ=1 but V85_QUERYABLE=0 — skipping reinit")
+
+    # v89 (2026-05-27) — split args1/args2 cross-attn K/V projection inits.
+    # When warm-starting from a v88 ckpt (single shared v86 K/V), the v89 split
+    # projections start either as fresh-random (V89_INHERIT_V86=0) or copied
+    # from v86 values (V89_INHERIT_V86=1) so we begin where v88's cross-attn
+    # left off. Inheriting is recommended — the v88 K/V are already trained to
+    # produce DIVERSE per-slot attention; we want to keep that diversity and
+    # let the supervised loss reshape it toward the gold number positions.
+    V89_SUPERVISED_ATTN_LOCAL = int(getenv("V89_SUPERVISED_ATTN", "0")) > 0
+    V89_INHERIT_V86 = int(getenv("V89_INHERIT_V86", "0")) > 0
+    if V89_SUPERVISED_ATTN_LOCAL and V89_INHERIT_V86:
+        from mycelium.breathing import V85_QUERYABLE as _V85_Q_V89
+        if _V85_Q_V89:
+            dec = model.v85_slot_decoder
+            # Copy v86 K/V into both args1 and args2 K/V projections.
+            # The clone() ensures each receives its own storage (subsequent
+            # gradient updates diverge).
+            k_src = dec.v86_args_k_proj.detach().cast(dec.v89_args1_k_proj.dtype).to(dec.v89_args1_k_proj.device).contiguous()
+            v_src = dec.v86_args_v_proj.detach().cast(dec.v89_args1_v_proj.dtype).to(dec.v89_args1_v_proj.device).contiguous()
+            dec.v89_args1_k_proj.assign(k_src.contiguous()).realize()
+            dec.v89_args2_k_proj.assign(k_src.contiguous()).realize()
+            dec.v89_args1_v_proj.assign(v_src.contiguous()).realize()
+            dec.v89_args2_v_proj.assign(v_src.contiguous()).realize()
+            k1_l2 = float((dec.v89_args1_k_proj.cast(dtypes.float) ** 2).sum().sqrt().numpy())
+            v1_l2 = float((dec.v89_args1_v_proj.cast(dtypes.float) ** 2).sum().sqrt().numpy())
+            k2_l2 = float((dec.v89_args2_k_proj.cast(dtypes.float) ** 2).sum().sqrt().numpy())
+            v2_l2 = float((dec.v89_args2_v_proj.cast(dtypes.float) ** 2).sum().sqrt().numpy())
+            print(f"[v89] inherited v86 K/V into args1 + args2 split projections")
+            print(f"[v89] post-inherit L2: a1.k={k1_l2:.4f} a1.v={v1_l2:.4f} a2.k={k2_l2:.4f} a2.v={v2_l2:.4f}")
+        else:
+            print("[v89] V89_INHERIT_V86=1 but V85_QUERYABLE=0 — skipping")
+
+    # v90 (2026-05-27) — reset active-head BIAS to a negative value so the
+    # starting prediction defaults to False (sigmoid(-1.0) ≈ 0.27 < 0.5).
+    #
+    # Context: v89 trained the active head with V86_ACTIVE_POS_WEIGHT=5.0 (5x FN
+    # penalty) for 200 steps. Result was an over-firing active head: every
+    # problem had active=[T,T,T,T,T,T,F,F,F,F] (exactly 6 True) regardless of
+    # n_steps, polluting the DAG with phantom slots that inherited the
+    # degenerate args2_pred = 20+k pattern.
+    #
+    # v90 plan:
+    #   1. V86_ACTIVE_POS_WEIGHT=1.0 in the launcher (balances FP vs FN).
+    #   2. V90_RESET_ACTIVE_HEAD=1 here — reset bias to -1.0 so step 0 default
+    #      is "predict False" instead of inheriting the baked-in over-fire.
+    # The weight matrix stays (preserves learned slot-query features).
+    V90_RESET_ACTIVE_HEAD = int(getenv("V90_RESET_ACTIVE_HEAD", "0")) > 0
+    V90_ACTIVE_BIAS = float(getenv("V90_ACTIVE_BIAS", "-1.0"))
+    if V90_RESET_ACTIVE_HEAD:
+        import math as _v90_math
+        from mycelium.breathing import V85_QUERYABLE as _V85_Q_V90
+        if _V85_Q_V90:
+            dec = model.v85_slot_decoder
+            old_b = float(dec.active_head_b.cast(dtypes.float).numpy().reshape(-1)[0])
+            new_b = Tensor.full(dec.active_head_b.shape, V90_ACTIVE_BIAS, dtype=dec.active_head_b.dtype).to(
+                dec.active_head_b.device).contiguous()
+            dec.active_head_b.assign(new_b).realize()
+            new_b_val = float(dec.active_head_b.cast(dtypes.float).numpy().reshape(-1)[0])
+            print(f"[v90] reset active_head_b: {old_b:.4f} -> {new_b_val:.4f} "
+                  f"(sigmoid bias = {1.0 / (1.0 + _v90_math.exp(-new_b_val)):.4f})")
+        else:
+            print("[v90] V90_RESET_ACTIVE_HEAD=1 but V85_QUERYABLE=0 — skipping")
+
+    # v92 (2026-05-28) — arg_pos_emb scale reinit.
+    # V91 introduced arg_pos_emb as a (2, H) zero-init tensor that distinguishes
+    # args1 from args2. Empirically the v91 ckpt's rows ended near-identical
+    # (cos 0.915, L2 ~10), causing args1 ≈ args2 → same pointer for both arg
+    # positions. v92 reinitializes from uniform(-scale, scale) so the two rows
+    # start orthogonal-ish and the args1/args2 supervised gradients pull them
+    # in opposite directions. Same in-place .assign() pattern as v87/v88/v90.
+    V92_ARG_POS_EMB_SCALE_LOCAL = float(getenv("V92_ARG_POS_EMB_SCALE", "0.0"))
+    V92_REINIT_ARG_POS_EMB = int(getenv("V92_REINIT_ARG_POS_EMB", "0")) > 0
+    if V92_REINIT_ARG_POS_EMB and V92_ARG_POS_EMB_SCALE_LOCAL > 0.0:
+        from mycelium.breathing import V85_QUERYABLE as _V85_Q_V92A
+        if _V85_Q_V92A:
+            dec = model.v85_slot_decoder
+            shape = dec.arg_pos_emb.shape  # (2, H)
+            # Pre-reinit diagnostic: cosine between row 0 and row 1.
+            old_np = dec.arg_pos_emb.cast(dtypes.float).numpy().reshape(shape[0], shape[1])
+            old_norms = np.linalg.norm(old_np, axis=1) + 1e-9
+            old_cos = float(np.dot(old_np[0], old_np[1]) / (old_norms[0] * old_norms[1]))
+            old_l2 = float(np.linalg.norm(old_np))
+            new_emb = Tensor.uniform(
+                *shape,
+                low=-V92_ARG_POS_EMB_SCALE_LOCAL, high=V92_ARG_POS_EMB_SCALE_LOCAL,
+                dtype=dec.arg_pos_emb.dtype).to(dec.arg_pos_emb.device).contiguous()
+            dec.arg_pos_emb.assign(new_emb).realize()
+            new_np = dec.arg_pos_emb.cast(dtypes.float).numpy().reshape(shape[0], shape[1])
+            new_norms = np.linalg.norm(new_np, axis=1) + 1e-9
+            new_cos = float(np.dot(new_np[0], new_np[1]) / (new_norms[0] * new_norms[1]))
+            new_l2 = float(np.linalg.norm(new_np))
+            print(f"[v92] reinitialized arg_pos_emb at scale {V92_ARG_POS_EMB_SCALE_LOCAL} "
+                  f"(shape {tuple(shape)})")
+            print(f"[v92] arg_pos_emb row-cos: {old_cos:.4f} -> {new_cos:.4f}  "
+                  f"L2: {old_l2:.4f} -> {new_l2:.4f}")
+        else:
+            print("[v92] V92_REINIT_ARG_POS_EMB=1 but V85_QUERYABLE=0 — skipping")
+
+    # v92 (2026-05-28) — neutral active-head bias reset.
+    # v90 set bias to -1.0 to default to "predict False" after the over-firing
+    # v89 ckpt. v91 trained 100 more steps from that base; combined effect was
+    # active_logits mean = -1.67 at eval (ALL slots False, only v90 slot-0
+    # fallback rescued parse rate). v92 resets bias to 0.0 so the model starts
+    # neutral and learns active=True/False from training-data balance directly.
+    V92_RESET_ACTIVE_HEAD_NEUTRAL = int(getenv("V92_RESET_ACTIVE_HEAD_NEUTRAL", "0")) > 0
+    if V92_RESET_ACTIVE_HEAD_NEUTRAL:
+        from mycelium.breathing import V85_QUERYABLE as _V85_Q_V92B
+        if _V85_Q_V92B:
+            dec = model.v85_slot_decoder
+            old_b = float(dec.active_head_b.cast(dtypes.float).numpy().reshape(-1)[0])
+            new_b = Tensor.zeros(*dec.active_head_b.shape, dtype=dec.active_head_b.dtype).to(
+                dec.active_head_b.device).contiguous()
+            dec.active_head_b.assign(new_b).realize()
+            new_b_val = float(dec.active_head_b.cast(dtypes.float).numpy().reshape(-1)[0])
+            print(f"[v92] reset active_head_b NEUTRAL: {old_b:.4f} -> {new_b_val:.4f} "
+                  f"(sigmoid bias = 0.5)")
+        else:
+            print("[v92] V92_RESET_ACTIVE_HEAD_NEUTRAL=1 but V85_QUERYABLE=0 — skipping")
+
+    # v85 (2026-05-27): init types_codebook from IB centroids when V85_QUERYABLE=1.
+    # The IB tree has 32 leaves in (4 ops × ~8 sub-clusters) arrangement. The centroids
+    # were computed from Pythia embeddings of L2 NL step descriptions and are already
+    # in the model's residual-stream space (1024d). Loading them gives the codebook
+    # a meaningful starting point — semantic similarity in input space → similarity
+    # in target space.
+    from mycelium.breathing import V85_QUERYABLE as _V85_INIT
+    if _V85_INIT and os.path.exists(".cache/ib_centroids.npz"):
+        cent_data = np.load(".cache/ib_centroids.npz")
+        cent_np = cent_data["centroids"].astype(np.float32)
+        # Centroid scale may be very different from 0.02 random init. Project to a
+        # similar scale so the slot decoder doesn't blow up at step 0.
+        cent_norm = np.linalg.norm(cent_np, axis=1, keepdims=True) + 1e-6
+        cent_normed = cent_np / cent_norm * 1.0   # unit-norm centroids
+        # Match expected shape (V85_TYPES_N, hidden).
+        target_shape = model.v85_slot_decoder.types_codebook.shape
+        if cent_normed.shape == target_shape:
+            t = Tensor(cent_normed, dtype=model.v85_slot_decoder.types_codebook.dtype).to(
+                model.v85_slot_decoder.types_codebook.device).contiguous()
+            model.v85_slot_decoder.types_codebook.assign(t).realize()
+            print(f"  v85 types_codebook init from .cache/ib_centroids.npz "
+                  f"({cent_normed.shape}, unit-normed)")
+        else:
+            print(f"  v85 types_codebook init SKIPPED (shape mismatch: "
+                  f"centroids {cent_normed.shape} vs codebook {target_shape})")
+
     params = collect_params(model)
     # Bumped default 0.01 → 0.05 (2026-05-17) as part of the regularization pass
     # alongside stochastic depth + label smoothing. AdamW typical range for this scale.
@@ -479,6 +761,14 @@ def main():
     LABEL_SMOOTHING = float(getenv("LABEL_SMOOTHING", "0.0"))  # for log only — read by l3_training at import
     STOCH_DEPTH_P = float(getenv("STOCH_DEPTH_P", "0.0"))      # for log only — read by breathing at import
     GRAD_CLIP = float(getenv("GRAD_CLIP", "0.0"))              # global-norm gradient clip; 0 = off, 1.0 = standard
+    # v84 (2026-05-27) — cosine LR decay to zero over STEPS. Set
+    # LR_DECAY_TO_ZERO=1 to enable; default 0 (backwards-compatible flat LR).
+    # Both the regular path and the SS path read opt.lr inside the JIT, so
+    # in-place .assign() of the buffer propagates without recompile (same
+    # pattern as layer_pitch_scale).
+    LR_DECAY_TO_ZERO = bool(getenv("LR_DECAY_TO_ZERO", 0))
+    if LR_DECAY_TO_ZERO:
+        print(f"[LR_DECAY] cosine to 0 over {STEPS} steps (initial lr={LR})")
     opt = AdamW(params, lr=LR, weight_decay=WEIGHT_DECAY)
     # Separate controller optimizer — closed-loop component #5 trains independently
     # via the lookup-CE signal flowing back through decisions. Created regardless
@@ -675,14 +965,53 @@ def main():
                 Tensor([new_scale], dtype=dtypes.float).contiguous()
             )
 
+        # v84 (2026-05-27) — cosine LR decay to zero.
+        # opt.lr is a single-element tensor; in-place .assign() updates the
+        # buffer that the JIT graph already references (no recompile needed —
+        # same pattern as layer_pitch_scale.assign(...) above). Realize the
+        # new value before the JIT step picks it up.
+        # Printed every 100 steps so we can verify the schedule visually.
+        #
+        # v92 (2026-05-28) — linear warmup over first V92_LR_WARMUP_STEPS steps.
+        # The v91 args_ce 60→1 transient at steps 0-50 (initially-wrong args
+        # codebook pulled toward gold positions) caused a loss spike around
+        # step 50-60. Linear warmup from 0 to LR over the first N steps lets
+        # the args projection settle without large early updates blowing up
+        # the active head and waist pool projection.
+        if LR_DECAY_TO_ZERO:
+            import math as _lrm
+            _v92_warmup = int(getenv("V92_LR_WARMUP_STEPS", "0"))
+            if _v92_warmup > 0 and step < _v92_warmup:
+                _lr_curr = LR * (step + 1) / float(_v92_warmup)
+            else:
+                _eff_step = step - _v92_warmup
+                _eff_total = max(STEPS - _v92_warmup, 1)
+                _lr_curr = LR * 0.5 * (1.0 + _lrm.cos(_lrm.pi * _eff_step / _eff_total))
+            opt.lr.assign(Tensor([_lr_curr], dtype=opt.lr.dtype).contiguous()).realize()
+            if step % 25 == 0 or step < 5:
+                print(f"[lr_decay] step {step}: lr={_lr_curr:.6e}", flush=True)
+
         t0 = time.perf_counter()
         calib_info = None
         per_breath_info = None
+        v85_components = None
         # v52 Stage 1: per-breath supervision path (mutually exclusive with calibration)
-        from mycelium.l3_training import per_breath_train_step
+        from mycelium.l3_training import per_breath_train_step, v85_train_step
         from mycelium.breathing import PER_BREATH_DECODE as _PBD
+        from mycelium.breathing import V85_QUERYABLE as _V85_Q_LIVE
+        from mycelium.breathing import V85_K_MAX as _V85_K_MAX
+        from mycelium.breathing import V85_N_MAX as _V85_N_MAX
         _per_breath_waist_norm = None
-        if _PBD and not CALIBRATION_MODE:
+        if _V85_Q_LIVE and not CALIBRATION_MODE:
+            # v85 path — structured slot supervision (replaces per_breath_train_step).
+            K_v85 = int(getenv("TRAIN_LOOPS", "5").split(",")[0])
+            loss, v85_components, per_breath_ce = v85_train_step(
+                model, opt, batch_examples, tok,
+                fixed_len=cur_fixed_len, K=K_v85,
+                K_max=int(_V85_K_MAX), N_max=int(_V85_N_MAX),
+                grad_clip=GRAD_CLIP, step_idx=step)
+            per_breath_info = per_breath_ce
+        elif _PBD and not CALIBRATION_MODE:
             from mycelium.l3_training import per_breath_train_step
             _pbs_result = per_breath_train_step(model, opt, batch_examples, tok,
                                                 fixed_len=cur_fixed_len,
@@ -768,6 +1097,14 @@ def main():
                 pb_str = "  pb_ce=[" + " ".join(f"{c:.3f}" for c in per_breath_info) + "]"
                 # v66 waist norm (computed every step inside JIT; logged every 10 steps)
                 wn_str = f"  waist_norm={_per_breath_waist_norm:.4f}" if _per_breath_waist_norm is not None else ""
+                # v85 component CEs (ops / types / args / active / v89 attn_aux)
+                if v85_components is not None:
+                    wn_str += (f"  v85: ops={v85_components['ops_ce']:.3f}"
+                               f" types={v85_components['types_ce']:.3f}"
+                               f" args={v85_components['args_ce']:.3f}"
+                               f" act={v85_components['active_ce']:.3f}")
+                    if "attn_aux_ce" in v85_components:
+                        wn_str += f" attn_aux={v85_components['attn_aux_ce']:.3f}"
                 # v69 codebook match-weights entropy (every 100 steps; diagnostic for soft-VQ health)
                 ent_str = ""
                 try:
