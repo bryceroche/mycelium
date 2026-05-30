@@ -7,7 +7,15 @@
 
 ## Abstract
 
-We introduce the breathing transformer, a small-model architecture that performs iterative reasoning by looping shared weights through multiple "breaths" of computation. Each breath refines a compressed representation through π-cycled attention diversity and waist-bottleneck commitment. We demonstrate that this iterative prefill mechanism implements approximate belief propagation on joint factor graphs, validated empirically on Sudoku constraint satisfaction (72.8% puzzle accuracy, 87M parameters, 377MB memory). The architecture trades model size for thinking time — achieving multi-pass reasoning depth from single-pass parameter count. We show that observed puzzle accuracy exceeds independent-cell predictions by 7 orders of magnitude, demonstrating that the model learns joint constraint structure rather than per-variable classification. We present a theoretical connection to modern Hopfield energy descent (Ramsauer et al., 2020) and loopy belief propagation, positioning breathing transformers as a general substrate for energy-based inference on structured problems.
+We introduce the breathing transformer, a small (87M parameter, ~377MB) architecture that performs iterative reasoning by looping four shared transformer layers K times. Each iteration descends an energy landscape defined by the constraint structure of the input, yielding three equivalent descriptions: a learned RK4-stage ODE integrator, an instance of approximate belief propagation on a factor graph, and iterated modern Hopfield energy descent. On Sudoku, the architecture achieves 79% puzzle accuracy on easy puzzles at K=20, with puzzle accuracy exceeding independent-cell predictions by **seven orders of magnitude** — the empirical signature of joint MAP inference, distinct from per-variable classification.
+
+The architecture's iterative behavior is conditional on a precise design principle: **the breathing rhythm must match the underlying factor graph's topological symmetry**. Rotational breathing (π-cycled position encoding) succeeds on cyclic factor graphs (Sudoku); the same mechanism fails on tree-structured factor graphs at 9% chance accuracy. Topological staging — attention masks that progressively widen across breaths — restores belief-propagation behavior on trees, reaching 40-48% cell accuracy on synthetic arithmetic factor graphs with monotonic accuracy decline by DAG depth (the empirical mixing-time signature of message passing).
+
+Compression-as-commitment (a learned waist bottleneck within each breath) adds an additional 6-7 percentage points but only when training data shares structural priors across instances; among compression structures, projection and codebook quantization are statistically indistinguishable at our sample sizes. We formalize this as the applicability condition for compression-based regularization.
+
+The breathing transformer cannot solve natural-language math problems alone (2.7% on GSM8K across 17 architectural variants) — the bottleneck is comprehension, not iteration. We propose a two-phase architecture: a larger parser maps natural language to a factor graph (Phase 1, one-shot), and the breathing transformer solves the factor graph via energy descent (Phase 2, iterative). Each phase uses parameters sized appropriately to its computational regime, eliminating the gradient conflict that limits monolithic approaches.
+
+The paper closes with four falsifiable predictions, each a concrete experiment testable in 1-2 weeks of work. The breathing transformer trades model size for thinking time; the framework predicts when iteration is the right architectural choice based on structural properties of the data.
 
 ---
 
@@ -270,13 +278,30 @@ The breathing transformer implements loopy BP: each breath sends messages along 
 
 ### 5.3 ODE Interpretation
 
-The breathing trajectory can be viewed as an ODE in representation space:
+The Hopfield and BP framings can be unified under a single dynamical-systems view. The breathing transformer implements a learned integrator for the system
 
 ```
 dx/dt = -∇E(x, constraints)
 ```
 
-Each breath is one integration step. The waist bottleneck acts as a regularizer (projecting back to a low-dimensional manifold). The convergence plateau corresponds to the ODE reaching a fixed point.
+where E is the constraint energy of the factor graph and x is the state of soft variable distributions. Each breath corresponds to one integration step. The trajectory across K breaths traces a path on the energy landscape from the initial state (observed variables one-hot, unknowns uniform) toward a fixed point (energy minimum, all constraints satisfied).
+
+The 4 transformer layers within a single breath are the 4 stages of an RK4-style integrator: each layer computes one gradient estimate; the residual stream accumulates these estimates; the delta_gate update applies the weighted combination. Higher-order integration in 4 stages per step.
+
+The Hopfield equivalence (§5.1) supplies the per-layer gradient computation — attention IS one Hopfield energy descent step. The BP equivalence (§5.2) supplies the larger structure — K iterations approximate loopy BP message passing. The ODE view connects them: BP messages ARE Hopfield gradient steps on the factor-graph energy landscape, and the K iterations ARE numerical integration of that descent.
+
+Three architectural components map onto standard ODE-solver constructs:
+
+| ODE solver construct | Breathing transformer realization |
+|---|---|
+| Step size h | delta_gate per breath |
+| Multi-stage gradient evaluation | 4 transformer layers per breath |
+| Error estimator (Dopri5) | Calibration head |
+| Adaptive timestep | Future: confidence-based K halting |
+| Multistep methods (Adams-Bashforth) | Notebook carrying gradient history |
+| Implicit methods | Future: fixed-point iteration per breath |
+
+Several components are already present (delta_gate, multi-stage, error estimator). Others are natural extensions identified by the ODE framing (§8.2). The framing predicts that improvements known to help numerical integrators — adaptive timestepping, higher-order methods on stiff systems — should improve the breathing transformer on analogous regimes.
 
 ---
 
@@ -625,26 +650,65 @@ The two-phase decomposition has a practical implication for deployment: large mo
 
 ## 9. Future Work
 
-**Adaptive K with confidence-based stopping:** The B16-B19 plateau demonstrates the model detects its own convergence. Implementing variable-K inference would make compute truly adaptive — easy puzzles in 5 breaths, hard puzzles in 30.
+The four falsifiable predictions in §8 each define a concrete experiment. Beyond those direct tests, the framework opens five research directions.
 
-**Expansion for decode:** Compressing to 512d during thinking, expanding to 2048d for the final decode step. Thinking is compressed (commitment). Speaking is expanded (articulation).
+### 9.1 The two-phase GSM8K system (Phase 1 parser + Phase 2 inference)
 
-**Delta tensor history:** Storing the per-breath delta (what changed) as a differentiable, queryable tensor stack. Enables the model to query its own reasoning history during later breaths.
+The most immediate extension is closing the GSM8K loop end-to-end by building the Phase 1 parser predicted in §8.4. The plan: distill ~5,000 (NL, factor graph) pairs from Haiku-class models, fine-tune a T5-small parser (60M params, ~70MB quantized) to map natural-language problems to factor graphs, then run the resulting parses through the existing breathing transformer.
 
-**Scale to 1B parameters:** The GSM8K comprehension wall is likely a capacity issue. Pythia-1B with the breathing architecture could break through if the reading comprehension bottleneck is capacity-limited.
+Predicted end-to-end GSM8K accuracy: 30-45%, dependent on parser quality. The two-phase decomposition is forced by gradient-conflict considerations (§8.4): comprehension and inference cannot share parameters without each pulling the optimizer in opposing directions. A separate parser eliminates the conflict.
 
-**General factor graph tasks:** Any constraint satisfaction problem (graph coloring, scheduling, circuit SAT) can be formulated as a factor graph. The breathing transformer should transfer to any such task with appropriate factor-aligned attention masking.
+Total system footprint: ~450MB on disk (~70MB parser + ~377MB inference engine). Edge-deployable on modern phones.
 
-**Natural language front-end:** Separating comprehension (NL → factor graph) from inference (factor graph → solution). The breathing transformer is the inference engine. A separate comprehension module (potentially larger, or chain-of-thought based) parses natural language into the structured input the breathing transformer can solve.
+### 9.2 Higher-order ODE integration (deeper per-breath)
+
+The ODE framing (§8.2) predicts that 8-layer-per-breath architectures should outperform 4-layer-per-breath ones on stiff systems specifically — problems where some constraints converge fast and others slow. Sudoku's hardest puzzles exhibit this stiffness empirically (per-breath delta plateaus at 0.4 at K=20, indicating non-convergence).
+
+The minimal test: train a v98-equivalent architecture with 8 shared Pythia layers per breath at K=10 (matched compute vs. v98's 4 layers × K=20) and compare on the hard subset. If deeper-per-breath outperforms more-breaths under matched compute, the higher-order integration hypothesis is validated.
+
+### 9.3 Adaptive K via the calibration head
+
+The calibration head (§3.6) is trained to predict P(solution correct), with detached supervision targeting 0.5 at early breaths and the actual correctness label at late breaths. After training, calibration tracks per-puzzle convergence (0.79 on easy converged puzzles, 0.27 on hard non-converged).
+
+Adaptive K means halting when calib_k > threshold (e.g., 0.7). Easy puzzles halt at K=5 (saving ~75% of inference compute); hard puzzles run to K=20. The mechanism is already trained — what remains is the inference-time loop modification and threshold tuning. We predict average compute reduction of 50%+ on mixed-difficulty workloads with no accuracy loss.
+
+### 9.4 Multistep methods using the notebook as gradient history
+
+The notebook component already carries previous-breath state across iterations. The ODE framing identifies this as the precursor to multistep methods (Adams-Bashforth, Adams-Moulton) that use a weighted combination of past gradients for higher accuracy without additional forward passes. Current implementation effectively does AB1 (uses only the current breath's gradient).
+
+AB2-AB4 implementations would store the last 2-4 breaths' updates and combine them via the standard Adams coefficients. Negligible memory cost (the notebook already exists); minor computation cost (one linear combination per breath); potentially significant accuracy improvement per iteration. This is a free upgrade in principle.
+
+### 9.5 Broader factor-graph domains
+
+The 2×2 framework (§6.4) places the breathing transformer within a class of architectures parameterized by (breathing rhythm, factor graph topology). Each (key, topology) pair admits its own validation:
+
+- **Constraint satisfaction with fixed topology**: graph coloring on fixed graphs, n-queens, scheduling. Compression should help (per §8.3 prediction).
+- **Algorithmic problems**: sorting networks, dynamic programming (Bellman-Ford), shortest paths. These have known DAG structure; the directional key applies.
+- **Logic problems**: SAT instances with shared structural patterns, SMT problems with bounded theories. Each instance class needs its own factor topology.
+- **Decision-making under uncertainty**: factor graphs from POMDPs and Bayesian networks. The constraint energy generalizes to log-probability of joint configurations.
+
+The framework's value is that it converts architectural decisions into structural questions about the data: identify the factor graph, choose the rhythm matching its topology, decide whether compression applies based on cross-instance structural sharing.
 
 ---
 
 ## 10. Conclusion
 
-We have shown that iterative attention with shared weights, compression commitment, and diverse viewing angles implements a form of learned belief propagation on structured problems. The breathing transformer trades model size for thinking time — achieving reasoning depth that would otherwise require 7× more parameters, in a memory footprint suitable for edge deployment.
+We have introduced the breathing transformer — a small (87M parameter, ~377MB) architecture that performs iterative reasoning by looping shared transformer layers K times, with each iteration refining a representation via energy descent on a factor-graph-defined energy landscape. The architecture admits three equivalent mathematical descriptions: it is a learned ODE integrator (4 layers per breath = 4 RK4 stages), an instance of approximate belief propagation (K breaths = K message-passing rounds), and an iterated application of modern Hopfield energy descent (each attention layer is one Hopfield gradient step). These three views describe the same mathematical object from computer science, statistical physics, and machine learning perspectives.
 
-The Sudoku results validate the core thesis: a 87M-parameter model solving constraint satisfaction through iterative prefill, with adaptive convergence, OOD generalization, and joint structure learning demonstrated by 7-order-of-magnitude correlation above independence.
+Empirically, the architecture validates this identity through three convergent signatures: per-breath constraint energy decay, per-breath cell-accuracy ladders, and depth-correlated accuracy degradation. On Sudoku, the 87M-parameter model reaches 79% easy puzzle accuracy with a 7-orders-of-magnitude correlation above independent-cell baseline — the empirical signature of joint MAP inference, distinct from per-variable classification. On synthetic arithmetic factor graphs, the same architecture with topological staging reaches 40-48% cell accuracy depending on compression choices, with the K=10 vs K=1 gap providing direct empirical evidence that iteration is doing work.
 
-The architecture's principles — per-iteration diversity, commitment through compression, energy-based training, and iterative convergence — transfer to any domain where reasoning benefits from thinking longer rather than thinking bigger.
+The cross-architecture comparison (v98 / v99 / v100 / v101 / v103) demonstrates a precise design principle: **the breathing rhythm must match the underlying factor graph's topological symmetry**. Rotational breathing works on cyclic graphs (Sudoku, 79%); the same rotational mechanism fails on tree-structured factor graphs (v99, 9% chance). Topological staging — masks that progressively widen across breaths — restores BP behavior on trees (v100, 40-48%). The 2×2 framework (rhythm × topology) explains both the successes and the failures within a single principle.
 
-The shape of thought is not a single forward pass. It is a breath — an iterative refinement of understanding, each pass seeing the problem from a new angle, compressing to commitment, and building on what came before. The model breathes until it knows, then speaks.
+Compression-as-commitment (the JPEG-codec waist bottleneck) provides additional 6-7 points on factor graphs but only when paired with the right breathing rhythm. The applicability condition (§8.3) makes the framework testable: compression helps when training data shares structural priors across instances; it has diminishing benefit when topology varies arbitrarily. Among compression structures, the projection-based waist (v101) and the codebook-quantization waist (v103) are statistically indistinguishable at our sample sizes — compression PRESENCE is load-bearing; compression SHAPE is interchangeable at this scale.
+
+Three findings have practical consequences for deployment:
+
+1. **Small models can perform sophisticated inference when given structured input.** The breathing transformer's 87M parameters are sufficient for joint MAP estimation on factor graphs of realistic complexity. The architecture trades model size for iteration depth, fitting comfortably on phone-class hardware.
+
+2. **Comprehension and inference are different computational regimes.** Forcing both into one model creates gradient conflicts that limit performance to the worse of the two tasks. The two-phase architecture (large parser + small breathing transformer) decouples these, allowing each component to be sized appropriately.
+
+3. **Iteration is conditional on rhythm-topology matching.** Practitioners can predict whether iteration will help on a new problem by examining the factor graph: cyclic structure with overlapping cliques → rotational breathing; directional structure with topological ordering → staged breathing. No empirical trial-and-error required.
+
+The shape of thought, we propose, is not a single forward pass. It is a breath — a deliberate iteration that refines a belief about the world through repeated message passing on the structure of the problem itself. Each breath descends the energy landscape one step. Each step commits a little more to the answer. The model breathes until convergence, then reads out what it has come to believe.
+
+The architecture is small. The mathematics is well-defined. The findings are reproducible. The remaining work — closing the GSM8K loop via the two-phase architecture, validating higher-order integration on stiff systems, extending to broader factor-graph domains — is concrete, specified, and bounded. We hope the breathing transformer, and the rhythm-topology design principle it instantiates, provide a useful frame for building small models that reason — and a falsifiable framework for predicting when iteration is the right architectural choice.
