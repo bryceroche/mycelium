@@ -151,79 +151,65 @@ def build_staging_and_head_masks_np(
 
     staging = np.full((k_max, t_max, t_max), -1e4, dtype=np.float32)
 
+    # Vectorize staging mask construction over k: compute visibility in numpy
+    # var_depth_np[0:n_vars] holds depths; vars beyond n_vars are padding → depth -1
+    k_range = np.arange(k_max, dtype=np.int32)  # (k_max,)
+
+    # Variable visibility: (n_max, k_max) — True if var vi visible at breath k
+    # depth==0 → always visible; depth d>0 → visible when k >= d-1
+    vd = var_depth_np[:n_max].reshape(n_max, 1)  # (n_max, 1)
+    var_visible_mat = ((vd == 0) | ((vd > 0) & (vd <= k_range[np.newaxis, :] + 1)))
+    # padding positions: depth -1 → never visible
+    var_visible_mat[var_depth_np[:n_max] < 0, :] = False
+
+    # Factor visibility: (f_max, k_max)
+    frd = factor_result_depth[:n_factors].reshape(n_factors, 1)   # (n_factors, 1)
+    factor_valid_mask = (factor_types_np[:n_factors] >= 0).reshape(n_factors, 1)
+    fac_visible_mat_real = ((frd == 1) | ((frd > 0) & (frd <= k_range[np.newaxis, :] + 1))) & factor_valid_mask
+    fac_visible_mat = np.zeros((f_max, k_max), dtype=bool)
+    fac_visible_mat[:n_factors, :] = fac_visible_mat_real
+
+    # Combine into pos_visible (t_max, k_max)
+    pos_visible_mat = np.zeros((t_max, k_max), dtype=bool)
+    pos_visible_mat[:n_max, :] = var_visible_mat
+    pos_visible_mat[n_max:n_max + f_max, :] = fac_visible_mat
+
+    # For each k: staging[k] = bipartite where both row and col are visible, else -1e4
+    # pos_visible_k: (t_max,) boolean → outer product gives (t_max, t_max) both-visible
     for k in range(k_max):
-        # Variable visibility: observed (depth=0) always visible;
-        # depth-d result visible when k >= d-1  → i.e. depth <= k+1
-        var_visible = np.zeros(n_max, dtype=bool)
-        for vi in range(n_vars):
-            d = int(var_depth_np[vi])
-            if d == 0 or (d > 0 and d <= k + 1):
-                var_visible[vi] = True
-        # padding variable positions: not visible
-        # (var_visible[n_vars:] remains False)
-
-        # Factor visibility: visible when its result variable is visible
-        factor_visible = np.zeros(f_max, dtype=bool)
-        for fi in range(n_factors):
-            ft = int(factor_types_np[fi])
-            if ft < 0:
-                continue
-            rd = factor_result_depth[fi]
-            if rd == 1 or (rd > 0 and rd <= k + 1):
-                factor_visible[fi] = True
-
-        # Build (T, T) visibility mask for this breath:
-        # position is visible if it's a var that's visible OR a factor that's visible
-        pos_visible = np.zeros(t_max, dtype=bool)
-        for vi in range(n_max):
-            if var_visible[vi]:
-                pos_visible[vi] = True
-        for fi in range(f_max):
-            if factor_visible[fi]:
-                pos_visible[n_max + fi] = True
-
-        # staging[k, i, j] = bipartite[i, j] if BOTH i and j are visible, else -1e4
-        # Start from bipartite (already has the structural edges)
-        stk = bipartite.copy()  # (T, T)
-        # Mask out rows/cols of invisible positions
-        for pos in range(t_max):
-            if not pos_visible[pos]:
-                stk[pos, :] = -1e4
-                stk[:, pos] = -1e4
-        staging[k] = stk
+        pv = pos_visible_mat[:, k]  # (t_max,)
+        both_visible = pv[:, np.newaxis] & pv[np.newaxis, :]  # (t_max, t_max)
+        staging[k] = np.where(both_visible, bipartite, -1e4)
 
     # --- Head-op masks --------------------------------------------------
     # 4 groups of 4 heads: ADD (0-3), SUB (4-7), MUL (8-11), DIV (12-15)
     # Head group h_grp (0=ADD,1=SUB,2=MUL,3=DIV) attends ONLY along edges
     # of its op type.  Self-attention is always allowed.
-    head_ops = np.full((n_heads, t_max, t_max), -1e4, dtype=np.float32)
 
     # Build per-op bipartite adjacency: (4, T, T)
     op_adj = np.full((4, t_max, t_max), -1e4, dtype=np.float32)
 
     # Diagonal (self-attention) always allowed for all ops
-    eye = np.eye(t_max, dtype=bool)
-    for op in range(4):
-        op_adj[op][eye] = 0.0
+    eye_idx = np.arange(t_max)
+    op_adj[:, eye_idx, eye_idx] = 0.0
 
+    # Fill variable↔factor edges per op (only over real factors)
     for fi in range(n_factors):
         ft = int(factor_types_np[fi])
         if ft < 0 or ft >= 4:
             continue
-        fa = factor_args_np[fi]  # [arg1, arg2, result]
         fpos = n_max + fi
-        for vi in fa:
+        for vi in factor_args_np[fi]:
             vi = int(vi)
             if 0 <= vi < n_vars:
                 op_adj[ft, vi, fpos] = 0.0
                 op_adj[ft, fpos, vi] = 0.0
 
-    # Assign to heads: 4 heads per op
+    # Assign to heads: 4 heads per op — use fancy indexing (no Python loop over heads)
     heads_per_op = n_heads // 4  # = 4
-    for op in range(4):
-        for hh in range(heads_per_op):
-            h_idx = op * heads_per_op + hh
-            head_ops[h_idx] = op_adj[op]
+    # head_ops[op*4 : op*4+4] = op_adj[op] for op in 0..3
+    # Reshape op_adj from (4, T, T) → (4, 1, T, T), repeat → (4, 4, T, T), flatten → (16, T, T)
+    head_ops = np.repeat(op_adj[:, np.newaxis, :, :], heads_per_op, axis=1).reshape(n_heads, t_max, t_max)
 
     return staging, head_ops
 

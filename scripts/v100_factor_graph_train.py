@@ -52,7 +52,7 @@ from mycelium import Config, BreathingTransformer
 from mycelium.loader import _load_state, load_breathing
 from mycelium.factor_graph_v100 import (
     V100_K_MAX, V100_FACTOR_AUX_WEIGHT, V100_CALIB_WEIGHT,
-    V100_N_MAX, V100_F_MAX, V100_N_HEADS,
+    V100_N_MAX, V100_F_MAX, V100_N_HEADS, V100_KL_DIAG,
     attach_fg_params_v100, fg_v100_parameters, fg_v100_state_dict,
     fg_breathing_forward_v100_aligned,
     _compile_jit_fg_step_v100, _compile_jit_fg_eval_v100,
@@ -143,94 +143,6 @@ def load_ckpt_v100(model, path: str):
         print(f"  ckpt missing {len(missing)} v100 keys (kept init): {missing[:5]}")
 
 
-def factor_aux_backward(
-    model,
-    opt,
-    params,
-    factor_logits_history: list,  # K × (B, F_MAX, 100) realized numpy arrays
-    factor_types_np: np.ndarray,  # (B, F_MAX)
-    factor_args_np: np.ndarray,   # (B, F_MAX, 3)
-    gold_values_np: np.ndarray,   # (B, N_MAX)
-    factor_aux_weight: float,
-    K: int,
-    B: int,
-    f_max: int,
-    n_max: int,
-) -> float:
-    """Compute factor-aux loss outside JIT and do a backward + opt.step.
-
-    factor_logits_history is a list of K numpy arrays (B, F_MAX, 100).
-
-    This is a separate backward pass from the main JIT step.  Gradients accumulate
-    into the same parameter tensors.  We call zero_grad before building the graph
-    to avoid accumulating onto the JIT step's already-cleared gradients.
-
-    Returns the scalar factor_aux_loss for logging.
-    """
-    # Reconstruct Tensor graph for factor logits from the current model forward
-    # (we can't use the already-realized numpy arrays for backward — we need
-    # a live Tensor graph).  Run a MINI forward for factor logits only.
-    # Since this is a Python-level backward (outside JIT), we can afford the
-    # overhead once per step.
-    #
-    # Build factor_aux_loss as a Tensor sum using the realized factor logit
-    # arrays as targets (teacher forcing: the factor's hidden state should
-    # predict the gold result).
-    domain_codebook = model.fg_v100_domain_codebook   # (100, H)
-
-    opt.zero_grad()
-
-    # For each valid (b, fi) pair, add CE to the aux loss.
-    # We build the loss as a sum of individual CE terms, each a Tensor.
-    # Then call backward once on the sum.
-    aux_terms: list[Tensor] = []
-
-    for fi in range(f_max):
-        for b_idx in range(B):
-            op = int(factor_types_np[b_idx, fi])
-            if op < 0:
-                continue
-            r_idx = int(factor_args_np[b_idx, fi, 2])
-            if r_idx < 0 or r_idx >= n_max:
-                continue
-            gold_r = int(gold_values_np[b_idx, r_idx])
-
-            # Accumulate CE across K breaths (late-weighted)
-            for k_aux, fac_logits_np in enumerate(factor_logits_history):
-                weight_k_aux = 1.0 + float(k_aux) / float(max(K - 1, 1))
-                # fac_logits_np is (B, F_MAX, 100) numpy; slice out logit
-                logit_row = fac_logits_np[b_idx, fi, :]  # (100,)
-                logit_t   = Tensor(logit_row[np.newaxis], dtype=dtypes.float)   # (1, 100)
-                gold_t    = Tensor(np.array([gold_r], dtype=np.int32), dtype=dtypes.int)
-                ce_term   = logit_t.sparse_categorical_crossentropy(gold_t, reduction="mean")
-                aux_terms.append(ce_term * weight_k_aux)
-
-    if not aux_terms:
-        return 0.0
-
-    # Normalize by count and weight
-    n_terms = float(len(aux_terms))
-    aux_loss = Tensor.zeros((), dtype=dtypes.float).contiguous()
-    for t in aux_terms:
-        aux_loss = aux_loss + t
-    aux_loss = aux_loss / n_terms * factor_aux_weight
-
-    # We need to re-run the forward to get live gradients for domain_codebook
-    # and the transformer params.  The numpy-slice approach above doesn't give
-    # gradients back to the model — it builds a one-off graph.
-    # This approach gives factor-aux signal only to domain_codebook (the readout).
-    # That's fine: the key objective is to push the codebook to produce correct
-    # projections, which then bootstraps the transformer via the main CE loss.
-    aux_loss.backward()
-
-    healthy = aux_loss.isfinite().cast(dtypes.float)
-    for p in params:
-        if p.grad is not None:
-            p.grad = p.grad * healthy.cast(p.grad.dtype)
-
-    opt.step()
-
-    return float(aux_loss.realize().numpy())
 
 
 def evaluate_v100(model, loader: FactorGraphLoaderV100, K: int,
@@ -336,8 +248,9 @@ def main():
     FACTOR_AUX_WEIGHT = float(getenv("V100_FACTOR_AUX_WEIGHT", str(V100_FACTOR_AUX_WEIGHT)))
     CALIB_WEIGHT      = float(getenv("V100_CALIB_WEIGHT",       str(V100_CALIB_WEIGHT)))
 
-    # KL energy diagnostic: compute and log but don't include in backward
-    KL_DIAG_EVERY = int(getenv("KL_DIAG_EVERY", "100"))
+    # KL energy diagnostic: controlled by V100_KL_DIAG env var (default OFF for train)
+    KL_DIAG_EVERY  = int(getenv("KL_DIAG_EVERY", "100"))
+    KL_DIAG_ENABLED = V100_KL_DIAG or (int(getenv("V100_KL_DIAG", "0")) > 0)
 
     print(f"=== v100 factor graph training (topological staging + aligned init + hard heads) ===")
     print(f"device={Device.DEFAULT}  B={BATCH}  K={K}  steps={STEPS}  lr={LR}")
@@ -373,11 +286,6 @@ def main():
         print("  loaded.")
 
     opt = AdamW(params, lr=LR, weight_decay=0.0)
-    # Separate lightweight optimizer for the factor-aux backward (only fg_v100 params
-    # need gradients for the factor-aux loss; the transformer params receive zero signal
-    # because factor_logits are sliced from an already-detached forward).
-    aux_params = fg_v100_parameters(model)
-    aux_opt = AdamW(aux_params, lr=LR, weight_decay=0.0)
 
     train_loader = FactorGraphLoaderV100(
         TRAIN_PATH, batch_size=BATCH,
@@ -424,81 +332,44 @@ def main():
         head_op_mask  = batch["head_op_mask"]
         gold_values   = batch["gold_values"]
         obs_mask      = batch["observed_mask"]
-        ft_t          = batch["factor_types"]
-        fa_t          = batch["factor_args"]
         ft_np         = batch["factor_types"].numpy()
         fa_np         = batch["factor_args"].numpy()
         gold_np       = batch["gold_values"].numpy()
 
-        # JIT step: CE + calibration backward + opt.step
+        # Pre-compute factor_gold (B, F_MAX) and factor_valid (B, F_MAX) in numpy
+        # so the JIT step can use them without any .numpy() calls inside JIT.
+        factor_gold_np  = np.zeros((BATCH, F_MAX), dtype=np.int32)
+        factor_valid_np = np.zeros((BATCH, F_MAX), dtype=np.float32)
+        for b in range(BATCH):
+            for fi in range(F_MAX):
+                op = int(ft_np[b, fi])
+                if op < 0:
+                    continue
+                r_idx = int(fa_np[b, fi, 2])
+                if r_idx < 0 or r_idx >= N_MAX:
+                    continue
+                factor_gold_np[b, fi]  = int(gold_np[b, r_idx])
+                factor_valid_np[b, fi] = 1.0
+        factor_gold_t  = Tensor(factor_gold_np,  dtype=dtypes.int).contiguous().realize()
+        factor_valid_t = Tensor(factor_valid_np, dtype=dtypes.float).contiguous().realize()
+
+        # JIT step: CE + factor-aux + calibration — all in one backward
         outs = step_fn(
             domain_init, node_kinds, staging_mask, head_op_mask,
-            gold_values, obs_mask, ft_t, fa_t,
+            gold_values, obs_mask, factor_gold_t, factor_valid_t,
         )
         total_t     = outs[0]
         healthy_t   = outs[1]
         ce_t        = outs[2]
-        calib_t     = outs[3]
-        cell_acc_t  = outs[4]
-        query_acc_t = outs[5]
-        pb_ce_ts    = outs[6:6 + K]
+        aux_t       = outs[3]
+        calib_t     = outs[4]
+        cell_acc_t  = outs[5]
+        query_acc_t = outs[6]
+        pb_ce_ts    = outs[7:7 + K]
+        aux_val     = float(aux_t.numpy())
 
         if float(healthy_t.numpy()) < 0.5:
             print(f"[NaN-skip] step {step}: CE step skipped", flush=True)
-
-        # Factor-aux backward (outside JIT — requires .numpy() for index extraction)
-        # Run non-JIT forward to get factor logits with live gradients.
-        if FACTOR_AUX_WEIGHT > 0:
-            Tensor.training = True
-            # Run factor-aux backward: get factor logits from a fresh forward,
-            # compute factor-aux loss, backward, opt.step.
-            # We use a lightweight non-JIT forward for this purpose.
-            if True:
-                var_lh, fac_lh, calib_h = fg_breathing_forward_v100_aligned(
-                    model, domain_init, node_kinds, staging_mask, head_op_mask,
-                    K=K, n_max=N_MAX, f_max=F_MAX,
-                )
-                # Build factor aux loss
-                opt.zero_grad()
-                aux_terms: list[Tensor] = []
-                for fi in range(F_MAX):
-                    for b_idx in range(BATCH):
-                        op = int(ft_np[b_idx, fi])
-                        if op < 0:
-                            continue
-                        r_idx = int(fa_np[b_idx, fi, 2])
-                        if r_idx < 0 or r_idx >= N_MAX:
-                            continue
-                        gold_r = int(gold_np[b_idx, r_idx])
-                        for k_aux, fac_logits_k in enumerate(fac_lh):
-                            w_aux = 1.0 + float(k_aux) / float(max(K - 1, 1))
-                            logit_t = fac_logits_k[b_idx, fi, :].reshape(1, 100)
-                            gold_t  = Tensor(np.array([gold_r], dtype=np.int32), dtype=dtypes.int)
-                            ce_aux  = logit_t.sparse_categorical_crossentropy(gold_t, reduction="mean")
-                            aux_terms.append(ce_aux * w_aux)
-
-                if aux_terms:
-                    aux_sum = Tensor.zeros((), dtype=dtypes.float).contiguous()
-                    for t in aux_terms:
-                        aux_sum = aux_sum + t
-                    n_terms_f = float(len(aux_terms))
-                    aux_loss  = aux_sum / n_terms_f * FACTOR_AUX_WEIGHT
-                    aux_opt.zero_grad()
-                    aux_loss.backward()
-                    healthy_aux = aux_loss.isfinite().cast(dtypes.float)
-                    # Ensure every aux param has a grad tensor (zero if not received)
-                    # so AdamW.step() doesn't trip on unwrap(None).
-                    for p in aux_params:
-                        if p.grad is None:
-                            p.grad = Tensor.zeros_like(p).contiguous()
-                        else:
-                            p.grad = p.grad * healthy_aux.cast(p.grad.dtype)
-                    aux_opt.step()
-                    aux_val = float(aux_loss.realize().numpy())
-                else:
-                    aux_val = 0.0
-        else:
-            aux_val = 0.0
 
         log_loss  += float(total_t.numpy())
         log_ce    += float(ce_t.numpy())
@@ -541,8 +412,8 @@ def main():
                 else:
                     print(f"  [LADDER] B0-B{K-1} delta = {ladder_delta:.3f} (target > 0.1)", flush=True)
 
-        if step % KL_DIAG_EVERY == 0:
-            # KL energy diagnostic (not in backward — just logging)
+        if KL_DIAG_ENABLED and step % KL_DIAG_EVERY == 0:
+            # KL energy diagnostic (not in backward — just logging; gated by V100_KL_DIAG=1)
             Tensor.training = False
             var_lh_diag, _, _ = fg_breathing_forward_v100_aligned(
                 model, domain_init, node_kinds, staging_mask, head_op_mask,

@@ -57,6 +57,7 @@ V100_N_MAX              = int(os.environ.get("V100_N_MAX",              "16"))
 V100_F_MAX              = int(os.environ.get("V100_F_MAX",               "8"))
 V100_T_MAX              = V100_N_MAX + V100_F_MAX
 V100_N_HEADS            = 16   # fixed: Pythia-410M
+V100_KL_DIAG            = int(os.environ.get("V100_KL_DIAG", "0")) > 0  # OFF by default (train); ON for eval
 
 # Op index mapping (same as v99)
 OP_ADD = 0
@@ -433,21 +434,16 @@ def kl_energy_diagnostic_np(
             pr  = probs[b, res]  # (100,)
 
             if op == OP_ADD:
-                # Exact convolution: expected[v] = sum_{j=0}^{v} p1[j] * p2[v-j]
-                expected = np.zeros(100, dtype=np.float64)
-                for v in range(100):
-                    for j in range(v + 1):
-                        expected[v] += p1[j] * p2[v - j]
-                expected = np.clip(expected, eps, None)
+                # P(result=k) = sum_{j} p1[j]*p2[k-j]  = convolve(p1, p2)[:100]
+                conv = np.convolve(p1, p2)[:100]
+                expected = np.clip(conv, eps, None)
                 expected /= expected.sum()
             elif op == OP_SUB:
-                # Expected[v] = sum_{j=v}^{99} p1[j] * p2[j-v]  (a-b=v → b=a-v≥0)
-                expected = np.zeros(100, dtype=np.float64)
-                for v in range(100):
-                    for j in range(v, 100):
-                        if j - v < 100:
-                            expected[v] += p1[j] * p2[j - v]
-                expected = np.clip(expected, eps, None)
+                # P(result=v) = sum_{j>=v} p1[j]*p2[j-v]
+                # = convolve(p1, p2[::-1])[len(p2)-1 : len(p2)-1+100]
+                conv = np.convolve(p1, p2[::-1])
+                start = len(p2) - 1
+                expected = np.clip(conv[start : start + 100], eps, None)
                 expected /= expected.sum()
             else:
                 # MUL / DIV: use mean approximation (too slow for exact)
@@ -772,43 +768,29 @@ def _compile_jit_fg_step_v100(
 ):
     """Compile a TinyJit'd train step for the v100 factor-graph forward.
 
-    The factor-execute aux loss (Change 4) loops in Python over F_MAX * B
-    factor slots, calling .numpy() to extract indices.  This CANNOT be inside
-    TinyJit (AM driver: no .numpy() in JIT).
+    Factor-aux loss (Change 4) is computed INSIDE the JIT step using two
+    pre-computed tensors passed as inputs:
+      factor_gold  : (B, F_MAX) int  — gold result value for each factor slot
+                     (precomputed in numpy: gold_values[b, factor_args[b,fi,2]])
+      factor_valid : (B, F_MAX) float — 1=real factor, 0=padding/invalid
+                     (precomputed in numpy: factor_types >= 0 and valid result_idx)
 
-    Solution (same pattern as v99 energy):
-      - JIT compiles the core CE + calibration backward.
-      - Factor-aux loss is computed OUTSIDE the JIT step via a second Python call
-        that computes scalar gradients and adds them manually via parameter update.
-      - Concretely: the JIT step returns factor_logits tensors (already realized);
-        a non-JIT Python fn accumulates factor_aux_loss and calls .backward()
-        separately, then calls opt.step() once.
-
-    Actually, to keep things simple for the first working version, we use the
-    same "energy outside JIT" pattern from v99: compute factor_aux_loss in a
-    separate Python loop BEFORE the JIT step, accumulate it as a numpy scalar,
-    and include its gradient contribution through a lightweight non-JIT backward
-    on the factor logits.  This means factor_aux is NOT inside the TinyJit step.
-
-    The JIT step returns factor_logit tensors (K × (B, F_MAX, 100)) that the
-    non-JIT aux backward uses.
-
-    For AMD JIT safety: factor_args_t is passed to JIT for shape stability but
-    NOT used in any JIT computation (same as v99's handling of factor_args).
+    This eliminates the second eager forward pass that caused the 10× slowdown.
+    No .numpy() calls inside JIT — indices are pre-materialized in numpy.
 
     Inputs to JIT:
-      domain_init  : (B, N_MAX, 100) fp32
-      node_kinds   : (B, T_MAX) int
-      staging_mask : (B, K_MAX, T_MAX, T_MAX) fp32
-      head_op_mask : (B, N_HEADS, T_MAX, T_MAX) fp32
-      gold_values  : (B, N_MAX) int
-      observed_mask: (B, N_MAX) int
-      factor_types_t: (B, F_MAX) int
-      factor_args_t : (B, F_MAX, 3) int (shape stability only)
+      domain_init   : (B, N_MAX, 100) fp32
+      node_kinds    : (B, T_MAX) int
+      staging_mask  : (B, K_MAX, T_MAX, T_MAX) fp32
+      head_op_mask  : (B, N_HEADS, T_MAX, T_MAX) fp32
+      gold_values   : (B, N_MAX) int
+      observed_mask : (B, N_MAX) int
+      factor_gold   : (B, F_MAX) int   — NEW: pre-indexed gold result per factor
+      factor_valid  : (B, F_MAX) float — NEW: 1=real, 0=pad
 
     Returns:
-      total, healthy, var_ce, calib, cell_acc, query_acc, *pb_ce_0..K-1,
-      *fac_logits_0..K-1  (each (B, F_MAX, 100) — for factor-aux backward)
+      total, healthy, var_ce, factor_aux, calib, cell_acc, query_acc,
+      *pb_ce_0..K-1
     """
     key = (id(model), id(opt), int(K), int(B), float(factor_aux_weight),
            float(calib_weight), int(n_max), int(f_max), float(grad_clip))
@@ -816,11 +798,12 @@ def _compile_jit_fg_step_v100(
         return _JIT_V100_CACHE[key]
 
     aw    = float(calib_weight)
+    fw    = float(factor_aux_weight)
     gc    = float(grad_clip)
     params = opt.params
 
     _t0 = _time.perf_counter()
-    print(f"[JIT] compile v100 fg step: K={K} B={B} aw={aw} gc={gc}...", flush=True)
+    print(f"[JIT] compile v100 fg step: K={K} B={B} aw={aw} fw={fw} gc={gc}...", flush=True)
 
     @TinyJit
     def _step(
@@ -830,8 +813,8 @@ def _compile_jit_fg_step_v100(
         head_op_mask: Tensor,
         gold_values: Tensor,
         observed_mask: Tensor,
-        factor_types_t: Tensor,
-        factor_args_t: Tensor,
+        factor_gold: Tensor,    # (B, F_MAX) int — pre-indexed gold result per factor
+        factor_valid: Tensor,   # (B, F_MAX) float — 1=real factor, 0=pad
     ):
         opt.zero_grad()
 
@@ -863,6 +846,26 @@ def _compile_jit_fg_step_v100(
             var_weight_sum += weight_k
         var_loss = var_loss_sum / float(var_weight_sum)
 
+        # Factor-execute auxiliary loss (vectorized over B × F_MAX, inside JIT)
+        # factor_gold: (B, F_MAX) int; factor_valid: (B, F_MAX) float
+        factor_aux_sum  = Tensor.zeros((), dtype=dtypes.float).contiguous()
+        factor_aux_w_sum = 0.0
+        n_valid_factors  = factor_valid.cast(dtypes.float).sum() + 1e-8
+        gold_fac_flat    = factor_gold.cast(dtypes.int).reshape(B * f_max)
+        gold_fac_oh      = gold_fac_flat.one_hot(100).cast(dtypes.float)  # (B*F_MAX, 100)
+        valid_flat       = factor_valid.cast(dtypes.float).reshape(B * f_max)
+
+        for k_aux, fac_logits_k in enumerate(factor_logits_history):
+            w_k_aux     = 1.0 + float(k_aux) / float(max(K - 1, 1))
+            fac_flat    = fac_logits_k.reshape(B * f_max, 100)
+            fac_lp      = fac_flat.log_softmax(axis=-1)
+            fac_nll     = -(fac_lp * gold_fac_oh).sum(axis=-1)     # (B*F_MAX,)
+            fac_masked  = fac_nll * valid_flat
+            fac_ce_k    = fac_masked.sum() / n_valid_factors
+            factor_aux_sum   = factor_aux_sum + fac_ce_k * w_k_aux
+            factor_aux_w_sum += w_k_aux
+        factor_aux_loss = factor_aux_sum / float(factor_aux_w_sum)
+
         # Calibration
         final_argmax = var_logits_history[-1].argmax(axis=-1).detach()
         eq           = (final_argmax == gold_values.cast(dtypes.int)).cast(dtypes.float)
@@ -882,8 +885,8 @@ def _compile_jit_fg_step_v100(
         cell_acc   = (eq_unobs.sum() / (unobs_2d.sum() + 1e-8)).detach()
         query_acc  = correct.mean().detach()
 
-        # Total: CE + calibration (factor-aux added outside JIT)
-        total_ce   = var_loss + aw * calib_loss
+        # Total: CE + factor-aux + calibration
+        total_ce   = var_loss + fw * factor_aux_loss + aw * calib_loss
         total_ce.backward()
 
         healthy = total_ce.isfinite().cast(dtypes.float)
@@ -906,12 +909,11 @@ def _compile_jit_fg_step_v100(
 
         opt.step()
 
-        # Return scalars + factor logits (for factor-aux outside JIT)
-        fac_logits_realized = [fl.realize() for fl in factor_logits_history]
         return (
             total_ce.realize(),
             healthy.realize(),
             var_loss.realize(),
+            factor_aux_loss.realize(),
             calib_loss.realize(),
             cell_acc.realize(),
             query_acc.realize(),
