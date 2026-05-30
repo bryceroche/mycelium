@@ -7,15 +7,11 @@
 
 ## Abstract
 
-We introduce the breathing transformer, a small (87M parameter, ~377MB) architecture that performs iterative reasoning by looping four shared transformer layers K times. Each iteration descends an energy landscape defined by the constraint structure of the input, yielding three equivalent descriptions: a learned RK4-stage ODE integrator, an instance of approximate belief propagation on a factor graph, and iterated modern Hopfield energy descent. On Sudoku, the architecture achieves 79% puzzle accuracy on easy puzzles at K=20, with puzzle accuracy exceeding independent-cell predictions by **seven orders of magnitude** — the empirical signature of joint MAP inference, distinct from per-variable classification.
+We introduce the breathing transformer, a small (87M parameter, ~377MB, phone-deployable) architecture that performs iterative reasoning by looping four shared transformer layers K times. Each iteration descends an energy landscape defined by the constraint structure of the input, yielding three equivalent descriptions: a learned RK4-stage ODE integrator, an instance of approximate belief propagation on a factor graph, and iterated modern Hopfield energy descent. On Sudoku, the architecture achieves 79% puzzle accuracy on easy puzzles at K=20, with puzzle accuracy exceeding independent-cell predictions by **seven orders of magnitude** — the empirical signature of joint MAP inference, distinct from per-variable classification.
 
-The architecture's iterative behavior is conditional on a precise design principle: **the breathing rhythm must match the underlying factor graph's topological symmetry**. Rotational breathing (π-cycled position encoding) succeeds on cyclic factor graphs (Sudoku); the same mechanism fails on tree-structured factor graphs at 9% chance accuracy. Topological staging — attention masks that progressively widen across breaths — restores belief-propagation behavior on trees, reaching 40-48% cell accuracy on synthetic arithmetic factor graphs with monotonic accuracy decline by DAG depth (the empirical mixing-time signature of message passing).
+The architecture's iterative benefit is conditional on a precise design principle: **the breathing rhythm must match the underlying factor graph's topological symmetry**. Rotational breathing (π-cycled position encoding) succeeds on cyclic factor graphs (Sudoku, 79%); the same mechanism fails on tree-structured factor graphs at 9% chance accuracy. Topological staging — attention masks that progressively widen across breaths — restores belief-propagation behavior on trees, reaching 40-48% cell accuracy on synthetic arithmetic factor graphs with monotonic accuracy decline by DAG depth (the empirical mixing-time signature of message passing). A learned compression bottleneck adds an additional 6-7 points when training instances share structural priors, with projection-based and codebook-based compression statistically indistinguishable.
 
-Compression-as-commitment (a learned waist bottleneck within each breath) adds an additional 6-7 percentage points but only when training data shares structural priors across instances; among compression structures, projection and codebook quantization are statistically indistinguishable at our sample sizes. We formalize this as the applicability condition for compression-based regularization.
-
-The breathing transformer cannot solve natural-language math problems alone (2.7% on GSM8K across 17 architectural variants) — the bottleneck is comprehension, not iteration. We propose a two-phase architecture: a larger parser maps natural language to a factor graph (Phase 1, one-shot), and the breathing transformer solves the factor graph via energy descent (Phase 2, iterative). Each phase uses parameters sized appropriately to its computational regime, eliminating the gradient conflict that limits monolithic approaches.
-
-The paper closes with four falsifiable predictions, each a concrete experiment testable in 1-2 weeks of work. The breathing transformer trades model size for thinking time; the framework predicts when iteration is the right architectural choice based on structural properties of the data.
+The same architecture cannot solve natural-language math problems alone (2.7% on GSM8K across 17 monolithic variants) — the bottleneck is comprehension, not iteration. We propose a two-phase decomposition (large parser one-shot, then small breathing transformer iteratively) and close with four falsifiable predictions, each a concrete experiment testable in 1-2 weeks of work. The framework predicts when iteration is the right architectural choice based on structural properties of the data.
 
 ---
 
@@ -135,33 +131,11 @@ The trade-off: on problems with no factors of a given type, the corresponding he
 
 ### 3.4 Waist bottleneck (conditional on shared topology)
 
-For variants that include compression (v101's projection waist, v103's VQ-VAE codebook waist), each breath includes an additional residual correction that forces commitment via a lossy bottleneck. The v101 projection version:
+Optional in v101 and v103, omitted in v98 and v100. Each breath includes an additional residual correction that forces commitment via a lossy bottleneck: the residual is projected to 512d, optionally quantized against a 32-entry shared codebook, and projected back to 1024d. The reconstruction is added to the residual via a LoRA-style zero-initialized gate, so the bottleneck has zero effect at step 0 and unlocks gradually through training. This warm-start preservation allows the bottleneck to be added to an already-trained backbone without destroying the existing solution.
 
-```
-# After Layer_0..Layer_3, before delta_gate update:
-waist = h @ W_compress      # (B, T, 1024) → (B, T, 512)
-waist = waist.gelu()
-recon = waist @ W_expand     # (B, T, 512) → (B, T, 1024)
-h_quant = h + delta_gate_quant[k] * recon
-# Then: state_{k+1} = state_k + delta_gate[k] * (h_quant - state_k)
-```
+The mechanism's purpose is to force the model to **commit** at each iteration. Information that doesn't survive the bottleneck is information the model has decided is not important at this breath. The lossy step IS the commitment mechanism.
 
-W_expand is zero-initialized so the bottleneck has zero effect at step 0. LoRA-style asymmetric unlock: gradient flows immediately through W_expand, then back through W_compress in subsequent steps. This warm-start preservation lets us add the bottleneck to an already-trained v100 baseline without destroying the existing solution.
-
-The v103 VQ-VAE variant replaces the projection round-trip with codebook quantization in the 512d space:
-
-```
-scores = waist @ codebook.T               # (B, T, 32) — match against 32 primitives
-weights = (scores / temperature).softmax(-1)
-quantized = weights @ codebook            # (B, T, 512) — in codebook span
-recon = quantized @ W_expand              # (B, T, 1024)
-```
-
-The 32 codebook entries are shared across all problems — topology-invariant compression. Reconstruction must lie in the span of 32 fixed primitives.
-
-§6.4 shows the projection and codebook variants both add 6-7pp on factor graphs, with no statistically significant difference between them (n=600). The codebook variant has the longer mixing time (still climbing at K=10 vs v101's plateau at K=8) and slightly better accuracy at the deepest DAG depths. The applicability condition (§8.3): compression helps when the data distribution has shared structural priors across instances.
-
-The waist is NOT present in v98 Sudoku or v100 factor graphs. Both produced strong results without it (79% on Sudoku, 40.7% on factor graphs at K=10). The waist is an addition that lifts factor-graph accuracy from 40.7% to ~47%, not a fundamental architectural requirement.
+Both v98 Sudoku and v100 factor graphs reach strong accuracy without the waist (79% and 40.7% respectively). The waist adds 6-7 percentage points on factor graphs (§6.4), conditional on training instances sharing structural priors across the dataset (the applicability condition formalized in §8.3). Within compression variants, projection-based (v101) and codebook-based (v103) implementations are statistically indistinguishable at n=600 — compression PRESENCE is load-bearing, compression SHAPE is interchangeable at this scale.
 
 ### 3.5 Constraint energy as training signal
 
@@ -334,6 +308,8 @@ Several components are already present (delta_gate, multi-stage, error estimator
 | 20 | **79.0%** | 97.6% | 6.5% | 83.3% | 0.0% | 76.2% | 0.71 |
 
 The constraint energy decays geometrically with characteristic rate ~0.5× per ~3 K — exactly what loopy BP predicts on a factor graph with cycles. This is the mathematical signature of the underlying inference operation. The puzzle-accuracy curve follows the energy curve, lagging slightly (you need MOST constraints satisfied before any puzzle is FULLY correct).
+
+**Figure 1.** Constraint energy decay across breaths on Sudoku, K-sweep at K ∈ {1, 3, 5, 8, 12, 15, 18, 20}. Observed mean violation (n=200 easy puzzles per K, blue points) with exponential fit E(K) ≈ 21·exp(-0.18K) overlaid (dashed line, R² > 0.99 on log-energy). The geometric decay rate of ~0.18 nats/breath is the empirical signature of loopy belief propagation on a factor graph with cycles; the rate parameter encodes the mixing time of message-passing on Sudoku's 27-clique structure. The accompanying puzzle accuracy curve (right axis, green) lags the energy curve by approximately the breaths required for marginal beliefs to commit to a unique configuration.
 
 **Per-breath convergence diagnostic.** For each of K=20 breaths, we measure Δₖ = average number of cells whose argmax prediction changed from breath k-1 to k.
 
