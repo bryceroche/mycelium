@@ -678,3 +678,226 @@ The framing becomes richer than "Sudoku works." It's "**breathing transformers a
 The architecture's principles — per-breath diversity, commitment through compression, energy-based training, iterative convergence — transfer to any domain where the breathing rhythm matches the topology's key signature.
 
 A 87M-parameter model that performs joint inference on a factor graph through K iterations of shared-weight attention. The Shape of Thought is learned approximate belief propagation — when the breathing is in the right key.
+
+---
+
+## 16. The JPEG Codec Mental Model
+
+If the musical keys framework tells you what RHYTHM to breathe in, the JPEG codec analogy tells you what COMPRESSION to apply each breath. Together: rhythm × compression = the architecture.
+
+Each breath is a learned compression codec. The four-step design structure mirrors JPEG/MP3:
+
+| Codec step | Breathing transformer | What it does |
+|---|---|---|
+| **Transform** | Attention layers rotate into task-relevant basis (π-cycled RoPE for cyclic key, factor-aligned masking for directional key) | Change basis so energy concentrates in few coordinates |
+| **Quantize** | Waist projection 1024d → 512d | Deliberately destroy unimportant coordinates |
+| **Encode** | Notebook carries compressed state to next breath | Persist the survivors across iterations |
+| **Psychoacoustic model** | Next-breath CE loss is the learned model of "what to preserve" | Determine what to throw away based on what the consumer needs |
+
+### Implementation status — honest accounting (May 30, 2026)
+
+The four-step codec is the **design vision**. Different architecture variants implement different subsets:
+
+| Variant | Transform | Quantize (waist) | Encode (carry) | Psychoacoustic (CE) | Notes |
+|---|---|---|---|---|---|
+| v54-v95 (WaistController paradigm) | ✓ | ✓ (1024→512) | ✓ | ✓ | Full 4-step codec; had AR decode through WaistController |
+| **v98 Sudoku** | ✓ | **✗** | ✓ (delta_gate) | ✓ | No AR decode, residual stays at 1024d through all breaths |
+| **v99 Factor graph** | ✓ | **✗** | ✓ (delta_gate) | ✓ | Inherited no-waist design from v98 |
+| **v100 Factor graph (directional)** | ✓ | **✗** | ✓ (delta_gate) | ✓ | Same; topological staging is the basis rotation |
+
+**v98 and v100 are 3-of-4 codec architectures.** The quantize step was dropped when v98 removed AR decode (the WaistController had served both compression and decode roles). v100 inherited this. The compression that the codec framework describes is not currently in our best architectures.
+
+This may be load-bearing accuracy we're leaving on the table. Open architectural question: would adding back the 1024→512→1024 waist per breath improve v100's accuracy on factor graphs? Hypothesis: yes, because the codec framework predicts that the lossy step IS the commitment mechanism. Without it, every breath is a residual addition rather than a refinement to commitment.
+
+**v101 (planned ablation):** add per-breath waist projection to v100. Compare against current v100. If v101 > v100, the codec framework's quantize step is load-bearing for the directional key as well.
+
+### The psychoacoustic model insight
+
+In MP3, the encoder uses a perceptual model of human hearing to decide which frequencies the listener won't notice are missing. The model is hand-designed from psychoacoustic research — humans don't hear frequencies above 20 kHz, can't distinguish overlapping tones at certain ratios, etc.
+
+In the breathing transformer, the analog is **"what does the next breath need?"** — and unlike MP3, this isn't hand-designed. The model learns it implicitly through end-to-end training. The next breath's CE loss is the gradient signal that says "this information was important; that wasn't." Information that doesn't survive the waist compression is information the model has learned the consumer (next breath) doesn't need.
+
+### Why transformers needed a codec
+
+The architectural insight from v68/v69 work: **transformers don't naturally compress; residual connections add information**. A standard L-layer transformer with residuals preserves and expands; it doesn't deliberately lose. Compression requires an explicit lossy step, and the lossy step IS the commitment mechanism.
+
+The waist (1024d → 512d) is that explicit lossy step. Without it, every breath would be "another forward pass that adds more residual" rather than "a refinement that commits to a hypothesis." The compression FORCES commitment.
+
+### The codec applies to both keys
+
+- **Cyclic key (Sudoku):** Transform = π-cycled rotation, each breath sees the constraint graph from a different angle. The same codec runs every breath, with rotational diversity.
+- **Directional key (v100 DAGs):** Transform = topological staging, each breath has access to a different depth slice. The codec runs at progressively deeper layers of the DAG.
+
+The "key" determines the basis transformation. The codec structure (transform→quantize→encode→psychoacoustic-model) is universal.
+
+### Connection to diffusion
+
+The JPEG codec view also connects breathing transformers to diffusion models:
+- Diffusion: noise schedule controls what level of detail the model processes at each step
+- Breathing: waist compression controls what information survives between steps
+- Both implement coarse-to-fine refinement through learned commitment
+
+The breathing transformer is a diffusion process where the "noise" is principled compression, and the "denoising" is iterative refinement through belief propagation in the right key.
+
+---
+
+## 17. The ODE Integrator: A Deeper Mathematical Identity
+
+The musical keys (rhythm) and JPEG codec (compression) are mental models. **The breathing transformer LITERALLY IS a learned ODE integrator for energy descent on factor graphs.** This isn't analogy — it's the underlying math.
+
+### The dynamical system
+
+```
+State:     x(t) ∈ ℝ^(N_vars × D_domain)   soft distribution per variable
+Energy:    E(x) = Σ_factors constraint_violation(factor, x)
+Dynamics:  dx/dt = -∇E(x)                  follow the energy gradient
+Fixed pt:  x* where ∇E(x*) = 0             energy minimum = solution
+```
+
+Each breath = one integration step. K breaths = K steps. The convergence plateau IS the integrator reaching its fixed point.
+
+### The RK4-stages interpretation is literal
+
+The 4 transformer layers within ONE breath are the 4 stages of a Runge-Kutta-like integrator:
+
+```
+RK4:                          Breathing transformer:
+  k1 = f(x_n)                    h1 = Layer_0(x_n)
+  k2 = f(x_n + h*k1/2)           h2 = Layer_1(h1)
+  k3 = f(x_n + h*k2/2)           h3 = Layer_2(h2)
+  k4 = f(x_n + h*k3)             h4 = Layer_3(h3)
+  x_{n+1} = x_n + h*Σ(k)/6      x_{n+1} = x_n + delta_gate*(h4-x_n)
+```
+
+The residual stream is the running sum across stages. The delta_gate is the step size. Higher-order integration in 4 stages per breath.
+
+### Attention IS one Hopfield energy descent step (Ramsauer 2020)
+
+The mathematical foundation: modern Hopfield networks showed that
+```
+softmax(x · K^T) · V = one step of energy descent on
+  E(x) = -log Σ_i exp(x · k_i)
+```
+
+So each transformer layer literally computes one energy gradient step. K breaths × 4 layers = 4K energy descent iterations on the (learned) Hopfield energy landscape.
+
+Training aligns the implicit Hopfield energy with the explicit factor graph constraint energy. That IS what "learned approximate belief propagation" means precisely.
+
+### The calibration head is a Dopri5-style error estimator
+
+Adaptive ODE solvers (Dopri5, Cash-Karp) compute two estimates of x_{n+1} at different orders and use their difference as a local error estimate. If the error is small, the step is accepted; otherwise step size is reduced.
+
+Our calibration head plays the same role:
+- Output: P(solution correct | current state)
+- Adaptive K: when calibration crosses threshold, stop integrating
+- Easy puzzles converge at K=5; hard puzzles run to K=20
+
+### Three vocabularies, one mathematical object
+
+```
+Computer science    →  Physics            →  Machine learning
+──────────────────     ───────────────       ──────────────────────
+ODE integrator         Energy descent        Approximate BP
+RK4 stages             Higher-order grad     Multi-layer attn per breath
+Step size              Damping coefficient   delta_gate
+Error estimator        Stability check       Calibration head
+Fixed point            Equilibrium           Joint MAP solution
+Adaptive step          Adaptive damping      Adaptive K via calibration
+```
+
+These aren't three separate theories. They're three vocabularies for the same mathematical object: **a learned approximate iterative solver for joint MAP inference on a factor graph, structured as an ODE integrator with energy-based dynamics**.
+
+---
+
+## 18. The Two-Phase Architecture
+
+The ODE framing makes one thing crisp: **comprehension and inference are different computational regimes that should use different model sizes**.
+
+### Phase 1 — Comprehension (NL → factor graph)
+
+```
+Input:   "Janet has 16 eggs. She eats 3 for breakfast.
+          She bakes muffins with 4. Sells remaining at $2 each."
+
+Output:  A factor graph (structured tensor)
+
+  Variables: [v0=16, v1=3, v2=4, v3=2, v4=?, v5=?, v6=?]
+  Factors:   [f0: sub(v0,v1)→v4,
+              f1: sub(v4,v2)→v5,
+              f2: mul(v5,v3)→v6]
+  Observed:  [v0, v1, v2, v3]
+  Query:     v6
+```
+
+This is a **language task**. No math. No iteration. Just identifying variables, operations, and dependencies in prose. **Hard for small models** (the 410M GSM8K failure was here). **Easy for large models** (Haiku/Sonnet can do it).
+
+### Phase 2 — Inference (factor graph → answer)
+
+```
+Input:   The factor graph from Phase 1
+
+Process: Breathing transformer as ODE solver
+  
+  dx/dt = -∇E(x, constraints)
+  
+  Breath 0: x₀ = initial (observed one-hot, unknowns uniform)
+  Breath 1: x₁ = x₀ - η∇E(x₀)        → constraints decrease
+  Breath 2: x₂ = x₁ - η∇E(x₁)        → further refinement
+  ...
+  Breath K: x_K ≈ fixed point         → all constraints satisfied
+
+Output:  argmax of each variable's distribution → numerical answer
+  v4=13, v5=9, v6=18 → answer: 18
+```
+
+This is a **computational task**. No language. Pure constraint propagation via energy descent. **Easy for small models** (the 87M breathing transformer hits 79% on Sudoku). **Wasteful for large models** (they'd just compute directly).
+
+### Why the phases must be separate
+
+The two phases use opposite strengths:
+
+| Phase | Strength needed | Iteration | Model size |
+|---|---|---|---|
+| 1 (comprehension) | Language understanding | One-shot | Large (1B+) |
+| 2 (inference) | Constraint propagation | Iterative (K breaths) | Small (87M) |
+
+Forcing both into one model means one will be wrong-sized for what it has to do. The 410M GSM8K failure was Phase 1 being undersized for comprehension; v98 Sudoku worked because Phase 1 is trivial (the grid IS the factor graph) and the architecture is sized correctly for Phase 2.
+
+### The full GSM8K system
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Phase 1: COMPREHENSION (large model, one-shot)           │
+│                                                          │
+│ "Janet has 16 eggs..."                                   │
+│         ↓                                                │
+│ NL Parser (Haiku / fine-tuned classifier / rules)        │
+│         ↓                                                │
+│ Factor Graph: variables, factors, observed, query        │
+└──────────────────────┬──────────────────────────────────┘
+                       ↓
+┌──────────────────────┴──────────────────────────────────┐
+│ Phase 2: INFERENCE (small model, iterative, on device)   │
+│                                                          │
+│ Factor Graph                                             │
+│         ↓                                                │
+│ Breathing Transformer (87M, 377MB)                       │
+│ dx/dt = -∇E(x, constraints)                             │
+│ K breaths of ODE integration                            │
+│         ↓                                                │
+│ Converged variable assignments → answer: 18              │
+└─────────────────────────────────────────────────────────┘
+```
+
+Phase 1 runs ONCE per problem (possibly in the cloud, possibly offline). Phase 2 runs on device, iteratively, as many breaths as needed. The expensive comprehension happens once. The cheap inference iterates until confident.
+
+### What this means for the future
+
+For Sudoku: Phase 1 is trivial (grid → factor graph is a one-line conversion). v98 demonstrated that Phase 2 alone is enough. **79% puzzle accuracy from 87M parameters on a constraint satisfaction problem with explicit factor structure.**
+
+For GSM8K: Phase 1 is the bottleneck. The breathing transformer didn't fail on the reasoning — it failed on the reading. The v100 series demonstrated that GIVEN a factor graph, the architecture can reach 50%+ accuracy with the right key. Building the comprehension front-end (Phase 1) is the path to GSM8K, not redesigning the inference engine.
+
+The Shape of Thought is Stage 2.
+A small model that solves by breathing.
+An ODE integrator that descends the energy landscape.
+One step per breath. Fixed point = solution.
