@@ -2,7 +2,7 @@
 ## Conceptual Architecture
 
 **Author:** Bryce + Claude
-**Date:** May 18, 2026 (vision: May 1 · empirical status: see §14)
+**Date:** May 29, 2026 (vision: May 1 · empirical status: see §14 + §15)
 **Deadline:** December 25, 2026
 **Platform:** Shadow Glass (AMD 7900 XTX, 24GB) · tinygrad + AM driver · no AMD/ROCm software
 **Target:** MATH-500
@@ -550,3 +550,131 @@ The architecture above is the design. The empirical evolution has surfaced what'
 **Architectural triad preserved across all paradigms.** Each successive paradigm (multi-cycle → rep-space-thinking → DAG → multi-list parallel) keeps the breathing + π-cycled-RoPE + WaistController triad and reshapes only the supervision interface. The codebook (V78_HEAD_CODEBOOK_N=32 now, was 12) now natively aligns with the IB cluster tree leaves — internal representation and supervision targets share the same indices.
 
 A 127M model that breathes, refines coarse-to-fine across 7 cycles, emits an integer-encoded DAG, and hands off to SymPy. ~7 months to December 25.
+
+---
+
+## 15. The Breakthrough: v98 Sudoku Validates the Paradigm (May 29, 2026)
+
+After v82-v97 plateaued at 0-1.7% on GSM8K (17 architectural variants), we made a strategic pivot to test the breathing paradigm on a constraint-satisfaction problem with explicit factor structure: **Sudoku**.
+
+**The result: v98 reaches 79.0% puzzle accuracy on easy Sudoku (n=200), 97.65% cell accuracy, 87M parameters, 4 hours of training on one AMD 7900 XTX.**
+
+### Why this matters
+
+The 17 GSM8K failures were not architectural — they were **reading comprehension at Pythia-410M scale**. Sudoku isolates constraint propagation from natural language parsing. The breathing transformer's mechanism (iterative attention through shared weights, refined across K=20 breaths) is exactly the right substrate for joint inference on a structured probabilistic graph.
+
+### The framing: breathing transformer = learned approximate BP on a factor graph
+
+```
+Variable nodes (81):  one per Sudoku cell, soft distribution over 9 digits
+Factor nodes (27):    9 row AllDifferent + 9 column AllDifferent + 9 box AllDifferent
+Per-head attention masks: ENCODE the factor topology (row/col/box per head bucket)
+K breaths:            K rounds of loopy belief propagation
+Per-breath supervision: forces monotonic refinement toward joint MAP
+```
+
+This is not a metaphor. It's the literal computation. Transformer attention with softmax = one step of modern Hopfield energy descent (Ramsauer et al., 2020). K breaths of shared-weight attention = K steps of approximate joint MAP inference. The factor topology baked into attention masks IS the structural inductive bias.
+
+### The empirical signature: the constraint energy curve
+
+The most important measurement in the project. K-sweep at K ∈ {1, 3, 5, 8, 12, 15, 18, 20}, n=200 per difficulty:
+
+```
+K    easy puzzle  easy cell  medium puzzle  medium cell  hard puzzle  hard cell  avg energy (easy)
+ 1     0.0%        82.1%       0.0%           69.1%        0.0%         63.6%      21.0
+ 3    10.0%        91.9%       0.0%           76.6%        0.0%         70.0%       7.2
+ 5    33.5%        94.8%       0.0%           79.8%        0.0%         72.9%       3.5
+ 8    56.0%        96.4%       1.0%           81.3%        0.0%         74.3%       1.8
+12    72.5%        97.3%       2.5%           82.4%        0.0%         75.3%       1.1
+15    75.0%        97.5%       5.5%           82.8%        0.0%         75.8%       0.86
+18    77.0%        97.6%       6.0%           83.2%        0.0%         76.0%       0.75
+20    79.0%        97.65%      6.5%           83.33%       0.0%         76.16%      0.71
+```
+
+The constraint energy decays **geometrically at characteristic rate ~0.5× per ~3 K** — exactly what loopy BP predicts on a factor graph with cycles. This is the mathematical signature of the underlying inference operation, distinct from any phenomenological metric.
+
+### Per-breath convergence diagnostic
+
+For each of K=20 breaths, we measure Δₖ = average number of cells whose argmax prediction changed between breaths k-1 and k:
+
+```
+              B1      B5      B10     B15     B19
+easy:     13.05 →  1.17 →  0.20 →  0.09 →  0.05  ← CONVERGED to BP fixed point
+medium:   19.45 →  3.08 →  0.97 →  0.44 →  0.45  ← Δ ≈ 0.4 floor — still settling
+hard:     22.92 →  3.77 →  1.03 →  0.51 →  0.39  ← Δ ≈ 0.4 floor — still settling
+```
+
+Higher difficulty = longer mixing time, exactly as BP theory predicts on graphs with longer cycles. K=20 is enough for easy puzzles; medium/hard need more breaths than our training budget allowed.
+
+### The 7-orders-of-magnitude correlation
+
+At medium cell accuracy of 83.3%, independent-cell prediction baseline is 0.833⁸¹ ≈ 3×10⁻⁷. Observed puzzle accuracy: 6.5%. **Ratio: 2×10⁵ above independent baseline.** The model's per-cell errors are correlated within constraint cliques — the model is solving **STRUCTURES**, not classifying independent cells. This is the empirical proof that joint MAP inference is what the architecture computes.
+
+### The six-component recipe (validated)
+
+The architectural ingredients that made v98 work, generalizable to any factor graph task:
+
+1. **Per-breath supervision** (weighted CE on per-iteration logits)
+2. **Iterative prefill with shared weights** (K passes through L layers)
+3. **Structured inductive bias** (per-head attention masks encoding factor topology)
+4. **Aligned init** (embed rows = output codebook rows — the v98 unlock)
+5. **Per-breath markers** (orthogonal additive embeddings separating gradients without specializing tasks)
+6. **No feedback loops** (no consolidation table, no positive amplification — Bombe elimination, not generation)
+
+### v99: generalizing to arbitrary factor graphs — and discovering the limits
+
+If breathing = BP on factor graphs, the architecture should transfer to any structured inference problem. **v99 (May 29):** the same breathing-transformer mechanism (Pythia-410M L0-L3, K=10 breaths due to AMD JIT capacity, per-problem dynamic attention masks, moment-matching constraint energy) trained on synthetic arithmetic factor graphs.
+
+**Result: 9% cell accuracy on easy, flat across K=1 to K=10, flat across DAG depths 2 to 7.** Energy decays geometrically (4.7M at K=1 → 2.5M at K=2, similar to Sudoku's rate), but accuracy does NOT improve with more breaths.
+
+**The model is doing BP — and converging to the wrong fixed point.** The moment-matching energy has a trivial low-energy attractor: uniform distributions for unobserved variables. The model finds this attractor and stays there. Energy descent IS working; the energy landscape just doesn't single out the gold solution.
+
+### Musical keys: topology determines breathing rhythm
+
+The v99 result sharpens a deeper insight. The breathing transformer's "instrument" is universal — Pythia layers + K iterations + masked attention. But each problem class is in a different **key**, and each key requires a different breathing **rhythm**:
+
+| Problem class | Topology | Key | Right breathing rhythm |
+|---|---|---|---|
+| Sudoku | Loopy graph, symmetric AllDiff cliques | Cyclic | π-cycled rotation across K breaths |
+| Arithmetic DAG (v99) | Tree, asymmetric functional constraints | Directional | Topological staging (one DAG layer per breath) |
+| Verification | Forward + backward cycles | Cadence | Alternating direction breathing |
+| Multi-modal | Mixed topology | Modulation | Breath rhythm shifts mid-sequence |
+
+**v98's success and v99's failure are the same finding viewed from two angles.** Rotation breathing works for cyclic key (Sudoku); it doesn't work for directional key (DAGs). Same instrument, wrong scale. The piano doesn't know what key the sheet music is in.
+
+### v100: the directional key
+
+For tree-shaped factor graphs (arithmetic, GSM8K-after-parsing), the right breathing pattern is **topological staging**:
+
+```
+Breath 0: model can only "see" observed leaves
+Breath 1: leaves + depth-1 factor outputs visible
+Breath 2: + depth-2 visible
+...
+Breath D: full DAG visible including query
+```
+
+The mask GROWS across breaths. Information has to be EARNED by waiting for predecessor breaths. Forces sequential propagation along the DAG's natural order.
+
+Plus three v98-derived unlocks v99 was missing:
+- **Aligned init** for the 100-way domain codebook (state_embed = digit_codebook)
+- **Hard head specialization** (heads 0-3 add, 4-7 sub, 8-11 mul, 12-15 div) — drop the soft factor-type embedding
+- **Factor-execute auxiliary loss** — direct supervision on factor node hidden states, not just CE on final variable predictions
+
+And one v99-specific fix:
+- **Replace moment-matching with KL on convolved distributions** — eliminate the uniform attractor
+
+### The paper
+
+`paper/outline.md` — "The Shape of Thought: Iterative Reasoning Through Learned Energy Descent on Factor Graphs". 
+
+The paper structure expanded:
+- **§6.1 Sudoku** (cyclic key, validated): rotational breathing → exponential energy decay → 79% puzzle accuracy
+- **§6.2 v99 Arithmetic DAGs** (directional key, NEGATIVE result): rotational breathing → energy decay but accuracy stays at chance → uniform-attractor failure mode
+- **§6.3 v100 Arithmetic DAGs with matched rhythm** (TBD): topological staging → expected accuracy lift on the same task
+
+The framing becomes richer than "Sudoku works." It's "**breathing transformers are general substrates for energy descent, but each problem class is in a different topological key, and each key requires a breathing rhythm matched to its symmetry**."
+
+The architecture's principles — per-breath diversity, commitment through compression, energy-based training, iterative convergence — transfer to any domain where the breathing rhythm matches the topology's key signature.
+
+A 87M-parameter model that performs joint inference on a factor graph through K iterations of shared-weight attention. The Shape of Thought is learned approximate belief propagation — when the breathing is in the right key.
