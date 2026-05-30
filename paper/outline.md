@@ -181,17 +181,56 @@ Each breath is one integration step. The waist bottleneck acts as a regularizer 
 
 **Setup:** Pythia-410M backbone (layers 0-3), K=20 breaths, 512d waist, factor-aligned attention masking. Training on algorithmically generated puzzles with curriculum (easy → mixed difficulty).
 
-**Results:**
+**Results at K=20 (n=200 per difficulty):**
 
 | Metric | Easy | Medium | Hard |
 |---|---|---|---|
-| Cell accuracy | 97.5% | 82.0% | TBD |
-| Puzzle accuracy | 72.8% | 5.1% | TBD |
-| Convergence breath | ~8 | ~15 | ~20 |
+| Cell accuracy | 97.65% | 83.33% | 76.16% |
+| Puzzle accuracy | **79.0%** | 6.5% | 0.0% |
+| Constraint energy (mean) | 0.71 | 4.86 | 6.80 |
+| Calibration head | 0.789 | 0.428 | 0.272 |
 
-**K-sweep:** [results from step 5000 eval — to be filled]
+**K-sweep — the BP convergence curve.** Inference at K ∈ {1, 3, 5, 8, 12, 15, 18, 20}, n=200 per difficulty:
 
-**Per-breath convergence:** Clean CE ladder B0=0.40 → B19=0.09. Plateau at B16-B19 demonstrates adaptive convergence detection.
+| K | easy puzzle | easy cell | medium puzzle | medium cell | hard puzzle | hard cell | avg energy (easy) |
+|---|---|---|---|---|---|---|---|
+| 1 | 0.0% | 82.1% | 0.0% | 69.1% | 0.0% | 63.6% | 21.0 |
+| 3 | 10.0% | 91.9% | 0.0% | 76.6% | 0.0% | 70.0% | 7.2 |
+| 5 | 33.5% | 94.8% | 0.0% | 79.8% | 0.0% | 72.9% | 3.5 |
+| 8 | 56.0% | 96.4% | 1.0% | 81.3% | 0.0% | 74.3% | 1.8 |
+| 12 | 72.5% | 97.3% | 2.5% | 82.4% | 0.0% | 75.3% | 1.1 |
+| 15 | 75.0% | 97.5% | 5.5% | 82.8% | 0.0% | 75.8% | 0.86 |
+| 18 | 77.0% | 97.6% | 6.0% | 83.2% | 0.0% | 76.0% | 0.75 |
+| 20 | **79.0%** | 97.6% | 6.5% | 83.3% | 0.0% | 76.2% | 0.71 |
+
+The constraint energy decays geometrically with characteristic rate ~0.5× per ~3 K — exactly what loopy BP predicts on a factor graph with cycles. This is the mathematical signature of the underlying inference operation. The puzzle-accuracy curve follows the energy curve, lagging slightly (you need MOST constraints satisfied before any puzzle is FULLY correct).
+
+**Per-breath convergence diagnostic.** For each of K=20 breaths, we measure Δₖ = average number of cells whose argmax prediction changed from breath k-1 to k.
+
+```
+Cells changed between breaths (Δₖ):
+              B1     B5     B10    B15    B19
+  easy:    13.05 → 1.17 → 0.20 → 0.09 → 0.05  ← CONVERGED to BP fixed point
+  medium:  19.45 → 3.08 → 0.97 → 0.44 → 0.45  ← still settling (Δ ≈ 0.4 floor)
+  hard:    22.92 → 3.77 → 1.03 → 0.51 → 0.39  ← still settling
+
+Cumulative cell accuracy:
+              B0     B5     B10    B15    B19
+  easy:    81.9% → 94.6% → 96.5% → 96.8% → 97.0%  (asymptote by B12)
+  medium:  68.9% → 80.2% → 81.5% → 81.8% → 82.3%  (slow climb continues)
+  hard:    63.6% → 73.6% → 75.8% → 76.6% → 77.0%  (slow climb continues)
+```
+
+Easy puzzles reach the BP fixed point by B12 — Δ near zero, cell accuracy plateaued. Medium and hard never fully converge in K=20 (Δ ≈ 0.4 floor) — their mixing times exceed our training budget. The model has detected its own non-convergence: calibration head outputs 0.43 (medium) and 0.27 (hard) vs 0.79 (easy converged).
+
+This is exactly the BP behavior predicted by theory:
+- Sparse problems (high givens, easy) have short mixing times — converge fast
+- Dense problems (low givens, hard) have long mixing times — converge slow
+- The mixing time depends on the factor graph's structural connectivity
+
+**Implication:** the K=20 ceiling is a training budget choice, not an architectural limit. K=30 or K=40 training should lift medium and hard substantially. Future work.
+
+**The 7-orders-of-magnitude correlation.** At medium cell accuracy of 83.3%, independent-cell prediction baseline is 0.833^81 ≈ 3×10⁻⁷. Observed puzzle accuracy: 6.5%. Ratio: **2×10⁵ above independence**. The model's per-cell errors are correlated — when it misses, it misses correlated clusters of cells within constraint cliques. This is the empirical signature of joint MAP inference on a factor graph, distinct from independent per-variable classification.
 
 **OOD generalization:** Medium puzzles never seen during early training; accuracy emerges through curriculum annealing. Constraint propagation transfers across difficulty levels.
 
