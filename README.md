@@ -678,3 +678,46 @@ The framing becomes richer than "Sudoku works." It's "**breathing transformers a
 The architecture's principles — per-breath diversity, commitment through compression, energy-based training, iterative convergence — transfer to any domain where the breathing rhythm matches the topology's key signature.
 
 A 87M-parameter model that performs joint inference on a factor graph through K iterations of shared-weight attention. The Shape of Thought is learned approximate belief propagation — when the breathing is in the right key.
+
+---
+
+## 16. The JPEG Codec Mental Model
+
+If the musical keys framework tells you what RHYTHM to breathe in, the JPEG codec analogy tells you what COMPRESSION to apply each breath. Together: rhythm × compression = the architecture.
+
+Each breath is a learned compression codec. The four-step structure mirrors JPEG/MP3:
+
+| Codec step | Breathing transformer | What it does |
+|---|---|---|
+| **Transform** | Attention layers rotate into task-relevant basis (π-cycled RoPE for cyclic key, factor-aligned masking for directional key) | Change basis so energy concentrates in few coordinates |
+| **Quantize** | Waist projection 1024d → 512d | Deliberately destroy unimportant coordinates |
+| **Encode** | Notebook carries compressed state to next breath | Persist the survivors across iterations |
+| **Psychoacoustic model** | Next-breath CE loss is the learned model of "what to preserve" | Determine what to throw away based on what the consumer needs |
+
+### The psychoacoustic model insight
+
+In MP3, the encoder uses a perceptual model of human hearing to decide which frequencies the listener won't notice are missing. The model is hand-designed from psychoacoustic research — humans don't hear frequencies above 20 kHz, can't distinguish overlapping tones at certain ratios, etc.
+
+In the breathing transformer, the analog is **"what does the next breath need?"** — and unlike MP3, this isn't hand-designed. The model learns it implicitly through end-to-end training. The next breath's CE loss is the gradient signal that says "this information was important; that wasn't." Information that doesn't survive the waist compression is information the model has learned the consumer (next breath) doesn't need.
+
+### Why transformers needed a codec
+
+The architectural insight from v68/v69 work: **transformers don't naturally compress; residual connections add information**. A standard L-layer transformer with residuals preserves and expands; it doesn't deliberately lose. Compression requires an explicit lossy step, and the lossy step IS the commitment mechanism.
+
+The waist (1024d → 512d) is that explicit lossy step. Without it, every breath would be "another forward pass that adds more residual" rather than "a refinement that commits to a hypothesis." The compression FORCES commitment.
+
+### The codec applies to both keys
+
+- **Cyclic key (Sudoku):** Transform = π-cycled rotation, each breath sees the constraint graph from a different angle. The same codec runs every breath, with rotational diversity.
+- **Directional key (v100 DAGs):** Transform = topological staging, each breath has access to a different depth slice. The codec runs at progressively deeper layers of the DAG.
+
+The "key" determines the basis transformation. The codec structure (transform→quantize→encode→psychoacoustic-model) is universal.
+
+### Connection to diffusion
+
+The JPEG codec view also connects breathing transformers to diffusion models:
+- Diffusion: noise schedule controls what level of detail the model processes at each step
+- Breathing: waist compression controls what information survives between steps
+- Both implement coarse-to-fine refinement through learned commitment
+
+The breathing transformer is a diffusion process where the "noise" is principled compression, and the "denoising" is iterative refinement through belief propagation in the right key.
