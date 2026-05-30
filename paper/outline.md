@@ -23,7 +23,7 @@ We propose an alternative: a small model (87M parameters) that ITERATES. Four tr
 
 The key insight: iterative attention with shared weights on a structured problem implements approximate belief propagation on the problem's factor graph. Each breath is one round of message passing. The representation converges to the factor graph's fixed point — the solution.
 
-We validate this on Sudoku, a canonical constraint satisfaction problem with explicit factor structure (27 AllDifferent constraints over 81 variables). The breathing transformer achieves 72.8% puzzle accuracy on unseen easy puzzles and generalizes to medium-difficulty puzzles never seen during training, all within 87M parameters and 377MB peak memory.
+We validate this on Sudoku, a canonical constraint satisfaction problem with explicit factor structure (27 AllDifferent constraints over 81 variables). The breathing transformer achieves 79.0% puzzle accuracy on unseen easy puzzles at K=20 and generalizes to medium-difficulty puzzles never seen during training, all within 87M parameters and 377MB peak memory.
 
 **Contributions:**
 
@@ -52,7 +52,7 @@ We validate this on Sudoku, a canonical constraint satisfaction problem with exp
 - Our distinction: standard transformer attention (not GNN) implements BP; factor topology as inductive bias via attention masking
 
 ### 2.3 Energy-Based Models and Attention
-- Modern Hopfield Networks (Ramsauer et al., 2020) — softmax attention as energy descent
+- Modern Hopfield Networks (Ramsauer et al., 2021) — softmax attention as energy descent
 - Hopfield networks (1982) — associative memory via energy minimization
 - Our contribution: K breaths = K steps of Hopfield energy descent; empirical demonstration of convergence
 
@@ -235,7 +235,7 @@ The model solves JOINT STRUCTURES, not independent cells. Errors are correlated 
 
 ### 5.1 Modern Hopfield Energy Descent
 
-Ramsauer et al. (2020) showed that transformer attention with softmax computes one step of energy descent on a modern Hopfield network:
+Ramsauer et al. (2021) showed that transformer attention with softmax computes one step of energy descent on a modern Hopfield network:
 
 ```
 E = -log Σ_i exp(x^T · k_i)
@@ -573,7 +573,7 @@ RK4:                              Breathing transformer:
 
 The residual stream accumulates intermediate gradient estimates across stages. The `delta_gate` parameter plays the role of step size h. The calibration head plays the role of an error estimator analogous to Dopri5's higher-order auxiliary integrator: predicting whether the current state has converged enough to halt integration. The convergence plateau observed on easy Sudoku puzzles (delta → 0 by breath 12, §6.1) is the integrator reaching its fixed point.
 
-This framing connects directly to Ramsauer et al. (2020): softmax attention IS one step of energy descent on a modern Hopfield network with energy E_H(x) = -log Σ_i exp(x^T k_i). Each transformer layer literally computes one gradient step on a learned Hopfield energy landscape. K breaths × 4 layers per breath = 4K Hopfield gradient steps. Training aligns the implicit Hopfield energy E_H with the explicit factor-graph energy E so what appears externally as "iterative attention" is mechanistically energy descent on a learned approximate factor-graph posterior.
+This framing connects directly to Ramsauer et al. (2021): softmax attention IS one step of energy descent on a modern Hopfield network with energy E_H(x) = -log Σ_i exp(x^T k_i). Each transformer layer literally computes one gradient step on a learned Hopfield energy landscape. K breaths × 4 layers per breath = 4K Hopfield gradient steps. Training aligns the implicit Hopfield energy E_H with the explicit factor-graph energy E so what appears externally as "iterative attention" is mechanistically energy descent on a learned approximate factor-graph posterior.
 
 Three vocabularies — ODE integrator (computer science), energy descent (statistical physics), approximate belief propagation (machine learning) — describe the same mathematical object. Each provides inference tools the others lack:
 - ODE integrator brings adaptive timestepping (the calibration head as error estimator), multistep methods (the notebook as gradient history), and implicit methods (fixed-point iteration within a breath).
