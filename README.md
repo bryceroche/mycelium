@@ -685,7 +685,7 @@ A 87M-parameter model that performs joint inference on a factor graph through K 
 
 If the musical keys framework tells you what RHYTHM to breathe in, the JPEG codec analogy tells you what COMPRESSION to apply each breath. Together: rhythm × compression = the architecture.
 
-Each breath is a learned compression codec. The four-step structure mirrors JPEG/MP3:
+Each breath is a learned compression codec. The four-step design structure mirrors JPEG/MP3:
 
 | Codec step | Breathing transformer | What it does |
 |---|---|---|
@@ -693,6 +693,23 @@ Each breath is a learned compression codec. The four-step structure mirrors JPEG
 | **Quantize** | Waist projection 1024d → 512d | Deliberately destroy unimportant coordinates |
 | **Encode** | Notebook carries compressed state to next breath | Persist the survivors across iterations |
 | **Psychoacoustic model** | Next-breath CE loss is the learned model of "what to preserve" | Determine what to throw away based on what the consumer needs |
+
+### Implementation status — honest accounting (May 30, 2026)
+
+The four-step codec is the **design vision**. Different architecture variants implement different subsets:
+
+| Variant | Transform | Quantize (waist) | Encode (carry) | Psychoacoustic (CE) | Notes |
+|---|---|---|---|---|---|
+| v54-v95 (WaistController paradigm) | ✓ | ✓ (1024→512) | ✓ | ✓ | Full 4-step codec; had AR decode through WaistController |
+| **v98 Sudoku** | ✓ | **✗** | ✓ (delta_gate) | ✓ | No AR decode, residual stays at 1024d through all breaths |
+| **v99 Factor graph** | ✓ | **✗** | ✓ (delta_gate) | ✓ | Inherited no-waist design from v98 |
+| **v100 Factor graph (directional)** | ✓ | **✗** | ✓ (delta_gate) | ✓ | Same; topological staging is the basis rotation |
+
+**v98 and v100 are 3-of-4 codec architectures.** The quantize step was dropped when v98 removed AR decode (the WaistController had served both compression and decode roles). v100 inherited this. The compression that the codec framework describes is not currently in our best architectures.
+
+This may be load-bearing accuracy we're leaving on the table. Open architectural question: would adding back the 1024→512→1024 waist per breath improve v100's accuracy on factor graphs? Hypothesis: yes, because the codec framework predicts that the lossy step IS the commitment mechanism. Without it, every breath is a residual addition rather than a refinement to commitment.
+
+**v101 (planned ablation):** add per-breath waist projection to v100. Compare against current v100. If v101 > v100, the codec framework's quantize step is load-bearing for the directional key as well.
 
 ### The psychoacoustic model insight
 
