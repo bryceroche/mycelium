@@ -109,7 +109,23 @@ def main():
                                n_max=N_MAX, f_max=F_MAX, seed=0)
     Tensor.training = False
 
+    def compute_dag_depth(rec):
+        """Longest path from observed leaves to query — the BP mixing time bound."""
+        obs = rec["observed_mask"]
+        fa = rec["factor_args"]
+        qi = rec["query_idx"]
+        depth = {i: 0 for i, o in enumerate(obs) if o == 1}
+        progress = True
+        while progress:
+            progress = False
+            for a1, a2, res in fa:
+                if a1 in depth and a2 in depth and res not in depth:
+                    depth[res] = max(depth[a1], depth[a2]) + 1
+                    progress = True
+        return depth.get(qi, -1)
+
     agg = {}
+    by_depth = {}
     sample_shown = 0
 
     t0 = time.time()
@@ -172,6 +188,25 @@ def main():
             agg[diff]["energy_sum"] += float(energy_np[b])
             agg[diff]["calib_sum"]  += float(calib_final[b])
 
+            depth = compute_dag_depth(rec)
+            if depth not in by_depth:
+                by_depth[depth] = {
+                    "n_puzzles": 0, "query_correct": 0,
+                    "n_unobs": 0, "n_correct_unobs": 0,
+                    "energy_sum": 0.0, "calib_sum": 0.0,
+                }
+            bd = by_depth[depth]
+            bd["n_puzzles"] += 1
+            if qi < N_MAX and pred_np[b, qi] == gold_np[b, qi]:
+                bd["query_correct"] += 1
+            for vi in range(min(nv, N_MAX)):
+                if obs_np[b, vi] == 0:
+                    bd["n_unobs"] += 1
+                    if pred_np[b, vi] == gold_np[b, vi]:
+                        bd["n_correct_unobs"] += 1
+            bd["energy_sum"] += float(energy_np[b])
+            bd["calib_sum"]  += float(calib_final[b])
+
             if sample_shown < args.show:
                 gold_list = rec["gold_values"]
                 obs_vals  = rec["observed_values"]
@@ -220,6 +255,21 @@ def main():
         query_overall = sum(r["query_acc"] * r["n_puzzles"] for r in out_rows) / n_total
         print()
         print(f"OVERALL: cell_acc={cell_overall:.4f}  query_acc={query_overall:.4f}  n={n_total}")
+
+    # DAG-depth diagnostic — BP mixing time vs graph depth.
+    # Prediction: convergence K ∝ DAG depth; at K=10, deeper graphs show partial convergence.
+    if by_depth:
+        print()
+        print("=== by DAG depth (BP mixing time diagnostic) ===")
+        for depth in sorted(by_depth.keys()):
+            bd = by_depth[depth]
+            n = bd["n_puzzles"]
+            cell_acc = bd["n_correct_unobs"] / max(bd["n_unobs"], 1)
+            query_acc = bd["query_correct"] / n
+            avg_energy = bd["energy_sum"] / n
+            avg_calib = bd["calib_sum"] / n
+            print(f"[depth={depth}] cell_acc={cell_acc:.4f} query_acc={query_acc:.4f} "
+                  f"avg_energy={avg_energy:.3f} avg_calib={avg_calib:.3f} n={n}")
 
 
 if __name__ == "__main__":
