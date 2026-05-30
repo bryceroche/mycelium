@@ -60,51 +60,156 @@ We validate this on Sudoku, a canonical constraint satisfaction problem with exp
 
 ## 3. Architecture
 
-### 3.1 The Breathing Loop
+The breathing transformer is small (87M parameters total: 35.7M shared transformer layers + 51.5M token embeddings) and structured around six load-bearing components. We describe each as implemented in our best-performing v100 / v101 variants on factor graphs and v98 on Sudoku. The components share infrastructure; differences between Sudoku and factor-graph variants are noted where they apply.
 
-The core mechanism: K iterations of 4 shared transformer layers over the same input.
+### 3.1 The breathing loop
 
-```
-For each breath k ∈ {0, 1, ..., K-1}:
-  x = embed(input) + breath_embed[k] + proj_up(notebook)
-  x = Layer_0(x) → Layer_1(x) → Layer_2(x) → Layer_3(x)
-  waist_k = proj_down(x)          # 1024d → 512d (commitment)
-  notebook = waist_k               # carry forward to next breath
-```
-
-**Key design principle:** every breath performs the SAME operation at a different iteration count. Shared weights ensure consistent gradient direction. Breath embeddings provide iteration awareness. The notebook carries accumulated state.
-
-### 3.2 Attention Diversity Mechanisms
-
-**For sequential tasks (arithmetic, language):** π-cycled RoPE provides per-head, per-breath phase offsets. Each of 16 heads sees the input from a different rotational angle. Ablation shows this is load-bearing: removal drops ARITH_HARD accuracy from 75% to 2%.
-
-**For structured tasks (Sudoku):** Per-breath orthogonal additive embeddings provide iteration diversity. Factor-aligned attention masking (row/column/box heads) provides structural diversity.
-
-**Unifying principle:** both mechanisms separate gradients across iterations of shared-weight inference, preventing representational collapse.
-
-### 3.3 The Waist Bottleneck
-
-Each breath ends with a compression: 1024d → 512d → notebook. This forces COMMITMENT — the model must distill its current understanding into half the dimensions. Information that doesn't survive compression is discarded.
-
-Empirical validation: waist-zero diagnostic shows CE rises 2.5-5.9 points when zeroed. Waist-swap diagnostic shows substituting one breath's waist for another's is WORSE than zeros. The waist is load-bearing and breath-specific.
-
-Rank analysis: the representation naturally compresses across breaths (rank_95: 263 → 192 → 157 → 135 → 118 → 103). Later breaths live on tighter manifolds. The 512d waist preserves 99% of energy per breath, compounding to 95% across 5 hops.
-
-### 3.4 Adaptive Convergence
-
-The per-breath delta (||waist_k - waist_{k-1}||) measures how much each breath changes the representation. A calibration head predicts P(solution_correct) from current state.
-
-Observed: breaths 16-19 plateau at delta ≈ 0.09 (from initial deltas of 0.4+). The model detects its own convergence. Easy problems converge in fewer breaths than hard problems — adaptive compute emerging from training.
-
-### 3.5 Inference Economics
+The core mechanism is K iterations of 4 shared transformer layers over the same input. The 4 layers are initialized from Pythia-410M's first four blocks (L0-L3) and remain shared across all K iterations:
 
 ```
-                   Parameters    Memory     Easy problem    Hard problem
-Standard 28-layer:  ~600M        ~3.6GB     1400 FLOPs      1400 FLOPs (fixed)
-Breathing 4-layer:   87M         ~377MB      972 FLOPs      6480 FLOPs (adaptive)
+state_0 = embed_input(problem)                           # initial residual
+for k in 0, 1, ..., K-1:
+    h = state_k + breath_embed[k]                        # per-breath marker
+    h = Layer_0(h, attn_mask_k)
+    h = Layer_1(h, attn_mask_k)
+    h = Layer_2(h, attn_mask_k)
+    h = Layer_3(h, attn_mask_k)
+    state_{k+1} = state_k + delta_gate[k] * (h - state_k)  # gated update
+final_logits = state_K @ output_codebook.T              # decode at end
 ```
 
-7× fewer parameters. 10× less memory. Faster on easy problems, slower (but correct) on hard problems. The architecture trades memory for compute — enabling deployment on phones, watches, and embedded devices where memory is the binding constraint.
+K = 20 on Sudoku, K = 10 on factor graphs (the upper limit determined by AMD JIT capacity). Every breath performs the SAME operation; gradients pull in a consistent direction because the output target is constant across breaths. Per-breath weighted CE supervision (weight_k = 1 + k/(K-1)) trains all breaths simultaneously, with later breaths weighted more.
+
+**Per-breath orthogonal additive embedding.** `breath_embed: (K, H)` is QR-orthonormalized at initialization with scale 0.5. Each breath gets a distinct orthogonal direction added to the residual; this separates gradients across iterations of shared-weight inference without specializing the underlying computation. Without per-breath markers, the K iterations collapse to equivalent updates and the per-breath ladder vanishes.
+
+**delta_gate per breath.** `delta_gate: (K,)` is a learnable per-breath scalar (initialized to 1.0) that controls the step size of each iteration. Functionally it plays the role of step size in an ODE integrator (§8.2). After training, the magnitude of delta_gate per breath measures the model's convergence: large early, small late as the system approaches its fixed point.
+
+### 3.2 Topological staging — the key innovation for tree topologies
+
+For directional factor graphs (arithmetic DAGs, dependency graphs), each breath's attention mask is restricted to variable positions at DAG depth ≤ k. The mask grows monotonically with k:
+
+```
+visible_at_breath_k = { v : DAG_depth(v) <= k }
+attn_mask_k[i, j] = bipartite_adjacency[i, j] AND
+                    visible_at_breath_k[i] AND
+                    visible_at_breath_k[j]
+```
+
+At breath 0, only observed leaves are visible to themselves. At breath 1, depth-1 factor outputs become visible. By breath K, the full DAG is exposed. This is what makes iteration NECESSARY on trees: information has to be earned by waiting for predecessor breaths, mirroring exact BP's leaves → query message flow.
+
+The mask is dynamic per problem (factor graphs have varying topology) but the DAG depth assignment is precomputed in the data loader. This adds negligible cost — the per-batch mask construction is one numpy outer product per breath, vectorized.
+
+For cyclic factor graphs (Sudoku), topological staging is not used. There is no DAG ordering on a cyclic graph; the analogous mechanism is per-head π-cycled RoPE, which provides a different rotational viewing angle per breath. The two mechanisms (rotational diversity vs. topological staging) are key-specific — see §8.1.
+
+### 3.3 Factor-aligned attention masking
+
+Heads are hardwired to specific factor types at initialization. For Sudoku's 27 AllDifferent factors over 81 cells, the 16 attention heads are partitioned:
+
+```
+Heads 0-4:   row factors    (5 heads × 9 row constraints)
+Heads 5-9:   col factors    (5 heads × 9 col constraints)
+Heads 10-14: box factors    (5 heads × 9 box constraints)
+Head 15:     global         (1 head, no mask — cross-factor reasoning)
+```
+
+For factor graphs with arithmetic factors, the partition is by operation type:
+
+```
+Heads 0-3:   add factors only
+Heads 4-7:   sub factors only
+Heads 8-11:  mul factors only
+Heads 12-15: div factors only
+```
+
+Each head's attention mask blocks edges that don't match its assigned factor type. The model learns the MESSAGE-PASSING FUNCTION within each factor type, not WHICH factors exist (that is given). This hardwiring is critical: empirical comparison of hard head specialization (v100/v101/v103) against soft factor-type embedding (an earlier variant) showed the hardwired version reaches a working architecture 5× faster, with cleaner per-breath ladder formation.
+
+The trade-off: on problems with no factors of a given type, the corresponding heads are idle. This is acceptable because the alternative (heads learn their own specialization) creates gradient ambiguity that empirically prevents the architecture from working at all.
+
+### 3.4 Waist bottleneck (conditional on shared topology)
+
+For variants that include compression (v101's projection waist, v103's VQ-VAE codebook waist), each breath includes an additional residual correction that forces commitment via a lossy bottleneck. The v101 projection version:
+
+```
+# After Layer_0..Layer_3, before delta_gate update:
+waist = h @ W_compress      # (B, T, 1024) → (B, T, 512)
+waist = waist.gelu()
+recon = waist @ W_expand     # (B, T, 512) → (B, T, 1024)
+h_quant = h + delta_gate_quant[k] * recon
+# Then: state_{k+1} = state_k + delta_gate[k] * (h_quant - state_k)
+```
+
+W_expand is zero-initialized so the bottleneck has zero effect at step 0. LoRA-style asymmetric unlock: gradient flows immediately through W_expand, then back through W_compress in subsequent steps. This warm-start preservation lets us add the bottleneck to an already-trained v100 baseline without destroying the existing solution.
+
+The v103 VQ-VAE variant replaces the projection round-trip with codebook quantization in the 512d space:
+
+```
+scores = waist @ codebook.T               # (B, T, 32) — match against 32 primitives
+weights = (scores / temperature).softmax(-1)
+quantized = weights @ codebook            # (B, T, 512) — in codebook span
+recon = quantized @ W_expand              # (B, T, 1024)
+```
+
+The 32 codebook entries are shared across all problems — topology-invariant compression. Reconstruction must lie in the span of 32 fixed primitives.
+
+§6.4 shows the projection and codebook variants both add 6-7pp on factor graphs, with no statistically significant difference between them (n=600). The codebook variant has the longer mixing time (still climbing at K=10 vs v101's plateau at K=8) and slightly better accuracy at the deepest DAG depths. The applicability condition (§8.3): compression helps when the data distribution has shared structural priors across instances.
+
+The waist is NOT present in v98 Sudoku or v100 factor graphs. Both produced strong results without it (79% on Sudoku, 40.7% on factor graphs at K=10). The waist is an addition that lifts factor-graph accuracy from 40.7% to ~47%, not a fundamental architectural requirement.
+
+### 3.5 Constraint energy as training signal
+
+The factor-graph constraint energy is computed differentiably from the soft variable distributions and added to the loss alongside the per-breath CE:
+
+**Sudoku (AllDifferent factors).** For each row, column, and box:
+
+```
+E_row(probs) = Σ_d (Σ_cells_in_row probs[cell, d] - 1)^2
+E_total = Σ_rows E_row + Σ_cols E_col + Σ_boxes E_box
+```
+
+The sum of probabilities for each digit over each clique should equal 1 (each digit appears once). Squared deviation measures violation. Energy is 0 when constraints are exactly satisfied.
+
+**Arithmetic factor graphs (functional factors).** For each factor with operation `op` and arguments arg1, arg2 producing result:
+
+```
+expected_result_dist = op_convolve(softmax(logits[arg1]), softmax(logits[arg2]), op)
+actual_result_dist = softmax(logits[result])
+E_factor = KL(actual_result_dist || expected_result_dist)
+```
+
+The convolution computes the expected distribution of `op(arg1, arg2)` given the soft distributions of the arguments. KL divergence measures how far the model's prediction is from this constraint. v103 uses this exact KL energy (computed in numpy, outside the JIT backward, as a diagnostic). v100/v101 use a moment-matching approximation (mean and variance match instead of full distribution match) for tractability — though this has the uniform-distribution attractor problem described in §6.2.
+
+The energy is observed to decay geometrically across breaths on Sudoku (21.0 at K=1 → 0.71 at K=20, rate ~0.5× per ~3 breaths) and on factor graphs. The decay is the empirical signature of energy descent (§4.2, §8.2).
+
+### 3.6 Adaptive convergence
+
+A calibration head predicts P(solution correct | current state) from the pooled residual at each breath:
+
+```
+calib_k = sigmoid(pool(state_k) @ W_calib + b_calib)
+```
+
+Supervision: target_k = 0.5 + (correct - 0.5) × (k/(K-1)), where `correct` is the ground-truth indicator (detached from backbone gradient). Early breaths target 0.5 (uncertain); late breaths target the actual correctness signal. The detached supervision prevents the calibration signal from corrupting the backbone.
+
+The trained calibration head provides three functions:
+1. **Confidence reporting** at inference time (useful for downstream systems that can defer uncertain cases).
+2. **Adaptive K** (future extension): when calib_k exceeds a threshold, halt iteration. Easy puzzles converge at K=5; hard puzzles run to K=20.
+3. **Error estimation** in the ODE-integrator framing (§8.2): analogous to Dopri5's auxiliary integrator providing local error estimates.
+
+On v98 Sudoku, calibration reaches 0.79 on easy puzzles at K=20 (committed) and 0.27 on hard (model knows it hasn't converged). The asymmetry tracks per-puzzle convergence — the model's self-assessment is well-calibrated to its actual accuracy.
+
+### 3.7 Inference economics
+
+```
+                     Parameters    Memory    Easy problem    Hard problem
+Standard 28-layer:    ~600M       ~3.6GB    1400 FLOPs      1400 FLOPs (fixed)
+Breathing 4-layer:    87M         ~377MB     972 FLOPs      6480 FLOPs (adaptive)
+```
+
+7× fewer parameters. 10× less memory. The architecture trades memory for compute — enabling deployment on phones, watches, and embedded devices where memory is the binding constraint while compute is plentiful.
+
+The adaptive compute pattern (easy puzzles consume fewer breaths) emerges from training without explicit per-problem K-selection. With adaptive K halting (§3.6), the easy/hard FLOPs gap widens further: easy problems halt at K=5 (~700 FLOPs), hard problems run to K=20 (~5800 FLOPs). The model spends compute proportional to problem difficulty.
+
+Combined with a Phase 1 parser (§8.4) for natural-language tasks, the full system is ~500MB on disk: ~250MB for the parser (T5-small) and ~377MB for the breathing transformer. Phase 1 runs once per problem; Phase 2 iterates as deeply as needed. This compute split matches the natural cost structure of decomposable reasoning problems.
 
 ---
 
