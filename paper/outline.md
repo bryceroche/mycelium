@@ -234,7 +234,154 @@ This is exactly the BP behavior predicted by theory:
 
 **OOD generalization:** Medium puzzles never seen during early training; accuracy emerges through curriculum annealing. Constraint propagation transfers across difficulty levels.
 
-### 6.2 Templated Arithmetic (Prior Results)
+### 6.2 Factor graphs with rotational breathing — the wrong key
+
+The Sudoku result raised an immediate question: does the breathing-as-BP framework transfer to arbitrary factor graphs? We generated 50,000 synthetic arithmetic factor graphs — DAGs of 3-8 variables connected by 2-5 arithmetic operations (add/sub/mul/div), with values in [0, 99]. The same Pythia-410M backbone, the same K=10 breaths, the same per-breath supervision pattern, the same π-cycled rotational breathing that worked on Sudoku.
+
+The architecture failed completely.
+
+**Results (n=600, K=10 on the test set):**
+
+| Difficulty | Cell accuracy | Query accuracy |
+|---|---|---|
+| Easy (n_vars=3-4) | 9.4% | 10.0% |
+| Medium (n_vars=5-6) | 8.1% | 13.1% |
+| Hard (n_vars=7-8) | 9.3% | 0.0% |
+
+Cell accuracy is at chance floor (1/100 = 1%, model gets ~9× above chance from observed cells alone). Query accuracy — the meaningful metric, measured on the unobserved variable the problem asks about — is essentially random.
+
+**Yet the underlying BP dynamics ARE working.** The K-sweep on v99's final checkpoint shows constraint energy decaying geometrically across breaths — the signature pattern that worked on Sudoku:
+
+| K | Cell accuracy | Constraint energy |
+|---|---|---|
+| 1 | 8.3% | 4.4M |
+| 2 | 8.2% | 2.5M (47% reduction) |
+| 5 | 8.4% | 1.1M |
+| 10 | 9.4% | 0.7M |
+
+The model is performing iterative inference. Each breath reduces energy by ~50%. But the accuracy is flat: **K=1 ≈ K=10 ≈ chance**.
+
+**Two further diagnostics confirm the failure mode is structural:**
+
+First, the per-breath CE ladder is **flat across breaths**. On v99 at step 2000:
+```
+per_breath_ce[B0..B9]: 1.96 1.94 1.92 1.91 ... 1.90 1.89 1.89 1.89
+```
+B0 to B9 differ by only 0.07 — the model converges to the same output regardless of which breath we read. On Sudoku at step 200, the corresponding ladder was B0=0.99 → B14=0.60 (Δ=0.39). The breathing isn't producing iterative refinement on factor graphs.
+
+Second, no depth correlation. K=10 cell accuracy stratified by DAG depth:
+```
+depth=2: 8.9%   depth=4: 9.9%   depth=6: 9.0%
+depth=3: 8.1%   depth=5: 6.3%   depth=7: 8.2%
+```
+Completely flat. On Sudoku, the equivalent metric showed monotonic decline with mixing-time complexity. On factor graphs, no signal.
+
+**The diagnosis: rotational breathing is wrong for tree-structured factor graphs.** Sudoku's cyclic factor graph has rotational symmetry — each cell appears in three overlapping cliques (row, column, box), and information must propagate around cycles. The π-cycled RoPE provides a different "viewing angle" each breath, which is exactly what loopy BP needs.
+
+Arithmetic DAGs have no rotational symmetry. Information flows in one direction, leaf → query. Rotating the input doesn't reveal new constraint paths because there are no cycles to rotate around. The model correctly determines that additional breaths add no useful information and converges to a uniform-ish wrong fixed point — energy decays by the variance-matching loss being satisfied at any broad distribution, while the gold values remain unidentified.
+
+**Compression-as-commitment is conditional on structural sharing.** This is the failure mode of v99 viewed from a different angle: the model learns instance-specific compressions because each factor graph has a different topology, and those compressions don't transfer to test instances. We return to this in §6.4.
+
+### 6.3 Topological staging — the right key for trees
+
+If rotation is wrong for trees, what's the right breathing pattern? The answer follows from BP theory: on a tree, exact belief propagation converges in O(depth) messages, with information flowing from leaves toward the query. The right breathing rhythm should mirror this — each breath should process one additional layer of the DAG.
+
+**The v100 architecture introduced five changes to the v99 baseline:**
+
+1. **Topological staging masks** — Breath k sees variable positions up to DAG depth k. The mask grows across breaths; earlier breaths cannot "see" deep structure until predecessors have committed.
+
+2. **Aligned init** — For the 100-way domain codebook, initialize the variable state embedding such that observed value k projects directly to logit k at step 0. The model only learns the *factor computation*, not the projection.
+
+3. **Hard head specialization** — Assign 4 attention heads per operation type: heads 0-3 process add edges, 4-7 sub, 8-11 mul, 12-15 div. Each head has a single, structurally-determined job.
+
+4. **Factor-execute auxiliary loss** — Direct supervision on factor node hidden states: after seeing the two argument variables, the factor node should encode the gold result. Bypasses the slow discovery via main CE alone.
+
+5. **KL energy on convolved distributions** — Replace the moment-matching energy (which has a uniform-distribution attractor) with exact convolution + KL divergence between predicted and expected result distributions.
+
+**Results (n=600, K-sweep on final ckpt):**
+
+| K | Overall cell | K=10 vs K=1 gap |
+|---|---|---|
+| 1 | 22.8% | — |
+| 3 | 37.8% | +15.0pt |
+| 5 | 40.1% | +17.3pt |
+| 8 | 40.7% | +17.9pt |
+| 10 | 40.7% | +17.9pt |
+
+**Three BP signatures are now present:**
+
+**Signature 1: K=10 outperforms K=1 by 17.9 points.** Breathing is doing real work. The accuracy gap is the empirical evidence that iterative inference is engaged.
+
+**Signature 2: Per-breath CE ladder forms.** At training step 2000, B0=1.6 → B9=1.4 (Δ=0.22); by step 5000, Δ=0.5-0.6 consistently. The model produces progressively refined outputs across breaths.
+
+**Signature 3: Depth correlation appears.** Stratified by DAG depth at K=10:
+
+```
+Depth   Cell accuracy
+  2      48.4%   ← shallow chains converge cleanly
+  3      44.6%
+  4      43.5%
+  5      40.0%
+  6      35.2%
+  7      28.2%   ← deepest chains hardest to propagate
+```
+
+Monotonic decline with depth — exactly what BP theory predicts. Deeper DAGs require more message-passing hops; with K=10 hops available, depth-7 chains can't fully propagate, and accuracy degrades smoothly with structural complexity. This is the **mixing-time signature** of message-passing inference, measurable per-instance through DAG depth.
+
+**Compare to v99 at K=10 (flat, ~9% across all depths).** The structural change from rotational to topological breathing converts a non-functional architecture into a working BP solver on the same data.
+
+### 6.4 Compression as commitment — type doesn't matter, presence does
+
+Given a working inference architecture (v100), we tested whether the JPEG-codec-style compression that we hypothesized was load-bearing (§3, §16 of the supplementary) actually contributes to factor-graph performance. Two compression mechanisms were compared as residual additions to the v100 backbone:
+
+- **v101 (projection waist):** standard 1024 → 512 → 1024 LoRA-style bottleneck. Compression is via dimensionality reduction.
+- **v103 (VQ-VAE):** 1024 → 512 encoder, then soft codebook match against 32 shared 512d primitives, then 512 → 1024 decoder. Compression is via codebook quantization.
+
+Both architectures warm-start from v100's final checkpoint and train for 3000 additional steps. The codebook is shared across all problems and trained end-to-end.
+
+**Results (n=600, K=10):**
+
+| Architecture | Compression | Overall cell | K=1 cell | K=10 vs K=1 gap |
+|---|---|---|---|---|
+| v100 | None | 40.7% | 22.8% | +17.9pt |
+| v101 | Projection (1024→512→1024) | 47.6% | 25.9% | +21.7pt |
+| v103 | VQ-VAE (32-entry codebook in 512d) | 46.6% | 23.9% | +22.8pt |
+
+**Compression adds 6-7 points** over the no-compression baseline. Both architectures show this lift. The K=1 → K=10 gap also widens with compression — the bottleneck doesn't just improve absolute accuracy, it amplifies the benefit of additional breaths.
+
+**The choice of compression structure is not statistically distinguishable at n=600.** Testing v101 (47.57%) against v103 (46.61%):
+- Standard error of difference: SE = √(p̄(1−p̄)(2/n)) ≈ 2.88pp
+- z = (47.57 − 46.61) / 2.88 = 0.33
+- p ≈ 0.74
+
+The 1pp gap between projection and codebook compression is consistent with noise. The clean finding is that **compression-as-commitment is the load-bearing mechanism; the structure of the compression (projection vs codebook) is interchangeable at this scale.**
+
+**The codebook does show one architectural advantage:** at the deepest DAGs, where rotational propagation chains are longest, v103 maintains accuracy slightly better than v101:
+
+```
+Depth   v100    v101    v103
+  6     35.2%   43.5%   43.9%
+  7     28.2%   36.9%   37.3%
+```
+
+The codebook's topology-invariant compression (32 shared primitives that all problems must use) shows a small edge where memorization of instance-specific patterns is hardest. The gap is below statistical significance at n=79 per cell, but the direction is consistent with theory.
+
+### Summary: rhythm × topology determines whether breathing works
+
+The three preceding sections form a single empirical story relating breathing rhythm to graph topology:
+
+|                      | **Cyclic graph (Sudoku)** | **Tree graph (DAG)** |
+|----------------------|-------------------------|---------------------|
+| **Rotational rhythm** | v98 ✓ (79% puzzle, exponential energy decay) | v99 ✗ (9% chance, flat ladder, no depth correlation) |
+| **Topological rhythm** | (future work — see §9) | v100/v101/v103 ✓ (40-48% cell, +18pt K-sweep gap, depth-correlated) |
+
+The diagonal entries succeed; the off-diagonal entry fails. Both mechanisms produce **constraint energy decay across breaths** — that is, both engage the underlying BP machinery. The difference is whether that descent converges to the gold solution (diagonal) or to a uniform-distribution wrong fixed point (off-diagonal).
+
+The empty cell is a testable prediction. BP theory says topological staging requires a DAG ordering; cyclic graphs do not admit such ordering naturally. We predict that topological breathing on Sudoku would fail or, at best, reduce to rotational breathing under some ad-hoc ordering choice. Testing this is left to future work.
+
+The findings refine the JPEG-codec framework (§3.3, supplementary §16). Compression-as-commitment is real and adds 6-7 points consistently, but it is **conditional on the breathing rhythm matching the underlying graph topology**. Without that match (v99), no amount of compression helps. With that match (v100→v101/v103), the compression provides clean additional lift.
+
+### 6.5 Templated Arithmetic (Prior Results)
 
 **Setup:** Same Pythia-410M backbone, K=8 breaths, π-cycled RoPE.
 
@@ -249,9 +396,13 @@ This is exactly the BP behavior predicted by theory:
 
 **The 73-point ablation:** Removing π-cycled RoPE drops ARITH_HARD from 75% to 2%. This is the single largest ablation effect, demonstrating that per-breath attention diversity is the load-bearing mechanism.
 
-### 6.3 GSM8K Natural Language (Negative Result)
+### 6.6 GSM8K Natural Language (Negative Result, Motivating the Two-Phase Architecture)
 
-17 architectural variants tested. Maximum accuracy: 2.7%. The ceiling is natural language comprehension at 410M scale, not architectural limitation. The breathing transformer cannot parse complex English into mathematical structure, but CAN execute multi-step computation once the structure is provided. This cleanly separates the comprehension problem from the reasoning problem.
+17 architectural variants tested across three months of iteration. Maximum end-to-end accuracy on GSM8K: 2.7%. The ceiling is natural language comprehension at the 410M scale, not architectural limitation of the breathing transformer.
+
+This is consistent with our §6.2-§6.4 findings: the breathing transformer **cannot** parse complex English into mathematical structure (a one-shot language task requiring world knowledge), but **can** execute multi-step computation once that structure is provided as a factor graph (an iterative computational task that matches the architecture's strengths).
+
+This motivates a two-phase architecture (developed in §8.3): Phase 1 uses a larger model (Haiku via distillation, or a similar parser) to convert NL → factor graph in one shot; Phase 2 (the breathing transformer at 87M parameters) solves the factor graph via energy descent. The same compute split that makes Sudoku tractable (the grid IS the factor graph — Phase 1 is trivial) generalizes to GSM8K by externalizing the comprehension to a larger model.
 
 ---
 
