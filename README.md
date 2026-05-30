@@ -738,3 +738,166 @@ The JPEG codec view also connects breathing transformers to diffusion models:
 - Both implement coarse-to-fine refinement through learned commitment
 
 The breathing transformer is a diffusion process where the "noise" is principled compression, and the "denoising" is iterative refinement through belief propagation in the right key.
+
+---
+
+## 17. The ODE Integrator: A Deeper Mathematical Identity
+
+The musical keys (rhythm) and JPEG codec (compression) are mental models. **The breathing transformer LITERALLY IS a learned ODE integrator for energy descent on factor graphs.** This isn't analogy — it's the underlying math.
+
+### The dynamical system
+
+```
+State:     x(t) ∈ ℝ^(N_vars × D_domain)   soft distribution per variable
+Energy:    E(x) = Σ_factors constraint_violation(factor, x)
+Dynamics:  dx/dt = -∇E(x)                  follow the energy gradient
+Fixed pt:  x* where ∇E(x*) = 0             energy minimum = solution
+```
+
+Each breath = one integration step. K breaths = K steps. The convergence plateau IS the integrator reaching its fixed point.
+
+### The RK4-stages interpretation is literal
+
+The 4 transformer layers within ONE breath are the 4 stages of a Runge-Kutta-like integrator:
+
+```
+RK4:                          Breathing transformer:
+  k1 = f(x_n)                    h1 = Layer_0(x_n)
+  k2 = f(x_n + h*k1/2)           h2 = Layer_1(h1)
+  k3 = f(x_n + h*k2/2)           h3 = Layer_2(h2)
+  k4 = f(x_n + h*k3)             h4 = Layer_3(h3)
+  x_{n+1} = x_n + h*Σ(k)/6      x_{n+1} = x_n + delta_gate*(h4-x_n)
+```
+
+The residual stream is the running sum across stages. The delta_gate is the step size. Higher-order integration in 4 stages per breath.
+
+### Attention IS one Hopfield energy descent step (Ramsauer 2020)
+
+The mathematical foundation: modern Hopfield networks showed that
+```
+softmax(x · K^T) · V = one step of energy descent on
+  E(x) = -log Σ_i exp(x · k_i)
+```
+
+So each transformer layer literally computes one energy gradient step. K breaths × 4 layers = 4K energy descent iterations on the (learned) Hopfield energy landscape.
+
+Training aligns the implicit Hopfield energy with the explicit factor graph constraint energy. That IS what "learned approximate belief propagation" means precisely.
+
+### The calibration head is a Dopri5-style error estimator
+
+Adaptive ODE solvers (Dopri5, Cash-Karp) compute two estimates of x_{n+1} at different orders and use their difference as a local error estimate. If the error is small, the step is accepted; otherwise step size is reduced.
+
+Our calibration head plays the same role:
+- Output: P(solution correct | current state)
+- Adaptive K: when calibration crosses threshold, stop integrating
+- Easy puzzles converge at K=5; hard puzzles run to K=20
+
+### Three vocabularies, one mathematical object
+
+```
+Computer science    →  Physics            →  Machine learning
+──────────────────     ───────────────       ──────────────────────
+ODE integrator         Energy descent        Approximate BP
+RK4 stages             Higher-order grad     Multi-layer attn per breath
+Step size              Damping coefficient   delta_gate
+Error estimator        Stability check       Calibration head
+Fixed point            Equilibrium           Joint MAP solution
+Adaptive step          Adaptive damping      Adaptive K via calibration
+```
+
+These aren't three separate theories. They're three vocabularies for the same mathematical object: **a learned approximate iterative solver for joint MAP inference on a factor graph, structured as an ODE integrator with energy-based dynamics**.
+
+---
+
+## 18. The Two-Phase Architecture
+
+The ODE framing makes one thing crisp: **comprehension and inference are different computational regimes that should use different model sizes**.
+
+### Phase 1 — Comprehension (NL → factor graph)
+
+```
+Input:   "Janet has 16 eggs. She eats 3 for breakfast.
+          She bakes muffins with 4. Sells remaining at $2 each."
+
+Output:  A factor graph (structured tensor)
+
+  Variables: [v0=16, v1=3, v2=4, v3=2, v4=?, v5=?, v6=?]
+  Factors:   [f0: sub(v0,v1)→v4,
+              f1: sub(v4,v2)→v5,
+              f2: mul(v5,v3)→v6]
+  Observed:  [v0, v1, v2, v3]
+  Query:     v6
+```
+
+This is a **language task**. No math. No iteration. Just identifying variables, operations, and dependencies in prose. **Hard for small models** (the 410M GSM8K failure was here). **Easy for large models** (Haiku/Sonnet can do it).
+
+### Phase 2 — Inference (factor graph → answer)
+
+```
+Input:   The factor graph from Phase 1
+
+Process: Breathing transformer as ODE solver
+  
+  dx/dt = -∇E(x, constraints)
+  
+  Breath 0: x₀ = initial (observed one-hot, unknowns uniform)
+  Breath 1: x₁ = x₀ - η∇E(x₀)        → constraints decrease
+  Breath 2: x₂ = x₁ - η∇E(x₁)        → further refinement
+  ...
+  Breath K: x_K ≈ fixed point         → all constraints satisfied
+
+Output:  argmax of each variable's distribution → numerical answer
+  v4=13, v5=9, v6=18 → answer: 18
+```
+
+This is a **computational task**. No language. Pure constraint propagation via energy descent. **Easy for small models** (the 87M breathing transformer hits 79% on Sudoku). **Wasteful for large models** (they'd just compute directly).
+
+### Why the phases must be separate
+
+The two phases use opposite strengths:
+
+| Phase | Strength needed | Iteration | Model size |
+|---|---|---|---|
+| 1 (comprehension) | Language understanding | One-shot | Large (1B+) |
+| 2 (inference) | Constraint propagation | Iterative (K breaths) | Small (87M) |
+
+Forcing both into one model means one will be wrong-sized for what it has to do. The 410M GSM8K failure was Phase 1 being undersized for comprehension; v98 Sudoku worked because Phase 1 is trivial (the grid IS the factor graph) and the architecture is sized correctly for Phase 2.
+
+### The full GSM8K system
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Phase 1: COMPREHENSION (large model, one-shot)           │
+│                                                          │
+│ "Janet has 16 eggs..."                                   │
+│         ↓                                                │
+│ NL Parser (Haiku / fine-tuned classifier / rules)        │
+│         ↓                                                │
+│ Factor Graph: variables, factors, observed, query        │
+└──────────────────────┬──────────────────────────────────┘
+                       ↓
+┌──────────────────────┴──────────────────────────────────┐
+│ Phase 2: INFERENCE (small model, iterative, on device)   │
+│                                                          │
+│ Factor Graph                                             │
+│         ↓                                                │
+│ Breathing Transformer (87M, 377MB)                       │
+│ dx/dt = -∇E(x, constraints)                             │
+│ K breaths of ODE integration                            │
+│         ↓                                                │
+│ Converged variable assignments → answer: 18              │
+└─────────────────────────────────────────────────────────┘
+```
+
+Phase 1 runs ONCE per problem (possibly in the cloud, possibly offline). Phase 2 runs on device, iteratively, as many breaths as needed. The expensive comprehension happens once. The cheap inference iterates until confident.
+
+### What this means for the future
+
+For Sudoku: Phase 1 is trivial (grid → factor graph is a one-line conversion). v98 demonstrated that Phase 2 alone is enough. **79% puzzle accuracy from 87M parameters on a constraint satisfaction problem with explicit factor structure.**
+
+For GSM8K: Phase 1 is the bottleneck. The breathing transformer didn't fail on the reasoning — it failed on the reading. The v100 series demonstrated that GIVEN a factor graph, the architecture can reach 50%+ accuracy with the right key. Building the comprehension front-end (Phase 1) is the path to GSM8K, not redesigning the inference engine.
+
+The Shape of Thought is Stage 2.
+A small model that solves by breathing.
+An ODE integrator that descends the energy landscape.
+One step per breath. Fixed point = solution.
