@@ -428,32 +428,93 @@ Seven principles validated across 30+ experiments that transfer beyond this arch
 
 ## 8. Discussion
 
-### 8.1 The JPEG Codec Analogy
+The empirical results in §6 are unified by four theoretical framings, each describing the breathing transformer from a different angle. We present them in order of increasing mathematical specificity. Each subsection closes with a falsifiable prediction that follows from the framing.
 
-The breathing transformer implements a learned compression codec at each breath:
-- **Transform:** Attention layers rotate into a task-relevant basis (π-cycled RoPE / factor-aligned masking)
-- **Quantize:** Waist projection (1024d → 512d) discards less-important dimensions
-- **Encode:** Notebook carries the compressed state to the next breath
-- **Psychoacoustic model:** The task loss (next breath's CE) determines what information is worth preserving — learned, not hand-designed
+### 8.1 Musical keys: rhythm-topology matching
 
-### 8.2 The Bombe Analogy
+The 2×2 table at the end of §6.4 encodes a design principle: **the breathing rhythm must match the symmetry of the underlying factor graph**. We name the principle by analogy to music — every problem class is in a "key," and a piece written in one key cannot be played with another key's harmonic conventions and expected to resolve.
 
-The architecture's constraint propagation parallels Turing's Bombe for Enigma decryption:
-- **Crib:** Known structure (given cells / expected intermediate targets)
-- **Menu:** Constraint graph (row/col/box factors / DAG dependencies)
-- **Rotor setting:** Candidate variable assignments (soft cell distributions)
-- **Contradiction:** Constraint violation (high energy)
-- **Bombe stop:** All constraints satisfied (energy ≈ 0, convergence plateau)
+Two keys are empirically validated in this work:
 
-The model doesn't GENERATE solutions. It ELIMINATES impossible configurations through iterative constraint propagation until only valid assignments remain.
+**Cyclic key** (Sudoku, n-queens, graph coloring, constraint-satisfaction problems). Factor graphs with overlapping cliques that share variables. Information must propagate AROUND cycles, often visiting the same variable multiple times via different paths. The right rhythm is **rotational** — π-cycled position encoding gives each breath a different viewing angle, sampling messages along distinct cyclic paths across iterations. This is mechanically what loopy BP does on factor graphs with cycles.
 
-### 8.3 Limitations
+**Directional key** (arithmetic DAGs, computational pipelines, dependency graphs). Factor graphs that are trees with implicit ordering from leaves to query. Information flows in one direction. The right rhythm is **topological staging** — each breath processes one more layer of the DAG, with information earned by waiting for predecessor breaths. This is mechanically what exact BP does on trees, requiring O(depth) message-passing steps.
 
-**Reading comprehension wall:** On GSM8K (natural language math), the architecture hits a ceiling at 2.7% accuracy. The bottleneck is parsing English into mathematical structure, not iterative reasoning. This is a capacity limitation at 410M scale, not an architectural limitation.
+The two keys do not interchange. §6.1 shows rotational breathing succeeds on Sudoku (cyclic) at 79% puzzle accuracy; §6.2 shows the identical mechanism fails on factor graphs (directional) at 9% chance. §6.3 shows topological staging succeeds on factor graphs (directional) at 40-48%; the empty cell in the 2×2 — topological breathing on cyclic graphs — remains untested.
 
-**Fixed factor topology:** Sudoku's factor structure (row/col/box) is hard-wired via attention masking. The model learns message-passing functions within fixed topology but does not discover the topology. Future work: factor topology discovery from data.
+The framework's value for practitioners is that it converts an architectural choice (which breathing pattern to implement) into a structural property of the data (which symmetries the factor graph has). For a new domain, examining the topology selects the breathing rhythm; no trial-and-error across breathing mechanisms is needed.
 
-**Fixed K:** Current implementation uses fixed breath count. The convergence plateau suggests adaptive stopping would save compute on easy problems without harming hard ones. Future work: confidence-based halting.
+**Falsifiable prediction:** Topological breathing applied to Sudoku should fail. Specifically, implementing depth-based attention masking on the Sudoku factor graph requires imposing an ad-hoc ordering (e.g., row-major, or column-major, or any other) because cyclic graphs have no natural DAG topology. The result should fall between the v98 ceiling (79% puzzle accuracy) and the no-rotation ablation floor (2%) — and we predict it falls closer to the floor than to the ceiling, because imposing a directional order on a symmetric problem actively breaks the rotational symmetry that loopy BP exploits.
+
+### 8.2 The ODE integrator: three vocabularies, one mathematical object
+
+The musical-keys framing is mechanistic; the ODE integrator framing is mathematical. The breathing transformer **literally implements** a learned numerical integrator for the dynamical system
+
+```
+    dx/dt = -∇E(x, constraints)
+```
+
+where E is the constraint energy of the factor graph (§4.3) and x is the state of soft variable distributions over their domains. Each breath corresponds to one integration step. The 4 transformer layers within one breath are the 4 stages of an RK4-style higher-order method:
+
+```
+RK4:                              Breathing transformer:
+  k1 = f(x_n)                       h1 = Layer_0(x_n)
+  k2 = f(x_n + h·k1/2)              h2 = Layer_1(h1)
+  k3 = f(x_n + h·k2/2)              h3 = Layer_2(h2)
+  k4 = f(x_n + h·k3)                h4 = Layer_3(h3)
+  x_{n+1} = x_n + h·Σ(k)/6         x_{n+1} = x_n + delta_gate·(h4 - x_n)
+```
+
+The residual stream accumulates intermediate gradient estimates across stages. The `delta_gate` parameter plays the role of step size h. The calibration head plays the role of an error estimator analogous to Dopri5's higher-order auxiliary integrator: predicting whether the current state has converged enough to halt integration. The convergence plateau observed on easy Sudoku puzzles (delta → 0 by breath 12, §6.1) is the integrator reaching its fixed point.
+
+This framing connects directly to Ramsauer et al. (2020): softmax attention IS one step of energy descent on a modern Hopfield network with energy E_H(x) = -log Σ_i exp(x^T k_i). Each transformer layer literally computes one gradient step on a learned Hopfield energy landscape. K breaths × 4 layers per breath = 4K Hopfield gradient steps. Training aligns the implicit Hopfield energy E_H with the explicit factor-graph energy E so what appears externally as "iterative attention" is mechanistically energy descent on a learned approximate factor-graph posterior.
+
+Three vocabularies — ODE integrator (computer science), energy descent (statistical physics), approximate belief propagation (machine learning) — describe the same mathematical object. Each provides inference tools the others lack:
+- ODE integrator brings adaptive timestepping (the calibration head as error estimator), multistep methods (the notebook as gradient history), and implicit methods (fixed-point iteration within a breath).
+- Energy descent brings stability analysis (Lyapunov functions on the energy landscape) and basin characterization (which initial conditions converge to which fixed points).
+- BP brings convergence rate predictions (mixing time scaling with graph structural properties) and message structure (which heads carry which kinds of messages).
+
+The convergence of these vocabularies onto one object suggests the breathing transformer is not just a heuristic architecture but an instance of a well-defined class of learned approximate inference solvers.
+
+**Falsifiable prediction:** If breathing literally implements RK4-stage integration, then deeper per-breath architectures (8 layers per breath, analogous to RK8) should outperform shallower ones (4 layers per breath, RK4) on stiff dynamical systems — problems where some constraints converge fast and others slow. Concretely: on Sudoku's hardest puzzles (where the per-breath delta plateau Δ ≈ 0.4 at K=20 indicates non-convergence), an 8-layers-per-breath architecture should reach a lower delta floor than the current 4-layers-per-breath architecture under matched compute budget (8 layers × K=10 vs 4 layers × K=20). The prediction does NOT extend to easy puzzles (where 4 stages already converge) — making it a sharp test of higher-order integration's value, falsifiable by training and evaluating the two configurations.
+
+### 8.3 Compression as commitment, conditional on shared topology
+
+A standard transformer with residual connections is unidirectionally additive: each layer adds information to the residual stream. There is no mechanism for the model to deliberately **commit** to a particular interpretation; later layers can always add information that contradicts earlier processing. The model accumulates beliefs but never discards them.
+
+The waist projection (1024 → 512 → 1024) present in v101 and v103 (§6.4) introduces an explicit lossy step. The model must distill 1024 dimensions of accumulated state into 512 before reconstructing back. Information that does not survive that bottleneck is information the model has decided is not important at this iteration. The lossy step IS the commitment mechanism.
+
+This structure matches the JPEG/MP3 codec pattern applied to thought:
+- **Transform**: attention rotates the residual into a task-relevant basis (π-cycled RoPE for cyclic key, factor-aligned masking for directional key).
+- **Quantize**: the waist projection deliberately discards dimensions.
+- **Encode**: the residual stream and notebook carry the survivors to the next breath.
+- **Psychoacoustic model**: the next breath's CE loss is the *learned* analog of MP3's perceptual model — "what does the next breath need from this iteration?" Unlike MP3's hand-designed model based on human hearing thresholds, ours is learned end-to-end through the task gradient.
+
+§6.4 demonstrated that compression adds 6-7 points over the no-compression baseline (v100 → v101/v103), regardless of whether the compression is structured as a projection (v101) or a codebook quantization (v103). The applicability condition emerges from comparing §6.2 (where compression cannot be added because the rhythm is wrong) to §6.4 (where compression cleanly amplifies a working architecture):
+
+**Compression-as-commitment helps when the structural prior is shared across instances.** For Sudoku, the factor structure (27 AllDifferent cliques on a 9×9 grid) is identical across all puzzles — the waist learns ONE compression scheme and it generalizes by construction. For arithmetic DAGs, the topology varies across instances, but the operation set is fixed (add/sub/mul/div), so the compression can still extract shared structure. v103's codebook makes this explicit: 32 shared primitives that all problems must reuse, forcing topology-invariant compression.
+
+The compression amplifies the architecture's iteration benefit: the K=1→K=10 gap widens from +17.9pt (no compression) to +21.7pt (projection) to +22.8pt (codebook). Compression doesn't just raise absolute accuracy; it makes additional breaths more informative.
+
+**Falsifiable prediction:** Compression-as-commitment should help by 5-10pp on any task with high structural sharing across instances (graph coloring with fixed-degree graphs, scheduling with fixed task types, sorting networks). Compression's benefit should monotonically decline as instance-set topological diversity grows. Operationalizing topological diversity as the information-theoretic entropy of the instance set's structural distribution: we predict the compression benefit declines smoothly (not abruptly) as this entropy increases. The prediction is testable by constructing controlled datasets with parametrized structural diversity.
+
+### 8.4 Two-phase architecture: comprehension and inference need different models
+
+The §6.6 GSM8K failure pattern (17 architectures plateauing at 2-3% over three months) is consistent with a structural separation in the underlying computation. Comprehension — parsing English into a mathematical factor graph — is a one-shot language task that benefits from model size and language priors. Inference — executing constraint propagation on the resulting graph — is an iterative computational task that benefits from iteration depth and architectural specialization.
+
+When the same parameters do both, gradients pull in opposing directions. The parsing gradient says "this verb token should be associated with subtraction." The inference gradient says "this residual position should encode operand binding state." Through shared weights, the optimizer takes the average, and a parameter set that does both poorly emerges. We observed this empirically across 17 architectural variants (§6.6), each plateauing at the same 2-3% accuracy ceiling regardless of breathing pattern, supervision schedule, or compression structure.
+
+The architectural remedy is to separate the phases into independently-parameterized models, with a structured intermediate (the factor graph) as the interface:
+
+**Phase 1 — Comprehension** (NL → factor graph): A larger model (Haiku via distillation, or a similar parser at ~1B parameters; alternatively a domain-specific parser as small as 60M via T5-small distilled from Haiku labels) runs once per problem. Outputs a structured factor graph encoding variables, factors, and observed values. The breathing transformer never sees natural language.
+
+**Phase 2 — Inference** (factor graph → answer): The breathing transformer (87M parameters, ~377MB, edge-deployable) consumes the factor graph from Phase 1 and runs K breaths of constraint propagation. Returns the converged variable assignment. This is the architecture validated in §6.1-§6.4.
+
+For Sudoku, Phase 1 is the identity function: the 9×9 grid IS the factor graph. This explains why Sudoku worked at 87M parameters with no NL component — we used the architecture for the computational task it is suited for and skipped the comprehension task it is not. For GSM8K, Phase 1 is the binding bottleneck, and our v98-v100 results demonstrate that the inference engine is competent (40-48% on synthetic factor graphs). Building Phase 1 is the path to closing the GSM8K loop.
+
+The two-phase decomposition has a practical implication for deployment: large model parses once (possibly in the cloud), small model reasons iteratively on device. The compute split matches the natural cost structure — comprehension is expensive but happens once; iteration is cheap but happens many times.
+
+**Falsifiable prediction:** Pairing the breathing transformer (Phase 2) with an external NL parser (Phase 1) — for instance, a T5-small distilled on Haiku-generated (NL, factor graph) pairs — will exceed the 2.7% GSM8K ceiling observed for the breathing transformer alone by a wide margin. The predicted end-to-end accuracy is 30-45%, with the precise value determined by parser quality. Specifically: if the parser achieves P_struct on structural correctness (the factor graph matches a valid parse of the problem) and Phase 2 achieves P_inf on the synthetic factor graphs of equivalent complexity, end-to-end accuracy will approximate P_struct × P_inf. The breathing transformer's value is constant; the parser determines the system's ceiling.
 
 ---
 
