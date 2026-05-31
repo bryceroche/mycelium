@@ -52,9 +52,13 @@ The loop **terminates** when both: (a) the integral has stabilized (Lyapunov cri
 
 ---
 
-## 3. Empirical Status (as of 2026-05-29)
+## 3. Empirical Status (as of 2026-05-31)
 
-**v98 Sudoku is the breakthrough.** After 17 GSM8K architectural variants plateaued at 0-1.7%, a strategic pivot to Sudoku validated the breathing-transformer paradigm as approximate joint MAP inference on a factor graph. **79.0% puzzle accuracy on easy, 97.65% cell accuracy, 87M parameters, ~4h training on AMD 7900 XTX.** See §3a below for the full breakdown. The earlier GSM8K work (v45/v55/v56/v59/v77-v81) is preserved here for context.
+**v105.1.2 v2 is the latest breakthrough** — first architecture to achieve real per-position digit learning on GSM8K factor graphs. At step 250 (n=240/difficulty): val[easy]=9.0%, query[hard]=13.0%, ladder delta=+0.349. **5× the val accuracy of the broken v105.1.2 original at the same training step.** The fix: MSD-first digit layout + RIGHT-ALIGNED RoPE (ones digit always = RoPE pos 0) + valid_mask (eliminates the trivial-leading-zero attractor that killed v105/v105.1/v105.1.2/v105.1.2-relativeMSE — all four variants converged to "predict 0 everywhere" because 3 of 5 positions are trivially zero on [0,99] data, dominating the gradient). See `memory/feedback_digit_vs_number_prediction.md` and §3b. Prod in flight as of 2026-05-31.
+
+**v98 Sudoku** validated the breathing-transformer paradigm as approximate joint MAP inference on a factor graph (May 29). **79.0% puzzle accuracy on easy, 97.65% cell accuracy, 87M parameters, ~4h training on AMD 7900 XTX.** See §3a below for the full breakdown. The earlier GSM8K work (v45/v55/v56/v59/v77-v81) is preserved here for context.
+
+**v100-v107 factor graph paradigm arc (May 29-31).** v98's Sudoku result generalized to synthetic factor graphs (v100=40.7%, v101=47.6%, v103=46.6%, v104=47.7% cell_acc on [0,99]). v107 hybrid 200-bin codebook reached 24.2% GSM8K cell_acc at step 1000 (number-level prediction). Four per-DIGIT variants (v105/v105.1/v105.1.2/v105.1.2-relativeMSE) all failed at ~70% train / ~2% val until the per-position diagnostic exposed the trivial-leading-zero attractor. v105.1.2 v2 is the fix.
 
 **Three paradigm tracks, three champions.**
 
