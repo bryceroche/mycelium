@@ -222,7 +222,15 @@ def main():
     Device[Device.DEFAULT].synchronize()
 
     # Load eval data
-    from mycelium.factor_graph_data import load_jsonl
+    import json as _json
+    def load_jsonl(path):
+        out = []
+        with open(path) as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    out.append(_json.loads(line))
+        return out
     test_records = load_jsonl(args.test) if os.path.exists(args.test) else []
     gsm8k_records = load_gsm8k_records_v105(args.gsm8k, n_digits=N_DIGITS, n_max=N_MAX, f_max=F_MAX) \
         if os.path.exists(args.gsm8k) else []
