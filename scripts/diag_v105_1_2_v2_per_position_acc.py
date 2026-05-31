@@ -56,6 +56,9 @@ N_HEADS   = 16
 N_BATCHES = int(getenv("N_BATCHES", "30"))
 BATCH     = int(getenv("BATCH", "4"))
 CKPT      = getenv("CKPT", ".cache/fg_v105_1_2_ckpts/v105_1_2_v2_smoke_final.safetensors")
+TRAIN_PATH = getenv("TRAIN_PATH", ".cache/factor_graph_train.jsonl")
+VAL_PATH   = getenv("VAL_PATH",   ".cache/factor_graph_test.jsonl")
+DIFF_FILTER = getenv("DIFF_FILTER", "easy") or None
 
 POS_LABELS = ["ten-thousands", "thousands", "hundreds", "tens", "ones"]
 
@@ -137,14 +140,14 @@ def main():
     print("loaded ckpt", flush=True)
 
     train_loader = FactorGraphLoaderV105_1_2(
-        ".cache/factor_graph_train.jsonl", batch_size=BATCH,
-        difficulty_filter="easy", curriculum=False,
+        TRAIN_PATH, batch_size=BATCH,
+        difficulty_filter=DIFF_FILTER, curriculum=False,
         n_max=N_MAX, f_max=F_MAX, k_max=K_MAX, n_heads=N_HEADS,
         n_digits=N_DIGITS, seed=42,
     )
     val_loader = FactorGraphLoaderV105_1_2(
-        ".cache/factor_graph_test.jsonl", batch_size=BATCH,
-        difficulty_filter="easy", curriculum=False,
+        VAL_PATH, batch_size=BATCH,
+        difficulty_filter=DIFF_FILTER, curriculum=False,
         n_max=N_MAX, f_max=F_MAX, k_max=K_MAX, n_heads=N_HEADS,
         n_digits=N_DIGITS, seed=43,
     )
