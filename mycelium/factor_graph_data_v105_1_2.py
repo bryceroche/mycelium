@@ -60,6 +60,12 @@ from mycelium.factor_graph_v105 import (
 # Import bipartite adjacency builder from v99 (still valid geometry)
 from mycelium.factor_graph import build_factor_graph_masks_np
 
+# Gated experimental feature: lateral attention bias on same-position digits
+# across operands of a factor. Adds attention edges digit(var_A, p) ↔
+# digit(var_B, p) for all operand+result variables of each factor, per digit
+# position p. Default off for back-compat.
+V105_1_2_LATERAL_ATTN = int(os.environ.get("V105_1_2_LATERAL_ATTN", "0")) > 0
+
 # Import DAG depth from v100 data (same algorithm)
 from mycelium.factor_graph_data_v100 import compute_var_depth
 
@@ -228,6 +234,25 @@ def build_staging_and_head_masks_v105_1_2_np(
                 vstart = vi * n_digits
                 vend   = vstart + n_digits
                 op_adj[ft, vstart:vend, vstart:vend] = 0.0
+
+        # Lateral attention bias: same-position digits ACROSS operands of a
+        # factor attend to each other (the per-position arithmetic pathway).
+        # Without this, the model can only learn "digit p of var A talks to
+        # digit p of var B" through indirect routes via the factor node.
+        # Gated by V105_1_2_LATERAL_ATTN env var (default off for back-compat).
+        if V105_1_2_LATERAL_ATTN:
+            for vi_a_raw in factor_args_np[fi]:
+                vi_a = int(vi_a_raw)
+                if not (0 <= vi_a < n_vars):
+                    continue
+                for vi_b_raw in factor_args_np[fi]:
+                    vi_b = int(vi_b_raw)
+                    if not (0 <= vi_b < n_vars):
+                        continue
+                    for p in range(n_digits):
+                        t_a = vi_a * n_digits + p
+                        t_b = vi_b * n_digits + p
+                        op_adj[ft, t_a, t_b] = 0.0
 
     head_ops = np.repeat(op_adj[:, np.newaxis, :, :], heads_per_op, axis=1).reshape(n_heads, t_max, t_max)
 
