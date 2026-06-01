@@ -115,6 +115,37 @@ V105_1_2_FACTOR_AUX_WEIGHT = float(os.environ.get("V105_1_2_FACTOR_AUX_WEIGHT", 
 V105_1_2_ROPE_BASE        = float(os.environ.get("V105_1_2_ROPE_BASE",       "10000.0"))
 V105_1_2_IB_INIT          = int(os.environ.get("V105_1_2_IB_INIT",           "1")) > 0
 V105_1_2_WAIST_LORA_INIT  = int(os.environ.get("V105_1_2_WAIST_LORA_INIT",   "1")) > 0
+V105_1_2_FOURIER_INIT     = int(os.environ.get("V105_1_2_FOURIER_INIT",      "0")) > 0
+
+
+def _fourier_digit_codebook(n_digits: int, hidden: int) -> np.ndarray:
+    """Cyclic-Fourier init for digit_codebook.
+
+    Maps each digit d to phases on a circle: phase_d = 2π·d/n_digits.
+    The codebook fills hidden dims with [cos(d·freq·phase), sin(d·freq·phase)]
+    pairs cycling through the Nyquist-limited frequencies 1..n_digits/2.
+
+    Motivation: digits form a cyclic group Z/n_digits. Random init forces
+    the model to discover this structure via gradient (the "grokking"
+    pathway, ~10K-100K steps for tiny modular-arithmetic transformers).
+    Structured init provides the cyclic geometry directly — same intuition
+    as v98's aligned init for state_embed.
+
+    Each row is L2-normalized to unit norm (matches the QR-orthogonal init
+    scale this replaces).
+    """
+    cb = np.zeros((n_digits, hidden), dtype=np.float32)
+    n_unique_freqs = max(n_digits // 2, 1)  # 5 for n_digits=10
+    n_pairs = hidden // 2
+    for k in range(n_pairs):
+        freq = (k % n_unique_freqs) + 1
+        for d in range(n_digits):
+            phase = 2.0 * np.pi * d * freq / n_digits
+            cb[d, 2 * k]     = np.cos(phase)
+            cb[d, 2 * k + 1] = np.sin(phase)
+    norms = np.linalg.norm(cb, axis=1, keepdims=True)
+    cb = cb / (norms + 1e-8)
+    return cb.astype(np.float32)
 
 
 # ---------------------------------------------------------------------------
@@ -447,9 +478,15 @@ def attach_fg_params_v105_1_2(
     # -----------------------------------------------------------------------
     # Components 1+2: digit codebook + frozen RoPE tables
     # -----------------------------------------------------------------------
-    raw_dc = rng.randn(max(hidden, 10), hidden).astype(np.float32)
-    q_dc, _ = np.linalg.qr(raw_dc)
-    dc = q_dc[:10].astype(np.float32) * 1.0
+    if V105_1_2_FOURIER_INIT:
+        # Cyclic-Fourier init: digits as phases on the unit circle, giving the
+        # model the cyclic group structure (Z/10Z) for free instead of forcing
+        # discovery via gradient. Same scale as QR init (rows L2-normalized).
+        dc = _fourier_digit_codebook(n_digits=10, hidden=hidden)
+    else:
+        raw_dc = rng.randn(max(hidden, 10), hidden).astype(np.float32)
+        q_dc, _ = np.linalg.qr(raw_dc)
+        dc = q_dc[:10].astype(np.float32) * 1.0
     model.fg_v105_1_2_digit_codebook = Tensor(dc, dtype=dtypes.float).contiguous()
 
     # Right-aligned RoPE for MSD-first layout: array index i gets RoPE position
@@ -532,7 +569,7 @@ def attach_fg_params_v105_1_2(
     T = n_max * n_digits + f_max
     print(
         f"[v105.1.2] params attached:\n"
-        f"  digit_codebook=(10,{hidden}), "
+        f"  digit_codebook=(10,{hidden}) init={'FOURIER' if V105_1_2_FOURIER_INIT else 'QR-random'}, "
         f"digit_rope (N_DIGITS={n_digits}, H={hidden}, base={rope_base:.0f}) [FROZEN]\n"
         f"  var_pos_embed=({n_max},{hidden}), factor_pos_embed=({f_max},{hidden})\n"
         f"  waist=({hidden}→{waist}→{hidden}), W_expand={'ZEROS' if waist_lora_init else 'random'}\n"
