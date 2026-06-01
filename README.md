@@ -9,6 +9,30 @@
 
 ---
 
+> ## ⚠️ STATUS NOTE (2026-06-01) — read this before §1-§13
+>
+> Sections **§1-§13** describe the **v1-v95 era conceptual arc**: sine-wave
+> breath, π-cycled RoPE, BirdNET-parallel heads, Controller/Notebook/LookupTable
+> closed feedback loop. **This was largely deprecated by the v98 Sudoku pivot
+> (2026-05-29).** The current architectures (v98 Sudoku, v100-v107 factor graphs,
+> v105.1.2 v2 digit-level) implement a different design: iterative shared-weight
+> prefill, structured per-head attention masks, learnable per-breath delta_gate,
+> per-breath weighted CE supervision (the "ladder"), variant codebooks.
+>
+> **For current truth:**
+> - **§15** — empirical status (v98 Sudoku 79%, v100-v107, v105.1.2 v2)
+> - **§17-§18** — the active architectural framing (musical keys, ODE
+>   integrator, two-phase comprehension/inference)
+> - **`CLAUDE.md` §2a** — the actual implementation built today
+> - **`memory/project_v98_sudoku_validates_paradigm.md`** — the breakthrough
+>
+> The legacy machinery (`Controller`, `Notebook`, `LookupTable`, sine-modulated
+> within-breath temperature, controller-emitted gate) lives in
+> `mycelium/breathing.py` but **is not called by any current training path**.
+> It is preserved as historical context.
+
+---
+
 ## 1. Vision
 
 A small transformer that loops its own layers, breathing through each problem until it finds the resonant decomposition. Not a frozen LLM with external scaffolding — a model that breathes natively. Initialized from Pythia-410M layers 0-3 and fine-tuned end-to-end.

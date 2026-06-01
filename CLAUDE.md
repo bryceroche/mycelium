@@ -13,42 +13,59 @@ A small transformer (4 specialized layers from Pythia-410M L0-3, h=1024, 16 head
 
 ---
 
-## 2. The Seven Components of the Closed Feedback Loop
+## 2. Architecture as Built (v98+) — and the Legacy "Seven Components"
 
-The breathing transformer's reasoning is an **irreducible closed feedback loop** of seven components. Each amplifies the others; remove any one and the system degrades. As of 2026-05-10, all seven are implemented and wired together — this is the architecture's first complete realization.
+> **STATUS: The "seven components" framing below describes the v54-v95 era
+> architecture which was largely deprecated by the v98 Sudoku pivot. The
+> machinery (Controller, Notebook, LookupTable, sine-modulated temperature,
+> π-cycled per-breath RoPE) survives in `mycelium/breathing.py` but is NOT
+> called by the current training paths (`scripts/v98_sudoku_*.sh`,
+> `scripts/v100_factor_graph_*.sh`, `scripts/v105_1_2_factor_graph_*.sh`).
+> The current architecture is documented in §2a below; the legacy section
+> is preserved as historical context.**
 
-| # | Component | What it does | Why it's necessary | Implementation |
-|---|---|---|---|---|
-| 1 | **Rotation** (π-cycled RoPE) | Per-head phase offsets rotate the attention geometry each breath, so each loop sees the problem from a different angle | Provides **independent observations**. Without it, every breath sees the same view and integration accumulates redundant info. Geometric, not learned — gradient descent cannot erase it. | `breathing.py: RoPE` |
-| 2 | **Integration** | Gated running integral across breaths; controller-emitted gate weights novel observations high, redundant ones low | Makes observations **cumulative**. Rotation without integration is amnesia — each breath's insight is forgotten when the next begins. Bayesian evidence combination over independent angles. | `breathing.py: BreathingBlock.breathe` |
-| 3 | **Notebook** | 512d pages written after each breath, persisting across both inner loops and outer execution cycles; tree-structured attention over ancestors/siblings/children | Provides **memory across breaths and cycles**. Without it the controller has no basis for comparing "now" against "three breaths ago" — cannot detect convergence or track factorization evolution. | `controller.py: Notebook` |
-| 4 | **Lookup table** | 16×1024 cosine matcher storing prime operations (add/sub/mul/div/fraction/compare/combine/sequential...) each with pattern, resonant angle, subtraction mask, confidence threshold; plus a 16×16 coupling matrix | Provides the **reference library and target map**. Without it the controller adapts on energy signals alone ("something is changing") without knowing **what** to look for. Transforms blind search into guided search. Empirically validated 2026-05-10: trained 16×1024 table hits 100% op classification. | `lookup_table.py: LookupTable` |
-| 5 | **Controller** | ~40M conductor thinking in 512d. State reader (Perceiver, 1024d→512d) + notebook attention + decision heads emitting `{temperature, gate, stop_logit, step_mult}`. Trained by REINFORCE + lookup-CE + stop calibration on a **separate optimizer**. | Provides **adaptive feedback**. Without it rotation is uniform, temperature is fixed, stopping is arbitrary. The intelligence of the loop. | `controller.py: Controller` |
-| 6 | **Temperature modulation** | Controller scalar × sine baseline. Warm = broad/coarse attention; cool = sharp/fine attention. | Controls **resolution at each angle**. Without it every breath has the same precision — wastes early breaths on unnecessary precision and starves late breaths of needed precision. | `breathing.py: BreathingLayer (temp_mult)` |
-| 7 | **Step size / rotation rate** | Controller emits `step_mult` adjusting the π/max_loops baseline step | Determines **spectral coverage efficiency**. Nyquist: to resolve two primes separated by Δθ, the rotation step must be ≤ Δθ/2. Too large misses closely-spaced modes; too small wastes breaths. | `breathing.py: breathe_controlled` |
+### §2a. Current architecture (v98 / v100-v107 / v105.1.2 v2)
 
-### The Loop, End-to-End
+Three architecture families all share this core pattern (entry points:
+`sudoku_breathing_forward`, `fg_breathing_forward_v100`,
+`fg_breathing_forward_v105_1_2`):
 
-The closed loop is invoked via `model.breathe_controlled(tokens, max_loops, notebook)`. Per breath:
+| Component | What it does | Implementation |
+|---|---|---|
+| **Iterative shared-weight prefill** | K passes through Pythia L0-L3, same weights every breath, residual stream stays at 1024d throughout | `sudoku.py`, `factor_graph_v100.py`, `factor_graph_v105_1_2.py` |
+| **Per-breath additive embedding** | Orthogonal markers added to residual per breath; replaces the "breath_idx schedule" of v9-v11 era | `breath_embed` tensor in each forward |
+| **Structured per-head attention masks** | Sudoku: 5 row + 5 col + 5 box + 1 global. v100/v105: per-op-type masks (4 ops × 4 heads). The actual "alternation" mechanism — replaces π-cycled RoPE | `_build_*_masks` helpers per file |
+| **Topological staging mask (v100/v105)** | Per-breath visibility expands depth-by-depth across the DAG; later breaths see deeper nodes | `staging_mask` in fg loaders |
+| **Per-breath delta_gate** | Learnable convex residual blend: `x = x_pre + gate_k * (h - x_pre)`. Static `(K_max,)` tensor, NOT controller-emitted | `model.*_delta_gate` |
+| **Per-breath calibration head** | Scalar confidence per breath, trained with detached argmax-correctness target. Conceptual hook for adaptive K (Dopri5-style error estimator); not yet used for stopping | `*_calib_head_*` weights |
+| **Variant codebook (readout)** | sudoku: 9-digit value codebook. v100: 100-bin domain codebook. v107: hybrid 200-bin. v105.1.2: 10-digit codebook × 5 positions (with right-aligned RoPE on digit dimension) | `*_codebook` per file |
+| **IB semantic codebook + projection waist (v105.1.2)** | 32-entry semantic codebook from IB clustering on Pythia embeddings + 1024→512→1024 LoRA-init waist. Both gated by zero-init scalars so step 0 forward is identical to no-waist baseline | `factor_graph_v105_1_2.py` |
+| **Per-breath weighted CE supervision (the "ladder")** | Loss weighted by `1 + k/(K-1)` so later breaths matter more; this is what makes K matter at all | training loop in each trainer |
 
-1. Controller reads the running integrated rep
-2. → writes a 512d page into the notebook
-3. → notebook attention refines the page over all prior pages
-4. → lookup table matches the page against its 16 prime entries, returning match weights + confidence
-5. → decision heads emit `{temperature, gate, stop_logit, step_mult}` for the next breath
-6. → next breath rotates at the controller's adaptive phase, runs at the controller's temperature, integrates weighted by the controller's gate
+K varies per architecture: Sudoku=20, v100=10, v105.1.2=8. No global ceiling.
 
-The loop **terminates** when both: (a) the integral has stabilized (Lyapunov criterion — new breaths add negligible information), and (b) the spectral residual is noise (all significant primes identified and subtracted).
+### §2b. Legacy machinery (preserved in `breathing.py`, unused by v98+)
 
-### Gradient Separation Is Enforced by Construction
+These were the v1-v95 era closed feedback loop. The code still imports cleanly
+because `BreathingTransformer.__init__` instantiates them, but no current
+trainer calls the methods that USE them.
 
-**The controller's gradient NEVER flows through the transformer.** Three days of v1-v3 evidence proved any such path collapses to one basin.
+| # | Component | Status | Why preserved |
+|---|---|---|---|
+| 1 | π-cycled per-breath RoPE (`PER_HEAD_PITCH`) | Unused; v105.1.2 uses RoPE on DIGIT positions (different application) | Per-layer Q/K/W weights still come from `BreathingLayer` |
+| 2 | Gated running integral (controller-emitted gate) | Replaced by static learnable `delta_gate` (§2a) | — |
+| 3 | Notebook (512d pages, tree attention) | Unused | — |
+| 4 | LookupTable (16×1024 prime-op matcher) | Replaced by variant codebooks (§2a) | Imported by `BreathingTransformer.__init__` |
+| 5 | Controller (~6.6M realized; ~40M was Step E spec, never reached) | Unused | Imported by `BreathingTransformer.__init__` |
+| 6 | Sine-modulated within-breath temperature | Replaced by single fixed temp `1/sqrt(head_dim)` | — |
+| 7 | Controller-emitted step_mult (rotation rate) | Unused | — |
 
-- `model.parameters()` returns transformer + lookup_table params only. Trained on main CE + small joint lookup-aux CE.
-- `controller_train_step` uses a separate optimizer over `model.controller_parameters()`. Loss is per-breath lookup-CE + stop calibration. Gradients that reach transformer params are discarded by the next `main_opt.zero_grad()`.
-- Verified on a 5-step joint smoke: 0/39 transformer params changed in controller training; 61/62 controller params changed.
+### Architectural rules that still apply
 
-**Do not introduce any code path that lets controller gradients reach transformer weights.** This is the single most important architectural rule.
+- **No mid-breath token generation.** Reasoning stays in 1024d residual stream; tokens (if any) generated once at the end.
+- **Diversity must be structural, not learned.** v98 row/col/box masks, v100 topological staging masks, v105 per-digit RoPE are all geometric/structural. v1-v3 learned diversity mechanisms (scales, soft tokens, codebooks, fingerprints) all collapsed.
+- **Digit-spaced for arithmetic.** v98 uses single-cell digits; v100+ uses bins or per-digit codebooks. Whole-number BPE tokens force memorization.
+- **If the Controller is reintroduced**: separate optimizer, verify with parameter-change smoke. (Currently moot — no Controller in active code.)
 
 ---
 
