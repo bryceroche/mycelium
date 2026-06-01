@@ -120,6 +120,14 @@ V105_1_2_FOURIER_INIT     = int(os.environ.get("V105_1_2_FOURIER_INIT",      "0"
 # sole variable supervision. Tests whether "partial credit" of per-digit CE is
 # the trap holding upper positions in constant-predictor collapse.
 V105_1_2_NUMBER_MSE_ONLY  = int(os.environ.get("V105_1_2_NUMBER_MSE_ONLY",   "0")) > 0
+# Autoregressive digit decoding (LSD-first). Each digit's logits condition on
+# the soft (softmax) predictions of all previously committed (less significant)
+# digit positions. Breaks the "5 independent classifiers" failure mode where
+# every position collapses to constant predictor independently.
+V105_1_2_AR_DIGITS        = int(os.environ.get("V105_1_2_AR_DIGITS",         "0")) > 0
+# Scale of the soft prediction's embedding contribution when conditioning the
+# next digit's hidden state. Smaller = milder conditioning, larger = stronger.
+V105_1_2_AR_COND_SCALE    = float(os.environ.get("V105_1_2_AR_COND_SCALE",   "0.5"))
 
 
 def _fourier_digit_codebook(n_digits: int, hidden: int) -> np.ndarray:
@@ -412,7 +420,43 @@ def fg_breathing_forward_v105_1_2(
         var_tokens   = x_ln[:, :n_var_tokens, :]
         var_tokens_r = var_tokens.reshape(B, n_max, n_digits, -1)
         cb_fp        = digit_codebook.cast(dtypes.float)
-        digit_logits_k = var_tokens_r @ cb_fp.T              # (B, N_MAX, N_DIGITS, 10)
+
+        if V105_1_2_AR_DIGITS:
+            # AUTOREGRESSIVE DIGIT DECODING (LSD-first, array index n_digits-1 → 0)
+            # Each position's logits condition on the accumulated soft embedding
+            # of all PREVIOUSLY COMMITTED (less significant) digits.
+            #
+            # Gradient path: pos p's loss flows back through digit_codebook to
+            # all SUBSEQUENT (more significant) positions' logits via the
+            # accumulated embedding. Breaks the 5-independent-classifier
+            # failure mode by chaining the predictions.
+            #
+            # Soft commit: pos_probs @ digit_codebook gives the weighted-average
+            # digit codebook entry, which is added (scaled) to the next position's
+            # hidden before projection.
+            ar_logits_list: list[Tensor] = [None] * n_digits  # type: ignore
+            # Accumulator for soft digit embeddings from previously committed positions
+            cond_accum = Tensor.zeros((B, n_max, int(x_ln.shape[-1])), dtype=dtypes.float).contiguous()
+            ar_cond_scale_t = Tensor(
+                np.array([float(V105_1_2_AR_COND_SCALE)], dtype=np.float32),
+                dtype=dtypes.float,
+            ).reshape(1, 1, 1)
+
+            # LSD-first iteration: array indices n_digits-1 (ones) → 0 (most-sig)
+            for p in range(n_digits - 1, -1, -1):
+                pos_hidden = var_tokens_r[:, :, p, :] + cond_accum     # (B, N_MAX, H)
+                pos_logits = pos_hidden @ cb_fp.T                       # (B, N_MAX, 10)
+                ar_logits_list[p] = pos_logits
+                pos_probs = pos_logits.softmax(axis=-1)                 # (B, N_MAX, 10)
+                pos_embed = pos_probs @ cb_fp                           # (B, N_MAX, H)
+                cond_accum = cond_accum + pos_embed * ar_cond_scale_t.cast(pos_embed.dtype)
+
+            # Stack in original array-index order: (B, N_MAX, N_DIGITS, 10)
+            digit_logits_k = Tensor.stack(*ar_logits_list, dim=2)
+        else:
+            # Parallel independent digit logits (default v105.1.2 v2 behavior)
+            digit_logits_k = var_tokens_r @ cb_fp.T              # (B, N_MAX, N_DIGITS, 10)
+
         digit_logits_history.append(digit_logits_k)
 
         # 7b. Factor digit logits (for per-NUMBER aux loss)
@@ -576,6 +620,7 @@ def attach_fg_params_v105_1_2(
         f"  digit_codebook=(10,{hidden}) init={'FOURIER' if V105_1_2_FOURIER_INIT else 'QR-random'}, "
         f"digit_rope (N_DIGITS={n_digits}, H={hidden}, base={rope_base:.0f}) [FROZEN]\n"
         f"  loss_mode={'NUMBER_MSE_ONLY' if V105_1_2_NUMBER_MSE_ONLY else 'per-digit CE'}\n"
+        f"  ar_digits={V105_1_2_AR_DIGITS} (cond_scale={V105_1_2_AR_COND_SCALE if V105_1_2_AR_DIGITS else 'N/A'})\n"
         f"  var_pos_embed=({n_max},{hidden}), factor_pos_embed=({f_max},{hidden})\n"
         f"  waist=({hidden}→{waist}→{hidden}), W_expand={'ZEROS' if waist_lora_init else 'random'}\n"
         f"  ib_codebook=({n_code},{hidden}), "
