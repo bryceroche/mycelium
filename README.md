@@ -728,12 +728,11 @@ The four-step codec is the **design vision**. Different architecture variants im
 | **v98 Sudoku** | ✓ | **✗** | ✓ (delta_gate) | ✓ | No AR decode, residual stays at 1024d through all breaths |
 | **v99 Factor graph** | ✓ | **✗** | ✓ (delta_gate) | ✓ | Inherited no-waist design from v98 |
 | **v100 Factor graph (directional)** | ✓ | **✗** | ✓ (delta_gate) | ✓ | Same; topological staging is the basis rotation |
+| **v105.1.2 v2 (digit-level)** | ✓ | ✓ (1024→512→1024, LoRA-init) | ✓ (delta_gate) | ✓ | **Full 4-step codec restored**. Waist + IB codebook both LoRA zero-init so step-0 forward equals no-waist baseline; gates lift gradually during training |
 
-**v98 and v100 are 3-of-4 codec architectures.** The quantize step was dropped when v98 removed AR decode (the WaistController had served both compression and decode roles). v100 inherited this. The compression that the codec framework describes is not currently in our best architectures.
+**v98/v99/v100 are 3-of-4 codec architectures.** The quantize step was dropped when v98 removed AR decode. v105.1.2 v2 (2026-05-30 onward) restored the quantize step via a 1024→512→1024 projection waist with LoRA-style zero-init gates (so step 0 is byte-identical to the no-waist baseline and the gate lifts during training). This is the active test of the codec hypothesis.
 
-This may be load-bearing accuracy we're leaving on the table. Open architectural question: would adding back the 1024→512→1024 waist per breath improve v100's accuracy on factor graphs? Hypothesis: yes, because the codec framework predicts that the lossy step IS the commitment mechanism. Without it, every breath is a residual addition rather than a refinement to commitment.
-
-**v101 (planned ablation):** add per-breath waist projection to v100. Compare against current v100. If v101 > v100, the codec framework's quantize step is load-bearing for the directional key as well.
+**Open architectural question (now under test):** does the explicit Quantize step improve accuracy on factor graphs? Hypothesis: yes, because the codec framework predicts the lossy step IS the commitment mechanism. v105.1.2 v2 (digit-level, 4-step codec) vs v100 (number-level, 3-step codec, 24% on GSM8K) is the comparison; v105 has open challenges with upper-position learning that compress the comparison's clarity.
 
 ### The psychoacoustic model insight
 
