@@ -116,6 +116,10 @@ V105_1_2_ROPE_BASE        = float(os.environ.get("V105_1_2_ROPE_BASE",       "10
 V105_1_2_IB_INIT          = int(os.environ.get("V105_1_2_IB_INIT",           "1")) > 0
 V105_1_2_WAIST_LORA_INIT  = int(os.environ.get("V105_1_2_WAIST_LORA_INIT",   "1")) > 0
 V105_1_2_FOURIER_INIT     = int(os.environ.get("V105_1_2_FOURIER_INIT",      "0")) > 0
+# Drop per-digit CE entirely, use per-NUMBER MSE on reconstructed value as the
+# sole variable supervision. Tests whether "partial credit" of per-digit CE is
+# the trap holding upper positions in constant-predictor collapse.
+V105_1_2_NUMBER_MSE_ONLY  = int(os.environ.get("V105_1_2_NUMBER_MSE_ONLY",   "0")) > 0
 
 
 def _fourier_digit_codebook(n_digits: int, hidden: int) -> np.ndarray:
@@ -571,6 +575,7 @@ def attach_fg_params_v105_1_2(
         f"[v105.1.2] params attached:\n"
         f"  digit_codebook=(10,{hidden}) init={'FOURIER' if V105_1_2_FOURIER_INIT else 'QR-random'}, "
         f"digit_rope (N_DIGITS={n_digits}, H={hidden}, base={rope_base:.0f}) [FROZEN]\n"
+        f"  loss_mode={'NUMBER_MSE_ONLY' if V105_1_2_NUMBER_MSE_ONLY else 'per-digit CE'}\n"
         f"  var_pos_embed=({n_max},{hidden}), factor_pos_embed=({f_max},{hidden})\n"
         f"  waist=({hidden}→{waist}→{hidden}), W_expand={'ZEROS' if waist_lora_init else 'random'}\n"
         f"  ib_codebook=({n_code},{hidden}), "
@@ -776,11 +781,10 @@ def _compile_jit_fg_step_v105_1_2(
                 K=K, n_max=n_max, f_max=f_max, n_digits=n_digits,
             )
 
-        # --- Main CE on (unobserved AND digit-valid) variable digit positions ---
+        # --- Main loss on unobserved variables ---
         # MSD layout: valid positions are the TRAILING n_actual_digits per variable.
         # The leading positions are leading-zero padding above the most-significant
-        # digit and must NOT contribute to the loss (otherwise the model collapses
-        # to "always predict 0" on those trivially-zero positions).
+        # digit and must NOT contribute to the loss.
         unobs_float   = (1 - observed_mask.cast(dtypes.float))         # (B, N_MAX)
         unobs_dg      = unobs_float.reshape(B, n_max, 1).expand(B, n_max, n_digits)
         combined_mask = unobs_dg * digit_valid_mask                     # (B, N_MAX, N_DIGITS)
@@ -793,17 +797,60 @@ def _compile_jit_fg_step_v105_1_2(
         var_weight_sum = 0.0
         per_breath_ce_t: list[Tensor] = []
 
-        for k, dig_logits in enumerate(digit_logits_history):
-            weight_k    = 1.0 + float(k) / float(max(K - 1, 1))
-            logits_flat = dig_logits.reshape(B * n_max * n_digits, 10)
-            log_probs   = logits_flat.log_softmax(axis=-1)
-            gold_oh     = gold_flat.one_hot(10).cast(log_probs.dtype)
-            nll         = -(log_probs * gold_oh).sum(axis=-1)
-            masked_nll  = nll * cmask_flat.cast(nll.dtype)
-            ce_k        = masked_nll.sum() / n_active
-            per_breath_ce_t.append(ce_k)
-            var_loss_sum   = var_loss_sum + ce_k * weight_k
-            var_weight_sum += weight_k
+        # MSD place values for number reconstruction: [10^(N-1), ..., 10^0]
+        _place_values_np_var = [float(10 ** (n_digits - 1 - i)) for i in range(n_digits)]
+        _place_values_t_var  = Tensor(_place_values_np_var, dtype=dtypes.float).reshape(1, 1, n_digits)
+        _digit_vals_t_var    = Tensor([float(i) for i in range(10)], dtype=dtypes.float)
+
+        if V105_1_2_NUMBER_MSE_ONLY:
+            # ============================================================
+            # NUMBER-ONLY LOSS PATH (V105_1_2_NUMBER_MSE_ONLY=1):
+            # Drop per-digit CE entirely. Use ONLY per-NUMBER relative MSE
+            # on the reconstructed value from digit logits. This removes the
+            # "predict modal digit" partial-credit attractor — the model only
+            # gets credit when the whole number matches.
+            # ============================================================
+            # Gold variable numbers (mask invalid positions; they're 0 anyway)
+            _var_gold_float    = gold_digits.cast(dtypes.float)         # (B, N_MAX, N_DIGITS)
+            _var_gold_masked   = _var_gold_float * digit_valid_mask
+            var_gold_numbers   = (_var_gold_masked * _place_values_t_var).sum(axis=-1)  # (B, N_MAX)
+            var_rel_denom      = var_gold_numbers.abs() + 1.0                            # (B, N_MAX)
+
+            # Per-variable mask: unobserved AND real (non-padding)
+            is_real_var_loss   = (digit_valid_mask.sum(axis=-1) > 0).cast(dtypes.float)  # (B, N_MAX)
+            unobs_real_var     = unobs_float * is_real_var_loss                          # (B, N_MAX)
+            n_unobs_real_var   = unobs_real_var.sum() + 1e-8
+
+            for k, dig_logits in enumerate(digit_logits_history):
+                weight_k    = 1.0 + float(k) / float(max(K - 1, 1))
+                probs_k     = dig_logits.softmax(axis=-1)               # (B, N_MAX, N_DIGITS, 10)
+                exp_digit_k = (probs_k * _digit_vals_t_var.reshape(1, 1, 1, 10)).sum(axis=-1)
+                exp_digit_m = exp_digit_k * digit_valid_mask             # mask invalid positions
+                pred_number = (exp_digit_m * _place_values_t_var).sum(axis=-1)            # (B, N_MAX)
+                # Relative MSE with cold-start clip (same recipe as factor_aux)
+                rel_err  = ((pred_number - var_gold_numbers) / var_rel_denom).clip(-5.0, 5.0)
+                sq_err   = rel_err * rel_err
+                sq_err_m = sq_err * unobs_real_var.cast(sq_err.dtype)
+                ce_k     = sq_err_m.sum() / n_unobs_real_var
+
+                per_breath_ce_t.append(ce_k)
+                var_loss_sum   = var_loss_sum + ce_k * weight_k
+                var_weight_sum += weight_k
+        else:
+            # ============================================================
+            # PER-DIGIT CE PATH (default, original v105.1.2 v2 behavior)
+            # ============================================================
+            for k, dig_logits in enumerate(digit_logits_history):
+                weight_k    = 1.0 + float(k) / float(max(K - 1, 1))
+                logits_flat = dig_logits.reshape(B * n_max * n_digits, 10)
+                log_probs   = logits_flat.log_softmax(axis=-1)
+                gold_oh     = gold_flat.one_hot(10).cast(log_probs.dtype)
+                nll         = -(log_probs * gold_oh).sum(axis=-1)
+                masked_nll  = nll * cmask_flat.cast(nll.dtype)
+                ce_k        = masked_nll.sum() / n_active
+                per_breath_ce_t.append(ce_k)
+                var_loss_sum   = var_loss_sum + ce_k * weight_k
+                var_weight_sum += weight_k
 
         var_loss = var_loss_sum / float(var_weight_sum)
 
