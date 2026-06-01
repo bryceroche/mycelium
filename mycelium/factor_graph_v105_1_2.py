@@ -128,6 +128,10 @@ V105_1_2_AR_DIGITS        = int(os.environ.get("V105_1_2_AR_DIGITS",         "0"
 # Scale of the soft prediction's embedding contribution when conditioning the
 # next digit's hidden state. Smaller = milder conditioning, larger = stronger.
 V105_1_2_AR_COND_SCALE    = float(os.environ.get("V105_1_2_AR_COND_SCALE",   "0.5"))
+# AR iteration direction. 0 = LSD-first (default; predict ones first, condition
+# upward toward ten-thousands). 1 = MSD-first (predict ten-thousands first,
+# condition downward toward ones — the "value tree traversal" direction).
+V105_1_2_AR_MSD_FIRST     = int(os.environ.get("V105_1_2_AR_MSD_FIRST",      "0")) > 0
 
 
 def _fourier_digit_codebook(n_digits: int, hidden: int) -> np.ndarray:
@@ -442,8 +446,20 @@ def fg_breathing_forward_v105_1_2(
                 dtype=dtypes.float,
             ).reshape(1, 1, 1)
 
-            # LSD-first iteration: array indices n_digits-1 (ones) → 0 (most-sig)
-            for p in range(n_digits - 1, -1, -1):
+            # Iteration direction:
+            #   LSD-first (default):    p = n_digits-1 (ones)  → 0 (ten-thousands)
+            #     conditioning carries: ones → tens → hundreds → ...
+            #     matches "carry propagation upward" intuition
+            #
+            #   MSD-first (alternative): p = 0 (ten-thousands)  → n_digits-1 (ones)
+            #     conditioning carries: magnitude → leading → ... → ones
+            #     matches "value tree traversal" intuition (coarse → fine)
+            if V105_1_2_AR_MSD_FIRST:
+                ar_iter = range(n_digits)
+            else:
+                ar_iter = range(n_digits - 1, -1, -1)
+
+            for p in ar_iter:
                 pos_hidden = var_tokens_r[:, :, p, :] + cond_accum     # (B, N_MAX, H)
                 pos_logits = pos_hidden @ cb_fp.T                       # (B, N_MAX, 10)
                 ar_logits_list[p] = pos_logits
@@ -620,7 +636,8 @@ def attach_fg_params_v105_1_2(
         f"  digit_codebook=(10,{hidden}) init={'FOURIER' if V105_1_2_FOURIER_INIT else 'QR-random'}, "
         f"digit_rope (N_DIGITS={n_digits}, H={hidden}, base={rope_base:.0f}) [FROZEN]\n"
         f"  loss_mode={'NUMBER_MSE_ONLY' if V105_1_2_NUMBER_MSE_ONLY else 'per-digit CE'}\n"
-        f"  ar_digits={V105_1_2_AR_DIGITS} (cond_scale={V105_1_2_AR_COND_SCALE if V105_1_2_AR_DIGITS else 'N/A'})\n"
+        f"  ar_digits={V105_1_2_AR_DIGITS} (cond_scale={V105_1_2_AR_COND_SCALE if V105_1_2_AR_DIGITS else 'N/A'}, "
+        f"dir={'MSD-first' if V105_1_2_AR_MSD_FIRST else 'LSD-first'})\n"
         f"  var_pos_embed=({n_max},{hidden}), factor_pos_embed=({f_max},{hidden})\n"
         f"  waist=({hidden}→{waist}→{hidden}), W_expand={'ZEROS' if waist_lora_init else 'random'}\n"
         f"  ib_codebook=({n_code},{hidden}), "
