@@ -1,66 +1,59 @@
-"""v105.1.2 factor graph breathing transformer — full-stack architecture.
+"""v105.3 factor graph breathing transformer — LSD-first array layout refactor.
+
+Architectural refactor of v105.1.2 v2: flips the ARRAY layout to LSD-first
+(position 0 = ones, position N-1 = ten-thousands).  Functionally equivalent
+to v105.1.2 v2 with LSD-first AR enabled, but cleaner — no "right-aligned RoPE"
+reversal patch needed because array index 0 (ones) naturally aligns with
+RoPE position 0 (no rotation).
 
 Combines four validated components on top of v105.1 (digit RoPE):
 
   1. Digit-by-digit codebook  (10 entries × 1024d, shared across positions)
      — from v105
-  2. RoPE on digit positions  — from v105.1 (the correlation fix)
+  2. RoPE on digit positions  — from v105.1 (no reversal here vs v105.1.2)
   3. Projection waist 1024 → 512 → 1024 with LoRA-style init  — from v101
      LoRA guarantee: W_expand zero-initialized → waist has zero contribution
      at step 0 → step-0 forward equals v105.1 backbone behavior exactly.
   4. IB semantic codebook  (32 entries × 1024d)  — from v104
      Loaded from .cache/ib_centroids_gsm8k_partial.npz (falls back to QR random).
      delta_gate_quant zero-initialized → codebook has zero contribution at step 0.
-  5. Per-NUMBER factor auxiliary loss (joint log-likelihood, NOT per-digit average)
-     factor_aux = mean_over_factors(-sum_p log P(gold_digit_p | hidden))
-     This preserves per-digit supervision granularity while training on joint number
-     coherence — combined with RoPE enforces digit correlation through BOTH
-     architecture and loss.
+  5. Per-NUMBER factor auxiliary loss (joint log-likelihood via relative MSE)
 
-Architecture change from v105.1:
-  After the 4 transformer layers each breath, two residual paths are applied before
-  the delta-gate update:
-    a) IB codebook projection (same pattern as v104):
-         scores   = h @ codebook.T / temperature    (B, T, 32)
-         weights  = scores.clip(-1e4, 1e4).softmax(-1)
-         recon    = weights @ codebook               (B, T, H)
-         h = h + delta_gate_quant[k] * (recon - h)  # zero at init
-    b) Waist compression (same pattern as v101):
-         waist_h  = GELU(h @ W_compress)             (B, T, 512)
-         quantize = waist_h @ W_expand               (B, T, H)   # zero at init
-         h = h + quantize                            # zero at init
-
-LoRA init verification:
-  At step 0:
-    delta_gate_quant = 0 → IB codebook term = 0 → h unchanged
-    W_expand = 0 → waist term = 0 → h unchanged
-    delta_gate = ones (inherited) → full delta from v105.1 is passed through
-  Therefore: step-0 forward == v105.1 backbone
+Layout change from v105.1.2:
+  - Array index 0 = ones digit, naturally gets RoPE position 0 (no rotation).
+  - Array index N-1 = most significant, gets maximum rotation.
+  - Place values: [10^0, 10^1, ..., 10^(N-1)]
+  - digit_valid_mask is LEADING-trues (positions [0, n_actual)).
+  - AR default direction iterates array index 0 → N-1 (ones-first).
 
 Loss structure:
   total = var_loss + fw * factor_aux_loss + aw * calib_loss + ew * energy_loss
 
   var_loss:         per-breath weighted CE on unobserved variable digit positions
-  factor_aux_loss:  per-NUMBER joint log-likelihood on factor result nodes
-                    (option c from spec: -sum_p log P(gold_digit_p | factor_hidden))
+  factor_aux_loss:  per-NUMBER relative MSE on reconstructed value
   calib_loss:       MSE calibration head vs progressive accuracy target
-  energy_loss:      expected-value constraint energy (differentiable, from v105)
+  energy_loss:      expected-value constraint energy (LSD place values)
 
 Env var gates:
-  V105_1_2_TASK=1               — enable v105.1.2 forward path
-  V105_1_2_K_MAX=8              — iterative-prefill breaths
-  V105_1_2_N_DIGITS=5           — digit positions per variable (covers 0..99999)
-  V105_1_2_N_MAX=16             — max variable nodes
-  V105_1_2_F_MAX=8              — max factor nodes
-  V105_1_2_WAIST=512            — projection waist dimension
-  V105_1_2_CODEBOOK_N=32        — IB semantic codebook entries
-  V105_1_2_IB_CENTROIDS=.cache/ib_centroids_gsm8k_partial.npz
-  V105_1_2_ENERGY_WEIGHT=0.01   — constraint energy weight
-  V105_1_2_CALIB_WEIGHT=0.05    — calibration loss weight
-  V105_1_2_FACTOR_AUX_WEIGHT=0.5 — per-NUMBER aux loss weight
-  V105_1_2_ROPE_BASE=10000      — digit RoPE base theta (same as v105.1)
-  V105_1_2_IB_INIT=1            — use IB centroids (vs random QR fallback)
-  V105_1_2_WAIST_LORA_INIT=1   — zero-init W_expand (recommended)
+  V105_3_TASK=1                — enable v105.3 forward path
+  V105_3_K_MAX=8               — iterative-prefill breaths
+  V105_3_N_DIGITS=5            — digit positions per variable (covers 0..99999)
+  V105_3_N_MAX=16              — max variable nodes
+  V105_3_F_MAX=8               — max factor nodes
+  V105_3_WAIST=512             — projection waist dimension
+  V105_3_CODEBOOK_N=32         — IB semantic codebook entries
+  V105_3_IB_CENTROIDS=.cache/ib_centroids_gsm8k_partial.npz
+  V105_3_ENERGY_WEIGHT=0.01    — constraint energy weight
+  V105_3_CALIB_WEIGHT=0.05     — calibration loss weight
+  V105_3_FACTOR_AUX_WEIGHT=1.0 — per-NUMBER aux loss weight
+  V105_3_ROPE_BASE=10000       — digit RoPE base theta (same as v105.1)
+  V105_3_IB_INIT=1             — use IB centroids (vs random QR fallback)
+  V105_3_WAIST_LORA_INIT=1     — zero-init W_expand (recommended)
+  V105_3_NUMBER_MSE_ONLY=0     — replace per-digit CE with per-number MSE
+  V105_3_AR_DIGITS=1           — autoregressive digit decoding (active variant)
+  V105_3_AR_COND_SCALE=0.5     — soft AR conditioning embed scale
+  V105_3_AR_MSD_FIRST=0        — AR direction: 0 = LSD-first (default, ones first),
+                                  1 = MSD-first (ten-thousands first)
 """
 from __future__ import annotations
 
@@ -78,9 +71,10 @@ from mycelium.config import Config
 # Re-use helpers from v105 / v105.1.
 from mycelium.factor_graph_v105 import (
     OP_ADD, OP_SUB, OP_MUL, OP_DIV,
-    value_to_digits, digits_to_value,
-    _expected_value_v105, constraint_energy_v105,
-    fg_accuracy_v105,
+)
+# LSD-first encoding helpers come from the v105.3 data module.
+from mycelium.factor_graph_data_v105_3 import (
+    value_to_digits_lsd, digits_to_value_lsd,
 )
 from mycelium.factor_graph_v105_1 import (
     _precompute_digit_rope,
@@ -91,47 +85,44 @@ from mycelium.factor_graph_v104 import load_ib_centroids
 
 __all__ = [
     "OP_ADD", "OP_SUB", "OP_MUL", "OP_DIV",
-    "value_to_digits", "digits_to_value",
+    "value_to_digits_lsd", "digits_to_value_lsd",
 ]
 
 # ---------------------------------------------------------------------------
 # Env vars
 # ---------------------------------------------------------------------------
 
-V105_1_2_TASK             = int(os.environ.get("V105_1_2_TASK",             "0")) > 0
-V105_1_2_K_MAX            = int(os.environ.get("V105_1_2_K_MAX",            "8"))
-V105_1_2_N_DIGITS         = int(os.environ.get("V105_1_2_N_DIGITS",         "5"))
-V105_1_2_N_MAX            = int(os.environ.get("V105_1_2_N_MAX",            "16"))
-V105_1_2_F_MAX            = int(os.environ.get("V105_1_2_F_MAX",             "8"))
-V105_1_2_N_HEADS          = 16   # fixed: Pythia-410M
-V105_1_2_WAIST            = int(os.environ.get("V105_1_2_WAIST",            "512"))
-V105_1_2_CODEBOOK_N       = int(os.environ.get("V105_1_2_CODEBOOK_N",       "32"))
-V105_1_2_IB_CENTROIDS     = os.environ.get(
-    "V105_1_2_IB_CENTROIDS", ".cache/ib_centroids_gsm8k_partial.npz"
+V105_3_TASK             = int(os.environ.get("V105_3_TASK",             "0")) > 0
+V105_3_K_MAX            = int(os.environ.get("V105_3_K_MAX",            "8"))
+V105_3_N_DIGITS         = int(os.environ.get("V105_3_N_DIGITS",         "5"))
+V105_3_N_MAX            = int(os.environ.get("V105_3_N_MAX",            "16"))
+V105_3_F_MAX            = int(os.environ.get("V105_3_F_MAX",             "8"))
+V105_3_N_HEADS          = 16   # fixed: Pythia-410M
+V105_3_WAIST            = int(os.environ.get("V105_3_WAIST",            "512"))
+V105_3_CODEBOOK_N       = int(os.environ.get("V105_3_CODEBOOK_N",       "32"))
+V105_3_IB_CENTROIDS     = os.environ.get(
+    "V105_3_IB_CENTROIDS", ".cache/ib_centroids_gsm8k_partial.npz"
 )
-V105_1_2_ENERGY_WEIGHT    = float(os.environ.get("V105_1_2_ENERGY_WEIGHT",   "0.01"))
-V105_1_2_CALIB_WEIGHT     = float(os.environ.get("V105_1_2_CALIB_WEIGHT",    "0.05"))
-V105_1_2_FACTOR_AUX_WEIGHT = float(os.environ.get("V105_1_2_FACTOR_AUX_WEIGHT", "0.5"))
-V105_1_2_ROPE_BASE        = float(os.environ.get("V105_1_2_ROPE_BASE",       "10000.0"))
-V105_1_2_IB_INIT          = int(os.environ.get("V105_1_2_IB_INIT",           "1")) > 0
-V105_1_2_WAIST_LORA_INIT  = int(os.environ.get("V105_1_2_WAIST_LORA_INIT",   "1")) > 0
-V105_1_2_FOURIER_INIT     = int(os.environ.get("V105_1_2_FOURIER_INIT",      "0")) > 0
+V105_3_ENERGY_WEIGHT    = float(os.environ.get("V105_3_ENERGY_WEIGHT",   "0.01"))
+V105_3_CALIB_WEIGHT     = float(os.environ.get("V105_3_CALIB_WEIGHT",    "0.05"))
+V105_3_FACTOR_AUX_WEIGHT = float(os.environ.get("V105_3_FACTOR_AUX_WEIGHT", "1.0"))
+V105_3_ROPE_BASE        = float(os.environ.get("V105_3_ROPE_BASE",       "10000.0"))
+V105_3_IB_INIT          = int(os.environ.get("V105_3_IB_INIT",           "1")) > 0
+V105_3_WAIST_LORA_INIT  = int(os.environ.get("V105_3_WAIST_LORA_INIT",   "1")) > 0
+V105_3_FOURIER_INIT     = int(os.environ.get("V105_3_FOURIER_INIT",      "0")) > 0
 # Drop per-digit CE entirely, use per-NUMBER MSE on reconstructed value as the
-# sole variable supervision. Tests whether "partial credit" of per-digit CE is
-# the trap holding upper positions in constant-predictor collapse.
-V105_1_2_NUMBER_MSE_ONLY  = int(os.environ.get("V105_1_2_NUMBER_MSE_ONLY",   "0")) > 0
-# Autoregressive digit decoding (LSD-first). Each digit's logits condition on
-# the soft (softmax) predictions of all previously committed (less significant)
-# digit positions. Breaks the "5 independent classifiers" failure mode where
-# every position collapses to constant predictor independently.
-V105_1_2_AR_DIGITS        = int(os.environ.get("V105_1_2_AR_DIGITS",         "0")) > 0
+# sole variable supervision.
+V105_3_NUMBER_MSE_ONLY  = int(os.environ.get("V105_3_NUMBER_MSE_ONLY",   "0")) > 0
+# Autoregressive digit decoding. Each digit's logits condition on the soft
+# (softmax) predictions of all previously committed digit positions.
+V105_3_AR_DIGITS        = int(os.environ.get("V105_3_AR_DIGITS",         "0")) > 0
 # Scale of the soft prediction's embedding contribution when conditioning the
 # next digit's hidden state. Smaller = milder conditioning, larger = stronger.
-V105_1_2_AR_COND_SCALE    = float(os.environ.get("V105_1_2_AR_COND_SCALE",   "0.5"))
-# AR iteration direction. 0 = LSD-first (default; predict ones first, condition
-# upward toward ten-thousands). 1 = MSD-first (predict ten-thousands first,
-# condition downward toward ones — the "value tree traversal" direction).
-V105_1_2_AR_MSD_FIRST     = int(os.environ.get("V105_1_2_AR_MSD_FIRST",      "0")) > 0
+V105_3_AR_COND_SCALE    = float(os.environ.get("V105_3_AR_COND_SCALE",   "0.5"))
+# AR iteration direction (in LSD-first array layout):
+#   0 = LSD-first (default; array index 0 → N-1 — ones first, condition upward)
+#   1 = MSD-first (array index N-1 → 0 — ten-thousands first, condition downward)
+V105_3_AR_MSD_FIRST     = int(os.environ.get("V105_3_AR_MSD_FIRST",      "0")) > 0
 
 
 def _fourier_digit_codebook(n_digits: int, hidden: int) -> np.ndarray:
@@ -140,15 +131,6 @@ def _fourier_digit_codebook(n_digits: int, hidden: int) -> np.ndarray:
     Maps each digit d to phases on a circle: phase_d = 2π·d/n_digits.
     The codebook fills hidden dims with [cos(d·freq·phase), sin(d·freq·phase)]
     pairs cycling through the Nyquist-limited frequencies 1..n_digits/2.
-
-    Motivation: digits form a cyclic group Z/n_digits. Random init forces
-    the model to discover this structure via gradient (the "grokking"
-    pathway, ~10K-100K steps for tiny modular-arithmetic transformers).
-    Structured init provides the cyclic geometry directly — same intuition
-    as v98's aligned init for state_embed.
-
-    Each row is L2-normalized to unit norm (matches the QR-orthogonal init
-    scale this replaces).
     """
     cb = np.zeros((n_digits, hidden), dtype=np.float32)
     n_unique_freqs = max(n_digits // 2, 1)  # 5 for n_digits=10
@@ -165,10 +147,10 @@ def _fourier_digit_codebook(n_digits: int, hidden: int) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------------
-# Component 1+2: Embedding with digit-axis RoPE  (same as v105.1)
+# Component 1+2: Embedding with digit-axis RoPE (LSD layout — no reversal)
 # ---------------------------------------------------------------------------
 
-def embed_factor_graph_v105_1_2(
+def embed_factor_graph_v105_3(
     digit_init: Tensor,       # (B, N_MAX, N_DIGITS, 10) — one-hot / uniform
     node_kinds: Tensor,        # (B, T_MAX) int
     var_pos_embed: Tensor,     # (N_MAX, H)
@@ -186,10 +168,11 @@ def embed_factor_graph_v105_1_2(
     Component 1: digit_codebook (10, H) — shared across all positions.
     Component 2: apply_rope_digit_tg — each position p gets rotated by p*freq.
 
+    LSD layout: array index 0 = ones digit ⇒ RoPE position 0 = no rotation.
+                array index N-1 = most significant ⇒ maximum rotation.
+
     raw[b, v, p] = digit_codebook[digit_value] + var_pos_embed[v]
     embed[b, v, p] = RoPE(raw[b, v, p], p)
-
-    No additive digit_pos_embed — digit position is encoded geometrically via RoPE.
     """
     B = int(digit_init.shape[0])
     H = int(var_pos_embed.shape[1])
@@ -200,7 +183,7 @@ def embed_factor_graph_v105_1_2(
     vpe = var_pos_embed.reshape(1, n_max, 1, H).cast(var_digit_state.dtype)
     raw = var_digit_state + vpe.expand(B, n_max, n_digits, H)  # (B, N_MAX, N_DIGITS, H)
 
-    # Apply digit RoPE (Component 2)
+    # Apply digit RoPE (Component 2) — LSD layout, no reversal
     var_digit_h = apply_rope_digit_tg(
         raw, digit_rope_cos, digit_rope_sin, n_digits=n_digits, hidden=H
     )  # (B, N_MAX, N_DIGITS, H)
@@ -221,10 +204,10 @@ def embed_factor_graph_v105_1_2(
 
 
 # ---------------------------------------------------------------------------
-# One transformer layer (identical to v105.1)
+# One transformer layer (identical to v105.1.2)
 # ---------------------------------------------------------------------------
 
-def fg_layer_forward_v105_1_2(
+def fg_layer_forward_v105_3(
     layer: Any,
     x: Tensor,          # (B, T_MAX, H)
     attn_bias: Tensor,  # (B, N_HEADS, T_MAX, T_MAX)
@@ -273,8 +256,6 @@ def apply_projection_waist(
 
     At init: W_expand = 0 → quantize = 0 → output = h (byte-identical to no-waist).
     After unlock: h → 512d compressed → GELU → 1024d correction (added as residual).
-
-    This is the 'Quantize' step from v101 (forces commitment to 512d compression).
     """
     wc = W_compress.cast(h.dtype)
     bc = b_compress.reshape(1, 1, -1).cast(h.dtype)
@@ -300,8 +281,6 @@ def apply_ib_codebook(
 
     At init: delta_gate_quant = 0 → h_quant = h (byte-identical to no-codebook).
     After unlock: soft nearest-codebook reconstruction is blended in as residual.
-
-    Architecture is identical to v104's per-breath codebook step.
     """
     cb  = codebook.cast(h.dtype)
     tmp = temperature.cast(h.dtype)
@@ -315,19 +294,93 @@ def apply_ib_codebook(
 
 
 # ---------------------------------------------------------------------------
+# Constraint energy (LSD place values)
+# ---------------------------------------------------------------------------
+
+def _expected_value_v105_3(digit_logits: Tensor, n_digits: int) -> Tensor:
+    """Compute expected integer value from per-digit logit distributions (LSD layout).
+
+    digit_logits: (..., N_DIGITS, 10)
+    Returns: (...,) float — expected value = Σ_p E[digit_p] × 10^p
+
+    LSD place values: array index p has place 10^p (ones at idx 0, ten-thousands at idx N-1).
+    """
+    probs   = digit_logits.softmax(-1)  # (..., N_DIGITS, 10)
+    d_vals  = Tensor(np.arange(10, dtype=np.float32)).cast(probs.dtype)  # (10,)
+    exp_dig = (probs * d_vals).sum(axis=-1)  # (..., N_DIGITS)
+    place_vals = Tensor(
+        np.array([10 ** p for p in range(n_digits)], dtype=np.float32)
+    ).cast(exp_dig.dtype)  # (N_DIGITS,) — LSD place values
+    return (exp_dig * place_vals).sum(axis=-1)  # (...)
+
+
+def constraint_energy_v105_3(
+    digit_logits_final: Tensor,   # (B, N_MAX, N_DIGITS, 10)
+    factor_types: Tensor,          # (B, F_MAX) int
+    factor_args: Tensor,           # (B, F_MAX, 3) int
+    n_max: int = V105_3_N_MAX,
+    f_max: int = V105_3_F_MAX,
+    n_digits: int = V105_3_N_DIGITS,
+) -> Tensor:
+    """Expected-value constraint energy (differentiable, inside JIT) — LSD place values.
+
+    Same formula as constraint_energy_v105 but with LSD-first place values.
+    For each factor: E_factor = (E[result] - op(E[arg1], E[arg2]))^2, aggregated
+    over valid factors and normalized.
+    """
+    B = int(digit_logits_final.shape[0])
+
+    # Compute expected value for all variables: (B, N_MAX) — LSD-aware
+    ev = _expected_value_v105_3(digit_logits_final, n_digits)  # (B, N_MAX)
+
+    # Gather arg/result expected values via one-hot.
+    fa_clamped = factor_args.cast(dtypes.int).clip(0, n_max - 1)  # (B, F_MAX, 3)
+    fa_oh = fa_clamped.reshape(B, f_max * 3).one_hot(n_max)       # (B, F_MAX*3, N_MAX)
+    ev_bc = ev.reshape(B, 1, n_max).cast(dtypes.float)             # (B, 1, N_MAX)
+    gathered = (fa_oh.cast(dtypes.float) * ev_bc).sum(axis=-1)    # (B, F_MAX*3)
+    gathered_r = gathered.reshape(B, f_max, 3)                     # (B, F_MAX, 3)
+    ev_arg1   = gathered_r[:, :, 0]
+    ev_arg2   = gathered_r[:, :, 1]
+    ev_result = gathered_r[:, :, 2]
+
+    ev_add = ev_arg1 + ev_arg2
+    ev_sub = ev_arg1 - ev_arg2
+    ev_mul = ev_arg1 * ev_arg2
+    ev_div = ev_arg1 / (ev_arg2.abs() + 1.0)
+
+    ft_clamped = factor_types.cast(dtypes.int).clip(0, 3)
+    ft_oh      = ft_clamped.one_hot(4).cast(dtypes.float)
+    ev_expected_stack = ev_add.reshape(B, f_max, 1).cat(
+        ev_sub.reshape(B, f_max, 1),
+        ev_mul.reshape(B, f_max, 1),
+        ev_div.reshape(B, f_max, 1),
+        dim=-1,
+    )
+    ev_expected = (ft_oh * ev_expected_stack).sum(axis=-1)
+
+    valid = (factor_types >= 0).cast(dtypes.float)
+    residual    = ev_result - ev_expected
+    rel_err     = residual.abs() / (ev_expected.abs() + 1.0)
+    rel_err_clipped = rel_err.clip(0.0, 10.0)
+    energy      = rel_err_clipped * valid
+    n_valid     = valid.sum() + 1e-8
+    return energy.sum() / n_valid
+
+
+# ---------------------------------------------------------------------------
 # Iterative prefill loop — full stack
 # ---------------------------------------------------------------------------
 
-def fg_breathing_forward_v105_1_2(
+def fg_breathing_forward_v105_3(
     model: Any,
     digit_init: Tensor,       # (B, N_MAX, N_DIGITS, 10)
     node_kinds: Tensor,        # (B, T_MAX) int
     staging_mask: Tensor,      # (B, K_MAX, T_MAX, T_MAX)
     head_op_mask: Tensor,      # (B, N_HEADS, T_MAX, T_MAX)
     K: int,
-    n_max: int = V105_1_2_N_MAX,
-    f_max: int = V105_1_2_F_MAX,
-    n_digits: int = V105_1_2_N_DIGITS,
+    n_max: int = V105_3_N_MAX,
+    f_max: int = V105_3_F_MAX,
+    n_digits: int = V105_3_N_DIGITS,
 ) -> tuple[list[Tensor], list[Tensor], list[Tensor]]:
     """K iterative-prefill breaths: digit RoPE + IB codebook + projection waist.
 
@@ -340,38 +393,38 @@ def fg_breathing_forward_v105_1_2(
       6. Delta gate residual update.
       7. Readout: digit logits (via codebook dot-product), factor logits, calib.
     """
-    assert hasattr(model, "fg_v105_1_2_digit_codebook"), \
-        "model has no v105.1.2 params; was attach_fg_params_v105_1_2 called?"
+    assert hasattr(model, "fg_v105_3_digit_codebook"), \
+        "model has no v105.3 params; was attach_fg_params_v105_3 called?"
 
     # Component 1+2 params
-    digit_codebook   = model.fg_v105_1_2_digit_codebook    # (10, H)
-    digit_rope_cos   = model.fg_v105_1_2_digit_rope_cos    # (N_DIGITS, H)
-    digit_rope_sin   = model.fg_v105_1_2_digit_rope_sin    # (N_DIGITS, H)
-    var_pos_embed    = model.fg_v105_1_2_var_pos_embed      # (N_MAX, H)
-    factor_pos_embed = model.fg_v105_1_2_factor_pos_embed  # (F_MAX, H)
-    node_kind_embed  = model.fg_v105_1_2_node_kind_embed   # (3, H)
-    breath_embed     = model.fg_v105_1_2_breath_embed      # (K_max, H)
-    delta_gate       = model.fg_v105_1_2_delta_gate        # (K_max,)
-    calib_head_w     = model.fg_v105_1_2_calib_head_w      # (H, 1)
-    calib_head_b     = model.fg_v105_1_2_calib_head_b      # (1,)
+    digit_codebook   = model.fg_v105_3_digit_codebook    # (10, H)
+    digit_rope_cos   = model.fg_v105_3_digit_rope_cos    # (N_DIGITS, H)
+    digit_rope_sin   = model.fg_v105_3_digit_rope_sin    # (N_DIGITS, H)
+    var_pos_embed    = model.fg_v105_3_var_pos_embed      # (N_MAX, H)
+    factor_pos_embed = model.fg_v105_3_factor_pos_embed  # (F_MAX, H)
+    node_kind_embed  = model.fg_v105_3_node_kind_embed   # (3, H)
+    breath_embed     = model.fg_v105_3_breath_embed      # (K_max, H)
+    delta_gate       = model.fg_v105_3_delta_gate        # (K_max,)
+    calib_head_w     = model.fg_v105_3_calib_head_w      # (H, 1)
+    calib_head_b     = model.fg_v105_3_calib_head_b      # (1,)
 
     # Component 3: projection waist params
-    W_compress = model.fg_v105_1_2_W_compress  # (H, waist)
-    b_compress = model.fg_v105_1_2_b_compress  # (waist,)
-    W_expand   = model.fg_v105_1_2_W_expand    # (waist, H) — zero at init
-    b_expand   = model.fg_v105_1_2_b_expand    # (H,)
+    W_compress = model.fg_v105_3_W_compress  # (H, waist)
+    b_compress = model.fg_v105_3_b_compress  # (waist,)
+    W_expand   = model.fg_v105_3_W_expand    # (waist, H) — zero at init
+    b_expand   = model.fg_v105_3_b_expand    # (H,)
 
     # Component 4: IB semantic codebook params
-    ib_codebook      = model.fg_v105_1_2_ib_codebook       # (N_CODE, H)
-    delta_gate_quant = model.fg_v105_1_2_delta_gate_quant  # (K_max,) — zero at init
-    ib_temperature   = model.fg_v105_1_2_ib_temperature    # ()
+    ib_codebook      = model.fg_v105_3_ib_codebook       # (N_CODE, H)
+    delta_gate_quant = model.fg_v105_3_delta_gate_quant  # (K_max,) — zero at init
+    ib_temperature   = model.fg_v105_3_ib_temperature    # ()
 
     B = int(digit_init.shape[0])
     T = n_max * n_digits + f_max
     H = int(var_pos_embed.shape[1])
 
     # Initial embedding: digit codebook (1) + RoPE on digit positions (2)
-    x = embed_factor_graph_v105_1_2(
+    x = embed_factor_graph_v105_3(
         digit_init, node_kinds,
         var_pos_embed, factor_pos_embed, node_kind_embed,
         digit_codebook, digit_rope_cos, digit_rope_sin,
@@ -397,20 +450,18 @@ def fg_breathing_forward_v105_1_2(
 
         # 2. Combined mask (B, N_HEADS, T, T)
         stk   = staging_mask[:, k, :, :]     # (B, T, T)
-        stk_h = stk.reshape(B, 1, T, T).expand(B, V105_1_2_N_HEADS, T, T)
+        stk_h = stk.reshape(B, 1, T, T).expand(B, V105_3_N_HEADS, T, T)
         combined = stk_h.cast(x.dtype) + head_op_mask.cast(x.dtype)
 
         # 3. Four transformer layers
         h = x_in
         for layer in layers[:4]:
-            h = fg_layer_forward_v105_1_2(layer, h, combined)
+            h = fg_layer_forward_v105_3(layer, h, combined)
 
         # 4. IB semantic codebook soft projection  (Component 4)
-        #    Zero effect at step 0 (delta_gate_quant initialized to zeros).
         h = apply_ib_codebook(h, ib_codebook, ib_temperature, delta_gate_quant[k])
 
         # 5. Projection waist compression  (Component 3)
-        #    Zero effect at step 0 (W_expand initialized to zeros).
         h = apply_projection_waist(h, W_compress, W_expand, b_compress, b_expand)
 
         # 6. Delta gate residual update
@@ -425,39 +476,28 @@ def fg_breathing_forward_v105_1_2(
         var_tokens_r = var_tokens.reshape(B, n_max, n_digits, -1)
         cb_fp        = digit_codebook.cast(dtypes.float)
 
-        if V105_1_2_AR_DIGITS:
-            # AUTOREGRESSIVE DIGIT DECODING (LSD-first, array index n_digits-1 → 0)
-            # Each position's logits condition on the accumulated soft embedding
-            # of all PREVIOUSLY COMMITTED (less significant) digits.
-            #
-            # Gradient path: pos p's loss flows back through digit_codebook to
-            # all SUBSEQUENT (more significant) positions' logits via the
-            # accumulated embedding. Breaks the 5-independent-classifier
-            # failure mode by chaining the predictions.
-            #
-            # Soft commit: pos_probs @ digit_codebook gives the weighted-average
-            # digit codebook entry, which is added (scaled) to the next position's
-            # hidden before projection.
+        if V105_3_AR_DIGITS:
+            # AUTOREGRESSIVE DIGIT DECODING
+            # In LSD-first array layout:
+            #   Default (LSD-first):  iterate array index 0 → N-1
+            #                         (ones → tens → hundreds → ... → ten-thousands)
+            #                         carries propagate upward
+            #   MSD-first:            iterate array index N-1 → 0
+            #                         (ten-thousands → ... → ones)
+            #                         coarse → fine value tree traversal
             ar_logits_list: list[Tensor] = [None] * n_digits  # type: ignore
-            # Accumulator for soft digit embeddings from previously committed positions
-            cond_accum = Tensor.zeros((B, n_max, int(x_ln.shape[-1])), dtype=dtypes.float).contiguous()
+            cond_accum = Tensor.zeros(
+                (B, n_max, int(x_ln.shape[-1])), dtype=dtypes.float
+            ).contiguous()
             ar_cond_scale_t = Tensor(
-                np.array([float(V105_1_2_AR_COND_SCALE)], dtype=np.float32),
+                np.array([float(V105_3_AR_COND_SCALE)], dtype=np.float32),
                 dtype=dtypes.float,
             ).reshape(1, 1, 1)
 
-            # Iteration direction:
-            #   LSD-first (default):    p = n_digits-1 (ones)  → 0 (ten-thousands)
-            #     conditioning carries: ones → tens → hundreds → ...
-            #     matches "carry propagation upward" intuition
-            #
-            #   MSD-first (alternative): p = 0 (ten-thousands)  → n_digits-1 (ones)
-            #     conditioning carries: magnitude → leading → ... → ones
-            #     matches "value tree traversal" intuition (coarse → fine)
-            if V105_1_2_AR_MSD_FIRST:
-                ar_iter = range(n_digits)
-            else:
+            if V105_3_AR_MSD_FIRST:
                 ar_iter = range(n_digits - 1, -1, -1)
+            else:
+                ar_iter = range(n_digits)   # LSD-first default
 
             for p in ar_iter:
                 pos_hidden = var_tokens_r[:, :, p, :] + cond_accum     # (B, N_MAX, H)
@@ -470,7 +510,7 @@ def fg_breathing_forward_v105_1_2(
             # Stack in original array-index order: (B, N_MAX, N_DIGITS, 10)
             digit_logits_k = Tensor.stack(*ar_logits_list, dim=2)
         else:
-            # Parallel independent digit logits (default v105.1.2 v2 behavior)
+            # Parallel independent digit logits
             digit_logits_k = var_tokens_r @ cb_fp.T              # (B, N_MAX, N_DIGITS, 10)
 
         digit_logits_history.append(digit_logits_k)
@@ -496,12 +536,12 @@ def fg_breathing_forward_v105_1_2(
 # Parameter attachment
 # ---------------------------------------------------------------------------
 
-def attach_fg_params_v105_1_2(
+def attach_fg_params_v105_3(
     model: Any,
     hidden: int,
-    n_digits: int = V105_1_2_N_DIGITS,
-    n_max: int = V105_1_2_N_MAX,
-    f_max: int = V105_1_2_F_MAX,
+    n_digits: int = V105_3_N_DIGITS,
+    n_max: int = V105_3_N_MAX,
+    f_max: int = V105_3_F_MAX,
     k_max: int | None = None,
     waist: int | None = None,
     n_code: int | None = None,
@@ -510,82 +550,75 @@ def attach_fg_params_v105_1_2(
     ib_init: bool | None = None,
     waist_lora_init: bool | None = None,
 ) -> None:
-    """Attach v105.1.2 params to model.
+    """Attach v105.3 params to model.
+
+    LSD-first array layout: RoPE tables are used directly (no reversal).
+    Array index 0 = ones digit ⇒ RoPE position 0 ⇒ no rotation.
+    Array index N-1 = ten-thousands ⇒ RoPE position N-1 ⇒ max rotation.
 
     Components:
       1+2  digit_codebook (10, hidden) + frozen digit_rope_cos/sin tables
       3    projection waist: W_compress (hidden, waist_d), W_expand (waist_d, hidden)
-           W_expand zero-initialized (LoRA-style) → zero waist effect at step 0
+           W_expand zero-initialized (LoRA-style)
       4    IB semantic codebook (n_code, hidden) + delta_gate_quant (K_max,)
-           delta_gate_quant zero-initialized → zero codebook effect at step 0
+           delta_gate_quant zero-initialized
 
-    LoRA guarantee: step-0 forward is byte-identical to v105.1 backbone
-    (both the waist and the IB codebook contribute zero to h at step 0).
+    LoRA guarantee: step-0 forward is byte-identical to v105.1 backbone.
     """
     if k_max is None:
-        k_max = V105_1_2_K_MAX
+        k_max = V105_3_K_MAX
     if waist is None:
-        waist = V105_1_2_WAIST
+        waist = V105_3_WAIST
     if n_code is None:
-        n_code = V105_1_2_CODEBOOK_N
+        n_code = V105_3_CODEBOOK_N
     if rope_base is None:
-        rope_base = V105_1_2_ROPE_BASE
+        rope_base = V105_3_ROPE_BASE
     if ib_centroids_path is None:
-        ib_centroids_path = V105_1_2_IB_CENTROIDS
+        ib_centroids_path = V105_3_IB_CENTROIDS
     if ib_init is None:
-        ib_init = V105_1_2_IB_INIT
+        ib_init = V105_3_IB_INIT
     if waist_lora_init is None:
-        waist_lora_init = V105_1_2_WAIST_LORA_INIT
+        waist_lora_init = V105_3_WAIST_LORA_INIT
 
     rng = np.random.RandomState(20013)
 
     # -----------------------------------------------------------------------
-    # Components 1+2: digit codebook + frozen RoPE tables
+    # Components 1+2: digit codebook + frozen RoPE tables (LSD layout)
     # -----------------------------------------------------------------------
-    if V105_1_2_FOURIER_INIT:
-        # Cyclic-Fourier init: digits as phases on the unit circle, giving the
-        # model the cyclic group structure (Z/10Z) for free instead of forcing
-        # discovery via gradient. Same scale as QR init (rows L2-normalized).
+    if V105_3_FOURIER_INIT:
         dc = _fourier_digit_codebook(n_digits=10, hidden=hidden)
     else:
         raw_dc = rng.randn(max(hidden, 10), hidden).astype(np.float32)
         q_dc, _ = np.linalg.qr(raw_dc)
         dc = q_dc[:10].astype(np.float32) * 1.0
-    model.fg_v105_1_2_digit_codebook = Tensor(dc, dtype=dtypes.float).contiguous()
+    model.fg_v105_3_digit_codebook = Tensor(dc, dtype=dtypes.float).contiguous()
 
-    # Right-aligned RoPE for MSD-first layout: array index i gets RoPE position
-    # (n_digits - 1 - i).  So the ones digit (array index N-1) ALWAYS has RoPE
-    # position 0 (no rotation), regardless of n_digits.  The most-significant
-    # digit (array index 0) gets the maximum rotation (position N-1).
-    #
-    # Implementation: reverse the precomputed tables along the n_digits axis.
+    # LSD-first array layout: array index i ↔ RoPE position i naturally.
+    # No reversal patch needed (vs v105.1.2 which reversed for MSD layout).
     # _precompute_digit_rope returns rows ordered by position [0, 1, ..., N-1];
-    # after reverse, row i holds position (N-1-i)'s rotation, which is exactly
-    # what apply_rope_digit_tg picks up when indexing by array index i.
+    # the ones digit at array index 0 gets row 0 (no rotation).
     cos_t, sin_t = _precompute_digit_rope(n_digits, hidden, base=rope_base)
-    cos_t = cos_t[::-1, :].copy()   # reverse along position axis
-    sin_t = sin_t[::-1, :].copy()
-    model.fg_v105_1_2_digit_rope_cos = Tensor(cos_t, dtype=dtypes.float).contiguous()
-    model.fg_v105_1_2_digit_rope_sin = Tensor(sin_t, dtype=dtypes.float).contiguous()
+    model.fg_v105_3_digit_rope_cos = Tensor(cos_t, dtype=dtypes.float).contiguous()
+    model.fg_v105_3_digit_rope_sin = Tensor(sin_t, dtype=dtypes.float).contiguous()
 
     # -----------------------------------------------------------------------
     # Position / kind embeddings
     # -----------------------------------------------------------------------
     vp = rng.randn(n_max, hidden).astype(np.float32) * 0.02
-    model.fg_v105_1_2_var_pos_embed = Tensor(vp, dtype=dtypes.float).contiguous()
+    model.fg_v105_3_var_pos_embed = Tensor(vp, dtype=dtypes.float).contiguous()
 
     fp_emb = rng.randn(f_max, hidden).astype(np.float32) * 0.02
-    model.fg_v105_1_2_factor_pos_embed = Tensor(fp_emb, dtype=dtypes.float).contiguous()
+    model.fg_v105_3_factor_pos_embed = Tensor(fp_emb, dtype=dtypes.float).contiguous()
 
     nk = rng.randn(3, hidden).astype(np.float32) * 0.02
-    model.fg_v105_1_2_node_kind_embed = Tensor(nk, dtype=dtypes.float).contiguous()
+    model.fg_v105_3_node_kind_embed = Tensor(nk, dtype=dtypes.float).contiguous()
 
     # -----------------------------------------------------------------------
     # Calibration head
     # -----------------------------------------------------------------------
     cw = (rng.randn(hidden, 1) * 0.02).astype(np.float32)
-    model.fg_v105_1_2_calib_head_w = Tensor(cw, dtype=dtypes.float).contiguous()
-    model.fg_v105_1_2_calib_head_b = Tensor.zeros((1,), dtype=dtypes.float).contiguous()
+    model.fg_v105_3_calib_head_w = Tensor(cw, dtype=dtypes.float).contiguous()
+    model.fg_v105_3_calib_head_b = Tensor.zeros((1,), dtype=dtypes.float).contiguous()
 
     # -----------------------------------------------------------------------
     # Per-breath embeddings + delta gate
@@ -594,23 +627,22 @@ def attach_fg_params_v105_1_2(
     raw_be = rng_be.randn(max(k_max, hidden), hidden).astype(np.float32)
     q_be, _ = np.linalg.qr(raw_be)
     be = q_be[:k_max].astype(np.float32) * 0.5
-    model.fg_v105_1_2_breath_embed = Tensor(be, dtype=dtypes.float).contiguous()
-    model.fg_v105_1_2_delta_gate   = Tensor.ones((k_max,), dtype=dtypes.float).contiguous()
+    model.fg_v105_3_breath_embed = Tensor(be, dtype=dtypes.float).contiguous()
+    model.fg_v105_3_delta_gate   = Tensor.ones((k_max,), dtype=dtypes.float).contiguous()
 
     # -----------------------------------------------------------------------
     # Component 3: Projection waist  (LoRA-style)
     # -----------------------------------------------------------------------
     W_c = (rng.randn(hidden, waist) * 0.02).astype(np.float32)
-    model.fg_v105_1_2_W_compress = Tensor(W_c, dtype=dtypes.float).contiguous()
-    model.fg_v105_1_2_b_compress = Tensor.zeros((waist,), dtype=dtypes.float).contiguous()
+    model.fg_v105_3_W_compress = Tensor(W_c, dtype=dtypes.float).contiguous()
+    model.fg_v105_3_b_compress = Tensor.zeros((waist,), dtype=dtypes.float).contiguous()
 
     if waist_lora_init:
-        # Zero-initialized → waist has zero contribution at step 0
-        model.fg_v105_1_2_W_expand = Tensor.zeros((waist, hidden), dtype=dtypes.float).contiguous()
+        model.fg_v105_3_W_expand = Tensor.zeros((waist, hidden), dtype=dtypes.float).contiguous()
     else:
         We = (rng.randn(waist, hidden) * 0.02).astype(np.float32)
-        model.fg_v105_1_2_W_expand = Tensor(We, dtype=dtypes.float).contiguous()
-    model.fg_v105_1_2_b_expand = Tensor.zeros((hidden,), dtype=dtypes.float).contiguous()
+        model.fg_v105_3_W_expand = Tensor(We, dtype=dtypes.float).contiguous()
+    model.fg_v105_3_b_expand = Tensor.zeros((hidden,), dtype=dtypes.float).contiguous()
 
     # -----------------------------------------------------------------------
     # Component 4: IB semantic codebook
@@ -621,23 +653,23 @@ def attach_fg_params_v105_1_2(
         raw_cb = rng.randn(max(hidden, n_code), hidden).astype(np.float32)
         q_cb, _ = np.linalg.qr(raw_cb)
         cb_np = q_cb[:n_code].astype(np.float32) * 0.5
-        print(f"[v105.1.2] IB init disabled; random QR codebook ({n_code}, {hidden})")
+        print(f"[v105.3] IB init disabled; random QR codebook ({n_code}, {hidden})")
 
-    model.fg_v105_1_2_ib_codebook = Tensor(cb_np, dtype=dtypes.float).contiguous()
-    # Zero-initialized gate → IB codebook has zero contribution at step 0
-    model.fg_v105_1_2_delta_gate_quant = Tensor.zeros((k_max,), dtype=dtypes.float).contiguous()
-    model.fg_v105_1_2_ib_temperature   = Tensor(
+    model.fg_v105_3_ib_codebook = Tensor(cb_np, dtype=dtypes.float).contiguous()
+    model.fg_v105_3_delta_gate_quant = Tensor.zeros((k_max,), dtype=dtypes.float).contiguous()
+    model.fg_v105_3_ib_temperature   = Tensor(
         np.array([1.0], dtype=np.float32), dtype=dtypes.float
     ).contiguous()
 
     T = n_max * n_digits + f_max
     print(
-        f"[v105.1.2] params attached:\n"
-        f"  digit_codebook=(10,{hidden}) init={'FOURIER' if V105_1_2_FOURIER_INIT else 'QR-random'}, "
-        f"digit_rope (N_DIGITS={n_digits}, H={hidden}, base={rope_base:.0f}) [FROZEN]\n"
-        f"  loss_mode={'NUMBER_MSE_ONLY' if V105_1_2_NUMBER_MSE_ONLY else 'per-digit CE'}\n"
-        f"  ar_digits={V105_1_2_AR_DIGITS} (cond_scale={V105_1_2_AR_COND_SCALE if V105_1_2_AR_DIGITS else 'N/A'}, "
-        f"dir={'MSD-first' if V105_1_2_AR_MSD_FIRST else 'LSD-first'})\n"
+        f"[v105.3] params attached:\n"
+        f"  digit_codebook=(10,{hidden}) init={'FOURIER' if V105_3_FOURIER_INIT else 'QR-random'}, "
+        f"digit_rope (N_DIGITS={n_digits}, H={hidden}, base={rope_base:.0f}) [FROZEN]  "
+        f"LSD layout: idx 0=ones (RoPE pos 0)\n"
+        f"  loss_mode={'NUMBER_MSE_ONLY' if V105_3_NUMBER_MSE_ONLY else 'per-digit CE'}\n"
+        f"  ar_digits={V105_3_AR_DIGITS} (cond_scale={V105_3_AR_COND_SCALE if V105_3_AR_DIGITS else 'N/A'}, "
+        f"dir={'MSD-first' if V105_3_AR_MSD_FIRST else 'LSD-first'})\n"
         f"  var_pos_embed=({n_max},{hidden}), factor_pos_embed=({f_max},{hidden})\n"
         f"  waist=({hidden}→{waist}→{hidden}), W_expand={'ZEROS' if waist_lora_init else 'random'}\n"
         f"  ib_codebook=({n_code},{hidden}), "
@@ -647,70 +679,70 @@ def attach_fg_params_v105_1_2(
     )
 
 
-def fg_v105_1_2_parameters(model: Any) -> list[Tensor]:
-    """Trainable v105.1.2 factor-graph-specific params.
+def fg_v105_3_parameters(model: Any) -> list[Tensor]:
+    """Trainable v105.3 factor-graph-specific params.
 
     Deliberately excludes frozen tables:
-      - digit_rope_cos, digit_rope_sin  (precomputed, like breathing.py RoPE)
+      - digit_rope_cos, digit_rope_sin  (precomputed)
 
     Includes all learnable params across the four components.
     """
     return [
         # Components 1+2
-        model.fg_v105_1_2_digit_codebook,
-        model.fg_v105_1_2_var_pos_embed,
-        model.fg_v105_1_2_factor_pos_embed,
-        model.fg_v105_1_2_node_kind_embed,
-        model.fg_v105_1_2_calib_head_w,
-        model.fg_v105_1_2_calib_head_b,
-        model.fg_v105_1_2_breath_embed,
-        model.fg_v105_1_2_delta_gate,
+        model.fg_v105_3_digit_codebook,
+        model.fg_v105_3_var_pos_embed,
+        model.fg_v105_3_factor_pos_embed,
+        model.fg_v105_3_node_kind_embed,
+        model.fg_v105_3_calib_head_w,
+        model.fg_v105_3_calib_head_b,
+        model.fg_v105_3_breath_embed,
+        model.fg_v105_3_delta_gate,
         # Component 3: projection waist
-        model.fg_v105_1_2_W_compress,
-        model.fg_v105_1_2_b_compress,
-        model.fg_v105_1_2_W_expand,
-        model.fg_v105_1_2_b_expand,
+        model.fg_v105_3_W_compress,
+        model.fg_v105_3_b_compress,
+        model.fg_v105_3_W_expand,
+        model.fg_v105_3_b_expand,
         # Component 4: IB codebook
-        model.fg_v105_1_2_ib_codebook,
-        model.fg_v105_1_2_delta_gate_quant,
-        model.fg_v105_1_2_ib_temperature,
+        model.fg_v105_3_ib_codebook,
+        model.fg_v105_3_delta_gate_quant,
+        model.fg_v105_3_ib_temperature,
     ]
 
 
-def fg_v105_1_2_state_dict(model: Any) -> dict[str, Tensor]:
+def fg_v105_3_state_dict(model: Any) -> dict[str, Tensor]:
     """Full state dict (frozen RoPE tables included for checkpoint self-containment)."""
     return {
         # Components 1+2
-        "fg_v105_1_2.digit_codebook":   model.fg_v105_1_2_digit_codebook,
-        "fg_v105_1_2.digit_rope_cos":   model.fg_v105_1_2_digit_rope_cos,   # frozen
-        "fg_v105_1_2.digit_rope_sin":   model.fg_v105_1_2_digit_rope_sin,   # frozen
-        "fg_v105_1_2.var_pos_embed":    model.fg_v105_1_2_var_pos_embed,
-        "fg_v105_1_2.factor_pos_embed": model.fg_v105_1_2_factor_pos_embed,
-        "fg_v105_1_2.node_kind_embed":  model.fg_v105_1_2_node_kind_embed,
-        "fg_v105_1_2.calib_head_w":     model.fg_v105_1_2_calib_head_w,
-        "fg_v105_1_2.calib_head_b":     model.fg_v105_1_2_calib_head_b,
-        "fg_v105_1_2.breath_embed":     model.fg_v105_1_2_breath_embed,
-        "fg_v105_1_2.delta_gate":       model.fg_v105_1_2_delta_gate,
+        "fg_v105_3.digit_codebook":   model.fg_v105_3_digit_codebook,
+        "fg_v105_3.digit_rope_cos":   model.fg_v105_3_digit_rope_cos,   # frozen
+        "fg_v105_3.digit_rope_sin":   model.fg_v105_3_digit_rope_sin,   # frozen
+        "fg_v105_3.var_pos_embed":    model.fg_v105_3_var_pos_embed,
+        "fg_v105_3.factor_pos_embed": model.fg_v105_3_factor_pos_embed,
+        "fg_v105_3.node_kind_embed":  model.fg_v105_3_node_kind_embed,
+        "fg_v105_3.calib_head_w":     model.fg_v105_3_calib_head_w,
+        "fg_v105_3.calib_head_b":     model.fg_v105_3_calib_head_b,
+        "fg_v105_3.breath_embed":     model.fg_v105_3_breath_embed,
+        "fg_v105_3.delta_gate":       model.fg_v105_3_delta_gate,
         # Component 3
-        "fg_v105_1_2.W_compress":       model.fg_v105_1_2_W_compress,
-        "fg_v105_1_2.b_compress":       model.fg_v105_1_2_b_compress,
-        "fg_v105_1_2.W_expand":         model.fg_v105_1_2_W_expand,
-        "fg_v105_1_2.b_expand":         model.fg_v105_1_2_b_expand,
+        "fg_v105_3.W_compress":       model.fg_v105_3_W_compress,
+        "fg_v105_3.b_compress":       model.fg_v105_3_b_compress,
+        "fg_v105_3.W_expand":         model.fg_v105_3_W_expand,
+        "fg_v105_3.b_expand":         model.fg_v105_3_b_expand,
         # Component 4
-        "fg_v105_1_2.ib_codebook":          model.fg_v105_1_2_ib_codebook,
-        "fg_v105_1_2.delta_gate_quant":     model.fg_v105_1_2_delta_gate_quant,
-        "fg_v105_1_2.ib_temperature":       model.fg_v105_1_2_ib_temperature,
+        "fg_v105_3.ib_codebook":          model.fg_v105_3_ib_codebook,
+        "fg_v105_3.delta_gate_quant":     model.fg_v105_3_delta_gate_quant,
+        "fg_v105_3.ib_temperature":       model.fg_v105_3_ib_temperature,
     }
 
 
 # ---------------------------------------------------------------------------
-# Warm-start from v104 backbone checkpoint
+# Warm-start from v104 backbone checkpoint (or v105.1.2)
 # ---------------------------------------------------------------------------
 
-def load_ckpt_v105_1_2(model: Any, path: str) -> None:
+def load_ckpt_v105_3(model: Any, path: str) -> None:
     """Load backbone (shared.*, phase*.*, ln_f.*) from any v104-family checkpoint.
 
-    v105.1.2-specific params (digit_codebook, waist, ib_codebook, RoPE tables,
+    v105.3-specific params (digit_codebook, waist, ib_codebook, RoPE tables,
     breath_embed, etc.) are NOT loaded — they are fresh-initialized so the warm-start
     preserves LoRA/zero-gate guarantees.
     """
@@ -731,12 +763,12 @@ def load_ckpt_v105_1_2(model: Any, path: str) -> None:
             backbone_keys.append((f"phase{i}.{a}", getattr(layer, a)))
 
     # Also copy v104's IB codebook if present in the checkpoint
-    if "fg_v104.codebook" in sd and hasattr(model, "fg_v105_1_2_ib_codebook"):
+    if "fg_v104.codebook" in sd and hasattr(model, "fg_v105_3_ib_codebook"):
         src = sd["fg_v104.codebook"]
-        dst = model.fg_v105_1_2_ib_codebook
+        dst = model.fg_v105_3_ib_codebook
         if src.shape == dst.shape:
             dst.assign(src.to(dst.device).cast(dst.dtype)).realize()
-            print(f"  copied fg_v104.codebook → fg_v105_1_2.ib_codebook", flush=True)
+            print(f"  copied fg_v104.codebook → fg_v105_3.ib_codebook", flush=True)
 
     loaded  = []
     missing = []
@@ -769,43 +801,36 @@ def load_ckpt_v105_1_2(model: Any, path: str) -> None:
 # JIT training step
 # ---------------------------------------------------------------------------
 
-_JIT_V105_1_2_CACHE: dict = {}
+_JIT_V105_3_CACHE: dict = {}
 
 
-def _compile_jit_fg_step_v105_1_2(
+def _compile_jit_fg_step_v105_3(
     model: Any,
     opt: Any,
     K: int,
     B: int,
-    factor_aux_weight: float = V105_1_2_FACTOR_AUX_WEIGHT,
-    calib_weight: float = V105_1_2_CALIB_WEIGHT,
-    energy_weight: float = V105_1_2_ENERGY_WEIGHT,
-    n_max: int = V105_1_2_N_MAX,
-    f_max: int = V105_1_2_F_MAX,
-    n_digits: int = V105_1_2_N_DIGITS,
+    factor_aux_weight: float = V105_3_FACTOR_AUX_WEIGHT,
+    calib_weight: float = V105_3_CALIB_WEIGHT,
+    energy_weight: float = V105_3_ENERGY_WEIGHT,
+    n_max: int = V105_3_N_MAX,
+    f_max: int = V105_3_F_MAX,
+    n_digits: int = V105_3_N_DIGITS,
     grad_clip: float = 1.0,
 ):
-    """Compile a TinyJit'd train step for v105.1.2.
+    """Compile a TinyJit'd train step for v105.3 (LSD-first layout).
 
     Loss structure:
       var_loss         — per-breath weighted CE on unobserved variable digits
-      factor_aux_loss  — per-NUMBER joint log-likelihood (Component 5 from spec)
+      factor_aux_loss  — per-NUMBER relative MSE on reconstructed value
       calib_loss       — MSE calibration head
-      energy_loss      — expected-value constraint energy (differentiable)
-
-    Per-NUMBER aux (option c from spec):
-      factor_aux = mean_over_factors(mean_over_valid(-sum_p log P(gold_digit_p)))
-      This is the JOINT log-likelihood of the number's digit sequence.
-      Unlike the per-digit average (used in the base v105 for variables), this
-      explicitly models P(d_0, d_1, ..., d_{N-1}) = prod_p P(d_p) via summed
-      log-probs — encouraging coherent multi-digit predictions.
+      energy_loss      — expected-value constraint energy (LSD place values)
     """
-    n_code = int(model.fg_v105_1_2_ib_codebook.shape[0])
-    key = ("v105_1_2", id(model), id(opt), int(K), int(B),
+    n_code = int(model.fg_v105_3_ib_codebook.shape[0])
+    key = ("v105_3", id(model), id(opt), int(K), int(B),
            float(factor_aux_weight), float(calib_weight), float(energy_weight),
            int(n_max), int(f_max), int(n_digits), float(grad_clip), int(n_code))
-    if key in _JIT_V105_1_2_CACHE:
-        return _JIT_V105_1_2_CACHE[key]
+    if key in _JIT_V105_3_CACHE:
+        return _JIT_V105_3_CACHE[key]
 
     aw     = float(calib_weight)
     fw     = float(factor_aux_weight)
@@ -814,7 +839,7 @@ def _compile_jit_fg_step_v105_1_2(
     params = opt.params
 
     print(
-        f"[JIT] compile v105.1.2 fg step: K={K} B={B} n_digits={n_digits} "
+        f"[JIT] compile v105.3 fg step: K={K} B={B} n_digits={n_digits} "
         f"T={n_max * n_digits + f_max} aw={aw} fw={fw} ew={ew} gc={gc} "
         f"n_code={n_code}...",
         flush=True,
@@ -832,20 +857,20 @@ def _compile_jit_fg_step_v105_1_2(
         factor_valid: Tensor,
         factor_types: Tensor,
         factor_args: Tensor,
-        digit_valid_mask: Tensor,           # (B, N_MAX, N_DIGITS) float  (NEW)
-        factor_digit_valid_mask: Tensor,    # (B, F_MAX, N_DIGITS) float  (NEW)
+        digit_valid_mask: Tensor,           # (B, N_MAX, N_DIGITS) float
+        factor_digit_valid_mask: Tensor,    # (B, F_MAX, N_DIGITS) float
     ):
         opt.zero_grad()
 
         digit_logits_history, factor_logits_history, calib_history = \
-            fg_breathing_forward_v105_1_2(
+            fg_breathing_forward_v105_3(
                 model, digit_init, node_kinds, staging_mask, head_op_mask,
                 K=K, n_max=n_max, f_max=f_max, n_digits=n_digits,
             )
 
         # --- Main loss on unobserved variables ---
-        # MSD layout: valid positions are the TRAILING n_actual_digits per variable.
-        # The leading positions are leading-zero padding above the most-significant
+        # LSD layout: valid positions are the LEADING n_actual_digits per variable.
+        # The trailing positions are leading-zero padding above the most-significant
         # digit and must NOT contribute to the loss.
         unobs_float   = (1 - observed_mask.cast(dtypes.float))         # (B, N_MAX)
         unobs_dg      = unobs_float.reshape(B, n_max, 1).expand(B, n_max, n_digits)
@@ -859,26 +884,20 @@ def _compile_jit_fg_step_v105_1_2(
         var_weight_sum = 0.0
         per_breath_ce_t: list[Tensor] = []
 
-        # MSD place values for number reconstruction: [10^(N-1), ..., 10^0]
-        _place_values_np_var = [float(10 ** (n_digits - 1 - i)) for i in range(n_digits)]
+        # LSD place values for number reconstruction: [10^0, 10^1, ..., 10^(N-1)]
+        _place_values_np_var = [float(10 ** i) for i in range(n_digits)]
         _place_values_t_var  = Tensor(_place_values_np_var, dtype=dtypes.float).reshape(1, 1, n_digits)
         _digit_vals_t_var    = Tensor([float(i) for i in range(10)], dtype=dtypes.float)
 
-        if V105_1_2_NUMBER_MSE_ONLY:
+        if V105_3_NUMBER_MSE_ONLY:
             # ============================================================
-            # NUMBER-ONLY LOSS PATH (V105_1_2_NUMBER_MSE_ONLY=1):
-            # Drop per-digit CE entirely. Use ONLY per-NUMBER relative MSE
-            # on the reconstructed value from digit logits. This removes the
-            # "predict modal digit" partial-credit attractor — the model only
-            # gets credit when the whole number matches.
+            # NUMBER-ONLY LOSS PATH (V105_3_NUMBER_MSE_ONLY=1)
             # ============================================================
-            # Gold variable numbers (mask invalid positions; they're 0 anyway)
             _var_gold_float    = gold_digits.cast(dtypes.float)         # (B, N_MAX, N_DIGITS)
             _var_gold_masked   = _var_gold_float * digit_valid_mask
             var_gold_numbers   = (_var_gold_masked * _place_values_t_var).sum(axis=-1)  # (B, N_MAX)
             var_rel_denom      = var_gold_numbers.abs() + 1.0                            # (B, N_MAX)
 
-            # Per-variable mask: unobserved AND real (non-padding)
             is_real_var_loss   = (digit_valid_mask.sum(axis=-1) > 0).cast(dtypes.float)  # (B, N_MAX)
             unobs_real_var     = unobs_float * is_real_var_loss                          # (B, N_MAX)
             n_unobs_real_var   = unobs_real_var.sum() + 1e-8
@@ -889,7 +908,6 @@ def _compile_jit_fg_step_v105_1_2(
                 exp_digit_k = (probs_k * _digit_vals_t_var.reshape(1, 1, 1, 10)).sum(axis=-1)
                 exp_digit_m = exp_digit_k * digit_valid_mask             # mask invalid positions
                 pred_number = (exp_digit_m * _place_values_t_var).sum(axis=-1)            # (B, N_MAX)
-                # Relative MSE with cold-start clip (same recipe as factor_aux)
                 rel_err  = ((pred_number - var_gold_numbers) / var_rel_denom).clip(-5.0, 5.0)
                 sq_err   = rel_err * rel_err
                 sq_err_m = sq_err * unobs_real_var.cast(sq_err.dtype)
@@ -900,7 +918,7 @@ def _compile_jit_fg_step_v105_1_2(
                 var_weight_sum += weight_k
         else:
             # ============================================================
-            # PER-DIGIT CE PATH (default, original v105.1.2 v2 behavior)
+            # PER-DIGIT CE PATH (default behavior)
             # ============================================================
             for k, dig_logits in enumerate(digit_logits_history):
                 weight_k    = 1.0 + float(k) / float(max(K - 1, 1))
@@ -917,20 +935,16 @@ def _compile_jit_fg_step_v105_1_2(
         var_loss = var_loss_sum / float(var_weight_sum)
 
         # --- Per-NUMBER factor auxiliary loss (relative MSE) ---
-        # MSD-first place values: index 0 = 10^(N-1), ..., index N-1 = 10^0.
-        # Mask out invalid (leading-zero padding) digit positions so the model
-        # doesn't get rewarded/penalized for guessing on positions it shouldn't
-        # care about.  Gold digits at invalid positions are 0 by construction,
-        # but the explicit mask matches the prediction-side masking below.
+        # LSD-first place values: index 0 = 10^0, ..., index N-1 = 10^(N-1).
+        # Mask out invalid (leading-zero padding) digit positions.
         n_valid_fac  = factor_valid.sum() + 1e-8
 
-        # MSD place values: [10^(N-1), 10^(N-2), ..., 10^0]
-        place_values_np = [float(10 ** (n_digits - 1 - i)) for i in range(n_digits)]
+        # LSD place values: [10^0, 10^1, ..., 10^(N-1)]
+        place_values_np = [float(10 ** i) for i in range(n_digits)]
         place_values_t  = Tensor(place_values_np, dtype=dtypes.float).reshape(1, 1, n_digits)
 
         digit_vals_t    = Tensor([float(i) for i in range(10)], dtype=dtypes.float)
 
-        # Reconstruct gold numbers, masking padding positions (they're 0 anyway).
         gold_dg_float   = factor_gold_dg.cast(dtypes.float)                       # (B, F, D)
         gold_dg_masked  = gold_dg_float * factor_digit_valid_mask                  # zero invalid
         gold_numbers    = (gold_dg_masked * place_values_t).sum(axis=-1)          # (B, F)
@@ -944,13 +958,9 @@ def _compile_jit_fg_step_v105_1_2(
 
             fac_probs   = fac_logits_k.softmax(axis=-1)                            # (B,F,D,10)
             exp_digit   = (fac_probs * digit_vals_t.reshape(1, 1, 1, 10)).sum(axis=-1)
-            # Mask out padding positions in the prediction — force the model to
-            # contribute zero at invalid positions of the gold number.
             exp_digit_m = exp_digit * factor_digit_valid_mask
             pred_number = (exp_digit_m * place_values_t).sum(axis=-1)
 
-            # Relative MSE with cold-start clip on the ERROR (not the loss):
-            # clip(-5,5) bounds gradient at init without vanishing it.
             rel_err  = ((pred_number - gold_numbers) / rel_denom).clip(-5.0, 5.0)
             sq_err   = rel_err * rel_err
             sq_err_m = sq_err * factor_valid.cast(sq_err.dtype)
@@ -961,18 +971,14 @@ def _compile_jit_fg_step_v105_1_2(
 
         factor_aux_loss = factor_aux_sum / float(factor_aux_w_sum)
 
-        # --- Constraint energy (MSD place values, same as v105) ---
+        # --- Constraint energy (LSD place values) ---
         final_dig_logits = digit_logits_history[-1]
-        energy_loss = constraint_energy_v105(
+        energy_loss = constraint_energy_v105_3(
             final_dig_logits, factor_types, factor_args,
             n_max=n_max, f_max=f_max, n_digits=n_digits,
         )
 
         # --- Calibration ---
-        # Variable considered "correct" if all VALID digits match (invalid positions
-        # — leading-zero padding above the most-significant digit — are ignored).
-        # Padding rows (variables that don't exist; digit_valid_mask all zeros)
-        # would otherwise auto-pass; exclude them via is_real_var.
         final_pred_dg = digit_logits_history[-1].argmax(axis=-1).detach()           # (B,N,D)
         dg_eq    = (final_pred_dg == gold_digits.cast(dtypes.int)).cast(dtypes.float)
         dg_match_or_invalid = dg_eq * digit_valid_mask + (1.0 - digit_valid_mask)
@@ -1030,33 +1036,33 @@ def _compile_jit_fg_step_v105_1_2(
             *(ce.realize() for ce in per_breath_ce_t),
         )
 
-    _JIT_V105_1_2_CACHE[key] = _step
+    _JIT_V105_3_CACHE[key] = _step
     print(
-        f"[JIT] v105.1.2 fg step ready (cache={len(_JIT_V105_1_2_CACHE)}); "
+        f"[JIT] v105.3 fg step ready (cache={len(_JIT_V105_3_CACHE)}); "
         f"first call compiles...",
         flush=True,
     )
     return _step
 
 
-def _compile_jit_fg_eval_v105_1_2(
+def _compile_jit_fg_eval_v105_3(
     model: Any,
     K: int,
     B: int,
-    n_max: int = V105_1_2_N_MAX,
-    f_max: int = V105_1_2_F_MAX,
-    n_digits: int = V105_1_2_N_DIGITS,
+    n_max: int = V105_3_N_MAX,
+    f_max: int = V105_3_F_MAX,
+    n_digits: int = V105_3_N_DIGITS,
 ):
     """Compile a TinyJit'd eval step (forward only, no gradient).
 
     Takes digit_valid_mask so cell_acc treats invalid (leading-zero padding)
     positions as automatically correct (consistent with the train loss).
     """
-    key = ("eval_v105_1_2", id(model), int(K), int(B), int(n_max), int(f_max), int(n_digits))
-    if key in _JIT_V105_1_2_CACHE:
-        return _JIT_V105_1_2_CACHE[key]
+    key = ("eval_v105_3", id(model), int(K), int(B), int(n_max), int(f_max), int(n_digits))
+    if key in _JIT_V105_3_CACHE:
+        return _JIT_V105_3_CACHE[key]
 
-    print(f"[JIT] compile v105.1.2 fg eval: K={K} B={B} n_digits={n_digits}...", flush=True)
+    print(f"[JIT] compile v105.3 fg eval: K={K} B={B} n_digits={n_digits}...", flush=True)
 
     @TinyJit
     def _eval(
@@ -1068,15 +1074,13 @@ def _compile_jit_fg_eval_v105_1_2(
         observed_mask: Tensor,
         digit_valid_mask: Tensor,
     ):
-        digit_logits_history, _, _ = fg_breathing_forward_v105_1_2(
+        digit_logits_history, _, _ = fg_breathing_forward_v105_3(
             model, digit_init, node_kinds, staging_mask, head_op_mask,
             K=K, n_max=n_max, f_max=f_max, n_digits=n_digits,
         )
         final_logits  = digit_logits_history[-1]
         pred_dg       = final_logits.argmax(axis=-1)
         dg_eq         = (pred_dg == gold_digits.cast(pred_dg.dtype)).cast(dtypes.float)
-        # Variable correct: all VALID digits match (invalid digits ignored).
-        # Exclude padding rows (digit_valid_mask all zeros) so they don't auto-pass.
         dg_or_invalid = dg_eq * digit_valid_mask + (1.0 - digit_valid_mask)
         var_eq        = dg_or_invalid.min(axis=-1)
         is_real_var   = (digit_valid_mask.sum(axis=-1) > 0).cast(dtypes.float)
@@ -1084,6 +1088,6 @@ def _compile_jit_fg_eval_v105_1_2(
         cell_acc      = (var_eq * unobs_real).sum() / (unobs_real.sum() + 1e-8)
         return pred_dg.realize(), cell_acc.realize()
 
-    _JIT_V105_1_2_CACHE[key] = _eval
-    print(f"[JIT] v105.1.2 eval ready (cache={len(_JIT_V105_1_2_CACHE)})", flush=True)
+    _JIT_V105_3_CACHE[key] = _eval
+    print(f"[JIT] v105.3 eval ready (cache={len(_JIT_V105_3_CACHE)})", flush=True)
     return _eval

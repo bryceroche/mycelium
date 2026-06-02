@@ -1,38 +1,15 @@
-"""v105.1.2 (v2) factor graph data loader — MSD-first digit encoding + digit_valid_mask.
+"""v105.4 factor graph data loader — v105.3 + magnitude_target.
 
-Architectural fix: keep MSD-first digit layout (matches breathing's coarse-to-fine
-refinement philosophy — breath 0 attends to magnitude, breath K attends to ones),
-but ADD the valid_mask infrastructure from v105.2.  Right-aligned RoPE positions
-are handled inside factor_graph_v105_1_2.py's attach function (the RoPE tables
-are flipped so array index i uses RoPE position (n_digits-1-i)).
+Extends v105.3 with one addition: magnitude_target per cell — a 4-way
+classification of "how many digits does this value use?":
+  class 0:  value in [0, 9]      (1 digit)
+  class 1:  value in [10, 99]    (2 digits)
+  class 2:  value in [100, 999]  (3 digits)
+  class 3:  value >= 1000        (4+ digits — cap at 3)
 
-Changes from v105 data loader:
-
-  1. MSD-FIRST DIGIT ENCODING (kept from v105):
-     - value_to_digits: value=1234, n_digits=5 → [0, 1, 2, 3, 4]
-       Index 0 = ten-thousands place, ..., index N-1 = ones place.
-     - The ones digit (array index N-1) is the consistent ANCHOR position.
-
-  2. DIGIT VALID MASK (NEW):
-     - digit_valid_mask : (B, N_MAX, N_DIGITS) float32 — 1 if digit at position p
-       is part of the number's natural representation, 0 if leading-zero padding.
-       For MSD layout, valid positions are the TRAILING N_actual_digits positions.
-       For value=0:    valid = [0, 0, 0, 0, 1]  (only ones place is real)
-       For value=7:    valid = [0, 0, 0, 0, 1]
-       For value=42:   valid = [0, 0, 0, 1, 1]
-       For value=1234: valid = [0, 1, 1, 1, 1]
-     - factor_digit_valid_mask : (B, F_MAX, N_DIGITS) float32 — same logic for
-       factor result gold values.
-
-This eliminates the v105.1.2 collapse mode: with MSD-first + uniform CE, the
-[0,99] data has 3 trivially-zero positions (10000s, 1000s, 100s places); the
-model collapses to "always predict 0" everywhere.  With MSD-first +
-digit_valid_mask, only the positions that the number ACTUALLY uses contribute
-to the loss.
-
-Everything else (bipartite adjacency, staging masks, head-op masks, batch
-construction) is identical to factor_graph_data_v105_2.py — the only data-side
-change is the digit encoding ORDER.
+Layout is otherwise identical to v105.3:
+  LSD-first: index 0 = ones, index N-1 = most significant.
+  digit_valid_mask : (B, N_MAX, N_DIGITS) — leading-trues semantics.
 """
 from __future__ import annotations
 
@@ -54,7 +31,6 @@ from mycelium.factor_graph_data import (
 # Constants are shared with v105 (same N_MAX/F_MAX/K_MAX/N_HEADS/N_DIGITS layout).
 from mycelium.factor_graph_v105 import (
     V105_N_MAX, V105_F_MAX, V105_K_MAX, V105_N_DIGITS, V105_N_HEADS,
-    value_to_digits, digits_to_value,   # MSD-first (the v105 originals)
 )
 
 # Import bipartite adjacency builder from v99 (still valid geometry)
@@ -64,15 +40,48 @@ from mycelium.factor_graph import build_factor_graph_masks_np
 # across operands of a factor. Adds attention edges digit(var_A, p) ↔
 # digit(var_B, p) for all operand+result variables of each factor, per digit
 # position p. Default off for back-compat.
-V105_1_2_LATERAL_ATTN = int(os.environ.get("V105_1_2_LATERAL_ATTN", "0")) > 0
+V105_4_LATERAL_ATTN = int(os.environ.get("V105_4_LATERAL_ATTN", "0")) > 0
+
+# Mean-field-collapse fix (post-Jun 1 linear probe diagnostic):
+# The breathing's all-to-all within-variable attention drives digit positions
+# toward a shared representation (cos similarity 0.99+ at every position).
+# This env var controls within-variable digit-to-digit attention:
+#   0 = ALL allowed (default, original — known to cause averaging collapse)
+#   1 = HARD block — no within-variable digit attention at all
+#       (forces communication through factors only; may break carry composition)
+#   2 = SOFT (adjacent-only) — pos p ↔ pos p±1 allowed, far positions blocked
+#       (carry can flow sequentially through adjacent positions; far-position
+#       averaging is blocked — implements the "traveling wave" via attention mask)
+V105_4_BLOCK_WITHIN_VAR = int(os.environ.get("V105_4_BLOCK_WITHIN_VAR", "0"))
 
 # Import DAG depth from v100 data (same algorithm)
 from mycelium.factor_graph_data_v100 import compute_var_depth
 
 
 # ---------------------------------------------------------------------------
-# MSD-first digit utilities + validity mask
+# LSD-first digit utilities + validity mask
 # ---------------------------------------------------------------------------
+
+def value_to_digits_lsd(value: int, n_digits: int) -> list[int]:
+    """LSD-first: digits[0] = ones, digits[1] = tens, ..., digits[N-1] = most significant.
+
+    E.g. value=1234, n_digits=5 → [4, 3, 2, 1, 0]
+    Clamps negative values to 0, clamps overflow (value >= 10^n_digits) to 9s.
+    """
+    v = max(0, int(round(value)))
+    max_val = 10 ** n_digits - 1
+    v = min(v, max_val)
+    digits = []
+    for _p in range(n_digits):
+        digits.append(v % 10)
+        v = v // 10
+    return digits  # index 0 = ones digit
+
+
+def digits_to_value_lsd(digits: list[int]) -> int:
+    """Reconstruct integer from LSD-first digit list."""
+    return sum(int(d) * (10 ** i) for i, d in enumerate(digits))
+
 
 def n_actual_digits(value: int, n_digits: int) -> int:
     """How many positions does this value actually use?
@@ -95,21 +104,39 @@ def n_actual_digits(value: int, n_digits: int) -> int:
 def build_digit_valid_mask(value: int, n_digits: int) -> np.ndarray:
     """Returns an (n_digits,) float32 mask: 1 for positions used by the value, 0 else.
 
-    MSD-first layout ⇒ valid positions are the TRAILING n_actual positions:
-        positions [n_digits - n_actual : n_digits)
-    For value=42, n_actual=2, valid = [0, 0, 0, 1, 1].
+    LSD-first layout ⇒ valid positions are the LEADING n_actual positions:
+        positions [0, n_actual)
+    For value=42, n_actual=2, valid = [1, 1, 0, 0, 0].
     """
     n = n_actual_digits(value, n_digits)
     m = np.zeros(n_digits, dtype=np.float32)
-    m[n_digits - n:] = 1.0
+    m[:n] = 1.0
     return m
 
 
+def gold_magnitude_class(value: int) -> int:
+    """4-way magnitude classification — how many digits is this value?
+
+      class 0 : value < 10        (1 digit)
+      class 1 : value < 100       (2 digits)
+      class 2 : value < 1000      (3 digits)
+      class 3 : value >= 1000     (4+ digits, capped here)
+    """
+    v = max(0, int(round(value)))
+    if v < 10:
+        return 0
+    if v < 100:
+        return 1
+    if v < 1000:
+        return 2
+    return 3
+
+
 # ---------------------------------------------------------------------------
-# Digit-level mask construction (identical to v105 / v105.2 — only digit ORDER differs)
+# Digit-level mask construction (identical to v105 / v105.1.2 — only digit ORDER differs)
 # ---------------------------------------------------------------------------
 
-def build_staging_and_head_masks_v105_1_2_np(
+def build_staging_and_head_masks_v105_4_np(
     factor_types_np: np.ndarray,   # (F_MAX,) int, -1=padding
     factor_args_np: np.ndarray,    # (F_MAX, 3) int
     var_depth_np: np.ndarray,      # (N_MAX,) int, -1=padding
@@ -123,7 +150,7 @@ def build_staging_and_head_masks_v105_1_2_np(
 ) -> tuple[np.ndarray, np.ndarray]:
     """Build digit-expanded staging and head-op masks for ONE problem.
 
-    Same logic as v105/v105.2 (digit positions of a variable form a within-variable
+    Same logic as v105/v105.1.2 (digit positions of a variable form a within-variable
     attention block; cross-attention to factors follows the bipartite topology).
     The semantic ORDER of digits (LSD vs MSD) doesn't affect this geometry.
 
@@ -149,11 +176,27 @@ def build_staging_and_head_masks_v105_1_2_np(
     # 2. Expand to digit-level adjacency
     bipartite_full = np.full((t_max, t_max), -1e4, dtype=np.float32)
 
-    # a) Within-variable: all digit positions of same variable attend to each other
+    # a) Within-variable: digit positions of same variable
+    #    Gated by V105_4_BLOCK_WITHIN_VAR:
+    #      0 = all-to-all (default, original)
+    #      1 = blocked entirely (no within-variable attention)
+    #      2 = adjacent-only (pos p ↔ pos p±1; far positions blocked)
     for vi in range(n_max):
         start = vi * n_digits
         end   = start + n_digits
-        bipartite_full[start:end, start:end] = 0.0
+        if V105_4_BLOCK_WITHIN_VAR == 0:
+            # Original: all 5 positions attend to each other
+            bipartite_full[start:end, start:end] = 0.0
+        elif V105_4_BLOCK_WITHIN_VAR == 1:
+            # Hard block: only diagonal (self-attention) within variable
+            for p in range(n_digits):
+                bipartite_full[start + p, start + p] = 0.0
+        elif V105_4_BLOCK_WITHIN_VAR == 2:
+            # Soft (adjacent-only): pos p ↔ pos p±1 allowed
+            for p1 in range(n_digits):
+                for p2 in range(n_digits):
+                    if abs(p1 - p2) <= 1:
+                        bipartite_full[start + p1, start + p2] = 0.0
 
     # b) Factor self-attention
     for fi in range(f_max):
@@ -233,14 +276,26 @@ def build_staging_and_head_masks_v105_1_2_np(
             if 0 <= vi < n_vars:
                 vstart = vi * n_digits
                 vend   = vstart + n_digits
-                op_adj[ft, vstart:vend, vstart:vend] = 0.0
+                # Within-variable digit attention (same gating as bipartite_full)
+                if V105_4_BLOCK_WITHIN_VAR == 0:
+                    op_adj[ft, vstart:vend, vstart:vend] = 0.0
+                elif V105_4_BLOCK_WITHIN_VAR == 1:
+                    # Hard block: diagonal only
+                    for p in range(n_digits):
+                        op_adj[ft, vstart + p, vstart + p] = 0.0
+                elif V105_4_BLOCK_WITHIN_VAR == 2:
+                    # Soft (adjacent-only)
+                    for p1 in range(n_digits):
+                        for p2 in range(n_digits):
+                            if abs(p1 - p2) <= 1:
+                                op_adj[ft, vstart + p1, vstart + p2] = 0.0
 
         # Lateral attention bias: same-position digits ACROSS operands of a
         # factor attend to each other (the per-position arithmetic pathway).
         # Without this, the model can only learn "digit p of var A talks to
         # digit p of var B" through indirect routes via the factor node.
-        # Gated by V105_1_2_LATERAL_ATTN env var (default off for back-compat).
-        if V105_1_2_LATERAL_ATTN:
+        # Gated by V105_4_LATERAL_ATTN env var (default off for back-compat).
+        if V105_4_LATERAL_ATTN:
             for vi_a_raw in factor_args_np[fi]:
                 vi_a = int(vi_a_raw)
                 if not (0 <= vi_a < n_vars):
@@ -263,10 +318,10 @@ def build_staging_and_head_masks_v105_1_2_np(
 # Batch construction
 # ---------------------------------------------------------------------------
 
-def _execute_fg_v105_1_2(rec: dict) -> list[float] | None:
+def _execute_fg_v105_4(rec: dict) -> list[float] | None:
     """Execute a factor graph to completion, returning values for all variables.
 
-    Same as v105's executor — no range restriction. Returns None on failure.
+    Same as v105.1.2's executor — no range restriction. Returns None on failure.
     """
     ft_list  = rec.get("factor_types", [])
     fa_list  = rec.get("factor_args", [])
@@ -304,18 +359,18 @@ def _execute_fg_v105_1_2(rec: dict) -> list[float] | None:
     return vals
 
 
-def convert_gsm8k_record_v105_1_2(
+def convert_gsm8k_record_v105_4(
     rec: dict,
     n_digits: int = V105_N_DIGITS,
     n_max: int = V105_N_MAX,
     f_max: int = V105_F_MAX,
 ) -> dict | None:
-    """Convert a GSM8K factor graph record to v105.1.2 format.
+    """Convert a GSM8K factor graph record to v105.3 format.
 
-    Identical to v105's converter — the record itself stores integer values;
-    the MSD-first encoding happens at batch-build time.
+    Identical to v105.1.2's converter — the record itself stores integer values;
+    the LSD-first encoding happens at batch-build time.
     """
-    vals = _execute_fg_v105_1_2(rec)
+    vals = _execute_fg_v105_4(rec)
     if vals is None:
         return None
 
@@ -352,7 +407,7 @@ def convert_gsm8k_record_v105_1_2(
     }
 
 
-def _records_to_batch_v105_1_2(
+def _records_to_batch_v105_4(
     picks: list[dict],
     n_max: int = V105_N_MAX,
     f_max: int = V105_F_MAX,
@@ -360,13 +415,14 @@ def _records_to_batch_v105_1_2(
     n_heads: int = V105_N_HEADS,
     n_digits: int = V105_N_DIGITS,
 ) -> dict:
-    """Convert a list of records to numpy arrays for one v105.1.2 batch.
+    """Convert a list of records to numpy arrays for one v105.4 batch.
 
-    Fields vs v105 (which had no valid mask):
-      digit_valid_mask        : (B, N_MAX, N_DIGITS) float32  (NEW)
-      factor_digit_valid_mask : (B, F_MAX, N_DIGITS) float32  (NEW)
+    Fields vs v105.3:
+      magnitude_target : (B, N_MAX) int32 — 4-way magnitude class (gold_magnitude_class)
+                         Padded positions = 0 (will be masked out via digit_valid_mask
+                         and is_real_var downstream).
 
-    Digit encoding is MSD-first (v105 original).
+    Other fields unchanged.
     """
     B = len(picks)
     T = n_max * n_digits + f_max
@@ -386,9 +442,12 @@ def _records_to_batch_v105_1_2(
     factor_gold_dg = np.zeros((B, f_max, n_digits), dtype=np.int32)
     factor_valid   = np.zeros((B, f_max), dtype=np.float32)
 
-    # NEW: per-position validity masks.
+    # Per-position validity masks (LSD-flipped semantics).
     digit_valid_mask        = np.zeros((B, n_max, n_digits), dtype=np.float32)
     factor_digit_valid_mask = np.zeros((B, f_max, n_digits), dtype=np.float32)
+
+    # NEW in v105.4: 4-way magnitude target per variable cell.
+    magnitude_target = np.zeros((B, n_max), dtype=np.int32)
 
     n_var_tok = n_max * n_digits
 
@@ -405,14 +464,17 @@ def _records_to_batch_v105_1_2(
         n_factors_np[b] = min(nf, f_max)
         query_idx_np[b] = int(rec["query_idx"])
 
-        # Fill variable positions (MSD-first)
+        # Fill variable positions (LSD-first)
         for vi in range(min(n_total, n_max)):
             gv = max(0, int(round(gold_vals[vi])))
-            digs = value_to_digits(gv, n_digits)   # MSD-first
+            digs = value_to_digits_lsd(gv, n_digits)   # LSD-first
             gold_digits_np[b, vi] = digs
 
             # Validity mask is derived from the GOLD value (always known to the data loader)
             digit_valid_mask[b, vi] = build_digit_valid_mask(gv, n_digits)
+
+            # Magnitude target (LSD-first independent — depends only on value)
+            magnitude_target[b, vi] = gold_magnitude_class(gv)
 
             tok_base = vi * n_digits
             if obs_mask_rec[vi] == 1:
@@ -420,7 +482,7 @@ def _records_to_batch_v105_1_2(
                     0,
                     int(round(obs_vals[vi])) if obs_vals[vi] is not None else gv,
                 )
-                obs_digs = value_to_digits(obs_val, n_digits)   # MSD-first
+                obs_digs = value_to_digits_lsd(obs_val, n_digits)   # LSD-first
                 for p in range(n_digits):
                     digit_init[b, vi, p, :] = 0.0
                     digit_init[b, vi, p, obs_digs[p]] = 1.0
@@ -431,7 +493,7 @@ def _records_to_batch_v105_1_2(
                     node_kinds[b, tok_base + p] = 1
                 obs_mask[b, vi] = 0
 
-        # Fill factor type/args (MSD-first gold digits)
+        # Fill factor type/args (LSD-first gold digits)
         for fi in range(min(nf, f_max)):
             ft_str = ft_list[fi]
             ft_int = OP_MAP.get(ft_str, -1)
@@ -445,7 +507,7 @@ def _records_to_batch_v105_1_2(
             r_idx = int(fa[2])
             if 0 <= r_idx < n_total:
                 r_val = max(0, int(round(gold_vals[r_idx])))
-                factor_gold_dg[b, fi] = value_to_digits(r_val, n_digits)   # MSD-first
+                factor_gold_dg[b, fi] = value_to_digits_lsd(r_val, n_digits)   # LSD-first
                 factor_valid[b, fi]   = 1.0
                 factor_digit_valid_mask[b, fi] = build_digit_valid_mask(r_val, n_digits)
 
@@ -458,7 +520,7 @@ def _records_to_batch_v105_1_2(
         for vi in range(min(n_total, n_max)):
             var_depth_np[b, vi] = depth_dict.get(vi, -1)
 
-        staging_b, head_op_b = build_staging_and_head_masks_v105_1_2_np(
+        staging_b, head_op_b = build_staging_and_head_masks_v105_4_np(
             factor_types_np[b],
             factor_args_np[b],
             var_depth_np[b],
@@ -484,14 +546,14 @@ def _records_to_batch_v105_1_2(
         "var_depth":               var_depth_np,
         "staging_mask":            staging_masks,
         "head_op_mask":            head_op_masks,
-        # NEW for v105.1.2 v2:
         "digit_valid_mask":        digit_valid_mask,
         "factor_digit_valid_mask": factor_digit_valid_mask,
+        "magnitude_target":        magnitude_target,
     }
 
 
-def batch_to_tensors_v105_1_2(batch_np: dict) -> dict:
-    """Convert v105.1.2 numpy batch dict to tinygrad Tensors (realized)."""
+def batch_to_tensors_v105_4(batch_np: dict) -> dict:
+    """Convert v105.4 numpy batch dict to tinygrad Tensors (realized)."""
     return {
         "digit_init":              Tensor(batch_np["digit_init"],              dtype=dtypes.float).contiguous().realize(),
         "node_kinds":              Tensor(batch_np["node_kinds"],              dtype=dtypes.int).contiguous().realize(),
@@ -503,9 +565,9 @@ def batch_to_tensors_v105_1_2(batch_np: dict) -> dict:
         "factor_valid":            Tensor(batch_np["factor_valid"],            dtype=dtypes.float).contiguous().realize(),
         "staging_mask":            Tensor(batch_np["staging_mask"],            dtype=dtypes.float).contiguous().realize(),
         "head_op_mask":            Tensor(batch_np["head_op_mask"],            dtype=dtypes.float).contiguous().realize(),
-        # NEW for v105.1.2 v2:
         "digit_valid_mask":        Tensor(batch_np["digit_valid_mask"],        dtype=dtypes.float).contiguous().realize(),
         "factor_digit_valid_mask": Tensor(batch_np["factor_digit_valid_mask"], dtype=dtypes.float).contiguous().realize(),
+        "magnitude_target":        Tensor(batch_np["magnitude_target"],        dtype=dtypes.int).contiguous().realize(),
         # numpy-only
         "query_idx":      batch_np["query_idx"],
         "n_vars_total":   batch_np["n_vars_total"],
@@ -517,13 +579,13 @@ def batch_to_tensors_v105_1_2(batch_np: dict) -> dict:
 # Data loaders
 # ---------------------------------------------------------------------------
 
-def load_gsm8k_records_v105_1_2(
+def load_gsm8k_records_v105_4(
     path: str,
     n_digits: int = V105_N_DIGITS,
     n_max: int = V105_N_MAX,
     f_max: int = V105_F_MAX,
 ) -> list[dict]:
-    """Load and convert GSM8K factor graph records to v105.1.2 format."""
+    """Load and convert GSM8K factor graph records to v105.3 format."""
     if not path or not os.path.exists(path):
         return []
     records = []
@@ -532,20 +594,20 @@ def load_gsm8k_records_v105_1_2(
         for line in f:
             rec = json.loads(line.strip())
             n_loaded += 1
-            converted = convert_gsm8k_record_v105_1_2(rec, n_digits=n_digits, n_max=n_max, f_max=f_max)
+            converted = convert_gsm8k_record_v105_4(rec, n_digits=n_digits, n_max=n_max, f_max=f_max)
             if converted is not None:
                 records.append(converted)
     pct = 100.0 * len(records) / max(n_loaded, 1)
     print(
-        f"[fg_data_v105_1_2] GSM8K: loaded {n_loaded}, kept {len(records)} ({pct:.1f}%) "
-        f"(MSD-first, no range filter; n_digits={n_digits})",
+        f"[fg_data_v105_4] GSM8K: loaded {n_loaded}, kept {len(records)} ({pct:.1f}%) "
+        f"(LSD-first, no range filter; n_digits={n_digits})",
         flush=True,
     )
     return records
 
 
-class FactorGraphLoaderV105_1_2:
-    """Iterates factor-graph records in v105.1.2 format (MSD-first + valid mask)."""
+class FactorGraphLoaderV105_4:
+    """Iterates factor-graph records in v105.3 format (LSD-first + valid mask)."""
 
     def __init__(
         self,
@@ -581,8 +643,8 @@ class FactorGraphLoaderV105_1_2:
         self.by_diff = index_by_difficulty(records)
         self.active_diffs = [d for d in DIFFICULTIES if len(self.by_diff.get(d, [])) > 0]
         print(
-            f"[fg_data_v105_1_2] loaded {len(records)} from {os.path.basename(path)}; "
-            f"n_digits={n_digits} (MSD-first) T={n_max*n_digits+f_max}  "
+            f"[fg_data_v105_4] loaded {len(records)} from {os.path.basename(path)}; "
+            f"n_digits={n_digits} (LSD-first) T={n_max*n_digits+f_max}  "
             f"by difficulty: {[(d, len(self.by_diff.get(d,[]))) for d in self.active_diffs]}",
             flush=True,
         )
@@ -615,10 +677,10 @@ class FactorGraphLoaderV105_1_2:
                 )[0]
                 picks.append(self.rng.choice(self.by_diff[diff]))
 
-        batch_np = _records_to_batch_v105_1_2(
+        batch_np = _records_to_batch_v105_4(
             picks, self.n_max, self.f_max, self.k_max, self.n_heads, self.n_digits,
         )
-        batch_t = batch_to_tensors_v105_1_2(batch_np)
+        batch_t = batch_to_tensors_v105_4(batch_np)
         batch_t["picks"] = picks
         return batch_t
 
@@ -629,10 +691,10 @@ class FactorGraphLoaderV105_1_2:
             batch_recs = self.records[start : start + bs]
             while len(batch_recs) < bs:
                 batch_recs.append(self.records[0])
-            batch_np = _records_to_batch_v105_1_2(
+            batch_np = _records_to_batch_v105_4(
                 batch_recs, self.n_max, self.f_max, self.k_max, self.n_heads, self.n_digits,
             )
-            batch_t = batch_to_tensors_v105_1_2(batch_np)
+            batch_t = batch_to_tensors_v105_4(batch_np)
             batch_t["picks"] = batch_recs
             yield batch_t
 
@@ -640,12 +702,12 @@ class FactorGraphLoaderV105_1_2:
         return len(self.records)
 
 
-class DualDataLoaderV105_1_2:
-    """Samples from synthetic + GSM8K records at configurable ratio (v105.1.2 format)."""
+class DualDataLoaderV105_4:
+    """Samples from synthetic + GSM8K records at configurable ratio (v105.3 format)."""
 
     def __init__(
         self,
-        synth_loader: FactorGraphLoaderV105_1_2,
+        synth_loader: FactorGraphLoaderV105_4,
         gsm8k_records: list[dict],
         gsm8k_ratio: float = 0.5,
         n_max: int = V105_N_MAX,
@@ -665,7 +727,7 @@ class DualDataLoaderV105_1_2:
         self.n_digits = n_digits
         self.rng      = random.Random(seed)
         print(
-            f"[fg_data_v105_1_2] DualLoader: synth={len(synth_loader)} gsm8k={len(gsm8k_records)} "
+            f"[fg_data_v105_4] DualLoader: synth={len(synth_loader)} gsm8k={len(gsm8k_records)} "
             f"ratio={self.gsm8k_ratio:.2f}",
             flush=True,
         )
@@ -688,8 +750,8 @@ class DualDataLoaderV105_1_2:
             mixed += self.rng.choices(self.gsm8k_records, k=n_gsm8k)
         self.rng.shuffle(mixed)
 
-        batch_np = _records_to_batch_v105_1_2(mixed, self.n_max, self.f_max, self.k_max,
-                                              self.n_heads, self.n_digits)
-        batch_t  = batch_to_tensors_v105_1_2(batch_np)
+        batch_np = _records_to_batch_v105_4(mixed, self.n_max, self.f_max, self.k_max,
+                                            self.n_heads, self.n_digits)
+        batch_t  = batch_to_tensors_v105_4(batch_np)
         batch_t["picks"] = mixed
         return batch_t
