@@ -90,7 +90,7 @@ experiments/
 secrets/
 untracked/
 findings/
-docs/
+# docs/ tracks design specs and archived pre-v98 content (see docs/archive/)
 
 # Lambda build artifacts
 lambda/*/lambda.zip
