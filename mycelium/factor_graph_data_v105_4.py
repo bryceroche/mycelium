@@ -42,6 +42,18 @@ from mycelium.factor_graph import build_factor_graph_masks_np
 # position p. Default off for back-compat.
 V105_4_LATERAL_ATTN = int(os.environ.get("V105_4_LATERAL_ATTN", "0")) > 0
 
+# Mean-field-collapse fix (post-Jun 1 linear probe diagnostic):
+# The breathing's all-to-all within-variable attention drives digit positions
+# toward a shared representation (cos similarity 0.99+ at every position).
+# This env var controls within-variable digit-to-digit attention:
+#   0 = ALL allowed (default, original — known to cause averaging collapse)
+#   1 = HARD block — no within-variable digit attention at all
+#       (forces communication through factors only; may break carry composition)
+#   2 = SOFT (adjacent-only) — pos p ↔ pos p±1 allowed, far positions blocked
+#       (carry can flow sequentially through adjacent positions; far-position
+#       averaging is blocked — implements the "traveling wave" via attention mask)
+V105_4_BLOCK_WITHIN_VAR = int(os.environ.get("V105_4_BLOCK_WITHIN_VAR", "0"))
+
 # Import DAG depth from v100 data (same algorithm)
 from mycelium.factor_graph_data_v100 import compute_var_depth
 
@@ -164,11 +176,27 @@ def build_staging_and_head_masks_v105_4_np(
     # 2. Expand to digit-level adjacency
     bipartite_full = np.full((t_max, t_max), -1e4, dtype=np.float32)
 
-    # a) Within-variable: all digit positions of same variable attend to each other
+    # a) Within-variable: digit positions of same variable
+    #    Gated by V105_4_BLOCK_WITHIN_VAR:
+    #      0 = all-to-all (default, original)
+    #      1 = blocked entirely (no within-variable attention)
+    #      2 = adjacent-only (pos p ↔ pos p±1; far positions blocked)
     for vi in range(n_max):
         start = vi * n_digits
         end   = start + n_digits
-        bipartite_full[start:end, start:end] = 0.0
+        if V105_4_BLOCK_WITHIN_VAR == 0:
+            # Original: all 5 positions attend to each other
+            bipartite_full[start:end, start:end] = 0.0
+        elif V105_4_BLOCK_WITHIN_VAR == 1:
+            # Hard block: only diagonal (self-attention) within variable
+            for p in range(n_digits):
+                bipartite_full[start + p, start + p] = 0.0
+        elif V105_4_BLOCK_WITHIN_VAR == 2:
+            # Soft (adjacent-only): pos p ↔ pos p±1 allowed
+            for p1 in range(n_digits):
+                for p2 in range(n_digits):
+                    if abs(p1 - p2) <= 1:
+                        bipartite_full[start + p1, start + p2] = 0.0
 
     # b) Factor self-attention
     for fi in range(f_max):
@@ -248,7 +276,19 @@ def build_staging_and_head_masks_v105_4_np(
             if 0 <= vi < n_vars:
                 vstart = vi * n_digits
                 vend   = vstart + n_digits
-                op_adj[ft, vstart:vend, vstart:vend] = 0.0
+                # Within-variable digit attention (same gating as bipartite_full)
+                if V105_4_BLOCK_WITHIN_VAR == 0:
+                    op_adj[ft, vstart:vend, vstart:vend] = 0.0
+                elif V105_4_BLOCK_WITHIN_VAR == 1:
+                    # Hard block: diagonal only
+                    for p in range(n_digits):
+                        op_adj[ft, vstart + p, vstart + p] = 0.0
+                elif V105_4_BLOCK_WITHIN_VAR == 2:
+                    # Soft (adjacent-only)
+                    for p1 in range(n_digits):
+                        for p2 in range(n_digits):
+                            if abs(p1 - p2) <= 1:
+                                op_adj[ft, vstart + p1, vstart + p2] = 0.0
 
         # Lateral attention bias: same-position digits ACROSS operands of a
         # factor attend to each other (the per-position arithmetic pathway).
