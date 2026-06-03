@@ -237,15 +237,32 @@ DAG paradigm), see `docs/archive/empirical_v45_to_v95.md`.
 
 ## 8. Active research threads (one-line each)
 
-- **Y-soft testing** (within-variable adjacent-only attention,
-  V105_4_BLOCK_WITHIN_VAR=2) — does it fix mean-field collapse?
-- **Phase 1 classifier training** — when v105 stabilizes
+- **v105.10 OOD generalization** (running Jun 3) — train [0,9999], test
+  [10000,99999]; AR digit decoder per-position acc is the compositionality
+  test. v105.8 baseline 29.7% in-dist val[medium]; v105.10 adds digit
+  decoder.
+- **Phase 1 small NL→factor-graph model** — segment-and-classify design
+  in `memory/project_phase1_segment_classify_design.md`. DistilBERT
+  encoder; flat BIO span tagging + ~8-op codebook classification (Phase
+  1A) + deterministic compiler → DAG (Phase 1B). Three anchors:
+  panama-hat (phrase units), input attention fraction (aux loss), JSD
+  (head specialization diagnostic). Span labels back out deterministically
+  from the 4,432 Haiku-labeled DSL examples. Required for the "fully
+  on-device" deployment story.
+- **Notebook-as-MCTS-state** (next major build after v105.10) —
+  `memory/project_notebook_mcts_design.md`. Each breath is a branch point
+  in a search where the notebook holds committed beliefs. AlphaZero-shaped,
+  ~9× cheaper than v106, searches reasoning trajectory not readout. Build
+  is independent of OOD outcome; OOD result shapes whether this stacks on
+  top of compositional generalization (if v105.10 passes) or fixes it (if
+  v105.10 fails).
+- **Matched v107 vs v105.8 vs v105.10 comparison** — pending v105.10
+  finish. Settles the "does 5-token architecture beat 1-token v107" question
+  on the same val split.
 - **v106 PUCT search on v107 number-level** — when BP per-position
   distributions are useful
 - **v98 ablation — which constraint masks are load-bearing?** —
   pre-paper figure-2 work
-- **Codec hypothesis** — does v105.1.2 v2 (4-step codec) outperform
-  v100 (3-step codec) on factor graphs?
 
 For the v1-v95 era research threads (E-and-B oscillation, BirdNET head
 specialization, hierarchical IB → MCTS, photon zero-crossing, JSD

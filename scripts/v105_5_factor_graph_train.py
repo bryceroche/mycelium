@@ -55,6 +55,7 @@ from mycelium.factor_graph_v105_5 import (
     V105_AUX_DISTINCT_WEIGHT, V105_5_VAR_LOSS_WEIGHT,
     V105_8_PER_NUMBER_READOUT, V105_8_N_NUMBER_BINS,
     V105_9_AR_DIGIT_DECODER, V105_9_AR_COND_SCALE,
+    V105_10_DUAL_READOUT, V105_10_DIGIT_WEIGHT,
     attach_fg_params_v105_5, fg_v105_5_parameters, fg_v105_5_state_dict,
     fg_breathing_forward_v105_5, load_ckpt_v105_5,
     _compile_jit_fg_step_v105_5, _compile_jit_fg_eval_v105_5,
@@ -458,6 +459,29 @@ def main():
             flush=True,
         )
 
+    # v105.10 — DUAL READOUT (v105.8 + v105.9). When enabled, both v105.8 and
+    # v105.9 paths are active. Apply the same Python-side overrides as v105.8/9:
+    # zero out var_loss / magnitude / energy / aux_distinct (we already did this
+    # above through V105_8_PER_NUMBER_READOUT and V105_9_AR_DIGIT_DECODER), and
+    # KEEP factor_aux_weight=1.0. Pooled-AR digit CE is weighted inside the JIT
+    # by V105_10_DIGIT_WEIGHT (default 0.3) instead of v105.9's default 1.0.
+    if V105_10_DUAL_READOUT:
+        VAR_LOSS_WEIGHT     = 0.0
+        MAGNITUDE_WEIGHT    = 0.0
+        ENERGY_WEIGHT       = 0.0
+        AUX_DISTINCT_WEIGHT = 0.0
+        print(
+            f"[v105.10] DUAL_READOUT=1 (v105.8 + v105.9) → forcing "
+            f"var_loss_weight=0, magnitude_weight=0, energy_weight=0, "
+            f"aux_distinct_weight=0. "
+            f"factor_aux_weight={FACTOR_AUX_WEIGHT} (kept). "
+            f"calib_weight={CALIB_WEIGHT} (kept). "
+            f"n_number_bins={V105_8_N_NUMBER_BINS} "
+            f"digit_weight={V105_10_DIGIT_WEIGHT} "
+            f"ar_cond_scale={V105_9_AR_COND_SCALE}.",
+            flush=True,
+        )
+
     DIFFICULTY_FILTER = os.environ.get("V105_DIFFICULTY_FILTER", "").strip() or None
     CURRICULUM        = int(getenv("V105_CURRICULUM",        "0")) > 0
     CURRICULUM_ANNEAL = int(getenv("V105_CURRICULUM_ANNEAL", "1000"))
@@ -552,7 +576,20 @@ def main():
         n_magnitude=V105_5_N_MAGNITUDE,
         grad_clip=1.0,
     )
-    if V105_8_PER_NUMBER_READOUT:
+    # v105.10 dual readout: compile BOTH eval JITs so we can run side-by-side
+    # eval at EVAL_EVERY (200-bin number readout + pooled-AR digit decoder).
+    # For pure v105.8 or v105.9 only the relevant eval JIT is built.
+    eval_fn_v8: callable | None = None
+    eval_fn_v9: callable | None = None
+    eval_fn: callable | None = None
+    if V105_10_DUAL_READOUT:
+        eval_fn_v8 = _compile_jit_fg_eval_v105_8(
+            model, K=K, B=EVAL_BATCH, n_max=N_MAX, f_max=F_MAX, n_digits=N_DIGITS,
+        )
+        eval_fn_v9 = _compile_jit_fg_eval_v105_9(
+            model, K=K, B=EVAL_BATCH, n_max=N_MAX, f_max=F_MAX, n_digits=N_DIGITS,
+        )
+    elif V105_8_PER_NUMBER_READOUT:
         eval_fn = _compile_jit_fg_eval_v105_8(
             model, K=K, B=EVAL_BATCH, n_max=N_MAX, f_max=F_MAX, n_digits=N_DIGITS,
         )
@@ -684,7 +721,54 @@ def main():
 
         if step % EVAL_EVERY == 0:
             print(f"  evaluating ({EVAL_BATCHES} batches × B={EVAL_BATCH})...", flush=True)
-            if V105_8_PER_NUMBER_READOUT:
+            dual_done = False
+            if V105_10_DUAL_READOUT:
+                # Run BOTH evals: 200-bin number readout AND pooled-AR digit decoder.
+                results_v8 = evaluate_v105_8(
+                    model, val_loader, K=K,
+                    max_batches=EVAL_BATCHES,
+                    eval_fn=eval_fn_v8,
+                    n_max=N_MAX, f_max=F_MAX, n_digits=N_DIGITS,
+                )
+                results_v9 = evaluate_v105_9(
+                    model, val_loader, K=K,
+                    max_batches=EVAL_BATCHES,
+                    eval_fn=eval_fn_v9,
+                    n_max=N_MAX, f_max=F_MAX, n_digits=N_DIGITS,
+                )
+                print("  [v105.10 dual readout eval — number-bin / pooled-digit side-by-side]", flush=True)
+                for d in DIFFICULTIES:
+                    v8 = results_v8.get(d)
+                    v9 = results_v9.get(d)
+                    if v8 is None and v9 is None:
+                        continue
+                    v8_str = (
+                        f"num: cell={v8['cell_acc']:.3f} q={v8['query_acc']:.3f}"
+                        if v8 is not None else "num: -"
+                    )
+                    v9_str = (
+                        f"pool: cell={v9['cell_acc']:.3f} q={v9['query_acc']:.3f}"
+                        if v9 is not None else "pool: -"
+                    )
+                    npuz = (v8['n_puzzles'] if v8 is not None else
+                            (v9['n_puzzles'] if v9 is not None else 0))
+                    print(
+                        f"  val[{d:6s}]: {v8_str}  |  {v9_str}  n={npuz}",
+                        flush=True,
+                    )
+                # Diagnostic: print delta_gate values (per-breath step sizes).
+                try:
+                    dg_main  = model.fg_v105_5_delta_gate.numpy().tolist()
+                    dg_quant = model.fg_v105_5_delta_gate_quant.numpy().tolist()
+                    print("  delta_gate      : "
+                          + " ".join(f"{g:.3f}" for g in dg_main), flush=True)
+                    print("  delta_gate_quant: "
+                          + " ".join(f"{g:.3f}" for g in dg_quant), flush=True)
+                except Exception as _e:
+                    pass
+                dual_done = True
+                results = None
+            elif V105_8_PER_NUMBER_READOUT:
                 results = evaluate_v105_8(
                     model, val_loader, K=K,
                     max_batches=EVAL_BATCHES,
@@ -705,31 +789,32 @@ def main():
                     eval_fn=eval_fn,
                     n_max=N_MAX, f_max=F_MAX, n_digits=N_DIGITS,
                 )
-            for d in DIFFICULTIES:
-                if d not in results:
-                    continue
-                v = results[d]
-                print(
-                    f"  val[{d:6s}]: cell_acc={v['cell_acc']:.3f} "
-                    f"query_acc={v['query_acc']:.3f} n={v['n_puzzles']}",
-                    flush=True,
-                )
-            # Diagnostic: print delta_gate values (per-breath step sizes).
-            try:
-                dg_main  = model.fg_v105_5_delta_gate.numpy().tolist()
-                dg_quant = model.fg_v105_5_delta_gate_quant.numpy().tolist()
-                print(
-                    "  delta_gate      : "
-                    + " ".join(f"{g:.3f}" for g in dg_main),
-                    flush=True,
-                )
-                print(
-                    "  delta_gate_quant: "
-                    + " ".join(f"{g:.3f}" for g in dg_quant),
-                    flush=True,
-                )
-            except Exception as _e:
-                pass
+            if not dual_done:
+                for d in DIFFICULTIES:
+                    if d not in results:
+                        continue
+                    v = results[d]
+                    print(
+                        f"  val[{d:6s}]: cell_acc={v['cell_acc']:.3f} "
+                        f"query_acc={v['query_acc']:.3f} n={v['n_puzzles']}",
+                        flush=True,
+                    )
+                # Diagnostic: print delta_gate values (per-breath step sizes).
+                try:
+                    dg_main  = model.fg_v105_5_delta_gate.numpy().tolist()
+                    dg_quant = model.fg_v105_5_delta_gate_quant.numpy().tolist()
+                    print(
+                        "  delta_gate      : "
+                        + " ".join(f"{g:.3f}" for g in dg_main),
+                        flush=True,
+                    )
+                    print(
+                        "  delta_gate_quant: "
+                        + " ".join(f"{g:.3f}" for g in dg_quant),
+                        flush=True,
+                    )
+                except Exception as _e:
+                    pass
 
         if step % CKPT_EVERY == 0:
             ckpt_path = os.path.join(ckpt_dir, f"{CKPT_LABEL}_step{step}.safetensors")

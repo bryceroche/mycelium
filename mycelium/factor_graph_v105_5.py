@@ -219,15 +219,46 @@ V105_8_N_NUMBER_BINS      = int(os.environ.get("V105_8_N_NUMBER_BINS",      "200
 # conflicting per-position signals). Model encodes "the number is X" in
 # cell_hidden; the small AR decoder extracts digits.
 #
-# Mutually exclusive with V105_8_PER_NUMBER_READOUT (per-NUMBER codebook).
+# Mutually exclusive with V105_8_PER_NUMBER_READOUT (per-NUMBER codebook),
+# EXCEPT when v105.10 dual-readout mode is enabled.
 V105_9_AR_DIGIT_DECODER   = int(os.environ.get("V105_9_AR_DIGIT_DECODER", "0")) > 0
 V105_9_AR_COND_SCALE      = float(os.environ.get("V105_9_AR_COND_SCALE", "0.5"))
 
-if V105_8_PER_NUMBER_READOUT and V105_9_AR_DIGIT_DECODER:
+# v105.10 — DUAL READOUT (v105.8 + v105.9 simultaneously).
+#
+# Combines v105.8's 200-bin per-NUMBER readout AND v105.9's AR digit decoder
+# in a single architecture. Both readouts are computed from the same pooled
+# cell_hidden at the final breath:
+#   number_logits = cell_hidden @ number_codebook.T     # v105.8 path
+#   digit_logits_pooled = AR-decode(cell_hidden, digit_codebook)  # v105.9 path
+#
+# Loss:
+#   total += number_ce_loss + V105_10_DIGIT_WEIGHT * digit_ce_loss
+#
+# Hypothesis: number_CE provides precise-value gradient that makes
+# cell_hidden a clean representation; digit_CE trains the decoder to extract
+# compositional digits from that representation. The killer experiment is OOD
+# generalization: train on [0, 9999], test on [10000, 99999]. The 200-bin
+# codebook has no bins above 9999 → 0% on OOD. The digit decoder reads each
+# digit independently → can attempt 5-digit numbers it never saw.
+#
+# When V105_10_DUAL_READOUT=1, the standard mutex check between
+# V105_8_PER_NUMBER_READOUT and V105_9_AR_DIGIT_DECODER is relaxed: both
+# paths must be enabled (the launcher sets all three flags together).
+V105_10_DUAL_READOUT      = int(os.environ.get("V105_10_DUAL_READOUT", "0")) > 0
+V105_10_DIGIT_WEIGHT      = float(os.environ.get("V105_10_DIGIT_WEIGHT", "0.3"))
+
+if V105_8_PER_NUMBER_READOUT and V105_9_AR_DIGIT_DECODER and not V105_10_DUAL_READOUT:
     raise RuntimeError(
         "v105.8 (PER_NUMBER_READOUT) and v105.9 (AR_DIGIT_DECODER) are "
         "mutually exclusive. Set at most one of V105_8_PER_NUMBER_READOUT / "
-        "V105_9_AR_DIGIT_DECODER to 1."
+        "V105_9_AR_DIGIT_DECODER to 1, OR set V105_10_DUAL_READOUT=1 to enable "
+        "both simultaneously (v105.10 dual-readout mode)."
+    )
+if V105_10_DUAL_READOUT and not (V105_8_PER_NUMBER_READOUT and V105_9_AR_DIGIT_DECODER):
+    raise RuntimeError(
+        "V105_10_DUAL_READOUT=1 requires BOTH V105_8_PER_NUMBER_READOUT=1 AND "
+        "V105_9_AR_DIGIT_DECODER=1 (v105.10 = v105.8 + v105.9 dual readout)."
     )
 
 
@@ -1730,13 +1761,17 @@ def _compile_jit_fg_step_v105_5(
         int(model.fg_v105_8_number_codebook.shape[0]) if v8_enabled else 0
     )
     v9_enabled = bool(V105_9_AR_DIGIT_DECODER)
+    # v105.10 dual readout: when enabled, the pooled-AR digit CE is weighted
+    # by V105_10_DIGIT_WEIGHT (instead of the default 1.0 used by pure v105.9).
+    v10_enabled = bool(V105_10_DUAL_READOUT)
+    digit_weight_for_pooled = float(V105_10_DIGIT_WEIGHT) if v10_enabled else 1.0
     key = ("v105_5", id(model), id(opt), int(K), int(B),
            float(factor_aux_weight), float(calib_weight), float(energy_weight),
            float(magnitude_weight), float(aux_distinct_weight),
            float(var_loss_weight),
            int(n_max), int(f_max), int(n_digits), int(n_magnitude),
            float(grad_clip), int(n_code), bool(v8_enabled), int(n_number_bins),
-           bool(v9_enabled))
+           bool(v9_enabled), bool(v10_enabled), float(digit_weight_for_pooled))
     if key in _JIT_V105_5_CACHE:
         return _JIT_V105_5_CACHE[key]
 
@@ -1754,7 +1789,8 @@ def _compile_jit_fg_step_v105_5(
         f"T={n_max * n_digits + f_max} aw={aw} fw={fw} ew={ew} mw={mw} "
         f"adw={adw} vlw={vlw} gc={gc} n_code={n_code} "
         f"v105.8={v8_enabled} n_number_bins={n_number_bins} "
-        f"v105.9={v9_enabled}...",
+        f"v105.9={v9_enabled} v105.10={v10_enabled} "
+        f"digit_weight_for_pooled={digit_weight_for_pooled}...",
         flush=True,
     )
 
@@ -2082,7 +2118,9 @@ def _compile_jit_fg_step_v105_5(
         if v8_enabled:
             total_ce = total_ce + number_ce_loss
         if v9_enabled:
-            total_ce = total_ce + var_loss_pooled
+            # v105.9 default weight: 1.0. v105.10 dual readout: V105_10_DIGIT_WEIGHT
+            # (a Python-side scalar baked into the JIT graph via digit_weight_for_pooled).
+            total_ce = total_ce + digit_weight_for_pooled * var_loss_pooled
         total_ce.backward()
 
         healthy = total_ce.isfinite().cast(dtypes.float)
