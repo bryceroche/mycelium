@@ -67,9 +67,33 @@ v101 (number)    47.6% cell_acc  on [0,99]
 v103 (number)    46.6% cell_acc  on [0,99]
 v104 (number)    47.7% cell_acc  on [0,99]
 v107 (hybrid)    24.2% cell_acc  on GSM8K  (.cache/fg_v107_ckpts/v107_prod_step1000.safetensors)
-v105 family     ~5% plateau on per-position digits (12 attempts)
-                 Mean-field collapse identified Jun 1 via linear probe.
-                 Y-soft attention mask fix currently testing.
+v105 family     ~3-5% plateau on per-position digit prediction
+                 Jun 1: per-layer cos_sim probe pins collapse to Pythia L0
+                        (input 0.74 → post-L0 0.90 → post-L3 0.991)
+                 Jun 2: 4 anti-collapse experiments all hit the ceiling
+                        v105.5 PPFFN-after/before-waist:   cos 0.999
+                        v105.5 + hard block within-var:    cos 0.991
+                        v105.6 per-position L0 W_in:       cos 0.999 (per-pos
+                                                           weights stay cos
+                                                           0.999 to each other
+                                                           — no specialization)
+                        v105.6 + aux distinctness loss:    distinct climbs
+                                                           0.99→0.998 (CE-driven
+                                                           collapse > aux pressure)
+                 → readout-side AND replacement-architecture both fail
+v105.9 (pooled AR digit decoder, Jun 2):
+                 Drop per-position digit pressure; pool 5 tokens → cell_hidden
+                 → AR digit chain. Per-breath ladder Δ=1.37 (13× target) —
+                 STRONGEST breath refinement in v105 history. But val plateaus
+                 at ~3-5%. Linear probe on cell_hidden at step 2000:
+                 magnitude probe 61% (chance 25%), 200-bin probe 6.3% (chance
+                 0.5%), R² on log(value) = -614. cell_hidden encodes scale
+                 but NOT precise value. Supervision gap, not capacity gap.
+v105.8 (200-bin number readout, RUNNING Jun 2):
+                 Direct per-NUMBER CE on pooled cell_hidden. Tests whether
+                 breathing learns precise value when given direct supervision.
+                 If bin acc > 30% → v105.10 = dual readout (number CE trains
+                 breathing + AR digit decoder reads it for OOD generalization).
 Phase 1 parser   Designed (`mycelium/phase1_classifier.py`); not yet trained.
 ```
 
@@ -84,6 +108,10 @@ to K=20 on easy. This IS the signature of loopy BP convergence.
 - `memory/project_musical_keys_topology.md` — topology determines rhythm
 - `memory/feedback_digit_vs_number_prediction.md` — v105 digit-level lessons
 - `memory/project_big_paper_strategy.md` — paper holding strategy
+- `memory/project_v105_collapse_unbreakable.md` — Jun 2 finding: collapse
+  at Pythia L0, readout-side fixes mechanically can't recover, v105.9
+  pooled-AR breathes beautifully (Δ=1.37) but cell_hidden lacks number
+  precision (R²=-614); v105.8 tests whether direct number CE fixes that
 
 For the pre-v98 empirical state (v45/v55/v59 L4_MIXED, v77-v81 GSM8K
 DAG paradigm), see `docs/archive/empirical_v45_to_v95.md`.
