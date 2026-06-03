@@ -813,7 +813,7 @@ if V91_SIMPLIFIED_ARGS:
 # Per-breath supervision on (ops_logits, types_logits, confidence) breaks the
 # v85 template attractor by giving EVERY breath its own credit signal.
 #
-# Implementation lives in mycelium/v96.py + hooks here + l3_training.py for
+# v96 era implementation removed in cleanup; this is the v98+ stack only.
 # the per-row CE loss. ALWAYS allocated for state_dict symmetry; gradient
 # inert (zero-init paths) when V96_CONSOLIDATION=0.
 V96_CONSOLIDATION = int(os.environ.get("V96_CONSOLIDATION", "0")) > 0

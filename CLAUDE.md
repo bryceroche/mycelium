@@ -235,17 +235,45 @@ DAG paradigm), see `docs/archive/empirical_v45_to_v95.md`.
 
 ---
 
-## 8. Active research threads (one-line each)
+## 8. Active research threads (sequenced)
 
-- **Y-soft testing** (within-variable adjacent-only attention,
-  V105_4_BLOCK_WITHIN_VAR=2) — does it fix mean-field collapse?
-- **Phase 1 classifier training** — when v105 stabilizes
-- **v106 PUCT search on v107 number-level** — when BP per-position
-  distributions are useful
+**Sequence (agreed Jun 3):**
+
+1. **v105.10 OOD generalization** (running Jun 3) — train [0,9999], test
+   [10000,99999]; AR digit decoder per-position acc is the
+   compositionality test. v105.8 baseline 29.7% in-dist val[medium];
+   v105.10 adds digit decoder + matched v107 comparison + decoder
+   consistency (d1 clamp → d2 KL) diagnostics.
+2. **v105.11 drop-the-codebook** — `memory/project_v105_11_design.md`.
+   Remove 200-bin codebook entirely; replace with log-number-MSE on the
+   AR-reconstructed value. Per-digit CE + log-MSE share the SAME path
+   through the AR decoder. The breathing has no codebook shortcut — must
+   shape cell_hidden for digit extraction. Cleanest OOD compositionality
+   test (no bin saturation artifacts). 4-6 hr build + ablation (MSE-only)
+   + K-sweep.
+3. **Phase 1 small NL→factor-graph model** —
+   `memory/project_phase1_segment_classify_design.md`. Segment-and-classify
+   on DistilBERT; flat BIO span tagging + ~8-op codebook classification
+   (Phase 1A) + deterministic compiler → DAG (Phase 1B). Three anchors:
+   panama-hat (phrase units), input attention fraction (aux loss), JSD
+   (head specialization diagnostic). Span labels back out deterministically
+   from the 4,432 Haiku-labeled DSL examples. Required for the
+   "fully on-device" deployment story.
+4. **Notebook-as-MCTS-state** —
+   `memory/project_notebook_mcts_design.md`. Each breath is a branch point
+   in a search where the notebook holds committed beliefs. AlphaZero-shaped
+   (notebook=board, calibration=value, digit_logits=policy), ~9× cheaper
+   than v106, searches reasoning trajectory not readout. Build is
+   independent of upstream outcomes; results shape whether this stacks on
+   top of compositional generalization or fixes it.
+
+**Other open threads (lower priority, parallel-tractable):**
+
 - **v98 ablation — which constraint masks are load-bearing?** —
-  pre-paper figure-2 work
-- **Codec hypothesis** — does v105.1.2 v2 (4-step codec) outperform
-  v100 (3-step codec) on factor graphs?
+  pre-paper figure-2 work (v98 Sudoku is the paper's central claim, so
+  the constraint-mask ablation supports it).
+- **v106 PUCT search on v107 number-level** — superseded by notebook-MCTS
+  if it ships; keep only as fallback diagnostic.
 
 For the v1-v95 era research threads (E-and-B oscillation, BirdNET head
 specialization, hierarchical IB → MCTS, photon zero-crossing, JSD
