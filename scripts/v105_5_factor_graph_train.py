@@ -56,6 +56,9 @@ from mycelium.factor_graph_v105_5 import (
     V105_8_PER_NUMBER_READOUT, V105_8_N_NUMBER_BINS,
     V105_9_AR_DIGIT_DECODER, V105_9_AR_COND_SCALE,
     V105_10_DUAL_READOUT, V105_10_DIGIT_WEIGHT,
+    V105_11_NUMBER_MSE, V105_11_NUMBER_MSE_BETA,
+    V105_11_CONCAT_COND, V105_11_COND_DROPOUT,
+    V105_12_PREFILL_ISOLATE, V105_12_FOURIER_DECODE_INIT, V105_12_CODEBOOK_ANNEAL,
     attach_fg_params_v105_5, fg_v105_5_parameters, fg_v105_5_state_dict,
     fg_breathing_forward_v105_5, load_ckpt_v105_5,
     _compile_jit_fg_step_v105_5, _compile_jit_fg_eval_v105_5,
@@ -482,6 +485,53 @@ def main():
             flush=True,
         )
 
+    # v105.11 — DROP-THE-CODEBOOK with log-number-MSE through AR digit decoder.
+    # Module-load mutex already forced V105_8=0, V105_9=1, V105_10=0; here we
+    # mirror those forces on the Python-side training weights. Per-digit CE
+    # (var_loss_pooled inside the JIT) AND log-number-MSE share the SAME path
+    # through the AR decoder. Magnitude/energy/aux_distinct drop because they
+    # depended on per-position digit logits. factor_aux is kept (factor-level
+    # MSE — complementary).
+    if V105_11_NUMBER_MSE:
+        VAR_LOSS_WEIGHT     = 0.0
+        MAGNITUDE_WEIGHT    = 0.0
+        ENERGY_WEIGHT       = 0.0
+        AUX_DISTINCT_WEIGHT = 0.0
+        print(
+            f"[v105.11] NUMBER_MSE=1 → forcing var_loss_weight=0, "
+            f"magnitude_weight=0, energy_weight=0, aux_distinct_weight=0. "
+            f"factor_aux_weight={FACTOR_AUX_WEIGHT} (kept). "
+            f"calib_weight={CALIB_WEIGHT} (kept). "
+            f"beta={V105_11_NUMBER_MSE_BETA} "
+            f"concat_cond={V105_11_CONCAT_COND} "
+            f"cond_dropout={V105_11_COND_DROPOUT} "
+            f"ar_cond_scale={V105_9_AR_COND_SCALE}.",
+            flush=True,
+        )
+
+    # v105.12 — FINAL COMPOSITIONALITY EXPERIMENT.
+    # When V105_12_CODEBOOK_ANNEAL=1, the per-NUMBER codebook CE weight
+    # follows a schedule (1.0 bootstrap → 0.15 maintenance) instead of being
+    # a compile-time constant. We zero out var_loss / magnitude / energy /
+    # aux_distinct the same way v105.10/11 do (both v105.8 codebook and
+    # v105.9 AR decoder paths are active concurrently).
+    if V105_12_PREFILL_ISOLATE or V105_12_FOURIER_DECODE_INIT or V105_12_CODEBOOK_ANNEAL:
+        VAR_LOSS_WEIGHT     = 0.0
+        MAGNITUDE_WEIGHT    = 0.0
+        ENERGY_WEIGHT       = 0.0
+        AUX_DISTINCT_WEIGHT = 0.0
+        print(
+            f"[v105.12] FINAL COMPOSITIONALITY EXPERIMENT enabled "
+            f"prefill_isolate={V105_12_PREFILL_ISOLATE} "
+            f"fourier_decode_init={V105_12_FOURIER_DECODE_INIT} "
+            f"codebook_anneal={V105_12_CODEBOOK_ANNEAL}. "
+            f"Forcing var_loss_weight=0, magnitude_weight=0, energy_weight=0, "
+            f"aux_distinct_weight=0. factor_aux_weight={FACTOR_AUX_WEIGHT} (kept). "
+            f"calib_weight={CALIB_WEIGHT} (kept). "
+            f"v105.8 codebook + v105.9 AR decoder paths BOTH active.",
+            flush=True,
+        )
+
     DIFFICULTY_FILTER = os.environ.get("V105_DIFFICULTY_FILTER", "").strip() or None
     CURRICULUM        = int(getenv("V105_CURRICULUM",        "0")) > 0
     CURRICULUM_ANNEAL = int(getenv("V105_CURRICULUM_ANNEAL", "1000"))
@@ -603,11 +653,28 @@ def main():
         )
     Tensor.training = True
 
+    # v105.12 codebook annealing schedule.
+    #   steps 0    – 2000:   weight = 1.0  (bootstrap precision)
+    #   steps 2000 – 5000:   linear 1.0 → 0.15
+    #   steps 5000 – 15000:  weight = 0.15 (maintenance)
+    # When V105_12_CODEBOOK_ANNEAL=0 we ALWAYS pass 1.0 so the JIT signature is
+    # unchanged across modes and the number_ce term contributes unchanged.
+    def codebook_weight(step: int) -> float:
+        if not V105_12_CODEBOOK_ANNEAL:
+            return 1.0
+        if step < 2000:
+            return 1.0
+        elif step < 5000:
+            return 1.0 + (0.15 - 1.0) * (step - 2000) / 3000.0
+        else:
+            return 0.15
+
     print(f"\ntraining...\n")
     t0 = time.time()
     log_loss = log_ce = log_calib = log_aux = log_energy = log_mag = log_magacc = log_distinct = log_n = 0.0
     log_numce = log_numacc = 0.0
     log_pool_ce = log_pool_acc = 0.0
+    log_num_mse = 0.0
 
     for step in range(1, STEPS + 1):
         batch = dual_loader.sample_batch(step=step)
@@ -627,12 +694,17 @@ def main():
         magnitude_target        = batch["magnitude_target"]
         number_bin_target       = batch["number_bin_target"]
 
+        # v105.12 codebook-weight scalar Tensor passed as a JIT input.
+        cw = float(codebook_weight(step))
+        cw_t = Tensor(np.array([cw], dtype=np.float32), dtype=dtypes.float)
+
         outs = step_fn(
             digit_init, node_kinds, staging_mask, head_op_mask,
             gold_digits, obs_mask, factor_gold_dg, factor_valid,
             factor_types, factor_args,
             digit_valid_mask, factor_digit_valid_mask,
             magnitude_target, number_bin_target,
+            cw_t,
         )
         total_t          = outs[0]
         healthy_t        = outs[1]
@@ -649,7 +721,8 @@ def main():
         number_acc_t     = outs[12]
         var_loss_pooled_t = outs[13]
         pooled_cell_acc_t = outs[14]
-        pb_ce_ts         = outs[15:15 + K]
+        num_mse_t         = outs[15]
+        pb_ce_ts         = outs[16:16 + K]
 
         if float(healthy_t.numpy()) < 0.5:
             print(f"[NaN-skip] step {step}: gradient step skipped", flush=True)
@@ -666,6 +739,7 @@ def main():
         log_numacc   += float(number_acc_t.numpy())
         log_pool_ce  += float(var_loss_pooled_t.numpy())
         log_pool_acc += float(pooled_cell_acc_t.numpy())
+        log_num_mse  += float(num_mse_t.numpy())
         log_n        += 1
 
         if step % LOG_EVERY == 0:
@@ -682,6 +756,13 @@ def main():
                 f"pool_acc={log_pool_acc/log_n:.3f} "
                 if V105_9_AR_DIGIT_DECODER else ""
             )
+            num_mse_fragment = (
+                f"num_mse={log_num_mse/log_n:.4f} "
+                if V105_11_NUMBER_MSE else ""
+            )
+            anneal_fragment = (
+                f"cb_w={cw:.3f} " if V105_12_CODEBOOK_ANNEAL else ""
+            )
             print(
                 f"[step {step:5d}] loss={log_loss/log_n:.4f} "
                 f"ce={log_ce/log_n:.4f} "
@@ -693,12 +774,15 @@ def main():
                 f"{distinct_fragment}"
                 f"{num_fragment}"
                 f"{pool_fragment}"
+                f"{num_mse_fragment}"
+                f"{anneal_fragment}"
                 f"({dt:.1f}s, {dt/step:.2f}s/step)",
                 flush=True,
             )
             log_loss = log_ce = log_calib = log_aux = log_energy = log_mag = log_magacc = log_distinct = log_n = 0.0
             log_numce = log_numacc = 0.0
             log_pool_ce = log_pool_acc = 0.0
+            log_num_mse = 0.0
 
         if step % PER_BREATH_EVERY == 0:
             pb_ce = [float(t.numpy()) for t in pb_ce_ts]

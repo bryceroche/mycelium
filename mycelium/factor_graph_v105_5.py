@@ -136,6 +136,11 @@ V105_5_MAGNITUDE_WEIGHT = float(os.environ.get("V105_5_MAGNITUDE_WEIGHT", "0.3")
 V105_5_ROPE_BASE        = float(os.environ.get("V105_5_ROPE_BASE",       "10000.0"))
 V105_5_IB_INIT          = int(os.environ.get("V105_5_IB_INIT",           "1")) > 0
 V105_5_WAIST_LORA_INIT  = int(os.environ.get("V105_5_WAIST_LORA_INIT",   "1")) > 0
+# v105.13 wave-guide: dimensions [H-PRESERVE_DIMS : H] skip the waist correction.
+# 0 = disabled (no mask, regular waist). 512 = preserve last 512 dims of 1024d.
+V105_13_WAVEGUIDE_PRESERVE_DIMS = int(os.environ.get(
+    "V105_13_WAVEGUIDE_PRESERVE_DIMS", "0"
+))
 V105_5_FOURIER_INIT     = int(os.environ.get("V105_5_FOURIER_INIT",      "0")) > 0
 # Drop per-digit CE entirely, use per-NUMBER MSE on reconstructed value as the
 # sole variable supervision.
@@ -194,6 +199,98 @@ V105_5_VAR_LOSS_WEIGHT  = float(os.environ.get("V105_5_VAR_LOSS_WEIGHT",  "1.0")
 # V105_5_ENERGY_WEIGHT, V105_AUX_DISTINCT_WEIGHT should be forced to 0
 # (the training driver does this Python-side; the JIT respects the
 # resulting weights).
+
+# v105.11 — DROP-THE-CODEBOOK with log-number-MSE through AR digit decoder.
+#
+# v105.10 diagnostics (Jun 3) showed three coherent findings:
+#   1. In-distribution 5-token win is real (v105.10 vs v107: +16.8pt on val[medium]).
+#   2. OOD compositionality FAILED (per-digit acc at chance on [10010, 99998]).
+#   3. AR conditioning was DECORATIVE (consistency test UNRESPONSIVE — d2 ignored
+#      d1 clamps; each digit was predicted independently from cell_hidden).
+#
+# Result 3 explains result 2: independent per-position classifiers can't
+# generalize compositionally. The codebook provided an "easy path" for the
+# breathing → cell_hidden was optimized for codebook readout, not digit
+# extraction.
+#
+# v105.11 removes the codebook entirely, replacing its precision signal with
+# log-number-MSE on the AR-reconstructed value. Per-digit CE and log-MSE share
+# the SAME path through the AR decoder. Three mechanisms force the AR
+# conditioning to be load-bearing:
+#   Mechanism 1: stronger cond_scale (V105_9_AR_COND_SCALE=2.0 in the launcher).
+#   Mechanism 2: concat-and-project conditioning (V105_11_CONCAT_COND=1).
+#   Mechanism 3: conditional dropout on cell_hidden (V105_11_COND_DROPOUT>0).
+#
+# When V105_11_NUMBER_MSE=1, mutex/relaxation logic forces:
+#   V105_8_PER_NUMBER_READOUT = 0  (no codebook)
+#   V105_9_AR_DIGIT_DECODER   = 1  (need the AR path)
+#   V105_10_DUAL_READOUT      = 0  (no codebook to dual with)
+# We do this by overriding os.environ BEFORE reading V105_8/9/10 below, so
+# module-level constants reflect the v105.11 contract and mutex logic stays
+# in one place.
+V105_11_NUMBER_MSE      = int(os.environ.get("V105_11_NUMBER_MSE",      "0")) > 0
+V105_11_NUMBER_MSE_BETA = float(os.environ.get("V105_11_NUMBER_MSE_BETA", "1.0"))
+V105_11_CONCAT_COND     = int(os.environ.get("V105_11_CONCAT_COND",     "0")) > 0
+V105_11_COND_DROPOUT    = float(os.environ.get("V105_11_COND_DROPOUT",  "0.0"))
+# Mechanism 4 (Jun 3): LayerNorm cell_hidden and prev_embed_sum BEFORE combining,
+# equalizing their magnitudes. Mechanisms 1/2/3 all failed because cell_hidden
+# (mag ~32 = sqrt(H)) dominated d_embed (mag ~2) — model could ignore d_embed
+# as noise. LN equalizes both to mag ~sqrt(H), forcing the decoder to process
+# both components.
+V105_11_LN_COND         = int(os.environ.get("V105_11_LN_COND",         "0")) > 0
+
+# v105.12 — FINAL COMPOSITIONALITY EXPERIMENT
+#
+# Combines every proven v105 mechanism (v105.8 codebook precision, v105.9 AR
+# digit decoder, v105.10 dual readout, v105.11 log-MSE + LN_COND) with three
+# new principled additions targeting the remaining failure modes from v105.10
+# (OOD compositional failure) and v105.11 (in-dist plateau despite RESPONSIVE
+# conditioning):
+#
+#   Change 1 — PREFILL ISOLATE: in v105.10/v105.11, the magnitude head +
+#     per-position digit codebook + magnitude_embed addition all fire at
+#     EVERY breath, with magnitude_embed feeding back into var_tokens_r
+#     and thus the next breath's input. With V105_12_PREFILL_ISOLATE=1,
+#     these readout-side computations are gated to k == K-1 only. The
+#     breathing loop becomes pure constraint propagation; decode happens
+#     once at the end. Forward-only architectural change.
+#
+#   Change 2 — FOURIER DECODE INIT: replace the QR-random init of
+#     fg_v105_5_digit_codebook with a Fourier basis. For position p, digit
+#     d, hidden dim k: codebook[p, d, 2k] = cos(2π·d·(k+1)/10),
+#     codebook[p, d, 2k+1] = sin(2π·d·(k+1)/10); normalized by 1/sqrt(H).
+#     With PREFILL_ISOLATE the codebook is touched ONLY at the last breath
+#     (not washed out by Pythia layers during breathing).
+#
+#   Change 3 — CODEBOOK ANNEAL: drives a runtime-Tensor weight on the
+#     number_codebook CE loss (v105.8 path). Schedule lives in the
+#     training driver:
+#       steps 0    – 2000:   weight = 1.0   (bootstrap precision)
+#       steps 2000 – 5000:   linear 1.0 → 0.15
+#       steps 5000 – 15000:  weight = 0.15  (maintenance)
+#     This is the enable flag; the actual weight comes through the JIT
+#     as a Tensor input argument so step time is unchanged.
+V105_12_PREFILL_ISOLATE     = int(os.environ.get("V105_12_PREFILL_ISOLATE",     "0")) > 0
+V105_12_FOURIER_DECODE_INIT = int(os.environ.get("V105_12_FOURIER_DECODE_INIT", "0")) > 0
+V105_12_CODEBOOK_ANNEAL     = int(os.environ.get("V105_12_CODEBOOK_ANNEAL",     "0")) > 0
+V105_12_ENABLED = (
+    V105_12_PREFILL_ISOLATE or V105_12_FOURIER_DECODE_INIT or V105_12_CODEBOOK_ANNEAL
+)
+
+# v105.12 enables BOTH v105.8 (number codebook) and v105.9 (AR digit decoder)
+# concurrently — same dual-readout pattern as v105.10, with the v105.11 LN_COND
+# fix and the three v105.12 mechanisms layered on top. This precedes the
+# v105.11 NUMBER_MSE mutex so v105.12 wins when both are active.
+if V105_12_ENABLED:
+    os.environ["V105_8_PER_NUMBER_READOUT"] = "1"
+    os.environ["V105_9_AR_DIGIT_DECODER"]   = "1"
+    os.environ["V105_10_DUAL_READOUT"]      = "1"
+
+if V105_11_NUMBER_MSE and not V105_12_ENABLED:
+    os.environ["V105_8_PER_NUMBER_READOUT"] = "0"
+    os.environ["V105_9_AR_DIGIT_DECODER"]   = "1"
+    os.environ["V105_10_DUAL_READOUT"]      = "0"
+
 V105_8_PER_NUMBER_READOUT = int(os.environ.get("V105_8_PER_NUMBER_READOUT", "0")) > 0
 V105_8_N_NUMBER_BINS      = int(os.environ.get("V105_8_N_NUMBER_BINS",      "200"))
 
@@ -348,6 +445,39 @@ def _fourier_digit_codebook(n_digits: int, hidden: int) -> np.ndarray:
             cb[d, 2 * k + 1] = np.sin(phase)
     norms = np.linalg.norm(cb, axis=1, keepdims=True)
     cb = cb / (norms + 1e-8)
+    return cb.astype(np.float32)
+
+
+def _v105_12_fourier_decode_init(n_digits_pos: int, hidden: int) -> np.ndarray:
+    """v105.12 Fourier init for per-position digit_codebook (n_digits_pos, 10, H).
+
+    For each position p, each digit d in 0..9, each k in 0..H//2-1:
+        angle = 2π·d·(k+1)/10
+        codebook[p, d, 2k]   = cos(angle)
+        codebook[p, d, 2k+1] = sin(angle)
+    Then scale globally by 1/sqrt(H) so codebook norms are O(1) (unit-ish).
+
+    The per-position structure is IDENTICAL — same Fourier basis at every
+    digit position. The codebook stays learnable so it can adapt slowly;
+    Fourier is the starting basis. Combined with V105_12_PREFILL_ISOLATE=1,
+    the codebook is touched ONLY at the decode breath and is not washed out
+    by Pythia layers during the iterative breathing loop.
+    """
+    cb = np.zeros((n_digits_pos, 10, hidden), dtype=np.float32)
+    n_pairs = hidden // 2
+    for p in range(n_digits_pos):
+        for d in range(10):
+            for k in range(n_pairs):
+                angle = 2.0 * np.pi * d * (k + 1) / 10.0
+                cb[p, d, 2 * k]     = float(np.cos(angle))
+                cb[p, d, 2 * k + 1] = float(np.sin(angle))
+    # Scale 0.1/sqrt(H) — not 1/sqrt(H). At 1/sqrt(H) the codebook entries
+    # have unit norm, and combined with LN'd cell_hidden (norm sqrt(H)≈32)
+    # the inner products reach magnitude ~32, saturating softmax and creating
+    # pool_ce explosions (~43) early in training. 0.1× preserves the Fourier
+    # geometry (cosine similarities are scale-invariant) while keeping initial
+    # logit magnitudes in the well-behaved softmax range (~3).
+    cb = cb * (0.1 / float(np.sqrt(hidden)))
     return cb.astype(np.float32)
 
 
@@ -564,11 +694,18 @@ def apply_projection_waist(
     W_expand: Tensor,    # (waist, H)   — zero-initialized
     b_compress: Tensor,  # (waist,)
     b_expand: Tensor,    # (H,)
+    waveguide_mask: Tensor | None = None,  # optional (1, 1, H) — 1.0 commit, 0.0 preserve
 ) -> Tensor:
     """Projection waist with LoRA-style zero init.
 
     At init: W_expand = 0 → quantize = 0 → output = h (byte-identical to no-waist).
     After unlock: h → 512d compressed → GELU → 1024d correction (added as residual).
+
+    Wave-guide variant (v105.13): if waveguide_mask is provided, the LoRA
+    correction is zeroed out for dimensions where the mask is 0. Those
+    dimensions pass through unchanged each breath — the "preserve channel"
+    that carries fine-grained info without compression. The commit channel
+    (mask=1) is updated as normal. Byte-identical at init regardless of mask.
     """
     wc = W_compress.cast(h.dtype)
     bc = b_compress.reshape(1, 1, -1).cast(h.dtype)
@@ -577,6 +714,8 @@ def apply_projection_waist(
 
     waist_h  = (h @ wc + bc).gelu()   # (B, T, waist)
     quantize = waist_h @ we + be       # (B, T, H) — zero at init (W_expand=0)
+    if waveguide_mask is not None:
+        quantize = quantize * waveguide_mask.cast(quantize.dtype)
     return h + quantize                # residual; = h at init
 
 
@@ -992,7 +1131,13 @@ def fg_breathing_forward_v105_5(
         )
 
         # 5. Projection waist compression  (Component 3)
-        h = apply_projection_waist(h, W_compress, W_expand, b_compress, b_expand)
+        # v105.13 wave-guide: if model has a waveguide_mask attached, the LoRA
+        # correction is masked so the preserve channel passes through untouched.
+        waveguide_mask = getattr(model, "fg_v105_5_waveguide_mask", None)
+        h = apply_projection_waist(
+            h, W_compress, W_expand, b_compress, b_expand,
+            waveguide_mask=waveguide_mask,
+        )
 
         # 6. Delta gate residual update
         gate_k = delta_gate[k].cast(h.dtype).reshape(1, 1, 1)
@@ -1000,72 +1145,96 @@ def fg_breathing_forward_v105_5(
         x      = x_pre + gate_k * delta
 
         # 7. Per-cell magnitude head (NEW v105.5)
+        # v105.12 PREFILL_ISOLATE: when enabled, the magnitude head + magnitude_embed
+        # addition + per-position digit codebook readout all fire ONLY at the
+        # decode breath (k == K-1). The breathing loop becomes pure constraint
+        # propagation; the readout pipeline runs once at the end.
         x_ln = _layernorm(x, model.ln_f_g, model.ln_f_b, model.cfg.layer_norm_eps).cast(dtypes.float)
         n_var_tokens = n_max * n_digits
         var_tokens   = x_ln[:, :n_var_tokens, :]
         var_tokens_r = var_tokens.reshape(B, n_max, n_digits, -1)   # (B, N_MAX, N_DIGITS, H)
 
-        # cell_hidden = mean over the 5 digit positions for that cell.
-        cell_hidden = var_tokens_r.mean(axis=2)                      # (B, N_MAX, H)
-        mh_w = magnitude_head_w.cast(dtypes.float)
-        mh_b = magnitude_head_b.cast(dtypes.float)
-        magnitude_logits = cell_hidden @ mh_w + mh_b.reshape(1, 1, -1)  # (B, N_MAX, N_MAG)
-        magnitude_logits_history.append(magnitude_logits)
+        is_decode_breath = (k == K - 1)
+        run_readout      = (not V105_12_PREFILL_ISOLATE) or is_decode_breath
 
-        magnitude_probs  = magnitude_logits.softmax(axis=-1)          # (B, N_MAX, N_MAG)
-        mc = magnitude_centroids.cast(dtypes.float)                   # (N_MAG, H)
-        magnitude_embed_cell = magnitude_probs @ mc                    # (B, N_MAX, H)
-        # Broadcast magnitude_embed across all digit positions of each cell.
-        magnitude_embed_dg = magnitude_embed_cell.reshape(
-            B, n_max, 1, -1
-        ).expand(B, n_max, n_digits, int(var_tokens_r.shape[-1]))     # (B, N_MAX, N_DIGITS, H)
+        if run_readout:
+            # cell_hidden = mean over the 5 digit positions for that cell.
+            cell_hidden = var_tokens_r.mean(axis=2)                      # (B, N_MAX, H)
+            mh_w = magnitude_head_w.cast(dtypes.float)
+            mh_b = magnitude_head_b.cast(dtypes.float)
+            magnitude_logits = cell_hidden @ mh_w + mh_b.reshape(1, 1, -1)  # (B, N_MAX, N_MAG)
+            magnitude_logits_history.append(magnitude_logits)
 
-        var_tokens_r = var_tokens_r + magnitude_embed_dg               # add magnitude_embed
+            magnitude_probs  = magnitude_logits.softmax(axis=-1)          # (B, N_MAX, N_MAG)
+            mc = magnitude_centroids.cast(dtypes.float)                   # (N_MAG, H)
+            magnitude_embed_cell = magnitude_probs @ mc                    # (B, N_MAX, H)
+            # Broadcast magnitude_embed across all digit positions of each cell.
+            magnitude_embed_dg = magnitude_embed_cell.reshape(
+                B, n_max, 1, -1
+            ).expand(B, n_max, n_digits, int(var_tokens_r.shape[-1]))     # (B, N_MAX, N_DIGITS, H)
+
+            var_tokens_r = var_tokens_r + magnitude_embed_dg               # add magnitude_embed
+        else:
+            # v105.12 PREFILL_ISOLATE early breath: emit zero placeholders for
+            # magnitude_logits to keep history length == K (JIT tuple stability).
+            # var_tokens_r is NOT modified (no magnitude_embed feedback into
+            # the residual stream's read-out tap). Tensor.zeros is OK inside JIT
+            # because shapes are static.
+            magnitude_logits = Tensor.zeros(
+                (B, n_max, V105_5_N_MAGNITUDE), dtype=dtypes.float,
+            ).contiguous()
+            magnitude_logits_history.append(magnitude_logits)
 
         # Save terminal hidden state from the LAST breath for the aux
         # distinctness loss. This is the tensor the digit codebook readout
         # consumes — same tap point as the linear-probe diagnostic.
-        if k == K - 1:
+        if is_decode_breath:
             terminal_var_hidden = var_tokens_r
 
         # 8a. Per-position digit codebook readout (v105.5 addition 2).
         # digit_codebook: (N_DIGITS, 10, H). For AR, per-iter codebook is digit_codebook[p].
         cb_fp_all = digit_codebook.cast(dtypes.float)  # (N_DIGITS, 10, H)
 
-        if V105_5_AR_DIGITS:
-            ar_logits_list: list[Tensor] = [None] * n_digits  # type: ignore
-            cond_accum = Tensor.zeros(
-                (B, n_max, int(x_ln.shape[-1])), dtype=dtypes.float
-            ).contiguous()
-            ar_cond_scale_t = Tensor(
-                np.array([float(V105_5_AR_COND_SCALE)], dtype=np.float32),
-                dtype=dtypes.float,
-            ).reshape(1, 1, 1)
+        if run_readout:
+            if V105_5_AR_DIGITS:
+                ar_logits_list: list[Tensor] = [None] * n_digits  # type: ignore
+                cond_accum = Tensor.zeros(
+                    (B, n_max, int(x_ln.shape[-1])), dtype=dtypes.float
+                ).contiguous()
+                ar_cond_scale_t = Tensor(
+                    np.array([float(V105_5_AR_COND_SCALE)], dtype=np.float32),
+                    dtype=dtypes.float,
+                ).reshape(1, 1, 1)
 
-            if V105_5_AR_MSD_FIRST:
-                ar_iter = range(n_digits - 1, -1, -1)
+                if V105_5_AR_MSD_FIRST:
+                    ar_iter = range(n_digits - 1, -1, -1)
+                else:
+                    ar_iter = range(n_digits)   # LSD-first default
+
+                for p in ar_iter:
+                    cb_p = cb_fp_all[p]                                    # (10, H)
+                    pos_hidden = var_tokens_r[:, :, p, :] + cond_accum     # (B, N_MAX, H)
+                    pos_logits = pos_hidden @ cb_p.T                       # (B, N_MAX, 10)
+                    ar_logits_list[p] = pos_logits
+                    pos_probs = pos_logits.softmax(axis=-1)                 # (B, N_MAX, 10)
+                    pos_embed = pos_probs @ cb_p                           # (B, N_MAX, H)
+                    cond_accum = cond_accum + pos_embed * ar_cond_scale_t.cast(pos_embed.dtype)
+
+                digit_logits_k = Tensor.stack(*ar_logits_list, dim=2)      # (B, N_MAX, N_DIGITS, 10)
             else:
-                ar_iter = range(n_digits)   # LSD-first default
-
-            for p in ar_iter:
-                cb_p = cb_fp_all[p]                                    # (10, H)
-                pos_hidden = var_tokens_r[:, :, p, :] + cond_accum     # (B, N_MAX, H)
-                pos_logits = pos_hidden @ cb_p.T                       # (B, N_MAX, 10)
-                ar_logits_list[p] = pos_logits
-                pos_probs = pos_logits.softmax(axis=-1)                 # (B, N_MAX, 10)
-                pos_embed = pos_probs @ cb_p                           # (B, N_MAX, H)
-                cond_accum = cond_accum + pos_embed * ar_cond_scale_t.cast(pos_embed.dtype)
-
-            digit_logits_k = Tensor.stack(*ar_logits_list, dim=2)      # (B, N_MAX, N_DIGITS, 10)
+                # Parallel — but with per-position codebook each iteration is independent.
+                parallel_logits_list: list[Tensor] = []
+                for p in range(n_digits):
+                    cb_p = cb_fp_all[p]                                    # (10, H)
+                    pos_hidden = var_tokens_r[:, :, p, :]                  # (B, N_MAX, H)
+                    pos_logits = pos_hidden @ cb_p.T                       # (B, N_MAX, 10)
+                    parallel_logits_list.append(pos_logits)
+                digit_logits_k = Tensor.stack(*parallel_logits_list, dim=2)
         else:
-            # Parallel — but with per-position codebook each iteration is independent.
-            parallel_logits_list: list[Tensor] = []
-            for p in range(n_digits):
-                cb_p = cb_fp_all[p]                                    # (10, H)
-                pos_hidden = var_tokens_r[:, :, p, :]                  # (B, N_MAX, H)
-                pos_logits = pos_hidden @ cb_p.T                       # (B, N_MAX, 10)
-                parallel_logits_list.append(pos_logits)
-            digit_logits_k = Tensor.stack(*parallel_logits_list, dim=2)
+            # v105.12 PREFILL_ISOLATE early breath: zero placeholder.
+            digit_logits_k = Tensor.zeros(
+                (B, n_max, n_digits, 10), dtype=dtypes.float,
+            ).contiguous()
 
         digit_logits_history.append(digit_logits_k)
 
@@ -1073,15 +1242,21 @@ def fg_breathing_forward_v105_5(
         fac_tokens   = x_ln[:, n_var_tokens:n_var_tokens + f_max, :]
         # We don't add magnitude_embed for factor cells (factors are not variables
         # — they carry result digits but their cell_hidden derivation differs).
-        fac_logits_list: list[Tensor] = []
-        for p in range(n_digits):
-            cb_p = cb_fp_all[p]                                        # (10, H)
-            fac_logits_p = fac_tokens @ cb_p.T                          # (B, F_MAX, 10)
-            fac_logits_list.append(fac_logits_p)
-        fac_logits_k = Tensor.stack(*fac_logits_list, dim=2)           # (B, F_MAX, N_DIGITS, 10)
+        if run_readout:
+            fac_logits_list: list[Tensor] = []
+            for p in range(n_digits):
+                cb_p = cb_fp_all[p]                                        # (10, H)
+                fac_logits_p = fac_tokens @ cb_p.T                          # (B, F_MAX, 10)
+                fac_logits_list.append(fac_logits_p)
+            fac_logits_k = Tensor.stack(*fac_logits_list, dim=2)           # (B, F_MAX, N_DIGITS, 10)
+        else:
+            # v105.12 PREFILL_ISOLATE early breath: zero placeholder.
+            fac_logits_k = Tensor.zeros(
+                (B, f_max, n_digits, 10), dtype=dtypes.float,
+            ).contiguous()
         factor_logits_history.append(fac_logits_k)
 
-        # 8c. Calibration head
+        # 8c. Calibration head (always run — depends only on x_ln, not the readout).
         pool        = x_ln.mean(axis=1)
         calib_logit = pool @ calib_head_w.cast(dtypes.float) + calib_head_b.cast(dtypes.float)
         calib_k     = calib_logit.reshape(-1).sigmoid()
@@ -1107,20 +1282,108 @@ def fg_breathing_forward_v105_5(
         # pooled hidden state — model encodes "the number is X" in
         # cell_hidden; this small decoder extracts the digits sequentially.
         # LSD-first (matches v105.5 convention): position p=0 is ones.
+        #
+        # v105.11 additions (gated by env vars):
+        #   - V105_11_CONCAT_COND=1: replace additive cond_pool with
+        #     concat(cell_hidden, cond_pool) @ W_concat. Forces the model
+        #     to process prior digit embeddings (they're in d_p's INPUT
+        #     dimensions, not optional). Mechanism 2 from the v105.11 design.
+        #   - V105_11_COND_DROPOUT>0: during training, randomly zero out
+        #     cell_hidden_pool for positions p >= 1 per (batch, cell).
+        #     Forces d_p to learn to use d_{p-1} when cell_hidden is gone.
+        #     Mechanism 3 from the v105.11 design.
         if k == K - 1 and V105_9_AR_DIGIT_DECODER:
             cell_hidden_pool = var_tokens_r.mean(axis=2)                # (B, N_MAX, H)
             pooled_logits_list: list[Tensor] = [None] * n_digits  # type: ignore
+            H_local = int(x_ln.shape[-1])
             cond_pool = Tensor.zeros(
-                (B, n_max, int(x_ln.shape[-1])), dtype=dtypes.float,
+                (B, n_max, H_local), dtype=dtypes.float,
             ).contiguous()
             ar_cond_scale_pool = Tensor(
                 np.array([float(V105_9_AR_COND_SCALE)], dtype=np.float32),
                 dtype=dtypes.float,
             ).reshape(1, 1, 1)
+
+            # v105.11 Mechanism 2: concat-and-project conditioning.
+            v11_concat_W = getattr(model, "fg_v105_11_concat_W", None)
+            v11_concat_enabled = (
+                V105_11_CONCAT_COND and v11_concat_W is not None
+            )
+            v11_concat_W_f = (
+                v11_concat_W.cast(dtypes.float) if v11_concat_enabled else None
+            )
+
+            # v105.11 Mechanism 3: conditional dropout on cell_hidden for
+            # positions p >= 1. Sample one Bernoulli mask of shape
+            # (B, n_max, n_digits, 1) once before the loop; index per p.
+            # Mask is 1 at p=0 unconditionally (no dropout on the first digit).
+            v11_dropout_enabled = (
+                V105_11_COND_DROPOUT > 0.0
+                and bool(Tensor.training)
+            )
+            v11_dropout_mask: Tensor | None = None
+            if v11_dropout_enabled:
+                rand_mask = (
+                    Tensor.rand(B, n_max, n_digits, 1, dtype=dtypes.float)
+                    > float(V105_11_COND_DROPOUT)
+                ).cast(dtypes.float)
+                # Force p=0 to keep cell_hidden (no dropout on ones digit).
+                # Build a (1, 1, n_digits, 1) mask with mask[..., 0, :] = 1.
+                # by combining np-init "force_keep" tensor with the rand mask.
+                # We compute the mask as (rand_mask OR force_keep_p0).
+                # force_keep_p0_np[0,0,0,0] = 1; all others = 0.
+                # Then mask = rand_mask + force_keep_p0 - (rand_mask * force_keep_p0)
+                # is an OR equivalent for binary {0,1} masks. We just clamp <= 1.
+                force_p0_np = np.zeros((1, 1, n_digits, 1), dtype=np.float32)
+                force_p0_np[0, 0, 0, 0] = 1.0
+                force_p0_t = Tensor(
+                    force_p0_np, dtype=dtypes.float
+                ).contiguous()
+                v11_dropout_mask = (rand_mask + force_p0_t).clip(0.0, 1.0)
+
+            # v105.11 Mechanism 4: LayerNorm cell_hidden and cond_pool before
+            # combining to equalize magnitudes. Without LN, cell_hidden (mag
+            # ~sqrt(H)=32) dominates cond_pool (mag ~cond_scale=2) by 16×,
+            # making the d_embed signal ignorable. LN forces both to mag
+            # ~sqrt(H), so the decoder must process both components.
+            # Uses model.ln_f_g/ln_f_b (existing trained final-LN params) for
+            # both — both vectors live in the same 1024d residual-stream space.
+            v11_ln_enabled = bool(V105_11_LN_COND)
+            ln_g_f = model.ln_f_g.cast(dtypes.float) if v11_ln_enabled else None
+            ln_b_f = model.ln_f_b.cast(dtypes.float) if v11_ln_enabled else None
+            ln_eps = model.cfg.layer_norm_eps
+
             # LSD-first iteration: p=0 (ones) first.
             for p in range(n_digits):
                 cb_p = cb_fp_all[p]                                       # (10, H)
-                pooled_in   = cell_hidden_pool + cond_pool                  # (B, N_MAX, H)
+
+                # Optional conditional dropout on cell_hidden (mechanism 3).
+                if v11_dropout_mask is not None:
+                    drop_p = v11_dropout_mask[:, :, p, :]                  # (B, n_max, 1)
+                    cell_hidden_eff = cell_hidden_pool * drop_p
+                else:
+                    cell_hidden_eff = cell_hidden_pool
+
+                # Mechanism 4: LN both components before combining (equalize mags).
+                if v11_ln_enabled:
+                    cell_hidden_eff = _layernorm(
+                        cell_hidden_eff, ln_g_f, ln_b_f, ln_eps,
+                    )
+                    cond_pool_for_combine = _layernorm(
+                        cond_pool, ln_g_f, ln_b_f, ln_eps,
+                    )
+                else:
+                    cond_pool_for_combine = cond_pool
+
+                # Conditioning: additive (default) or concat-and-project (v105.11 m2).
+                if v11_concat_enabled:
+                    cat_in = Tensor.cat(
+                        cell_hidden_eff, cond_pool_for_combine, dim=-1
+                    )                                                       # (B, N_MAX, 2H)
+                    pooled_in = cat_in @ v11_concat_W_f                      # (B, N_MAX, H)
+                else:
+                    pooled_in = cell_hidden_eff + cond_pool_for_combine      # (B, N_MAX, H)
+
                 pooled_log  = pooled_in @ cb_p.T                            # (B, N_MAX, 10)
                 pooled_logits_list[p] = pooled_log
                 pooled_prob = pooled_log.softmax(axis=-1)
@@ -1201,16 +1464,25 @@ def attach_fg_params_v105_5(
     # Components 1+2: PER-POSITION digit codebook (v105.5 addition 2)
     # + frozen RoPE tables (LSD layout)
     # -----------------------------------------------------------------------
-    # Build n_digits independent QR-orthogonal codebooks, each (10, hidden).
-    dc_per_pos = np.zeros((n_digits, 10, hidden), dtype=np.float32)
-    for p in range(n_digits):
-        if V105_5_FOURIER_INIT:
-            dc_per_pos[p] = _fourier_digit_codebook(n_digits=10, hidden=hidden)
-        else:
-            rng_p = np.random.RandomState(20013 + p)
-            raw_dc = rng_p.randn(max(hidden, 10), hidden).astype(np.float32)
-            q_dc, _ = np.linalg.qr(raw_dc)
-            dc_per_pos[p] = q_dc[:10].astype(np.float32) * 1.0
+    # Build n_digits independent codebooks, each (10, hidden).
+    # Init order of precedence: v105.12 Fourier > V105_5_FOURIER_INIT > QR-random.
+    if V105_12_FOURIER_DECODE_INIT:
+        # v105.12 Fourier basis — same structure at every position. Combined
+        # with V105_12_PREFILL_ISOLATE this codebook is touched ONLY at the
+        # decode breath, so the structure isn't washed out by Pythia layers.
+        dc_per_pos = _v105_12_fourier_decode_init(
+            n_digits_pos=n_digits, hidden=hidden,
+        )
+    else:
+        dc_per_pos = np.zeros((n_digits, 10, hidden), dtype=np.float32)
+        for p in range(n_digits):
+            if V105_5_FOURIER_INIT:
+                dc_per_pos[p] = _fourier_digit_codebook(n_digits=10, hidden=hidden)
+            else:
+                rng_p = np.random.RandomState(20013 + p)
+                raw_dc = rng_p.randn(max(hidden, 10), hidden).astype(np.float32)
+                q_dc, _ = np.linalg.qr(raw_dc)
+                dc_per_pos[p] = q_dc[:10].astype(np.float32) * 1.0
     model.fg_v105_5_digit_codebook = Tensor(dc_per_pos, dtype=dtypes.float).contiguous()
 
     # LSD-first array layout: array index i ↔ RoPE position i naturally.
@@ -1451,11 +1723,42 @@ def attach_fg_params_v105_5(
         ).contiguous()
         v8_number_params = n_bins * hidden
 
+    # -----------------------------------------------------------------------
+    # NEW v105.11 — concat-and-project conditioning projection (Mechanism 2).
+    #
+    # Replaces the additive cond_pool with concat(cell_hidden, cond_pool)
+    # projected to H. Forces the AR decoder to process prior digit embeddings
+    # because they're in d_p's INPUT dimensions, not optionally added.
+    #
+    # Init: block-stacked identity matrices [[I]; [I]] so step-0 forward gives
+    #   (cell_hidden || cond_pool) @ W = cell_hidden + cond_pool
+    # which matches the additive baseline. Training-time gradient flows
+    # independently into the cell_hidden block and the cond_pool block.
+    #
+    # Attached only when V105_11_CONCAT_COND is enabled.
+    # -----------------------------------------------------------------------
+    v11_concat_params = 0
+    if V105_11_CONCAT_COND:
+        # (2H, H) block-stacked identity: top half = I, bottom half = I.
+        # Result: (cell_hidden, cond_pool) @ W = cell_hidden + cond_pool at init.
+        eye_H = np.eye(hidden, dtype=np.float32)
+        concat_W_np = np.concatenate([eye_H, eye_H], axis=0)  # (2H, H)
+        model.fg_v105_11_concat_W = Tensor(
+            concat_W_np, dtype=dtypes.float
+        ).contiguous()
+        v11_concat_params = 2 * hidden * hidden
+
     T = n_max * n_digits + f_max
+    if V105_12_FOURIER_DECODE_INIT:
+        _dc_init_label = "v105.12 FOURIER (1/sqrt(H) scale)"
+    elif V105_5_FOURIER_INIT:
+        _dc_init_label = "FOURIER"
+    else:
+        _dc_init_label = "QR-random"
     print(
         f"[v105.5] params attached:\n"
         f"  digit_codebook=(N_DIGITS={n_digits}, 10, {hidden}) PER-POSITION "
-        f"init={'FOURIER' if V105_5_FOURIER_INIT else 'QR-random'}, "
+        f"init={_dc_init_label}, "
         f"digit_rope (N_DIGITS={n_digits}, H={hidden}, base={rope_base:.0f}) [FROZEN]\n"
         f"  LSD layout: idx 0=ones (RoPE pos 0)\n"
         f"  loss_mode={'NUMBER_MSE_ONLY' if V105_5_NUMBER_MSE_ONLY else 'per-digit CE'}\n"
@@ -1474,10 +1777,40 @@ def attach_fg_params_v105_5(
         f"  v105.8 PER_NUMBER_READOUT: enabled={V105_8_PER_NUMBER_READOUT} "
         f"n_bins={V105_8_N_NUMBER_BINS if V105_8_PER_NUMBER_READOUT else 'N/A'} "
         f"params={v8_number_params/1e6:.1f}M [random orthonormal × 0.1]\n"
+        f"  v105.11 NUMBER_MSE: enabled={V105_11_NUMBER_MSE} beta={V105_11_NUMBER_MSE_BETA} "
+        f"concat_cond={V105_11_CONCAT_COND} cond_dropout={V105_11_COND_DROPOUT}\n"
+        f"  v105.11 concat_W: enabled={V105_11_CONCAT_COND} "
+        f"params={v11_concat_params/1e6:.1f}M [block-stacked identity init → additive at step 0]\n"
+        f"  v105.12: prefill_isolate={V105_12_PREFILL_ISOLATE} "
+        f"fourier_decode_init={V105_12_FOURIER_DECODE_INIT} "
+        f"codebook_anneal={V105_12_CODEBOOK_ANNEAL}\n"
         f"  delta_gate_quant=ZEROS, ib_init={ib_init}\n"
         f"  T={T} (N_MAX*N_DIGITS+F_MAX={n_max}*{n_digits}+{f_max}), K_max={k_max}",
         flush=True,
     )
+
+    # v105.13 wave-guide mask: dims [H-PRESERVE_DIMS:H] receive no LoRA correction
+    # from the waist. Mask is a fixed (non-trainable) tensor on the model.
+    if V105_13_WAVEGUIDE_PRESERVE_DIMS > 0:
+        preserve = int(V105_13_WAVEGUIDE_PRESERVE_DIMS)
+        if preserve >= hidden:
+            raise ValueError(
+                f"V105_13_WAVEGUIDE_PRESERVE_DIMS={preserve} >= hidden={hidden}; "
+                "preserve channel must be strictly smaller than residual"
+            )
+        commit_count = hidden - preserve
+        mask_np = np.concatenate([
+            np.ones(commit_count, dtype=np.float32),
+            np.zeros(preserve, dtype=np.float32),
+        ]).reshape(1, 1, hidden)
+        model.fg_v105_5_waveguide_mask = Tensor(
+            mask_np, dtype=dtypes.float
+        ).contiguous().realize()
+        print(
+            f"  v105.13 WAVE-GUIDE: enabled — commit_dims=[0,{commit_count}) "
+            f"(LoRA-corrected), preserve_dims=[{commit_count},{hidden}) (skip)",
+            flush=True,
+        )
 
 
 def fg_v105_5_parameters(model: Any) -> list[Tensor]:
@@ -1534,6 +1867,9 @@ def fg_v105_5_parameters(model: Any) -> list[Tensor]:
     # NEW v105.8 — per-NUMBER codebook
     if hasattr(model, "fg_v105_8_number_codebook"):
         params += [model.fg_v105_8_number_codebook]
+    # NEW v105.11 — concat-cond projection (Mechanism 2)
+    if hasattr(model, "fg_v105_11_concat_W"):
+        params += [model.fg_v105_11_concat_W]
     return params
 
 
@@ -1583,6 +1919,9 @@ def fg_v105_5_state_dict(model: Any) -> dict[str, Tensor]:
     # NEW v105.8 — per-NUMBER codebook
     if hasattr(model, "fg_v105_8_number_codebook"):
         sd["fg_v105_8.number_codebook"] = model.fg_v105_8_number_codebook
+    # NEW v105.11 — concat-cond projection (Mechanism 2)
+    if hasattr(model, "fg_v105_11_concat_W"):
+        sd["fg_v105_11.concat_W"] = model.fg_v105_11_concat_W
     return sd
 
 
@@ -1695,6 +2034,19 @@ def load_ckpt_v105_5(model: Any, path: str) -> None:
                 flush=True,
             )
 
+    # v105.11 — load concat-cond projection if present in checkpoint AND the
+    # model has the attribute attached (i.e. V105_11_CONCAT_COND=1 at boot).
+    if hasattr(model, "fg_v105_11_concat_W"):
+        sd_key = "fg_v105_11.concat_W"
+        if sd_key in sd:
+            dst = model.fg_v105_11_concat_W
+            src = sd[sd_key].to(dst.device).realize()
+            if src.shape == dst.shape:
+                if src.dtype != dst.dtype:
+                    src = src.cast(dst.dtype)
+                dst.assign(src).realize()
+                print(f"  loaded {sd_key} (shape {tuple(dst.shape)})", flush=True)
+
 
 # ---------------------------------------------------------------------------
 # JIT training step
@@ -1765,13 +2117,30 @@ def _compile_jit_fg_step_v105_5(
     # by V105_10_DIGIT_WEIGHT (instead of the default 1.0 used by pure v105.9).
     v10_enabled = bool(V105_10_DUAL_READOUT)
     digit_weight_for_pooled = float(V105_10_DIGIT_WEIGHT) if v10_enabled else 1.0
+    # v105.11: log-number-MSE through the AR-reconstructed value. Requires
+    # the pooled-AR digit decoder (v105.9). The mutex logic at module load
+    # already enforced V105_9=1 when V105_11=1, but we double-check here.
+    v11_enabled = bool(V105_11_NUMBER_MSE) and v9_enabled
+    v11_beta    = float(V105_11_NUMBER_MSE_BETA) if v11_enabled else 0.0
+    v11_ln      = bool(V105_11_LN_COND)
+    # v105.12 codebook annealing: when enabled, the codebook weight (multiplier
+    # on number_ce_loss) is a RUNTIME Tensor input to the JIT step, not a
+    # compiled constant. This lets the training driver pass per-step weights
+    # from the anneal schedule without triggering JIT recompilation. Cache key
+    # uses bool(v105_12_anneal) only — the actual float weight is dynamic.
+    v105_12_anneal = bool(V105_12_CODEBOOK_ANNEAL)
+    v105_12_prefill_iso = bool(V105_12_PREFILL_ISOLATE)
+    v105_12_fourier_init = bool(V105_12_FOURIER_DECODE_INIT)
     key = ("v105_5", id(model), id(opt), int(K), int(B),
            float(factor_aux_weight), float(calib_weight), float(energy_weight),
            float(magnitude_weight), float(aux_distinct_weight),
            float(var_loss_weight),
            int(n_max), int(f_max), int(n_digits), int(n_magnitude),
            float(grad_clip), int(n_code), bool(v8_enabled), int(n_number_bins),
-           bool(v9_enabled), bool(v10_enabled), float(digit_weight_for_pooled))
+           bool(v9_enabled), bool(v10_enabled), float(digit_weight_for_pooled),
+           bool(v11_enabled), float(v11_beta), bool(v11_ln),
+           bool(v105_12_prefill_iso), bool(v105_12_fourier_init),
+           bool(v105_12_anneal))
     if key in _JIT_V105_5_CACHE:
         return _JIT_V105_5_CACHE[key]
 
@@ -1790,7 +2159,8 @@ def _compile_jit_fg_step_v105_5(
         f"adw={adw} vlw={vlw} gc={gc} n_code={n_code} "
         f"v105.8={v8_enabled} n_number_bins={n_number_bins} "
         f"v105.9={v9_enabled} v105.10={v10_enabled} "
-        f"digit_weight_for_pooled={digit_weight_for_pooled}...",
+        f"digit_weight_for_pooled={digit_weight_for_pooled} "
+        f"v105.11={v11_enabled} v11_beta={v11_beta}...",
         flush=True,
     )
 
@@ -1815,6 +2185,24 @@ def _compile_jit_fg_step_v105_5(
             1, 1, n_digits, n_digits
         ).contiguous()
 
+    # v105.11 closure variables — pre-compute place_values and digit_values
+    # OUTSIDE the JIT step (same pattern as _aux_off_mask). These are used
+    # to reconstruct the soft expected number from per-position digit probs.
+    # LSD-first place values [10^0, 10^1, ..., 10^(n_digits-1)].
+    _v11_place_values = None
+    _v11_digit_values = None
+    if v11_enabled:
+        _pv_np = np.array(
+            [10.0 ** p for p in range(n_digits)], dtype=np.float32
+        )
+        _v11_place_values = Tensor(_pv_np, dtype=dtypes.float).reshape(
+            1, 1, n_digits
+        ).contiguous()
+        _dv_np = np.arange(10, dtype=np.float32)
+        _v11_digit_values = Tensor(_dv_np, dtype=dtypes.float).reshape(
+            1, 1, 1, 10
+        ).contiguous()
+
     @TinyJit
     def _step(
         digit_init: Tensor,
@@ -1831,6 +2219,7 @@ def _compile_jit_fg_step_v105_5(
         factor_digit_valid_mask: Tensor,    # (B, F_MAX, N_DIGITS) float
         magnitude_target: Tensor,           # (B, N_MAX) int  — gold magnitude class
         number_bin_target: Tensor,          # (B, N_MAX) int  — v105.8 per-NUMBER target
+        codebook_weight: Tensor,            # (1,) float — v105.12 anneal multiplier on number_ce
     ):
         opt.zero_grad()
 
@@ -2104,6 +2493,32 @@ def _compile_jit_fg_step_v105_5(
             var_loss_pooled = Tensor.zeros((), dtype=dtypes.float).contiguous()
             pooled_cell_acc = Tensor.zeros((), dtype=dtypes.float).contiguous()
 
+        # --- v105.11 log-number-MSE through the AR-reconstructed value ---
+        # Computed only when v11_enabled (V105_11_NUMBER_MSE=1 AND v9_enabled).
+        # Always emit a num_mse scalar to keep the JIT return tuple stable.
+        # Closure vars: _v11_place_values (1, 1, n_digits), _v11_digit_values
+        # (1, 1, 1, 10) — both float, pre-built outside JIT to avoid the
+        # per-step Tensor(np.array) creation overhead.
+        if v11_enabled and digit_logits_pooled_final is not None:
+            # Soft expected digit per position: (B, n_max, n_digits)
+            v11_probs    = digit_logits_pooled_final.softmax(axis=-1)
+            v11_exp_dig  = (v11_probs * _v11_digit_values).sum(axis=-1)
+            # Reconstruct number (LSD-first): (B, n_max)
+            v11_rec_N    = (v11_exp_dig * _v11_place_values).sum(axis=-1)
+            # Gold number from gold_digits (LSD-first).
+            v11_gold_dg  = gold_digits.cast(dtypes.float)                # (B, n_max, n_digits)
+            v11_gold_N   = (v11_gold_dg * _v11_place_values).sum(axis=-1)  # (B, n_max)
+            # Log-MSE balanced across orders of magnitude (clip negatives so
+            # we never feed a negative argument to .log()).
+            v11_log_rec  = (1.0 + v11_rec_N.clip(0.0, 1e8)).log()
+            v11_log_gold = (1.0 + v11_gold_N.clip(0.0, 1e8)).log()
+            v11_sq       = (v11_log_rec - v11_log_gold) ** 2
+            # Mask: (unobserved AND valid-real) — same notion as factor_aux
+            # and v105.8 number_ce_loss. unobs_real is (B, n_max) float.
+            num_mse      = (v11_sq * unobs_real).sum() / (unobs_real.sum() + 1e-8)
+        else:
+            num_mse = Tensor.zeros((), dtype=dtypes.float).contiguous()
+
         # --- Total loss ---
         # var_loss is scaled by vlw (set to 0 by training driver for v105.8/v105.9).
         total_ce = (
@@ -2116,11 +2531,21 @@ def _compile_jit_fg_step_v105_5(
         if adw > 0:
             total_ce = total_ce + adw * aux_distinct_loss
         if v8_enabled:
-            total_ce = total_ce + number_ce_loss
+            # v105.12 codebook anneal: multiply by runtime weight Tensor.
+            # When V105_12_CODEBOOK_ANNEAL=0 the training driver passes 1.0
+            # so this is a no-op multiply. Reshape to scalar so the broadcast
+            # produces a scalar total_ce contribution.
+            cw_scalar = codebook_weight.reshape(()).cast(number_ce_loss.dtype)
+            total_ce = total_ce + cw_scalar * number_ce_loss
         if v9_enabled:
             # v105.9 default weight: 1.0. v105.10 dual readout: V105_10_DIGIT_WEIGHT
             # (a Python-side scalar baked into the JIT graph via digit_weight_for_pooled).
             total_ce = total_ce + digit_weight_for_pooled * var_loss_pooled
+        if v11_enabled:
+            # v105.11 log-number-MSE on the AR-reconstructed value. Per-digit
+            # CE (var_loss_pooled above) and log-number-MSE share the SAME
+            # path through the AR decoder.
+            total_ce = total_ce + v11_beta * num_mse
         total_ce.backward()
 
         healthy = total_ce.isfinite().cast(dtypes.float)
@@ -2159,6 +2584,7 @@ def _compile_jit_fg_step_v105_5(
             number_acc.realize(),
             var_loss_pooled.realize(),
             pooled_cell_acc.realize(),
+            num_mse.realize(),
             *(ce.realize() for ce in per_breath_ce_t),
         )
 

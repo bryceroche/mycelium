@@ -94,6 +94,29 @@ v105.8 (200-bin number readout, RUNNING Jun 2):
                  breathing learns precise value when given direct supervision.
                  If bin acc > 30% → v105.10 = dual readout (number CE trains
                  breathing + AR digit decoder reads it for OOD generalization).
+v105.12 (Jun 3) OUTCOME B closure: prefill-isolation + Fourier digit init +
+                 codebook annealing + 15K horizon. Step 5K OOD: per-digit
+                 acc = 10.8% (chance), cell_acc = 0% — RESPONSIVE conditioning
+                 but NOT ACCURATE. Pool readout flat 5-6% through entire
+                 anneal. Per-digit OOD compositionality closed for v105 family.
+v105.13 (Jun 4) wave-guide retrofit: 1500 steps of v105.12 + skip-mask on LoRA
+                 correction. Pool readout flat (easy 0.000→0.008, hard 0.042→
+                 0.051). L0 collapse confound: preserve channel preserves
+                 nothing per-position-distinct because L0 averages upstream.
+v108 (Jun 4)   v107 single-token base + 5-level tree codebook output. K-sweep
+                 anomaly: pos4 hard DECREASES with K (0.191→0.132). BP fixed
+                 point trades marginal pos4 acc for joint cell consistency.
+                 Drop Monte Carlo framing from paper.
+v109 (Jun 4)   v108 + 512d LoRA waist + alternation (waist on EVEN breaths
+                 only). Step 500 cell_acc lift over v108: easy +0.037, medium
+                 +0.044, HARD +0.083 (nearly tripled, 0.050 → 0.133). K-sweep
+                 FLIP: v108 pos4 hard -0.059 with K → v109 +0.007 (non-
+                 decreasing). Medium pos4 monotonic 0.126→0.173→0.189.
+v109a (Jun 4)  Ablation: waist EVERY breath, no alternation. Also flips
+                 K-sweep (-0.059 → +0.007) AND lifts cell_acc +0.011-0.037.
+                 Attribution: WAIST = dynamics-fixer (K-sweep flip);
+                 ALTERNATION = marginal lift on hard (+0.066 cell_acc atop
+                 v109a). Three-row ablation table cleanly attributable.
 Phase 1 parser   Designed (`mycelium/phase1_classifier.py`); not yet trained.
 ```
 
@@ -102,6 +125,11 @@ geometric decay at rate ~0.5×/3 breaths, energy 21.0 → 0.71 over K=1
 to K=20 on easy. This IS the signature of loopy BP convergence.
 
 **Key memory notes:**
+- `memory/project_v109_ablation_clean_attribution.md` — three-row table:
+  waist flips K-sweep, alternation adds marginal lift on hard
+- `memory/project_v109_alternation_breakthrough.md` — v109 smoke first signal
+- `memory/project_v108_k_sweep_verdict.md` — refutes MC framing; BP fixed
+  point is the right characterization
 - `memory/project_v98_sudoku_validates_paradigm.md` — six-component recipe
 - `memory/project_factor_graph_framing.md` — breathing = learned approx BP
 - `memory/project_ode_integrator_framing.md` — the deepest math identity
@@ -165,13 +193,20 @@ DAG paradigm), see `docs/archive/empirical_v45_to_v95.md`.
 
 ---
 
-## 6. Current work in progress (as of 2026-06-01)
+## 6. Current work in progress (as of 2026-06-04)
 
-- **Y-soft adjacent-only within-variable attention — IN FLIGHT.**
-  V105_4_BLOCK_WITHIN_VAR=2 prod testing the hypothesis that the v105
-  mean-field collapse (identified Jun 1 via linear probe) is caused by
-  global within-variable attention averaging all positions of one
-  variable into identical hidden states.
+- **v109 alternation result — DONE (Jun 4).** v108 + 512d LoRA waist +
+  alternation (waist on even breaths). Cell_acc lift: easy +0.037,
+  medium +0.044, HARD +0.083 over v108 at step 500. K-sweep FLIPPED
+  v108's pos4 hard anomaly (-0.059 with K) to non-decreasing (+0.007).
+  v109a ablation (waist every breath) shows the waist drives K-sweep
+  flip; alternation drives +0.066 cell_acc on hard. See
+  `memory/project_v109_ablation_clean_attribution.md`.
+- **v108 family closure — DONE (Jun 4).** Tree codebook output works
+  (digit_acc 70-75%). v108b (digit-decomposed input) refuted input
+  precision as the bottleneck. K-sweep on v108 showed pos4 hard
+  DECREASING with K — BP fixed-point trade-off, not Monte Carlo
+  accumulation. Drop MC framing from paper.
 - **Linear probe diagnostic — DONE (Jun 1).** Identified mean-field
   collapse mechanism in v105 family: hidden states across positions of
   one variable have cosine similarity ~1.0, so per-position digit
@@ -237,20 +272,25 @@ DAG paradigm), see `docs/archive/empirical_v45_to_v95.md`.
 
 ## 8. Active research threads (sequenced)
 
-**Sequence (agreed Jun 3):**
+**Updated sequence (Jun 4):**
 
-1. **v105.10 OOD generalization** (running Jun 3) — train [0,9999], test
-   [10000,99999]; AR digit decoder per-position acc is the
-   compositionality test. v105.8 baseline 29.7% in-dist val[medium];
-   v105.10 adds digit decoder + matched v107 comparison + decoder
-   consistency (d1 clamp → d2 KL) diagnostics.
-2. **v105.11 drop-the-codebook** — `memory/project_v105_11_design.md`.
-   Remove 200-bin codebook entirely; replace with log-number-MSE on the
-   AR-reconstructed value. Per-digit CE + log-MSE share the SAME path
-   through the AR decoder. The breathing has no codebook shortcut — must
-   shape cell_hidden for digit extraction. Cleanest OOD compositionality
-   test (no bin saturation artifacts). 4-6 hr build + ablation (MSE-only)
-   + K-sweep.
+The v105.10/.11/.12 OOD chain closed at Outcome B (RESPONSIVE conditioning
+but not ACCURATE; per-digit OOD = chance). v105.13 wave-guide retrofit
+hit the L0 collapse confound. The current load-bearing in-distribution
+result is **v109 = v108 + 512d waist + alternation** (Jun 4): three-row
+ablation table cleanly attributes the waist to dynamics-fixing (K-sweep
+flips) and alternation to marginal cell_acc lift on hard. See
+`memory/project_v109_ablation_clean_attribution.md`.
+
+1. **v109 prod (5K-15K steps)** — extend the smoke ckpt to full training
+   horizon. Question: does pos4 OOD compositionality unlock under
+   alternation + waist when given more training? Current step-500
+   v109 has hard cell_acc = 0.133 (nearly tripled over v108). The
+   v109 ablation showed waist drives the K-sweep flip; alternation adds
+   on hard. Worth pushing.
+2. **v109 OOD test** — the compositional generalization bet on
+   5-digit numbers (train [0,9999], test [10000,99999]). Open question
+   whether v109's better in-dist dynamics also produce better OOD.
 3. **Phase 1 small NL→factor-graph model** —
    `memory/project_phase1_segment_classify_design.md`. Segment-and-classify
    on DistilBERT; flat BIO span tagging + ~8-op codebook classification

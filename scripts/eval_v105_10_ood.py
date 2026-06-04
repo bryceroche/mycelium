@@ -121,11 +121,17 @@ def main():
         n_digits=N_DIGITS, seed=SEED,
     )
 
-    # Compile both eval JITs.
+    # Compile eval JITs. v8 (codebook) is only available if v105.8 readout
+    # is attached (v105.10 path). v105.11 has no codebook — skip v8.
     Tensor.training = False
-    eval_fn_v8 = _compile_jit_fg_eval_v105_8(
-        model, K=K, B=BATCH, n_max=N_MAX, f_max=F_MAX, n_digits=N_DIGITS,
-    )
+    has_v8_codebook = hasattr(model, "fg_v105_8_number_codebook")
+    if has_v8_codebook:
+        eval_fn_v8 = _compile_jit_fg_eval_v105_8(
+            model, K=K, B=BATCH, n_max=N_MAX, f_max=F_MAX, n_digits=N_DIGITS,
+        )
+    else:
+        eval_fn_v8 = None
+        print("  v8 number codebook not attached — skipping v8 readout (v105.11 mode)")
     eval_fn_v9 = _compile_jit_fg_eval_v105_9(
         model, K=K, B=BATCH, n_max=N_MAX, f_max=F_MAX, n_digits=N_DIGITS,
     )
@@ -154,12 +160,15 @@ def main():
         query_idx_np = batch["query_idx"]
         picks        = batch["picks"]
 
-        # v105.8 path
-        pred_bin_t, _ = eval_fn_v8(
-            digit_init, node_kinds, staging_mask, head_op_mask,
-            num_bin_tgt, obs_mask, valid_mask,
-        )
-        pred_bin_np = pred_bin_t.numpy()
+        # v105.8 path (codebook) — only run if attached.
+        if eval_fn_v8 is not None:
+            pred_bin_t, _ = eval_fn_v8(
+                digit_init, node_kinds, staging_mask, head_op_mask,
+                num_bin_tgt, obs_mask, valid_mask,
+            )
+            pred_bin_np = pred_bin_t.numpy()
+        else:
+            pred_bin_np = None
 
         # v105.9 path
         pred_dg_t, _ = eval_fn_v9(
@@ -187,8 +196,8 @@ def main():
                     continue
                 agg_v8[diff]["n_unobs"] += 1
                 agg_v9[diff]["n_unobs"] += 1
-                # v8 — 200-bin number readout
-                if int(pred_bin_np[b, vi]) == int(gold_bin_np[b, vi]):
+                # v8 — 200-bin number readout (only if codebook attached)
+                if pred_bin_np is not None and int(pred_bin_np[b, vi]) == int(gold_bin_np[b, vi]):
                     agg_v8[diff]["n_correct_unobs"] += 1
                 # v9 — AR digit decoder per-cell
                 v_valid = valid_np[b, vi].astype(bool)
@@ -204,7 +213,7 @@ def main():
                                 pos_correct[p] += 1
                                 n_digit_correct += 1
             if qi < N_MAX:
-                if int(pred_bin_np[b, qi]) == int(gold_bin_np[b, qi]):
+                if pred_bin_np is not None and int(pred_bin_np[b, qi]) == int(gold_bin_np[b, qi]):
                     agg_v8[diff]["query_correct"] += 1
                 q_valid = valid_np[b, qi].astype(bool)
                 if q_valid.any():
