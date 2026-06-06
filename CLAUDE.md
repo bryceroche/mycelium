@@ -117,6 +117,23 @@ v109a (Jun 4)  Ablation: waist EVERY breath, no alternation. Also flips
                  Attribution: WAIST = dynamics-fixer (K-sweep flip);
                  ALTERNATION = marginal lift on hard (+0.066 cell_acc atop
                  v109a). Three-row ablation table cleanly attributable.
+v109 prod (Jun 4) 10K steps: easy 0.399, med 0.333, hard 0.293. 5.9× over
+                 v108 on hard. Step 8500: all 3 simultaneously > 0.30.
+v109pi (Jun 4)  v109 + per-breath Q rotation by phase k·π/K_max (Option A,
+                 uniform across positions — NOT RoPE, no frequency × pos).
+                 Chained smoke→cont9 (9500 effective steps from
+                 v109_prod_step8500). cont9_step500 (step 9000) hit triple
+                 new-high: easy 0.502, med 0.434, hard 0.337. Step 9400 hard
+                 0.344 ALL-TIME HIGH on hard. Easy +0.11, med +0.09, hard
+                 +0.04 over v109 baseline.
+v109pi diag (Jun 5) K-sweep on cont9_step500: 9/9 SIGNALS MONOTONICALLY
+                 RISE across {easy,med,hard}×{cell_acc,pos4_acc} from K=2
+                 to K=8. Strongest K-sweep in project. OOD eval looked
+                 spectacular (cell 0.89-0.93) but is a MEASUREMENT ARTIFACT:
+                 200-bin input/output caps at 9999, OOD values clamp to bin
+                 199, model trivially "predicts" 09999 = gold. Honest OOD
+                 needs digit-decomposed input (v108b-style). Fair add/sub
+                 IND comparison: v109pi NOT specifically better at add/sub.
 Phase 1 parser   Designed (`mycelium/phase1_classifier.py`); not yet trained.
 ```
 
@@ -125,6 +142,10 @@ geometric decay at rate ~0.5×/3 breaths, energy 21.0 → 0.71 over K=1
 to K=20 on easy. This IS the signature of loopy BP convergence.
 
 **Key memory notes:**
+- `memory/project_v109pi_diagnostics_jun5.md` — K-sweep 9/9 monotonic rise;
+  OOD eval is a binning artifact; fair add/sub IND comparison
+- `memory/project_v109pi_chain_to_9500.md` — π-cycled Q rotation chain results
+- `memory/project_v109_prod_step10000_verdict.md` — v109 10K final numbers
 - `memory/project_v109_ablation_clean_attribution.md` — three-row table:
   waist flips K-sweep, alternation adds marginal lift on hard
 - `memory/project_v109_alternation_breakthrough.md` — v109 smoke first signal
@@ -193,8 +214,17 @@ DAG paradigm), see `docs/archive/empirical_v45_to_v95.md`.
 
 ---
 
-## 6. Current work in progress (as of 2026-06-04)
+## 6. Current work in progress (as of 2026-06-05)
 
+- **v109pi K-sweep — DONE (Jun 5).** cont9_step500 ckpt at K∈{2,4,8}.
+  9/9 signals monotonically rise across {easy,med,hard}×{cell,pos4}.
+  Strongest K-sweep in project. Motivates K=16 retrain. OOD eval is a
+  binning artifact (input/output cap at 9999); honest OOD needs digit
+  input. See `memory/project_v109pi_diagnostics_jun5.md`.
+- **v109pi chain — DONE (Jun 4).** Warm-start from v109_prod_step8500,
+  9000 additional steps via chained continuations. Step 9000 peak:
+  easy 0.502, med 0.434, hard 0.337 (triple all-three-new-high).
+  Step 9400 hard 0.344 (ALL-TIME). cont9_step500 is the headline ckpt.
 - **v109 alternation result — DONE (Jun 4).** v108 + 512d LoRA waist +
   alternation (waist on even breaths). Cell_acc lift: easy +0.037,
   medium +0.044, HARD +0.083 over v108 at step 500. K-sweep FLIPPED
