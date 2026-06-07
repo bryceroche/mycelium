@@ -134,6 +134,70 @@ v109pi diag (Jun 5) K-sweep on cont9_step500: 9/9 SIGNALS MONOTONICALLY
                  199, model trivially "predicts" 09999 = gold. Honest OOD
                  needs digit-decomposed input (v108b-style). Fair add/sub
                  IND comparison: v109pi NOT specifically better at add/sub.
+v110-acc/photon/full/step1/step2/step3 (Jun 5):
+                 +accumulate notebook (5.2M params), +sin² photon waist
+                 gate, +Goldilocks step-size penalty (calibration-driven).
+                 v110-step3 prod chain to step 9500: PROJECT ALL-TIMES.
+                 Easy 0.610 (crossed 60%), med 0.509 (crossed 50%),
+                 hard 0.399 (near 0.40). Calibration head transition
+                 decorative → load-bearing produces strongest in-dist
+                 result.
+v106 PUCT search on v110-step3 (Jun 6) — ROBUST NEGATIVE.
+                 8 configs swept (UCB1+eager, true PUCT+JIT, weights
+                 ∈{0.5/0.3/0.2,...,0.0/1.0/0.0}, c∈{0.5,1.5,2.5},
+                 rollouts ∈{30,100}). ALL regress vs BP-only by
+                 0.006-0.012. JIT delivered 14.8× (23.5s → 1.59s/puzzle)
+                 but BP makes confidently-wrong locally-consistent fixed
+                 points on hard; search amplifies miscalibration.
+MC-BP inference (Jun 6): noise on x at start of breath, N=16 forwards,
+                 average tree_logits. noise=0.01 on cont8_step1000:
+                 hard 0.3761 → 0.3823 (Δ=+0.0061, 2 correct flips / 0
+                 wrong on 50-puzzle subset). Mirror image of PUCT's
+                 -0.0061. Independence WAS the missing piece.
+SBP training (Jun 6) — HEADLINE TRAINING-TIME WIN.
+                 50/50 alternating noise=randn*0.02 on x at start of
+                 breath during training, 500 steps from cont8_step1000.
+                 Hard 0.3761 → 0.3914 (Δ=+0.0153, 2.5× the MC-BP signal,
+                 ZERO inference overhead). MC-BP averaging adds nothing
+                 on SBP-trained ckpt (model is too sharp for alt fixed
+                 point search). Mechanism = denoising score matching
+                 (Vincent 2011) at the residual-stream injection point.
+                 12-min training, 0.14s/puzzle inference. SBP is the
+                 paper's training-time row.
+fb arc (Jun 6) tested 3 tree-logits feedback variants (softmax-soft,
+                 fb+SBP, Gumbel-ST discrete). ALL underperform SBP
+                 alone on hard cell_acc. Path C (fb+SBP) refutes the
+                 synergy hypothesis: fb provides a noise-immune channel
+                 that partially cancels SBP's attractor sharpening.
+                 Path D (Gumbel) produces the BIGGEST MC-BP signal of
+                 the arc (+0.0153 at noise=0.02) but from a worse det
+                 baseline.
+eg (Jun 6) — entropy-controlled waist gate. Modulates the photon gate
+                 by tanh(entropy_scale * mean tree_logits entropy of
+                 previous breath). Result: hurts hard cell_acc by
+                 -0.015 BUT lifts EASY QUERY by +0.12 (0.26 → 0.38,
+                 0.40 with MC-BP). Two different winners on two
+                 different metrics: SBP for hard cell_acc, eg for easy
+                 query_acc.
+v111 (Jun 6) coherent-photon: sin² rotation envelope + sin² waist
+                 envelope + per-dim modulation. Warm-start from
+                 cont8_step1000 FAILED — rotation envelope change too
+                 disruptive; loss oscillated 0.5-0.7 across 1500 steps
+                 then destabilized to 0.98 at step 1550. Cold-start
+                 required (deferred).
+v112 (Jun 6) dual-notebook (COMMIT writes on even breaths, PROPAGATION
+                 writes on odd; both read every breath). Cold-start to
+                 step 3000: hard 0.073, easy 0.048 — too early to
+                 evaluate; mechanism works (both W_o growing parallel).
+v112b Phase 1 (Jun 6) shared learnable factor graph topology. ONE
+                 tensor (T=24, latent_dim=64) → 67K new params total.
+                 Adds (1) attention bias = topology @ topology.T, (2)
+                 per-position residual gate = tanh(topology @ W_res).
+                 Both zero-init scaled → byte-identical warm-start.
+                 Smoke 50 from cont8_step1000: step 5 loss 0.273 matches
+                 baseline envelope, bias_scale 0→+0.0001, Wres_norm
+                 0→0.056, topo_sim01 stable +0.021 (no collapse). Prod
+                 500 running.
 Phase 1 parser   Designed (`mycelium/phase1_classifier.py`); not yet trained.
 ```
 
