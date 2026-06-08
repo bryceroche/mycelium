@@ -109,6 +109,28 @@ def _photon_gate(k: int, K_max: int, profile: str) -> float:
         # gate(k) = 0.5 * (1 + cos(k · π))  — exact same as binary at integers
         # To genuinely smooth, use a phase offset:
         return 0.5 * (1.0 + math.cos(k * math.pi - math.pi / 4.0))
+    if profile == "piecewise_4phase":
+        # v118: 4-phase piecewise envelope for K=8 breaths.
+        # Phase 0=EXPLORE(0,1): 0.0, 0.0  — full rank, no compression
+        # Phase 1=COMPRESS(2,3): 1.0, 0.8 — heavy → fading compression
+        # Phase 2=COMMIT(4,5): 0.5, 0.5   — moderate
+        # Phase 3=REFINE(6,7): 0.1, 0.0   — fading → full rank
+        # For K != 8 (generalised): divide K into 4 even phases, clamp.
+        _PIECEWISE_8 = [0.0, 0.0, 1.0, 0.8, 0.5, 0.5, 0.1, 0.0]
+        if K_max == 8 and k < 8:
+            return _PIECEWISE_8[k]
+        # Generic: divide K_max into 4 equal phases, lookup within phase
+        phase_size = max(K_max // 4, 1)
+        phase = min(k // phase_size, 3)
+        pos_in_phase = k % phase_size
+        # Use hard-coded phase-level gate based on position within phase
+        _PHASE_GATES = [[0.0, 0.0], [1.0, 0.8], [0.5, 0.5], [0.1, 0.0]]
+        gates = _PHASE_GATES[phase]
+        if len(gates) == 1 or phase_size == 1:
+            return gates[0]
+        # Linear interp within phase
+        frac = pos_in_phase / max(phase_size - 1, 1)
+        return gates[0] + frac * (gates[-1] - gates[0])
     raise ValueError(f"unknown V110_PHOTON_GATE_PROFILE: {profile}")
 
 

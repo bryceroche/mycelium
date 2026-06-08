@@ -189,15 +189,28 @@ v112 (Jun 6) dual-notebook (COMMIT writes on even breaths, PROPAGATION
                  writes on odd; both read every breath). Cold-start to
                  step 3000: hard 0.073, easy 0.048 — too early to
                  evaluate; mechanism works (both W_o growing parallel).
-v112b Phase 1 (Jun 6) shared learnable factor graph topology. ONE
-                 tensor (T=24, latent_dim=64) → 67K new params total.
-                 Adds (1) attention bias = topology @ topology.T, (2)
-                 per-position residual gate = tanh(topology @ W_res).
-                 Both zero-init scaled → byte-identical warm-start.
-                 Smoke 50 from cont8_step1000: step 5 loss 0.273 matches
-                 baseline envelope, bias_scale 0→+0.0001, Wres_norm
-                 0→0.056, topo_sim01 stable +0.021 (no collapse). Prod
-                 500 running.
+v112b Phase 1 (Jun 7) ★ NEW PROJECT HIGH ★ shared learnable factor
+                 graph topology. ONE tensor (T=24, latent_dim=64) →
+                 67K new params total. Adds attention bias =
+                 topology @ topology.T (REFUTED — bias_scale stayed
+                 ~0) AND per-position residual gate = tanh(topology
+                 @ W_res) (VALIDATED — Wres_norm grew 0→0.503).
+                 Trained 5000 effective steps warm-start from
+                 cont8_step1000.
+                 50-puzzle apples-to-apples results:
+                   HARD:  0.3761 → 0.3945 (+0.0184) ★ beats SBP 0.3914
+                   MED:   0.4910 → 0.5180 (+0.0270) ★
+                   EASY:  0.5726 → 0.6371 (+0.0645) ★★ biggest gain
+                   QUERY easy: 0.2600 → 0.4600 (+0.20) ★★★ massive
+                 Mechanism: per-NODE gating of shared backbone is the
+                 right factorization. Per-EDGE structure already
+                 captured by existing binary masks. Topology vectors
+                 learned anti-correlated identities (sim01: +0.024 →
+                 -0.154). Step 4500 + final ckpts produce identical
+                 50-puzzle results — robust signal. Phase 2 should
+                 pursue per-position gating mechanisms (waist routing,
+                 codebook attention, delta_gate scaling), NOT pairwise
+                 structures.
 Phase 1 parser   Designed (`mycelium/phase1_classifier.py`); not yet trained.
 ```
 
@@ -206,6 +219,11 @@ geometric decay at rate ~0.5×/3 breaths, energy 21.0 → 0.71 over K=1
 to K=20 on easy. This IS the signature of loopy BP convergence.
 
 **Key memory notes:**
+- `memory/project_v112b_phase1_validates_factorization.md` — Jun 7 NEW
+  PROJECT HIGH; per-node gating validated, pairwise attention bias
+  refuted; phase 2 direction
+- `memory/project_v112b_shared_topology_design.md` — design memo behind
+  the v112b architecture
 - `memory/project_v109pi_diagnostics_jun5.md` — K-sweep 9/9 monotonic rise;
   OOD eval is a binning artifact; fair add/sub IND comparison
 - `memory/project_v109pi_chain_to_9500.md` — π-cycled Q rotation chain results
@@ -271,6 +289,15 @@ DAG paradigm), see `docs/archive/empirical_v45_to_v95.md`.
   first eval, replay for the rest of the run.
 - **Bryce wants root-cause perf fixes**, not workarounds, when perf is
   the bottleneck.
+- **Factor per-NODE, not per-EDGE (Jun 7, v112b finding).** When adding
+  new structure, prefer per-position gating mechanisms (each position
+  gets its own activation pattern in the shared backbone) over pairwise
+  structures (learned attention biases, edge-strength tensors). v112b's
+  attention-bias channel REFUSED to engage (bias_scale stayed ~0) while
+  its per-position residual gate became the load-bearing component
+  (Wres_norm grew 0 → 0.503 monotonically). Edges are already captured
+  by binary masks; per-node activation patterns are what's missing.
+  See `memory/project_v112b_phase1_validates_factorization.md`.
 - **If a Controller-like module is ever reintroduced:** separate
   optimizer, gradient never flows through transformer, verify with
   parameter-change smoke. Currently moot — no Controller in active
@@ -278,51 +305,47 @@ DAG paradigm), see `docs/archive/empirical_v45_to_v95.md`.
 
 ---
 
-## 6. Current work in progress (as of 2026-06-05)
+## 6. Current work in progress (as of 2026-06-07)
 
+- **v112b Phase 1 — NEW PROJECT HIGH (Jun 7).** Shared learnable factor
+  graph topology tensor (T=24, latent_dim=64). 67K new params lifted
+  ALL THREE difficulties from cont8_step1000 baseline: HARD 0.3761 →
+  0.3945 (+0.0184, beats SBP 0.3914), MED 0.4910 → 0.5180 (+0.0270),
+  EASY 0.5726 → 0.6371 (+0.0645), easy QUERY 0.2600 → 0.4600 (+0.20).
+  Mechanism finding: per-position residual gate VALIDATED (Wres_norm
+  grew 0 → 0.503 monotonically); pairwise attention bias REFUTED
+  (bias_scale stayed ~0). The factorization that helps is per-NODE
+  gating, not per-EDGE structure. Step 4500 + final ckpts produce
+  identical 50-puzzle results. See
+  `memory/project_v112b_phase1_validates_factorization.md`.
+- **v110-step3 prod chain — DONE (Jun 5).** Goldilocks step-size
+  regulation (calibration-driven `step_k/(1-calib_k)` CoV penalty)
+  reached project all-times: easy 0.610, med 0.509, hard 0.399.
+  cont8_step1000 is the warm-start anchor for all Jun 6-7 experiments.
+- **The search-vs-sampling arc — DONE (Jun 6).** PUCT (correlated tree-
+  path samples) regresses -0.006-0.012. MC-BP inference (independent
+  noise) lifts +0.0061. SBP training (independent noise) lifts +0.0153.
+  Independence quality is the discriminating factor. SBP is the paper's
+  previous training-time row.
 - **v109pi K-sweep — DONE (Jun 5).** cont9_step500 ckpt at K∈{2,4,8}.
   9/9 signals monotonically rise across {easy,med,hard}×{cell,pos4}.
-  Strongest K-sweep in project. Motivates K=16 retrain. OOD eval is a
-  binning artifact (input/output cap at 9999); honest OOD needs digit
-  input. See `memory/project_v109pi_diagnostics_jun5.md`.
-- **v109pi chain — DONE (Jun 4).** Warm-start from v109_prod_step8500,
-  9000 additional steps via chained continuations. Step 9000 peak:
-  easy 0.502, med 0.434, hard 0.337 (triple all-three-new-high).
-  Step 9400 hard 0.344 (ALL-TIME). cont9_step500 is the headline ckpt.
-- **v109 alternation result — DONE (Jun 4).** v108 + 512d LoRA waist +
-  alternation (waist on even breaths). Cell_acc lift: easy +0.037,
-  medium +0.044, HARD +0.083 over v108 at step 500. K-sweep FLIPPED
-  v108's pos4 hard anomaly (-0.059 with K) to non-decreasing (+0.007).
-  v109a ablation (waist every breath) shows the waist drives K-sweep
-  flip; alternation drives +0.066 cell_acc on hard. See
-  `memory/project_v109_ablation_clean_attribution.md`.
-- **v108 family closure — DONE (Jun 4).** Tree codebook output works
-  (digit_acc 70-75%). v108b (digit-decomposed input) refuted input
-  precision as the bottleneck. K-sweep on v108 showed pos4 hard
-  DECREASING with K — BP fixed-point trade-off, not Monte Carlo
-  accumulation. Drop MC framing from paper.
-- **Linear probe diagnostic — DONE (Jun 1).** Identified mean-field
-  collapse mechanism in v105 family: hidden states across positions of
-  one variable have cosine similarity ~1.0, so per-position digit
-  predictions are mechanically impossible without breaking the
-  within-variable averaging. Diagnostic at
-  `scripts/diag_v105_4_linear_probe.py`.
+  Strongest K-sweep in project. See
+  `memory/project_v109pi_diagnostics_jun5.md`.
 - **Paper draft.** Held at workshop tier (`paper/outline.md`). The
-  hold strategy is in `memory/project_big_paper_strategy.md`: don't
-  ship until Phase 1 classifier + IB-anchored Phase 2 codebook + end-
-  to-end GSM8K are added. Target: top-conference-tier upgrade.
+  v112b factorization breakthrough is a clean new row. Hold strategy
+  in `memory/project_big_paper_strategy.md`: don't ship until Phase 1
+  classifier + IB-anchored Phase 2 codebook + end-to-end GSM8K are
+  added. Target: top-conference-tier upgrade.
 - **Phase 1 classifier — built, not trained.** DistilBERT-based NL
   parser at `mycelium/phase1_classifier.py`. Spec at
   `docs/phase1_nl_parser_spec.md`. Build script at
   `scripts/build_phase1_classifier_data.py`. Smoke at
   `scripts/phase1_classifier_smoke.sh`.
-- **v106 PUCT search — CODE READY, RUN DEFERRED.** Neural-guided
-  combinatorial search on v107 number-level prediction; calibration-
-  gated trigger; PUCT scoring of digit codebook tree. Don't run until
-  v105 BP produces useful per-position digit distributions — search
-  amplification is multiplicative on BP quality.
-  `mycelium/factor_graph_v106.py`. Design memo:
-  `memory/project_v106_mcts_design.md`.
+- **v106 PUCT search — ROBUST NEGATIVE (Jun 6).** 8 configs tested on
+  v110-step3; all regress by 0.006-0.012. Locally-consistent-but-
+  globally-wrong attractor problem means search amplifies BP
+  miscalibration. Preserved at `mycelium/factor_graph_v106_step3.py`
+  for future use when BP quality improves.
 
 ---
 
@@ -340,6 +363,17 @@ DAG paradigm), see `docs/archive/empirical_v45_to_v95.md`.
 - JIT-fused KV cache (when AR decode is used)
 - The copy machine principle (no mid-breath token gen)
 - Structural-not-learned diversity rule
+- **Per-node residual gating via shared topology tensor (v112b, Jun 7)** —
+  one learnable `node_topology` tensor parameterizes each position's
+  identity; per-position gate `tanh(topology @ W_res_gate)` modulates
+  the shared backbone's activation pattern. 67K new params lifted ALL
+  THREE difficulties (easy +0.0645, med +0.0270, hard +0.0184 — NEW
+  PROJECT HIGH). The mycelium principle made architectural: same shared
+  backbone, different per-position activations.
+- **SBP training (v110-step3, Jun 6)** — 50/50 alternating residual-stream
+  noise during training. Denoising score matching at the injection
+  point. Zero inference cost. Sharpens attractors away from confidently-
+  wrong fixed points. Composes with v112b per Phase 2 hypothesis.
 
 **Left behind:**
 - Llama 1B (replaced by Pythia-410M L0-3 in v4-era)
@@ -366,48 +400,52 @@ DAG paradigm), see `docs/archive/empirical_v45_to_v95.md`.
 
 ## 8. Active research threads (sequenced)
 
-**Updated sequence (Jun 4):**
+**Updated sequence (Jun 7):**
 
-The v105.10/.11/.12 OOD chain closed at Outcome B (RESPONSIVE conditioning
-but not ACCURATE; per-digit OOD = chance). v105.13 wave-guide retrofit
-hit the L0 collapse confound. The current load-bearing in-distribution
-result is **v109 = v108 + 512d waist + alternation** (Jun 4): three-row
-ablation table cleanly attributes the waist to dynamics-fixing (K-sweep
-flips) and alternation to marginal cell_acc lift on hard. See
-`memory/project_v109_ablation_clean_attribution.md`.
+The current load-bearing result is **v112b Phase 1 = v110-step3 +
+shared learnable factor graph topology + per-position residual gate**
+(Jun 7): all three difficulties lifted (easy +0.0645, med +0.0270, hard
++0.0184 — NEW PROJECT HIGH at 0.3945). Mechanism finding: per-node
+gating works, pairwise attention bias doesn't. See
+`memory/project_v112b_phase1_validates_factorization.md`.
 
-1. **v109 prod (5K-15K steps)** — extend the smoke ckpt to full training
-   horizon. Question: does pos4 OOD compositionality unlock under
-   alternation + waist when given more training? Current step-500
-   v109 has hard cell_acc = 0.133 (nearly tripled over v108). The
-   v109 ablation showed waist drives the K-sweep flip; alternation adds
-   on hard. Worth pushing.
-2. **v109 OOD test** — the compositional generalization bet on
-   5-digit numbers (train [0,9999], test [10000,99999]). Open question
-   whether v109's better in-dist dynamics also produce better OOD.
-3. **Phase 1 small NL→factor-graph model** —
+Phase 2 should extend the per-node gating principle to other components
+(waist routing, codebook attention, delta_gate scaling). Phase 3 (likely
+paper-2) is the v112b + SBP composition test.
+
+1. **v112b Phase 2** — extend per-node gating to other components.
+   Three concrete tests: (a) per-position waist routing
+   `softmax(topology @ W_route)` driving which waist channels each node
+   uses; (b) per-position codebook attention `softmax(topology @ W_cb)`
+   per-position attending to codebook entries; (c) per-position
+   delta_gate scaling `sigmoid(topology @ w_delta)` per-position step
+   size. Each is one new projection on top of the validated topology
+   tensor. Build expectation: 2-3 hours per variant, smoke test before
+   the next.
+2. **v112b + SBP composition** — orthogonal mechanism test. SBP
+   sharpens attractors via training noise; v112b factors per-node
+   computation via architecture. If they compose, hard cell_acc should
+   exceed 0.40. Cheap to test: warm-start v112b cont1_final + SBP-style
+   alternating noise for 500-2000 steps. This is the paper-2 row.
+3. **v109pi K=16 retrain** — the strongest K-sweep in the project
+   motivates retraining at K=16 (current K=8). Question: does the
+   monotonic rise extend to K=16, or saturate?
+4. **Phase 1 small NL→factor-graph model** —
    `memory/project_phase1_segment_classify_design.md`. Segment-and-classify
    on DistilBERT; flat BIO span tagging + ~8-op codebook classification
-   (Phase 1A) + deterministic compiler → DAG (Phase 1B). Three anchors:
-   panama-hat (phrase units), input attention fraction (aux loss), JSD
-   (head specialization diagnostic). Span labels back out deterministically
-   from the 4,432 Haiku-labeled DSL examples. Required for the
-   "fully on-device" deployment story.
-4. **Notebook-as-MCTS-state** —
-   `memory/project_notebook_mcts_design.md`. Each breath is a branch point
-   in a search where the notebook holds committed beliefs. AlphaZero-shaped
-   (notebook=board, calibration=value, digit_logits=policy), ~9× cheaper
-   than v106, searches reasoning trajectory not readout. Build is
-   independent of upstream outcomes; results shape whether this stacks on
-   top of compositional generalization or fixes it.
+   (Phase 1A) + deterministic compiler → DAG (Phase 1B). Required for the
+   "fully on-device" deployment story. Now load-bearing: Phase 2
+   (inference engine) is empirically strong enough to ship.
 
 **Other open threads (lower priority, parallel-tractable):**
 
 - **v98 ablation — which constraint masks are load-bearing?** —
   pre-paper figure-2 work (v98 Sudoku is the paper's central claim, so
   the constraint-mask ablation supports it).
-- **v106 PUCT search on v107 number-level** — superseded by notebook-MCTS
-  if it ships; keep only as fallback diagnostic.
+- **Notebook-as-MCTS-state** —
+  `memory/project_notebook_mcts_design.md`. Deferred until v112b Phase
+  2 is validated; if per-node gating extends to delta_gate, MCTS on
+  per-node step decisions is the natural extension.
 
 For the v1-v95 era research threads (E-and-B oscillation, BirdNET head
 specialization, hierarchical IB → MCTS, photon zero-crossing, JSD

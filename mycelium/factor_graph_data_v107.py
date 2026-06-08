@@ -1,6 +1,10 @@
 """v107 factor graph data loader — hybrid 200-bin codebook.
 
 Extends the v100 data loader (staging + head-op masks) with the following changes:
+  NOTE (v114): if env V114_MIRROR_AT_K is set to a positive integer, the staging
+  mask for breaths >= mirror_at_k is built with reversed topological ordering
+  (deepest node first, expanding back toward inputs). This implements the
+  bidirectional "compute forward / verify backward" hypothesis.
 
   1. VALUE RANGE: No [0,99] filtering. The 200-bin hybrid codebook handles [0,9999].
      Values above 9999 are clamped to the nearest boundary bin (bin 199 = 9999).
@@ -52,6 +56,105 @@ from mycelium.factor_graph_v107 import (
     V107_N_MAX, V107_F_MAX, V107_K_MAX, V107_N_HEADS,
     get_bin_values, nearest_bin,
 )
+
+# ---------------------------------------------------------------------------
+# v114: mirror staging mask (bidirectional: forward then backward)
+# ---------------------------------------------------------------------------
+
+_V114_MIRROR_AT_K = int(os.environ.get("V114_MIRROR_AT_K", "0"))
+
+
+def build_staging_and_head_masks_mirror_np(
+    factor_types_np: np.ndarray,    # (F_MAX,) int, -1=padding
+    factor_args_np: np.ndarray,     # (F_MAX, 3) int
+    var_depth_np: np.ndarray,       # (N_MAX,) int  (-1 = padding)
+    n_vars: int,
+    n_factors: int,
+    n_max: int,
+    f_max: int,
+    k_max: int,
+    n_heads: int,
+    mirror_at_k: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Build staging mask with mirror transform for breaths k >= mirror_at_k.
+
+    Breaths 0..mirror_at_k-1: forward staging (depth <= k+1 visible).
+    Breaths mirror_at_k..k_max-1: reversed — deepest node first, expanding
+    back toward observed inputs as k increases past mirror_at_k.
+
+    Head-op masks are unchanged (op-type assignment is direction-agnostic).
+    Returns:
+      staging  : (k_max, t_max, t_max) float32
+      head_ops : (n_heads, t_max, t_max) float32
+    """
+    # Delegate to forward helper for the shared head-op mask and bipartite graph
+    staging_fwd, head_ops = build_staging_and_head_masks_np(
+        factor_types_np, factor_args_np, var_depth_np,
+        n_vars=n_vars, n_factors=n_factors,
+        n_max=n_max, f_max=f_max, k_max=k_max, n_heads=n_heads,
+    )
+
+    if mirror_at_k <= 0:
+        return staging_fwd, head_ops
+
+    # Compute max depth of valid variables
+    valid_depths = var_depth_np[:n_vars]
+    valid_depths = valid_depths[valid_depths >= 0]
+    if len(valid_depths) == 0:
+        return staging_fwd, head_ops
+    max_depth = int(valid_depths.max())
+
+    # Build factor result depths (same logic as forward helper)
+    factor_result_depth = np.full(f_max, -1, dtype=np.int32)
+    for fi in range(n_factors):
+        ft = int(factor_types_np[fi])
+        if ft < 0:
+            continue
+        res_idx = int(factor_args_np[fi, 2])
+        if 0 <= res_idx < n_max and var_depth_np[res_idx] >= 0:
+            factor_result_depth[fi] = int(var_depth_np[res_idx])
+
+    # Need bipartite mask for combining visibility — extract from staging_fwd[k_max-1]
+    # (at last breath, everything visible → bipartite is the full allowed mask)
+    bipartite = staging_fwd[k_max - 1]  # (t_max, t_max)
+
+    t_max = n_max + f_max
+    staging = staging_fwd.copy()
+
+    for k in range(mirror_at_k, k_max):
+        reverse_progress = k - mirror_at_k  # 0 at mirror_at_k, grows with k
+
+        # Reversed variable visibility: deepest nodes are visible first.
+        # At reverse_progress=0: only nodes with depth == max_depth are visible.
+        # At reverse_progress=p: nodes with depth >= max_depth - p are visible.
+        # Observed nodes (depth 0) are always visible (anchor inputs).
+        pv = np.zeros(t_max, dtype=bool)
+        for vi in range(n_vars):
+            d = int(var_depth_np[vi])
+            if d < 0:
+                continue
+            if d == 0:  # observed input — always visible
+                pv[vi] = True
+            else:
+                threshold = max_depth - reverse_progress
+                pv[vi] = (d >= threshold)
+
+        # Reversed factor visibility: factor visible if its result var is visible
+        for fi in range(n_factors):
+            fd = factor_result_depth[fi]
+            if fd < 0:
+                continue
+            fpos = n_max + fi
+            if fd == 0:
+                pv[fpos] = True
+            else:
+                threshold = max_depth - reverse_progress
+                pv[fpos] = (fd >= threshold)
+
+        both_visible = pv[:, np.newaxis] & pv[np.newaxis, :]  # (t_max, t_max)
+        staging[k] = np.where(both_visible, bipartite, -1e4)
+
+    return staging, head_ops
 
 # ---------------------------------------------------------------------------
 # GSM8K record conversion (no [0,99] filter; bin-assign all values)
@@ -268,17 +371,31 @@ def _records_to_batch_v107(
         for vi in range(min(n_total, n_max)):
             var_depth_np[b, vi] = depth_dict.get(vi, -1)
 
-        staging_b, head_op_b = build_staging_and_head_masks_np(
-            factor_types_np[b],
-            factor_args_np[b],
-            var_depth_np[b],
-            n_vars=int(n_vars_np[b]),
-            n_factors=int(n_factors_np[b]),
-            n_max=n_max,
-            f_max=f_max,
-            k_max=k_max,
-            n_heads=n_heads,
-        )
+        if _V114_MIRROR_AT_K > 0:
+            staging_b, head_op_b = build_staging_and_head_masks_mirror_np(
+                factor_types_np[b],
+                factor_args_np[b],
+                var_depth_np[b],
+                n_vars=int(n_vars_np[b]),
+                n_factors=int(n_factors_np[b]),
+                n_max=n_max,
+                f_max=f_max,
+                k_max=k_max,
+                n_heads=n_heads,
+                mirror_at_k=_V114_MIRROR_AT_K,
+            )
+        else:
+            staging_b, head_op_b = build_staging_and_head_masks_np(
+                factor_types_np[b],
+                factor_args_np[b],
+                var_depth_np[b],
+                n_vars=int(n_vars_np[b]),
+                n_factors=int(n_factors_np[b]),
+                n_max=n_max,
+                f_max=f_max,
+                k_max=k_max,
+                n_heads=n_heads,
+            )
         staging_masks[b] = staging_b
         head_op_masks[b] = head_op_b
 

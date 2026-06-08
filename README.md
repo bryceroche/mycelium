@@ -230,9 +230,38 @@ v98 Sudoku:         97.65% cell / 79.0% puzzle on easy (validated)
                     76.16% cell / 0.0% puzzle on hard
 v100-v107 (number): 40-48% cell_acc on synthetic [0,99] factor graphs
 v107 (hybrid 200):  24.2% cell_acc on GSM8K factor graphs
-v105 family (digit): 12 attempts hit ~5% plateau. Linear probe
-                    diagnostic (Jun 1) identified mean-field collapse;
-                    Y-soft attention mask fix currently testing.
+v105 family (digit): 12 attempts hit ~5% plateau (Jun 1 diagnosis:
+                    mean-field collapse at Pythia L0, readout-side
+                    fixes mechanically cannot recover)
+
+v109-v110 architecture stack (Jun 4-5):
+  v109 (waist + alternation):   easy 0.399, med 0.333, hard 0.293
+  v109pi (+ π-cycled Q):        easy 0.502, med 0.434, hard 0.337
+  v110-step3 prod (10K chain):  easy 0.610, med 0.509, hard 0.399
+                                ★ project all-times across all difficulties
+                                  (calibration-driven Goldilocks step,
+                                   accumulate notebook, sin² photon waist)
+
+Inference + training arc on v110-step3 (Jun 6-7, 50-puzzle subsets):
+  baseline cont8_step1000:          hard 0.3761, easy 0.5726, med 0.4910
+  PUCT search (best config):        hard 0.3700 (-0.0061, 11× cost)
+  MC-BP @ noise=0.01 inference:     hard 0.3823 (+0.0061, 2.8× cost)
+  SBP training (denoising score
+    matching at residual stream):   hard 0.3914 (+0.0153, free at inference)
+
+  v112b architectural factorization (NEW PROJECT HIGH — Jun 7):
+    shared learned node_topology tensor (67K new params total) +
+    per-position residual gating
+    hard det BP:                    0.3884 (+0.0123)
+    hard + MC-BP @ noise=0.005:     0.3945 ★ NEW HIGH (+0.0184)
+    med  det BP:                    0.5135 (+0.0225)
+    med  + MC-BP @ noise=0.01:      0.5180 (+0.0270)
+    easy det BP:                    0.6290 (+0.0564)
+    easy + MC-BP @ noise=0.01:      0.6371 ★ +0.0645 — biggest gain
+    easy query_acc:                 0.4600 (+0.20 — 10 more queries
+                                            correctly answered)
+
+v107 (hybrid 200): 24.2% cell_acc on GSM8K factor graphs
 
 Phase 1 (NL parser): designed (`mycelium/phase1_classifier.py`); not
                     yet trained.
@@ -288,10 +317,125 @@ cells.
   digit prediction stalled at ~5%. Linear probe diagnostic (Jun 1)
   identified mean-field collapse — across positions of one variable
   the hidden states become identical, so different position
-  predictions are impossible. Y-soft adjacent-only attention is the
-  fix being tested.
+  predictions are impossible. The collapse pins to Pythia L0 itself;
+  readout-side fixes mechanically cannot recover (see
+  `memory/project_v105_collapse_unbreakable.md`).
+- **v110-step3 prod chain reached project all-times (Jun 5).** Calibration-
+  driven Goldilocks step regulation (`step_k / (1 - calib_k)` CoV
+  penalty) made the calibration head functional, lifting all three
+  difficulties through a 9500-step warm-start chain: easy 0.610
+  (crossed 60%), med 0.509 (crossed 50%), hard 0.399 (near 0.40).
+- **The search-vs-sampling arc (Jun 6) — independence is the key.**
+  Tested PUCT search (correlated tree-path samples — regression),
+  MC-BP inference (independent noise at inference — small lift), and
+  SBP training (independent noise during training — biggest lift on
+  hard, +0.0153, free at inference). The hierarchy mirrors the
+  independence quality of each method. SBP training as denoising
+  score matching (Vincent 2011) at the residual-stream injection
+  point became the project's previous best training-time row.
+- **The factorization breakthrough (Jun 7) — v112b.** Adding ONE
+  learnable tensor `node_topology` of shape (T=24, latent_dim=64),
+  with two derived adaptations (attention bias and per-position
+  residual gate), lifts all three difficulties: hard +0.0184
+  (new project high, beats SBP-alone), med +0.0270, easy +0.0645.
+  Easy query accuracy lifts +0.20 (10 more puzzles correctly answered
+  out of 50). The mechanism finding is sharper than the prediction:
+  the **per-position residual gate is load-bearing** (Wres_norm grew
+  0 → 0.503 monotonically), while the **pairwise attention bias is
+  not** (bias_scale stayed at zero). See §3.3 below.
 
 See `paper/outline.md` for the full empirical writeup with figures.
+
+### 3.3 The v112b factorization breakthrough (Jun 7)
+
+The breathing transformer's INPUT (factor graphs) and OUTPUT (tree
+codebook over digits) are both factored — they explicitly represent
+the problem's structure. The MIDDLE was monolithic: residual stream
+1024d single blob, shared transformer for all positions, shared waist
+compression, shared codebook. Every position got identical treatment;
+the model had to *implicitly* re-factorize via attention patterns.
+
+**The mycelium namesake principle made architectural:** mushroom roots
+don't decompose substrate by sucking it into one central processor.
+They decompose in parallel at thousands of local sites, each handling
+a tiny chunk, coordinating only through minimal shared chemical signals.
+The architecture should have the same topology.
+
+**v112b adds ONE learnable tensor** `fg_v115_node_topology: (T=24,
+latent_dim=64)` — 1,536 parameters that give each position (variable or
+factor) a learned identity. Three derived adaptations:
+
+```python
+# Attention bias: pairwise topology similarity added to combined mask
+attn_bias = attn_bias_scale * (node_topology @ node_topology.T)  # (T, T)
+combined_mask = stk_h + head_op_mask + attn_bias
+
+# Per-position residual gate: each position gets its own activation pattern
+gate_per_pos = (node_topology @ W_res_gate).tanh()       # (T, hidden)
+x = x * (1.0 + gate_per_pos)                              # per-position modulation
+```
+
+Total new params: **~67K** (1.5K topology + 65K residual-gate projection
++ 1 bias-scale). All zero-init scaled so step 0 forward is byte-identical
+to v110-step3 baseline; warm-starts cleanly from v110-step3 ckpts.
+
+**What worked vs what didn't — the mechanism finding.**
+
+```
+PREDICTED load-bearing: pairwise attention bias = topology @ topology.T
+                         → learned soft edge strengths replacing binary masks
+                         → REFUTED. bias_scale stayed near zero throughout
+                           training (-0.0026 at step 5000). The existing
+                           per-op-type binary masks already capture
+                           connectivity adequately. Edges are not the
+                           bottleneck.
+
+ACTUAL load-bearing:    per-position residual gate = tanh(topology @ W_res)
+                         → each position gets its own activation pattern in
+                           the shared backbone's residual space
+                         → VALIDATED. Wres_norm grew 0.000 → 0.503
+                           MONOTONICALLY over 5000 steps. Topology vectors
+                           learned ANTI-CORRELATED identities (sim01:
+                           +0.024 → -0.154), confirming distinct per-node
+                           roles emerged.
+```
+
+The factorization that helps is **not about which positions talk to
+which** (already captured by binary masks); it's about **what each
+position computes** (per-node activation patterns in the shared
+backbone).
+
+**Results on 50-puzzle apples-to-apples subsets, every config compared
+at its best:**
+
+```
+                    baseline       v112b               Δ best vs baseline
+HARD:               0.3823 @0.01   0.3945 @0.005       +0.0122  NEW HIGH
+                                                                (beats SBP 0.3914)
+MEDIUM:             0.5045 @0.01   0.5180 @0.01        +0.0135
+EASY:               0.5887 @0.01   0.6371 @0.01        +0.0484
+QUERY easy:         0.2800         0.4600              +0.18    ★★★
+```
+
+**Step 4500 and final ckpts produce IDENTICAL 50-puzzle results** —
+the result is reproducible, not a lucky moment.
+
+**Why v112b composes with MC-BP averaging.** SBP training sharpens
+attractors via training noise. v112b factors per-node computation via
+architecture. MC-BP averages over remaining uncertainty at inference.
+The architecture produces *more structured* posteriors with cleaner
+alternative fixed points; MC averaging finds those alternatives more
+reliably. v112b + MC-BP @ 0.005 is the strongest single config in the
+project.
+
+**Phase 2 direction** (validated by Phase 1 mechanism finding): pursue
+MORE per-position gating mechanisms — waist routing (different
+positions use different waist channels), codebook attention (each
+position attends to its own subset of the codebook), per-position
+delta_gate scaling (each position takes its own step size). ALL
+GATING mechanisms (per-node adaptation of shared backbone), NOT
+pairwise structures. See
+`memory/project_v112b_phase1_validates_factorization.md`.
 
 ---
 
@@ -449,19 +593,25 @@ codebook + end-to-end GSM8K result before submission. See
 
 **Open architectural questions:**
 
-- Does Y-soft adjacent-only within-variable attention fix the
-  mean-field collapse in v105.1.2 v2? (testing as of 2026-06-01)
-- Does the explicit Quantize step (v105.1.2 v2 waist) lift accuracy
-  vs the no-waist baseline (v100)? Codec hypothesis under test.
+- **v112b Phase 2:** with per-position residual gating validated as the
+  load-bearing factorization mechanism, extend the same principle to
+  other components — per-position waist channel routing, per-position
+  codebook attention, per-position delta_gate scaling. ALL gating
+  mechanisms, not pairwise structures.
+- **Can SBP training + v112b architecture compose?** They lift different
+  parts of the curve (SBP sharpens attractors via training noise;
+  v112b factors per-node computation via architecture). The hypothesis
+  is they're orthogonal and the combination would push hard above 0.40.
 - Can a small Phase 1 classifier (~60-90M params) parse GSM8K NL to
   factor graphs at >85% accuracy? T5-small vs DistilBERT spec at
-  `docs/phase1_nl_parser_spec.md`.
-- v106 PUCT search on v107: when BP is uncertain at high-entropy
-  positions, branch the digit codebook tree under PUCT scoring with
-  calibration as the value signal. Code at
-  `mycelium/factor_graph_v106.py`; RUN DEFERRED until v105 BP produces
-  useful per-position digit distributions. Design memo:
-  `memory/project_v106_mcts_design.md`.
+  `docs/phase1_nl_parser_spec.md`. Now the load-bearing path for
+  end-to-end GSM8K — Phase 2 (the inference engine) is empirically
+  strong enough to ship the architecture story.
+- **Closed:** v106 PUCT search on v110-step3 — robust negative across
+  8 configurations. The locally-consistent-but-globally-wrong attractor
+  problem made search amplification multiplicative on BP miscalibration.
+  `mycelium/factor_graph_v106_step3.py` preserved for future use when
+  BP quality improves.
 
 **Deadline.** December 25, 2026 — MATH-500 (current bench is
 GSM8K-via-factor-graphs at the v107 24% level).

@@ -277,6 +277,27 @@ Three architectural components map onto standard ODE-solver constructs:
 
 Several components are already present (delta_gate, multi-stage, error estimator). Others are natural extensions identified by the ODE framing (§8.2). The framing predicts that improvements known to help numerical integrators — adaptive timestepping, higher-order methods on stiff systems — should improve the breathing transformer on analogous regimes.
 
+### 5.4 The JPEG codec view — alternation as learned compression
+
+The Hopfield, BP, and ODE framings (§5.1–5.3) describe what happens within a single breath. They do not explain why the alternation pattern in v109+ (waist active on even breaths, gated off on odd breaths) lifts hard cell accuracy by +0.07 over the non-alternating baseline. A fourth interpretation does: the alternation IS a learned image codec. Expand breaths gather information; collapse breaths run the full codec pipeline.
+
+JPEG's four-stage pipeline (per 8×8 block) maps onto the collapse breath:
+
+| JPEG stage | Function | Collapse-breath realization |
+|---|---|---|
+| Transform | Decorrelate via frequency basis (DCT) | Attention focuses on most relevant constraint edges — the topology mask plus v112b's per-node gating select which message channels matter |
+| Quantize | Lossy commitment, discard sub-threshold coefficients | Waist bottleneck 1024d → 512d → 1024d projects through a constrained subspace; the gate scalar controls the rate-distortion knob |
+| Encode | Discrete output via Huffman coding | Tree codebook 5-level per-digit readout produces a finite discrete commitment from continuous beliefs |
+| Psychoacoustic model | Per-block quality metric guiding quantization aggressiveness | Per-breath calibration head outputs P(correct \| state) — the same signal that drives Goldilocks step regulation in v110-step3 |
+
+Two consequences fall out of this framing.
+
+**Codec structure was discovered, not designed.** The expand breaths are codec-free: pure information gathering through attention with no compression. The collapse breaths run all four codec stages in sequence. v109's empirical finding that alternation drives the K-sweep flip (pos4 hard +0.007 with K, recovering from v108's −0.059) is the codec view: information needs both gathering and committing, and those are different operations that should not happen simultaneously. The architecture converged on the codec partition before we had the vocabulary to describe it.
+
+**Rate-distortion factorizes per node.** A uniform waist projects every variable through the same 1024→512 subspace at the same gate scalar. JPEG's psychoacoustic model adapts the quantization matrix per block (different blocks tolerate different distortion). The v112b shared topology tensor (Jun 7) provides the same adaptation in our setting: `tanh(node_topology @ W_res_gate)` gives each variable its own per-channel scaling of the residual stream, so the rate (which channels survive) is learned per-node. v112b's mechanism finding — pairwise attention bias refuted (`bias_scale ≈ 0`) while per-position residual gate validated (`Wres_norm` grew 0 → 0.503 monotonically) — is the empirical claim that the load-bearing factorization is per-node bitrate, not per-edge connectivity.
+
+**A unified system view.** Phase 1 (NL → factor graph parsing, §8.4) is a sequence-to-structure transform. Phase 2 expand breaths propagate beliefs across the parsed structure. Phase 2 collapse breaths run the JPEG codec to commit those beliefs into a discrete answer. Three algorithms — parsing, propagation, compression — share one Pythia-410M backbone, distinguished by the per-breath attention mask and waist gate. Whether the same shared weights are adequate for all three roles, or whether per-phase LoRA specialization is required, is a falsifiable empirical question (§9.5).
+
 ---
 
 ## 6. Experiments
@@ -734,7 +755,19 @@ The notebook component already carries previous-breath state across iterations. 
 
 AB2-AB4 implementations would store the last 2-4 breaths' updates and combine them via the standard Adams coefficients. Negligible memory cost (the notebook already exists); minor computation cost (one linear combination per breath); potentially significant accuracy improvement per iteration. This is a free upgrade in principle.
 
-### 9.5 Broader factor-graph domains
+### 9.5 Phase-specialized computation as a falsifiable hypothesis
+
+The JPEG codec view (§5.4) partitions the breathing transformer's K iterations into three computational regimes: parsing (Phase 1, NL → factor graph), propagation (expand breaths, information gathering), and compression (collapse breaths, the four-stage codec). The current architecture runs all three regimes through the same shared Pythia-410M backbone, distinguished only by per-breath attention mask and waist gate. An open question is whether per-regime weight specialization would lift accuracy.
+
+The hypothesis: each regime requires different computational primitives. Parsing benefits from broad linguistic competence (token boundary detection, span resolution, panama-hat-style compound noun handling). Propagation benefits from broad attention (gather constraint information across the graph). Compression benefits from focused attention into the bottleneck (decide what to keep, what to discard). Shared weights performing all three may compromise on each.
+
+The minimal falsifiable test: add a rank-16 LoRA adaptation specialized for collapse breaths only. ~2M new parameters trained alongside the existing 87M backbone. Measure hard cell accuracy on factor-graph 50-puzzle subset against v112b's 0.3945 baseline. If +0.005 or better, the phase-specialization hypothesis is validated and Expand and Phase 1 LoRAs are justified. If flat, the bottleneck is elsewhere (input precision, attractor sharpness, factorization).
+
+The efficient endpoint, if validated through individual ablation: three rank-16 LoRA adaptations on one shared Pythia backbone — Phase 1 LoRA for parsing, Expand LoRA for propagation, Collapse LoRA for compression — totalling ~6M new parameters atop 87M shared. The full system retains its 87M backbone footprint while gaining per-regime computational specialization. Three musicians sharing one instrument, each adding their own style.
+
+The hypothesis must be tested before commitment. The v112b finding (Jun 7) is instructive: the predicted load-bearing component (pairwise attention bias) refused to engage, while the secondary mechanism (per-position residual gating) became dominant. Phase-specialized LoRA may follow the same pattern — the specialization that helps may not be the specialization we expect.
+
+### 9.6 Broader factor-graph domains
 
 The 2×2 framework (§6.4) places the breathing transformer within a class of architectures parameterized by (breathing rhythm, factor graph topology). Each (key, topology) pair admits its own validation:
 
