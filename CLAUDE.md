@@ -305,7 +305,27 @@ DAG paradigm), see `docs/archive/empirical_v45_to_v95.md`.
 
 ---
 
-## 6. Current work in progress (as of 2026-06-07)
+## 6. Current work in progress (as of 2026-06-08)
+
+- **PIVOT to perceiver-CORE architecture (v200, Jun 8).** After 5 refutations
+  of perceiver-as-add-on (v118-b filter, v119 +bootstrap fix, v120 IB-notebook,
+  v121 mechanistic observer + energy selection — all converged to val[hard]=
+  0.349 vs no-perceiver baseline 0.362), user committed to from-scratch
+  perceiver-CORE redesign. Architecture: 32 latents as PRIMARY state at
+  Llama-1B's 2048d hidden, fg tokens become static reference, each breath
+  READ/THINK/COMMIT/WRITE in latent space. Long-haul commitment ("may fail
+  100 times"). Design memo: `memory/project_v200_perceiver_core_design.md`.
+  Refutation finding: `memory/project_v121_perceiver_5x_refuted.md`.
+- **v98-v121 residual-stream era preserved on `main`** — all ckpts and code
+  retained for reference. v112b (NEW PROJECT HIGH at hard 0.3945), v110-step3
+  prod (easy 0.610, med 0.509, hard 0.399), v114 mirror (hard +0.019, med
+  +0.052, easy -0.116), v109pi K-sweep (9/9 monotonic) all preserved. If
+  v200 fails, the residual-stream paradigm has a strong v112b Phase 2 path
+  (per-position delta_gate from topology) that was queued but not built.
+
+---
+
+## 6.1 Historical: v98-v121 residual-stream era completed work
 
 - **v112b Phase 1 — NEW PROJECT HIGH (Jun 7).** Shared learnable factor
   graph topology tensor (T=24, latent_dim=64). 67K new params lifted
