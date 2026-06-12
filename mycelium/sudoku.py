@@ -158,7 +158,37 @@ def embed_sudoku(input_cells: Tensor, state_embed: Tensor, position_embed: Tenso
 
 # ---- one transformer-layer forward with structured attention (no RoPE, no causal) ----
 
-def sudoku_layer_forward(layer: Any, x: Tensor, attn_bias: Tensor) -> Tensor:
+def _rotate_q_pi_sudoku(q: Tensor, cos_k, sin_k) -> Tensor:
+    """Pairwise rotation of Q across head_dim by (cos, sin). Same as v109pi/v200.
+
+    Accepts cos_k/sin_k as either Python floats (static, graph-baked) or
+    Tensor scalars (dynamic, e.g. for a per-step ramp). When Tensor, the value
+    can be updated via .assign() between JIT calls.
+
+    q_rot[..., 2i]   = cos * q[..., 2i]   - sin * q[..., 2i+1]
+    q_rot[..., 2i+1] = sin * q[..., 2i]   + cos * q[..., 2i+1]
+    """
+    *prefix, hd = q.shape
+    hd_int = int(hd)
+    assert hd_int % 2 == 0, f"head_dim must be even for rotation; got {hd_int}"
+    q_pairs = q.reshape(*prefix, hd_int // 2, 2)
+    q_even  = q_pairs[..., 0]
+    q_odd   = q_pairs[..., 1]
+    target_shape = tuple([1] * (q.ndim - 1))
+    if isinstance(cos_k, Tensor):
+        cos_t = cos_k.cast(q.dtype).reshape(*target_shape)
+        sin_t = sin_k.cast(q.dtype).reshape(*target_shape)
+    else:
+        cos_t = Tensor([cos_k], dtype=q.dtype).reshape(*target_shape)
+        sin_t = Tensor([sin_k], dtype=q.dtype).reshape(*target_shape)
+    out_even = cos_t * q_even - sin_t * q_odd
+    out_odd  = sin_t * q_even + cos_t * q_odd
+    out = Tensor.stack(out_even, out_odd, dim=-1)
+    return out.reshape(*prefix, hd_int)
+
+
+def sudoku_layer_forward(layer: Any, x: Tensor, attn_bias: Tensor,
+                          q_rot_cos=1.0, q_rot_sin=0.0) -> Tensor:
     """Run one BreathingLayer's forward, but with sudoku-style attention.
 
     layer:     a mycelium.breathing.BreathingLayer (provides wq/wk/bq/bk/w_in/b_in
@@ -166,12 +196,15 @@ def sudoku_layer_forward(layer: Any, x: Tensor, attn_bias: Tensor) -> Tensor:
     x:         (B, 81, H) residual stream.
     attn_bias: (n_heads, 81, 81) additive bias added to QK^T scores. Use the
                structured mask converted to {0, -1e4} via (1-mask)*(-1e4).
+    q_rot_cos, q_rot_sin: per-breath Q rotation (photon E-field). Defaults
+               1.0/0.0 = no rotation (byte-equivalent to v98 original).
 
     Differences from BreathingLayer._forward:
       - No RoPE (cells are positional via embed, not via sinusoidal RoPE)
       - No causal mask (constraint propagation is bidirectional)
       - Per-head mask via additive bias
       - Single fixed temperature (1.0 / sqrt(head_dim)) — no per-breath schedule
+      - Optional per-breath Q rotation (E-field of the coherent photon)
 
     Reuses Pythia-init weights (layer.wq, layer.wk, layer.shared.wv/wo/...).
     """
@@ -190,6 +223,15 @@ def sudoku_layer_forward(layer: Any, x: Tensor, attn_bias: Tensor) -> Tensor:
     q = (attn_in_dt @ layer.wq + layer.bq).reshape(B, S, cfg.n_heads, cfg.head_dim).transpose(1, 2)
     k = (attn_in_dt @ layer.wk + layer.bk).reshape(B, S, cfg.n_heads, cfg.head_dim).transpose(1, 2)
     v = (attn_in_dt @ layer.shared.wv + layer.shared.bv).reshape(B, S, cfg.n_heads, cfg.head_dim).transpose(1, 2)
+
+    # Per-breath Q rotation (the E-field of the coherent photon). Skipped at
+    # default cos=1/sin=0 so original v98 path is byte-equivalent. When
+    # cos/sin are Tensors (graph-dynamic ramp), always apply rotation since
+    # the Tensor may be 1.0 at trace time but change between calls.
+    if isinstance(q_rot_cos, Tensor):
+        q = _rotate_q_pi_sudoku(q, q_rot_cos, q_rot_sin)
+    elif not (abs(q_rot_cos - 1.0) < 1e-9 and abs(q_rot_sin) < 1e-9):
+        q = _rotate_q_pi_sudoku(q, q_rot_cos, q_rot_sin)
 
     # NO RoPE — cells are addressed by learned position embedding, not by RoPE.
     scale = 1.0 / math.sqrt(cfg.head_dim)
@@ -211,14 +253,27 @@ def sudoku_layer_forward(layer: Any, x: Tensor, attn_bias: Tensor) -> Tensor:
 
 # ---- iterative prefill loop --------------------------------------------------
 
-def sudoku_breathing_forward(model: Any, input_cells: Tensor, K: int):
+def sudoku_breathing_forward(model: Any, input_cells: Tensor, K: int,
+                              photon_alpha: float = 0.0,
+                              photon_freq_mult: float = 1.0):
     """Run K breaths of constraint propagation on (B, 81) input cells.
 
     Per-breath structure (each iteration):
       1. Add per-breath embedding (model knows "I'm on breath k")
       2. Run 4 transformer layers (shared weights — same task each breath)
       3. Apply learned per-breath delta gate (model can shrink late-breath updates)
-      4. Readout: cell logits + calibration confidence
+      4. Optional photon waist (coherent E+B): per-breath Q rotation (E-field)
+         coupled with sin² waist gate (B-field), both at freq_mult × base rate
+      5. Readout: cell logits + calibration confidence
+
+    Photon mechanism (gated by `photon_alpha`):
+      photon_alpha=0.0 → no waist contribution, no Q rotation. Byte-identical
+                        to original v98 path.
+      photon_alpha>0.0 → per-breath E-field phase k·freq·π/K_max rotates Q,
+                        and the B-field sin²(k·freq·π/K_max) scales the
+                        waist contribution model.x + α·gate_k·(z @ W_expand).
+                        Requires the model to have sudoku_photon_W_compress/W_expand
+                        (attached when SUDOKU_PHOTON_ENABLE=1).
 
     Returns:
       cell_logits_history: list of K Tensors of shape (B, 81, 9). cell_logits[k]
@@ -253,6 +308,46 @@ def sudoku_breathing_forward(model: Any, input_cells: Tensor, K: int):
     calib_head_w = model.sudoku_calib_head_w         # (H, 1)
     calib_head_b = model.sudoku_calib_head_b         # (1,)
 
+    # Precompute per-breath coherent photon (E+B) angles/gates.
+    # Only used when photon_alpha > 0; otherwise breath_cos=1/sin=0/gate=0.
+    #
+    # E-field (Q rotation): if model has sudoku_photon_rot_scale (Tensor scalar),
+    # use it inside the graph as a ramp multiplier on the phases. The Python-side
+    # training loop updates rot_scale via .assign() each step so rotation ramps
+    # 0 → 1 over RAMP_STEPS. cos/sin computed as Tensor ops inside the graph.
+    # If no rot_scale attribute, fall back to fixed Python floats (no ramp).
+    #
+    # B-field (waist gate): always Python-float static (W_expand zero-init is
+    # already a sufficient ramp from zero contribution).
+    if photon_alpha > 0.0:
+        rot_scale = getattr(model, "sudoku_photon_rot_scale", None)
+        if rot_scale is not None:
+            base_phases_np = np.array(
+                [photon_freq_mult * k * math.pi / float(K_max) for k in range(K_max)],
+                dtype=np.float32,
+            )
+            phase_t = Tensor(base_phases_np, dtype=dtypes.float) * rot_scale.cast(dtypes.float)
+            cos_t = phase_t.cos()
+            sin_t = phase_t.sin()
+            # List of scalar Tensors (per breath)
+            breath_cos = [cos_t[k:k+1].reshape(()) for k in range(K_max)]
+            breath_sin = [sin_t[k:k+1].reshape(()) for k in range(K_max)]
+        else:
+            breath_cos = [math.cos(photon_freq_mult * k * math.pi / float(K_max))
+                          for k in range(K_max)]
+            breath_sin = [math.sin(photon_freq_mult * k * math.pi / float(K_max))
+                          for k in range(K_max)]
+        breath_gates  = [math.sin(photon_freq_mult * k * math.pi / float(K_max)) ** 2
+                          for k in range(K_max)]
+        W_compress = model.sudoku_photon_W_compress    # (H, waist_dim)
+        W_expand   = model.sudoku_photon_W_expand      # (waist_dim, H) zero-init
+    else:
+        breath_cos    = [1.0] * K_max
+        breath_sin    = [0.0] * K_max
+        breath_gates  = [0.0] * K_max
+        W_compress    = None
+        W_expand      = None
+
     cell_logits_history = []
     calib_history = []
 
@@ -266,9 +361,12 @@ def sudoku_breathing_forward(model: Any, input_cells: Tensor, K: int):
         x_pre = x
 
         # 3. 4 transformer layers, shared across breaths (the K-iteration "same task" loop).
+        #    Per-breath Q rotation (E-field) is the only intra-breath photon effect.
+        cos_k = breath_cos[k]
+        sin_k = breath_sin[k]
         h = x_in
         for layer in layers[:4]:
-            h = sudoku_layer_forward(layer, h, attn_bias)
+            h = sudoku_layer_forward(layer, h, attn_bias, cos_k, sin_k)
 
         # 4. Learnable per-breath delta gate. delta_gate[k] starts at 1.0 (identity);
         #    gradient lets the model learn to shrink late-breath updates so the
@@ -276,6 +374,16 @@ def sudoku_breathing_forward(model: Any, input_cells: Tensor, K: int):
         gate_k = delta_gate[k].cast(h.dtype).reshape(1, 1, 1)
         delta = h - x_pre
         x = x_pre + gate_k * delta
+
+        # 4b. Photon B-field: sin² gate scales the waist contribution. Zero-init
+        #     W_expand means step 0 is byte-identical to no-photon; gradient
+        #     wakes up the channel over training.
+        if photon_alpha > 0.0:
+            x_fp = x.cast(dtypes.float)
+            z = x_fp @ W_compress.cast(dtypes.float)                       # (B, 81, waist_dim)
+            expand = z @ W_expand.cast(dtypes.float)                       # (B, 81, H)
+            waist_amp = float(photon_alpha) * float(breath_gates[k])
+            x = x + (expand * waist_amp).cast(x.dtype)
 
         # 5. Per-breath readout: project each cell to a 9-way logit via codebook.
         x_ln = _layernorm(x, model.ln_f_g, model.ln_f_b, model.cfg.layer_norm_eps).cast(dtypes.float)
@@ -505,14 +613,39 @@ def attach_sudoku_params(model: Any, hidden: int, n_heads: int,
     bias = (1.0 - mask) * (-1e4)                                           # 0 or -1e4
     model.sudoku_attn_bias = bias.contiguous()
 
+    # Optional photon mechanism: zero-init waist that's modulated by sin² gate.
+    # SUDOKU_PHOTON_ENABLE=1 attaches W_compress (orthonormal × 0.01) and
+    # W_expand (ZERO-INIT — bootstrap safe). At PHOTON_ALPHA=0 the forward
+    # skips the waist entirely; at ALPHA>0 it contributes alpha · sin²(...) ·
+    # (x @ W_compress @ W_expand). Zero-init means step 0 of training is
+    # byte-identical to the plain v98 path even with the params attached.
+    photon_enable = int(os.environ.get("SUDOKU_PHOTON_ENABLE", "0")) > 0
+    if photon_enable:
+        waist_dim = int(os.environ.get("SUDOKU_PHOTON_WAIST_DIM", "256"))
+        rng_w = np.random.RandomState(9806)
+        raw_w = rng_w.randn(hidden, hidden).astype(np.float32)
+        q_w, _ = np.linalg.qr(raw_w)
+        w_compress = q_w[:, :waist_dim] * 0.01
+        model.sudoku_photon_W_compress = Tensor(w_compress, dtype=dtypes.float).contiguous()
+        model.sudoku_photon_W_expand   = Tensor.zeros((waist_dim, hidden), dtype=dtypes.float).contiguous()
+        # FROZEN scalar that the train loop updates via .assign() each step to
+        # ramp the rotation E-field from 0 → 1. Excluded from sudoku_parameters
+        # (not optimized) and from sudoku_state_dict (not saved in ckpts —
+        # ramp state is set per-run, not warm-started).
+        model.sudoku_photon_rot_scale = Tensor(
+            np.array(0.0, dtype=np.float32), dtype=dtypes.float
+        ).contiguous()
+
 
 def sudoku_parameters(model: Any) -> list[Tensor]:
     """Trainable sudoku-specific params (everything but the frozen attn mask).
 
     Caller MUST add these to the AdamW param list when SUDOKU_TASK=1. The bias
     tensor is NOT in this list — it's a structural prior, frozen by construction.
+    Photon waist params (W_compress, W_expand) included only when attached
+    (SUDOKU_PHOTON_ENABLE=1).
     """
-    return [
+    params = [
         model.sudoku_state_embed,
         model.sudoku_position_embed,
         model.sudoku_digit_codebook,
@@ -521,11 +654,14 @@ def sudoku_parameters(model: Any) -> list[Tensor]:
         model.sudoku_breath_embed,
         model.sudoku_delta_gate,
     ]
+    if hasattr(model, "sudoku_photon_W_compress"):
+        params += [model.sudoku_photon_W_compress, model.sudoku_photon_W_expand]
+    return params
 
 
 def sudoku_state_dict(model: Any) -> dict[str, Tensor]:
     """State dict entries for sudoku params (excluding the static attn bias)."""
-    return {
+    sd = {
         "sudoku.state_embed": model.sudoku_state_embed,
         "sudoku.position_embed": model.sudoku_position_embed,
         "sudoku.digit_codebook": model.sudoku_digit_codebook,
@@ -534,6 +670,10 @@ def sudoku_state_dict(model: Any) -> dict[str, Tensor]:
         "sudoku.breath_embed": model.sudoku_breath_embed,
         "sudoku.delta_gate": model.sudoku_delta_gate,
     }
+    if hasattr(model, "sudoku_photon_W_compress"):
+        sd["sudoku.photon_W_compress"] = model.sudoku_photon_W_compress
+        sd["sudoku.photon_W_expand"]   = model.sudoku_photon_W_expand
+    return sd
 
 
 # ---- JIT'd training step ------------------------------------------------------
@@ -551,7 +691,9 @@ _JIT_SUDOKU_CACHE: dict = {}
 
 def _compile_jit_sudoku_step(model: Any, opt: Any, K: int, B: int,
                               constraint_weight: float, calib_weight: float,
-                              grad_clip: float = 0.0):
+                              grad_clip: float = 0.0,
+                              photon_alpha: float = 0.0,
+                              photon_freq_mult: float = 1.0):
     """Compile and return a TinyJit'd train step for the sudoku breathing forward.
 
     Inputs (stable shapes; pass realized Tensors):
@@ -561,15 +703,16 @@ def _compile_jit_sudoku_step(model: Any, opt: Any, K: int, B: int,
     Returns (each is a realized scalar Tensor):
       total_loss, healthy, cell_ce, energy, calib, ce_per_breath...
 
-    The JIT cache is keyed on (model id, opt id, K, B, weights, grad_clip) so
-    repeated calls with the same shape hit the cached step. Different K values
-    (e.g. K=15 smoke vs K=20 prod) compile distinct graphs.
+    The JIT cache is keyed on (model id, opt id, K, B, weights, grad_clip,
+    photon_alpha, photon_freq_mult) so repeated calls with the same shape hit
+    the cached step. Different K or photon configs compile distinct graphs.
 
     Healthy flag: if total isn't finite (NaN forward), grads are multiplied by 0
     before opt.step — graceful skip without per-param isnan loops (AMD JIT safe).
     """
     key = (id(model), id(opt), int(K), int(B), float(constraint_weight),
-           float(calib_weight), float(grad_clip))
+           float(calib_weight), float(grad_clip),
+           float(photon_alpha), float(photon_freq_mult))
     if key in _JIT_SUDOKU_CACHE:
         return _JIT_SUDOKU_CACHE[key]
 
@@ -579,7 +722,8 @@ def _compile_jit_sudoku_step(model: Any, opt: Any, K: int, B: int,
     params = opt.params
 
     _jit_compile_start = _time.perf_counter()
-    print(f"[JIT] compile sudoku step: K={K} B={B} cw={cw} aw={aw} clip={gc_val}...",
+    print(f"[JIT] compile sudoku step: K={K} B={B} cw={cw} aw={aw} clip={gc_val} "
+          f"photon_alpha={photon_alpha} photon_freq={photon_freq_mult}...",
           flush=True)
 
     @TinyJit
@@ -589,7 +733,10 @@ def _compile_jit_sudoku_step(model: Any, opt: Any, K: int, B: int,
         # Forward — sudoku_breathing_forward returns (cell_logits_history, calib_history)
         # Lists of K (B, 81, 9) fp32 and K (B,) fp32 tensors. K is constant so the
         # loop unrolls and the graph topology is fully static.
-        cell_logits_history, calib_history = sudoku_breathing_forward(model, input_cells, K=K)
+        cell_logits_history, calib_history = sudoku_breathing_forward(
+            model, input_cells, K=K,
+            photon_alpha=photon_alpha, photon_freq_mult=photon_freq_mult,
+        )
 
         # Loss — sudoku_loss reduces to a single scalar + a parts dict.
         # We inline it here instead of calling sudoku_loss to (a) keep the parts
@@ -669,9 +816,14 @@ def _compile_jit_sudoku_step(model: Any, opt: Any, K: int, B: int,
 
         opt.step()
 
+        # Per-breath calibration trajectory (mean across batch). Useful as a
+        # mechanism signature: at the resonant frequency, calibration should
+        # climb earlier and more monotonically.
+        per_breath_calib_means = [c.mean() for c in calib_history]
+
         # Return all realized scalars so the caller can cheap-readback per-step.
         # Order: total, healthy, cell_ce, energy, calib, train_cell_acc, train_puzzle_acc,
-        #        per_breath_ce_0, per_breath_ce_1, ..., per_breath_ce_{K-1}
+        #        per_breath_ce_0..K-1, per_breath_calib_0..K-1
         return (
             total.realize(),
             healthy.realize(),
@@ -681,6 +833,7 @@ def _compile_jit_sudoku_step(model: Any, opt: Any, K: int, B: int,
             train_cell_acc.realize(),
             train_puzzle_acc.realize(),
             *(ce.realize() for ce in per_breath_ce_losses),
+            *(c.realize() for c in per_breath_calib_means),
         )
 
     _JIT_SUDOKU_CACHE[key] = _step
@@ -689,33 +842,30 @@ def _compile_jit_sudoku_step(model: Any, opt: Any, K: int, B: int,
     return _step
 
 
-def _compile_jit_sudoku_eval(model: Any, K: int, B: int):
+def _compile_jit_sudoku_eval(model: Any, K: int, B: int,
+                              photon_alpha: float = 0.0,
+                              photon_freq_mult: float = 1.0):
     """Compile a TinyJit'd eval step (forward-only, no backward).
 
-    Returns (per-cell eq mask (B, 81) float, final cell logits (B, 81, 9)).
-    Inference graph is much cheaper than train: no backward, no opt.step.
-    Train accuracy is computed inline so eval doesn't need to redo argmax in
-    Python land.
-
-    Inputs:
-      input_cells   : (B, 81) int
-      gold_solution : (B, 81) int   — used only to compute eq mask + accuracies
-
-    Returns:
-      eq_mask      : (B, 81) fp32 0/1
-      cell_acc     : scalar fp32
-      puzzle_acc   : scalar fp32
+    photon_alpha / photon_freq_mult must match the values used at training so
+    the JIT graph reproduces the same forward path.
     """
-    key = ("eval", id(model), int(K), int(B))
+    key = ("eval", id(model), int(K), int(B),
+           float(photon_alpha), float(photon_freq_mult))
     if key in _JIT_SUDOKU_CACHE:
         return _JIT_SUDOKU_CACHE[key]
 
     _jit_compile_start = _time.perf_counter()
-    print(f"[JIT] compile sudoku eval: K={K} B={B}…", flush=True)
+    print(f"[JIT] compile sudoku eval: K={K} B={B} "
+          f"photon_alpha={photon_alpha} photon_freq={photon_freq_mult}…",
+          flush=True)
 
     @TinyJit
     def _eval(input_cells: Tensor, gold_solution: Tensor):
-        cell_logits_history, _ = sudoku_breathing_forward(model, input_cells, K=K)
+        cell_logits_history, _ = sudoku_breathing_forward(
+            model, input_cells, K=K,
+            photon_alpha=photon_alpha, photon_freq_mult=photon_freq_mult,
+        )
         final_logits = cell_logits_history[-1]
         pred = final_logits.argmax(axis=-1) + 1
         eq = (pred == gold_solution).cast(dtypes.float)

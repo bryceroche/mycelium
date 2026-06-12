@@ -437,10 +437,16 @@ def sudoku_breathing_forward_v200_pythia(
     x = embed_sudoku_v200(input_cells, state_embed, position_embed)
     x = x.cast(dtypes.float)
 
-    # Precompute per-breath π rotation angles (constant floats — JIT-static)
+    # Precompute per-breath π rotation angles (constant floats — JIT-static).
+    # V200_SUDOKU_PI_ROTATION=0 disables (matches v98 sudoku.py — no rotation).
+    pi_rot_on = int(os.environ.get("V200_SUDOKU_PI_ROTATION", "1")) > 0
     K_max_f = float(K_max)
-    breath_cos = [math.cos(k * math.pi / K_max_f) for k in range(K_max)]
-    breath_sin = [math.sin(k * math.pi / K_max_f) for k in range(K_max)]
+    if pi_rot_on:
+        breath_cos = [math.cos(k * math.pi / K_max_f) for k in range(K_max)]
+        breath_sin = [math.sin(k * math.pi / K_max_f) for k in range(K_max)]
+    else:
+        breath_cos = [1.0] * K_max
+        breath_sin = [0.0] * K_max
 
     cell_logits_history: list[Tensor] = []
     calib_history:       list[Tensor] = []
@@ -729,9 +735,15 @@ def attach_sudoku_v200_params(
         k_max +        # delta_gate
         H              # final_norm
     )
+    n_row    = max(1, n_heads * 10 // 32)
+    n_col    = max(1, n_heads * 10 // 32)
+    n_box    = max(1, n_heads * 10 // 32)
+    n_global = max(1, n_heads - n_row - n_col - n_box)
+    if n_row + n_col + n_box + n_global != n_heads:
+        n_global += (n_heads - n_row - n_col - n_box - n_global)
     print(
         f"[sudoku_v200] attached sudoku params: H={H} K_max={k_max} n_heads={n_heads}\n"
-        f"  mask partition: 10 row + 10 col + 10 box + 2 global (= {n_heads} heads)\n"
+        f"  mask partition: {n_row} row + {n_col} col + {n_box} box + {n_global} global (= {n_heads} heads)\n"
         f"  sudoku-specific params: {n_sudoku/1e6:.3f}M",
         flush=True,
     )

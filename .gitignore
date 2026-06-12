@@ -19,13 +19,12 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.coverage
 
 # Virtual environments
 .venv/
 venv/
 ENV/
-
-ideas.md
 
 # IDE
 .idea/
@@ -37,19 +36,6 @@ ideas.md
 .env
 .env.local
 
-# Results and data
-results/
-data/*.json
-data/*.db
-data/*.jsonl
-*.db
-*.sqlite
-*.yaml
-!.beads/*.yaml
-!configs/*.yaml
-*.jsonl
-!.beads/*.jsonl
-
 # OS
 .DS_Store
 Thumbs.db
@@ -57,25 +43,41 @@ Thumbs.db
 # uv
 .uv/
 uv.lock
+
+# Scratch / local-only
+ideas.md
 notes/
+results/
+logs/
+*.log
+experiments/
+secrets/
+untracked/
+findings/
+# docs/ tracks design specs and archived pre-v98 content (see docs/archive/)
+
+# Data files: ignore-all, then re-include named exceptions (ORDER MATTERS)
+*.json
+!.beads/*.json
+!deduplicated_templates.json
+!package.json
+*.jsonl
+!.beads/*.jsonl
+*.yaml
+!.beads/*.yaml
+!configs/*.yaml
 *.db
 *.db-shm
 *.db-wal
-*.json
-!deduplicated_templates.json
-!package.json
-!pyproject.json
-!.beads/*.json
-# Beads local tooling state — these directories/files are runtime artifacts
+*.sqlite
+*.backup.*
+*.db.backup*
+*.centroid_cache.npz
+
+# Beads runtime artifacts (MUST stay after !.beads/*.json)
 .beads/backup/
 .beads/embeddeddolt/
 .beads/export-state.json
-logs/
-*.log
-*.backup.*
-*.db.backup*
-.coverage
-*.centroid_cache.npz
 
 # Checkpoints and large binary files
 checkpoints/
@@ -85,25 +87,13 @@ checkpoints/
 *.pt
 *.bin
 
-# untracked folders
-experiments/
-secrets/
-untracked/
-findings/
-# docs/ tracks design specs and archived pre-v98 content (see docs/archive/)
-
 # Lambda build artifacts
 lambda/*/lambda.zip
 lambda/*/package/
 
-# Shell scripts (but keep ones in scripts/ — those are project setup utilities)
+# Shell scripts (keep scripts/ — project utilities; ORDER MATTERS)
 *.sh
 !scripts/*.sh
-checkpoints/
-*.pt
-__pycache__/
-*.pyc
-.DS_Store
 
 # Claude Code local memory
 .claude/

@@ -1,3 +1,8 @@
+# FROZEN HISTORICAL (pre-#237 mask1a): the shared module mycelium/factor_graph_v200.py
+# now attaches the §2 latent topology mask UNCONDITIONALLY. Re-running this script
+# trains/evals WITH the mask and will NOT reproduce the original run; this script's
+# arch_version/config_sig strings predate mask1a and would misreport the architecture.
+# The original artifacts (+ metric_sha content hashes) are the record. (#237 review, Jun 11)
 """5-minute diagnostic: does the eval path produce the same accuracy as training?
 
 Loads v200_smoke_2a_v3_final.safetensors and runs the EVAL forward pass on a

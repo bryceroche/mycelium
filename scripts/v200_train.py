@@ -1,3 +1,8 @@
+# FROZEN HISTORICAL (pre-#237 mask1a): the shared module mycelium/factor_graph_v200.py
+# now attaches the §2 latent topology mask UNCONDITIONALLY. Re-running this script
+# trains/evals WITH the mask and will NOT reproduce the original run; this script's
+# arch_version/config_sig strings predate mask1a and would misreport the architecture.
+# The original artifacts (+ metric_sha content hashes) are the record. (#237 review, Jun 11)
 """v200 perceiver-CORE training driver.
 
 Stage 1: cold-start only. No warm-start ckpts available.
@@ -54,7 +59,7 @@ from mycelium.llama_loader import (
     attach_llama_layers, LlamaConfig, SMOLLM2_1_7B_CFG, load_llama_weights,
     llama_layer_parameter_count,
 )
-from mycelium.factor_graph_v200 import (
+from mycelium.factor_graph_v200_legacy import (
     V200_K_MAX, V200_N_LATENTS, V200_N_VAR_LAT, V200_N_DIGITS,
     V200_N_MAX, V200_F_MAX, V200_CALIB_WEIGHT,
     V200_STAGE2A_WAIST, V200_WAIST_DIM,

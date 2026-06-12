@@ -286,6 +286,18 @@ def main():
     ckpt_dir = ".cache/sudoku_ckpts"
     os.makedirs(ckpt_dir, exist_ok=True)
 
+    # ---- Photon mechanism (env-driven, see mycelium/sudoku.py for design)
+    PHOTON_ENABLE   = int(os.environ.get("SUDOKU_PHOTON_ENABLE", "0")) > 0
+    PHOTON_ALPHA    = float(os.environ.get("SUDOKU_PHOTON_ALPHA", "0.0"))
+    PHOTON_FREQ     = float(os.environ.get("SUDOKU_PHOTON_FREQ_MULT", "1.0"))
+    PHOTON_ROT_RAMP = int(os.environ.get("SUDOKU_PHOTON_ROT_RAMP_STEPS", "100"))
+    if PHOTON_ENABLE:
+        print(f"  photon: ENABLE alpha={PHOTON_ALPHA} freq_mult={PHOTON_FREQ} "
+              f"rot_ramp_steps={PHOTON_ROT_RAMP}")
+    else:
+        print(f"  photon: disabled (alpha forced to 0)")
+        PHOTON_ALPHA = 0.0
+
     # ---- JIT compile the train + eval steps (first call inside the loop will
     # block ~60-90s for compile, then ~1-2s/step steady state).
     Tensor.training = True
@@ -294,11 +306,41 @@ def main():
         constraint_weight=CONSTRAINT_WEIGHT,
         calib_weight=CALIB_WEIGHT,
         grad_clip=0.0,
+        photon_alpha=PHOTON_ALPHA,
+        photon_freq_mult=PHOTON_FREQ,
     )
     # Eval JIT (separate cache key) — built lazily on first eval if EVAL_BATCH==BATCH
     # so we share the warm KV / weight layouts. If EVAL_BATCH != BATCH, the eval
     # JIT compiles its own graph.
-    eval_fn = _compile_jit_sudoku_eval(model, K=K, B=EVAL_BATCH)
+    eval_fn = _compile_jit_sudoku_eval(
+        model, K=K, B=EVAL_BATCH,
+        photon_alpha=PHOTON_ALPHA, photon_freq_mult=PHOTON_FREQ,
+    )
+
+    # ---- pre-step-0 val: measures the freq-dependent "yank" from full
+    # rotation perturbation at warm-start, BEFORE any training. Diagnoses
+    # the rotation-confound: if yank scales with freq, lower-freq results
+    # may "win" the sweep just by being a gentler perturbation. Sets
+    # rot_scale=1.0 (full rotation) for the diagnostic, then training
+    # restarts the ramp from 0 → 1 over RAMP_STEPS steps.
+    if PHOTON_ENABLE and PHOTON_ALPHA > 0:
+        if hasattr(model, "sudoku_photon_rot_scale"):
+            model.sudoku_photon_rot_scale.assign(
+                Tensor(np.array(1.0, dtype=np.float32), dtype=dtypes.float)
+            ).realize()
+        print(f"  pre-step-0 val (rot_scale=1.0 full rotation; "
+              f"measures freq-dependent yank size)...", flush=True)
+        Tensor.training = False
+        pre_results = evaluate(model, val_loader, K=K, max_batches=EVAL_BATCHES,
+                                label="pre-step-0", eval_fn=eval_fn)
+        Tensor.training = True
+        for d in ["easy", "medium", "hard", "expert"]:
+            if d not in pre_results:
+                continue
+            v = pre_results[d]
+            print(f"  pre[{d:7s}]: cell_acc={v['cell_acc']:.3f} "
+                  f"puzzle_acc={v['puzzle_acc']:.3f} n={v['n_puzzles']}",
+                  flush=True)
 
     # ---- train loop
     print(f"\ntraining...\n")
@@ -310,10 +352,22 @@ def main():
     log_n = 0
 
     for step in range(1, STEPS + 1):
+        # Per-step rotation alpha ramp: 0 → 1 over PHOTON_ROT_RAMP steps.
+        # Disabled (no-op) when PHOTON_ALPHA=0 or no rot_scale attribute.
+        if (PHOTON_ENABLE and PHOTON_ALPHA > 0
+                and hasattr(model, "sudoku_photon_rot_scale")):
+            if PHOTON_ROT_RAMP > 0:
+                ramp_val = min(float(step) / float(PHOTON_ROT_RAMP), 1.0)
+            else:
+                ramp_val = 1.0
+            model.sudoku_photon_rot_scale.assign(
+                Tensor(np.array(ramp_val, dtype=np.float32), dtype=dtypes.float)
+            ).realize()
+
         input_cells, gold, _picks = train_loader.sample_batch(step=step)
 
         # JIT'd train step — single fused graph; replays at ~1-2s/step after warm-up.
-        # Returns: (total, healthy, cell_ce, energy, calib, cell_acc, puzzle_acc, *pb_ce)
+        # Returns: (total, healthy, cell_ce, energy, calib, cell_acc, puzzle_acc, *pb_ce, *pb_calib)
         outs = step_fn(input_cells, gold)
         total_t   = outs[0]
         healthy_t = outs[1]
@@ -322,7 +376,8 @@ def main():
         calib_t   = outs[4]
         cell_acc_t   = outs[5]
         puzzle_acc_t = outs[6]
-        pb_ce_ts  = outs[7:7 + K]
+        pb_ce_ts     = outs[7:7 + K]
+        pb_calib_ts  = outs[7 + K:7 + 2 * K]
 
         # Cheap readback: tinygrad scalars realized inside JIT — .numpy() is sync-only.
         if float(healthy_t.numpy()) < 0.5:
@@ -350,18 +405,27 @@ def main():
         if step % PER_BREATH_CE_EVERY == 0:
             # Per-breath CE is already computed inside the JIT step — just read back.
             pb_ce = [float(t.numpy()) for t in pb_ce_ts]
+            pb_calib = [float(t.numpy()) for t in pb_calib_ts]
             # Compact: show first 4 and last 4 of K (or all if K ≤ 8)
             if K <= 8:
-                pb_str = " ".join(f"{v:.2f}" for v in pb_ce)
+                pb_ce_str    = " ".join(f"{v:.2f}" for v in pb_ce)
+                pb_calib_str = " ".join(f"{v:.2f}" for v in pb_calib)
             else:
-                head = " ".join(f"{v:.2f}" for v in pb_ce[:4])
-                tail = " ".join(f"{v:.2f}" for v in pb_ce[-4:])
-                pb_str = f"{head} ... {tail}"
+                pb_ce_str = (
+                    " ".join(f"{v:.2f}" for v in pb_ce[:4]) + " ... "
+                    + " ".join(f"{v:.2f}" for v in pb_ce[-4:])
+                )
+                pb_calib_str = (
+                    " ".join(f"{v:.2f}" for v in pb_calib[:4]) + " ... "
+                    + " ".join(f"{v:.2f}" for v in pb_calib[-4:])
+                )
             # Also report train batch accuracy from the JIT'd scalars (no extra forward).
             cell_acc = float(cell_acc_t.numpy())
             puzzle_acc = float(puzzle_acc_t.numpy())
-            print(f"  per_breath_ce[B0..B{K-1}]: {pb_str}  "
+            print(f"  per_breath_ce[B0..B{K-1}]:    {pb_ce_str}  "
                   f"(train cell_acc={cell_acc:.3f} puzzle_acc={puzzle_acc:.3f})",
+                  flush=True)
+            print(f"  per_breath_calib[B0..B{K-1}]: {pb_calib_str}",
                   flush=True)
 
         if step % EVAL_EVERY == 0:

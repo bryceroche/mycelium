@@ -47,8 +47,10 @@ export V200_SUDOKU_BASE="${V200_SUDOKU_BASE:-smollm2_1_7b}"
 # ---- V200-SUDOKU FLAGS ----
 export V200_SUDOKU_TASK=1
 export V200_SUDOKU_K_MAX="${V200_SUDOKU_K_MAX:-20}"
-export V200_SUDOKU_CONSTRAINT_WEIGHT="${V200_SUDOKU_CONSTRAINT_WEIGHT:-0.3}"
-export V200_SUDOKU_CALIB_WEIGHT="${V200_SUDOKU_CALIB_WEIGHT:-0.1}"
+# Empirically validated v98 values. cw=0.3 collapses to "uniform digit dist
+# satisfies row/col/box constraints" local minimum, cell_ce stays at chance.
+export V200_SUDOKU_CONSTRAINT_WEIGHT="${V200_SUDOKU_CONSTRAINT_WEIGHT:-0.005}"
+export V200_SUDOKU_CALIB_WEIGHT="${V200_SUDOKU_CALIB_WEIGHT:-0.05}"
 export DIFFICULTY_FILTER="${DIFFICULTY_FILTER:-easy}"
 
 # ---- DEVICE + PERF ----

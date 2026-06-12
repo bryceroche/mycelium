@@ -217,6 +217,51 @@ class LlamaLayer:
 
         return x + ffn_out
 
+    def forward_return_weights(self, x: Tensor, rope_cos: Tensor, rope_sin: Tensor,
+                               attn_mask: Tensor | None = None) -> tuple[Tensor, Tensor]:
+        """Same as __call__ but also returns post-softmax attention weights.
+
+        Returns (x_out, attn_w) where attn_w is (B, nh, S, S).
+        Used by v200 #237+ instrumentation (per-latent THINK attention entropy, §7).
+        NOTE: keep consistent with __call__ — any change there must mirror here.
+        Eager-only; not called inside JIT paths.
+        """
+        cfg = self.cfg
+        B, S, H = x.shape
+        nh = cfg.num_attention_heads
+        nkv = cfg.num_key_value_heads
+        hd = cfg.head_dim
+
+        # --- Pre-attention RMSNorm ---
+        h = _rms_norm(x, self.attn_norm, cfg.rms_norm_eps).cast(x.dtype)
+
+        # --- Attention ---
+        q = (h @ self.wq.cast(x.dtype)).reshape(B, S, nh,  hd).transpose(1, 2)
+        k = (h @ self.wk.cast(x.dtype)).reshape(B, S, nkv, hd).transpose(1, 2)
+        v = (h @ self.wv.cast(x.dtype)).reshape(B, S, nkv, hd).transpose(1, 2)
+
+        q, k = _apply_rope(q, k, rope_cos, rope_sin, S)
+
+        if cfg.n_rep > 1:
+            k = k.repeat((1, 1, cfg.n_rep, 1)).reshape(B, nh, S, hd)
+            v = v.repeat((1, 1, cfg.n_rep, 1)).reshape(B, nh, S, hd)
+
+        scores = (q @ k.transpose(-2, -1)) * self._scale   # (B, nh, S, S)
+        if attn_mask is not None:
+            scores = scores + attn_mask.cast(scores.dtype)
+        attn = scores.clip(-1e4, 1e4).softmax(-1).cast(v.dtype)
+        ctx = (attn @ v).transpose(1, 2).reshape(B, S, H)
+        attn_out = ctx @ self.wo.cast(x.dtype)
+
+        x = x + attn_out
+
+        h2 = _rms_norm(x, self.ffn_norm, cfg.rms_norm_eps).cast(x.dtype)
+        gate = (h2 @ self.w_gate.cast(x.dtype)).silu()
+        up   = (h2 @ self.w_up.cast(x.dtype))
+        ffn_out = (gate * up) @ self.w_down.cast(x.dtype)
+
+        return x + ffn_out, attn
+
     def parameters(self) -> list[Tensor]:
         return [self.wq, self.wk, self.wv, self.wo,
                 self.w_gate, self.w_up, self.w_down,

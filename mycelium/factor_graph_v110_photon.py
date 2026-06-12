@@ -86,21 +86,29 @@ def _photon_gate(k: int, K_max: int, profile: str) -> float:
     All profiles return values in [0, 1]. "binary" matches v109pi alternation
     exactly. "alt_smooth" preserves the same peaks at even breaths but
     smooths the transitions (cos profile with period K=2).
+
+    V110_PHOTON_FREQ_MULT (default 1.0) multiplies the sin/cos angle for the
+    continuous profiles (cos2_pi2, cos2_pi, sin2_pi). 1.0 = original
+    half-cycle over K breaths. 2.0 = full cycle. 4.0 at K=8 aliases to
+    {0,1,0,1,...} binary at integer breaths. No-op for "binary" and
+    "alt_smooth".
     """
+    freq = float(os.environ.get("V110_PHOTON_FREQ_MULT", "1.0"))
+
     if profile == "binary":
         return 1.0 if k % 2 == 0 else 0.0
     if profile == "cos2_pi2":
         # cos² from 0 to π/2 across K breaths: starts at 1, ends at 0
         denom = max(K_max - 1, 1)
-        return math.cos(k * math.pi / 2.0 / denom) ** 2
+        return math.cos(freq * k * math.pi / 2.0 / denom) ** 2
     if profile == "cos2_pi":
         # cos² from 0 to π across K breaths: starts at 1, ends at 1, dips at K/2
         denom = max(K_max - 1, 1)
-        return math.cos(k * math.pi / denom) ** 2
+        return math.cos(freq * k * math.pi / denom) ** 2
     if profile == "sin2_pi":
         # sin² from 0 to π across K breaths: starts at 0, peaks at K/2, ends at 0
         # B-field 90° offset from cos2_pi (the "E-field")
-        return math.sin(k * math.pi / float(K_max)) ** 2
+        return math.sin(freq * k * math.pi / float(K_max)) ** 2
     if profile == "alt_smooth":
         # Smooth alternation: cos²(k·π/2) → 1 at k even, 0 at k odd
         # but smoothed in continuous sense. Identical to "binary" at integer k.
@@ -197,7 +205,17 @@ def fg_breathing_forward_v110_photon(
     K_max  = int(breath_embed.shape[0])
     assert K <= K_max, f"K={K} > K_max={K_max}"
 
+    # V110_PHOTON_FOLD=1: triangle-wave fold rotation phases into [0, π/2].
+    # Tests Bryce's "valley as pure cost" hypothesis: if alternation between
+    # backbone-led (cos=1) and waist-led (cos=0) is the active ingredient,
+    # folding should match or beat unfolded. Anti-alignment (cos<0) eliminated.
+    # Pre-registered kill criterion (Jun 9): folded must beat cont9_step500
+    # control (hard 0.397) by >+0.02 without easy regression beyond -0.01.
+    fold = int(os.environ.get("V110_PHOTON_FOLD", "0")) > 0
     breath_phases = [phase_scale * k * math.pi / float(K_max) for k in range(K_max)]
+    if fold:
+        half_pi = math.pi / 2.0
+        breath_phases = [half_pi - abs(half_pi - p) for p in breath_phases]
     breath_cos = [math.cos(p) for p in breath_phases]
     breath_sin = [math.sin(p) for p in breath_phases]
 
